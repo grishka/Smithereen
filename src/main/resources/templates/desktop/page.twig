@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+{%autoescape "html"%}<html>
+<head>
+	<title>{{ title }}</title>
+</head>
+<body>
+<table width="100%">
+	<tr>
+		<td width="35">
+			<a href="/"><img src="/res/logo.svg" height="40" border="0"/></a>
+		</td>
+		<td>
+			<a href="/">Smithereen</a>
+			{%if(currentUser)%}
+			<br/>
+			<a href="/{{currentUser.username}}/friends">{{L('friends')}}{%if(userNotifications.newFriendRequestCount>0)%} (<b>{{userNotifications.newFriendRequestCount}}</b>){%endif%}</a> | <a href="/settings/">{{L('settings')}}</a>
+			{%endif%}
+		</td>
+		<td align="right">
+			{% if (currentUser) %}
+			{{ L("logged_in_as_before") }}<a href="/{{ currentUser.username }}">{{ currentUser.fullName }}</a>{{ L("logged_in_as_after") }}<br/>
+			<a href="/account/logout?csrf={{ csrf }}">{{ L("log_out") }}</a>
+			{% else %}
+			{{ L("not_logged_in") }}
+			{% endif %}
+		</td>
+	</tr>
+</table>
+<hr/>
+{%block content%}{%endblock%}
+</body>
+</html>
+{%endautoescape%}

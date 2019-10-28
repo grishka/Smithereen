@@ -1,0 +1,14 @@
+{%extends "page.twig"%}
+{%block content%}
+<center>
+	<h3>{{L('you_are_about_to_follow')}}</h3>
+	<img src="{{user.mediumAvatar}}" srcset="{{user.mediumAvatarSrcset}}" width="100" height="100"/><br/>
+	<h4>{{user.fullName}}</h4>
+	{%if user.summary%}{{user.summary | escape(false)}}{%endif%}
+	<br/>
+	<form action="{{user.getProfileURL('remoteFollow')}}" method="post">
+		<input type="hidden" name="csrf" value="{{csrf}}"/>
+		<input type="submit" value="{{L('follow')}}"/>
+	</form>
+</center>
+{%endblock%}

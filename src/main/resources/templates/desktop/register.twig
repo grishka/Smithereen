@@ -1,0 +1,8 @@
+{%extends "page.twig"%}
+{%block content%}
+<h3>{{L('register')}}</h3>
+{%if message%}
+<h4>{{message}}</h4>
+{%endif%}
+{%include "register_form.twig"%}
+{%endblock%}

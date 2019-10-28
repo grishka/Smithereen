@@ -1,0 +1,52 @@
+{%extends "page.twig"%}
+{%block content%}
+<form action="/settings/updateName" method="post">
+	<h3>{{L('change_name')}}</h3>
+	{%if nameMessage%}<h5>{{nameMessage}}</h5>{%endif%}
+	{{L('first_name')}}: <input type="text" name="first_name" value="{{currentUser.firstName}}" maxlength="100" required/><br/>
+	{{L('last_name')}}: <input type="text" name="last_name" value="{{currentUser.lastName}}" maxlength="100"/><br/>
+	<input type="hidden" name="csrf" value="{{csrf}}"/>
+	<input type="submit" value="{{L('save')}}"/>
+</form>
+<hr/>
+<form action="/settings/updateProfilePicture" method="post" enctype="multipart/form-data">
+	<h3>{{L('update_profile_picture')}}</h3>
+	{%if profilePicMessage%}<h5>{{profilePicMessage}}</h5>{%endif%}
+	<input type="file" name="pic" accept="image/*"/><br/>
+	<input type="submit" value="{{L('save')}}"/>
+</form>
+<hr/>
+<form action="/settings/updatePassword" method="post">
+	<h3>{{L('change_password')}}</h3>
+	{%if passwordMessage%}<h5>{{passwordMessage}}</h5>{%endif%}
+	{{L('current_password')}}: <input type="password" name="current"/><br/>
+	{{L('new_password')}}: <input type="password" name="new"/><br/>
+	{{L('new_password_confirm')}}: <input type="password" name="new2"/><br/>
+	<input type="hidden" name="csrf" value="{{csrf}}"/>
+	<input type="submit" value="{{L('save')}}"/>
+</form>
+<hr/>
+<h3>{{L('invitations')}}</h3>
+{%if inviteMessage%}<h5>{{inviteMessage}}</h5>{%endif%}
+<table border="1">
+	<tr>
+		<th>{{L('invitation_code')}}</th>
+		<th>{{L('created')}}</th>
+	</tr>
+{%for invite in invitations%}
+	<tr>
+		<td><code>{{invite.code}}</code></td>
+		<td>{{LD(invite.createdAt)}}</td>
+	</tr>
+{%endfor%}
+{%if invitations.empty%}
+	<tr>
+		<td align="center" colspan="2">{{L('no_invitations')}}</td>
+	</tr>
+{%endif%}
+</table>
+<form action="/settings/createInvite" method="post">
+	<input type="hidden" name="csrf" value="{{csrf}}"/>
+	<input type="submit" value="{{L('create_invitation')}}"/>
+</form>
+{%endblock%}

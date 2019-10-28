@@ -1,0 +1,47 @@
+{%extends "page.twig"%}
+{%block content%}
+<h2>{{user.fullName}}</h2>
+<table width="100%">
+	<tr valign="top">
+		<!-- left column -->
+		<td width="200">
+			<img src="{{user.bigAvatar}}" srcset="{{user.bigAvatarSrcset}}"/>
+			{%if currentUser and currentUser.id!=user.id%}
+			{%if isFriend%}
+			<a href="/{{user.username}}/confirmRemoveFriend">{{L("remove_friend")}}</a>
+			{%else%}
+			<a href="/{{user.username}}/confirmSendFriendRequest">{{L("add_friend", user.firstName)}}</a>
+			{%endif%}
+			<br/>
+			{%endif%}
+
+			<table width="100%">
+				<tr><th colspan="3"><a href="{{user.getProfileURL('friends')}}">{{L("friends")}} {{friendCount}}</a></th></tr>
+				{%for friend in friends%}
+				{%if(loop.first or loop.index==4)%}<tr>{%endif%}
+				<td align="center" width="33%" style="overflow: hidden;">
+					<a href="{{friend.url}}">
+						<img src="{{friend.smallAvatar}}" srcset="{{friend.smallAvatarSrcset}}" width="50"/><br/>
+						<small>{{friend.firstName}}<br/>{{friend.lastName}}</small>
+					</a>
+				</td>
+				{%if(loop.index==3 or loop.index==6)%}</tr>{%endif%}
+				{%endfor%}
+				{%if(friends.size%3!=0)%}
+				<td colspan="{{3-friends.size%3}}" width="{{(3-friends.size%3)*33}}%">&nbsp;</td></tr>
+				{%endif%}
+			</table>
+		</td>
+		<!-- right column -->
+		<td>
+			{%if user.birthDate%}
+			{{L("birth_date")}}: {{user.birthDate}}<br/>
+			{%endif%}
+			{%include "wall_post_form.twig" with {wallOwner: user}%}
+			{%for post in wall%}
+			{%include "wall_post.twig" with {post: post}%}
+			{%endfor%}
+		</td>
+	</tr>
+</table>
+{%endblock%}

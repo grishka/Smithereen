@@ -1,0 +1,27 @@
+{%extends "page.twig"%}
+{%block content%}
+{%if currentUser and currentUser.id==owner.id%}
+{%if userNotifications.newFriendRequests>0%}
+<a href="{{currentUser.getProfileURL('incomingFriendRequests')}}">{{LP('X_friend_requests', userNotifications.newFriendRequests)}}</a>
+{%endif%}
+{%endif%}
+{%for friend in friendList%}
+<table width="100%">
+	<tr>
+		<td width="100">
+			<img src="{{friend.mediumAvatar}}" srcset="{{friend.mediumAvatarSrcset}}" width="100"/>
+		</td>
+		<td>
+			<b><a href="{{friend.url}}">{{friend.fullName}}</a></b>
+		</td>
+		<td width="200">
+			<a href="{{friend.getProfileURL('friends')}}">{{L('view_friends_of_X', friend.firstName)}}</a><br/>
+			{%if(currentUser and currentUser.id==owner.id)%}<a href="{{friend.getProfileURL('confirmRemoveFriend')}}">{{L('remove_friend')}}</a>{%endif%}
+		</td>
+	</tr>
+</table>
+{%endfor%}
+{%if(friendList.empty)%}
+<center>{{L('no_friends')}}</center>
+{%endif%}
+{%endblock%}

@@ -1,0 +1,12 @@
+{% extends "page.twig" %}
+{% block content %}
+<form action="/account/login" method="post">
+	<h3>{{L('log_in')}}</h3>
+	{{ L("email_or_username") }}:<br/>
+	<input type="text" name="username"/><br/>
+	{{ L("password") }}:<br/>
+	<input type="password" name="password"/><br/>
+	<input type="submit" value="{{ L('log_in') }}"/>
+</form>
+{%include "register_form.twig"%}
+{% endblock %}

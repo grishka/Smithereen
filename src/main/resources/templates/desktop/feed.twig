@@ -1,0 +1,7 @@
+{%extends "page.twig"%}
+{%block content%}
+{%include "wall_post_form.twig"%}
+{%for post in posts%}
+{%include "wall_post.twig" with {post: post}%}
+{%endfor%}
+{%endblock%}

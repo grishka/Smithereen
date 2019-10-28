@@ -1,0 +1,24 @@
+{%extends "page.twig"%}
+{%block content%}
+{%for req in friendRequests%}
+<table width="100%">
+	<tr>
+		<td width="100">
+			<img src="{{req.from.mediumAvatar}}" srcset="{{req.from.mediumAvatarSrcset}}"/>
+		</td>
+		<td>
+			<form action="{{req.from.getProfileURL('respondToFriendRequest')}}" method="post">
+				<b><a href="{{req.from.url}}">{{req.from.fullName}}</a></b><br/>
+				{%if req.message%}<blockquote>{{req.message}}</blockquote>{%endif%}
+				<input type="hidden" name="csrf" value="{{csrf}}"/>
+				<input type="submit" name="accept" value="{{L('accept')}}"/>
+				<input type="submit" name="decline" value="{{L('decline')}}"/>
+			</form>
+		</td>
+	</tr>
+</table>
+{%endfor%}
+{%if friendRequests.empty%}
+<center>{{L('no_incoming_friend_requests')}}</center>
+{%endif%}
+{%endblock%}
