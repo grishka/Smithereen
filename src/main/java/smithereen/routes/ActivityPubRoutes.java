@@ -276,7 +276,7 @@ public class ActivityPubRoutes{
 			else
 				throw new IllegalArgumentException("Unsupported object type");
 		}catch(Exception x){
-			x.printStackTrace();
+			System.out.println(x);
 			resp.status(400);
 			return x.toString();
 		}
@@ -284,7 +284,7 @@ public class ActivityPubRoutes{
 			if(activity.actor.link.getHost().equalsIgnoreCase(Config.domain))
 				throw new IllegalArgumentException("User domain must be different from this server");
 		}catch(Exception x){
-			x.printStackTrace();
+			System.out.println(x);
 			resp.status(400);
 			return x.toString();
 		}
@@ -301,7 +301,7 @@ public class ActivityPubRoutes{
 			}catch(SQLException x){
 				throw new SQLException(x);
 			}catch(Exception x){
-				x.printStackTrace();
+				System.out.println(x);
 				resp.status(400);
 				return x.toString();
 			}
@@ -309,7 +309,7 @@ public class ActivityPubRoutes{
 		try{
 			verifyHttpSignature(req, user.publicKey);
 		}catch(Exception x){
-			x.printStackTrace();
+			System.out.println(x);
 			resp.status(400);
 			return x.toString();
 		}
@@ -342,7 +342,7 @@ public class ActivityPubRoutes{
 		}catch(SQLException x){
 			throw new SQLException(x);
 		}catch(Exception x){
-			x.printStackTrace();
+			System.out.println(x);
 			resp.status(400);
 			return x.toString();
 		}

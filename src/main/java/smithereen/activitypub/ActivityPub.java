@@ -23,6 +23,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 import smithereen.Config;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -47,7 +48,9 @@ public class ActivityPub{
 		Response resp=call.execute();
 		if(!resp.isSuccessful())
 			return null;
-		String r=resp.body().string();
+		ResponseBody body=resp.body();
+		String r=body.string();
+		body.close();
 		try{
 			return ActivityPubObject.parse(JLDDocument.convertToLocalContext(new JSONObject(r)));
 		}catch(Exception x){

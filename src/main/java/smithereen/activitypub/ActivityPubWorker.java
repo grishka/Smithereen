@@ -14,6 +14,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.activities.Create;
+import smithereen.activitypub.objects.activities.Follow;
+import smithereen.activitypub.objects.activities.Undo;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
 import smithereen.data.User;
@@ -64,6 +66,24 @@ public class ActivityPubWorker{
 				}
 			}
 		});
+	}
+
+	public void sendUnfriendActivity(User self, User target){
+		if(!(target instanceof ForeignUser))
+			return;
+		try{
+			Undo undo=new Undo();
+			undo.activityPubID=new URI(self.activityPubID.getScheme(), self.activityPubID.getSchemeSpecificPart(), "unfollow"+target.id);
+			undo.actor=new LinkOrObject(self.activityPubID);
+
+			Follow follow=new Follow();
+			follow.actor=new LinkOrObject(self.activityPubID);
+			follow.object=new LinkOrObject(target.activityPubID);
+			follow.activityPubID=new URI(self.activityPubID.getScheme(), self.activityPubID.getSchemeSpecificPart(), "follow"+target.id);
+			undo.object=new LinkOrObject(follow);
+
+			executor.submit(new SendOneActivityRunnable(undo, ((ForeignUser) target).inbox, self));
+		}catch(URISyntaxException ignore){}
 	}
 
 	private static class SendOneActivityRunnable implements Runnable{

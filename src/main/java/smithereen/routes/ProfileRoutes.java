@@ -7,7 +7,9 @@ import java.sql.SQLException;
 import java.util.List;
 
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPubWorker;
 import smithereen.data.Account;
+import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Post;
@@ -183,6 +185,9 @@ public class ProfileRoutes{
 				if(status==FriendshipStatus.FRIENDS){
 					UserStorage.unfriendUser(self.user.id, user.id);
 					resp.redirect(self.user.getProfileURL("friends"));
+					if(user instanceof ForeignUser){
+						ActivityPubWorker.getInstance().sendUnfriendActivity(self.user, user);
+					}
 				}else{
 					return Utils.wrapError(req, "err_not_friends");
 				}
