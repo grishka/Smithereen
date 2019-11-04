@@ -138,16 +138,16 @@ public class ActivityPubRoutes{
 				activity.activityPubID=new URI(post.activityPubID.getScheme(), post.activityPubID.getSchemeSpecificPart()+"/activityCreate", null);
 				page.items.add(new LinkOrObject(activity));
 			}
-			String baseURI="https://"+Config.domain+"/"+user.username+"/activitypub/outbox";
-			page.partOf=new URI(baseURI);
+			URI baseURI=Config.localURI(user.username+"/activitypub/outbox");
+			page.partOf=baseURI;
 			if(posts.size()>0){
-				page.next=new URI(baseURI+"?max_id="+posts.get(posts.size()-1).id);
-				page.prev=new URI(baseURI+"?min_id="+posts.get(0).id);
+				page.next=URI.create(baseURI+"?max_id="+posts.get(posts.size()-1).id);
+				page.prev=URI.create(baseURI+"?min_id="+posts.get(0).id);
 			}
 			if(_minID!=-1)
-				page.activityPubID=new URI(baseURI+"?min_id="+minID);
+				page.activityPubID=URI.create(baseURI+"?min_id="+minID);
 			else
-				page.activityPubID=new URI(baseURI+"?max_id="+maxID);
+				page.activityPubID=URI.create(baseURI+"?max_id="+maxID);
 			if(_minID==-1 && _maxID==-1){
 				ActivityPubCollection collection=new ActivityPubCollection(true);
 				collection.activityPubID=page.partOf;
@@ -371,26 +371,24 @@ public class ActivityPubRoutes{
 		}
 		page.items=list;
 		page.totalItems=total;
-		String baseURI="https://"+Config.domain+"/"+username+"/activitypub/"+(f ? "followers" : "following");
-		try{
-			page.activityPubID=new URI(baseURI+"?page="+pageIndex);
-			page.partOf=new URI(baseURI);
-			if(pageIndex>1){
-				page.first=new LinkOrObject(new URI(baseURI+"?page=1"));
-				page.prev=new URI(baseURI+"?page="+(pageIndex-1));
-			}
-			if(pageIndex<lastPage){
-				page.last=new URI(baseURI+"?page="+lastPage);
-				page.next=new URI(baseURI+"?page="+(pageIndex+1));
-			}
-			if(pageIndex==1 && req.queryParams("page")==null){
-				ActivityPubCollection collection=new ActivityPubCollection(true);
-				collection.totalItems=total;
-				collection.first=new LinkOrObject(page);
-				collection.activityPubID=page.partOf;
-				return collection.asRootActivityPubObject();
-			}
-		}catch(URISyntaxException ignore){}
+		URI baseURI=Config.localURI(username+"/activitypub/"+(f ? "followers" : "following"));
+		page.activityPubID=URI.create(baseURI+"?page="+pageIndex);
+		page.partOf=baseURI;
+		if(pageIndex>1){
+			page.first=new LinkOrObject(URI.create(baseURI+"?page=1"));
+			page.prev=URI.create(baseURI+"?page="+(pageIndex-1));
+		}
+		if(pageIndex<lastPage){
+			page.last=URI.create(baseURI+"?page="+lastPage);
+			page.next=URI.create(baseURI+"?page="+(pageIndex+1));
+		}
+		if(pageIndex==1 && req.queryParams("page")==null){
+			ActivityPubCollection collection=new ActivityPubCollection(true);
+			collection.totalItems=total;
+			collection.first=new LinkOrObject(page);
+			collection.activityPubID=page.partOf;
+			return collection.asRootActivityPubObject();
+		}
 		return page.asRootActivityPubObject();
 	}
 

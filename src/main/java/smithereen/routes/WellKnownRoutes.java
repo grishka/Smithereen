@@ -31,10 +31,10 @@ public class WellKnownRoutes{
 					JSONObject selfLink=new JSONObject();
 					selfLink.put("rel", "self");
 					selfLink.put("type", "application/activity+json");
-					selfLink.put("href", "https://"+Config.domain+"/"+user.username);
+					selfLink.put("href", Config.localURI(user.username));
 					JSONObject authLink=new JSONObject();
 					authLink.put("rel", "http://ostatus.org/schema/1.0/subscribe");
-					authLink.put("template", "https://"+Config.domain+"/activitypub/externalInteraction?uri={uri}");
+					authLink.put("template", Config.localURI("activitypub/externalInteraction?uri")+"={uri}");
 
 					root.put("links", Arrays.asList(selfLink, authLink));
 					return root;
@@ -49,7 +49,7 @@ public class WellKnownRoutes{
 		resp.type("application/json");
 		JSONObject link=new JSONObject();
 		link.put("rel", "http://nodeinfo.diaspora.software/ns/schema/2.0");
-		link.put("href", "https://"+Config.domain+"/activitypub/nodeinfo/2.0");
+		link.put("href", Config.localURI("activitypub/nodeinfo/2.0"));
 		JSONObject root=new JSONObject();
 		root.put("links", Collections.singletonList(link));
 		return root;

@@ -3,6 +3,7 @@ package smithereen;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.util.Properties;
 
 public class Config{
@@ -14,6 +15,8 @@ public class Config{
 	public static String domain;
 
 	public static File uploadPath;
+
+	private static URI localURI;
 
 	public static void load(String filePath) throws IOException{
 		FileInputStream in=new FileInputStream(filePath);
@@ -29,5 +32,12 @@ public class Config{
 		domain=props.getProperty("domain");
 
 		uploadPath=new File(props.getProperty("upload.path"));
+
+		boolean useHTTP=Boolean.parseBoolean(props.getProperty("use_http_scheme.i_know_what_i_am_doing", "false"));
+		localURI=URI.create("http"+(useHTTP ? "" : "s")+"://"+domain+"/");
+	}
+
+	public static URI localURI(String path){
+		return localURI.resolve(path);
 	}
 }

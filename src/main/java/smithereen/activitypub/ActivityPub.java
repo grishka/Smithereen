@@ -79,7 +79,7 @@ public class ActivityPub{
 			throw new RuntimeException(x);
 		}
 
-		String sigHeader="keyId=\"https://"+Config.domain+"/"+user.username+"#main-key\",headers=\"(request-target) host date\",signature=\""+Base64.getEncoder().encodeToString(signature)+"\"";
+		String sigHeader="keyId=\""+Config.localURI(user.username+"#main-key")+"\",headers=\"(request-target) host date\",signature=\""+Base64.getEncoder().encodeToString(signature)+"\"";
 
 		Request req=new Request.Builder()
 				.url(inboxUrl.toString())

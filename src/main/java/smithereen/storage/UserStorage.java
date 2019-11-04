@@ -506,12 +506,12 @@ public class UserStorage{
 			try(ResultSet res=stmt.executeQuery()){
 				if(res.first()){
 					do{
-						try{
-							String u=res.getString(1);
-							if(u==null)
-								u="https://"+Config.domain+"/"+res.getString(2);
-							list.add(new URI(u));
-						}catch(URISyntaxException ignore){}
+						String _u=res.getString(1);
+						if(_u==null){
+							list.add(Config.localURI(res.getString(2)));
+						}else{
+							list.add(URI.create(_u));
+						}
 					}while(res.next());
 				}
 			}

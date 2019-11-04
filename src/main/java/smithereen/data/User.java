@@ -203,12 +203,8 @@ public class User extends ActivityPubObject{
 			}
 		}
 
-		try{
-			activityPubID=new URI("https", "//"+Config.domain+"/"+username, null);
-			url=activityPubID;
-		}catch(URISyntaxException x){
-			x.printStackTrace();
-		}
+		activityPubID=Config.localURI(username);
+		url=activityPubID;
 	}
 
 	public String getFullUsername(){
@@ -216,11 +212,7 @@ public class User extends ActivityPubObject{
 	}
 
 	public URI getFollowersURL(){
-		try{
-			return new URI("https", "//"+Config.domain+"/"+username+"/activitypub/followers", null);
-		}catch(URISyntaxException x){
-			throw new RuntimeException(x);
-		}
+		return Config.localURI(username+"/activitypub/followers");
 	}
 
 	@Override
@@ -231,7 +223,7 @@ public class User extends ActivityPubObject{
 	@Override
 	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
 		name=getFullName();
-		String userURL="https://"+Config.domain+"/"+getFullUsername();
+		String userURL=activityPubID.toString();
 		JSONObject root=super.asActivityPubObject(obj, contextCollector);
 		root.put("preferredUsername", username);
 
@@ -257,7 +249,7 @@ public class User extends ActivityPubObject{
 		}
 
 		JSONObject endpoints=new JSONObject();
-		endpoints.put("sharedInbox", "https://"+Config.domain+"/activitypub/sharedInbox");
+		endpoints.put("sharedInbox", Config.localURI("/activitypub/sharedInbox"));
 		root.put("endpoints", endpoints);
 
 		JSONObject pubkey=new JSONObject();
@@ -380,7 +372,7 @@ public class User extends ActivityPubObject{
 				if(!hasSizes){
 					Image img=new Image();
 					img.mediaType="image/jpeg";
-					img.url=new URI("https://"+Config.domain+jpegWhatever);
+					img.url=Config.localURI(jpegWhatever);
 					return Collections.singletonList(img);
 				}else{
 					ArrayList<Image> imgs=new ArrayList<>();
@@ -389,7 +381,7 @@ public class User extends ActivityPubObject{
 					for(int i=0;i<urls.length;i++){
 						Image img=new Image();
 						img.mediaType="image/jpeg";
-						img.url=new URI("https://"+Config.domain+urls[i]);
+						img.url=Config.localURI(urls[i]);
 						img.width=img.height=sizes[i];
 						imgs.add(img);
 					}
