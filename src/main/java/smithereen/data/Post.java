@@ -99,4 +99,8 @@ public class Post extends ActivityPubObject{
 			return null;
 		return serializeObjectArrayCompact(attachment, new ContextCollector()).toString();
 	}
+
+	public boolean canBeManagedBy(User user){
+		return owner.equals(user) || this.user.equals(user);
+	}
 }

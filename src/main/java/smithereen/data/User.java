@@ -271,6 +271,16 @@ public class User extends ActivityPubObject{
 		return root;
 	}
 
+	@Override
+	public boolean equals(Object other){
+		if(other==null)
+			return false;
+		if(other instanceof User){
+			return ((User) other).id==id && ((User) other).activityPubID.equals(activityPubID);
+		}
+		return false;
+	}
+
 	public enum Gender{
 		UNKNOWN,
 		MALE,

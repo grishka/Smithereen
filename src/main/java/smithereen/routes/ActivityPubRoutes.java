@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import smithereen.ObjectNotFoundException;
 import smithereen.activitypub.ActivityPub;
 import smithereen.Config;
 import smithereen.Utils;
@@ -34,6 +35,7 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Announce;
 import smithereen.activitypub.objects.activities.Create;
@@ -41,6 +43,7 @@ import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Undo;
+import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
@@ -336,11 +339,17 @@ public class ActivityPubRoutes{
 				case "Delete":
 					handleDeleteActivity(user, (Delete) activity);
 					break;
+				case "Update":
+					handleUpdateActivity(user, (Update) activity);
+					break;
 				default:
 					throw new IllegalArgumentException("Activity type "+activity.getType()+" is not supported");
 			}
 		}catch(SQLException x){
 			throw new SQLException(x);
+		}catch(ObjectNotFoundException x){
+			resp.status(404);
+			return x.toString();
 		}catch(Exception x){
 			System.out.println(x);
 			resp.status(400);
@@ -493,7 +502,7 @@ public class ActivityPubRoutes{
 
 
 
-
+	//region Activity handlers
 
 	private static void handleCreateActivity(ForeignUser user, Create act) throws SQLException{
 		if(act.object.object==null)
@@ -525,13 +534,6 @@ public class ActivityPubRoutes{
 		if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING)
 			throw new IllegalArgumentException("Already following");
 		UserStorage.followUser(actor.id, user.id);
-
-		/*JSONObject accept=new JSONObject();
-		accept.put("@context", JLD.ACTIVITY_STREAMS);
-		accept.put("actor", "https://"+Config.domain+"/"+user.username);
-		accept.put("type", "Accept");
-		accept.put("id", "https://"+Config.domain+"/"+user.username+"#activities/accept_follow_"+actor.id);
-		accept.put("object", act);*/
 
 		Accept accept=new Accept();
 		accept.actor=new LinkOrObject(user.activityPubID);
@@ -580,12 +582,60 @@ public class ActivityPubRoutes{
 		}
 	}
 
-	private static void handleDeleteActivity(ForeignUser user, Delete act){
+	private static void handleDeleteActivity(ForeignUser user, Delete act) throws SQLException{
+		ActivityPubObject obj;
+		if(act.object.object==null || act.object.object instanceof Tombstone){
+			URI uri;
+			if(act.object.object==null)
+				uri=act.object.link;
+			else
+				uri=act.object.object.activityPubID;
+			Post post=PostStorage.getPostByID(uri);
+			if(post!=null){
+				obj=post;
+			}else{
+				User _user=UserStorage.getForeignUserByActivityPubID(uri.toString());
+				if(_user!=null){
+					obj=_user;
+				}else{
+					obj=null;
+				}
+			}
+		}else{
+			obj=act.object.object;
+		}
+		if(obj==null){
+			throw new ObjectNotFoundException("Object being deleted does not exist");
+		}
 
+		if(obj instanceof Post){
+			handleDeletePostActivity(user, (Post) obj);
+		}else if(obj instanceof User){
+			User o=(User) obj;
+			if(!o.equals(user)){
+				throw new IllegalArgumentException("User can only delete themselves");
+			}
+			handleDeleteUserActivity(user);
+		}
 	}
 
+	private static void handleUpdateActivity(ForeignUser actor, Update act) throws SQLException{
+		if(act.object.object==null)
+			throw new IllegalArgumentException("Update activity is required to have an entire object inlined");
+		if(act.object.object instanceof Post){
+			handleUpdatePostActivity(actor, (Post) act.object.object);
+		}else if(act.object.object instanceof User){
+			User o=(User)act.object.object;
+			if(!o.equals(actor)){
+				throw new IllegalArgumentException("User can only update themselves");
+			}
+			handleUpdateUserActivity(actor);
+		}
+	}
 
-	private static void handleUndoFollowActivity(ForeignUser actor, Follow act) throws URISyntaxException, SQLException{
+	//region Undo subtype handlers
+
+	private static void handleUndoFollowActivity(ForeignUser actor, Follow act) throws SQLException{
 		URI url=act.object.link;
 		if(!url.getHost().equalsIgnoreCase(Config.domain))
 			throw new IllegalArgumentException("Target user is not from this server");
@@ -599,4 +649,38 @@ public class ActivityPubRoutes{
 		UserStorage.unfriendUser(actor.id, user.id);
 		System.out.println(actor.getFullUsername()+" remotely unfollowed "+user.getFullUsername());
 	}
+
+	//endregion
+	//region Delete subtype handlers
+
+	private static void handleDeletePostActivity(ForeignUser actor, Post post) throws SQLException{
+		if(post.canBeManagedBy(actor)){
+			PostStorage.deletePost(post.id);
+		}else{
+			throw new IllegalArgumentException("No access to delete this post");
+		}
+	}
+
+	private static void handleDeleteUserActivity(ForeignUser actor){
+		System.out.println("Deleting users is not implemented");
+	}
+
+	//endregion
+	//region Update subtype handlers
+
+	private static void handleUpdatePostActivity(ForeignUser actor, Post post) throws SQLException{
+		if(post.canBeManagedBy(actor)){
+			PostStorage.putForeignWallPost(post);
+		}else{
+			throw new IllegalArgumentException("No access to update this post");
+		}
+	}
+
+	private static void handleUpdateUserActivity(ForeignUser actor) throws SQLException{
+		UserStorage.putOrUpdateForeignUser(actor);
+	}
+
+	//endregion
+
+	//endregion
 }

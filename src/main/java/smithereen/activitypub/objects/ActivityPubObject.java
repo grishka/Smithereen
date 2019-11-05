@@ -22,6 +22,7 @@ import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Undo;
+import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
 
@@ -458,6 +459,9 @@ public abstract class ActivityPubObject{
 			case "Document":
 				res=new Document();
 				break;
+			case "Tombstone":
+				res=new Tombstone();
+				break;
 
 			// Collections
 			case "Collection":
@@ -494,6 +498,9 @@ public abstract class ActivityPubObject{
 				break;
 			case "Undo":
 				res=new Undo();
+				break;
+			case "Update":
+				res=new Update();
 				break;
 
 			default:

@@ -114,6 +114,9 @@ public class Main{
 				get("", "application/activity+json", ActivityPubRoutes::post);
 				get("", "application/ld+json", ActivityPubRoutes::post);
 				get("", PostRoutes::standalonePost);
+
+				get("/confirmDelete", PostRoutes::confirmDelete);
+				post("/delete", PostRoutes::delete);
 			});
 
 			path("/activitypub", ()->{
