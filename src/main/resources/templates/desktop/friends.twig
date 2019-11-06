@@ -1,8 +1,9 @@
 {%extends "page.twig"%}
 {%block content%}
+<a href="{{owner.getProfileURL('friends')}}">{{L('friends')}}</a> | <a href="{{owner.getProfileURL('followers')}}">{{L('followers')}}</a> | <a href="{{owner.getProfileURL('following')}}">{{L('following')}}</a>
 {%if currentUser and currentUser.id==owner.id%}
 {%if userNotifications.newFriendRequests>0%}
-<a href="{{currentUser.getProfileURL('incomingFriendRequests')}}">{{LP('X_friend_requests', userNotifications.newFriendRequests)}}</a>
+| <a href="{{currentUser.getProfileURL('incomingFriendRequests')}}">{{LP('X_friend_requests', userNotifications.newFriendRequests)}}</a>
 {%endif%}
 {%endif%}
 {%for friend in friendList%}
@@ -15,8 +16,8 @@
 			<b><a href="{{friend.url}}">{{friend.fullName}}</a></b>
 		</td>
 		<td width="200">
-			<a href="{{friend.getProfileURL('friends')}}">{{L('view_friends_of_X', friend.firstName)}}</a><br/>
-			{%if(currentUser and currentUser.id==owner.id)%}<a href="{{friend.getProfileURL('confirmRemoveFriend')}}">{{L('remove_friend')}}</a>{%endif%}
+			<a href="{{friend.getProfileURL('friends')}}">{{L('view_friends_of')}}</a><br/>
+			{%if(currentUser and currentUser.id==owner.id and not followers)%}<a href="{{friend.getProfileURL('confirmRemoveFriend')}}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>{%endif%}
 		</td>
 	</tr>
 </table>

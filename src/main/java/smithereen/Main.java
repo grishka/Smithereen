@@ -49,7 +49,8 @@ public class Main{
 			throw new RuntimeException(x);
 		}
 
-		ipAddress("127.0.0.1");
+		ipAddress(Config.serverIP);
+		port(Config.serverPort);
 		staticFileLocation("/public");
 		staticFiles.expireTime(24*60*60);
 		before((request, response) -> {
@@ -109,6 +110,8 @@ public class Main{
 			get("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
 			get("/friends", ProfileRoutes::friends);
 			get("/incomingFriendRequests", ProfileRoutes::incomingFriendRequests);
+			get("/followers", ProfileRoutes::followers);
+			get("/following", ProfileRoutes::following);
 
 			path("/posts/:postID", ()->{
 				get("", "application/activity+json", ActivityPubRoutes::post);

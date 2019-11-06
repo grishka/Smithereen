@@ -220,6 +220,27 @@ public class UserStorage{
 		return friends;
 	}
 
+	public static List<User> getNonMutualFollowers(int userID, boolean followers) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		String fld1=followers ? "follower_id" : "followee_id";
+		String fld2=followers ? "followee_id" : "follower_id";
+		PreparedStatement stmt=conn.prepareStatement("SELECT `users`.* FROM `followings` INNER JOIN `users` ON `users`.`id`=`followings`.`"+fld1+"` WHERE `"+fld2+"`=? AND `mutual`=0");
+		stmt.setInt(1, userID);
+		ArrayList<User> friends=new ArrayList<>();
+		try(ResultSet res=stmt.executeQuery()){
+			if(res.first()){
+				do{
+					User user;
+					user=User.fromResultSet(res);
+					cache.put(user.id, user);
+					cacheByUsername.put(user.getFullUsername(), user);
+					friends.add(user);
+				}while(res.next());
+			}
+		}
+		return friends;
+	}
+
 	public static List<FriendRequest> getIncomingFriendRequestsForUser(int userID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=conn.prepareStatement("SELECT `friend_requests`.`message`, `users`.* FROM `friend_requests` INNER JOIN `users` ON `friend_requests`.`from_user_id`=`users`.`id` WHERE `to_user_id`=? LIMIT ?,?");
@@ -429,7 +450,7 @@ public class UserStorage{
 		stmt.setString(13, Objects.toString(user.following, null));
 		stmt.setString(14, user.summary);
 		stmt.setInt(15, user.gender==null ? 0 : user.gender.ordinal());
-		stmt.setString(16, user.avatar.asJSON());
+		stmt.setString(16, user.avatar!=null ? user.avatar.asJSON() : null);
 
 		stmt.executeUpdate();
 		if(existingUserID==0){

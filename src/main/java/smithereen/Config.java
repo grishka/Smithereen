@@ -14,6 +14,9 @@ public class Config{
 
 	public static String domain;
 
+	public static String serverIP;
+	public static int serverPort;
+
 	public static File uploadPath;
 
 	private static URI localURI;
@@ -35,6 +38,9 @@ public class Config{
 
 		boolean useHTTP=Boolean.parseBoolean(props.getProperty("use_http_scheme.i_know_what_i_am_doing", "false"));
 		localURI=URI.create("http"+(useHTTP ? "" : "s")+"://"+domain+"/");
+
+		serverIP=props.getProperty("server.ip", "127.0.0.1");
+		serverPort=Utils.parseIntOrDefault(props.getProperty("server.port", "4567"), 4567);
 	}
 
 	public static URI localURI(String path){

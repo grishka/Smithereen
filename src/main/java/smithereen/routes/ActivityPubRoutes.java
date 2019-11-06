@@ -193,6 +193,7 @@ public class ActivityPubRoutes{
 					JtwigModel model=JtwigModel.newModel().with("user", foreignUser);
 					return Utils.renderTemplate(req, "remote_follow", model);
 				}catch(Exception x){
+					x.printStackTrace();
 					return x.toString();
 				}
 			}
@@ -229,6 +230,7 @@ public class ActivityPubRoutes{
 				return "Success";
 			}catch(URISyntaxException ignore){
 			}catch(IOException x){
+				x.printStackTrace();
 				return x.toString();
 			}
 		}

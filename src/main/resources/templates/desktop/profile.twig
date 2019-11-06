@@ -14,6 +14,8 @@
 			{%endif%}
 			<br/>
 			{%endif%}
+			<a href="{{user.getProfileURL('followers')}}">{{L('followers')}}</a><br/>
+			<a href="{{user.getProfileURL('following')}}">{{L('following')}}</a><br/>
 
 			<table width="100%">
 				<tr><th colspan="3"><a href="{{user.getProfileURL('friends')}}">{{L("friends")}} {{friendCount}}</a></th></tr>

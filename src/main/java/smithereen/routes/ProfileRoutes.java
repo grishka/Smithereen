@@ -112,7 +112,7 @@ public class ProfileRoutes{
 			User user=UserStorage.getByUsername(username);
 			if(user!=null){
 				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-				if(status==FriendshipStatus.FRIENDS){
+				if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
 					Lang l=Utils.lang(req);
 					JtwigModel model=JtwigModel.newModel().with("message", l.get("confirm_unfriend_X", user.getFullName())).with("formAction", user.getProfileURL("doRemoveFriend")).with("back", user.url.toString());
 					return Utils.renderTemplate(req, "generic_confirm", model);
@@ -133,6 +133,30 @@ public class ProfileRoutes{
 		if(user!=null){
 			JtwigModel model=JtwigModel.newModel();
 			model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user);
+			return Utils.renderTemplate(req, "friends", model);
+		}
+		resp.status(404);
+		return Utils.wrapError(req, "user_not_found");
+	}
+
+	public static Object followers(Request req, Response resp) throws SQLException{
+		String username=req.params(":username");
+		User user=UserStorage.getByUsername(username);
+		if(user!=null){
+			JtwigModel model=JtwigModel.newModel();
+			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true)).with("owner", user).with("followers", true);
+			return Utils.renderTemplate(req, "friends", model);
+		}
+		resp.status(404);
+		return Utils.wrapError(req, "user_not_found");
+	}
+
+	public static Object following(Request req, Response resp) throws SQLException{
+		String username=req.params(":username");
+		User user=UserStorage.getByUsername(username);
+		if(user!=null){
+			JtwigModel model=JtwigModel.newModel();
+			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false)).with("owner", user).with("following", true);
 			return Utils.renderTemplate(req, "friends", model);
 		}
 		resp.status(404);
@@ -182,7 +206,7 @@ public class ProfileRoutes{
 			User user=UserStorage.getByUsername(username);
 			if(user!=null){
 				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-				if(status==FriendshipStatus.FRIENDS){
+				if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
 					UserStorage.unfriendUser(self.user.id, user.id);
 					resp.redirect(self.user.getProfileURL("friends"));
 					if(user instanceof ForeignUser){
