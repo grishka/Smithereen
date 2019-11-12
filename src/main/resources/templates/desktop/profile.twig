@@ -17,7 +17,7 @@
 			<a href="{{user.getProfileURL('followers')}}">{{L('followers')}}</a><br/>
 			<a href="{{user.getProfileURL('following')}}">{{L('following')}}</a><br/>
 
-			<table width="100%">
+			<table width="100%" style="table-layout: fixed;">
 				<tr><th colspan="3"><a href="{{user.getProfileURL('friends')}}">{{L("friends")}} {{friendCount}}</a></th></tr>
 				{%for friend in friends%}
 				{%if(loop.first or loop.index==4)%}<tr>{%endif%}

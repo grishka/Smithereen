@@ -3,5 +3,9 @@
 {%include "wall_post_form.twig"%}
 {%for post in posts%}
 {%include "wall_post.twig" with {post: post}%}
+{%for reply in post.replies%}
+{%include "wall_reply.twig" with {post: reply}%}
+{%endfor%}
+<hr/>
 {%endfor%}
 {%endblock%}

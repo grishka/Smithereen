@@ -2,5 +2,8 @@
 <form action="{{wallOwner.getProfileURL('createWallPost')}}" method="post">
 	<textarea name="text" cols="100" rows="4" placeholder="{%if wallOwner.id!=currentUser.id%}{{L('write_on_X_wall', wallOwner.firstName)}}{%else%}{{L('write_on_own_wall')}}{%endif%}"></textarea><br/>
 	<input type="hidden" name="csrf" value="{{csrf}}"/>
+	{%if replyTo%}
+	<input type="hidden" name="replyTo" value="{{replyTo.id}}"/>
+	{%endif%}
 	<input type="submit" value="{{L('send')}}"/>
 </form>

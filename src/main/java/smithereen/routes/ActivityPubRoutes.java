@@ -30,6 +30,7 @@ import smithereen.ObjectNotFoundException;
 import smithereen.activitypub.ActivityPub;
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -348,6 +349,7 @@ public class ActivityPubRoutes{
 					throw new IllegalArgumentException("Activity type "+activity.getType()+" is not supported");
 			}
 		}catch(SQLException x){
+			x.printStackTrace();
 			throw new SQLException(x);
 		}catch(ObjectNotFoundException x){
 			resp.status(404);
@@ -477,8 +479,10 @@ public class ActivityPubRoutes{
 		Signature sig=Signature.getInstance("SHA256withRSA");
 		sig.initVerify(publicKey);
 		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
-		if(!sig.verify(signature))
+		if(!sig.verify(signature)){
+			System.out.println("Failed sig: "+sigHeader);
 			throw new IllegalArgumentException("Signature failed to verify");
+		}
 	}
 
 	private static boolean verifyHttpDigest(String digestHeader, byte[] bodyData){
@@ -518,7 +522,22 @@ public class ActivityPubRoutes{
 			post.owner=post.user=user;
 			if(post.summary!=null)
 				post.summary=Utils.sanitizeHTML(post.summary);
-			PostStorage.putForeignWallPost(post);
+			if(post.inReplyTo!=null){
+				if(post.inReplyTo.equals(post.activityPubID))
+					throw new IllegalArgumentException("Post can't be a reply to itself. This makes no sense.");
+				Post parent=PostStorage.getPostByID(post.inReplyTo);
+				if(parent!=null){
+					post.setParent(parent);
+					PostStorage.putForeignWallPost(post);
+				}else{
+					System.out.println("Don't have parent post "+post.inReplyTo+" for "+post.activityPubID);
+					ActivityPubWorker.getInstance().fetchReplyThread(post);
+				}
+			}else{
+				PostStorage.putForeignWallPost(post);
+			}
+		}else{
+			throw new IllegalArgumentException("Type "+object.getType()+" not supported in Create");
 		}
 	}
 
@@ -656,6 +675,7 @@ public class ActivityPubRoutes{
 	//region Delete subtype handlers
 
 	private static void handleDeletePostActivity(ForeignUser actor, Post post) throws SQLException{
+		System.out.println("delete post here");
 		if(post.canBeManagedBy(actor)){
 			PostStorage.deletePost(post.id);
 		}else{

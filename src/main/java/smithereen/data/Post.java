@@ -3,17 +3,23 @@ package smithereen.data;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.jsonld.JLD;
+import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 
 public class Post extends ActivityPubObject{
@@ -23,6 +29,11 @@ public class Post extends ActivityPubObject{
 
 	public String userLink;
 	public String userLinkAttrs="";
+
+	public int[] replyKey={};
+
+	public List<Post> replies=new ArrayList<>();
+	public boolean local;
 
 	public static Post fromResultSet(ResultSet res) throws SQLException{
 		Post post=new Post();
@@ -50,6 +61,7 @@ public class Post extends ActivityPubObject{
 			if(apid==null){
 				activityPubID=new URI(owner.activityPubID.getScheme(), owner.activityPubID.getSchemeSpecificPart()+"/posts/"+id, null);
 				url=activityPubID;
+				local=true;
 			}else{
 				activityPubID=new URI(apid);
 				url=new URI(res.getString("ap_url"));
@@ -64,6 +76,25 @@ public class Post extends ActivityPubObject{
 		}
 
 		userLink=user.url.toString();
+
+		byte[] rk=res.getBytes("reply_key");
+		if(rk!=null){
+			replyKey=new int[rk.length/4];
+			try{
+				DataInputStream in=new DataInputStream(new ByteArrayInputStream(rk));
+				for(int i=0;i<rk.length/4;i++){
+					replyKey[i]=in.readInt();
+				}
+			}catch(IOException ignore){}
+		}
+
+		/*replyToID=res.getInt("reply_to");
+		replyLevel=res.getInt("reply_level");
+		replyTopLevelPostID=res.getInt("reply_top_level_post");
+
+		if(replyToID!=0){
+			inReplyTo=PostStorage.getActivityPubID(replyToID);
+		}*/
 	}
 
 	public boolean hasContentWarning(){
@@ -102,5 +133,19 @@ public class Post extends ActivityPubObject{
 
 	public boolean canBeManagedBy(User user){
 		return owner.equals(user) || this.user.equals(user);
+	}
+
+	public URI getInternalURL(){
+		return Config.localURI("/"+owner.getFullUsername()+"/posts/"+id);
+	}
+
+	public void setParent(Post parent){
+		replyKey=new int[parent.replyKey.length+1];
+		System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
+		replyKey[replyKey.length-1]=parent.id;
+	}
+
+	public int getReplyLevel(){
+		return replyKey.length;
 	}
 }

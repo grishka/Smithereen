@@ -1,4 +1,11 @@
 {%extends "page.twig"%}
 {%block content%}
+{%if not(post.local)%}
+<a href="{{post.url}}" target="_blank">Original</a><br/>
+{%endif%}
 {%include "wall_post.twig"%}
+{%for reply in post.replies%}
+{%include "wall_reply.twig" with {post: reply}%}
+{%endfor%}
+{%include "wall_post_form.twig" with {replyTo: post}%}
 {%endblock%}

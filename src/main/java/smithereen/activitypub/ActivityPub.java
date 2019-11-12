@@ -89,6 +89,7 @@ public class ActivityPub{
 				.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), activity.asRootActivityPubObject().toString()))
 				.build();
 		Response resp=httpClient.newCall(req).execute();
+		resp.body().close();
 		System.out.println(resp.toString());
 	}
 }

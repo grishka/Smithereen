@@ -1,13 +1,17 @@
 {%autoescape "html"%}
 <table width="100%">
 	<tr>
-		<td width="50" valign="top">
-			<img src="{{post.user.smallAvatar}}" srcset="{{post.user.smallAvatarSrcset}}" width="50"/>
+		<td width="50">&nbsp;</td>
+		<td width="40" valign="top">
+			<img src="{{post.user.smallAvatar}}" srcset="{{post.user.smallAvatarSrcset}}" width="40"/>
 		</td>
 		<td>
 			<a href="{{post.user.url}}"{{post.userLinkAttrs}}>{{post.user.fullName}}</a><br/>
 			{{post.content | escape(false)}}<br/>
 			<a href="{{post.internalURL}}">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} | <a href="{{post.url}}/confirmDelete">{{L('delete')}}</a>{%endif%}
+			{%for reply in post.replies%}
+			{%include "wall_reply.twig" with {post: reply}%}
+			{%endfor%}
 		</td>
 	</tr>
 </table>

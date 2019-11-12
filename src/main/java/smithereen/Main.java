@@ -54,6 +54,7 @@ public class Main{
 		staticFileLocation("/public");
 		staticFiles.expireTime(24*60*60);
 		before((request, response) -> {
+			request.attribute("start_time", System.currentTimeMillis());
 			if(request.session(false)==null || request.session().attribute("account")==null){
 				String psid=request.cookie("psid");
 				if(psid!=null){
@@ -142,6 +143,14 @@ public class Main{
 			exception.printStackTrace(new PrintWriter(sw));
 			sw.append("</pre>");
 			res.body(sw.toString());
+		});
+
+		after((req, resp)->{
+			Long l=req.attribute("start_time");
+			if(l!=null){
+				long t=(long)l;
+				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
+			}
 		});
 	}
 
