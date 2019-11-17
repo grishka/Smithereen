@@ -462,6 +462,9 @@ public abstract class ActivityPubObject{
 			case "Tombstone":
 				res=new Tombstone();
 				break;
+			case "Mention":
+				res=new Mention();
+				break;
 
 			// Collections
 			case "Collection":

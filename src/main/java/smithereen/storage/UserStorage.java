@@ -25,7 +25,7 @@ import smithereen.data.UserNotifications;
 public class UserStorage{
 	private static LruCache<Integer, User> cache=new LruCache<>(500);
 	private static LruCache<String, User> cacheByUsername=new LruCache<>(500);
-	private static LruCache<String, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
+	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
 	private static LruCache<Integer, UserNotifications> userNotificationsCache=new LruCache<>(500);
 
 	public static synchronized User getById(int id) throws SQLException{
@@ -462,18 +462,26 @@ public class UserStorage{
 		user.id=existingUserID;
 		cache.put(user.id, user);
 		cacheByUsername.put(user.getFullUsername(), user);
-		cacheByActivityPubID.put(user.activityPubID.toString(), user);
+		cacheByActivityPubID.put(user.activityPubID, user);
 
 		return existingUserID;
 	}
 
-	public static synchronized ForeignUser getForeignUserByActivityPubID(String apID) throws SQLException{
+	public static User getUserByActivityPubID(URI apID) throws SQLException{
+		if(Config.isLocal(apID)){
+			String username=apID.getPath().substring(1);
+			return getByUsername(username);
+		}
+		return getForeignUserByActivityPubID(apID);
+	}
+
+	public static synchronized ForeignUser getForeignUserByActivityPubID(URI apID) throws SQLException{
 		ForeignUser user=cacheByActivityPubID.get(apID);
 		if(user!=null)
 			return user;
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM `users` WHERE `ap_id`=?");
-		stmt.setString(1, apID);
+		stmt.setString(1, apID.toString());
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
 				user=ForeignUser.fromResultSet(res);

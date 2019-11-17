@@ -181,8 +181,13 @@ public class PostStorage{
 
 	public static List<Post> getRepliesForFeed(int postID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `reply_to`=? AND LENGTH(`reply_key`)=4 ORDER BY `id` ASC LIMIT 3");
-		stmt.setInt(1, postID);
+		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `reply_key`=? ORDER BY `id` ASC LIMIT 3");
+		stmt.setBytes(1, new byte[]{
+				(byte)((postID >> 24) & 0xFF),
+				(byte)((postID >> 16) & 0xFF),
+				(byte)((postID >> 8) & 0xFF),
+				(byte)((postID) & 0xFF)
+		});
 		ArrayList<Post> posts=new ArrayList<>();
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
@@ -247,5 +252,16 @@ public class PostStorage{
 			}
 		}
 		return null;
+	}
+
+	public static int getOwnerForPost(int postID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("SELECT `owner_user_id` FROM `wall_posts` WHERE `id`=?");
+		stmt.setInt(1, postID);
+		try(ResultSet res=stmt.executeQuery()){
+			if(res.first())
+				return res.getInt(1);
+		}
+		return 0;
 	}
 }

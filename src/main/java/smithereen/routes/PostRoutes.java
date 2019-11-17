@@ -27,9 +27,20 @@ public class PostRoutes{
 			User user=UserStorage.getByUsername(username);
 			Account self=req.session().attribute("account");
 			if(user!=null){
-				String text=Utils.sanitizeHTML(req.queryParams("text")).trim();
+				String text=Utils.sanitizeHTML(req.queryParams("text")).replace("\r", "").trim();
 				if(text.length()==0)
 					return "Empty post";
+				if(!text.startsWith("<p>")){
+					String[] paragraphs=text.replaceAll("\n{3,}", "\n\n").split("\n\n");
+					StringBuilder sb=new StringBuilder();
+					for(String paragraph:paragraphs){
+						String p=paragraph.trim().replace("\n", "<br/>");
+						sb.append("<p>");
+						sb.append(p);
+						sb.append("</p>");
+					}
+					text=sb.toString();
+				}
 				int userID=self.user.id;
 				int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
 				int postID;
@@ -42,6 +53,11 @@ public class PostRoutes{
 					int[] replyKey=new int[parent.replyKey.length+1];
 					System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
 					replyKey[replyKey.length-1]=parent.id;
+					// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
+					if(parent.replyKey.length>0 && text.startsWith("<p>"+parent.user.firstName+", ")){
+						text="<p><span class=\"h-card\"><a href=\""+parent.user.url+"\" class=\"u-url mention\">"+parent.user.firstName+"</a></span>"+text.substring(parent.user.firstName.length()+3);
+						System.out.println(text);
+					}
 					postID=PostStorage.createUserWallPost(userID, user.id, text, replyKey);
 				}else{
 					postID=PostStorage.createUserWallPost(userID, user.id, text, null);
@@ -95,6 +111,9 @@ public class PostRoutes{
 		post.replies=PostStorage.getReplies(replyKey);
 		JtwigModel model=JtwigModel.newModel();
 		model.with("post", post);
+		if(post.replyKey.length>0){
+			model.with("prefilledPostText", post.user.firstName+", ");
+		}
 		return Utils.renderTemplate(req, "wall_post_standalone", model);
 	}
 

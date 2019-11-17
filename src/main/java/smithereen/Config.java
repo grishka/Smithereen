@@ -46,4 +46,11 @@ public class Config{
 	public static URI localURI(String path){
 		return localURI.resolve(path);
 	}
+
+	public static boolean isLocal(URI uri){
+		if(domain.contains(":")){
+			return (uri.getHost()+":"+uri.getPort()).equalsIgnoreCase(domain);
+		}
+		return uri.getHost().equalsIgnoreCase(domain);
+	}
 }

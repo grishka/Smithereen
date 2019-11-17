@@ -125,7 +125,7 @@ public class ActivityPubWorker{
 		public void run(){
 			try{
 				while(thread.get(0).inReplyTo!=null){
-					Post _post=PostStorage.getPostByID(thread.get(0).activityPubID);
+					Post _post=PostStorage.getPostByID(thread.get(0).inReplyTo);
 					if(_post==null){
 						ActivityPubObject obj=ActivityPub.fetchRemoteObject(thread.get(0).inReplyTo.toString());
 						if(obj instanceof Post){

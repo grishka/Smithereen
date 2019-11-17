@@ -46,9 +46,11 @@ public class ActivityPub{
 				.build();
 		Call call=httpClient.newCall(req);
 		Response resp=call.execute();
-		if(!resp.isSuccessful())
-			return null;
 		ResponseBody body=resp.body();
+		if(!resp.isSuccessful()){
+			body.close();
+			return null;
+		}
 		String r=body.string();
 		body.close();
 		try{

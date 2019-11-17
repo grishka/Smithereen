@@ -282,7 +282,7 @@ public class ActivityPubRoutes{
 			else
 				throw new IllegalArgumentException("Unsupported object type");
 		}catch(Exception x){
-			System.out.println(x);
+			x.printStackTrace();
 			resp.status(400);
 			return x.toString();
 		}
@@ -290,11 +290,11 @@ public class ActivityPubRoutes{
 			if(activity.actor.link.getHost().equalsIgnoreCase(Config.domain))
 				throw new IllegalArgumentException("User domain must be different from this server");
 		}catch(Exception x){
-			System.out.println(x);
+			x.printStackTrace();
 			resp.status(400);
 			return x.toString();
 		}
-		ForeignUser user=UserStorage.getForeignUserByActivityPubID(activity.actor.link.toString());
+		ForeignUser user=UserStorage.getForeignUserByActivityPubID(activity.actor.link);
 		if(user==null){
 			try{
 				ActivityPubObject userObj=ActivityPub.fetchRemoteObject(activity.actor.link.toString());
@@ -307,7 +307,7 @@ public class ActivityPubRoutes{
 			}catch(SQLException x){
 				throw new SQLException(x);
 			}catch(Exception x){
-				System.out.println(x);
+				x.printStackTrace();
 				resp.status(400);
 				return x.toString();
 			}
@@ -315,7 +315,7 @@ public class ActivityPubRoutes{
 		try{
 			verifyHttpSignature(req, user.publicKey);
 		}catch(Exception x){
-			System.out.println(x);
+			x.printStackTrace();
 			resp.status(400);
 			return x.toString();
 		}
@@ -355,7 +355,7 @@ public class ActivityPubRoutes{
 			resp.status(404);
 			return x.toString();
 		}catch(Exception x){
-			System.out.println(x);
+			x.printStackTrace();
 			resp.status(400);
 			return x.toString();
 		}
@@ -615,7 +615,7 @@ public class ActivityPubRoutes{
 			if(post!=null){
 				obj=post;
 			}else{
-				User _user=UserStorage.getForeignUserByActivityPubID(uri.toString());
+				User _user=UserStorage.getForeignUserByActivityPubID(uri);
 				if(_user!=null){
 					obj=_user;
 				}else{

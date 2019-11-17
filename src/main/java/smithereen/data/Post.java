@@ -18,6 +18,7 @@ import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.Mention;
 import smithereen.jsonld.JLD;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -88,13 +89,32 @@ public class Post extends ActivityPubObject{
 			}catch(IOException ignore){}
 		}
 
-		/*replyToID=res.getInt("reply_to");
-		replyLevel=res.getInt("reply_level");
-		replyTopLevelPostID=res.getInt("reply_top_level_post");
-
-		if(replyToID!=0){
-			inReplyTo=PostStorage.getActivityPubID(replyToID);
-		}*/
+		// If this is a reply, we want to notify the author of the top-level post as well as the author of the comment this reply is to
+		// TODO optimize
+		if(replyKey.length>0){
+			int topLevelPostID=replyKey[0];
+			int topLevelOwnerID=PostStorage.getOwnerForPost(topLevelPostID);
+			if(tag==null)
+				tag=new ArrayList<>();
+			if(topLevelOwnerID!=0){
+				User user=UserStorage.getById(topLevelOwnerID);
+				addToCC(user.activityPubID);
+				Mention mention=new Mention();
+				mention.href=user.activityPubID;
+				tag.add(mention);
+			}
+			if(replyKey.length>1){
+				int replyOwnerID=PostStorage.getOwnerForPost(replyKey[replyKey.length-1]);
+				if(replyOwnerID!=0 && replyOwnerID!=topLevelOwnerID){
+					User user=UserStorage.getById(replyOwnerID);
+					addToCC(user.activityPubID);
+					Mention mention=new Mention();
+					mention.href=user.activityPubID;
+					tag.add(mention);
+				}
+			}
+			inReplyTo=PostStorage.getActivityPubID(replyKey[replyKey.length-1]);
+		}
 	}
 
 	public boolean hasContentWarning(){
@@ -122,6 +142,12 @@ public class Post extends ActivityPubObject{
 		if(_content instanceof JSONArray){
 			content=((JSONArray) _content).getString(0);
 		}
+		user=UserStorage.getUserByActivityPubID(attributedTo);
+		if(inReplyTo!=null){
+			owner=user;
+		}else{
+
+		}
 		return this;
 	}
 
@@ -143,9 +169,27 @@ public class Post extends ActivityPubObject{
 		replyKey=new int[parent.replyKey.length+1];
 		System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
 		replyKey[replyKey.length-1]=parent.id;
+		inReplyTo=parent.activityPubID;
+		if(tag==null)
+			tag=new ArrayList<>();
+		else if(!(tag instanceof ArrayList))
+			tag=new ArrayList<>(tag);
+		Mention mention=new Mention();
+		mention.href=parent.user.activityPubID;
+		tag.add(mention);
 	}
 
 	public int getReplyLevel(){
 		return replyKey.length;
+	}
+
+	public void addToCC(URI uri){
+		LinkOrObject l=new LinkOrObject(uri);
+		if(!cc.contains(l)){
+			if(!(cc instanceof ArrayList)){
+				cc=new ArrayList<>(cc);
+			}
+			cc.add(l);
+		}
 	}
 }
