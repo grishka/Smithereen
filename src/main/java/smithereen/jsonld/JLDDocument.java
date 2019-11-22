@@ -33,15 +33,19 @@ public class JLDDocument{
 		lc.put("gender", idAndTypeObject("sc:gender", "sc:GenderType"));
 		lc.put("birthDate", idAndTypeObject("sc:birthDate", "sc:Date"));
 		lc.put("sensitive", "as:sensitive");
-		localContext=updateContext(new JLDContext(), new JSONArray(Arrays.asList(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc)), new ArrayList<>());
+		localContext=updateContext(new JLDContext(), new JSONArray(Arrays.asList(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc)), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);
 	}
 
 	public static JSONArray expandToArray(Object src){
+		return expandToArray(src, null);
+	}
+
+	public static JSONArray expandToArray(Object src, URI baseURI){
 		Object jcontext=null;
 		if(src instanceof JSONObject)
 			jcontext=((JSONObject) src).opt("@context");
-		JLDContext context=updateContext(new JLDContext(), jcontext, new ArrayList<String>());
+		JLDContext context=updateContext(new JLDContext(), jcontext, new ArrayList<String>(), baseURI);
 		Object result=expand(context, null, src);
 		if(result instanceof JSONArray)
 			return (JSONArray) result;
@@ -53,14 +57,6 @@ public class JLDDocument{
 				return _r.getJSONArray("@graph");
 		}
 		return new JSONArray(Collections.singletonList(result));
-	}
-
-	public static JSONObject expand(Object src){
-		Object jcontext=null;
-		if(src instanceof JSONObject)
-			jcontext=((JSONObject) src).opt("@context");
-		JLDContext context=updateContext(new JLDContext(), jcontext, new ArrayList<String>());
-		return (JSONObject) expand(context, null, src);
 	}
 
 	public static JSONObject compactToLocalContext(JSONArray src){
@@ -112,10 +108,15 @@ public class JLDDocument{
 		return null;
 	}
 
-	private static JLDContext updateContext(JLDContext activeContext, Object _localContext, ArrayList<String> remoteContexts) throws JSONException{
+	private static JLDContext updateContext(JLDContext activeContext, Object _localContext, ArrayList<String> remoteContexts, URI baseURI) throws JSONException{
 		JLDContext result=activeContext.clone();
+		result.baseIRI=baseURI;
+		result.originalBaseIRI=baseURI;
 		if(_localContext==null){
-			return new JLDContext();
+			JLDContext r=new JLDContext();
+			r.originalBaseIRI=baseURI;
+			r.baseIRI=baseURI;
+			return r;
 		}
 
 		ArrayList<Object> localContext=new ArrayList<>();
@@ -144,7 +145,7 @@ public class JLDDocument{
 				remoteContexts.add(c);
 				JSONObject deref=dereferenceContext(c);
 				if(deref!=null){
-					result=updateContext(result, deref.getJSONObject("@context"), remoteContexts);
+					result=updateContext(result, deref.getJSONObject("@context"), remoteContexts, baseURI);
 				}else{
 					System.err.println("Failed to dereference "+c);
 				}
@@ -156,16 +157,37 @@ public class JLDDocument{
 			}
 			JSONObject c=(JSONObject) context;
 			if(c.has("@base")){
-				throw new JLDException("@base is not supported");
+				Object value=c.get("@base");
+				if(value==JSONObject.NULL){
+					result.baseIRI=null;
+				}else if(value instanceof String){
+					try{
+						URI uri=new URI((String)value);
+						if(uri.isAbsolute()){
+							result.baseIRI=uri;
+						}else if(result.baseIRI!=null){
+							result.baseIRI=result.baseIRI.resolve(uri);
+						}else{
+							throw new JLDException("invalid base IRI");
+						}
+					}catch(URISyntaxException x){
+						throw new JLDException("invalid base IRI", x);
+					}
+				}else{
+					throw new JLDException("invalid base IRI");
+				}
 			}
 			if(c.has("@vocab")){
-				String value=c.optString("@vocab");
-				if(value==null){
-					if(c.has("@vocab"))
-						throw new JLDException("invalid vocab mapping");
+				Object value=c.get("@vocab");
+				if(value==JSONObject.NULL){
 					result.vocabularyMapping=null;
-				}else if(value.contains(":")){
-					result.vocabularyMapping=value;
+				}else if(value instanceof String){
+					String s=(String)value;
+					if(s.contains(":")){
+						result.vocabularyMapping=s;
+					}else{
+						throw new JLDException("invalid vocab mapping");
+					}
 				}else{
 					throw new JLDException("invalid vocab mapping");
 				}
@@ -311,13 +333,17 @@ public class JLDDocument{
 	private static String expandIRI(JLDContext activeContext, String value, boolean documentRelative, boolean vocab, JSONObject localContext, HashMap<String, Boolean> defined) throws JSONException{
 		if(value==null || isKeyword(value))
 			return value;
-		if(localContext!=null && localContext.has(value) && !defined.get(value)){
+		if(localContext!=null && localContext.has(value) && (!defined.containsKey(value) || !defined.get(value))){
 			createTermDefinition(activeContext, localContext, value, defined);
 		}
 		if(vocab && activeContext.termDefinitions.containsKey(value)){
-			return activeContext.termDefinitions.get(value).iriMapping;
+			JLDContext.TermDefinition def=activeContext.termDefinitions.get(value);
+			if(def!=null)
+				return def.iriMapping;
+			else
+				return null;
 		}
-		if(value.contains(":")){
+		if(value.contains(":") && !value.startsWith("#")){
 			String[] sp=value.split(":", 2);
 			String prefix=sp[0];
 			String suffix=sp[1];
@@ -333,9 +359,15 @@ public class JLDDocument{
 			return value;
 		}
 		if(vocab && activeContext.vocabularyMapping!=null)
-			return activeContext.vocabularyMapping.toString()+value;
-		if(documentRelative)
-			throw new JLDException("not supported");
+			return activeContext.vocabularyMapping+value;
+		if(documentRelative && activeContext.baseIRI!=null){
+			if(value.startsWith("?")) // URI.resolve drops the last path segment when adding query
+				value=activeContext.baseIRI.getPath()+value;
+			if(value.startsWith("//"))
+				return URI.create(activeContext.baseIRI.getScheme()+":"+value).normalize().toString().replace("../", "");
+			else
+				return activeContext.baseIRI.resolve(value).toString().replace("../", ""); // URI.resolve leaves /../ parts that go beyond root
+		}
 		return value;
 	}
 
@@ -362,6 +394,10 @@ public class JLDDocument{
 
 	private static boolean isScalar(Object obj){
 		return obj instanceof String || obj instanceof Integer || obj instanceof Boolean || obj instanceof Double;
+	}
+
+	private static boolean isJsonNativeType(Object obj){
+		return obj instanceof Integer || obj instanceof Boolean || obj instanceof Double;
 	}
 
 	private static JSONObject jsonObjectWithSingleKey(String key, Object value) throws JSONException{
@@ -412,7 +448,7 @@ public class JLDDocument{
 			throw new JLDException("JSONObject expected here, found: "+element.getClass().getName());
 		JSONObject el=(JSONObject)element;
 		if(el.has("@context")){
-			activeContext=updateContext(activeContext, el.isNull("@context") ? null : el.get("@context"), new ArrayList<>());
+			activeContext=updateContext(activeContext, el.isNull("@context") ? null : el.get("@context"), new ArrayList<>(), activeContext.originalBaseIRI);
 		}
 		JSONObject result=new JSONObject();
 		ArrayList<String> keys=keysAsList(el);
@@ -532,7 +568,7 @@ public class JLDDocument{
 
 			JLDContext.TermDefinition term=activeContext.termDefinitions.get(key);
 
-			if(term!=null && "@language".equals(term.containerMapping)){
+			if(term!=null && "@language".equals(term.containerMapping) && value instanceof JSONObject){
 				JSONArray exp=new JSONArray();
 				JSONObject objval=(JSONObject)value;
 				ArrayList<String> objkeys=keysAsList(objval);
@@ -660,10 +696,15 @@ public class JLDDocument{
 	private static JSONObject expandValue(JLDContext activeContext, String activeProperty, Object value){
 		JLDContext.TermDefinition term=activeContext.termDefinitions.get(activeProperty);
 		if(term!=null && "@id".equals(term.typeMapping)){
-			return jsonObjectWithSingleKey("@id", expandIRI(activeContext, (String)value, true, false, null, null));
+			// the algorithm spec was clearly written without strongly-typed languages in mind. Sigh.
+			if(value instanceof String)
+				return jsonObjectWithSingleKey("@id", expandIRI(activeContext, (String)value, true, false, null, null));
+			return jsonObjectWithSingleKey("@value", value);
 		}
 		if(term!=null && "@vocab".equals(term.typeMapping)){
-			return jsonObjectWithSingleKey("@id", expandIRI(activeContext, (String)value, true, true, null, null));
+			if(value instanceof String)
+				return jsonObjectWithSingleKey("@id", expandIRI(activeContext, (String)value, true, true, null, null));
+			return jsonObjectWithSingleKey("@value", value);
 		}
 		JSONObject result=jsonObjectWithSingleKey("@value", value);
 		if(term!=null && term.typeMapping!=null)

@@ -7,6 +7,7 @@ import java.util.HashMap;
 public class JLDContext implements Cloneable{
 
 	public URI baseIRI;
+	public URI originalBaseIRI;
 	public HashMap<String, TermDefinition> termDefinitions=new HashMap<>();
 	public String vocabularyMapping;
 	public String defaultLanguage;
