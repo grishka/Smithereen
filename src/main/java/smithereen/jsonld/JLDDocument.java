@@ -171,12 +171,19 @@ public class JLDDocument{
 				}
 			}
 			if(c.has("@language")){
-				throw new JLDException("@language is not supported");
+				Object value=c.get("@language");
+				if(value==JSONObject.NULL){
+					result.defaultLanguage=null;
+				}else if(value instanceof String){
+					result.defaultLanguage=((String)value).toLowerCase();
+				}else{
+					throw new JLDException("invalid default language");
+				}
 			}
 
 			for(Iterator<String> it=c.keys(); it.hasNext(); ){
 				String k=it.next();
-				if(isKeyword(k))
+				if(k.equals("@base") || k.equals("@vocab") || k.equals("@language"))
 					continue;
 				createTermDefinition(result, c, k, new HashMap<>());
 			}
@@ -197,6 +204,7 @@ public class JLDDocument{
 			throw new JLDException("keyword redefinition");
 		activeContext.termDefinitions.remove(term);
 		Object value=localContext.get(term);
+		if(value==JSONObject.NULL) value=null;
 		if(value==null || (value instanceof JSONObject && ((JSONObject) value).has("@id") && ((JSONObject) value).isNull("@id"))){
 			activeContext.termDefinitions.put(term, null);
 			defined.put(term, true);
@@ -213,35 +221,52 @@ public class JLDDocument{
 		JLDContext.TermDefinition definition=new JLDContext.TermDefinition();
 		JSONObject v=(JSONObject)value;
 		if(v.has("@type")){
-			String type=v.getString("@type");
-			type=expandIRI(activeContext, type, false, true, localContext, defined);
-			definition.typeMapping=type;
+			try{
+				String type=v.getString("@type");
+				type=expandIRI(activeContext, type, false, true, localContext, defined);
+				if(!"@id".equals(type) && !"@vocab".equals(type)){
+					URI uri=new URI(type);
+					if(!uri.isAbsolute())
+						throw new JLDException("invalid type mapping");
+				}
+				definition.typeMapping=type;
+			}catch(JSONException|URISyntaxException x){
+				throw new JLDException("invalid type mapping", x);
+			}
 		}
 		if(v.has("@reverse")){
 			if(v.has("@id"))
 				throw new JLDException("invalid reverse property");
-			String reverse=v.getString("@reverse");
-			definition.iriMapping=expandIRI(activeContext, reverse, false, true, localContext, defined);
-			if(!definition.iriMapping.contains(":"))
-				throw new JLDException("invalid IRI mapping");
-			if(v.has("@container")){
-				definition.containerMapping=v.getString("@container");
-				if(definition.containerMapping!=null && !definition.containerMapping.equals("@set") && !definition.containerMapping.equals("@index")){
-					throw new JLDException("invalid reverse property");
+			try{
+				String reverse=v.getString("@reverse");
+				definition.iriMapping=expandIRI(activeContext, reverse, false, true, localContext, defined);
+				if(!definition.iriMapping.contains(":"))
+					throw new JLDException("invalid IRI mapping");
+				if(v.has("@container")){
+					definition.containerMapping=v.getString("@container");
+					if(definition.containerMapping!=null && !definition.containerMapping.equals("@set") && !definition.containerMapping.equals("@index")){
+						throw new JLDException("invalid reverse property");
+					}
 				}
 				definition.reverseProperty=true;
+				activeContext.termDefinitions.put(term, definition);
+				defined.put(term, true);
+			}catch(JSONException x){
+				throw new JLDException("invalid reverse property");
 			}
-			activeContext.termDefinitions.put(term, definition);
-			defined.put(term, true);
 			return;
 		}
 		definition.reverseProperty=false;
-		if(v.has("@id") && !term.equals(v.getString("@id"))){
-			definition.iriMapping=expandIRI(activeContext, v.getString("@id"), false, true, localContext, defined);
-			if(!isKeyword(definition.iriMapping) && !definition.iriMapping.contains(":"))
-				throw new JLDException("invalid IRI mapping");
-			if("@context".equals(definition.iriMapping))
-				throw new JLDException("invalid keyword mapping");
+		if(v.has("@id") && !term.equals(v.get("@id"))){
+			try{
+				definition.iriMapping=expandIRI(activeContext, v.getString("@id"), false, true, localContext, defined);
+				if(!isKeyword(definition.iriMapping) && !definition.iriMapping.contains(":"))
+					throw new JLDException("invalid IRI mapping");
+				if("@context".equals(definition.iriMapping))
+					throw new JLDException("invalid keyword mapping");
+			}catch(JSONException x){
+				throw new JLDException("invalid IRI mapping", x);
+			}
 		}else if(term.contains(":")){
 			String[] sp=term.split(":", 2);
 			String prefix=sp[0];
@@ -267,7 +292,16 @@ public class JLDDocument{
 		}
 
 		if(v.has("@language")){
-			throw new JLDException("@language is not supported");
+			Object _language=v.get("@language");
+			if(_language==JSONObject.NULL) _language=null;
+			if(_language!=null && !(_language instanceof String))
+				throw new JLDException("invalid language mapping");
+			String language=(String)_language;
+			if(language!=null){
+				language=language.toLowerCase();
+			}
+			definition.languageMapping=language;
+			definition.hasLanguageMapping=true;
 		}
 
 		activeContext.termDefinitions.put(term, definition);
@@ -346,7 +380,7 @@ public class JLDDocument{
 	}
 
 	private static Object expand(JLDContext activeContext, String activeProperty, Object element) throws JSONException{
-		if(element==null || element.equals(null))
+		if(element==null || element==JSONObject.NULL)
 			return null;
 		if(isScalar(element)){
 			if(activeProperty==null || "@graph".equals(activeProperty))
@@ -359,7 +393,7 @@ public class JLDDocument{
 			for(int i=0;i<el.length();i++){
 				Object item=el.get(i);
 				Object expandedItem=expand(activeContext, activeProperty, item);
-				if("@list".equals(activeProperty) || (activeContext.termDefinitions.containsKey(activeProperty) && "@list".equals(activeContext.termDefinitions.get(activeProperty).typeMapping))){
+				if("@list".equals(activeProperty) || (activeContext.termDefinitions.containsKey(activeProperty) && "@list".equals(activeContext.termDefinitions.get(activeProperty).containerMapping))){
 					if(expandedItem instanceof JSONArray || isListObject(expandedItem))
 						throw new JLDException("list of lists");
 				}
@@ -442,14 +476,52 @@ public class JLDDocument{
 					if(activeProperty==null || "@graph".equals(activeProperty))
 						continue;
 					expandedValue=expand(activeContext, activeProperty, value);
-					if(isListObject(expandedValue))
+					if(isListObject(expandedValue) || (expandedValue instanceof JSONArray && ((JSONArray) expandedValue).length()>0 && isListObject(((JSONArray) expandedValue).get(0))))
 						throw new JLDException("list of lists");
 				}else if("@set".equals(expandedProperty)){
 					expandedValue=expand(activeContext, activeProperty, value);
 				}else if("@reverse".equals(expandedProperty)){
 					if(!(value instanceof JSONObject))
 						throw new JLDException("invalid @reverse value");
-					throw new JLDException("not supported yet");
+					expandedValue=expand(activeContext, "@reverse", value);
+					if(expandedValue instanceof JSONObject){
+						JSONObject jv=(JSONObject) expandedValue;
+						if(jv.has("@reverse")){
+							JSONObject rev=jv.getJSONObject("@reverse");
+							for(String property:rev.keySet()){
+								Object item=rev.get(property);
+								if(!result.has(property))
+									result.put(property, new JSONArray());
+								// spec does not say this but tests do expect this, so...
+								if(item instanceof JSONArray){
+									JSONArray aitem=(JSONArray) item;
+									for(int i=0;i<aitem.length();i++){
+										((JSONArray) result.get(property)).put(aitem.get(i));
+									}
+								}else{
+									((JSONArray) result.get(property)).put(item);
+								}
+							}
+							jv.remove("@reverse");
+						}
+						if(jv.length()>0){
+							if(!result.has("@reverse"))
+								result.put("@reverse", new JSONObject());
+							JSONObject reverseMap=result.getJSONObject("@reverse");
+							for(String property:jv.keySet()){
+								JSONArray items=jv.getJSONArray(property);
+								for(int i=0;i<items.length();i++){
+									Object item=items.get(i);
+									if(isListObject(item) || isValueObject(item))
+										throw new JLDException("invalid reverse property value");
+									if(!reverseMap.has(property))
+										reverseMap.put(property, new JSONArray());
+									reverseMap.getJSONArray(property).put(item);
+								}
+							}
+						}
+					}
+					continue;
 				}
 
 				if(expandedValue!=null){
@@ -472,10 +544,14 @@ public class JLDDocument{
 					}
 					JSONArray langValueArr=(JSONArray) langValue;
 					for(int j=0;j<langValueArr.length();j++){
-						String item=langValueArr.getString(j);
-						JSONObject r=jsonObjectWithSingleKey("@value", item);
-						r.put("@language", lang.toLowerCase());
-						exp.put(r);
+						try{
+							String item=langValueArr.getString(j);
+							JSONObject r=jsonObjectWithSingleKey("@value", item);
+							r.put("@language", lang.toLowerCase());
+							exp.put(r);
+						}catch(JSONException x){
+							throw new JLDException("invalid language map value", x);
+						}
 					}
 				}
 				expandedValue=exp;
@@ -512,7 +588,20 @@ public class JLDDocument{
 				expandedValue=jsonObjectWithSingleKey("@list", new JSONArray(Collections.singletonList(((JSONObject)expandedValue).get("@list"))));
 			}
 			if(term!=null && term.reverseProperty){
-				throw new JLDException("reverse not supported yet");
+				if(!result.has("@reverse"))
+					result.put("@reverse", new JSONObject());
+				JSONObject reverseMap=result.getJSONObject("@reverse");
+				if(!(expandedValue instanceof JSONArray))
+					expandedValue=new JSONArray(Collections.singletonList(expandedValue));
+				JSONArray xv=(JSONArray) expandedValue;
+				for(int i=0;i<xv.length();i++){
+					Object item=xv.get(i);
+					if(isListObject(item) || isValueObject(item))
+						throw new JLDException("invalid reverse property value");
+					if(!reverseMap.has(expandedProperty))
+						reverseMap.put(expandedProperty, new JSONArray());
+					reverseMap.getJSONArray(expandedProperty).put(item);
+				}
 			}else{
 				if(!result.has(expandedProperty))
 					result.put(expandedProperty, new JSONArray());
@@ -528,9 +617,16 @@ public class JLDDocument{
 		}
 
 		if(result.has("@value")){
-			// check "The result must not contain any keys other than @value, @language, @type, and @index. It must not contain both the @language key and the @type key. Otherwise, an invalid value object error has been detected and processing is aborted."
+			for(String k:result.keySet()){
+				if(!"@value".equals(k) && !"@language".equals(k) && !"@type".equals(k) && !"@index".equals(k))
+					throw new JLDException("invalid value object");
+			}
+			if(result.has("@language") && result.has("@type"))
+				throw new JLDException("invalid value object");
 			if(result.isNull("@value")){
 				result=null;
+			}else if(!(result.get("@value") instanceof String) && result.has("@language")){
+				throw new JLDException("invalid language-tagged value");
 			}else if(result.has("@type")){
 				try{
 					new URI(result.getString("@type"));
@@ -572,7 +668,14 @@ public class JLDDocument{
 		JSONObject result=jsonObjectWithSingleKey("@value", value);
 		if(term!=null && term.typeMapping!=null)
 			result.put("@type", term.typeMapping);
-		// @language - we don't support this anyway
+		else if(value instanceof String){
+			if(term!=null && term.hasLanguageMapping){
+				if(term.languageMapping!=null)
+					result.put("@language", term.languageMapping);
+			}else if(activeContext.defaultLanguage!=null){
+				result.put("@language", activeContext.defaultLanguage);
+			}
+		}
 		return result;
 	}
 
