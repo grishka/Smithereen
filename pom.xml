@@ -58,6 +58,12 @@
 			<artifactId>okhttp</artifactId>
 			<version>3.2.0</version>
 		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>RELEASE</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 

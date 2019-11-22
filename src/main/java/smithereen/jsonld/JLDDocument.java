@@ -37,17 +37,38 @@ public class JLDDocument{
 		inverseLocalContext=createReverseContext(localContext);
 	}
 
-	public static JSONObject expand(JSONObject src){
-		JLDContext context=updateContext(new JLDContext(), src.get("@context"), new ArrayList<String>());
+	public static JSONArray expandToArray(Object src){
+		Object jcontext=null;
+		if(src instanceof JSONObject)
+			jcontext=((JSONObject) src).opt("@context");
+		JLDContext context=updateContext(new JLDContext(), jcontext, new ArrayList<String>());
+		Object result=expand(context, null, src);
+		if(result instanceof JSONArray)
+			return (JSONArray) result;
+		if(result==null)
+			return new JSONArray();
+		if(result instanceof JSONObject){
+			JSONObject _r=(JSONObject) result;
+			if(_r.length()==1 && _r.has("@graph"))
+				return _r.getJSONArray("@graph");
+		}
+		return new JSONArray(Collections.singletonList(result));
+	}
+
+	public static JSONObject expand(Object src){
+		Object jcontext=null;
+		if(src instanceof JSONObject)
+			jcontext=((JSONObject) src).opt("@context");
+		JLDContext context=updateContext(new JLDContext(), jcontext, new ArrayList<String>());
 		return (JSONObject) expand(context, null, src);
 	}
 
-	public static JSONObject compactToLocalContext(JSONObject src){
-		return (JSONObject)compact(localContext, inverseLocalContext, null, new JSONArray(Collections.singletonList(src)), true);
+	public static JSONObject compactToLocalContext(JSONArray src){
+		return (JSONObject)compact(localContext, inverseLocalContext, null, src, true);
 	}
 
 	public static JSONObject convertToLocalContext(JSONObject src){
-		return compactToLocalContext(expand(src));
+		return compactToLocalContext(expandToArray(src));
 	}
 
 	private static JSONObject idAndTypeObject(String id, String type){
@@ -80,6 +101,8 @@ public class JLDDocument{
 			case "https://w3id.org/security/v1":
 				file=readResourceFile("w3-security");
 				break;
+			default:
+				throw new JLDException("loading remote context failed");
 		}
 		if(file!=null){
 			JSONObject obj=new JSONObject(file);
@@ -91,12 +114,15 @@ public class JLDDocument{
 
 	private static JLDContext updateContext(JLDContext activeContext, Object _localContext, ArrayList<String> remoteContexts) throws JSONException{
 		JLDContext result=activeContext.clone();
+		if(_localContext==null){
+			return new JLDContext();
+		}
 
 		ArrayList<Object> localContext=new ArrayList<>();
 		if(_localContext instanceof JSONArray){
 			JSONArray a=(JSONArray) _localContext;
 			for(int i=0; i<a.length(); i++){
-				localContext.add(a.get(i));
+				localContext.add(a.isNull(i) ? null : a.get(i));
 			}
 		}else{
 			localContext.add(_localContext);
@@ -133,8 +159,10 @@ public class JLDDocument{
 				throw new JLDException("@base is not supported");
 			}
 			if(c.has("@vocab")){
-				String value=c.getString("@vocab");
+				String value=c.optString("@vocab");
 				if(value==null){
+					if(c.has("@vocab"))
+						throw new JLDException("invalid vocab mapping");
 					result.vocabularyMapping=null;
 				}else if(value.contains(":")){
 					result.vocabularyMapping=value;
@@ -299,7 +327,7 @@ public class JLDDocument{
 	}
 
 	private static boolean isScalar(Object obj){
-		return obj instanceof String || obj instanceof Integer || obj instanceof Boolean;
+		return obj instanceof String || obj instanceof Integer || obj instanceof Boolean || obj instanceof Double;
 	}
 
 	private static JSONObject jsonObjectWithSingleKey(String key, Object value) throws JSONException{
@@ -320,40 +348,45 @@ public class JLDDocument{
 	private static Object expand(JLDContext activeContext, String activeProperty, Object element) throws JSONException{
 		if(element==null || element.equals(null))
 			return null;
-		if(element instanceof String || element instanceof Integer || element instanceof Boolean){
+		if(isScalar(element)){
 			if(activeProperty==null || "@graph".equals(activeProperty))
 				return null;
 			return expandValue(activeContext, activeProperty, element);
 		}
 		if(element instanceof JSONArray){
-			ArrayList<Object> result=new ArrayList<>();
+			JSONArray result=new JSONArray();
 			JSONArray el=(JSONArray) element;
 			for(int i=0;i<el.length();i++){
 				Object item=el.get(i);
 				Object expandedItem=expand(activeContext, activeProperty, item);
 				if("@list".equals(activeProperty) || (activeContext.termDefinitions.containsKey(activeProperty) && "@list".equals(activeContext.termDefinitions.get(activeProperty).typeMapping))){
-					if(expandedItem instanceof JSONArray)
+					if(expandedItem instanceof JSONArray || isListObject(expandedItem))
 						throw new JLDException("list of lists");
 				}
 				if(expandedItem instanceof JSONArray){
-					result.addAll(((JSONArray) expandedItem).toList());
+					JSONArray xe=(JSONArray) expandedItem;
+					for(int j=0;j<xe.length();j++){
+						result.put(xe.get(j));
+					}
 				}else if(expandedItem!=null){
-					result.add(expandedItem);
+					result.put(expandedItem);
 				}
 			}
-			return new JSONArray(result);
+			return result;
 		}
 		if(!(element instanceof JSONObject))
 			throw new JLDException("JSONObject expected here, found: "+element.getClass().getName());
 		JSONObject el=(JSONObject)element;
 		if(el.has("@context")){
-			activeContext=updateContext(activeContext, el.get("@context"), new ArrayList<>());
+			activeContext=updateContext(activeContext, el.isNull("@context") ? null : el.get("@context"), new ArrayList<>());
 		}
 		JSONObject result=new JSONObject();
 		ArrayList<String> keys=keysAsList(el);
 		Collections.sort(keys);
 		for(String key:keys){
 			Object value=el.get(key);
+			if(el.isNull(key))
+				value=null;
 			Object expandedValue=null;
 			if("@context".equals(key))
 				continue;
@@ -373,15 +406,15 @@ public class JLDDocument{
 					expandedValue=expandIRI(activeContext, (String)value, true, false, null, null);
 				}else if("@type".equals(expandedProperty)){
 					if(value instanceof JSONArray){
-						ArrayList<String> expTypes=new ArrayList<>();
+						JSONArray expTypes=new JSONArray();
 						for(int i=0;i<((JSONArray) value).length();i++){
 							Object e=((JSONArray) value).get(i);
 							if(!(e instanceof String)){
 								throw new JLDException("invalid type value");
 							}
-							expTypes.add(expandIRI(activeContext, (String)e, true, true, null, null));
+							expTypes.put(expandIRI(activeContext, (String)e, true, true, null, null));
 						}
-						expandedValue=new JSONArray(expTypes);
+						expandedValue=expTypes;
 					}else if(value instanceof String){
 						expandedValue=expandIRI(activeContext, (String)value, true, true, null, null);
 					}else{
@@ -394,7 +427,7 @@ public class JLDDocument{
 						throw new JLDException("invalid value object value");
 					expandedValue=value;
 					if(expandedValue==null){
-						result.put("@value", (Object)null);
+						result.put("@value", JSONObject.NULL);
 						continue;
 					}
 				}else if("@language".equals(expandedProperty)){
@@ -409,7 +442,8 @@ public class JLDDocument{
 					if(activeProperty==null || "@graph".equals(activeProperty))
 						continue;
 					expandedValue=expand(activeContext, activeProperty, value);
-					// TODO check for list of lists
+					if(isListObject(expandedValue))
+						throw new JLDException("list of lists");
 				}else if("@set".equals(expandedProperty)){
 					expandedValue=expand(activeContext, activeProperty, value);
 				}else if("@reverse".equals(expandedProperty)){
@@ -446,7 +480,7 @@ public class JLDDocument{
 				}
 				expandedValue=exp;
 			}else if(term!=null && "@index".equals(term.containerMapping) && value instanceof JSONObject){
-				ArrayList<Object> xv=new ArrayList<>();
+				JSONArray xv=new JSONArray();
 				JSONObject v=(JSONObject)value;
 				ArrayList<String> vkeys=keysAsList(v);
 				Collections.sort(vkeys);
@@ -460,26 +494,36 @@ public class JLDDocument{
 						JSONObject item=ival.getJSONObject(j);
 						if(!item.has("@index"))
 							item.put("@index", index);
-						xv.add(item);
+						xv.put(item);
 					}
 				}
-				expandedValue=new JSONArray(xv);
+				expandedValue=xv;
 			}else{
 				expandedValue=expand(activeContext, key, value);
 			}
 			if(expandedValue==null)
 				continue;
-			if(term!=null && "@list".equals(term.containerMapping)){
+			if(term!=null && "@list".equals(term.containerMapping) && !isListObject(expandedValue)){
 				if(!(expandedValue instanceof JSONArray))
 					expandedValue=new JSONArray(Collections.singletonList(expandedValue));
 				expandedValue=jsonObjectWithSingleKey("@list", expandedValue);
+			}
+			if(isListObject(expandedValue) && !(((JSONObject)expandedValue).get("@list") instanceof JSONArray)){
+				expandedValue=jsonObjectWithSingleKey("@list", new JSONArray(Collections.singletonList(((JSONObject)expandedValue).get("@list"))));
 			}
 			if(term!=null && term.reverseProperty){
 				throw new JLDException("reverse not supported yet");
 			}else{
 				if(!result.has(expandedProperty))
 					result.put(expandedProperty, new JSONArray());
-				result.getJSONArray(expandedProperty).put(expandedValue);
+				if(expandedValue instanceof JSONArray){
+					JSONArray prop=result.getJSONArray(expandedProperty);
+					for(int i=0;i<((JSONArray) expandedValue).length();i++){
+						prop.put(((JSONArray) expandedValue).get(i));
+					}
+				}else{
+					result.getJSONArray(expandedProperty).put(expandedValue);
+				}
 			}
 		}
 
@@ -501,7 +545,7 @@ public class JLDDocument{
 				throw new JLDException("invalid set or list object");
 			}
 			if(result.has("@set"))
-				result=result.getJSONObject("@set");
+				return result.get("@set");
 		}
 
 		if(result!=null && result.length()==1 && result.has("@language"))
