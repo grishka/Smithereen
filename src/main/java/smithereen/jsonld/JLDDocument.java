@@ -59,6 +59,16 @@ public class JLDDocument{
 		return new JSONArray(Collections.singletonList(result));
 	}
 
+	public static JSONObject compact(JSONArray src, Object context){
+		return compact(src, context, true);
+	}
+
+	public static JSONObject compact(JSONArray src, Object context, boolean compactArrays){
+		JLDContext localContext=updateContext(new JLDContext(), context, new ArrayList<>(), null);
+		JSONObject inverseContext=createReverseContext(localContext);
+		return (JSONObject)compact(localContext, inverseContext, null, src, compactArrays);
+	}
+
 	public static JSONObject compactToLocalContext(JSONArray src){
 		return (JSONObject)compact(localContext, inverseLocalContext, null, src, true);
 	}
@@ -981,6 +991,8 @@ public class JLDDocument{
 		Collections.sort(keys);
 		for(String expandedProperty:keys){
 			Object expandedValue=e.get(expandedProperty);
+			if(expandedValue==JSONObject.NULL)
+				continue;
 			Object compactedValue;
 			if(expandedProperty.equals("@id") || expandedProperty.equals("@type")){
 				if(expandedValue instanceof String){
