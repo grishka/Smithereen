@@ -1,5 +1,6 @@
 package smithereen.jsonld;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -12,6 +13,7 @@ import org.json.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Disabled
 class CompactTests{
 
 	private Object readResource(String name){

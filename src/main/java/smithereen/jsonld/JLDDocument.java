@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 
 public class JLDDocument{
@@ -340,6 +341,15 @@ public class JLDDocument{
 		defined.put(term, true);
 	}
 
+	private static URI fixURI(URI uri){
+		try{
+			String path=uri.getPath().replace("../", "").replace("./", "");//.replaceAll("(?<!^)/\\./", "/");
+			return new URI(uri.getScheme(), uri.getAuthority(), path, uri.getQuery(), uri.getFragment());
+		}catch(URISyntaxException e){
+			throw new IllegalArgumentException(e);
+		}
+	}
+
 	private static String expandIRI(JLDContext activeContext, String value, boolean documentRelative, boolean vocab, JSONObject localContext, HashMap<String, Boolean> defined) throws JSONException{
 		if(value==null || isKeyword(value))
 			return value;
@@ -371,12 +381,22 @@ public class JLDDocument{
 		if(vocab && activeContext.vocabularyMapping!=null)
 			return activeContext.vocabularyMapping+value;
 		if(documentRelative && activeContext.baseIRI!=null){
-			if(value.startsWith("?")) // URI.resolve drops the last path segment when adding query
-				value=activeContext.baseIRI.getPath()+value;
-			if(value.startsWith("//"))
-				return URI.create(activeContext.baseIRI.getScheme()+":"+value).normalize().toString().replace("../", "");
+			if(value.isEmpty())
+				return activeContext.baseIRI.toString();
+			if(URI.create(value).isAbsolute())
+				return value;
+			try{
+				if(value.startsWith("?")){
+					URI b=activeContext.baseIRI;
+					return new URI(b.getScheme(), b.getAuthority(), b.getPath(), value.substring(1), b.getFragment()).toString();
+				}
+			}catch(URISyntaxException ignore){}
+			if(value.startsWith("#"))
+				return activeContext.baseIRI.resolve(value).toString();
+			else if(value.startsWith("//"))
+				return fixURI(URI.create(activeContext.baseIRI.getScheme()+":"+value).normalize()).toString();
 			else
-				return activeContext.baseIRI.resolve(value).toString().replace("../", ""); // URI.resolve leaves /../ parts that go beyond root
+				return fixURI(activeContext.baseIRI.resolve(value)).toString(); // URI.resolve leaves /../ parts that go beyond root
 		}
 		return value;
 	}
@@ -797,6 +817,10 @@ public class JLDDocument{
 		return o instanceof JSONObject && ((JSONObject) o).has("@value");
 	}
 
+	private static boolean isNodeObject(JSONObject o){
+		return !o.has("@value") && !o.has("@list") && !o.has("@set");
+	}
+
 	private static String selectTerm(JSONObject inverseContext, String iri, ArrayList<String> containers, String typeLanguage, ArrayList<String> preferredValues){
 		JSONObject containerMap=inverseContext.getJSONObject(iri);
 		for(String container:containers){
@@ -1124,5 +1148,347 @@ public class JLDDocument{
 			}
 		}
 		return result;
+	}
+
+	private static boolean jsonArrayContains(JSONArray array, Object what){
+		for(Object o:array){
+			if(o.getClass().isInstance(what)){
+				if(o.toString().equals(what.toString()))
+					return true;
+			}
+		}
+		return false;
+	}
+
+	private static void generateNodeMap(Object element, JSONObject nodeMap, String activeGraph, /*String or JSONObject*/Object activeSubject, String activeProperty, JSONObject list, BlankNodeIdentifierGenerator idGen){
+		if(element instanceof JSONArray){
+			JSONArray array=(JSONArray) element;
+			for(int i=0;i<array.length();i++){
+				generateNodeMap(array.get(i), nodeMap, activeGraph, activeSubject, activeProperty, list, idGen);
+			}
+			return;
+		}
+		JSONObject el=(JSONObject) element;
+		if(!nodeMap.has(activeGraph))
+			nodeMap.put(activeGraph, new JSONObject());
+		JSONObject graph=nodeMap.getJSONObject(activeGraph);
+		JSONObject node=null;
+		if(activeSubject==null){
+			node=null;
+		}else if(activeSubject instanceof String){
+			String _activeSubject=(String)activeSubject;
+			if(!graph.has(_activeSubject))
+				graph.put(_activeSubject, new JSONObject());
+			node=graph.getJSONObject(_activeSubject);
+		}
+		if(el.has("@type")){
+			JSONArray type=el.optJSONArray("@type");
+			if(type!=null){
+				for(int i=0; i<type.length(); i++){
+					String item=type.getString(i);
+					if(item.startsWith("_:")){
+						item=idGen.generate(item);
+						type.put(i, item);
+					}
+				}
+			}else{
+				String item=el.getString("@type");
+				if(item.startsWith("_:")){
+					item=idGen.generate(item);
+					el.put("@type", item);
+				}
+			}
+		}
+		if(el.has("@value")){
+			if(list==null){
+				if(!node.has(activeProperty))
+					node.put(activeProperty, new JSONArray(Collections.singletonList(el)));
+				else if(!jsonArrayContains(node.getJSONArray(activeProperty), el))
+					node.getJSONArray(activeProperty).put(el);
+			}else{
+				list.getJSONArray("@list").put(el);
+			}
+		}else if(el.has("@list")){
+			JSONObject result=new JSONObject();
+			result.put("@list", new JSONArray());
+			generateNodeMap(el.getJSONArray("@list"), nodeMap, activeGraph, activeSubject, activeProperty, result, idGen);
+			node.getJSONArray(activeProperty).put(result);
+		}else{
+			String id;
+			if(el.has("@id")){
+				String _id=el.getString("@id");
+				el.remove("@id");
+				if(_id.startsWith("_:"))
+					id=idGen.generate(_id);
+				else
+					id=_id;
+			}else{
+				id=idGen.generate(null);
+			}
+			if(!graph.has(id)){
+				graph.put(id, jsonObjectWithSingleKey("@id", id));
+			}
+			if(activeSubject instanceof JSONObject){
+				node=graph.getJSONObject(id);
+				if(!node.has(activeProperty)){
+					node.put(activeProperty, new JSONArray(Collections.singletonList(activeSubject)));
+				}else{
+					JSONArray ap=node.getJSONArray(activeProperty);
+					if(!jsonArrayContains(ap, activeSubject))
+						ap.put(activeSubject);
+				}
+			}else if(activeProperty!=null){
+				JSONObject reference=new JSONObject();
+				reference.put("@id", id);
+				if(list==null){
+					if(!node.has(activeProperty)){
+						node.put(activeProperty, new JSONArray(Collections.singletonList(reference)));
+					}else{
+						JSONArray ap=node.getJSONArray(activeProperty);
+						if(!jsonArrayContains(ap, reference))
+							ap.put(reference);
+					}
+				}else{
+					list.getJSONArray("@list").put(jsonObjectWithSingleKey("@id", id));
+				}
+			}
+			node=graph.getJSONObject(id);
+			if(el.has("@type")){
+				JSONArray type=el.getJSONArray("@type");
+				if(!node.has("@type"))
+					node.put("@type", new JSONArray());
+				JSONArray nodeType=node.getJSONArray("@type");
+				for(Object _item:type){
+					String item=(String)_item;
+					if(!jsonArrayContains(nodeType, item))
+						nodeType.put(item);
+				}
+				el.remove("@type");
+			}
+			if(el.has("@index")){
+				if(node.has("@index"))
+					throw new JLDException("conflicting indexes");
+				node.put("@index", el.remove("@index"));
+			}
+			if(el.has("@reverse")){
+				JSONObject referencedNode=new JSONObject();
+				referencedNode.put("@id", id);
+				JSONObject reverseMap=el.getJSONObject("@reverse");
+				for(String property:reverseMap.keySet()){
+					JSONArray values=reverseMap.getJSONArray(property);
+					for(Object value:values){
+						generateNodeMap(value, nodeMap, activeGraph, referencedNode, property, null, idGen);
+					}
+				}
+				el.remove("@reverse");
+			}
+			if(el.has("@graph")){
+				generateNodeMap(el.get("@graph"), nodeMap, id, null, null, null, idGen);
+				el.remove("@graph");
+			}
+			ArrayList<String> keys=keysAsList(el);
+			Collections.sort(keys);
+			for(String property:keys){
+				Object value=el.get(property);
+				if(property.startsWith("_:"))
+					property=idGen.generate(property);
+				if(!node.has(property))
+					node.put(property, new JSONArray());
+				generateNodeMap(value, nodeMap, activeGraph, id, property, null, idGen);
+			}
+		}
+	}
+
+	private static Object objectToRDF(JSONObject item){
+		if(isNodeObject(item)){
+			String _id=item.getString("@id");
+			if(_id.startsWith("_:"))
+				return _id;
+			URI id=URI.create(_id);
+			if(!id.isAbsolute())
+				return null;
+			return id;
+		}
+		Object value=item.get("@value");
+		String datatype=item.optString("@type", null);
+		if(value instanceof Boolean){
+			value=value.toString();
+			if(datatype==null)
+				datatype=RDF.NS_XSD+"boolean";
+		}else if(value instanceof Double || (value instanceof Integer && (RDF.NS_XSD+"double").equals(datatype))){
+			double d;
+			if(value instanceof Integer){
+				d=(int)(Integer)value;
+			}else{
+				d=(double)value;
+			}
+			value=String.format(Locale.US, "%.15E", d).replaceAll("(\\d)0*E\\+?(-?)0+(\\d+)","$1E$2$3");
+			if(datatype==null)
+				datatype=RDF.NS_XSD+"double";
+		}else if(value instanceof Integer){
+			value=value.toString();
+			if(datatype==null)
+				datatype=RDF.NS_XSD+"integer";
+		}else if(datatype==null){
+			if(item.has("@language"))
+				datatype=RDF.NS_RDF+"langString";
+			else
+				datatype=RDF.NS_RDF+"string";
+		}
+		return new RDFLiteral((String)value, URI.create(datatype), item.optString("@language", null));
+	}
+
+	private static Object listToRDF(JSONArray list, ArrayList<RDFTriple> triples, BlankNodeIdentifierGenerator idGen){
+		if(list.isEmpty())
+			return URI.create(RDF.NS_RDF+"nil");
+		ArrayList<String> bnodes=new ArrayList<>();
+		for(int i=0;i<list.length();i++)
+			bnodes.add(idGen.generate(null));
+		for(int i=0;i<list.length();i++){
+			String subject=bnodes.get(i);
+			JSONObject item=list.getJSONObject(i);
+			Object object=objectToRDF(item);
+			if(object!=null){
+				triples.add(new RDFTriple(subject, URI.create(RDF.NS_RDF+"first"), object));
+			}
+			Object rest=i<bnodes.size()-1 ? bnodes.get(i+1) : URI.create(RDF.NS_RDF+"nil");
+			triples.add(new RDFTriple(subject, URI.create(RDF.NS_RDF+"rest"), rest));
+		}
+		return bnodes.isEmpty() ? RDF.NS_RDF+"nil" : bnodes.get(0);
+	}
+
+	public static ArrayList<RDFTriple> toRDF(Object input, URI baseURI){
+		final Comparator<String> iriComparator=new Comparator<String>(){
+			@Override
+			public int compare(String o1, String o2){
+				if(o1.startsWith("@"))
+					o1='<'+RDF.NS_RDF+o1.substring(1)+'>';
+				else if(!o1.startsWith("_:"))
+					o1='<'+o1+'>';
+				if(o2.startsWith("@"))
+					o2='<'+RDF.NS_RDF+o2.substring(1)+'>';
+				else if(!o2.startsWith("_:"))
+					o2='<'+o2+'>';
+				return o1.compareTo(o2);
+			}
+		};
+		boolean produceGeneralizedRDF=false;
+		ArrayList<RDFTriple> allTriples=new ArrayList<>();
+
+		JSONArray expanded=expandToArray(input, baseURI);
+		JSONObject nodeMap=new JSONObject();
+		nodeMap.put("@default", new JSONObject());
+		BlankNodeIdentifierGenerator idGen=new BlankNodeIdentifierGenerator();
+		generateNodeMap(expanded, nodeMap, "@default", null, null, null, idGen);
+		ArrayList<String> nodeMapKeys=keysAsList(nodeMap);
+		Collections.sort(nodeMapKeys, iriComparator);
+		for(String graphName:nodeMapKeys){
+			if(graphName.charAt(0)!='@' && graphName.charAt(0)!='_'){
+				if(!URI.create(graphName).isAbsolute())
+					continue;
+			}
+			JSONObject graph=nodeMap.getJSONObject(graphName);
+			ArrayList<RDFTriple> triples=new ArrayList<>();
+			ArrayList<String> graphKeys=keysAsList(graph);
+			Collections.sort(graphKeys, iriComparator);
+			for(String subject:graphKeys){
+				URI subjectURI=null;
+				if(subject.charAt(0)!='@' && subject.charAt(0)!='_'){
+					subjectURI=URI.create(subject);
+					if(!subjectURI.isAbsolute())
+						continue;
+				}
+				JSONObject node=graph.getJSONObject(subject);
+				ArrayList<String> nodeKeys=keysAsList(node);
+				Collections.sort(nodeKeys, iriComparator);
+				for(String property:nodeKeys){
+					if(property.equals("@id"))
+						continue;
+					Iterable<Object> values=node.optJSONArray(property);
+					if(values==null){
+						values=Collections.singletonList(node.get(property));
+					}
+					if(property.equals("@type")){
+						for(Object _type:values){
+							String type=(String)_type;
+							triples.add(new RDFTriple(subjectURI==null ? subject : subjectURI, URI.create(RDF.NS_RDF+"type"), type.charAt(0)=='_' ? type : URI.create(type)));
+						}
+					}else if(isKeyword(property)){
+						continue;
+					}else if(property.startsWith("_:b") && !produceGeneralizedRDF){
+						continue;
+					}else if(!URI.create(property).isAbsolute()){
+						continue;
+					}else{
+						for(Object _item:values){
+							JSONObject item=(JSONObject)_item;
+							if(isListObject(item)){
+								ArrayList<RDFTriple> listTriples=new ArrayList<>();
+								Object listHead=listToRDF(item.getJSONArray("@list"), listTriples, idGen);
+								triples.add(new RDFTriple(subjectURI==null ? subject : subjectURI, URI.create(property), listHead));
+								triples.addAll(listTriples);
+							}else{
+								Object result=objectToRDF(item);
+								if(result!=null){
+									triples.add(new RDFTriple(subjectURI==null ? subject : subjectURI, URI.create(property), result));
+								}
+							}
+						}
+					}
+				}
+			}
+			if(!"@default".equals(graphName)){
+				if(graphName.startsWith("_:")){
+					for(RDFTriple triple : triples){
+						triple.graphName=graphName;
+					}
+				}else{
+					URI graphNameURI=URI.create(graphName);
+					for(RDFTriple triple : triples){
+						triple.graphName=graphNameURI;
+					}
+				}
+			}
+			allTriples.addAll(triples);
+		}
+		return allTriples;
+	}
+
+	public static JSONArray flatten(Object element, URI baseURI){
+		JSONObject nodeMap=new JSONObject();
+		nodeMap.put("@default", new JSONObject());
+		BlankNodeIdentifierGenerator idGen=new BlankNodeIdentifierGenerator();
+		JSONArray expanded=expandToArray(element, baseURI);
+		System.out.println(expanded.toString(4));
+		generateNodeMap(expanded, nodeMap, "@default", null, null, null, idGen);
+		//generateNodeMap(element, nodeMap, "@default", null, null, null, idGen);
+		System.out.println(nodeMap.toString(4));
+		JSONObject defaultGraph=nodeMap.getJSONObject("@default");
+		for(String graphName:nodeMap.keySet()){
+			if("@default".equals(graphName))
+				continue;
+			if(!defaultGraph.has(graphName))
+				defaultGraph.put(graphName, jsonObjectWithSingleKey("@id", graphName));
+			JSONObject entry=defaultGraph.getJSONObject(graphName);
+			entry.put("@graph", new JSONArray());
+			JSONObject graph=nodeMap.getJSONObject(graphName);
+			ArrayList<String> graphKeys=keysAsList(graph);
+			Collections.sort(graphKeys);
+			for(String id:graphKeys){
+				JSONObject node=graph.getJSONObject(id);
+				if(!(node.has("@id") && node.length()==1))
+					entry.getJSONArray("@graph").put(node);
+			}
+		}
+		JSONArray flattened=new JSONArray();
+		ArrayList<String> defaultGraphKeys=keysAsList(defaultGraph);
+		Collections.sort(defaultGraphKeys);
+		for(String id:defaultGraphKeys){
+			JSONObject node=defaultGraph.getJSONObject(id);
+			if(!(node.has("@id") && node.length()==1))
+				flattened.put(node);
+		}
+		System.out.println(flattened.toString(4));
+		return flattened;
 	}
 }
