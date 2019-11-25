@@ -24,6 +24,6 @@ public class RDFLiteral{
 		}else if(datatype.toString().equals(RDF.NS_RDF+"langString")){
 			return '"'+quote(lexicalForm)+"\"@"+languageTag;
 		}
-		return '"'+lexicalForm+"\"^^<"+datatype+'>';
+		return '"'+quote(lexicalForm)+"\"^^<"+datatype+'>';
 	}
 }
