@@ -67,7 +67,17 @@ public class JLDDocument{
 	public static JSONObject compact(JSONArray src, Object context, boolean compactArrays){
 		JLDContext localContext=updateContext(new JLDContext(), context, new ArrayList<>(), null);
 		JSONObject inverseContext=createReverseContext(localContext);
-		return (JSONObject)compact(localContext, inverseContext, null, src, compactArrays);
+		Object _result=compact(localContext, inverseContext, null, src, compactArrays);
+		JSONObject result;
+		if(_result instanceof JSONObject)
+			result=(JSONObject)_result;
+		else
+			result=new JSONObject();
+		if(context instanceof JSONObject && !((JSONObject) context).isEmpty())
+			result.put("@context", context);
+		else if(!(context instanceof JSONObject))
+			result.put("@context", context);
+		return result;
 	}
 
 	public static JSONObject compactToLocalContext(JSONArray src){
@@ -1098,7 +1108,7 @@ public class JLDDocument{
 				if(activeTerm!=null && activeTerm.containerMapping!=null){
 					container=activeTerm.containerMapping;
 				}
-				Object compactedItem=compact(activeContext, inverseContext, itemActiveProperty, expandedItem instanceof JSONObject && ((JSONObject)expandedItem).has("@list") ? ((JSONObject)expandedItem).getJSONObject("@list") : expandedItem, compactArrays);
+				Object compactedItem=compact(activeContext, inverseContext, itemActiveProperty, expandedItem instanceof JSONObject && ((JSONObject)expandedItem).has("@list") ? ((JSONObject)expandedItem).getJSONArray("@list") : expandedItem, compactArrays);
 				if(isListObject(expandedItem)){
 					if(!(compactedItem instanceof JSONArray)){
 						compactedItem=new JSONArray(Collections.singletonList(compactedItem));

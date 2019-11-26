@@ -41,18 +41,17 @@ foreach($mf->sequence as $test){
 		file_put_contents("src/test/resources/".$test->context, file_get_contents("https://w3c.github.io/json-ld-api/tests/".$test->context));
 	}
 	if($type=="jld:PositiveEvaluationTest"){
-		$j[]="\t\tJSONArray input=readResourceAsArray(\"/{$test->input}\");";
+		$j[]="\t\tJSONArray input=JLDDocument.expandToArray(readResourceAsJSON(\"/{$test->input}\"));";
 		$j[]="\t\tObject expect=readResourceAsJSON(\"/{$test->expect}\");";
 		$j[]="\t\tJSONObject context=(JSONObject)readResourceAsJSON(\"/{$test->context}\");";
 		if(isset($test->option->compactArrays) && !$test->option->compactArrays)
 			$j[]="\t\tJSONObject compacted=JLDDocument.compact(input, context.get(\"@context\"), false);";
 		else
 			$j[]="\t\tJSONObject compacted=JLDDocument.compact(input, context.get(\"@context\"));";
-		$j[]="\t\tcompacted.put(\"@context\", context.get(\"@context\"));";
 		$j[]="\t\tassertEqualJLD(expect, compacted);";
 	}else if($type=="jld:NegativeEvaluationTest"){
 		$j[]="\t\tassertThrows(JLDException.class, ()->{";
-		$j[]="\t\t\tJSONArray input=readResourceAsArray(\"/{$test->input}\");";
+		$j[]="\t\t\tJSONArray input=JLDDocument.expandToArray(readResourceAsJSON(\"/{$test->input}\"));";
 		$j[]="\t\t\tJSONObject context=(JSONObject)readResourceAsJSON(\"/{$test->context}\");";
 		$j[]="\t\t\tJLDDocument.compact(input, context.get(\"@context\"));";
 		$j[]="\t\t}, \"{$test->expectErrorCode}\");";
