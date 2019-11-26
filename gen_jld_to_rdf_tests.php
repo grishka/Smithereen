@@ -7,50 +7,16 @@ $j=[
 "import org.junit.jupiter.api.DisplayName;",
 "import org.junit.jupiter.api.Test;",
 "",
-"import java.io.*;",
-"import java.nio.charset.StandardCharsets;",
 "import java.net.URI;",
 "import java.util.*;",
 "",
 "import org.json.*;",
 "",
 "import static org.junit.jupiter.api.Assertions.*;",
+"import static smithereen.jsonld.TestUtils.*;",
 "",
 "class ToRDFTests{",
 "",
-"	private Object readResource(String name){",
-"		InputStream in=getClass().getResourceAsStream(name);",
-"		try{",
-"			byte[] buf=new byte[in.available()];",
-"			in.read(buf);",
-"			in.close();",
-"			String s=new String(buf, StandardCharsets.UTF_8);",
-"			if(s.charAt(0)=='[')",
-"				return new JSONArray(s);",
-"			return new JSONObject(s);",
-"		}catch(IOException ignore){}",
-"		return null;",
-"	}",
-"",
-"	private List<String> readResourceAsLines(String name){",
-"		InputStream in=getClass().getResourceAsStream(name);",
-"		try{",
-"			byte[] buf=new byte[in.available()];",
-"			in.read(buf);",
-"			in.close();",
-"			String s=new String(buf, StandardCharsets.UTF_8);",
-"			return Arrays.asList(s.split(\"\\n\"));",
-"		}catch(IOException ignore){}",
-"		return null;",
-"	}",
-"",
-"	private List<String> eachToString(List<?> list){",
-"		ArrayList<String> result=new ArrayList<>();",
-"		for(Object o:list)",
-"			result.add(o.toString());",
-"		return result;",
-"	}",
-""
 ];
 
 foreach($mf->sequence as $test){
@@ -78,7 +44,7 @@ foreach($mf->sequence as $test){
 	if(isset($test->option) && isset($test->option->base))
 		$inputURL=$test->option->base;
 	if($type=="jld:PositiveEvaluationTest"){
-		$j[]="\t\tObject input=readResource(\"/{$test->input}\");";
+		$j[]="\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
 		$j[]="\t\tArrayList<RDFTriple> result=JLDDocument.toRDF(input, URI.create(\"$inputURL\"));";
 		if(filesize("src/test/resources/".$test->expect)>0){
 			$j[]="\t\tList<String> expect=readResourceAsLines(\"/{$test->expect}\");";
@@ -89,7 +55,7 @@ foreach($mf->sequence as $test){
 		}
 	}else if($type=="jld:NegativeEvaluationTest"){
 		$j[]="\t\tassertThrows(JLDException.class, ()->{";
-		$j[]="\t\t\tObject input=readResource(\"/{$test->input}\");";
+		$j[]="\t\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
 		$j[]="\t\t\tJLDDocument.toRDF(input, URI.create(\"$inputURL\"));";
 		$j[]="\t\t}, \"{$test->expectErrorCode}\");";
 	}else{

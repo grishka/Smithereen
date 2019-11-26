@@ -14,7 +14,7 @@ public class RDFLiteral{
 	}
 
 	private static String quote(String s){
-		return s.replace("\\", "\\\\").replace("\"", "\\\"");
+		return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
 	}
 
 	@Override

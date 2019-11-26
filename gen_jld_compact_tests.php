@@ -15,28 +15,10 @@ $j=[
 "import org.json.*;",
 "",
 "import static org.junit.jupiter.api.Assertions.*;",
+"import static smithereen.jsonld.TestUtils.*;",
 "",
 "class CompactTests{",
 "",
-"	private Object readResource(String name){",
-"		InputStream in=getClass().getResourceAsStream(name);",
-"		try{",
-"			byte[] buf=new byte[in.available()];",
-"			in.read(buf);",
-"			in.close();",
-"			String s=new String(buf, StandardCharsets.UTF_8);",
-"			if(s.charAt(0)=='[')",
-"				return new JSONArray(s);",
-"			return new JSONObject(s);",
-"		}catch(IOException ignore){}",
-"		return null;",
-"	}",
-"",
-"	private JSONArray readResourceAsArray(String name){",
-"		Object r=readResource(name);",
-"		return r instanceof JSONArray ? (JSONArray)r : new JSONArray(Collections.singletonList(r));",
-"	}",
-""
 ];
 
 foreach($mf->sequence as $test){
@@ -60,18 +42,18 @@ foreach($mf->sequence as $test){
 	}
 	if($type=="jld:PositiveEvaluationTest"){
 		$j[]="\t\tJSONArray input=readResourceAsArray(\"/{$test->input}\");";
-		$j[]="\t\tObject expect=readResource(\"/{$test->expect}\");";
-		$j[]="\t\tJSONObject context=(JSONObject)readResource(\"/{$test->context}\");";
+		$j[]="\t\tObject expect=readResourceAsJSON(\"/{$test->expect}\");";
+		$j[]="\t\tJSONObject context=(JSONObject)readResourceAsJSON(\"/{$test->context}\");";
 		if(isset($test->option->compactArrays) && !$test->option->compactArrays)
 			$j[]="\t\tJSONObject compacted=JLDDocument.compact(input, context.get(\"@context\"), false);";
 		else
 			$j[]="\t\tJSONObject compacted=JLDDocument.compact(input, context.get(\"@context\"));";
 		$j[]="\t\tcompacted.put(\"@context\", context.get(\"@context\"));";
-		$j[]="\t\tJLDUtilities.assertEqualJLD(expect, compacted);";
+		$j[]="\t\tassertEqualJLD(expect, compacted);";
 	}else if($type=="jld:NegativeEvaluationTest"){
 		$j[]="\t\tassertThrows(JLDException.class, ()->{";
 		$j[]="\t\t\tJSONArray input=readResourceAsArray(\"/{$test->input}\");";
-		$j[]="\t\t\tJSONObject context=(JSONObject)readResource(\"/{$test->context}\");";
+		$j[]="\t\t\tJSONObject context=(JSONObject)readResourceAsJSON(\"/{$test->context}\");";
 		$j[]="\t\t\tJLDDocument.compact(input, context.get(\"@context\"));";
 		$j[]="\t\t}, \"{$test->expectErrorCode}\");";
 	}else{

@@ -388,7 +388,7 @@ public class JLDDocument{
 			try{
 				if(value.startsWith("?")){
 					URI b=activeContext.baseIRI;
-					return new URI(b.getScheme(), b.getAuthority(), b.getPath(), value.substring(1), b.getFragment()).toString();
+					return new URI(b.getScheme(), b.getAuthority(), b.getPath(), value.substring(1), null).toString();
 				}
 			}catch(URISyntaxException ignore){}
 			if(value.startsWith("#"))

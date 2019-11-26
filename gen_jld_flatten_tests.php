@@ -7,29 +7,14 @@ $j=[
 "import org.junit.jupiter.api.DisplayName;",
 "import org.junit.jupiter.api.Test;",
 "",
-"import java.io.*;",
-"import java.nio.charset.StandardCharsets;",
 "import java.net.URI;",
 "",
 "import org.json.*;",
 "",
 "import static org.junit.jupiter.api.Assertions.*;",
+"import static smithereen.jsonld.TestUtils.*;",
 "",
 "class FlattenTests{",
-"",
-"	private Object readResource(String name){",
-"		InputStream in=getClass().getResourceAsStream(name);",
-"		try{",
-"			byte[] buf=new byte[in.available()];",
-"			in.read(buf);",
-"			in.close();",
-"			String s=new String(buf, StandardCharsets.UTF_8);",
-"			if(s.charAt(0)=='[')",
-"				return new JSONArray(s);",
-"			return new JSONObject(s);",
-"		}catch(IOException ignore){}",
-"		return null;",
-"	}",
 ""
 ];
 
@@ -56,13 +41,13 @@ foreach($mf->sequence as $test){
 	if(isset($test->option) && isset($test->option->base))
 		$inputURL=$test->option->base;
 	if($type=="jld:PositiveEvaluationTest"){
-		$j[]="\t\tObject input=readResource(\"/{$test->input}\");";
-		$j[]="\t\tObject expect=readResource(\"/{$test->expect}\");";
+		$j[]="\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
+		$j[]="\t\tObject expect=readResourceAsJSON(\"/{$test->expect}\");";
 		$j[]="\t\tJSONArray flattened=JLDDocument.flatten(input, URI.create(\"$inputURL\"));";
-		$j[]="\t\tJLDUtilities.assertEqualJLD(expect, flattened);";
+		$j[]="\t\tassertEqualJLD(expect, flattened);";
 	}else if($type=="jld:NegativeEvaluationTest"){
 		$j[]="\t\tassertThrows(JLDException.class, ()->{";
-		$j[]="\t\t\tObject input=readResource(\"/{$test->input}\");";
+		$j[]="\t\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
 		$j[]="\t\t\tJLDDocument.flatten(input, URI.create(\"$inputURL\"));";
 		$j[]="\t\t}, \"{$test->expectErrorCode}\");";
 	}else{
