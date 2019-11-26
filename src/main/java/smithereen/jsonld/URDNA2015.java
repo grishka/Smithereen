@@ -1,5 +1,8 @@
 package smithereen.jsonld;
 
+import org.json.JSONObject;
+
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -9,10 +12,26 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
+import smithereen.Utils;
+
 public class URDNA2015{
 
 	public static List<RDFTriple> normalize(List<RDFTriple> input){
 		return new NormalizationState().normalize(input);
+	}
+
+	public static String canonicalize(JSONObject json, URI baseURI){
+		List<RDFTriple> norm=normalize(JLDDocument.toRDF(json, baseURI));
+		ArrayList<String> lines=new ArrayList<>(norm.size());
+		for(RDFTriple t:norm)
+			lines.add(t.toString());
+		Collections.sort(lines);
+		StringBuilder sb=new StringBuilder();
+		for(String line:lines){
+			sb.append(line);
+			sb.append('\n');
+		}
+		return sb.toString();
 	}
 
 	private static class NormalizationState{
@@ -273,14 +292,7 @@ public class URDNA2015{
 		}
 
 		private String hash(String src){
-			byte[] hash=sha256.digest(src.getBytes(StandardCharsets.UTF_8));
-			StringBuilder sb=new StringBuilder(hash.length*2);
-			final char[] alphabet={'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
-			for(byte b:hash){
-				sb.append(alphabet[((int)b & 0xF0) >> 4]);
-				sb.append(alphabet[(int)b & 0x0F]);
-			}
-			return sb.toString();
+			return Utils.byteArrayToHexString(sha256.digest(src.getBytes(StandardCharsets.UTF_8)));
 		}
 
 		private static class HashNResult{

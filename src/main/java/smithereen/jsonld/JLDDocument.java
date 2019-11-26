@@ -118,6 +118,9 @@ public class JLDDocument{
 			case "https://w3id.org/security/v1":
 				file=readResourceFile("w3-security");
 				break;
+			case "https://w3id.org/identity/v1":
+				file=readResourceFile("w3-identity");
+				break;
 			default:
 				throw new JLDException("loading remote context failed");
 		}
@@ -1325,7 +1328,7 @@ public class JLDDocument{
 			value=value.toString();
 			if(datatype==null)
 				datatype=RDF.NS_XSD+"boolean";
-		}else if(value instanceof Double || (value instanceof Integer && (RDF.NS_XSD+"double").equals(datatype))){
+		}else if((value instanceof Double && (double)value%1.0!=0.0) || (value instanceof Integer && (RDF.NS_XSD+"double").equals(datatype))){
 			double d;
 			if(value instanceof Integer){
 				d=(int)(Integer)value;
@@ -1335,8 +1338,11 @@ public class JLDDocument{
 			value=String.format(Locale.US, "%.15E", d).replaceAll("(\\d)0*E\\+?(-?)0+(\\d+)","$1E$2$3");
 			if(datatype==null)
 				datatype=RDF.NS_XSD+"double";
-		}else if(value instanceof Integer){
-			value=value.toString();
+		}else if(value instanceof Integer || value instanceof Double){
+			if(value instanceof Integer)
+				value=value.toString();
+			else
+				value=String.valueOf((int)(double)value);
 			if(datatype==null)
 				datatype=RDF.NS_XSD+"integer";
 		}else if(datatype==null){

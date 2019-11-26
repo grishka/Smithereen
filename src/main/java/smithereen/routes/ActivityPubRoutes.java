@@ -272,8 +272,9 @@ public class ActivityPubRoutes{
 				return "Digest verification failed";
 			}
 		}
-		JSONObject obj=JLDDocument.convertToLocalContext(new JSONObject(req.body()));
-		System.out.println(obj);
+		String body=req.body();
+		System.out.println(body);
+		JSONObject obj=JLDDocument.convertToLocalContext(new JSONObject(body));
 		Activity activity;
 		try{
 			ActivityPubObject o=ActivityPubObject.parse(obj);

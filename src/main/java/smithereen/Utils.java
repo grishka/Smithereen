@@ -150,7 +150,7 @@ public class Utils{
 
 	public static String byteArrayToHexString(byte[] arr){
 		char[] chars=new char[arr.length*2];
-		char[] hex={'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+		char[] hex={'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
 		for(int i=0;i<arr.length;i++){
 			chars[i*2]=hex[((int)arr[i] >> 4) & 0x0F];
 			chars[i*2+1]=hex[(int)arr[i] & 0x0F];

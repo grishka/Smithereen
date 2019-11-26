@@ -1,0 +1,36 @@
+<https://cybre.space/users/nightpool/statuses/103162290464035053/activity> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/ns/activitystreams#Create> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053/activity> <https://www.w3.org/ns/activitystreams#actor> <https://cybre.space/users/nightpool> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053/activity> <https://www.w3.org/ns/activitystreams#cc> <https://cybre.space/users/nightpool/followers> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053/activity> <https://www.w3.org/ns/activitystreams#object> <https://cybre.space/users/nightpool/statuses/103162290464035053> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053/activity> <https://www.w3.org/ns/activitystreams#published> "2019-11-19T02:47:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053/activity> <https://www.w3.org/ns/activitystreams#to> <https://www.w3.org/ns/activitystreams#Public> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053/replies> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/ns/activitystreams#Collection> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053/replies> <https://www.w3.org/ns/activitystreams#first> _:c14n0 .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <http://ostatus.org#atomUri> "https://cybre.space/users/nightpool/statuses/103162290464035053" .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <http://ostatus.org#conversation> "tag:cybre.space,2019-11-19:objectId=37318027:objectType=Conversation" .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <http://ostatus.org#inReplyToAtomUri> "https://cybre.space/users/nightpool/statuses/103162255712086665" .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/ns/activitystreams#Note> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <https://www.w3.org/ns/activitystreams#attachment> _:c14n2 .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <https://www.w3.org/ns/activitystreams#attributedTo> <https://cybre.space/users/nightpool> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <https://www.w3.org/ns/activitystreams#cc> <https://cybre.space/users/nightpool/followers> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <https://www.w3.org/ns/activitystreams#content> "<p>this is the funniest wikiquote summary ever</p>" .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <https://www.w3.org/ns/activitystreams#content> "<p>this is the funniest wikiquote summary ever</p>"@en .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <https://www.w3.org/ns/activitystreams#inReplyTo> <https://cybre.space/users/nightpool/statuses/103162255712086665> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <https://www.w3.org/ns/activitystreams#published> "2019-11-19T02:47:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <https://www.w3.org/ns/activitystreams#replies> <https://cybre.space/users/nightpool/statuses/103162290464035053/replies> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <https://www.w3.org/ns/activitystreams#sensitive> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <https://www.w3.org/ns/activitystreams#to> <https://www.w3.org/ns/activitystreams#Public> .
+<https://cybre.space/users/nightpool/statuses/103162290464035053> <https://www.w3.org/ns/activitystreams#url> <https://cybre.space/@nightpool/103162290464035053> .
+_:c14n0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/ns/activitystreams#CollectionPage> .
+_:c14n0 <https://www.w3.org/ns/activitystreams#next> <https://cybre.space/users/nightpool/statuses/103162290464035053/replies?only_other_accounts=true&page=true> .
+_:c14n0 <https://www.w3.org/ns/activitystreams#partOf> <https://cybre.space/users/nightpool/statuses/103162290464035053/replies> .
+_:c14n1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "1.8E-1"^^<http://www.w3.org/2001/XMLSchema#double> .
+_:c14n1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:c14n2 <http://joinmastodon.org/ns#blurhash> "UAR{#[D,R.WWIUxut6Rk~qWARiof?bRjWCof" .
+_:c14n2 <http://joinmastodon.org/ns#focalPoint> _:c14n3 .
+_:c14n2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/ns/activitystreams#Document> .
+_:c14n2 <https://www.w3.org/ns/activitystreams#mediaType> "image/png" .
+_:c14n2 <https://www.w3.org/ns/activitystreams#name> "Hoodwinked! is a 2005 film based on the Little Red Riding Hood folktale. Structurally, it borrows from the films Rashomon and The Usual Suspects, as well as frequently intertwining various plots, a method popularized by Quentin Tarantino's cult film Pulp Fiction." .
+_:c14n2 <https://www.w3.org/ns/activitystreams#url> <https://static.cybre.space/media_attachments/files/006/439/613/original/9ea1fc8b83478cbf.png> .
+_:c14n3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "-1"^^<http://www.w3.org/2001/XMLSchema#integer> .
+_:c14n3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:c14n1 .
