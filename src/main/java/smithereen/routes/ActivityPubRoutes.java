@@ -52,6 +52,7 @@ import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDDocument;
+import smithereen.jsonld.LinkedDataSignatures;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -274,7 +275,8 @@ public class ActivityPubRoutes{
 		}
 		String body=req.body();
 		System.out.println(body);
-		JSONObject obj=JLDDocument.convertToLocalContext(new JSONObject(body));
+		JSONObject rawActivity=new JSONObject(body);
+		JSONObject obj=JLDDocument.convertToLocalContext(rawActivity);
 		Activity activity;
 		try{
 			ActivityPubObject o=ActivityPubObject.parse(obj);
@@ -313,13 +315,46 @@ public class ActivityPubRoutes{
 				return x.toString();
 			}
 		}
+
+		User httpSigOwner;
 		try{
-			verifyHttpSignature(req, user.publicKey);
+			httpSigOwner=verifyHttpSignature(req, user);
 		}catch(Exception x){
 			x.printStackTrace();
 			resp.status(400);
 			return x.toString();
 		}
+
+		// if the activity has an LD-signature, verify that and allow any (cached) user to sign the HTTP signature
+		// if it does not, the owner of the HTTP signature must match the actor
+		if(rawActivity.has("signature")){
+			JSONObject sig=rawActivity.getJSONObject("signature");
+			try{
+				URI keyID=URI.create(sig.getString("creator"));
+				URI userID=Utils.userIdFromKeyId(keyID);
+				if(!userID.equals(user.activityPubID)){
+					resp.status(400);
+					return "LD-signature creator is not activity actor";
+				}
+				if(!LinkedDataSignatures.verify(rawActivity, user.publicKey)){
+					resp.status(400);
+					return "LD-signature verification failed";
+				}
+				System.out.println("verified LD signature by "+userID);
+			}catch(Exception x){
+				x.printStackTrace();
+				resp.status(400);
+				return x.toString();
+			}
+		}else{
+			if(!user.equals(httpSigOwner)){
+				resp.status(400);
+				return "In the absence of an LD-signature, HTTP signature must be made by the activity actor";
+			}
+			System.out.println("verified HTTP signature by "+httpSigOwner.activityPubID);
+		}
+
+
 		try{
 			switch(activity.getType()){
 				case "Create":
@@ -416,7 +451,7 @@ public class ActivityPubRoutes{
 
 
 
-	private static void verifyHttpSignature(Request req, PublicKey publicKey) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{
+	private static User verifyHttpSignature(Request req, User userHint) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, SQLException{
 		String sigHeader=req.headers("Signature");
 		if(sigHeader==null)
 			throw new IllegalArgumentException("Request is missing Signature header");
@@ -466,6 +501,15 @@ public class ActivityPubRoutes{
 		if(diff<-30000L)
 			throw new IllegalArgumentException("Date is too far in the past (difference: "+diff+"ms)");
 
+		URI userID=Utils.userIdFromKeyId(URI.create(keyId));
+		User user;
+		if(userHint.activityPubID.equals(userID))
+			user=userHint;
+		else
+			user=UserStorage.getUserByActivityPubID(userID);
+		if(user==null)
+			throw new IllegalArgumentException("Request signed by unknown user: "+userID);
+
 		ArrayList<String> sigParts=new ArrayList<>();
 		for(String header:headers){
 			String value;
@@ -478,12 +522,13 @@ public class ActivityPubRoutes{
 		}
 		String sigStr=String.join("\n", sigParts);
 		Signature sig=Signature.getInstance("SHA256withRSA");
-		sig.initVerify(publicKey);
+		sig.initVerify(user.publicKey);
 		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
 		if(!sig.verify(signature)){
 			System.out.println("Failed sig: "+sigHeader);
 			throw new IllegalArgumentException("Signature failed to verify");
 		}
+		return user;
 	}
 
 	private static boolean verifyHttpDigest(String digestHeader, byte[] bodyData){

@@ -29,6 +29,7 @@ import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.data.User;
 import smithereen.jsonld.JLDDocument;
+import smithereen.jsonld.LinkedDataSignatures;
 
 public class ActivityPub{
 
@@ -61,7 +62,7 @@ public class ActivityPub{
 	}
 
 	public static void postActivity(URI inboxUrl, Activity activity, User user) throws IOException{
-		System.out.println("Sending activity: "+activity);
+		//System.out.println("Sending activity: "+activity);
 		String path=inboxUrl.getPath();
 		String host=inboxUrl.getHost();
 		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
@@ -81,14 +82,19 @@ public class ActivityPub{
 			throw new RuntimeException(x);
 		}
 
-		String sigHeader="keyId=\""+Config.localURI(user.username+"#main-key")+"\",headers=\"(request-target) host date\",signature=\""+Base64.getEncoder().encodeToString(signature)+"\"";
+		String keyID=Config.localURI(user.username+"#main-key").toString();
+		String sigHeader="keyId=\""+keyID+"\",headers=\"(request-target) host date\",signature=\""+Base64.getEncoder().encodeToString(signature)+"\"";
+
+		JSONObject body=activity.asRootActivityPubObject();
+		LinkedDataSignatures.sign(body, user.privateKey, keyID);
+		System.out.println("Sending activity: "+body);
 
 		Request req=new Request.Builder()
 				.url(inboxUrl.toString())
 				.header("Signature", sigHeader)
 				.header("Date", date)
 				//.header("Content-Type", "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
-				.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), activity.asRootActivityPubObject().toString()))
+				.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), body.toString()))
 				.build();
 		Response resp=httpClient.newCall(req).execute();
 		resp.body().close();

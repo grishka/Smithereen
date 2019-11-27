@@ -12,6 +12,8 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Transparency;
 import java.awt.image.BufferedImage;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -255,6 +257,20 @@ public class Utils{
 			return ISO_DATE_FORMAT.parse(date);
 		}catch(ParseException e){
 			return null;
+		}
+	}
+
+	public static URI userIdFromKeyId(URI keyID){
+		try{
+			// most AP servers use key IDs in the form http://example.com/users/username#main-key so removing the URI fragment is enough
+			if(keyID.getFragment()!=null){
+				return new URI(keyID.getScheme(), keyID.getSchemeSpecificPart(), null);
+			}
+			// Misskey does this: https://misskey.io/users/7rkrarq81i/publickey
+			URI uri=keyID.resolve("./");
+			return new URI(uri.getScheme(), uri.getSchemeSpecificPart().replaceAll("/$", ""), null);
+		}catch(URISyntaxException x){
+			throw new RuntimeException("checked exceptions are stupid");
 		}
 	}
 }
