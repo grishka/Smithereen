@@ -253,8 +253,8 @@ public class ActivityPubRoutes{
 		JSONObject users=new JSONObject();
 		users.put("total", UserStorage.getLocalUserCount());
 		usage.put("users", users);
-		usage.put("localPosts", 0);
-		usage.put("localComments", 0);
+		usage.put("localPosts", PostStorage.getLocalPostCount(false));
+		usage.put("localComments", PostStorage.getLocalPostCount(true));
 		root.put("usage", usage);
 		JSONObject services=new JSONObject();
 		services.put("inbound", Collections.EMPTY_LIST);

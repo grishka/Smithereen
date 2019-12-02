@@ -192,4 +192,18 @@ public class Post extends ActivityPubObject{
 			cc.add(l);
 		}
 	}
+
+	public String getAttachmentsHTML(){
+		ArrayList<String> lines=new ArrayList<>();
+		for(ActivityPubObject obj:attachment){
+			if(obj.mediaType==null)
+				continue;
+			if(obj.mediaType.startsWith("image/")){
+				lines.add("<img src=\""+obj.url+"\"/>");
+			}else if(obj.mediaType.startsWith("video/")){
+				lines.add("<video src=\""+obj.url+"\" controls></video>");
+			}
+		}
+		return String.join("\n", lines);
+	}
 }

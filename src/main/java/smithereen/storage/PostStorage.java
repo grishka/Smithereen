@@ -264,4 +264,12 @@ public class PostStorage{
 		}
 		return 0;
 	}
+
+	public static int getLocalPostCount(boolean comments) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		try(ResultSet res=conn.createStatement().executeQuery("SELECT COUNT(*) FROM `wall_posts` WHERE `ap_id` IS NULL AND `reply_key` IS "+(comments ? "NOT " : "")+"NULL")){
+			res.first();
+			return res.getInt(1);
+		}
+	}
 }

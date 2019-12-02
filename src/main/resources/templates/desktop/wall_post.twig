@@ -7,6 +7,7 @@
 		<td>
 			<a href="{{post.user.url}}"{{post.userLinkAttrs}}>{{post.user.fullName}}</a><br/>
 			{{post.content | escape(false)}}<br/>
+			{%if post.attachment%}{{post.attachmentsHTML | escape(false)}}<br/>{%endif%}
 			<a href="{{post.internalURL}}">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} | <a href="{{post.url}}/confirmDelete">{{L('delete')}}</a>{%endif%}
 		</td>
 	</tr>
