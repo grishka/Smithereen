@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import smithereen.BuildInfo;
 import smithereen.ObjectNotFoundException;
 import smithereen.activitypub.ActivityPub;
 import smithereen.Config;
@@ -246,7 +247,7 @@ public class ActivityPubRoutes{
 		root.put("protocols", Collections.singletonList("activitypub"));
 		JSONObject software=new JSONObject();
 		software.put("name", "smithereen");
-		software.put("version", "0.0.1-pre-alpha");
+		software.put("version", BuildInfo.VERSION);
 		root.put("software", software);
 		root.put("openRegistrations", false);
 		JSONObject usage=new JSONObject();
@@ -261,7 +262,7 @@ public class ActivityPubRoutes{
 		services.put("outbound", Collections.EMPTY_LIST);
 		root.put("services", services);
 		JSONObject meta=new JSONObject();
-		meta.put("supports_friend_requests", true);
+		meta.put("supportsFriendRequests", true);
 		root.put("metadata", meta);
 		return root;
 	}

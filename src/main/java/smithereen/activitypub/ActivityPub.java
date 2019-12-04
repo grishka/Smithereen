@@ -47,17 +47,16 @@ public class ActivityPub{
 				.build();
 		Call call=httpClient.newCall(req);
 		Response resp=call.execute();
-		ResponseBody body=resp.body();
-		if(!resp.isSuccessful()){
-			body.close();
-			return null;
-		}
-		String r=body.string();
-		body.close();
-		try{
-			return ActivityPubObject.parse(JLDDocument.convertToLocalContext(new JSONObject(r)));
-		}catch(Exception x){
-			throw new JSONException(x);
+		try(ResponseBody body=resp.body()){
+			if(!resp.isSuccessful())
+				return null;
+
+			String r=body.string();
+			try{
+				return ActivityPubObject.parse(JLDDocument.convertToLocalContext(new JSONObject(r)));
+			}catch(Exception x){
+				throw new JSONException(x);
+			}
 		}
 	}
 
@@ -93,7 +92,6 @@ public class ActivityPub{
 				.url(inboxUrl.toString())
 				.header("Signature", sigHeader)
 				.header("Date", date)
-				//.header("Content-Type", "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
 				.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), body.toString()))
 				.build();
 		Response resp=httpClient.newCall(req).execute();
