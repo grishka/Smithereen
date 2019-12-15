@@ -11,7 +11,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.Random;
 
 import javax.imageio.IIOImage;
@@ -26,8 +30,12 @@ import javax.servlet.http.Part;
 
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
+import smithereen.data.PhotoSize;
 import smithereen.data.User;
+import smithereen.libvips.VImage;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -115,83 +123,61 @@ public class SettingsRoutes{
 		if(Utils.requireAccount(req, resp)){
 			Account self=req.session().attribute("account");
 			try{
-				req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/temp"));
+				req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 5*1024*1024, -1L, 0));
 				Part part=req.raw().getPart("pic");
 				if(part.getSize()>5*1024*1024){
 					throw new IOException("file too large");
 				}
-				try(InputStream in=part.getInputStream()){
-				/*byte[] buf=new byte[10240];
-				int read;
-				while((read=in.read(buf))>0){
 
-				}*/
-					BufferedImage image=ImageIO.read(in);
-					if(image.getWidth()!=image.getHeight()){
-						int size=Math.min(image.getWidth(), image.getHeight());
-						BufferedImage square=new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
-						Graphics2D g=square.createGraphics();
-						g.drawImage(image, size/2-image.getWidth()/2, size/2-image.getHeight()/2, image.getWidth(), image.getHeight(), null);
-						g.dispose();
-						image=square;
+				byte[] key=MessageDigest.getInstance("MD5").digest((self.user.username+","+System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8));
+				String keyHex=Utils.byteArrayToHexString(key);
+
+				File tmpDir = new File(System.getProperty("java.io.tmpdir"));
+				File temp=new File(tmpDir, keyHex);
+				//part.write(temp.getAbsolutePath());
+				part.write(keyHex);
+				VImage img=new VImage(temp.getAbsolutePath());
+				if(img.getWidth()!=img.getHeight()){
+					VImage cropped;
+					if(img.getHeight()>img.getWidth()){
+						cropped=img.crop(0, 0, img.getWidth(), img.getWidth());
+					}else{
+						cropped=img.crop(img.getWidth()/2-img.getHeight()/2, 0, img.getHeight(), img.getHeight());
 					}
-
-					BufferedImage resized50=Utils.getScaledInstance(image, 50, 50, RenderingHints.VALUE_INTERPOLATION_BILINEAR, true);
-					BufferedImage resized100=Utils.getScaledInstance(image, 100, 100, RenderingHints.VALUE_INTERPOLATION_BILINEAR, true);
-					BufferedImage resized200=Utils.getScaledInstance(image, 200, 200, RenderingHints.VALUE_INTERPOLATION_BILINEAR, true);
-					BufferedImage resized400=Utils.getScaledInstance(image, 400, 400, RenderingHints.VALUE_INTERPOLATION_BILINEAR, true);
-
-					File profilePicsDir=new File(Config.uploadPath, "avatars");
-					profilePicsDir.mkdirs();
-
-					ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
-					JPEGImageWriteParam jpegParams = new JPEGImageWriteParam(null);
-					jpegParams.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-					jpegParams.setCompressionQuality(0.95f);
-
-					File destFile=new File(profilePicsDir, self.user.username.toLowerCase()+"_50.jpg");
-					try(FileImageOutputStream out=new FileImageOutputStream(destFile)){
-						writer.setOutput(out);
-						writer.write(null, new IIOImage(resized50, null, null), jpegParams);
-					}
-
-					destFile=new File(profilePicsDir, self.user.username.toLowerCase()+"_100.jpg");
-					try(FileImageOutputStream out=new FileImageOutputStream(destFile)){
-						writer.setOutput(out);
-						writer.write(null, new IIOImage(resized100, null, null), jpegParams);
-					}
-
-					destFile=new File(profilePicsDir, self.user.username.toLowerCase()+"_200.jpg");
-					try(FileImageOutputStream out=new FileImageOutputStream(destFile)){
-						writer.setOutput(out);
-						writer.write(null, new IIOImage(resized200, null, null), jpegParams);
-					}
-
-					destFile=new File(profilePicsDir, self.user.username.toLowerCase()+"_400.jpg");
-					try(FileImageOutputStream out=new FileImageOutputStream(destFile)){
-						writer.setOutput(out);
-						writer.write(null, new IIOImage(resized400, null, null), jpegParams);
-					}
-
-					String path50="/s/uploads/avatars/"+self.user.username.toLowerCase()+"_50.jpg";
-					String path100="/s/uploads/avatars/"+self.user.username.toLowerCase()+"_100.jpg";
-					String path200="/s/uploads/avatars/"+self.user.username.toLowerCase()+"_200.jpg";
-					String path400="/s/uploads/avatars/"+self.user.username.toLowerCase()+"_400.jpg";
-
-
-					self.user.avatar=new User.Avatar();
-					self.user.avatar.hasSizes=true;
-					self.user.avatar.jpeg50=path50;
-					self.user.avatar.jpeg100=path100;
-					self.user.avatar.jpeg200=path200;
-					self.user.avatar.jpeg400=path400;
-					UserStorage.getById(self.user.id).avatar=self.user.avatar;
-					UserStorage.updateProfilePicture(self.user.id, self.user.avatar.asJSON());
-
-					req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("avatar_updated"));
-					resp.redirect("/settings/");
+					img.release();
+					img=cropped;
 				}
-			}catch(IOException|ServletException x){
+
+				LocalImage ava=new LocalImage();
+				File profilePicsDir=new File(Config.uploadPath, "avatars");
+				try{
+					MediaStorageUtils.writeResizedImages(img, new int[]{50, 100, 200, 400}, new PhotoSize.Type[]{PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
+							85, 80, keyHex, profilePicsDir, Config.uploadURLPath+"/avatars", ava.sizes);
+
+					if(self.user.icon!=null){
+						for(PhotoSize size : ((LocalImage) self.user.icon.get(0)).sizes){
+							String path=size.src.getPath();
+							String name=path.substring(path.lastIndexOf('/')+1);
+							File file=new File(profilePicsDir, name);
+							if(file.exists()){
+								System.out.println("deleting: "+file.getAbsolutePath());
+								file.delete();
+							}
+						}
+					}
+
+					self.user.icon=Collections.singletonList(ava);
+					UserStorage.getById(self.user.id).icon=self.user.icon;
+					UserStorage.updateProfilePicture(self.user.id, keyHex);
+					temp.delete();
+				}finally{
+					img.release();
+				}
+
+				req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("avatar_updated"));
+				resp.redirect("/settings/");
+			}catch(IOException|ServletException|NoSuchAlgorithmException x){
+				x.printStackTrace();
 				req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("image_upload_error"));
 				resp.redirect("/settings/");
 			}

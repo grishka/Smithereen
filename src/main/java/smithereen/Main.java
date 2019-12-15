@@ -1,25 +1,24 @@
 package smithereen;
 
-import org.json.JSONObject;
 import org.jtwig.JtwigModel;
 import org.jtwig.environment.EnvironmentConfiguration;
 import org.jtwig.environment.EnvironmentConfigurationBuilder;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
-import smithereen.jsonld.JLDDocument;
 import smithereen.jtwigext.LangDateFunction;
 import smithereen.jtwigext.LangFunction;
 import smithereen.jtwigext.LangPluralFunction;
+import smithereen.jtwigext.PictureForAvatarFunction;
+import smithereen.jtwigext.RenderAttachmentsFunction;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
+import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
 import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
@@ -38,6 +37,8 @@ public class Main{
 					.add(new LangFunction())
 					.add(new LangPluralFunction())
 					.add(new LangDateFunction())
+					.add(new PictureForAvatarFunction())
+					.add(new RenderAttachmentsFunction())
 				.and()
 				.build();
 	}
@@ -94,6 +95,10 @@ public class Main{
 		path("/.well-known", ()->{
 			get("/webfinger", WellKnownRoutes::webfinger);
 			get("/nodeinfo", WellKnownRoutes::nodeInfo);
+		});
+
+		path("/system", ()->{
+			get("/downloadExternalMedia", SystemRoutes::downloadExternalMedia);
 		});
 
 		path("/:username", ()->{

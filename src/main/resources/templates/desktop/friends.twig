@@ -10,7 +10,7 @@
 <table width="100%">
 	<tr>
 		<td width="100">
-			<img src="{{friend.mediumAvatar}}" srcset="{{friend.mediumAvatarSrcset}}" width="100"/>
+			{{friend.avatar | pictureForAvatar('m')}}
 		</td>
 		<td>
 			<b><a href="{{friend.url}}">{{friend.fullName}}</a></b>

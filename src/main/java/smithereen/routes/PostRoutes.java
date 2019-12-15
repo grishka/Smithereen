@@ -1,20 +1,16 @@
 package smithereen.routes;
 
-import org.json.JSONObject;
 import org.jtwig.JtwigModel;
 
 import java.sql.SQLException;
-import java.util.Date;
 import java.util.List;
 
-import okhttp3.ResponseBody;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.data.Account;
 import smithereen.data.Post;
 import smithereen.data.User;
-import smithereen.jsonld.JLD;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -45,7 +41,7 @@ public class PostRoutes{
 				int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
 				int postID;
 				if(replyTo!=0){
-					Post parent=PostStorage.getPostByID(0, replyTo);
+					Post parent=PostStorage.getPostByID(replyTo);
 					if(parent==null){
 						resp.status(404);
 						return Utils.wrapError(req, "err_post_not_found");
@@ -63,7 +59,7 @@ public class PostRoutes{
 					postID=PostStorage.createUserWallPost(userID, user.id, text, null);
 				}
 
-				Post post=PostStorage.getPostByID(user.id, postID);
+				Post post=PostStorage.getPostByID(postID);
 				ActivityPubWorker.getInstance().sendCreatePostActivity(post);
 
 				resp.redirect("/feed");
@@ -100,7 +96,7 @@ public class PostRoutes{
 			resp.status(404);
 			return Utils.wrapError(req, "err_post_not_found");
 		}
-		Post post=PostStorage.getPostByID(user.id, postID);
+		Post post=PostStorage.getPostByID(postID);
 		if(post==null){
 			resp.status(404);
 			return Utils.wrapError(req, "err_post_not_found");
@@ -149,7 +145,7 @@ public class PostRoutes{
 				resp.status(404);
 				return Utils.wrapError(req, "err_post_not_found");
 			}
-			Post post=PostStorage.getPostByID(user.id, postID);
+			Post post=PostStorage.getPostByID(postID);
 			if(post==null){
 				resp.status(404);
 				return Utils.wrapError(req, "err_post_not_found");
@@ -159,6 +155,7 @@ public class PostRoutes{
 				return Utils.wrapError(req, "err_access");
 			}
 			PostStorage.deletePost(post.id);
+			ActivityPubWorker.getInstance().sendDeletePostActivity(post);
 			resp.redirect("/feed"); // TODO redirect properly
 		}
 		return "";

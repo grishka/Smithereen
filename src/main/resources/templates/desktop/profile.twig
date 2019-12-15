@@ -5,7 +5,7 @@
 	<tr valign="top">
 		<!-- left column -->
 		<td width="200">
-			<img src="{{user.bigAvatar}}" srcset="{{user.bigAvatarSrcset}}"/>
+			{{user.avatar | pictureForAvatar('l')}}
 			{%if currentUser and currentUser.id!=user.id%}
 			{%if isFriend%}
 			<a href="/{{user.username}}/confirmRemoveFriend">{{L("remove_friend")}}</a>
@@ -23,7 +23,7 @@
 				{%if(loop.first or loop.index==4)%}<tr>{%endif%}
 				<td align="center" width="33%" style="overflow: hidden;">
 					<a href="{{friend.url}}">
-						<img src="{{friend.smallAvatar}}" srcset="{{friend.smallAvatarSrcset}}" width="50"/><br/>
+						{{friend.avatar | pictureForAvatar('s')}}<br/>
 						<small>{{friend.firstName}}<br/>{{friend.lastName}}</small>
 					</a>
 				</td>

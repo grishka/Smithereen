@@ -7,6 +7,7 @@ import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -15,7 +16,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Create;
+import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.data.ForeignUser;
@@ -63,6 +66,44 @@ public class ActivityPubWorker{
 					System.out.println("Inboxes: "+inboxes);
 					for(URI inbox:inboxes){
 						executor.submit(new SendOneActivityRunnable(create, inbox, post.user));
+					}
+				}catch(SQLException x){
+					x.printStackTrace();
+				}
+			}
+		});
+	}
+
+	public void sendDeletePostActivity(final Post post){
+		executor.submit(new Runnable(){
+			@Override
+			public void run(){
+				Tombstone ts=new Tombstone();
+				ts.activityPubID=post.activityPubID;
+				ts.formerType="Note";
+
+				Delete delete=new Delete();
+				delete.object=new LinkOrObject(ts);
+				delete.actor=new LinkOrObject(post.user.activityPubID);
+				delete.to=post.to;
+				delete.cc=post.cc;
+				delete.published=new Date();
+				try{
+					delete.activityPubID=new URI(post.activityPubID.getScheme(), post.activityPubID.getSchemeSpecificPart(), "delete");
+				}catch(URISyntaxException ignore){}
+				try{
+					boolean sendToFollowers=post.owner.id==post.user.id;
+					List<URI> inboxes;
+					if(sendToFollowers){
+						inboxes=UserStorage.getFollowerInboxes(post.owner.id);
+					}else if(post.owner instanceof ForeignUser){
+						inboxes=Collections.singletonList(((ForeignUser) post.owner).inbox);
+					}else{
+						return;
+					}
+					System.out.println("Inboxes: "+inboxes);
+					for(URI inbox:inboxes){
+						executor.submit(new SendOneActivityRunnable(delete, inbox, post.user));
 					}
 				}catch(SQLException x){
 					x.printStackTrace();

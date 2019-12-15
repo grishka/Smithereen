@@ -1,6 +1,8 @@
 package smithereen.storage;
 
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -15,6 +17,7 @@ import java.util.Objects;
 
 import smithereen.Config;
 import smithereen.LruCache;
+import smithereen.activitypub.ContextCollector;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
@@ -450,7 +453,7 @@ public class UserStorage{
 		stmt.setString(13, Objects.toString(user.following, null));
 		stmt.setString(14, user.summary);
 		stmt.setInt(15, user.gender==null ? 0 : user.gender.ordinal());
-		stmt.setString(16, user.avatar!=null ? user.avatar.asJSON() : null);
+		stmt.setString(16, user.icon!=null ? user.icon.get(0).asActivityPubObject(new JSONObject(), new ContextCollector()).toString() : null);
 
 		stmt.executeUpdate();
 		if(existingUserID==0){

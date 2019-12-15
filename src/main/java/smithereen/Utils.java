@@ -33,7 +33,7 @@ import spark.Response;
 
 public class Utils{
 
-	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api");
+	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system");
 	private static final PolicyFactory HTML_SANITIZER;
 	private static final SimpleDateFormat ISO_DATE_FORMAT;
 
@@ -272,5 +272,31 @@ public class Utils{
 		}catch(URISyntaxException x){
 			throw new RuntimeException("checked exceptions are stupid");
 		}
+	}
+
+	public static long parseFileSize(String size){
+		size=size.toUpperCase();
+		if(!size.matches("^\\d+[KMGT]?$"))
+			throw new IllegalArgumentException("String '"+size+"' does not have the correct format");
+		char unit=size.charAt(size.length()-1);
+		if(Character.isDigit(unit)){
+			return Long.parseLong(size);
+		}
+		long n=Long.parseLong(size.substring(0, size.length()-1));
+		switch(unit){
+			case 'K':
+				n*=1024L;
+				break;
+			case 'M':
+				n*=1024L*1024L;
+				break;
+			case 'G':
+				n*=1024L*1024L*1024L;
+				break;
+			case 'T':
+				n*=1024L*1024L*1024L*1024L;
+				break;
+		}
+		return n;
 	}
 }

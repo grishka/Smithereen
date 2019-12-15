@@ -7,12 +7,10 @@ import org.jtwig.JtwigModel;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.sql.SQLException;
@@ -51,7 +49,6 @@ import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Post;
 import smithereen.data.User;
-import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDDocument;
 import smithereen.jsonld.LinkedDataSignatures;
 import smithereen.storage.PostStorage;
@@ -90,7 +87,7 @@ public class ActivityPubRoutes{
 			resp.status(404);
 			return "Post not found";
 		}
-		Post post=PostStorage.getPostByID(user.id, postID);
+		Post post=PostStorage.getPostByID(postID);
 		if(post==null){
 			resp.status(404);
 			return "Post not found";

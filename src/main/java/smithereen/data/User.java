@@ -14,6 +14,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -22,7 +23,9 @@ import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Image;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.jsonld.JLD;
+import smithereen.storage.MediaCache;
 import spark.utils.StringUtils;
 
 public class User extends ActivityPubObject{
@@ -32,7 +35,6 @@ public class User extends ActivityPubObject{
 	public String username;
 	public java.sql.Date birthDate;
 	public Gender gender;
-	public Avatar avatar;
 
 	transient public PublicKey publicKey;
 	transient public PrivateKey privateKey;
@@ -48,65 +50,35 @@ public class User extends ActivityPubObject{
 	}
 
 	public boolean hasAvatar(){
-		return avatar!=null;
+		return icon!=null;
 	}
 
-	public String getSmallAvatar(){
-		if(avatar!=null){
-			return avatar.hasSizes ? avatar.jpeg50 : avatar.jpegWhatever;
+	public List<PhotoSize> getAvatar(){
+		Image icon=this.icon!=null ? this.icon.get(0) : null;
+		if(icon==null)
+			return null;
+		if(icon instanceof LocalImage){
+			return ((LocalImage) icon).sizes;
 		}
-		return null;
-	}
-
-	public String getSmallAvatarSrcset(){
-		if(avatar!=null){
-			if(avatar.hasSizes){
-				return avatar.jpeg50+", "+avatar.jpeg100+" 2x";
+		MediaCache cache=MediaCache.getInstance();
+		try{
+			MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.get(icon.url);
+			if(item!=null)
+				return item.sizes;
+		}catch(SQLException e){
+			e.printStackTrace();
+		}
+		String pathPrefix="/system/downloadExternalMedia?type=user_ava&user_id="+id;
+		PhotoSize.Type[] types={PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
+		PhotoSize[] sizes=new PhotoSize[types.length*PhotoSize.Format.values().length];
+		int i=0;
+		for(PhotoSize.Format format:PhotoSize.Format.values()){
+			for(PhotoSize.Type size:types){
+				String path=pathPrefix+"&format="+format.fileExtension()+"&size="+size.suffix();
+				sizes[i++]=new PhotoSize(Config.localURI(path), PhotoSize.UNKNOWN, PhotoSize.UNKNOWN, size, format);
 			}
-			return avatar.jpegWhatever;
 		}
-		return null;
-	}
-
-	public String getMediumAvatar(){
-		if(avatar!=null){
-			return avatar.hasSizes ? avatar.jpeg100 : avatar.jpegWhatever;
-		}
-		return null;
-	}
-
-	public String getMediumAvatarSrcset(){
-		if(avatar!=null){
-			if(avatar.hasSizes){
-				return avatar.jpeg100+", "+avatar.jpeg200+" 2x";
-			}
-			return avatar.jpegWhatever;
-		}
-		return null;
-	}
-
-	public String getBigAvatar(){
-		if(avatar!=null){
-			return avatar.hasSizes ? avatar.jpeg200 : avatar.jpegWhatever;
-		}
-		return null;
-	}
-
-	public String getBigAvatarSrcset(){
-		if(avatar!=null){
-			if(avatar.hasSizes){
-				return avatar.jpeg200+", "+avatar.jpeg400+" 2x";
-			}
-			return avatar.jpegWhatever;
-		}
-		return null;
-	}
-
-	public String getBiggestAvatar(){
-		if(avatar!=null){
-			return avatar.hasSizes ? avatar.jpeg400 : avatar.jpegWhatever;
-		}
-		return null;
+		return Arrays.asList(sizes);
 	}
 
 	@Override
@@ -137,10 +109,6 @@ public class User extends ActivityPubObject{
 		if(gender!=null){
 			sb.append(", gender=");
 			sb.append(gender);
-		}
-		if(avatar!=null){
-			sb.append(", avatar=");
-			sb.append(avatar);
 		}
 		if(publicKey!=null){
 			sb.append(", publicKey=");
@@ -186,20 +154,20 @@ public class User extends ActivityPubObject{
 
 		String _ava=res.getString("avatar");
 		if(_ava!=null){
-			try{
-				JSONObject ava=new JSONObject(_ava);
-				avatar=new Avatar();
-				if(ava.has("j50")){
-					avatar.jpeg50=ava.getString("j50");
-					avatar.jpeg100=ava.getString("j100");
-					avatar.jpeg200=ava.getString("j200");
-					avatar.jpeg400=ava.getString("j400");
-					avatar.hasSizes=true;
-				}else{
-					avatar.jpegWhatever=ava.getString("jw");
+			if(_ava.startsWith("{")){
+				try{
+					icon=Collections.singletonList((Image)Image.parse(new JSONObject(_ava)));
+				}catch(Exception ignore){}
+			}else{
+				LocalImage ava=new LocalImage();
+				PhotoSize.Type[] sizes={PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
+				int[] sizeDimens={50, 100, 200, 400};
+				for(PhotoSize.Format format : PhotoSize.Format.values()){
+					for(PhotoSize.Type size : sizes){
+						ava.sizes.add(new PhotoSize(Config.localURI(Config.uploadURLPath+"/avatars/"+_ava+"_"+size.suffix()+"."+format.fileExtension()), sizeDimens[size.ordinal()], sizeDimens[size.ordinal()], size, format));
+					}
 				}
-				image=avatar.asImageList();
-			}catch(JSONException ignore){
+				icon=Collections.singletonList(ava);
 			}
 		}
 
@@ -296,111 +264,6 @@ public class User extends ActivityPubObject{
 					return FEMALE;
 			}
 			throw new IllegalArgumentException("Invalid gender "+v);
-		}
-	}
-
-	public static class Avatar{
-		public boolean hasSizes;
-		public String jpeg50, jpeg100, jpeg200, jpeg400;
-		public String jpegWhatever;
-
-		public Avatar(){}
-
-		public Avatar(List<Image> images){
-			if(images.size()==1){
-				jpegWhatever=images.get(0).url.toString();
-			}else{
-				for(Image img:images){
-					if(img.width==img.height){
-						if(img.width==50)
-							jpeg50=img.url.toString();
-						else if(img.width==100)
-							jpeg100=img.url.toString();
-						else if(img.width==200)
-							jpeg200=img.url.toString();
-						else if(img.width==400)
-							jpeg400=img.url.toString();
-					}
-				}
-				if(jpeg50!=null && jpeg100!=null && jpeg200!=null && jpeg400!=null)
-					hasSizes=true;
-				else
-					jpegWhatever=images.get(0).url.toString();
-			}
-		}
-
-		@Override
-		public String toString(){
-			StringBuilder sb=new StringBuilder("Avatar{");
-			sb.append("hasSizes=");
-			sb.append(hasSizes);
-			if(jpeg50!=null){
-				sb.append(", jpeg50='");
-				sb.append(jpeg50);
-				sb.append('\'');
-			}
-			if(jpeg100!=null){
-				sb.append(", jpeg100='");
-				sb.append(jpeg100);
-				sb.append('\'');
-			}
-			if(jpeg200!=null){
-				sb.append(", jpeg200='");
-				sb.append(jpeg200);
-				sb.append('\'');
-			}
-			if(jpeg400!=null){
-				sb.append(", jpeg400='");
-				sb.append(jpeg400);
-				sb.append('\'');
-			}
-			if(jpegWhatever!=null){
-				sb.append(", jpegWhatever='");
-				sb.append(jpegWhatever);
-				sb.append('\'');
-			}
-			sb.append('}');
-			return sb.toString();
-		}
-
-		public String asJSON(){
-			JSONObject j=new JSONObject();
-			j.put("v", 1);
-			if(hasSizes){
-				j.put("j50", jpeg50);
-				j.put("j100", jpeg100);
-				j.put("j200", jpeg200);
-				j.put("j400", jpeg400);
-			}else{
-				j.put("jw", jpegWhatever);
-			}
-			return j.toString();
-		}
-
-		public List<Image> asImageList(){
-			try{
-				if(!hasSizes){
-					Image img=new Image();
-					img.mediaType="image/jpeg";
-					img.url=Config.localURI(jpegWhatever);
-					return Collections.singletonList(img);
-				}else{
-					ArrayList<Image> imgs=new ArrayList<>();
-					String[] urls={jpeg400, jpeg200, jpeg100, jpeg50};
-					int[] sizes={400, 200, 100, 50};
-					for(int i=0;i<urls.length;i++){
-						Image img=new Image();
-						img.mediaType="image/jpeg";
-						img.url=Config.localURI(urls[i]);
-						img.width=img.height=sizes[i];
-						imgs.add(img);
-					}
-					return imgs;
-				}
-			}catch(Exception x){
-				x.printStackTrace();
-				return null;
-			}
 		}
 	}
 }

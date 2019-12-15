@@ -9,7 +9,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -135,10 +134,9 @@ public class PostStorage{
 		return posts;
 	}
 
-	public static Post getPostByID(int userID, int postID) throws SQLException{
+	public static Post getPostByID(int postID) throws SQLException{
 		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("SELECT * FROM wall_posts WHERE id=?");
 		stmt.setInt(1, postID);
-		//stmt.setInt(2, userID);
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
 				return Post.fromResultSet(res);
@@ -161,7 +159,7 @@ public class PostStorage{
 			if(user==null){
 				throw new ObjectNotFoundException("Post owner does not exist");
 			}
-			return getPostByID(user.id, postID);
+			return getPostByID(postID);
 		}
 		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("SELECT * FROM `wall_posts` WHERE `ap_id`=?");
 		stmt.setString(1, apID.toString());

@@ -3,7 +3,7 @@
 	<tr>
 		<td width="50">&nbsp;</td>
 		<td width="40" valign="top">
-			<img src="{{post.user.smallAvatar}}" srcset="{{post.user.smallAvatarSrcset}}" width="40"/>
+			{{pictureForAvatar(post.user.avatar, 's', 40)}}
 		</td>
 		<td>
 			<a href="{{post.user.url}}"{{post.userLinkAttrs}}>{{post.user.fullName}}</a><br/>

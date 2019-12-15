@@ -2,12 +2,12 @@
 <table width="100%">
 	<tr>
 		<td width="50" valign="top">
-			<img src="{{post.user.smallAvatar}}" srcset="{{post.user.smallAvatarSrcset}}" width="50"/>
+			{{post.user.avatar | pictureForAvatar('s')}}
 		</td>
 		<td>
 			<a href="{{post.user.url}}"{{post.userLinkAttrs}}>{{post.user.fullName}}</a><br/>
 			{{post.content | escape(false)}}<br/>
-			{%if post.attachment%}{{post.attachmentsHTML | escape(false)}}<br/>{%endif%}
+			{%if post.attachment%}{{post.processedAttachments | renderAttachments}}<br/>{%endif%}
 			<a href="{{post.internalURL}}">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} | <a href="{{post.url}}/confirmDelete">{{L('delete')}}</a>{%endif%}
 		</td>
 	</tr>

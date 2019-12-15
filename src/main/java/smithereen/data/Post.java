@@ -19,7 +19,11 @@ import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Mention;
+import smithereen.data.attachments.Attachment;
+import smithereen.data.attachments.PhotoAttachment;
+import smithereen.data.attachments.VideoAttachment;
 import smithereen.jsonld.JLD;
+import smithereen.storage.MediaCache;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 
@@ -193,17 +197,36 @@ public class Post extends ActivityPubObject{
 		}
 	}
 
-	public String getAttachmentsHTML(){
-		ArrayList<String> lines=new ArrayList<>();
-		for(ActivityPubObject obj:attachment){
-			if(obj.mediaType==null)
+	public List<Attachment> getProcessedAttachments() throws SQLException{
+		ArrayList<Attachment> result=new ArrayList<>();
+		int i=0;
+		for(ActivityPubObject o:attachment){
+			if(o.mediaType==null){
+				i++;
 				continue;
-			if(obj.mediaType.startsWith("image/")){
-				lines.add("<img src=\""+obj.url+"\"/>");
-			}else if(obj.mediaType.startsWith("video/")){
-				lines.add("<video src=\""+obj.url+"\" controls></video>");
 			}
+			if(o.mediaType.startsWith("image/")){
+				PhotoAttachment att=new PhotoAttachment();
+				MediaCache.PhotoItem item=(MediaCache.PhotoItem) MediaCache.getInstance().get(o.url);
+				if(item!=null){
+					att.sizes=item.sizes;
+				}else{
+					String pathPrefix="/system/downloadExternalMedia?type=post_photo&post_id="+id+"&index="+i;
+					PhotoSize.Type[] sizes={PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
+					for(PhotoSize.Format format : PhotoSize.Format.values()){
+						for(PhotoSize.Type size : sizes){
+							att.sizes.add(new PhotoSize(Config.localURI(pathPrefix+"&size="+size.suffix()+"&format="+format.fileExtension()), PhotoSize.UNKNOWN, PhotoSize.UNKNOWN, size, format));
+						}
+					}
+				}
+				result.add(att);
+			}else if(o.mediaType.startsWith("video/")){
+				VideoAttachment att=new VideoAttachment();
+				att.url=o.url;
+				result.add(att);
+			}
+			i++;
 		}
-		return String.join("\n", lines);
+		return result;
 	}
 }

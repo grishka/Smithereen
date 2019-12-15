@@ -4,7 +4,7 @@
 <table width="100%">
 	<tr>
 		<td width="100">
-			<img src="{{req.from.mediumAvatar}}" srcset="{{req.from.mediumAvatarSrcset}}"/>
+			{{friend.avatar | pictureForAvatar('m')}}
 		</td>
 		<td>
 			<form action="{{req.from.getProfileURL('respondToFriendRequest')}}" method="post">

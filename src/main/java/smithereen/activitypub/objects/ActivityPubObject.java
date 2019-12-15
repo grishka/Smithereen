@@ -446,6 +446,7 @@ public abstract class ActivityPubObject{
 		switch(type){
 			// Actors
 			case "Person":
+			case "Service":
 				res=new ForeignUser();
 				break;
 

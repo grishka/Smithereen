@@ -129,8 +129,6 @@ public class ForeignUser extends User{
 		}
 		if(sharedInbox==null)
 			sharedInbox=inbox;
-		if(icon!=null && !icon.isEmpty())
-			avatar=new Avatar(icon);
 		if(obj.has("gender")){
 			switch(obj.getString("gender")){
 				case "sc:Male":
