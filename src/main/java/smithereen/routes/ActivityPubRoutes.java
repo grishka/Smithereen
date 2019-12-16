@@ -181,7 +181,7 @@ public class ActivityPubRoutes{
 			if(remoteObj instanceof ForeignUser){
 				try{
 					ForeignUser foreignUser=(ForeignUser) remoteObj;
-					System.out.println(foreignUser);
+//					System.out.println(foreignUser);
 					UserStorage.putOrUpdateForeignUser(foreignUser);
 					FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, foreignUser.id);
 					if(status==FriendshipStatus.REQUEST_SENT){
@@ -208,7 +208,7 @@ public class ActivityPubRoutes{
 			Account self=req.session().attribute("account");
 			String username=req.params(":username");
 			User _user=UserStorage.getByUsername(username);
-			System.out.println(_user);
+//			System.out.println(_user);
 			if(!(_user instanceof ForeignUser)){
 				return Utils.wrapError(req, "err_user_not_found");
 			}

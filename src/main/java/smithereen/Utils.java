@@ -40,14 +40,20 @@ public class Utils{
 	static{
 		HTML_SANITIZER=new HtmlPolicyBuilder()
 				.allowStandardUrlProtocols()
-				.allowElements("b", "strong", "i", "em", "u", "s", "p", "code")
+				.allowElements("b", "strong", "i", "em", "u", "s", "p", "code", "br")
 				.allowElements(new ElementPolicy(){
 					@Override
 					public String apply(String el, List<String> attrs){
 						int hrefIndex=attrs.indexOf("href");
 						if(hrefIndex!=-1 && attrs.size()>hrefIndex+1){
 							String href=attrs.get(hrefIndex+1).toLowerCase();
-							if(href.startsWith("http:") || href.startsWith("https:") || href.startsWith("//")){
+							try{
+								URI uri=new URI(href);
+								if(uri.isAbsolute() && !Config.isLocal(uri)){
+									attrs.add("target");
+									attrs.add("_blank");
+								}
+							}catch(URISyntaxException x){
 								attrs.add("target");
 								attrs.add("_blank");
 							}

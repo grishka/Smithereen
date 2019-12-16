@@ -165,6 +165,8 @@ public class ForeignUser extends User{
 			publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
 		}
 		manuallyApprovesFollowers=obj.optBoolean("manuallyApprovesFollowers", false);
+		if(summary!=null)
+			summary=Utils.sanitizeHTML(summary);
 		return this;
 	}
 

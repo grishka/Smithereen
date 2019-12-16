@@ -109,6 +109,9 @@ public class JLDDocument{
 	}
 
 	private static JSONObject dereferenceContext(String iri) throws JSONException{
+		if(iri.endsWith("/litepub-0.1.jsonld")){ // This avoids caching multiple copies of the same schema for different instances
+			iri="https://example.com/schemas/litepub-0.1.jsonld";
+		}
 		if(schemaCache.containsKey(iri))
 			return schemaCache.get(iri);
 		String file=null;
@@ -122,8 +125,12 @@ public class JLDDocument{
 			case "https://w3id.org/identity/v1":
 				file=readResourceFile("w3-identity");
 				break;
+			case "https://example.com/schemas/litepub-0.1.jsonld":
+				file=readResourceFile("litepub-0.1");
+				break;
 			default:
-				throw new JLDException("loading remote context failed");
+				System.out.println("Warning: can't dereference remote context '"+iri+"'");
+				//throw new JLDException("loading remote context failed");
 		}
 		if(file!=null){
 			JSONObject obj=new JSONObject(file);
@@ -170,7 +177,7 @@ public class JLDDocument{
 				remoteContexts.add(c);
 				JSONObject deref=dereferenceContext(c);
 				if(deref!=null){
-					result=updateContext(result, deref.getJSONObject("@context"), remoteContexts, baseURI);
+					result=updateContext(result, deref.get("@context"), remoteContexts, baseURI);
 				}else{
 					System.err.println("Failed to dereference "+c);
 				}
@@ -219,7 +226,7 @@ public class JLDDocument{
 			}
 			if(c.has("@language")){
 				Object value=c.get("@language");
-				if(value==JSONObject.NULL){
+				if(value==JSONObject.NULL || "und".equals(value)){
 					result.defaultLanguage=null;
 				}else if(value instanceof String){
 					result.defaultLanguage=((String)value).toLowerCase();
