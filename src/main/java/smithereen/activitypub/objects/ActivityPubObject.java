@@ -21,6 +21,7 @@ import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Like;
+import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignUser;
@@ -446,8 +447,10 @@ public abstract class ActivityPubObject{
 		switch(type){
 			// Actors
 			case "Person":
-			case "Service":
 				res=new ForeignUser();
+				break;
+			case "Service":
+				res=obj.has("id") ? new ForeignUser() : new Service();
 				break;
 
 			// Objects
@@ -505,6 +508,9 @@ public abstract class ActivityPubObject{
 				break;
 			case "Update":
 				res=new Update();
+				break;
+			case "Reject":
+				res=new Reject();
 				break;
 
 			default:

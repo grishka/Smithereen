@@ -42,6 +42,7 @@ import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Like;
+import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.Account;
@@ -226,7 +227,7 @@ public class ActivityPubRoutes{
 				follow.object=new LinkOrObject(user.activityPubID);
 				follow.activityPubID=new URI(self.user.activityPubID.getScheme(), self.user.activityPubID.getSchemeSpecificPart(), "follow"+user.id);
 				ActivityPub.postActivity(user.sharedInbox, follow, self.user);
-				UserStorage.followUser(self.user.id, user.id);
+				UserStorage.followUser(self.user.id, user.id, false);
 				return "Success";
 			}catch(URISyntaxException ignore){
 			}catch(IOException x){
@@ -378,6 +379,9 @@ public class ActivityPubRoutes{
 					break;
 				case "Update":
 					handleUpdateActivity(user, (Update) activity);
+					break;
+				case "Reject":
+					handleRejectActivity(user, (Reject)activity);
 					break;
 				default:
 					throw new IllegalArgumentException("Activity type "+activity.getType()+" is not supported");
@@ -598,7 +602,7 @@ public class ActivityPubRoutes{
 		FriendshipStatus status=UserStorage.getFriendshipStatus(actor.id, user.id);
 		if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING)
 			throw new IllegalArgumentException("Already following");
-		UserStorage.followUser(actor.id, user.id);
+		UserStorage.followUser(actor.id, user.id, true);
 
 		Accept accept=new Accept();
 		accept.actor=new LinkOrObject(user.activityPubID);
@@ -611,8 +615,20 @@ public class ActivityPubRoutes{
 		}
 	}
 
-	private static void handleAcceptActivity(ForeignUser user, Accept act){
-
+	private static void handleAcceptActivity(ForeignUser user, Accept act) throws SQLException{
+		if(act.object.object==null)
+			throw new IllegalArgumentException("Undo activity should include a complete object of the activity being undone");
+		ActivityPubObject object=act.object.object;
+		if(!(object instanceof Activity))
+			throw new IllegalArgumentException("Undo activity object must be a subtype of Activity");
+		Activity objectActivity=(Activity)object;
+		switch(objectActivity.getType()){
+			case "Follow":
+				handleAcceptFollowActivity(user, (Follow)objectActivity);
+				break;
+			default:
+				throw new IllegalArgumentException("Unsupported activity type in Accept: "+objectActivity.getType());
+		}
 	}
 
 	private static void handleLikeActivity(ForeignUser user, Like act){
@@ -641,6 +657,9 @@ public class ActivityPubRoutes{
 				break;
 			case "Announce":
 
+				break;
+			case "Accept":
+				handleUndoAcceptActivity(user, (Accept)objectActivity);
 				break;
 			default:
 				throw new IllegalArgumentException("Unsupported activity type in Undo: "+objectActivity.getType());
@@ -698,11 +717,27 @@ public class ActivityPubRoutes{
 		}
 	}
 
+	private static void handleRejectActivity(ForeignUser actor, Reject act) throws SQLException{
+		if(act.object.object==null)
+			throw new IllegalArgumentException("Undo activity should include a complete object of the activity being undone");
+		ActivityPubObject object=act.object.object;
+		if(!(object instanceof Activity))
+			throw new IllegalArgumentException("Undo activity object must be a subtype of Activity");
+		Activity objectActivity=(Activity)object;
+		switch(objectActivity.getType()){
+			case "Follow":
+				handleRejectFollowActivity(actor, (Follow)objectActivity);
+				break;
+			default:
+				throw new IllegalArgumentException("Unsupported activity type in Reject: "+objectActivity.getType());
+		}
+	}
+
 	//region Undo subtype handlers
 
 	private static void handleUndoFollowActivity(ForeignUser actor, Follow act) throws SQLException{
 		URI url=act.object.link;
-		if(!url.getHost().equalsIgnoreCase(Config.domain))
+		if(!Config.isLocal(url))
 			throw new IllegalArgumentException("Target user is not from this server");
 		String username=url.getPath().substring(1);
 		if(!Utils.isValidUsername(username) || Utils.isReservedUsername(username))
@@ -713,6 +748,29 @@ public class ActivityPubRoutes{
 
 		UserStorage.unfriendUser(actor.id, user.id);
 		System.out.println(actor.getFullUsername()+" remotely unfollowed "+user.getFullUsername());
+	}
+
+	private static void handleUndoAcceptActivity(ForeignUser actor, Accept act) throws SQLException{
+		if(act.object.object==null)
+			throw new IllegalArgumentException("Undo activity should include a complete object of the activity being undone");
+		ActivityPubObject object=act.object.object;
+		if(!(object instanceof Activity))
+			throw new IllegalArgumentException("Undo activity object must be a subtype of Activity");
+		Activity objectActivity=(Activity)object;
+		switch(objectActivity.getType()){
+			case "Follow":
+				handleUndoAcceptFollowActivity(actor, (Follow)objectActivity);
+				break;
+			default:
+				throw new IllegalArgumentException("Unsupported activity type in Accept: "+objectActivity.getType());
+		}
+	}
+
+	private static void handleUndoAcceptFollowActivity(ForeignUser actor, Follow activity) throws SQLException{
+		User follower=UserStorage.getUserByActivityPubID(activity.actor.link);
+		if(follower==null)
+			throw new ObjectNotFoundException("Follower not found");
+		UserStorage.setFollowAccepted(follower.id, actor.id, false);
 	}
 
 	//endregion
@@ -746,6 +804,23 @@ public class ActivityPubRoutes{
 		UserStorage.putOrUpdateForeignUser(actor);
 	}
 
+	//endregion
+	//region Accept subtype handlers
+	private static void handleAcceptFollowActivity(ForeignUser actor, Follow activity) throws SQLException{
+		User follower=UserStorage.getUserByActivityPubID(activity.actor.link);
+		if(follower==null)
+			throw new ObjectNotFoundException("Follower not found");
+		UserStorage.setFollowAccepted(follower.id, actor.id, true);
+	}
+	//endregion
+
+	//region Reject subtype handlers
+	private static void handleRejectFollowActivity(ForeignUser actor, Follow activity) throws SQLException{
+		User follower=UserStorage.getUserByActivityPubID(activity.actor.link);
+		if(follower==null)
+			throw new ObjectNotFoundException("Follower not found");
+		UserStorage.unfriendUser(follower.id, actor.id);
+	}
 	//endregion
 
 	//endregion

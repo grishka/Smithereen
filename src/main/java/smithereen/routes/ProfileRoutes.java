@@ -144,7 +144,7 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			JtwigModel model=JtwigModel.newModel();
-			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true)).with("owner", user).with("followers", true);
+			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true);
 			return Utils.renderTemplate(req, "friends", model);
 		}
 		resp.status(404);
@@ -156,7 +156,7 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			JtwigModel model=JtwigModel.newModel();
-			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false)).with("owner", user).with("following", true);
+			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true);
 			return Utils.renderTemplate(req, "friends", model);
 		}
 		resp.status(404);

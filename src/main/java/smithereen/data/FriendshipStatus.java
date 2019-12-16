@@ -6,5 +6,6 @@ public enum FriendshipStatus{
 	REQUEST_RECVD,
 	FRIENDS,
 	FOLLOWING,
-	FOLLOWED_BY
+	FOLLOWED_BY,
+	FOLLOW_REQUESTED
 }

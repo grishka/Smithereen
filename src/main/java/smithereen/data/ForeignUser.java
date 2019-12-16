@@ -19,6 +19,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Base64;
 
+import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 
 public class ForeignUser extends User{
@@ -107,7 +108,10 @@ public class ForeignUser extends User{
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
 		super.parseActivityPubObject(obj);
-		username=obj.getString("preferredUsername");
+		username=obj.optString("preferredUsername", null);
+		if(username==null){
+			username=Utils.getLastPathSegment(activityPubID);
+		}
 		domain=activityPubID.getHost();
 		url=tryParseURL(obj.getString("url"));
 		if(obj.has("firstName")){
@@ -160,6 +164,7 @@ public class ForeignUser extends User{
 			RSAPublicKeySpec spec=decodeSimpleRSAKey(key);
 			publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
 		}
+		manuallyApprovesFollowers=obj.optBoolean("manuallyApprovesFollowers", false);
 		return this;
 	}
 

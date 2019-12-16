@@ -80,7 +80,7 @@ public class UserStorage{
 	}
 
 	public static FriendshipStatus getFriendshipStatus(int selfUserID, int targetUserID) throws SQLException{
-		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("SELECT `follower_id`,`followee_id`,`mutual` FROM `followings` WHERE (`follower_id`=? AND `followee_id`=?) OR (`follower_id`=? AND `followee_id`=?) LIMIT 1");
+		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("SELECT `follower_id`,`followee_id`,`mutual`,`accepted` FROM `followings` WHERE (`follower_id`=? AND `followee_id`=?) OR (`follower_id`=? AND `followee_id`=?) LIMIT 1");
 		stmt.setInt(1, selfUserID);
 		stmt.setInt(2, targetUserID);
 		stmt.setInt(3, targetUserID);
@@ -89,12 +89,13 @@ public class UserStorage{
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
 				boolean mutual=res.getBoolean(3);
+				boolean accepted=res.getBoolean(4);
 				if(mutual)
 					return FriendshipStatus.FRIENDS;
 				int follower=res.getInt(1);
 				int followee=res.getInt(2);
 				if(follower==selfUserID && followee==targetUserID)
-					status=FriendshipStatus.FOLLOWING;
+					status=accepted ? FriendshipStatus.FOLLOWING : FriendshipStatus.FOLLOW_REQUESTED;
 				else
 					status=FriendshipStatus.FOLLOWED_BY;
 			}else{
@@ -223,12 +224,13 @@ public class UserStorage{
 		return friends;
 	}
 
-	public static List<User> getNonMutualFollowers(int userID, boolean followers) throws SQLException{
+	public static List<User> getNonMutualFollowers(int userID, boolean followers, boolean accepted) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		String fld1=followers ? "follower_id" : "followee_id";
 		String fld2=followers ? "followee_id" : "follower_id";
-		PreparedStatement stmt=conn.prepareStatement("SELECT `users`.* FROM `followings` INNER JOIN `users` ON `users`.`id`=`followings`.`"+fld1+"` WHERE `"+fld2+"`=? AND `mutual`=0");
+		PreparedStatement stmt=conn.prepareStatement("SELECT `users`.* FROM `followings` INNER JOIN `users` ON `users`.`id`=`followings`.`"+fld1+"` WHERE `"+fld2+"`=? AND `mutual`=0 AND `accepted`=?");
 		stmt.setInt(1, userID);
+		stmt.setBoolean(2, accepted);
 		ArrayList<User> friends=new ArrayList<>();
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
@@ -328,7 +330,7 @@ public class UserStorage{
 		}
 	}
 
-	public static void followUser(int userID, int targetUserID) throws SQLException{
+	public static void followUser(int userID, int targetUserID, boolean accepted) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		conn.createStatement().execute("START TRANSACTION");
 		try{
@@ -348,10 +350,11 @@ public class UserStorage{
 					throw new SQLException("Already following");
 			}
 
-			stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`,`followee_id`,`mutual`) VALUES (?,?,?)");
+			stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`,`followee_id`,`mutual`,`accepted`) VALUES (?,?,?,?)");
 			stmt.setInt(1, userID);
 			stmt.setInt(2, targetUserID);
 			stmt.setBoolean(3, mutual);
+			stmt.setBoolean(4, accepted);
 			stmt.execute();
 
 			if(mutual){
@@ -431,11 +434,11 @@ public class UserStorage{
 		}
 		if(existingUserID!=0){
 			stmt=conn.prepareStatement("UPDATE `users` SET `fname`=?,`lname`=?,`bdate`=?,`username`=?,`domain`=?,`public_key`=?,`ap_url`=?,`ap_inbox`=?,`ap_outbox`=?,`ap_shared_inbox`=?,`ap_id`=?,`ap_followers`=?,`ap_following`=?," +
-					"`about`=?,`gender`=?,`avatar`=?,`last_updated`=CURRENT_TIMESTAMP() WHERE `id`=?");
-			stmt.setInt(17, existingUserID);
+					"`about`=?,`gender`=?,`avatar`=?,`profile_fields`=?,`last_updated`=CURRENT_TIMESTAMP() WHERE `id`=?");
+			stmt.setInt(18, existingUserID);
 		}else{
-			stmt=conn.prepareStatement("INSERT INTO `users` (`fname`,`lname`,`bdate`,`username`,`domain`,`public_key`,`ap_url`,`ap_inbox`,`ap_outbox`,`ap_shared_inbox`,`ap_id`,`ap_followers`,`ap_following`,`about`,`gender`,`avatar`,`last_updated`)" +
-					" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())", PreparedStatement.RETURN_GENERATED_KEYS);
+			stmt=conn.prepareStatement("INSERT INTO `users` (`fname`,`lname`,`bdate`,`username`,`domain`,`public_key`,`ap_url`,`ap_inbox`,`ap_outbox`,`ap_shared_inbox`,`ap_id`,`ap_followers`,`ap_following`,`about`,`gender`,`avatar`,`profile_fields`,`last_updated`)" +
+					" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())", PreparedStatement.RETURN_GENERATED_KEYS);
 		}
 
 		stmt.setString(1, user.firstName);
@@ -454,6 +457,7 @@ public class UserStorage{
 		stmt.setString(14, user.summary);
 		stmt.setInt(15, user.gender==null ? 0 : user.gender.ordinal());
 		stmt.setString(16, user.icon!=null ? user.icon.get(0).asActivityPubObject(new JSONObject(), new ContextCollector()).toString() : null);
+		stmt.setString(17, user.serializeProfileFields());
 
 		stmt.executeUpdate();
 		if(existingUserID==0){
@@ -530,7 +534,7 @@ public class UserStorage{
 			}
 		}
 		if(count>0){
-			stmt=conn.prepareStatement("SELECT `ap_id`,`username` FROM `followings` INNER JOIN `users` ON `users`.`id`=`"+fld1+"` WHERE `"+fld2+"`=? LIMIT ? OFFSET ?");
+			stmt=conn.prepareStatement("SELECT `ap_id`,`username` FROM `followings` INNER JOIN `users` ON `users`.`id`=`"+fld1+"` WHERE `"+fld2+"`=? AND `accepted`=1 LIMIT ? OFFSET ?");
 			stmt.setInt(1, userID);
 			stmt.setInt(2, count);
 			stmt.setInt(3, offset);
@@ -550,5 +554,14 @@ public class UserStorage{
 			return list;
 		}
 		return Collections.EMPTY_LIST;
+	}
+
+	public static void setFollowAccepted(int followerID, int followeeID, boolean accepted) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("UPDATE `followings` SET `accepted`=? WHERE `follower_id`=? AND `followee_id`=?");
+		stmt.setBoolean(1, accepted);
+		stmt.setInt(2, followerID);
+		stmt.setInt(3, followeeID);
+		stmt.execute();
 	}
 }

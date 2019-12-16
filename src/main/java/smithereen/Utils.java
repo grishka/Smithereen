@@ -299,4 +299,12 @@ public class Utils{
 		}
 		return n;
 	}
+
+	public static String getLastPathSegment(URI uri){
+		String path=uri.getPath();
+		int index=path.lastIndexOf('/');
+		if(index==-1)
+			return null;
+		return path.substring(index+1);
+	}
 }

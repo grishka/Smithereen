@@ -39,9 +39,12 @@ public class User extends ActivityPubObject{
 	transient public PublicKey publicKey;
 	transient public PrivateKey privateKey;
 
+	// additional profile fields
+	public boolean manuallyApprovesFollowers;
+
 	public String getFullName(){
 		if(lastName==null || lastName.length()==0)
-			return firstName;
+			return firstName.isEmpty() ? ('@'+username) : firstName;
 		return firstName+" "+lastName;
 	}
 
@@ -173,6 +176,12 @@ public class User extends ActivityPubObject{
 
 		activityPubID=Config.localURI(username);
 		url=activityPubID;
+
+		String fields=res.getString("profile_fields");
+		if(StringUtils.isNotEmpty(fields)){
+			JSONObject o=new JSONObject(fields);
+			manuallyApprovesFollowers=o.optBoolean("manuallyApprovesFollowers", false);
+		}
 	}
 
 	public String getFullUsername(){
@@ -247,6 +256,13 @@ public class User extends ActivityPubObject{
 			return ((User) other).id==id && ((User) other).activityPubID.equals(activityPubID);
 		}
 		return false;
+	}
+
+	public String serializeProfileFields(){
+		JSONObject o=new JSONObject();
+		if(manuallyApprovesFollowers)
+			o.put("manuallyApprovesFollowers", true);
+		return o.toString();
 	}
 
 	public enum Gender{

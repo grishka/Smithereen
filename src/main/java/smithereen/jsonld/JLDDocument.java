@@ -34,6 +34,7 @@ public class JLDDocument{
 		lc.put("gender", idAndTypeObject("sc:gender", "sc:GenderType"));
 		lc.put("birthDate", idAndTypeObject("sc:birthDate", "sc:Date"));
 		lc.put("sensitive", "as:sensitive");
+		lc.put("manuallyApprovesFollowers", "as:manuallyApprovesFollowers");
 		localContext=updateContext(new JLDContext(), new JSONArray(Arrays.asList(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc)), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);
 	}

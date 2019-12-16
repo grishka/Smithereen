@@ -53,7 +53,9 @@ public class ActivityPub{
 
 			String r=body.string();
 			try{
-				return ActivityPubObject.parse(JLDDocument.convertToLocalContext(new JSONObject(r)));
+				JSONObject converted=JLDDocument.convertToLocalContext(new JSONObject(r));
+				System.out.println(converted.toString(4));
+				return ActivityPubObject.parse(converted);
 			}catch(Exception x){
 				throw new JSONException(x);
 			}
