@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
+import smithereen.data.SessionInfo;
 import smithereen.jtwigext.LangDateFunction;
 import smithereen.jtwigext.LangFunction;
 import smithereen.jtwigext.LangPluralFunction;
@@ -24,6 +25,7 @@ import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 
 import static spark.Spark.*;
 
@@ -56,7 +58,7 @@ public class Main{
 		staticFiles.expireTime(24*60*60);
 		before((request, response) -> {
 			request.attribute("start_time", System.currentTimeMillis());
-			if(request.session(false)==null || request.session().attribute("account")==null){
+			if(request.session(false)==null || request.session().attribute("info")==null){
 				String psid=request.cookie("psid");
 				if(psid!=null){
 					if(!SessionStorage.fillSession(psid, request.session(true))){
@@ -66,6 +68,7 @@ public class Main{
 					}
 				}
 			}
+
 		});
 
 		get("/", Main::indexPage);
@@ -156,19 +159,30 @@ public class Main{
 				long t=(long)l;
 				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
 			}
+
+			if(req.headers("accept")==null || !req.headers("accept").startsWith("application/")){
+				if(req.session().attribute("info")==null)
+					req.session().attribute("info", new SessionInfo());
+				if(req.requestMethod().equalsIgnoreCase("get") && req.attribute("noHistory")==null){
+					SessionInfo info=req.session().attribute("info");
+					String path=req.pathInfo();
+					String query=req.raw().getQueryString();
+					if(StringUtils.isNotEmpty(query)){
+						path+='?'+query;
+					}
+					info.history.add(path);
+				}
+			}
 		});
 	}
 
 	private static Object indexPage(Request req, Response resp){
-		if(req.session().attribute("account")!=null){
+		SessionInfo info=req.session().attribute("info");
+		if(info.account!=null){
 			resp.redirect("/feed");
 			return "";
 		}
 		JtwigModel model=JtwigModel.newModel().with("title", "Smithereen");
 		return Utils.renderTemplate(req, "index", model);
-	}
-
-	private static Object test(Request req, Response resp){
-		return "Test! "+req.params(":username");
 	}
 }

@@ -25,6 +25,7 @@ import java.util.TimeZone;
 import java.util.zip.CRC32;
 
 import smithereen.data.Account;
+import smithereen.data.SessionInfo;
 import smithereen.data.UserNotifications;
 import smithereen.lang.Lang;
 import smithereen.storage.UserStorage;
@@ -33,7 +34,7 @@ import spark.Response;
 
 public class Utils{
 
-	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system");
+	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session");
 	private static final PolicyFactory HTML_SANITIZER;
 	private static final SimpleDateFormat ISO_DATE_FORMAT;
 
@@ -80,8 +81,9 @@ public class Utils{
 
 	public static void addGlobalParamsToTemplate(Request req, JtwigModel model){
 		if(req.session(false)!=null){
-			model.with("csrf", req.session().attribute("csrf"));
-			Account account=req.session().attribute("account");
+			SessionInfo info=req.session().attribute("info");
+			model.with("csrf", info.csrfToken);
+			Account account=info.account;
 			if(account!=null){
 				model.with("currentUser", account.user);
 				try{
@@ -102,7 +104,7 @@ public class Utils{
 	}
 
 	public static boolean requireAccount(Request req, Response resp){
-		if(req.session(false)==null || req.session().attribute("account")==null){
+		if(req.session(false)==null || req.session().attribute("info")==null || ((SessionInfo)req.session().attribute("info")).account==null){
 			resp.redirect("/");
 			return false;
 		}
@@ -110,8 +112,9 @@ public class Utils{
 	}
 
 	public static boolean verifyCSRF(Request req, Response resp){
+		SessionInfo info=req.session().attribute("info");
 		String reqCsrf=req.queryParams("csrf");
-		if(reqCsrf!=null && reqCsrf.equals(req.session().attribute("csrf"))){
+		if(reqCsrf!=null && reqCsrf.equals(info.csrfToken)){
 			return true;
 		}
 		resp.status(403);
@@ -129,8 +132,9 @@ public class Utils{
 	}
 
 	public static String wrapError(Request req, String errorKey, Object... formatArgs){
-		Lang l=Lang.get((Locale) req.session().attribute("locale"));
-		return renderTemplate(req, "generic_error", JtwigModel.newModel().with("error", formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey)));
+		SessionInfo info=req.session().attribute("info");
+		Lang l=Lang.get(info.preferredLocale);
+		return renderTemplate(req, "generic_error", JtwigModel.newModel().with("error", formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey)).with("back", info.history.last()));
 	}
 
 	public static Locale localeForRequest(Request req){
@@ -174,78 +178,6 @@ public class Utils{
 			res[i]=(byte)((Character.digit(hex.charAt(i*2), 16) << 4) | (Character.digit(hex.charAt(i*2+1), 16)));
 		}
 		return res;
-	}
-
-	/**
-	 * Convenience method that returns a scaled instance of the
-	 * provided {@code BufferedImage}.
-	 *
-	 * @param img the original image to be scaled
-	 * @param targetWidth the desired width of the scaled instance,
-	 *    in pixels
-	 * @param targetHeight the desired height of the scaled instance,
-	 *    in pixels
-	 * @param hint one of the rendering hints that corresponds to
-	 *    {@code RenderingHints.KEY_INTERPOLATION} (e.g.
-	 *    {@code RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR},
-	 *    {@code RenderingHints.VALUE_INTERPOLATION_BILINEAR},
-	 *    {@code RenderingHints.VALUE_INTERPOLATION_BICUBIC})
-	 * @param higherQuality if true, this method will use a multi-step
-	 *    scaling technique that provides higher quality than the usual
-	 *    one-step technique (only useful in downscaling cases, where
-	 *    {@code targetWidth} or {@code targetHeight} is
-	 *    smaller than the original dimensions, and generally only when
-	 *    the {@code BILINEAR} hint is specified)
-	 * @return a scaled version of the original {@code BufferedImage}
-	 */
-	public static BufferedImage getScaledInstance(BufferedImage img,
-										   int targetWidth,
-										   int targetHeight,
-										   Object hint,
-										   boolean higherQuality)
-	{
-		int type = (img.getTransparency() == Transparency.OPAQUE) ?
-				BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB;
-		BufferedImage ret = (BufferedImage)img;
-		int w, h;
-		if (higherQuality) {
-			// Use multi-step technique: start with original size, then
-			// scale down in multiple passes with drawImage()
-			// until the target size is reached
-			w = img.getWidth();
-			h = img.getHeight();
-		} else {
-			// Use one-step technique: scale directly from original
-			// size to target size with a single drawImage() call
-			w = targetWidth;
-			h = targetHeight;
-		}
-
-		do {
-			if (higherQuality && w > targetWidth) {
-				w /= 2;
-				if (w < targetWidth) {
-					w = targetWidth;
-				}
-			}
-
-			if (higherQuality && h > targetHeight) {
-				h /= 2;
-				if (h < targetHeight) {
-					h = targetHeight;
-				}
-			}
-
-			BufferedImage tmp = new BufferedImage(w, h, type);
-			Graphics2D g2 = tmp.createGraphics();
-			g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, hint);
-			g2.drawImage(ret, 0, 0, w, h, null);
-			g2.dispose();
-
-			ret = tmp;
-		} while (w != targetWidth || h != targetHeight);
-
-		return ret;
 	}
 
 	public static String sanitizeHTML(String src){
@@ -312,5 +244,10 @@ public class Utils{
 		if(index==-1)
 			return null;
 		return path.substring(index+1);
+	}
+
+	public static SessionInfo sessionInfo(Request req){
+		SessionInfo info=req.session().attribute("info");
+		return info;
 	}
 }

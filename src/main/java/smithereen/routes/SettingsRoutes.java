@@ -45,7 +45,7 @@ import spark.Session;
 public class SettingsRoutes{
 	public static Object settings(Request req, Response resp) throws SQLException{
 		if(Utils.requireAccount(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			JtwigModel model=JtwigModel.newModel();
 			model.with("invitations", UserStorage.getInvites(self.user.id, true));
 			Session s=req.session();
@@ -72,7 +72,7 @@ public class SettingsRoutes{
 
 	public static Object createInvite(Request req, Response resp) throws SQLException{
 		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			byte[] code=new byte[16];
 			new Random().nextBytes(code);
 			UserStorage.putInvite(self.id, code, 1);
@@ -84,7 +84,7 @@ public class SettingsRoutes{
 
 	public static Object updatePassword(Request req, Response resp) throws SQLException{
 		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			String current=req.queryParams("current");
 			String new1=req.queryParams("new");
 			String new2=req.queryParams("new2");
@@ -104,7 +104,7 @@ public class SettingsRoutes{
 
 	public static Object updateName(Request req, Response resp) throws SQLException{
 		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			String first=req.queryParams("first_name");
 			String last=req.queryParams("last_name");
 			if(first.length()<2){
@@ -121,7 +121,7 @@ public class SettingsRoutes{
 
 	public static Object updateProfilePicture(Request req, Response resp) throws SQLException{
 		if(Utils.requireAccount(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			try{
 				req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 5*1024*1024, -1L, 0));
 				Part part=req.raw().getPart("pic");

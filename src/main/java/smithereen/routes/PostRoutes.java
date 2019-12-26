@@ -21,7 +21,7 @@ public class PostRoutes{
 		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
 			String username=req.params(":username");
 			User user=UserStorage.getByUsername(username);
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			if(user!=null){
 				String text=Utils.sanitizeHTML(req.queryParams("text")).replace("\r", "").trim();
 				if(text.length()==0)
@@ -62,7 +62,7 @@ public class PostRoutes{
 				Post post=PostStorage.getPostByID(postID);
 				ActivityPubWorker.getInstance().sendCreatePostActivity(post);
 
-				resp.redirect("/feed");
+				resp.redirect(Utils.sessionInfo(req).history.last());
 			}else{
 				resp.status(404);
 				return Utils.wrapError(req, "err_user_not_found");
@@ -73,7 +73,7 @@ public class PostRoutes{
 
 	public static Object feed(Request req, Response resp) throws SQLException{
 		if(Utils.requireAccount(req, resp)){
-			int userID=((Account)req.session().attribute("account")).user.id;
+			int userID=((Account)Utils.sessionInfo(req).account).user.id;
 			List<Post> feed=PostStorage.getFeed(userID);
 			for(Post post:feed){
 				post.replies=PostStorage.getRepliesForFeed(post.id);
@@ -114,6 +114,7 @@ public class PostRoutes{
 	}
 
 	public static Object confirmDelete(Request req, Response resp) throws SQLException{
+		req.attribute("noHistory", true);
 		if(Utils.requireAccount(req, resp)){
 			String username=req.params(":username");
 			User user=UserStorage.getByUsername(username);
@@ -133,7 +134,7 @@ public class PostRoutes{
 
 	public static Object delete(Request req, Response resp) throws SQLException{
 		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			String username=req.params(":username");
 			User user=UserStorage.getByUsername(username);
 			if(user==null){
@@ -156,7 +157,7 @@ public class PostRoutes{
 			}
 			PostStorage.deletePost(post.id);
 			ActivityPubWorker.getInstance().sendDeletePostActivity(post);
-			resp.redirect("/feed"); // TODO redirect properly
+			resp.redirect(Utils.sessionInfo(req).history.last());
 		}
 		return "";
 	}

@@ -22,7 +22,7 @@ import spark.Response;
 
 public class ProfileRoutes{
 	public static Object profile(Request req, Response resp) throws SQLException{
-		@Nullable Account self=req.session().attribute("account");
+		@Nullable Account self=Utils.sessionInfo(req).account;
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
@@ -48,8 +48,9 @@ public class ProfileRoutes{
 	}
 
 	public static Object confirmSendFriendRequest(Request req, Response resp) throws SQLException{
+		req.attribute("noHistory", true);
 		if(Utils.requireAccount(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			String username=req.params(":username");
 			User user=UserStorage.getByUsername(username);
 			if(user!=null){
@@ -78,7 +79,7 @@ public class ProfileRoutes{
 
 	public static Object doSendFriendRequest(Request req, Response resp) throws SQLException{
 		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			String username=req.params(":username");
 			User user=UserStorage.getByUsername(username);
 			if(user!=null){
@@ -88,7 +89,7 @@ public class ProfileRoutes{
 				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 				if(status==FriendshipStatus.NONE){
 					UserStorage.putFriendRequest(self.user.id, user.id, req.queryParams("message"));
-					resp.redirect("/"+user.username);
+					resp.redirect(Utils.sessionInfo(req).history.last());
 					return "";
 				}else if(status==FriendshipStatus.FRIENDS){
 					return Utils.wrapError(req, "err_already_friends");
@@ -106,8 +107,9 @@ public class ProfileRoutes{
 	}
 
 	public static Object confirmRemoveFriend(Request req, Response resp) throws SQLException{
+		req.attribute("noHistory", true);
 		if(Utils.requireAccount(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			String username=req.params(":username");
 			User user=UserStorage.getByUsername(username);
 			if(user!=null){
@@ -166,9 +168,9 @@ public class ProfileRoutes{
 	public static Object incomingFriendRequests(Request req, Response resp) throws SQLException{
 		String username=req.params(":username");
 		if(Utils.requireAccount(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			if(!self.user.username.equalsIgnoreCase(username)){
-				resp.redirect("/"+username);
+				resp.redirect(Utils.sessionInfo(req).history.last());
 				return "";
 			}
 			List<FriendRequest> requests=UserStorage.getIncomingFriendRequestsForUser(self.user.id, 0, 100);
@@ -182,7 +184,7 @@ public class ProfileRoutes{
 	public static Object respondToFriendRequest(Request req, Response resp) throws SQLException{
 		String username=req.params(":username");
 		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			User user=UserStorage.getByUsername(username);
 			if(user!=null){
 				if(req.queryParams("accept")!=null){
@@ -190,7 +192,7 @@ public class ProfileRoutes{
 				}else if(req.queryParams("decline")!=null){
 					UserStorage.deleteFriendRequest(self.user.id, user.id);
 				}
-				resp.redirect(self.user.getProfileURL("incomingFriendRequests"));
+				resp.redirect(Utils.sessionInfo(req).history.last());
 			}else{
 				resp.status(404);
 				return Utils.wrapError(req, "user_not_found");
@@ -202,13 +204,13 @@ public class ProfileRoutes{
 	public static Object doRemoveFriend(Request req, Response resp) throws SQLException{
 		String username=req.params(":username");
 		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			User user=UserStorage.getByUsername(username);
 			if(user!=null){
 				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 				if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
 					UserStorage.unfriendUser(self.user.id, user.id);
-					resp.redirect(self.user.getProfileURL("friends"));
+					resp.redirect(Utils.sessionInfo(req).history.last());
 					if(user instanceof ForeignUser){
 						ActivityPubWorker.getInstance().sendUnfriendActivity(self.user, user);
 					}

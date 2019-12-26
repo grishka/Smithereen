@@ -8,6 +8,7 @@ import java.util.Locale;
 
 import smithereen.Utils;
 import smithereen.data.Account;
+import smithereen.data.SessionInfo;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -15,10 +16,12 @@ import spark.Response;
 
 public class SessionRoutes{
 	private static void setupSessionWithAccount(Request req, Response resp, Account acc) throws SQLException{
-		req.session(true).attribute("account", acc);
+		SessionInfo info=new SessionInfo();
+		info.account=acc;
+		req.session(true).attribute("info", info);
 		String psid=SessionStorage.putNewSession(req.session());
-		req.session().attribute("csrf", Utils.csrfTokenFromSessionID(Base64.getDecoder().decode(psid)));
-		req.session().attribute("locale", Locale.forLanguageTag("ru"));
+		info.csrfToken=Utils.csrfTokenFromSessionID(Base64.getDecoder().decode(psid));
+		info.preferredLocale=Locale.forLanguageTag("ru");
 		resp.cookie("/", "psid", psid, 10*365*24*60*60, false);
 	}
 
@@ -36,8 +39,9 @@ public class SessionRoutes{
 		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
 			SessionStorage.deleteSession(req.cookie("psid"));
 			resp.removeCookie("psid");
-			req.session().removeAttribute("account");
-			req.session().removeAttribute("csrf");
+			SessionInfo info=req.session().attribute("info");
+			info.account=null;
+			info.csrfToken=null;
 			resp.redirect("/");
 			return "";
 		}

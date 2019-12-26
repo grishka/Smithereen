@@ -18,6 +18,7 @@ import java.util.Locale;
 
 import smithereen.Utils;
 import smithereen.data.Account;
+import smithereen.data.SessionInfo;
 import spark.Session;
 
 public class SessionStorage{
@@ -26,7 +27,8 @@ public class SessionStorage{
 
 	public static String putNewSession(@NotNull Session sess) throws SQLException{
 		byte[] sid=new byte[64];
-		Account account=sess.attribute("account");
+		SessionInfo info=sess.attribute("info");
+		Account account=info.account;
 		if(account==null)
 			throw new IllegalArgumentException("putNewSession requires a logged in session");
 		random.nextBytes(sid);
@@ -52,9 +54,11 @@ public class SessionStorage{
 		try(ResultSet res=stmt.executeQuery()){
 			if(!res.first())
 				return false;
-			sess.attribute("account", Account.fromResultSet(res));
-			sess.attribute("csrf", Utils.csrfTokenFromSessionID(sid));
-			sess.attribute("locale", Locale.forLanguageTag("ru"));
+			SessionInfo info=new SessionInfo();
+			info.account=Account.fromResultSet(res);
+			info.csrfToken=Utils.csrfTokenFromSessionID(sid);
+			info.preferredLocale=Locale.forLanguageTag("ru");
+			sess.attribute("info", info);
 		}
 		return true;
 	}

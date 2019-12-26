@@ -170,7 +170,7 @@ public class ActivityPubRoutes{
 		// user/remote_follow
 
 		if(Utils.requireAccount(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			String ref=req.headers("referer");
 			ActivityPubObject remoteObj;
 			try{
@@ -205,7 +205,7 @@ public class ActivityPubRoutes{
 
 	public static Object remoteFollow(Request req, Response resp) throws SQLException{
 		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=req.session().attribute("account");
+			Account self=Utils.sessionInfo(req).account;
 			String username=req.params(":username");
 			User _user=UserStorage.getByUsername(username);
 //			System.out.println(_user);
