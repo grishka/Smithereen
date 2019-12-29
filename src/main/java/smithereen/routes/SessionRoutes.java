@@ -84,7 +84,7 @@ public class SessionRoutes{
 			return regError(req, "err_invalid_email");
 		if(first.length()<2)
 			return regError(req, "err_name_too_short");
-		if(!invite.matches("[A-F0-9]{32}"))
+		if(!invite.matches("[A-Fa-f0-9]{32}"))
 			return regError(req, "err_invalid_invitation");
 
 		SessionStorage.SignupResult res=SessionStorage.registerNewAccount(username, password, email, first, last, invite);
