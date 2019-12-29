@@ -13,6 +13,7 @@ import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Post;
+import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.lang.Lang;
 import smithereen.storage.PostStorage;
@@ -22,7 +23,8 @@ import spark.Response;
 
 public class ProfileRoutes{
 	public static Object profile(Request req, Response resp) throws SQLException{
-		@Nullable Account self=Utils.sessionInfo(req).account;
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
