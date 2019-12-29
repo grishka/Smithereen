@@ -47,86 +47,74 @@ public class ProfileRoutes{
 		}
 	}
 
-	public static Object confirmSendFriendRequest(Request req, Response resp) throws SQLException{
+	public static Object confirmSendFriendRequest(Request req, Response resp, Account self) throws SQLException{
 		req.attribute("noHistory", true);
-		if(Utils.requireAccount(req, resp)){
-			Account self=Utils.sessionInfo(req).account;
-			String username=req.params(":username");
-			User user=UserStorage.getByUsername(username);
-			if(user!=null){
-				if(user.id==self.user.id){
-					return Utils.wrapError(req, "err_cant_friend_self");
-				}
-				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-				if(status==FriendshipStatus.NONE){
-					JtwigModel model=JtwigModel.newModel();
-					model.with("targetUser", user);
-					return Utils.renderTemplate(req, "send_friend_request", model);
-				}else if(status==FriendshipStatus.FRIENDS){
-					return Utils.wrapError(req, "err_already_friends");
-				}else if(status==FriendshipStatus.REQUEST_RECVD){
-					return Utils.wrapError(req, "err_have_incoming_friend_req");
-				}else{ // REQ_SENT
-					return Utils.wrapError(req, "err_friend_req_already_sent");
-				}
-			}else{
-				resp.status(404);
-				return Utils.wrapError(req, "user_not_found");
+		String username=req.params(":username");
+		User user=UserStorage.getByUsername(username);
+		if(user!=null){
+			if(user.id==self.user.id){
+				return Utils.wrapError(req, "err_cant_friend_self");
 			}
+			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
+			if(status==FriendshipStatus.NONE){
+				JtwigModel model=JtwigModel.newModel();
+				model.with("targetUser", user);
+				return Utils.renderTemplate(req, "send_friend_request", model);
+			}else if(status==FriendshipStatus.FRIENDS){
+				return Utils.wrapError(req, "err_already_friends");
+			}else if(status==FriendshipStatus.REQUEST_RECVD){
+				return Utils.wrapError(req, "err_have_incoming_friend_req");
+			}else{ // REQ_SENT
+				return Utils.wrapError(req, "err_friend_req_already_sent");
+			}
+		}else{
+			resp.status(404);
+			return Utils.wrapError(req, "user_not_found");
 		}
-		return "";
 	}
 
-	public static Object doSendFriendRequest(Request req, Response resp) throws SQLException{
-		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=Utils.sessionInfo(req).account;
-			String username=req.params(":username");
-			User user=UserStorage.getByUsername(username);
-			if(user!=null){
-				if(user.id==self.user.id){
-					return Utils.wrapError(req, "err_cant_friend_self");
-				}
-				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-				if(status==FriendshipStatus.NONE){
-					UserStorage.putFriendRequest(self.user.id, user.id, req.queryParams("message"));
-					resp.redirect(Utils.sessionInfo(req).history.last());
-					return "";
-				}else if(status==FriendshipStatus.FRIENDS){
-					return Utils.wrapError(req, "err_already_friends");
-				}else if(status==FriendshipStatus.REQUEST_RECVD){
-					return Utils.wrapError(req, "err_have_incoming_friend_req");
-				}else{ // REQ_SENT
-					return Utils.wrapError(req, "err_friend_req_already_sent");
-				}
-			}else{
-				resp.status(404);
-				return Utils.wrapError(req, "user_not_found");
+	public static Object doSendFriendRequest(Request req, Response resp, Account self) throws SQLException{
+		String username=req.params(":username");
+		User user=UserStorage.getByUsername(username);
+		if(user!=null){
+			if(user.id==self.user.id){
+				return Utils.wrapError(req, "err_cant_friend_self");
 			}
+			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
+			if(status==FriendshipStatus.NONE){
+				UserStorage.putFriendRequest(self.user.id, user.id, req.queryParams("message"));
+				resp.redirect(Utils.sessionInfo(req).history.last());
+				return "";
+			}else if(status==FriendshipStatus.FRIENDS){
+				return Utils.wrapError(req, "err_already_friends");
+			}else if(status==FriendshipStatus.REQUEST_RECVD){
+				return Utils.wrapError(req, "err_have_incoming_friend_req");
+			}else{ // REQ_SENT
+				return Utils.wrapError(req, "err_friend_req_already_sent");
+			}
+		}else{
+			resp.status(404);
+			return Utils.wrapError(req, "user_not_found");
 		}
-		return "";
 	}
 
-	public static Object confirmRemoveFriend(Request req, Response resp) throws SQLException{
+	public static Object confirmRemoveFriend(Request req, Response resp, Account self) throws SQLException{
 		req.attribute("noHistory", true);
-		if(Utils.requireAccount(req, resp)){
-			Account self=Utils.sessionInfo(req).account;
-			String username=req.params(":username");
-			User user=UserStorage.getByUsername(username);
-			if(user!=null){
-				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-				if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
-					Lang l=Utils.lang(req);
-					JtwigModel model=JtwigModel.newModel().with("message", l.get("confirm_unfriend_X", user.getFullName())).with("formAction", user.getProfileURL("doRemoveFriend")).with("back", user.url.toString());
-					return Utils.renderTemplate(req, "generic_confirm", model);
-				}else{
-					return Utils.wrapError(req, "err_not_friends");
-				}
+		String username=req.params(":username");
+		User user=UserStorage.getByUsername(username);
+		if(user!=null){
+			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
+			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
+				Lang l=Utils.lang(req);
+				JtwigModel model=JtwigModel.newModel().with("message", l.get("confirm_unfriend_X", user.getFullName())).with("formAction", user.getProfileURL("doRemoveFriend")).with("back", user.url.toString());
+				return Utils.renderTemplate(req, "generic_confirm", model);
 			}else{
-				resp.status(404);
-				return Utils.wrapError(req, "user_not_found");
+				return Utils.wrapError(req, "err_not_friends");
 			}
+		}else{
+			resp.status(404);
+			return Utils.wrapError(req, "user_not_found");
 		}
-		return "";
 	}
 
 	public static Object friends(Request req, Response resp) throws SQLException{
@@ -165,62 +153,52 @@ public class ProfileRoutes{
 		return Utils.wrapError(req, "user_not_found");
 	}
 
-	public static Object incomingFriendRequests(Request req, Response resp) throws SQLException{
+	public static Object incomingFriendRequests(Request req, Response resp, Account self) throws SQLException{
 		String username=req.params(":username");
-		if(Utils.requireAccount(req, resp)){
-			Account self=Utils.sessionInfo(req).account;
-			if(!self.user.username.equalsIgnoreCase(username)){
-				resp.redirect(Utils.sessionInfo(req).history.last());
-				return "";
+		if(!self.user.username.equalsIgnoreCase(username)){
+			resp.redirect(Utils.sessionInfo(req).history.last());
+			return "";
+		}
+		List<FriendRequest> requests=UserStorage.getIncomingFriendRequestsForUser(self.user.id, 0, 100);
+		JtwigModel model=JtwigModel.newModel();
+		model.with("friendRequests", requests);
+		return Utils.renderTemplate(req, "friend_requests", model);
+	}
+
+	public static Object respondToFriendRequest(Request req, Response resp, Account self) throws SQLException{
+		String username=req.params(":username");
+		User user=UserStorage.getByUsername(username);
+		if(user!=null){
+			if(req.queryParams("accept")!=null){
+				UserStorage.acceptFriendRequest(self.user.id, user.id);
+			}else if(req.queryParams("decline")!=null){
+				UserStorage.deleteFriendRequest(self.user.id, user.id);
 			}
-			List<FriendRequest> requests=UserStorage.getIncomingFriendRequestsForUser(self.user.id, 0, 100);
-			JtwigModel model=JtwigModel.newModel();
-			model.with("friendRequests", requests);
-			return Utils.renderTemplate(req, "friend_requests", model);
+			resp.redirect(Utils.sessionInfo(req).history.last());
+		}else{
+			resp.status(404);
+			return Utils.wrapError(req, "user_not_found");
 		}
 		return "";
 	}
 
-	public static Object respondToFriendRequest(Request req, Response resp) throws SQLException{
+	public static Object doRemoveFriend(Request req, Response resp, Account self) throws SQLException{
 		String username=req.params(":username");
-		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=Utils.sessionInfo(req).account;
-			User user=UserStorage.getByUsername(username);
-			if(user!=null){
-				if(req.queryParams("accept")!=null){
-					UserStorage.acceptFriendRequest(self.user.id, user.id);
-				}else if(req.queryParams("decline")!=null){
-					UserStorage.deleteFriendRequest(self.user.id, user.id);
-				}
+		User user=UserStorage.getByUsername(username);
+		if(user!=null){
+			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
+			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
+				UserStorage.unfriendUser(self.user.id, user.id);
 				resp.redirect(Utils.sessionInfo(req).history.last());
-			}else{
-				resp.status(404);
-				return Utils.wrapError(req, "user_not_found");
-			}
-		}
-		return "";
-	}
-
-	public static Object doRemoveFriend(Request req, Response resp) throws SQLException{
-		String username=req.params(":username");
-		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=Utils.sessionInfo(req).account;
-			User user=UserStorage.getByUsername(username);
-			if(user!=null){
-				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-				if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
-					UserStorage.unfriendUser(self.user.id, user.id);
-					resp.redirect(Utils.sessionInfo(req).history.last());
-					if(user instanceof ForeignUser){
-						ActivityPubWorker.getInstance().sendUnfriendActivity(self.user, user);
-					}
-				}else{
-					return Utils.wrapError(req, "err_not_friends");
+				if(user instanceof ForeignUser){
+					ActivityPubWorker.getInstance().sendUnfriendActivity(self.user, user);
 				}
 			}else{
-				resp.status(404);
-				return Utils.wrapError(req, "user_not_found");
+				return Utils.wrapError(req, "err_not_friends");
 			}
+		}else{
+			resp.status(404);
+			return Utils.wrapError(req, "user_not_found");
 		}
 		return "";
 	}

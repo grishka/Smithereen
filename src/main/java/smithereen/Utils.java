@@ -82,10 +82,14 @@ public class Utils{
 	public static void addGlobalParamsToTemplate(Request req, JtwigModel model){
 		if(req.session(false)!=null){
 			SessionInfo info=req.session().attribute("info");
-			model.with("csrf", info.csrfToken);
+			if(info==null){
+				info=new SessionInfo();
+				req.session().attribute("info", info);
+			}
 			Account account=info.account;
 			if(account!=null){
 				model.with("currentUser", account.user);
+				model.with("csrf", info.csrfToken);
 				try{
 					UserNotifications notifications=UserStorage.getNotificationsForUser(account.user.id);
 					model.with("userNotifications", notifications);

@@ -174,8 +174,8 @@ public class User extends ActivityPubObject{
 			}
 		}
 
-		activityPubID=Config.localURI(username);
-		url=activityPubID;
+		activityPubID=Config.localURI("/users/"+id);
+		url=Config.localURI(username);
 
 		String fields=res.getString("profile_fields");
 		if(StringUtils.isNotEmpty(fields)){
@@ -189,7 +189,8 @@ public class User extends ActivityPubObject{
 	}
 
 	public URI getFollowersURL(){
-		return Config.localURI(username+"/activitypub/followers");
+		String userURL=activityPubID.toString();
+		return URI.create(userURL+"/followers");
 	}
 
 	@Override
@@ -204,10 +205,10 @@ public class User extends ActivityPubObject{
 		JSONObject root=super.asActivityPubObject(obj, contextCollector);
 		root.put("preferredUsername", username);
 
-		root.put("inbox", userURL+"/activitypub/inbox");
-		root.put("outbox", userURL+"/activitypub/outbox");
-		root.put("followers", userURL+"/activitypub/followers");
-		root.put("following", userURL+"/activitypub/following");
+		root.put("inbox", userURL+"/inbox");
+		root.put("outbox", userURL+"/outbox");
+		root.put("followers", userURL+"/followers");
+		root.put("following", userURL+"/following");
 
 		root.put("firstName", firstName);
 		if(StringUtils.isNotEmpty(lastName)){

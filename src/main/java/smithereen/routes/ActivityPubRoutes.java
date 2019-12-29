@@ -59,16 +59,13 @@ import spark.Response;
 
 public class ActivityPubRoutes{
 
-	private static JSONObject idAndTypeObject(String id, String type){
-		JSONObject o=new JSONObject();
-		o.put("@id", id);
-		o.put("@type", type);
-		return o;
-	}
-
 	public static Object userActor(Request req, Response resp) throws SQLException{
 		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
+		User user;
+		if(username!=null)
+			user=UserStorage.getByUsername(username);
+		else
+			user=UserStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
 		if(user!=null && !(user instanceof ForeignUser)){
 			return user.asRootActivityPubObject();
 		}
@@ -77,19 +74,13 @@ public class ActivityPubRoutes{
 	}
 
 	public static Object post(Request req, Response resp) throws SQLException{
-		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
-		if(user==null){
-			resp.status(404);
-			return "User not found";
-		}
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
 			resp.status(404);
 			return "Post not found";
 		}
 		Post post=PostStorage.getPostByID(postID);
-		if(post==null){
+		if(post==null || !Config.isLocal(post.activityPubID)){
 			resp.status(404);
 			return "Post not found";
 		}
@@ -97,13 +88,9 @@ public class ActivityPubRoutes{
 	}
 
 	public static Object inbox(Request req, Response resp) throws SQLException{
-		String username=req.params(":username");
-		if(username.contains("@")){
-			resp.status(400);
-			return "Only local users accepted here";
-		}
-		User user=UserStorage.getByUsername(username);
-		if(user==null){
+		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+		User user=UserStorage.getById(id);
+		if(user==null || user instanceof ForeignUser){
 			resp.status(404);
 			return "User not found";
 		}
@@ -115,9 +102,9 @@ public class ActivityPubRoutes{
 	}
 
 	public static Object outbox(Request req, Response resp) throws SQLException{
-		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
-		if(user==null){
+		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+		User user=UserStorage.getById(id);
+		if(user==null || user instanceof ForeignUser){
 			resp.status(404);
 			return "User not found";
 		}
@@ -142,7 +129,7 @@ public class ActivityPubRoutes{
 				activity.activityPubID=new URI(post.activityPubID.getScheme(), post.activityPubID.getSchemeSpecificPart()+"/activityCreate", null);
 				page.items.add(new LinkOrObject(activity));
 			}
-			URI baseURI=Config.localURI(user.username+"/activitypub/outbox");
+			URI baseURI=Config.localURI("/users/"+user.id+"/outbox");
 			page.partOf=baseURI;
 			if(posts.size()>0){
 				page.next=URI.create(baseURI+"?max_id="+posts.get(posts.size()-1).id);
@@ -160,80 +147,73 @@ public class ActivityPubRoutes{
 				return collection.asRootActivityPubObject();
 			}
 		}catch(URISyntaxException ignore){}
+		resp.type("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"");
 		return page.asRootActivityPubObject();
 	}
 
-	public static Object externalInteraction(Request req, Response resp){
+	public static Object externalInteraction(Request req, Response resp, Account self){
 		// ?type=reblog
 		// ?type=favourite
 		// ?type=reply
 		// user/remote_follow
-
-		if(Utils.requireAccount(req, resp)){
-			Account self=Utils.sessionInfo(req).account;
-			String ref=req.headers("referer");
-			ActivityPubObject remoteObj;
-			try{
-				remoteObj=ActivityPub.fetchRemoteObject(req.queryParams("uri"));
-			}catch(IOException|JSONException x){
-				return x.getMessage();
-			}
-			if(remoteObj instanceof ForeignUser){
-				try{
-					ForeignUser foreignUser=(ForeignUser) remoteObj;
-//					System.out.println(foreignUser);
-					UserStorage.putOrUpdateForeignUser(foreignUser);
-					FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, foreignUser.id);
-					if(status==FriendshipStatus.REQUEST_SENT){
-						return Utils.wrapError(req, "err_friend_req_already_sent");
-					}else if(status==FriendshipStatus.FOLLOWING){
-						return Utils.wrapError(req, "err_already_following");
-					}else if(status==FriendshipStatus.FRIENDS){
-						return Utils.wrapError(req, "err_already_friends");
-					}
-					JtwigModel model=JtwigModel.newModel().with("user", foreignUser);
-					return Utils.renderTemplate(req, "remote_follow", model);
-				}catch(Exception x){
-					x.printStackTrace();
-					return x.toString();
-				}
-			}
-			return "Referer: "+ref+"<hr/>URL: "+req.queryParams("uri")+"<hr/>Object:<br/><pre>"+remoteObj.toString().replace("<", "&lt;")+"</pre>";
+		String ref=req.headers("referer");
+		ActivityPubObject remoteObj;
+		try{
+			remoteObj=ActivityPub.fetchRemoteObject(req.queryParams("uri"));
+		}catch(IOException|JSONException x){
+			return x.getMessage();
 		}
-		return "";
-	}
-
-	public static Object remoteFollow(Request req, Response resp) throws SQLException{
-		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
-			Account self=Utils.sessionInfo(req).account;
-			String username=req.params(":username");
-			User _user=UserStorage.getByUsername(username);
-//			System.out.println(_user);
-			if(!(_user instanceof ForeignUser)){
-				return Utils.wrapError(req, "err_user_not_found");
-			}
-			ForeignUser user=(ForeignUser) _user;
-			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-			if(status==FriendshipStatus.REQUEST_SENT){
-				return Utils.wrapError(req, "err_friend_req_already_sent");
-			}else if(status==FriendshipStatus.FOLLOWING){
-				return Utils.wrapError(req, "err_already_following");
-			}else if(status==FriendshipStatus.FRIENDS){
-				return Utils.wrapError(req, "err_already_friends");
-			}
+		if(remoteObj instanceof ForeignUser){
 			try{
-				Follow follow=new Follow();
-				follow.actor=new LinkOrObject(self.user.activityPubID);
-				follow.object=new LinkOrObject(user.activityPubID);
-				follow.activityPubID=new URI(self.user.activityPubID.getScheme(), self.user.activityPubID.getSchemeSpecificPart(), "follow"+user.id);
-				ActivityPub.postActivity(user.sharedInbox, follow, self.user);
-				UserStorage.followUser(self.user.id, user.id, false);
-				return "Success";
-			}catch(URISyntaxException ignore){
-			}catch(IOException x){
+				ForeignUser foreignUser=(ForeignUser) remoteObj;
+//					System.out.println(foreignUser);
+				UserStorage.putOrUpdateForeignUser(foreignUser);
+				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, foreignUser.id);
+				if(status==FriendshipStatus.REQUEST_SENT){
+					return Utils.wrapError(req, "err_friend_req_already_sent");
+				}else if(status==FriendshipStatus.FOLLOWING){
+					return Utils.wrapError(req, "err_already_following");
+				}else if(status==FriendshipStatus.FRIENDS){
+					return Utils.wrapError(req, "err_already_friends");
+				}
+				JtwigModel model=JtwigModel.newModel().with("user", foreignUser);
+				return Utils.renderTemplate(req, "remote_follow", model);
+			}catch(Exception x){
 				x.printStackTrace();
 				return x.toString();
 			}
+		}
+		return "Referer: "+ref+"<hr/>URL: "+req.queryParams("uri")+"<hr/>Object:<br/><pre>"+remoteObj.toString().replace("<", "&lt;")+"</pre>";
+	}
+
+	public static Object remoteFollow(Request req, Response resp, Account self) throws SQLException{
+		String username=req.params(":username");
+		User _user=UserStorage.getByUsername(username);
+//		System.out.println(_user);
+		if(!(_user instanceof ForeignUser)){
+			return Utils.wrapError(req, "err_user_not_found");
+		}
+		ForeignUser user=(ForeignUser) _user;
+		FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
+		if(status==FriendshipStatus.REQUEST_SENT){
+			return Utils.wrapError(req, "err_friend_req_already_sent");
+		}else if(status==FriendshipStatus.FOLLOWING){
+			return Utils.wrapError(req, "err_already_following");
+		}else if(status==FriendshipStatus.FRIENDS){
+			return Utils.wrapError(req, "err_already_friends");
+		}
+		try{
+			Follow follow=new Follow();
+			follow.actor=new LinkOrObject(self.user.activityPubID);
+			follow.object=new LinkOrObject(user.activityPubID);
+			follow.activityPubID=new URI(self.user.activityPubID.getScheme(), self.user.activityPubID.getSchemeSpecificPart(), "follow"+user.id);
+			ActivityPub.postActivity(user.sharedInbox, follow, self.user);
+			UserStorage.followUser(self.user.id, user.id, false);
+			return "Success";
+		}catch(URISyntaxException ignore){
+		}catch(IOException x){
+			x.printStackTrace();
+			return x.toString();
 		}
 		return "";
 	}
@@ -402,9 +382,9 @@ public class ActivityPubRoutes{
 
 
 	private static Object followersOrFollowing(Request req, Response resp, boolean f) throws SQLException{
-		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
-		if(user==null){
+		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+		User user=UserStorage.getById(id);
+		if(user==null || user instanceof ForeignUser){
 			resp.status(404);
 			return "User not found";
 		}
@@ -422,7 +402,7 @@ public class ActivityPubRoutes{
 		}
 		page.items=list;
 		page.totalItems=total;
-		URI baseURI=Config.localURI(username+"/activitypub/"+(f ? "followers" : "following"));
+		URI baseURI=Config.localURI("/users/"+user.id+"/"+(f ? "followers" : "following"));
 		page.activityPubID=URI.create(baseURI+"?page="+pageIndex);
 		page.partOf=baseURI;
 		if(pageIndex>1){
@@ -440,6 +420,7 @@ public class ActivityPubRoutes{
 			collection.activityPubID=page.partOf;
 			return collection.asRootActivityPubObject();
 		}
+		resp.type("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"");
 		return page.asRootActivityPubObject();
 	}
 

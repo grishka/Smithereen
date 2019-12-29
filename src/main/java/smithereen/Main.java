@@ -9,7 +9,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
+import smithereen.data.ForeignUser;
 import smithereen.data.SessionInfo;
+import smithereen.data.User;
 import smithereen.jtwigext.LangDateFunction;
 import smithereen.jtwigext.LangFunction;
 import smithereen.jtwigext.LangPluralFunction;
@@ -23,11 +25,13 @@ import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
 import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
+import smithereen.storage.UserStorage;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
 
 import static spark.Spark.*;
+import static smithereen.sparkext.SparkExtension.*;
 
 public class Main{
 
@@ -73,7 +77,7 @@ public class Main{
 
 		get("/", Main::indexPage);
 
-		get("/feed", PostRoutes::feed);
+		getLoggedIn("/feed", PostRoutes::feed);
 
 		path("/account", ()->{
 			post("/login", SessionRoutes::login);
@@ -82,16 +86,16 @@ public class Main{
 		});
 
 		path("/settings", ()->{
-			get("/", SettingsRoutes::settings);
-			post("/createInvite", SettingsRoutes::createInvite);
-			post("/updatePassword", SettingsRoutes::updatePassword);
-			post("/updateName", SettingsRoutes::updateName);
-			post("/updateProfilePicture", SettingsRoutes::updateProfilePicture);
+			getLoggedIn("/", SettingsRoutes::settings);
+			postWithCSRF("/createInvite", SettingsRoutes::createInvite);
+			postWithCSRF("/updatePassword", SettingsRoutes::updatePassword);
+			postWithCSRF("/updateName", SettingsRoutes::updateName);
+			postLoggedIn("/updateProfilePicture", SettingsRoutes::updateProfilePicture);
 		});
 
 		path("/activitypub", ()->{
 			post("/sharedInbox", ActivityPubRoutes::sharedInbox);
-			get("/externalInteraction", ActivityPubRoutes::externalInteraction);
+			getLoggedIn("/externalInteraction", ActivityPubRoutes::externalInteraction);
 			get("/nodeinfo/2.0", ActivityPubRoutes::nodeInfo);
 		});
 
@@ -104,43 +108,52 @@ public class Main{
 			get("/downloadExternalMedia", SystemRoutes::downloadExternalMedia);
 		});
 
+		path("/users/:id", ()->{
+			get("", "application/activity+json", ActivityPubRoutes::userActor);
+			get("", "application/ld+json", ActivityPubRoutes::userActor);
+			get("", (req, resp)->{
+				int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+				User user=UserStorage.getById(id);
+				if(user==null || user instanceof ForeignUser){
+					resp.status(404);
+				}else{
+					resp.redirect("/"+user.username);
+				}
+				return "";
+			});
+
+			post("/inbox", ActivityPubRoutes::inbox);
+			get("/outbox", ActivityPubRoutes::outbox);
+			get("/followers", ActivityPubRoutes::userFollowers);
+			get("/following", ActivityPubRoutes::userFollowing);
+		});
+
+		path("/posts/:postID", ()->{
+			get("", "application/activity+json", ActivityPubRoutes::post);
+			get("", "application/ld+json", ActivityPubRoutes::post);
+			get("", PostRoutes::standalonePost);
+
+			getLoggedIn("/confirmDelete", PostRoutes::confirmDelete);
+			postWithCSRF("/delete", PostRoutes::delete);
+		});
+
 		path("/:username", ()->{
 			get("", "application/activity+json", ActivityPubRoutes::userActor);
 			get("", "application/ld+json", ActivityPubRoutes::userActor);
 			get("", ProfileRoutes::profile);
-			post("/createWallPost", PostRoutes::createWallPost);
+			postWithCSRF("/createWallPost", PostRoutes::createWallPost);
 
-			post("/remoteFollow", ActivityPubRoutes::remoteFollow);
+			postWithCSRF("/remoteFollow", ActivityPubRoutes::remoteFollow);
 
-			get("/confirmSendFriendRequest", ProfileRoutes::confirmSendFriendRequest);
-			post("/doSendFriendRequest", ProfileRoutes::doSendFriendRequest);
-			post("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
-			post("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
-			get("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
+			getLoggedIn("/confirmSendFriendRequest", ProfileRoutes::confirmSendFriendRequest);
+			postWithCSRF("/doSendFriendRequest", ProfileRoutes::doSendFriendRequest);
+			postWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
+			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
+			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
 			get("/friends", ProfileRoutes::friends);
-			get("/incomingFriendRequests", ProfileRoutes::incomingFriendRequests);
+			getLoggedIn("/incomingFriendRequests", ProfileRoutes::incomingFriendRequests);
 			get("/followers", ProfileRoutes::followers);
 			get("/following", ProfileRoutes::following);
-
-			path("/posts/:postID", ()->{
-				get("", "application/activity+json", ActivityPubRoutes::post);
-				get("", "application/ld+json", ActivityPubRoutes::post);
-				get("", PostRoutes::standalonePost);
-
-				get("/confirmDelete", PostRoutes::confirmDelete);
-				post("/delete", PostRoutes::delete);
-			});
-
-			path("/activitypub", ()->{
-				post("/inbox", ActivityPubRoutes::inbox);
-				get("/outbox", ActivityPubRoutes::outbox);
-				get("/followers", ActivityPubRoutes::userFollowers);
-				get("/following", ActivityPubRoutes::userFollowing);
-				after((req, resp)->{
-					if(req.requestMethod().equalsIgnoreCase("get"))
-						resp.type("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"");
-				});
-			});
 		});
 
 
@@ -178,7 +191,7 @@ public class Main{
 
 	private static Object indexPage(Request req, Response resp){
 		SessionInfo info=req.session().attribute("info");
-		if(info.account!=null){
+		if(info!=null && info.account!=null){
 			resp.redirect("/feed");
 			return "";
 		}

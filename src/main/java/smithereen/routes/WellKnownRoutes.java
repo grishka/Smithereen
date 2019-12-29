@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import smithereen.Config;
+import smithereen.data.ForeignUser;
 import smithereen.data.User;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -23,7 +24,7 @@ public class WellKnownRoutes{
 			if(parts.length==2 && parts[1].equals(Config.domain)){
 				String username=parts[0];
 				User user=UserStorage.getByUsername(username);
-				if(user!=null){
+				if(user!=null && !(user instanceof ForeignUser)){
 					resp.type("application/json");
 					JSONObject root=new JSONObject();
 					root.put("subject", "acct:"+user.username+"@"+Config.domain);
@@ -31,7 +32,7 @@ public class WellKnownRoutes{
 					JSONObject selfLink=new JSONObject();
 					selfLink.put("rel", "self");
 					selfLink.put("type", "application/activity+json");
-					selfLink.put("href", Config.localURI(user.username));
+					selfLink.put("href", user.activityPubID);
 					JSONObject authLink=new JSONObject();
 					authLink.put("rel", "http://ostatus.org/schema/1.0/subscribe");
 					authLink.put("template", Config.localURI("activitypub/externalInteraction?uri")+"={uri}");

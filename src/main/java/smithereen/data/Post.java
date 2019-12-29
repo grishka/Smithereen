@@ -64,7 +64,7 @@ public class Post extends ActivityPubObject{
 		String apid=res.getString("ap_id");
 		try{
 			if(apid==null){
-				activityPubID=new URI(owner.activityPubID.getScheme(), owner.activityPubID.getSchemeSpecificPart()+"/posts/"+id, null);
+				activityPubID=Config.localURI("/posts/"+id);
 				url=activityPubID;
 				local=true;
 			}else{
@@ -166,7 +166,7 @@ public class Post extends ActivityPubObject{
 	}
 
 	public URI getInternalURL(){
-		return Config.localURI("/"+owner.getFullUsername()+"/posts/"+id);
+		return Config.localURI("/posts/"+id);
 	}
 
 	public void setParent(Post parent){
