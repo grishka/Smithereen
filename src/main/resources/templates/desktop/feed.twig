@@ -1,11 +1,17 @@
 {%extends "page.twig"%}
 {%block content%}
 {%include "wall_post_form.twig"%}
-{%for post in posts%}
-{%include "wall_post.twig" with {post: post}%}
-{%for reply in post.replies%}
+{%for entry in feed%}
+
+{%if entry.type==1%}
+{%include "wall_post.twig" with {post: entry.post}%}
+{%for reply in entry.post.replies%}
 {%include "wall_reply.twig" with {post: reply}%}
 {%endfor%}
+{%else%}
+Unknown entry type {{entry.type}}
+{%endif%}
+
 <hr/>
 {%endfor%}
 {%endblock%}

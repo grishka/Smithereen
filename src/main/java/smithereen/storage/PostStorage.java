@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -17,12 +18,15 @@ import java.util.List;
 import smithereen.Config;
 import smithereen.ObjectNotFoundException;
 import smithereen.Utils;
+import smithereen.data.NewsfeedEntry;
 import smithereen.data.Post;
+import smithereen.data.PostNewsfeedEntry;
 import smithereen.data.User;
 
 public class PostStorage{
 	public static int createUserWallPost(int userID, int ownerID, String text, int[] replyKey) throws SQLException{
-		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `reply_key`) VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `reply_key`) VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 		stmt.setInt(1, userID);
 		stmt.setInt(2, ownerID);
 		stmt.setString(3, text);
@@ -40,16 +44,25 @@ public class PostStorage{
 		stmt.execute();
 		try(ResultSet keys=stmt.getGeneratedKeys()){
 			keys.first();
-			return keys.getInt(1);
+			int id=keys.getInt(1);
+			if(userID==ownerID && replyKey==null){
+				stmt=conn.prepareStatement("INSERT INTO `newsfeed` (`type`, `author_id`, `object_id`) VALUES (?, ?, ?)");
+				stmt.setInt(1, NewsfeedEntry.TYPE_POST);
+				stmt.setInt(2, userID);
+				stmt.setInt(3, id);
+				stmt.execute();
+			}
+			return id;
 		}
 	}
 
 	public static void putForeignWallPost(Post post) throws SQLException{
 		Post existing=getPostByID(post.activityPubID);
+		Connection conn=DatabaseConnectionManager.getConnection();
 
 		PreparedStatement stmt;
 		if(existing==null){
-			stmt=DatabaseConnectionManager.getConnection().prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `attachments`, `content_warning`, `ap_url`, `ap_id`, `reply_key`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+			stmt=conn.prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `attachments`, `content_warning`, `ap_url`, `ap_id`, `reply_key`, `created_at`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 			stmt.setInt(1, post.user.id);
 			stmt.setInt(2, post.owner.id);
 			stmt.setString(3, post.content);
@@ -68,6 +81,7 @@ public class PostStorage{
 				replyKey=b.toByteArray();
 			}
 			stmt.setBytes(8, replyKey);
+			stmt.setTimestamp(9, new Timestamp(post.published.getTime()));
 		}else{
 			stmt=DatabaseConnectionManager.getConnection().prepareStatement("UPDATE `wall_posts` SET `text`=?, `attachments`=?, `content_warning`=? WHERE `ap_id`=?");
 			stmt.setString(1, post.content);
@@ -82,21 +96,71 @@ public class PostStorage{
 				res.first();
 				post.id=res.getInt(1);
 			}
+			if(post.owner.equals(post.user) && post.getReplyLevel()==0){
+				stmt=conn.prepareStatement("INSERT INTO `newsfeed` (`type`, `author_id`, `object_id`, `time`) VALUES (?, ?, ?, ?)");
+				stmt.setInt(1, NewsfeedEntry.TYPE_POST);
+				stmt.setInt(2, post.user.id);
+				stmt.setInt(3, post.id);
+				stmt.setTimestamp(4, new Timestamp(post.published.getTime()));
+				stmt.execute();
+			}
 		}else{
 			post.id=existing.id;
 		}
 	}
 
-	public static List<Post> getFeed(int userID) throws SQLException{
-		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("SELECT * FROM `wall_posts` WHERE `reply_key` IS NULL AND `owner_user_id`=`author_id` AND `author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? UNION SELECT ?) ORDER BY created_at DESC LIMIT 25");
+	public static List<NewsfeedEntry> getFeed(int userID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("SELECT `type`, `object_id` FROM `newsfeed` WHERE `author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? UNION SELECT ?) ORDER BY `time` DESC LIMIT 25");
+
 		stmt.setInt(1, userID);
 		stmt.setInt(2, userID);
-		ArrayList<Post> posts=new ArrayList<>();
+		ArrayList<NewsfeedEntry> posts=new ArrayList<>();
+		ArrayList<Integer> needPosts=new ArrayList<>();
+		HashMap<Integer, PostNewsfeedEntry> postMap=new HashMap<>();
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
 				do{
-					posts.add(Post.fromResultSet(res));
+					int type=res.getInt(1);
+					NewsfeedEntry _entry=null;
+					switch(type){
+						case NewsfeedEntry.TYPE_POST:{
+							PostNewsfeedEntry entry=new PostNewsfeedEntry();
+							entry.objectID=res.getInt(2);
+							posts.add(entry);
+							postMap.put(entry.objectID, entry);
+							needPosts.add(entry.objectID);
+							_entry=entry;
+							break;
+						}
+					}
+					if(_entry!=null)
+						_entry.type=type;
 				}while(res.next());
+			}
+		}
+		if(!needPosts.isEmpty()){
+			StringBuilder sb=new StringBuilder();
+			sb.append("SELECT * FROM `wall_posts` WHERE `id` IN (");
+			boolean first=true;
+			for(int id:needPosts){
+				if(!first){
+					sb.append(',');
+				}else{
+					first=false;
+				}
+				sb.append(id);
+			}
+			sb.append(')');
+			try(ResultSet res=conn.createStatement().executeQuery(sb.toString())){
+				if(res.first()){
+					do{
+						Post post=Post.fromResultSet(res);
+						PostNewsfeedEntry entry=postMap.get(post.id);
+						if(entry!=null)
+							entry.post=post;
+					}while(res.next());
+				}
 			}
 		}
 		return posts;
@@ -166,7 +230,11 @@ public class PostStorage{
 	}
 
 	public static void deletePost(int id) throws SQLException{
-		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("DELETE FROM `wall_posts` WHERE `id`=?");
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("DELETE FROM `wall_posts` WHERE `id`=?");
+		stmt.setInt(1, id);
+		stmt.execute();
+		stmt=conn.prepareStatement("DELETE FROM `newsfeed` WHERE `type`=1 AND `object_id`=?");
 		stmt.setInt(1, id);
 		stmt.execute();
 	}

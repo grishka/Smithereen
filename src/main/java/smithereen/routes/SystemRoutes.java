@@ -103,7 +103,10 @@ public class SystemRoutes{
 				}
 				try{
 					MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType);
-					resp.redirect(getBestSizeURL(item.sizes, sizeType, format));
+					if(item==null)
+						resp.redirect(uri.toString());
+					else
+						resp.redirect(getBestSizeURL(item.sizes, sizeType, format));
 					return "";
 				}catch(IOException x){
 					x.printStackTrace();

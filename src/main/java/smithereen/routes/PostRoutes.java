@@ -9,7 +9,9 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.data.Account;
+import smithereen.data.NewsfeedEntry;
 import smithereen.data.Post;
+import smithereen.data.PostNewsfeedEntry;
 import smithereen.data.User;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -70,11 +72,13 @@ public class PostRoutes{
 
 	public static Object feed(Request req, Response resp, Account self) throws SQLException{
 		int userID=self.user.id;
-		List<Post> feed=PostStorage.getFeed(userID);
-		for(Post post:feed){
-			post.replies=PostStorage.getRepliesForFeed(post.id);
+		List<NewsfeedEntry> feed=PostStorage.getFeed(userID);
+		for(NewsfeedEntry e:feed){
+			if(e instanceof PostNewsfeedEntry){
+				((PostNewsfeedEntry) e).post.replies=PostStorage.getRepliesForFeed(e.objectID);
+			}
 		}
-		JtwigModel model=JtwigModel.newModel().with("title", "Feed").with("posts", feed);
+		JtwigModel model=JtwigModel.newModel().with("title", "Feed").with("feed", feed);
 		return Utils.renderTemplate(req, "feed", model);
 	}
 
