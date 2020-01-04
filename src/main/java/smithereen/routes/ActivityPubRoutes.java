@@ -1,5 +1,6 @@
 package smithereen.routes;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.jtwig.JtwigModel;
@@ -42,20 +43,25 @@ import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Like;
+import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
+import smithereen.data.NodeInfo;
 import smithereen.data.Post;
 import smithereen.data.User;
+import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDDocument;
 import smithereen.jsonld.LinkedDataSignatures;
+import smithereen.storage.NodeInfoStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 
 public class ActivityPubRoutes{
 
@@ -203,12 +209,30 @@ public class ActivityPubRoutes{
 			return Utils.wrapError(req, "err_already_friends");
 		}
 		try{
+			String msg=req.queryParams("message");
+			if(user.supportsFriendRequests()){
+				UserStorage.putFriendRequest(self.user.id, user.id, msg, false);
+			}else{
+				UserStorage.followUser(self.user.id, user.id, false);
+			}
 			Follow follow=new Follow();
 			follow.actor=new LinkOrObject(self.user.activityPubID);
 			follow.object=new LinkOrObject(user.activityPubID);
 			follow.activityPubID=new URI(self.user.activityPubID.getScheme(), self.user.activityPubID.getSchemeSpecificPart(), "follow"+user.id);
-			ActivityPub.postActivity(user.sharedInbox, follow, self.user);
-			UserStorage.followUser(self.user.id, user.id, false);
+			ActivityPub.postActivity(user.inbox, follow, self.user);
+			if(user.supportsFriendRequests()){
+				Offer offer=new Offer();
+				offer.actor=new LinkOrObject(self.user.activityPubID);
+				offer.activityPubID=new URI(self.user.activityPubID.getScheme(), self.user.activityPubID.getSchemeSpecificPart(), "friend_request"+user.id);
+				if(StringUtils.isNotEmpty(msg)){
+					offer.content=msg;
+				}
+				Follow revFollow=new Follow();
+				revFollow.actor=new LinkOrObject(user.activityPubID);
+				revFollow.object=new LinkOrObject(self.user.activityPubID);
+				offer.object=new LinkOrObject(revFollow);
+				ActivityPub.postActivity(user.inbox, offer, self.user);
+			}
 			return "Success";
 		}catch(URISyntaxException ignore){
 		}catch(IOException x){
@@ -240,7 +264,9 @@ public class ActivityPubRoutes{
 		services.put("outbound", Collections.EMPTY_LIST);
 		root.put("services", services);
 		JSONObject meta=new JSONObject();
-		meta.put("supportsFriendRequests", true);
+		JSONArray caps=new JSONArray();
+		caps.put("friendRequests");
+		meta.put("capabilities", caps);
 		root.put("metadata", meta);
 		return root;
 	}
@@ -269,7 +295,7 @@ public class ActivityPubRoutes{
 			return x.toString();
 		}
 		try{
-			if(activity.actor.link.getHost().equalsIgnoreCase(Config.domain))
+			if(Config.isLocal(activity.actor.link))
 				throw new IllegalArgumentException("User domain must be different from this server");
 		}catch(Exception x){
 			x.printStackTrace();
@@ -362,6 +388,9 @@ public class ActivityPubRoutes{
 					break;
 				case "Reject":
 					handleRejectActivity(user, (Reject)activity);
+					break;
+				case "Offer":
+					handleOfferActivity(user, (Offer)activity);
 					break;
 				default:
 					throw new IllegalArgumentException("Activity type "+activity.getType()+" is not supported");
@@ -548,7 +577,65 @@ public class ActivityPubRoutes{
 		if(object instanceof Post){
 			Post post=(Post) object;
 			post.content=Utils.sanitizeHTML(post.content);
-			post.owner=post.user=user;
+			post.user=user;
+			boolean isPublic=false;
+			// Own wall posts: to=[public], cc=[own followers, any mentions]
+			// Someone else's wall posts: to=[], cc=[public, wall owner, any mentions]
+			if(post.to==null || post.to.isEmpty()){
+				if(post.cc==null || post.cc.isEmpty()){
+					throw new IllegalArgumentException("to or cc are both empty");
+				}else{
+					LinkOrObject cc1=post.cc.get(0);
+					if(cc1.link==null)
+						throw new IllegalArgumentException("post.cc must only contain links");
+					if(ActivityPub.isPublic(cc1.link)){
+						isPublic=true;
+						if(post.cc.size()>1){
+							LinkOrObject cc2=post.cc.get(1);
+							if(cc2.link==null)
+								throw new IllegalArgumentException("post.cc must only contain links");
+							User owner=UserStorage.getUserByActivityPubID(cc2.link);
+							if(owner==null || owner instanceof ForeignUser)
+								throw new ObjectNotFoundException("Wall owner not found");
+							post.owner=owner;
+						}else{
+							post.owner=user;
+						}
+					}
+				}
+			}else{
+				LinkOrObject to=post.to.get(0);
+				if(to.link==null)
+					throw new IllegalArgumentException("post.to must only contain links");
+				if(ActivityPub.isPublic(to.link)){
+					isPublic=true;
+					post.owner=user;
+				}
+			}
+			if(!isPublic)
+				throw new IllegalArgumentException("Only public posts are supported");
+			if(post.user==post.owner && post.inReplyTo==null){
+				URI followers=user.getFollowersURL();
+				boolean addressesAnyFollowers=false;
+				for(LinkOrObject l:post.to){
+					if(followers.equals(l.link)){
+						addressesAnyFollowers=true;
+						break;
+					}
+				}
+				if(!addressesAnyFollowers){
+					for(LinkOrObject l:post.cc){
+						if(followers.equals(l.link)){
+							addressesAnyFollowers=true;
+							break;
+						}
+					}
+				}
+				if(!addressesAnyFollowers){
+					System.out.println("Dropping this post because it's public but doesn't address any followers");
+					return;
+				}
+			}
 			if(post.summary!=null)
 				post.summary=Utils.sanitizeHTML(post.summary);
 			if(post.inReplyTo!=null){
@@ -572,18 +659,16 @@ public class ActivityPubRoutes{
 
 	private static void handleFollowActivity(ForeignUser actor, Follow act) throws URISyntaxException, SQLException{
 		URI url=act.object.link;
-		if(!url.getHost().equalsIgnoreCase(Config.domain))
+		if(!Config.isLocal(url))
 			throw new IllegalArgumentException("Target user is not from this server");
-		String username=url.getPath().substring(1);
-		if(!Utils.isValidUsername(username) || Utils.isReservedUsername(username))
-			throw new IllegalArgumentException("Invalid username for target user");
-		User user=UserStorage.getByUsername(username);
+		User user=UserStorage.getUserByActivityPubID(url);
 		if(user==null)
 			throw new IllegalArgumentException("User not found");
 		FriendshipStatus status=UserStorage.getFriendshipStatus(actor.id, user.id);
 		if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING)
 			throw new IllegalArgumentException("Already following");
 		UserStorage.followUser(actor.id, user.id, true);
+		UserStorage.deleteFriendRequest(actor.id, user.id);
 
 		Accept accept=new Accept();
 		accept.actor=new LinkOrObject(user.activityPubID);
@@ -700,17 +785,30 @@ public class ActivityPubRoutes{
 
 	private static void handleRejectActivity(ForeignUser actor, Reject act) throws SQLException{
 		if(act.object.object==null)
-			throw new IllegalArgumentException("Undo activity should include a complete object of the activity being undone");
+			throw new IllegalArgumentException("Reject activity should include a complete object of the activity being rejected");
 		ActivityPubObject object=act.object.object;
 		if(!(object instanceof Activity))
-			throw new IllegalArgumentException("Undo activity object must be a subtype of Activity");
+			throw new IllegalArgumentException("Reject activity object must be a subtype of Activity");
 		Activity objectActivity=(Activity)object;
 		switch(objectActivity.getType()){
 			case "Follow":
 				handleRejectFollowActivity(actor, (Follow)objectActivity);
 				break;
+			case "Offer":
+				handleRejectOfferActivity(actor, (Offer)objectActivity);
+				break;
 			default:
 				throw new IllegalArgumentException("Unsupported activity type in Reject: "+objectActivity.getType());
+		}
+	}
+
+	private static void handleOfferActivity(ForeignUser actor, Offer act) throws SQLException{
+		if(act.object.object==null)
+			throw new IllegalArgumentException("Offer should include an object");
+		switch(act.object.object.getType()){
+			case "Follow":
+				handleFriendRequestActivity(actor, (Follow) act.object.object, act.content);
+				break;
 		}
 	}
 
@@ -720,10 +818,7 @@ public class ActivityPubRoutes{
 		URI url=act.object.link;
 		if(!Config.isLocal(url))
 			throw new IllegalArgumentException("Target user is not from this server");
-		String username=url.getPath().substring(1);
-		if(!Utils.isValidUsername(username) || Utils.isReservedUsername(username))
-			throw new IllegalArgumentException("Invalid username for target user");
-		User user=UserStorage.getByUsername(username);
+		User user=UserStorage.getUserByActivityPubID(url);
 		if(user==null)
 			throw new IllegalArgumentException("User not found");
 
@@ -771,6 +866,7 @@ public class ActivityPubRoutes{
 	}
 
 	//endregion
+
 	//region Update subtype handlers
 
 	private static void handleUpdatePostActivity(ForeignUser actor, Post post) throws SQLException{
@@ -786,6 +882,7 @@ public class ActivityPubRoutes{
 	}
 
 	//endregion
+
 	//region Accept subtype handlers
 	private static void handleAcceptFollowActivity(ForeignUser actor, Follow activity) throws SQLException{
 		User follower=UserStorage.getUserByActivityPubID(activity.actor.link);
@@ -801,6 +898,54 @@ public class ActivityPubRoutes{
 		if(follower==null)
 			throw new ObjectNotFoundException("Follower not found");
 		UserStorage.unfriendUser(follower.id, actor.id);
+	}
+
+	private static void handleRejectOfferActivity(ForeignUser actor, Offer act) throws SQLException{
+		if(act.object.object==null)
+			throw new IllegalArgumentException("Reject{Offer} must contain an object in offer.object");
+		switch(act.object.object.getType()){
+			case "Follow":
+				handleRejectFriendRequestActivity(actor, (Follow) act.object.object);
+				break;
+			default:
+				throw new IllegalArgumentException("Unsupported object type in Reject{Offer}: "+act.object.object.getType());
+		}
+	}
+
+	private static void handleRejectFriendRequestActivity(ForeignUser actor, Follow act) throws SQLException{
+		if(act.object.link==null)
+			throw new IllegalArgumentException("follow.object must be a link");
+		if(act.actor.link==null)
+			throw new IllegalArgumentException("follow.actor must be a link");
+		if(!act.actor.link.equals(actor.activityPubID))
+			throw new IllegalArgumentException("follow.object must match reject.actor");
+		User user=UserStorage.getUserByActivityPubID(act.object.link);
+		if(user==null)
+			throw new ObjectNotFoundException("User not found");
+		UserStorage.deleteFriendRequest(actor.id, user.id);
+	}
+	//endregion
+
+	//region Offer subtype handlers
+	private static void handleFriendRequestActivity(ForeignUser actor, Follow act, String msg) throws SQLException{
+		if(!act.object.link.equals(actor.activityPubID))
+			throw new IllegalArgumentException("Friend request must be Offer{Follow} with offer.actor==follow.object");
+		if(act.actor.link==null)
+			throw new IllegalArgumentException("Follow actor must be a link");
+		User user=UserStorage.getUserByActivityPubID(act.actor.link);
+		if(user==null || user instanceof ForeignUser)
+			throw new ObjectNotFoundException("User not found");
+
+		FriendshipStatus status=UserStorage.getFriendshipStatus(actor.id, user.id);
+		if(status==FriendshipStatus.NONE || status==FriendshipStatus.FOLLOWING){
+			UserStorage.putFriendRequest(actor.id, user.id, msg, true);
+		}else if(status==FriendshipStatus.FRIENDS){
+			throw new IllegalArgumentException("Already friends");
+		}else if(status==FriendshipStatus.REQUEST_RECVD){
+			throw new IllegalArgumentException("Incoming friend request already received");
+		}else{ // REQ_SENT
+			throw new IllegalArgumentException("Friend request already sent");
+		}
 	}
 	//endregion
 

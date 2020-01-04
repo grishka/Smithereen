@@ -3,11 +3,14 @@ package smithereen.routes;
 import org.jetbrains.annotations.Nullable;
 import org.jtwig.JtwigModel;
 
+import java.net.URI;
 import java.sql.SQLException;
 import java.util.List;
 
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.activities.Follow;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
@@ -84,7 +87,7 @@ public class ProfileRoutes{
 			}
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 			if(status==FriendshipStatus.NONE){
-				UserStorage.putFriendRequest(self.user.id, user.id, req.queryParams("message"));
+				UserStorage.putFriendRequest(self.user.id, user.id, req.queryParams("message"), true);
 				resp.redirect(Utils.sessionInfo(req).history.last());
 				return "";
 			}else if(status==FriendshipStatus.FRIENDS){
@@ -172,9 +175,17 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			if(req.queryParams("accept")!=null){
-				UserStorage.acceptFriendRequest(self.user.id, user.id);
+				if(user instanceof ForeignUser){
+					UserStorage.acceptFriendRequest(self.user.id, user.id, false);
+					ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser) user);
+				}else{
+					UserStorage.acceptFriendRequest(self.user.id, user.id, true);
+				}
 			}else if(req.queryParams("decline")!=null){
 				UserStorage.deleteFriendRequest(self.user.id, user.id);
+				if(user instanceof ForeignUser){
+					ActivityPubWorker.getInstance().sendRejectFriendRequestActivity(self.user, (ForeignUser) user);
+				}
 			}
 			resp.redirect(Utils.sessionInfo(req).history.last());
 		}else{

@@ -27,11 +27,15 @@ import okhttp3.ResponseBody;
 import smithereen.Config;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.data.NodeInfo;
 import smithereen.data.User;
+import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDDocument;
 import smithereen.jsonld.LinkedDataSignatures;
 
 public class ActivityPub{
+
+	public static final URI AS_PUBLIC=URI.create(JLD.ACTIVITY_STREAMS+"#Public");
 
 	private static OkHttpClient httpClient;
 
@@ -66,6 +70,8 @@ public class ActivityPub{
 		//System.out.println("Sending activity: "+activity);
 		String path=inboxUrl.getPath();
 		String host=inboxUrl.getHost();
+		if(inboxUrl.getPort()!=-1)
+			host+=":"+inboxUrl.getPort();
 		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
 		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 		String date=dateFormat.format(new Date());
@@ -83,7 +89,7 @@ public class ActivityPub{
 			throw new RuntimeException(x);
 		}
 
-		String keyID=Config.localURI(user.username+"#main-key").toString();
+		String keyID=user.activityPubID+"#main-key";
 		String sigHeader="keyId=\""+keyID+"\",headers=\"(request-target) host date\",signature=\""+Base64.getEncoder().encodeToString(signature)+"\"";
 
 		JSONObject body=activity.asRootActivityPubObject();
@@ -97,7 +103,51 @@ public class ActivityPub{
 				.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), body.toString()))
 				.build();
 		Response resp=httpClient.newCall(req).execute();
-		resp.body().close();
 		System.out.println(resp.toString());
+		try(ResponseBody rb=resp.body()){
+			if(!resp.isSuccessful())
+				System.out.println(rb.string());
+		}
+	}
+
+	public static NodeInfo fetchNodeInfo(String host) throws IOException{
+		Request req=new Request.Builder()
+				.url("http"+(Config.useHTTP ? "" : "s")+"://"+host+"/.well-known/nodeinfo")
+				.build();
+		Response resp=httpClient.newCall(req).execute();
+		if(resp.code()==404){
+			return new NodeInfo(null, host);
+		}else if(!resp.isSuccessful()){
+			throw new IOException("Failed to fetch nodeinfo for "+host);
+		}
+		String href=null;
+		try(ResponseBody body=resp.body()){
+			JSONObject l=new JSONObject(body.string());
+			for(Object o : l.getJSONArray("links")){
+				JSONObject link=(JSONObject) o;
+				if("http://nodeinfo.diaspora.software/ns/schema/2.0".equals(link.optString("rel"))){
+					href=link.getString("href");
+					break;
+				}
+			}
+		}catch(JSONException x){}
+		if(href==null){
+			return new NodeInfo(null, host);
+		}
+		req=new Request.Builder()
+				.url(href)
+				.build();
+		resp=httpClient.newCall(req).execute();
+		if(!resp.isSuccessful()){
+			return new NodeInfo(null, host);
+		}
+		try(ResponseBody body=resp.body()){
+			JSONObject ni=new JSONObject(body.string());
+			return new NodeInfo(ni, host);
+		}
+	}
+
+	public static boolean isPublic(URI uri){
+		return uri.equals(AS_PUBLIC) || ("as".equals(uri.getScheme()) && "Public".equals(uri.getSchemeSpecificPart()));
 	}
 }

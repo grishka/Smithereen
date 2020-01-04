@@ -20,6 +20,8 @@ import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
+import smithereen.activitypub.objects.activities.Offer;
+import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
@@ -128,6 +130,28 @@ public class ActivityPubWorker{
 
 			executor.submit(new SendOneActivityRunnable(undo, ((ForeignUser) target).inbox, self));
 		}catch(URISyntaxException ignore){}
+	}
+
+	public void sendFollowActivity(User self, ForeignUser target){
+		Follow follow=new Follow();
+		follow.actor=new LinkOrObject(self.activityPubID);
+		follow.object=new LinkOrObject(target.activityPubID);
+		follow.activityPubID=URI.create(self.activityPubID+"#follow"+target.id);
+		executor.submit(new SendOneActivityRunnable(follow, target.inbox, self));
+	}
+
+	public void sendRejectFriendRequestActivity(User self, ForeignUser target){
+		Follow follow=new Follow();
+		follow.actor=new LinkOrObject(self.activityPubID);
+		follow.object=new LinkOrObject(target.activityPubID);
+		Offer offer=new Offer();
+		offer.object=new LinkOrObject(follow);
+		offer.actor=new LinkOrObject(target.activityPubID);
+		Reject reject=new Reject();
+		reject.object=new LinkOrObject(offer);
+		reject.actor=new LinkOrObject(self.activityPubID);
+		reject.activityPubID=URI.create(self.activityPubID+"#reject_friend_req"+target.id);
+		executor.submit(new SendOneActivityRunnable(reject, target.inbox, self));
 	}
 
 	public void fetchReplyThread(Post post){

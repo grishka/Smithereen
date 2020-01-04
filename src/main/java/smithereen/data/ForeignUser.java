@@ -113,6 +113,8 @@ public class ForeignUser extends User{
 			username=Utils.getLastPathSegment(activityPubID);
 		}
 		domain=activityPubID.getHost();
+		if(activityPubID.getPort()!=-1)
+			domain+=":"+activityPubID.getPort();
 		url=tryParseURL(obj.getString("url"));
 		if(obj.has("firstName")){
 			firstName=obj.getString("firstName");
@@ -167,6 +169,9 @@ public class ForeignUser extends User{
 		manuallyApprovesFollowers=obj.optBoolean("manuallyApprovesFollowers", false);
 		if(summary!=null)
 			summary=Utils.sanitizeHTML(summary);
+		if(obj.optBoolean("supportsFriendRequests", false)){
+			flags|=FLAG_SUPPORTS_FRIEND_REQS;
+		}
 		return this;
 	}
 
@@ -178,6 +183,11 @@ public class ForeignUser extends User{
 	@Override
 	public URI getFollowersURL(){
 		return followers;
+	}
+
+	@Override
+	public boolean supportsFriendRequests(){
+		return (flags & FLAG_SUPPORTS_FRIEND_REQS)==FLAG_SUPPORTS_FRIEND_REQS;
 	}
 
 	private static RSAPublicKeySpec decodeSimpleRSAKey(byte[] key) throws IOException{

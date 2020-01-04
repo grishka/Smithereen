@@ -11,10 +11,12 @@ import java.net.URISyntaxException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import smithereen.Config;
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LinkOrObject;
@@ -55,11 +57,12 @@ public class Post extends ActivityPubObject{
 		summary=res.getString("content_warning");
 		attributedTo=user.activityPubID;
 
-		to=Collections.singletonList(new LinkOrObject(tryParseURL(JLD.ACTIVITY_STREAMS+"#Public")));
 		if(user.id==owner.id){
+			to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
 			cc=Collections.singletonList(new LinkOrObject(user.getFollowersURL()));
 		}else{
-			cc=Collections.singletonList(new LinkOrObject(owner.activityPubID));
+			to=Collections.EMPTY_LIST;
+			cc=Arrays.asList(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(owner.activityPubID));
 		}
 		String apid=res.getString("ap_id");
 		try{

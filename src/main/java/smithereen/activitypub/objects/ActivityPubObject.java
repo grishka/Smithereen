@@ -21,6 +21,7 @@ import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Like;
+import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
@@ -469,6 +470,9 @@ public abstract class ActivityPubObject{
 			case "Mention":
 				res=new Mention();
 				break;
+			case "Relationship":
+				res=new Relationship();
+				break;
 
 			// Collections
 			case "Collection":
@@ -511,6 +515,9 @@ public abstract class ActivityPubObject{
 				break;
 			case "Reject":
 				res=new Reject();
+				break;
+			case "Offer":
+				res=new Offer();
 				break;
 
 			default:

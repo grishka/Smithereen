@@ -124,6 +124,10 @@ public class Main{
 
 			post("/inbox", ActivityPubRoutes::inbox);
 			get("/outbox", ActivityPubRoutes::outbox);
+			post("/outbox", (req, resp)->{
+				resp.status(405);
+				return "";
+			});
 			get("/followers", ActivityPubRoutes::userFollowers);
 			get("/following", ActivityPubRoutes::userFollowing);
 		});

@@ -29,12 +29,16 @@ import smithereen.storage.MediaCache;
 import spark.utils.StringUtils;
 
 public class User extends ActivityPubObject{
+	public static final long FLAG_SUPPORTS_FRIEND_REQS=1;
+
+
 	public int id;
 	public String firstName;
 	public String lastName;
 	public String username;
 	public java.sql.Date birthDate;
 	public Gender gender;
+	public long flags;
 
 	transient public PublicKey publicKey;
 	transient public PrivateKey privateKey;
@@ -141,6 +145,7 @@ public class User extends ActivityPubObject{
 		birthDate=res.getDate("bdate");
 		gender=Gender.valueOf(res.getInt("gender"));
 		summary=res.getString("about");
+		flags=res.getLong("flags");
 
 		byte[] key=res.getBytes("public_key");
 		try{
@@ -238,6 +243,7 @@ public class User extends ActivityPubObject{
 		pkey+="\n-----END PUBLIC KEY-----\n";
 		pubkey.put("publicKeyPem", pkey);
 		root.put("publicKey", pubkey);
+		root.put("supportsFriendRequests", true);
 
 		contextCollector.addAlias("sc", JLD.SCHEMA_ORG);
 		contextCollector.addType("firstName", "sc:givenName", "sc:Text");
@@ -245,6 +251,8 @@ public class User extends ActivityPubObject{
 		contextCollector.addType("gender", "sc:gender", "sc:GenderType");
 		contextCollector.addType("birthDate", "sc:birthDate", "sc:Date");
 		contextCollector.addSchema(JLD.W3_SECURITY);
+		contextCollector.addAlias("sm", JLD.SMITHEREEN);
+		contextCollector.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
 
 		return root;
 	}
@@ -264,6 +272,10 @@ public class User extends ActivityPubObject{
 		if(manuallyApprovesFollowers)
 			o.put("manuallyApprovesFollowers", true);
 		return o.toString();
+	}
+
+	public boolean supportsFriendRequests(){
+		return true;
 	}
 
 	public enum Gender{

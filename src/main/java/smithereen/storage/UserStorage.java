@@ -17,6 +17,7 @@ import java.util.Objects;
 
 import smithereen.Config;
 import smithereen.LruCache;
+import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
@@ -124,7 +125,7 @@ public class UserStorage{
 		return status;
 	}
 
-	public static void putFriendRequest(int selfUserID, int targetUserID, String message) throws SQLException{
+	public static void putFriendRequest(int selfUserID, int targetUserID, String message, boolean followAccepted) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		conn.createStatement().execute("START TRANSACTION");
 		try{
@@ -138,9 +139,10 @@ public class UserStorage{
 			stmt.setInt(2, targetUserID);
 			try(ResultSet res=stmt.executeQuery()){
 				if(!res.first() || res.getInt(1)==0){
-					stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`, `followee_id`) VALUES (?, ?)");
+					stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`, `followee_id`, `accepted`) VALUES (?, ?, ?)");
 					stmt.setInt(1, selfUserID);
 					stmt.setInt(2, targetUserID);
+					stmt.setBoolean(3, followAccepted);
 					stmt.execute();
 				}
 			}
@@ -266,7 +268,7 @@ public class UserStorage{
 		return reqs;
 	}
 
-	public static void acceptFriendRequest(int userID, int targetUserID) throws SQLException{
+	public static void acceptFriendRequest(int userID, int targetUserID, boolean followAccepted) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		conn.createStatement().execute("START TRANSACTION");
 		try{
@@ -278,9 +280,10 @@ public class UserStorage{
 				conn.createStatement().execute("ROLLBACK");
 				return;
 			}
-			stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`, `followee_id`, `mutual`) VALUES(?, ?, 1)");
+			stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`, `followee_id`, `mutual`, `accepted`) VALUES(?, ?, 1, ?)");
 			stmt.setInt(1, userID);
 			stmt.setInt(2, targetUserID);
+			stmt.setBoolean(3, followAccepted);
 			stmt.execute();
 			stmt=conn.prepareStatement("UPDATE `followings` SET `mutual`=1 WHERE `follower_id`=? AND `followee_id`=?");
 			stmt.setInt(1, targetUserID);
@@ -305,10 +308,10 @@ public class UserStorage{
 		PreparedStatement stmt=conn.prepareStatement("DELETE FROM `friend_requests` WHERE `from_user_id`=? AND `to_user_id`=?");
 		stmt.setInt(1, targetUserID);
 		stmt.setInt(2, userID);
-		stmt.execute();
+		int rows=stmt.executeUpdate();
 		UserNotifications n=userNotificationsCache.get(userID);
 		if(n!=null)
-			n.incNewFriendRequestCount(-1);
+			n.incNewFriendRequestCount(-rows);
 	}
 
 	public static void unfriendUser(int userID, int targetUserID) throws SQLException{
@@ -434,11 +437,11 @@ public class UserStorage{
 		}
 		if(existingUserID!=0){
 			stmt=conn.prepareStatement("UPDATE `users` SET `fname`=?,`lname`=?,`bdate`=?,`username`=?,`domain`=?,`public_key`=?,`ap_url`=?,`ap_inbox`=?,`ap_outbox`=?,`ap_shared_inbox`=?,`ap_id`=?,`ap_followers`=?,`ap_following`=?," +
-					"`about`=?,`gender`=?,`avatar`=?,`profile_fields`=?,`last_updated`=CURRENT_TIMESTAMP() WHERE `id`=?");
-			stmt.setInt(18, existingUserID);
+					"`about`=?,`gender`=?,`avatar`=?,`profile_fields`=?,`flags`=?,`last_updated`=CURRENT_TIMESTAMP() WHERE `id`=?");
+			stmt.setInt(19, existingUserID);
 		}else{
-			stmt=conn.prepareStatement("INSERT INTO `users` (`fname`,`lname`,`bdate`,`username`,`domain`,`public_key`,`ap_url`,`ap_inbox`,`ap_outbox`,`ap_shared_inbox`,`ap_id`,`ap_followers`,`ap_following`,`about`,`gender`,`avatar`,`profile_fields`,`last_updated`)" +
-					" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())", PreparedStatement.RETURN_GENERATED_KEYS);
+			stmt=conn.prepareStatement("INSERT INTO `users` (`fname`,`lname`,`bdate`,`username`,`domain`,`public_key`,`ap_url`,`ap_inbox`,`ap_outbox`,`ap_shared_inbox`,`ap_id`,`ap_followers`,`ap_following`,`about`,`gender`,`avatar`,`profile_fields`,`flags`,`last_updated`)" +
+					" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())", PreparedStatement.RETURN_GENERATED_KEYS);
 		}
 
 		stmt.setString(1, user.firstName);
@@ -458,6 +461,7 @@ public class UserStorage{
 		stmt.setInt(15, user.gender==null ? 0 : user.gender.ordinal());
 		stmt.setString(16, user.icon!=null ? user.icon.get(0).asActivityPubObject(new JSONObject(), new ContextCollector()).toString() : null);
 		stmt.setString(17, user.serializeProfileFields());
+		stmt.setLong(18, user.flags);
 
 		stmt.executeUpdate();
 		if(existingUserID==0){
@@ -476,8 +480,12 @@ public class UserStorage{
 
 	public static User getUserByActivityPubID(URI apID) throws SQLException{
 		if(Config.isLocal(apID)){
-			String username=apID.getPath().substring(1);
-			return getByUsername(username);
+			String[] components=apID.getPath().substring(1).split("/");
+			if(components.length<2)
+				return null;
+			if(!"users".equals(components[0]))
+				return null;
+			return getById(Utils.parseIntOrDefault(components[1], 0));
 		}
 		return getForeignUserByActivityPubID(apID);
 	}

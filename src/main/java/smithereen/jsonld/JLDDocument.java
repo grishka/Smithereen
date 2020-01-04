@@ -29,12 +29,14 @@ public class JLDDocument{
 	static{
 		JSONObject lc=new JSONObject();
 		lc.put("sc", JLD.SCHEMA_ORG);
+		lc.put("sm", JLD.SMITHEREEN);
 		lc.put("firstName", idAndTypeObject("sc:givenName", "sc:Text"));
 		lc.put("lastName", idAndTypeObject("sc:familyName", "sc:Text"));
 		lc.put("gender", idAndTypeObject("sc:gender", "sc:GenderType"));
 		lc.put("birthDate", idAndTypeObject("sc:birthDate", "sc:Date"));
 		lc.put("sensitive", "as:sensitive");
 		lc.put("manuallyApprovesFollowers", "as:manuallyApprovesFollowers");
+		lc.put("supportsFriendRequests", "sm:supportsFriendRequests");
 		localContext=updateContext(new JLDContext(), new JSONArray(Arrays.asList(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc)), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);
 	}

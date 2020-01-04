@@ -135,6 +135,7 @@ public class SettingsRoutes{
 
 			LocalImage ava=new LocalImage();
 			File profilePicsDir=new File(Config.uploadPath, "avatars");
+			profilePicsDir.mkdirs();
 			try{
 				MediaStorageUtils.writeResizedImages(img, new int[]{50, 100, 200, 400}, new PhotoSize.Type[]{PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
 						85, 80, keyHex, profilePicsDir, Config.uploadURLPath+"/avatars", ava.sizes);

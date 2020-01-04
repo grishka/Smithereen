@@ -1,7 +1,7 @@
 {%extends "page.twig"%}
 {%block content%}
 <center>
-	<h3>{{L('you_are_about_to_follow')}}</h3>
+	<h3>{%if user.supportsFriendRequests%}{{L('you_are_about_to_send_friend_req')}}{%else%}{{L('you_are_about_to_follow')}}{%endif%}</h3>
 	{{user.avatar | pictureForAvatar('m')}}
 	<br/>
 	<h4>{{user.fullName}}</h4>
@@ -9,7 +9,12 @@
 	<br/>
 	<form action="{{user.getProfileURL('remoteFollow')}}" method="post">
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
+		{%if user.supportsFriendRequests%}
+		<textarea name="message" placeholder="{{L('add_optional_message')}}"></textarea><br/>
+		<input type="submit" value="{{L('send')}}"/>
+		{%else%}
 		<input type="submit" value="{{L('follow')}}"/>
+		{%endif%}
 	</form>
 </center>
 {%endblock%}

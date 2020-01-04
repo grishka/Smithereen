@@ -146,18 +146,12 @@ public class PostStorage{
 	}
 
 	public static Post getPostByID(URI apID) throws SQLException{
-		if(apID.getHost().equalsIgnoreCase(Config.domain)){
+		if(Config.isLocal(apID)){
 			String[] pathParts=apID.getPath().split("/");
-			// /grishka/posts/1
-			String username=pathParts[1];
-			String posts=pathParts[2];
-			int postID=Utils.parseIntOrDefault(pathParts[3], 0);
+			String posts=pathParts[1];
+			int postID=Utils.parseIntOrDefault(pathParts[2], 0);
 			if(!"posts".equals(posts) || postID==0){
 				throw new ObjectNotFoundException("Invalid local URL");
-			}
-			User user=UserStorage.getByUsername(username);
-			if(user==null){
-				throw new ObjectNotFoundException("Post owner does not exist");
 			}
 			return getPostByID(postID);
 		}

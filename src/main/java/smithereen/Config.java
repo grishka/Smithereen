@@ -23,6 +23,7 @@ public class Config{
 	public static long mediaCacheFileSizeLimit;
 	public static String uploadURLPath;
 	public static String mediaCacheURLPath;
+	public static boolean useHTTP;
 
 	private static URI localURI;
 
@@ -46,7 +47,7 @@ public class Config{
 		mediaCacheFileSizeLimit=Utils.parseFileSize(props.getProperty("media_cache.file_size_limit"));
 		mediaCacheURLPath=props.getProperty("media_cache.urlpath");
 
-		boolean useHTTP=Boolean.parseBoolean(props.getProperty("use_http_scheme.i_know_what_i_am_doing", "false"));
+		useHTTP=Boolean.parseBoolean(props.getProperty("use_http_scheme.i_know_what_i_am_doing", "false"));
 		localURI=URI.create("http"+(useHTTP ? "" : "s")+"://"+domain+"/");
 
 		serverIP=props.getProperty("server.ip", "127.0.0.1");
