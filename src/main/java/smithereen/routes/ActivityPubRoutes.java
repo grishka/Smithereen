@@ -51,14 +51,11 @@ import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
-import smithereen.data.NodeInfo;
 import smithereen.data.Post;
 import smithereen.data.User;
-import smithereen.jsonld.JLD;
-import smithereen.jsonld.JLDDocument;
+import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
 import smithereen.storage.NewsfeedStorage;
-import smithereen.storage.NodeInfoStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -283,7 +280,7 @@ public class ActivityPubRoutes{
 		String body=req.body();
 		System.out.println(body);
 		JSONObject rawActivity=new JSONObject(body);
-		JSONObject obj=JLDDocument.convertToLocalContext(rawActivity);
+		JSONObject obj=JLDProcessor.convertToLocalContext(rawActivity);
 		Activity activity;
 		try{
 			ActivityPubObject o=ActivityPubObject.parse(obj);

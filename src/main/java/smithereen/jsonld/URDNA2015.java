@@ -21,7 +21,7 @@ public class URDNA2015{
 	}
 
 	public static String canonicalize(JSONObject json, URI baseURI){
-		List<RDFTriple> norm=normalize(JLDDocument.toRDF(json, baseURI));
+		List<RDFTriple> norm=normalize(JLDProcessor.toRDF(json, baseURI));
 		ArrayList<String> lines=new ArrayList<>(norm.size());
 		for(RDFTriple t:norm)
 			lines.add(t.toString());

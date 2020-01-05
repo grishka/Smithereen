@@ -3,8 +3,6 @@ package smithereen.jsonld;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.net.URI;
 
 import org.json.*;
@@ -22,7 +20,7 @@ class ExpandTests{
 	void t0001(){
 		Object input=readResourceAsJSON("/expand/0001-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0001-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0001-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0001-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -34,7 +32,7 @@ class ExpandTests{
 	void t0002(){
 		Object input=readResourceAsJSON("/expand/0002-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0002-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0002-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0002-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -46,7 +44,7 @@ class ExpandTests{
 	void t0003(){
 		Object input=readResourceAsJSON("/expand/0003-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0003-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0003-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0003-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -58,7 +56,7 @@ class ExpandTests{
 	void t0004(){
 		Object input=readResourceAsJSON("/expand/0004-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0004-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0004-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0004-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -70,7 +68,7 @@ class ExpandTests{
 	void t0005(){
 		Object input=readResourceAsJSON("/expand/0005-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0005-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0005-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0005-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -82,7 +80,7 @@ class ExpandTests{
 	void t0006(){
 		Object input=readResourceAsJSON("/expand/0006-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0006-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0006-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0006-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -94,7 +92,7 @@ class ExpandTests{
 	void t0007(){
 		Object input=readResourceAsJSON("/expand/0007-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0007-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0007-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0007-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -106,7 +104,7 @@ class ExpandTests{
 	void t0008(){
 		Object input=readResourceAsJSON("/expand/0008-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0008-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0008-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0008-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -118,7 +116,7 @@ class ExpandTests{
 	void t0009(){
 		Object input=readResourceAsJSON("/expand/0009-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0009-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0009-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0009-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -130,7 +128,7 @@ class ExpandTests{
 	void t0010(){
 		Object input=readResourceAsJSON("/expand/0010-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0010-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0010-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0010-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -142,7 +140,7 @@ class ExpandTests{
 	void t0011(){
 		Object input=readResourceAsJSON("/expand/0011-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0011-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0011-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0011-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -154,7 +152,7 @@ class ExpandTests{
 	void t0012(){
 		Object input=readResourceAsJSON("/expand/0012-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0012-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0012-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0012-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -166,7 +164,7 @@ class ExpandTests{
 	void t0013(){
 		Object input=readResourceAsJSON("/expand/0013-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0013-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0013-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0013-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -178,7 +176,7 @@ class ExpandTests{
 	void t0014(){
 		Object input=readResourceAsJSON("/expand/0014-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0014-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0014-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0014-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -190,7 +188,7 @@ class ExpandTests{
 	void t0015(){
 		Object input=readResourceAsJSON("/expand/0015-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0015-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0015-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0015-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -202,7 +200,7 @@ class ExpandTests{
 	void t0016(){
 		Object input=readResourceAsJSON("/expand/0016-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0016-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0016-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0016-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -214,7 +212,7 @@ class ExpandTests{
 	void t0017(){
 		Object input=readResourceAsJSON("/expand/0017-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0017-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0017-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0017-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -226,7 +224,7 @@ class ExpandTests{
 	void t0018(){
 		Object input=readResourceAsJSON("/expand/0018-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0018-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0018-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0018-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -238,7 +236,7 @@ class ExpandTests{
 	void t0019(){
 		Object input=readResourceAsJSON("/expand/0019-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0019-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0019-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0019-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -250,7 +248,7 @@ class ExpandTests{
 	void t0020(){
 		Object input=readResourceAsJSON("/expand/0020-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0020-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0020-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0020-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -262,7 +260,7 @@ class ExpandTests{
 	void t0021(){
 		Object input=readResourceAsJSON("/expand/0021-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0021-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0021-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0021-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -274,7 +272,7 @@ class ExpandTests{
 	void t0022(){
 		Object input=readResourceAsJSON("/expand/0022-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0022-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0022-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0022-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -286,7 +284,7 @@ class ExpandTests{
 	void t0023(){
 		Object input=readResourceAsJSON("/expand/0023-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0023-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0023-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0023-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -298,7 +296,7 @@ class ExpandTests{
 	void t0024(){
 		Object input=readResourceAsJSON("/expand/0024-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0024-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0024-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0024-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -310,7 +308,7 @@ class ExpandTests{
 	void t0025(){
 		Object input=readResourceAsJSON("/expand/0025-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0025-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0025-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0025-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -322,7 +320,7 @@ class ExpandTests{
 	void t0026(){
 		Object input=readResourceAsJSON("/expand/0026-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0026-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0026-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0026-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -334,7 +332,7 @@ class ExpandTests{
 	void t0027(){
 		Object input=readResourceAsJSON("/expand/0027-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0027-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0027-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0027-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -346,7 +344,7 @@ class ExpandTests{
 	void t0028(){
 		Object input=readResourceAsJSON("/expand/0028-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0028-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0028-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0028-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -358,7 +356,7 @@ class ExpandTests{
 	void t0029(){
 		Object input=readResourceAsJSON("/expand/0029-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0029-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0029-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0029-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -370,7 +368,7 @@ class ExpandTests{
 	void t0030(){
 		Object input=readResourceAsJSON("/expand/0030-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0030-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0030-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0030-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -382,7 +380,7 @@ class ExpandTests{
 	void t0031(){
 		Object input=readResourceAsJSON("/expand/0031-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0031-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0031-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0031-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -394,7 +392,7 @@ class ExpandTests{
 	void t0032(){
 		Object input=readResourceAsJSON("/expand/0032-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0032-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0032-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0032-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -406,7 +404,7 @@ class ExpandTests{
 	void t0033(){
 		Object input=readResourceAsJSON("/expand/0033-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0033-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0033-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0033-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -418,7 +416,7 @@ class ExpandTests{
 	void t0034(){
 		Object input=readResourceAsJSON("/expand/0034-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0034-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0034-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0034-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -430,7 +428,7 @@ class ExpandTests{
 	void t0035(){
 		Object input=readResourceAsJSON("/expand/0035-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0035-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0035-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0035-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -442,7 +440,7 @@ class ExpandTests{
 	void t0036(){
 		Object input=readResourceAsJSON("/expand/0036-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0036-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0036-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0036-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -454,7 +452,7 @@ class ExpandTests{
 	void t0037(){
 		Object input=readResourceAsJSON("/expand/0037-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0037-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0037-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0037-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -466,7 +464,7 @@ class ExpandTests{
 	void t0038(){
 		Object input=readResourceAsJSON("/expand/0038-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0038-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0038-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0038-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -478,7 +476,7 @@ class ExpandTests{
 	void t0039(){
 		Object input=readResourceAsJSON("/expand/0039-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0039-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0039-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0039-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -490,7 +488,7 @@ class ExpandTests{
 	void t0040(){
 		Object input=readResourceAsJSON("/expand/0040-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0040-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0040-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0040-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -502,7 +500,7 @@ class ExpandTests{
 	void t0041(){
 		Object input=readResourceAsJSON("/expand/0041-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0041-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0041-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0041-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -514,7 +512,7 @@ class ExpandTests{
 	void t0042(){
 		Object input=readResourceAsJSON("/expand/0042-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0042-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0042-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0042-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -526,7 +524,7 @@ class ExpandTests{
 	void t0043(){
 		Object input=readResourceAsJSON("/expand/0043-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0043-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0043-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0043-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -538,7 +536,7 @@ class ExpandTests{
 	void t0044(){
 		Object input=readResourceAsJSON("/expand/0044-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0044-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0044-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0044-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -550,7 +548,7 @@ class ExpandTests{
 	void t0045(){
 		Object input=readResourceAsJSON("/expand/0045-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0045-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0045-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0045-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -562,7 +560,7 @@ class ExpandTests{
 	void t0046(){
 		Object input=readResourceAsJSON("/expand/0046-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0046-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0046-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0046-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -574,7 +572,7 @@ class ExpandTests{
 	void t0047(){
 		Object input=readResourceAsJSON("/expand/0047-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0047-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0047-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0047-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -586,7 +584,7 @@ class ExpandTests{
 	void t0048(){
 		Object input=readResourceAsJSON("/expand/0048-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0048-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0048-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0048-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -598,7 +596,7 @@ class ExpandTests{
 	void t0049(){
 		Object input=readResourceAsJSON("/expand/0049-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0049-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0049-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0049-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -610,7 +608,7 @@ class ExpandTests{
 	void t0050(){
 		Object input=readResourceAsJSON("/expand/0050-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0050-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0050-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0050-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -622,7 +620,7 @@ class ExpandTests{
 	void t0051(){
 		Object input=readResourceAsJSON("/expand/0051-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0051-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0051-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0051-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -634,7 +632,7 @@ class ExpandTests{
 	void t0052(){
 		Object input=readResourceAsJSON("/expand/0052-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0052-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0052-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0052-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -646,7 +644,7 @@ class ExpandTests{
 	void t0053(){
 		Object input=readResourceAsJSON("/expand/0053-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0053-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0053-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0053-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -658,7 +656,7 @@ class ExpandTests{
 	void t0054(){
 		Object input=readResourceAsJSON("/expand/0054-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0054-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0054-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0054-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -670,7 +668,7 @@ class ExpandTests{
 	void t0055(){
 		Object input=readResourceAsJSON("/expand/0055-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0055-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0055-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0055-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -682,7 +680,7 @@ class ExpandTests{
 	void t0056(){
 		Object input=readResourceAsJSON("/expand/0056-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0056-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0056-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0056-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -694,7 +692,7 @@ class ExpandTests{
 	void t0057(){
 		Object input=readResourceAsJSON("/expand/0057-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0057-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0057-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0057-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -706,7 +704,7 @@ class ExpandTests{
 	void t0058(){
 		Object input=readResourceAsJSON("/expand/0058-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0058-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0058-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0058-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -718,7 +716,7 @@ class ExpandTests{
 	void t0059(){
 		Object input=readResourceAsJSON("/expand/0059-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0059-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0059-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0059-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -730,7 +728,7 @@ class ExpandTests{
 	void t0060(){
 		Object input=readResourceAsJSON("/expand/0060-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0060-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0060-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0060-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -742,7 +740,7 @@ class ExpandTests{
 	void t0061(){
 		Object input=readResourceAsJSON("/expand/0061-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0061-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0061-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0061-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -754,7 +752,7 @@ class ExpandTests{
 	void t0062(){
 		Object input=readResourceAsJSON("/expand/0062-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0062-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0062-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0062-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -766,7 +764,7 @@ class ExpandTests{
 	void t0063(){
 		Object input=readResourceAsJSON("/expand/0063-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0063-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0063-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0063-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -778,7 +776,7 @@ class ExpandTests{
 	void t0064(){
 		Object input=readResourceAsJSON("/expand/0064-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0064-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0064-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0064-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -790,7 +788,7 @@ class ExpandTests{
 	void t0065(){
 		Object input=readResourceAsJSON("/expand/0065-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0065-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0065-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0065-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -802,7 +800,7 @@ class ExpandTests{
 	void t0066(){
 		Object input=readResourceAsJSON("/expand/0066-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0066-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0066-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0066-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -814,7 +812,7 @@ class ExpandTests{
 	void t0067(){
 		Object input=readResourceAsJSON("/expand/0067-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0067-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0067-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0067-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -826,7 +824,7 @@ class ExpandTests{
 	void t0068(){
 		Object input=readResourceAsJSON("/expand/0068-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0068-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0068-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0068-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -838,7 +836,7 @@ class ExpandTests{
 	void t0069(){
 		Object input=readResourceAsJSON("/expand/0069-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0069-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0069-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0069-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -850,7 +848,7 @@ class ExpandTests{
 	void t0070(){
 		Object input=readResourceAsJSON("/expand/0070-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0070-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0070-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0070-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -862,7 +860,7 @@ class ExpandTests{
 	void t0071(){
 		Object input=readResourceAsJSON("/expand/0071-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0071-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0071-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0071-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -874,7 +872,7 @@ class ExpandTests{
 	void t0072(){
 		Object input=readResourceAsJSON("/expand/0072-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0072-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0072-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0072-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -886,7 +884,7 @@ class ExpandTests{
 	void t0073(){
 		Object input=readResourceAsJSON("/expand/0073-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0073-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0073-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0073-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -898,7 +896,7 @@ class ExpandTests{
 	void t0074(){
 		Object input=readResourceAsJSON("/expand/0074-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0074-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0074-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0074-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -910,7 +908,7 @@ class ExpandTests{
 	void t0075(){
 		Object input=readResourceAsJSON("/expand/0075-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0075-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0075-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0075-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -922,7 +920,7 @@ class ExpandTests{
 	void t0076(){
 		Object input=readResourceAsJSON("/expand/0076-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0076-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("http://example/base/"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("http://example/base/"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -934,7 +932,7 @@ class ExpandTests{
 	void t0078(){
 		Object input=readResourceAsJSON("/expand/0078-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0078-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0078-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0078-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -946,7 +944,7 @@ class ExpandTests{
 	void t0088(){
 		Object input=readResourceAsJSON("/expand/0088-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0088-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0088-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0088-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -958,7 +956,7 @@ class ExpandTests{
 	void t0089(){
 		Object input=readResourceAsJSON("/expand/0089-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0089-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("http://example/base/"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("http://example/base/"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -970,7 +968,7 @@ class ExpandTests{
 	void t0090(){
 		Object input=readResourceAsJSON("/expand/0090-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0090-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("http://example/base/"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("http://example/base/"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -982,7 +980,7 @@ class ExpandTests{
 	void t0091(){
 		Object input=readResourceAsJSON("/expand/0091-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0091-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("http://example/base/"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("http://example/base/"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -994,7 +992,7 @@ class ExpandTests{
 	void t0109(){
 		Object input=readResourceAsJSON("/expand/0109-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0109-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0109-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0109-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -1006,7 +1004,7 @@ class ExpandTests{
 	void t0113(){
 		Object input=readResourceAsJSON("/expand/0113-in.jsonld");
 		Object expect=readResourceAsJSON("/expand/0113-out.jsonld");
-		JSONArray expanded=JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0113-in.jsonld"));
+		JSONArray expanded=JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0113-in.jsonld"));
 		assertEqualJLD(expect, expanded);
 	}
 
@@ -1018,7 +1016,7 @@ class ExpandTests{
 	void t0115(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/0115-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0115-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0115-in.jsonld"));
 		}, "invalid vocab mapping");
 	}
 
@@ -1030,7 +1028,7 @@ class ExpandTests{
 	void t0116(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/0116-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0116-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/0116-in.jsonld"));
 		}, "invalid vocab mapping");
 	}
 
@@ -1042,7 +1040,7 @@ class ExpandTests{
 	void te001(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e001-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e001-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e001-in.jsonld"));
 		}, "keyword redefinition");
 	}
 
@@ -1054,7 +1052,7 @@ class ExpandTests{
 	void te002(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e002-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e002-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e002-in.jsonld"));
 		}, "recursive context inclusion");
 	}
 
@@ -1066,7 +1064,7 @@ class ExpandTests{
 	void te003(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e003-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e003-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e003-in.jsonld"));
 		}, "recursive context inclusion");
 	}
 
@@ -1078,7 +1076,7 @@ class ExpandTests{
 	void te004(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e004-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e004-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e004-in.jsonld"));
 		}, "loading remote context failed");
 	}
 
@@ -1090,7 +1088,7 @@ class ExpandTests{
 	void te006(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e006-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e006-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e006-in.jsonld"));
 		}, "invalid local context");
 	}
 
@@ -1102,7 +1100,7 @@ class ExpandTests{
 	void te007(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e007-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e007-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e007-in.jsonld"));
 		}, "invalid base IRI");
 	}
 
@@ -1114,7 +1112,7 @@ class ExpandTests{
 	void te008(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e008-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e008-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e008-in.jsonld"));
 		}, "invalid vocab mapping");
 	}
 
@@ -1126,7 +1124,7 @@ class ExpandTests{
 	void te009(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e009-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e009-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e009-in.jsonld"));
 		}, "invalid default language");
 	}
 
@@ -1138,7 +1136,7 @@ class ExpandTests{
 	void te010(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e010-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e010-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e010-in.jsonld"));
 		}, "cyclic IRI mapping");
 	}
 
@@ -1150,7 +1148,7 @@ class ExpandTests{
 	void te011(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e011-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e011-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e011-in.jsonld"));
 		}, "invalid term definition");
 	}
 
@@ -1162,7 +1160,7 @@ class ExpandTests{
 	void te012(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e012-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e012-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e012-in.jsonld"));
 		}, "invalid type mapping");
 	}
 
@@ -1174,7 +1172,7 @@ class ExpandTests{
 	void te013(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e013-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e013-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e013-in.jsonld"));
 		}, "invalid type mapping");
 	}
 
@@ -1186,7 +1184,7 @@ class ExpandTests{
 	void te014(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e014-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e014-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e014-in.jsonld"));
 		}, "invalid reverse property");
 	}
 
@@ -1198,7 +1196,7 @@ class ExpandTests{
 	void te015(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e015-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e015-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e015-in.jsonld"));
 		}, "invalid IRI mapping");
 	}
 
@@ -1210,7 +1208,7 @@ class ExpandTests{
 	void te016(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e016-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e016-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e016-in.jsonld"));
 		}, "invalid IRI mapping");
 	}
 
@@ -1222,7 +1220,7 @@ class ExpandTests{
 	void te017(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e017-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e017-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e017-in.jsonld"));
 		}, "invalid reverse property");
 	}
 
@@ -1234,7 +1232,7 @@ class ExpandTests{
 	void te018(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e018-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e018-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e018-in.jsonld"));
 		}, "invalid IRI mapping");
 	}
 
@@ -1246,7 +1244,7 @@ class ExpandTests{
 	void te019(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e019-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e019-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e019-in.jsonld"));
 		}, "invalid keyword alias");
 	}
 
@@ -1258,7 +1256,7 @@ class ExpandTests{
 	void te020(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e020-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e020-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e020-in.jsonld"));
 		}, "invalid IRI mapping");
 	}
 
@@ -1270,7 +1268,7 @@ class ExpandTests{
 	void te022(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e022-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e022-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e022-in.jsonld"));
 		}, "invalid language mapping");
 	}
 
@@ -1282,7 +1280,7 @@ class ExpandTests{
 	void te023(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e023-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e023-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e023-in.jsonld"));
 		}, "invalid type mapping");
 	}
 
@@ -1294,7 +1292,7 @@ class ExpandTests{
 	void te024(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e024-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e024-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e024-in.jsonld"));
 		}, "list of lists");
 	}
 
@@ -1306,7 +1304,7 @@ class ExpandTests{
 	void te025(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e025-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e025-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e025-in.jsonld"));
 		}, "invalid reverse property map");
 	}
 
@@ -1318,7 +1316,7 @@ class ExpandTests{
 	void te026(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e026-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e026-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e026-in.jsonld"));
 		}, "colliding keywords");
 	}
 
@@ -1330,7 +1328,7 @@ class ExpandTests{
 	void te027(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e027-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e027-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e027-in.jsonld"));
 		}, "invalid @id value");
 	}
 
@@ -1342,7 +1340,7 @@ class ExpandTests{
 	void te028(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e028-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e028-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e028-in.jsonld"));
 		}, "invalid type value");
 	}
 
@@ -1354,7 +1352,7 @@ class ExpandTests{
 	void te029(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e029-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e029-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e029-in.jsonld"));
 		}, "invalid value object value");
 	}
 
@@ -1366,7 +1364,7 @@ class ExpandTests{
 	void te030(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e030-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e030-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e030-in.jsonld"));
 		}, "invalid language-tagged string");
 	}
 
@@ -1378,7 +1376,7 @@ class ExpandTests{
 	void te031(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e031-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e031-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e031-in.jsonld"));
 		}, "invalid @index value");
 	}
 
@@ -1390,7 +1388,7 @@ class ExpandTests{
 	void te032(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e032-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e032-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e032-in.jsonld"));
 		}, "list of lists");
 	}
 
@@ -1402,7 +1400,7 @@ class ExpandTests{
 	void te033(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e033-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e033-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e033-in.jsonld"));
 		}, "invalid @reverse value");
 	}
 
@@ -1414,7 +1412,7 @@ class ExpandTests{
 	void te034(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e034-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e034-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e034-in.jsonld"));
 		}, "invalid reverse property value");
 	}
 
@@ -1426,7 +1424,7 @@ class ExpandTests{
 	void te035(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e035-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e035-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e035-in.jsonld"));
 		}, "invalid language map value");
 	}
 
@@ -1438,7 +1436,7 @@ class ExpandTests{
 	void te036(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e036-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e036-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e036-in.jsonld"));
 		}, "invalid reverse property value");
 	}
 
@@ -1450,7 +1448,7 @@ class ExpandTests{
 	void te037(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e037-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e037-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e037-in.jsonld"));
 		}, "invalid value object");
 	}
 
@@ -1462,7 +1460,7 @@ class ExpandTests{
 	void te038(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e038-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e038-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e038-in.jsonld"));
 		}, "invalid value object");
 	}
 
@@ -1474,7 +1472,7 @@ class ExpandTests{
 	void te039(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e039-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e039-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e039-in.jsonld"));
 		}, "invalid language-tagged value");
 	}
 
@@ -1486,7 +1484,7 @@ class ExpandTests{
 	void te040(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e040-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e040-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e040-in.jsonld"));
 		}, "invalid typed value");
 	}
 
@@ -1498,7 +1496,7 @@ class ExpandTests{
 	void te041(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e041-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e041-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e041-in.jsonld"));
 		}, "invalid set or list object");
 	}
 
@@ -1510,7 +1508,7 @@ class ExpandTests{
 	void te050(){
 		assertThrows(JLDException.class, ()->{
 			Object input=readResourceAsJSON("/expand/e050-in.jsonld");
-			JLDDocument.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e050-in.jsonld"));
+			JLDProcessor.expandToArray(input, URI.create("https://w3c.github.io/json-ld-api/tests/expand/e050-in.jsonld"));
 		}, "invalid IRI mapping");
 	}
 

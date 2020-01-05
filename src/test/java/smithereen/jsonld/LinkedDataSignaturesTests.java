@@ -1,13 +1,11 @@
 package smithereen.jsonld;
 
 import org.json.JSONObject;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -28,7 +26,7 @@ public class LinkedDataSignaturesTests{
 	private ForeignUser actor;
 
 	public LinkedDataSignaturesTests() throws Exception{
-		actor=(ForeignUser) ForeignUser.parse(JLDDocument.convertToLocalContext((JSONObject)readResourceAsJSON("/ld-signature/mastodon_actor.json")));
+		actor=(ForeignUser) ForeignUser.parse(JLDProcessor.convertToLocalContext((JSONObject)readResourceAsJSON("/ld-signature/mastodon_actor.json")));
 	}
 
 	@Test

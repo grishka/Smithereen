@@ -8,8 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,9 +16,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
-import java.util.Map;
 
-public class JLDDocument{
+public class JLDProcessor{
 
 	private static HashMap<String, JSONObject> schemaCache=new HashMap<>();
 	private static final JSONObject inverseLocalContext;
@@ -100,7 +97,7 @@ public class JLDDocument{
 
 	private static String readResourceFile(String name){
 		try{
-			InputStream in=JLDDocument.class.getResourceAsStream("/jsonld-schemas/"+name+".jsonld");
+			InputStream in=JLDProcessor.class.getResourceAsStream("/jsonld-schemas/"+name+".jsonld");
 			byte[] buf=new byte[in.available()];
 			in.read(buf);
 			in.close();

@@ -5,11 +5,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.Signature;
 import java.text.SimpleDateFormat;
 import java.util.Base64;
@@ -30,7 +26,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.data.NodeInfo;
 import smithereen.data.User;
 import smithereen.jsonld.JLD;
-import smithereen.jsonld.JLDDocument;
+import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
 
 public class ActivityPub{
@@ -57,7 +53,7 @@ public class ActivityPub{
 
 			String r=body.string();
 			try{
-				JSONObject converted=JLDDocument.convertToLocalContext(new JSONObject(r));
+				JSONObject converted=JLDProcessor.convertToLocalContext(new JSONObject(r));
 //				System.out.println(converted.toString(4));
 				return ActivityPubObject.parse(converted);
 			}catch(Exception x){

@@ -7,7 +7,6 @@ import java.net.URI;
 
 import org.json.*;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static smithereen.jsonld.TestUtils.*;
 
 class FlattenTests{
@@ -20,7 +19,7 @@ class FlattenTests{
 	void t0001(){
 		Object input=readResourceAsJSON("/flatten/0001-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0001-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0001-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0001-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -32,7 +31,7 @@ class FlattenTests{
 	void t0002(){
 		Object input=readResourceAsJSON("/flatten/0002-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0002-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0002-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0002-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -44,7 +43,7 @@ class FlattenTests{
 	void t0003(){
 		Object input=readResourceAsJSON("/flatten/0003-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0003-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0003-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0003-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -56,7 +55,7 @@ class FlattenTests{
 	void t0004(){
 		Object input=readResourceAsJSON("/flatten/0004-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0004-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0004-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0004-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -68,7 +67,7 @@ class FlattenTests{
 	void t0005(){
 		Object input=readResourceAsJSON("/flatten/0005-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0005-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0005-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0005-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -80,7 +79,7 @@ class FlattenTests{
 	void t0006(){
 		Object input=readResourceAsJSON("/flatten/0006-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0006-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0006-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0006-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -92,7 +91,7 @@ class FlattenTests{
 	void t0007(){
 		Object input=readResourceAsJSON("/flatten/0007-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0007-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0007-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0007-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -104,7 +103,7 @@ class FlattenTests{
 	void t0008(){
 		Object input=readResourceAsJSON("/flatten/0008-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0008-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0008-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0008-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -116,7 +115,7 @@ class FlattenTests{
 	void t0009(){
 		Object input=readResourceAsJSON("/flatten/0009-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0009-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0009-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0009-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -128,7 +127,7 @@ class FlattenTests{
 	void t0010(){
 		Object input=readResourceAsJSON("/flatten/0010-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0010-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0010-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0010-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -140,7 +139,7 @@ class FlattenTests{
 	void t0011(){
 		Object input=readResourceAsJSON("/flatten/0011-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0011-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0011-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0011-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -152,7 +151,7 @@ class FlattenTests{
 	void t0012(){
 		Object input=readResourceAsJSON("/flatten/0012-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0012-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0012-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0012-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -164,7 +163,7 @@ class FlattenTests{
 	void t0013(){
 		Object input=readResourceAsJSON("/flatten/0013-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0013-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0013-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0013-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -176,7 +175,7 @@ class FlattenTests{
 	void t0014(){
 		Object input=readResourceAsJSON("/flatten/0014-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0014-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0014-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0014-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -188,7 +187,7 @@ class FlattenTests{
 	void t0015(){
 		Object input=readResourceAsJSON("/flatten/0015-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0015-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0015-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0015-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -200,7 +199,7 @@ class FlattenTests{
 	void t0016(){
 		Object input=readResourceAsJSON("/flatten/0016-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0016-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0016-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0016-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -212,7 +211,7 @@ class FlattenTests{
 	void t0017(){
 		Object input=readResourceAsJSON("/flatten/0017-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0017-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0017-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0017-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -224,7 +223,7 @@ class FlattenTests{
 	void t0018(){
 		Object input=readResourceAsJSON("/flatten/0018-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0018-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0018-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0018-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -236,7 +235,7 @@ class FlattenTests{
 	void t0019(){
 		Object input=readResourceAsJSON("/flatten/0019-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0019-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0019-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0019-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -248,7 +247,7 @@ class FlattenTests{
 	void t0020(){
 		Object input=readResourceAsJSON("/flatten/0020-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0020-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0020-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0020-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -260,7 +259,7 @@ class FlattenTests{
 	void t0021(){
 		Object input=readResourceAsJSON("/flatten/0021-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0021-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0021-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0021-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -272,7 +271,7 @@ class FlattenTests{
 	void t0022(){
 		Object input=readResourceAsJSON("/flatten/0022-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0022-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0022-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0022-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -284,7 +283,7 @@ class FlattenTests{
 	void t0023(){
 		Object input=readResourceAsJSON("/flatten/0023-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0023-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0023-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0023-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -296,7 +295,7 @@ class FlattenTests{
 	void t0024(){
 		Object input=readResourceAsJSON("/flatten/0024-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0024-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0024-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0024-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -308,7 +307,7 @@ class FlattenTests{
 	void t0025(){
 		Object input=readResourceAsJSON("/flatten/0025-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0025-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0025-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0025-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -320,7 +319,7 @@ class FlattenTests{
 	void t0026(){
 		Object input=readResourceAsJSON("/flatten/0026-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0026-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0026-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0026-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -332,7 +331,7 @@ class FlattenTests{
 	void t0027(){
 		Object input=readResourceAsJSON("/flatten/0027-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0027-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0027-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0027-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -344,7 +343,7 @@ class FlattenTests{
 	void t0028(){
 		Object input=readResourceAsJSON("/flatten/0028-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0028-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0028-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0028-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -356,7 +355,7 @@ class FlattenTests{
 	void t0030(){
 		Object input=readResourceAsJSON("/flatten/0030-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0030-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0030-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0030-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -368,7 +367,7 @@ class FlattenTests{
 	void t0031(){
 		Object input=readResourceAsJSON("/flatten/0031-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0031-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0031-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0031-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -380,7 +379,7 @@ class FlattenTests{
 	void t0032(){
 		Object input=readResourceAsJSON("/flatten/0032-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0032-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0032-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0032-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -392,7 +391,7 @@ class FlattenTests{
 	void t0033(){
 		Object input=readResourceAsJSON("/flatten/0033-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0033-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0033-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0033-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -404,7 +403,7 @@ class FlattenTests{
 	void t0034(){
 		Object input=readResourceAsJSON("/flatten/0034-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0034-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0034-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0034-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -416,7 +415,7 @@ class FlattenTests{
 	void t0035(){
 		Object input=readResourceAsJSON("/flatten/0035-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0035-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0035-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0035-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -428,7 +427,7 @@ class FlattenTests{
 	void t0036(){
 		Object input=readResourceAsJSON("/flatten/0036-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0036-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0036-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0036-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -440,7 +439,7 @@ class FlattenTests{
 	void t0037(){
 		Object input=readResourceAsJSON("/flatten/0037-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0037-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0037-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0037-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -452,7 +451,7 @@ class FlattenTests{
 	void t0038(){
 		Object input=readResourceAsJSON("/flatten/0038-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0038-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0038-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0038-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -464,7 +463,7 @@ class FlattenTests{
 	void t0039(){
 		Object input=readResourceAsJSON("/flatten/0039-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0039-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0039-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0039-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -476,7 +475,7 @@ class FlattenTests{
 	void t0040(){
 		Object input=readResourceAsJSON("/flatten/0040-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0040-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0040-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0040-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -488,7 +487,7 @@ class FlattenTests{
 	void t0041(){
 		Object input=readResourceAsJSON("/flatten/0041-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0041-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0041-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0041-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -500,7 +499,7 @@ class FlattenTests{
 	void t0042(){
 		Object input=readResourceAsJSON("/flatten/0042-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0042-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0042-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0042-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -512,7 +511,7 @@ class FlattenTests{
 	void t0043(){
 		Object input=readResourceAsJSON("/flatten/0043-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0043-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0043-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0043-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -524,7 +523,7 @@ class FlattenTests{
 	void t0045(){
 		Object input=readResourceAsJSON("/flatten/0045-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0045-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0045-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0045-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -536,7 +535,7 @@ class FlattenTests{
 	void t0046(){
 		Object input=readResourceAsJSON("/flatten/0046-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0046-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0046-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0046-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -548,7 +547,7 @@ class FlattenTests{
 	void t0047(){
 		Object input=readResourceAsJSON("/flatten/0047-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0047-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("http://example.org/"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("http://example.org/"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -560,7 +559,7 @@ class FlattenTests{
 	void t0048(){
 		Object input=readResourceAsJSON("/flatten/0048-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0048-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0048-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0048-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 
@@ -572,7 +571,7 @@ class FlattenTests{
 	void t0049(){
 		Object input=readResourceAsJSON("/flatten/0049-in.jsonld");
 		Object expect=readResourceAsJSON("/flatten/0049-out.jsonld");
-		JSONArray flattened=JLDDocument.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0049-in.jsonld"));
+		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0049-in.jsonld"));
 		assertEqualJLD(expect, flattened);
 	}
 

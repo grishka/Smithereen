@@ -45,7 +45,7 @@ foreach($mf->sequence as $test){
 		$inputURL=$test->option->base;
 	if($type=="jld:PositiveEvaluationTest"){
 		$j[]="\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
-		$j[]="\t\tArrayList<RDFTriple> result=JLDDocument.toRDF(input, URI.create(\"$inputURL\"));";
+		$j[]="\t\tArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create(\"$inputURL\"));";
 		if(filesize("src/test/resources/".$test->expect)>0){
 			$j[]="\t\tList<String> expect=readResourceAsLines(\"/{$test->expect}\");";
 			$j[]="\t\tassertEquals(expect.size(), result.size());";
@@ -56,7 +56,7 @@ foreach($mf->sequence as $test){
 	}else if($type=="jld:NegativeEvaluationTest"){
 		$j[]="\t\tassertThrows(JLDException.class, ()->{";
 		$j[]="\t\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
-		$j[]="\t\t\tJLDDocument.toRDF(input, URI.create(\"$inputURL\"));";
+		$j[]="\t\t\tJLDProcessor.toRDF(input, URI.create(\"$inputURL\"));";
 		$j[]="\t\t}, \"{$test->expectErrorCode}\");";
 	}else{
 		die("Unknown test type $type\n");

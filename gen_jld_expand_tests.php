@@ -44,12 +44,12 @@ foreach($mf->sequence as $test){
 	if($type=="jld:PositiveEvaluationTest"){
 		$j[]="\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
 		$j[]="\t\tObject expect=readResourceAsJSON(\"/{$test->expect}\");";
-		$j[]="\t\tJSONArray expanded=JLDDocument.expandToArray(input, URI.create(\"$inputURL\"));";
+		$j[]="\t\tJSONArray expanded=JLDProcessor.expandToArray(input, URI.create(\"$inputURL\"));";
 		$j[]="\t\tassertEqualJLD(expect, expanded);";
 	}else if($type=="jld:NegativeEvaluationTest"){
 		$j[]="\t\tassertThrows(JLDException.class, ()->{";
 		$j[]="\t\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
-		$j[]="\t\t\tJLDDocument.expandToArray(input, URI.create(\"$inputURL\"));";
+		$j[]="\t\t\tJLDProcessor.expandToArray(input, URI.create(\"$inputURL\"));";
 		$j[]="\t\t}, \"{$test->expectErrorCode}\");";
 	}else{
 		die("Unknown test type $type\n");
