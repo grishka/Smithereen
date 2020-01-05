@@ -9,7 +9,7 @@
 {%include "wall_reply.twig" with {post: reply}%}
 {%endfor%}
 {%elseif entry.type==2%}
-🔁 <a href="{{entry.author.profileURL}}">{{entry.author.fullName}}</a><br/>
+🔁 <a href="{{entry.author.url}}">{{entry.author.fullName}}</a><br/>
 {%include "wall_post.twig" with {post: entry.post}%}
 {%for reply in entry.post.replies%}
 {%include "wall_reply.twig" with {post: reply}%}
