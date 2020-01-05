@@ -15,6 +15,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -56,6 +57,7 @@ import smithereen.data.User;
 import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDDocument;
 import smithereen.jsonld.LinkedDataSignatures;
+import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.NodeInfoStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -701,8 +703,44 @@ public class ActivityPubRoutes{
 
 	}
 
-	private static void handleAnnounceActivity(ForeignUser user, Announce act){
-
+	private static void handleAnnounceActivity(ForeignUser user, Announce act) throws SQLException{
+		URI objURI=act.object.link;
+		if(objURI==null)
+			throw new IllegalArgumentException("Announce object must be a link");
+		if(Config.isLocal(objURI)){
+			Post post=PostStorage.getPostByID(objURI);
+			if(post==null)
+				throw new ObjectNotFoundException("Post not found");
+			long time=act.published==null ? System.currentTimeMillis() : act.published.getTime();
+			NewsfeedStorage.putRetoot(user.id, post.id, new Timestamp(time));
+		}else{
+			try{
+				ActivityPubObject obj=ActivityPub.fetchRemoteObject(objURI.toString());
+				if(obj instanceof Post){
+					Post post=(Post) obj;
+					ForeignUser author=(ForeignUser) UserStorage.getUserByActivityPubID(post.attributedTo);
+					if(author==null){
+						ActivityPubObject _author=ActivityPub.fetchRemoteObject(post.attributedTo.toString());
+						if(!(_author instanceof ForeignUser)){
+							throw new IllegalArgumentException("Post author isn't a user");
+						}
+						author=(ForeignUser) _author;
+						UserStorage.putOrUpdateForeignUser(author);
+					}
+					post.owner=post.user=author;
+					PostStorage.putForeignWallPost(post);
+					long time=act.published==null ? System.currentTimeMillis() : act.published.getTime();
+					NewsfeedStorage.putRetoot(user.id, post.id, new Timestamp(time));
+				}else if(obj==null){
+					throw new IllegalArgumentException("Failed to fetch reposted object");
+				}else{
+					throw new IllegalArgumentException("Unsupported object type in Announce: "+obj.getType());
+				}
+			}catch(IOException e){
+				e.printStackTrace();
+				throw new IllegalArgumentException("Failed to fetch reposted object: "+e.getMessage());
+			}
+		}
 	}
 
 	private static void handleUndoActivity(ForeignUser user, Undo act) throws URISyntaxException, SQLException{
@@ -722,7 +760,7 @@ public class ActivityPubRoutes{
 
 				break;
 			case "Announce":
-
+				handleUndoAnnounceActivity(user, (Announce)objectActivity);
 				break;
 			case "Accept":
 				handleUndoAcceptActivity(user, (Accept)objectActivity);
@@ -847,6 +885,15 @@ public class ActivityPubRoutes{
 		if(follower==null)
 			throw new ObjectNotFoundException("Follower not found");
 		UserStorage.setFollowAccepted(follower.id, actor.id, false);
+	}
+
+	private static void handleUndoAnnounceActivity(ForeignUser actor, Announce activity) throws SQLException{
+		if(!actor.activityPubID.equals(activity.actor.link))
+			throw new IllegalArgumentException("Actors must match");
+		Post post=PostStorage.getPostByID(activity.object.link);
+		if(post==null)
+			throw new ObjectNotFoundException("Post not found");
+		NewsfeedStorage.deleteRetoot(actor.id, post.id);
 	}
 
 	//endregion

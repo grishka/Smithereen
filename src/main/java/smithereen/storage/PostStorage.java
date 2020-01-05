@@ -18,10 +18,10 @@ import java.util.List;
 import smithereen.Config;
 import smithereen.ObjectNotFoundException;
 import smithereen.Utils;
-import smithereen.data.NewsfeedEntry;
+import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.Post;
-import smithereen.data.PostNewsfeedEntry;
-import smithereen.data.User;
+import smithereen.data.feed.PostNewsfeedEntry;
+import smithereen.data.feed.RetootNewsfeedEntry;
 
 public class PostStorage{
 	public static int createUserWallPost(int userID, int ownerID, String text, int[] replyKey) throws SQLException{
@@ -111,7 +111,7 @@ public class PostStorage{
 
 	public static List<NewsfeedEntry> getFeed(int userID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT `type`, `object_id` FROM `newsfeed` WHERE `author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? UNION SELECT ?) ORDER BY `time` DESC LIMIT 25");
+		PreparedStatement stmt=conn.prepareStatement("SELECT `type`, `object_id`, `author_id` FROM `newsfeed` WHERE `author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? UNION SELECT ?) ORDER BY `time` DESC LIMIT 25");
 
 		stmt.setInt(1, userID);
 		stmt.setInt(2, userID);
@@ -127,6 +127,16 @@ public class PostStorage{
 						case NewsfeedEntry.TYPE_POST:{
 							PostNewsfeedEntry entry=new PostNewsfeedEntry();
 							entry.objectID=res.getInt(2);
+							posts.add(entry);
+							postMap.put(entry.objectID, entry);
+							needPosts.add(entry.objectID);
+							_entry=entry;
+							break;
+						}
+						case NewsfeedEntry.TYPE_RETOOT:{
+							RetootNewsfeedEntry entry=new RetootNewsfeedEntry();
+							entry.objectID=res.getInt(2);
+							entry.author=UserStorage.getById(res.getInt(3));
 							posts.add(entry);
 							postMap.put(entry.objectID, entry);
 							needPosts.add(entry.objectID);
