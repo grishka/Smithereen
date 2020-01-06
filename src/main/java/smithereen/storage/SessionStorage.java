@@ -13,6 +13,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.Base64;
 import java.util.Locale;
 
@@ -137,23 +138,28 @@ public class SessionStorage{
 			stmt.setInt(1, userID);
 			stmt.setString(2, email);
 			stmt.setBytes(3, hashedPassword);
-			stmt.setInt(4, inviterAccountID);
+			if(inviterAccountID!=0)
+				stmt.setInt(4, inviterAccountID);
+			else
+				stmt.setNull(4, Types.INTEGER);
 			stmt.execute();
 
-			int inviterUserID=0;
-			stmt=conn.prepareStatement("SELECT `user_id` FROM `accounts` WHERE `id`=?");
-			stmt.setInt(1, inviterAccountID);
-			try(ResultSet res=stmt.executeQuery()){
-				res.first();
-				inviterUserID=res.getInt(1);
+			if(inviterAccountID!=0){
+				int inviterUserID=0;
+				stmt=conn.prepareStatement("SELECT `user_id` FROM `accounts` WHERE `id`=?");
+				stmt.setInt(1, inviterAccountID);
+				try(ResultSet res=stmt.executeQuery()){
+					res.first();
+					inviterUserID=res.getInt(1);
+				}
+
+				stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`, `followee_id`, `mutual`) VALUES (?, ?, 1), (?, ?, 1)");
+				stmt.setInt(1, inviterUserID);
+				stmt.setInt(2, userID);
+				stmt.setInt(3, userID);
+				stmt.setInt(4, inviterUserID);
+				stmt.execute();
 			}
-
-			stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`, `followee_id`, `mutual`) VALUES (?, ?, 1), (?, ?, 1)");
-			stmt.setInt(1, inviterUserID);
-			stmt.setInt(2, userID);
-			stmt.setInt(3, userID);
-			stmt.setInt(4, inviterUserID);
-			stmt.execute();
 
 			conn.createStatement().execute("COMMIT");
 		}catch(SQLException x){

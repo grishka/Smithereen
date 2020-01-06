@@ -1,4 +1,4 @@
 out/
 target/
 local/
-config.properties
+/config.properties
