@@ -48,8 +48,10 @@ public class ActivityPub{
 		Call call=httpClient.newCall(req);
 		Response resp=call.execute();
 		try(ResponseBody body=resp.body()){
-			if(!resp.isSuccessful())
+			if(!resp.isSuccessful()){
+				System.out.println(resp);
 				return null;
+			}
 
 			String r=body.string();
 			try{

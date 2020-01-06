@@ -8,12 +8,10 @@
 <table width="100%">
 	<tr>
 		<td width="35">
-			<a href="/"><img src="/res/logo.svg" height="40" border="0"/></a>
+			<a href="/"><img src="/res/logo.svg" height="32" width="142" border="0"/></a>
 		</td>
 		<td>
-			<a href="/">Smithereen</a>
 			{%if(currentUser)%}
-			<br/>
 			<a href="/{{currentUser.username}}/friends">{{L('friends')}}{%if(userNotifications.newFriendRequestCount>0)%} (<b>{{userNotifications.newFriendRequestCount}}</b>){%endif%}</a> | <a href="/settings/">{{L('settings')}}</a>
 			{%endif%}
 		</td>

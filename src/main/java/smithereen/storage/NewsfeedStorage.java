@@ -11,7 +11,7 @@ public class NewsfeedStorage{
 
 	public static void putRetoot(int authorID, int postID, Timestamp published) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `newsfeed` (`type`, `author_id`, `object_id`, `time`) VALUES (?, ?, ?, ?)");
+		PreparedStatement stmt=conn.prepareStatement("INSERT IGNORE INTO `newsfeed` (`type`, `author_id`, `object_id`, `time`) VALUES (?, ?, ?, ?)");
 		stmt.setInt(1, NewsfeedEntry.TYPE_RETOOT);
 		stmt.setInt(2, authorID);
 		stmt.setInt(3, postID);

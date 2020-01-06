@@ -244,7 +244,7 @@ public class PostStorage{
 		PreparedStatement stmt=conn.prepareStatement("DELETE FROM `wall_posts` WHERE `id`=?");
 		stmt.setInt(1, id);
 		stmt.execute();
-		stmt=conn.prepareStatement("DELETE FROM `newsfeed` WHERE `type`=1 AND `object_id`=?");
+		stmt=conn.prepareStatement("DELETE FROM `newsfeed` WHERE (`type`=1 OR `type`=2) AND `object_id`=?");
 		stmt.setInt(1, id);
 		stmt.execute();
 	}

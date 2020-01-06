@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 import smithereen.Config;
@@ -152,9 +153,11 @@ public class Post extends ActivityPubObject{
 		user=UserStorage.getUserByActivityPubID(attributedTo);
 		if(inReplyTo!=null){
 			owner=user;
-		}else{
-
 		}
+		if(url==null)
+			url=activityPubID;
+		if(published==null)
+			published=new Date();
 		return this;
 	}
 

@@ -75,7 +75,9 @@ public class PostRoutes{
 		List<NewsfeedEntry> feed=PostStorage.getFeed(userID);
 		for(NewsfeedEntry e:feed){
 			if(e instanceof PostNewsfeedEntry){
-				((PostNewsfeedEntry) e).post.replies=PostStorage.getRepliesForFeed(e.objectID);
+				PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
+				if(pe.post!=null)
+					pe.post.replies=PostStorage.getRepliesForFeed(e.objectID);
 			}
 		}
 		JtwigModel model=JtwigModel.newModel().with("title", "Feed").with("feed", feed);
