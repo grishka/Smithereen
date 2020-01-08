@@ -78,6 +78,8 @@ public class PostRoutes{
 				PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
 				if(pe.post!=null)
 					pe.post.replies=PostStorage.getRepliesForFeed(e.objectID);
+				else
+					System.err.println("No post: "+pe);
 			}
 		}
 		JtwigModel model=JtwigModel.newModel().with("title", "Feed").with("feed", feed);

@@ -6,4 +6,12 @@ public abstract class NewsfeedEntry{
 
 	public int type;
 	public int objectID;
+
+	@Override
+	public String toString(){
+		return "NewsfeedEntry{"+
+				"type="+type+
+				", objectID="+objectID+
+				'}';
+	}
 }

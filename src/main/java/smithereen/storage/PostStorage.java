@@ -117,7 +117,7 @@ public class PostStorage{
 		stmt.setInt(2, userID);
 		ArrayList<NewsfeedEntry> posts=new ArrayList<>();
 		ArrayList<Integer> needPosts=new ArrayList<>();
-		HashMap<Integer, PostNewsfeedEntry> postMap=new HashMap<>();
+		HashMap<Integer, Post> postMap=new HashMap<>();
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
 				do{
@@ -128,7 +128,6 @@ public class PostStorage{
 							PostNewsfeedEntry entry=new PostNewsfeedEntry();
 							entry.objectID=res.getInt(2);
 							posts.add(entry);
-							postMap.put(entry.objectID, entry);
 							needPosts.add(entry.objectID);
 							_entry=entry;
 							break;
@@ -138,7 +137,6 @@ public class PostStorage{
 							entry.objectID=res.getInt(2);
 							entry.author=UserStorage.getById(res.getInt(3));
 							posts.add(entry);
-							postMap.put(entry.objectID, entry);
 							needPosts.add(entry.objectID);
 							_entry=entry;
 							break;
@@ -166,10 +164,15 @@ public class PostStorage{
 				if(res.first()){
 					do{
 						Post post=Post.fromResultSet(res);
-						PostNewsfeedEntry entry=postMap.get(post.id);
-						if(entry!=null)
-							entry.post=post;
+						postMap.put(post.id, post);
 					}while(res.next());
+				}
+			}
+			for(NewsfeedEntry e:posts){
+				if(e instanceof PostNewsfeedEntry){
+					Post post=postMap.get(e.objectID);
+					if(post!=null)
+						((PostNewsfeedEntry) e).post=post;
 				}
 			}
 		}
