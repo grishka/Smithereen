@@ -58,7 +58,10 @@ public class Main{
 
 		ipAddress(Config.serverIP);
 		port(Config.serverPort);
-		staticFileLocation("/public");
+		if(Config.staticFilesPath!=null)
+			externalStaticFileLocation(Config.staticFilesPath);
+		else
+			staticFileLocation("/public");
 		staticFiles.expireTime(24*60*60);
 		before((request, response) -> {
 			request.attribute("start_time", System.currentTimeMillis());

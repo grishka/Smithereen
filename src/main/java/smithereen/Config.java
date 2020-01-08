@@ -24,6 +24,7 @@ public class Config{
 	public static String uploadURLPath;
 	public static String mediaCacheURLPath;
 	public static boolean useHTTP;
+	public static String staticFilesPath;
 
 	private static URI localURI;
 
@@ -52,6 +53,7 @@ public class Config{
 
 		serverIP=props.getProperty("server.ip", "127.0.0.1");
 		serverPort=Utils.parseIntOrDefault(props.getProperty("server.port", "4567"), 4567);
+		staticFilesPath=props.getProperty("web.static_files_path");
 	}
 
 	public static URI localURI(String path){
