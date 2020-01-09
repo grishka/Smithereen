@@ -1,5 +1,5 @@
 {%if not wallOwner%}{%set wallOwner=currentUser%}{%endif%}
-<form action="{{wallOwner.getProfileURL('createWallPost')}}" method="post">
+<form action="{{wallOwner.getProfileURL('createWallPost')}}" method="post" class="gray singleColumn wallPostForm">
 	<textarea name="text" cols="100" rows="4" placeholder="{%if wallOwner.id!=currentUser.id%}{{L('write_on_X_wall', wallOwner.firstName)}}{%else%}{{L('write_on_own_wall')}}{%endif%}">{{prefilledPostText}}</textarea><br/>
 	<input type="hidden" name="csrf" value="{{csrf}}"/>
 	{%if replyTo%}

@@ -31,8 +31,10 @@ public class ProfileRoutes{
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
-			List<Post> wall=PostStorage.getUserWall(user.id, 0, 0, null);
-			JtwigModel model=JtwigModel.newModel().with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id);
+			int[] postCount={0};
+			List<Post> wall=PostStorage.getUserWall(user.id, 0, 0, postCount);
+			JtwigModel model=JtwigModel.newModel().with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
+
 			int[] friendCount={0};
 			List<User> friends=UserStorage.getRandomFriendsForProfile(user.id, friendCount);
 			model.with("friendCount", friendCount[0]).with("friends", friends);
@@ -127,7 +129,7 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			JtwigModel model=JtwigModel.newModel();
-			model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user);
+			model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
 			return Utils.renderTemplate(req, "friends", model);
 		}
 		resp.status(404);
@@ -139,7 +141,7 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			JtwigModel model=JtwigModel.newModel();
-			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true);
+			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true).with("tab", 1);
 			return Utils.renderTemplate(req, "friends", model);
 		}
 		resp.status(404);
@@ -151,7 +153,7 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			JtwigModel model=JtwigModel.newModel();
-			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true);
+			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true).with("tab", 2);
 			return Utils.renderTemplate(req, "friends", model);
 		}
 		resp.status(404);

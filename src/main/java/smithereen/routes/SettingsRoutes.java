@@ -45,7 +45,7 @@ import spark.Session;
 public class SettingsRoutes{
 	public static Object settings(Request req, Response resp, Account self) throws SQLException{
 		JtwigModel model=JtwigModel.newModel();
-		model.with("invitations", UserStorage.getInvites(self.user.id, true));
+		model.with("invitations", UserStorage.getInvites(self.id, true));
 		Session s=req.session();
 		if(s.attribute("settings.nameMessage")!=null){
 			model.with("nameMessage", s.attribute("settings.nameMessage"));

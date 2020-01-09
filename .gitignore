@@ -2,3 +2,4 @@ out/
 target/
 local/
 /config.properties
+node_modules/

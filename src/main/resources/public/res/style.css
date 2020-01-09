@@ -1,0 +1,374 @@
+body, p, textarea, input{
+	font-family: Tahoma, Helvetica, Arial, Roboto, sans-serif;
+	font-size: 11px;
+}
+
+body{
+	background: #FFFFFF;
+	margin: 0;
+}
+
+table{
+	table-layout: fixed;
+}
+
+a, a:link, a:visited{
+	color: rgb(153, 162, 42);
+	text-decoration: none;
+}
+
+a:hover, a:visited:hover{
+	text-decoration: underline;
+}
+
+h2{
+	color: rgb(136, 144, 38);
+	font-weight: bold;
+	font-size: 13px;
+	margin: 0;
+	padding-bottom: 2px;
+	border-bottom: solid 1px rgb(223, 229, 154);
+}
+
+.header{
+	color: #FFFFFF;
+	height: 48px;
+	padding: 0 12px;
+	width: 1220px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.headerBG{
+	background-color: #aab42f;
+	background: linear-gradient(to bottom, rgb(136, 144, 38), rgb(153, 162, 42) 7%, #aab42f 70%);
+	border-bottom: solid 1px rgb(136, 144, 38);
+	box-shadow: 0 -1px 0 rgb(210, 218, 113) inset;
+	height: 48px;
+}
+
+.header .logo{
+	margin-top: 4px;
+}
+
+.header a.nav{
+	color: #FFFFFF;
+	font-weight: bold;
+	display: inline-block;
+	line-height: 48px;
+	height: 48px;
+	padding: 0 8px;
+	text-shadow: 0 1px 0 rgba(0, 0, 0, .3);
+}
+
+.header a.nav:hover, .header a.nav:visited:hover{
+	text-decoration: none;
+	background: rgba(0, 0, 0, .2);
+}
+
+.leftMenu{
+	padding: 12px;
+}
+
+.leftMenu input{
+	width: 100%;
+	box-sizing: border-box;
+	margin: 4px 0;
+}
+
+.actionList{
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+}
+
+.actionList a{
+	display: block;
+	line-height: 24px;
+	padding-left: 6px;
+}
+
+.actionList a:hover, .actionList a:visited:hover{
+	text-decoration: none;
+	background: rgb(242, 245, 214);
+	box-shadow: 0 1px 0 rgb(236, 239, 194) inset;
+}
+
+#elevator{
+	position: fixed;
+	width: 60px;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	display: block;
+}
+
+.contentWrap{
+	width: 1220px;
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 1px;
+}
+
+.pageContent{
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+}
+
+.wrap{
+	padding-left: 60px;
+	margin-top: -49px;
+}
+
+.profileBlock{
+	border-collapse: collapse;
+}
+
+.profileBlock .blockHeader{
+	text-align: left;
+	height: 24px;
+	padding: 0 6px;
+	box-shadow: 0 1px 0 rgb(197, 208, 73) inset;
+	background: rgb(223, 229, 154);
+}
+
+.profileBlock .blockHeader a{
+	color: rgb(136, 144, 38);
+}
+
+.profileBlock .blockSubheader{
+	height: 24px;
+	background: #F5F5F5;
+	color: #707070;
+	padding: 0 6px;
+}
+
+.columnLayout, .singleColumn, .profileBlock .padded{
+	padding: 8px;
+}
+
+.leftNarrow #right{
+	padding-left: 8px;
+}
+
+.marginAfter{
+	margin-bottom: 8px;
+}
+
+.ava{
+	border-radius: 4px;
+}
+
+.avaPlaceholder{
+	display: inline-block;
+	background: #F5F5F5;
+}
+
+.membersRow td{
+	padding-top: 8px;
+	font-size: 10px;
+}
+
+.post{
+	padding-bottom: 8px;
+	border-bottom: solid 1px rgb(236, 239, 194);
+	margin-bottom: 8px;
+	border-spacing: 0;
+}
+
+.post .authorName{
+	font-weight: bold;
+}
+
+.post p{
+	margin-top: 8px;
+	margin-bottom: 8px;
+}
+
+.post p:first-child{
+	margin-top: 0;
+}
+
+.post p:last-child{
+	margin-bottom: 0;
+}
+
+.post .postContentWrap{
+	padding: 0 8px;
+}
+
+.postContent{
+	padding: 4px 0;
+	word-wrap: break-word;
+}
+
+.postInfo, .postLink:link, .postLink:visited{
+	font-size: 10px;
+	color: #909090;
+}
+
+.commentsPreviewWrap{
+	padding-left: 58px;
+}
+
+.comment{
+	border-bottom: none;
+}
+
+.gray{
+	background: #F5F5F5;
+}
+
+.profileFields{
+	margin: 8px;
+}
+
+table.profileFields td{
+	vertical-align: top;
+}
+
+.profileFields .label{
+	color: #909090;
+	width: 30%;
+}
+
+.wallPostForm textarea{
+	width: 100%;
+	max-width: 100%;
+	resize: vertical;
+	box-sizing: border-box;
+}
+
+.notMuchContent{
+	padding: 64px 16px;
+}
+
+.notMuchContent p{
+	margin-top: 0;
+	margin-bottom: 16px;
+}
+
+input[type=text], input[type=password], input[type=email], textarea{
+	border: solid 1px #909090;
+	border-radius: 2px;
+	padding: 4px;
+}
+
+*:focus{
+	outline: none;
+}
+
+input[type=submit], input[type=button], button, .button:link, .button:visited{
+	background: linear-gradient(to bottom, #aab42f, rgb(153, 162, 42));
+	padding: 4px 8px;
+	text-shadow: 0 1px 0 rgba(0, 0, 0, .3);
+	border: solid 1px rgb(136, 144, 38);
+	border-radius: 2px;
+	color: #FFFFFF;
+	box-shadow: 0 1px 0 rgb(197, 208, 73) inset;
+	cursor: pointer;
+}
+
+input[type=submit]:hover, input[type=button]:hover, .button:hover, .button:visited:hover{
+	text-decoration: none;
+	background: linear-gradient(to bottom, rgb(183, 195, 50), rgb(162, 171, 45));
+	box-shadow: 0 1px 0 rgb(201, 211, 85) inset;
+}
+
+input[type=submit]:active, input[type=button]:active, .button:active, .button:visited:active{
+	text-decoration: none;
+	background: rgb(136, 144, 38);
+	box-shadow: none;
+}
+
+input[type=submit].secondary, input[type=button].secondary, button.secondary, .button.secondary:link, .button.secondary:visited{
+	background: linear-gradient(to bottom, #F5F5F5, rgb(221, 221, 221));
+	text-shadow: 0 1px 0 rgba(255, 255, 255, .3);
+	border: solid 1px rgb(196, 196, 196);
+	color: #707070;
+	box-shadow: 0 1px 0 rgb(255, 255, 255) inset;
+}
+
+input[type=submit].secondary:hover, input[type=button].secondary:hover, .button.secondary:hover, .button.secondary:visited:hover{
+	text-decoration: none;
+	background: linear-gradient(to bottom, rgb(252, 252, 252), rgb(233, 233, 233));
+	box-shadow: 0 1px 0 rgb(255, 255, 255) inset;
+}
+
+input[type=submit].secondary:active, input[type=button].secondary:active, .button.secondary:active, .button.secondary:visited:active{
+	text-decoration: none;
+	background: rgb(196, 196, 196);
+	box-shadow: none;
+}
+
+::placeholder, ::-ms-input-placeholder, ::-webkit-input-placeholder{
+	color: #909090;
+}
+
+.tabbar{
+	border-bottom: solid 1px rgb(153, 162, 42);
+	padding: 8px 8px 0 8px;
+}
+
+.tabbar a{
+	display: inline-block;
+	padding: 0 8px 0 8px;
+	margin-right: 2px;
+	border-radius: 4px 4px 0 0;
+	line-height: 24px;
+}
+
+.tabbar a:hover, .tabbar a:visited:hover{
+	text-decoration: none;
+	background: rgb(242, 245, 214);
+}
+
+.tabbar a.selected, .tabbar a.selected:hover, .tabbar a.selected:visited:hover{
+	background: rgb(153, 162, 42);
+	color: #FFFFFF;
+}
+
+.friendsRow{
+	padding-bottom: 8px;
+	border-bottom: solid 1px rgb(236, 239, 194);
+	margin-bottom: 8px;
+	border-spacing: 0;
+}
+
+.friendsRow .info{
+	padding: 16px;
+}
+
+.form{
+	border-spacing: 0;
+	width: 60%;
+	margin: auto;
+	margin-top: 8px;
+	margin-bottom: 8px;
+}
+
+.form .label{
+	text-align: right;
+	color: #909090;
+	vertical-align: top;
+	padding: 4px 8px;
+	width: 30%;
+}
+
+.form tr:not(.footer) input{
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.formExplanation{
+	font-size: 10px;
+	color: #909090;
+}
+
+.form td{
+	padding-bottom: 8px;
+}
+
+.form .footer td{
+	padding-top: 16px;
+	border-top: solid 1px rgb(236, 239, 194);
+}

@@ -168,7 +168,9 @@ public class Post extends ActivityPubObject{
 	}
 
 	public boolean canBeManagedBy(User user){
-		return owner.equals(user) || this.user.equals(user);
+		if(user==null)
+			return false;
+		return owner.id==user.id || this.user.id==user.id;
 	}
 
 	public URI getInternalURL(){

@@ -1,0 +1,382 @@
+$accent: #aab42f;
+$textOnAccent: #FFFFFF;
+$bg: #FFFFFF;
+$gray: #F5F5F5;
+$textOnGray: #707070;
+$siteWidth: 1280px;
+$grayText: #909090;
+
+body, p, textarea, input{
+	font-family: Tahoma, Helvetica, Arial, Roboto, sans-serif;
+	font-size: 11px;
+}
+
+body{
+	background: $bg;
+	margin: 0;
+}
+
+table{
+	table-layout: fixed;
+}
+
+a, a:link, a:visited{
+	color: color($accent shade(10%));
+	text-decoration: none;
+}
+
+a:hover, a:visited:hover{
+	text-decoration: underline;
+}
+
+h2{
+	color: color($accent shade(20%));
+	font-weight: bold;
+	font-size: 13px;
+	margin: 0;
+	padding-bottom: 2px;
+	border-bottom: solid 1px color($accent lightness(+30%));
+}
+
+.header{
+	color: $textOnAccent;
+	height: 48px;
+	padding: 0 12px;
+	width: calc($siteWidth - 60px);
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.headerBG{
+	background-color: $accent;
+	background: linear-gradient(to bottom, color($accent shade(20%)), color($accent shade(10%)) 7%, $accent 70%);
+	border-bottom: solid 1px color($accent shade(20%));
+	box-shadow: 0 -1px 0 color($accent lightness(+20%)) inset;
+	height: 48px;
+}
+
+.header .logo{
+	margin-top: 4px;
+}
+
+.header a.nav{
+	color: $textOnAccent;
+	font-weight: bold;
+	display: inline-block;
+	line-height: 48px;
+	height: 48px;
+	padding: 0 8px;
+	text-shadow: 0 1px 0 rgba(0, 0, 0, .3);
+}
+
+.header a.nav:hover, .header a.nav:visited:hover{
+	text-decoration: none;
+	background: rgba(0, 0, 0, .2);
+}
+
+.leftMenu{
+	padding: 12px;
+}
+
+.leftMenu input{
+	width: 100%;
+	box-sizing: border-box;
+	margin: 4px 0;
+}
+
+.actionList{
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+}
+
+.actionList a{
+	display: block;
+	line-height: 24px;
+	padding-left: 6px;
+}
+
+.actionList a:hover, .actionList a:visited:hover{
+	text-decoration: none;
+	background: color($accent lightness(+45%));
+	box-shadow: 0 1px 0 color($accent lightness(+40%)) inset;
+}
+
+#elevator{
+	position: fixed;
+	width: 60px;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	display: block;
+}
+
+.contentWrap{
+	width: calc($siteWidth - 60px);
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 1px;
+}
+
+.pageContent{
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+}
+
+.wrap{
+	padding-left: 60px;
+	margin-top: -49px;
+}
+
+.profileBlock{
+	border-collapse: collapse;
+}
+
+.profileBlock .blockHeader{
+	text-align: left;
+	height: 24px;
+	padding: 0 6px;
+	box-shadow: 0 1px 0 color($accent lightness(+10%)) inset;
+	background: color($accent lightness(+30%));
+}
+
+.profileBlock .blockHeader a{
+	color: color($accent shade(20%));
+}
+
+.profileBlock .blockSubheader{
+	height: 24px;
+	background: $gray;
+	color: $textOnGray;
+	padding: 0 6px;
+}
+
+.columnLayout, .singleColumn, .profileBlock .padded{
+	padding: 8px;
+}
+
+.leftNarrow #right{
+	padding-left: 8px;
+}
+
+.marginAfter{
+	margin-bottom: 8px;
+}
+
+.ava{
+	border-radius: 4px;
+}
+
+.avaPlaceholder{
+	display: inline-block;
+	background: $gray;
+}
+
+.membersRow td{
+	padding-top: 8px;
+	font-size: 10px;
+}
+
+.post{
+	padding-bottom: 8px;
+	border-bottom: solid 1px color($accent lightness(+40%));
+	margin-bottom: 8px;
+	border-spacing: 0;
+}
+
+.post .authorName{
+	font-weight: bold;
+}
+
+.post p{
+	margin-top: 8px;
+	margin-bottom: 8px;
+}
+
+.post p:first-child{
+	margin-top: 0;
+}
+
+.post p:last-child{
+	margin-bottom: 0;
+}
+
+.post .postContentWrap{
+	padding: 0 8px;
+}
+
+.postContent{
+	padding: 4px 0;
+	word-wrap: break-word;
+}
+
+.postInfo, .postLink:link, .postLink:visited{
+	font-size: 10px;
+	color: $grayText;
+}
+
+.commentsPreviewWrap{
+	padding-left: 58px;
+}
+
+.comment{
+	border-bottom: none;
+}
+
+.gray{
+	background: $gray;
+}
+
+.profileFields{
+	margin: 8px;
+}
+
+table.profileFields td{
+	vertical-align: top;
+}
+
+.profileFields .label{
+	color: $grayText;
+	width: 30%;
+}
+
+.wallPostForm textarea{
+	width: 100%;
+	max-width: 100%;
+	resize: vertical;
+	box-sizing: border-box;
+}
+
+.notMuchContent{
+	padding: 64px 16px;
+}
+
+.notMuchContent p{
+	margin-top: 0;
+	margin-bottom: 16px;
+}
+
+input[type=text], input[type=password], input[type=email], textarea{
+	border: solid 1px $grayText;
+	border-radius: 2px;
+	padding: 4px;
+}
+
+*:focus{
+	outline: none;
+}
+
+input[type=submit], input[type=button], button, .button:link, .button:visited{
+	background: linear-gradient(to bottom, $accent, color($accent shade(10%)));
+	padding: 4px 8px;
+	text-shadow: 0 1px 0 rgba(0, 0, 0, .3);
+	border: solid 1px color($accent shade(20%));
+	border-radius: 2px;
+	color: $textOnAccent;
+	box-shadow: 0 1px 0 color($accent lightness(+10%)) inset;
+	cursor: pointer;
+}
+
+input[type=submit]:hover, input[type=button]:hover, .button:hover, .button:visited:hover{
+	text-decoration: none;
+	background: linear-gradient(to bottom, color($accent lightness(+3%)), color($accent shade(5%)));
+	box-shadow: 0 1px 0 color($accent lightness(+13%)) inset;
+}
+
+input[type=submit]:active, input[type=button]:active, .button:active, .button:visited:active{
+	text-decoration: none;
+	background: color($accent shade(20%));
+	box-shadow: none;
+}
+
+input[type=submit].secondary, input[type=button].secondary, button.secondary, .button.secondary:link, .button.secondary:visited{
+	background: linear-gradient(to bottom, $gray, color($gray shade(10%)));
+	text-shadow: 0 1px 0 rgba(255, 255, 255, .3);
+	border: solid 1px color($gray shade(20%));
+	color: $textOnGray;
+	box-shadow: 0 1px 0 color($gray lightness(+10%)) inset;
+}
+
+input[type=submit].secondary:hover, input[type=button].secondary:hover, .button.secondary:hover, .button.secondary:visited:hover{
+	text-decoration: none;
+	background: linear-gradient(to bottom, color($gray lightness(+3%)), color($gray shade(5%)));
+	box-shadow: 0 1px 0 color($gray lightness(+13%)) inset;
+}
+
+input[type=submit].secondary:active, input[type=button].secondary:active, .button.secondary:active, .button.secondary:visited:active{
+	text-decoration: none;
+	background: color($gray shade(20%));
+	box-shadow: none;
+}
+
+::placeholder, ::-ms-input-placeholder, ::-webkit-input-placeholder{
+	color: $grayText;
+}
+
+.tabbar{
+	border-bottom: solid 1px color($accent shade(10%));
+	padding: 8px 8px 0 8px;
+}
+
+.tabbar a{
+	display: inline-block;
+	padding: 0 8px 0 8px;
+	margin-right: 2px;
+	border-radius: 4px 4px 0 0;
+	line-height: 24px;
+}
+
+.tabbar a:hover, .tabbar a:visited:hover{
+	text-decoration: none;
+	background: color($accent lightness(+45%));
+}
+
+.tabbar a.selected, .tabbar a.selected:hover, .tabbar a.selected:visited:hover{
+	background: color($accent shade(10%));
+	color: $textOnAccent;
+}
+
+.friendsRow{
+	padding-bottom: 8px;
+	border-bottom: solid 1px color($accent lightness(+40%));
+	margin-bottom: 8px;
+	border-spacing: 0;
+}
+
+.friendsRow .info{
+	padding: 16px;
+}
+
+.form{
+	border-spacing: 0;
+	width: 60%;
+	margin: auto;
+	margin-top: 8px;
+	margin-bottom: 8px;
+}
+
+.form .label{
+	text-align: right;
+	color: $grayText;
+	vertical-align: top;
+	padding: 4px 8px;
+	width: 30%;
+}
+
+.form tr:not(.footer) input{
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.formExplanation{
+	font-size: 10px;
+	color: $grayText;
+}
+
+.form td{
+	padding-bottom: 8px;
+}
+
+.form .footer td{
+	padding-top: 16px;
+	border-top: solid 1px color($accent lightness(+40%));
+}

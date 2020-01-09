@@ -3,12 +3,9 @@
 
   "log_in": "Войти",
   "log_out": "Выйти",
-  "not_logged_in": "Вы не вошли.",
   "email_or_username": "Email или имя пользователя",
   "password": "Пароль",
   "password_confirm": "Пароль ещё раз",
-  "logged_in_as_before": "Вы вошли как ",
-  "logged_in_as_after": ".",
   "send": "Отправить",
   "feed": "Лента",
   "add_friend": "Добавить %s в друзья",
@@ -82,5 +79,13 @@
   "err_access": "У Вас нет доступа для совершения данного действия.",
   "following": "Подписки",
   "followers": "Подписчики",
-  "unfollow": "Отписаться"
+  "unfollow": "Отписаться",
+  "menu_profile": "Моя Страница",
+  "menu_friends": "Мои Друзья",
+  "menu_news": "Мои Новости",
+  "menu_settings": "Мои Настройки",
+  "X_friends": ["%d друг", "%d друга", "%d друзей"],
+  "wall": "Стена",
+  "X_posts": ["%d запись", "%d записи", "%d записей"],
+  "profile_about": "О себе"
 }

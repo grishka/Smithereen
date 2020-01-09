@@ -1,14 +1,14 @@
 {%autoescape "html"%}
-<table width="100%">
+<table width="100%" class="post comment">
 	<tr>
-		<td width="50">&nbsp;</td>
 		<td width="40" valign="top">
-			{{pictureForAvatar(post.user.avatar, 's', 40)}}
+			<a href="{{post.user.url}}">{{pictureForAvatar(post.user.avatar, 's', 40)}}</a>
 		</td>
-		<td>
-			<a href="{{post.user.url}}"{{post.userLinkAttrs}}>{{post.user.fullName}}</a><br/>
-			{{post.content | escape(false)}}<br/>
-			<a href="{{post.internalURL}}">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} | <a href="{{post.url}}/confirmDelete">{{L('delete')}}</a>{%endif%}
+		<td class="postContentWrap">
+			<a href="{{post.user.url}}"{{post.userLinkAttrs}} class="authorName">{{post.user.fullName}}</a><br/>
+			<div class="postContent">{{post.content | escape(false)}}</div>
+			{%if post.attachment%}{{post.processedAttachments | renderAttachments}}<br/>{%endif%}
+			<div class="postInfo"><a href="{{post.internalURL}}" class="postLink">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} | <a href="{{post.url}}/confirmDelete">{{L('delete')}}</a>{%endif%}</div>
 			{%for reply in post.replies%}
 			{%include "wall_reply.twig" with {post: reply}%}
 			{%endfor%}

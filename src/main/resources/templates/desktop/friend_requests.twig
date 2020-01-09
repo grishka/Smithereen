@@ -12,7 +12,7 @@
 				{%if req.message%}<blockquote>{{req.message}}</blockquote>{%endif%}
 				<input type="hidden" name="csrf" value="{{csrf}}"/>
 				<input type="submit" name="accept" value="{{L('accept')}}"/>
-				<input type="submit" name="decline" value="{{L('decline')}}"/>
+				<input type="submit" name="decline" value="{{L('decline')}}" class="secondary"/>
 			</form>
 		</td>
 	</tr>

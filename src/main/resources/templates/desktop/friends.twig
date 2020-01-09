@@ -1,28 +1,34 @@
 {%extends "page.twig"%}
 {%block content%}
-<a href="{{owner.getProfileURL('friends')}}">{{L('friends')}}</a> | <a href="{{owner.getProfileURL('followers')}}">{{L('followers')}}</a> | <a href="{{owner.getProfileURL('following')}}">{{L('following')}}</a>
+<div class="tabbar">
+<a href="{{owner.getProfileURL('friends')}}" class="{%if tab==0%}selected{%endif%}">{{L('friends')}}</a><a href="{{owner.getProfileURL('followers')}}" class="{%if tab==1%}selected{%endif%}">{{L('followers')}}</a><a href="{{owner.getProfileURL('following')}}" class="{%if tab==2%}selected{%endif%}">{{L('following')}}</a>
 {%if currentUser and currentUser.id==owner.id%}
 {%if userNotifications.newFriendRequests>0%}
 | <a href="{{currentUser.getProfileURL('incomingFriendRequests')}}">{{LP('X_friend_requests', userNotifications.newFriendRequests)}}</a>
 {%endif%}
 {%endif%}
+</div>
+<div class="singleColumn">
 {%for friend in friendList%}
-<table width="100%">
-	<tr>
+<table width="100%" class="friendsRow">
+	<tr valign="top">
 		<td width="100">
-			{{friend.avatar | pictureForAvatar('m')}}
+			<a href="{{friend.url}}">{{friend.avatar | pictureForAvatar('m')}}</a>
 		</td>
-		<td>
+		<td class="info">
 			<b><a href="{{friend.url}}">{{friend.fullName}}</a></b>
 		</td>
 		<td width="200">
-			<a href="{{friend.getProfileURL('friends')}}">{{L('view_friends_of')}}</a><br/>
-			{%if(currentUser and currentUser.id==owner.id and not followers)%}<a href="{{friend.getProfileURL('confirmRemoveFriend')}}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>{%endif%}
+			<ul class="actionList">
+				<li><a href="{{friend.getProfileURL('friends')}}">{{L('view_friends_of')}}</a></li>
+				{%if(currentUser and currentUser.id==owner.id and not followers)%}<li><a href="{{friend.getProfileURL('confirmRemoveFriend')}}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>{%endif%}
+			</ul>
 		</td>
 	</tr>
 </table>
 {%endfor%}
 {%if(friendList.empty)%}
-<center>{{L('no_friends')}}</center>
+<center class="notMuchContent">{{L('no_friends')}}</center>
 {%endif%}
+</div>
 {%endblock%}

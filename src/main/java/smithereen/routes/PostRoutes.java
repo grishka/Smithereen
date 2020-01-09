@@ -82,7 +82,7 @@ public class PostRoutes{
 					System.err.println("No post: "+pe);
 			}
 		}
-		JtwigModel model=JtwigModel.newModel().with("title", "Feed").with("feed", feed);
+		JtwigModel model=JtwigModel.newModel().with("title", Utils.lang(req).get("feed")).with("feed", feed);
 		return Utils.renderTemplate(req, "feed", model);
 	}
 
@@ -111,13 +111,12 @@ public class PostRoutes{
 
 	public static Object confirmDelete(Request req, Response resp, Account self) throws SQLException{
 		req.attribute("noHistory", true);
-		String username=req.params(":username");
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
 			resp.status(404);
 			return Utils.wrapError(req, "err_post_not_found");
 		}
-		return Utils.renderTemplate(req, "generic_confirm", JtwigModel.newModel().with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI(username+"/posts/"+postID+"/delete")));
+		return Utils.renderTemplate(req, "generic_confirm", JtwigModel.newModel().with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete")));
 	}
 
 	public static Object delete(Request req, Response resp, Account self) throws SQLException{

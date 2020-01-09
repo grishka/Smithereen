@@ -1,14 +1,14 @@
 {%autoescape "html"%}
-<table width="100%">
+<table width="100%" cellpadding="0" cellspacing="0" class="post" id="post{{post.id}}">
 	<tr>
 		<td width="50" valign="top">
-			{{post.user.avatar | pictureForAvatar('s')}}
+			<a href="{{post.user.url}}">{{post.user.avatar | pictureForAvatar('s')}}</a>
 		</td>
-		<td>
-			<a href="{{post.user.url}}"{{post.userLinkAttrs}}>{{post.user.fullName}}</a><br/>
-			{{post.content | escape(false)}}<br/>
+		<td valign="top" class="postContentWrap">
+			<a href="{{post.user.url}}"{{post.userLinkAttrs}} class="authorName">{{post.user.fullName}}</a>
+			<div class="postContent">{{post.content | escape(false)}}</div>
 			{%if post.attachment%}{{post.processedAttachments | renderAttachments}}<br/>{%endif%}
-			<a href="{{post.internalURL}}">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} | <a href="{{post.url}}/confirmDelete">{{L('delete')}}</a>{%endif%}
+			<div class="postInfo"><a href="{{post.internalURL}}" class="postLink">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} | <a href="{{post.url}}/confirmDelete">{{L('delete')}}</a>{%endif%}</div>
 		</td>
 	</tr>
 </table>

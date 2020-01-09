@@ -3,30 +3,56 @@
 <head>
 	<!-- commercialized internet sucks ass -->
 	<title>{{ title }}</title>
+	<link rel="stylesheet" type="text/css" href="/res/style.css"/>
 </head>
 <body>
-<table width="100%">
+<div class="headerBG"></div>
+<div class="wrap">
+<table width="100%" class="header" cellpadding="0" cellspacing="0" border="0">
 	<tr>
-		<td width="35">
-			<a href="/"><img src="/res/logo.svg" height="32" width="142" border="0"/></a>
-		</td>
-		<td>
-			{%if(currentUser)%}
-			<a href="/{{currentUser.username}}/friends">{{L('friends')}}{%if(userNotifications.newFriendRequestCount>0)%} (<b>{{userNotifications.newFriendRequestCount}}</b>){%endif%}</a> | <a href="/settings/">{{L('settings')}}</a>
-			{%endif%}
+		<td width="170" align="left">
+			<a href="/"><img src="/res/logo_white.svg" height="33" width="141" border="0" alt="Smithereen" class="logo"/></a>
 		</td>
 		<td align="right">
 			{% if (currentUser) %}
-			{{ L("logged_in_as_before") }}<a href="/{{ currentUser.username }}">{{ currentUser.fullName }}</a>{{ L("logged_in_as_after") }}<br/>
-			<a href="/account/logout?csrf={{ csrf }}">{{ L("log_out") }}</a>
-			{% else %}
-			{{ L("not_logged_in") }}
+			<a href="/account/logout?csrf={{ csrf }}" class="nav">{{ L("log_out") }}</a>
 			{% endif %}
 		</td>
 	</tr>
 </table>
-<hr/>
+<table width="100%" class="contentWrap" cellpadding="0" cellspacing="0">
+	<tr>
+		<td width="170" class="leftMenu" valign="top">
+{%block leftMenu%}
+			{%if currentUser%}
+			<ul class="actionList">
+				<li><a href="/{{currentUser.username}}">{{L('menu_profile')}}</a></li>
+				<li><a href="/{{currentUser.username}}/friends">{{L('menu_friends')}}{%if(userNotifications.newFriendRequestCount>0)%} (<b>{{userNotifications.newFriendRequestCount}}</b>){%endif%}</a></li>
+				<li><a href="/feed">{{L('menu_news')}}</a></li>
+				<li><a href="/settings/">{{L('menu_settings')}}</a></li>
+			</ul>
+			{%else%}
+			<form action="/account/login" method="post">
+				{{ L("email_or_username") }}:<br/>
+				<input type="text" name="username"/><br/>
+				{{ L("password") }}:<br/>
+				<input type="password" name="password"/><br/>
+				<input type="submit" value="{{ L('log_in') }}"/>
+			</form>
+			{%endif%}
+{%endblock%}
+		</td>
+		<td valign="top">
+			<div class="pageContent">
 {%block content%}{%endblock%}
+			</div>
+		</td>
+	</tr>
+</table>
+</div>
+<!--a id="elevator" href="#">
+	up
+</a-->
 </body>
 </html>
 {%endautoescape%}
