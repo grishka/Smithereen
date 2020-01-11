@@ -11,20 +11,28 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
 public class Lang{
 	private static HashMap<String, Lang> langsByLocale=new HashMap<>();
+	public static List<Lang> list;
 
 	public static Lang get(Locale locale){
-		return langsByLocale.get("ru");
+		Lang l=langsByLocale.get(locale.getLanguage());
+		if(l!=null)
+			return l;
+		return langsByLocale.get("en");
 	}
 
 	static{
 		ArrayList<String> files=new ArrayList<>();
+		list=new ArrayList<>();
 		try{
 			DataInputStream in=new DataInputStream(Lang.class.getClassLoader().getResourceAsStream("langs/index.json"));
 			byte[] buf=new byte[in.available()];
@@ -44,7 +52,9 @@ public class Lang{
 			throw new IllegalArgumentException("No language files to load; check langs/index.json");
 		for(String langFileName:files){
 			try{
-				langsByLocale.put(langFileName, new Lang(langFileName));
+				Lang l=new Lang(langFileName);
+				langsByLocale.put(langFileName, l);
+				list.add(l);
 			}catch(IOException x){
 				System.err.println("Error reading langs/"+langFileName+".json");
 				x.printStackTrace();
@@ -53,12 +63,20 @@ public class Lang{
 				x.printStackTrace();
 			}
 		}
+
+		list.sort(new Comparator<Lang>(){
+			@Override
+			public int compare(Lang o1, Lang o2){
+				return o1.locale.toString().compareTo(o2.locale.toString());
+			}
+		});
 	}
 
 	private final JSONObject data;
 	private final Locale locale;
 	private final PluralRules pluralRules;
 	private final DateFormat dateFormat;
+	public final String name;
 
 	private Lang(String localeID) throws IOException, JSONException{
 		DataInputStream in=new DataInputStream(Lang.class.getClassLoader().getResourceAsStream("langs/"+localeID+".json"));
@@ -67,9 +85,18 @@ public class Lang{
 		in.close();
 		data=new JSONObject(new String(buf, StandardCharsets.UTF_8));
 		locale=Locale.forLanguageTag(localeID);
-		pluralRules=new RussianPluralRules();
+		switch(localeID){
+			case "ru":
+				pluralRules=new RussianPluralRules();
+				break;
+			case "en":
+			default:
+				pluralRules=new EnglishPluralRules();
+				break;
+		}
 		dateFormat=new SimpleDateFormat("dd MMMM yyyy, HH:mm", locale);
 		dateFormat.setTimeZone(TimeZone.getTimeZone("Europe/Moscow"));
+		name=data.getString("_name");
 	}
 
 	public String get(String key){

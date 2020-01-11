@@ -21,7 +21,13 @@ public class SessionRoutes{
 		req.session(true).attribute("info", info);
 		String psid=SessionStorage.putNewSession(req.session());
 		info.csrfToken=Utils.csrfTokenFromSessionID(Base64.getDecoder().decode(psid));
-		info.preferredLocale=Locale.forLanguageTag("ru");
+		if(acc.prefs.locale==null){
+			Locale requestLocale=req.raw().getLocale();
+			if(requestLocale!=null){
+				acc.prefs.locale=requestLocale;
+				SessionStorage.updatePreferences(acc.id, acc.prefs);
+			}
+		}
 		resp.cookie("/", "psid", psid, 10*365*24*60*60, false);
 	}
 

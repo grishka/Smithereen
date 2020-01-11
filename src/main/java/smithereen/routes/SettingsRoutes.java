@@ -16,6 +16,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Random;
 
 import javax.imageio.IIOImage;
@@ -33,7 +34,9 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
 import smithereen.data.PhotoSize;
+import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.lang.Lang;
 import smithereen.libvips.VImage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
@@ -46,6 +49,7 @@ public class SettingsRoutes{
 	public static Object settings(Request req, Response resp, Account self) throws SQLException{
 		JtwigModel model=JtwigModel.newModel();
 		model.with("invitations", UserStorage.getInvites(self.id, true));
+		model.with("languages", Lang.list).with("selectedLang", Utils.lang(req));
 		Session s=req.session();
 		if(s.attribute("settings.nameMessage")!=null){
 			model.with("nameMessage", s.attribute("settings.nameMessage"));
@@ -167,6 +171,22 @@ public class SettingsRoutes{
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("image_upload_error"));
 			resp.redirect("/settings/");
 		}
+		return "";
+	}
+
+	public static Object setLanguage(Request req, Response resp) throws SQLException{
+		String lang=req.queryParams("lang");
+		SessionInfo info=req.session().attribute("info");
+		if(info==null){
+			req.session().attribute("info", info=new SessionInfo());
+		}
+		if(info.account!=null){
+			info.account.prefs.locale=Locale.forLanguageTag(lang);
+			SessionStorage.updatePreferences(info.account.id, info.account.prefs);
+		}else{
+			info.preferredLocale=Locale.forLanguageTag(lang);
+		}
+		resp.redirect("/settings/");
 		return "";
 	}
 }

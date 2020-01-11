@@ -81,6 +81,12 @@
 			<groupId>org.jtwig</groupId>
 			<artifactId>jtwig-core</artifactId>
 			<version>5.87.0.RELEASE</version>
+			<exclusions>
+				<exclusion>
+					<groupId>com.googlecode.concurrentlinkedhashmap</groupId>
+					<artifactId>concurrentlinkedhashmap-lru</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>mysql</groupId>
@@ -113,6 +119,11 @@
 			<artifactId>junit-jupiter</artifactId>
 			<version>RELEASE</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
+			<version>1.7.21</version>
 		</dependency>
 	</dependencies>
 

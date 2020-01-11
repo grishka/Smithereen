@@ -68,7 +68,7 @@ public class Main{
 			if(request.session(false)==null || request.session().attribute("info")==null){
 				String psid=request.cookie("psid");
 				if(psid!=null){
-					if(!SessionStorage.fillSession(psid, request.session(true))){
+					if(!SessionStorage.fillSession(psid, request.session(true), request)){
 						response.removeCookie("/", "psid");
 					}else{
 						response.cookie("/", "psid", psid, 10*365*24*60*60, false);
@@ -94,6 +94,7 @@ public class Main{
 			postWithCSRF("/updatePassword", SettingsRoutes::updatePassword);
 			postWithCSRF("/updateName", SettingsRoutes::updateName);
 			postLoggedIn("/updateProfilePicture", SettingsRoutes::updateProfilePicture);
+			post("/setLanguage", SettingsRoutes::setLanguage);
 		});
 
 		path("/activitypub", ()->{

@@ -192,6 +192,7 @@ h2{
 .post p{
 	margin-top: 8px;
 	margin-bottom: 8px;
+	overflow-y: hidden;
 }
 
 .post p:first-child{

@@ -20,6 +20,8 @@ import java.util.Locale;
 import smithereen.Utils;
 import smithereen.data.Account;
 import smithereen.data.SessionInfo;
+import smithereen.data.UserPreferences;
+import spark.Request;
 import spark.Session;
 
 public class SessionStorage{
@@ -40,7 +42,7 @@ public class SessionStorage{
 		return Base64.getEncoder().encodeToString(sid);
 	}
 
-	public static boolean fillSession(String psid, Session sess) throws SQLException{
+	public static boolean fillSession(String psid, Session sess, Request req) throws SQLException{
 		byte[] sid;
 		try{
 			sid=Base64.getDecoder().decode(psid);
@@ -58,7 +60,13 @@ public class SessionStorage{
 			SessionInfo info=new SessionInfo();
 			info.account=Account.fromResultSet(res);
 			info.csrfToken=Utils.csrfTokenFromSessionID(sid);
-			info.preferredLocale=Locale.forLanguageTag("ru");
+			if(info.account.prefs.locale==null){
+				Locale requestLocale=req.raw().getLocale();
+				if(requestLocale!=null){
+					info.account.prefs.locale=requestLocale;
+					SessionStorage.updatePreferences(info.account.id, info.account.prefs);
+				}
+			}
 			sess.attribute("info", info);
 		}
 		return true;
@@ -182,6 +190,14 @@ public class SessionStorage{
 			return stmt.executeUpdate()==1;
 		}catch(NoSuchAlgorithmException ignore){}
 		return false;
+	}
+
+	public static void updatePreferences(int accountID, UserPreferences prefs) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("UPDATE `accounts` SET `preferences`=? WHERE `id`=?");
+		stmt.setString(1, prefs.toJSON().toString());
+		stmt.setInt(2, accountID);
+		stmt.execute();
 	}
 
 	public enum SignupResult{

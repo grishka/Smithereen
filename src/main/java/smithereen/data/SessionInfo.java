@@ -5,7 +5,7 @@ import java.util.Locale;
 
 public class SessionInfo{
 	public Account account;
-	public Locale preferredLocale=Locale.US;
+	public Locale preferredLocale;
 	public PageHistory history=new PageHistory();
 	public String csrfToken;
 

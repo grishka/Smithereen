@@ -137,14 +137,20 @@ public class Utils{
 
 	public static String wrapError(Request req, String errorKey, Object... formatArgs){
 		SessionInfo info=req.session().attribute("info");
-		Lang l=Lang.get(info.preferredLocale);
+		Lang l=Lang.get(localeForRequest(req));
 		return renderTemplate(req, "generic_error", JtwigModel.newModel().with("error", formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey)).with("back", info.history.last()));
 	}
 
 	public static Locale localeForRequest(Request req){
-		if(req.session(false)!=null && req.session().attribute("locale")!=null){
-			return req.session().attribute("locale");
+		SessionInfo info=sessionInfo(req);
+		if(info!=null){
+			if(info.account!=null && info.account.prefs.locale!=null)
+				return info.account.prefs.locale;
+			if(info.preferredLocale!=null)
+				return info.preferredLocale;
 		}
+		if(req.raw().getLocale()!=null)
+			return req.raw().getLocale();
 		return Locale.US;
 	}
 
