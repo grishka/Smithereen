@@ -95,6 +95,7 @@ public class Main{
 			postWithCSRF("/updateName", SettingsRoutes::updateName);
 			postLoggedIn("/updateProfilePicture", SettingsRoutes::updateProfilePicture);
 			post("/setLanguage", SettingsRoutes::setLanguage);
+			post("/setTimezone", SettingsRoutes::setTimezone);
 		});
 
 		path("/activitypub", ()->{

@@ -1,5 +1,6 @@
 package smithereen;
 
+import org.json.JSONObject;
 import org.jtwig.JtwigModel;
 import org.jtwig.JtwigTemplate;
 import org.owasp.html.ElementPolicy;
@@ -80,6 +81,7 @@ public class Utils{
 	}
 
 	public static void addGlobalParamsToTemplate(Request req, JtwigModel model){
+		JSONObject jsConfig=new JSONObject();
 		if(req.session(false)!=null){
 			SessionInfo info=req.session().attribute("info");
 			if(info==null){
@@ -90,6 +92,8 @@ public class Utils{
 			if(account!=null){
 				model.with("currentUser", account.user);
 				model.with("csrf", info.csrfToken);
+				jsConfig.put("csrf", info.csrfToken);
+				jsConfig.put("uid", info.account.user.id);
 				try{
 					UserNotifications notifications=UserStorage.getNotificationsForUser(account.user.id);
 					model.with("userNotifications", notifications);
@@ -98,7 +102,9 @@ public class Utils{
 				}
 			}
 		}
-		model.with("locale", localeForRequest(req));
+		TimeZone tz=timeZoneForRequest(req);
+		jsConfig.put("timeZone", tz!=null ? tz.getID() : null);
+		model.with("locale", localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString());
 	}
 
 	public static String renderTemplate(Request req, String name, JtwigModel model){
@@ -152,6 +158,17 @@ public class Utils{
 		if(req.raw().getLocale()!=null)
 			return req.raw().getLocale();
 		return Locale.US;
+	}
+
+	public static TimeZone timeZoneForRequest(Request req){
+		SessionInfo info=sessionInfo(req);
+		if(info!=null){
+			if(info.account!=null && info.account.prefs.timeZone!=null)
+				return info.account.prefs.timeZone;
+			if(info.preferredLocale!=null)
+				return info.timeZone;
+		}
+		return null;
 	}
 
 	public static Lang lang(Request req){

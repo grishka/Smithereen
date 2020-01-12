@@ -1,0 +1,8 @@
+{
+	"compilerOptions":{
+		"outFile": "../../resources/public/res/common.js",
+		"sourceMap": true,
+		"noImplicitAny": true,
+	},
+	"include":["*"]
+}

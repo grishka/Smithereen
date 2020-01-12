@@ -18,6 +18,7 @@ import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Locale;
 import java.util.Random;
+import java.util.TimeZone;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
@@ -186,6 +187,24 @@ public class SettingsRoutes{
 		}else{
 			info.preferredLocale=Locale.forLanguageTag(lang);
 		}
+		resp.redirect("/settings/");
+		return "";
+	}
+
+	public static Object setTimezone(Request req, Response resp) throws SQLException{
+		String tz=req.queryParams("tz");
+		SessionInfo info=req.session().attribute("info");
+		if(info==null){
+			req.session().attribute("info", info=new SessionInfo());
+		}
+		if(info.account!=null){
+			info.account.prefs.timeZone=TimeZone.getTimeZone(tz);
+			SessionStorage.updatePreferences(info.account.id, info.account.prefs);
+		}else{
+			info.timeZone=TimeZone.getTimeZone(tz);
+		}
+		if(req.queryParams("_ajax")!=null)
+			return "";
 		resp.redirect("/settings/");
 		return "";
 	}

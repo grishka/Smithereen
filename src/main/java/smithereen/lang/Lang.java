@@ -75,7 +75,7 @@ public class Lang{
 	private final JSONObject data;
 	private final Locale locale;
 	private final PluralRules pluralRules;
-	private final DateFormat dateFormat;
+	private final ThreadLocal<DateFormat> dateFormat=new ThreadLocal<>();
 	public final String name;
 
 	private Lang(String localeID) throws IOException, JSONException{
@@ -94,8 +94,6 @@ public class Lang{
 				pluralRules=new EnglishPluralRules();
 				break;
 		}
-		dateFormat=new SimpleDateFormat("dd MMMM yyyy, HH:mm", locale);
-		dateFormat.setTimeZone(TimeZone.getTimeZone("Europe/Moscow"));
 		name=data.getString("_name");
 	}
 
@@ -131,7 +129,11 @@ public class Lang{
 		}
 	}
 
-	public String formatDate(Date date){
-		return dateFormat.format(date);
+	public String formatDate(Date date, TimeZone timeZone){
+		DateFormat format=dateFormat.get();
+		if(format==null)
+			dateFormat.set(format=new SimpleDateFormat("dd MMMM yyyy, HH:mm", locale));
+		format.setTimeZone(timeZone);
+		return format.format(date);
 	}
 }
