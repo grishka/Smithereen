@@ -114,7 +114,8 @@ public class ForeignUser extends User{
 		domain=activityPubID.getHost();
 		if(activityPubID.getPort()!=-1)
 			domain+=":"+activityPubID.getPort();
-		url=tryParseURL(obj.getString("url"));
+		if(url==null)
+			url=activityPubID;
 		if(obj.has("firstName")){
 			firstName=obj.getString("firstName");
 			lastName=obj.optString("lastName", null);

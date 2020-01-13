@@ -55,6 +55,7 @@ import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
+import smithereen.storage.LikeStorage;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -696,8 +697,13 @@ public class ActivityPubRoutes{
 		}
 	}
 
-	private static void handleLikeActivity(ForeignUser user, Like act){
-
+	private static void handleLikeActivity(ForeignUser user, Like act) throws SQLException{
+		if(act.object.link==null)
+			throw new IllegalArgumentException("Like object must be a link");
+		Post post=PostStorage.getPostByID(act.object.link);
+		if(post==null)
+			throw new ObjectNotFoundException("Post not found");
+		LikeStorage.setPostLiked(user.id, post.id, true);
 	}
 
 	private static void handleAnnounceActivity(ForeignUser user, Announce act) throws SQLException{
@@ -754,7 +760,7 @@ public class ActivityPubRoutes{
 				handleUndoFollowActivity(user, (Follow)objectActivity);
 				break;
 			case "Like":
-
+				handleUndoLikeActivity(user, (Like)objectActivity);
 				break;
 			case "Announce":
 				handleUndoAnnounceActivity(user, (Announce)objectActivity);
@@ -891,6 +897,15 @@ public class ActivityPubRoutes{
 		if(post==null)
 			throw new ObjectNotFoundException("Post not found");
 		NewsfeedStorage.deleteRetoot(actor.id, post.id);
+	}
+
+	private static void handleUndoLikeActivity(ForeignUser actor, Like act) throws SQLException{
+		if(act.object.link==null)
+			throw new IllegalArgumentException("Like object must be a link");
+		Post post=PostStorage.getPostByID(act.object.link);
+		if(post==null)
+			throw new ObjectNotFoundException("Post not found");
+		LikeStorage.setPostLiked(actor.id, post.id, false);
 	}
 
 	//endregion

@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-01-13 03:00:44 +0000
+# Generation Time: 2020-01-13 09:48:02 +0000
 # ************************************************************
 
 
@@ -67,6 +67,20 @@ CREATE TABLE `friend_requests` (
   KEY `to_user_id` (`to_user_id`),
   CONSTRAINT `friend_requests_ibfk_1` FOREIGN KEY (`from_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `friend_requests_ibfk_2` FOREIGN KEY (`to_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table likes
+# ------------------------------------------------------------
+
+CREATE TABLE `likes` (
+  `user_id` int(11) unsigned NOT NULL,
+  `object_id` int(11) unsigned NOT NULL,
+  `object_type` int(11) unsigned NOT NULL,
+  UNIQUE KEY `user_id` (`user_id`,`object_id`,`object_type`),
+  KEY `object_type` (`object_type`,`object_id`),
+  CONSTRAINT `likes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
