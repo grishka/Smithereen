@@ -18,15 +18,16 @@ import java.util.List;
 import smithereen.Config;
 import smithereen.ObjectNotFoundException;
 import smithereen.Utils;
+import smithereen.data.User;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.Post;
 import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.feed.RetootNewsfeedEntry;
 
 public class PostStorage{
-	public static int createUserWallPost(int userID, int ownerID, String text, int[] replyKey) throws SQLException{
+	public static int createUserWallPost(int userID, int ownerID, String text, int[] replyKey, List<User> mentionedUsers) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `reply_key`) VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `reply_key`, `mentions`) VALUES (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 		stmt.setInt(1, userID);
 		stmt.setInt(2, ownerID);
 		stmt.setString(3, text);
@@ -41,6 +42,17 @@ public class PostStorage{
 			_replyKey=b.toByteArray();
 		}
 		stmt.setBytes(4, _replyKey);
+		byte[] mentions=null;
+		if(!mentionedUsers.isEmpty()){
+			ByteArrayOutputStream b=new ByteArrayOutputStream(mentionedUsers.size()*4);
+			try{
+				DataOutputStream o=new DataOutputStream(b);
+				for(User user:mentionedUsers)
+					o.writeInt(user.id);
+			}catch(IOException ignore){}
+			mentions=b.toByteArray();
+		}
+		stmt.setBytes(5, mentions);
 		stmt.execute();
 		try(ResultSet keys=stmt.getGeneratedKeys()){
 			keys.first();
@@ -62,7 +74,7 @@ public class PostStorage{
 
 		PreparedStatement stmt;
 		if(existing==null){
-			stmt=conn.prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `attachments`, `content_warning`, `ap_url`, `ap_id`, `reply_key`, `created_at`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+			stmt=conn.prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `attachments`, `content_warning`, `ap_url`, `ap_id`, `reply_key`, `created_at`, `mentions`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 			stmt.setInt(1, post.user.id);
 			stmt.setInt(2, post.owner.id);
 			stmt.setString(3, post.content);
@@ -70,25 +82,32 @@ public class PostStorage{
 			stmt.setString(5, post.summary);
 			stmt.setString(6, post.url.toString());
 			stmt.setString(7, post.activityPubID.toString());
-			byte[] replyKey=null;
-			if(post.replyKey.length>0){
-				ByteArrayOutputStream b=new ByteArrayOutputStream(post.replyKey.length*4);
-				try{
-					DataOutputStream o=new DataOutputStream(b);
-					for(int id:post.replyKey)
-						o.writeInt(id);
-				}catch(IOException ignore){}
-				replyKey=b.toByteArray();
-			}
+			byte[] replyKey=Utils.serializeIntArray(post.replyKey);
 			stmt.setBytes(8, replyKey);
 			stmt.setTimestamp(9, new Timestamp(post.published.getTime()));
+			byte[] mentions=null;
+			if(!post.mentionedUsers.isEmpty()){
+				int[] _mentions=new int[post.mentionedUsers.size()];
+				for(int i=0;i<post.mentionedUsers.size();i++)
+					_mentions[i]=post.mentionedUsers.get(i).id;
+				mentions=Utils.serializeIntArray(_mentions);
+			}
+			stmt.setBytes(10, mentions);
 		}else{
-			stmt=DatabaseConnectionManager.getConnection().prepareStatement("UPDATE `wall_posts` SET `text`=?, `attachments`=?, `content_warning`=? WHERE `ap_id`=?");
+			stmt=DatabaseConnectionManager.getConnection().prepareStatement("UPDATE `wall_posts` SET `text`=?, `attachments`=?, `content_warning`=?, `mentions`=? WHERE `ap_id`=?");
 			stmt.setString(1, post.content);
 			stmt.setString(2, post.serializeAttachments());
 			stmt.setString(3, post.summary);
+			byte[] mentions=null;
+			if(!post.mentionedUsers.isEmpty()){
+				int[] _mentions=new int[post.mentionedUsers.size()];
+				for(int i=0;i<post.mentionedUsers.size();i++)
+					_mentions[i]=post.mentionedUsers.get(i).id;
+				mentions=Utils.serializeIntArray(_mentions);
+			}
+			stmt.setBytes(4, mentions);
 
-			stmt.setString(4, post.activityPubID.toString());
+			stmt.setString(5, post.activityPubID.toString());
 		}
 		stmt.execute();
 		if(existing==null){

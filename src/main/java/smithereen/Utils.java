@@ -13,6 +13,11 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Transparency;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
@@ -209,7 +214,7 @@ public class Utils{
 
 	public static String sanitizeHTML(String src){
 		StringBuilder sb=new StringBuilder();
-		HtmlSanitizer.sanitize(src, HTML_SANITIZER.apply(HtmlStreamRenderer.create(sb, null)));
+		HtmlSanitizer.sanitize(src, HTML_SANITIZER.apply(new SimpleHtmlStreamRenderer(sb)));
 		return sb.toString();
 	}
 
@@ -276,5 +281,29 @@ public class Utils{
 	public static SessionInfo sessionInfo(Request req){
 		SessionInfo info=req.session().attribute("info");
 		return info;
+	}
+
+	public static int[] deserializeIntArray(byte[] a){
+		if(a==null || a.length%4!=0)
+			return null;
+		int[] result=new int[a.length/4];
+		try{
+			DataInputStream in=new DataInputStream(new ByteArrayInputStream(a));
+			for(int i=0;i<result.length;i++)
+				result[i]=in.readInt();
+		}catch(IOException ignore){}
+		return result;
+	}
+
+	public static byte[] serializeIntArray(int[] a){
+		if(a==null || a.length==0)
+			return null;
+		ByteArrayOutputStream os=new ByteArrayOutputStream();
+		try{
+			DataOutputStream out=new DataOutputStream(os);
+			for(int i:a)
+				out.writeInt(i);
+		}catch(IOException ignore){}
+		return os.toByteArray();
 	}
 }

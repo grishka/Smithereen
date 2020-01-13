@@ -25,7 +25,6 @@ import smithereen.activitypub.objects.ActivityPubObject;
 public class ForeignUser extends User{
 
 	public String domain;
-	public URI url;
 	public URI inbox;
 	public URI outbox;
 	public URI sharedInbox;

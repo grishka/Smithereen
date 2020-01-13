@@ -1,10 +1,12 @@
 package smithereen.activitypub;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.Signature;
 import java.text.SimpleDateFormat;
@@ -21,6 +23,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import smithereen.Config;
+import smithereen.ObjectNotFoundException;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.data.NodeInfo;
@@ -147,5 +150,36 @@ public class ActivityPub{
 
 	public static boolean isPublic(URI uri){
 		return uri.equals(AS_PUBLIC) || ("as".equals(uri.getScheme()) && "Public".equals(uri.getSchemeSpecificPart()));
+	}
+
+	public static URI resolveUsername(String username, String domain) throws IOException{
+		String resource="acct:"+username+"@"+domain;
+		Request req=new Request.Builder()
+				.url("https://"+domain+"/.well-known/webfinger?resource="+resource)
+				.build();
+		Response resp=httpClient.newCall(req).execute();
+		try(ResponseBody body=resp.body()){
+			if(resp.isSuccessful()){
+				JSONObject o=new JSONObject(body.string());
+				if(!o.getString("subject").equalsIgnoreCase(resource))
+					throw new IOException("Invalid response");
+				JSONArray links=o.getJSONArray("links");
+				for(Object _l:links){
+					JSONObject l=(JSONObject)_l;
+					if(l.has("rel") && l.has("type") && l.has("href")){
+						if("self".equals(l.getString("rel")) && "application/activity+json".equals(l.getString("type"))){
+							return new URI(l.getString("href"));
+						}
+					}
+				}
+				throw new IOException("Link not found");
+			}else if(resp.code()==404){
+				throw new ObjectNotFoundException("User "+username+"@"+domain+" does not exist");
+			}else{
+				throw new IOException("Failed to resolve username "+username+"@"+domain);
+			}
+		}catch(JSONException|URISyntaxException x){
+			throw new IOException("Response parse failed", x);
+		}
 	}
 }

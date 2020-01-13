@@ -17,6 +17,7 @@ import java.util.Date;
 import java.util.List;
 
 import smithereen.Config;
+import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -42,6 +43,7 @@ public class Post extends ActivityPubObject{
 
 	public List<Post> replies=new ArrayList<>();
 	public boolean local;
+	public List<User> mentionedUsers=Collections.EMPTY_LIST;
 
 	public static Post fromResultSet(ResultSet res) throws SQLException{
 		Post post=new Post();
@@ -87,41 +89,29 @@ public class Post extends ActivityPubObject{
 		userLink=user.url.toString();
 
 		byte[] rk=res.getBytes("reply_key");
-		if(rk!=null){
-			replyKey=new int[rk.length/4];
-			try{
-				DataInputStream in=new DataInputStream(new ByteArrayInputStream(rk));
-				for(int i=0;i<rk.length/4;i++){
-					replyKey[i]=in.readInt();
-				}
-			}catch(IOException ignore){}
+		replyKey=Utils.deserializeIntArray(rk);
+		if(replyKey==null)
+			replyKey=new int[0];
+
+		if(replyKey.length>0){
+			inReplyTo=PostStorage.getActivityPubID(replyKey[replyKey.length-1]);
 		}
 
-		// If this is a reply, we want to notify the author of the top-level post as well as the author of the comment this reply is to
-		// TODO optimize
-		if(replyKey.length>0){
-			int topLevelPostID=replyKey[0];
-			int topLevelOwnerID=PostStorage.getOwnerForPost(topLevelPostID);
+		int[] mentions=Utils.deserializeIntArray(res.getBytes("mentions"));
+		if(mentions!=null && mentions.length>0){
+			mentionedUsers=new ArrayList<>();
 			if(tag==null)
 				tag=new ArrayList<>();
-			if(topLevelOwnerID!=0){
-				User user=UserStorage.getById(topLevelOwnerID);
-				addToCC(user.activityPubID);
-				Mention mention=new Mention();
-				mention.href=user.activityPubID;
-				tag.add(mention);
-			}
-			if(replyKey.length>1){
-				int replyOwnerID=PostStorage.getOwnerForPost(replyKey[replyKey.length-1]);
-				if(replyOwnerID!=0 && replyOwnerID!=topLevelOwnerID){
-					User user=UserStorage.getById(replyOwnerID);
+			for(int id:mentions){
+				User user=UserStorage.getById(id);
+				if(user!=null){
+					mentionedUsers.add(user);
 					addToCC(user.activityPubID);
 					Mention mention=new Mention();
 					mention.href=user.activityPubID;
 					tag.add(mention);
 				}
 			}
-			inReplyTo=PostStorage.getActivityPubID(replyKey[replyKey.length-1]);
 		}
 	}
 
@@ -189,6 +179,9 @@ public class Post extends ActivityPubObject{
 		Mention mention=new Mention();
 		mention.href=parent.user.activityPubID;
 		tag.add(mention);
+		if(mentionedUsers.isEmpty())
+			mentionedUsers=new ArrayList<>();
+		mentionedUsers.add(parent.user);
 	}
 
 	public int getReplyLevel(){

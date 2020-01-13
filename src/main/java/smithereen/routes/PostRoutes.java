@@ -2,13 +2,21 @@ package smithereen.routes;
 
 import org.jtwig.JtwigModel;
 
+import java.io.IOException;
+import java.net.URI;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.data.Account;
+import smithereen.data.ForeignUser;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.Post;
 import smithereen.data.feed.PostNewsfeedEntry;
@@ -31,6 +39,8 @@ public class PostRoutes{
 				StringBuilder sb=new StringBuilder();
 				for(String paragraph:paragraphs){
 					String p=paragraph.trim().replace("\n", "<br/>");
+					if(p.isEmpty())
+						continue;
 					sb.append("<p>");
 					sb.append(p);
 					sb.append("</p>");
@@ -40,6 +50,46 @@ public class PostRoutes{
 			int userID=self.user.id;
 			int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
 			int postID;
+
+			StringBuffer sb=new StringBuffer();
+			ArrayList<User> mentionedUsers=new ArrayList<>();
+			Pattern mentionRegex=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
+			Matcher matcher=mentionRegex.matcher(text);
+			while(matcher.find()){
+				String u=matcher.group(1);
+				String d=matcher.group(2);
+				User mentionedUser;
+				if(d==null){
+					mentionedUser=UserStorage.getByUsername(u);
+				}else{
+					mentionedUser=UserStorage.getByUsername(u+"@"+d);
+				}
+				if(d!=null && mentionedUser==null){
+					try{
+						URI uri=ActivityPub.resolveUsername(u, d);
+						System.out.println(u+"@"+d+" -> "+uri);
+						ActivityPubObject obj=ActivityPub.fetchRemoteObject(uri.toString());
+						if(obj instanceof ForeignUser){
+							mentionedUser=(User) obj;
+							UserStorage.putOrUpdateForeignUser((ForeignUser) obj);
+						}
+					}catch(IOException x){
+						System.out.println("Can't resolve "+u+"@"+d+": "+x.getMessage());
+					}
+				}
+				if(mentionedUser!=null){
+					matcher.appendReplacement(sb, "<span class=\"h-card\"><a href=\""+mentionedUser.url+"\" class=\"u-url mention\">$0</a></span>");
+					mentionedUsers.add(mentionedUser);
+				}else{
+					System.out.println("ignoring mention "+matcher.group());
+					matcher.appendReplacement(sb, "$0");
+				}
+			}
+			if(!mentionedUsers.isEmpty()){
+				matcher.appendTail(sb);
+				text=sb.toString();
+			}
+
 			if(replyTo!=0){
 				Post parent=PostStorage.getPostByID(replyTo);
 				if(parent==null){
@@ -52,11 +102,16 @@ public class PostRoutes{
 				// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
 				if(parent.replyKey.length>0 && text.startsWith("<p>"+parent.user.firstName+", ")){
 					text="<p><span class=\"h-card\"><a href=\""+parent.user.url+"\" class=\"u-url mention\">"+parent.user.firstName+"</a></span>"+text.substring(parent.user.firstName.length()+3);
-					System.out.println(text);
 				}
-				postID=PostStorage.createUserWallPost(userID, user.id, text, replyKey);
+				mentionedUsers.add(parent.user);
+				if(parent.replyKey.length>1){
+					Post topLevel=PostStorage.getPostByID(parent.replyKey[0]);
+					if(topLevel!=null)
+						mentionedUsers.add(topLevel.user);
+				}
+				postID=PostStorage.createUserWallPost(userID, user.id, text, replyKey, mentionedUsers);
 			}else{
-				postID=PostStorage.createUserWallPost(userID, user.id, text, null);
+				postID=PostStorage.createUserWallPost(userID, user.id, text, null, mentionedUsers);
 			}
 
 			Post post=PostStorage.getPostByID(postID);
