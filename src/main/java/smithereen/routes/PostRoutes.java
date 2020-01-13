@@ -117,7 +117,7 @@ public class PostRoutes{
 			Post post=PostStorage.getPostByID(postID);
 			ActivityPubWorker.getInstance().sendCreatePostActivity(post);
 
-			resp.redirect(Utils.sessionInfo(req).history.last());
+			resp.redirect(Utils.back(req));
 		}else{
 			resp.status(404);
 			return Utils.wrapError(req, "err_user_not_found");
@@ -171,7 +171,7 @@ public class PostRoutes{
 			resp.status(404);
 			return Utils.wrapError(req, "err_post_not_found");
 		}
-		return Utils.renderTemplate(req, "generic_confirm", JtwigModel.newModel().with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete")));
+		return Utils.renderTemplate(req, "generic_confirm", JtwigModel.newModel().with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete")).with("back", Utils.back(req)));
 	}
 
 	public static Object delete(Request req, Response resp, Account self) throws SQLException{
@@ -191,7 +191,7 @@ public class PostRoutes{
 		}
 		PostStorage.deletePost(post.id);
 		ActivityPubWorker.getInstance().sendDeletePostActivity(post);
-		resp.redirect(Utils.sessionInfo(req).history.last());
+		resp.redirect(Utils.back(req));
 		return "";
 	}
 }

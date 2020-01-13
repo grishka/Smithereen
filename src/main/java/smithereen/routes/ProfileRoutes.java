@@ -90,7 +90,7 @@ public class ProfileRoutes{
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 			if(status==FriendshipStatus.NONE){
 				UserStorage.putFriendRequest(self.user.id, user.id, req.queryParams("message"), true);
-				resp.redirect(Utils.sessionInfo(req).history.last());
+				resp.redirect(Utils.back(req));
 				return "";
 			}else if(status==FriendshipStatus.FRIENDS){
 				return Utils.wrapError(req, "err_already_friends");
@@ -163,7 +163,7 @@ public class ProfileRoutes{
 	public static Object incomingFriendRequests(Request req, Response resp, Account self) throws SQLException{
 		String username=req.params(":username");
 		if(!self.user.username.equalsIgnoreCase(username)){
-			resp.redirect(Utils.sessionInfo(req).history.last());
+			resp.redirect(Utils.back(req));
 			return "";
 		}
 		List<FriendRequest> requests=UserStorage.getIncomingFriendRequestsForUser(self.user.id, 0, 100);
@@ -189,7 +189,7 @@ public class ProfileRoutes{
 					ActivityPubWorker.getInstance().sendRejectFriendRequestActivity(self.user, (ForeignUser) user);
 				}
 			}
-			resp.redirect(Utils.sessionInfo(req).history.last());
+			resp.redirect(Utils.back(req));
 		}else{
 			resp.status(404);
 			return Utils.wrapError(req, "user_not_found");
@@ -204,7 +204,7 @@ public class ProfileRoutes{
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
 				UserStorage.unfriendUser(self.user.id, user.id);
-				resp.redirect(Utils.sessionInfo(req).history.last());
+				resp.redirect(Utils.back(req));
 				if(user instanceof ForeignUser){
 					ActivityPubWorker.getInstance().sendUnfriendActivity(self.user, user);
 				}

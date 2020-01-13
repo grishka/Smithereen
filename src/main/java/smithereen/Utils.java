@@ -306,4 +306,11 @@ public class Utils{
 		}catch(IOException ignore){}
 		return os.toByteArray();
 	}
+
+	public static String back(Request req){
+		String ref=req.headers("referer");
+		if(ref!=null)
+			return ref;
+		return sessionInfo(req).history.last();
+	}
 }
