@@ -247,7 +247,7 @@ public class PostStorage{
 			String posts=pathParts[1];
 			int postID=Utils.parseIntOrDefault(pathParts[2], 0);
 			if(!"posts".equals(posts) || postID==0){
-				throw new ObjectNotFoundException("Invalid local URL");
+				throw new ObjectNotFoundException("Invalid local URL "+apID);
 			}
 			return getPostByID(postID);
 		}
@@ -340,7 +340,7 @@ public class PostStorage{
 			if(res.first()){
 				if(res.getString(1)!=null)
 					return URI.create(res.getString(1));
-				return Config.localURI("/"+UserStorage.getById(res.getInt(2)).getFullUsername()+"/posts/"+postID);
+				return Config.localURI("/posts/"+postID);
 			}
 		}
 		return null;

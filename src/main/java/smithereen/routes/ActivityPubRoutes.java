@@ -604,12 +604,14 @@ public class ActivityPubRoutes{
 					}
 				}
 			}else{
-				LinkOrObject to=post.to.get(0);
-				if(to.link==null)
-					throw new IllegalArgumentException("post.to must only contain links");
-				if(ActivityPub.isPublic(to.link)){
-					isPublic=true;
-					post.owner=user;
+				for(LinkOrObject to:post.to){
+					if(to.link==null)
+						throw new IllegalArgumentException("post.to must only contain links");
+					if(ActivityPub.isPublic(to.link)){
+						isPublic=true;
+						post.owner=user;
+						break;
+					}
 				}
 			}
 			if(!isPublic)

@@ -42,6 +42,10 @@ public class ActivityPubWorker{
 		executor=Executors.newCachedThreadPool();
 	}
 
+	private URI actorInbox(ForeignUser actor){
+		return actor.sharedInbox!=null ? actor.sharedInbox : actor.inbox;
+	}
+
 	public void sendCreatePostActivity(final Post post){
 		executor.submit(new Runnable(){
 			@Override
@@ -57,13 +61,18 @@ public class ActivityPubWorker{
 				}catch(URISyntaxException ignore){}
 				try{
 					boolean sendToFollowers=post.owner.id==post.user.id;
-					List<URI> inboxes;
+					ArrayList<URI> inboxes=new ArrayList<>();
 					if(sendToFollowers){
-						inboxes=UserStorage.getFollowerInboxes(post.owner.id);
+						inboxes.addAll(UserStorage.getFollowerInboxes(post.owner.id));
 					}else if(post.owner instanceof ForeignUser){
-						inboxes=Collections.singletonList(((ForeignUser) post.owner).inbox);
-					}else{
-						return;
+						inboxes.add(((ForeignUser)post.owner).inbox);
+					}
+					for(User user:post.mentionedUsers){
+						if(user instanceof ForeignUser){
+							URI inbox=actorInbox((ForeignUser) user);
+							if(!inboxes.contains(inbox))
+								inboxes.add(inbox);
+						}
 					}
 					System.out.println("Inboxes: "+inboxes);
 					for(URI inbox:inboxes){

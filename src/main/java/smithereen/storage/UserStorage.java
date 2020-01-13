@@ -510,7 +510,7 @@ public class UserStorage{
 
 	public static List<URI> getFollowerInboxes(int userID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT `ap_shared_inbox` FROM `users` WHERE `id` IN (SELECT `follower_id` FROM `followings` WHERE `followee_id`=?)");
+		PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT IFNULL(`ap_shared_inbox`, `ap_inbox`) FROM `users` WHERE `id` IN (SELECT `follower_id` FROM `followings` WHERE `followee_id`=?)");
 		stmt.setInt(1, userID);
 		ArrayList<URI> list=new ArrayList<>();
 		try(ResultSet res=stmt.executeQuery()){
