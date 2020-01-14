@@ -576,30 +576,22 @@ public class ActivityPubRoutes{
 			throw new IllegalArgumentException("object.attributedTo and actor.id must match");
 		if(object instanceof Post){
 			Post post=(Post) object;
+			if(post.user==null || post.user.id!=user.id)
+				throw new IllegalArgumentException("Can only create posts for self");
+			if(post.owner==null)
+				throw new IllegalArgumentException("Unknown wall owner (from partOf, which must be an outbox URI if present)");
 			post.content=Utils.sanitizeHTML(post.content);
-			post.user=user;
 			boolean isPublic=false;
-			// Own wall posts: to=[public], cc=[own followers, any mentions]
-			// Someone else's wall posts: to=[], cc=[public, wall owner, any mentions]
 			if(post.to==null || post.to.isEmpty()){
 				if(post.cc==null || post.cc.isEmpty()){
 					throw new IllegalArgumentException("to or cc are both empty");
 				}else{
-					LinkOrObject cc1=post.cc.get(0);
-					if(cc1.link==null)
-						throw new IllegalArgumentException("post.cc must only contain links");
-					if(ActivityPub.isPublic(cc1.link)){
-						isPublic=true;
-						if(post.cc.size()>1){
-							LinkOrObject cc2=post.cc.get(1);
-							if(cc2.link==null)
-								throw new IllegalArgumentException("post.cc must only contain links");
-							User owner=UserStorage.getUserByActivityPubID(cc2.link);
-							if(owner==null || owner instanceof ForeignUser)
-								throw new ObjectNotFoundException("Wall owner not found");
-							post.owner=owner;
-						}else{
-							post.owner=user;
+					for(LinkOrObject cc:post.cc){
+						if(cc.link==null)
+							throw new IllegalArgumentException("post.cc must only contain links");
+						if(ActivityPub.isPublic(cc.link)){
+							isPublic=true;
+							break;
 						}
 					}
 				}
@@ -609,7 +601,6 @@ public class ActivityPubRoutes{
 						throw new IllegalArgumentException("post.to must only contain links");
 					if(ActivityPub.isPublic(to.link)){
 						isPublic=true;
-						post.owner=user;
 						break;
 					}
 				}

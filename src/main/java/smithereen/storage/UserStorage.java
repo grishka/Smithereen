@@ -80,6 +80,17 @@ public class UserStorage{
 		return null;
 	}
 
+	public static ForeignUser getByOutbox(URI outbox) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM `users` WHERE `ap_outbox`=?");
+		stmt.setString(1, outbox.toString());
+		try(ResultSet res=stmt.executeQuery()){
+			if(res.first())
+				return ForeignUser.fromResultSet(res);
+		}
+		return null;
+	}
+
 	public static FriendshipStatus getFriendshipStatus(int selfUserID, int targetUserID) throws SQLException{
 		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("SELECT `follower_id`,`followee_id`,`mutual`,`accepted` FROM `followings` WHERE (`follower_id`=? AND `followee_id`=?) OR (`follower_id`=? AND `followee_id`=?) LIMIT 1");
 		stmt.setInt(1, selfUserID);

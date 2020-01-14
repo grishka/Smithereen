@@ -130,6 +130,13 @@ public class Post extends ActivityPubObject{
 		root.put("sensitive", hasContentWarning());
 		contextCollector.addAlias("sensitive", "as:sensitive");
 
+		if(getReplyLevel()==0 && user.id!=owner.id){
+			if(owner instanceof ForeignUser)
+				root.put("partOf", ((ForeignUser) owner).outbox);
+			else
+				root.put("partOf", Config.localURI("/users/"+owner.id+"/outbox"));
+		}
+
 		return root;
 	}
 
@@ -141,13 +148,28 @@ public class Post extends ActivityPubObject{
 			content=((JSONArray) _content).getString(0);
 		}
 		user=UserStorage.getUserByActivityPubID(attributedTo);
-		if(inReplyTo!=null){
-			owner=user;
-		}
 		if(url==null)
 			url=activityPubID;
 		if(published==null)
 			published=new Date();
+
+		URI partOf=tryParseURL(obj.optString("partOf", null));
+		if(partOf!=null && inReplyTo==null){
+			if(Config.isLocal(partOf)){
+				String[] parts=partOf.getPath().split("/");
+				if(parts.length==4 && "users".equals(parts[1]) && "outbox".equals(parts[3])){ // "", "users", id, "outbox"
+					int id=Utils.parseIntOrDefault(parts[2], 0);
+					owner=UserStorage.getById(id);
+					if(owner instanceof ForeignUser)
+						owner=null;
+				}
+			}else{
+				owner=UserStorage.getByOutbox(partOf);
+			}
+		}else{
+			owner=user;
+		}
+
 		return this;
 	}
 
