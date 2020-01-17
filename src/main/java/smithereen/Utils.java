@@ -20,6 +20,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -37,6 +38,7 @@ import smithereen.lang.Lang;
 import smithereen.storage.UserStorage;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 
 public class Utils{
 
@@ -120,7 +122,11 @@ public class Utils{
 
 	public static boolean requireAccount(Request req, Response resp){
 		if(req.session(false)==null || req.session().attribute("info")==null || ((SessionInfo)req.session().attribute("info")).account==null){
-			resp.redirect("/");
+			String to=req.pathInfo();
+			String query=req.queryString();
+			if(StringUtils.isNotEmpty(query))
+				to+="?"+query;
+			resp.redirect("/account/login?to="+URLEncoder.encode(to));
 			return false;
 		}
 		return true;

@@ -89,5 +89,8 @@
   "wall": "Wall",
   "X_posts": ["%d post", "%d posts"],
   "profile_about": "About",
-  "language": "Language"
+  "language": "Language",
+  "login_title": "Login",
+  "login_incorrect": "Wrong email/username or password",
+  "login_needed": "You need to be logged in to perform this action"
 }

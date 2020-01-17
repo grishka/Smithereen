@@ -13,6 +13,7 @@ import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 
 public class SessionRoutes{
 	private static void setupSessionWithAccount(Request req, Response resp, Account acc) throws SQLException{
@@ -32,13 +33,29 @@ public class SessionRoutes{
 	}
 
 	public static Object login(Request req, Response resp) throws SQLException{
-		Account acc=SessionStorage.getAccountForUsernameAndPassword(req.queryParams("username"), req.queryParams("password"));
-		if(acc!=null){
-			setupSessionWithAccount(req, resp, acc);
+		SessionInfo info=Utils.sessionInfo(req);
+		if(info!=null && info.account!=null){
 			resp.redirect("/feed");
 			return "";
 		}
-		return "Invalid credentials";
+		JtwigModel model=JtwigModel.newModel();
+		if(req.requestMethod().equalsIgnoreCase("post")){
+			Account acc=SessionStorage.getAccountForUsernameAndPassword(req.queryParams("username"), req.queryParams("password"));
+			if(acc!=null){
+				setupSessionWithAccount(req, resp, acc);
+				String to=req.queryParams("to");
+				if(StringUtils.isNotEmpty(to))
+					resp.redirect(to);
+				else
+					resp.redirect("/feed");
+				return "";
+			}
+			model.with("message", Utils.lang(req).get("login_incorrect"));
+		}else if(StringUtils.isNotEmpty(req.queryParams("to"))){
+			model.with("message", Utils.lang(req).get("login_needed"));
+		}
+		model.with("additionalParams", req.queryString());
+		return Utils.renderTemplate(req, "login", model);
 	}
 
 	public static Object logout(Request req, Response resp) throws SQLException{

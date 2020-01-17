@@ -89,5 +89,8 @@
   "wall": "Стена",
   "X_posts": ["%d запись", "%d записи", "%d записей"],
   "profile_about": "О себе",
-  "language": "Язык"
+  "language": "Язык",
+  "login_title": "Вход",
+  "login_incorrect": "Неверные данные для входа",
+  "login_needed": "Для этого действия необходимо войти"
 }

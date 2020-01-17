@@ -84,6 +84,7 @@ public class Main{
 
 		path("/account", ()->{
 			post("/login", SessionRoutes::login);
+			get("/login", SessionRoutes::login);
 			get("/logout", SessionRoutes::logout);
 			post("/register", SessionRoutes::register);
 		});
