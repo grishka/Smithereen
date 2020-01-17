@@ -4,6 +4,7 @@ import org.jtwig.JtwigModel;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -171,7 +172,8 @@ public class PostRoutes{
 			resp.status(404);
 			return Utils.wrapError(req, "err_post_not_found");
 		}
-		return Utils.renderTemplate(req, "generic_confirm", JtwigModel.newModel().with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete")).with("back", Utils.back(req)));
+		String back=Utils.back(req);
+		return Utils.renderTemplate(req, "generic_confirm", JtwigModel.newModel().with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete?_redir="+URLEncoder.encode(back))).with("back", back));
 	}
 
 	public static Object delete(Request req, Response resp, Account self) throws SQLException{

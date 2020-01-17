@@ -4,6 +4,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jtwig.JtwigModel;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -113,7 +114,8 @@ public class ProfileRoutes{
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
 				Lang l=Utils.lang(req);
-				JtwigModel model=JtwigModel.newModel().with("message", l.get("confirm_unfriend_X", user.getFullName())).with("formAction", user.getProfileURL("doRemoveFriend")).with("back", user.url.toString());
+				String back=Utils.back(req);
+				JtwigModel model=JtwigModel.newModel().with("message", l.get("confirm_unfriend_X", user.getFullName())).with("formAction", user.getProfileURL("doRemoveFriend")+"?_redir="+URLEncoder.encode(back)).with("back", back);
 				return Utils.renderTemplate(req, "generic_confirm", model);
 			}else{
 				return Utils.wrapError(req, "err_not_friends");

@@ -308,6 +308,9 @@ public class Utils{
 	}
 
 	public static String back(Request req){
+		String redir=req.queryParams("_redir");
+		if(redir!=null)
+			return redir;
 		String ref=req.headers("referer");
 		if(ref!=null)
 			return ref;
