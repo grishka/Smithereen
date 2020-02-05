@@ -6,8 +6,11 @@ import org.jtwig.JtwigModel;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.LinkOrObject;
@@ -16,14 +19,17 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
+import smithereen.data.PhotoSize;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.lang.Lang;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 
 public class ProfileRoutes{
 	public static Object profile(Request req, Response resp) throws SQLException{
@@ -50,6 +56,34 @@ public class ProfileRoutes{
 					model.with("friendRequestSent", true);
 				else if(status==FriendshipStatus.REQUEST_RECVD)
 					model.with("friendRequestRecvd", true);
+			}else{
+				HashMap<String, String> meta=new LinkedHashMap<>();
+				meta.put("og:type", "profile");
+				meta.put("og:title", user.getFullName());
+				meta.put("og:url", user.url.toString());
+				meta.put("og:username", user.getFullUsername());
+				if(StringUtils.isNotEmpty(user.firstName))
+					meta.put("og:first_name", user.firstName);
+				if(StringUtils.isNotEmpty(user.lastName))
+					meta.put("og:last_name", user.lastName);
+				Lang l=Utils.lang(req);
+				String descr=l.plural("X_friends", friendCount[0])+", "+l.plural("X_posts", postCount[0]);
+				if(StringUtils.isNotEmpty(user.summary))
+					descr+="\n"+user.summary;
+				meta.put("og:description", descr);
+				if(user.gender==User.Gender.MALE)
+					meta.put("og:gender", "male");
+				else if(user.gender==User.Gender.FEMALE)
+					meta.put("og:gender", "female");
+				if(user.hasAvatar()){
+					PhotoSize size=MediaStorageUtils.findBestPhotoSize(user.getAvatar(), PhotoSize.Format.JPEG, PhotoSize.Type.XLARGE);
+					if(size!=null){
+						meta.put("og:image", size.src.toString());
+						meta.put("og:image:width", size.width+"");
+						meta.put("og:image:height", size.height+"");
+					}
+				}
+				model.with("metaTags", meta);
 			}
 			return Utils.renderTemplate(req, "profile", model);
 		}else{

@@ -322,4 +322,12 @@ public class Utils{
 			return ref;
 		return sessionInfo(req).history.last();
 	}
+
+	public static String truncateOnWordBoundary(String s, int maxLen){
+		s=s.replace("</p><p>", "\n\n").replace("<br/>", "\n").replaceAll("<[^>]+>", "");
+		if(s.length()<=maxLen+20)
+			return s;
+		int len=Math.min(s.indexOf(' ', maxLen), maxLen+20);
+		return s.substring(0, len)+"...";
+	}
 }

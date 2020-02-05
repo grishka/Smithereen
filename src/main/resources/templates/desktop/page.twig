@@ -4,6 +4,8 @@
 	<!-- commercialized internet sucks ass -->
 	<title>{{ title }}</title>
 	<link rel="stylesheet" type="text/css" href="/res/style.css"/>
+	{%if metaTags%}{%for key, value in metaTags%}<meta property="{{key}}" content="{{value}}"/>
+	{%endfor%}{%endif%}
 	<script>
 		window.userConfig={{jsConfig | escape(false)}};
 	</script>

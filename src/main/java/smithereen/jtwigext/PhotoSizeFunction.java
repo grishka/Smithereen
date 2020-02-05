@@ -22,6 +22,10 @@ public class PhotoSizeFunction extends SimpleJtwigFunction{
 	public Object execute(FunctionRequest functionRequest){
 		RenderContextHolder.get().set(EscapeEngine.class, NoneEscapeEngine.instance());
 
+		Object arg0=functionRequest.get(0);
+		if(!(arg0 instanceof List)){
+			return "oops "+functionRequest.getPosition();
+		}
 		List<PhotoSize> sizes=(List<PhotoSize>) functionRequest.get(0);
 		String _type=(String) functionRequest.get(1);
 		PhotoSize.Type type, type2x;

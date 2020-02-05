@@ -11,6 +11,8 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +29,8 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.PhotoSize;
 import smithereen.data.SessionInfo;
+import smithereen.data.attachments.Attachment;
+import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.Post;
 import smithereen.data.feed.PostNewsfeedEntry;
@@ -219,6 +223,44 @@ public class PostRoutes{
 			model.with("draftAttachments", info.postDraftAttachments);
 		if(post.replyKey.length>0){
 			model.with("prefilledPostText", post.user.firstName+", ");
+		}
+		if(info==null || info.account==null){
+			HashMap<String, String> meta=new LinkedHashMap<>();
+			meta.put("og:site_name", "Smithereen");
+			meta.put("og:type", "article");
+			meta.put("og:title", post.user.getFullName());
+			meta.put("og:url", post.url.toString());
+			meta.put("og:published_time", Utils.formatDateAsISO(post.published));
+			meta.put("og:author", post.user.url.toString());
+			if(StringUtils.isNotEmpty(post.content)){
+				meta.put("og:description", Utils.truncateOnWordBoundary(post.content, 250));
+			}
+			boolean hasImage=false;
+			if(!post.attachment.isEmpty()){
+				for(Attachment att : post.getProcessedAttachments()){
+					if(att instanceof PhotoAttachment){
+						PhotoSize size=MediaStorageUtils.findBestPhotoSize(((PhotoAttachment) att).sizes, PhotoSize.Format.JPEG, PhotoSize.Type.XLARGE);
+						if(size!=null){
+							meta.put("og:image", size.src.toString());
+							meta.put("og:image:width", size.width+"");
+							meta.put("og:image:height", size.height+"");
+							hasImage=true;
+						}
+						break;
+					}
+				}
+			}
+			if(!hasImage){
+				if(post.user.hasAvatar()){
+					PhotoSize size=MediaStorageUtils.findBestPhotoSize(post.user.getAvatar(), PhotoSize.Format.JPEG, PhotoSize.Type.LARGE);
+					if(size!=null){
+						meta.put("og:image", size.src.toString());
+						meta.put("og:image:width", size.width+"");
+						meta.put("og:image:height", size.height+"");
+					}
+				}
+			}
+			model.with("metaTags", meta);
 		}
 		return Utils.renderTemplate(req, "wall_post_standalone", model);
 	}
