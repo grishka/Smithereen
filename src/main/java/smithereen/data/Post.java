@@ -21,7 +21,9 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
@@ -30,6 +32,7 @@ import smithereen.jsonld.JLD;
 import smithereen.storage.MediaCache;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import spark.utils.StringUtils;
 
 public class Post extends ActivityPubObject{
 	public int id;
@@ -230,15 +233,19 @@ public class Post extends ActivityPubObject{
 			}
 			if(o.mediaType.startsWith("image/")){
 				PhotoAttachment att=new PhotoAttachment();
-				MediaCache.PhotoItem item=(MediaCache.PhotoItem) MediaCache.getInstance().get(o.url);
-				if(item!=null){
-					att.sizes=item.sizes;
+				if(o instanceof LocalImage){
+					att.sizes=((LocalImage) o).sizes;
 				}else{
-					String pathPrefix="/system/downloadExternalMedia?type=post_photo&post_id="+id+"&index="+i;
-					PhotoSize.Type[] sizes={PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
-					for(PhotoSize.Format format : PhotoSize.Format.values()){
-						for(PhotoSize.Type size : sizes){
-							att.sizes.add(new PhotoSize(Config.localURI(pathPrefix+"&size="+size.suffix()+"&format="+format.fileExtension()), PhotoSize.UNKNOWN, PhotoSize.UNKNOWN, size, format));
+					MediaCache.PhotoItem item=(MediaCache.PhotoItem) MediaCache.getInstance().get(o.url);
+					if(item!=null){
+						att.sizes=item.sizes;
+					}else{
+						String pathPrefix="/system/downloadExternalMedia?type=post_photo&post_id="+id+"&index="+i;
+						PhotoSize.Type[] sizes={PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
+						for(PhotoSize.Format format : PhotoSize.Format.values()){
+							for(PhotoSize.Type size : sizes){
+								att.sizes.add(new PhotoSize(Config.localURI(pathPrefix+"&size="+size.suffix()+"&format="+format.fileExtension()), PhotoSize.UNKNOWN, PhotoSize.UNKNOWN, size, format));
+							}
 						}
 					}
 				}

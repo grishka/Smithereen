@@ -62,6 +62,22 @@ public class PhotoSize{
 					throw new IllegalArgumentException();
 			}
 		}
+
+		public static Type fromSuffix(String s){
+			switch(s){
+				case "xs":
+					return XSMALL;
+				case "s":
+					return SMALL;
+				case "m":
+					return MEDIUM;
+				case "l":
+					return LARGE;
+				case "xl":
+					return XLARGE;
+			}
+			throw new IllegalArgumentException("Unknown size suffix "+s);
+		}
 	}
 
 	public enum Format{

@@ -167,7 +167,7 @@ public abstract class ActivityPubObject{
 	}
 
 	protected URI tryParseURL(String url){
-		if(url==null)
+		if(url==null || url.isEmpty())
 			return null;
 		try{
 			return new URI(url);
@@ -460,6 +460,9 @@ public abstract class ActivityPubObject{
 				break;
 			case "Image":
 				res=new Image();
+				break;
+			case "_LocalImage":
+				res=new LocalImage();
 				break;
 			case "Document":
 				res=new Document();

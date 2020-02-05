@@ -5,6 +5,9 @@ import java.io.IOException;
 import java.util.List;
 
 import smithereen.Config;
+import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Document;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.PhotoSize;
 import smithereen.libvips.VImage;
 
@@ -75,5 +78,25 @@ public class MediaStorageUtils{
 				return null;
 		}
 		return findBestPhotoSize(sizes, format, smaller);
+	}
+
+	public static void deleteAttachmentFiles(List<ActivityPubObject> attachments){
+		for(ActivityPubObject o:attachments){
+			if(o instanceof Document)
+				deleteAttachmentFiles((Document)o);
+		}
+	}
+
+	public static void deleteAttachmentFiles(Document doc){
+		if(doc instanceof LocalImage){
+			LocalImage img=(LocalImage) doc;
+			for(PhotoSize sz:img.sizes){
+				File file=new File(Config.uploadPath, img.path+"/"+img.localID+"_"+sz.type.suffix()+"."+sz.format.fileExtension());
+				if(file.exists())
+					file.delete();
+				else
+					System.out.println(file.getAbsolutePath()+" does not exist");
+			}
+		}
 	}
 }

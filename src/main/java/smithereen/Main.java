@@ -15,6 +15,7 @@ import smithereen.data.User;
 import smithereen.jtwigext.LangDateFunction;
 import smithereen.jtwigext.LangFunction;
 import smithereen.jtwigext.LangPluralFunction;
+import smithereen.jtwigext.PhotoSizeFunction;
 import smithereen.jtwigext.PictureForAvatarFunction;
 import smithereen.jtwigext.RenderAttachmentsFunction;
 import smithereen.routes.ActivityPubRoutes;
@@ -45,6 +46,7 @@ public class Main{
 					.add(new LangDateFunction())
 					.add(new PictureForAvatarFunction())
 					.add(new RenderAttachmentsFunction())
+					.add(new PhotoSizeFunction())
 				.and()
 				.build();
 	}
@@ -112,6 +114,10 @@ public class Main{
 
 		path("/system", ()->{
 			get("/downloadExternalMedia", SystemRoutes::downloadExternalMedia);
+			getLoggedIn("/deleteDraftAttachment", SystemRoutes::deleteDraftAttachment);
+			path("/upload", ()->{
+				postLoggedIn("/postPhoto", SystemRoutes::uploadPostPhoto);
+			});
 		});
 
 		path("/users/:id", ()->{

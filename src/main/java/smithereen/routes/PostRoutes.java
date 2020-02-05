@@ -1,5 +1,9 @@
 package smithereen.routes;
 
+import com.google.common.base.Strings;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.jtwig.JtwigModel;
 
 import java.io.IOException;
@@ -15,19 +19,55 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Document;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
+import smithereen.data.PhotoSize;
+import smithereen.data.SessionInfo;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.Post;
 import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.User;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 
 public class PostRoutes{
+	private static JSONObject serializeAttachment(ActivityPubObject att){
+		JSONObject o=att.asActivityPubObject(null, new ContextCollector());
+		if(att instanceof Document){
+			Document d=(Document) att;
+			if(StringUtils.isNotEmpty(d.localID)){
+				o.put("_lid", d.localID);
+				if(d instanceof LocalImage){
+					LocalImage im=(LocalImage) d;
+					JSONArray sizes=new JSONArray();
+					sizes.put(0);
+					ArrayList<String> sizeTypes=new ArrayList<>();
+					for(PhotoSize size:im.sizes){
+						if(size.format!=PhotoSize.Format.JPEG)
+							continue;
+						sizeTypes.add(size.type.suffix());
+						sizes.put(size.width);
+						sizes.put(size.height);
+					}
+					sizes.put(0, String.join(" ", sizeTypes));
+					o.put("_sz", sizes);
+					o.put("type", "_LocalImage");
+				}
+				o.remove("url");
+				o.remove("id");
+			}
+		}
+		return o;
+	}
+
 	public static Object createWallPost(Request req, Response resp, Account self) throws SQLException{
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
@@ -91,6 +131,20 @@ public class PostRoutes{
 				text=sb.toString();
 			}
 
+			String attachments=null;
+			SessionInfo sess=Utils.sessionInfo(req);
+			if(!sess.postDraftAttachments.isEmpty()){
+				if(sess.postDraftAttachments.size()==1){
+					attachments=serializeAttachment(sess.postDraftAttachments.get(0)).toString();
+				}else{
+					JSONArray ar=new JSONArray();
+					for(ActivityPubObject o:sess.postDraftAttachments){
+						ar.put(serializeAttachment(o));
+					}
+					attachments=ar.toString();
+				}
+			}
+
 			if(replyTo!=0){
 				Post parent=PostStorage.getPostByID(replyTo);
 				if(parent==null){
@@ -110,15 +164,16 @@ public class PostRoutes{
 					if(topLevel!=null)
 						mentionedUsers.add(topLevel.user);
 				}
-				postID=PostStorage.createUserWallPost(userID, user.id, text, replyKey, mentionedUsers);
+				postID=PostStorage.createUserWallPost(userID, user.id, text, replyKey, mentionedUsers, attachments);
 			}else{
-				postID=PostStorage.createUserWallPost(userID, user.id, text, null, mentionedUsers);
+				postID=PostStorage.createUserWallPost(userID, user.id, text, null, mentionedUsers, attachments);
 			}
 
 			Post post=PostStorage.getPostByID(postID);
 			ActivityPubWorker.getInstance().sendCreatePostActivity(post);
 
 			resp.redirect(Utils.back(req));
+			sess.postDraftAttachments.clear();
 		}else{
 			resp.status(404);
 			return Utils.wrapError(req, "err_user_not_found");
@@ -138,7 +193,7 @@ public class PostRoutes{
 					System.err.println("No post: "+pe);
 			}
 		}
-		JtwigModel model=JtwigModel.newModel().with("title", Utils.lang(req).get("feed")).with("feed", feed);
+		JtwigModel model=JtwigModel.newModel().with("title", Utils.lang(req).get("feed")).with("feed", feed).with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
 		return Utils.renderTemplate(req, "feed", model);
 	}
 
@@ -159,6 +214,9 @@ public class PostRoutes{
 		post.replies=PostStorage.getReplies(replyKey);
 		JtwigModel model=JtwigModel.newModel();
 		model.with("post", post);
+		SessionInfo info=Utils.sessionInfo(req);
+		if(info!=null && info.account!=null)
+			model.with("draftAttachments", info.postDraftAttachments);
 		if(post.replyKey.length>0){
 			model.with("prefilledPostText", post.user.firstName+", ");
 		}
@@ -192,6 +250,9 @@ public class PostRoutes{
 			return Utils.wrapError(req, "err_access");
 		}
 		PostStorage.deletePost(post.id);
+		if(Config.isLocal(post.activityPubID)){
+			MediaStorageUtils.deleteAttachmentFiles(post.attachment);
+		}
 		ActivityPubWorker.getInstance().sendDeletePostActivity(post);
 		resp.redirect(Utils.back(req));
 		return "";

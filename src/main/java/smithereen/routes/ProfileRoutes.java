@@ -39,6 +39,9 @@ public class ProfileRoutes{
 			int[] friendCount={0};
 			List<User> friends=UserStorage.getRandomFriendsForProfile(user.id, friendCount);
 			model.with("friendCount", friendCount[0]).with("friends", friends);
+			if(info!=null && self!=null){
+				model.with("draftAttachments", info.postDraftAttachments);
+			}
 			if(self!=null){
 				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 				if(status==FriendshipStatus.FRIENDS)

@@ -1,19 +1,33 @@
 package smithereen.routes;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
+
+import javax.servlet.MultipartConfigElement;
+import javax.servlet.ServletException;
+import javax.servlet.http.Part;
 
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
+import smithereen.activitypub.objects.LocalImage;
+import smithereen.data.Account;
 import smithereen.data.PhotoSize;
 import smithereen.data.Post;
+import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.libvips.VImage;
 import smithereen.storage.MediaCache;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -123,5 +137,69 @@ public class SystemRoutes{
 				return s.src.toString();
 		}
 		return null;
+	}
+
+	public static Object uploadPostPhoto(Request req, Response resp, Account self){
+		try{
+			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
+			Part part=req.raw().getPart("file");
+			if(part.getSize()>10*1024*1024){
+				throw new IOException("file too large");
+			}
+
+			byte[] key=MessageDigest.getInstance("MD5").digest((self.user.username+","+System.currentTimeMillis()+","+part.getSubmittedFileName()).getBytes(StandardCharsets.UTF_8));
+			String keyHex=Utils.byteArrayToHexString(key);
+			String mime=part.getContentType();
+			if(!mime.startsWith("image/"))
+				throw new IOException("incorrect mime type");
+
+			File tmpDir = new File(System.getProperty("java.io.tmpdir"));
+			File temp=new File(tmpDir, keyHex);
+			part.write(keyHex);
+			VImage img=new VImage(temp.getAbsolutePath());
+
+			LocalImage photo=new LocalImage();
+			File postMediaDir=new File(Config.uploadPath, "post_media");
+			postMediaDir.mkdirs();
+			try{
+				MediaStorageUtils.writeResizedImages(img, new int[]{200, 400, 800, 1280, 2560}, new PhotoSize.Type[]{PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
+						93, 87, keyHex, postMediaDir, Config.uploadURLPath+"/post_media", photo.sizes);
+
+				SessionInfo sess=Utils.sessionInfo(req);
+				photo.localID=keyHex;
+				photo.mediaType="image/jpeg";
+				photo.path="post_media";
+				sess.postDraftAttachments.add(photo);
+
+				temp.delete();
+			}finally{
+				img.release();
+			}
+
+			resp.redirect(Utils.back(req));
+		}catch(IOException|ServletException|NoSuchAlgorithmException x){
+			x.printStackTrace();
+		}
+		return "";
+	}
+
+	public static Object deleteDraftAttachment(Request req, Response resp, Account self){
+		SessionInfo sess=Utils.sessionInfo(req);
+		String id=req.queryParams("id");
+		if(id==null){
+			resp.status(400);
+			return "";
+		}
+		for(ActivityPubObject o:sess.postDraftAttachments){
+			if(o instanceof Document){
+				if(id.equals(((Document) o).localID)){
+					sess.postDraftAttachments.remove(o);
+					MediaStorageUtils.deleteAttachmentFiles((Document) o);
+					break;
+				}
+			}
+		}
+		resp.redirect(Utils.back(req));
+		return "";
 	}
 }

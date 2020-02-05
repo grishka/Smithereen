@@ -124,7 +124,6 @@ public class SettingsRoutes{
 
 			File tmpDir = new File(System.getProperty("java.io.tmpdir"));
 			File temp=new File(tmpDir, keyHex);
-			//part.write(temp.getAbsolutePath());
 			part.write(keyHex);
 			VImage img=new VImage(temp.getAbsolutePath());
 			if(img.getWidth()!=img.getHeight()){

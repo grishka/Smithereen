@@ -92,5 +92,6 @@
   "language": "Language",
   "login_title": "Login",
   "login_incorrect": "Wrong email/username or password",
-  "login_needed": "You need to be logged in to perform this action"
+  "login_needed": "You need to be logged in to perform this action",
+  "attach": "Attach"
 }

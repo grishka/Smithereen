@@ -25,9 +25,9 @@ import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.feed.RetootNewsfeedEntry;
 
 public class PostStorage{
-	public static int createUserWallPost(int userID, int ownerID, String text, int[] replyKey, List<User> mentionedUsers) throws SQLException{
+	public static int createUserWallPost(int userID, int ownerID, String text, int[] replyKey, List<User> mentionedUsers, String attachments) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `reply_key`, `mentions`) VALUES (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `reply_key`, `mentions`, `attachments`) VALUES (?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 		stmt.setInt(1, userID);
 		stmt.setInt(2, ownerID);
 		stmt.setString(3, text);
@@ -53,6 +53,7 @@ public class PostStorage{
 			mentions=b.toByteArray();
 		}
 		stmt.setBytes(5, mentions);
+		stmt.setString(6, attachments);
 		stmt.execute();
 		try(ResultSet keys=stmt.getGeneratedKeys()){
 			keys.first();

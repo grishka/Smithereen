@@ -30,6 +30,9 @@ public class RenderAttachmentsFunction extends SimpleJtwigFunction{
 		functionRequest.minimumNumberOfArguments(1);
 		RenderContextHolder.get().set(EscapeEngine.class, NoneEscapeEngine.instance());
 
+		Object arg=functionRequest.get(0);
+		if(!(arg instanceof List))
+			return "";
 		List<Attachment> attachment=(List<Attachment>) functionRequest.get(0);
 
 		ArrayList<String> lines=new ArrayList<>();
