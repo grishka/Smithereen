@@ -59,6 +59,7 @@ public class ProfileRoutes{
 			}else{
 				HashMap<String, String> meta=new LinkedHashMap<>();
 				meta.put("og:type", "profile");
+				meta.put("og:site_name", "Smithereen");
 				meta.put("og:title", user.getFullName());
 				meta.put("og:url", user.url.toString());
 				meta.put("og:username", user.getFullUsername());
