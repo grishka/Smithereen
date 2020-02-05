@@ -239,7 +239,7 @@ public class PostRoutes{
 			if(!post.attachment.isEmpty()){
 				for(Attachment att : post.getProcessedAttachments()){
 					if(att instanceof PhotoAttachment){
-						PhotoSize size=MediaStorageUtils.findBestPhotoSize(((PhotoAttachment) att).sizes, PhotoSize.Format.JPEG, PhotoSize.Type.XLARGE);
+						PhotoSize size=MediaStorageUtils.findBestPhotoSize(((PhotoAttachment) att).sizes, PhotoSize.Format.JPEG, PhotoSize.Type.MEDIUM);
 						if(size!=null){
 							meta.put("og:image", size.src.toString());
 							meta.put("og:image:width", size.width+"");
