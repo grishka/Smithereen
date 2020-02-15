@@ -176,11 +176,11 @@ public class ActivityPubRoutes{
 				UserStorage.putOrUpdateForeignUser(foreignUser);
 				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, foreignUser.id);
 				if(status==FriendshipStatus.REQUEST_SENT){
-					return Utils.wrapError(req, "err_friend_req_already_sent");
+					return Utils.wrapError(req, resp, "err_friend_req_already_sent");
 				}else if(status==FriendshipStatus.FOLLOWING){
-					return Utils.wrapError(req, "err_already_following");
+					return Utils.wrapError(req, resp, "err_already_following");
 				}else if(status==FriendshipStatus.FRIENDS){
-					return Utils.wrapError(req, "err_already_friends");
+					return Utils.wrapError(req, resp, "err_already_friends");
 				}
 				JtwigModel model=JtwigModel.newModel().with("user", foreignUser);
 				return Utils.renderTemplate(req, "remote_follow", model);
@@ -197,16 +197,16 @@ public class ActivityPubRoutes{
 		User _user=UserStorage.getByUsername(username);
 //		System.out.println(_user);
 		if(!(_user instanceof ForeignUser)){
-			return Utils.wrapError(req, "err_user_not_found");
+			return Utils.wrapError(req, resp, "err_user_not_found");
 		}
 		ForeignUser user=(ForeignUser) _user;
 		FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 		if(status==FriendshipStatus.REQUEST_SENT){
-			return Utils.wrapError(req, "err_friend_req_already_sent");
+			return Utils.wrapError(req, resp, "err_friend_req_already_sent");
 		}else if(status==FriendshipStatus.FOLLOWING){
-			return Utils.wrapError(req, "err_already_following");
+			return Utils.wrapError(req, resp, "err_already_following");
 		}else if(status==FriendshipStatus.FRIENDS){
-			return Utils.wrapError(req, "err_already_friends");
+			return Utils.wrapError(req, resp, "err_already_friends");
 		}
 		try{
 			String msg=req.queryParams("message");

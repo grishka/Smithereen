@@ -24,16 +24,20 @@ import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import java.util.TimeZone;
 import java.util.zip.CRC32;
 
 import smithereen.data.Account;
 import smithereen.data.SessionInfo;
 import smithereen.data.UserNotifications;
+import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.lang.Lang;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -45,6 +49,7 @@ public class Utils{
 	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session");
 	private static final PolicyFactory HTML_SANITIZER;
 	private static final SimpleDateFormat ISO_DATE_FORMAT;
+	private static final String staticFileHash;
 
 	static{
 		HTML_SANITIZER=new HtmlPolicyBuilder()
@@ -75,6 +80,7 @@ public class Utils{
 
 		ISO_DATE_FORMAT=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
 		ISO_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
+		staticFileHash=new Random().nextLong()+"";
 	}
 
 
@@ -111,7 +117,15 @@ public class Utils{
 		}
 		TimeZone tz=timeZoneForRequest(req);
 		jsConfig.put("timeZone", tz!=null ? tz.getID() : null);
-		model.with("locale", localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString());
+		JSONObject jsLang=new JSONObject();
+		ArrayList<String> k=req.attribute("jsLang");
+		if(k!=null){
+			Lang lang=lang(req);
+			for(String key:k){
+				jsLang.put(key, lang.raw(key));
+			}
+		}
+		model.with("locale", localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString()).with("jsLangKeys", jsLang).with("staticHash", staticFileHash);
 	}
 
 	public static String renderTemplate(Request req, String name, JtwigModel model){
@@ -142,6 +156,13 @@ public class Utils{
 		return false;
 	}
 
+	public static void jsLangKey(Request req, String... keys){
+		ArrayList<String> k=req.attribute("jsLang");
+		if(k==null)
+			req.attribute("jsLang", k=new ArrayList<>());
+		Collections.addAll(k, keys);
+	}
+
 	public static int parseIntOrDefault(String s, int d){
 		if(s==null)
 			return d;
@@ -152,10 +173,15 @@ public class Utils{
 		}
 	}
 
-	public static String wrapError(Request req, String errorKey, Object... formatArgs){
+	public static String wrapError(Request req, Response resp, String errorKey, Object... formatArgs){
 		SessionInfo info=req.session().attribute("info");
 		Lang l=Lang.get(localeForRequest(req));
-		return renderTemplate(req, "generic_error", JtwigModel.newModel().with("error", formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey)).with("back", info.history.last()));
+		String msg=formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		if(isAjax(req)){
+			resp.type("application/json");
+			return new WebDeltaResponseBuilder().messageBox(l.get("error"), msg, l.get("ok")).json().toString();
+		}
+		return renderTemplate(req, "generic_error", JtwigModel.newModel().with("error", msg).with("back", info.history.last()));
 	}
 
 	public static Locale localeForRequest(Request req){
@@ -329,5 +355,9 @@ public class Utils{
 			return s;
 		int len=Math.min(s.indexOf(' ', maxLen), maxLen+20);
 		return s.substring(0, len)+"...";
+	}
+
+	public static boolean isAjax(Request req){
+		return req.queryParams("_ajax")!=null;
 	}
 }

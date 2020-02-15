@@ -136,4 +136,8 @@ public class Lang{
 		format.setTimeZone(timeZone);
 		return format.format(date);
 	}
+
+	public Object raw(String key){
+		return data.opt(key);
+	}
 }

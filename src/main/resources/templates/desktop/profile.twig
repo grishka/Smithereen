@@ -45,7 +45,7 @@
 			<table width="100%" class="profileBlock">
 				<tr><th class="blockHeader"><a href="#">{{L('wall')}}</a></th></tr>
 				<tr><td class="blockSubheader">{{LP('X_posts', postCount)}}</td></tr>
-				<tr><td>{%include "wall_post_form.twig" with {wallOwner: user}%}</td></tr>
+				{%if currentUser%}<tr><td>{%include "wall_post_form.twig" with {wallOwner: user}%}</td></tr>{%endif%}
 				<tr><td class="padded">
 			{%for post in wall%}
 			{%include "wall_post.twig" with {post: post}%}

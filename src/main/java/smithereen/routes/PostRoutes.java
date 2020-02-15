@@ -1,7 +1,5 @@
 package smithereen.routes;
 
-import com.google.common.base.Strings;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jtwig.JtwigModel;
@@ -18,6 +16,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import smithereen.Config;
+import static smithereen.Utils.*;
+
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
@@ -29,6 +29,7 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.PhotoSize;
 import smithereen.data.SessionInfo;
+import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.feed.NewsfeedEntry;
@@ -153,7 +154,7 @@ public class PostRoutes{
 				Post parent=PostStorage.getPostByID(replyTo);
 				if(parent==null){
 					resp.status(404);
-					return Utils.wrapError(req, "err_post_not_found");
+					return Utils.wrapError(req, resp, "err_post_not_found");
 				}
 				int[] replyKey=new int[parent.replyKey.length+1];
 				System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
@@ -180,7 +181,7 @@ public class PostRoutes{
 			sess.postDraftAttachments.clear();
 		}else{
 			resp.status(404);
-			return Utils.wrapError(req, "err_user_not_found");
+			return Utils.wrapError(req, resp, "err_user_not_found");
 		}
 		return "";
 	}
@@ -197,6 +198,7 @@ public class PostRoutes{
 					System.err.println("No post: "+pe);
 			}
 		}
+		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm");
 		JtwigModel model=JtwigModel.newModel().with("title", Utils.lang(req).get("feed")).with("feed", feed).with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
 		return Utils.renderTemplate(req, "feed", model);
 	}
@@ -205,12 +207,12 @@ public class PostRoutes{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
 			resp.status(404);
-			return Utils.wrapError(req, "err_post_not_found");
+			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
 		Post post=PostStorage.getPostByID(postID);
 		if(post==null){
 			resp.status(404);
-			return Utils.wrapError(req, "err_post_not_found");
+			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
 		int[] replyKey=new int[post.replyKey.length+1];
 		System.arraycopy(post.replyKey, 0, replyKey, 0, post.replyKey.length);
@@ -262,6 +264,7 @@ public class PostRoutes{
 			}
 			model.with("metaTags", meta);
 		}
+		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm");
 		return Utils.renderTemplate(req, "wall_post_standalone", model);
 	}
 
@@ -270,7 +273,7 @@ public class PostRoutes{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
 			resp.status(404);
-			return Utils.wrapError(req, "err_post_not_found");
+			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
 		String back=Utils.back(req);
 		return Utils.renderTemplate(req, "generic_confirm", JtwigModel.newModel().with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete?_redir="+URLEncoder.encode(back))).with("back", back));
@@ -280,22 +283,26 @@ public class PostRoutes{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
 			resp.status(404);
-			return Utils.wrapError(req, "err_post_not_found");
+			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
 		Post post=PostStorage.getPostByID(postID);
 		if(post==null){
 			resp.status(404);
-			return Utils.wrapError(req, "err_post_not_found");
+			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
 		if(!post.canBeManagedBy(self.user)){
 			resp.status(403);
-			return Utils.wrapError(req, "err_access");
+			return Utils.wrapError(req, resp, "err_access");
 		}
 		PostStorage.deletePost(post.id);
-		if(Config.isLocal(post.activityPubID)){
+		if(Config.isLocal(post.activityPubID) && post.attachment!=null && !post.attachment.isEmpty()){
 			MediaStorageUtils.deleteAttachmentFiles(post.attachment);
 		}
 		ActivityPubWorker.getInstance().sendDeletePostActivity(post);
+		if(isAjax(req)){
+			resp.type("application/json");
+			return new WebDeltaResponseBuilder().remove("post"+postID).json();
+		}
 		resp.redirect(Utils.back(req));
 		return "";
 	}

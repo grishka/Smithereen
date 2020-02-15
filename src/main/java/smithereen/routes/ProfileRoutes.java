@@ -3,18 +3,14 @@ package smithereen.routes;
 import org.jetbrains.annotations.Nullable;
 import org.jtwig.JtwigModel;
 
-import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
-import smithereen.activitypub.objects.LinkOrObject;
-import smithereen.activitypub.objects.activities.Follow;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
@@ -86,10 +82,11 @@ public class ProfileRoutes{
 				}
 				model.with("metaTags", meta);
 			}
+			Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm");
 			return Utils.renderTemplate(req, "profile", model);
 		}else{
 			resp.status(404);
-			return Utils.wrapError(req, "err_user_not_found");
+			return Utils.wrapError(req, resp, "err_user_not_found");
 		}
 	}
 
@@ -99,7 +96,7 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			if(user.id==self.user.id){
-				return Utils.wrapError(req, "err_cant_friend_self");
+				return Utils.wrapError(req, resp, "err_cant_friend_self");
 			}
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 			if(status==FriendshipStatus.NONE){
@@ -107,15 +104,15 @@ public class ProfileRoutes{
 				model.with("targetUser", user);
 				return Utils.renderTemplate(req, "send_friend_request", model);
 			}else if(status==FriendshipStatus.FRIENDS){
-				return Utils.wrapError(req, "err_already_friends");
+				return Utils.wrapError(req, resp, "err_already_friends");
 			}else if(status==FriendshipStatus.REQUEST_RECVD){
-				return Utils.wrapError(req, "err_have_incoming_friend_req");
+				return Utils.wrapError(req, resp, "err_have_incoming_friend_req");
 			}else{ // REQ_SENT
-				return Utils.wrapError(req, "err_friend_req_already_sent");
+				return Utils.wrapError(req, resp, "err_friend_req_already_sent");
 			}
 		}else{
 			resp.status(404);
-			return Utils.wrapError(req, "user_not_found");
+			return Utils.wrapError(req, resp, "user_not_found");
 		}
 	}
 
@@ -124,7 +121,7 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			if(user.id==self.user.id){
-				return Utils.wrapError(req, "err_cant_friend_self");
+				return Utils.wrapError(req, resp, "err_cant_friend_self");
 			}
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 			if(status==FriendshipStatus.NONE){
@@ -132,15 +129,15 @@ public class ProfileRoutes{
 				resp.redirect(Utils.back(req));
 				return "";
 			}else if(status==FriendshipStatus.FRIENDS){
-				return Utils.wrapError(req, "err_already_friends");
+				return Utils.wrapError(req, resp, "err_already_friends");
 			}else if(status==FriendshipStatus.REQUEST_RECVD){
-				return Utils.wrapError(req, "err_have_incoming_friend_req");
+				return Utils.wrapError(req, resp, "err_have_incoming_friend_req");
 			}else{ // REQ_SENT
-				return Utils.wrapError(req, "err_friend_req_already_sent");
+				return Utils.wrapError(req, resp, "err_friend_req_already_sent");
 			}
 		}else{
 			resp.status(404);
-			return Utils.wrapError(req, "user_not_found");
+			return Utils.wrapError(req, resp, "user_not_found");
 		}
 	}
 
@@ -156,11 +153,11 @@ public class ProfileRoutes{
 				JtwigModel model=JtwigModel.newModel().with("message", l.get("confirm_unfriend_X", user.getFullName())).with("formAction", user.getProfileURL("doRemoveFriend")+"?_redir="+URLEncoder.encode(back)).with("back", back);
 				return Utils.renderTemplate(req, "generic_confirm", model);
 			}else{
-				return Utils.wrapError(req, "err_not_friends");
+				return Utils.wrapError(req, resp, "err_not_friends");
 			}
 		}else{
 			resp.status(404);
-			return Utils.wrapError(req, "user_not_found");
+			return Utils.wrapError(req, resp, "user_not_found");
 		}
 	}
 
@@ -173,7 +170,7 @@ public class ProfileRoutes{
 			return Utils.renderTemplate(req, "friends", model);
 		}
 		resp.status(404);
-		return Utils.wrapError(req, "user_not_found");
+		return Utils.wrapError(req, resp, "user_not_found");
 	}
 
 	public static Object followers(Request req, Response resp) throws SQLException{
@@ -185,7 +182,7 @@ public class ProfileRoutes{
 			return Utils.renderTemplate(req, "friends", model);
 		}
 		resp.status(404);
-		return Utils.wrapError(req, "user_not_found");
+		return Utils.wrapError(req, resp, "user_not_found");
 	}
 
 	public static Object following(Request req, Response resp) throws SQLException{
@@ -197,7 +194,7 @@ public class ProfileRoutes{
 			return Utils.renderTemplate(req, "friends", model);
 		}
 		resp.status(404);
-		return Utils.wrapError(req, "user_not_found");
+		return Utils.wrapError(req, resp, "user_not_found");
 	}
 
 	public static Object incomingFriendRequests(Request req, Response resp, Account self) throws SQLException{
@@ -232,7 +229,7 @@ public class ProfileRoutes{
 			resp.redirect(Utils.back(req));
 		}else{
 			resp.status(404);
-			return Utils.wrapError(req, "user_not_found");
+			return Utils.wrapError(req, resp, "user_not_found");
 		}
 		return "";
 	}
@@ -249,11 +246,11 @@ public class ProfileRoutes{
 					ActivityPubWorker.getInstance().sendUnfriendActivity(self.user, user);
 				}
 			}else{
-				return Utils.wrapError(req, "err_not_friends");
+				return Utils.wrapError(req, resp, "err_not_friends");
 			}
 		}else{
 			resp.status(404);
-			return Utils.wrapError(req, "user_not_found");
+			return Utils.wrapError(req, resp, "user_not_found");
 		}
 		return "";
 	}

@@ -3,13 +3,14 @@
 <head>
 	<!-- commercialized internet sucks ass -->
 	<title>{{ title }}</title>
-	<link rel="stylesheet" type="text/css" href="/res/style.css"/>
+	<link rel="stylesheet" type="text/css" href="/res/style.css?{{staticHash}}"/>
 	{%if metaTags%}{%for key, value in metaTags%}<meta property="{{key}}" content="{{value}}"/>
 	{%endfor%}{%endif%}
 	<script>
-		window.userConfig={{jsConfig | escape(false)}};
+		var userConfig={{jsConfig | escape(false)}};
+		var langKeys={{jsLangKeys | escape(false)}};
 	</script>
-	<script src="/res/common.js" async></script>
+	<script src="/res/common.js?{{staticHash}}" async></script>
 </head>
 <body>
 <div class="headerBG"></div>
