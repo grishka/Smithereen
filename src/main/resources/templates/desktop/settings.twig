@@ -1,9 +1,9 @@
 {%extends "page.twig"%}
 {%block content%}
-<div class="singleColumn">
-<form action="/settings/updateName" method="post">
+<div class="singleColumn gray">
+<form action="/settings/updateName" method="post" onsubmit="return ajaxSubmitForm(this)">
 	<h2>{{L('change_name')}}</h2>
-	{%if nameMessage%}<h5>{{nameMessage}}</h5>{%endif%}
+	<div class="settingsMessage" id="nameMessage" style="{%if not nameMessage%}display: none{%endif%}">{{nameMessage}}</div>
 	<table class="form">
 		<tr><td class="label">{{L('first_name')}}:</td><td><input type="text" name="first_name" value="{{currentUser.firstName}}" maxlength="100" required/></td></tr>
 		<tr><td class="label">{{L('last_name')}}:</td><td><input type="text" name="last_name" value="{{currentUser.lastName}}" maxlength="100"/></td></tr>
@@ -19,9 +19,9 @@
 		<tr class="footer"><td class="label"></td><td><input type="submit" value="{{L('save')}}"/></td></tr>
 	</table>
 </form>
-<form action="/settings/updatePassword" method="post">
+<form action="/settings/updatePassword" method="post" onsubmit="return ajaxSubmitForm(this)">
 	<h2>{{L('change_password')}}</h2>
-	{%if passwordMessage%}<h5>{{passwordMessage}}</h5>{%endif%}
+	<div class="settingsMessage" id="passwordMessage" style="{%if not passwordMessage%}display: none{%endif%}">{{passwordMessage}}</div>
 	<input type="hidden" name="csrf" value="{{csrf}}"/>
 	<table class="form">
 		<tr><td class="label">{{L('current_password')}}:</td><td><input type="password" name="current"/></td></tr>

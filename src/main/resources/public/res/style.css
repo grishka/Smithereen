@@ -140,7 +140,7 @@ h2{
 
 .profileBlock .blockSubheader{
 		height: 24px;
-		background: #F5F5F5;
+		background: #FAFAFA;
 		color: #707070;
 		padding: 0 6px;
 	}
@@ -163,7 +163,7 @@ h2{
 
 .avaPlaceholder{
 	display: inline-block;
-	background: #F5F5F5;
+	background: #FAFAFA;
 }
 
 .membersRow td{
@@ -216,10 +216,16 @@ h2{
 
 .comment{
 	border-bottom: none;
+	padding-bottom: 0;
+	margin-bottom: 0;
 }
 
+.comment .replies{
+		padding-top: 8px;
+	}
+
 .gray{
-	background: #F5F5F5;
+	background: #FAFAFA;
 }
 
 .profileFields{
@@ -291,26 +297,26 @@ input[type=submit]:active, input[type=button]:active, .button:active, .button:vi
 }
 
 input[type=submit].secondary, input[type=button].secondary, button.secondary, .button.secondary:link, .button.secondary:visited{
-	background: linear-gradient(to bottom, #F5F5F5, #dddddd);
+	background: linear-gradient(to bottom, #FAFAFA, #e1e1e1);
 	text-shadow: 0 1px 0 rgba(255, 255, 255, .8);
-	border: solid 1px #c4c4c4;
+	border: solid 1px #c8c8c8;
 	color: #707070;
 	box-shadow: 0 1px 0 #ffffff inset;
 }
 
 input[type=submit].secondary.loading, input[type=submit].secondary.loading:hover, input[type=button].secondary.loading, input[type=button].secondary.loading:hover, button.secondary.loading, button.secondary.loading:hover, .button.secondary:link.loading, .button.secondary:link.loading:hover, .button.secondary:visited.loading, .button.secondary:visited.loading:hover{
-		background: url(/res/loader_overlay.svg), linear-gradient(to bottom, #F5F5F5, #dddddd);
+		background: url(/res/loader_overlay.svg), linear-gradient(to bottom, #FAFAFA, #e1e1e1);
 	}
 
 input[type=submit].secondary:hover, input[type=button].secondary:hover, .button.secondary:hover, .button.secondary:visited:hover{
 	text-decoration: none;
-	background: linear-gradient(to bottom, #fcfcfc, #e9e9e9);
+	background: linear-gradient(to bottom, #ffffff, #eeeeee);
 	box-shadow: 0 1px 0 #ffffff inset;
 }
 
 input[type=submit].secondary:active, input[type=button].secondary:active, .button.secondary:active, .button.secondary:visited:active{
 	text-decoration: none;
-	background: #c4c4c4;
+	background: #c8c8c8;
 	box-shadow: none;
 }
 
@@ -484,8 +490,8 @@ input[type=submit].secondary:active, input[type=button].secondary:active, .butto
 
 .boxButtonBar{
 	height: 48px;
-	background: #F5F5F5;
-	border-top: solid 1px #dddddd;
+	background: #FAFAFA;
+	border-top: solid 1px #e1e1e1;
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
@@ -499,4 +505,13 @@ input[type=submit].secondary:active, input[type=button].secondary:active, .butto
 .boxContent{
 	padding: 16px;
 	background: #FFF;
+}
+
+.settingsMessage{
+	width: 60%;
+	margin: 16px auto;
+	border-radius: 8px;
+	padding: 16px;
+	border: solid 1px rgba(0, 0, 0, .1);
+	background: #FFFFFF;
 }

@@ -176,10 +176,8 @@ public class Main{
 		exception(Exception.class, (exception, req, res) -> {
 			res.status(500);
 			StringWriter sw=new StringWriter();
-			sw.append("<h1 style='color: red;'>Unhandled exception</h1><pre>");
 			exception.printStackTrace(new PrintWriter(sw));
-			sw.append("</pre>");
-			res.body(sw.toString());
+			res.body("<h1 style='color: red;'>Unhandled exception</h1><pre>"+sw.toString().replace("<", "&gt;")+"</pre>");
 		});
 
 		after((req, resp)->{

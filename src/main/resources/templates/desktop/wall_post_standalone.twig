@@ -5,9 +5,9 @@
 <a href="{{post.url}}" target="_blank">Original</a><br/>
 {%endif%}
 {%include "wall_post.twig"%}
-{%for reply in post.replies%}
+<div id="postReplies{{post.id}}">{%for reply in post.replies%}
 {%include "wall_reply.twig" with {post: reply}%}
-{%endfor%}
+{%endfor%}</div>
 </div>
 {%if currentUser%}{%include "wall_post_form.twig" with {replyTo: post}%}{%endif%}
 {%endblock%}

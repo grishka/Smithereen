@@ -1,7 +1,7 @@
 {%extends "page.twig"%}
 {%block content%}
 {%include "wall_post_form.twig"%}
-<div class="singleColumn">
+<div class="singleColumn" id="postList">
 {%for entry in feed%}
 
 {%if entry.type==1%}

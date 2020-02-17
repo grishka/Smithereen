@@ -1,7 +1,7 @@
 $accent: #aab42f;
 $textOnAccent: #FFFFFF;
 $bg: #FFFFFF;
-$gray: #F5F5F5;
+$gray: #FAFAFA;
 $textOnGray: #707070;
 $siteWidth: 1280px;
 $grayText: #909090;
@@ -224,6 +224,11 @@ h2{
 
 .comment{
 	border-bottom: none;
+	padding-bottom: 0;
+	margin-bottom: 0;
+	.replies{
+		padding-top: 8px;
+	}
 }
 
 .gray{
@@ -459,4 +464,13 @@ input[type=submit].secondary:active, input[type=button].secondary:active, .butto
 .boxContent{
 	padding: 16px;
 	background: #FFF;
+}
+
+.settingsMessage{
+	width: 60%;
+	margin: 16px auto;
+	border-radius: 8px;
+	padding: 16px;
+	border: solid 1px rgba(0, 0, 0, .1);
+	background: $bg;
 }

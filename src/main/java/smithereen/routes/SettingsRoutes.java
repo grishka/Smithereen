@@ -31,12 +31,15 @@ import javax.servlet.ServletException;
 import javax.servlet.http.Part;
 
 import smithereen.Config;
+import static smithereen.Utils.*;
+
 import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
 import smithereen.data.PhotoSize;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.lang.Lang;
 import smithereen.libvips.VImage;
 import smithereen.storage.MediaStorageUtils;
@@ -84,15 +87,21 @@ public class SettingsRoutes{
 		String current=req.queryParams("current");
 		String new1=req.queryParams("new");
 		String new2=req.queryParams("new2");
+		String message;
 		if(!new1.equals(new2)){
-			req.session().attribute("settings.passwordMessage", Utils.lang(req).get("err_passwords_dont_match"));
+			message=Utils.lang(req).get("err_passwords_dont_match");
 		}else if(new1.length()<4){
-			req.session().attribute("settings.passwordMessage", Utils.lang(req).get("err_password_short"));
+			message=Utils.lang(req).get("err_password_short");
 		}else if(!SessionStorage.updatePassword(self.id, current, new1)){
-			req.session().attribute("settings.passwordMessage", Utils.lang(req).get("err_old_password_incorrect"));
+			message=Utils.lang(req).get("err_old_password_incorrect");
 		}else{
-			req.session().attribute("settings.passwordMessage", Utils.lang(req).get("password_changed"));
+			message=Utils.lang(req).get("password_changed");
 		}
+		if(isAjax(req)){
+			resp.type("application/json");
+			return new WebDeltaResponseBuilder().show("passwordMessage").setContent("passwordMessage", message).json();
+		}
+		req.session().attribute("settings.passwordMessage", message);
 		resp.redirect("/settings/");
 		return "";
 	}
@@ -100,14 +109,20 @@ public class SettingsRoutes{
 	public static Object updateName(Request req, Response resp, Account self) throws SQLException{
 		String first=req.queryParams("first_name");
 		String last=req.queryParams("last_name");
+		String message;
 		if(first.length()<2){
-			req.session().attribute("settings.nameMessage", Utils.lang(req).get("err_name_too_short"));
+			message=Utils.lang(req).get("err_name_too_short");
 		}else{
 			UserStorage.changeName(self.user.id, first, last);
-			req.session().attribute("settings.nameMessage", Utils.lang(req).get("name_changed"));
+			message=Utils.lang(req).get("name_changed");
 		}
-		resp.redirect("/settings/");
 		self.user=UserStorage.getById(self.user.id);
+		if(isAjax(req)){
+			resp.type("application/json");
+			return new WebDeltaResponseBuilder().show("nameMessage").setContent("nameMessage", message).json();
+		}
+		req.session().attribute("settings.nameMessage", message);
+		resp.redirect("/settings/");
 		return "";
 	}
 

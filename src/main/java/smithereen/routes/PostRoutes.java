@@ -177,8 +177,18 @@ public class PostRoutes{
 			Post post=PostStorage.getPostByID(postID);
 			ActivityPubWorker.getInstance().sendCreatePostActivity(post);
 
-			resp.redirect(Utils.back(req));
 			sess.postDraftAttachments.clear();
+			if(isAjax(req)){
+				String postHTML=Utils.renderTemplate(req, replyTo!=0 ? "wall_reply" : "wall_post", JtwigModel.newModel().with("post", post));
+				resp.type("application/json");
+				WebDeltaResponseBuilder rb;
+				if(replyTo==0)
+					rb=new WebDeltaResponseBuilder().insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
+				else
+					rb=new WebDeltaResponseBuilder().insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML);
+				return rb.setInputValue("postFormText", "").setContent("postFormAttachments", "").json();
+			}
+			resp.redirect(Utils.back(req));
 		}else{
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_user_not_found");
@@ -264,7 +274,7 @@ public class PostRoutes{
 			}
 			model.with("metaTags", meta);
 		}
-		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm");
+		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm");
 		return Utils.renderTemplate(req, "wall_post_standalone", model);
 	}
 

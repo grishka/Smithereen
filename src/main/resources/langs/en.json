@@ -95,5 +95,9 @@
   "login_needed": "You need to be logged in to perform this action",
   "attach": "Attach",
   "error": "Error",
-  "ok": "OK"
+  "ok": "OK",
+  "delete_reply": "Delete comment",
+  "delete_reply_confirm": "Are you sure you want to delete this comment?",
+  "add_reply": "Reply",
+  "comment_placeholder": "Write a comment..."
 }

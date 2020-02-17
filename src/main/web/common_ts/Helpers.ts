@@ -1,3 +1,5 @@
+var submittingForm:HTMLFormElement=null;
+
 function ajaxPost(uri:string, params:any, onDone:Function, onError:Function):void{
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
 	xhr.open("POST", uri);
@@ -58,9 +60,43 @@ function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}):
 		}, function(){
 			setGlobalLoading(false);
 			box.dismiss();
+			new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
 		});
 	});
 	box.show();
+	return false;
+}
+
+function ajaxSubmitForm(form:HTMLFormElement):boolean{
+	if(submittingForm)
+		return false;
+	submittingForm=form;
+	var submitBtn=form.querySelector("input[type=submit]");
+	submitBtn.classList.add("loading");
+	setGlobalLoading(true);
+	var data:any={};
+	var elems=form.elements;
+	for(var i=0;i<elems.length;i++){
+		var el=elems[i] as any;
+		if(!el.name)
+			continue;
+		data[el.name]=el.value;
+	}
+	ajaxPost(form.action, data, function(resp:any){
+		submittingForm=null;
+		submitBtn.classList.remove("loading");
+		setGlobalLoading(false);
+		if(resp instanceof Array){
+			for(var i=0;i<resp.length;i++){
+				applyServerCommand(resp[i]);
+			}
+		}
+	}, function(){
+		submittingForm=null;
+		submitBtn.classList.remove("loading");
+		setGlobalLoading(false);
+		new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+	});
 	return false;
 }
 
@@ -72,7 +108,6 @@ function applyServerCommand(cmd:any){
 			for(var i=0;i<ids.length;i++){
 				var el=document.getElementById(ids[i]);
 				if(el){
-					console.log("removing:", el);
 					el.parentNode.removeChild(el);
 				}
 			}
@@ -91,5 +126,60 @@ function applyServerCommand(cmd:any){
 		case "msgBox":
 			new MessageBox(cmd.t, cmd.m, cmd.b).show();
 			break;
+		case "show":
+		{
+			var ids:string[]=cmd.ids;
+			for(var i=0;i<ids.length;i++){
+				var el=document.getElementById(ids[i]);
+				if(el){
+					show(el);
+				}
+			}
+		}
+		break;
+		case "hide":
+		{
+			var ids:string[]=cmd.ids;
+			for(var i=0;i<ids.length;i++){
+				var el=document.getElementById(ids[i]);
+				if(el){
+					hide(el);
+				}
+			}
+		}
+		break;
+		case "insert":
+		{
+			var el=document.getElementById(cmd.id);
+			if(!el) return;
+			var mode:InsertPosition=({"bb": "beforeBegin", "ab": "afterBegin", "be": "beforeEnd", "ae": "afterEnd"} as any)[cmd.m as string] as InsertPosition;
+			el.insertAdjacentHTML(mode, cmd.c);
+		}
+		break;
+		case "setValue":
+		{
+			var el=document.getElementById(cmd.id);
+			if(!el) return;
+			(el as any).value=cmd.v;
+		}
+		break;
 	}
+}
+
+function showPostReplyForm(id:number):boolean{
+	var form=document.getElementById("wallPostForm");
+	var replies=document.getElementById("postReplies"+id);
+	replies.insertAdjacentElement("afterbegin", form);
+	var hidden:HTMLInputElement=document.getElementById("postFormReplyTo") as HTMLInputElement;
+	hidden.value=id+"";
+	var field:HTMLTextAreaElement=document.getElementById("postFormText") as HTMLTextAreaElement;
+	var name:string=document.getElementById("post"+id).getAttribute("data-reply-name");
+	if(name){
+		if(field.value.length==0 || (field.hasAttribute("data-reply-name") && field.value==field.getAttribute("data-reply-name"))){
+			field.value=name+", ";
+			field.setAttribute("data-reply-name", name+", ");
+		}
+	}
+	field.focus();
+	return false;
 }
