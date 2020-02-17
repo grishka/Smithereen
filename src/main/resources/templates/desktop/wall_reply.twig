@@ -9,8 +9,8 @@
 			<div class="postContent">{{post.content | escape(false)}}</div>
 			{%if post.attachment%}{{post.processedAttachments | renderAttachments}}<br/>{%endif%}
 			<div class="postInfo"><a href="{{post.internalURL}}" class="postLink">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} |
-				<a href="{{post.url}}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{post.url}}/delete')">{{L('delete')}}</a>{%endif%} |
-				<a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}})">{{L('add_reply')}}</a></div>
+				<a href="{{post.url}}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{post.url}}/delete')">{{L('delete')}}</a>{%endif%}
+				{%if not hideReplyLink%}| <a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}})">{{L('add_reply')}}</a>{%endif%}</div>
 			<div id="postReplies{{post.id}}" class="replies">{%for reply in post.replies%}
 			{%include "wall_reply.twig" with {post: reply}%}
 			{%endfor%}</div>

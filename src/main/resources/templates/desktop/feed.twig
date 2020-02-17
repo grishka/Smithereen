@@ -8,7 +8,7 @@
 {%include "wall_post.twig" with {post: entry.post}%}
 	<div class="commentsPreviewWrap">
 {%for reply in entry.post.replies%}
-{%include "wall_reply.twig" with {post: reply}%}
+{%include "wall_reply.twig" with {post: reply, hideReplyLink: true}%}
 {%endfor%}
 	</div>
 {%elseif entry.type==2%}
