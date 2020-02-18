@@ -23,6 +23,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import smithereen.Config;
+import smithereen.DisallowLocalhostInterceptor;
 import smithereen.ObjectNotFoundException;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -40,6 +41,7 @@ public class ActivityPub{
 
 	static{
 		httpClient=new OkHttpClient.Builder()
+				.addNetworkInterceptor(new DisallowLocalhostInterceptor())
 				.build();
 	}
 

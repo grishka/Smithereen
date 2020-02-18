@@ -165,8 +165,28 @@ public class ActivityPubRoutes{
 		String ref=req.headers("referer");
 		ActivityPubObject remoteObj;
 		try{
-			remoteObj=ActivityPub.fetchRemoteObject(req.queryParams("uri"));
-		}catch(IOException|JSONException x){
+			URI uri=new URI(req.queryParams("uri"));
+			if(!"https".equals(uri.getScheme()) && !(Config.useHTTP && "http".equals(uri.getScheme()))){
+				// try parsing as "username@domain" or "acct:username@domain"
+				String rawUri=uri.getSchemeSpecificPart();
+				if(rawUri.matches("^[^@\\s]+@[^@\\s]{4,}$")){
+					String[] parts=rawUri.split("@");
+					uri=ActivityPub.resolveUsername(parts[0], parts[1]);
+					if(!"https".equals(uri.getScheme()) && !(Config.useHTTP && "http".equals(uri.getScheme()))){
+						return "Failed to resolve object URI via webfinger";
+					}
+				}else{
+					return "Invalid remote object URI";
+				}
+			}
+			remoteObj=ActivityPub.fetchRemoteObject(uri.toString());
+			if(remoteObj==null){
+				return "Error fetching remote object";
+			}
+			if(remoteObj.activityPubID.getHost()==null || uri.getHost()==null || !remoteObj.activityPubID.getHost().equals(uri.getHost())){
+				return "Object ID host doesn't match URI host";
+			}
+		}catch(IOException|JSONException|URISyntaxException x){
 			return x.getMessage();
 		}
 		if(remoteObj instanceof ForeignUser){

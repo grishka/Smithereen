@@ -26,6 +26,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import smithereen.Config;
+import smithereen.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.data.PhotoSize;
@@ -54,6 +55,7 @@ public class MediaCache{
 		}catch(NoSuchAlgorithmException ignore){}
 		asyncUpdater=Executors.newFixedThreadPool(1);
 		httpClient=new OkHttpClient.Builder()
+				.addNetworkInterceptor(new DisallowLocalhostInterceptor())
 				.build();
 		try{
 			updateTotalSize();

@@ -25,6 +25,7 @@ public class Config{
 	public static String mediaCacheURLPath;
 	public static boolean useHTTP;
 	public static String staticFilesPath;
+	public static final boolean DEBUG=System.getProperty("smithereen.debug")!=null;
 
 	private static URI localURI;
 
