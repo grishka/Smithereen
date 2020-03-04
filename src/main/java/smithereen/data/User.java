@@ -278,6 +278,12 @@ public class User extends ActivityPubObject{
 		return true;
 	}
 
+	public String getNameForReply(){
+		if(StringUtils.isNotEmpty(firstName))
+			return firstName;
+		return username;
+	}
+
 	public enum Gender{
 		UNKNOWN,
 		MALE,

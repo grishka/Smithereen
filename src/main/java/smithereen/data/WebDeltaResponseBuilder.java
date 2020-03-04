@@ -34,6 +34,17 @@ public class WebDeltaResponseBuilder{
 		return this;
 	}
 
+	public WebDeltaResponseBuilder formBox(@NotNull String title, @NotNull String content, @NotNull String formAction, @NotNull String button){
+		JSONObject cmd=new JSONObject();
+		cmd.put("a", "formBox");
+		cmd.put("m", content);
+		cmd.put("t", title);
+		cmd.put("b", button);
+		cmd.put("fa", formAction);
+		commands.put(cmd);
+		return this;
+	}
+
 	public WebDeltaResponseBuilder show(@NotNull String... ids){
 		JSONObject cmd=new JSONObject();
 		cmd.put("a", "show");
@@ -65,6 +76,13 @@ public class WebDeltaResponseBuilder{
 		cmd.put("a", "setValue");
 		cmd.put("id", id);
 		cmd.put("v", value);
+		commands.put(cmd);
+		return this;
+	}
+
+	public WebDeltaResponseBuilder refresh(){
+		JSONObject cmd=new JSONObject();
+		cmd.put("a", "refresh");
 		commands.put(cmd);
 		return this;
 	}

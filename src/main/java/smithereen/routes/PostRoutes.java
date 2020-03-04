@@ -119,7 +119,7 @@ public class PostRoutes{
 							mentionedUser=(User) obj;
 							UserStorage.putOrUpdateForeignUser((ForeignUser) obj);
 						}
-					}catch(IOException x){
+					}catch(Exception x){
 						System.out.println("Can't resolve "+u+"@"+d+": "+x.getMessage());
 					}
 				}
@@ -160,8 +160,8 @@ public class PostRoutes{
 				System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
 				replyKey[replyKey.length-1]=parent.id;
 				// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
-				if(parent.replyKey.length>0 && text.startsWith("<p>"+parent.user.firstName+", ")){
-					text="<p><span class=\"h-card\"><a href=\""+parent.user.url+"\" class=\"u-url mention\">"+parent.user.firstName+"</a></span>"+text.substring(parent.user.firstName.length()+3);
+				if(parent.replyKey.length>0 && text.startsWith("<p>"+parent.user.getNameForReply()+", ")){
+					text="<p><span class=\"h-card\"><a href=\""+parent.user.url+"\" class=\"u-url mention\">"+parent.user.getNameForReply()+"</a></span>"+text.substring(parent.user.getNameForReply().length()+3);
 				}
 				mentionedUsers.add(parent.user);
 				if(parent.replyKey.length>1){
@@ -234,7 +234,7 @@ public class PostRoutes{
 		if(info!=null && info.account!=null)
 			model.with("draftAttachments", info.postDraftAttachments);
 		if(post.replyKey.length>0){
-			model.with("prefilledPostText", post.user.firstName+", ");
+			model.with("prefilledPostText", post.user.getNameForReply()+", ");
 		}
 		if(info==null || info.account==null){
 			HashMap<String, String> meta=new LinkedHashMap<>();

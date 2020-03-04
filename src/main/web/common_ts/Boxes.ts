@@ -68,7 +68,7 @@ class LayerManager{
 abstract class BaseLayer{
 	private content:HTMLElement;
 
-	protected abstract onCreateContentView():HTMLElement;	
+	protected abstract onCreateContentView():HTMLElement;
 	public show():void{
 		if(!this.content){
 			this.content=document.createElement("div");
@@ -89,19 +89,6 @@ abstract class BaseLayer{
 
 	public onShown():void{}
 	public onHidden():void{}
-}
-
-class TestLayer extends BaseLayer{
-	protected onCreateContentView():HTMLElement{
-		var el=document.createElement("div");
-		var text:string="";
-		for(var i:number=0;i<5;i++){
-			text+="test layer "+i+"<br/>";
-		}
-		el.innerHTML=text;
-		el.style.width="500px";
-		return el;
-	}
 }
 
 class Box extends BaseLayer{
@@ -180,7 +167,7 @@ class ConfirmBox extends Box{
 			}
 		});
 		var content:HTMLDivElement=document.createElement("div");
-		content.innerText=msg;
+		content.innerHTML=msg;
 		this.setContent(content);
 	}
 }
@@ -189,7 +176,32 @@ class MessageBox extends Box{
 	public constructor(title:string, msg:string, btn:string){
 		super(title, [btn]);
 		var content:HTMLDivElement=document.createElement("div");
-		content.innerText=msg;
+		content.innerHTML=msg;
+		this.setContent(content);
+	}
+}
+
+class FormBox extends Box{
+	private form:HTMLFormElement;
+
+	public constructor(title:string, c:string, btn:string, act:string){
+		super(title, [btn, lang("cancel")], function(idx:number){
+			if(idx==0){
+				var btn=this.getButton(0);
+				btn.setAttribute("disabled", "");
+				this.getButton(1).setAttribute("disabled", "");
+				btn.classList.add("loading");
+				setGlobalLoading(true);
+				ajaxSubmitForm(this.form, this.dismiss.bind(this));
+			}else{
+				this.dismiss();
+			}
+		});
+		var content:HTMLDivElement=document.createElement("div");
+		this.form=document.createElement("form");
+		this.form.innerHTML=c;
+		this.form.action=act;
+		content.appendChild(this.form);
 		this.setContent(content);
 	}
 }

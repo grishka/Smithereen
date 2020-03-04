@@ -10,7 +10,7 @@
 </div>
 <div class="singleColumn">
 {%for friend in friendList%}
-<table width="100%" class="friendsRow">
+<table width="100%" class="friendsRow" id="frow{{friend.id}}">
 	<tr valign="top">
 		<td width="100">
 			<a href="{{friend.url}}">{{friend.avatar | pictureForAvatar('m')}}</a>
@@ -21,7 +21,9 @@
 		<td width="200">
 			<ul class="actionList">
 				<li><a href="{{friend.getProfileURL('friends')}}">{{L('view_friends_of')}}</a></li>
-				{%if(currentUser and currentUser.id==owner.id and not followers)%}<li><a href="{{friend.getProfileURL('confirmRemoveFriend')}}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>{%endif%}
+				{%if(currentUser and currentUser.id==owner.id and not followers)%}<li>
+					<a href="{{friend.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},[{%if following%}'confirm_unfollow_X'{%else%}'confirm_unfriend_X'{%endif%},this.getAttribute('data-name')],'{{friend.getProfileURL('doRemoveFriend')}}?from=list')" data-name="{{friend.fullName}}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
+				</li>{%endif%}
 			</ul>
 		</td>
 	</tr>

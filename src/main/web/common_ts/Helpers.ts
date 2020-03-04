@@ -1,5 +1,32 @@
 var submittingForm:HTMLFormElement=null;
 
+interface String{
+	format(...args:(string|number)[]):string;
+	escapeHTML():string;
+}
+
+String.prototype.format=function(...args:(string|number)[]){
+	var currentIndex=0;
+	return this.replace(/%(?:(\d+)\$)?([ds%])/gm, function(match:string, g1:string, g2:string){
+		if(g2=="%")
+			return "%";
+		var index=g1 ? (parseInt(g1)-1) : currentIndex;
+		currentIndex++;
+		switch(g2){
+			case "d":
+				return Number(args[index]);
+			case "s":
+				return args[index].toString().escapeHTML();
+		}
+	});
+};
+
+String.prototype.escapeHTML=function(){
+	var el=document.createElement("span");
+	el.innerText=this;
+	return el.innerHTML;
+}
+
 function ajaxPost(uri:string, params:any, onDone:Function, onError:Function):void{
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
 	xhr.open("POST", uri);
@@ -20,6 +47,24 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function):voi
 	xhr.send(formData.join("&"));
 }
 
+function ajaxGet(uri:string, onDone:Function, onError:Function):void{
+	var xhr:XMLHttpRequest=new XMLHttpRequest();
+	if(uri.indexOf("?")!=-1)
+		uri+="&_ajax=1";
+	else
+		uri+="?_ajax=1";
+	xhr.open("GET", uri);
+	xhr.onload=function(){
+		onDone(xhr.response);
+	};
+	xhr.onerror=function(ev:Event){
+		console.log(ev);
+		onError();
+	};
+	xhr.responseType="json";
+	xhr.send();
+}
+
 function hide(el:HTMLElement):void{
 	el.style.display="none";
 }
@@ -32,15 +77,20 @@ function isVisible(el:HTMLElement):boolean{
 	return el.style.display!="none";
 }
 
-function lang(key:string):string{
-	return langKeys[key] ? langKeys[key] : key;
+function lang(key:(string|Array<string>)):string{
+	if(!(key instanceof Array))
+		return langKeys[key as string] ? langKeys[key as string] : key;
+	var _key=key[0];
+	if(!langKeys[_key])
+		return key.toString().escapeHTML();
+	return langKeys[_key].format(key.slice(1));
 }
 
 function setGlobalLoading(loading:boolean):void{
 	document.body.style.cursor=loading ? "progress" : "";
 }
 
-function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}):boolean{
+function ajaxConfirm(titleKey:string, msgKey:(string|Array<string>), url:string, params:any={}):boolean{
 	var box:ConfirmBox;
 	box=new ConfirmBox(lang(titleKey), lang(msgKey), function(){
 		var btn=box.getButton(0);
@@ -67,12 +117,13 @@ function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}):
 	return false;
 }
 
-function ajaxSubmitForm(form:HTMLFormElement):boolean{
+function ajaxSubmitForm(form:HTMLFormElement, onDone:{():void}=null):boolean{
 	if(submittingForm)
 		return false;
 	submittingForm=form;
 	var submitBtn=form.querySelector("input[type=submit]");
-	submitBtn.classList.add("loading");
+	if(submitBtn)
+		submitBtn.classList.add("loading");
 	setGlobalLoading(true);
 	var data:any={};
 	var elems=form.elements;
@@ -82,21 +133,45 @@ function ajaxSubmitForm(form:HTMLFormElement):boolean{
 			continue;
 		data[el.name]=el.value;
 	}
+	data.csrf=userConfig.csrf;
 	ajaxPost(form.action, data, function(resp:any){
 		submittingForm=null;
-		submitBtn.classList.remove("loading");
+		if(submitBtn)
+			submitBtn.classList.remove("loading");
 		setGlobalLoading(false);
 		if(resp instanceof Array){
 			for(var i=0;i<resp.length;i++){
 				applyServerCommand(resp[i]);
 			}
 		}
+		if(onDone) onDone();
 	}, function(){
 		submittingForm=null;
-		submitBtn.classList.remove("loading");
+		if(submitBtn)
+			submitBtn.classList.remove("loading");
 		setGlobalLoading(false);
 		new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+		if(onDone) onDone();
 	});
+	return false;
+}
+
+function ajaxFollowLink(link:HTMLAnchorElement):boolean{
+	if(link.getAttribute("data-ajax")){
+		setGlobalLoading(true);
+		ajaxGet(link.href, function(resp:any){
+				setGlobalLoading(false);
+				if(resp instanceof Array){
+					for(var i=0;i<resp.length;i++){
+						applyServerCommand(resp[i]);
+					}
+				}
+			}, function(){
+				setGlobalLoading(false);
+				new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+			});
+		return true;
+	}
 	return false;
 }
 
@@ -125,6 +200,9 @@ function applyServerCommand(cmd:any){
 		break;
 		case "msgBox":
 			new MessageBox(cmd.t, cmd.m, cmd.b).show();
+			break;
+		case "formBox":
+			new FormBox(cmd.t, cmd.m, cmd.b, cmd.fa).show();
 			break;
 		case "show":
 		{
@@ -163,6 +241,9 @@ function applyServerCommand(cmd:any){
 			(el as any).value=cmd.v;
 		}
 		break;
+		case "refresh":
+			location.reload();
+			break;
 	}
 }
 

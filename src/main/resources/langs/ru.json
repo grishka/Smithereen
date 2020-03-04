@@ -9,13 +9,13 @@
   "password_confirm": "Пароль ещё раз",
   "send": "Отправить",
   "feed": "Лента",
-  "add_friend": "Добавить %s в друзья",
+  "add_friend": "Добавить в друзья",
   "remove_friend": "Удалить из друзей",
   "cancel_friend_request": "Отменить заявку",
   "write_on_own_wall": "Что у Вас нового?",
   "write_on_X_wall": "Написать на стене %s...",
   "birth_date": "Дата рождения",
-  "sending_friend_req_to_X": "Вы собираетесь отправить заявку в друзья %s.",
+  "sending_friend_req_to_X": "Вы собираетесь отправить заявку в друзья <b>%s</b>.",
   "add_optional_message": "Добавить сообщение (не обязательно)",
 
   "err_user_not_found": "Пользователь не найден. Возможно, он был удалён.",
@@ -32,7 +32,7 @@
   "accept": "Принять",
   "decline": "Отклонить",
   "no_incoming_friend_requests": "У вас нет неотвеченных заявок в друзья",
-  "confirm_unfriend_X": "Вы действительно хотите удалить %s из друзей?",
+  "confirm_unfriend_X": "Вы действительно хотите удалить <b>%s</b> из друзей?",
   "yes": "Да",
   "no": "Нет",
   "err_not_friends": "Этого пользователя нет у Вас в друзьях",
@@ -99,5 +99,12 @@
   "delete_reply": "Удалить комментарий",
   "delete_reply_confirm": "Вы действительно хотите удалить этот комментарий?",
   "add_reply": "Ответить",
-  "comment_placeholder": "Написать комментарий..."
+  "comment_placeholder": "Написать комментарий...",
+  "X_is_your_friend": "%s у Вас в друзьях",
+  "you_sent_friend_req_to_X": "Вы отправили %s заявку в друзья",
+  "X_sent_you_friend_req": ["%s отправил Вам заявку в друзья", "%s отправила Вам заявку в друзья"],
+  "you_are_following_X": "Вы подписаны на %s",
+  "X_is_following_you": ["%s подписан на Вас", "%s подписана на Вас"],
+  "waiting_for_X_to_accept_follow_req": "Вы ожидаете принятия %s запроса на подписку",
+  "cancel": "Отмена"
 }

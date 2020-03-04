@@ -140,7 +140,7 @@ h2{
 
 .profileBlock .blockSubheader{
 		height: 24px;
-		background: #FAFAFA;
+		background: #F7F7F7;
 		color: #707070;
 		padding: 0 6px;
 	}
@@ -163,7 +163,9 @@ h2{
 
 .avaPlaceholder{
 	display: inline-block;
-	background: #FAFAFA;
+	background: #DDDDDD;
+	vertical-align: top;
+	margin: 0;
 }
 
 .membersRow td{
@@ -225,7 +227,7 @@ h2{
 	}
 
 .gray{
-	background: #FAFAFA;
+	background: #F7F7F7;
 }
 
 .profileFields{
@@ -278,6 +280,8 @@ input[type=submit], input[type=button], button, .button:link, .button:visited{
 	padding: 0 10px;
 	height: 24px;
 	line-height: 22px;
+	display: inline-block;
+	box-sizing: border-box;
 }
 
 input[type=submit].loading, input[type=submit].loading:hover, input[type=button].loading, input[type=button].loading:hover, button.loading, button.loading:hover, .button:link.loading, .button:link.loading:hover, .button:visited.loading, .button:visited.loading:hover{
@@ -297,26 +301,26 @@ input[type=submit]:active, input[type=button]:active, .button:active, .button:vi
 }
 
 input[type=submit].secondary, input[type=button].secondary, button.secondary, .button.secondary:link, .button.secondary:visited{
-	background: linear-gradient(to bottom, #FAFAFA, #e1e1e1);
+	background: linear-gradient(to bottom, #F7F7F7, #dedede);
 	text-shadow: 0 1px 0 rgba(255, 255, 255, .8);
-	border: solid 1px #c8c8c8;
+	border: solid 1px #c6c6c6;
 	color: #707070;
 	box-shadow: 0 1px 0 #ffffff inset;
 }
 
 input[type=submit].secondary.loading, input[type=submit].secondary.loading:hover, input[type=button].secondary.loading, input[type=button].secondary.loading:hover, button.secondary.loading, button.secondary.loading:hover, .button.secondary:link.loading, .button.secondary:link.loading:hover, .button.secondary:visited.loading, .button.secondary:visited.loading:hover{
-		background: url(/res/loader_overlay.svg), linear-gradient(to bottom, #FAFAFA, #e1e1e1);
+		background: url(/res/loader_overlay.svg), linear-gradient(to bottom, #F7F7F7, #dedede);
 	}
 
 input[type=submit].secondary:hover, input[type=button].secondary:hover, .button.secondary:hover, .button.secondary:visited:hover{
 	text-decoration: none;
-	background: linear-gradient(to bottom, #ffffff, #eeeeee);
+	background: linear-gradient(to bottom, #ffffff, #ebebeb);
 	box-shadow: 0 1px 0 #ffffff inset;
 }
 
 input[type=submit].secondary:active, input[type=button].secondary:active, .button.secondary:active, .button.secondary:visited:active{
 	text-decoration: none;
-	background: #c8c8c8;
+	background: #c6c6c6;
 	box-shadow: none;
 }
 
@@ -490,8 +494,8 @@ input[type=submit].secondary:active, input[type=button].secondary:active, .butto
 
 .boxButtonBar{
 	height: 48px;
-	background: #FAFAFA;
-	border-top: solid 1px #e1e1e1;
+	background: #F7F7F7;
+	border-top: solid 1px #dedede;
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
@@ -515,3 +519,20 @@ input[type=submit].secondary:active, input[type=button].secondary:active, .butto
 	border: solid 1px rgba(0, 0, 0, .1);
 	background: #FFFFFF;
 }
+
+.profileBelowAva{
+	background: #F7F7F7;
+	border-bottom: solid 1px #DDDDDD;
+	text-align: center;
+	padding: 22px 16px 16px 16px;
+	margin-top: -6px;
+	color: #707070;
+}
+
+.profileBelowAva .button{
+		width: 100%;
+	}
+
+.profileBelowAva .button.withText{
+			margin-top: 8px;
+		}

@@ -360,4 +360,8 @@ public class Utils{
 	public static boolean isAjax(Request req){
 		return req.queryParams("_ajax")!=null;
 	}
+
+	public static String escapeHTML(String s){
+		return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+	}
 }

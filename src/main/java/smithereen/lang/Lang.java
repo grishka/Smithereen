@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import smithereen.data.User;
+
 public class Lang{
 	private static HashMap<String, Lang> langsByLocale=new HashMap<>();
 	public static List<Lang> list;
@@ -126,6 +128,28 @@ public class Lang{
 			}
 		}catch(JSONException x){
 			return quantity+" "+key+" "+Arrays.toString(formatArgs);
+		}
+	}
+
+	public String gendered(String key, User.Gender gender, Object... formatArgs){
+		try{
+			JSONArray ar=data.optJSONArray(key);
+			if(ar==null)
+				return get(key, formatArgs);
+			String s;
+			switch(gender){
+				case FEMALE:
+					s=ar.getString(1);
+					break;
+				case MALE:
+				case UNKNOWN:
+				default:
+					s=ar.getString(0);
+					break;
+			}
+			return formatArgs.length>0 ? String.format(locale, s, formatArgs) : s;
+		}catch(JSONException x){
+			return key+" "+Arrays.toString(formatArgs);
 		}
 	}
 

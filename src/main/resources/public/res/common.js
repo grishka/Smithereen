@@ -94,23 +94,6 @@ var BaseLayer = /** @class */ (function () {
     BaseLayer.prototype.onHidden = function () { };
     return BaseLayer;
 }());
-var TestLayer = /** @class */ (function (_super) {
-    __extends(TestLayer, _super);
-    function TestLayer() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    TestLayer.prototype.onCreateContentView = function () {
-        var el = document.createElement("div");
-        var text = "";
-        for (var i = 0; i < 5; i++) {
-            text += "test layer " + i + "<br/>";
-        }
-        el.innerHTML = text;
-        el.style.width = "500px";
-        return el;
-    };
-    return TestLayer;
-}(BaseLayer));
 var Box = /** @class */ (function (_super) {
     __extends(Box, _super);
     function Box(title, buttonTitles, onButtonClick) {
@@ -177,7 +160,7 @@ var ConfirmBox = /** @class */ (function (_super) {
             }
         }) || this;
         var content = document.createElement("div");
-        content.innerText = msg;
+        content.innerHTML = msg;
         _this.setContent(content);
         return _this;
     }
@@ -188,13 +171,63 @@ var MessageBox = /** @class */ (function (_super) {
     function MessageBox(title, msg, btn) {
         var _this = _super.call(this, title, [btn]) || this;
         var content = document.createElement("div");
-        content.innerText = msg;
+        content.innerHTML = msg;
         _this.setContent(content);
         return _this;
     }
     return MessageBox;
 }(Box));
+var FormBox = /** @class */ (function (_super) {
+    __extends(FormBox, _super);
+    function FormBox(title, c, btn, act) {
+        var _this = _super.call(this, title, [btn, lang("cancel")], function (idx) {
+            if (idx == 0) {
+                var btn = this.getButton(0);
+                btn.setAttribute("disabled", "");
+                this.getButton(1).setAttribute("disabled", "");
+                btn.classList.add("loading");
+                setGlobalLoading(true);
+                ajaxSubmitForm(this.form, this.dismiss.bind(this));
+            }
+            else {
+                this.dismiss();
+            }
+        }) || this;
+        var content = document.createElement("div");
+        _this.form = document.createElement("form");
+        _this.form.innerHTML = c;
+        _this.form.action = act;
+        content.appendChild(_this.form);
+        _this.setContent(content);
+        return _this;
+    }
+    return FormBox;
+}(Box));
 var submittingForm = null;
+String.prototype.format = function () {
+    var args = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        args[_i] = arguments[_i];
+    }
+    var currentIndex = 0;
+    return this.replace(/%(?:(\d+)\$)?([ds%])/gm, function (match, g1, g2) {
+        if (g2 == "%")
+            return "%";
+        var index = g1 ? (parseInt(g1) - 1) : currentIndex;
+        currentIndex++;
+        switch (g2) {
+            case "d":
+                return Number(args[index]);
+            case "s":
+                return args[index].toString().escapeHTML();
+        }
+    });
+};
+String.prototype.escapeHTML = function () {
+    var el = document.createElement("span");
+    el.innerText = this;
+    return el.innerHTML;
+};
 function ajaxPost(uri, params, onDone, onError) {
     var xhr = new XMLHttpRequest();
     xhr.open("POST", uri);
@@ -214,6 +247,23 @@ function ajaxPost(uri, params, onDone, onError) {
     xhr.responseType = "json";
     xhr.send(formData.join("&"));
 }
+function ajaxGet(uri, onDone, onError) {
+    var xhr = new XMLHttpRequest();
+    if (uri.indexOf("?") != -1)
+        uri += "&_ajax=1";
+    else
+        uri += "?_ajax=1";
+    xhr.open("GET", uri);
+    xhr.onload = function () {
+        onDone(xhr.response);
+    };
+    xhr.onerror = function (ev) {
+        console.log(ev);
+        onError();
+    };
+    xhr.responseType = "json";
+    xhr.send();
+}
 function hide(el) {
     el.style.display = "none";
 }
@@ -224,7 +274,12 @@ function isVisible(el) {
     return el.style.display != "none";
 }
 function lang(key) {
-    return langKeys[key] ? langKeys[key] : key;
+    if (!(key instanceof Array))
+        return langKeys[key] ? langKeys[key] : key;
+    var _key = key[0];
+    if (!langKeys[_key])
+        return key.toString().escapeHTML();
+    return langKeys[_key].format(key.slice(1));
 }
 function setGlobalLoading(loading) {
     document.body.style.cursor = loading ? "progress" : "";
@@ -256,12 +311,14 @@ function ajaxConfirm(titleKey, msgKey, url, params) {
     box.show();
     return false;
 }
-function ajaxSubmitForm(form) {
+function ajaxSubmitForm(form, onDone) {
+    if (onDone === void 0) { onDone = null; }
     if (submittingForm)
         return false;
     submittingForm = form;
     var submitBtn = form.querySelector("input[type=submit]");
-    submitBtn.classList.add("loading");
+    if (submitBtn)
+        submitBtn.classList.add("loading");
     setGlobalLoading(true);
     var data = {};
     var elems = form.elements;
@@ -271,21 +328,46 @@ function ajaxSubmitForm(form) {
             continue;
         data[el.name] = el.value;
     }
+    data.csrf = userConfig.csrf;
     ajaxPost(form.action, data, function (resp) {
         submittingForm = null;
-        submitBtn.classList.remove("loading");
+        if (submitBtn)
+            submitBtn.classList.remove("loading");
         setGlobalLoading(false);
         if (resp instanceof Array) {
             for (var i = 0; i < resp.length; i++) {
                 applyServerCommand(resp[i]);
             }
         }
+        if (onDone)
+            onDone();
     }, function () {
         submittingForm = null;
-        submitBtn.classList.remove("loading");
+        if (submitBtn)
+            submitBtn.classList.remove("loading");
         setGlobalLoading(false);
         new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+        if (onDone)
+            onDone();
     });
+    return false;
+}
+function ajaxFollowLink(link) {
+    if (link.getAttribute("data-ajax")) {
+        setGlobalLoading(true);
+        ajaxGet(link.href, function (resp) {
+            setGlobalLoading(false);
+            if (resp instanceof Array) {
+                for (var i = 0; i < resp.length; i++) {
+                    applyServerCommand(resp[i]);
+                }
+            }
+        }, function () {
+            setGlobalLoading(false);
+            new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+        });
+        return true;
+    }
     return false;
 }
 function applyServerCommand(cmd) {
@@ -313,6 +395,9 @@ function applyServerCommand(cmd) {
             break;
         case "msgBox":
             new MessageBox(cmd.t, cmd.m, cmd.b).show();
+            break;
+        case "formBox":
+            new FormBox(cmd.t, cmd.m, cmd.b, cmd.fa).show();
             break;
         case "show":
             {
@@ -353,6 +438,9 @@ function applyServerCommand(cmd) {
                 el.value = cmd.v;
             }
             break;
+        case "refresh":
+            location.reload();
+            break;
     }
 }
 function showPostReplyForm(id) {
@@ -383,4 +471,11 @@ else {
 if (!userConfig || !userConfig["timeZone"] || timeZone != userConfig.timeZone) {
     ajaxPost("/settings/setTimezone", { tz: timeZone }, function (resp) { }, function () { });
 }
+document.body.addEventListener("click", function (ev) {
+    if (ev.target.tagName == "A") {
+        if (ajaxFollowLink(ev.target)) {
+            ev.preventDefault();
+        }
+    }
+}, false);
 //# sourceMappingURL=common.js.map

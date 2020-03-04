@@ -11,3 +11,11 @@ if(window["Intl"]){
 if(!userConfig || !userConfig["timeZone"] || timeZone!=userConfig.timeZone){
 	ajaxPost("/settings/setTimezone", {tz: timeZone}, function(resp:any){}, function(){});
 }
+
+document.body.addEventListener("click", function(ev){
+	if((ev.target as HTMLElement).tagName=="A"){
+		if(ajaxFollowLink(ev.target as HTMLAnchorElement)){
+			ev.preventDefault();
+		}
+	}
+}, false);

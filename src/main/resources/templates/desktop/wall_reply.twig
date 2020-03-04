@@ -1,5 +1,5 @@
 {%autoescape "html"%}
-<table width="100%" class="post comment" id="post{{post.id}}" data-reply-name="{{post.user.firstName}}">
+<table width="100%" class="post comment" id="post{{post.id}}" data-reply-name="{{post.user.nameForReply}}">
 	<tr>
 		<td width="40" valign="top">
 			<a href="{{post.user.url}}">{{pictureForAvatar(post.user.avatar, 's', 40)}}</a>

@@ -9,13 +9,13 @@
   "password_confirm": "Confirm password",
   "send": "Send",
   "feed": "News feed",
-  "add_friend": "Add %s as a friend",
+  "add_friend": "Add as a friend",
   "remove_friend": "Unfriend",
   "cancel_friend_request": "Cancel request",
   "write_on_own_wall": "What's new?",
   "write_on_X_wall": "Write in %s's wall...",
   "birth_date": "Birth date",
-  "sending_friend_req_to_X": "You're sending a friend request to %s.",
+  "sending_friend_req_to_X": "You're sending a friend request to <b>%s</b>.",
   "add_optional_message": "Add an optional message",
 
   "err_user_not_found": "User not found.",
@@ -32,7 +32,7 @@
   "accept": "Accept",
   "decline": "Decline",
   "no_incoming_friend_requests": "You don't have any unanswered friend requests.",
-  "confirm_unfriend_X": "Are you sure you want to unfriend %s?",
+  "confirm_unfriend_X": "Are you sure you want to unfriend <b>%s</b>?",
   "yes": "Yes",
   "no": "No",
   "err_not_friends": "This user is not your friend",
@@ -99,5 +99,12 @@
   "delete_reply": "Delete comment",
   "delete_reply_confirm": "Are you sure you want to delete this comment?",
   "add_reply": "Reply",
-  "comment_placeholder": "Write a comment..."
+  "comment_placeholder": "Write a comment...",
+  "X_is_your_friend": "%s is your friend",
+  "you_sent_friend_req_to_X": "You send %s a friend request",
+  "X_sent_you_friend_req": "%s sent you a friend request",
+  "you_are_following_X": "You follow %s",
+  "X_is_following_you": "%s follows you",
+  "waiting_for_X_to_accept_follow_req": "You're waiting for %s to accept your follow request",
+  "cancel": "Cancel"
 }
