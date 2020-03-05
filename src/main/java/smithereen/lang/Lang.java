@@ -91,6 +91,9 @@ public class Lang{
 			case "ru":
 				pluralRules=new RussianPluralRules();
 				break;
+			case "tr":
+				pluralRules=new SingleFormPluralRules();
+				break;
 			case "en":
 			default:
 				pluralRules=new EnglishPluralRules();
