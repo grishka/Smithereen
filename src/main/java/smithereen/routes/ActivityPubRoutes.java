@@ -323,7 +323,7 @@ public class ActivityPubRoutes{
 			return x.toString();
 		}
 		ForeignUser user=UserStorage.getForeignUserByActivityPubID(activity.actor.link);
-		if(user==null){
+		if(user==null || user.lastUpdated==null || System.currentTimeMillis()-user.lastUpdated.getTime()>24L*60*60*1000){
 			try{
 				ActivityPubObject userObj=ActivityPub.fetchRemoteObject(activity.actor.link.toString());
 				if(!(userObj instanceof ForeignUser)){
@@ -419,6 +419,7 @@ public class ActivityPubRoutes{
 			x.printStackTrace();
 			throw new SQLException(x);
 		}catch(ObjectNotFoundException x){
+			x.printStackTrace();
 			resp.status(404);
 			return x.toString();
 		}catch(Exception x){

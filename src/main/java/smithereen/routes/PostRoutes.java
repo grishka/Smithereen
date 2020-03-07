@@ -248,7 +248,7 @@ public class PostRoutes{
 				meta.put("og:description", Utils.truncateOnWordBoundary(post.content, 250));
 			}
 			boolean hasImage=false;
-			if(!post.attachment.isEmpty()){
+			if(post.attachment!=null && !post.attachment.isEmpty()){
 				for(Attachment att : post.getProcessedAttachments()){
 					if(att instanceof PhotoAttachment){
 						PhotoSize size=MediaStorageUtils.findBestPhotoSize(((PhotoAttachment) att).sizes, PhotoSize.Format.JPEG, PhotoSize.Type.MEDIUM);

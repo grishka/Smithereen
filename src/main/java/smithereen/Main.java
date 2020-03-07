@@ -153,6 +153,11 @@ public class Main{
 			postWithCSRF("/delete", PostRoutes::delete);
 		});
 
+		get("/robots.txt", (req, resp)->{
+			resp.type("text/plain");
+			return "";
+		});
+
 		path("/:username", ()->{
 			get("", "application/activity+json", ActivityPubRoutes::userActor);
 			get("", "application/ld+json", ActivityPubRoutes::userActor);
@@ -174,6 +179,8 @@ public class Main{
 
 
 		exception(Exception.class, (exception, req, res) -> {
+			System.out.println("Exception while processing "+req.requestMethod()+" "+req.raw().getPathInfo());
+			exception.printStackTrace();
 			res.status(500);
 			StringWriter sw=new StringWriter();
 			exception.printStackTrace(new PrintWriter(sw));
@@ -188,17 +195,19 @@ public class Main{
 			}
 
 			if(req.headers("accept")==null || !req.headers("accept").startsWith("application/")){
-				if(req.session().attribute("info")==null)
-					req.session().attribute("info", new SessionInfo());
-				if(req.requestMethod().equalsIgnoreCase("get") && req.attribute("noHistory")==null){
-					SessionInfo info=req.session().attribute("info");
-					String path=req.pathInfo();
-					String query=req.raw().getQueryString();
-					if(StringUtils.isNotEmpty(query)){
-						path+='?'+query;
+				try{
+					if(req.session().attribute("info")==null)
+						req.session().attribute("info", new SessionInfo());
+					if(req.requestMethod().equalsIgnoreCase("get") && req.attribute("noHistory")==null){
+						SessionInfo info=req.session().attribute("info");
+						String path=req.pathInfo();
+						String query=req.raw().getQueryString();
+						if(StringUtils.isNotEmpty(query)){
+							path+='?'+query;
+						}
+						info.history.add(path);
 					}
-					info.history.add(path);
-				}
+				}catch(Throwable ignore){}
 			}
 		});
 	}

@@ -46,7 +46,7 @@ import spark.utils.StringUtils;
 
 public class Utils{
 
-	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session");
+	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt");
 	private static final PolicyFactory HTML_SANITIZER;
 	private static final SimpleDateFormat ISO_DATE_FORMAT;
 	private static final String staticFileHash;
@@ -181,7 +181,7 @@ public class Utils{
 			resp.type("application/json");
 			return new WebDeltaResponseBuilder().messageBox(l.get("error"), msg, l.get("ok")).json().toString();
 		}
-		return renderTemplate(req, "generic_error", JtwigModel.newModel().with("error", msg).with("back", info.history.last()));
+		return renderTemplate(req, "generic_error", JtwigModel.newModel().with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/"));
 	}
 
 	public static Locale localeForRequest(Request req){
@@ -353,7 +353,7 @@ public class Utils{
 		s=s.replace("</p><p>", "\n\n").replace("<br/>", "\n").replaceAll("<[^>]+>", "");
 		if(s.length()<=maxLen+20)
 			return s;
-		int len=Math.min(s.indexOf(' ', maxLen), maxLen+20);
+		int len=Math.max(0, Math.min(s.indexOf(' ', maxLen), maxLen+20));
 		return s.substring(0, len)+"...";
 	}
 
