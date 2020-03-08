@@ -3,6 +3,11 @@ package smithereen.activitypub;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -15,6 +20,10 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
 import okhttp3.Call;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -24,6 +33,7 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import smithereen.Config;
 import smithereen.DisallowLocalhostInterceptor;
+import smithereen.LruCache;
 import smithereen.ObjectNotFoundException;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -32,12 +42,14 @@ import smithereen.data.User;
 import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
+import spark.utils.StringUtils;
 
 public class ActivityPub{
 
 	public static final URI AS_PUBLIC=URI.create(JLD.ACTIVITY_STREAMS+"#Public");
 
 	private static OkHttpClient httpClient;
+	private static LruCache<String, String> domainRedirects=new LruCache<>(100);
 
 	static{
 		httpClient=new OkHttpClient.Builder()
@@ -154,10 +166,16 @@ public class ActivityPub{
 		return uri.equals(AS_PUBLIC) || ("as".equals(uri.getScheme()) && "Public".equals(uri.getSchemeSpecificPart()));
 	}
 
-	public static URI resolveUsername(String username, String domain) throws IOException{
+	private static URI doWebfingerRequest(String username, String domain, String uriTemplate) throws IOException{
 		String resource="acct:"+username+"@"+domain;
+		String url;
+		if(StringUtils.isEmpty(uriTemplate)){
+			url="https://"+domain+"/.well-known/webfinger?resource="+resource;
+		}else{
+			url=uriTemplate.replace("{uri}", resource);
+		}
 		Request req=new Request.Builder()
-				.url("https://"+domain+"/.well-known/webfinger?resource="+resource)
+				.url(url)
 				.build();
 		Response resp=httpClient.newCall(req).execute();
 		try(ResponseBody body=resp.body()){
@@ -182,6 +200,75 @@ public class ActivityPub{
 			}
 		}catch(JSONException|URISyntaxException x){
 			throw new IOException("Response parse failed", x);
+		}
+	}
+
+	public static URI resolveUsername(String username, String domain) throws IOException{
+		String redirect;
+		synchronized(ActivityPub.class){
+			redirect=domainRedirects.get(domain);
+		}
+		try{
+			URI uri=doWebfingerRequest(username, domain, redirect);
+			if(redirect==null){
+				synchronized(ActivityPub.class){
+					// Cache an empty string indicating that this domain doesn't have a redirect.
+					// This is to avoid a useless host-meta request when a nonexistent username is looked up on that instance.
+					domainRedirects.put(domain, "");
+				}
+			}
+			return uri;
+		}catch(ObjectNotFoundException x){
+			if(redirect==null){
+				Request req=new Request.Builder()
+						.url("https://"+domain+"/.well-known/host-meta")
+						.header("Accept", "application/xrd+xml")
+						.build();
+				Response resp=httpClient.newCall(req).execute();
+				try(ResponseBody body=resp.body()){
+					if(resp.isSuccessful()){
+						DocumentBuilderFactory factory=DocumentBuilderFactory.newInstance();
+						DocumentBuilder builder=factory.newDocumentBuilder();
+						Document doc=builder.parse(body.byteStream());
+						NodeList nodes=doc.getElementsByTagName("Link");
+						for(int i=0; i<nodes.getLength(); i++){
+							Node node=nodes.item(i);
+							NamedNodeMap attrs=node.getAttributes();
+							if(attrs!=null){
+								Node _rel=attrs.getNamedItem("rel");
+								Node _type=attrs.getNamedItem("type");
+								Node _template=attrs.getNamedItem("template");
+								if(_rel!=null && _type!=null && _template!=null){
+									String rel=_rel.getNodeValue();
+									String type=_type.getNodeValue();
+									String template=_template.getNodeValue();
+									if("lrdd".equals(rel) && "application/xrd+xml".equals(type)){
+										if((template.startsWith("https://") || (Config.useHTTP && template.startsWith("http://"))) && template.contains("{uri}")){
+											synchronized(ActivityPub.class){
+												if(("https://"+domain+"/.well-known/webfinger?resource={uri}").equals(template)){
+													// this isn't a real redirect
+													domainRedirects.put(domain, "");
+													// don't repeat the request, we already know that username doesn't exist (but the webfinger endpoint does)
+													throw new ObjectNotFoundException(x);
+												}else{
+													System.out.println("Found domain redirect: "+domain+" -> "+template);
+													domainRedirects.put(domain, template);
+												}
+											}
+											return doWebfingerRequest(username, domain, template);
+										}else{
+											throw new ObjectNotFoundException("Malformed URI template '"+template+"' in host-meta domain redirect", x);
+										}
+									}
+								}
+							}
+						}
+					}
+				}catch(ParserConfigurationException|SAXException e){
+					throw new ObjectNotFoundException("Webfinger returned 404 and host-meta can't be parsed", e);
+				}
+			}
+			throw new ObjectNotFoundException(x);
 		}
 	}
 }
