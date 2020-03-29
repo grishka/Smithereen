@@ -58,6 +58,13 @@
 					<finalName>smithereen</finalName>
 				</configuration>
 			</plugin>
+			<plugin>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.0.0-M4</version>
+				<configuration>
+					<skipTests>true</skipTests>
+				</configuration>
+			</plugin>
 		</plugins>
 
 		<resources>
@@ -111,9 +118,10 @@
 			<version>20190722</version>
 		</dependency>
 		<dependency>
-			<groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
-			<artifactId>owasp-java-html-sanitizer</artifactId>
-			<version>20180219.1</version>
+			<!-- jsoup HTML parser library @ https://jsoup.org/ -->
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.13.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.squareup.okhttp3</groupId>

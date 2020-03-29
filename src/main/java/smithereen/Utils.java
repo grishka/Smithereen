@@ -1,18 +1,11 @@
 package smithereen;
 
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Whitelist;
 import org.jtwig.JtwigModel;
 import org.jtwig.JtwigTemplate;
-import org.owasp.html.ElementPolicy;
-import org.owasp.html.HtmlPolicyBuilder;
-import org.owasp.html.HtmlSanitizer;
-import org.owasp.html.HtmlStreamRenderer;
-import org.owasp.html.PolicyFactory;
 
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.Transparency;
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -47,37 +40,11 @@ import spark.utils.StringUtils;
 public class Utils{
 
 	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt");
-	private static final PolicyFactory HTML_SANITIZER;
+	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
 	private static final SimpleDateFormat ISO_DATE_FORMAT;
 	private static final String staticFileHash;
 
 	static{
-		HTML_SANITIZER=new HtmlPolicyBuilder()
-				.allowStandardUrlProtocols()
-				.allowElements("b", "strong", "i", "em", "u", "s", "p", "code", "br")
-				.allowElements(new ElementPolicy(){
-					@Override
-					public String apply(String el, List<String> attrs){
-						int hrefIndex=attrs.indexOf("href");
-						if(hrefIndex!=-1 && attrs.size()>hrefIndex+1){
-							String href=attrs.get(hrefIndex+1).toLowerCase();
-							try{
-								URI uri=new URI(href);
-								if(uri.isAbsolute() && !Config.isLocal(uri)){
-									attrs.add("target");
-									attrs.add("_blank");
-								}
-							}catch(URISyntaxException x){
-								attrs.add("target");
-								attrs.add("_blank");
-							}
-						}
-						return "a";
-					}
-				}, "a")
-				.allowAttributes("href").onElements("a")
-				.toFactory();
-
 		ISO_DATE_FORMAT=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
 		ISO_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
 		staticFileHash=new Random().nextLong()+"";
@@ -245,9 +212,11 @@ public class Utils{
 	}
 
 	public static String sanitizeHTML(String src){
-		StringBuilder sb=new StringBuilder();
-		HtmlSanitizer.sanitize(src, HTML_SANITIZER.apply(new SimpleHtmlStreamRenderer(sb)));
-		return sb.toString();
+		return Jsoup.clean(src, HTML_SANITIZER);
+	}
+
+	public static String sanitizeHTML(String src, URI documentLocation){
+		return Jsoup.clean(src, documentLocation.toString(), HTML_SANITIZER);
 	}
 
 	public static String formatDateAsISO(Date date){
