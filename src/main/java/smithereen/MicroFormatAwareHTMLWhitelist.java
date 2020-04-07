@@ -14,11 +14,11 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 	private static final List<String> ALLOWED_CLASSES=Arrays.asList(
 			"h-card",
 			"u-url",
-			"mention", "hashtag"
+			"mention", "hashtag", "invisible"
 	);
 
 	public MicroFormatAwareHTMLWhitelist(){
-		addTags("a", "b", "i", "u", "s", "code", "p", "em", "strong", "span");
+		addTags("a", "b", "i", "u", "s", "code", "p", "em", "strong", "span", "sarcasm", "sub", "sup", "br");
 		addAttributes("a", "href");
 		addProtocols("a", "href", "http", "https");
 	}

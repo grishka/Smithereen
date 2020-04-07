@@ -119,7 +119,7 @@ public class ActivityPubRoutes{
 		int minID=Math.max(0, _minID);
 		int maxID=Math.max(0, _maxID);
 		int[] _total={0};
-		List<Post> posts=PostStorage.getUserWall(user.id, minID, maxID, _total);
+		List<Post> posts=PostStorage.getUserWall(user.id, minID, maxID, 0, _total);
 		int total=_total[0];
 		CollectionPage page=new CollectionPage(true);
 		page.totalItems=total;
@@ -138,7 +138,7 @@ public class ActivityPubRoutes{
 			URI baseURI=Config.localURI("/users/"+user.id+"/outbox");
 			page.partOf=baseURI;
 			if(posts.size()>0){
-				page.next=URI.create(baseURI+"?max_id="+posts.get(posts.size()-1).id);
+				page.next=URI.create(baseURI+"?max_id="+(posts.get(posts.size()-1).id-1));
 				page.prev=URI.create(baseURI+"?min_id="+posts.get(0).id);
 			}
 			if(_minID!=-1)

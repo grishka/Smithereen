@@ -38,8 +38,10 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			int[] postCount={0};
-			List<Post> wall=PostStorage.getUserWall(user.id, 0, 0, postCount);
+			int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
+			List<Post> wall=PostStorage.getUserWall(user.id, 0, 0, offset, postCount);
 			JtwigModel model=JtwigModel.newModel().with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
+			model.with("pageOffset", offset);
 
 			int[] friendCount={0};
 			List<User> friends=UserStorage.getRandomFriendsForProfile(user.id, friendCount);

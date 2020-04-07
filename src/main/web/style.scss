@@ -494,3 +494,30 @@ input[type=submit].secondary:active, input[type=button].secondary:active, .butto
 		}
 	}
 }
+
+.pagination{
+	padding: 8px;
+	text-align: center;
+	a, span{
+		padding: 8px;
+	}
+	a:hover, a:visited:hover{
+		text-decoration: none;
+	}
+	.curPage{
+		background: $accent;
+		color: $textOnAccent;
+	}
+	.page{
+		border-bottom: solid 1px color($accent alpha(30%));
+		padding-bottom: 7px;
+		transition-property: border-bottom-color, border-bottom-width, padding-bottom;
+		transition-duration: 0.2s;
+		transition-timing-function: ease-in-out;
+		&:hover, &:visited:hover{
+			border-bottom-color: color($accent alpha(70%));
+			border-bottom-width: 3px;
+			padding-bottom: 5px;
+		}
+	}
+}

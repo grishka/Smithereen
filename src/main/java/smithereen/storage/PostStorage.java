@@ -199,7 +199,7 @@ public class PostStorage{
 		return posts;
 	}
 
-	public static List<Post> getUserWall(int userID, int minID, int maxID, int[] total) throws SQLException{
+	public static List<Post> getUserWall(int userID, int minID, int maxID, int offset, int[] total) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt;
 		if(total!=null){
@@ -214,10 +214,10 @@ public class PostStorage{
 			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `id`>? AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT 25");
 			stmt.setInt(2, minID);
 		}else if(maxID>0){
-			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `id`<? AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT 25");
+			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `id`=<? AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT "+offset+",25");
 			stmt.setInt(2, maxID);
 		}else{
-			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT 25");
+			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT "+offset+",25");
 		}
 		stmt.setInt(1, userID);
 		ArrayList<Post> posts=new ArrayList<>();

@@ -536,3 +536,35 @@ input[type=submit].secondary:active, input[type=button].secondary:active, .butto
 .profileBelowAva .button.withText{
 			margin-top: 8px;
 		}
+
+.pagination{
+	padding: 8px;
+	text-align: center;
+}
+
+.pagination a, .pagination span{
+		padding: 8px;
+	}
+
+.pagination a:hover, .pagination a:visited:hover{
+		text-decoration: none;
+	}
+
+.pagination .curPage{
+		background: #aab42f;
+		color: #FFFFFF;
+	}
+
+.pagination .page{
+		border-bottom: solid 1px rgba(170, 180, 47, 0.3);
+		padding-bottom: 7px;
+		transition-property: border-bottom-color, border-bottom-width, padding-bottom;
+		transition-duration: 0.2s;
+		transition-timing-function: ease-in-out;
+	}
+
+.pagination .page:hover, .pagination .page:visited:hover{
+			border-bottom-color: rgba(170, 180, 47, 0.7);
+			border-bottom-width: 3px;
+			padding-bottom: 5px;
+		}
