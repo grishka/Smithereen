@@ -77,14 +77,14 @@ public class PostRoutes{
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
-			String text=Utils.sanitizeHTML(req.queryParams("text")).replace("\r", "").trim();
+			String text=Utils.sanitizeHTML(req.queryParams("text").replace("\n", "<br>").replace("\r", "")).trim();
 			if(text.length()==0)
 				return "Empty post";
 			if(!text.startsWith("<p>")){
-				String[] paragraphs=text.replaceAll("\n{3,}", "\n\n").split("\n\n");
+				String[] paragraphs=text.split("(\n?<br>){2,}");
 				StringBuilder sb=new StringBuilder();
 				for(String paragraph:paragraphs){
-					String p=paragraph.trim().replace("\n", "<br/>");
+					String p=paragraph.trim();
 					if(p.isEmpty())
 						continue;
 					sb.append("<p>");

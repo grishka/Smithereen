@@ -158,6 +158,13 @@ public class Main{
 			return "";
 		});
 
+		path("/my", ()->{
+			getLoggedIn("/incomingFriendRequests", ProfileRoutes::incomingFriendRequests);
+			get("/friends", ProfileRoutes::friends);
+			get("/followers", ProfileRoutes::followers);
+			get("/following", ProfileRoutes::following);
+		});
+
 		path("/:username", ()->{
 			get("", "application/activity+json", ActivityPubRoutes::userActor);
 			get("", "application/ld+json", ActivityPubRoutes::userActor);
@@ -172,7 +179,6 @@ public class Main{
 			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
 			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
 			get("/friends", ProfileRoutes::friends);
-			getLoggedIn("/incomingFriendRequests", ProfileRoutes::incomingFriendRequests);
 			get("/followers", ProfileRoutes::followers);
 			get("/following", ProfileRoutes::following);
 		});

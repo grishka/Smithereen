@@ -206,7 +206,16 @@ public class ProfileRoutes{
 
 	public static Object friends(Request req, Response resp) throws SQLException{
 		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
+		User user;
+		if(username==null){
+			if(requireAccount(req, resp)){
+				user=sessionInfo(req).account.user;
+			}else{
+				return "";
+			}
+		}else{
+			user=UserStorage.getByUsername(username);
+		}
 		if(user!=null){
 			JtwigModel model=JtwigModel.newModel();
 			model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
@@ -219,7 +228,16 @@ public class ProfileRoutes{
 
 	public static Object followers(Request req, Response resp) throws SQLException{
 		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
+		User user;
+		if(username==null){
+			if(requireAccount(req, resp)){
+				user=sessionInfo(req).account.user;
+			}else{
+				return "";
+			}
+		}else{
+			user=UserStorage.getByUsername(username);
+		}
 		if(user!=null){
 			JtwigModel model=JtwigModel.newModel();
 			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true).with("tab", 1);
@@ -231,7 +249,16 @@ public class ProfileRoutes{
 
 	public static Object following(Request req, Response resp) throws SQLException{
 		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
+		User user;
+		if(username==null){
+			if(requireAccount(req, resp)){
+				user=sessionInfo(req).account.user;
+			}else{
+				return "";
+			}
+		}else{
+			user=UserStorage.getByUsername(username);
+		}
 		if(user!=null){
 			JtwigModel model=JtwigModel.newModel();
 			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true).with("tab", 2);
@@ -243,11 +270,6 @@ public class ProfileRoutes{
 	}
 
 	public static Object incomingFriendRequests(Request req, Response resp, Account self) throws SQLException{
-		String username=req.params(":username");
-		if(!self.user.username.equalsIgnoreCase(username)){
-			resp.redirect(Utils.back(req));
-			return "";
-		}
 		List<FriendRequest> requests=UserStorage.getIncomingFriendRequestsForUser(self.user.id, 0, 100);
 		JtwigModel model=JtwigModel.newModel();
 		model.with("friendRequests", requests);

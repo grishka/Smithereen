@@ -39,7 +39,7 @@ import spark.utils.StringUtils;
 
 public class Utils{
 
-	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt");
+	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my");
 	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
 	private static final SimpleDateFormat ISO_DATE_FORMAT;
 	private static final String staticFileHash;

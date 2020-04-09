@@ -67,7 +67,7 @@ h2{
 		line-height: 48px;
 		height: 48px;
 		padding: 0 8px;
-		text-shadow: 0 1px 0 rgba(0, 0, 0, .3);
+		text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
 	}
 	a.nav:hover, a.nav:visited:hover{
 		text-decoration: none;
@@ -278,7 +278,7 @@ input[type=text], input[type=password], input[type=email], textarea{
 
 input[type=submit], input[type=button], button, .button:link, .button:visited{
 	background: linear-gradient(to bottom, $accent, color($accent shade(10%)));
-	text-shadow: 0 1px 0 rgba(0, 0, 0, .3);
+	text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
 	border: solid 1px color($accent shade(20%));
 	border-radius: 2px;
 	color: $textOnAccent;
@@ -308,7 +308,7 @@ input[type=submit]:active, input[type=button]:active, .button:active, .button:vi
 
 input[type=submit].secondary, input[type=button].secondary, button.secondary, .button.secondary:link, .button.secondary:visited{
 	background: linear-gradient(to bottom, $gray, color($gray shade(10%)));
-	text-shadow: 0 1px 0 rgba(255, 255, 255, .8);
+	text-shadow: 0 1px 1px rgba(255, 255, 255, .8);
 	border: solid 1px color($gray shade(20%));
 	color: $textOnGray;
 	box-shadow: 0 1px 0 color($gray lightness(+10%)) inset;

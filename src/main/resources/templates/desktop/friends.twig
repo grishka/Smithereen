@@ -4,7 +4,7 @@
 <a href="{{owner.getProfileURL('friends')}}" class="{%if tab==0%}selected{%endif%}">{{L('friends')}}</a><a href="{{owner.getProfileURL('followers')}}" class="{%if tab==1%}selected{%endif%}">{{L('followers')}}</a><a href="{{owner.getProfileURL('following')}}" class="{%if tab==2%}selected{%endif%}">{{L('following')}}</a>
 {%if currentUser and currentUser.id==owner.id%}
 {%if userNotifications.newFriendRequests>0%}
-| <a href="{{currentUser.getProfileURL('incomingFriendRequests')}}">{{LP('X_friend_requests', userNotifications.newFriendRequests)}}</a>
+| <a href="/my/incomingFriendRequests">{{LP('X_friend_requests', userNotifications.newFriendRequests)}}</a>
 {%endif%}
 {%endif%}
 </div>
