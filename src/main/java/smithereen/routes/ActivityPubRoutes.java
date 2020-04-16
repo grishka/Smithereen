@@ -65,6 +65,8 @@ import spark.utils.StringUtils;
 
 public class ActivityPubRoutes{
 
+	private static final String CONTENT_TYPE="application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"";
+
 	public static Object userActor(Request req, Response resp) throws SQLException{
 		String username=req.params(":username");
 		User user;
@@ -73,6 +75,7 @@ public class ActivityPubRoutes{
 		else
 			user=UserStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
 		if(user!=null && !(user instanceof ForeignUser)){
+			resp.type(CONTENT_TYPE);
 			return user.asRootActivityPubObject();
 		}
 		resp.status(404);
@@ -90,6 +93,7 @@ public class ActivityPubRoutes{
 			resp.status(404);
 			return "Post not found";
 		}
+		resp.type(CONTENT_TYPE);
 		return post.asRootActivityPubObject();
 	}
 
@@ -153,7 +157,7 @@ public class ActivityPubRoutes{
 				return collection.asRootActivityPubObject();
 			}
 		}catch(URISyntaxException ignore){}
-		resp.type("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"");
+		resp.type(CONTENT_TYPE);
 		return page.asRootActivityPubObject();
 	}
 
@@ -470,7 +474,7 @@ public class ActivityPubRoutes{
 			collection.activityPubID=page.partOf;
 			return collection.asRootActivityPubObject();
 		}
-		resp.type("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"");
+		resp.type(CONTENT_TYPE);
 		return page.asRootActivityPubObject();
 	}
 
@@ -596,6 +600,10 @@ public class ActivityPubRoutes{
 		if(!object.attributedTo.equals(user.activityPubID))
 			throw new IllegalArgumentException("object.attributedTo and actor.id must match");
 		if(object instanceof Post){
+			if(PostStorage.getPostByID(object.activityPubID)!=null){
+				// Already exists. Ignore and return 200 OK.
+				return;
+			}
 			Post post=(Post) object;
 			if(post.user==null || post.user.id!=user.id)
 				throw new IllegalArgumentException("Can only create posts for self");
