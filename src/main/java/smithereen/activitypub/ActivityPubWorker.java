@@ -13,9 +13,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
@@ -26,8 +28,10 @@ import smithereen.activitypub.objects.activities.Undo;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
 import smithereen.data.User;
+import smithereen.data.notifications.NotificationUtils;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import spark.utils.StringUtils;
 
 public class ActivityPubWorker{
 	private static final ActivityPubWorker instance=new ActivityPubWorker();
@@ -190,9 +194,11 @@ public class ActivityPubWorker{
 
 	private static class FetchReplyThreadRunnable implements Runnable{
 		private ArrayList<Post> thread=new ArrayList<>();
+		private Post initialPost;
 
 		public FetchReplyThreadRunnable(Post post){
 			thread.add(post);
+			initialPost=post;
 		}
 
 		@Override
@@ -215,8 +221,17 @@ public class ActivityPubWorker{
 				}
 				Post topLevel=thread.get(0);
 				if(topLevel.owner==null){
-					System.out.println("Post from unknown user "+topLevel.attributedTo);
-					return;
+					boolean mentionsLocalUsers=false;
+					for(User user:initialPost.mentionedUsers){
+						if(!(user instanceof ForeignUser)){
+							mentionsLocalUsers=true;
+							break;
+						}
+					}
+					if(!mentionsLocalUsers){
+						System.out.println("Post from unknown user "+topLevel.attributedTo);
+						return;
+					}
 				}
 				for(int i=0;i<thread.size();i++){
 					Post p=thread.get(i);
@@ -231,11 +246,31 @@ public class ActivityPubWorker{
 							throw new IllegalArgumentException("Failed to get owner for post "+p.activityPubID);
 						}
 					}
+					Post prev=null;
 					if(i>0){
-						Post prev=thread.get(i-1);
+						prev=thread.get(i-1);
 						p.setParent(prev);
 					}
+					if(StringUtils.isNotEmpty(p.content))
+						p.content=Utils.sanitizeHTML(p.content);
+					if(StringUtils.isNotEmpty(p.summary))
+						p.summary=Utils.sanitizeHTML(p.summary);
+					if(p.tag!=null){
+						for(ActivityPubObject tag:p.tag){
+							if(tag instanceof Mention){
+								URI uri=((Mention) tag).href;
+								User mentionedUser=UserStorage.getUserByActivityPubID(uri);
+								if(mentionedUser!=null){
+									if(p.mentionedUsers.isEmpty())
+										p.mentionedUsers=new ArrayList<>();
+									if(!p.mentionedUsers.contains(mentionedUser))
+										p.mentionedUsers.add(mentionedUser);
+								}
+							}
+						}
+					}
 					PostStorage.putForeignWallPost(p);
+					NotificationUtils.putNotificationsForPost(p, prev);
 				}
 				System.out.println("Done fetching parent thread for "+topLevel.activityPubID);
 			}catch(Exception x){

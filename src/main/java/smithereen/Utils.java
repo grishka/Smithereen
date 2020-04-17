@@ -32,7 +32,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.UserNotifications;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.lang.Lang;
-import smithereen.storage.UserStorage;
+import smithereen.storage.NotificationsStorage;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -75,7 +75,7 @@ public class Utils{
 				jsConfig.put("csrf", info.csrfToken);
 				jsConfig.put("uid", info.account.user.id);
 				try{
-					UserNotifications notifications=UserStorage.getNotificationsForUser(account.user.id);
+					UserNotifications notifications=NotificationsStorage.getNotificationsForUser(account.user.id, account.prefs.lastSeenNotificationID);
 					model.with("userNotifications", notifications);
 				}catch(SQLException x){
 					throw new RuntimeException(x);
@@ -319,7 +319,7 @@ public class Utils{
 	}
 
 	public static String truncateOnWordBoundary(String s, int maxLen){
-		s=s.replace("</p><p>", "\n\n").replace("<br/>", "\n").replaceAll("<[^>]+>", "");
+		s=Jsoup.clean(s, Whitelist.none());
 		if(s.length()<=maxLen+20)
 			return s;
 		int len=Math.max(0, Math.min(s.indexOf(' ', maxLen), maxLen+20));

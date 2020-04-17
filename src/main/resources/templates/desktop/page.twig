@@ -36,6 +36,7 @@
 				<li><a href="/{{currentUser.username}}">{{L('menu_profile')}}</a></li>
 				<li><a href="/my/friends">{{L('menu_friends')}}{%if(userNotifications.newFriendRequestCount>0)%} (<b>{{userNotifications.newFriendRequestCount}}</b>){%endif%}</a></li>
 				<li><a href="/feed">{{L('menu_news')}}</a></li>
+				<li><a href="/my/notifications">{{L('menu_notifications')}}{%if(userNotifications.newNotificationsCount>0)%} (<b>{{userNotifications.newNotificationsCount}}</b>){%endif%}</a></li>
 				<li><a href="/settings/">{{L('menu_settings')}}</a></li>
 			</ul>
 			{%else%}

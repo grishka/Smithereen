@@ -106,5 +106,18 @@
   "you_are_following_X": "Вы подписаны на %s",
   "X_is_following_you": ["%s подписан на Вас", "%s подписана на Вас"],
   "waiting_for_X_to_accept_follow_req": "Вы ожидаете принятия %s запроса на подписку",
-  "cancel": "Отмена"
+  "cancel": "Отмена",
+  "menu_notifications": "Мои Уведомления",
+  "notifications": "Уведомления",
+  "deleted_placeholder": "[ДАННЫЕ УДАЛЕНЫ]",
+  "notification_replied_to_post": ["прокомментировал Вашу запись", "прокомментировала Вашу запись"],
+  "notification_replied_to_comment": ["ответил на Ваш комментарий", "ответила на Ваш комментарий"],
+  "notification_mentioned_in_post": ["упомянул Вас в записи", "упомянула Вас в записи"],
+  "notification_mentioned_in_comment": ["упомянул Вас в комментарии", "упомянула Вас в комментарии"],
+  "notification_liked_post": ["оценил Вашу запись", "оценила Вашу запись"],
+  "notification_liked_comment": ["оценил Ваш комментарий", "оценила Ваш комментарий"],
+  "notification_reposted_post": ["поделился Вашей записью", "поделилась Вашей записью"],
+  "notification_reposted_comment": ["поделился Вашим комментарием", "поделилась Вашим комментарием"],
+  "notification_posted_on_wall": ["оставил запись на Вашей стене", "оставила запись на Вашей стене"],
+  "no_notifications": "У Вас пока нет уведомлений"
 }

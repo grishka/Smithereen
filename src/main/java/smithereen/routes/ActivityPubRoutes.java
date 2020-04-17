@@ -37,6 +37,7 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Announce;
@@ -53,10 +54,13 @@ import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Post;
 import smithereen.data.User;
+import smithereen.data.notifications.Notification;
+import smithereen.data.notifications.NotificationUtils;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.NewsfeedStorage;
+import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -660,6 +664,20 @@ public class ActivityPubRoutes{
 			}
 			if(post.summary!=null)
 				post.summary=Utils.sanitizeHTML(post.summary);
+			if(post.tag!=null){
+				for(ActivityPubObject tag:post.tag){
+					if(tag instanceof Mention){
+						URI uri=((Mention) tag).href;
+						User mentionedUser=UserStorage.getUserByActivityPubID(uri);
+						if(mentionedUser!=null){
+							if(post.mentionedUsers.isEmpty())
+								post.mentionedUsers=new ArrayList<>();
+							if(!post.mentionedUsers.contains(mentionedUser))
+								post.mentionedUsers.add(mentionedUser);
+						}
+					}
+				}
+			}
 			if(post.inReplyTo!=null){
 				if(post.inReplyTo.equals(post.activityPubID))
 					throw new IllegalArgumentException("Post can't be a reply to itself. This makes no sense.");
@@ -667,12 +685,14 @@ public class ActivityPubRoutes{
 				if(parent!=null){
 					post.setParent(parent);
 					PostStorage.putForeignWallPost(post);
+					NotificationUtils.putNotificationsForPost(post, parent);
 				}else{
 					System.out.println("Don't have parent post "+post.inReplyTo+" for "+post.activityPubID);
 					ActivityPubWorker.getInstance().fetchReplyThread(post);
 				}
 			}else{
 				PostStorage.putForeignWallPost(post);
+				NotificationUtils.putNotificationsForPost(post, null);
 			}
 		}else{
 			throw new IllegalArgumentException("Type "+object.getType()+" not supported in Create");
@@ -726,6 +746,14 @@ public class ActivityPubRoutes{
 		if(post==null)
 			throw new ObjectNotFoundException("Post not found");
 		LikeStorage.setPostLiked(user.id, post.id, true);
+		if(!(post.user instanceof ForeignUser)){
+			Notification n=new Notification();
+			n.type=Notification.Type.LIKE;
+			n.actorID=user.id;
+			n.objectID=post.id;
+			n.objectType=Notification.ObjectType.POST;
+			NotificationsStorage.putNotification(post.user.id, n);
+		}
 	}
 
 	private static void handleAnnounceActivity(ForeignUser user, Announce act) throws SQLException{
@@ -738,6 +766,14 @@ public class ActivityPubRoutes{
 				throw new ObjectNotFoundException("Post not found");
 			long time=act.published==null ? System.currentTimeMillis() : act.published.getTime();
 			NewsfeedStorage.putRetoot(user.id, post.id, new Timestamp(time));
+			if(!(post.user instanceof ForeignUser)){
+				Notification n=new Notification();
+				n.type=Notification.Type.RETOOT;
+				n.actorID=user.id;
+				n.objectID=post.id;
+				n.objectType=Notification.ObjectType.POST;
+				NotificationsStorage.putNotification(post.user.id, n);
+			}
 		}else{
 			try{
 				ActivityPubObject obj=ActivityPub.fetchRemoteObject(objURI.toString());
@@ -937,6 +973,7 @@ public class ActivityPubRoutes{
 		System.out.println("delete post here");
 		if(post.canBeManagedBy(actor)){
 			PostStorage.deletePost(post.id);
+			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
 		}else{
 			throw new IllegalArgumentException("No access to delete this post");
 		}

@@ -1,0 +1,74 @@
+{%extends "page.twig"%}
+{%block content%}
+{%-if notifications.empty%}
+	<center class="notMuchContent">{{L('no_notifications')}}</center>
+{%-else%}
+<div class="singleColumn">
+{%-for notification in notifications%}
+{%-set actor=users[notification.actorID]%}
+{%-set object=posts[notification.objectID]%}
+{%-set isComment=object ? object.replyLevel>0 : false%}
+{%-if notification.relatedObjectID!=0%}
+{%-set relatedObject=posts[notification.relatedObjectID]%}
+{%-set relatedIsComment=relatedObject ? relatedObject.replyLevel>0 : false%}
+{%-else%}
+{%-set relatedObject=null%}
+{%-endif%}
+{%-if actor%}
+{%-set actorName=actor.fullName%}
+{%-set actorURL=actor.url%}
+{%-set actorAva=actor.avatar%}
+{%-set actorGender=actor.gender%}
+{%-else%}
+{%-set actorName=L('deleted_placeholder')%}
+{%-set actorURL=concat("/users/", notification.actorID)%}
+{%-set actorAva=null%}
+{%-set actorGender=null%}
+{%-endif%}
+{%-set link=null%}
+<table width="100%" cellpadding="0" cellspacing="0" class="post notification notification{{notification.type | replace({'_': ' '}) | lower | title | replace({' ': ''})}}" id="notification{{notification.id}}">
+	<tr>
+		<td width="50" valign="top">
+			<a href="{{actorURL}}">{{actorAva | pictureForAvatar('s')}}</a>
+		</td>
+		<td valign="top" class="postContentWrap">
+			<a href="{{actorURL}}" class="authorName">{{actorName}}</a>
+			{%if notification.type=="REPLY"%}
+			{{LG(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', actorGender)}} <a href="{{relatedObject.internalURL}}">{{relatedObject.shortTitle}}</a>
+			<div class="postContent">
+				{{object.content | raw}}
+			</div>
+			{%if object.attachment%}{{object.processedAttachments | renderAttachments}}<br/>{%endif%}
+			{%set link=object.internalURL%}
+			{%elseif notification.type=="MENTION"%}
+			{{LG(isComment ? 'notification_mentioned_in_comment' : 'notification_mentioned_in_post', actorGender)}}
+			<div class="postContent">
+				{{object.content | raw}}
+			</div>
+			{%if object.attachment%}{{object.processedAttachments | renderAttachments}}<br/>{%endif%}
+			{%set link=object.internalURL%}
+			{%elseif notification.type=="LIKE"%}
+			{{LG(isComment ? 'notification_liked_comment' : 'notification_liked_post', actorGender)}} <a href="{{object.internalURL}}">{{object.shortTitle}}</a>
+			{%elseif notification.type=="RETOOT"%}
+			{{LG(isComment ? 'notification_reposted_comment' : 'notification_reposted_post', actorGender)}} <a href="{{object.internalURL}}">{{object.shortTitle}}</a>
+			{%elseif notification.type=="POST_OWN_WALL"%}
+			{{LG('notification_posted_on_wall', actorGender)}}
+			<div class="postContent">
+				{{object.content | raw}}
+			</div>
+			{%if object.attachment%}{{object.processedAttachments | renderAttachments}}<br/>{%endif%}
+			{%set link=object.internalURL%}
+			{%else%}
+			<div class="postContent">
+				{{notification}}
+			</div>
+			{%endif%}
+			<div class="postInfo">{%if link%}<a href="{{link}}" class="postLink">{%endif%}{{LD(notification.time)}}{%if link%}</a>{%endif%}</div>
+		</td>
+	</tr>
+</table>
+{%endfor%}
+	{%include "pagination.twig" with {perPage: 50, offset: offset, total: total, urlPrefix: "/my/notifications?offset="} only%}
+</div>
+{%endif%}
+{%endblock%}

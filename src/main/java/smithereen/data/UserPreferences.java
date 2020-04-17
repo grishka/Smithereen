@@ -8,6 +8,7 @@ import java.util.TimeZone;
 public class UserPreferences{
 	public Locale locale;
 	public TimeZone timeZone;
+	public int lastSeenNotificationID;
 
 	public static UserPreferences fromJSON(JSONObject o){
 		UserPreferences prefs=new UserPreferences();
@@ -20,6 +21,7 @@ public class UserPreferences{
 		if(timezone!=null){
 			prefs.timeZone=TimeZone.getTimeZone(timezone);
 		}
+		prefs.lastSeenNotificationID=o.optInt("lsntf", 0);
 
 		return prefs;
 	}
@@ -30,6 +32,8 @@ public class UserPreferences{
 			o.put("lang", locale.toLanguageTag());
 		if(timeZone!=null)
 			o.put("tz", timeZone.getID());
+		if(lastSeenNotificationID!=0)
+			o.put("lsntf", lastSeenNotificationID);
 		return o;
 	}
 }

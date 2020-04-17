@@ -1,7 +1,6 @@
 package smithereen.storage;
 
 import org.jetbrains.annotations.NotNull;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.net.URI;
@@ -30,7 +29,6 @@ public class UserStorage{
 	private static LruCache<Integer, User> cache=new LruCache<>(500);
 	private static LruCache<String, User> cacheByUsername=new LruCache<>(500);
 	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
-	private static LruCache<Integer, UserNotifications> userNotificationsCache=new LruCache<>(500);
 
 	public static synchronized User getById(int id) throws SQLException{
 		User user=cache.get(id);
@@ -157,8 +155,8 @@ public class UserStorage{
 					stmt.execute();
 				}
 			}
-			synchronized(UserStorage.class){
-				UserNotifications res=userNotificationsCache.get(targetUserID);
+			synchronized(NotificationsStorage.class){
+				UserNotifications res=NotificationsStorage.getNotificationsFromCache(targetUserID);
 				if(res!=null)
 					res.incNewFriendRequestCount(1);
 			}
@@ -167,22 +165,6 @@ public class UserStorage{
 			conn.createStatement().execute("ROLLBACK");
 			throw new SQLException(x);
 		}
-	}
-
-	public static synchronized UserNotifications getNotificationsForUser(int userID) throws SQLException{
-		UserNotifications res=userNotificationsCache.get(userID);
-		if(res!=null)
-			return res;
-		res=new UserNotifications();
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT COUNT(*) FROM `friend_requests` WHERE `to_user_id`=?");
-		stmt.setInt(1, userID);
-		try(ResultSet r=stmt.executeQuery()){
-			r.first();
-			res.incNewFriendRequestCount(r.getInt(1));
-		}
-		userNotificationsCache.put(userID, res);
-		return res;
 	}
 
 	public static List<User> getFriendListForUser(int userID) throws SQLException{
@@ -305,9 +287,11 @@ public class UserStorage{
 				return;
 			}
 			conn.createStatement().execute("COMMIT");
-			UserNotifications n=userNotificationsCache.get(userID);
-			if(n!=null)
-				n.incNewFriendRequestCount(-1);
+			synchronized(NotificationsStorage.class){
+				UserNotifications n=NotificationsStorage.getNotificationsFromCache(userID);
+				if(n!=null)
+					n.incNewFriendRequestCount(-1);
+			}
 		}catch(SQLException x){
 			conn.createStatement().execute("ROLLBACK");
 			throw new SQLException(x);
@@ -320,9 +304,11 @@ public class UserStorage{
 		stmt.setInt(1, targetUserID);
 		stmt.setInt(2, userID);
 		int rows=stmt.executeUpdate();
-		UserNotifications n=userNotificationsCache.get(userID);
-		if(n!=null)
-			n.incNewFriendRequestCount(-rows);
+		synchronized(NotificationsStorage.class){
+			UserNotifications n=NotificationsStorage.getNotificationsFromCache(userID);
+			if(n!=null)
+				n.incNewFriendRequestCount(-rows);
+		}
 	}
 
 	public static void unfriendUser(int userID, int targetUserID) throws SQLException{

@@ -14,11 +14,13 @@ import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.jtwigext.LangDateFunction;
 import smithereen.jtwigext.LangFunction;
+import smithereen.jtwigext.LangGenderedFunction;
 import smithereen.jtwigext.LangPluralFunction;
 import smithereen.jtwigext.PhotoSizeFunction;
 import smithereen.jtwigext.PictureForAvatarFunction;
 import smithereen.jtwigext.RenderAttachmentsFunction;
 import smithereen.routes.ActivityPubRoutes;
+import smithereen.routes.NotificationsRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
@@ -44,6 +46,7 @@ public class Main{
 					.add(new LangFunction())
 					.add(new LangPluralFunction())
 					.add(new LangDateFunction())
+					.add(new LangGenderedFunction())
 					.add(new PictureForAvatarFunction())
 					.add(new RenderAttachmentsFunction())
 					.add(new PhotoSizeFunction())
@@ -77,7 +80,10 @@ public class Main{
 					}
 				}
 			}
-
+//			String hs="";
+//			for(String h:request.headers())
+//				hs+="["+h+": "+request.headers(h)+"] ";
+//			System.out.println(request.requestMethod()+" "+request.raw().getPathInfo()+" "+hs);
 		});
 
 		get("/", Main::indexPage);
@@ -163,6 +169,7 @@ public class Main{
 			get("/friends", ProfileRoutes::friends);
 			get("/followers", ProfileRoutes::followers);
 			get("/following", ProfileRoutes::following);
+			getLoggedIn("/notifications", NotificationsRoutes::notifications);
 		});
 
 		path("/:username", ()->{

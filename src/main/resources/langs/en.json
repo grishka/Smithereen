@@ -106,5 +106,18 @@
   "you_are_following_X": "You follow %s",
   "X_is_following_you": "%s follows you",
   "waiting_for_X_to_accept_follow_req": "You're waiting for %s to accept your follow request",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "menu_notifications": "My Notifications",
+  "notifications": "Notifications",
+  "deleted_placeholder": "[DATA EXPUNGED]",
+  "notification_replied_to_post": "commented on your post",
+  "notification_replied_to_comment": "replied to your comment",
+  "notification_mentioned_in_post": "mentioned you in a post",
+  "notification_mentioned_in_comment": "mentioned you in a comment",
+  "notification_liked_post": "liked your post",
+  "notification_liked_comment": "liked your comment",
+  "notification_reposted_post": "shared your post",
+  "notification_reposted_comment": "shared your comment",
+  "notification_posted_on_wall": "posted on your wall",
+  "no_notifications": "You don't have any notifications yet"
 }

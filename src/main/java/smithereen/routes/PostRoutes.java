@@ -36,7 +36,10 @@ import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.Post;
 import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.User;
+import smithereen.data.notifications.Notification;
+import smithereen.data.notifications.NotificationUtils;
 import smithereen.storage.MediaStorageUtils;
+import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -104,6 +107,9 @@ public class PostRoutes{
 			while(matcher.find()){
 				String u=matcher.group(1);
 				String d=matcher.group(2);
+				if(d!=null && d.equalsIgnoreCase(Config.domain)){
+					d=null;
+				}
 				User mentionedUser;
 				if(d==null){
 					mentionedUser=UserStorage.getByUsername(u);
@@ -150,8 +156,9 @@ public class PostRoutes{
 				}
 			}
 
+			Post parent=null;
 			if(replyTo!=0){
-				Post parent=PostStorage.getPostByID(replyTo);
+				parent=PostStorage.getPostByID(replyTo);
 				if(parent==null){
 					resp.status(404);
 					return Utils.wrapError(req, resp, "err_post_not_found");
@@ -175,7 +182,10 @@ public class PostRoutes{
 			}
 
 			Post post=PostStorage.getPostByID(postID);
+			if(post==null)
+				throw new IllegalStateException("?!");
 			ActivityPubWorker.getInstance().sendCreatePostActivity(post);
+			NotificationUtils.putNotificationsForPost(post, parent);
 
 			sess.postDraftAttachments.clear();
 			if(isAjax(req)){
@@ -275,6 +285,7 @@ public class PostRoutes{
 			model.with("metaTags", meta);
 		}
 		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm");
+		model.with("title", post.getShortTitle(50)+" | "+post.user.getFullName());
 		return Utils.renderTemplate(req, "wall_post_standalone", model);
 	}
 
@@ -305,6 +316,7 @@ public class PostRoutes{
 			return Utils.wrapError(req, resp, "err_access");
 		}
 		PostStorage.deletePost(post.id);
+		NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
 		if(Config.isLocal(post.activityPubID) && post.attachment!=null && !post.attachment.isEmpty()){
 			MediaStorageUtils.deleteAttachmentFiles(post.attachment);
 		}

@@ -259,4 +259,18 @@ public class Post extends ActivityPubObject{
 		}
 		return result;
 	}
+
+	public String getShortTitle(){
+		return getShortTitle(100);
+	}
+
+	public String getShortTitle(int maxLen){
+		if(StringUtils.isNotEmpty(summary)){
+			return summary;
+		}
+		if(StringUtils.isNotEmpty(content)){
+			return Utils.truncateOnWordBoundary(content, maxLen);
+		}
+		return "";
+	}
 }
