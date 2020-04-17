@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-01-13 09:48:02 +0000
+# Generation Time: 2020-04-17 20:11:55 +0000
 # ************************************************************
 
 
@@ -115,6 +115,26 @@ CREATE TABLE `newsfeed` (
 
 
 
+# Dump of table notifications
+# ------------------------------------------------------------
+
+CREATE TABLE `notifications` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `owner_id` int(11) unsigned NOT NULL,
+  `type` smallint(5) unsigned NOT NULL,
+  `object_id` int(11) unsigned DEFAULT NULL,
+  `object_type` smallint(5) unsigned DEFAULT NULL,
+  `related_object_id` int(11) unsigned DEFAULT NULL,
+  `related_object_type` smallint(5) unsigned DEFAULT NULL,
+  `actor_id` int(11) DEFAULT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `owner_id` (`owner_id`),
+  KEY `time` (`time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
 # Dump of table servers
 # ------------------------------------------------------------
 
@@ -179,14 +199,15 @@ CREATE TABLE `users` (
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `profile_fields` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
   `avatar` text,
-  `ap_id` varchar(300) DEFAULT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii DEFAULT NULL,
   `ap_followers` varchar(300) DEFAULT NULL,
   `ap_following` varchar(300) DEFAULT NULL,
   `last_updated` timestamp NULL DEFAULT NULL,
   `flags` bigint(20) unsigned NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
-  UNIQUE KEY `ap_id` (`ap_id`)
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `ap_outbox` (`ap_outbox`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
