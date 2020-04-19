@@ -42,12 +42,12 @@ public class Utils{
 	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my");
 	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
 	private static final SimpleDateFormat ISO_DATE_FORMAT;
-	private static final String staticFileHash;
+	public static final String staticFileHash;
 
 	static{
 		ISO_DATE_FORMAT=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
 		ISO_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
-		staticFileHash=new Random().nextLong()+"";
+		staticFileHash=String.format(Locale.US, "%016x", new Random().nextLong());
 	}
 
 
@@ -98,6 +98,8 @@ public class Utils{
 	public static String renderTemplate(Request req, String name, JtwigModel model){
 		addGlobalParamsToTemplate(req, model);
 		JtwigTemplate template=JtwigTemplate.classpathTemplate("templates/desktop/"+name+".twig", Main.jtwigEnv);
+		if(req.queryParams("_ajax")==null)
+			req.attribute("isTemplate", true);
 		return template.render(model);
 	}
 

@@ -67,7 +67,7 @@ public class Main{
 			externalStaticFileLocation(Config.staticFilesPath);
 		else
 			staticFileLocation("/public");
-		staticFiles.expireTime(24*60*60);
+		staticFiles.expireTime(7*24*60*60);
 		before((request, response) -> {
 			request.attribute("start_time", System.currentTimeMillis());
 			if(request.session(false)==null || request.session().attribute("info")==null){
@@ -205,6 +205,9 @@ public class Main{
 			if(l!=null){
 				long t=(long)l;
 				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
+			}
+			if(req.attribute("isTemplate")!=null){
+				resp.header("Link", "</res/style.css?"+Utils.staticFileHash+">; rel=preload; as=style, </res/common.js?"+Utils.staticFileHash+">; rel=preload; as=script");
 			}
 
 			if(req.headers("accept")==null || !req.headers("accept").startsWith("application/")){
