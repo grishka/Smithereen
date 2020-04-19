@@ -119,5 +119,8 @@
   "notification_reposted_post": "shared your post",
   "notification_reposted_comment": "shared your comment",
   "notification_posted_on_wall": "posted on your wall",
+  "notification_invite_signup": "signed up by your invitation",
+  "notification_follow": "followed you",
+  "notification_friend_req_accept": "accepted your friend request",
   "no_notifications": "You don't have any notifications yet"
 }

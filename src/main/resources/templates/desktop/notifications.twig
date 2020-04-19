@@ -6,8 +6,12 @@
 <div class="singleColumn">
 {%-for notification in notifications%}
 {%-set actor=users[notification.actorID]%}
+{%-if notification.objectID!=0%}
 {%-set object=posts[notification.objectID]%}
 {%-set isComment=object ? object.replyLevel>0 : false%}
+{%-else%}
+{%-set object=null%}
+{%-endif%}
 {%-if notification.relatedObjectID!=0%}
 {%-set relatedObject=posts[notification.relatedObjectID]%}
 {%-set relatedIsComment=relatedObject ? relatedObject.replyLevel>0 : false%}
@@ -29,7 +33,10 @@
 <table width="100%" cellpadding="0" cellspacing="0" class="post notification notification{{notification.type | replace({'_': ' '}) | lower | title | replace({' ': ''})}}" id="notification{{notification.id}}">
 	<tr>
 		<td width="50" valign="top">
-			<a href="{{actorURL}}">{{actorAva | pictureForAvatar('s')}}</a>
+			<div class="avaWrap">
+				<a href="{{actorURL}}">{{actorAva | pictureForAvatar('s')}}</a>
+				<span class="notificationIcon"></span>
+			</div>
 		</td>
 		<td valign="top" class="postContentWrap">
 			<a href="{{actorURL}}" class="authorName">{{actorName}}</a>
@@ -58,6 +65,12 @@
 			</div>
 			{%if object.attachment%}{{object.processedAttachments | renderAttachments}}<br/>{%endif%}
 			{%set link=object.internalURL%}
+			{%elseif notification.type=="INVITE_SIGNUP"%}
+			{{LG('notification_invite_signup', actorGender)}}
+			{%elseif notification.type=="FOLLOW"%}
+			{{LG('notification_follow', actorGender)}}
+			{%elseif notification.type=="FRIEND_REQ_ACCEPT"%}
+			{{LG('notification_friend_req_accept', actorGender)}}
 			{%else%}
 			<div class="postContent">
 				{{notification}}

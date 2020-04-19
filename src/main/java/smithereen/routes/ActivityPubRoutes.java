@@ -721,6 +721,11 @@ public class ActivityPubRoutes{
 		}catch(Exception x){
 			x.printStackTrace();
 		}
+
+		Notification n=new Notification();
+		n.type=status==FriendshipStatus.REQUEST_RECVD ? Notification.Type.FRIEND_REQ_ACCEPT : Notification.Type.FOLLOW;
+		n.actorID=actor.id;
+		NotificationsStorage.putNotification(user.id, n);
 	}
 
 	private static void handleAcceptActivity(ForeignUser user, Accept act) throws SQLException{

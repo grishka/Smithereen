@@ -24,8 +24,13 @@ public class NotificationsStorage{
 		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `notifications` (`owner_id`, `type`, `object_id`, `object_type`, `related_object_id`, `related_object_type`, `actor_id`) VALUES (?, ?, ?, ?, ?, ?, ?)");
 		stmt.setInt(1, owner);
 		stmt.setInt(2, n.type.ordinal());
-		stmt.setInt(3, n.objectID);
-		stmt.setInt(4, n.objectType.ordinal());
+		if(n.objectID!=0){
+			stmt.setInt(3, n.objectID);
+			stmt.setInt(4, n.objectType.ordinal());
+		}else{
+			stmt.setNull(3, Types.INTEGER);
+			stmt.setNull(4, Types.INTEGER);
+		}
 		if(n.relatedObjectID!=0){
 			stmt.setInt(5, n.relatedObjectID);
 			stmt.setInt(6, n.relatedObjectType.ordinal());

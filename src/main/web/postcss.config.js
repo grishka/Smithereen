@@ -5,6 +5,7 @@ module.exports={
 		require('postcss-rgba-hex')({rgbOnly: true, silent: true}),
 		require('postcss-calc')(),
 		require('postcss-nested')(),
+		require('postcss-inline-svg')(),
 		require('autoprefixer')()
 	]
 }

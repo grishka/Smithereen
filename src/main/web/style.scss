@@ -170,6 +170,7 @@ h2{
 
 .ava{
 	border-radius: 4px;
+	vertical-align: middle;
 }
 
 .avaPlaceholder{
@@ -212,11 +213,12 @@ h2{
 }
 
 .postContent{
-	padding: 4px 0;
+	padding-top: 4px;
 	word-wrap: break-word;
 }
 
 .postInfo, .postLink:link, .postLink:visited{
+	padding-top: 4px;
 	font-size: 10px;
 	color: $grayText;
 }
@@ -521,3 +523,46 @@ input[type=submit].secondary:active, input[type=button].secondary:active, .butto
 		}
 	}
 }
+
+.notificationIcon{
+	border-radius: 50%;
+	width: 16px;
+	height: 16px;
+	margin: -13px;
+	position: absolute;
+	top: 100%;
+	left: 100%;
+	box-shadow: rgba(0,0,0,20%) 0 2px 4px;
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+.notification .avaWrap{
+	position: relative;
+}
+
+.notificationFollow .notificationIcon, .notificationInviteSignup .notificationIcon, .notificationFriendReqAccept .notificationIcon{
+	background-color: #2979FF;
+	background-image: svg-load('img/ntf_add.svg', fill: #FFF);
+}
+
+.notificationLike .notificationIcon{
+	background-color: #FF1744;
+	background-image: svg-load('img/ntf_like.svg', fill: #FFF);
+}
+
+.notificationMention .notificationIcon{
+	background-color: #4EBF4F;
+	background-image: svg-load('img/ntf_mention.svg', fill: #FFF);
+}
+
+.notificationPostOwnWall .notificationIcon, .notificationReply .notificationIcon{
+	background-color: #4EBF4F;
+	background-image: svg-load('img/ntf_comment.svg', fill: #FFF);
+}
+
+.notificationRetoot .notificationIcon, .notificationRepost .notificationIcon{
+	background-color: #4EBF4F;
+	background-image: svg-load('img/ntf_share.svg', fill: #FFF);
+}
+

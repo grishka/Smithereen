@@ -64,7 +64,23 @@ public class Notification{
 		/**
 		 * %username% posted on your wall
 		 */
-		POST_OWN_WALL
+		POST_OWN_WALL,
+		/**
+		 * %username% signed up by your invitation
+		 */
+		INVITE_SIGNUP,
+		/**
+		 * %username% followed you
+		 */
+		FOLLOW,
+		/**
+		 * %username% accepted your friend request
+		 */
+		FRIEND_REQ_ACCEPT,
+		/**
+		 * %username% reposted (quoted) your %object%
+		 */
+		REPOST,
 	}
 
 	public enum ObjectType{

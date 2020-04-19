@@ -22,8 +22,10 @@ import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponseBuilder;
+import smithereen.data.notifications.Notification;
 import smithereen.lang.Lang;
 import smithereen.storage.MediaStorageUtils;
+import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -286,6 +288,10 @@ public class ProfileRoutes{
 					ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser) user);
 				}else{
 					UserStorage.acceptFriendRequest(self.user.id, user.id, true);
+					Notification n=new Notification();
+					n.type=Notification.Type.FRIEND_REQ_ACCEPT;
+					n.actorID=self.user.id;
+					NotificationsStorage.putNotification(user.id, n);
 				}
 			}else if(req.queryParams("decline")!=null){
 				UserStorage.deleteFriendRequest(self.user.id, user.id);

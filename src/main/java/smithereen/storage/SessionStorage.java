@@ -21,6 +21,7 @@ import smithereen.Utils;
 import smithereen.data.Account;
 import smithereen.data.SessionInfo;
 import smithereen.data.UserPreferences;
+import smithereen.data.notifications.Notification;
 import spark.Request;
 import spark.Session;
 
@@ -152,8 +153,8 @@ public class SessionStorage{
 				stmt.setNull(4, Types.INTEGER);
 			stmt.execute();
 
+			int inviterUserID=0;
 			if(inviterAccountID!=0){
-				int inviterUserID=0;
 				stmt=conn.prepareStatement("SELECT `user_id` FROM `accounts` WHERE `id`=?");
 				stmt.setInt(1, inviterAccountID);
 				try(ResultSet res=stmt.executeQuery()){
@@ -170,6 +171,13 @@ public class SessionStorage{
 			}
 
 			conn.createStatement().execute("COMMIT");
+
+			if(inviterUserID!=0){
+				Notification n=new Notification();
+				n.actorID=userID;
+				n.type=Notification.Type.INVITE_SIGNUP;
+				NotificationsStorage.putNotification(inviterUserID, n);
+			}
 		}catch(SQLException x){
 			conn.createStatement().execute("ROLLBACK");
 			throw new SQLException(x);
