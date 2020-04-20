@@ -93,6 +93,7 @@ public class NotificationsStorage{
 		stmt.setInt(3, type.ordinal());
 		stmt.setInt(2, objID);
 		stmt.setInt(4, objID);
+		stmt.execute();
 
 		conn.createStatement().execute("UNLOCK TABLES");
 	}

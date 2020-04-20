@@ -567,6 +567,7 @@ public class ActivityPubRoutes{
 		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
 		if(!sig.verify(signature)){
 			System.out.println("Failed sig: "+sigHeader);
+			System.out.println("Failed sig string: '"+sigStr+"'");
 			throw new IllegalArgumentException("Signature failed to verify");
 		}
 		return user;
@@ -838,8 +839,8 @@ public class ActivityPubRoutes{
 
 	private static void handleDeleteActivity(ForeignUser user, Delete act) throws SQLException{
 		ActivityPubObject obj;
+		URI uri;
 		if(act.object.object==null || act.object.object instanceof Tombstone){
-			URI uri;
 			if(act.object.object==null)
 				uri=act.object.link;
 			else
@@ -857,9 +858,11 @@ public class ActivityPubRoutes{
 			}
 		}else{
 			obj=act.object.object;
+			uri=obj.activityPubID;
 		}
 		if(obj==null){
-			throw new ObjectNotFoundException("Object being deleted does not exist");
+			System.out.println("Delete: Object '"+uri+"' does not exist");
+			return;
 		}
 
 		if(obj instanceof Post){
