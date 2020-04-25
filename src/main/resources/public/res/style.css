@@ -203,6 +203,10 @@ h2{
 		padding: 0 8px;
 	}
 
+.post .postContentWrap video{
+			max-width: 100%;
+		}
+
 .postContent{
 	padding-top: 4px;
 	word-wrap: break-word;
