@@ -208,7 +208,10 @@ public class PostRoutes{
 
 	public static Object feed(Request req, Response resp, Account self) throws SQLException{
 		int userID=self.user.id;
-		List<NewsfeedEntry> feed=PostStorage.getFeed(userID);
+		int startFromID=parseIntOrDefault(req.queryParams("startFrom"), 0);
+		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
+		int[] total={0};
+		List<NewsfeedEntry> feed=PostStorage.getFeed(userID, startFromID, offset, total);
 		for(NewsfeedEntry e:feed){
 			if(e instanceof PostNewsfeedEntry){
 				PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
@@ -218,8 +221,12 @@ public class PostRoutes{
 					System.err.println("No post: "+pe);
 			}
 		}
+		if(!feed.isEmpty() && startFromID==0)
+			startFromID=feed.get(0).id;
 		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm");
-		JtwigModel model=JtwigModel.newModel().with("title", Utils.lang(req).get("feed")).with("feed", feed).with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
+		JtwigModel model=JtwigModel.newModel().with("title", Utils.lang(req).get("feed")).with("feed", feed)
+				.with("paginationURL", "/feed?startFrom="+startFromID+"&offset=").with("total", total[0]).with("offset", offset)
+				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
 		return Utils.renderTemplate(req, "feed", model);
 	}
 

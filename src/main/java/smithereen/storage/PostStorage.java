@@ -60,7 +60,7 @@ public class PostStorage{
 			int id=keys.getInt(1);
 			if(userID==ownerID && replyKey==null){
 				stmt=conn.prepareStatement("INSERT INTO `newsfeed` (`type`, `author_id`, `object_id`) VALUES (?, ?, ?)");
-				stmt.setInt(1, NewsfeedEntry.TYPE_POST);
+				stmt.setInt(1, NewsfeedEntry.Type.POST.ordinal());
 				stmt.setInt(2, userID);
 				stmt.setInt(3, id);
 				stmt.execute();
@@ -118,7 +118,7 @@ public class PostStorage{
 			}
 			if(post.owner.equals(post.user) && post.getReplyLevel()==0){
 				stmt=conn.prepareStatement("INSERT INTO `newsfeed` (`type`, `author_id`, `object_id`, `time`) VALUES (?, ?, ?, ?)");
-				stmt.setInt(1, NewsfeedEntry.TYPE_POST);
+				stmt.setInt(1, NewsfeedEntry.Type.POST.ordinal());
 				stmt.setInt(2, post.user.id);
 				stmt.setInt(3, post.id);
 				stmt.setTimestamp(4, new Timestamp(post.published.getTime()));
@@ -129,22 +129,34 @@ public class PostStorage{
 		}
 	}
 
-	public static List<NewsfeedEntry> getFeed(int userID) throws SQLException{
+	public static List<NewsfeedEntry> getFeed(int userID, int startFromID, int offset, int[] total) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT `type`, `object_id`, `author_id` FROM `newsfeed` WHERE `author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? UNION SELECT ?) ORDER BY `time` DESC LIMIT 25");
-
+		PreparedStatement stmt;
+		if(total!=null){
+			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `newsfeed` WHERE `author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? UNION SELECT ?) AND `id`<=?");
+			stmt.setInt(1, userID);
+			stmt.setInt(2, userID);
+			stmt.setInt(3, startFromID==0 ? Integer.MAX_VALUE : startFromID);
+			try(ResultSet res=stmt.executeQuery()){
+				res.first();
+				total[0]=res.getInt(1);
+			}
+		}
+		stmt=conn.prepareStatement("SELECT `type`, `object_id`, `author_id`, `id` FROM `newsfeed` WHERE `author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? UNION SELECT ?) AND `id`<=? ORDER BY `time` DESC LIMIT ?,25");
 		stmt.setInt(1, userID);
 		stmt.setInt(2, userID);
+		stmt.setInt(3, startFromID==0 ? Integer.MAX_VALUE : startFromID);
+		stmt.setInt(4, offset);
 		ArrayList<NewsfeedEntry> posts=new ArrayList<>();
 		ArrayList<Integer> needPosts=new ArrayList<>();
 		HashMap<Integer, Post> postMap=new HashMap<>();
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
 				do{
-					int type=res.getInt(1);
+					NewsfeedEntry.Type type=NewsfeedEntry.Type.values()[res.getInt(1)];
 					NewsfeedEntry _entry=null;
 					switch(type){
-						case NewsfeedEntry.TYPE_POST:{
+						case POST:{
 							PostNewsfeedEntry entry=new PostNewsfeedEntry();
 							entry.objectID=res.getInt(2);
 							posts.add(entry);
@@ -152,7 +164,7 @@ public class PostStorage{
 							_entry=entry;
 							break;
 						}
-						case NewsfeedEntry.TYPE_RETOOT:{
+						case RETOOT:{
 							RetootNewsfeedEntry entry=new RetootNewsfeedEntry();
 							entry.objectID=res.getInt(2);
 							entry.author=UserStorage.getById(res.getInt(3));
@@ -162,8 +174,8 @@ public class PostStorage{
 							break;
 						}
 					}
-					if(_entry!=null)
-						_entry.type=type;
+					_entry.type=type;
+					_entry.id=res.getInt(4);
 				}while(res.next());
 			}
 		}

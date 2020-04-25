@@ -810,7 +810,7 @@ public class ActivityPubRoutes{
 		}
 	}
 
-	private static void handleUndoActivity(ForeignUser user, Undo act) throws URISyntaxException, SQLException{
+	private static void handleUndoActivity(ForeignUser user, Undo act) throws SQLException{
 		if(act.object.object==null)
 			throw new IllegalArgumentException("Undo activity should include a complete object of the activity being undone");
 		ActivityPubObject object=act.object.object;
