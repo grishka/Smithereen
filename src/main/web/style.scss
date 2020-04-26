@@ -32,12 +32,13 @@ table{
 	table-layout: fixed;
 }
 
-a, a:link, a:visited{
+a, a:link, a:visited, .link{
 	color: color($accent shade(10%));
 	text-decoration: none;
+	cursor: pointer;
 }
 
-a:hover, a:visited:hover{
+a:hover, a:visited:hover, .link:hover{
 	text-decoration: underline;
 }
 
@@ -256,11 +257,92 @@ table.profileFields td{
 	width: 30%;
 }
 
-.wallPostForm textarea{
-	width: 100%;
-	max-width: 100%;
-	resize: vertical;
-	box-sizing: border-box;
+.wallPostForm{
+	position: relative;
+	textarea{
+		width: 100%;
+		max-width: 100%;
+		resize: vertical;
+		box-sizing: border-box;
+	}
+	.dropOverlay{
+		position: absolute;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		margin: 8px;
+		border: dashed 2px $accent;
+		background: color($bg alpha(90%));
+		text-align: center;
+		color: $accent;
+		justify-content: center;
+		flex-direction: column;
+		font-size: 13px;
+		display: none;
+		transition: background-color 0.2s ease-in-out;
+		&.over{
+			background: color($accent lightness(+45%));
+		}
+	}
+	.attachment{
+		width: 200px;
+		height: 150px;
+		position: relative;
+		display: inline-block;
+		.scrim, .progressBarFrame{
+			display: none;
+		}
+		.deleteBtn{
+			position: absolute;
+			top: 0;
+			right: 0;
+			width: 32px;
+			height: 32px;
+			background-image: svg-load("img/attach_delete.svg"), radial-gradient(closest-side, rgba(0,0,0,.1), transparent);
+			background-position: center;
+			background-repeat: no-repeat;
+		}
+		img{
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+		&.uploading{
+			.scrim{
+				display: block;
+				background: rgba(0,0,0,.5);
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+			}
+			.progressBarFrame{
+				display: block;
+				position: absolute;
+				bottom: 0;
+				left: 0;
+				right: 0;
+				height: 4px;
+				border-radius: 2px;
+				background: rgba(0,0,0,.5);
+				overflow: hidden;
+				margin: 8px;
+			}
+			.progressBar{
+				width: 100%;
+				height: 100%;
+				background: #FFF;
+				transition: transform 0.3s ease-in-out;
+				transform-origin: left;
+			}
+		}
+	}
+}
+
+.fileIsBeingDragged .dropOverlay{
+	display: flex;
 }
 
 .notMuchContent{

@@ -122,5 +122,7 @@
   "notification_invite_signup": "signed up by your invitation",
   "notification_follow": "followed you",
   "notification_friend_req_accept": "accepted your friend request",
-  "no_notifications": "You don't have any notifications yet"
+  "no_notifications": "You don't have any notifications yet",
+  "attach_photo": "Attach a photo",
+  "drop_files_here": "Drag files here"
 }

@@ -196,7 +196,8 @@ public class PostRoutes{
 					rb=new WebDeltaResponseBuilder().insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
 				else
 					rb=new WebDeltaResponseBuilder().insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML);
-				return rb.setInputValue("postFormText", "").setContent("postFormAttachments", "").json();
+				String formID=req.queryParams("formID");
+				return rb.setInputValue("postFormText_"+formID, "").setContent("postFormAttachments_"+formID, "").json();
 			}
 			resp.redirect(Utils.back(req));
 		}else{
@@ -223,7 +224,7 @@ public class PostRoutes{
 		}
 		if(!feed.isEmpty() && startFromID==0)
 			startFromID=feed.get(0).id;
-		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm");
+		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete");
 		JtwigModel model=JtwigModel.newModel().with("title", Utils.lang(req).get("feed")).with("feed", feed)
 				.with("paginationURL", "/feed?startFrom="+startFromID+"&offset=").with("total", total[0]).with("offset", offset)
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
@@ -291,7 +292,7 @@ public class PostRoutes{
 			}
 			model.with("metaTags", meta);
 		}
-		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm");
+		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete");
 		model.with("title", post.getShortTitle(50)+" | "+post.user.getFullName());
 		return Utils.renderTemplate(req, "wall_post_standalone", model);
 	}

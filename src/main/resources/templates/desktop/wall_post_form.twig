@@ -1,25 +1,33 @@
 {%if not wallOwner%}{%set wallOwner=currentUser%}{%endif%}
-<div class="gray singleColumn wallPostForm" id="wallPostForm">
-	<form action="{{wallOwner.getProfileURL('createWallPost')}}" method="post" onsubmit="return ajaxSubmitForm(this)">
-		<textarea name="text" id="postFormText" cols="100" rows="4" maxlength="65000" onkeydown="if(event.keyCode==13 && event.metaKey) ajaxSubmitForm(this.form)" placeholder="{%if wallOwner.id!=currentUser.id%}{{L('write_on_X_wall', wallOwner.firstName)}}{%elseif reply%}{{L('comment_placeholder')}}{%else%}{{L('write_on_own_wall')}}{%endif%}">{{prefilledPostText}}</textarea><br/>
+<div class="gray singleColumn wallPostForm" id="wallPostForm_{{id}}" data-unique-id="{{id}}">
+	<form action="{{wallOwner.getProfileURL('createWallPost')}}" method="post">
+		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="4" maxlength="65000" placeholder="{%if wallOwner.id!=currentUser.id%}{{L('write_on_X_wall', wallOwner.firstName)}}{%elseif reply%}{{L('comment_placeholder')}}{%else%}{{L('write_on_own_wall')}}{%endif%}">{{prefilledPostText}}</textarea><br/>
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
 		{%if replyTo%}
-		<input type="hidden" name="replyTo" id="postFormReplyTo" value="{{replyTo.id}}"/>
+		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}" value="{{replyTo.id}}"/>
 		{%endif%}
-		<div id="postFormAttachments">{%for attachment in draftAttachments%}
-		<div>
-			{{attachment.sizes | photoPicture('xs')}} <a href="/system/deleteDraftAttachment?id={{attachment.localID}}">{{L('delete')}}</a>
+		<input type="hidden" name="formID" value="{{id}}"/>
+		<div id="postFormAttachments_{{id}}">{%for attachment in draftAttachments%}
+		<div class="attachment">
+			{{attachment.sizes | photoPicture('xs')}}
+			<a href="/system/deleteDraftAttachment?id={{attachment.localID}}" class="deleteBtn" title="{{L('delete')}}"></a>
 		</div>
 		{%endfor%}</div>
 		<table width="100%">
 			<tr><td width="50%">
-
+				<div class="js">
+					<input type="file" id="uploadField_{{id}}" multiple accept="image/*" style="display: none" form="attachmentUploadForm_{{id}}"/>
+					<label for="uploadField_{{id}}" class="link">{{L('attach_photo')}}</label>
+				</div>
 			</td><td align="right">
 				<input type="submit" value="{{L('send')}}"/>
 			</td></tr>
 		</table>
 	</form>
-	<form action="/system/upload/postPhoto" method="post" enctype="multipart/form-data">
-		<input type="file" name="file" accept="image/*"/><input type="submit" value="{{L('attach')}}"/>
+	<form action="/system/upload/postPhoto" method="post" enctype="multipart/form-data" id="attachmentUploadForm_{{id}}">
+		<noscript>
+			<input type="file" name="file" accept="image/*"/><input type="submit" value="{{L('attach')}}"/>
+		</noscript>
 	</form>
+	<div id="dropOverlay_{{id}}" class="dropOverlay">{{L('drop_files_here')}}</div>
 </div>

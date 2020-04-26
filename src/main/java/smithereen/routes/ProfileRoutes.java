@@ -102,7 +102,7 @@ public class ProfileRoutes{
 				}
 				model.with("metaTags", meta);
 			}
-			Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "remove_friend", "confirm_unfriend_X", "cancel");
+			Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "remove_friend", "confirm_unfriend_X", "cancel", "delete");
 			return Utils.renderTemplate(req, "profile", model);
 		}else{
 			resp.status(404);

@@ -460,6 +460,124 @@ function showPostReplyForm(id) {
     field.focus();
     return false;
 }
+var PostForm = /** @class */ (function () {
+    function PostForm(el) {
+        this.id = el.getAttribute("data-unique-id");
+        this.root = el;
+        this.input = ge("postFormText_" + this.id);
+        this.form = el.getElementsByTagName("form")[0];
+        this.dragOverlay = el.querySelector(".dropOverlay");
+        this.attachContainer = ge("postFormAttachments_" + this.id);
+        this.fileField = ge("uploadField_" + this.id);
+        this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
+        this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
+        this.input.addEventListener("paste", this.onInputPaste.bind(this), false);
+        this.dragOverlay.addEventListener("dragenter", function (ev) {
+            this.dragOverlay.classList.add("over");
+        }.bind(this), false);
+        this.dragOverlay.addEventListener("dragleave", function (ev) {
+            this.dragOverlay.classList.remove("over");
+        }.bind(this), false);
+        this.root.addEventListener("drop", this.onDrop.bind(this), false);
+        this.fileField.addEventListener("change", function (ev) {
+            this.handleFiles(this.fileField.files);
+            this.fileField.form.reset();
+        }.bind(this), false);
+    }
+    PostForm.prototype.onFormSubmit = function (ev) {
+        ev.preventDefault();
+        this.send();
+    };
+    PostForm.prototype.onInputKeyDown = function (ev) {
+        if (ev.keyCode == 13 && (isApple ? ev.metaKey : ev.ctrlKey)) {
+            this.send();
+        }
+    };
+    PostForm.prototype.onInputPaste = function (ev) {
+        if (ev.clipboardData.files.length) {
+            ev.preventDefault();
+            this.handleFiles(ev.clipboardData.files);
+        }
+    };
+    PostForm.prototype.onDrop = function (ev) {
+        this.dragOverlay.classList.remove("over");
+        this.handleFiles(ev.dataTransfer.files);
+    };
+    PostForm.prototype.handleFiles = function (files) {
+        for (var i = 0; i < files.length; i++) {
+            var f = files[i];
+            if (f.type.indexOf("image/") == 0) {
+                this.uploadFile(f);
+            }
+        }
+    };
+    PostForm.prototype.uploadFile = function (f) {
+        var objURL = URL.createObjectURL(f);
+        var cont = ce("div");
+        cont.className = "attachment uploading";
+        var img = ce("img");
+        img.src = objURL;
+        cont.appendChild(img);
+        var scrim = ce("div");
+        scrim.className = "scrim";
+        cont.appendChild(scrim);
+        var pbar = ce("div");
+        pbar.className = "progressBarFrame";
+        var pbarInner = ce("div");
+        pbarInner.className = "progressBar";
+        pbar.appendChild(pbarInner);
+        cont.appendChild(pbar);
+        var del = ce("a");
+        del.className = "deleteBtn";
+        del.title = lang("delete");
+        del.href = "javascript:void(0)";
+        cont.appendChild(del);
+        pbarInner.style.transform = "scaleX(0)";
+        this.attachContainer.appendChild(cont);
+        var formData = new FormData();
+        formData.append("file", f);
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/system/upload/postPhoto?_ajax=1");
+        xhr.onload = function () {
+            console.log(xhr.response);
+            cont.classList.remove("uploading");
+            var resp = xhr.response;
+            del.href = "/system/deleteDraftAttachment?id=" + resp.id;
+            img.outerHTML = '<picture><source srcset="' + resp.thumbs.webp + '" type="image/webp"/><source srcset="' + resp.thumbs.jpeg + '" type="image/jpeg"/><img src="' + resp.thumbs.jpeg + '"/></picture>';
+            del.onclick = function (ev) {
+                ev.preventDefault();
+                this.deleteAttachment(resp.id);
+            }.bind(this);
+            cont.id = "attachment_" + resp.id;
+        }.bind(this);
+        xhr.onerror = function (ev) {
+            console.log(ev);
+        };
+        xhr.upload.onprogress = function (ev) {
+            pbarInner.style.transform = "scaleX(" + (ev.loaded / ev.total) + ")";
+        };
+        xhr.responseType = "json";
+        xhr.send(formData);
+        del.onclick = function () {
+            xhr.abort();
+            cont.parentNode.removeChild(cont);
+        };
+    };
+    PostForm.prototype.deleteAttachment = function (id) {
+        var el = ge("attachment_" + id);
+        el.parentNode.removeChild(el);
+        ajaxGet("/system/deleteDraftAttachment?id=" + id, function () { }, function () { });
+    };
+    PostForm.prototype.send = function () {
+        ajaxSubmitForm(this.form);
+    };
+    return PostForm;
+}());
+///<reference path="./PostForm.ts"/>
+var ge = document.getElementById.bind(document);
+var ce = document.createElement.bind(document);
+// Use Cmd instead of Ctrl on Apple devices.
+var isApple = navigator.platform.indexOf("Mac") == 0 || navigator.platform == "iPhone" || navigator.platform == "iPad" || navigator.platform == "iPod touch";
 var timeZone;
 if (window["Intl"]) {
     timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -477,5 +595,40 @@ document.body.addEventListener("click", function (ev) {
             ev.preventDefault();
         }
     }
+}, false);
+document.querySelectorAll(".wallPostForm").forEach(function (el) {
+    new PostForm(el);
+});
+var dragTimeout = -1;
+var dragEventCount = 0;
+document.body.addEventListener("dragenter", function (ev) {
+    if (ev.dataTransfer.types.indexOf("Files") != -1)
+        document.body.classList.add("fileIsBeingDragged");
+    ev.preventDefault();
+    dragEventCount++;
+    if (dragTimeout != -1) {
+        clearTimeout(dragTimeout);
+        dragTimeout = -1;
+    }
+}, false);
+document.body.addEventListener("dragover", function (ev) {
+    ev.preventDefault();
+}, false);
+document.body.addEventListener("dragleave", function (ev) {
+    dragEventCount--;
+    if (dragEventCount == 0 && dragTimeout == -1) {
+        dragTimeout = setTimeout(function () {
+            dragTimeout = -1;
+            document.body.classList.remove("fileIsBeingDragged");
+            dragEventCount = 0;
+        }, 100);
+    }
+}, false);
+document.body.addEventListener("drop", function (ev) {
+    if (dragTimeout != -1)
+        clearTimeout(dragTimeout);
+    dragTimeout = -1;
+    dragEventCount = 0;
+    document.body.classList.remove("fileIsBeingDragged");
 }, false);
 //# sourceMappingURL=common.js.map

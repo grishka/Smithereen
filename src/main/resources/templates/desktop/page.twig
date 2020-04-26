@@ -10,9 +10,13 @@
 		var userConfig={{jsConfig | escape(false)}};
 		var langKeys={{jsLangKeys | escape(false)}};
 	</script>
-	<script src="/res/common.js?{{staticHash}}" async></script>
+	<style>
+		.js{display: none;}
+		.hasJS .js{display: block;}
+	</style>
 </head>
 <body>
+<script>document.body.className="hasJS";</script>
 <div class="headerBG"></div>
 <div class="wrap">
 <table width="100%" class="header" cellpadding="0" cellspacing="0" border="0">
@@ -61,6 +65,7 @@
 <!--a id="elevator" href="#">
 	up
 </a-->
+<script src="/res/common.js?{{staticHash}}"></script>
 </body>
 </html>
 {%-endautoescape%}

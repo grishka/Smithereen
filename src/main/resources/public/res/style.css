@@ -12,12 +12,13 @@ table{
 	table-layout: fixed;
 }
 
-a, a:link, a:visited{
+a, a:link, a:visited, .link{
 	color: #99a22a;
 	text-decoration: none;
+	cursor: pointer;
 }
 
-a:hover, a:visited:hover{
+a:hover, a:visited:hover, .link:hover{
 	text-decoration: underline;
 }
 
@@ -249,11 +250,101 @@ table.profileFields td{
 	width: 30%;
 }
 
+.wallPostForm{
+	position: relative;
+}
+
 .wallPostForm textarea{
-	width: 100%;
-	max-width: 100%;
-	resize: vertical;
-	box-sizing: border-box;
+		width: 100%;
+		max-width: 100%;
+		resize: vertical;
+		box-sizing: border-box;
+	}
+
+.wallPostForm .dropOverlay{
+		position: absolute;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		margin: 8px;
+		border: dashed 2px #aab42f;
+		background: rgba(255, 255, 255, 0.9);
+		text-align: center;
+		color: #aab42f;
+		justify-content: center;
+		flex-direction: column;
+		font-size: 13px;
+		display: none;
+		transition: background-color 0.2s ease-in-out;
+	}
+
+.wallPostForm .dropOverlay.over{
+			background: #f2f5d6;
+		}
+
+.wallPostForm .attachment{
+		width: 200px;
+		height: 150px;
+		position: relative;
+		display: inline-block;
+	}
+
+.wallPostForm .attachment .scrim, .wallPostForm .attachment .progressBarFrame{
+			display: none;
+		}
+
+.wallPostForm .attachment .deleteBtn{
+			position: absolute;
+			top: 0;
+			right: 0;
+			width: 32px;
+			height: 32px;
+			background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Cpath d='M11.12,10l5.44-5.44a1.5,1.5,0,0,0-2.12-2.12L9,7.88,3.56,2.44A1.5,1.5,0,0,0,1.44,4.56L6.88,10,1.44,15.44a1.5,1.5,0,1,0,2.12,2.12L9,12.12l5.44,5.44a1.5,1.5,0,0,0,2.12-2.12Z' opacity='0.2'/%3E%3Cpath d='M11.12,9l5.44-5.44a1.5,1.5,0,0,0-2.12-2.12L9,6.88,3.56,1.44A1.5,1.5,0,0,0,1.44,3.56L6.88,9,1.44,14.44a1.5,1.5,0,1,0,2.12,2.12L9,11.12l5.44,5.44a1.5,1.5,0,0,0,2.12-2.12Z' fill='%23fff'/%3E%3C/svg%3E"), radial-gradient(closest-side, rgba(0,0,0,.1), transparent);
+			background-position: center;
+			background-repeat: no-repeat;
+		}
+
+.wallPostForm .attachment img{
+			width: 100%;
+			height: 100%;
+			-o-object-fit: cover;
+			   object-fit: cover;
+		}
+
+.wallPostForm .attachment.uploading .scrim{
+				display: block;
+				background: rgba(0,0,0,.5);
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+			}
+
+.wallPostForm .attachment.uploading .progressBarFrame{
+				display: block;
+				position: absolute;
+				bottom: 0;
+				left: 0;
+				right: 0;
+				height: 4px;
+				border-radius: 2px;
+				background: rgba(0,0,0,.5);
+				overflow: hidden;
+				margin: 8px;
+			}
+
+.wallPostForm .attachment.uploading .progressBar{
+				width: 100%;
+				height: 100%;
+				background: #FFF;
+				transition: transform 0.3s ease-in-out;
+				transform-origin: left;
+			}
+
+.fileIsBeingDragged .dropOverlay{
+	display: flex;
 }
 
 .notMuchContent{

@@ -1,5 +1,7 @@
 package smithereen.routes;
 
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -25,6 +27,7 @@ import smithereen.data.PhotoSize;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.libvips.VImage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
@@ -33,6 +36,8 @@ import smithereen.storage.UserStorage;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
+
+import static smithereen.Utils.*;
 
 public class SystemRoutes{
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
@@ -176,6 +181,16 @@ public class SystemRoutes{
 				img.release();
 			}
 
+			if(isAjax(req)){
+				resp.type("application/json");
+				JSONObject obj=new JSONObject();
+				obj.put("id", keyHex);
+				JSONObject thumbs=new JSONObject();
+				thumbs.put("jpeg", getBestSizeURL(photo.sizes, PhotoSize.Type.XSMALL, PhotoSize.Format.JPEG));
+				thumbs.put("webp", getBestSizeURL(photo.sizes, PhotoSize.Type.XSMALL, PhotoSize.Format.WEBP));
+				obj.put("thumbs", thumbs);
+				return obj;
+			}
 			resp.redirect(Utils.back(req));
 		}catch(IOException|ServletException|NoSuchAlgorithmException x){
 			x.printStackTrace();
@@ -198,6 +213,10 @@ public class SystemRoutes{
 					break;
 				}
 			}
+		}
+		if(isAjax(req)){
+			resp.type("application/json");
+			return "[]";
 		}
 		resp.redirect(Utils.back(req));
 		return "";
