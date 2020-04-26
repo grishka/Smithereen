@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-04-17 20:11:55 +0000
+# Generation Time: 2020-04-26 13:22:21 +0000
 # ************************************************************
 
 
@@ -104,11 +104,13 @@ CREATE TABLE `media_cache` (
 # ------------------------------------------------------------
 
 CREATE TABLE `newsfeed` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `type` int(11) NOT NULL,
   `author_id` int(11) NOT NULL,
   `object_id` int(11) DEFAULT NULL,
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `type_2` (`type`,`author_id`,`object_id`),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `type` (`type`,`object_id`,`author_id`),
   KEY `time` (`time`),
   KEY `author_id` (`author_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
