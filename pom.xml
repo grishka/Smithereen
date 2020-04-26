@@ -65,6 +65,56 @@
 					<skipTests>true</skipTests>
 				</configuration>
 			</plugin>
+
+			<!-- I don't care about this fancy repository stuff, I just want the jar copied to the server -->
+			<!-- Define deployHost property in your ~/.m2/settings.xml for this to work -->
+			<!-- See https://maven.apache.org/examples/injecting-properties-via-settings.html for details -->
+			<plugin>
+				<artifactId>maven-deploy-plugin</artifactId>
+				<version>2.7</version>
+				<executions>
+					<execution>
+						<id>default-deploy</id>
+						<phase>none</phase>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>1.6.0</version>
+				<executions>
+					<execution>
+						<id>upload-jar-with-dependencies</id>
+						<phase>deploy</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>scp</executable>
+							<arguments>
+								<argument>${basedir}/target/smithereen-jar-with-dependencies.jar</argument>
+								<argument>root@${deployHost}:/opt/smithereen/smithereen.jar</argument>
+							</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>restart-systemd-service</id>
+						<phase>deploy</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>ssh</executable>
+							<arguments>
+								<argument>root@${deployHost}</argument>
+								<argument>service smithereen restart</argument>
+							</arguments>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
 		</plugins>
 
 		<resources>

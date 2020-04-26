@@ -1,0 +1,13 @@
+[Unit]
+Description=Smithereen social network server
+After=network.target mysqld.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/java -jar /opt/smithereen/smithereen.jar /etc/smithereen/config.properties
+Restart=always
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target
