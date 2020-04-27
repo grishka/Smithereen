@@ -165,7 +165,7 @@ public class ActivityPubRoutes{
 		return page.asRootActivityPubObject();
 	}
 
-	public static Object externalInteraction(Request req, Response resp, Account self){
+	public static Object externalInteraction(Request req, Response resp, Account self) throws SQLException{
 		// ?type=reblog
 		// ?type=favourite
 		// ?type=reply
@@ -216,8 +216,13 @@ public class ActivityPubRoutes{
 				x.printStackTrace();
 				return x.toString();
 			}
+		}else if(remoteObj instanceof Post){
+			Post post=(Post)remoteObj;
+			PostStorage.putForeignWallPost(post);
+			resp.redirect("/posts/"+post.id);
+			return "";
 		}
-		return "Referer: "+ref+"<hr/>URL: "+req.queryParams("uri")+"<hr/>Object:<br/><pre>"+remoteObj.toString().replace("<", "&lt;")+"</pre>";
+		return "Referer: "+Utils.sanitizeHTML(ref)+"<hr/>URL: "+Utils.sanitizeHTML(req.queryParams("uri"))+"<hr/>Object:<br/><pre>"+Utils.sanitizeHTML(remoteObj.toString())+"</pre>";
 	}
 
 	public static Object remoteFollow(Request req, Response resp, Account self) throws SQLException{
