@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-04-26 13:22:21 +0000
+# Generation Time: 2020-05-04 15:54:50 +0000
 # ************************************************************
 
 
@@ -36,6 +36,21 @@ CREATE TABLE `accounts` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `accounts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table draft_attachments
+# ------------------------------------------------------------
+
+CREATE TABLE `draft_attachments` (
+  `id` binary(16) NOT NULL,
+  `owner_account_id` int(10) unsigned NOT NULL,
+  `info` text NOT NULL,
+  `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `owner_account_id` (`owner_account_id`),
+  CONSTRAINT `draft_attachments_ibfk_1` FOREIGN KEY (`owner_account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 

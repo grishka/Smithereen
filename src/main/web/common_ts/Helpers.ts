@@ -27,6 +27,17 @@ String.prototype.escapeHTML=function(){
 	return el.innerHTML;
 }
 
+interface Array<T>{
+	remove(item:T):void;
+}
+
+Array.prototype.remove=function(item){
+	var index:number=this.indexOf(item);
+	if(index==-1)
+		return;
+	this.splice(index, 1);
+};
+
 function ajaxPost(uri:string, params:any, onDone:Function, onError:Function):void{
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
 	xhr.open("POST", uri);

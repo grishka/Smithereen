@@ -144,7 +144,7 @@ public class SystemRoutes{
 		return null;
 	}
 
-	public static Object uploadPostPhoto(Request req, Response resp, Account self){
+	public static Object uploadPostPhoto(Request req, Response resp, Account self) throws SQLException{
 		try{
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
 			Part part=req.raw().getPart("file");
@@ -174,7 +174,9 @@ public class SystemRoutes{
 				photo.localID=keyHex;
 				photo.mediaType="image/jpeg";
 				photo.path="post_media";
-				sess.postDraftAttachments.add(photo);
+				if(req.queryParams("draft")!=null)
+					sess.postDraftAttachments.add(photo);
+				MediaCache.putDraftAttachment(photo, self.id);
 
 				temp.delete();
 			}finally{
@@ -198,19 +200,20 @@ public class SystemRoutes{
 		return "";
 	}
 
-	public static Object deleteDraftAttachment(Request req, Response resp, Account self){
+	public static Object deleteDraftAttachment(Request req, Response resp, Account self) throws Exception{
 		SessionInfo sess=Utils.sessionInfo(req);
 		String id=req.queryParams("id");
 		if(id==null){
 			resp.status(400);
 			return "";
 		}
-		for(ActivityPubObject o:sess.postDraftAttachments){
-			if(o instanceof Document){
-				if(id.equals(((Document) o).localID)){
-					sess.postDraftAttachments.remove(o);
-					MediaStorageUtils.deleteAttachmentFiles((Document) o);
-					break;
+		if(MediaCache.deleteDraftAttachment(id, self.id)){
+			for(ActivityPubObject o : sess.postDraftAttachments){
+				if(o instanceof Document){
+					if(id.equals(((Document) o).localID)){
+						sess.postDraftAttachments.remove(o);
+						break;
+					}
 				}
 			}
 		}

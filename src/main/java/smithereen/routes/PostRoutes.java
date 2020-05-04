@@ -1,10 +1,8 @@
 package smithereen.routes;
 
 import org.json.JSONArray;
-import org.json.JSONObject;
 import org.jtwig.JtwigModel;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
@@ -21,10 +19,7 @@ import static smithereen.Utils.*;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
-import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
-import smithereen.activitypub.objects.Document;
-import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.PhotoSize;
@@ -38,6 +33,7 @@ import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.User;
 import smithereen.data.notifications.Notification;
 import smithereen.data.notifications.NotificationUtils;
+import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
@@ -47,41 +43,13 @@ import spark.Response;
 import spark.utils.StringUtils;
 
 public class PostRoutes{
-	private static JSONObject serializeAttachment(ActivityPubObject att){
-		JSONObject o=att.asActivityPubObject(null, new ContextCollector());
-		if(att instanceof Document){
-			Document d=(Document) att;
-			if(StringUtils.isNotEmpty(d.localID)){
-				o.put("_lid", d.localID);
-				if(d instanceof LocalImage){
-					LocalImage im=(LocalImage) d;
-					JSONArray sizes=new JSONArray();
-					sizes.put(0);
-					ArrayList<String> sizeTypes=new ArrayList<>();
-					for(PhotoSize size:im.sizes){
-						if(size.format!=PhotoSize.Format.JPEG)
-							continue;
-						sizeTypes.add(size.type.suffix());
-						sizes.put(size.width);
-						sizes.put(size.height);
-					}
-					sizes.put(0, String.join(" ", sizeTypes));
-					o.put("_sz", sizes);
-					o.put("type", "_LocalImage");
-				}
-				o.remove("url");
-				o.remove("id");
-			}
-		}
-		return o;
-	}
 
-	public static Object createWallPost(Request req, Response resp, Account self) throws SQLException{
+	public static Object createWallPost(Request req, Response resp, Account self) throws Exception{
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			String text=Utils.sanitizeHTML(req.queryParams("text").replace("\n", "<br>").replace("\r", "")).trim();
-			if(text.length()==0)
+			if(text.length()==0 && StringUtils.isEmpty(req.queryParams("attachments")))
 				return "Empty post";
 			if(!text.startsWith("<p>")){
 				String[] paragraphs=text.split("(\n?<br>){2,}");
@@ -143,18 +111,30 @@ public class PostRoutes{
 			}
 
 			String attachments=null;
-			SessionInfo sess=Utils.sessionInfo(req);
-			if(!sess.postDraftAttachments.isEmpty()){
-				if(sess.postDraftAttachments.size()==1){
-					attachments=serializeAttachment(sess.postDraftAttachments.get(0)).toString();
-				}else{
-					JSONArray ar=new JSONArray();
-					for(ActivityPubObject o:sess.postDraftAttachments){
-						ar.put(serializeAttachment(o));
+			if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
+				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
+				String[] aids=req.queryParams("attachments").split(",");
+				for(String id:aids){
+					if(!id.matches("^[a-fA-F0-9]{32}$"))
+						continue;
+					ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(id, self.id);
+					if(obj!=null)
+						attachObjects.add(obj);
+				}
+				if(!attachObjects.isEmpty()){
+					if(attachObjects.size()==1){
+						attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
+					}else{
+						JSONArray ar=new JSONArray();
+						for(ActivityPubObject o:attachObjects){
+							ar.put(MediaStorageUtils.serializeAttachment(o));
+						}
+						attachments=ar.toString();
 					}
-					attachments=ar.toString();
 				}
 			}
+			if(text.length()==0 && StringUtils.isEmpty(attachments))
+				return "Empty post";
 
 			Post parent=null;
 			if(replyTo!=0){
@@ -187,6 +167,7 @@ public class PostRoutes{
 			ActivityPubWorker.getInstance().sendCreatePostActivity(post);
 			NotificationUtils.putNotificationsForPost(post, parent);
 
+			SessionInfo sess=sessionInfo(req);
 			sess.postDraftAttachments.clear();
 			if(isAjax(req)){
 				String postHTML=Utils.renderTemplate(req, replyTo!=0 ? "wall_reply" : "wall_post", JtwigModel.newModel().with("post", post));

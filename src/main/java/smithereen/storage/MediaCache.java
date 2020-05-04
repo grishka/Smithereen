@@ -1,5 +1,8 @@
 package smithereen.storage;
 
+import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -29,6 +32,9 @@ import smithereen.Config;
 import smithereen.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
+import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Document;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.PhotoSize;
 import smithereen.libvips.VImage;
 
@@ -226,6 +232,60 @@ public class MediaCache{
 
 	private byte[] keyForURI(URI uri){
 		return md5.digest(uri.toString().getBytes(StandardCharsets.UTF_8));
+	}
+
+	public static void putDraftAttachment(@NotNull LocalImage img, int ownerID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `draft_attachments` (`id`, `owner_account_id`, `info`) VALUES (?, ?, ?)");
+		stmt.setBytes(1, Utils.hexStringToByteArray(img.localID));
+		stmt.setInt(2, ownerID);
+		stmt.setString(3, MediaStorageUtils.serializeAttachment(img).toString());
+		stmt.execute();
+	}
+
+	public static boolean deleteDraftAttachment(@NotNull String id, int ownerID) throws Exception{
+		Connection conn=DatabaseConnectionManager.getConnection();
+
+		PreparedStatement stmt=conn.prepareStatement("SELECT `info` FROM `draft_attachments` WHERE `id`=? AND `owner_account_id`=?");
+		stmt.setBytes(1, Utils.hexStringToByteArray(id));
+		stmt.setInt(2, ownerID);
+		try(ResultSet res=stmt.executeQuery()){
+			if(res.first()){
+				ActivityPubObject obj=ActivityPubObject.parse(new JSONObject(res.getString(1)));
+				if(obj instanceof Document)
+					MediaStorageUtils.deleteAttachmentFiles((Document)obj);
+			}else{
+				return false;
+			}
+		}
+
+		stmt=conn.prepareStatement("DELETE FROM `draft_attachments` WHERE `id`=? AND `owner_account_id`=?");
+		stmt.setBytes(1, Utils.hexStringToByteArray(id));
+		stmt.setInt(2, ownerID);
+		return stmt.executeUpdate()==1;
+	}
+
+	public static ActivityPubObject getAndDeleteDraftAttachment(@NotNull String id, int ownerID) throws Exception{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		ActivityPubObject result;
+
+		PreparedStatement stmt=conn.prepareStatement("SELECT `info` FROM `draft_attachments` WHERE `id`=? AND `owner_account_id`=?");
+		stmt.setBytes(1, Utils.hexStringToByteArray(id));
+		stmt.setInt(2, ownerID);
+		try(ResultSet res=stmt.executeQuery()){
+			if(res.first()){
+				result=ActivityPubObject.parse(new JSONObject(res.getString(1)));
+			}else{
+				return null;
+			}
+		}
+
+		stmt=conn.prepareStatement("DELETE FROM `draft_attachments` WHERE `id`=? AND `owner_account_id`=?");
+		stmt.setBytes(1, Utils.hexStringToByteArray(id));
+		stmt.setInt(2, ownerID);
+		stmt.execute();
+
+		return result;
 	}
 
 	public enum ItemType{

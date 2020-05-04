@@ -1,15 +1,21 @@
 package smithereen.storage;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import smithereen.Config;
+import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.PhotoSize;
 import smithereen.libvips.VImage;
+import spark.utils.StringUtils;
 
 public class MediaStorageUtils{
 
@@ -98,5 +104,34 @@ public class MediaStorageUtils{
 					System.out.println(file.getAbsolutePath()+" does not exist");
 			}
 		}
+	}
+
+	public static JSONObject serializeAttachment(ActivityPubObject att){
+		JSONObject o=att.asActivityPubObject(null, new ContextCollector());
+		if(att instanceof Document){
+			Document d=(Document) att;
+			if(StringUtils.isNotEmpty(d.localID)){
+				o.put("_lid", d.localID);
+				if(d instanceof LocalImage){
+					LocalImage im=(LocalImage) d;
+					JSONArray sizes=new JSONArray();
+					sizes.put(0);
+					ArrayList<String> sizeTypes=new ArrayList<>();
+					for(PhotoSize size:im.sizes){
+						if(size.format!=PhotoSize.Format.JPEG)
+							continue;
+						sizeTypes.add(size.type.suffix());
+						sizes.put(size.width);
+						sizes.put(size.height);
+					}
+					sizes.put(0, String.join(" ", sizeTypes));
+					o.put("_sz", sizes);
+					o.put("type", "_LocalImage");
+				}
+				o.remove("url");
+				o.remove("id");
+			}
+		}
+		return o;
 	}
 }

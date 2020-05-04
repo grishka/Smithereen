@@ -228,6 +228,12 @@ String.prototype.escapeHTML = function () {
     el.innerText = this;
     return el.innerHTML;
 };
+Array.prototype.remove = function (item) {
+    var index = this.indexOf(item);
+    if (index == -1)
+        return;
+    this.splice(index, 1);
+};
 function ajaxPost(uri, params, onDone, onError) {
     var xhr = new XMLHttpRequest();
     xhr.open("POST", uri);
@@ -462,6 +468,7 @@ function showPostReplyForm(id) {
 }
 var PostForm = /** @class */ (function () {
     function PostForm(el) {
+        this.attachmentIDs = [];
         this.id = el.getAttribute("data-unique-id");
         this.root = el;
         this.input = ge("postFormText_" + this.id);
@@ -469,6 +476,7 @@ var PostForm = /** @class */ (function () {
         this.dragOverlay = el.querySelector(".dropOverlay");
         this.attachContainer = ge("postFormAttachments_" + this.id);
         this.fileField = ge("uploadField_" + this.id);
+        this.attachField = el.querySelector("input[name=attachments]");
         this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
         this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
         this.input.addEventListener("paste", this.onInputPaste.bind(this), false);
@@ -483,6 +491,24 @@ var PostForm = /** @class */ (function () {
             this.handleFiles(this.fileField.files);
             this.fileField.form.reset();
         }.bind(this), false);
+        if (this.attachContainer.children.length) {
+            for (var i = 0; i < this.attachContainer.children.length; i++) {
+                var attach = this.attachContainer.children[i];
+                var aid = attach.getAttribute("data-id");
+                this.attachmentIDs.push(aid);
+                attach.querySelector(".deleteBtn").onclick = function (ev) {
+                    ev.preventDefault();
+                    this.deleteAttachment(aid);
+                }.bind(this);
+            }
+        }
+        window.addEventListener("beforeunload", function (ev) {
+            if (this.input.value.length > 0 || this.attachmentIDs.length > 0) {
+                var msg = lang("confirm_discard_post_draft");
+                (ev || window.event).returnValue = msg;
+                return msg;
+            }
+        }.bind(this));
     }
     PostForm.prototype.onFormSubmit = function (ev) {
         ev.preventDefault();
@@ -500,6 +526,7 @@ var PostForm = /** @class */ (function () {
         }
     };
     PostForm.prototype.onDrop = function (ev) {
+        ev.preventDefault();
         this.dragOverlay.classList.remove("over");
         this.handleFiles(ev.dataTransfer.files);
     };
@@ -549,6 +576,8 @@ var PostForm = /** @class */ (function () {
                 this.deleteAttachment(resp.id);
             }.bind(this);
             cont.id = "attachment_" + resp.id;
+            this.attachmentIDs.push(resp.id);
+            this.attachField.value = this.attachmentIDs.join(",");
         }.bind(this);
         xhr.onerror = function (ev) {
             console.log(ev);
@@ -567,9 +596,16 @@ var PostForm = /** @class */ (function () {
         var el = ge("attachment_" + id);
         el.parentNode.removeChild(el);
         ajaxGet("/system/deleteDraftAttachment?id=" + id, function () { }, function () { });
+        this.attachmentIDs.remove(id);
+        this.attachField.value = this.attachmentIDs.join(",");
     };
     PostForm.prototype.send = function () {
-        ajaxSubmitForm(this.form);
+        if (this.input.value.length == 0 && this.attachmentIDs.length == 0)
+            return;
+        ajaxSubmitForm(this.form, function () {
+            this.attachmentIDs = [];
+            this.attachField.value = "";
+        }.bind(this));
     };
     return PostForm;
 }());

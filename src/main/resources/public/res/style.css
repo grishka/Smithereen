@@ -288,6 +288,8 @@ table.profileFields td{
 		height: 150px;
 		position: relative;
 		display: inline-block;
+		margin-top: 8px;
+		margin-right: 8px;
 	}
 
 .wallPostForm .attachment .scrim, .wallPostForm .attachment .progressBarFrame{

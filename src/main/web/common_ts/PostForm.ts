@@ -7,6 +7,8 @@ class PostForm{
 	private dragOverlay:HTMLElement;
 	private attachContainer:HTMLElement;
 	private fileField:HTMLInputElement;
+	private attachField:HTMLInputElement;
+	private attachmentIDs:string[]=[];
 
 	public constructor(el:HTMLElement){
 		this.id=el.getAttribute("data-unique-id");
@@ -16,6 +18,7 @@ class PostForm{
 		this.dragOverlay=el.querySelector(".dropOverlay");
 		this.attachContainer=ge("postFormAttachments_"+this.id);
 		this.fileField=ge("uploadField_"+this.id);
+		this.attachField=el.querySelector("input[name=attachments]") as HTMLInputElement;
 
 		this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
 		this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
@@ -32,6 +35,26 @@ class PostForm{
 			this.handleFiles(this.fileField.files);
 			this.fileField.form.reset();
 		}.bind(this), false);
+
+		if(this.attachContainer.children.length){
+			for(var i=0;i<this.attachContainer.children.length;i++){
+				var attach:HTMLElement=this.attachContainer.children[i] as HTMLElement;
+				var aid:string=attach.getAttribute("data-id");
+				this.attachmentIDs.push(aid);
+				(attach.querySelector(".deleteBtn") as HTMLElement).onclick=function(ev:Event){
+					ev.preventDefault();
+					this.deleteAttachment(aid);
+				}.bind(this);
+			}
+		}
+
+		window.addEventListener("beforeunload", function(ev:BeforeUnloadEvent){
+			if(this.input.value.length>0 || this.attachmentIDs.length>0){
+				var msg:string=lang("confirm_discard_post_draft");
+				(ev || window.event).returnValue=msg;
+				return msg;
+			}
+		}.bind(this));
 	}
 
 	private onFormSubmit(ev:Event):void{
@@ -53,6 +76,7 @@ class PostForm{
 	}
 
 	private onDrop(ev:DragEvent):void{
+		ev.preventDefault();
 		this.dragOverlay.classList.remove("over");
 		this.handleFiles(ev.dataTransfer.files);
 	}
@@ -108,6 +132,8 @@ class PostForm{
 				this.deleteAttachment(resp.id);
 			}.bind(this);
 			cont.id="attachment_"+resp.id;
+			this.attachmentIDs.push(resp.id);
+			this.attachField.value=this.attachmentIDs.join(",");
 		}.bind(this);
 		xhr.onerror=function(ev:ProgressEvent){
 			console.log(ev);
@@ -127,9 +153,16 @@ class PostForm{
 		var el=ge("attachment_"+id);
 		el.parentNode.removeChild(el);
 		ajaxGet("/system/deleteDraftAttachment?id="+id, function(){}, function(){});
+		this.attachmentIDs.remove(id);
+		this.attachField.value=this.attachmentIDs.join(",");
 	}
 
 	private send():void{
-		ajaxSubmitForm(this.form);
+		if(this.input.value.length==0 && this.attachmentIDs.length==0)
+			return;
+		ajaxSubmitForm(this.form, function(){
+			this.attachmentIDs=[];
+			this.attachField.value="";
+		}.bind(this));
 	}
 }
