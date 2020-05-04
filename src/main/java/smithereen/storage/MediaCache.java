@@ -32,6 +32,7 @@ import smithereen.Config;
 import smithereen.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
+import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.LocalImage;
@@ -251,7 +252,7 @@ public class MediaCache{
 		stmt.setInt(2, ownerID);
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
-				ActivityPubObject obj=ActivityPubObject.parse(new JSONObject(res.getString(1)));
+				ActivityPubObject obj=ActivityPubObject.parse(new JSONObject(res.getString(1)), ParserContext.LOCAL);
 				if(obj instanceof Document)
 					MediaStorageUtils.deleteAttachmentFiles((Document)obj);
 			}else{
@@ -274,7 +275,7 @@ public class MediaCache{
 		stmt.setInt(2, ownerID);
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
-				result=ActivityPubObject.parse(new JSONObject(res.getString(1)));
+				result=ActivityPubObject.parse(new JSONObject(res.getString(1)), ParserContext.LOCAL);
 			}else{
 				return null;
 			}

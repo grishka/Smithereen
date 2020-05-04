@@ -5,6 +5,7 @@ import org.json.JSONObject;
 import java.net.URI;
 
 import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.ParserContext;
 
 public class Relationship extends ActivityPubObject{
 
@@ -29,11 +30,11 @@ public class Relationship extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
-		super.parseActivityPubObject(obj);
+	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+		super.parseActivityPubObject(obj, parserContext);
 		relationship=tryParseURL(obj.getString("relationship"));
-		object=tryParseLinkOrObject(obj.get("object"));
-		subject=tryParseLinkOrObject(obj.get("subject"));
+		object=tryParseLinkOrObject(obj.get("object"), parserContext);
+		subject=tryParseLinkOrObject(obj.get("subject"), parserContext);
 		return this;
 	}
 }

@@ -21,6 +21,7 @@ import java.util.List;
 
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
@@ -164,7 +165,7 @@ public class User extends ActivityPubObject{
 		if(_ava!=null){
 			if(_ava.startsWith("{")){
 				try{
-					icon=Collections.singletonList((Image)Image.parse(new JSONObject(_ava)));
+					icon=Collections.singletonList((Image)Image.parse(new JSONObject(_ava), ParserContext.LOCAL));
 				}catch(Exception ignore){}
 			}else{
 				LocalImage ava=new LocalImage();

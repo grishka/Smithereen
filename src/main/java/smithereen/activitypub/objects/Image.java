@@ -3,6 +3,7 @@ package smithereen.activitypub.objects;
 import org.json.JSONObject;
 
 import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.ParserContext;
 
 public class Image extends Document{
 
@@ -25,8 +26,8 @@ public class Image extends Document{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
-		super.parseActivityPubObject(obj);
+	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+		super.parseActivityPubObject(obj, parserContext);
 		width=obj.optInt("width");
 		height=obj.optInt("height");
 		return this;

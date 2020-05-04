@@ -5,6 +5,7 @@ import org.json.JSONObject;
 import java.util.List;
 
 import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.ParserContext;
 
 public abstract class Activity extends ActivityPubObject{
 
@@ -34,14 +35,14 @@ public abstract class Activity extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
-		super.parseActivityPubObject(obj);
-		actor=tryParseLinkOrObject(obj.get("actor"));
-		object=tryParseLinkOrObject(obj.get("object"));
-		target=tryParseLinkOrObject(obj.opt("target"));
-		result=tryParseArrayOfLinksOrObjects(obj.opt("result"));
-		origin=tryParseLinkOrObject(obj.opt("origin"));
-		instrument=tryParseLinkOrObject(obj.opt("instrument"));
+	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+		super.parseActivityPubObject(obj, parserContext);
+		actor=tryParseLinkOrObject(obj.get("actor"), parserContext);
+		object=tryParseLinkOrObject(obj.get("object"), parserContext);
+		target=tryParseLinkOrObject(obj.opt("target"), parserContext);
+		result=tryParseArrayOfLinksOrObjects(obj.opt("result"), parserContext);
+		origin=tryParseLinkOrObject(obj.opt("origin"), parserContext);
+		instrument=tryParseLinkOrObject(obj.opt("instrument"), parserContext);
 		return this;
 	}
 

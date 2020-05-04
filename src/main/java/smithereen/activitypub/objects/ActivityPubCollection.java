@@ -3,11 +3,10 @@ package smithereen.activitypub.objects;
 import org.json.JSONObject;
 
 import java.net.URI;
-import java.net.URL;
-import java.util.Collections;
 import java.util.List;
 
 import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.ParserContext;
 
 public class ActivityPubCollection extends ActivityPubObject{
 
@@ -44,13 +43,13 @@ public class ActivityPubCollection extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
-		super.parseActivityPubObject(obj);
+	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+		super.parseActivityPubObject(obj, parserContext);
 		totalItems=obj.optInt("totalItems");
 		current=tryParseURL(obj.optString("current"));
-		first=tryParseLinkOrObject(obj.optString("first"));
+		first=tryParseLinkOrObject(obj.optString("first"), parserContext);
 		last=tryParseURL(obj.optString("last"));
-		items=tryParseArrayOfLinksOrObjects(obj.opt(ordered ? "orderedItems" : "items"));
+		items=tryParseArrayOfLinksOrObjects(obj.opt(ordered ? "orderedItems" : "items"), parserContext);
 		return this;
 	}
 }

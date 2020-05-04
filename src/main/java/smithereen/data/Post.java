@@ -3,9 +3,6 @@ package smithereen.data;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.ResultSet;
@@ -20,15 +17,14 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
-import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.VideoAttachment;
-import smithereen.jsonld.JLD;
 import smithereen.storage.MediaCache;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -85,7 +81,7 @@ public class Post extends ActivityPubObject{
 		String att=res.getString("attachments");
 		if(att!=null){
 			try{
-				attachment=parseSingleObjectOrArray(att.charAt(0)=='[' ? new JSONArray(att) : new JSONObject(att));
+				attachment=parseSingleObjectOrArray(att.charAt(0)=='[' ? new JSONArray(att) : new JSONObject(att), ParserContext.LOCAL);
 			}catch(Exception ignore){}
 		}
 
@@ -144,8 +140,8 @@ public class Post extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
-		super.parseActivityPubObject(obj);
+	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+		super.parseActivityPubObject(obj, parserContext);
 		Object _content=obj.get("content");
 		if(_content instanceof JSONArray){
 			content=((JSONArray) _content).getString(0);

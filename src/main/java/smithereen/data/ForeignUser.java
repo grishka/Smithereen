@@ -1,6 +1,5 @@
 package smithereen.data;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayInputStream;
@@ -8,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.URI;
-import java.net.URL;
 import java.security.KeyFactory;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
@@ -20,6 +18,7 @@ import java.sql.Timestamp;
 import java.util.Base64;
 
 import smithereen.Utils;
+import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 
 public class ForeignUser extends User{
@@ -105,8 +104,8 @@ public class ForeignUser extends User{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
-		super.parseActivityPubObject(obj);
+	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+		super.parseActivityPubObject(obj, parserContext);
 		username=obj.optString("preferredUsername", null);
 		if(username==null){
 			username=Utils.getLastPathSegment(activityPubID);

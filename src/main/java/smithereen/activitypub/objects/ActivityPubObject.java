@@ -5,7 +5,6 @@ import org.json.JSONObject;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -15,6 +14,7 @@ import java.util.regex.Pattern;
 
 import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Announce;
 import smithereen.activitypub.objects.activities.Create;
@@ -133,12 +133,12 @@ public abstract class ActivityPubObject{
 		return obj;
 	}
 
-	protected <T extends ActivityPubObject> List<T> parseSingleObjectOrArray(Object o) throws Exception{
+	protected <T extends ActivityPubObject> List<T> parseSingleObjectOrArray(Object o, ParserContext parserContext) throws Exception{
 		if(o==null)
 			return null;
 		try{
 			if(o instanceof JSONObject){
-				T item=(T)parse((JSONObject)o);
+				T item=(T)parse((JSONObject)o, parserContext);
 				if(item==null)
 					return null;
 				return (List<T>) Collections.singletonList(item);
@@ -146,7 +146,7 @@ public abstract class ActivityPubObject{
 				JSONArray ar=(JSONArray) o;
 				ArrayList<T> res=new ArrayList<>();
 				for(int i=0; i<ar.length(); i++){
-					T item=(T) parse(ar.getJSONObject(i));
+					T item=(T) parse(ar.getJSONObject(i), parserContext);
 					if(item!=null)
 						res.add(item);
 				}
@@ -156,11 +156,11 @@ public abstract class ActivityPubObject{
 		return null;
 	}
 
-	protected <T extends ActivityPubObject> T parseSingleObject(JSONObject o) throws Exception{
+	protected <T extends ActivityPubObject> T parseSingleObject(JSONObject o, ParserContext parserContext) throws Exception{
 		if(o==null)
 			return null;
 		try{
-			return (T)parse(o);
+			return (T)parse(o, parserContext);
 		}catch(ClassCastException x){
 			return null;
 		}
@@ -182,7 +182,7 @@ public abstract class ActivityPubObject{
 		return Utils.parseISODate(date);
 	}
 
-	protected LinkOrObject tryParseLinkOrObject(Object o) throws Exception{
+	protected LinkOrObject tryParseLinkOrObject(Object o, ParserContext parserContext) throws Exception{
 		if(o==null)
 			return null;
 		if(o instanceof String){
@@ -190,27 +190,27 @@ public abstract class ActivityPubObject{
 			if(url!=null)
 				return new LinkOrObject(url);
 		}else if(o instanceof JSONObject){
-			ActivityPubObject obj=parse((JSONObject)o);
+			ActivityPubObject obj=parse((JSONObject)o, parserContext);
 			if(obj!=null)
 				return new LinkOrObject(obj);
 		}
 		return null;
 	}
 
-	protected List<LinkOrObject> tryParseArrayOfLinksOrObjects(Object o) throws Exception{
+	protected List<LinkOrObject> tryParseArrayOfLinksOrObjects(Object o, ParserContext parserContext) throws Exception{
 		if(o==null)
 			return null;
 		if(o instanceof JSONArray){
 			JSONArray ar=(JSONArray)o;
 			ArrayList<LinkOrObject> res=new ArrayList<>();
 			for(int i=0;i<ar.length();i++){
-				LinkOrObject lo=tryParseLinkOrObject(ar.get(i));
+				LinkOrObject lo=tryParseLinkOrObject(ar.get(i), parserContext);
 				if(lo!=null)
 					res.add(lo);
 			}
 			return res.isEmpty() ? null : res;
 		}
-		LinkOrObject lo=tryParseLinkOrObject(o);
+		LinkOrObject lo=tryParseLinkOrObject(o, parserContext);
 		return lo!=null ? Collections.singletonList(lo) : null;
 	}
 
@@ -291,31 +291,31 @@ public abstract class ActivityPubObject{
 		return sb.toString();
 	}
 
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
 		activityPubID=tryParseURL(obj.optString("id"));
-		attachment=parseSingleObjectOrArray(obj.opt("attachment"));
+		attachment=parseSingleObjectOrArray(obj.opt("attachment"), parserContext);
 		attributedTo=tryParseURL(obj.optString("attributedTo", null));
 		audience=tryParseURL(obj.optString("audience", null));
 		content=obj.optString("content", null);
 		name=obj.optString("name", null);
 		endTime=tryParseDate(obj.optString("endTime", null));
-		generator=tryParseLinkOrObject(obj.opt("generator"));
-		image=parseSingleObjectOrArray(obj.opt("image"));
-		icon=parseSingleObjectOrArray(obj.opt("icon"));
+		generator=tryParseLinkOrObject(obj.opt("generator"), parserContext);
+		image=parseSingleObjectOrArray(obj.opt("image"), parserContext);
+		icon=parseSingleObjectOrArray(obj.opt("icon"), parserContext);
 		inReplyTo=tryParseURL(obj.optString("inReplyTo", null));
-		location=tryParseLinkOrObject(obj.opt("location"));
-		preview=tryParseLinkOrObject(obj.opt("preview"));
+		location=tryParseLinkOrObject(obj.opt("location"), parserContext);
+		preview=tryParseLinkOrObject(obj.opt("preview"), parserContext);
 		published=tryParseDate(obj.optString("published", null));
-		replies=parseSingleObject(obj.optJSONObject("replies"));
+		replies=parseSingleObject(obj.optJSONObject("replies"), parserContext);
 		startTime=tryParseDate(obj.optString("startTime", null));
 		summary=obj.optString("summary", null);
-		tag=parseSingleObjectOrArray(obj.opt("tag"));
+		tag=parseSingleObjectOrArray(obj.opt("tag"), parserContext);
 		updated=tryParseDate(obj.optString("updated", null));
 		url=tryParseURL(obj.optString("url", null));
-		to=tryParseArrayOfLinksOrObjects(obj.opt("to"));
-		bto=tryParseArrayOfLinksOrObjects(obj.opt("bto"));
-		cc=tryParseArrayOfLinksOrObjects(obj.opt("cc"));
-		bcc=tryParseArrayOfLinksOrObjects(obj.opt("bcc"));
+		to=tryParseArrayOfLinksOrObjects(obj.opt("to"), parserContext);
+		bto=tryParseArrayOfLinksOrObjects(obj.opt("bto"), parserContext);
+		cc=tryParseArrayOfLinksOrObjects(obj.opt("cc"), parserContext);
+		bcc=tryParseArrayOfLinksOrObjects(obj.opt("bcc"), parserContext);
 		mediaType=obj.optString("mediaType", null);
 		duration=tryParseDuration(obj.optString("duration", null));
 		return this;
@@ -443,6 +443,10 @@ public abstract class ActivityPubObject{
 	}
 
 	public static ActivityPubObject parse(JSONObject obj) throws Exception{
+		return parse(obj, ParserContext.FOREIGN);
+	}
+
+	public static ActivityPubObject parse(JSONObject obj, ParserContext parserContext) throws Exception{
 		String type=obj.getString("type");
 		ActivityPubObject res=null;
 		switch(type){
@@ -462,7 +466,8 @@ public abstract class ActivityPubObject{
 				res=new Image();
 				break;
 			case "_LocalImage":
-				res=new LocalImage();
+				if(parserContext.isLocal)
+					res=new LocalImage();
 				break;
 			case "Document":
 				res=new Document();
@@ -527,7 +532,7 @@ public abstract class ActivityPubObject{
 				System.out.println("Unknown object type "+type);
 		}
 		if(res!=null)
-			return res.parseActivityPubObject(obj);
+			return res.parseActivityPubObject(obj, parserContext);
 		return null;
 	}
 }

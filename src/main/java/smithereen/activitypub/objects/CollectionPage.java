@@ -5,6 +5,7 @@ import org.json.JSONObject;
 import java.net.URI;
 
 import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.ParserContext;
 
 public class CollectionPage extends ActivityPubCollection{
 
@@ -34,8 +35,8 @@ public class CollectionPage extends ActivityPubCollection{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
-		super.parseActivityPubObject(obj);
+	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+		super.parseActivityPubObject(obj, parserContext);
 		partOf=tryParseURL(obj.optString("partOf"));
 		prev=tryParseURL(obj.optString("prev"));
 		next=tryParseURL(obj.optString("next"));

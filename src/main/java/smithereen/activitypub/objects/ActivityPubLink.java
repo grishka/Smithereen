@@ -5,6 +5,7 @@ import org.json.JSONObject;
 import java.net.URI;
 
 import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.ParserContext;
 
 public abstract class ActivityPubLink extends ActivityPubObject{
 	public URI href;
@@ -17,8 +18,8 @@ public abstract class ActivityPubLink extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
-		super.parseActivityPubObject(obj);
+	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+		super.parseActivityPubObject(obj, parserContext);
 		href=tryParseURL(obj.getString("href"));
 		return this;
 	}

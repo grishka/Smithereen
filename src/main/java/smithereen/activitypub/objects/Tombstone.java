@@ -6,6 +6,7 @@ import java.util.Date;
 
 import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.ParserContext;
 
 public class Tombstone extends ActivityPubObject{
 
@@ -28,8 +29,8 @@ public class Tombstone extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
-		super.parseActivityPubObject(obj);
+	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+		super.parseActivityPubObject(obj, parserContext);
 		formerType=obj.optString("formerType", null);
 		if(obj.has("deleted"))
 			deleted=tryParseDate(obj.getString("deleted"));

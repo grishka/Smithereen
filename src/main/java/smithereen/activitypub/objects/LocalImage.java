@@ -7,6 +7,7 @@ import java.util.ArrayList;
 
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.ParserContext;
 import smithereen.data.PhotoSize;
 
 public class LocalImage extends Image{
@@ -14,8 +15,8 @@ public class LocalImage extends Image{
 	public String path;
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj) throws Exception{
-		super.parseActivityPubObject(obj);
+	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+		super.parseActivityPubObject(obj, parserContext);
 		localID=obj.getString("_lid");
 		JSONArray s=obj.getJSONArray("_sz");
 		String[] types=s.getString(0).split(" ");
