@@ -276,6 +276,7 @@ table.profileFields td{
 		max-width: 100%;
 		resize: vertical;
 		box-sizing: border-box;
+		vertical-align: top;
 	}
 
 .wallPostForm .dropOverlay{
@@ -361,6 +362,14 @@ table.profileFields td{
 				transition: transform 0.3s ease-in-out;
 				transform-origin: left;
 			}
+
+.wallPostForm .bottomBar{
+		margin-top: 8px;
+	}
+
+.wallPostForm .bottomBar .left{
+			padding-left: 5px;
+		}
 
 .fileIsBeingDragged .dropOverlay{
 	display: flex;

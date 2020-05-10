@@ -8,7 +8,9 @@ class PostForm{
 	private attachContainer:HTMLElement;
 	private fileField:HTMLInputElement;
 	private attachField:HTMLInputElement;
+	private replyToField:HTMLInputElement;
 	private attachmentIDs:string[]=[];
+	private currentReplyName:string="";
 
 	public constructor(el:HTMLElement){
 		this.id=el.getAttribute("data-unique-id");
@@ -19,10 +21,14 @@ class PostForm{
 		this.attachContainer=ge("postFormAttachments_"+this.id);
 		this.fileField=ge("uploadField_"+this.id);
 		this.attachField=el.querySelector("input[name=attachments]") as HTMLInputElement;
+		this.replyToField=ge("postFormReplyTo_"+this.id);
 
 		this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
 		this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
 		this.input.addEventListener("paste", this.onInputPaste.bind(this), false);
+		if(this.input.hasAttribute("data-reply-name")){
+			this.currentReplyName=this.input.getAttribute("data-reply-name");
+		}
 
 		this.dragOverlay.addEventListener("dragenter", function(ev:DragEvent){
 			this.dragOverlay.classList.add("over");
@@ -49,7 +55,7 @@ class PostForm{
 		}
 
 		window.addEventListener("beforeunload", function(ev:BeforeUnloadEvent){
-			if(this.input.value.length>0 || this.attachmentIDs.length>0){
+			if((this.input.value.length>0 && this.input.value!=this.currentReplyName) || this.attachmentIDs.length>0){
 				var msg:string=lang("confirm_discard_post_draft");
 				(ev || window.event).returnValue=msg;
 				return msg;
@@ -164,5 +170,17 @@ class PostForm{
 			this.attachmentIDs=[];
 			this.attachField.value="";
 		}.bind(this));
+	}
+
+	public setupForReplyTo(id:number):void{
+		this.replyToField.value=id+"";
+		var name:string=document.getElementById("post"+id).getAttribute("data-reply-name");
+		if(name){
+			if(this.input.value.length==0 || (this.input.value==this.currentReplyName)){
+				this.input.value=name+", ";
+			}
+			this.currentReplyName=name+", ";
+		}
+		this.input.focus();
 	}
 }

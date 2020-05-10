@@ -1,7 +1,7 @@
 {%if not wallOwner%}{%set wallOwner=currentUser%}{%endif%}
 <div class="gray singleColumn wallPostForm" id="wallPostForm_{{id}}" data-unique-id="{{id}}">
 	<form action="{{wallOwner.getProfileURL('createWallPost')}}" method="post">
-		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="4" maxlength="65000" placeholder="{%if wallOwner.id!=currentUser.id%}{{L('write_on_X_wall', wallOwner.firstName)}}{%elseif reply%}{{L('comment_placeholder')}}{%else%}{{L('write_on_own_wall')}}{%endif%}">{{prefilledPostText}}</textarea><br/>
+		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="4" maxlength="65000" placeholder="{%if wallOwner.id!=currentUser.id%}{{L('write_on_X_wall', wallOwner.firstName)}}{%elseif replyTo%}{{L('comment_placeholder')}}{%else%}{{L('write_on_own_wall')}}{%endif%}">{{prefilledPostText}}</textarea>
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
 		{%if replyTo%}
 		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}" value="{{replyTo.id}}"/>
@@ -19,13 +19,13 @@
 			{%-endfor%}
 		</div>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
-		<table width="100%">
-			<tr><td width="50%">
+		<table width="100%" cellpadding="0" cellspacing="0" class="bottomBar">
+			<tr><td width="50%" class="left">
 				<div class="js">
 					<input type="file" id="uploadField_{{id}}" multiple accept="image/*" style="display: none" form="attachmentUploadForm_{{id}}"/>
 					<label for="uploadField_{{id}}" class="link">{{L('attach_photo')}}</label>
 				</div>
-			</td><td align="right">
+			</td><td align="right" class="right">
 				<input type="submit" value="{{L('send')}}"/>
 			</td></tr>
 		</table>

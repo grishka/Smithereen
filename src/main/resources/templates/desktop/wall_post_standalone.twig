@@ -9,5 +9,5 @@
 {%include "wall_reply.twig" with {post: reply}%}
 {%endfor%}</div>
 </div>
-{%if currentUser%}{%include "wall_post_form.twig" with {replyTo: post}%}{%endif%}
+{%if currentUser%}{%include "wall_post_form.twig" with {replyTo: post, id: "reply"}%}{%endif%}
 {%endblock%}

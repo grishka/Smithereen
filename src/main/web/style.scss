@@ -278,6 +278,7 @@ table.profileFields td{
 		max-width: 100%;
 		resize: vertical;
 		box-sizing: border-box;
+		vertical-align: top;
 	}
 	.dropOverlay{
 		position: absolute;
@@ -353,6 +354,12 @@ table.profileFields td{
 				transition: transform 0.3s ease-in-out;
 				transform-origin: left;
 			}
+		}
+	}
+	.bottomBar{
+		margin-top: 8px;
+		.left{
+			padding-left: 5px;
 		}
 	}
 }

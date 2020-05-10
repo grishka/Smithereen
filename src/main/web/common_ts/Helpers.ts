@@ -259,19 +259,11 @@ function applyServerCommand(cmd:any){
 }
 
 function showPostReplyForm(id:number):boolean{
-	var form=document.getElementById("wallPostForm");
+	var form=document.getElementById("wallPostForm_reply");
 	var replies=document.getElementById("postReplies"+id);
 	replies.insertAdjacentElement("afterbegin", form);
-	var hidden:HTMLInputElement=document.getElementById("postFormReplyTo") as HTMLInputElement;
-	hidden.value=id+"";
-	var field:HTMLTextAreaElement=document.getElementById("postFormText") as HTMLTextAreaElement;
-	var name:string=document.getElementById("post"+id).getAttribute("data-reply-name");
-	if(name){
-		if(field.value.length==0 || (field.hasAttribute("data-reply-name") && field.value==field.getAttribute("data-reply-name"))){
-			field.value=name+", ";
-			field.setAttribute("data-reply-name", name+", ");
-		}
-	}
-	field.focus();
+
+	postForms["wallPostForm_reply"].setupForReplyTo(id);
+
 	return false;
 }

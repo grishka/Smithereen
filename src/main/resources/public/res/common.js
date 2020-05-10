@@ -450,25 +450,16 @@ function applyServerCommand(cmd) {
     }
 }
 function showPostReplyForm(id) {
-    var form = document.getElementById("wallPostForm");
+    var form = document.getElementById("wallPostForm_reply");
     var replies = document.getElementById("postReplies" + id);
     replies.insertAdjacentElement("afterbegin", form);
-    var hidden = document.getElementById("postFormReplyTo");
-    hidden.value = id + "";
-    var field = document.getElementById("postFormText");
-    var name = document.getElementById("post" + id).getAttribute("data-reply-name");
-    if (name) {
-        if (field.value.length == 0 || (field.hasAttribute("data-reply-name") && field.value == field.getAttribute("data-reply-name"))) {
-            field.value = name + ", ";
-            field.setAttribute("data-reply-name", name + ", ");
-        }
-    }
-    field.focus();
+    postForms["wallPostForm_reply"].setupForReplyTo(id);
     return false;
 }
 var PostForm = /** @class */ (function () {
     function PostForm(el) {
         this.attachmentIDs = [];
+        this.currentReplyName = "";
         this.id = el.getAttribute("data-unique-id");
         this.root = el;
         this.input = ge("postFormText_" + this.id);
@@ -477,9 +468,13 @@ var PostForm = /** @class */ (function () {
         this.attachContainer = ge("postFormAttachments_" + this.id);
         this.fileField = ge("uploadField_" + this.id);
         this.attachField = el.querySelector("input[name=attachments]");
+        this.replyToField = ge("postFormReplyTo_" + this.id);
         this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
         this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
         this.input.addEventListener("paste", this.onInputPaste.bind(this), false);
+        if (this.input.hasAttribute("data-reply-name")) {
+            this.currentReplyName = this.input.getAttribute("data-reply-name");
+        }
         this.dragOverlay.addEventListener("dragenter", function (ev) {
             this.dragOverlay.classList.add("over");
         }.bind(this), false);
@@ -503,7 +498,7 @@ var PostForm = /** @class */ (function () {
             }
         }
         window.addEventListener("beforeunload", function (ev) {
-            if (this.input.value.length > 0 || this.attachmentIDs.length > 0) {
+            if ((this.input.value.length > 0 && this.input.value != this.currentReplyName) || this.attachmentIDs.length > 0) {
                 var msg = lang("confirm_discard_post_draft");
                 (ev || window.event).returnValue = msg;
                 return msg;
@@ -607,6 +602,17 @@ var PostForm = /** @class */ (function () {
             this.attachField.value = "";
         }.bind(this));
     };
+    PostForm.prototype.setupForReplyTo = function (id) {
+        this.replyToField.value = id + "";
+        var name = document.getElementById("post" + id).getAttribute("data-reply-name");
+        if (name) {
+            if (this.input.value.length == 0 || (this.input.value == this.currentReplyName)) {
+                this.input.value = name + ", ";
+            }
+            this.currentReplyName = name + ", ";
+        }
+        this.input.focus();
+    };
     return PostForm;
 }());
 ///<reference path="./PostForm.ts"/>
@@ -614,6 +620,7 @@ var ge = document.getElementById.bind(document);
 var ce = document.createElement.bind(document);
 // Use Cmd instead of Ctrl on Apple devices.
 var isApple = navigator.platform.indexOf("Mac") == 0 || navigator.platform == "iPhone" || navigator.platform == "iPad" || navigator.platform == "iPod touch";
+var postForms = {};
 var timeZone;
 if (window["Intl"]) {
     timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -633,7 +640,7 @@ document.body.addEventListener("click", function (ev) {
     }
 }, false);
 document.querySelectorAll(".wallPostForm").forEach(function (el) {
-    new PostForm(el);
+    postForms[el.id] = new PostForm(el);
 });
 var dragTimeout = -1;
 var dragEventCount = 0;

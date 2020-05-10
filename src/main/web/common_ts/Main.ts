@@ -8,6 +8,7 @@ const ce=document.createElement.bind(document);
 
 // Use Cmd instead of Ctrl on Apple devices.
 var isApple:boolean=navigator.platform.indexOf("Mac")==0 || navigator.platform=="iPhone" || navigator.platform=="iPad" || navigator.platform=="iPod touch";
+var postForms:{[key:string]:PostForm}={};
 
 var timeZone:String;
 if(window["Intl"]){
@@ -29,7 +30,7 @@ document.body.addEventListener("click", function(ev){
 }, false);
 
 document.querySelectorAll(".wallPostForm").forEach(function(el){
-	new PostForm(el as HTMLElement);
+	postForms[el.id]=new PostForm(el as HTMLElement);
 });
 
 var dragTimeout=-1;
