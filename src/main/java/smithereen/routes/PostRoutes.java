@@ -48,12 +48,33 @@ public class PostRoutes{
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
-			String text=Utils.sanitizeHTML(req.queryParams("text").replace("\n", "<br>").replace("\r", "")).trim();
+			String text=req.queryParams("text");
 			if(text.length()==0 && StringUtils.isEmpty(req.queryParams("attachments")))
 				return "Empty post";
+
+			Pattern urlPattern=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
+			Matcher matcher=urlPattern.matcher(text);
+			StringBuffer sb=new StringBuffer();
+			while(matcher.find()){
+				String url=matcher.group();
+				String realURL=url;
+				if(StringUtils.isEmpty(matcher.group(1))){
+					realURL="http://"+url;
+				}
+				int start=matcher.start();
+				if(start>10 && text.substring(0, start).endsWith("href=\"")){
+					matcher.appendReplacement(sb, url);
+				}else{
+					matcher.appendReplacement(sb, "<a href=\""+realURL+"\">"+url+"</a>");
+				}
+			}
+			matcher.appendTail(sb);
+			text=sb.toString();
+
+			text=Utils.sanitizeHTML(text.replace("\n", "<br>").replace("\r", "")).trim();
 			if(!text.startsWith("<p>")){
 				String[] paragraphs=text.split("(\n?<br>){2,}");
-				StringBuilder sb=new StringBuilder();
+				sb=new StringBuffer();
 				for(String paragraph:paragraphs){
 					String p=paragraph.trim();
 					if(p.isEmpty())
@@ -68,10 +89,10 @@ public class PostRoutes{
 			int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
 			int postID;
 
-			StringBuffer sb=new StringBuffer();
+			sb=new StringBuffer();
 			ArrayList<User> mentionedUsers=new ArrayList<>();
 			Pattern mentionRegex=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
-			Matcher matcher=mentionRegex.matcher(text);
+			matcher=mentionRegex.matcher(text);
 			while(matcher.find()){
 				String u=matcher.group(1);
 				String d=matcher.group(2);
