@@ -124,5 +124,12 @@
   "notification_friend_req_accept": "accepted your friend request",
   "no_notifications": "You don't have any notifications yet",
   "attach_photo": "Attach a photo",
-  "drop_files_here": "Drag files here"
+  "drop_files_here": "Drag files here",
+  "menu_edit": "edit",
+  "edit_profile":"Edit profile",
+  "profile_edit_basic": "Basic info",
+  "gender": "Gender",
+  "gender_male": "male",
+  "gender_female": "female",
+  "gender_none": "(not specified)"
 }

@@ -167,4 +167,8 @@ public class Lang{
 	public Object raw(String key){
 		return data.opt(key);
 	}
+
+	public Locale getLocale(){
+		return locale;
+	}
 }

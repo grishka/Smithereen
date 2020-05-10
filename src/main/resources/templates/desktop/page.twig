@@ -37,7 +37,7 @@
 {%-block leftMenu%}
 			{%-if currentUser%}
 			<ul class="actionList">
-				<li><a href="/{{currentUser.username}}">{{L('menu_profile')}}</a></li>
+				<li class="hasAux"><a href="/{{currentUser.username}}" class="actionMain">{{L('menu_profile')}}</a><a href="/settings/profile/general" class="actionAux">{{L('menu_edit')}}</a></li>
 				<li><a href="/my/friends">{{L('menu_friends')}}{%if(userNotifications.newFriendRequestCount>0)%} (<b>{{userNotifications.newFriendRequestCount}}</b>){%endif%}</a></li>
 				<li><a href="/feed">{{L('menu_news')}}</a></li>
 				<li><a href="/my/notifications">{{L('menu_notifications')}}{%if(userNotifications.newNotificationsCount>0)%} (<b>{{userNotifications.newNotificationsCount}}</b>){%endif%}</a></li>

@@ -25,6 +25,7 @@ import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Undo;
+import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
 import smithereen.data.User;
@@ -163,8 +164,24 @@ public class ActivityPubWorker{
 		Reject reject=new Reject();
 		reject.object=new LinkOrObject(offer);
 		reject.actor=new LinkOrObject(self.activityPubID);
-		reject.activityPubID=URI.create(self.activityPubID+"#reject_friend_req"+target.id);
+		reject.activityPubID=URI.create(self.activityPubID+"#rejectFriendReq"+target.id);
 		executor.submit(new SendOneActivityRunnable(reject, target.inbox, self));
+	}
+
+	public void sendUpdateUserActivity(User user){
+		Update update=new Update();
+		update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
+		update.activityPubID=URI.create(user.activityPubID+"#updateProfile"+System.currentTimeMillis());
+		update.object=new LinkOrObject(user);
+
+		try{
+			List<URI> inboxes=UserStorage.getFollowerInboxes(user.id);
+			for(URI inbox:inboxes){
+				executor.submit(new SendOneActivityRunnable(update, inbox, user));
+			}
+		}catch(SQLException x){
+			x.printStackTrace();
+		}
 	}
 
 	public void fetchReplyThread(Post post){

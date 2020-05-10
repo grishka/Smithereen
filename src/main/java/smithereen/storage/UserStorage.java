@@ -395,16 +395,23 @@ public class UserStorage{
 		stmt.execute();
 	}
 
-	public static void changeName(int userID, String first, String last) throws SQLException{
+	public static void changeBasicInfo(int userID, String firstName, String lastName, User.Gender gender, java.sql.Date bdate) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("UPDATE `users` SET `fname`=?, `lname`=? WHERE `id`=?");
-		stmt.setString(1, first);
-		stmt.setString(2, last);
-		stmt.setInt(3, userID);
+		PreparedStatement stmt=conn.prepareStatement("UPDATE `users` SET `fname`=?, `lname`=?, `gender`=?, `bdate`=? WHERE `id`=?");
+		stmt.setString(1, firstName);
+		stmt.setString(2, lastName);
+		stmt.setInt(3, gender.ordinal());
+		stmt.setDate(4, bdate);
+		stmt.setInt(5, userID);
 		stmt.execute();
-		User user=getById(userID);
-		user.firstName=first;
-		user.lastName=last;
+		synchronized(UserStorage.class){
+			User user=cache.get(userID);
+			if(user!=null){
+				cache.remove(userID);
+				cacheByActivityPubID.remove(user.activityPubID);
+				cacheByUsername.remove(user.getFullUsername());
+			}
+		}
 	}
 
 	public static int getLocalUserCount() throws SQLException{

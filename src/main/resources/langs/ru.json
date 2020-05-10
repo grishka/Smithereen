@@ -124,5 +124,12 @@
   "notification_friend_req_accept": ["принял Вашу заявку в друзья", "приняла Вашу заявку в друзья"],
   "no_notifications": "У Вас пока нет уведомлений",
   "attach_photo": "Прикрепить фотографию",
-  "drop_files_here": "Перетащите файлы сюда"
+  "drop_files_here": "Перетащите файлы сюда",
+  "menu_edit": "ред.",
+  "edit_profile": "Редактировать страницу",
+  "profile_edit_basic": "Основное",
+  "gender": "Пол",
+  "gender_male": "мужской",
+  "gender_female": "женский",
+  "gender_none": "(не указан)"
 }

@@ -6,6 +6,7 @@ $darkerGray: #DDDDDD;
 $textOnGray: #707070;
 $siteWidth: 1280px;
 $grayText: #909090;
+$text: #000;
 
 @mixin layer-shadow{
 	box-shadow:
@@ -18,7 +19,7 @@ $grayText: #909090;
 	;
 }
 
-body, p, textarea, input{
+body, p, textarea, input, select{
 	font-family: Tahoma, Helvetica, Arial, Roboto, sans-serif;
 	font-size: 11px;
 }
@@ -103,11 +104,24 @@ h2{
 		display: block;
 		line-height: 24px;
 		padding-left: 6px;
+		padding-right: 6px;
 	}
 	a:hover, a:visited:hover{
 		text-decoration: none;
 		background: color($accent lightness(+45%));
 		box-shadow: 0 1px 0 color($accent lightness(+40%)) inset;
+	}
+	li.hasAux{
+		display: table;
+		a{
+			display: table-cell;
+			&.actionMain{
+				width: 100%;
+			}
+			&.actionAux{
+				color: color($text alpha(50%));
+			}
+		}
 	}
 }
 
@@ -355,10 +369,23 @@ table.profileFields td{
 	}
 }
 
-input[type=text], input[type=password], input[type=email], textarea{
+input[type=text], input[type=password], input[type=email], input[type=date], textarea, select{
 	border: solid 1px $grayText;
 	border-radius: 2px;
 	padding: 4px;
+	appearance: none;
+	background-color: $bg;
+}
+
+input[type=date], select{
+	height: 23px;
+}
+
+select{
+	background-image: svg-load("img/select_arrows.svg");
+	background-repeat: no-repeat;
+	background-position: center right;
+	padding: 0 16px 0 4px;
 }
 
 *:focus{
@@ -381,41 +408,37 @@ input[type=submit], input[type=button], button, .button:link, .button:visited{
 	&.loading, &.loading:hover{
 		background: url(/res/loader_overlay.svg), linear-gradient(to bottom, $accent, color($accent shade(10%)));
 	}
-}
 
-input[type=submit]:hover, input[type=button]:hover, .button:hover, .button:visited:hover{
-	text-decoration: none;
-	background: linear-gradient(to bottom, color($accent lightness(+3%)), color($accent shade(5%)));
-	box-shadow: 0 1px 0 color($accent lightness(+13%)) inset;
-}
-
-input[type=submit]:active, input[type=button]:active, .button:active, .button:visited:active{
-	text-decoration: none;
-	background: color($accent shade(20%));
-	box-shadow: none;
-}
-
-input[type=submit].secondary, input[type=button].secondary, button.secondary, .button.secondary:link, .button.secondary:visited{
-	background: linear-gradient(to bottom, $gray, color($gray shade(10%)));
-	text-shadow: 0 1px 1px rgba(255, 255, 255, .8);
-	border: solid 1px color($gray shade(20%));
-	color: $textOnGray;
-	box-shadow: 0 1px 0 color($gray lightness(+10%)) inset;
-	&.loading, &.loading:hover{
-		background: url(/res/loader_overlay.svg), linear-gradient(to bottom, $gray, color($gray shade(10%)));
+	&:hover{
+		text-decoration: none;
+		background: linear-gradient(to bottom, color($accent lightness(+3%)), color($accent shade(5%)));
+		box-shadow: 0 1px 0 color($accent lightness(+13%)) inset;
 	}
-}
-
-input[type=submit].secondary:hover, input[type=button].secondary:hover, .button.secondary:hover, .button.secondary:visited:hover{
-	text-decoration: none;
-	background: linear-gradient(to bottom, color($gray lightness(+3%)), color($gray shade(5%)));
-	box-shadow: 0 1px 0 color($gray lightness(+13%)) inset;
-}
-
-input[type=submit].secondary:active, input[type=button].secondary:active, .button.secondary:active, .button.secondary:visited:active{
-	text-decoration: none;
-	background: color($gray shade(20%));
-	box-shadow: none;
+	&:active{
+		text-decoration: none;
+		background: color($accent shade(20%));
+		box-shadow: none;
+	}
+	&.secondary{
+		background: linear-gradient(to bottom, $gray, color($gray shade(10%)));
+		text-shadow: 0 1px 1px rgba(255, 255, 255, .8);
+		border: solid 1px color($gray shade(20%));
+		color: $textOnGray;
+		box-shadow: 0 1px 0 color($gray lightness(+10%)) inset;
+		&.loading, &.loading:hover{
+			background: url(/res/loader_overlay.svg), linear-gradient(to bottom, $gray, color($gray shade(10%)));
+		}
+		&:hover{
+			text-decoration: none;
+			background: linear-gradient(to bottom, color($gray lightness(+3%)), color($gray shade(5%)));
+			box-shadow: 0 1px 0 color($gray lightness(+13%)) inset;
+		}
+		&:active{
+			text-decoration: none;
+			background: color($gray shade(20%));
+			box-shadow: none;
+		}
+	}
 }
 
 ::placeholder{
@@ -462,14 +485,15 @@ input[type=submit].secondary:active, input[type=button].secondary:active, .butto
 		text-align: right;
 		color: $grayText;
 		vertical-align: top;
-		padding: 4px 8px;
+		padding: 5px 8px 4px 8px;
 		width: 30%;
 	}
-	tr:not(.footer) input{
+	tr:not(.footer) input, tr:not(.footer) select, tr:not(.footer) textarea{
 		width: 100%;
 		box-sizing: border-box;
 	}
 	td{
+		padding: 0;
 		padding-bottom: 8px;
 	}
 	.footer td{

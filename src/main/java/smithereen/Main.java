@@ -4,7 +4,6 @@ import org.jtwig.JtwigModel;
 import org.jtwig.environment.EnvironmentConfiguration;
 import org.jtwig.environment.EnvironmentConfigurationBuilder;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -16,6 +15,7 @@ import smithereen.jtwigext.LangDateFunction;
 import smithereen.jtwigext.LangFunction;
 import smithereen.jtwigext.LangGenderedFunction;
 import smithereen.jtwigext.LangPluralFunction;
+import smithereen.jtwigext.NumberSequenceFunction;
 import smithereen.jtwigext.PhotoSizeFunction;
 import smithereen.jtwigext.PictureForAvatarFunction;
 import smithereen.jtwigext.RenderAttachmentsFunction;
@@ -50,6 +50,7 @@ public class Main{
 					.add(new PictureForAvatarFunction())
 					.add(new RenderAttachmentsFunction())
 					.add(new PhotoSizeFunction())
+					.add(new NumberSequenceFunction())
 				.and()
 				.build();
 	}
@@ -98,10 +99,13 @@ public class Main{
 		});
 
 		path("/settings", ()->{
+			path("/profile", ()->{
+				getLoggedIn("/general", SettingsRoutes::profileEditGeneral);
+			});
 			getLoggedIn("/", SettingsRoutes::settings);
 			postWithCSRF("/createInvite", SettingsRoutes::createInvite);
 			postWithCSRF("/updatePassword", SettingsRoutes::updatePassword);
-			postWithCSRF("/updateName", SettingsRoutes::updateName);
+			postWithCSRF("/updateProfileGeneral", SettingsRoutes::updateProfileGeneral);
 			postLoggedIn("/updateProfilePicture", SettingsRoutes::updateProfilePicture);
 			post("/setLanguage", SettingsRoutes::setLanguage);
 			post("/setTimezone", SettingsRoutes::setTimezone);

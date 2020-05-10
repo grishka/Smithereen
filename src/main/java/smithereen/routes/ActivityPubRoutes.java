@@ -217,10 +217,27 @@ public class ActivityPubRoutes{
 				return x.toString();
 			}
 		}else if(remoteObj instanceof Post){
-			Post post=(Post)remoteObj;
-			PostStorage.putForeignWallPost(post);
-			resp.redirect("/posts/"+post.id);
-			return "";
+			try{
+				Post post=(Post) remoteObj;
+				if(post.user==null){
+					ActivityPubObject obj=ActivityPub.fetchRemoteObject(post.attributedTo.toString());
+					if(obj instanceof ForeignUser){
+						post.user=(ForeignUser) obj;
+						UserStorage.putOrUpdateForeignUser((ForeignUser) obj);
+					}else{
+						throw new IllegalArgumentException("Error fetching post author");
+					}
+				}
+				if(post.owner==null){
+					throw new UnsupportedOperationException("no post owner user - not yet implemented");
+				}
+				PostStorage.putForeignWallPost(post);
+				resp.redirect("/posts/"+post.id);
+				return "";
+			}catch(Exception x){
+				x.printStackTrace();
+				return x.toString();
+			}
 		}
 		return "Referer: "+Utils.sanitizeHTML(ref)+"<hr/>URL: "+Utils.sanitizeHTML(req.queryParams("uri"))+"<hr/>Object:<br/><pre>"+Utils.sanitizeHTML(remoteObj.toString())+"</pre>";
 	}
@@ -888,7 +905,7 @@ public class ActivityPubRoutes{
 			handleUpdatePostActivity(actor, (Post) act.object.object);
 		}else if(act.object.object instanceof User){
 			User o=(User)act.object.object;
-			if(!o.equals(actor)){
+			if(!o.activityPubID.equals(actor.activityPubID)){
 				throw new IllegalArgumentException("User can only update themselves");
 			}
 			handleUpdateUserActivity(actor);
