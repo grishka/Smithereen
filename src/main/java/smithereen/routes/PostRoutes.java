@@ -53,6 +53,7 @@ public class PostRoutes{
 				return "Empty post";
 
 
+			text=text.replace("\n", "<br>").replace("\r", "");
 			if(!text.startsWith("<p>")){
 				String[] paragraphs=text.split("(\n?<br>){2,}");
 				StringBuffer sb=new StringBuffer();
@@ -134,7 +135,7 @@ public class PostRoutes{
 			matcher.appendTail(sb);
 			text=sb.toString();
 
-			text=Utils.sanitizeHTML(text.replace("\n", "<br>").replace("\r", "")).trim();
+			text=Utils.sanitizeHTML(text).trim();
 
 			String attachments=null;
 			if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
