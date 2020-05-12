@@ -183,21 +183,84 @@ h2{
 	margin-bottom: 8px;
 }
 
+.marginBefore{
+	margin-top: 8px;
+}
+
 .ava{
 	border-radius: 4px;
-	vertical-align: middle;
+	display: inline-block;
+}
+
+.avaImage{
+	border-radius: 4px;
+	vertical-align: top;
+}
+
+.avaHasImage{
+	position: relative;
+}
+
+.avaHasImage::after{
+	content: "";
+	display: inline-block;
+	border: solid 1px rgba(0,0,0,0.13);
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	box-sizing: border-box;
+	border-radius: 4px;
 }
 
 .avaPlaceholder{
-	display: inline-block;
-	background: $darkerGray;
+	background: $gray;
 	vertical-align: top;
 	margin: 0;
+	background-image: svg-load("img/ava_placeholder_male_s.svg", fill: $darkerGray);
+	background-repeat: no-repeat;
+	background-position: center;
+	border: solid 1px $darkerGray;
+	box-sizing: border-box;
+	&.sizeM{
+		background-size: 32px;
+	}
+	&.sizeL{
+		background-size: 48px;
+	}
+	&.female{
+		background-image: svg-load("img/ava_placeholder_female_s.svg", fill: $darkerGray);
+	}
+	&.inProfile{
+		width: 200px;
+		height: 200px;
+		border: none;
+		position: relative;
+		background-image: svg-load("img/ava_placeholder_male_l.svg", fill: $darkerGray);
+		&.female{
+			background-image: svg-load("img/ava_placeholder_female_l.svg", fill: $darkerGray);
+		}
+	}
+}
+
+.ownProfileAvaPlaceholderLabel{
+	color: $grayText;
+	display: inline-block;
+	width: 100%;
+	height: 68px;
+	line-height: 68px;
+	text-align: center;
+	position: absolute;
+	bottom: 0;
 }
 
 .membersRow td{
 	padding-top: 8px;
 	font-size: 10px;
+	.ava{
+		margin-bottom: 8px;
+	}
 }
 
 .post{

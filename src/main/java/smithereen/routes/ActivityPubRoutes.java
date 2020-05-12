@@ -231,6 +231,9 @@ public class ActivityPubRoutes{
 				if(post.owner==null){
 					throw new UnsupportedOperationException("no post owner user - not yet implemented");
 				}
+				post.content=Utils.sanitizeHTML(post.content);
+				if(StringUtils.isNotEmpty(post.summary))
+					post.summary=Utils.sanitizeHTML(post.summary);
 				PostStorage.putForeignWallPost(post);
 				resp.redirect("/posts/"+post.id);
 				return "";
@@ -1019,6 +1022,9 @@ public class ActivityPubRoutes{
 
 	private static void handleUpdatePostActivity(ForeignUser actor, Post post) throws SQLException{
 		if(post.canBeManagedBy(actor)){
+			post.content=Utils.sanitizeHTML(post.content);
+			if(StringUtils.isNotEmpty(post.summary))
+				post.summary=Utils.sanitizeHTML(post.summary);
 			PostStorage.putForeignWallPost(post);
 		}else{
 			throw new IllegalArgumentException("No access to update this post");

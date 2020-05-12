@@ -115,7 +115,7 @@ public class SettingsRoutes{
 			message=Utils.lang(req).get("err_name_too_short");
 		}else{
 			UserStorage.changeBasicInfo(self.user.id, first, last, gender, bdate);
-			message=Utils.lang(req).get("name_changed");
+			message=Utils.lang(req).get("profile_info_updated");
 		}
 		self.user=UserStorage.getById(self.user.id);
 		if(self.user==null)

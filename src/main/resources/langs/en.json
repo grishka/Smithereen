@@ -131,5 +131,7 @@
   "gender": "Gender",
   "gender_male": "male",
   "gender_female": "female",
-  "gender_none": "(not specified)"
+  "gender_none": "(not specified)",
+  "upload_avatar": "Upload a profile picture",
+  "profile_info_updated": "Your profile has been updated"
 }

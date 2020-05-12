@@ -2,7 +2,7 @@
 {%block content%}
 <center>
 	<h3>{%if user.supportsFriendRequests%}{{L('you_are_about_to_send_friend_req')}}{%else%}{{L('you_are_about_to_follow')}}{%endif%}</h3>
-	{{user.avatar | pictureForAvatar('m')}}
+	{{user | pictureForAvatar('m')}}
 	<br/>
 	<h4>{{user.fullName}}</h4>
 	{%if user.summary%}{{user.summary | escape(false)}}{%endif%}

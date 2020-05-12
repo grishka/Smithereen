@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import smithereen.data.PhotoSize;
+import smithereen.data.User;
 import smithereen.storage.MediaStorageUtils;
 
 public class PictureForAvatarFunction extends SimpleJtwigFunction{
@@ -22,7 +23,18 @@ public class PictureForAvatarFunction extends SimpleJtwigFunction{
 	public Object execute(FunctionRequest functionRequest){
 		RenderContextHolder.get().set(EscapeEngine.class, NoneEscapeEngine.instance());
 
-		List<PhotoSize> sizes=(List<PhotoSize>) functionRequest.get(0);
+		Object obj=functionRequest.get(0);
+		List<PhotoSize> sizes;
+		String additionalClasses="";
+		if(obj instanceof User){
+			User user=(User) obj;
+			sizes=user.getAvatar();
+			if(user.gender==User.Gender.FEMALE)
+				additionalClasses=" female";
+		}else{
+			return "";
+		}
+
 		String _type=(String) functionRequest.get(1);
 		PhotoSize.Type type, type2x;
 		int size;
@@ -52,17 +64,17 @@ public class PictureForAvatarFunction extends SimpleJtwigFunction{
 		if(functionRequest.getNumberOfArguments()>2)
 			size=((BigDecimal)functionRequest.get(2)).intValue();
 		if(sizes==null)
-			return "<span class=\"ava avaPlaceholder\" style=\"width: "+size+"px;height: "+size+"px\"></span>";
+			return "<span class=\"ava avaPlaceholder size"+_type.toUpperCase()+additionalClasses+"\" style=\"width: "+size+"px;height: "+size+"px\"></span>";
 
 		PhotoSize jpeg1x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.JPEG, type),
 				jpeg2x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.JPEG, type2x),
 				webp1x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.WEBP, type),
 				webp2x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.WEBP, type2x);
 
-		return "<picture>" +
+		return "<span class=\"ava avaHasImage size"+_type.toUpperCase()+"\"><picture>" +
 				"<source srcset=\""+webp1x.src+", "+webp2x.src+" 2x\" type=\"image/webp\"/>" +
 				"<source srcset=\""+jpeg1x.src+", "+jpeg2x.src+" 2x\" type=\"image/jpeg\"/>" +
-				"<img src=\""+jpeg1x.src+"\" width=\""+size+"\" height=\""+size+"\" class=\"ava\"/>" +
-				"</picture>";
+				"<img src=\""+jpeg1x.src+"\" width=\""+size+"\" height=\""+size+"\" class=\"avaImage\"/>" +
+				"</picture></span>";
 	}
 }

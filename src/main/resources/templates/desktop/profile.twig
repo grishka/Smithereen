@@ -4,16 +4,28 @@
 	<tr valign="top">
 		<!-- left column -->
 		<td width="200" id="left">
-			{{user.avatar | pictureForAvatar('l')}}
+			{%if user.hasAvatar%}
+			{{user | pictureForAvatar('l')}}
+			{%else%}
+			{%if currentUser and currentUser.id==user.id%}
+			<a href="/settings/profile/general">
+				<span class="ava avaPlaceholder inProfile{%if user.gender=='FEMALE'%} female{%endif%}">
+					<span class="ownProfileAvaPlaceholderLabel">{{L('upload_avatar')}}</span>
+				</span>
+			</a>
+			{%else%}
+			<span class="ava avaPlaceholder inProfile{%if user.gender=='FEMALE'%} female{%endif%}"></span>
+			{%endif%}
+			{%endif%}
 			{%if currentUser and currentUser.id!=user.id%}
-			<div class="profileBelowAva marginAfter">
+			<div class="profileBelowAva">
 				{{friendshipStatusText}}
 				{%if not isFriend%}
 				<a href="/{{user.username}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("add_friend")}}</a>
 				{%endif%}
 			</div>
 			{%endif%}
-			<ul class="actionList marginAfter">
+			<ul class="actionList marginAfter marginBefore">
 			{%if currentUser and currentUser.id!=user.id%}
 			{%if isFriend%}
 				<li><a href="{{user.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},[{%if following%}'confirm_unfollow_X'{%else%}'confirm_unfriend_X'{%endif%},this.getAttribute('data-name')],'{{user.getProfileURL('doRemoveFriend')}}')" data-name="{{user.fullName}}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
@@ -30,8 +42,8 @@
 				{%if(loop.first or loop.index==4)%}<tr valign="top" class="membersRow">{%endif%}
 				<td align="center" width="33%" style="overflow: hidden;">
 					<a href="{{friend.url}}">
-						{{friend.avatar | pictureForAvatar('s')}}<br/>
-						{{friend.firstName}}<br/>{{friend.lastName}}
+						{{friend | pictureForAvatar('s')}}<br/>
+						<span class="memberName">{{friend.firstName}}<br/>{{friend.lastName}}</span>
 					</a>
 				</td>
 				{%if(loop.index==3 or loop.index==6)%}</tr>{%endif%}
