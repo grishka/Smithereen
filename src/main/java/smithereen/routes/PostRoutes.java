@@ -52,29 +52,10 @@ public class PostRoutes{
 			if(text.length()==0 && StringUtils.isEmpty(req.queryParams("attachments")))
 				return "Empty post";
 
-			Pattern urlPattern=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
-			Matcher matcher=urlPattern.matcher(text);
-			StringBuffer sb=new StringBuffer();
-			while(matcher.find()){
-				String url=matcher.group();
-				String realURL=url;
-				if(StringUtils.isEmpty(matcher.group(1))){
-					realURL="http://"+url;
-				}
-				int start=matcher.start();
-				if(start>10 && text.substring(0, start).endsWith("href=\"")){
-					matcher.appendReplacement(sb, url);
-				}else{
-					matcher.appendReplacement(sb, "<a href=\""+realURL+"\">"+url+"</a>");
-				}
-			}
-			matcher.appendTail(sb);
-			text=sb.toString();
 
-			text=Utils.sanitizeHTML(text.replace("\n", "<br>").replace("\r", "")).trim();
 			if(!text.startsWith("<p>")){
 				String[] paragraphs=text.split("(\n?<br>){2,}");
-				sb=new StringBuffer();
+				StringBuffer sb=new StringBuffer();
 				for(String paragraph:paragraphs){
 					String p=paragraph.trim();
 					if(p.isEmpty())
@@ -89,10 +70,10 @@ public class PostRoutes{
 			int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
 			int postID;
 
-			sb=new StringBuffer();
+			StringBuffer sb=new StringBuffer();
 			ArrayList<User> mentionedUsers=new ArrayList<>();
 			Pattern mentionRegex=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
-			matcher=mentionRegex.matcher(text);
+			Matcher matcher=mentionRegex.matcher(text);
 			while(matcher.find()){
 				String u=matcher.group(1);
 				String d=matcher.group(2);
@@ -130,6 +111,30 @@ public class PostRoutes{
 				matcher.appendTail(sb);
 				text=sb.toString();
 			}
+
+			Pattern urlPattern=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
+			matcher=urlPattern.matcher(text);
+			sb=new StringBuffer();
+			while(matcher.find()){
+				String url=matcher.group();
+				String realURL=url;
+				if(StringUtils.isEmpty(matcher.group(1))){
+					realURL="http://"+url;
+				}
+				int start=matcher.start();
+				if(start>10){
+					String before=text.substring(0, start);
+					if(before.endsWith("href=\"") || before.endsWith("@")){
+						matcher.appendReplacement(sb, url);
+						continue;
+					}
+				}
+				matcher.appendReplacement(sb, "<a href=\""+realURL+"\">"+url+"</a>");
+			}
+			matcher.appendTail(sb);
+			text=sb.toString();
+
+			text=Utils.sanitizeHTML(text.replace("\n", "<br>").replace("\r", "")).trim();
 
 			String attachments=null;
 			if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
