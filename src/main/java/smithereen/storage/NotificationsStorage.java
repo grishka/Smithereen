@@ -98,6 +98,23 @@ public class NotificationsStorage{
 		conn.createStatement().execute("UNLOCK TABLES");
 	}
 
+	public static void deleteNotification(@NotNull Notification.ObjectType objType, int objID, @NotNull Notification.Type type, int actorID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("SELECT `owner_id` FROM `notifications` WHERE `object_type`=? AND `object_id`=? AND `type`=? AND `actor_id`=?");
+		stmt.setInt(1, objType.ordinal());
+		stmt.setInt(2, objID);
+		stmt.setInt(3, type.ordinal());
+		stmt.setInt(4, actorID);
+		try(ResultSet res=stmt.executeQuery()){
+			if(!res.first())
+				return;
+			synchronized(NotificationsStorage.class){
+				userNotificationsCache.remove(res.getInt(1));
+			}
+			res.deleteRow();
+		}
+	}
+
 	public static synchronized UserNotifications getNotificationsForUser(int userID, int lastSeenID) throws SQLException{
 		UserNotifications res=userNotificationsCache.get(userID);
 		if(res!=null)

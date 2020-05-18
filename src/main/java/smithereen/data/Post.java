@@ -146,6 +146,11 @@ public class Post extends ActivityPubObject{
 		if(_content instanceof JSONArray){
 			content=((JSONArray) _content).getString(0);
 		}
+		if(!parserContext.isLocal){
+			content=Utils.sanitizeHTML(content);
+			if(StringUtils.isNotEmpty(summary))
+				summary=Utils.sanitizeHTML(summary);
+		}
 		user=UserStorage.getUserByActivityPubID(attributedTo);
 		if(url==null)
 			url=activityPubID;

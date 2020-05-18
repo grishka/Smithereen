@@ -231,9 +231,6 @@ public class ActivityPubRoutes{
 				if(post.owner==null){
 					throw new UnsupportedOperationException("no post owner user - not yet implemented");
 				}
-				post.content=Utils.sanitizeHTML(post.content);
-				if(StringUtils.isNotEmpty(post.summary))
-					post.summary=Utils.sanitizeHTML(post.summary);
 				PostStorage.putForeignWallPost(post);
 				resp.redirect("/posts/"+post.id);
 				return "";
@@ -639,7 +636,6 @@ public class ActivityPubRoutes{
 				throw new IllegalArgumentException("Can only create posts for self");
 			if(post.owner==null)
 				throw new IllegalArgumentException("Unknown wall owner (from partOf, which must be an outbox URI if present)");
-			post.content=Utils.sanitizeHTML(post.content);
 			boolean isPublic=false;
 			if(post.to==null || post.to.isEmpty()){
 				if(post.cc==null || post.cc.isEmpty()){
@@ -688,8 +684,6 @@ public class ActivityPubRoutes{
 					return;
 				}
 			}
-			if(post.summary!=null)
-				post.summary=Utils.sanitizeHTML(post.summary);
 			if(post.tag!=null){
 				for(ActivityPubObject tag:post.tag){
 					if(tag instanceof Mention){
@@ -981,22 +975,28 @@ public class ActivityPubRoutes{
 		UserStorage.setFollowAccepted(follower.id, actor.id, false);
 	}
 
-	private static void handleUndoAnnounceActivity(ForeignUser actor, Announce activity) throws SQLException{
-		if(!actor.activityPubID.equals(activity.actor.link))
+	private static void handleUndoAnnounceActivity(ForeignUser actor, Announce act) throws SQLException{
+		if(act.object.link==null)
+			throw new IllegalArgumentException("Announce object must be a link");
+		if(!actor.activityPubID.equals(act.actor.link))
 			throw new IllegalArgumentException("Actors must match");
-		Post post=PostStorage.getPostByID(activity.object.link);
+		Post post=PostStorage.getPostByID(act.object.link);
 		if(post==null)
 			throw new ObjectNotFoundException("Post not found");
 		NewsfeedStorage.deleteRetoot(actor.id, post.id);
+		NotificationsStorage.deleteNotification(Notification.ObjectType.POST, post.id, Notification.Type.RETOOT, actor.id);
 	}
 
 	private static void handleUndoLikeActivity(ForeignUser actor, Like act) throws SQLException{
 		if(act.object.link==null)
 			throw new IllegalArgumentException("Like object must be a link");
+		if(!actor.activityPubID.equals(act.actor.link))
+			throw new IllegalArgumentException("Actors must match");
 		Post post=PostStorage.getPostByID(act.object.link);
 		if(post==null)
 			throw new ObjectNotFoundException("Post not found");
 		LikeStorage.setPostLiked(actor.id, post.id, false);
+		NotificationsStorage.deleteNotification(Notification.ObjectType.POST, post.id, Notification.Type.LIKE, actor.id);
 	}
 
 	//endregion
