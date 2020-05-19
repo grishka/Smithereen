@@ -165,7 +165,7 @@ public class User extends ActivityPubObject{
 		if(_ava!=null){
 			if(_ava.startsWith("{")){
 				try{
-					icon=Collections.singletonList((Image)Image.parse(new JSONObject(_ava), ParserContext.LOCAL));
+					icon=Collections.singletonList((Image)ActivityPubObject.parse(new JSONObject(_ava), ParserContext.LOCAL));
 				}catch(Exception ignore){}
 			}else{
 				LocalImage ava=new LocalImage();

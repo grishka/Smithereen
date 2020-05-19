@@ -4,6 +4,7 @@ import org.jtwig.JtwigModel;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -22,6 +23,7 @@ import static smithereen.Utils.*;
 
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
 import smithereen.data.PhotoSize;
@@ -145,23 +147,55 @@ public class SettingsRoutes{
 			File temp=new File(tmpDir, keyHex);
 			part.write(keyHex);
 			VImage img=new VImage(temp.getAbsolutePath());
-			if(img.getWidth()!=img.getHeight()){
-				VImage cropped;
+			VImage cropped=null;
+			float ratio=(float)img.getWidth()/(float)img.getHeight();
+			boolean ratioIsValid=ratio<=2.5f && ratio>=0.25f;
+			if(ratioIsValid){
+				try{
+					String _x1=req.queryParams("x1"),
+							_x2=req.queryParams("x2"),
+							_y1=req.queryParams("y1"),
+							_y2=req.queryParams("y2");
+					if(_x1!=null && _x2!=null && _y1!=null && _y2!=null){
+						float x1=Float.parseFloat(_x1);
+						float x2=Float.parseFloat(_x2);
+						float y1=Float.parseFloat(_y1);
+						float y2=Float.parseFloat(_y2);
+						if(x1 >= 0f && x1<=1f && y1 >= 0f && y1<=1f && x2 >= 0f && x2<=1f && y2 >= 0f && y2<=1f && x1<x2 && y1<y2){
+							float iw=img.getWidth();
+							float ih=img.getHeight();
+							int x=Math.round(iw*x1);
+							int y=Math.round(ih*y1);
+							int size=Math.round(((x2-x1)*iw+(y2-y1)*ih)/2f);
+							cropped=img.crop(x, y, size, size);
+						}
+					}
+				}catch(NumberFormatException ignore){}
+			}
+			if(cropped==null && img.getWidth()!=img.getHeight()){
 				if(img.getHeight()>img.getWidth()){
 					cropped=img.crop(0, 0, img.getWidth(), img.getWidth());
 				}else{
 					cropped=img.crop(img.getWidth()/2-img.getHeight()/2, 0, img.getHeight(), img.getHeight());
 				}
-				img.release();
-				img=cropped;
+				if(!ratioIsValid){
+					img.release();
+					img=cropped;
+				}
 			}
 
 			LocalImage ava=new LocalImage();
 			File profilePicsDir=new File(Config.uploadPath, "avatars");
 			profilePicsDir.mkdirs();
 			try{
-				MediaStorageUtils.writeResizedImages(img, new int[]{50, 100, 200, 400}, new PhotoSize.Type[]{PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
+				MediaStorageUtils.writeResizedImages(cropped!=null ? cropped : img, new int[]{50, 100, 200, 400}, new PhotoSize.Type[]{PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
 						85, 80, keyHex, profilePicsDir, Config.uploadURLPath+"/avatars", ava.sizes);
+				if(cropped!=null && img.getWidth()!=img.getHeight()){
+					MediaStorageUtils.writeResizedImages(img, new int[]{200, 400}, new int[]{500, 1000}, new PhotoSize.Type[]{PhotoSize.Type.RECT_LARGE, PhotoSize.Type.RECT_XLARGE},
+							85, 80, keyHex, profilePicsDir, Config.uploadURLPath+"/avatars", ava.sizes);
+				}
+				ava.localID=keyHex;
+				ava.path="avatars";
 
 				if(self.user.icon!=null){
 					for(PhotoSize size : ((LocalImage) self.user.icon.get(0)).sizes){
@@ -175,18 +209,25 @@ public class SettingsRoutes{
 					}
 				}
 
-				self.user.icon=Collections.singletonList(ava);
-				UserStorage.getById(self.user.id).icon=self.user.icon;
-				UserStorage.updateProfilePicture(self.user.id, keyHex);
+				UserStorage.updateProfilePicture(self.user.id, MediaStorageUtils.serializeAttachment(ava).toString());
+				self.user=UserStorage.getById(self.user.id);
 				temp.delete();
+				ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
 			}finally{
 				img.release();
 			}
+			if(isAjax(req))
+				return new WebDeltaResponseBuilder(resp).refresh().json();
 
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("avatar_updated"));
 			resp.redirect("/settings/");
 		}catch(IOException|ServletException|NoSuchAlgorithmException x){
 			x.printStackTrace();
+			if(isAjax(req)){
+				Lang l=lang(req);
+				return new WebDeltaResponseBuilder(resp).messageBox(l.get("error"), l.get("image_upload_error"), l.get("ok")).json();
+			}
+
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("image_upload_error"));
 			resp.redirect("/settings/");
 		}
@@ -237,5 +278,34 @@ public class SettingsRoutes{
 			s.removeAttribute("settings.profileEditMessage");
 		}
 		return renderTemplate(req, "profile_edit_general", model);
+	}
+
+	public static Object confirmRemoveProfilePicture(Request req, Response resp, Account self){
+		req.attribute("noHistory", true);
+		String back=Utils.back(req);
+		return Utils.renderTemplate(req, "generic_confirm", JtwigModel.newModel().with("message", Utils.lang(req).get("confirm_remove_profile_picture")).with("formAction", Config.localURI("/settings/removeProfilePicture?_redir="+URLEncoder.encode(back))).with("back", back));
+	}
+
+	public static Object removeProfilePicture(Request req, Response resp, Account self) throws SQLException{
+		File profilePicsDir=new File(Config.uploadPath, "avatars");
+		if(self.user.icon!=null){
+			for(PhotoSize size : ((LocalImage) self.user.icon.get(0)).sizes){
+				String path=size.src.getPath();
+				String name=path.substring(path.lastIndexOf('/')+1);
+				File file=new File(profilePicsDir, name);
+				if(file.exists()){
+					System.out.println("deleting: "+file.getAbsolutePath());
+					file.delete();
+				}
+			}
+		}
+
+		UserStorage.updateProfilePicture(self.user.id, null);
+		self.user=UserStorage.getById(self.user.id);
+		ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
+		if(isAjax(req))
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		resp.redirect("/settings/");
+		return "";
 	}
 }

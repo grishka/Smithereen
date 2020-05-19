@@ -133,5 +133,13 @@
   "gender_female": "female",
   "gender_none": "(not specified)",
   "upload_avatar": "Upload a profile picture",
-  "profile_info_updated": "Your profile has been updated"
+  "profile_info_updated": "Your profile has been updated",
+  "profile_pic_select_square_version": "Select a square version of your picture to be shown alongside your posts and comments.",
+  "drag_or_choose_file": "Choose a file or drag it to this window",
+  "choose_file": "Choose a file",
+  "picture_too_wide": "Your picture is too wide.",
+  "picture_too_narrow": "Your picture is too narrow.",
+  "error_loading_picture": "Error loading picture.",
+  "remove_profile_picture": "Remove profile picture",
+  "confirm_remove_profile_picture": "Are you sure you want to remove your profile picture?"
 }

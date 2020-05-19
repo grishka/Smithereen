@@ -126,9 +126,8 @@ class PostForm{
 		var formData=new FormData();
 		formData.append("file", f);
 		var xhr=new XMLHttpRequest();
-		xhr.open("POST", "/system/upload/postPhoto?_ajax=1");
+		xhr.open("POST", "/system/upload/postPhoto?_ajax=1&csrf="+userConfig.csrf);
 		xhr.onload=function(){
-			console.log(xhr.response);
 			cont.classList.remove("uploading");
 			var resp=xhr.response;
 			del.href="/system/deleteDraftAttachment?id="+resp.id;

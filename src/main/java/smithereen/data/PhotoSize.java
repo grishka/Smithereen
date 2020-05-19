@@ -44,7 +44,15 @@ public class PhotoSize{
 		/**
 		 * Photos: 200x200
 		 */
-		XSMALL;
+		XSMALL,
+		/**
+		 * Avatars: 200xH
+		 */
+		RECT_LARGE,
+		/**
+		 * Avatars: 400xH
+		 */
+		RECT_XLARGE;
 
 		public String suffix(){
 			switch(this){
@@ -58,6 +66,10 @@ public class PhotoSize{
 					return "l";
 				case XLARGE:
 					return "xl";
+				case RECT_LARGE:
+					return "rl";
+				case RECT_XLARGE:
+					return "rxl";
 				default:
 					throw new IllegalArgumentException();
 			}
@@ -75,6 +87,10 @@ public class PhotoSize{
 					return LARGE;
 				case "xl":
 					return XLARGE;
+				case "rl":
+					return RECT_LARGE;
+				case "rxl":
+					return RECT_XLARGE;
 			}
 			throw new IllegalArgumentException("Unknown size suffix "+s);
 		}

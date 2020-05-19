@@ -334,6 +334,27 @@ table.profileFields td{
 	width: 30%;
 }
 
+.dropOverlay{
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	margin: 8px;
+	border: dashed 2px $accent;
+	background: color($bg alpha(90%));
+	text-align: center;
+	color: $accent;
+	justify-content: center;
+	flex-direction: column;
+	font-size: 13px;
+	display: none;
+	transition: background-color 0.2s ease-in-out;
+	&.over{
+		background: color($accent lightness(+45%));
+	}
+}
+
 .wallPostForm{
 	position: relative;
 	textarea{
@@ -342,26 +363,6 @@ table.profileFields td{
 		resize: vertical;
 		box-sizing: border-box;
 		vertical-align: top;
-	}
-	.dropOverlay{
-		position: absolute;
-		left: 0;
-		top: 0;
-		right: 0;
-		bottom: 0;
-		margin: 8px;
-		border: dashed 2px $accent;
-		background: color($bg alpha(90%));
-		text-align: center;
-		color: $accent;
-		justify-content: center;
-		flex-direction: column;
-		font-size: 13px;
-		display: none;
-		transition: background-color 0.2s ease-in-out;
-		&.over{
-			background: color($accent lightness(+45%));
-		}
 	}
 	.attachment{
 		width: 200px;
@@ -462,7 +463,7 @@ select{
 	outline: none;
 }
 
-input[type=submit], input[type=button], button, .button:link, .button:visited{
+input[type=submit], input[type=button], button, .button, .button:visited{
 	background: linear-gradient(to bottom, $accent, color($accent shade(10%)));
 	text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
 	border: solid 1px color($accent shade(20%));
@@ -747,3 +748,136 @@ input[type=submit], input[type=button], button, .button:link, .button:visited{
 	background-image: svg-load('img/ntf_share.svg', fill: #FFF);
 }
 
+.fileUploadBoxContent{
+	position: relative;
+	input{
+		display: none;
+	}
+	form{
+		padding-top: 8px;
+	}
+	>.inner{
+		padding: 16px 0;
+		text-align: center;
+	}
+}
+
+.profilePictureBoxImgWrap{
+	margin-top: 8px;
+	display: inline-block;
+	position: relative;
+	>img{
+		max-width: 100%;
+		max-height: 800px;
+		vertical-align: top;
+		user-select: none;
+	}
+}
+
+.imageAreaSelector{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	.selected{
+		border: solid 1px rgba(50,50,50,.7);
+		position: absolute;
+		box-sizing: border-box;
+		cursor: move;
+		.markerCont{
+			width: 100%;
+			height: 100%;
+			position: relative;
+		}
+		.marker{
+			width: 10px;
+			height: 10px;
+			box-sizing: border-box;
+			background: #FFF;
+			border: solid 1px rgba(0,0,0,0.15);
+			position: absolute;
+			&.tl{
+				top: -5px;
+				left: -5px;
+				cursor: nwse-resize;
+			}
+			&.tr{
+				top: -5px;
+				right: -5px;
+				cursor: nesw-resize;
+			}
+			&.bl{
+				bottom: -5px;
+				left: -5px;
+				cursor: nesw-resize;
+			}
+			&.br{
+				bottom: -5px;
+				right: -5px;
+				cursor: nwse-resize;
+			}
+		}
+		.edge{
+			position: absolute;
+			&.top{
+				top: -5px;
+				left: 5px;
+				right: 5px;
+				height: 10px;
+				cursor: ns-resize;
+			}
+			&.bottom{
+				bottom: -5px;
+				left: 5px;
+				right: 5px;
+				height: 10px;
+				cursor: ns-resize;
+			}
+			&.left{
+				left: -5px;
+				top: 5px;
+				bottom: 5px;
+				width: 10px;
+				cursor: ew-resize;
+			}
+			&.right{
+				right: -5px;
+				top: 5px;
+				bottom: 5px;
+				width: 10px;
+				cursor: ew-resize;
+			}
+		}
+	}
+	.scrim{
+		position: absolute;
+		background: rgba(50,50,50,.5);
+	}
+}
+
+.selfAvaOverlay{
+	position: relative;
+	overflow-y: hidden;
+	border-radius: 4px;
+	.selfAvaActions{
+		position: absolute;
+		bottom: 0;
+		width: 100%;
+		background-color: rgba(0,0,0,.5);
+		opacity: 0;
+		transform: translateY(100%);
+		transition: opacity 0.3s ease, transform 0.3s ease;
+		a{
+			color: #FFF;
+		}
+		a:hover, a:visited:hover{
+			background: rgba(255,255,255,.2);
+			box-shadow: none;
+		}
+	}
+	&:hover .selfAvaActions{
+		opacity: 1;
+		transform: translateY(0);
+	}
+}

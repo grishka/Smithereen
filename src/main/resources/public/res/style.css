@@ -336,6 +336,28 @@ table.profileFields td{
 	width: 30%;
 }
 
+.dropOverlay{
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	margin: 8px;
+	border: dashed 2px #aab42f;
+	background: rgba(255, 255, 255, 0.9);
+	text-align: center;
+	color: #aab42f;
+	justify-content: center;
+	flex-direction: column;
+	font-size: 13px;
+	display: none;
+	transition: background-color 0.2s ease-in-out;
+}
+
+.dropOverlay.over{
+		background: #f2f5d6;
+	}
+
 .wallPostForm{
 	position: relative;
 }
@@ -347,28 +369,6 @@ table.profileFields td{
 		box-sizing: border-box;
 		vertical-align: top;
 	}
-
-.wallPostForm .dropOverlay{
-		position: absolute;
-		left: 0;
-		top: 0;
-		right: 0;
-		bottom: 0;
-		margin: 8px;
-		border: dashed 2px #aab42f;
-		background: rgba(255, 255, 255, 0.9);
-		text-align: center;
-		color: #aab42f;
-		justify-content: center;
-		flex-direction: column;
-		font-size: 13px;
-		display: none;
-		transition: background-color 0.2s ease-in-out;
-	}
-
-.wallPostForm .dropOverlay.over{
-			background: #f2f5d6;
-		}
 
 .wallPostForm .attachment{
 		width: 200px;
@@ -478,7 +478,7 @@ select{
 	outline: none;
 }
 
-input[type=submit], input[type=button], button, .button:link, .button:visited{
+input[type=submit], input[type=button], button, .button, .button:visited{
 	background: linear-gradient(to bottom, #aab42f, #99a22a);
 	text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
 	border: solid 1px #889026;
@@ -493,23 +493,23 @@ input[type=submit], input[type=button], button, .button:link, .button:visited{
 	box-sizing: border-box;
 }
 
-input[type=submit].loading, input[type=submit].loading:hover, input[type=button].loading, input[type=button].loading:hover, button.loading, button.loading:hover, .button:link.loading, .button:link.loading:hover, .button:visited.loading, .button:visited.loading:hover{
+input[type=submit].loading, input[type=submit].loading:hover, input[type=button].loading, input[type=button].loading:hover, button.loading, button.loading:hover, .button.loading, .button.loading:hover, .button:visited.loading, .button:visited.loading:hover{
 		background: url(/res/loader_overlay.svg), linear-gradient(to bottom, #aab42f, #99a22a);
 	}
 
-input[type=submit]:hover,input[type=button]:hover,button:hover,.button:link:hover,.button:visited:hover{
+input[type=submit]:hover,input[type=button]:hover,button:hover,.button:hover,.button:visited:hover{
 		text-decoration: none;
 		background: linear-gradient(to bottom, #b7c332, #a2ab2d);
 		box-shadow: 0 1px 0 #c9d355 inset;
 	}
 
-input[type=submit]:active,input[type=button]:active,button:active,.button:link:active,.button:visited:active{
+input[type=submit]:active,input[type=button]:active,button:active,.button:active,.button:visited:active{
 		text-decoration: none;
 		background: #889026;
 		box-shadow: none;
 	}
 
-input[type=submit].secondary,input[type=button].secondary,button.secondary,.button:link.secondary,.button:visited.secondary{
+input[type=submit].secondary,input[type=button].secondary,button.secondary,.button.secondary,.button:visited.secondary{
 		background: linear-gradient(to bottom, #F7F7F7, #dedede);
 		text-shadow: 0 1px 1px rgba(255, 255, 255, .8);
 		border: solid 1px #c6c6c6;
@@ -517,17 +517,17 @@ input[type=submit].secondary,input[type=button].secondary,button.secondary,.butt
 		box-shadow: 0 1px 0 #ffffff inset;
 	}
 
-input[type=submit].secondary.loading, input[type=submit].secondary.loading:hover, input[type=button].secondary.loading, input[type=button].secondary.loading:hover, button.secondary.loading, button.secondary.loading:hover, .button:link.secondary.loading, .button:link.secondary.loading:hover, .button:visited.secondary.loading, .button:visited.secondary.loading:hover{
+input[type=submit].secondary.loading, input[type=submit].secondary.loading:hover, input[type=button].secondary.loading, input[type=button].secondary.loading:hover, button.secondary.loading, button.secondary.loading:hover, .button.secondary.loading, .button.secondary.loading:hover, .button:visited.secondary.loading, .button:visited.secondary.loading:hover{
 			background: url(/res/loader_overlay.svg), linear-gradient(to bottom, #F7F7F7, #dedede);
 		}
 
-input[type=submit].secondary:hover,input[type=button].secondary:hover,button.secondary:hover,.button:link.secondary:hover,.button:visited.secondary:hover{
+input[type=submit].secondary:hover,input[type=button].secondary:hover,button.secondary:hover,.button.secondary:hover,.button:visited.secondary:hover{
 			text-decoration: none;
 			background: linear-gradient(to bottom, #ffffff, #ebebeb);
 			box-shadow: 0 1px 0 #ffffff inset;
 		}
 
-input[type=submit].secondary:active,input[type=button].secondary:active,button.secondary:active,.button:link.secondary:active,.button:visited.secondary:active{
+input[type=submit].secondary:active,input[type=button].secondary:active,button.secondary:active,.button.secondary:active,.button:visited.secondary:active{
 			text-decoration: none;
 			background: #c6c6c6;
 			box-shadow: none;
@@ -821,3 +821,160 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 	background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' fill='%23FFF'%3E%3Cpath d='M5,2H1A1,1,0,0,0,0,3V4A1,1,0,0,0,1,5H2V8H3V5H5L8,7V0Z'/%3E%3C/svg%3E");
 }
 
+.fileUploadBoxContent{
+	position: relative;
+}
+
+.fileUploadBoxContent input{
+		display: none;
+	}
+
+.fileUploadBoxContent form{
+		padding-top: 8px;
+	}
+
+.fileUploadBoxContent >.inner{
+		padding: 16px 0;
+		text-align: center;
+	}
+
+.profilePictureBoxImgWrap{
+	margin-top: 8px;
+	display: inline-block;
+	position: relative;
+}
+
+.profilePictureBoxImgWrap >img{
+		max-width: 100%;
+		max-height: 800px;
+		vertical-align: top;
+		-webkit-user-select: none;
+		   -moz-user-select: none;
+		    -ms-user-select: none;
+		        user-select: none;
+	}
+
+.imageAreaSelector{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+
+.imageAreaSelector .selected{
+		border: solid 1px rgba(50,50,50,.7);
+		position: absolute;
+		box-sizing: border-box;
+		cursor: move;
+	}
+
+.imageAreaSelector .selected .markerCont{
+			width: 100%;
+			height: 100%;
+			position: relative;
+		}
+
+.imageAreaSelector .selected .marker{
+			width: 10px;
+			height: 10px;
+			box-sizing: border-box;
+			background: #FFF;
+			border: solid 1px rgba(0,0,0,0.15);
+			position: absolute;
+		}
+
+.imageAreaSelector .selected .marker.tl{
+				top: -5px;
+				left: -5px;
+				cursor: nwse-resize;
+			}
+
+.imageAreaSelector .selected .marker.tr{
+				top: -5px;
+				right: -5px;
+				cursor: nesw-resize;
+			}
+
+.imageAreaSelector .selected .marker.bl{
+				bottom: -5px;
+				left: -5px;
+				cursor: nesw-resize;
+			}
+
+.imageAreaSelector .selected .marker.br{
+				bottom: -5px;
+				right: -5px;
+				cursor: nwse-resize;
+			}
+
+.imageAreaSelector .selected .edge{
+			position: absolute;
+		}
+
+.imageAreaSelector .selected .edge.top{
+				top: -5px;
+				left: 5px;
+				right: 5px;
+				height: 10px;
+				cursor: ns-resize;
+			}
+
+.imageAreaSelector .selected .edge.bottom{
+				bottom: -5px;
+				left: 5px;
+				right: 5px;
+				height: 10px;
+				cursor: ns-resize;
+			}
+
+.imageAreaSelector .selected .edge.left{
+				left: -5px;
+				top: 5px;
+				bottom: 5px;
+				width: 10px;
+				cursor: ew-resize;
+			}
+
+.imageAreaSelector .selected .edge.right{
+				right: -5px;
+				top: 5px;
+				bottom: 5px;
+				width: 10px;
+				cursor: ew-resize;
+			}
+
+.imageAreaSelector .scrim{
+		position: absolute;
+		background: rgba(50,50,50,.5);
+	}
+
+.selfAvaOverlay{
+	position: relative;
+	overflow-y: hidden;
+	border-radius: 4px;
+}
+
+.selfAvaOverlay .selfAvaActions{
+		position: absolute;
+		bottom: 0;
+		width: 100%;
+		background-color: rgba(0,0,0,.5);
+		opacity: 0;
+		transform: translateY(100%);
+		transition: opacity 0.3s ease, transform 0.3s ease;
+	}
+
+.selfAvaOverlay .selfAvaActions a{
+			color: #FFF;
+		}
+
+.selfAvaOverlay .selfAvaActions a:hover, .selfAvaOverlay .selfAvaActions a:visited:hover{
+			background: rgba(255,255,255,.2);
+			box-shadow: none;
+		}
+
+.selfAvaOverlay:hover .selfAvaActions{
+		opacity: 1;
+		transform: translateY(0);
+	}

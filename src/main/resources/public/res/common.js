@@ -117,9 +117,33 @@ var Box = /** @class */ (function (_super) {
         this.titleBar = titleBar;
         content.appendChild(titleBar);
         content.appendChild(this.contentWrap);
+        var buttonBar = document.createElement("div");
+        buttonBar.className = "boxButtonBar";
+        content.appendChild(buttonBar);
+        this.buttonBar = buttonBar;
+        this.updateButtonBar();
+        return content;
+    };
+    Box.prototype.setContent = function (content) {
+        if (this.contentWrap.hasChildNodes) {
+            for (var i = 0; i < this.contentWrap.children.length; i++)
+                this.contentWrap.firstChild.remove();
+        }
+        this.contentWrap.appendChild(content);
+    };
+    Box.prototype.getButton = function (index) {
+        return this.buttonBar.children[index];
+    };
+    Box.prototype.setButtons = function (buttonTitles, onButtonClick) {
+        this.buttonTitles = buttonTitles;
+        this.onButtonClick = onButtonClick;
+        this.updateButtonBar();
+    };
+    Box.prototype.updateButtonBar = function () {
         if (this.buttonTitles.length) {
-            var buttonBar = document.createElement("div");
-            buttonBar.className = "boxButtonBar";
+            show(this.buttonBar);
+            while (this.buttonBar.firstChild)
+                this.buttonBar.lastChild.remove();
             for (var i = 0; i < this.buttonTitles.length; i++) {
                 var btn = document.createElement("input");
                 btn.type = "button";
@@ -133,18 +157,12 @@ var Box = /** @class */ (function (_super) {
                 else {
                     btn.onclick = this.dismiss.bind(this);
                 }
-                buttonBar.appendChild(btn);
+                this.buttonBar.appendChild(btn);
             }
-            content.appendChild(buttonBar);
-            this.buttonBar = buttonBar;
         }
-        return content;
-    };
-    Box.prototype.setContent = function (content) {
-        this.contentWrap.appendChild(content);
-    };
-    Box.prototype.getButton = function (index) {
-        return this.buttonBar.children[index];
+        else {
+            hide(this.buttonBar);
+        }
     };
     return Box;
 }(BaseLayer));
@@ -203,6 +221,127 @@ var FormBox = /** @class */ (function (_super) {
     }
     return FormBox;
 }(Box));
+var FileUploadBox = /** @class */ (function (_super) {
+    __extends(FileUploadBox, _super);
+    function FileUploadBox(title, message) {
+        if (message === void 0) { message = null; }
+        var _this = _super.call(this, title, [lang("cancel")], function (idx) {
+            this.dismiss();
+        }) || this;
+        _this.acceptMultiple = false;
+        var content = ce("div");
+        if (!message)
+            message = lang("drag_or_choose_file");
+        content.innerHTML = "<div class='inner'>" + message + "<br/><form><input type='file' id='fileUploadBoxInput' accept='image/*'/><label for='fileUploadBoxInput' class='button'>" + lang("choose_file") + "</label></form></div><div class='dropOverlay'>" + lang("drop_files_here") + "</div>";
+        content.className = "fileUploadBoxContent";
+        _this.setContent(content);
+        _this.fileField = content.querySelector("input[type=file]");
+        _this.dragOverlay = content.querySelector(".dropOverlay");
+        _this.dragOverlay.addEventListener("dragenter", function (ev) {
+            this.dragOverlay.classList.add("over");
+        }.bind(_this), false);
+        _this.dragOverlay.addEventListener("dragleave", function (ev) {
+            this.dragOverlay.classList.remove("over");
+        }.bind(_this), false);
+        content.addEventListener("drop", function (ev) {
+            ev.preventDefault();
+            this.dragOverlay.classList.remove("over");
+            this.handleFiles(ev.dataTransfer.files);
+        }.bind(_this), false);
+        _this.fileField.addEventListener("change", function (ev) {
+            this.handleFiles(this.fileField.files);
+            this.fileField.form.reset();
+        }.bind(_this), false);
+        return _this;
+    }
+    FileUploadBox.prototype.handleFiles = function (files) {
+        for (var i = 0; i < files.length; i++) {
+            var f = files[i];
+            if (f.type.indexOf("image/") == 0) {
+                this.handleFile(f);
+                if (!this.acceptMultiple)
+                    return;
+            }
+        }
+    };
+    return FileUploadBox;
+}(Box));
+var ProfilePictureBox = /** @class */ (function (_super) {
+    __extends(ProfilePictureBox, _super);
+    function ProfilePictureBox() {
+        var _this = _super.call(this, lang("update_profile_picture")) || this;
+        _this.file = null;
+        _this.areaSelector = null;
+        return _this;
+    }
+    ProfilePictureBox.prototype.handleFile = function (file) {
+        var _this = this;
+        this.file = file;
+        var objURL = URL.createObjectURL(file);
+        var img = ce("img");
+        img.onload = function () {
+            var ratio = img.naturalWidth / img.naturalHeight;
+            if (ratio > 2.5) {
+                new MessageBox(lang("error"), lang("picture_too_wide"), lang("ok")).show();
+                return;
+            }
+            else if (ratio < 0.25) {
+                new MessageBox(lang("error"), lang("picture_too_narrow"), lang("ok")).show();
+                return;
+            }
+            var content = ce("div");
+            content.innerText = lang("profile_pic_select_square_version");
+            content.align = "center";
+            var imgWrap = ce("div");
+            imgWrap.className = "profilePictureBoxImgWrap";
+            imgWrap.appendChild(img);
+            content.appendChild(ce("br"));
+            content.appendChild(imgWrap);
+            _this.setContent(content);
+            _this.setButtons([lang("save"), lang("cancel")], function (idx) {
+                if (idx == 1) {
+                    _this.dismiss();
+                    return;
+                }
+                var area = _this.areaSelector.getSelectedArea();
+                var contW = imgWrap.clientWidth;
+                var contH = imgWrap.clientHeight;
+                var x1 = area.x / contW;
+                var y1 = area.y / contH;
+                var x2 = (area.x + area.w) / contW;
+                var y2 = (area.y + area.h) / contH;
+                _this.areaSelector.setEnabled(false);
+                _this.upload(x1, y1, x2, y2);
+            });
+            _this.areaSelector = new ImageAreaSelector(imgWrap, true);
+            var w = imgWrap.clientWidth;
+            var h = imgWrap.clientHeight;
+            if (w > h) {
+                _this.areaSelector.setSelectedArea(Math.round(w / 2 - h / 2), 0, h, h);
+            }
+            else {
+                _this.areaSelector.setSelectedArea(0, 0, w, w);
+            }
+        };
+        img.onerror = function () {
+            new MessageBox(lang("error"), lang("error_loading_picture"), lang("ok")).show();
+        };
+        img.src = objURL;
+    };
+    ProfilePictureBox.prototype.upload = function (x1, y1, x2, y2) {
+        var _this = this;
+        var btn = this.getButton(0);
+        btn.setAttribute("disabled", "");
+        this.getButton(1).setAttribute("disabled", "");
+        btn.classList.add("loading");
+        setGlobalLoading(true);
+        ajaxUpload("/settings/updateProfilePicture?x1=" + x1 + "&y1=" + y1 + "&x2=" + x2 + "&y2=" + y2, "pic", this.file, function (resp) {
+            _this.dismiss();
+            return false;
+        });
+    };
+    return ProfilePictureBox;
+}(FileUploadBox));
 var submittingForm = null;
 String.prototype.format = function () {
     var args = [];
@@ -269,6 +408,44 @@ function ajaxGet(uri, onDone, onError) {
     };
     xhr.responseType = "json";
     xhr.send();
+}
+function ajaxUpload(uri, fieldName, file, onDone, onError, onProgress) {
+    if (onDone === void 0) { onDone = null; }
+    if (onError === void 0) { onError = null; }
+    if (onProgress === void 0) { onProgress = null; }
+    var formData = new FormData();
+    formData.append(fieldName, file);
+    var xhr = new XMLHttpRequest();
+    if (uri.indexOf("?") != -1)
+        uri += "&";
+    else
+        uri += "?";
+    uri += "_ajax=1&csrf=" + userConfig.csrf;
+    xhr.open("POST", uri);
+    xhr.onload = function () {
+        var resp = xhr.response;
+        if (onDone) {
+            if (onDone(resp))
+                return;
+        }
+        if (resp instanceof Array) {
+            for (var i = 0; i < resp.length; i++) {
+                applyServerCommand(resp[i]);
+            }
+        }
+    }.bind(this);
+    xhr.onerror = function (ev) {
+        console.log(ev);
+        if (onError)
+            onError();
+    };
+    xhr.upload.onprogress = function (ev) {
+        // pbarInner.style.transform="scaleX("+(ev.loaded/ev.total)+")";
+        if (onProgress)
+            onProgress(ev.loaded / ev.total);
+    };
+    xhr.responseType = "json";
+    xhr.send(formData);
 }
 function hide(el) {
     el.style.display = "none";
@@ -456,6 +633,179 @@ function showPostReplyForm(id) {
     postForms["wallPostForm_reply"].setupForReplyTo(id);
     return false;
 }
+var ImageAreaSelector = /** @class */ (function () {
+    function ImageAreaSelector(parentEl, square) {
+        if (square === void 0) { square = false; }
+        this.curTarget = null;
+        this.enabled = true;
+        this.parentEl = parentEl;
+        this.container = ce("div");
+        this.container.className = "imageAreaSelector";
+        this.parentEl.appendChild(this.container);
+        this.scrimTop = this.makeDiv("scrim");
+        this.scrimTop.style.top = "0";
+        this.container.appendChild(this.scrimTop);
+        this.scrimBottom = this.makeDiv("scrim");
+        this.scrimBottom.style.bottom = "0";
+        this.container.appendChild(this.scrimBottom);
+        this.scrimLeft = this.makeDiv("scrim");
+        this.scrimLeft.style.left = this.scrimLeft.style.top = this.scrimLeft.style.bottom = "0";
+        this.container.appendChild(this.scrimLeft);
+        this.scrimRight = this.makeDiv("scrim");
+        this.scrimRight.style.right = this.scrimRight.style.top = this.scrimRight.style.bottom = "0";
+        this.container.appendChild(this.scrimRight);
+        this.selected = ce("div");
+        this.selected.className = "selected";
+        this.container.appendChild(this.selected);
+        this.container.addEventListener("mousedown", this.onMouseDown.bind(this), false);
+        this.container.addEventListener("dragstart", function (ev) { ev.preventDefault(); }, false);
+        var markerCont = ce("div");
+        markerCont.className = "markers";
+        this.selected.appendChild(markerCont);
+        markerCont.appendChild(this.markerTL = this.makeDiv("marker tl"));
+        markerCont.appendChild(this.markerTR = this.makeDiv("marker tr"));
+        markerCont.appendChild(this.markerBL = this.makeDiv("marker bl"));
+        markerCont.appendChild(this.markerBR = this.makeDiv("marker br"));
+        if (!square) {
+            markerCont.appendChild(this.edgeTop = this.makeDiv("edge top"));
+            markerCont.appendChild(this.edgeBottom = this.makeDiv("edge bottom"));
+            markerCont.appendChild(this.edgeLeft = this.makeDiv("edge left"));
+            markerCont.appendChild(this.edgeRight = this.makeDiv("edge right"));
+        }
+        this.square = square;
+    }
+    ImageAreaSelector.prototype.makeDiv = function (cls) {
+        var el = ce("div");
+        el.className = cls;
+        return el;
+    };
+    ImageAreaSelector.prototype.setSelectedArea = function (x, y, w, h) {
+        this.curX = x;
+        this.curY = y;
+        this.curW = w;
+        this.curH = h;
+        this.updateStyles();
+    };
+    ImageAreaSelector.prototype.getSelectedArea = function () {
+        return { x: this.curX, y: this.curY, w: this.curW, h: this.curH };
+    };
+    ImageAreaSelector.prototype.setEnabled = function (enabled) {
+        this.enabled = enabled;
+    };
+    ImageAreaSelector.prototype.updateStyles = function () {
+        var contW = Math.round(this.container.clientWidth);
+        var contH = Math.round(this.container.clientHeight);
+        // Round to avoid rendering artifacts
+        var x = Math.round(this.curX);
+        var y = Math.round(this.curY);
+        var w = Math.round(this.curW);
+        var h = Math.round(this.curH);
+        this.selected.style.left = x + "px";
+        this.selected.style.top = y + "px";
+        this.selected.style.width = w + "px";
+        this.selected.style.height = h + "px";
+        this.scrimTop.style.left = x + "px";
+        this.scrimTop.style.width = w + "px";
+        this.scrimTop.style.height = y + "px";
+        this.scrimBottom.style.left = x + "px";
+        this.scrimBottom.style.width = w + "px";
+        this.scrimBottom.style.height = (contH - y - h + 1) + "px";
+        this.scrimLeft.style.width = x + "px";
+        this.scrimRight.style.width = (contW - x - w) + "px";
+    };
+    ImageAreaSelector.prototype.onMouseDown = function (ev) {
+        if (!this.enabled)
+            return;
+        this.curTarget = ev.target;
+        this.downX = ev.clientX;
+        this.downY = ev.clientY;
+        this.downSelectedX = this.curX;
+        this.downSelectedY = this.curY;
+        this.downSelectedW = this.curW;
+        this.downSelectedH = this.curH;
+        window.addEventListener("mouseup", this.mouseUpListener = this.onMouseUp.bind(this), false);
+        window.addEventListener("mousemove", this.mouseMoveListener = this.onMouseMove.bind(this), false);
+    };
+    ImageAreaSelector.prototype.onMouseUp = function (ev) {
+        this.curTarget = null;
+        window.removeEventListener("mouseup", this.mouseUpListener);
+        window.removeEventListener("mousemove", this.mouseMoveListener);
+    };
+    ImageAreaSelector.prototype.onMouseMove = function (ev) {
+        if (!this.curTarget)
+            return;
+        var dX = ev.clientX - this.downX;
+        var dY = ev.clientY - this.downY;
+        var contW = this.container.clientWidth;
+        var contH = this.container.clientHeight;
+        if (this.curTarget == this.selected) {
+            this.curX = Math.max(0, Math.min(this.downSelectedX + dX, contW - this.curW));
+            this.curY = Math.max(0, Math.min(this.downSelectedY + dY, contH - this.curH));
+            this.updateStyles();
+        }
+        else if (this.curTarget == this.edgeRight) {
+            this.curW = Math.max(30, Math.min(this.downSelectedW + dX, contW - this.curX));
+            this.updateStyles();
+        }
+        else if (this.curTarget == this.edgeBottom) {
+            this.curH = Math.max(30, Math.min(this.downSelectedH + dY, contH - this.curY));
+            this.updateStyles();
+        }
+        else if (this.curTarget == this.markerBR) {
+            this.curW = Math.max(30, Math.min(this.downSelectedW + dX, contW - this.curX));
+            this.curH = Math.max(30, Math.min(this.downSelectedH + dY, contH - this.curY));
+            if (this.square) {
+                this.curW = this.curH = Math.min(this.curH, this.curW);
+            }
+            this.updateStyles();
+        }
+        else if (this.curTarget == this.edgeTop) {
+            var prevH = this.curH;
+            this.curH = Math.max(30, Math.min(this.downSelectedH - dY, this.curY + this.curH));
+            this.curY += prevH - this.curH;
+            this.updateStyles();
+        }
+        else if (this.curTarget == this.edgeLeft) {
+            var prevW = this.curW;
+            this.curW = Math.max(30, Math.min(this.downSelectedW - dX, this.curX + this.curW));
+            this.curX += prevW - this.curW;
+            this.updateStyles();
+        }
+        else if (this.curTarget == this.markerTL) {
+            var prevW = this.curW;
+            this.curW = Math.max(30, Math.min(this.downSelectedW - dX, this.curX + this.curW));
+            var prevH = this.curH;
+            this.curH = Math.max(30, Math.min(this.downSelectedH - dY, this.curY + this.curH));
+            if (this.square) {
+                this.curW = this.curH = Math.min(this.curH, this.curW);
+            }
+            this.curX += prevW - this.curW;
+            this.curY += prevH - this.curH;
+            this.updateStyles();
+        }
+        else if (this.curTarget == this.markerTR) {
+            this.curW = Math.max(30, Math.min(this.downSelectedW + dX, contW - this.curX));
+            var prevH = this.curH;
+            this.curH = Math.max(30, Math.min(this.downSelectedH - dY, this.curY + this.curH));
+            if (this.square) {
+                this.curW = this.curH = Math.min(this.curH, this.curW);
+            }
+            this.curY += prevH - this.curH;
+            this.updateStyles();
+        }
+        else if (this.curTarget == this.markerBL) {
+            this.curH = Math.max(30, Math.min(this.downSelectedH + dY, contH - this.curY));
+            var prevW = this.curW;
+            this.curW = Math.max(30, Math.min(this.downSelectedW - dX, this.curX + this.curW));
+            if (this.square) {
+                this.curW = this.curH = Math.min(this.curH, this.curW);
+            }
+            this.curX += prevW - this.curW;
+            this.updateStyles();
+        }
+    };
+    return ImageAreaSelector;
+}());
 var PostForm = /** @class */ (function () {
     function PostForm(el) {
         this.attachmentIDs = [];
@@ -559,9 +909,8 @@ var PostForm = /** @class */ (function () {
         var formData = new FormData();
         formData.append("file", f);
         var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/system/upload/postPhoto?_ajax=1");
+        xhr.open("POST", "/system/upload/postPhoto?_ajax=1&csrf=" + userConfig.csrf);
         xhr.onload = function () {
-            console.log(xhr.response);
             cont.classList.remove("uploading");
             var resp = xhr.response;
             del.href = "/system/deleteDraftAttachment?id=" + resp.id;

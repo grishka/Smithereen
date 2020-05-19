@@ -428,6 +428,14 @@ public class UserStorage{
 		stmt.setString(1, serializedPic);
 		stmt.setInt(2, userID);
 		stmt.execute();
+		synchronized(UserStorage.class){
+			User user=cache.get(userID);
+			if(user!=null){
+				cache.remove(userID);
+				cacheByActivityPubID.remove(user.activityPubID);
+				cacheByUsername.remove(user.getFullUsername());
+			}
+		}
 	}
 
 	public static synchronized int putOrUpdateForeignUser(ForeignUser user) throws SQLException{

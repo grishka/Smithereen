@@ -173,6 +173,7 @@ public class ActivityPubWorker{
 		update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
 		update.activityPubID=URI.create(user.activityPubID+"#updateProfile"+System.currentTimeMillis());
 		update.object=new LinkOrObject(user);
+		update.actor=new LinkOrObject(user.activityPubID);
 
 		try{
 			List<URI> inboxes=UserStorage.getFollowerInboxes(user.id);

@@ -124,9 +124,38 @@ class Box extends BaseLayer{
 
 		content.appendChild(this.contentWrap);
 
+		var buttonBar:HTMLDivElement=document.createElement("div");
+		buttonBar.className="boxButtonBar";
+		content.appendChild(buttonBar);
+		this.buttonBar=buttonBar;
+		this.updateButtonBar();
+
+		return content;
+	}
+
+	public setContent(content:HTMLElement):void{
+		if(this.contentWrap.hasChildNodes){
+			for(var i=0;i<this.contentWrap.children.length;i++)
+				this.contentWrap.firstChild.remove();
+		}
+		this.contentWrap.appendChild(content);
+	}
+
+	public getButton(index:number):HTMLElement{
+		return this.buttonBar.children[index] as HTMLElement;
+	}
+
+	public setButtons(buttonTitles:string[], onButtonClick:{(index:number):void;}){
+		this.buttonTitles=buttonTitles;
+		this.onButtonClick=onButtonClick;
+		this.updateButtonBar();
+	}
+
+	private updateButtonBar():void{
 		if(this.buttonTitles.length){
-			var buttonBar:HTMLDivElement=document.createElement("div");
-			buttonBar.className="boxButtonBar";
+			show(this.buttonBar);
+			while(this.buttonBar.firstChild)
+				this.buttonBar.lastChild.remove();
 			for(var i:number=0;i<this.buttonTitles.length;i++){
 				var btn:HTMLInputElement=document.createElement("input");
 				btn.type="button";
@@ -139,21 +168,11 @@ class Box extends BaseLayer{
 				}else{
 					btn.onclick=this.dismiss.bind(this);
 				}
-				buttonBar.appendChild(btn);
+				this.buttonBar.appendChild(btn);
 			}
-			content.appendChild(buttonBar);
-			this.buttonBar=buttonBar;
+		}else{
+			hide(this.buttonBar);
 		}
-
-		return content;
-	}
-
-	public setContent(content:HTMLElement):void{
-		this.contentWrap.appendChild(content);
-	}
-
-	public getButton(index:number):HTMLElement{
-		return this.buttonBar.children[index] as HTMLElement;
 	}
 }
 
@@ -203,5 +222,133 @@ class FormBox extends Box{
 		this.form.action=act;
 		content.appendChild(this.form);
 		this.setContent(content);
+	}
+}
+
+abstract class FileUploadBox extends Box{
+
+	protected fileField:HTMLInputElement;
+	protected dragOverlay:HTMLElement;
+	protected acceptMultiple:boolean=false;
+
+	public constructor(title:string, message:string=null){
+		super(title, [lang("cancel")], function(idx:number){
+			this.dismiss();
+		});
+		var content:HTMLDivElement=ce("div");
+		if(!message) message=lang("drag_or_choose_file");
+		content.innerHTML="<div class='inner'>"+message+"<br/><form><input type='file' id='fileUploadBoxInput' accept='image/*'/><label for='fileUploadBoxInput' class='button'>"+lang("choose_file")+"</label></form></div><div class='dropOverlay'>"+lang("drop_files_here")+"</div>";
+		content.className="fileUploadBoxContent";
+
+		this.setContent(content);
+		this.fileField=content.querySelector("input[type=file]") as HTMLInputElement;
+		this.dragOverlay=content.querySelector(".dropOverlay");
+
+		this.dragOverlay.addEventListener("dragenter", function(ev:DragEvent){
+			this.dragOverlay.classList.add("over");
+		}.bind(this), false);
+		this.dragOverlay.addEventListener("dragleave", function(ev:DragEvent){
+			this.dragOverlay.classList.remove("over");
+		}.bind(this), false);
+		content.addEventListener("drop", function(ev:DragEvent){
+			ev.preventDefault();
+			this.dragOverlay.classList.remove("over");
+			this.handleFiles(ev.dataTransfer.files);
+		}.bind(this), false);
+		this.fileField.addEventListener("change", function(ev:Event){
+			this.handleFiles(this.fileField.files);
+			this.fileField.form.reset();
+		}.bind(this), false);
+	}
+
+	protected abstract handleFile(file:File):void;
+
+	protected handleFiles(files:FileList):void{
+		for(var i=0;i<files.length;i++){
+			var f=files[i];
+			if(f.type.indexOf("image/")==0){
+				this.handleFile(f);
+				if(!this.acceptMultiple)
+					return;
+			}
+		}
+	}
+}
+
+class ProfilePictureBox extends FileUploadBox{
+
+	private file:File=null;
+	private areaSelector:ImageAreaSelector=null;
+
+	public constructor(){
+		super(lang("update_profile_picture"));
+	}
+
+	protected handleFile(file:File):void{
+		this.file=file;
+		var objURL=URL.createObjectURL(file);
+
+		var img=ce("img");
+		img.onload=()=>{
+			var ratio:number=img.naturalWidth/img.naturalHeight;
+			if(ratio>2.5){
+				new MessageBox(lang("error"), lang("picture_too_wide"), lang("ok")).show();
+				return;
+			}else if(ratio<0.25){
+				new MessageBox(lang("error"), lang("picture_too_narrow"), lang("ok")).show();
+				return;
+			}
+			var content=ce("div");
+			content.innerText=lang("profile_pic_select_square_version");
+			content.align="center";
+			var imgWrap=ce("div");
+			imgWrap.className="profilePictureBoxImgWrap";
+			imgWrap.appendChild(img);
+			content.appendChild(ce("br"));
+			content.appendChild(imgWrap);
+			this.setContent(content);
+			this.setButtons([lang("save"), lang("cancel")], (idx:number)=>{
+				if(idx==1){
+					this.dismiss();
+					return;
+				}
+				var area=this.areaSelector.getSelectedArea();
+				var contW=imgWrap.clientWidth;
+				var contH=imgWrap.clientHeight;
+				var x1=area.x/contW;
+				var y1=area.y/contH;
+				var x2=(area.x+area.w)/contW;
+				var y2=(area.y+area.h)/contH;
+				this.areaSelector.setEnabled(false);
+
+				this.upload(x1, y1, x2, y2);
+			});
+
+			this.areaSelector=new ImageAreaSelector(imgWrap, true);
+			var w=imgWrap.clientWidth;
+			var h=imgWrap.clientHeight;
+			if(w>h){
+				this.areaSelector.setSelectedArea(Math.round(w/2-h/2), 0, h, h);
+			}else{
+				this.areaSelector.setSelectedArea(0, 0, w, w);
+			}
+		};
+		img.onerror=function(){
+			new MessageBox(lang("error"), lang("error_loading_picture"), lang("ok")).show();
+		};
+		img.src=objURL;
+	}
+
+	private upload(x1:number, y1:number, x2:number, y2:number):void{
+		var btn=this.getButton(0);
+		btn.setAttribute("disabled", "");
+		this.getButton(1).setAttribute("disabled", "");
+		btn.classList.add("loading");
+		setGlobalLoading(true);
+
+		ajaxUpload("/settings/updateProfilePicture?x1="+x1+"&y1="+y1+"&x2="+x2+"&y2="+y2, "pic", this.file, (resp:any)=>{
+			this.dismiss();
+			return false;
+		});
 	}
 }

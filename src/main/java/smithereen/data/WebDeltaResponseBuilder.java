@@ -4,8 +4,18 @@ import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import spark.Response;
+
 public class WebDeltaResponseBuilder{
 	private JSONArray commands=new JSONArray();
+
+	public WebDeltaResponseBuilder(){
+
+	}
+
+	public WebDeltaResponseBuilder(Response resp){
+		resp.type("application/json");
+	}
 
 	public WebDeltaResponseBuilder setContent(@NotNull String containerID, @NotNull String html){
 		JSONObject cmd=new JSONObject();

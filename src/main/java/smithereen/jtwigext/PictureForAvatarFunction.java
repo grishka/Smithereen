@@ -38,6 +38,7 @@ public class PictureForAvatarFunction extends SimpleJtwigFunction{
 		String _type=(String) functionRequest.get(1);
 		PhotoSize.Type type, type2x;
 		int size;
+		boolean isRect=false;
 		switch(_type){
 			case "s":
 				type=PhotoSize.Type.SMALL;
@@ -58,6 +59,19 @@ public class PictureForAvatarFunction extends SimpleJtwigFunction{
 				type2x=type=PhotoSize.Type.XLARGE;
 				size=400;
 				break;
+			case "rl":
+				type=PhotoSize.Type.RECT_LARGE;
+				type2x=PhotoSize.Type.RECT_XLARGE;
+				size=200;
+				_type="l";
+				isRect=true;
+				break;
+			case "rxl":
+				type=type2x=PhotoSize.Type.RECT_XLARGE;
+				size=400;
+				_type="xl";
+				isRect=true;
+				break;
 			default:
 				throw new IllegalArgumentException("Wrong size type "+_type);
 		}
@@ -71,10 +85,12 @@ public class PictureForAvatarFunction extends SimpleJtwigFunction{
 				webp1x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.WEBP, type),
 				webp2x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.WEBP, type2x);
 
+		int width=size, height=isRect ? jpeg1x.height : size;
+
 		return "<span class=\"ava avaHasImage size"+_type.toUpperCase()+"\"><picture>" +
 				"<source srcset=\""+webp1x.src+", "+webp2x.src+" 2x\" type=\"image/webp\"/>" +
 				"<source srcset=\""+jpeg1x.src+", "+jpeg2x.src+" 2x\" type=\"image/jpeg\"/>" +
-				"<img src=\""+jpeg1x.src+"\" width=\""+size+"\" height=\""+size+"\" class=\"avaImage\"/>" +
+				"<img src=\""+jpeg1x.src+"\" width=\""+width+"\" height=\""+height+"\" class=\"avaImage\"/>" +
 				"</picture></span>";
 	}
 }

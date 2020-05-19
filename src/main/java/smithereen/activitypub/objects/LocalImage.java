@@ -20,7 +20,7 @@ public class LocalImage extends Image{
 		localID=obj.getString("_lid");
 		JSONArray s=obj.getJSONArray("_sz");
 		String[] types=s.getString(0).split(" ");
-		path="post_media";
+		path=obj.optString("_p", "post_media");
 		int offset=0;
 		for(String t:types){
 			PhotoSize.Type type=PhotoSize.Type.fromSuffix(t);

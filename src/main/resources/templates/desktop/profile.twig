@@ -5,10 +5,20 @@
 		<!-- left column -->
 		<td width="200" id="left">
 			{%if user.hasAvatar%}
-			{{user | pictureForAvatar('l')}}
+			{%if currentUser and currentUser.id==user.id%}
+			<div class="selfAvaOverlay">
+				{{user | pictureForAvatar('rl')}}
+				<ul class="selfAvaActions actionList">
+					<li><a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">{{L('update_profile_picture')}}</a></li>
+					<li><a href="/settings/confirmRemoveProfilePicture" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture');">{{L('remove_profile_picture')}}</a></li>
+				</ul>
+			</div>
+			{%else%}
+			{{user | pictureForAvatar('rl')}}
+			{%endif%}
 			{%else%}
 			{%if currentUser and currentUser.id==user.id%}
-			<a href="/settings/profile/general">
+			<a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">
 				<span class="ava avaPlaceholder inProfile{%if user.gender=='FEMALE'%} female{%endif%}">
 					<span class="ownProfileAvaPlaceholderLabel">{{L('upload_avatar')}}</span>
 				</span>

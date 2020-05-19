@@ -76,6 +76,41 @@ function ajaxGet(uri:string, onDone:Function, onError:Function):void{
 	xhr.send();
 }
 
+function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):boolean}=null, onError:Function=null, onProgress:{(progress:number):void}=null):void{
+	var formData=new FormData();
+	formData.append(fieldName, file);
+	var xhr=new XMLHttpRequest();
+	if(uri.indexOf("?")!=-1)
+		uri+="&";
+	else
+		uri+="?";
+	uri+="_ajax=1&csrf="+userConfig.csrf;
+	xhr.open("POST", uri);
+	xhr.onload=function(){
+		var resp=xhr.response;
+		if(onDone){
+			if(onDone(resp))
+				return;
+		}
+		if(resp instanceof Array){
+			for(var i=0;i<resp.length;i++){
+				applyServerCommand(resp[i]);
+			}
+		}
+	}.bind(this);
+	xhr.onerror=function(ev:ProgressEvent){
+		console.log(ev);
+		if(onError) onError();
+	};
+	xhr.upload.onprogress=function(ev:ProgressEvent){
+		// pbarInner.style.transform="scaleX("+(ev.loaded/ev.total)+")";
+		if(onProgress)
+			onProgress(ev.loaded/ev.total);
+	};
+	xhr.responseType="json";
+	xhr.send(formData);
+}
+
 function hide(el:HTMLElement):void{
 	el.style.display="none";
 }

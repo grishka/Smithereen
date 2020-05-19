@@ -133,5 +133,13 @@
   "gender_female": "женский",
   "gender_none": "(не указан)",
   "upload_avatar": "Загрузить аватарку",
-  "profile_info_updated": "Информация в профиле обновлена"
+  "profile_info_updated": "Информация в профиле обновлена",
+  "profile_pic_select_square_version": "Выбранная квадратная область будет показываться у Ваших записей и комментариев.",
+  "drag_or_choose_file": "Выберите файл или перетащите его в это окно",
+  "choose_file": "Выбрать файл",
+  "picture_too_wide": "Фотография слишком широкая.",
+  "picture_too_narrow": "Фотография слишком узкая.",
+  "error_loading_picture": "Ошибка при загрузке фотографии.",
+  "remove_profile_picture": "Удалить аватарку",
+  "confirm_remove_profile_picture": "Вы действительно хотите удалить свою аватарку?"
 }

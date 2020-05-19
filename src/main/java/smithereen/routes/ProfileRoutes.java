@@ -52,25 +52,32 @@ public class ProfileRoutes{
 				model.with("draftAttachments", info.postDraftAttachments);
 			}
 			if(self!=null){
-				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-				if(status==FriendshipStatus.FRIENDS){
-					model.with("isFriend", true);
-					model.with("friendshipStatusText", Utils.lang(req).get("X_is_your_friend", user.firstName));
-				}else if(status==FriendshipStatus.REQUEST_SENT){
-					model.with("friendRequestSent", true);
-					model.with("friendshipStatusText", Utils.lang(req).get("you_sent_friend_req_to_X", user.firstName));
-				}else if(status==FriendshipStatus.REQUEST_RECVD){
-					model.with("friendRequestRecvd", true);
-					model.with("friendshipStatusText", Utils.lang(req).gendered("X_sent_you_friend_req", user.gender, user.firstName));
-				}else if(status==FriendshipStatus.FOLLOWING){
-					model.with("following", true);
-					model.with("friendshipStatusText", Utils.lang(req).get("you_are_following_X", user.firstName));
-				}else if(status==FriendshipStatus.FOLLOWED_BY){
-					model.with("followedBy", true);
-					model.with("friendshipStatusText", Utils.lang(req).gendered("X_is_following_you", user.gender, user.firstName));
-				}else if(status==FriendshipStatus.FOLLOW_REQUESTED){
-					model.with("followRequested", true);
-					model.with("friendshipStatusText", Utils.lang(req).get("waiting_for_X_to_accept_follow_req", user.firstName));
+				if(user.id==self.user.id){
+					// lang keys for profile picture update UI
+					jsLangKey(req, "update_profile_picture", "save", "profile_pic_select_square_version", "drag_or_choose_file", "choose_file",
+							"drop_files_here", "picture_too_wide", "picture_too_narrow", "ok", "error", "error_loading_picture",
+							"remove_profile_picture", "confirm_remove_profile_picture");
+				}else{
+					FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
+					if(status==FriendshipStatus.FRIENDS){
+						model.with("isFriend", true);
+						model.with("friendshipStatusText", Utils.lang(req).get("X_is_your_friend", user.firstName));
+					}else if(status==FriendshipStatus.REQUEST_SENT){
+						model.with("friendRequestSent", true);
+						model.with("friendshipStatusText", Utils.lang(req).get("you_sent_friend_req_to_X", user.firstName));
+					}else if(status==FriendshipStatus.REQUEST_RECVD){
+						model.with("friendRequestRecvd", true);
+						model.with("friendshipStatusText", Utils.lang(req).gendered("X_sent_you_friend_req", user.gender, user.firstName));
+					}else if(status==FriendshipStatus.FOLLOWING){
+						model.with("following", true);
+						model.with("friendshipStatusText", Utils.lang(req).get("you_are_following_X", user.firstName));
+					}else if(status==FriendshipStatus.FOLLOWED_BY){
+						model.with("followedBy", true);
+						model.with("friendshipStatusText", Utils.lang(req).gendered("X_is_following_you", user.gender, user.firstName));
+					}else if(status==FriendshipStatus.FOLLOW_REQUESTED){
+						model.with("followRequested", true);
+						model.with("friendshipStatusText", Utils.lang(req).get("waiting_for_X_to_accept_follow_req", user.firstName));
+					}
 				}
 			}else{
 				HashMap<String, String> meta=new LinkedHashMap<>();

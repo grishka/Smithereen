@@ -106,7 +106,9 @@ public class Main{
 			postWithCSRF("/createInvite", SettingsRoutes::createInvite);
 			postWithCSRF("/updatePassword", SettingsRoutes::updatePassword);
 			postWithCSRF("/updateProfileGeneral", SettingsRoutes::updateProfileGeneral);
-			postLoggedIn("/updateProfilePicture", SettingsRoutes::updateProfilePicture);
+			postWithCSRF("/updateProfilePicture", SettingsRoutes::updateProfilePicture);
+			postWithCSRF("/removeProfilePicture", SettingsRoutes::removeProfilePicture);
+			getLoggedIn("/confirmRemoveProfilePicture", SettingsRoutes::confirmRemoveProfilePicture);
 			post("/setLanguage", SettingsRoutes::setLanguage);
 			post("/setTimezone", SettingsRoutes::setTimezone);
 		});
@@ -124,9 +126,9 @@ public class Main{
 
 		path("/system", ()->{
 			get("/downloadExternalMedia", SystemRoutes::downloadExternalMedia);
-			getLoggedIn("/deleteDraftAttachment", SystemRoutes::deleteDraftAttachment);
+			getWithCSRF("/deleteDraftAttachment", SystemRoutes::deleteDraftAttachment);
 			path("/upload", ()->{
-				postLoggedIn("/postPhoto", SystemRoutes::uploadPostPhoto);
+				postWithCSRF("/postPhoto", SystemRoutes::uploadPostPhoto);
 			});
 		});
 

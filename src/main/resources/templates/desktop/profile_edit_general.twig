@@ -23,13 +23,15 @@
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
 	</form>
 
-	<form action="/settings/updateProfilePicture" method="post" enctype="multipart/form-data">
-		<h2>{{L('update_profile_picture')}}</h2>
-		{%if profilePicMessage%}<div class="settingsMessage">{{profilePicMessage}}</div>{%endif%}
-		<table class="form">
-			<tr><td class="label"></td><td><input type="file" name="pic" accept="image/*"/></td></tr>
-			<tr class="footer"><td class="label"></td><td><input type="submit" value="{{L('save')}}"/></td></tr>
-		</table>
-	</form>
+	<noscript>
+		<form action="/settings/updateProfilePicture?csrf={{csrf}}" method="post" enctype="multipart/form-data">
+			<h2>{{L('update_profile_picture')}}</h2>
+			{%if profilePicMessage%}<div class="settingsMessage">{{profilePicMessage}}</div>{%endif%}
+			<table class="form">
+				<tr><td class="label"></td><td><input type="file" name="pic" accept="image/*"/></td></tr>
+				<tr class="footer"><td class="label"></td><td><input type="submit" value="{{L('save')}}"/></td></tr>
+			</table>
+		</form>
+	</noscript>
 </div>
 {%endblock%}

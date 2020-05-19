@@ -12,7 +12,7 @@
 			{%-for attachment in draftAttachments%}
 			<div class="attachment" id="attachment_{{attachment.localID}}" data-id="{{attachment.localID}}">
 				{{attachment.sizes | photoPicture('xs')}}
-				<a href="/system/deleteDraftAttachment?id={{attachment.localID}}" class="deleteBtn" title="{{L('delete')}}"></a>
+				<a href="/system/deleteDraftAttachment?id={{attachment.localID}}&csrf={{csrf}}" class="deleteBtn" title="{{L('delete')}}"></a>
 				{%-set attachIDs=concat(attachIDs, attachment.localID)%}
 				{%-if not loop.last%}{%set attachIDs=concat(attachIDs, ",")%}{%endif%}
 			</div>
@@ -30,7 +30,7 @@
 			</td></tr>
 		</table>
 	</form>
-	<form action="/system/upload/postPhoto?draft=1" method="post" enctype="multipart/form-data" id="attachmentUploadForm_{{id}}">
+	<form action="/system/upload/postPhoto?draft=1&csrf={{csrf}}" method="post" enctype="multipart/form-data" id="attachmentUploadForm_{{id}}">
 		<noscript>
 			<input type="file" name="file" accept="image/*"/><input type="submit" value="{{L('attach')}}"/>
 		</noscript>

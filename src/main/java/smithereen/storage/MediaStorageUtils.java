@@ -20,12 +20,21 @@ import spark.utils.StringUtils;
 public class MediaStorageUtils{
 
 	public static long writeResizedImages(VImage img, int[] dimensions, PhotoSize.Type[] sizes, int jpegQuality, int webpQuality, String keyHex, File basePath, String baseURLPath, List<PhotoSize> outSizes) throws IOException{
+		return writeResizedImages(img, dimensions, null, sizes, jpegQuality, webpQuality, keyHex, basePath, baseURLPath, outSizes);
+	}
+
+	public static long writeResizedImages(VImage img, int[] widthsOrDimensions, int[] heights, PhotoSize.Type[] sizes, int jpegQuality, int webpQuality, String keyHex, File basePath, String baseURLPath, List<PhotoSize> outSizes) throws IOException{
 		long totalSize=0;
 		for(int i=0;i<sizes.length;i++){
 			String baseName=keyHex+"_"+sizes[i].suffix();
 			File jpeg=new File(basePath, baseName+".jpg");
 			File webp=new File(basePath, baseName+".webp");
-			double factor=(double)dimensions[i]/(double)Math.max(img.getWidth(), img.getHeight());
+			double factor;
+			if(heights==null){
+				factor=(double) widthsOrDimensions[i]/(double) Math.max(img.getWidth(), img.getHeight());
+			}else{
+				factor=Math.min((double)widthsOrDimensions[i]/(double)img.getWidth(), (double)heights[i]/(double)img.getHeight());
+			}
 			boolean skipBiggerSizes=false;
 			int width, height;
 			if(factor>=1.0){
@@ -65,8 +74,15 @@ public class MediaStorageUtils{
 			if(size.format==format && size.type==type)
 				return size;
 		}
+		if(type==PhotoSize.Type.RECT_XLARGE){
+			PhotoSize rl=findBestPhotoSize(sizes, format, PhotoSize.Type.RECT_LARGE);
+			if(rl!=null)
+				return rl;
+			return findBestPhotoSize(sizes, format, PhotoSize.Type.XLARGE);
+		}
 		PhotoSize.Type smaller;
 		switch(type){
+			case RECT_LARGE:
 			case XLARGE:
 				smaller=PhotoSize.Type.LARGE;
 				break;
@@ -126,6 +142,8 @@ public class MediaStorageUtils{
 					}
 					sizes.put(0, String.join(" ", sizeTypes));
 					o.put("_sz", sizes);
+					if(im.path!=null)
+						o.put("_p", im.path);
 					o.put("type", "_LocalImage");
 				}
 				o.remove("url");
