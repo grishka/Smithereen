@@ -43,6 +43,8 @@ public class LocalImage extends Image{
 		for(PhotoSize s:sizes){
 			if(s.format!=PhotoSize.Format.JPEG)
 				continue;
+			if(s.type==PhotoSize.Type.RECT_LARGE || s.type==PhotoSize.Type.RECT_XLARGE)
+				continue;
 			int area=s.width*s.height;
 			if(area>biggestArea){
 				biggestArea=area;
@@ -51,6 +53,8 @@ public class LocalImage extends Image{
 		}
 		if(biggest!=null){
 			obj.put("url", biggest.src.toString());
+			obj.put("width", biggest.width);
+			obj.put("height", biggest.height);
 		}
 
 		return obj;
