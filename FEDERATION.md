@@ -16,7 +16,7 @@ Example object:
   ],
   "type": "Note",
   "id": "http://smithereen.local:8080/posts/110",
-  "url": "http://smithereen.local:8080/posts/110"
+  "url": "http://smithereen.local:8080/posts/110",
   "to": [],
   "cc": [
     "https://www.w3.org/ns/activitystreams#Public",
@@ -26,7 +26,7 @@ Example object:
   "attributedTo": "http://smithereen.local:8080/users/1",
   "published": "2020-05-21T19:05:00Z",
   "sensitive": false,
-  "content": "<p>Test.<\/p>",
+  "content": "<p>Test.<\/p>"
 }
 ```
 TODO: capability negotiation
