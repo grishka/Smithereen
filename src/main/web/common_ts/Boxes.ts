@@ -348,6 +348,7 @@ class ProfilePictureBox extends FileUploadBox{
 
 		ajaxUpload("/settings/updateProfilePicture?x1="+x1+"&y1="+y1+"&x2="+x2+"&y2="+y2, "pic", this.file, (resp:any)=>{
 			this.dismiss();
+			setGlobalLoading(false);
 			return false;
 		});
 	}

@@ -69,24 +69,55 @@ public class User extends ActivityPubObject{
 			return ((LocalImage) icon).sizes;
 		}
 		MediaCache cache=MediaCache.getInstance();
+		ArrayList<PhotoSize> sizes=new ArrayList<>();
 		try{
 			MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.get(icon.url);
-			if(item!=null)
-				return item.sizes;
+			if(item!=null){
+				sizes.addAll(item.sizes);
+			}else{
+				String pathPrefix="/system/downloadExternalMedia?type=user_ava&user_id="+id;
+				PhotoSize.Type[] types={PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
+				for(PhotoSize.Format format:PhotoSize.Format.values()){
+					for(PhotoSize.Type size:types){
+						String path=pathPrefix+"&format="+format.fileExtension()+"&size="+size.suffix();
+						sizes.add(new PhotoSize(Config.localURI(path), PhotoSize.UNKNOWN, PhotoSize.UNKNOWN, size, format));
+					}
+				}
+			}
+
+			if(icon.image!=null && icon.image.get(0).url!=null){
+				Image image=icon.image.get(0);
+				item=(MediaCache.PhotoItem) cache.get(image.url);
+				if(item!=null){
+					sizes.addAll(item.sizes);
+				}else{
+					String pathPrefix="/system/downloadExternalMedia?type=user_ava_rect&user_id="+id;
+					PhotoSize.Type[] types={PhotoSize.Type.RECT_LARGE, PhotoSize.Type.RECT_XLARGE};
+					for(PhotoSize.Format format:PhotoSize.Format.values()){
+						for(PhotoSize.Type size:types){
+							String path=pathPrefix+"&format="+format.fileExtension()+"&size="+size.suffix();
+							int width=image.width;
+							int height=image.height;
+							if(width==0 || height==0){
+								width=height=PhotoSize.UNKNOWN;
+							}else{
+								int newWidth;
+								if(size==PhotoSize.Type.RECT_LARGE)
+									newWidth=200;
+								else
+									newWidth=400;
+								height=Math.round((float)height/(float)width*(float)newWidth);
+								width=newWidth;
+							}
+							sizes.add(new PhotoSize(Config.localURI(path), width, height, size, format));
+						}
+					}
+				}
+			}
 		}catch(SQLException e){
 			e.printStackTrace();
 		}
-		String pathPrefix="/system/downloadExternalMedia?type=user_ava&user_id="+id;
-		PhotoSize.Type[] types={PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
-		PhotoSize[] sizes=new PhotoSize[types.length*PhotoSize.Format.values().length];
-		int i=0;
-		for(PhotoSize.Format format:PhotoSize.Format.values()){
-			for(PhotoSize.Type size:types){
-				String path=pathPrefix+"&format="+format.fileExtension()+"&size="+size.suffix();
-				sizes[i++]=new PhotoSize(Config.localURI(path), PhotoSize.UNKNOWN, PhotoSize.UNKNOWN, size, format);
-			}
-		}
-		return Arrays.asList(sizes);
+		return sizes;
 	}
 
 	@Override
@@ -221,7 +252,7 @@ public class User extends ActivityPubObject{
 			root.put("lastName", lastName);
 		}
 		if(birthDate!=null){
-			root.put("birthDate", birthDate);
+			root.put("birthDate", birthDate.toString());
 		}
 		switch(gender){
 			case MALE:
@@ -233,7 +264,7 @@ public class User extends ActivityPubObject{
 		}
 
 		JSONObject endpoints=new JSONObject();
-		endpoints.put("sharedInbox", Config.localURI("/activitypub/sharedInbox"));
+		endpoints.put("sharedInbox", Config.localURI("/activitypub/sharedInbox").toString());
 		root.put("endpoints", endpoints);
 
 		JSONObject pubkey=new JSONObject();

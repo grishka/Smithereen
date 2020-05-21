@@ -35,6 +35,17 @@ public class ContextCollector{
 		additionalContext.put(key, o);
 	}
 
+	public void addContainerType(String key, String id, String type){
+		if(additionalContext==null){
+			additionalContext=new JSONObject();
+			context.put(additionalContext);
+		}
+		JSONObject o=new JSONObject();
+		o.put("@id", id);
+		o.put("@container", type);
+		additionalContext.put(key, o);
+	}
+
 	public Object toContext(){
 		if(context.length()==1)
 			return context.get(0);

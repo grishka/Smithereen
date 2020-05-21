@@ -39,13 +39,19 @@ public class LocalImage extends Image{
 		obj=super.asActivityPubObject(obj, contextCollector);
 
 		PhotoSize biggest=null;
-		int biggestArea=0;
+		PhotoSize biggestRect=null;
+		int biggestArea=0, biggestRectArea=0;
 		for(PhotoSize s:sizes){
 			if(s.format!=PhotoSize.Format.JPEG)
 				continue;
-			if(s.type==PhotoSize.Type.RECT_LARGE || s.type==PhotoSize.Type.RECT_XLARGE)
-				continue;
 			int area=s.width*s.height;
+			if(s.type==PhotoSize.Type.RECT_LARGE || s.type==PhotoSize.Type.RECT_XLARGE){
+				if(area>biggestRectArea){
+					biggestRectArea=area;
+					biggestRect=s;
+				}
+				continue;
+			}
 			if(area>biggestArea){
 				biggestArea=area;
 				biggest=s;
@@ -55,6 +61,13 @@ public class LocalImage extends Image{
 			obj.put("url", biggest.src.toString());
 			obj.put("width", biggest.width);
 			obj.put("height", biggest.height);
+			if(biggestRect!=null){
+				Image im=new Image();
+				im.url=biggestRect.src;
+				im.width=biggestRect.width;
+				im.height=biggestRect.height;
+				obj.put("image", im.asActivityPubObject(null, contextCollector));
+			}
 		}
 
 		return obj;

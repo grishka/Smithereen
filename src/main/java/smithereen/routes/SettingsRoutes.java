@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.Locale;
 import java.util.Random;
 import java.util.TimeZone;
@@ -23,7 +22,6 @@ import static smithereen.Utils.*;
 
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
-import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
 import smithereen.data.PhotoSize;
@@ -150,6 +148,7 @@ public class SettingsRoutes{
 			VImage cropped=null;
 			float ratio=(float)img.getWidth()/(float)img.getHeight();
 			boolean ratioIsValid=ratio<=2.5f && ratio>=0.25f;
+			LocalImage ava=new LocalImage();
 			if(ratioIsValid){
 				try{
 					String _x1=req.queryParams("x1"),
@@ -168,6 +167,7 @@ public class SettingsRoutes{
 							int y=Math.round(ih*y1);
 							int size=Math.round(((x2-x1)*iw+(y2-y1)*ih)/2f);
 							cropped=img.crop(x, y, size, size);
+							ava.cropRegion=new float[]{x1, y1, x2, y2};
 						}
 					}
 				}catch(NumberFormatException ignore){}
@@ -175,8 +175,11 @@ public class SettingsRoutes{
 			if(cropped==null && img.getWidth()!=img.getHeight()){
 				if(img.getHeight()>img.getWidth()){
 					cropped=img.crop(0, 0, img.getWidth(), img.getWidth());
+					ava.cropRegion=new float[]{0f, 0f, 1f, (float)img.getWidth()/(float)img.getHeight()};
 				}else{
-					cropped=img.crop(img.getWidth()/2-img.getHeight()/2, 0, img.getHeight(), img.getHeight());
+					int x=img.getWidth()/2-img.getHeight()/2;
+					cropped=img.crop(x, 0, img.getHeight(), img.getHeight());
+					ava.cropRegion=new float[]{(float)x/(float)img.getWidth(), 0f, (float)(x+img.getHeight())/(float)img.getWidth(), 1f};
 				}
 				if(!ratioIsValid){
 					img.release();
@@ -184,7 +187,6 @@ public class SettingsRoutes{
 				}
 			}
 
-			LocalImage ava=new LocalImage();
 			File profilePicsDir=new File(Config.uploadPath, "avatars");
 			profilePicsDir.mkdirs();
 			try{
@@ -221,11 +223,11 @@ public class SettingsRoutes{
 
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("avatar_updated"));
 			resp.redirect("/settings/");
-		}catch(IOException|ServletException|NoSuchAlgorithmException x){
+		}catch(IOException|ServletException|NoSuchAlgorithmException|IllegalStateException x){
 			x.printStackTrace();
 			if(isAjax(req)){
 				Lang l=lang(req);
-				return new WebDeltaResponseBuilder(resp).messageBox(l.get("error"), l.get("image_upload_error"), l.get("ok")).json();
+				return new WebDeltaResponseBuilder(resp).messageBox(l.get("error"), l.get("image_upload_error")+"<br/>"+x.getMessage(), l.get("ok")).json();
 			}
 
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("image_upload_error"));

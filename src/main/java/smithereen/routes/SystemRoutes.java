@@ -76,6 +76,12 @@ public class SystemRoutes{
 			case "xl":
 				sizeType=PhotoSize.Type.XLARGE;
 				break;
+			case "rl":
+				sizeType=PhotoSize.Type.RECT_LARGE;
+				break;
+			case "rxl":
+				sizeType=PhotoSize.Type.RECT_XLARGE;
+				break;
 			default:
 				return "";
 		}
@@ -92,6 +98,22 @@ public class SystemRoutes{
 				uri=im.url;
 				if(StringUtils.isNotEmpty(im.mediaType))
 					mime=im.mediaType;
+			}
+		}else if("user_ava_rect".equals(type)){
+			itemType=MediaCache.ItemType.AVATAR_RECT;
+			mime="image/jpeg";
+			User user=UserStorage.getById(Utils.parseIntOrDefault(req.queryParams("user_id"), 0));
+			if(user==null || Config.isLocal(user.activityPubID)){
+				return "";
+			}
+			if(user.icon!=null){
+				Image im=user.icon.get(0);
+				if(im.url!=null && im.image!=null && im.image.get(0).url!=null){
+					im=im.image.get(0);
+					uri=im.url;
+					if(StringUtils.isNotEmpty(im.mediaType))
+						mime=im.mediaType;
+				}
 			}
 		}else if("post_photo".equals(type)){
 			itemType=MediaCache.ItemType.PHOTO;

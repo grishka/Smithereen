@@ -337,6 +337,7 @@ var ProfilePictureBox = /** @class */ (function (_super) {
         setGlobalLoading(true);
         ajaxUpload("/settings/updateProfilePicture?x1=" + x1 + "&y1=" + y1 + "&x2=" + x2 + "&y2=" + y2, "pic", this.file, function (resp) {
             _this.dismiss();
+            setGlobalLoading(false);
             return false;
         });
     };

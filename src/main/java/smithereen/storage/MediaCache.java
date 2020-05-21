@@ -170,6 +170,7 @@ public class MediaCache{
 						img=flat;
 					}
 					int[] dimensions;
+					int[] heights=null;
 					PhotoSize.Type[] sizes;
 					int jpegQuality;
 					int webpQuality;
@@ -188,6 +189,12 @@ public class MediaCache{
 						sizes=new PhotoSize.Type[]{PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
 						jpegQuality=85;
 						webpQuality=80;
+					}else if(type==ItemType.AVATAR_RECT){
+						dimensions=new int[]{200, 400};
+						heights=new int[]{500, 1000};
+						sizes=new PhotoSize.Type[]{PhotoSize.Type.RECT_LARGE, PhotoSize.Type.RECT_XLARGE};
+						jpegQuality=85;
+						webpQuality=80;
 					}else if(type==ItemType.PHOTO){
 						dimensions=new int[]{200, 400, 800, 1280, 2560};
 						sizes=new PhotoSize.Type[]{PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
@@ -196,7 +203,7 @@ public class MediaCache{
 					}else{
 						throw new IllegalArgumentException("Unknown type");
 					}
-					photo.totalSize=MediaStorageUtils.writeResizedImages(img, dimensions, sizes, jpegQuality, webpQuality, keyHex, Config.mediaCachePath, Config.mediaCacheURLPath, photo.sizes);
+					photo.totalSize=MediaStorageUtils.writeResizedImages(img, dimensions, heights, sizes, jpegQuality, webpQuality, keyHex, Config.mediaCachePath, Config.mediaCacheURLPath, photo.sizes);
 				}catch(IOException x){
 					throw new IOException(x);
 				}finally{
@@ -291,7 +298,8 @@ public class MediaCache{
 
 	public enum ItemType{
 		PHOTO,
-		AVATAR
+		AVATAR,
+		AVATAR_RECT
 	}
 
 	public static abstract class Item{
