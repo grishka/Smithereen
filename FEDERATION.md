@@ -31,7 +31,7 @@ Example object:
 ```
 TODO: capability negotiation
 ### Friends and Followers
-Any bilateral followings are considered friends. Even though all followers are accepted automatically, `Accept{Follow}` is expected from remote servers. Accounts from servers running software that allows manually reviewing and accepting followers, e.g. Mastodon, are supported.
+Any bilateral followings are considered friends. Even though all followers are accepted automatically, `Accept{Follow}` is expected from remote servers. Actors from servers running software that allows manually reviewing and accepting followers, e.g. Mastodon, are supported.
 ### Friend requests
 Friend requests are sent as `Offer{Follow}` activities, where the inner `Follow` activity is as if the friend request recepient is following its sender. Semantically, this is "I'm asking you to follow me back". In order for Smithereen to allow sending a friend request to a remote actor, that actor must have `sm:supportsFriendRequests` field set to `true`. A friend request may have a text message attached to it in `content` of the `Offer`.
 
@@ -46,15 +46,15 @@ Smithereen uses non-square profile pictures on the profile page. In order to ret
 Example:
 ```json
 ...
-"icon": {
+  "icon": {
     "type": "Image",
     "url": "http://smithereen.local:8080/s/uploads/avatars/a502dd6ba23da7a899526368b9b58896_xl.jpg",
     "width": 400,
     "height": 400,
     "image": {
-    "type": "Image",
+      "type": "Image",
       "url": "http://smithereen.local:8080/s/uploads/avatars/a502dd6ba23da7a899526368b9b58896_rxl.jpg",
-    "width": 400,
+      "width": 400,
       "height": 565
     },
     "cropRegion": [
