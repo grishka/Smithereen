@@ -302,3 +302,11 @@ function showPostReplyForm(id:number):boolean{
 
 	return false;
 }
+
+function highlightComment(id:number):boolean{
+	var existing=document.querySelectorAll(".highlight");
+	for(var i=0;i<existing.length;i++) existing[i].classList.remove("highlight");
+	ge("post"+id).classList.add("highlight");
+	window.location.hash="#comment"+id;
+	return false;
+}

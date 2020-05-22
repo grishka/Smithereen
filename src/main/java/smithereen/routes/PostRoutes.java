@@ -302,6 +302,9 @@ public class PostRoutes{
 		}
 		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete");
 		model.with("title", post.getShortTitle(50)+" | "+post.user.getFullName());
+		if(post.getReplyLevel()>0){
+			model.with("jsRedirect", "/posts/"+post.replyKey[0]+"#comment"+post.id);
+		}
 		return Utils.renderTemplate(req, "wall_post_standalone", model);
 	}
 

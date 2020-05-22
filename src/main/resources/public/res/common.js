@@ -634,6 +634,14 @@ function showPostReplyForm(id) {
     postForms["wallPostForm_reply"].setupForReplyTo(id);
     return false;
 }
+function highlightComment(id) {
+    var existing = document.querySelectorAll(".highlight");
+    for (var i = 0; i < existing.length; i++)
+        existing[i].classList.remove("highlight");
+    ge("post" + id).classList.add("highlight");
+    window.location.hash = "#comment" + id;
+    return false;
+}
 var ImageAreaSelector = /** @class */ (function () {
     function ImageAreaSelector(parentEl, square) {
         if (square === void 0) { square = false; }

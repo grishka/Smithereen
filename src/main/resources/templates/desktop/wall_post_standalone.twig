@@ -4,10 +4,19 @@
 {%if not(post.local)%}
 <a href="{{post.url}}" target="_blank">Original</a><br/>
 {%endif%}
+{%if post.replyLevel>0%}
+	<a href="/posts/{{post.getReplyChainElement(0)}}">Top-level</a><br/>
+{%endif%}
 {%include "wall_post.twig"%}
 <div id="postReplies{{post.id}}">{%for reply in post.replies%}
 {%include "wall_reply.twig" with {post: reply}%}
 {%endfor%}</div>
 </div>
 {%if currentUser%}{%include "wall_post_form.twig" with {replyTo: post, id: "reply"}%}{%endif%}
+<script>
+	if(window.location.hash && window.location.hash.indexOf("comment")==1){
+		var el=document.getElementById(window.location.hash.replace("#comment", "post"));
+		if(el) el.classList.add("highlight");
+	}
+</script>
 {%endblock%}

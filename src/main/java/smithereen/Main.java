@@ -203,7 +203,7 @@ public class Main{
 			res.status(500);
 			StringWriter sw=new StringWriter();
 			exception.printStackTrace(new PrintWriter(sw));
-			res.body("<h1 style='color: red;'>Unhandled exception</h1><pre>"+sw.toString().replace("<", "&gt;")+"</pre>");
+			res.body("<h1 style='color: red;'>Unhandled exception</h1><pre>"+sw.toString().replace("<", "&lt;")+"</pre>");
 		});
 
 		after((req, resp)->{

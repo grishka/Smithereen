@@ -311,13 +311,10 @@ h2{
 
 .comment{
 	border-bottom: none;
-	padding-bottom: 0;
+	padding-bottom: 4px;
+	padding-top: 4px;
 	margin-bottom: 0;
 }
-
-.comment .replies{
-		padding-top: 8px;
-	}
 
 .gray{
 	background: #F7F7F7;
@@ -978,3 +975,26 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 		opacity: 1;
 		transform: translateY(0);
 	}
+
+@-webkit-keyframes highlight{
+	0%, 100%{
+		background-color: rgba(170, 180, 47, 0);
+	}
+	3%, 50%{
+		background-color: rgba(170, 180, 47, 0.15);
+	}
+}
+
+@keyframes highlight{
+	0%, 100%{
+		background-color: rgba(170, 180, 47, 0);
+	}
+	3%, 50%{
+		background-color: rgba(170, 180, 47, 0.15);
+	}
+}
+
+.highlight{
+	-webkit-animation: highlight 10s;
+	        animation: highlight 10s;
+}

@@ -214,6 +214,11 @@ public class Post extends ActivityPubObject{
 		return replyKey.length;
 	}
 
+	// for use in templates
+	public int getReplyChainElement(int level){
+		return replyKey[level];
+	}
+
 	public void addToCC(URI uri){
 		LinkOrObject l=new LinkOrObject(uri);
 		if(!cc.contains(l)){

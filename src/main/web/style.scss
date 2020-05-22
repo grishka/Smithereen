@@ -310,11 +310,9 @@ h2{
 
 .comment{
 	border-bottom: none;
-	padding-bottom: 0;
+	padding-bottom: 4px;
+	padding-top: 4px;
 	margin-bottom: 0;
-	.replies{
-		padding-top: 8px;
-	}
 }
 
 .gray{
@@ -880,4 +878,17 @@ input[type=submit], input[type=button], button, .button, .button:visited{
 		opacity: 1;
 		transform: translateY(0);
 	}
+}
+
+@keyframes highlight{
+	0%, 100%{
+		background-color: color($accent alpha(0%));
+	}
+	3%, 50%{
+		background-color: color($accent alpha(15%));
+	}
+}
+
+.highlight{
+	animation: highlight 10s;
 }
