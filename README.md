@@ -8,7 +8,7 @@ Federated, ActivityPub-compatible social network with friends, walls, and (*at s
 
 This will be easier when (if?) the project reaches a usable state.
 
-1. Install and configure MySQL
+1. Install and configure MySQL 5
 2. Install maven if you don't have it already
 3. Build the jar by running `mvn package`
 4. Build the native library ([libvips](https://github.com/libvips/libvips) and JNI bindings), see below
