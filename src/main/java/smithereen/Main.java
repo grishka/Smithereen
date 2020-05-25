@@ -7,7 +7,9 @@ import org.jtwig.environment.EnvironmentConfigurationBuilder;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.sql.SQLException;
 
+import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
@@ -24,6 +26,7 @@ import smithereen.routes.NotificationsRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
+import smithereen.routes.SettingsAdminRoutes;
 import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
 import smithereen.storage.SessionStorage;
@@ -58,7 +61,8 @@ public class Main{
 	public static void main(String[] args){
 		try{
 			Config.load(args[0]);
-		}catch(IOException x){
+			Config.loadFromDatabase();
+		}catch(IOException|SQLException x){
 			throw new RuntimeException(x);
 		}
 
@@ -111,6 +115,11 @@ public class Main{
 			getLoggedIn("/confirmRemoveProfilePicture", SettingsRoutes::confirmRemoveProfilePicture);
 			post("/setLanguage", SettingsRoutes::setLanguage);
 			post("/setTimezone", SettingsRoutes::setTimezone);
+
+			path("/admin", ()->{
+				getRequiringAccessLevel("", Account.AccessLevel.ADMIN, SettingsAdminRoutes::index);
+				postRequiringAccessLevelWithCSRF("/updateServerInfo", Account.AccessLevel.ADMIN, SettingsAdminRoutes::updateServerInfo);
+			});
 		});
 
 		path("/activitypub", ()->{

@@ -60,7 +60,25 @@ h2{
 	margin-left: auto;
 	margin-right: auto;
 	.logo{
-		margin-top: 4px;
+		img{
+			margin-left: 4px;
+			margin-right: 8px;
+			vertical-align: middle;
+		}
+		a{
+			display: inline-block;
+			width: 100%;
+			color: $textOnAccent;
+			font-weight: bold;
+			line-height: 48px;
+			text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			overflow: hidden;
+			&:hover, &:visited:hover{
+				text-decoration: none;
+			}
+		}
 	}
 	a.nav{
 		color: $textOnAccent;
@@ -89,6 +107,7 @@ h2{
 
 .leftMenu{
 	padding: 12px;
+	box-sizing: border-box;
 	input{
 		width: 100%;
 		box-sizing: border-box;
@@ -122,6 +141,10 @@ h2{
 				color: color($text alpha(50%));
 			}
 		}
+	}
+	li.separator{
+		border-bottom: solid 1px color($accent lightness(+40%));
+		margin: 8px 0;
 	}
 }
 
@@ -461,7 +484,7 @@ select{
 	outline: none;
 }
 
-input[type=submit], input[type=button], button, .button, .button:visited{
+input[type=submit], input[type=button], button, .button, .button:link, .button:visited{
 	background: linear-gradient(to bottom, $accent, color($accent shade(10%)));
 	text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
 	border: solid 1px color($accent shade(20%));
@@ -478,7 +501,7 @@ input[type=submit], input[type=button], button, .button, .button:visited{
 		background: url(/res/loader_overlay.svg), linear-gradient(to bottom, $accent, color($accent shade(10%)));
 	}
 
-	&:hover{
+	&:hover, &:visited:hover{
 		text-decoration: none;
 		background: linear-gradient(to bottom, color($accent lightness(+3%)), color($accent shade(5%)));
 		box-shadow: 0 1px 0 color($accent lightness(+13%)) inset;

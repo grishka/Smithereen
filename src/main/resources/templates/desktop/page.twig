@@ -21,8 +21,8 @@
 <div class="wrap">
 <table width="100%" class="header" cellpadding="0" cellspacing="0" border="0">
 	<tr>
-		<td width="170" align="left">
-			<a href="/"><img src="/res/logo_white.svg" height="33" width="141" border="0" alt="Smithereen" class="logo"/></a>
+		<td width="158" align="left" class="logo">
+			<a href="/"><img src="/res/logo.svg" height="36" width="36" border="0" alt="Smithereen"/>{{serverName}}</a>
 		</td>
 		<td align="right">
 			{%- if (currentUser) %}
@@ -42,6 +42,10 @@
 				<li><a href="/feed">{{L('menu_news')}}</a></li>
 				<li><a href="/my/notifications">{{L('menu_notifications')}}{%if(userNotifications.newNotificationsCount>0)%} (<b>{{userNotifications.newNotificationsCount}}</b>){%endif%}</a></li>
 				<li><a href="/settings/">{{L('menu_settings')}}</a></li>
+				{%-if userAccessLevel.ordinal>=3%}
+				<li class="separator"></li>
+				<li><a href="/settings/admin">{{L('menu_admin')}}</a></li>
+				{%-endif%}
 			</ul>
 			{%else%}
 			<form action="/account/login" method="post">

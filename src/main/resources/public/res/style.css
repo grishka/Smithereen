@@ -40,9 +40,27 @@ h2{
 	margin-right: auto;
 }
 
-.header .logo{
-		margin-top: 4px;
-	}
+.header .logo img{
+			margin-left: 4px;
+			margin-right: 8px;
+			vertical-align: middle;
+		}
+
+.header .logo a{
+			display: inline-block;
+			width: 100%;
+			color: #FFFFFF;
+			font-weight: bold;
+			line-height: 48px;
+			text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			overflow: hidden;
+		}
+
+.header .logo a:hover, .header .logo a:visited:hover{
+				text-decoration: none;
+			}
 
 .header a.nav{
 		color: #FFFFFF;
@@ -71,6 +89,7 @@ h2{
 
 .leftMenu{
 	padding: 12px;
+	box-sizing: border-box;
 }
 
 .leftMenu input{
@@ -113,6 +132,11 @@ h2{
 .actionList li.hasAux a.actionAux{
 				color: rgba(0, 0, 0, 0.5);
 			}
+
+.actionList li.separator{
+		border-bottom: solid 1px #ecefc2;
+		margin: 8px 0;
+	}
 
 
 #elevator{
@@ -475,7 +499,7 @@ select{
 	outline: none;
 }
 
-input[type=submit], input[type=button], button, .button, .button:visited{
+input[type=submit], input[type=button], button, .button, .button:link, .button:visited{
 	background: linear-gradient(to bottom, #aab42f, #99a22a);
 	text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
 	border: solid 1px #889026;
@@ -490,23 +514,23 @@ input[type=submit], input[type=button], button, .button, .button:visited{
 	box-sizing: border-box;
 }
 
-input[type=submit].loading, input[type=submit].loading:hover, input[type=button].loading, input[type=button].loading:hover, button.loading, button.loading:hover, .button.loading, .button.loading:hover, .button:visited.loading, .button:visited.loading:hover{
+input[type=submit].loading, input[type=submit].loading:hover, input[type=button].loading, input[type=button].loading:hover, button.loading, button.loading:hover, .button.loading, .button.loading:hover, .button:link.loading, .button:link.loading:hover, .button:visited.loading, .button:visited.loading:hover{
 		background: url(/res/loader_overlay.svg), linear-gradient(to bottom, #aab42f, #99a22a);
 	}
 
-input[type=submit]:hover,input[type=button]:hover,button:hover,.button:hover,.button:visited:hover{
+input[type=submit]:hover, input[type=submit]:visited:hover, input[type=button]:hover, input[type=button]:visited:hover, button:hover, button:visited:hover, .button:hover, .button:visited:hover, .button:link:hover, .button:link:visited:hover, .button:visited:hover, .button:visited:visited:hover{
 		text-decoration: none;
 		background: linear-gradient(to bottom, #b7c332, #a2ab2d);
 		box-shadow: 0 1px 0 #c9d355 inset;
 	}
 
-input[type=submit]:active,input[type=button]:active,button:active,.button:active,.button:visited:active{
+input[type=submit]:active,input[type=button]:active,button:active,.button:active,.button:link:active,.button:visited:active{
 		text-decoration: none;
 		background: #889026;
 		box-shadow: none;
 	}
 
-input[type=submit].secondary,input[type=button].secondary,button.secondary,.button.secondary,.button:visited.secondary{
+input[type=submit].secondary,input[type=button].secondary,button.secondary,.button.secondary,.button:link.secondary,.button:visited.secondary{
 		background: linear-gradient(to bottom, #F7F7F7, #dedede);
 		text-shadow: 0 1px 1px rgba(255, 255, 255, .8);
 		border: solid 1px #c6c6c6;
@@ -514,17 +538,17 @@ input[type=submit].secondary,input[type=button].secondary,button.secondary,.butt
 		box-shadow: 0 1px 0 #ffffff inset;
 	}
 
-input[type=submit].secondary.loading, input[type=submit].secondary.loading:hover, input[type=button].secondary.loading, input[type=button].secondary.loading:hover, button.secondary.loading, button.secondary.loading:hover, .button.secondary.loading, .button.secondary.loading:hover, .button:visited.secondary.loading, .button:visited.secondary.loading:hover{
+input[type=submit].secondary.loading, input[type=submit].secondary.loading:hover, input[type=button].secondary.loading, input[type=button].secondary.loading:hover, button.secondary.loading, button.secondary.loading:hover, .button.secondary.loading, .button.secondary.loading:hover, .button:link.secondary.loading, .button:link.secondary.loading:hover, .button:visited.secondary.loading, .button:visited.secondary.loading:hover{
 			background: url(/res/loader_overlay.svg), linear-gradient(to bottom, #F7F7F7, #dedede);
 		}
 
-input[type=submit].secondary:hover,input[type=button].secondary:hover,button.secondary:hover,.button.secondary:hover,.button:visited.secondary:hover{
+input[type=submit].secondary:hover,input[type=button].secondary:hover,button.secondary:hover,.button.secondary:hover,.button:link.secondary:hover,.button:visited.secondary:hover{
 			text-decoration: none;
 			background: linear-gradient(to bottom, #ffffff, #ebebeb);
 			box-shadow: 0 1px 0 #ffffff inset;
 		}
 
-input[type=submit].secondary:active,input[type=button].secondary:active,button.secondary:active,.button.secondary:active,.button:visited.secondary:active{
+input[type=submit].secondary:active,input[type=button].secondary:active,button.secondary:active,.button.secondary:active,.button:link.secondary:active,.button:visited.secondary:active{
 			text-decoration: none;
 			background: #c6c6c6;
 			box-shadow: none;

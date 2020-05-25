@@ -72,6 +72,7 @@ public class Utils{
 			if(account!=null){
 				model.with("currentUser", account.user);
 				model.with("csrf", info.csrfToken);
+				model.with("userAccessLevel", account.accessLevel);
 				jsConfig.put("csrf", info.csrfToken);
 				jsConfig.put("uid", info.account.user.id);
 				try{
@@ -92,7 +93,7 @@ public class Utils{
 				jsLang.put(key, lang.raw(key));
 			}
 		}
-		model.with("locale", localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString()).with("jsLangKeys", jsLang).with("staticHash", staticFileHash);
+		model.with("locale", localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString()).with("jsLangKeys", jsLang).with("staticHash", staticFileHash).with("serverName", Config.getServerDisplayName());
 	}
 
 	public static String renderTemplate(Request req, String name, JtwigModel model){

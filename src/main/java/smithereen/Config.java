@@ -4,7 +4,15 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.Properties;
+
+import smithereen.storage.DatabaseConnectionManager;
+import spark.utils.StringUtils;
 
 public class Config{
 	public static String dbHost;
@@ -28,6 +36,13 @@ public class Config{
 	public static final boolean DEBUG=System.getProperty("smithereen.debug")!=null;
 
 	private static URI localURI;
+
+	// following fields are kept in the config table in database and some are configurable from /settings/admin
+
+	public static int dbSchemaVersion;
+	public static String serverDisplayName;
+	public static String serverDescription;
+	public static String serverAdminEmail;
 
 	public static void load(String filePath) throws IOException{
 		FileInputStream in=new FileInputStream(filePath);
@@ -57,6 +72,31 @@ public class Config{
 		staticFilesPath=props.getProperty("web.static_files_path");
 	}
 
+	public static void loadFromDatabase() throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		try(ResultSet res=conn.createStatement().executeQuery("SELECT * FROM config")){
+			HashMap<String, String> dbValues=new HashMap<>();
+			if(res.first()){
+				do{
+					dbValues.put(res.getString(1), res.getString(2));
+				}while(res.next());
+			}
+			dbSchemaVersion=Utils.parseIntOrDefault(dbValues.get("SchemaVersion"), 0);
+
+			serverDisplayName=dbValues.get("ServerDisplayName");
+			serverDescription=dbValues.get("ServerDescription");
+			serverAdminEmail=dbValues.get("ServerAdminEmail");
+		}
+	}
+
+	public static void updateInDatabase(String key, String value) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("INSERT INTO config (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value`=values(`value`)");
+		stmt.setString(1, key);
+		stmt.setString(2, value);
+		stmt.executeUpdate();
+	}
+
 	public static URI localURI(String path){
 		return localURI.resolve(path);
 	}
@@ -66,5 +106,9 @@ public class Config{
 			return (uri.getHost()+":"+uri.getPort()).equalsIgnoreCase(domain);
 		}
 		return uri.getHost().equalsIgnoreCase(domain);
+	}
+
+	public static String getServerDisplayName(){
+		return StringUtils.isNotEmpty(serverDisplayName) ? serverDisplayName : domain;
 	}
 }

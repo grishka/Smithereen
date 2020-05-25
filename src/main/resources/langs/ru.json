@@ -141,5 +141,12 @@
   "picture_too_narrow": "Фотография слишком узкая.",
   "error_loading_picture": "Ошибка при загрузке фотографии.",
   "remove_profile_picture": "Удалить аватарку",
-  "confirm_remove_profile_picture": "Вы действительно хотите удалить свою аватарку?"
+  "confirm_remove_profile_picture": "Вы действительно хотите удалить свою аватарку?",
+  "menu_admin": "Администрирование",
+  "admin_server_info": "Информация о сервере",
+  "admin_server_name": "Название",
+  "admin_server_description": "Описание",
+  "admin_server_admin_email": "E-mail администратора",
+  "admin_server_info_updated": "Информация о сервере обновлена",
+  "admin_users": "Пользователи"
 }

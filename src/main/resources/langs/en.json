@@ -141,5 +141,12 @@
   "picture_too_narrow": "Your picture is too narrow.",
   "error_loading_picture": "Error loading picture.",
   "remove_profile_picture": "Remove profile picture",
-  "confirm_remove_profile_picture": "Are you sure you want to remove your profile picture?"
+  "confirm_remove_profile_picture": "Are you sure you want to remove your profile picture?",
+  "menu_admin": "Admin Panel",
+  "admin_server_info": "Server info",
+  "admin_server_name": "Name",
+  "admin_server_description": "Description",
+  "admin_server_admin_email": "Admin e-mail",
+  "admin_server_info_updated": "Server info updated",
+  "admin_users": "Users"
 }
