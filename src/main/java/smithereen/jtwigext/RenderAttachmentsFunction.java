@@ -55,6 +55,10 @@ public class RenderAttachmentsFunction extends SimpleJtwigFunction{
 				lines.add("<video src=\""+((VideoAttachment) obj).url+"\" controls></video>");
 			}
 		}
+		if(!lines.isEmpty()){
+			lines.add("</div>");
+			lines.add(0, "<div class=\"postAttachments\">");
+		}
 		return String.join("\n", lines);
 	}
 }

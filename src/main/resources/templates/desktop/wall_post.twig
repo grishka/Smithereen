@@ -7,7 +7,7 @@
 		<td valign="top" class="postContentWrap">
 			<a href="{{post.user.url}}"{{post.userLinkAttrs}} class="authorName">{{post.user.fullName}}</a>
 			<div class="postContent">{{post.content | escape(false)}}</div>
-			{%if post.attachment%}{{post.processedAttachments | renderAttachments}}<br/>{%endif%}
+			{%if post.attachment%}{{post.processedAttachments | renderAttachments}}{%endif%}
 			<div class="postInfo"><a href="{{post.internalURL}}" class="postLink">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} |
 				<a href="{{post.url}}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{post.url}}/delete')">{{L('delete')}}</a>{%endif%}</div>
 		</td>
