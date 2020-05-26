@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-05-04 15:54:50 +0000
+# Generation Time: 2020-05-26 12:49:14 +0000
 # ************************************************************
 
 
@@ -36,6 +36,17 @@ CREATE TABLE `accounts` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `accounts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table config
+# ------------------------------------------------------------
+
+CREATE TABLE `config` (
+  `key` varchar(255) CHARACTER SET ascii NOT NULL DEFAULT '',
+  `value` text NOT NULL,
+  PRIMARY KEY (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
