@@ -151,7 +151,7 @@
   "admin_users": "Users",
   "admin_user_id": "Account ID (user ID)",
   "name": "Name",
-  "invited_by": "Invited by пригласил",
+  "invited_by": "Invited by",
   "signup_date": "Sign up date",
   "actions": "Actions",
   "access_level": "Access level",
