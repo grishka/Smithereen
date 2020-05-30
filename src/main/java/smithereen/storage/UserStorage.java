@@ -18,6 +18,7 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
+import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
@@ -29,6 +30,7 @@ public class UserStorage{
 	private static LruCache<Integer, User> cache=new LruCache<>(500);
 	private static LruCache<String, User> cacheByUsername=new LruCache<>(500);
 	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
+	private static LruCache<Integer, Account> accountCache=new LruCache<>(500);
 
 	public static synchronized User getById(int id) throws SQLException{
 		User user=cache.get(id);
@@ -583,5 +585,58 @@ public class UserStorage{
 		stmt.setInt(2, followerID);
 		stmt.setInt(3, followeeID);
 		stmt.execute();
+	}
+
+	public static List<Account> getAllAccounts(int offset, int count) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("SELECT a1.*, a2.user_id AS inviter_user_id FROM accounts AS a1 LEFT JOIN accounts AS a2 ON a1.invited_by=a2.id LIMIT ?,?");
+		stmt.setInt(1, offset);
+		stmt.setInt(2, count);
+		ArrayList<Account> accounts=new ArrayList<>();
+		try(ResultSet res=stmt.executeQuery()){
+			if(res.first()){
+				do{
+					Account acc=Account.fromResultSet(res);
+					int inviterID=res.getInt("inviter_user_id");
+					if(inviterID!=0){
+						acc.invitedBy=getById(inviterID);
+					}
+					accounts.add(acc);
+				}while(res.next());
+			}
+		}
+		return accounts;
+	}
+
+	public static synchronized Account getAccount(int id) throws SQLException{
+		Account acc=accountCache.get(id);
+		if(acc!=null)
+			return acc;
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("SELECT a1.*, a2.user_id AS inviter_user_id FROM accounts AS a1 LEFT JOIN accounts AS a2 ON a1.invited_by=a2.id WHERE a1.id=?");
+		stmt.setInt(1, id);
+		try(ResultSet res=stmt.executeQuery()){
+			if(res.first()){
+				acc=Account.fromResultSet(res);
+				int inviterID=res.getInt("inviter_user_id");
+				if(inviterID!=0){
+					acc.invitedBy=getById(inviterID);
+				}
+				accountCache.put(acc.id, acc);
+				return acc;
+			}
+		}
+		return null;
+	}
+
+	public static void setAccountAccessLevel(int id, Account.AccessLevel level) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("UPDATE accounts SET access_level=? WHERE id=?");
+		stmt.setInt(1, level.ordinal());
+		stmt.setInt(2, id);
+		stmt.execute();
+		synchronized(UserStorage.class){
+			accountCache.remove(id);
+		}
 	}
 }

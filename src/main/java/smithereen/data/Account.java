@@ -5,6 +5,7 @@ import org.json.JSONObject;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 
 import smithereen.storage.UserStorage;
 
@@ -14,6 +15,9 @@ public class Account{
 	public User user;
 	public AccessLevel accessLevel;
 	public UserPreferences prefs;
+	public Timestamp createdAt;
+
+	public User invitedBy; // used in admin UIs
 
 	@Override
 	public String toString(){
@@ -22,6 +26,8 @@ public class Account{
 				", email='"+email+'\''+
 				", user="+user+
 				", accessLevel="+accessLevel+
+				", prefs="+prefs+
+				", createdAt="+createdAt+
 				'}';
 	}
 
@@ -31,6 +37,7 @@ public class Account{
 		acc.email=res.getString("email");
 		acc.accessLevel=AccessLevel.values()[res.getInt("access_level")];
 		acc.user=UserStorage.getById(res.getInt("user_id"));
+		acc.createdAt=res.getTimestamp("created_at");
 		String prefs=res.getString("preferences");
 		if(prefs==null){
 			acc.prefs=new UserPreferences();

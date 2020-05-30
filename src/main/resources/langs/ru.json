@@ -148,5 +148,15 @@
   "admin_server_description": "Описание",
   "admin_server_admin_email": "E-mail администратора",
   "admin_server_info_updated": "Информация о сервере обновлена",
-  "admin_users": "Пользователи"
+  "admin_users": "Пользователи",
+  "admin_user_id": "ID аккаунта (ID пользователя)",
+  "name": "Имя",
+  "invited_by": "Кто пригласил",
+  "signup_date": "Дата регистрации",
+  "actions": "Действия",
+  "access_level": "Уровень доступа",
+  "choose_access_level_for_X": "Выберите уровень доступа для <b>%s</b>",
+  "access_level_regular": "Обычный пользователь",
+  "access_level_moderator": "Модератор",
+  "access_level_admin": "Администратор"
 }

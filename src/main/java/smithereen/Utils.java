@@ -145,13 +145,22 @@ public class Utils{
 
 	public static String wrapError(Request req, Response resp, String errorKey, Object... formatArgs){
 		SessionInfo info=req.session().attribute("info");
-		Lang l=Lang.get(localeForRequest(req));
+		Lang l=lang(req);
 		String msg=formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
-			resp.type("application/json");
-			return new WebDeltaResponseBuilder().messageBox(l.get("error"), msg, l.get("ok")).json().toString();
+			return new WebDeltaResponseBuilder(resp).messageBox(l.get("error"), msg, l.get("ok")).json().toString();
 		}
 		return renderTemplate(req, "generic_error", JtwigModel.newModel().with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/"));
+	}
+
+	public static String wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, JtwigModel templateModel){
+		Lang l=lang(req);
+		if(isAjax(req)){
+			return new WebDeltaResponseBuilder(resp).formBox(title, renderTemplate(req, templateName, templateModel), formAction, l.get(buttonKey)).json().toString();
+		}else{
+			templateModel.with("contentTemplate", templateName).with("formAction", formAction).with("submitButton", l.get(buttonKey)).with("title", title);
+			return renderTemplate(req, "form_page", templateModel);
+		}
 	}
 
 	public static Locale localeForRequest(Request req){

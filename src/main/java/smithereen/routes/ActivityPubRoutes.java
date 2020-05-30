@@ -408,6 +408,12 @@ public class ActivityPubRoutes{
 			}
 			System.out.println("verified HTTP signature by "+httpSigOwner.activityPubID);
 		}
+		// parse again to make sure the actor is set everywhere
+		try{
+			ActivityPubObject o=ActivityPubObject.parse(obj);
+			if(o instanceof Activity)
+				activity=(Activity) o;
+		}catch(Exception ignore){}
 
 
 		try{

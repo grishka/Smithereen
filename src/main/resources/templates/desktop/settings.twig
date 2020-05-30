@@ -14,20 +14,20 @@
 </form>
 <h2>{{L('invitations')}}</h2>
 {%if inviteMessage%}<h5>{{inviteMessage}}</h5>{%endif%}
-<table border="1" width="60%" style="margin: auto">
-	<tr>
+<table class="dataTable" width="60%" style="margin: auto; margin-top: 8px;">
+	<tr class="tableHeader">
 		<th>{{L('invitation_code')}}</th>
 		<th>{{L('created')}}</th>
 	</tr>
 {%for invite in invitations%}
 	<tr>
 		<td><code>{{invite.code}}</code></td>
-		<td>{{LD(invite.createdAt)}}</td>
+		<td align="center">{{LD(invite.createdAt)}}</td>
 	</tr>
 {%endfor%}
 {%if invitations.empty%}
 	<tr>
-		<td align="center" colspan="2">{{L('no_invitations')}}</td>
+		<td align="center" colspan="2"><br/><br/>{{L('no_invitations')}}<br/><br/></td>
 	</tr>
 {%endif%}
 </table>

@@ -55,6 +55,7 @@ public class SettingsRoutes{
 			model.with("profilePicMessage", s.attribute("settings.profilePicMessage"));
 			s.removeAttribute("settings.profilePicMessage");
 		}
+		model.with("title", lang(req).get("settings"));
 		return Utils.renderTemplate(req, "settings", model);
 	}
 

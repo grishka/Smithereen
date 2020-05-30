@@ -148,5 +148,15 @@
   "admin_server_description": "Description",
   "admin_server_admin_email": "Admin e-mail",
   "admin_server_info_updated": "Server info updated",
-  "admin_users": "Users"
+  "admin_users": "Users",
+  "admin_user_id": "Account ID (user ID)",
+  "name": "Name",
+  "invited_by": "Invited by пригласил",
+  "signup_date": "Sign up date",
+  "actions": "Actions",
+  "access_level": "Access level",
+  "choose_access_level_for_X": "Choose access level for <b>%s</b>",
+  "access_level_regular": "Regular user",
+  "access_level_moderator": "Moderator",
+  "access_level_admin": "Administrator"
 }

@@ -177,7 +177,8 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{():void}=null):boolean{
 		var el=elems[i] as any;
 		if(!el.name)
 			continue;
-		data[el.name]=el.value;
+		if(el.type!="radio" || (el.type=="radio" && el.checked))
+			data[el.name]=el.value;
 	}
 	data.csrf=userConfig.csrf;
 	ajaxPost(form.action, data, function(resp:any){

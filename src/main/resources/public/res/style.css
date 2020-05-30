@@ -746,6 +746,10 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 	background: #FFF;
 }
 
+.boxContent p{
+		margin-top: 0;
+	}
+
 .settingsMessage{
 	width: 60%;
 	margin: 16px auto;
@@ -1025,4 +1029,37 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 .highlight{
 	-webkit-animation: highlight 10s;
 	        animation: highlight 10s;
+}
+
+.dataTable{
+	border-spacing: 0;
+	border-bottom: solid 1px #c5d049;
+}
+
+.dataTable .tableHeader{
+		height: 24px;
+		background: #dfe59a;
+		color: #889026;
+	}
+
+.dataTable .tableHeader td, .dataTable .tableHeader th{
+			padding: 0;
+		}
+
+.dataTable td, .dataTable th{
+		border-top: solid 1px #c5d049;
+		padding: 4px 0;
+		min-height: 24px;
+		box-sizing: border-box;
+	}
+
+.tinyInlineAva .ava{
+	vertical-align: middle;
+	margin-right: 8px;
+}
+
+.ellipsize{
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow: hidden;
 }

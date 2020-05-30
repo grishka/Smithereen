@@ -130,8 +130,7 @@ public class ProfileRoutes{
 			if(status==FriendshipStatus.FOLLOWED_BY){
 				if(isAjax(req) && verifyCSRF(req, resp)){
 					UserStorage.followUser(self.user.id, user.id, true);
-					resp.type("application/json");
-					return new WebDeltaResponseBuilder().refresh().json();
+					return new WebDeltaResponseBuilder(resp).refresh().json();
 				}else{
 					JtwigModel model=JtwigModel.newModel();
 					model.with("targetUser", user);
@@ -141,13 +140,7 @@ public class ProfileRoutes{
 			}else if(status==FriendshipStatus.NONE){
 				JtwigModel model=JtwigModel.newModel();
 				model.with("targetUser", user);
-				if(isAjax(req)){
-					resp.type("application/json");
-					return new WebDeltaResponseBuilder().formBox(l.get("add_friend"), renderTemplate(req, "send_friend_request", model), user.getProfileURL("doSendFriendRequest"), l.get("send")).json();
-				}else{
-					model.with("contentTemplate", "send_friend_request").with("formAction", user.getProfileURL("doSendFriendRequest")).with("submitButton", l.get("send"));
-					return renderTemplate(req, "form_page", model);
-				}
+				return wrapForm(req, resp, "send_friend_request", user.getProfileURL("doSendFriendRequest"), l.get("add_friend"), "send", model);
 			}else if(status==FriendshipStatus.FRIENDS){
 				return wrapError(req, resp, "err_already_friends");
 			}else if(status==FriendshipStatus.REQUEST_RECVD){
