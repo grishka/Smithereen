@@ -158,5 +158,12 @@
   "choose_access_level_for_X": "Выберите уровень доступа для <b>%s</b>",
   "access_level_regular": "Обычный пользователь",
   "access_level_moderator": "Модератор",
-  "access_level_admin": "Администратор"
+  "access_level_admin": "Администратор",
+  "admin_signup_mode": "Режим регистрации",
+  "admin_signup_mode_open": "Открытый",
+  "admin_signup_mode_invite": "По приглашениям",
+  "admin_signup_mode_approval": "По заявкам (с ручным одобрением администраторами)",
+  "admin_signup_mode_closed": "Регистрации закрыты",
+  "admin_signup_mode_explain": "При закрытых регистрациях администраторы всё равно могут приглашать новых пользователей.",
+  "signups_closed": "Регистрации на этом сервере закрыты."
 }

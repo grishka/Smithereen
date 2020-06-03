@@ -18,7 +18,7 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 	);
 
 	public MicroFormatAwareHTMLWhitelist(){
-		addTags("a", "b", "i", "u", "s", "code", "p", "em", "strong", "span", "sarcasm", "sub", "sup", "br");
+		addTags("a", "b", "i", "u", "s", "code", "p", "em", "strong", "span", "sarcasm", "sub", "sup", "br", "pre");
 		addAttributes("a", "href");
 		addProtocols("a", "href", "http", "https");
 	}
@@ -30,7 +30,10 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 				return attr.getValue().equals("tag");
 			if(attr.getKey().equals("href") && super.isSafeAttribute(tagName, el, attr)){
 				try{
-					if(!Config.isLocal(new URI(attr.getValue()))){
+					URI uri=new URI(attr.getValue());
+					if(uri.getHost()==null)
+						return false;
+					if(!Config.isLocal(uri)){
 						el.attr("target", "_blank");
 					}
 				}catch(URISyntaxException x){

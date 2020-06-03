@@ -104,6 +104,7 @@ public class Main{
 			get("/login", SessionRoutes::login);
 			get("/logout", SessionRoutes::logout);
 			post("/register", SessionRoutes::register);
+			get("/register", SessionRoutes::registerForm);
 		});
 
 		path("/settings", ()->{
@@ -251,12 +252,15 @@ public class Main{
 	}
 
 	private static Object indexPage(Request req, Response resp){
-		SessionInfo info=req.session().attribute("info");
+		SessionInfo info=Utils.sessionInfo(req);
 		if(info!=null && info.account!=null){
 			resp.redirect("/feed");
 			return "";
 		}
-		JtwigModel model=JtwigModel.newModel().with("title", "Smithereen");
+		JtwigModel model=JtwigModel.newModel().with("title", Config.serverDisplayName)
+				.with("signupMode", Config.signupMode)
+				.with("serverDisplayName", Config.serverDisplayName)
+				.with("serverDescription", Config.serverDescription);
 		return Utils.renderTemplate(req, "index", model);
 	}
 }

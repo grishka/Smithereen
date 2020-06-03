@@ -185,6 +185,44 @@ public class SessionStorage{
 		return SignupResult.SUCCESS;
 	}
 
+	public static SignupResult registerNewAccount(@NotNull String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		conn.createStatement().execute("START TRANSACTION");
+		try{
+			KeyPairGenerator kpg=KeyPairGenerator.getInstance("RSA");
+			kpg.initialize(2048);
+			KeyPair pair=kpg.generateKeyPair();
+
+			PreparedStatement stmt=conn.prepareStatement("INSERT INTO `users` (`fname`, `lname`, `username`, `public_key`, `private_key`) VALUES (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+			stmt.setString(1, firstName);
+			stmt.setString(2, lastName);
+			stmt.setString(3, username);
+			stmt.setBytes(4, pair.getPublic().getEncoded());
+			stmt.setBytes(5, pair.getPrivate().getEncoded());
+			stmt.execute();
+			int userID;
+			try(ResultSet res=stmt.getGeneratedKeys()){
+				res.first();
+				userID=res.getInt(1);
+			}
+
+			MessageDigest md=MessageDigest.getInstance("SHA-256");
+			byte[] hashedPassword=md.digest(password.getBytes(StandardCharsets.UTF_8));
+			stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `invited_by`) VALUES (?, ?, ?, ?)");
+			stmt.setInt(1, userID);
+			stmt.setString(2, email);
+			stmt.setBytes(3, hashedPassword);
+			stmt.setNull(4, Types.INTEGER);
+			stmt.execute();
+
+			conn.createStatement().execute("COMMIT");
+		}catch(SQLException x){
+			conn.createStatement().execute("ROLLBACK");
+			throw new SQLException(x);
+		}catch(NoSuchAlgorithmException ignore){}
+		return SignupResult.SUCCESS;
+	}
+
 	public static boolean updatePassword(int accountID, String oldPassword, String newPassword) throws SQLException{
 		try{
 			MessageDigest md=MessageDigest.getInstance("SHA-256");

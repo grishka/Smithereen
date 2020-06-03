@@ -158,5 +158,12 @@
   "choose_access_level_for_X": "Choose access level for <b>%s</b>",
   "access_level_regular": "Regular user",
   "access_level_moderator": "Moderator",
-  "access_level_admin": "Administrator"
+  "access_level_admin": "Administrator",
+  "admin_signup_mode": "Sign up mode",
+  "admin_signup_mode_open": "Open",
+  "admin_signup_mode_invite": "Invite-only",
+  "admin_signup_mode_approval": "By application (with manual approval by admins)",
+  "admin_signup_mode_closed": "Sign-ups closed",
+  "admin_signup_mode_explain": "When sign-ups are closed, administrators can still invite new users.",
+  "signups_closed": "Sign-ups on this server are closed."
 }

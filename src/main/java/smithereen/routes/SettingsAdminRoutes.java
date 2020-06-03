@@ -24,7 +24,8 @@ public class SettingsAdminRoutes{
 		model.with("title", l.get("profile_edit_basic")+" | "+l.get("menu_admin"));
 		model.with("serverName", Config.getServerDisplayName())
 				.with("serverDescription", Config.serverDescription)
-				.with("serverAdminEmail", Config.serverAdminEmail);
+				.with("serverAdminEmail", Config.serverAdminEmail)
+				.with("signupMode", Config.signupMode);
 		String msg=req.session().attribute("admin.serverInfoMessage");
 		if(StringUtils.isNotEmpty(msg)){
 			req.session().removeAttribute("admin.serverInfoMessage");
@@ -44,6 +45,11 @@ public class SettingsAdminRoutes{
 		Config.updateInDatabase("ServerDisplayName", name);
 		Config.updateInDatabase("ServerDescription", descr);
 		Config.updateInDatabase("ServerAdminEmail", email);
+		try{
+			Config.SignupMode signupMode=Config.SignupMode.valueOf(req.queryParams("signup_mode"));
+			Config.signupMode=signupMode;
+			Config.updateInDatabase("SignupMode", signupMode.toString());
+		}catch(IllegalArgumentException ignore){}
 
 		if(isAjax(req))
 			return new WebDeltaResponseBuilder(resp).show("adminServerInfoMessage").setContent("adminServerInfoMessage", lang(req).get("admin_server_info_updated")).json();

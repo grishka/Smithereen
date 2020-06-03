@@ -43,6 +43,7 @@ public class Config{
 	public static String serverDisplayName;
 	public static String serverDescription;
 	public static String serverAdminEmail;
+	public static SignupMode signupMode=SignupMode.CLOSED;
 
 	public static void load(String filePath) throws IOException{
 		FileInputStream in=new FileInputStream(filePath);
@@ -86,6 +87,12 @@ public class Config{
 			serverDisplayName=dbValues.get("ServerDisplayName");
 			serverDescription=dbValues.get("ServerDescription");
 			serverAdminEmail=dbValues.get("ServerAdminEmail");
+			String _signupMode=dbValues.get("SignupMode");
+			if(StringUtils.isNotEmpty(_signupMode)){
+				try{
+					signupMode=SignupMode.valueOf(_signupMode);
+				}catch(IllegalArgumentException ignore){}
+			}
 		}
 	}
 
@@ -110,5 +117,12 @@ public class Config{
 
 	public static String getServerDisplayName(){
 		return StringUtils.isNotEmpty(serverDisplayName) ? serverDisplayName : domain;
+	}
+
+	public enum SignupMode{
+		OPEN,
+		CLOSED,
+		INVITE_ONLY,
+		MANUAL_APPROVAL
 	}
 }

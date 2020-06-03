@@ -12,6 +12,7 @@
 		<tr class="footer"><td class="label"></td><td><input type="submit" value="{{L('save')}}"/></td></tr>
 	</table>
 </form>
+{%-if signupMode=='INVITE_ONLY' or (userAccessLevel=='ADMIN' and signupMode!='OPEN')%}
 <h2>{{L('invitations')}}</h2>
 {%if inviteMessage%}<h5>{{inviteMessage}}</h5>{%endif%}
 <table class="dataTable" width="60%" style="margin: auto; margin-top: 8px;">
@@ -21,7 +22,7 @@
 	</tr>
 {%for invite in invitations%}
 	<tr>
-		<td><code>{{invite.code}}</code></td>
+		<td><code><a href="/account/register?invite={{invite.code}}">{{invite.code}}</a></code></td>
 		<td align="center">{{LD(invite.createdAt)}}</td>
 	</tr>
 {%endfor%}
@@ -35,7 +36,7 @@
 	<input type="hidden" name="csrf" value="{{csrf}}"/>
 	<center><input type="submit" value="{{L('create_invitation')}}"/></center>
 </form>
-
+{%-endif%}
 	<h2>{{L('language')}}</h2>
 	<form action="/settings/setLanguage" method="post">
 		<table class="form">

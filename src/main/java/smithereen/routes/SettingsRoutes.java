@@ -41,6 +41,7 @@ public class SettingsRoutes{
 	public static Object settings(Request req, Response resp, Account self) throws SQLException{
 		JtwigModel model=JtwigModel.newModel();
 		model.with("invitations", UserStorage.getInvites(self.id, true));
+		model.with("signupMode", Config.signupMode);
 		model.with("languages", Lang.list).with("selectedLang", Utils.lang(req));
 		Session s=req.session();
 		if(s.attribute("settings.passwordMessage")!=null){
@@ -60,6 +61,12 @@ public class SettingsRoutes{
 	}
 
 	public static Object createInvite(Request req, Response resp, Account self) throws SQLException{
+		if(Config.signupMode==Config.SignupMode.OPEN){
+			resp.status(400);
+			return "";
+		}
+		if(Config.signupMode==Config.SignupMode.CLOSED && self.accessLevel!=Account.AccessLevel.ADMIN)
+			return wrapError(req, resp, "err_access");
 		byte[] code=new byte[16];
 		new Random().nextBytes(code);
 		UserStorage.putInvite(self.id, code, 1);
@@ -83,8 +90,7 @@ public class SettingsRoutes{
 			message=Utils.lang(req).get("password_changed");
 		}
 		if(isAjax(req)){
-			resp.type("application/json");
-			return new WebDeltaResponseBuilder().show("passwordMessage").setContent("passwordMessage", message).json();
+			return new WebDeltaResponseBuilder(resp).show("passwordMessage").setContent("passwordMessage", message).json();
 		}
 		req.session().attribute("settings.passwordMessage", message);
 		resp.redirect("/settings/");
@@ -123,8 +129,7 @@ public class SettingsRoutes{
 			throw new IllegalStateException("?!");
 		ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
 		if(isAjax(req)){
-			resp.type("application/json");
-			return new WebDeltaResponseBuilder().show("profileEditMessage").setContent("profileEditMessage", message).json();
+			return new WebDeltaResponseBuilder(resp).show("profileEditMessage").setContent("profileEditMessage", message).json();
 		}
 		req.session().attribute("settings.profileEditMessage", message);
 		resp.redirect("/settings/profile/general");

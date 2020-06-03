@@ -1,6 +1,12 @@
 {% extends "page.twig" %}
 {% block content %}
 <div class="singleColumn">
-{%include "register_form.twig"%}
+	<h2>{{serverDisplayName}}</h2>
+	<p>{{serverDescription | raw}}</p>
+	{%if signupMode=='OPEN' or signupMode=='INVITE_ONLY'%}
+	{%include "register_form.twig"%}
+	{%elseif signupMode=='CLOSED'%}
+	<div class="notMuchContent" align="center">{{L('signups_closed')}}</div>
+	{%endif%}
 </div>
 {% endblock %}
