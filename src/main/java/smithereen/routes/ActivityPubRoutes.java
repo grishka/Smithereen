@@ -301,7 +301,7 @@ public class ActivityPubRoutes{
 		software.put("name", "smithereen");
 		software.put("version", BuildInfo.VERSION);
 		root.put("software", software);
-		root.put("openRegistrations", false);
+		root.put("openRegistrations", Config.signupMode==Config.SignupMode.OPEN);
 		JSONObject usage=new JSONObject();
 		JSONObject users=new JSONObject();
 		users.put("total", UserStorage.getLocalUserCount());
