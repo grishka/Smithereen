@@ -210,7 +210,7 @@ public class ActivityPubRoutes{
 				}else if(status==FriendshipStatus.FRIENDS){
 					return Utils.wrapError(req, resp, "err_already_friends");
 				}
-				JtwigModel model=JtwigModel.newModel().with("user", foreignUser);
+				JtwigModel model=JtwigModel.newModel().with("user", foreignUser).with("title", Config.serverDisplayName);
 				return Utils.renderTemplate(req, "remote_follow", model);
 			}catch(Exception x){
 				x.printStackTrace();

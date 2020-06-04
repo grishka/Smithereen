@@ -15,8 +15,8 @@
 		.hasJS .js{display: block;}
 	</style>
 </head>
-<body>
-<script>document.body.className="hasJS";{%if jsRedirect%} window.location="{{jsRedirect}}";{%endif%}</script>
+<body class="widePage">
+<script>document.body.classList.add("hasJS");{%if jsRedirect%} window.location="{{jsRedirect}}";{%endif%}</script>
 <div class="headerBG"></div>
 <div class="wrap">
 <table width="100%" class="header" cellpadding="0" cellspacing="0" border="0">

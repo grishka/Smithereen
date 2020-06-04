@@ -41,12 +41,15 @@ public class SessionRoutes{
 			resp.redirect("/feed");
 			return "";
 		}
+		String to=req.queryParams("to");
+		if(to.startsWith("/activitypub")){
+			req.attribute("templateDir", "popup");
+		}
 		JtwigModel model=JtwigModel.newModel();
 		if(req.requestMethod().equalsIgnoreCase("post")){
 			Account acc=SessionStorage.getAccountForUsernameAndPassword(req.queryParams("username"), req.queryParams("password"));
 			if(acc!=null){
 				setupSessionWithAccount(req, resp, acc);
-				String to=req.queryParams("to");
 				if(StringUtils.isNotEmpty(to))
 					resp.redirect(to);
 				else
@@ -57,7 +60,7 @@ public class SessionRoutes{
 		}else if(StringUtils.isNotEmpty(req.queryParams("to"))){
 			model.with("message", Utils.lang(req).get("login_needed"));
 		}
-		model.with("additionalParams", req.queryString());
+		model.with("additionalParams", "?"+req.queryString());
 		return Utils.renderTemplate(req, "login", model);
 	}
 

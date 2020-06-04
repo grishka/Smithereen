@@ -98,7 +98,10 @@ public class Utils{
 
 	public static String renderTemplate(Request req, String name, JtwigModel model){
 		addGlobalParamsToTemplate(req, model);
-		JtwigTemplate template=JtwigTemplate.classpathTemplate("templates/desktop/"+name+".twig", Main.jtwigEnv);
+		String templateDir="desktop";
+		if(req.attribute("templateDir")!=null)
+			templateDir=req.attribute("templateDir");
+		JtwigTemplate template=JtwigTemplate.classpathTemplate("templates/"+templateDir+"/"+name+".twig", Main.jtwigEnv);
 		if(req.queryParams("_ajax")==null)
 			req.attribute("isTemplate", true);
 		return template.render(model);
@@ -150,7 +153,7 @@ public class Utils{
 		if(isAjax(req)){
 			return new WebDeltaResponseBuilder(resp).messageBox(l.get("error"), msg, l.get("ok")).json().toString();
 		}
-		return renderTemplate(req, "generic_error", JtwigModel.newModel().with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/"));
+		return renderTemplate(req, "generic_error", JtwigModel.newModel().with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error")));
 	}
 
 	public static String wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, JtwigModel templateModel){

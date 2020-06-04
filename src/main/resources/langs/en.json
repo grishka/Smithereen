@@ -165,5 +165,8 @@
   "admin_signup_mode_approval": "By application (with manual approval by admins)",
   "admin_signup_mode_closed": "Sign-ups closed",
   "admin_signup_mode_explain": "When sign-ups are closed, administrators can still invite new users.",
-  "signups_closed": "Sign-ups on this server are closed."
+  "signups_closed": "Sign-ups on this server are closed.",
+  "external_X_follow_X": "<b>%1$s</b>, you're about to follow <b>%2$s</b> at <b>%3$s</b>.",
+  "external_X_send_friend_req_to_X": "<b>%1$s</b>, you're about to send a friend request to <b>%2$s</b> at <b>%3$s</b>.",
+  "close_this_window": "Close this window"
 }

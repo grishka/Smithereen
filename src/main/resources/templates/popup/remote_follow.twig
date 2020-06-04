@@ -1,0 +1,42 @@
+{%extends "page.twig"%}
+{%block content%}
+<center>
+	<div class="externalInteractionGraphic">
+		{{currentUser | pictureForAvatar('s')}}<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50" viewBox="0 0 100 50" class="externalInteractionImage">
+			<polygon points="100 25 85 10 85 20 0 20 0 30 85 30 85 40 100 25" class="arrow"/>
+			<g class="iconFollow">
+				<g>
+					<g>
+						<path d="M64,42a3,3,0,0,1-2.5-1.33C61.38,40.49,58.14,36,50,36s-11.38,4.49-11.51,4.68a3,3,0,0,1-5-3.34C33.7,37,38.53,30,50,30s16.3,7,16.5,7.34A3,3,0,0,1,64,42Z" class="fill"/>
+						<path d="M50,31c10.95,0,15.48,6.61,15.66,6.89a2,2,0,1,1-3.33,2.22C62.2,39.91,58.71,35,50,35s-12.3,5.06-12.34,5.11a2,2,0,1,1-3.33-2.22C34.52,37.61,39.05,31,50,31m0-2c-12,0-17.12,7.46-17.33,7.78a4,4,0,0,0,6.66,4.44C39.43,41.08,42.4,37,50,37s10.58,4.08,10.7,4.26a4,4,0,0,0,6.63-4.48C67.12,36.46,62,29,50,29Z" fill="#fff"/>
+					</g>
+					<g>
+						<path d="M50,30a9,9,0,0,1-9-9V17a9,9,0,0,1,18,0v4A9,9,0,0,1,50,30Zm0-16a3,3,0,0,0-3,3v4a3,3,0,0,0,6,0V17A3,3,0,0,0,50,14Z" class="fill"/>
+						<path d="M50,9a8,8,0,0,1,8,8v4a8,8,0,1,1-16,0V17a8,8,0,0,1,8-8m0,16a4,4,0,0,0,4-4V17a4,4,0,1,0-8,0v4a4,4,0,0,0,4,4M50,7A10,10,0,0,0,40,17v4a10,10,0,1,0,20,0V17A10,10,0,0,0,50,7Zm0,16a2,2,0,0,1-2-2V17a2,2,0,1,1,4,0v4a2,2,0,0,1-2,2Z" fill="#fff"/>
+					</g>
+				</g>
+				<g>
+					<path d="M62,44a3,3,0,0,1-3-3V40H58a3,3,0,0,1,0-6h1V33a3,3,0,0,1,6,0v1h1a3,3,0,0,1,0,6H65v1A3,3,0,0,1,62,44Z" class="fill"/>
+					<path d="M62,31a2,2,0,0,1,2,2v2h2a2,2,0,0,1,0,4H64v2a2,2,0,0,1-4,0V39H58a2,2,0,0,1,0-4h2V33a2,2,0,0,1,2-2m0-2a4,4,0,0,0-4,4,4,4,0,0,0,0,8,4,4,0,0,0,8,0,4,4,0,0,0,0-8,4,4,0,0,0-4-4Z" fill="#fff"/>
+				</g>
+			</g>
+		</svg>{{user | pictureForAvatar('s')}}
+	</div>
+	<p class="externalInteractionText">
+		{%-if user.supportsFriendRequests%}
+		{{L('external_X_send_friend_req_to_X', currentUser.firstName, user.fullName, user.domain)}}
+		{%-else%}
+		{{L('external_X_follow_X', currentUser.firstName, user.fullName, user.domain)}}
+		{%-endif%}
+	</p>
+	<form action="{{user.getProfileURL('remoteFollow')}}" method="post" class="externalInteractionForm">
+		<input type="hidden" name="csrf" value="{{csrf}}"/>
+		{%if user.supportsFriendRequests%}
+		<textarea name="message" placeholder="{{L('add_optional_message')}}" cols="100" rows="4"></textarea>
+		<input type="submit" value="{{L('send')}}"/>
+		{%else%}
+		<input type="submit" value="{{L('follow')}}"/>
+		{%endif%}
+	</form>
+</center>
+{%endblock%}

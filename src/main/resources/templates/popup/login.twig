@@ -1,0 +1,15 @@
+{%extends "page.twig"%}
+{%block content%}
+<center>
+	{%if message%}
+	<h4>{{message}}</h4>
+	{%endif%}
+	<form action="/account/login{{additionalParams}}" method="post" class="externalInteractionLoginForm">
+		<div align="left" class="label"><label for="username">{{L("email_or_username")}}:</label></div>
+		<input type="text" name="username" id="username"/>
+		<div align="left" class="label"><label for="password">{{L("password")}}:</label></div>
+		<input type="password" name="password" id="password"/>
+		<center><input type="submit" value="{{ L('log_in') }}"/></center>
+	</form>
+</center>
+{%endblock%}

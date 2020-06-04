@@ -1,7 +1,7 @@
 {%extends "page.twig"%}
 {%block content%}
-<center class="notMuchContent">
-	<p>{{error}}</p>
+<center>
+	<p class="externalInteractionText" style="margin-top: 0;">{{error}}</p>
 	<a href="{{back}}" class="button" id="button">{{L("go_back")}}</a>
 	<script>
 		if(window.opener){

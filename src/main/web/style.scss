@@ -56,9 +56,6 @@ h2{
 	color: $textOnAccent;
 	height: 48px;
 	padding: 0 12px;
-	width: calc($siteWidth - 60px);
-	margin-left: auto;
-	margin-right: auto;
 	.logo{
 		img{
 			margin-left: 4px;
@@ -102,7 +99,27 @@ h2{
 	box-shadow: 0 -1px 0 color($accent lightness(+20%)) inset;
 	height: 48px;
 	width: 100%;
-	min-width: $siteWidth;
+}
+
+.widePage{
+	.header{
+		width: calc($siteWidth - 60px);
+		margin-left: auto;
+		margin-right: auto;
+	}
+	.headerBG{
+		min-width: $siteWidth;
+	}
+}
+
+.popupPage{
+	height: 100%;
+	display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+	.header{
+		padding: 0;
+	}
 }
 
 .leftMenu{
@@ -951,4 +968,56 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	overflow: hidden;
+}
+
+.externalInteractionGraphic{
+	margin-top: 16px;
+}
+
+.externalInteractionText{
+	margin: 16px;
+}
+
+.externalInteractionForm{
+	width: 100%;
+	max-width: 512px;
+	padding: 16px;
+	padding-top: 0;
+	box-sizing: border-box;
+	textarea{
+		width: 100%;
+		margin-bottom: 16px;
+		box-sizing: border-box;
+		vertical-align: top;
+	}
+}
+
+.externalInteractionLoginForm{
+	width: 100%;
+	max-width: 512px;
+	padding: 16px;
+	padding-top: 0;
+	box-sizing: border-box;
+	input[type=text], input[type=password]{
+		width: 100%;
+		margin-bottom: 8px;
+		box-sizing: border-box;
+	}
+	.label{
+		margin-bottom: 4px;
+	}
+	center{
+		margin-top: 8px;
+	}
+}
+
+.externalInteractionImage{
+	display: inline-block;
+	vertical-align: top;
+	.arrow{
+		fill: $darkerGray;
+	}
+	.iconFollow .fill{
+		fill: #2979FF;
+	}
 }

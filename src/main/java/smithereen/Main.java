@@ -93,6 +93,9 @@ public class Main{
 //			for(String h:request.headers())
 //				hs+="["+h+": "+request.headers(h)+"] ";
 //			System.out.println(request.requestMethod()+" "+request.raw().getPathInfo()+" "+hs);
+			if(request.pathInfo().startsWith("/activitypub")){
+				request.attribute("templateDir", "popup");
+			}
 		});
 
 		get("/", Main::indexPage);

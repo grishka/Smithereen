@@ -35,9 +35,6 @@ h2{
 	color: #FFFFFF;
 	height: 48px;
 	padding: 0 12px;
-	width: 1220px;
-	margin-left: auto;
-	margin-right: auto;
 }
 
 .header .logo img{
@@ -84,8 +81,28 @@ h2{
 	box-shadow: 0 -1px 0 #d2da71 inset;
 	height: 48px;
 	width: 100%;
-	min-width: 1280px;
 }
+
+.widePage .header{
+		width: 1220px;
+		margin-left: auto;
+		margin-right: auto;
+	}
+
+.widePage .headerBG{
+		min-width: 1280px;
+	}
+
+.popupPage{
+	height: 100%;
+	display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.popupPage .header{
+		padding: 0;
+	}
 
 .leftMenu{
 	padding: 12px;
@@ -1063,3 +1080,61 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 	white-space: nowrap;
 	overflow: hidden;
 }
+
+.externalInteractionGraphic{
+	margin-top: 16px;
+}
+
+.externalInteractionText{
+	margin: 16px;
+}
+
+.externalInteractionForm{
+	width: 100%;
+	max-width: 512px;
+	padding: 16px;
+	padding-top: 0;
+	box-sizing: border-box;
+}
+
+.externalInteractionForm textarea{
+		width: 100%;
+		margin-bottom: 16px;
+		box-sizing: border-box;
+		vertical-align: top;
+	}
+
+.externalInteractionLoginForm{
+	width: 100%;
+	max-width: 512px;
+	padding: 16px;
+	padding-top: 0;
+	box-sizing: border-box;
+}
+
+.externalInteractionLoginForm input[type=text], .externalInteractionLoginForm input[type=password]{
+		width: 100%;
+		margin-bottom: 8px;
+		box-sizing: border-box;
+	}
+
+.externalInteractionLoginForm .label{
+		margin-bottom: 4px;
+	}
+
+.externalInteractionLoginForm center{
+		margin-top: 8px;
+	}
+
+.externalInteractionImage{
+	display: inline-block;
+	vertical-align: top;
+}
+
+.externalInteractionImage .arrow{
+		fill: #DDDDDD;
+	}
+
+.externalInteractionImage .iconFollow .fill{
+		fill: #2979FF;
+	}
