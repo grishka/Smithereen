@@ -42,7 +42,7 @@ public class SessionRoutes{
 			return "";
 		}
 		String to=req.queryParams("to");
-		if(to.startsWith("/activitypub")){
+		if(to!=null && to.startsWith("/activitypub")){
 			req.attribute("templateDir", "popup");
 		}
 		JtwigModel model=JtwigModel.newModel();
