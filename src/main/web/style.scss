@@ -1021,3 +1021,36 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 		fill: #2979FF;
 	}
 }
+
+.postActions{
+	display: inline-block;
+	float: right;
+	margin-right: -4px;
+	.like .icon{
+		display: inline-block;
+		width: 10px;
+		height: 9px;
+		background: svg-load(img/post_like.svg, fill: color($accent shade(20%)));
+		vertical-align: middle;
+		margin: -2px 0 0 4px;
+		opacity: .5;
+		transition: opacity 0.3s ease;
+	}
+	.like.liked .icon{
+		opacity: 1;
+	}
+	a, a:link, a:visited{
+		padding: 4px;
+		border-radius: 2px;
+		background-color: transparent;
+		&:hover{
+			background: color($accent lightness(+45%));
+			text-decoration: none;
+		}
+	}
+	.counter{
+		padding-left: 4px;
+		font-weight: bold;
+		font-size: 9px;
+	}
+}

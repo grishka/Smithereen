@@ -13,7 +13,7 @@
   "remove_friend": "Unfriend",
   "cancel_friend_request": "Cancel request",
   "write_on_own_wall": "What's new?",
-  "write_on_X_wall": "Write in %s's wall...",
+  "write_on_X_wall": "Write on %s's wall...",
   "birth_date": "Birth date",
   "sending_friend_req_to_X": "You're sending a friend request to <b>%s</b>.",
   "add_optional_message": "Add an optional message",
@@ -168,5 +168,6 @@
   "signups_closed": "Sign-ups on this server are closed.",
   "external_X_follow_X": "<b>%1$s</b>, you're about to follow <b>%2$s</b> at <b>%3$s</b>.",
   "external_X_send_friend_req_to_X": "<b>%1$s</b>, you're about to send a friend request to <b>%2$s</b> at <b>%3$s</b>.",
-  "close_this_window": "Close this window"
+  "close_this_window": "Close this window",
+  "like": "Like"
 }

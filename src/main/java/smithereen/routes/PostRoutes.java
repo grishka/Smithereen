@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,6 +25,7 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.PhotoSize;
 import smithereen.data.SessionInfo;
+import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
@@ -33,6 +35,7 @@ import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.User;
 import smithereen.data.notifications.Notification;
 import smithereen.data.notifications.NotificationUtils;
+import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
@@ -221,19 +224,24 @@ public class PostRoutes{
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
 		int[] total={0};
 		List<NewsfeedEntry> feed=PostStorage.getFeed(userID, startFromID, offset, total);
+		ArrayList<Integer> postIDs=new ArrayList<>();
 		for(NewsfeedEntry e:feed){
 			if(e instanceof PostNewsfeedEntry){
 				PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
-				if(pe.post!=null)
+				if(pe.post!=null){
 					pe.post.replies=PostStorage.getRepliesForFeed(e.objectID);
-				else
+					postIDs.add(pe.post.id);
+					pe.post.getAllReplyIDs(postIDs);
+				}else{
 					System.err.println("No post: "+pe);
+				}
 			}
 		}
+		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self.user.id);
 		if(!feed.isEmpty() && startFromID==0)
 			startFromID=feed.get(0).id;
 		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete");
-		JtwigModel model=JtwigModel.newModel().with("title", Utils.lang(req).get("feed")).with("feed", feed)
+		JtwigModel model=JtwigModel.newModel().with("title", Utils.lang(req).get("feed")).with("feed", feed).with("postInteractions", interactions)
 				.with("paginationURL", "/feed?startFrom="+startFromID+"&offset=").with("total", total[0]).with("offset", offset)
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
 		return Utils.renderTemplate(req, "feed", model);
@@ -262,6 +270,11 @@ public class PostRoutes{
 		if(post.replyKey.length>0){
 			model.with("prefilledPostText", post.user.getNameForReply()+", ");
 		}
+		ArrayList<Integer> postIDs=new ArrayList<>();
+		postIDs.add(post.id);
+		post.getAllReplyIDs(postIDs);
+		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, info!=null && info.account!=null ? info.account.user.id : 0);
+		model.with("postInteractions", interactions);
 		if(info==null || info.account==null){
 			HashMap<String, String> meta=new LinkedHashMap<>();
 			meta.put("og:site_name", "Smithereen");
@@ -345,6 +358,77 @@ public class PostRoutes{
 			return new WebDeltaResponseBuilder().remove("post"+postID).json();
 		}
 		resp.redirect(Utils.back(req));
+		return "";
+	}
+
+	public static Object like(Request req, Response resp, Account self) throws SQLException{
+		req.attribute("noHistory", true);
+		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		if(postID==0){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "err_post_not_found");
+		}
+		Post post=PostStorage.getPostByID(postID);
+		if(post==null){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "err_post_not_found");
+		}
+		String back=Utils.back(req);
+
+		LikeStorage.setPostLiked(self.user.id, postID, true);
+		if(!(post.user instanceof ForeignUser) && post.user.id!=self.user.id){
+			Notification n=new Notification();
+			n.type=Notification.Type.LIKE;
+			n.actorID=self.user.id;
+			n.objectID=post.id;
+			n.objectType=Notification.ObjectType.POST;
+			NotificationsStorage.putNotification(post.user.id, n);
+		}
+		if(post.user instanceof ForeignUser || post.owner instanceof ForeignUser){
+			ActivityPubWorker.getInstance().sendLikeActivity(post, self.user);
+		}
+		if(isAjax(req)){
+			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
+			return new WebDeltaResponseBuilder(resp)
+					.setContent("likeCounterPost"+postID, interactions.likeCount+"")
+					.setAttribute("likeButtonPost"+postID, "href", post.getInternalURL()+"/unlike?csrf="+sessionInfo(req).csrfToken)
+					.json();
+		}
+		resp.redirect(back);
+		return "";
+	}
+
+	public static Object unlike(Request req, Response resp, Account self) throws SQLException{
+		req.attribute("noHistory", true);
+		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		if(postID==0){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "err_post_not_found");
+		}
+		Post post=PostStorage.getPostByID(postID);
+		if(post==null){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "err_post_not_found");
+		}
+		String back=Utils.back(req);
+
+		LikeStorage.setPostLiked(self.user.id, postID, false);
+		if(!(post.user instanceof ForeignUser) && post.user.id!=self.user.id){
+			NotificationsStorage.deleteNotification(Notification.ObjectType.POST, postID, Notification.Type.LIKE, self.user.id);
+		}
+		if(post.user instanceof ForeignUser || post.owner instanceof ForeignUser){
+			ActivityPubWorker.getInstance().sendUndoLikeActivity(post, self.user);
+		}
+		if(isAjax(req)){
+			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
+			WebDeltaResponseBuilder b=new WebDeltaResponseBuilder(resp)
+					.setContent("likeCounterPost"+postID, interactions.likeCount+"")
+					.setAttribute("likeButtonPost"+postID, "href", post.getInternalURL()+"/like?csrf="+sessionInfo(req).csrfToken);
+			if(interactions.likeCount==0)
+				b.hide("likeCounterPost"+postID);
+			return b.json();
+		}
+		resp.redirect(back);
 		return "";
 	}
 }

@@ -183,6 +183,9 @@ public class Main{
 
 			getLoggedIn("/confirmDelete", PostRoutes::confirmDelete);
 			postWithCSRF("/delete", PostRoutes::delete);
+
+			getWithCSRF("/like", PostRoutes::like);
+			getWithCSRF("/unlike", PostRoutes::unlike);
 		});
 
 		get("/robots.txt", (req, resp)->{

@@ -279,4 +279,11 @@ public class Post extends ActivityPubObject{
 		}
 		return "";
 	}
+
+	public void getAllReplyIDs(ArrayList<Integer> out){
+		for(Post reply:replies){
+			out.add(reply.id);
+			reply.getAllReplyIDs(out);
+		}
+	}
 }

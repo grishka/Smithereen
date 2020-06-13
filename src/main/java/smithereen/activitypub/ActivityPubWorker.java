@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -22,6 +23,7 @@ import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
+import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Undo;
@@ -182,6 +184,44 @@ public class ActivityPubWorker{
 			}
 		}catch(SQLException x){
 			x.printStackTrace();
+		}
+	}
+
+	public void sendLikeActivity(Post post, User user){
+		Like like=new Like();
+		like.activityPubID=Config.localURI(user.getFullUsername()+"#likePost"+post.id);
+		like.actor=new LinkOrObject(user.activityPubID);
+		like.object=new LinkOrObject(post.activityPubID);
+		ArrayList<URI> inboxes=new ArrayList<>();
+		if(post.user instanceof ForeignUser){
+			inboxes.add(((ForeignUser) post.user).inbox);
+		}
+		if(post.owner.id!=post.user.id && post.owner instanceof ForeignUser){
+			inboxes.add(((ForeignUser) post.owner).inbox);
+		}
+		for(URI inbox:inboxes){
+			executor.submit(new SendOneActivityRunnable(like, inbox, user));
+		}
+	}
+
+	public void sendUndoLikeActivity(Post post, User user){
+		Like like=new Like();
+		like.activityPubID=Config.localURI(user.getFullUsername()+"#likePost"+post.id);
+		like.actor=new LinkOrObject(user.activityPubID);
+		like.object=new LinkOrObject(post.activityPubID);
+		Undo undo=new Undo();
+		undo.activityPubID=Config.localURI(user.getFullUsername()+"#unlikePost"+post.id);
+		undo.object=new LinkOrObject(like);
+		undo.actor=new LinkOrObject(user.activityPubID);
+		ArrayList<URI> inboxes=new ArrayList<>();
+		if(post.user instanceof ForeignUser){
+			inboxes.add(((ForeignUser) post.user).inbox);
+		}
+		if(post.owner.id!=post.user.id && post.owner instanceof ForeignUser){
+			inboxes.add(((ForeignUser) post.owner).inbox);
+		}
+		for(URI inbox:inboxes){
+			executor.submit(new SendOneActivityRunnable(undo, inbox, user));
 		}
 	}
 

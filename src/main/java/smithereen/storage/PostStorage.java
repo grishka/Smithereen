@@ -14,11 +14,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.ObjectNotFoundException;
 import smithereen.Utils;
 import smithereen.data.User;
+import smithereen.data.UserInteractions;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.Post;
 import smithereen.data.feed.PostNewsfeedEntry;
@@ -376,5 +378,36 @@ public class PostStorage{
 			res.first();
 			return res.getInt(1);
 		}
+	}
+
+	public static HashMap<Integer, UserInteractions> getPostInteractions(List<Integer> postIDs, int userID) throws SQLException{
+		HashMap<Integer, UserInteractions> result=new HashMap<>();
+		if(postIDs.isEmpty())
+			return result;
+		for(int id:postIDs)
+			result.put(id, new UserInteractions());
+		String idsStr=postIDs.stream().map(Object::toString).collect(Collectors.joining(","));
+
+		Connection conn=DatabaseConnectionManager.getConnection();
+		try(ResultSet res=conn.createStatement().executeQuery("SELECT object_id, COUNT(*) FROM likes WHERE object_type=1 AND object_id IN ("+idsStr+") GROUP BY object_id")){
+			if(res.first()){
+				do{
+					result.get(res.getInt(1)).likeCount=res.getInt(2);
+				}while(res.next());
+			}
+		}
+		if(userID!=0){
+			PreparedStatement stmt=conn.prepareStatement("SELECT object_id FROM likes WHERE object_type=1 AND object_id IN ("+idsStr+") AND user_id=?");
+			stmt.setInt(1, userID);
+			try(ResultSet res=stmt.executeQuery()){
+				if(res.first()){
+					do{
+						result.get(res.getInt(1)).isLiked=true;
+					}while(res.next());
+				}
+			}
+		}
+
+		return result;
 	}
 }

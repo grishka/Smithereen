@@ -1138,3 +1138,41 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 .externalInteractionImage .iconFollow .fill{
 		fill: #2979FF;
 	}
+
+.postActions{
+	display: inline-block;
+	float: right;
+	margin-right: -4px;
+}
+
+.postActions .like .icon{
+		display: inline-block;
+		width: 10px;
+		height: 9px;
+		background: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='9' viewBox='0 0 10 9' fill='%23889026'%3E%3Cpath d='M7.5,0A2.49,2.49,0,0,0,5.73.73L5,1.46,4.27.73A2.5,2.5,0,0,0,0,2.5,2.7,2.7,0,0,0,.9,4.29L4.56,7.95a.62.62,0,0,0,.88,0L9.09,4.3A2.74,2.74,0,0,0,10,2.5,2.5,2.5,0,0,0,7.5,0Z'/%3E%3C/svg%3E");
+		vertical-align: middle;
+		margin: -2px 0 0 4px;
+		opacity: .5;
+		transition: opacity 0.3s ease;
+	}
+
+.postActions .like.liked .icon{
+		opacity: 1;
+	}
+
+.postActions a, .postActions a:link, .postActions a:visited{
+		padding: 4px;
+		border-radius: 2px;
+		background-color: transparent;
+	}
+
+.postActions a:hover,.postActions a:link:hover,.postActions a:visited:hover{
+			background: #f2f5d6;
+			text-decoration: none;
+		}
+
+.postActions .counter{
+		padding-left: 4px;
+		font-weight: bold;
+		font-size: 9px;
+	}

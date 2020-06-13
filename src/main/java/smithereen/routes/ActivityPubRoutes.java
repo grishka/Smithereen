@@ -231,6 +231,12 @@ public class ActivityPubRoutes{
 				if(post.owner==null){
 					throw new UnsupportedOperationException("no post owner user - not yet implemented");
 				}
+				if(post.inReplyTo!=null){
+					Post parent=PostStorage.getPostByID(post.inReplyTo);
+					if(parent==null)
+						throw new UnsupportedOperationException("no parent post - not yet implemented");
+					post.setParent(parent);
+				}
 				PostStorage.putForeignWallPost(post);
 				resp.redirect("/posts/"+post.id);
 				return "";

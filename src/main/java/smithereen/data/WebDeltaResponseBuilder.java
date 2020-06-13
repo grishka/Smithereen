@@ -97,8 +97,41 @@ public class WebDeltaResponseBuilder{
 		return this;
 	}
 
+	public WebDeltaResponseBuilder addClass(@NotNull String id, @NotNull String className){
+		JSONObject cmd=new JSONObject();
+		cmd.put("a", "addClass");
+		cmd.put("id", id);
+		cmd.put("cl", className);
+		commands.put(cmd);
+		return this;
+	}
+
+	public WebDeltaResponseBuilder removeClass(@NotNull String id, @NotNull String className){
+		JSONObject cmd=new JSONObject();
+		cmd.put("a", "remClass");
+		cmd.put("id", id);
+		cmd.put("cl", className);
+		commands.put(cmd);
+		return this;
+	}
+
+	public WebDeltaResponseBuilder setAttribute(@NotNull String id, @NotNull String name, @NotNull String value){
+		JSONObject cmd=new JSONObject();
+		cmd.put("a", "setAttr");
+		cmd.put("id", id);
+		cmd.put("n", name);
+		cmd.put("v", value);
+		commands.put(cmd);
+		return this;
+	}
+
 	public JSONArray json(){
 		return commands;
+	}
+
+	@Override
+	public String toString(){
+		return commands.toString();
 	}
 
 	public enum ElementInsertionMode{

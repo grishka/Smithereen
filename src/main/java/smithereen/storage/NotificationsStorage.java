@@ -111,8 +111,13 @@ public class NotificationsStorage{
 			synchronized(NotificationsStorage.class){
 				userNotificationsCache.remove(res.getInt(1));
 			}
-			res.deleteRow();
 		}
+		stmt=conn.prepareStatement("DELETE FROM `notifications` WHERE `object_type`=? AND `object_id`=? AND `type`=? AND `actor_id`=?");
+		stmt.setInt(1, objType.ordinal());
+		stmt.setInt(2, objID);
+		stmt.setInt(3, type.ordinal());
+		stmt.setInt(4, actorID);
+		stmt.execute();
 	}
 
 	public static synchronized UserNotifications getNotificationsForUser(int userID, int lastSeenID) throws SQLException{

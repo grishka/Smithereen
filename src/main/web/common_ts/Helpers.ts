@@ -245,6 +245,17 @@ function applyServerCommand(cmd:any){
 			}
 		}
 		break;
+		case "setAttr":
+		{
+			var id:string=cmd.id;
+			var value:string=cmd.v;
+			var name:string=cmd.n;
+			var el=document.getElementById(id);
+			if(el){
+				el.setAttribute(name, value);
+			}
+		}
+		break;
 		case "msgBox":
 			new MessageBox(cmd.t, cmd.m, cmd.b).show();
 			break;
@@ -288,6 +299,20 @@ function applyServerCommand(cmd:any){
 			(el as any).value=cmd.v;
 		}
 		break;
+		case "addClass":
+		{
+			var el=document.getElementById(cmd.id);
+			if(!el) return;
+			el.classList.add(cmd.cl);
+		}
+		break;
+		case "remClass":
+		{
+			var el=document.getElementById(cmd.id);
+			if(!el) return;
+			el.classList.remove(cmd.cl);
+		}
+		break;
 		case "refresh":
 			location.reload();
 			break;
@@ -309,5 +334,46 @@ function highlightComment(id:number):boolean{
 	for(var i=0;i<existing.length;i++) existing[i].classList.remove("highlight");
 	ge("post"+id).classList.add("highlight");
 	window.location.hash="#comment"+id;
+	return false;
+}
+
+function likeOnClick(btn:HTMLAnchorElement):boolean{
+	if(btn.hasAttribute("in_progress"))
+		return false;
+	var objType=btn.getAttribute("data-obj-type");
+	var objID=btn.getAttribute("data-obj-id");
+	var liked=btn.classList.contains("liked");
+	var counter=ge("likeCounter"+objType.substring(0,1).toUpperCase()+objType.substring(1)+objID);
+	var count=parseInt(counter.innerText);
+	if(!liked){
+		counter.innerText=count+1;
+		btn.classList.add("liked");
+		if(count==0) show(counter);
+	}else{
+		counter.innerText=count-1;
+		btn.classList.remove("liked");
+		if(count==1) hide(counter);
+	}
+	btn.setAttribute("in_progress", "");
+	ajaxGet(btn.href, function(resp:any){
+			btn.removeAttribute("in_progress");
+			if(resp instanceof Array){
+				for(var i=0;i<resp.length;i++){
+					applyServerCommand(resp[i]);
+				}
+			}
+		}, function(){
+			btn.removeAttribute("in_progress");
+			new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+			if(liked){
+				counter.innerText=count+1;
+				btn.classList.add("liked");
+				if(count==0) show(counter);
+			}else{
+				counter.innerText=count-1;
+				btn.classList.remove("liked");
+				if(count==1) hide(counter);
+			}
+		});
 	return false;
 }

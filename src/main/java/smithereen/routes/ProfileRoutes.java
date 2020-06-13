@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static smithereen.Utils.*;
 
@@ -21,6 +22,7 @@ import smithereen.data.PhotoSize;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.data.notifications.Notification;
 import smithereen.lang.Lang;
@@ -44,6 +46,10 @@ public class ProfileRoutes{
 			List<Post> wall=PostStorage.getUserWall(user.id, 0, 0, offset, postCount);
 			JtwigModel model=JtwigModel.newModel().with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
 			model.with("pageOffset", offset);
+
+			List<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toList());
+			HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
+			model.with("postInteractions", interactions);
 
 			int[] friendCount={0};
 			List<User> friends=UserStorage.getRandomFriendsForProfile(user.id, friendCount);

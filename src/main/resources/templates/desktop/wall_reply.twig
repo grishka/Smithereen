@@ -14,7 +14,17 @@
 			{%if post.attachment%}{{post.processedAttachments | renderAttachments}}{%endif%}
 			<div class="postInfo"><a href="{{post.internalURL}}" onclick="return highlightComment({{post.id}})" class="postLink">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} |
 				<a href="{{post.url}}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{post.url}}/delete')">{{L('delete')}}</a>{%endif%}
-				{%if not hideReplyLink%}| <a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}})">{{L('add_reply')}}</a>{%endif%}</div>
+				{%if not hideReplyLink%}| <a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}})">{{L('add_reply')}}</a>{%endif%}
+				{%if postInteractions%}
+				{%-set interactions=postInteractions[post.id]%}
+				<span class="postActions">
+					<a href="{{post.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{post.id}}" data-obj-type="post" data-obj-id="{{post.id}}" onclick="return likeOnClick(this)">
+						{{-L('like')}}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{post.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+						{{-interactions.likeCount-}}
+					</span></a>
+				</span>
+				{%-endif%}
+			</div>
 		</td>
 	</tr>
 </table>
