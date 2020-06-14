@@ -118,7 +118,7 @@ public class SessionRoutes{
 			return regError(req, "err_name_too_short");
 		if(Config.signupMode!=Config.SignupMode.OPEN){
 			if(StringUtils.isEmpty(invite))
-				invite=req.params("_invite");
+				invite=req.queryParams("_invite");
 			if(StringUtils.isEmpty(invite) || !invite.matches("[A-Fa-f0-9]{32}"))
 				return regError(req, "err_invalid_invitation");
 		}
