@@ -1,5 +1,11 @@
 {%extends "page.twig"%}
 {%block content%}
+{%-if user.domain%}
+<div class="settingsMessage">
+	{{L('incomplete_profile')}}<br/>
+	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', user.domain)}}</a>
+</div>
+{%endif%}
 <table width="100%" cellpadding="0" cellspacing="0" class="columnLayout leftNarrow">
 	<tr valign="top">
 		<!-- left column -->
@@ -30,8 +36,12 @@
 			{%if currentUser and currentUser.id!=user.id%}
 			<div class="profileBelowAva">
 				{{friendshipStatusText}}
-				{%if not isFriend%}
-				<a href="/{{user.username}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("add_friend")}}</a>
+				{%-if not isFriend%}
+				{%-if user.supportsFriendRequests%}
+				<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("add_friend")}}</a>
+				{%-else%}
+				<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("follow")}}</a>
+				{%-endif%}
 				{%endif%}
 			</div>
 			{%endif%}
@@ -78,7 +88,7 @@
 			{%for post in wall%}
 			{%include "wall_post.twig" with {post: post}%}
 			{%endfor%}
-					{%include "pagination.twig" with {perPage: 25, offset: pageOffset, total: postCount, urlPrefix: concat("/", user.username, "?offset=")} only%}
+					{%include "pagination.twig" with {perPage: 25, offset: pageOffset, total: postCount, urlPrefix: concat(user.profileURL, "?offset=")} only%}
 				</td></tr>
 			</table>
 		</td>

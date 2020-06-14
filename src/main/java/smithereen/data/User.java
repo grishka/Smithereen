@@ -57,6 +57,10 @@ public class User extends ActivityPubObject{
 		return "/"+getFullUsername()+"/"+action;
 	}
 
+	public String getProfileURL(){
+		return "/"+getFullUsername();
+	}
+
 	public boolean hasAvatar(){
 		return icon!=null;
 	}

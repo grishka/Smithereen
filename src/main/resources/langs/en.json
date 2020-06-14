@@ -169,5 +169,8 @@
   "external_X_follow_X": "<b>%1$s</b>, you're about to follow <b>%2$s</b> at <b>%3$s</b>.",
   "external_X_send_friend_req_to_X": "<b>%1$s</b>, you're about to send a friend request to <b>%2$s</b> at <b>%3$s</b>.",
   "close_this_window": "Close this window",
-  "like": "Like"
+  "like": "Like",
+  "liked_by_X_people": ["%d person likes this", "%d people like this"],
+  "incomplete_profile": "This profile might be incomplete.",
+  "open_on_server_X": "Open on %s"
 }

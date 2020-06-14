@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-05-26 12:49:14 +0000
+# Generation Time: 2020-06-14 20:08:41 +0000
 # ************************************************************
 
 
@@ -101,10 +101,12 @@ CREATE TABLE `friend_requests` (
 # ------------------------------------------------------------
 
 CREATE TABLE `likes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) unsigned NOT NULL,
   `object_id` int(11) unsigned NOT NULL,
   `object_type` int(11) unsigned NOT NULL,
   UNIQUE KEY `user_id` (`user_id`,`object_id`,`object_type`),
+  UNIQUE KEY `id` (`id`),
   KEY `object_type` (`object_type`,`object_id`),
   CONSTRAINT `likes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

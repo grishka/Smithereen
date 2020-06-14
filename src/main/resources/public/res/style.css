@@ -96,8 +96,8 @@ h2{
 .popupPage{
 	height: 100%;
 	display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+	flex-direction: column;
+	justify-content: space-between;
 }
 
 .popupPage .header{
@@ -174,6 +174,7 @@ h2{
 
 .pageContent{
 	box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+	overflow: hidden; /* prevent margin collapse */
 }
 
 .wrap{
@@ -1160,13 +1161,13 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 		opacity: 1;
 	}
 
-.postActions a, .postActions a:link, .postActions a:visited{
+.postActions a.action, .postActions a.action:link, .postActions a.action:visited{
 		padding: 4px;
 		border-radius: 2px;
 		background-color: transparent;
 	}
 
-.postActions a:hover,.postActions a:link:hover,.postActions a:visited:hover{
+.postActions a.action:hover,.postActions a.action:link:hover,.postActions a.action:visited:hover{
 			background: #f2f5d6;
 			text-decoration: none;
 		}
@@ -1176,3 +1177,165 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 		font-weight: bold;
 		font-size: 9px;
 	}
+
+.popoverPlace{
+	position: relative;
+}
+
+@-webkit-keyframes slideFromBottom{
+	0%{
+		opacity: 0;
+		transform: translateY(16px);
+	}
+	100%{
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes slideFromBottom{
+	0%{
+		opacity: 0;
+		transform: translateY(16px);
+	}
+	100%{
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@-webkit-keyframes slideFromTop{
+	0%{
+		opacity: 0;
+		transform: translateY(-16px);
+	}
+	100%{
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes slideFromTop{
+	0%{
+		opacity: 0;
+		transform: translateY(-16px);
+	}
+	100%{
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@-webkit-keyframes fadeOut{
+	0%{
+		opacity: 1;
+	}
+	100%{
+		opacity: 0;
+	}
+}
+
+@keyframes fadeOut{
+	0%{
+		opacity: 1;
+	}
+	100%{
+		opacity: 0;
+	}
+}
+
+.popover{
+	position: absolute;
+}
+
+.popover .popoverHeader{
+		background: #aab42f;
+		color: #FFFFFF;
+		text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
+		font-weight: bold;
+		padding: 4px 8px;
+		border-radius: 4px 4px 0 0;
+		border: solid 1px #889026;
+		border-bottom: none;
+	}
+
+.popover .popoverHeader a, .popover .popoverHeader a:link, .popover .popoverHeader a:visited, .popover .popoverHeader a:hover, .popover .popoverHeader a:visited:hover{
+			color: #FFFFFF;
+			text-decoration: none;
+		}
+
+.popover .popoverContent{
+		background: #FFFFFF;
+		padding: 4px 8px;
+		color: #000;
+		border-radius: 0 0 4px 4px;
+		border: solid 1px #DDDDDD;
+		border-top: none;
+	}
+
+.popover .popoverFooter{
+		background: #F7F7F7;
+		border-top: solid 1px #DDDDDD;
+		padding: 4px 8px;
+		color: #707070;
+	}
+
+.popover .popoverArrow{
+		width: 11px;
+		height: 7px;
+		position: absolute;
+	}
+
+.popover.belowAnchor{
+		padding-top: 6px;
+		-webkit-animation: slideFromBottom 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+		        animation: slideFromBottom 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+	}
+
+.popover.belowAnchor .popoverArrow{
+			background: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpolygon points='11 7 5.5 1 0 7 11 7' fill='%23aab42f'/%3E%3Cpolygon points='0.27 7 5.5 1.77 10.73 7 11 7 11 5.86 5.5 0.36 0 5.86 0 7 0.27 7' fill='%23889026'/%3E%3C/svg%3E");
+			top: 0;
+		}
+
+.popover.aboveAnchor{
+		padding-bottom: 6px;
+		-webkit-animation: slideFromTop 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+		        animation: slideFromTop 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+	}
+
+.popover.aboveAnchor .popoverArrow{
+			background: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpolygon points='0 0 5.5 6 11 0 0 0' fill='%23FFFFFF'/%3E%3Cpolygon points='10.73 0 5.5 5.23 0.27 0 0 0 0 1.14 5.5 6.64 11 1.14 11 0 10.73 0' fill='%23DDDDDD'/%3E%3C/svg%3E");
+			bottom: 0;
+		}
+
+.likePopoverWrap .popover{
+	width: 226px;
+	right: 0;
+}
+
+.likePopoverWrap .popover .popoverArrow{
+		right: 16px;
+	}
+
+.likePopoverContent{
+	padding: 4px 0;
+	overflow-x: hidden;
+	height: 32px;
+	word-wrap: nowrap;
+}
+
+.likePopoverContent .ava{
+		margin-right: 4px;
+	}
+
+.likePopoverContent .ava:last-child{
+		margin-right: 0;
+	}
+
+.likePopoverContent .self{
+		display: none;
+	}
+
+.likeWrap>.liked+.likePopoverWrap .self{
+	display: inline-block;
+}

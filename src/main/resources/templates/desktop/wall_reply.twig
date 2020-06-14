@@ -6,10 +6,10 @@
 		<td width="{{(post.replyLevel-1)*16}}" class="treeIndent">&nbsp;</td>
 		{%-endif%}
 		<td width="40" valign="top">
-			<a href="{{post.user.url}}">{{pictureForAvatar(post.user, 's', 40)}}</a>
+			<a href="{{post.user.profileURL}}">{{pictureForAvatar(post.user, 's', 40)}}</a>
 		</td>
 		<td class="postContentWrap">
-			<a href="{{post.user.url}}"{{post.userLinkAttrs}} class="authorName">{{post.user.fullName}}</a><br/>
+			<a href="{{post.user.profileURL}}" class="authorName">{{post.user.fullName}}</a><br/>
 			<div class="postContent">{{post.content | escape(false)}}</div>
 			{%if post.attachment%}{{post.processedAttachments | renderAttachments}}{%endif%}
 			<div class="postInfo"><a href="{{post.internalURL}}" onclick="return highlightComment({{post.id}})" class="postLink">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} |
@@ -18,10 +18,13 @@
 				{%if postInteractions%}
 				{%-set interactions=postInteractions[post.id]%}
 				<span class="postActions">
-					<a href="{{post.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{post.id}}" data-obj-type="post" data-obj-id="{{post.id}}" onclick="return likeOnClick(this)">
-						{{-L('like')}}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{post.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
-						{{-interactions.likeCount-}}
-					</span></a>
+					<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
+						<a href="{{post.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{post.id}}" data-obj-type="post" data-obj-id="{{post.id}}" data-popover-url="{{post.internalURL}}/likePopover" onclick="return likeOnClick(this)">
+							{{-L('like')}}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{post.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+							{{-interactions.likeCount-}}
+						</span></a>
+						<span class="popoverPlace likePopoverWrap"></span>
+					</span>
 				</span>
 				{%-endif%}
 			</div>

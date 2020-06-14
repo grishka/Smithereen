@@ -19,6 +19,24 @@ $text: #000;
 	;
 }
 
+@svg-load popoverArrowTop url(img/popover_arrow_top.svg) {
+	polygon[fill=red]{
+		fill: $accent;
+	}
+	polygon[fill=lime]{
+		fill: color($accent shade(20%));
+	}
+}
+
+@svg-load popoverArrowBottom url(img/popover_arrow_btm.svg) {
+	polygon[fill=red]{
+		fill: $bg;
+	}
+	polygon[fill=lime]{
+		fill: $darkerGray;
+	}
+}
+
 body, p, textarea, input, select{
 	font-family: Tahoma, Helvetica, Arial, Roboto, sans-serif;
 	font-size: 11px;
@@ -115,8 +133,8 @@ h2{
 .popupPage{
 	height: 100%;
 	display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+	flex-direction: column;
+	justify-content: space-between;
 	.header{
 		padding: 0;
 	}
@@ -184,6 +202,7 @@ h2{
 
 .pageContent{
 	box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+	overflow: hidden; /* prevent margin collapse */
 }
 
 .wrap{
@@ -1039,7 +1058,7 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	.like.liked .icon{
 		opacity: 1;
 	}
-	a, a:link, a:visited{
+	a.action, a.action:link, a.action:visited{
 		padding: 4px;
 		border-radius: 2px;
 		background-color: transparent;
@@ -1053,4 +1072,120 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 		font-weight: bold;
 		font-size: 9px;
 	}
+}
+
+.popoverPlace{
+	position: relative;
+}
+
+@keyframes slideFromBottom{
+	0%{
+		opacity: 0;
+		transform: translateY(16px);
+	}
+	100%{
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes slideFromTop{
+	0%{
+		opacity: 0;
+		transform: translateY(-16px);
+	}
+	100%{
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes fadeOut{
+	0%{
+		opacity: 1;
+	}
+	100%{
+		opacity: 0;
+	}
+}
+
+.popover{
+	position: absolute;
+	.popoverHeader{
+		background: $accent;
+		color: $textOnAccent;
+		text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
+		font-weight: bold;
+		padding: 4px 8px;
+		border-radius: 4px 4px 0 0;
+		border: solid 1px color($accent shade(20%));
+		border-bottom: none;
+		a, a:link, a:visited, a:hover, a:visited:hover{
+			color: $textOnAccent;
+			text-decoration: none;
+		}
+	}
+	.popoverContent{
+		background: $bg;
+		padding: 4px 8px;
+		color: $text;
+		border-radius: 0 0 4px 4px;
+		border: solid 1px $darkerGray;
+		border-top: none;
+	}
+	.popoverFooter{
+		background: $gray;
+		border-top: solid 1px $darkerGray;
+		padding: 4px 8px;
+		color: $textOnGray;
+	}
+	.popoverArrow{
+		width: 11px;
+		height: 7px;
+		position: absolute;
+	}
+	&.belowAnchor{
+		padding-top: 6px;
+		animation: slideFromBottom 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+		.popoverArrow{
+			background: svg-inline(popoverArrowTop);
+			top: 0;
+		}
+	}
+	&.aboveAnchor{
+		padding-bottom: 6px;
+		animation: slideFromTop 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+		.popoverArrow{
+			background: svg-inline(popoverArrowBottom);
+			bottom: 0;
+		}
+	}
+}
+
+.likePopoverWrap .popover{
+	width: 226px;
+	right: 0;
+	.popoverArrow{
+		right: 16px;
+	}
+}
+
+.likePopoverContent{
+	padding: 4px 0;
+	overflow-x: hidden;
+	height: 32px;
+	word-wrap: nowrap;
+	.ava{
+		margin-right: 4px;
+	}
+	.ava:last-child{
+		margin-right: 0;
+	}
+	.self{
+		display: none;
+	}
+}
+
+.likeWrap>.liked+.likePopoverWrap .self{
+	display: inline-block;
 }

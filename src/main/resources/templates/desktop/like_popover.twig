@@ -1,0 +1,8 @@
+<div class="likePopoverContent">
+	{%if currentUser%}
+	<a href="{{currentUser.profileURL}}" class="self">{{currentUser | pictureForAvatar('s', 32)}}</a>
+	{%endif%}
+	{%for user in users%}
+	<a href="{{user.profileURL}}">{{user | pictureForAvatar('s', 32)}}</a>
+	{%endfor%}
+</div>

@@ -1,6 +1,7 @@
 package smithereen.routes;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.jtwig.JtwigModel;
 
 import java.net.URI;
@@ -13,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import smithereen.Config;
 import static smithereen.Utils.*;
@@ -430,5 +432,45 @@ public class PostRoutes{
 		}
 		resp.redirect(back);
 		return "";
+	}
+
+	public static Object likePopover(Request req, Response resp) throws SQLException{
+		req.attribute("noHistory", true);
+		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		if(postID==0){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "err_post_not_found");
+		}
+		Post post=PostStorage.getPostByID(postID);
+		if(post==null){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "err_post_not_found");
+		}
+		SessionInfo info=sessionInfo(req);
+		int selfID=info!=null && info.account!=null ? info.account.user.id : 0;
+		List<Integer> ids=LikeStorage.getPostLikes(postID, selfID, 0, 6);
+		ArrayList<User> users=new ArrayList<>();
+		for(int id:ids)
+			users.add(UserStorage.getById(id));
+		String content=renderTemplate(req, "like_popover", JtwigModel.newModel().with("users", users));
+		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), selfID).get(postID);
+		JSONObject o=new JSONObject();
+		o.put("content", content);
+		o.put("title", lang(req).plural("liked_by_X_people", interactions.likeCount));
+		if(selfID!=0){
+			o.put("altTitle", lang(req).plural("liked_by_X_people", interactions.likeCount+(interactions.isLiked ? -1 : 1)));
+		}
+		WebDeltaResponseBuilder b=new WebDeltaResponseBuilder(resp)
+				.setContent("likeCounterPost"+postID, interactions.likeCount+"");
+		if(info!=null && info.account!=null){
+			b.setAttribute("likeButtonPost"+postID, "href", post.getInternalURL()+"/"+(interactions.isLiked ? "un" : "")+"like?csrf="+sessionInfo(req).csrfToken);
+		}
+		if(interactions.likeCount==0)
+			b.hide("likeCounterPost"+postID);
+		else
+			b.show("likeCounterPost"+postID);
+		o.put("actions", b.json());
+		o.put("show", interactions.likeCount>0);
+		return o;
 	}
 }

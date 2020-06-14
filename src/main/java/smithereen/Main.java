@@ -186,6 +186,7 @@ public class Main{
 
 			getWithCSRF("/like", PostRoutes::like);
 			getWithCSRF("/unlike", PostRoutes::unlike);
+			get("/likePopover", PostRoutes::likePopover);
 		});
 
 		get("/robots.txt", (req, resp)->{

@@ -1,7 +1,7 @@
 ///<reference path="./PostForm.ts"/>
 
 declare var userConfig:any;
-declare var langKeys:any;
+declare var langKeys:{[key:string]:string|string[]};
 
 const ge=document.getElementById.bind(document);
 const ce=document.createElement.bind(document);

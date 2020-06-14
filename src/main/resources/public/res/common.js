@@ -451,6 +451,15 @@ function ajaxUpload(uri, fieldName, file, onDone, onError, onProgress) {
 function hide(el) {
     el.style.display = "none";
 }
+function hideAnimated(el) {
+    var f = function () {
+        el.style.animation = "";
+        el.style.display = "none";
+        el.removeEventListener("animationend", f);
+    };
+    el.addEventListener("animationend", f);
+    el.style.animation = "fadeOut 0.2s ease";
+}
 function show(el) {
     el.style.display = "";
 }
@@ -683,12 +692,28 @@ function likeOnClick(btn) {
         btn.classList.add("liked");
         if (count == 0)
             show(counter);
+        if (btn.popover) {
+            if (!btn.popover.isShown())
+                btn.popover.show();
+            var title = btn.popover.getTitle();
+            btn.popover.setTitle(btn.customData.altPopoverTitle);
+            btn.customData.altPopoverTitle = title;
+        }
     }
     else {
         counter.innerText = count - 1;
         btn.classList.remove("liked");
-        if (count == 1)
+        if (count == 1) {
             hide(counter);
+            if (btn.popover) {
+                btn.popover.hide();
+            }
+        }
+        if (btn.popover) {
+            var title = btn.popover.getTitle();
+            btn.popover.setTitle(btn.customData.altPopoverTitle);
+            btn.customData.altPopoverTitle = title;
+        }
     }
     btn.setAttribute("in_progress", "");
     ajaxGet(btn.href, function (resp) {
@@ -715,6 +740,46 @@ function likeOnClick(btn) {
         }
     });
     return false;
+}
+function likeOnMouseChange(wrap, entered) {
+    var btn = wrap.querySelector(".like");
+    var objID = btn.getAttribute("data-obj-id");
+    var objType = btn.getAttribute("data-obj-type");
+    var ev = event;
+    var popover = btn.popover;
+    if (entered) {
+        if (!btn.customData)
+            btn.customData = {};
+        btn.customData.popoverTimeout = setTimeout(function () {
+            delete btn.customData.popoverTimeout;
+            ajaxGet(btn.getAttribute("data-popover-url"), function (resp) {
+                if (!popover) {
+                    popover = new Popover(wrap.querySelector(".popoverPlace"));
+                    btn.popover = popover;
+                }
+                popover.setTitle(resp.title);
+                popover.setContent(resp.content);
+                btn.customData.altPopoverTitle = resp.altTitle;
+                if (resp.show)
+                    popover.show(ev.offsetX, ev.offsetY);
+                for (var i = 0; i < resp.actions.length; i++) {
+                    applyServerCommand(resp.actions[i]);
+                }
+            }, function () {
+                if (popover)
+                    popover.show(ev.offsetX, ev.offsetY);
+            });
+        }, 500);
+    }
+    else {
+        if (btn.customData.popoverTimeout) {
+            clearTimeout(btn.customData.popoverTimeout);
+            delete btn.customData.popoverTimeout;
+        }
+        else if (popover) {
+            popover.hide();
+        }
+    }
 }
 var ImageAreaSelector = /** @class */ (function () {
     function ImageAreaSelector(parentEl, square) {
@@ -1106,4 +1171,60 @@ document.body.addEventListener("drop", function (ev) {
     dragEventCount = 0;
     document.body.classList.remove("fileIsBeingDragged");
 }, false);
+///<reference path="./Main.ts"/>
+var Popover = /** @class */ (function () {
+    function Popover(wrap) {
+        this.shown = false;
+        this.root = wrap.querySelector(".popover");
+        if (!this.root) {
+            this.root = ce("div");
+            this.root.className = "popover aboveAnchor";
+            hide(this.root);
+            wrap.appendChild(this.root);
+            this.header = ce("div");
+            this.header.className = "popoverHeader";
+            this.root.appendChild(this.header);
+            this.content = ce("div");
+            this.content.className = "popoverContent";
+            this.root.appendChild(this.content);
+            this.arrow = ce("div");
+            this.arrow.className = "popoverArrow";
+            this.root.appendChild(this.arrow);
+        }
+    }
+    Popover.prototype.show = function (x, y) {
+        if (x === void 0) { x = -1; }
+        if (y === void 0) { y = -1; }
+        this.shown = true;
+        show(this.root);
+        var anchor = this.root.parentElement;
+        var anchorRect = anchor.getBoundingClientRect();
+        this.root.classList.remove("belowAnchor", "aboveAnchor");
+        if (this.root.offsetHeight > anchorRect.top) {
+            this.root.classList.add("belowAnchor");
+            this.root.style.top = "";
+        }
+        else {
+            this.root.classList.add("aboveAnchor");
+            this.root.style.top = "-" + (this.root.offsetHeight) + "px";
+        }
+    };
+    Popover.prototype.hide = function () {
+        this.shown = false;
+        hideAnimated(this.root);
+    };
+    Popover.prototype.setTitle = function (title) {
+        this.header.innerHTML = title;
+    };
+    Popover.prototype.setContent = function (content) {
+        this.content.innerHTML = content;
+    };
+    Popover.prototype.getTitle = function () {
+        return this.header.innerHTML;
+    };
+    Popover.prototype.isShown = function () {
+        return this.shown;
+    };
+    return Popover;
+}());
 //# sourceMappingURL=common.js.map
