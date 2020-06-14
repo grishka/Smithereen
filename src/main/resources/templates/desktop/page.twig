@@ -17,8 +17,9 @@
 </head>
 <body class="widePage">
 <script>document.body.classList.add("hasJS");{%if jsRedirect%} window.location="{{jsRedirect}}";{%endif%}</script>
-<div class="headerBG"></div>
 <div class="wrap">
+	<div class="headerWrap">
+		<div class="headerBG"><div class="shadow"></div></div>
 <table width="100%" class="header" cellpadding="0" cellspacing="0" border="0">
 	<tr>
 		<td width="158" align="left" class="logo">
@@ -31,9 +32,10 @@
 		</td>
 	</tr>
 </table>
+	</div>
 <table width="100%" class="contentWrap" cellpadding="0" cellspacing="0">
 	<tr>
-		<td width="170" class="leftMenu" valign="top">
+		<td width="158" class="leftMenu" valign="top">
 {%-block leftMenu%}
 			{%-if currentUser%}
 			<ul class="actionList">

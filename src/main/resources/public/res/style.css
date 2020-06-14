@@ -31,10 +31,21 @@ h2{
 	border-bottom: solid 1px #dfe59a;
 }
 
+.headerWrap{
+	position: relative;
+	height: 48px;
+	padding: 0 8px;
+}
+
 .header{
 	color: #FFFFFF;
+	position: absolute;
+	top: 0;
+	left: 12px;
+	right: 12px;
 	height: 48px;
-	padding: 0 12px;
+	padding-right: 12px;
+	margin: 0 -8px;
 }
 
 .header .logo img{
@@ -53,6 +64,7 @@ h2{
 			text-overflow: ellipsis;
 			white-space: nowrap;
 			overflow: hidden;
+			vertical-align: top;
 		}
 
 .header .logo a:hover, .header .logo a:visited:hover{
@@ -67,6 +79,7 @@ h2{
 		height: 48px;
 		padding: 0 8px;
 		text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
+		vertical-align: top;
 	}
 
 .header a.nav:hover, .header a.nav:visited:hover{
@@ -74,23 +87,37 @@ h2{
 		background: rgba(0, 0, 0, .2);
 	}
 
+.header td{
+		vertical-align: top;
+	}
+
 .headerBG{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
 	background-color: #aab42f;
 	background: linear-gradient(to bottom, #889026, #99a22a 7%, #aab42f 70%);
-	border-bottom: solid 1px #889026;
-	box-shadow: 0 -1px 0 #d2da71 inset;
-	height: 48px;
-	width: 100%;
+	border: solid 1px #889026;
+	border-top: none;
+	border-radius: 0 0 10px 10px;
+	overflow: hidden;
 }
 
-.widePage .header{
+.headerBG .shadow{
+		width: 100%;
+		height: 6px;
+		border-radius: 0 0 6px 6px;
+		box-shadow: 0 -1px 1px #c5d049 inset;
+		position: absolute;
+		bottom: 0;
+	}
+
+.widePage .headerWrap{
 		width: 1220px;
 		margin-left: auto;
 		margin-right: auto;
-	}
-
-.widePage .headerBG{
-		min-width: 1280px;
 	}
 
 .popupPage{
@@ -105,7 +132,7 @@ h2{
 	}
 
 .leftMenu{
-	padding: 12px;
+	padding: 12px 12px 0 0;
 	box-sizing: border-box;
 }
 
@@ -178,8 +205,6 @@ h2{
 }
 
 .wrap{
-	padding-left: 60px;
-	margin-top: -49px;
 }
 
 .profileBlock{

@@ -4,9 +4,10 @@ $bg: #FFFFFF;
 $gray: #F7F7F7;
 $darkerGray: #DDDDDD;
 $textOnGray: #707070;
-$siteWidth: 1280px;
 $grayText: #909090;
 $text: #000;
+
+$siteWidth: 1280px;
 
 @mixin layer-shadow{
 	box-shadow:
@@ -70,10 +71,21 @@ h2{
 	border-bottom: solid 1px color($accent lightness(+30%));
 }
 
+.headerWrap{
+	position: relative;
+	height: 48px;
+	padding: 0 8px;
+}
+
 .header{
 	color: $textOnAccent;
+	position: absolute;
+	top: 0;
+	left: 12px;
+	right: 12px;
 	height: 48px;
-	padding: 0 12px;
+	padding-right: 12px;
+	margin: 0 -8px;
 	.logo{
 		img{
 			margin-left: 4px;
@@ -90,6 +102,7 @@ h2{
 			text-overflow: ellipsis;
 			white-space: nowrap;
 			overflow: hidden;
+			vertical-align: top;
 			&:hover, &:visited:hover{
 				text-decoration: none;
 			}
@@ -103,30 +116,44 @@ h2{
 		height: 48px;
 		padding: 0 8px;
 		text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
+		vertical-align: top;
 	}
 	a.nav:hover, a.nav:visited:hover{
 		text-decoration: none;
 		background: rgba(0, 0, 0, .2);
 	}
+	td{
+		vertical-align: top;
+	}
 }
 
 .headerBG{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
 	background-color: $accent;
 	background: linear-gradient(to bottom, color($accent shade(20%)), color($accent shade(10%)) 7%, $accent 70%);
-	border-bottom: solid 1px color($accent shade(20%));
-	box-shadow: 0 -1px 0 color($accent lightness(+20%)) inset;
-	height: 48px;
-	width: 100%;
+	border: solid 1px color($accent shade(20%));
+	border-top: none;
+	border-radius: 0 0 10px 10px;
+	overflow: hidden;
+	.shadow{
+		width: 100%;
+		height: 6px;
+		border-radius: 0 0 6px 6px;
+		box-shadow: 0 -1px 1px color($accent lightness(+10%)) inset;
+		position: absolute;
+		bottom: 0;
+	}
 }
 
 .widePage{
-	.header{
+	.headerWrap{
 		width: calc($siteWidth - 60px);
 		margin-left: auto;
 		margin-right: auto;
-	}
-	.headerBG{
-		min-width: $siteWidth;
 	}
 }
 
@@ -141,7 +168,7 @@ h2{
 }
 
 .leftMenu{
-	padding: 12px;
+	padding: 12px 12px 0 0;
 	box-sizing: border-box;
 	input{
 		width: 100%;
@@ -206,8 +233,6 @@ h2{
 }
 
 .wrap{
-	padding-left: 60px;
-	margin-top: -49px;
 }
 
 .profileBlock{

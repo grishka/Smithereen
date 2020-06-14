@@ -36,7 +36,7 @@
 			{%if currentUser and currentUser.id!=user.id%}
 			<div class="profileBelowAva">
 				{{friendshipStatusText}}
-				{%-if not isFriend%}
+				{%-if not isFriend and not following%}
 				{%-if user.supportsFriendRequests%}
 				<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("add_friend")}}</a>
 				{%-else%}
@@ -47,7 +47,7 @@
 			{%endif%}
 			<ul class="actionList marginAfter marginBefore">
 			{%if currentUser and currentUser.id!=user.id%}
-			{%if isFriend%}
+			{%if isFriend or following%}
 				<li><a href="{{user.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},[{%if following%}'confirm_unfollow_X'{%else%}'confirm_unfriend_X'{%endif%},this.getAttribute('data-name')],'{{user.getProfileURL('doRemoveFriend')}}')" data-name="{{user.fullName}}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
 			{%endif%}
 			{%endif%}
