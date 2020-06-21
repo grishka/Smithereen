@@ -3,9 +3,6 @@
 declare var userConfig:any;
 declare var langKeys:{[key:string]:string|string[]};
 
-const ge=document.getElementById.bind(document);
-const ce=document.createElement.bind(document);
-
 // Use Cmd instead of Ctrl on Apple devices.
 var isApple:boolean=navigator.platform.indexOf("Mac")==0 || navigator.platform=="iPhone" || navigator.platform=="iPad" || navigator.platform=="iPod touch";
 var postForms:{[key:string]:PostForm}={};

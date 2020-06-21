@@ -172,5 +172,6 @@
   "like": "Like",
   "liked_by_X_people": ["%d person likes this", "%d people like this"],
   "incomplete_profile": "This profile might be incomplete.",
-  "open_on_server_X": "Open on %s"
+  "open_on_server_X": "Open on %s",
+  "likes_title": "Likes"
 }

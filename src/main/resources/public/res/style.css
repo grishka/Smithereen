@@ -705,6 +705,7 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 #layerContainer{
 	width: 100%;
 	height: 100%;
+	pointer-events: none;
 }
 
 .layerContent{
@@ -721,7 +722,7 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 
 @-webkit-keyframes boxAppear{
 	0%{
-		transform: scale(0.75);
+		transform: scale(0.9);
 		opacity: 0;
 	}
 	100%{
@@ -732,12 +733,34 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 
 @keyframes boxAppear{
 	0%{
-		transform: scale(0.75);
+		transform: scale(0.9);
 		opacity: 0;
 	}
 	100%{
 		transform: scale(1);
 		opacity: 1;
+	}
+}
+
+@-webkit-keyframes boxDisappear{
+	0%{
+		transform: scale(1);
+		opacity: 1;
+	}
+	100%{
+		transform: scale(0.95);
+		opacity: 0;
+	}
+}
+
+@keyframes boxDisappear{
+	0%{
+		transform: scale(1);
+		opacity: 1;
+	}
+	100%{
+		transform: scale(0.95);
+		opacity: 0;
 	}
 }
 
@@ -747,6 +770,7 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 	overflow: hidden;
 	-webkit-animation: boxAppear 0.3s;
 	        animation: boxAppear 0.3s;
+	pointer-events: auto;
 	box-shadow:
 		0 1px 1.1px rgba(0, 0, 0, 0.028),
 		0 2.3px 2.7px rgba(0, 0, 0, 0.04),
@@ -766,8 +790,29 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 	font-size: 13px;
 	overflow-x: hidden;
 	text-overflow: ellipsis;
-	padding: 0 16px;
+	padding-left: 16px;
+	padding-right: 64px;
+	position: relative;
 }
+
+.boxTitleBar .close{
+		display: block;
+		width: 48px;
+		height: 48px;
+		cursor: pointer;
+		position: absolute;
+		right: 0;
+		top: 0;
+		background: url("data:image/svg+xml;charset=utf-8,%3C?xml version='1.0' encoding='utf-8'?%3E %3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' stroke='%23FFFFFF'%3E %3Cline stroke-width='3' stroke-miterlimit='10' x1='2.5' y1='2.5' x2='13.5' y2='13.5'/%3E %3Cline stroke-width='3' stroke-miterlimit='10' x1='2.5' y1='13.5' x2='13.5' y2='2.5'/%3E %3C/svg%3E") no-repeat;
+		background-position: center;
+		background-size: 16px 16px;
+		opacity: .5;
+		transition: opacity .3s ease;
+	}
+
+.boxTitleBar .close:hover{
+			opacity: 1;
+		}
 
 .boxButtonBar{
 	height: 48px;
@@ -1268,8 +1313,27 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 	}
 }
 
+@-webkit-keyframes fadeIn{
+	0%{
+		opacity: 0;
+	}
+	100%{
+		opacity: 1;
+	}
+}
+
+@keyframes fadeIn{
+	0%{
+		opacity: 0;
+	}
+	100%{
+		opacity: 1;
+	}
+}
+
 .popover{
 	position: absolute;
+	font-size: 11px;
 }
 
 .popover .popoverHeader{
@@ -1333,7 +1397,7 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 		}
 
 .likePopoverWrap .popover{
-	width: 226px;
+	width: 230px;
 	right: 0;
 }
 
@@ -1345,14 +1409,17 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 	padding: 4px 0;
 	overflow-x: hidden;
 	height: 32px;
-	word-wrap: nowrap;
+	white-space: nowrap;
+	font-size: 0;
 }
 
-.likePopoverContent .ava{
+.likePopoverContent a{
 		margin-right: 4px;
+		display: inline-block;
+		vertical-align: top;
 	}
 
-.likePopoverContent .ava:last-child{
+.likePopoverContent a:last-child{
 		margin-right: 0;
 	}
 
@@ -1363,3 +1430,20 @@ input[type=submit].secondary:active,input[type=button].secondary:active,button.s
 .likeWrap>.liked+.likePopoverWrap .self{
 	display: inline-block;
 }
+
+.userGrid{
+	padding: 8px 8px;
+}
+
+.userGridItem{
+	display: inline-block;
+	width: 116px;
+	padding: 8px;
+	vertical-align: top;
+	box-sizing: border-box;
+}
+
+.userGridItem .name{
+		text-align: center;
+		padding-top: 8px;
+	}

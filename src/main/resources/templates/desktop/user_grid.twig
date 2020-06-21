@@ -1,0 +1,13 @@
+{%autoescape "html"%}
+<div class="userGrid">
+	{%for user in users-%}
+	<div class="userGridItem">
+		<a href="{{user.profileURL}}">
+			{{user | pictureForAvatar('m')}}
+			<div class="name">{{user.fullName}}</div>
+		</a>
+	</div>
+	{%-endfor%}
+	{%include "pagination.twig" with {perPage: 100, offset: pageOffset, total: total, urlPrefix: paginationUrlPrefix, ajax: true} only%}
+</div>
+{%endautoescape%}

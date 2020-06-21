@@ -10,27 +10,34 @@ class LayerManager{
 	private scrim:HTMLDivElement;
 	private layerContainer:HTMLDivElement;
 	private stack:BaseLayer[]=[];
+	private escapeKeyListener=(ev:KeyboardEvent)=>{
+		if(ev.keyCode==27){
+			this.maybeDismissTopLayer();
+		}
+	};
 
 	private constructor(){
-		this.scrim=document.createElement("div");
-		this.scrim.id="layerScrim";
-		hide(this.scrim);
+		this.scrim=ce("div", {id: "layerScrim", onclick: ()=>{
+			this.maybeDismissTopLayer();
+		}});
+		this.scrim.hide();
 		document.body.appendChild(this.scrim);
 
-		var container:HTMLDivElement=document.createElement("div");
-		container.id="layerContainer";
-		hide(container);
+		var container:HTMLDivElement=ce("div", {id: "layerContainer"});
+		container.hide();
 		this.layerContainer=container;
 		document.body.appendChild(container);
 	}
 
 	public show(layer:BaseLayer):void{
 		if(this.stack.length==0){
-			show(this.scrim);
-			show(this.layerContainer);
+			this.scrim.showAnimated();
+			this.layerContainer.show();
+			document.body.addEventListener("keydown", this.escapeKeyListener);
+			document.body.style.overflowY="hidden";
 		}else{
 			var prevLayer:BaseLayer=this.stack[this.stack.length-1];
-			hide(prevLayer.getContent());
+			prevLayer.getContent().hide();
 			prevLayer.onHidden();
 		}
 		this.stack.push(layer);
@@ -47,21 +54,40 @@ class LayerManager{
 		if(isVisible(layerContent)){
 			layer.onHidden();
 		}
-		this.layerContainer.removeChild(layerContent);
 		if(i==this.stack.length-1){
 			this.stack.pop();
 			if(this.stack.length){
 				var newLayer=this.stack[this.stack.length-1];
-				show(newLayer.getContent());
+				newLayer.getContent().show();
 				newLayer.onShown();
 			}
 		}else{
 			this.stack.splice(i, 1);
 		}
 		if(this.stack.length==0){
-			hide(this.scrim);
-			hide(this.layerContainer);
+			this.scrim.hideAnimated();
+				document.body.removeEventListener("keydown", this.escapeKeyListener);
+			var anim=layer.getCustomDismissAnimation();
+			if(anim){
+				layerContent.hideAnimated(anim, ()=>{
+					this.layerContainer.removeChild(layerContent);
+					this.layerContainer.hide();
+					document.body.style.overflowY="";
+				});	
+			}else{
+				this.layerContainer.removeChild(layerContent);
+				this.layerContainer.hide();
+				document.body.style.overflowY="";
+			}
+		}else{
+			this.layerContainer.removeChild(layerContent);
 		}
+	}
+
+	private maybeDismissTopLayer():void{
+		var topLayer=this.stack[this.stack.length-1];
+		if(topLayer.allowDismiss())
+			this.dismiss(topLayer);
 	}
 }
 
@@ -71,8 +97,7 @@ abstract class BaseLayer{
 	protected abstract onCreateContentView():HTMLElement;
 	public show():void{
 		if(!this.content){
-			this.content=document.createElement("div");
-			this.content.className="layerContent";
+			this.content=ce("div", {className: "layerContent"});
 			var contentView:HTMLElement=this.onCreateContentView();
 			this.content.appendChild(contentView);
 		}
@@ -87,8 +112,13 @@ abstract class BaseLayer{
 		return this.content;
 	}
 
+	public allowDismiss():boolean{
+		return true;
+	}
+
 	public onShown():void{}
 	public onHidden():void{}
+	public getCustomDismissAnimation():string{return null;}
 }
 
 class Box extends BaseLayer{
@@ -100,6 +130,8 @@ class Box extends BaseLayer{
 	protected titleBar:HTMLDivElement;
 	protected buttonBar:HTMLDivElement;
 	protected contentWrap:HTMLDivElement;
+	protected closeButton:HTMLElement;
+	protected closeable:boolean=true;
 
 	public constructor(title:string, buttonTitles:string[]=[], onButtonClick:{(index:number):void;}=null){
 		super();
@@ -107,27 +139,21 @@ class Box extends BaseLayer{
 		this.buttonTitles=buttonTitles;
 		this.onButtonClick=onButtonClick;
 
-		var contentWrap:HTMLDivElement=document.createElement("div");
-		contentWrap.className="boxContent";
+		var contentWrap:HTMLDivElement=ce("div", {className: "boxContent"});
 		this.contentWrap=contentWrap;
 	}
 
 	protected onCreateContentView():HTMLElement{
-		var content:HTMLDivElement=document.createElement("div");
-		content.className="boxLayer";
+		var content:HTMLDivElement=ce("div", {className: "boxLayer"}, [
+			this.titleBar=ce("div", {className: "boxTitleBar", innerText: this.title}),
+			this.contentWrap,
+			this.buttonBar=ce("div", {className: "boxButtonBar"})
+		]);
 
-		var titleBar:HTMLDivElement=document.createElement("div");
-		titleBar.innerText=this.title;
-		titleBar.className="boxTitleBar";
-		this.titleBar=titleBar;
-		content.appendChild(titleBar);
-
-		content.appendChild(this.contentWrap);
-
-		var buttonBar:HTMLDivElement=document.createElement("div");
-		buttonBar.className="boxButtonBar";
-		content.appendChild(buttonBar);
-		this.buttonBar=buttonBar;
+		if(this.closeable){
+			this.closeButton=ce("span", {className: "close", title: lang("close"), onclick: ()=>this.dismiss()});
+			this.titleBar.appendChild(this.closeButton);
+		}
 		this.updateButtonBar();
 
 		return content;
@@ -151,15 +177,25 @@ class Box extends BaseLayer{
 		this.updateButtonBar();
 	}
 
+	public setCloseable(closeable:boolean):void{
+		this.closeable=closeable;
+	}
+
+	public allowDismiss():boolean{
+		return this.closeable;
+	}
+
+	public getCustomDismissAnimation():string{
+		return "boxDisappear 0.2s";
+	}
+
 	private updateButtonBar():void{
 		if(this.buttonTitles.length){
-			show(this.buttonBar);
+			this.buttonBar.show();
 			while(this.buttonBar.firstChild)
 				this.buttonBar.lastChild.remove();
 			for(var i:number=0;i<this.buttonTitles.length;i++){
-				var btn:HTMLInputElement=document.createElement("input");
-				btn.type="button";
-				btn.value=this.buttonTitles[i];
+				var btn:HTMLInputElement=ce("input", {type: "button", value: this.buttonTitles[i]});
 				if(i>0){
 					btn.className="secondary";
 				}
@@ -171,8 +207,15 @@ class Box extends BaseLayer{
 				this.buttonBar.appendChild(btn);
 			}
 		}else{
-			hide(this.buttonBar);
+			this.buttonBar.hide();
 		}
+	}
+}
+
+class BoxWithoutContentPadding extends Box{
+	public constructor(title:string, buttonTitles:string[]=[], onButtonClick:{(index:number):void;}=null){
+		super(title, buttonTitles, onButtonClick);
+		this.contentWrap.style.padding="0";
 	}
 }
 
@@ -185,8 +228,7 @@ class ConfirmBox extends Box{
 				this.dismiss();
 			}
 		});
-		var content:HTMLDivElement=document.createElement("div");
-		content.innerHTML=msg;
+		var content:HTMLDivElement=ce("div", {innerHTML: msg});
 		this.setContent(content);
 	}
 }
@@ -194,8 +236,7 @@ class ConfirmBox extends Box{
 class MessageBox extends Box{
 	public constructor(title:string, msg:string, btn:string){
 		super(title, [btn]);
-		var content:HTMLDivElement=document.createElement("div");
-		content.innerHTML=msg;
+		var content:HTMLDivElement=ce("div", {innerHTML: msg});
 		this.setContent(content);
 	}
 }
@@ -216,11 +257,9 @@ class FormBox extends Box{
 				this.dismiss();
 			}
 		});
-		var content:HTMLDivElement=document.createElement("div");
-		this.form=document.createElement("form");
-		this.form.innerHTML=c;
-		this.form.action=act;
-		content.appendChild(this.form);
+		var content:HTMLDivElement=ce("div", {}, [
+			this.form=ce("form", {innerHTML: c, action: act})
+		]);
 		this.setContent(content);
 	}
 }
@@ -235,14 +274,20 @@ abstract class FileUploadBox extends Box{
 		super(title, [lang("cancel")], function(idx:number){
 			this.dismiss();
 		});
-		var content:HTMLDivElement=ce("div");
 		if(!message) message=lang("drag_or_choose_file");
-		content.innerHTML="<div class='inner'>"+message+"<br/><form><input type='file' id='fileUploadBoxInput' accept='image/*'/><label for='fileUploadBoxInput' class='button'>"+lang("choose_file")+"</label></form></div><div class='dropOverlay'>"+lang("drop_files_here")+"</div>";
-		content.className="fileUploadBoxContent";
+		var content:HTMLDivElement=ce("div", {className: "fileUploadBoxContent", innerHTML:
+			`<div class="inner">${message}<br/>
+				<form>
+					<input type="file" id="fileUploadBoxInput" accept="image/*"/>
+					<label for="fileUploadBoxInput" class="button">${lang("choose_file")}</label>
+				</form>
+			</div>
+			<div class="dropOverlay">${lang("drop_files_here")}</div>`
+		});
 
 		this.setContent(content);
-		this.fileField=content.querySelector("input[type=file]") as HTMLInputElement;
-		this.dragOverlay=content.querySelector(".dropOverlay");
+		this.fileField=content.qs("input[type=file]");
+		this.dragOverlay=content.qs(".dropOverlay");
 
 		this.dragOverlay.addEventListener("dragenter", function(ev:DragEvent){
 			this.dragOverlay.classList.add("over");

@@ -11,28 +11,19 @@ class Popover{
 	public constructor(wrap:HTMLElement){
 		this.root=wrap.querySelector(".popover");
 		if(!this.root){
-			this.root=ce("div");
-			this.root.className="popover aboveAnchor";
-			hide(this.root);
+			this.root=ce("div", {className: "popover aboveAnchor"}, [
+				this.header=ce("div", {className: "popoverHeader"}),
+				this.content=ce("div", {className: "popoverContent"}),
+				this.arrow=ce("div", {className: "popoverArrow"})
+			]);
+			this.root.hide();
 			wrap.appendChild(this.root);
-
-			this.header=ce("div");
-			this.header.className="popoverHeader";
-			this.root.appendChild(this.header);
-
-			this.content=ce("div");
-			this.content.className="popoverContent";
-			this.root.appendChild(this.content);
-
-			this.arrow=ce("div");
-			this.arrow.className="popoverArrow";
-			this.root.appendChild(this.arrow);
 		}
 	}
 
 	public show(x:number=-1, y:number=-1){
 		this.shown=true;
-		show(this.root);
+		this.root.show();
 		var anchor=this.root.parentElement;
 		var anchorRect=anchor.getBoundingClientRect();
 		this.root.classList.remove("belowAnchor", "aboveAnchor");
@@ -47,7 +38,7 @@ class Popover{
 
 	public hide(){
 		this.shown=false;
-		hideAnimated(this.root);
+		this.root.hideAnimated();
 	}
 
 	public setTitle(title:string){
@@ -64,5 +55,10 @@ class Popover{
 
 	public isShown():boolean{
 		return this.shown;
+	}
+
+	public setOnClick(onClick:{():void}):void{
+		this.header.style.cursor="pointer";
+		this.header.onclick=onClick;
 	}
 }

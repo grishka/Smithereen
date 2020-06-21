@@ -1,5 +1,20 @@
 var submittingForm:HTMLFormElement=null;
 
+function ge<E extends HTMLElement>(id:string):E{
+	return document.getElementById(id) as E;
+}
+
+function ce<K extends keyof HTMLElementTagNameMap>(tag:K, attrs:Partial<HTMLElementTagNameMap[K]>={}, children:HTMLElement[]=[]):HTMLElementTagNameMap[K]{
+	var el=document.createElement(tag);
+	for(var attrName in attrs){
+		el[attrName]=attrs[attrName];
+	}
+	for(var child of children){
+		el.appendChild(child);
+	}
+	return el;
+};
+
 interface String{
 	format(...args:(string|number)[]):string;
 	escapeHTML():string;
@@ -41,7 +56,59 @@ Array.prototype.remove=function(item){
 interface HTMLElement{
 	popover:Popover;
 	customData:{[key:string]: any};
+
+	currentVisibilityAnimEndListener:{():void};
+
+	qs<E extends HTMLElement>(sel:string):E;
+	hide():void;
+	show():void;
+	hideAnimated(animName?:string, onEnd?:{():void}):void;
+	showAnimated(animName?:string, onEnd?:{():void}):void;
 }
+
+HTMLElement.prototype.qs=function(sel:string){
+	return this.querySelector(sel);
+};
+
+HTMLElement.prototype.hide=function():void{
+	this.style.display="none";
+};
+
+HTMLElement.prototype.hideAnimated=function(animName:string="fadeOut 0.2s ease", onEnd:{():void}=null):void{
+	if(this.currentVisibilityAnimEndListener){
+		this.removeEventListener("animationend", this.currentVisibilityAnimEndListener);
+	}
+	var f=()=>{
+		this.style.animation="";
+		this.style.display="none";
+		this.removeEventListener("animationend", f);
+		this.currentVisibilityAnimEndListener=null;
+		if(onEnd) onEnd();
+	};
+	this.addEventListener("animationend", f);
+	this.currentVisibilityAnimEndListener=f;
+	this.style.animation=animName;
+};
+
+HTMLElement.prototype.show=function():void{
+	this.style.display="";
+};
+
+HTMLElement.prototype.showAnimated=function(animName:string="fadeIn 0.2s ease", onEnd:{():void}=null):void{
+	if(this.currentVisibilityAnimEndListener){
+		this.removeEventListener("animationend", this.currentVisibilityAnimEndListener);
+	}
+	var f=()=>{
+		this.style.animation="";
+		this.removeEventListener("animationend", f);
+		this.currentVisibilityAnimEndListener=null;
+		if(onEnd) onEnd();
+	};
+	this.style.display="";
+	this.addEventListener("animationend", f);
+	this.currentVisibilityAnimEndListener=f;
+	this.style.animation=animName;
+};
 
 function ajaxPost(uri:string, params:any, onDone:Function, onError:Function):void{
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
@@ -116,35 +183,18 @@ function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):
 	xhr.send(formData);
 }
 
-function hide(el:HTMLElement):void{
-	el.style.display="none";
-}
-
-function hideAnimated(el:HTMLElement):void{
-	var f=()=>{
-		el.style.animation="";
-		el.style.display="none";
-		el.removeEventListener("animationend", f);
-	};
-	el.addEventListener("animationend", f);
-	el.style.animation="fadeOut 0.2s ease";
-}
-
-function show(el:HTMLElement):void{
-	el.style.display="";
-}
 
 function isVisible(el:HTMLElement):boolean{
 	return el.style.display!="none";
 }
 
-function lang(key:(string|Array<string>)):string{
-	if(!(key instanceof Array))
-		return langKeys[key as string] ? langKeys[key as string] : key;
+function lang(key:string|string[]):string{
+	if(typeof key==="string")
+		return (langKeys[key] ? langKeys[key] : key) as string;
 	var _key=key[0];
 	if(!langKeys[_key])
 		return key.toString().escapeHTML();
-	return langKeys[_key].format(key.slice(1));
+	return (langKeys[_key] as string).format.apply(key.slice(1));
 }
 
 function setGlobalLoading(loading:boolean):void{
@@ -220,21 +270,25 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{():void}=null):boolean{
 
 function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	if(link.getAttribute("data-ajax")){
-		setGlobalLoading(true);
-		ajaxGet(link.href, function(resp:any){
-				setGlobalLoading(false);
-				if(resp instanceof Array){
-					for(var i=0;i<resp.length;i++){
-						applyServerCommand(resp[i]);
-					}
-				}
-			}, function(){
-				setGlobalLoading(false);
-				new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
-			});
+		ajaxGetAndApplyActions(link.href);
 		return true;
 	}
 	return false;
+}
+
+function ajaxGetAndApplyActions(url:string):void{
+	setGlobalLoading(true);
+	ajaxGet(url, function(resp:any){
+		setGlobalLoading(false);
+		if(resp instanceof Array){
+			for(var i=0;i<resp.length;i++){
+				applyServerCommand(resp[i]);
+			}
+		}
+	}, function(){
+		setGlobalLoading(false);
+		new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+	});
 }
 
 function applyServerCommand(cmd:any){
@@ -277,13 +331,28 @@ function applyServerCommand(cmd:any){
 		case "formBox":
 			new FormBox(cmd.t, cmd.m, cmd.b, cmd.fa).show();
 			break;
+		case "box":
+		{
+			var box=new BoxWithoutContentPadding(cmd.t);
+			var cont=ce("div");
+			if(cmd.i){
+				cont.id=cmd.i;
+			}
+			cont.innerHTML=cmd.c;
+			box.setContent(cont);
+			box.show();
+			if(cmd.w){
+				(box.getContent().querySelector(".boxLayer") as HTMLElement).style.width=cmd.w+"px";
+			}
+		}
+		break;
 		case "show":
 		{
 			var ids:string[]=cmd.ids;
 			for(var i=0;i<ids.length;i++){
 				var el=document.getElementById(ids[i]);
 				if(el){
-					show(el);
+					el.show();
 				}
 			}
 		}
@@ -294,7 +363,7 @@ function applyServerCommand(cmd:any){
 			for(var i=0;i<ids.length;i++){
 				var el=document.getElementById(ids[i]);
 				if(el){
-					hide(el);
+					el.hide();
 				}
 			}
 		}
@@ -361,9 +430,9 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 	var counter=ge("likeCounter"+objType.substring(0,1).toUpperCase()+objType.substring(1)+objID);
 	var count=parseInt(counter.innerText);
 	if(!liked){
-		counter.innerText=count+1;
+		counter.innerText=(count+1).toString();
 		btn.classList.add("liked");
-		if(count==0) show(counter);
+		if(count==0) counter.show();
 		if(btn.popover){
 			if(!btn.popover.isShown())
 				btn.popover.show();
@@ -372,10 +441,10 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 			btn.customData.altPopoverTitle=title;
 		}
 	}else{
-		counter.innerText=count-1;
+		counter.innerText=(count-1).toString();
 		btn.classList.remove("liked");
 		if(count==1){
-			hide(counter);
+			counter.hide();
 			if(btn.popover){
 				btn.popover.hide();
 			}
@@ -398,13 +467,13 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 			btn.removeAttribute("in_progress");
 			new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
 			if(liked){
-				counter.innerText=count+1;
+				counter.innerText=(count+1).toString();
 				btn.classList.add("liked");
-				if(count==0) show(counter);
+				if(count==0) counter.show();
 			}else{
-				counter.innerText=count-1;
+				counter.innerText=(count-1).toString();
 				btn.classList.remove("liked");
-				if(count==1) hide(counter);
+				if(count==1) counter.hide();
 			}
 		});
 	return false;
@@ -424,6 +493,10 @@ function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 			ajaxGet(btn.getAttribute("data-popover-url"), (resp:any)=>{
 				if(!popover){
 					popover=new Popover(wrap.querySelector(".popoverPlace"));
+					popover.setOnClick(()=>{
+						popover.hide();
+						ajaxGetAndApplyActions(resp.fullURL);
+					});
 					btn.popover=popover;
 				}
 				popover.setTitle(resp.title);

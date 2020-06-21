@@ -678,6 +678,7 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 #layerContainer{
 	width: 100%;
 	height: 100%;
+	pointer-events: none;
 }
 
 .layerContent{
@@ -693,7 +694,7 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 
 @keyframes boxAppear{
 	0%{
-		transform: scale(0.75);
+		transform: scale(0.9);
 		opacity: 0;
 	}
 	100%{
@@ -702,11 +703,23 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	}
 }
 
+@keyframes boxDisappear{
+	0%{
+		transform: scale(1);
+		opacity: 1;
+	}
+	100%{
+		transform: scale(0.95);
+		opacity: 0;
+	}
+}
+
 .boxLayer{
 	width: 500px;
 	border-radius: 6px;
 	overflow: hidden;
 	animation: boxAppear 0.3s;
+	pointer-events: auto;
 	@include layer-shadow;
 }
 
@@ -719,7 +732,26 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	font-size: 13px;
 	overflow-x: hidden;
 	text-overflow: ellipsis;
-	padding: 0 16px;
+	padding-left: 16px;
+	padding-right: 64px;
+	position: relative;
+	.close{
+		display: block;
+		width: 48px;
+		height: 48px;
+		cursor: pointer;
+		position: absolute;
+		right: 0;
+		top: 0;
+		background: svg-load("img/box_close.svg", stroke: $textOnAccent) no-repeat;
+		background-position: center;
+		background-size: 16px 16px;
+		opacity: .5;
+		transition: opacity .3s ease;
+		&:hover{
+			opacity: 1;
+		}
+	}
 }
 
 .boxButtonBar{
@@ -1133,8 +1165,18 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	}
 }
 
+@keyframes fadeIn{
+	0%{
+		opacity: 0;
+	}
+	100%{
+		opacity: 1;
+	}
+}
+
 .popover{
 	position: absolute;
+	font-size: 11px;
 	.popoverHeader{
 		background: $accent;
 		color: $textOnAccent;
@@ -1187,7 +1229,7 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 }
 
 .likePopoverWrap .popover{
-	width: 226px;
+	width: 230px;
 	right: 0;
 	.popoverArrow{
 		right: 16px;
@@ -1198,11 +1240,14 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	padding: 4px 0;
 	overflow-x: hidden;
 	height: 32px;
-	word-wrap: nowrap;
-	.ava{
+	white-space: nowrap;
+	font-size: 0;
+	a{
 		margin-right: 4px;
+		display: inline-block;
+		vertical-align: top;
 	}
-	.ava:last-child{
+	a:last-child{
 		margin-right: 0;
 	}
 	.self{
@@ -1212,4 +1257,20 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 
 .likeWrap>.liked+.likePopoverWrap .self{
 	display: inline-block;
+}
+
+.userGrid{
+	padding: 8px 8px;
+}
+
+.userGridItem{
+	display: inline-block;
+	width: 116px;
+	padding: 8px;
+	vertical-align: top;
+	box-sizing: border-box;
+	.name{
+		text-align: center;
+		padding-top: 8px;
+	}
 }

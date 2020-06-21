@@ -471,6 +471,36 @@ public class PostRoutes{
 			b.show("likeCounterPost"+postID);
 		o.put("actions", b.json());
 		o.put("show", interactions.likeCount>0);
+		o.put("fullURL", "/posts/"+postID+"/likes");
 		return o;
+	}
+
+	public static Object likeList(Request req, Response resp) throws SQLException{
+		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		if(postID==0){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "err_post_not_found");
+		}
+		Post post=PostStorage.getPostByID(postID);
+		if(post==null){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "err_post_not_found");
+		}
+		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
+		List<Integer> ids=LikeStorage.getPostLikes(postID, 0, offset, 100);
+		ArrayList<User> users=new ArrayList<>();
+		for(int id:ids)
+			users.add(UserStorage.getById(id));
+		JtwigModel model=JtwigModel.newModel().with("users", users);
+		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), 0).get(postID);
+		model.with("pageOffset", offset).with("total", interactions.likeCount).with("paginationUrlPrefix", "/posts/"+postID+"/likes?fromPagination&offset=");
+		if(isAjax(req)){
+			if(req.queryParams("fromPagination")==null)
+				return new WebDeltaResponseBuilder(resp).box(lang(req).get("likes_title"), renderTemplate(req, "user_grid", model), "likesList", 596);
+			else
+				return new WebDeltaResponseBuilder(resp).setContent("likesList", renderTemplate(req, "user_grid", model));
+		}
+		model.with("contentTemplate", "user_grid").with("title", lang(req).get("likes_title"));
+		return renderTemplate(req, "content_wrap", model);
 	}
 }

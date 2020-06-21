@@ -13,14 +13,20 @@ var __extends = (this && this.__extends) || (function () {
 })();
 var LayerManager = /** @class */ (function () {
     function LayerManager() {
+        var _this = this;
         this.stack = [];
-        this.scrim = document.createElement("div");
-        this.scrim.id = "layerScrim";
-        hide(this.scrim);
+        this.escapeKeyListener = function (ev) {
+            if (ev.keyCode == 27) {
+                _this.maybeDismissTopLayer();
+            }
+        };
+        this.scrim = ce("div", { id: "layerScrim", onclick: function () {
+                _this.maybeDismissTopLayer();
+            } });
+        this.scrim.hide();
         document.body.appendChild(this.scrim);
-        var container = document.createElement("div");
-        container.id = "layerContainer";
-        hide(container);
+        var container = ce("div", { id: "layerContainer" });
+        container.hide();
         this.layerContainer = container;
         document.body.appendChild(container);
     }
@@ -32,12 +38,14 @@ var LayerManager = /** @class */ (function () {
     };
     LayerManager.prototype.show = function (layer) {
         if (this.stack.length == 0) {
-            show(this.scrim);
-            show(this.layerContainer);
+            this.scrim.showAnimated();
+            this.layerContainer.show();
+            document.body.addEventListener("keydown", this.escapeKeyListener);
+            document.body.style.overflowY = "hidden";
         }
         else {
             var prevLayer = this.stack[this.stack.length - 1];
-            hide(prevLayer.getContent());
+            prevLayer.getContent().hide();
             prevLayer.onHidden();
         }
         this.stack.push(layer);
@@ -46,6 +54,7 @@ var LayerManager = /** @class */ (function () {
         layer.onShown();
     };
     LayerManager.prototype.dismiss = function (layer) {
+        var _this = this;
         var i = this.stack.indexOf(layer);
         if (i == -1)
             return;
@@ -53,12 +62,11 @@ var LayerManager = /** @class */ (function () {
         if (isVisible(layerContent)) {
             layer.onHidden();
         }
-        this.layerContainer.removeChild(layerContent);
         if (i == this.stack.length - 1) {
             this.stack.pop();
             if (this.stack.length) {
                 var newLayer = this.stack[this.stack.length - 1];
-                show(newLayer.getContent());
+                newLayer.getContent().show();
                 newLayer.onShown();
             }
         }
@@ -66,9 +74,30 @@ var LayerManager = /** @class */ (function () {
             this.stack.splice(i, 1);
         }
         if (this.stack.length == 0) {
-            hide(this.scrim);
-            hide(this.layerContainer);
+            this.scrim.hideAnimated();
+            document.body.removeEventListener("keydown", this.escapeKeyListener);
+            var anim = layer.getCustomDismissAnimation();
+            if (anim) {
+                layerContent.hideAnimated(anim, function () {
+                    _this.layerContainer.removeChild(layerContent);
+                    _this.layerContainer.hide();
+                    document.body.style.overflowY = "";
+                });
+            }
+            else {
+                this.layerContainer.removeChild(layerContent);
+                this.layerContainer.hide();
+                document.body.style.overflowY = "";
+            }
         }
+        else {
+            this.layerContainer.removeChild(layerContent);
+        }
+    };
+    LayerManager.prototype.maybeDismissTopLayer = function () {
+        var topLayer = this.stack[this.stack.length - 1];
+        if (topLayer.allowDismiss())
+            this.dismiss(topLayer);
     };
     return LayerManager;
 }());
@@ -77,8 +106,7 @@ var BaseLayer = /** @class */ (function () {
     }
     BaseLayer.prototype.show = function () {
         if (!this.content) {
-            this.content = document.createElement("div");
-            this.content.className = "layerContent";
+            this.content = ce("div", { className: "layerContent" });
             var contentView = this.onCreateContentView();
             this.content.appendChild(contentView);
         }
@@ -90,8 +118,12 @@ var BaseLayer = /** @class */ (function () {
     BaseLayer.prototype.getContent = function () {
         return this.content;
     };
+    BaseLayer.prototype.allowDismiss = function () {
+        return true;
+    };
     BaseLayer.prototype.onShown = function () { };
     BaseLayer.prototype.onHidden = function () { };
+    BaseLayer.prototype.getCustomDismissAnimation = function () { return null; };
     return BaseLayer;
 }());
 var Box = /** @class */ (function (_super) {
@@ -100,27 +132,25 @@ var Box = /** @class */ (function (_super) {
         if (buttonTitles === void 0) { buttonTitles = []; }
         if (onButtonClick === void 0) { onButtonClick = null; }
         var _this = _super.call(this) || this;
+        _this.closeable = true;
         _this.title = title;
         _this.buttonTitles = buttonTitles;
         _this.onButtonClick = onButtonClick;
-        var contentWrap = document.createElement("div");
-        contentWrap.className = "boxContent";
+        var contentWrap = ce("div", { className: "boxContent" });
         _this.contentWrap = contentWrap;
         return _this;
     }
     Box.prototype.onCreateContentView = function () {
-        var content = document.createElement("div");
-        content.className = "boxLayer";
-        var titleBar = document.createElement("div");
-        titleBar.innerText = this.title;
-        titleBar.className = "boxTitleBar";
-        this.titleBar = titleBar;
-        content.appendChild(titleBar);
-        content.appendChild(this.contentWrap);
-        var buttonBar = document.createElement("div");
-        buttonBar.className = "boxButtonBar";
-        content.appendChild(buttonBar);
-        this.buttonBar = buttonBar;
+        var _this = this;
+        var content = ce("div", { className: "boxLayer" }, [
+            this.titleBar = ce("div", { className: "boxTitleBar", innerText: this.title }),
+            this.contentWrap,
+            this.buttonBar = ce("div", { className: "boxButtonBar" })
+        ]);
+        if (this.closeable) {
+            this.closeButton = ce("span", { className: "close", title: lang("close"), onclick: function () { return _this.dismiss(); } });
+            this.titleBar.appendChild(this.closeButton);
+        }
         this.updateButtonBar();
         return content;
     };
@@ -139,15 +169,22 @@ var Box = /** @class */ (function (_super) {
         this.onButtonClick = onButtonClick;
         this.updateButtonBar();
     };
+    Box.prototype.setCloseable = function (closeable) {
+        this.closeable = closeable;
+    };
+    Box.prototype.allowDismiss = function () {
+        return this.closeable;
+    };
+    Box.prototype.getCustomDismissAnimation = function () {
+        return "boxDisappear 0.2s";
+    };
     Box.prototype.updateButtonBar = function () {
         if (this.buttonTitles.length) {
-            show(this.buttonBar);
+            this.buttonBar.show();
             while (this.buttonBar.firstChild)
                 this.buttonBar.lastChild.remove();
             for (var i = 0; i < this.buttonTitles.length; i++) {
-                var btn = document.createElement("input");
-                btn.type = "button";
-                btn.value = this.buttonTitles[i];
+                var btn = ce("input", { type: "button", value: this.buttonTitles[i] });
                 if (i > 0) {
                     btn.className = "secondary";
                 }
@@ -161,11 +198,22 @@ var Box = /** @class */ (function (_super) {
             }
         }
         else {
-            hide(this.buttonBar);
+            this.buttonBar.hide();
         }
     };
     return Box;
 }(BaseLayer));
+var BoxWithoutContentPadding = /** @class */ (function (_super) {
+    __extends(BoxWithoutContentPadding, _super);
+    function BoxWithoutContentPadding(title, buttonTitles, onButtonClick) {
+        if (buttonTitles === void 0) { buttonTitles = []; }
+        if (onButtonClick === void 0) { onButtonClick = null; }
+        var _this = _super.call(this, title, buttonTitles, onButtonClick) || this;
+        _this.contentWrap.style.padding = "0";
+        return _this;
+    }
+    return BoxWithoutContentPadding;
+}(Box));
 var ConfirmBox = /** @class */ (function (_super) {
     __extends(ConfirmBox, _super);
     function ConfirmBox(title, msg, onConfirmed) {
@@ -177,8 +225,7 @@ var ConfirmBox = /** @class */ (function (_super) {
                 this.dismiss();
             }
         }) || this;
-        var content = document.createElement("div");
-        content.innerHTML = msg;
+        var content = ce("div", { innerHTML: msg });
         _this.setContent(content);
         return _this;
     }
@@ -188,8 +235,7 @@ var MessageBox = /** @class */ (function (_super) {
     __extends(MessageBox, _super);
     function MessageBox(title, msg, btn) {
         var _this = _super.call(this, title, [btn]) || this;
-        var content = document.createElement("div");
-        content.innerHTML = msg;
+        var content = ce("div", { innerHTML: msg });
         _this.setContent(content);
         return _this;
     }
@@ -211,11 +257,9 @@ var FormBox = /** @class */ (function (_super) {
                 this.dismiss();
             }
         }) || this;
-        var content = document.createElement("div");
-        _this.form = document.createElement("form");
-        _this.form.innerHTML = c;
-        _this.form.action = act;
-        content.appendChild(_this.form);
+        var content = ce("div", {}, [
+            _this.form = ce("form", { innerHTML: c, action: act })
+        ]);
         _this.setContent(content);
         return _this;
     }
@@ -229,14 +273,13 @@ var FileUploadBox = /** @class */ (function (_super) {
             this.dismiss();
         }) || this;
         _this.acceptMultiple = false;
-        var content = ce("div");
         if (!message)
             message = lang("drag_or_choose_file");
-        content.innerHTML = "<div class='inner'>" + message + "<br/><form><input type='file' id='fileUploadBoxInput' accept='image/*'/><label for='fileUploadBoxInput' class='button'>" + lang("choose_file") + "</label></form></div><div class='dropOverlay'>" + lang("drop_files_here") + "</div>";
-        content.className = "fileUploadBoxContent";
+        var content = ce("div", { className: "fileUploadBoxContent", innerHTML: "<div class=\"inner\">" + message + "<br/>\n\t\t\t\t<form>\n\t\t\t\t\t<input type=\"file\" id=\"fileUploadBoxInput\" accept=\"image/*\"/>\n\t\t\t\t\t<label for=\"fileUploadBoxInput\" class=\"button\">" + lang("choose_file") + "</label>\n\t\t\t\t</form>\n\t\t\t</div>\n\t\t\t<div class=\"dropOverlay\">" + lang("drop_files_here") + "</div>"
+        });
         _this.setContent(content);
-        _this.fileField = content.querySelector("input[type=file]");
-        _this.dragOverlay = content.querySelector(".dropOverlay");
+        _this.fileField = content.qs("input[type=file]");
+        _this.dragOverlay = content.qs(".dropOverlay");
         _this.dragOverlay.addEventListener("dragenter", function (ev) {
             this.dragOverlay.classList.add("over");
         }.bind(_this), false);
@@ -344,6 +387,23 @@ var ProfilePictureBox = /** @class */ (function (_super) {
     return ProfilePictureBox;
 }(FileUploadBox));
 var submittingForm = null;
+function ge(id) {
+    return document.getElementById(id);
+}
+function ce(tag, attrs, children) {
+    if (attrs === void 0) { attrs = {}; }
+    if (children === void 0) { children = []; }
+    var el = document.createElement(tag);
+    for (var attrName in attrs) {
+        el[attrName] = attrs[attrName];
+    }
+    for (var _i = 0, children_1 = children; _i < children_1.length; _i++) {
+        var child = children_1[_i];
+        el.appendChild(child);
+    }
+    return el;
+}
+;
 String.prototype.format = function () {
     var args = [];
     for (var _i = 0; _i < arguments.length; _i++) {
@@ -373,6 +433,53 @@ Array.prototype.remove = function (item) {
     if (index == -1)
         return;
     this.splice(index, 1);
+};
+HTMLElement.prototype.qs = function (sel) {
+    return this.querySelector(sel);
+};
+HTMLElement.prototype.hide = function () {
+    this.style.display = "none";
+};
+HTMLElement.prototype.hideAnimated = function (animName, onEnd) {
+    var _this = this;
+    if (animName === void 0) { animName = "fadeOut 0.2s ease"; }
+    if (onEnd === void 0) { onEnd = null; }
+    if (this.currentVisibilityAnimEndListener) {
+        this.removeEventListener("animationend", this.currentVisibilityAnimEndListener);
+    }
+    var f = function () {
+        _this.style.animation = "";
+        _this.style.display = "none";
+        _this.removeEventListener("animationend", f);
+        _this.currentVisibilityAnimEndListener = null;
+        if (onEnd)
+            onEnd();
+    };
+    this.addEventListener("animationend", f);
+    this.currentVisibilityAnimEndListener = f;
+    this.style.animation = animName;
+};
+HTMLElement.prototype.show = function () {
+    this.style.display = "";
+};
+HTMLElement.prototype.showAnimated = function (animName, onEnd) {
+    var _this = this;
+    if (animName === void 0) { animName = "fadeIn 0.2s ease"; }
+    if (onEnd === void 0) { onEnd = null; }
+    if (this.currentVisibilityAnimEndListener) {
+        this.removeEventListener("animationend", this.currentVisibilityAnimEndListener);
+    }
+    var f = function () {
+        _this.style.animation = "";
+        _this.removeEventListener("animationend", f);
+        _this.currentVisibilityAnimEndListener = null;
+        if (onEnd)
+            onEnd();
+    };
+    this.style.display = "";
+    this.addEventListener("animationend", f);
+    this.currentVisibilityAnimEndListener = f;
+    this.style.animation = animName;
 };
 function ajaxPost(uri, params, onDone, onError) {
     var xhr = new XMLHttpRequest();
@@ -448,31 +555,16 @@ function ajaxUpload(uri, fieldName, file, onDone, onError, onProgress) {
     xhr.responseType = "json";
     xhr.send(formData);
 }
-function hide(el) {
-    el.style.display = "none";
-}
-function hideAnimated(el) {
-    var f = function () {
-        el.style.animation = "";
-        el.style.display = "none";
-        el.removeEventListener("animationend", f);
-    };
-    el.addEventListener("animationend", f);
-    el.style.animation = "fadeOut 0.2s ease";
-}
-function show(el) {
-    el.style.display = "";
-}
 function isVisible(el) {
     return el.style.display != "none";
 }
 function lang(key) {
-    if (!(key instanceof Array))
-        return langKeys[key] ? langKeys[key] : key;
+    if (typeof key === "string")
+        return (langKeys[key] ? langKeys[key] : key);
     var _key = key[0];
     if (!langKeys[_key])
         return key.toString().escapeHTML();
-    return langKeys[_key].format(key.slice(1));
+    return langKeys[_key].format.apply(key.slice(1));
 }
 function setGlobalLoading(loading) {
     document.body.style.cursor = loading ? "progress" : "";
@@ -548,21 +640,24 @@ function ajaxSubmitForm(form, onDone) {
 }
 function ajaxFollowLink(link) {
     if (link.getAttribute("data-ajax")) {
-        setGlobalLoading(true);
-        ajaxGet(link.href, function (resp) {
-            setGlobalLoading(false);
-            if (resp instanceof Array) {
-                for (var i = 0; i < resp.length; i++) {
-                    applyServerCommand(resp[i]);
-                }
-            }
-        }, function () {
-            setGlobalLoading(false);
-            new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
-        });
+        ajaxGetAndApplyActions(link.href);
         return true;
     }
     return false;
+}
+function ajaxGetAndApplyActions(url) {
+    setGlobalLoading(true);
+    ajaxGet(url, function (resp) {
+        setGlobalLoading(false);
+        if (resp instanceof Array) {
+            for (var i = 0; i < resp.length; i++) {
+                applyServerCommand(resp[i]);
+            }
+        }
+    }, function () {
+        setGlobalLoading(false);
+        new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+    });
 }
 function applyServerCommand(cmd) {
     switch (cmd.a) {
@@ -604,13 +699,28 @@ function applyServerCommand(cmd) {
         case "formBox":
             new FormBox(cmd.t, cmd.m, cmd.b, cmd.fa).show();
             break;
+        case "box":
+            {
+                var box = new BoxWithoutContentPadding(cmd.t);
+                var cont = ce("div");
+                if (cmd.i) {
+                    cont.id = cmd.i;
+                }
+                cont.innerHTML = cmd.c;
+                box.setContent(cont);
+                box.show();
+                if (cmd.w) {
+                    box.getContent().querySelector(".boxLayer").style.width = cmd.w + "px";
+                }
+            }
+            break;
         case "show":
             {
                 var ids = cmd.ids;
                 for (var i = 0; i < ids.length; i++) {
                     var el = document.getElementById(ids[i]);
                     if (el) {
-                        show(el);
+                        el.show();
                     }
                 }
             }
@@ -621,7 +731,7 @@ function applyServerCommand(cmd) {
                 for (var i = 0; i < ids.length; i++) {
                     var el = document.getElementById(ids[i]);
                     if (el) {
-                        hide(el);
+                        el.hide();
                     }
                 }
             }
@@ -688,10 +798,10 @@ function likeOnClick(btn) {
     var counter = ge("likeCounter" + objType.substring(0, 1).toUpperCase() + objType.substring(1) + objID);
     var count = parseInt(counter.innerText);
     if (!liked) {
-        counter.innerText = count + 1;
+        counter.innerText = (count + 1).toString();
         btn.classList.add("liked");
         if (count == 0)
-            show(counter);
+            counter.show();
         if (btn.popover) {
             if (!btn.popover.isShown())
                 btn.popover.show();
@@ -701,10 +811,10 @@ function likeOnClick(btn) {
         }
     }
     else {
-        counter.innerText = count - 1;
+        counter.innerText = (count - 1).toString();
         btn.classList.remove("liked");
         if (count == 1) {
-            hide(counter);
+            counter.hide();
             if (btn.popover) {
                 btn.popover.hide();
             }
@@ -727,16 +837,16 @@ function likeOnClick(btn) {
         btn.removeAttribute("in_progress");
         new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
         if (liked) {
-            counter.innerText = count + 1;
+            counter.innerText = (count + 1).toString();
             btn.classList.add("liked");
             if (count == 0)
-                show(counter);
+                counter.show();
         }
         else {
-            counter.innerText = count - 1;
+            counter.innerText = (count - 1).toString();
             btn.classList.remove("liked");
             if (count == 1)
-                hide(counter);
+                counter.hide();
         }
     });
     return false;
@@ -755,6 +865,10 @@ function likeOnMouseChange(wrap, entered) {
             ajaxGet(btn.getAttribute("data-popover-url"), function (resp) {
                 if (!popover) {
                     popover = new Popover(wrap.querySelector(".popoverPlace"));
+                    popover.setOnClick(function () {
+                        popover.hide();
+                        ajaxGetAndApplyActions(resp.fullURL);
+                    });
                     btn.popover = popover;
                 }
                 popover.setTitle(resp.title);
@@ -1113,8 +1227,6 @@ var PostForm = /** @class */ (function () {
     return PostForm;
 }());
 ///<reference path="./PostForm.ts"/>
-var ge = document.getElementById.bind(document);
-var ce = document.createElement.bind(document);
 // Use Cmd instead of Ctrl on Apple devices.
 var isApple = navigator.platform.indexOf("Mac") == 0 || navigator.platform == "iPhone" || navigator.platform == "iPad" || navigator.platform == "iPod touch";
 var postForms = {};
@@ -1177,26 +1289,20 @@ var Popover = /** @class */ (function () {
         this.shown = false;
         this.root = wrap.querySelector(".popover");
         if (!this.root) {
-            this.root = ce("div");
-            this.root.className = "popover aboveAnchor";
-            hide(this.root);
+            this.root = ce("div", { className: "popover aboveAnchor" }, [
+                this.header = ce("div", { className: "popoverHeader" }),
+                this.content = ce("div", { className: "popoverContent" }),
+                this.arrow = ce("div", { className: "popoverArrow" })
+            ]);
+            this.root.hide();
             wrap.appendChild(this.root);
-            this.header = ce("div");
-            this.header.className = "popoverHeader";
-            this.root.appendChild(this.header);
-            this.content = ce("div");
-            this.content.className = "popoverContent";
-            this.root.appendChild(this.content);
-            this.arrow = ce("div");
-            this.arrow.className = "popoverArrow";
-            this.root.appendChild(this.arrow);
         }
     }
     Popover.prototype.show = function (x, y) {
         if (x === void 0) { x = -1; }
         if (y === void 0) { y = -1; }
         this.shown = true;
-        show(this.root);
+        this.root.show();
         var anchor = this.root.parentElement;
         var anchorRect = anchor.getBoundingClientRect();
         this.root.classList.remove("belowAnchor", "aboveAnchor");
@@ -1211,7 +1317,7 @@ var Popover = /** @class */ (function () {
     };
     Popover.prototype.hide = function () {
         this.shown = false;
-        hideAnimated(this.root);
+        this.root.hideAnimated();
     };
     Popover.prototype.setTitle = function (title) {
         this.header.innerHTML = title;
@@ -1224,6 +1330,10 @@ var Popover = /** @class */ (function () {
     };
     Popover.prototype.isShown = function () {
         return this.shown;
+    };
+    Popover.prototype.setOnClick = function (onClick) {
+        this.header.style.cursor = "pointer";
+        this.header.onclick = onClick;
     };
     return Popover;
 }());

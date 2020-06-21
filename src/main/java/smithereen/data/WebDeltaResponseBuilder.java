@@ -1,6 +1,7 @@
 package smithereen.data;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -40,6 +41,29 @@ public class WebDeltaResponseBuilder{
 		cmd.put("m", msg);
 		cmd.put("t", title);
 		cmd.put("b", button);
+		commands.put(cmd);
+		return this;
+	}
+
+	public WebDeltaResponseBuilder box(@NotNull String title, @NotNull String content, @Nullable String id){
+		JSONObject cmd=new JSONObject();
+		cmd.put("a", "box");
+		cmd.put("t", title);
+		cmd.put("c", content);
+		if(id!=null)
+			cmd.put("i", id);
+		commands.put(cmd);
+		return this;
+	}
+
+	public WebDeltaResponseBuilder box(@NotNull String title, @NotNull String content, @Nullable String id, int width){
+		JSONObject cmd=new JSONObject();
+		cmd.put("a", "box");
+		cmd.put("t", title);
+		cmd.put("c", content);
+		cmd.put("w", width);
+		if(id!=null)
+			cmd.put("i", id);
 		commands.put(cmd);
 		return this;
 	}
