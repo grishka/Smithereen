@@ -1,5 +1,7 @@
 package smithereen.routes;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -15,7 +17,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -28,18 +29,37 @@ import java.util.TimeZone;
 
 import smithereen.BadRequestException;
 import smithereen.BuildInfo;
+import smithereen.ObjectLinkResolver;
 import smithereen.ObjectNotFoundException;
+import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubCache;
-import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.ActivityTypeHandler;
+import smithereen.activitypub.DoublyNestedActivityTypeHandler;
+import smithereen.activitypub.NestedActivityTypeHandler;
+import smithereen.activitypub.handlers.AcceptFollowPersonHandler;
+import smithereen.activitypub.handlers.AnnounceNoteHandler;
+import smithereen.activitypub.handlers.CreateNoteHandler;
+import smithereen.activitypub.handlers.DeleteNoteHandler;
+import smithereen.activitypub.handlers.DeletePersonHandler;
+import smithereen.activitypub.handlers.FollowPersonHandler;
+import smithereen.activitypub.handlers.LikeNoteHandler;
+import smithereen.activitypub.handlers.OfferFollowPersonHandler;
+import smithereen.activitypub.handlers.RejectFollowPersonHandler;
+import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
+import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
+import smithereen.activitypub.handlers.UndoFollowPersonHandler;
+import smithereen.activitypub.handlers.UndoLikeNoteHandler;
+import smithereen.activitypub.handlers.UpdateNoteHandler;
+import smithereen.activitypub.handlers.UpdatePersonHandler;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
-import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Announce;
@@ -56,13 +76,9 @@ import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Post;
 import smithereen.data.User;
-import smithereen.data.notifications.Notification;
-import smithereen.data.notifications.NotificationUtils;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
 import smithereen.storage.LikeStorage;
-import smithereen.storage.NewsfeedStorage;
-import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -74,6 +90,53 @@ import static smithereen.Utils.*;
 public class ActivityPubRoutes{
 
 	private static final String CONTENT_TYPE="application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"";
+	private static ArrayList<ActivityTypeHandlerRecord<?, ?, ?, ?, ?>> typeHandlers=new ArrayList<>();
+
+	public static void registerActivityHandlers(){
+		registerActivityHandler(ForeignUser.class, Create.class, Post.class, new CreateNoteHandler());
+		registerActivityHandler(ForeignUser.class, Like.class, Post.class, new LikeNoteHandler());
+		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, Post.class, new UndoLikeNoteHandler());
+		registerActivityHandler(ForeignUser.class, Announce.class, Post.class, new AnnounceNoteHandler());
+		registerActivityHandler(ForeignUser.class, Undo.class, Announce.class, Post.class, new UndoAnnounceNoteHandler());
+		registerActivityHandler(ForeignUser.class, Update.class, Post.class, new UpdateNoteHandler());
+		registerActivityHandler(ForeignUser.class, Delete.class, Post.class, new DeleteNoteHandler());
+
+		registerActivityHandler(ForeignUser.class, Follow.class, User.class, new FollowPersonHandler());
+		registerActivityHandler(ForeignUser.class, Undo.class, Follow.class, User.class, new UndoFollowPersonHandler());
+		registerActivityHandler(ForeignUser.class, Accept.class, Follow.class, User.class, new AcceptFollowPersonHandler());
+		registerActivityHandler(ForeignUser.class, Reject.class, Follow.class, User.class, new RejectFollowPersonHandler());
+		registerActivityHandler(ForeignUser.class, Offer.class, Follow.class, User.class, new OfferFollowPersonHandler());
+		registerActivityHandler(ForeignUser.class, Reject.class, Offer.class, Follow.class, User.class, new RejectOfferFollowPersonHandler());
+		registerActivityHandler(ForeignUser.class, Update.class, ForeignUser.class, new UpdatePersonHandler());
+		registerActivityHandler(ForeignUser.class, Delete.class, ForeignUser.class, new DeletePersonHandler());
+	}
+
+	private static <A extends Actor, T extends Activity, O extends ActivityPubObject> void registerActivityHandler(@NotNull Class<A> actorClass,
+																												   @NotNull Class<T> activityClass,
+																												   @NotNull Class<O> objectClass,
+																												   @NotNull ActivityTypeHandler<A, T, O> handler){
+		typeHandlers.add(new ActivityTypeHandlerRecord<>(actorClass, activityClass, null, null, objectClass, handler));
+//		System.out.println("Registered handler "+handler.getClass().getName()+" for "+actorClass.getSimpleName()+" -> "+activityClass.getSimpleName()+"{"+objectClass.getSimpleName()+"}");
+	}
+
+	private static <A extends Actor, T extends Activity, N extends Activity, O extends ActivityPubObject> void registerActivityHandler(@NotNull Class<A> actorClass,
+																												   @NotNull Class<T> activityClass,
+																												   @NotNull Class<N> nestedActivityClass,
+																												   @NotNull Class<O> objectClass,
+																												   @NotNull NestedActivityTypeHandler<A, T, N, O> handler){
+		typeHandlers.add(new ActivityTypeHandlerRecord<>(actorClass, activityClass, nestedActivityClass, null, objectClass, handler));
+//		System.out.println("Registered handler "+handler.getClass().getName()+" for "+actorClass.getSimpleName()+" -> "+activityClass.getSimpleName()+"{"+nestedActivityClass.getSimpleName()+"{"+objectClass.getSimpleName()+"}}");
+	}
+
+	private static <A extends Actor, T extends Activity, N extends Activity, NN extends Activity, O extends ActivityPubObject> void registerActivityHandler(@NotNull Class<A> actorClass,
+																																	   @NotNull Class<T> activityClass,
+																																	   @NotNull Class<N> nestedActivityClass,
+																																	   @NotNull Class<NN> doublyNestedActivityClass,
+																																	   @NotNull Class<O> objectClass,
+																																	   @NotNull NestedActivityTypeHandler<A, T, N, O> handler){
+		typeHandlers.add(new ActivityTypeHandlerRecord<>(actorClass, activityClass, nestedActivityClass, doublyNestedActivityClass, objectClass, handler));
+//		System.out.println("Registered handler "+handler.getClass().getName()+" for "+actorClass.getSimpleName()+" -> "+activityClass.getSimpleName()+"{"+nestedActivityClass.getSimpleName()+"{"+doublyNestedActivityClass.getSimpleName()+"{"+objectClass.getSimpleName()+"}}}");
+	}
 
 	public static Object userActor(Request req, Response resp) throws SQLException{
 		String username=req.params(":username");
@@ -86,20 +149,17 @@ public class ActivityPubRoutes{
 			resp.type(CONTENT_TYPE);
 			return user.asRootActivityPubObject();
 		}
-		resp.status(404);
-		return "";
+		throw new ObjectNotFoundException();
 	}
 
 	public static Object post(Request req, Response resp) throws SQLException{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
-			resp.status(404);
-			return "Post not found";
+			throw new ObjectNotFoundException();
 		}
 		Post post=PostStorage.getPostByID(postID);
 		if(post==null || !Config.isLocal(post.activityPubID)){
-			resp.status(404);
-			return "Post not found";
+			throw new ObjectNotFoundException();
 		}
 		resp.type(CONTENT_TYPE);
 		return post.asRootActivityPubObject();
@@ -109,8 +169,7 @@ public class ActivityPubRoutes{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 		User user=UserStorage.getById(id);
 		if(user==null || user instanceof ForeignUser){
-			resp.status(404);
-			return "User not found";
+			throw new ObjectNotFoundException();
 		}
 		return inbox(req, resp, user);
 	}
@@ -123,8 +182,7 @@ public class ActivityPubRoutes{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 		User user=UserStorage.getById(id);
 		if(user==null || user instanceof ForeignUser){
-			resp.status(404);
-			return "User not found";
+			throw new ObjectNotFoundException();
 		}
 		int _minID=Utils.parseIntOrDefault(req.queryParams("min_id"), -1);
 		int _maxID=Utils.parseIntOrDefault(req.queryParams("max_id"), -1);
@@ -362,28 +420,28 @@ public class ActivityPubRoutes{
 		System.out.println(body);
 		JSONObject rawActivity=new JSONObject(body);
 		JSONObject obj=JLDProcessor.convertToLocalContext(rawActivity);
+
 		Activity activity;
+		ActivityPubObject o;
 		try{
-			ActivityPubObject o=ActivityPubObject.parse(obj);
-			if(o instanceof Activity)
-				activity=(Activity)o;
-			else
-				throw new IllegalArgumentException("Unsupported object type");
-		}catch(Exception x){
-			x.printStackTrace();
-			resp.status(400);
-			return x.toString();
+			o=ActivityPubObject.parse(obj);
+		}catch(Exception e){
+			throw new BadRequestException("Failed to parse object: "+e.toString());
 		}
-		try{
-			if(Config.isLocal(activity.actor.link))
-				throw new IllegalArgumentException("User domain must be different from this server");
-		}catch(Exception x){
-			x.printStackTrace();
-			resp.status(400);
-			return x.toString();
-		}
+		if(o instanceof Activity)
+			activity=(Activity)o;
+		else
+			throw new BadRequestException("Unsupported object type '"+o.getType()+"'");
+
+		if(Config.isLocal(activity.actor.link))
+			throw new BadRequestException("User domain must be different from this server");
+
 		ForeignUser user=UserStorage.getForeignUserByActivityPubID(activity.actor.link);
 		if(user==null || user.lastUpdated==null || System.currentTimeMillis()-user.lastUpdated.getTime()>24L*60*60*1000){
+			// special case: when users delete themselves but are not in local database, ignore that
+			if(activity instanceof Delete && activity.object.link!=null && activity.object.link.equals(activity.actor.link))
+				return "";
+
 			try{
 				ActivityPubObject userObj=ActivityPub.fetchRemoteObject(activity.actor.link.toString());
 				if(!(userObj instanceof ForeignUser)){
@@ -395,13 +453,12 @@ public class ActivityPubRoutes{
 			}catch(SQLException x){
 				throw new SQLException(x);
 			}catch(Exception x){
-				x.printStackTrace();
-				resp.status(400);
-				return x.toString();
+				if(user==null)
+					throw new BadRequestException(x.toString());
 			}
 		}
 
-		User httpSigOwner;
+		ForeignUser httpSigOwner;
 		try{
 			httpSigOwner=verifyHttpSignature(req, user);
 		}catch(Exception x){
@@ -412,6 +469,7 @@ public class ActivityPubRoutes{
 
 		// if the activity has an LD-signature, verify that and allow any (cached) user to sign the HTTP signature
 		// if it does not, the owner of the HTTP signature must match the actor
+		boolean hasValidLDSignature=false;
 		if(rawActivity.has("signature")){
 			JSONObject sig=rawActivity.getJSONObject("signature");
 			try{
@@ -426,6 +484,7 @@ public class ActivityPubRoutes{
 					return "LD-signature verification failed";
 				}
 				System.out.println("verified LD signature by "+userID);
+				hasValidLDSignature=true;
 			}catch(Exception x){
 				x.printStackTrace();
 				resp.status(400);
@@ -440,62 +499,91 @@ public class ActivityPubRoutes{
 		}
 		// parse again to make sure the actor is set everywhere
 		try{
-			ActivityPubObject o=ActivityPubObject.parse(obj);
-			if(o instanceof Activity)
-				activity=(Activity) o;
+			ActivityPubObject _o=ActivityPubObject.parse(obj);
+			if(_o instanceof Activity)
+				activity=(Activity) _o;
 		}catch(Exception ignore){}
 
+		ActivityHandlerContext context=new ActivityHandlerContext(body, hasValidLDSignature ? user : null, httpSigOwner);
 
 		try{
-			switch(activity.getType()){
-				case "Create":
-					handleCreateActivity(user, (Create) activity);
-					break;
-				case "Announce":
-					handleAnnounceActivity(user, (Announce) activity);
-					break;
-				case "Follow":
-					handleFollowActivity(user, (Follow) activity);
-					break;
-				case "Accept":
-					handleAcceptActivity(user, (Accept) activity);
-					break;
-				case "Like":
-					handleLikeActivity(user, (Like) activity);
-					break;
-				case "Undo":
-					handleUndoActivity(user, (Undo) activity);
-					break;
-				case "Delete":
-					handleDeleteActivity(user, (Delete) activity);
-					break;
-				case "Update":
-					handleUpdateActivity(user, (Update) activity);
-					break;
-				case "Reject":
-					handleRejectActivity(user, (Reject)activity);
-					break;
-				case "Offer":
-					handleOfferActivity(user, (Offer)activity);
-					break;
-				default:
-					throw new IllegalArgumentException("Activity type "+activity.getType()+" is not supported");
+			ActivityPubObject aobj;
+			if(activity.object.object!=null){
+				aobj=activity.object.object;
+				// special case: Mastodon sends Delete{Tombstone} for post deletions
+				if(aobj instanceof Tombstone){
+					aobj=ObjectLinkResolver.resolve(aobj.activityPubID);
+				}
+			}else{
+				try{
+					aobj=ObjectLinkResolver.resolve(activity.object.link);
+				}catch(ObjectNotFoundException x){
+					// special case: fetch the object Announce{Note}
+					if(activity instanceof Announce){
+						aobj=ActivityPub.fetchRemoteObject(activity.object.link.toString());
+					}else{
+						throw x;
+					}
+				}
 			}
-		}catch(SQLException x){
-			x.printStackTrace();
-			throw new SQLException(x);
-		}catch(ObjectNotFoundException x){
-			x.printStackTrace();
-			resp.status(404);
-			return x.toString();
+			for(ActivityTypeHandlerRecord r : typeHandlers){
+				if(r.actorClass.isInstance(user)){
+					if(r.activityClass.isInstance(activity)){
+						if(r.nestedActivityClass!=null && aobj instanceof Activity && r.nestedActivityClass.isInstance(aobj)){
+							Activity nestedActivity=(Activity)aobj;
+							ActivityPubObject nestedObject;
+							if(nestedActivity.object.object!=null)
+								nestedObject=nestedActivity.object.object;
+							else
+								nestedObject=ObjectLinkResolver.resolve(nestedActivity.object.link);
+
+							if(r.doublyNestedActivityClass!=null && nestedObject instanceof Activity && r.doublyNestedActivityClass.isInstance(nestedObject)){
+								Activity doublyNestedActivity=(Activity)nestedObject;
+								ActivityPubObject doublyNestedObject;
+								if(doublyNestedActivity.object.object!=null)
+									doublyNestedObject=nestedActivity.object.object;
+								else
+									doublyNestedObject=ObjectLinkResolver.resolve(nestedActivity.object.link);
+
+								if(r.objectClass.isInstance(doublyNestedObject)){
+									System.out.println("Found match: "+r.handler.getClass().getName());
+									((DoublyNestedActivityTypeHandler)r.handler).handle(context, user, activity, nestedActivity, doublyNestedActivity, doublyNestedObject);
+									return "";
+								}
+							}else if(r.objectClass.isInstance(nestedObject)){
+								System.out.println("Found match: "+r.handler.getClass().getName());
+								((NestedActivityTypeHandler)r.handler).handle(context, user, activity, nestedActivity, nestedObject);
+								return "";
+							}
+						}else if(r.objectClass.isInstance(aobj)){
+							System.out.println("Found match: "+r.handler.getClass().getName());
+							r.handler.handle(context, user, activity, aobj);
+							return "";
+						}
+					}
+				}
+			}
 		}catch(Exception x){
 			x.printStackTrace();
-			resp.status(400);
-			return x.toString();
+			throw new BadRequestException(x.toString());
 		}
-		return "";
+		throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
 	}
 
+	private static String getActivityType(ActivityPubObject obj){
+		String r=obj.getType();
+		if(obj instanceof Activity){
+			Activity a=(Activity)obj;
+			r+="{";
+			if(a.object.object!=null){
+				r+=getActivityType(a.object.object);
+			}else{
+				r+=a.object.link;
+			}
+			r+="}";
+		}
+		return r;
+	}
 
 	private static Object followersOrFollowing(Request req, Response resp, boolean f) throws SQLException{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
@@ -550,7 +638,7 @@ public class ActivityPubRoutes{
 
 
 
-	private static User verifyHttpSignature(Request req, User userHint) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, SQLException{
+	private static ForeignUser verifyHttpSignature(Request req, ForeignUser userHint) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, SQLException{
 		String sigHeader=req.headers("Signature");
 		if(sigHeader==null)
 			throw new IllegalArgumentException("Request is missing Signature header");
@@ -601,11 +689,11 @@ public class ActivityPubRoutes{
 			throw new IllegalArgumentException("Date is too far in the past (difference: "+diff+"ms)");
 
 		URI userID=Utils.userIdFromKeyId(URI.create(keyId));
-		User user;
+		ForeignUser user;
 		if(userHint.activityPubID.equals(userID))
 			user=userHint;
 		else
-			user=UserStorage.getUserByActivityPubID(userID);
+			user=(ForeignUser)UserStorage.getUserByActivityPubID(userID);
 		if(user==null)
 			throw new IllegalArgumentException("Request signed by unknown user: "+userID);
 
@@ -650,494 +738,27 @@ public class ActivityPubRoutes{
 		return true;
 	}
 
+	private static class ActivityTypeHandlerRecord<A extends Actor, T extends Activity, N extends Activity, NN extends Activity, O extends ActivityPubObject>{
+		@NotNull
+		final Class<A> actorClass;
+		@NotNull
+		final Class<T> activityClass;
+		@Nullable
+		final Class<N> nestedActivityClass;
+		@Nullable
+		final Class<NN> doublyNestedActivityClass;
+		@NotNull
+		final Class<O> objectClass;
+		@NotNull
+		final ActivityTypeHandler<A, T, O> handler;
 
-
-
-
-	//region Activity handlers
-
-	private static void handleCreateActivity(ForeignUser user, Create act) throws SQLException{
-		if(act.object.object==null)
-			throw new IllegalArgumentException("Links are not accepted in Create activity");
-		ActivityPubObject object=act.object.object;
-		if(!object.attributedTo.equals(user.activityPubID))
-			throw new IllegalArgumentException("object.attributedTo and actor.id must match");
-		if(object instanceof Post){
-			if(PostStorage.getPostByID(object.activityPubID)!=null){
-				// Already exists. Ignore and return 200 OK.
-				return;
-			}
-			Post post=(Post) object;
-			if(post.user==null || post.user.id!=user.id)
-				throw new IllegalArgumentException("Can only create posts for self");
-			if(post.owner==null)
-				throw new IllegalArgumentException("Unknown wall owner (from partOf, which must be an outbox URI if present)");
-			boolean isPublic=false;
-			if(post.to==null || post.to.isEmpty()){
-				if(post.cc==null || post.cc.isEmpty()){
-					throw new IllegalArgumentException("to or cc are both empty");
-				}else{
-					for(LinkOrObject cc:post.cc){
-						if(cc.link==null)
-							throw new IllegalArgumentException("post.cc must only contain links");
-						if(ActivityPub.isPublic(cc.link)){
-							isPublic=true;
-							break;
-						}
-					}
-				}
-			}else{
-				for(LinkOrObject to:post.to){
-					if(to.link==null)
-						throw new IllegalArgumentException("post.to must only contain links");
-					if(ActivityPub.isPublic(to.link)){
-						isPublic=true;
-						break;
-					}
-				}
-			}
-			if(!isPublic)
-				throw new IllegalArgumentException("Only public posts are supported");
-			if(post.user==post.owner && post.inReplyTo==null){
-				URI followers=user.getFollowersURL();
-				boolean addressesAnyFollowers=false;
-				for(LinkOrObject l:post.to){
-					if(followers.equals(l.link)){
-						addressesAnyFollowers=true;
-						break;
-					}
-				}
-				if(!addressesAnyFollowers){
-					for(LinkOrObject l:post.cc){
-						if(followers.equals(l.link)){
-							addressesAnyFollowers=true;
-							break;
-						}
-					}
-				}
-				if(!addressesAnyFollowers){
-					System.out.println("Dropping this post because it's public but doesn't address any followers");
-					return;
-				}
-			}
-			if(post.tag!=null){
-				for(ActivityPubObject tag:post.tag){
-					if(tag instanceof Mention){
-						URI uri=((Mention) tag).href;
-						User mentionedUser=UserStorage.getUserByActivityPubID(uri);
-						if(mentionedUser!=null){
-							if(post.mentionedUsers.isEmpty())
-								post.mentionedUsers=new ArrayList<>();
-							if(!post.mentionedUsers.contains(mentionedUser))
-								post.mentionedUsers.add(mentionedUser);
-						}
-					}
-				}
-			}
-			if(post.inReplyTo!=null){
-				if(post.inReplyTo.equals(post.activityPubID))
-					throw new IllegalArgumentException("Post can't be a reply to itself. This makes no sense.");
-				Post parent=PostStorage.getPostByID(post.inReplyTo);
-				if(parent!=null){
-					post.setParent(parent);
-					PostStorage.putForeignWallPost(post);
-					NotificationUtils.putNotificationsForPost(post, parent);
-				}else{
-					System.out.println("Don't have parent post "+post.inReplyTo+" for "+post.activityPubID);
-					ActivityPubWorker.getInstance().fetchReplyThread(post);
-				}
-			}else{
-				PostStorage.putForeignWallPost(post);
-				NotificationUtils.putNotificationsForPost(post, null);
-			}
-		}else{
-			throw new IllegalArgumentException("Type "+object.getType()+" not supported in Create");
+		public ActivityTypeHandlerRecord(@NotNull Class<A> actorClass, @NotNull Class<T> activityClass, @Nullable Class<N> nestedActivityClass, @Nullable Class<NN> doublyNestedActivityClass, @NotNull Class<O> objectClass, @NotNull ActivityTypeHandler<A, T, O> handler){
+			this.actorClass=actorClass;
+			this.activityClass=activityClass;
+			this.nestedActivityClass=nestedActivityClass;
+			this.doublyNestedActivityClass=doublyNestedActivityClass;
+			this.objectClass=objectClass;
+			this.handler=handler;
 		}
 	}
-
-	private static void handleFollowActivity(ForeignUser actor, Follow act) throws URISyntaxException, SQLException{
-		URI url=act.object.link;
-		if(!Config.isLocal(url))
-			throw new IllegalArgumentException("Target user is not from this server");
-		User user=UserStorage.getUserByActivityPubID(url);
-		if(user==null)
-			throw new IllegalArgumentException("User not found");
-		FriendshipStatus status=UserStorage.getFriendshipStatus(actor.id, user.id);
-		if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING)
-			throw new IllegalArgumentException("Already following");
-		UserStorage.followUser(actor.id, user.id, true);
-		UserStorage.deleteFriendRequest(actor.id, user.id);
-
-		Accept accept=new Accept();
-		accept.actor=new LinkOrObject(user.activityPubID);
-		accept.object=new LinkOrObject(act);
-		accept.activityPubID=new URI(user.activityPubID.getScheme(), user.activityPubID.getSchemeSpecificPart(), "acceptFollow"+actor.id);
-		try{
-			ActivityPub.postActivity(actor.sharedInbox!=null ? actor.sharedInbox : actor.inbox, accept, user);
-		}catch(Exception x){
-			x.printStackTrace();
-		}
-
-		Notification n=new Notification();
-		n.type=status==FriendshipStatus.REQUEST_RECVD ? Notification.Type.FRIEND_REQ_ACCEPT : Notification.Type.FOLLOW;
-		n.actorID=actor.id;
-		NotificationsStorage.putNotification(user.id, n);
-	}
-
-	private static void handleAcceptActivity(ForeignUser user, Accept act) throws SQLException{
-		if(act.object.object==null)
-			throw new IllegalArgumentException("Undo activity should include a complete object of the activity being undone");
-		ActivityPubObject object=act.object.object;
-		if(!(object instanceof Activity))
-			throw new IllegalArgumentException("Undo activity object must be a subtype of Activity");
-		Activity objectActivity=(Activity)object;
-		switch(objectActivity.getType()){
-			case "Follow":
-				handleAcceptFollowActivity(user, (Follow)objectActivity);
-				break;
-			default:
-				throw new IllegalArgumentException("Unsupported activity type in Accept: "+objectActivity.getType());
-		}
-	}
-
-	private static void handleLikeActivity(ForeignUser user, Like act) throws SQLException{
-		if(act.object.link==null)
-			throw new IllegalArgumentException("Like object must be a link");
-		Post post=PostStorage.getPostByID(act.object.link);
-		if(post==null)
-			throw new ObjectNotFoundException("Post not found");
-		LikeStorage.setPostLiked(user.id, post.id, true);
-		if(!(post.user instanceof ForeignUser)){
-			Notification n=new Notification();
-			n.type=Notification.Type.LIKE;
-			n.actorID=user.id;
-			n.objectID=post.id;
-			n.objectType=Notification.ObjectType.POST;
-			NotificationsStorage.putNotification(post.user.id, n);
-		}
-	}
-
-	private static void handleAnnounceActivity(ForeignUser user, Announce act) throws SQLException{
-		URI objURI=act.object.link;
-		if(objURI==null)
-			throw new IllegalArgumentException("Announce object must be a link");
-		if(Config.isLocal(objURI)){
-			Post post=PostStorage.getPostByID(objURI);
-			if(post==null)
-				throw new ObjectNotFoundException("Post not found");
-			long time=act.published==null ? System.currentTimeMillis() : act.published.getTime();
-			NewsfeedStorage.putRetoot(user.id, post.id, new Timestamp(time));
-			if(!(post.user instanceof ForeignUser)){
-				Notification n=new Notification();
-				n.type=Notification.Type.RETOOT;
-				n.actorID=user.id;
-				n.objectID=post.id;
-				n.objectType=Notification.ObjectType.POST;
-				NotificationsStorage.putNotification(post.user.id, n);
-			}
-		}else{
-			try{
-				ActivityPubObject obj=ActivityPub.fetchRemoteObject(objURI.toString());
-				if(obj instanceof Post){
-					Post post=(Post) obj;
-					ForeignUser author=(ForeignUser) UserStorage.getUserByActivityPubID(post.attributedTo);
-					if(author==null){
-						ActivityPubObject _author=ActivityPub.fetchRemoteObject(post.attributedTo.toString());
-						if(!(_author instanceof ForeignUser)){
-							throw new IllegalArgumentException("Post author isn't a user");
-						}
-						author=(ForeignUser) _author;
-						UserStorage.putOrUpdateForeignUser(author);
-					}
-					post.owner=post.user=author;
-					PostStorage.putForeignWallPost(post);
-					long time=act.published==null ? System.currentTimeMillis() : act.published.getTime();
-					NewsfeedStorage.putRetoot(user.id, post.id, new Timestamp(time));
-				}else if(obj==null){
-					throw new IllegalArgumentException("Failed to fetch reposted object");
-				}else{
-					throw new IllegalArgumentException("Unsupported object type in Announce: "+obj.getType());
-				}
-			}catch(IOException e){
-				e.printStackTrace();
-				throw new IllegalArgumentException("Failed to fetch reposted object: "+e.getMessage());
-			}
-		}
-	}
-
-	private static void handleUndoActivity(ForeignUser user, Undo act) throws SQLException{
-		if(act.object.object==null)
-			throw new IllegalArgumentException("Undo activity should include a complete object of the activity being undone");
-		ActivityPubObject object=act.object.object;
-		if(!(object instanceof Activity))
-			throw new IllegalArgumentException("Undo activity object must be a subtype of Activity");
-		Activity objectActivity=(Activity)object;
-		if(!objectActivity.actor.link.equals(user.activityPubID))
-			throw new IllegalArgumentException("Actor in Undo and in the activity being undone don't match");
-		switch(objectActivity.getType()){
-			case "Follow":
-				handleUndoFollowActivity(user, (Follow)objectActivity);
-				break;
-			case "Like":
-				handleUndoLikeActivity(user, (Like)objectActivity);
-				break;
-			case "Announce":
-				handleUndoAnnounceActivity(user, (Announce)objectActivity);
-				break;
-			case "Accept":
-				handleUndoAcceptActivity(user, (Accept)objectActivity);
-				break;
-			default:
-				throw new IllegalArgumentException("Unsupported activity type in Undo: "+objectActivity.getType());
-		}
-	}
-
-	private static void handleDeleteActivity(ForeignUser user, Delete act) throws SQLException{
-		ActivityPubObject obj;
-		URI uri;
-		if(act.object.object==null || act.object.object instanceof Tombstone){
-			if(act.object.object==null)
-				uri=act.object.link;
-			else
-				uri=act.object.object.activityPubID;
-			Post post=PostStorage.getPostByID(uri);
-			if(post!=null){
-				obj=post;
-			}else{
-				User _user=UserStorage.getForeignUserByActivityPubID(uri);
-				if(_user!=null){
-					obj=_user;
-				}else{
-					obj=null;
-				}
-			}
-		}else{
-			obj=act.object.object;
-			uri=obj.activityPubID;
-		}
-		if(obj==null){
-			System.out.println("Delete: Object '"+uri+"' does not exist");
-			return;
-		}
-
-		if(obj instanceof Post){
-			handleDeletePostActivity(user, (Post) obj);
-		}else if(obj instanceof User){
-			User o=(User) obj;
-			if(!o.equals(user)){
-				throw new IllegalArgumentException("User can only delete themselves");
-			}
-			handleDeleteUserActivity(user);
-		}
-	}
-
-	private static void handleUpdateActivity(ForeignUser actor, Update act) throws SQLException{
-		if(act.object.object==null)
-			throw new IllegalArgumentException("Update activity is required to have an entire object inlined");
-		if(act.object.object instanceof Post){
-			handleUpdatePostActivity(actor, (Post) act.object.object);
-		}else if(act.object.object instanceof User){
-			User o=(User)act.object.object;
-			if(!o.activityPubID.equals(actor.activityPubID)){
-				throw new IllegalArgumentException("User can only update themselves");
-			}
-			handleUpdateUserActivity(actor);
-		}
-	}
-
-	private static void handleRejectActivity(ForeignUser actor, Reject act) throws SQLException{
-		if(act.object.object==null)
-			throw new IllegalArgumentException("Reject activity should include a complete object of the activity being rejected");
-		ActivityPubObject object=act.object.object;
-		if(!(object instanceof Activity))
-			throw new IllegalArgumentException("Reject activity object must be a subtype of Activity");
-		Activity objectActivity=(Activity)object;
-		switch(objectActivity.getType()){
-			case "Follow":
-				handleRejectFollowActivity(actor, (Follow)objectActivity);
-				break;
-			case "Offer":
-				handleRejectOfferActivity(actor, (Offer)objectActivity);
-				break;
-			default:
-				throw new IllegalArgumentException("Unsupported activity type in Reject: "+objectActivity.getType());
-		}
-	}
-
-	private static void handleOfferActivity(ForeignUser actor, Offer act) throws SQLException{
-		if(act.object.object==null)
-			throw new IllegalArgumentException("Offer should include an object");
-		switch(act.object.object.getType()){
-			case "Follow":
-				handleFriendRequestActivity(actor, (Follow) act.object.object, act.content);
-				break;
-		}
-	}
-
-	//region Undo subtype handlers
-
-	private static void handleUndoFollowActivity(ForeignUser actor, Follow act) throws SQLException{
-		URI url=act.object.link;
-		if(!Config.isLocal(url))
-			throw new IllegalArgumentException("Target user is not from this server");
-		User user=UserStorage.getUserByActivityPubID(url);
-		if(user==null)
-			throw new IllegalArgumentException("User not found");
-
-		UserStorage.unfriendUser(actor.id, user.id);
-		System.out.println(actor.getFullUsername()+" remotely unfollowed "+user.getFullUsername());
-	}
-
-	private static void handleUndoAcceptActivity(ForeignUser actor, Accept act) throws SQLException{
-		if(act.object.object==null)
-			throw new IllegalArgumentException("Undo activity should include a complete object of the activity being undone");
-		ActivityPubObject object=act.object.object;
-		if(!(object instanceof Activity))
-			throw new IllegalArgumentException("Undo activity object must be a subtype of Activity");
-		Activity objectActivity=(Activity)object;
-		switch(objectActivity.getType()){
-			case "Follow":
-				handleUndoAcceptFollowActivity(actor, (Follow)objectActivity);
-				break;
-			default:
-				throw new IllegalArgumentException("Unsupported activity type in Accept: "+objectActivity.getType());
-		}
-	}
-
-	private static void handleUndoAcceptFollowActivity(ForeignUser actor, Follow activity) throws SQLException{
-		User follower=UserStorage.getUserByActivityPubID(activity.actor.link);
-		if(follower==null)
-			throw new ObjectNotFoundException("Follower not found");
-		UserStorage.setFollowAccepted(follower.id, actor.id, false);
-	}
-
-	private static void handleUndoAnnounceActivity(ForeignUser actor, Announce act) throws SQLException{
-		if(act.object.link==null)
-			throw new IllegalArgumentException("Announce object must be a link");
-		if(!actor.activityPubID.equals(act.actor.link))
-			throw new IllegalArgumentException("Actors must match");
-		Post post=PostStorage.getPostByID(act.object.link);
-		if(post==null)
-			throw new ObjectNotFoundException("Post not found");
-		NewsfeedStorage.deleteRetoot(actor.id, post.id);
-		NotificationsStorage.deleteNotification(Notification.ObjectType.POST, post.id, Notification.Type.RETOOT, actor.id);
-	}
-
-	private static void handleUndoLikeActivity(ForeignUser actor, Like act) throws SQLException{
-		if(act.object.link==null)
-			throw new IllegalArgumentException("Like object must be a link");
-		if(!actor.activityPubID.equals(act.actor.link))
-			throw new IllegalArgumentException("Actors must match");
-		Post post=PostStorage.getPostByID(act.object.link);
-		if(post==null)
-			throw new ObjectNotFoundException("Post not found");
-		LikeStorage.setPostLiked(actor.id, post.id, false);
-		NotificationsStorage.deleteNotification(Notification.ObjectType.POST, post.id, Notification.Type.LIKE, actor.id);
-	}
-
-	//endregion
-	//region Delete subtype handlers
-
-	private static void handleDeletePostActivity(ForeignUser actor, Post post) throws SQLException{
-		System.out.println("delete post here");
-		if(post.canBeManagedBy(actor)){
-			PostStorage.deletePost(post.id);
-			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
-		}else{
-			throw new IllegalArgumentException("No access to delete this post");
-		}
-	}
-
-	private static void handleDeleteUserActivity(ForeignUser actor){
-		System.out.println("Deleting users is not implemented");
-	}
-
-	//endregion
-
-	//region Update subtype handlers
-
-	private static void handleUpdatePostActivity(ForeignUser actor, Post post) throws SQLException{
-		if(post.canBeManagedBy(actor)){
-			post.content=Utils.sanitizeHTML(post.content);
-			if(StringUtils.isNotEmpty(post.summary))
-				post.summary=Utils.sanitizeHTML(post.summary);
-			PostStorage.putForeignWallPost(post);
-		}else{
-			throw new IllegalArgumentException("No access to update this post");
-		}
-	}
-
-	private static void handleUpdateUserActivity(ForeignUser actor) throws SQLException{
-		UserStorage.putOrUpdateForeignUser(actor);
-	}
-
-	//endregion
-
-	//region Accept subtype handlers
-	private static void handleAcceptFollowActivity(ForeignUser actor, Follow activity) throws SQLException{
-		User follower=UserStorage.getUserByActivityPubID(activity.actor.link);
-		if(follower==null)
-			throw new ObjectNotFoundException("Follower not found");
-		UserStorage.setFollowAccepted(follower.id, actor.id, true);
-	}
-	//endregion
-
-	//region Reject subtype handlers
-	private static void handleRejectFollowActivity(ForeignUser actor, Follow activity) throws SQLException{
-		User follower=UserStorage.getUserByActivityPubID(activity.actor.link);
-		if(follower==null)
-			throw new ObjectNotFoundException("Follower not found");
-		UserStorage.unfriendUser(follower.id, actor.id);
-	}
-
-	private static void handleRejectOfferActivity(ForeignUser actor, Offer act) throws SQLException{
-		if(act.object.object==null)
-			throw new IllegalArgumentException("Reject{Offer} must contain an object in offer.object");
-		switch(act.object.object.getType()){
-			case "Follow":
-				handleRejectFriendRequestActivity(actor, (Follow) act.object.object);
-				break;
-			default:
-				throw new IllegalArgumentException("Unsupported object type in Reject{Offer}: "+act.object.object.getType());
-		}
-	}
-
-	private static void handleRejectFriendRequestActivity(ForeignUser actor, Follow act) throws SQLException{
-		if(act.object.link==null)
-			throw new IllegalArgumentException("follow.object must be a link");
-		if(act.actor.link==null)
-			throw new IllegalArgumentException("follow.actor must be a link");
-		if(!act.actor.link.equals(actor.activityPubID))
-			throw new IllegalArgumentException("follow.object must match reject.actor");
-		User user=UserStorage.getUserByActivityPubID(act.object.link);
-		if(user==null)
-			throw new ObjectNotFoundException("User not found");
-		UserStorage.deleteFriendRequest(actor.id, user.id);
-	}
-	//endregion
-
-	//region Offer subtype handlers
-	private static void handleFriendRequestActivity(ForeignUser actor, Follow act, String msg) throws SQLException{
-		if(!act.object.link.equals(actor.activityPubID))
-			throw new IllegalArgumentException("Friend request must be Offer{Follow} with offer.actor==follow.object");
-		if(act.actor.link==null)
-			throw new IllegalArgumentException("Follow actor must be a link");
-		User user=UserStorage.getUserByActivityPubID(act.actor.link);
-		if(user==null || user instanceof ForeignUser)
-			throw new ObjectNotFoundException("User not found");
-
-		FriendshipStatus status=UserStorage.getFriendshipStatus(actor.id, user.id);
-		if(status==FriendshipStatus.NONE || status==FriendshipStatus.FOLLOWING){
-			UserStorage.putFriendRequest(actor.id, user.id, msg, true);
-		}else if(status==FriendshipStatus.FRIENDS){
-			throw new IllegalArgumentException("Already friends");
-		}else if(status==FriendshipStatus.REQUEST_RECVD){
-			throw new IllegalArgumentException("Incoming friend request already received");
-		}else{ // REQ_SENT
-			throw new IllegalArgumentException("Friend request already sent");
-		}
-	}
-	//endregion
-
-	//endregion
 }

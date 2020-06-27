@@ -48,4 +48,8 @@ public class LinkOrObject{
 	public int hashCode(){
 		return Objects.hash(link, object);
 	}
+
+	public ActivityPubObject resolve(){
+		return null;
+	}
 }

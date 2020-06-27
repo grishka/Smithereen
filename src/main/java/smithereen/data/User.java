@@ -23,13 +23,14 @@ import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.jsonld.JLD;
 import smithereen.storage.MediaCache;
 import spark.utils.StringUtils;
 
-public class User extends ActivityPubObject{
+public class User extends ActivityPubObject implements Actor{
 	public static final long FLAG_SUPPORTS_FRIEND_REQS=1;
 
 

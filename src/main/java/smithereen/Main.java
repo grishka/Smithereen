@@ -66,6 +66,8 @@ public class Main{
 			throw new RuntimeException(x);
 		}
 
+		ActivityPubRoutes.registerActivityHandlers();
+
 		ipAddress(Config.serverIP);
 		port(Config.serverPort);
 		if(Config.staticFilesPath!=null)

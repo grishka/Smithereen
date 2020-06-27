@@ -36,7 +36,6 @@ public class Post extends ActivityPubObject{
 	public User owner;
 
 	public String userLink;
-	public String userLinkAttrs="";
 
 	public int[] replyKey={};
 

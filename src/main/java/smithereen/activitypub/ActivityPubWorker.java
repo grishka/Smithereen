@@ -21,6 +21,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.Tombstone;
+import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
@@ -155,6 +156,14 @@ public class ActivityPubWorker{
 		follow.object=new LinkOrObject(target.activityPubID);
 		follow.activityPubID=URI.create(self.activityPubID+"#follow"+target.id);
 		executor.submit(new SendOneActivityRunnable(follow, target.inbox, self));
+	}
+
+	public void sendAcceptFollowActivity(ForeignUser actor, User self, Follow follow){
+		Accept accept=new Accept();
+		accept.actor=new LinkOrObject(self.activityPubID);
+		accept.object=new LinkOrObject(follow);
+		accept.activityPubID=Config.localURI("/"+self.username+"#acceptFollow"+actor.id);
+		executor.submit(new SendOneActivityRunnable(accept, actor.inbox, self));
 	}
 
 	public void sendRejectFriendRequestActivity(User self, ForeignUser target){
