@@ -377,7 +377,9 @@ public class PostRoutes{
 		}
 		String back=Utils.back(req);
 
-		LikeStorage.setPostLiked(self.user.id, postID, true);
+		int id=LikeStorage.setPostLiked(self.user.id, postID, true);
+		if(id==0) // Already liked
+			return "";
 		if(!(post.user instanceof ForeignUser) && post.user.id!=self.user.id){
 			Notification n=new Notification();
 			n.type=Notification.Type.LIKE;
@@ -386,9 +388,7 @@ public class PostRoutes{
 			n.objectType=Notification.ObjectType.POST;
 			NotificationsStorage.putNotification(post.user.id, n);
 		}
-		if(post.user instanceof ForeignUser || post.owner instanceof ForeignUser){
-			ActivityPubWorker.getInstance().sendLikeActivity(post, self.user);
-		}
+		ActivityPubWorker.getInstance().sendLikeActivity(post, self.user, id);
 		if(isAjax(req)){
 			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
 			return new WebDeltaResponseBuilder(resp)
@@ -414,13 +414,13 @@ public class PostRoutes{
 		}
 		String back=Utils.back(req);
 
-		LikeStorage.setPostLiked(self.user.id, postID, false);
+		int id=LikeStorage.setPostLiked(self.user.id, postID, false);
+		if(id==0)
+			return "";
 		if(!(post.user instanceof ForeignUser) && post.user.id!=self.user.id){
 			NotificationsStorage.deleteNotification(Notification.ObjectType.POST, postID, Notification.Type.LIKE, self.user.id);
 		}
-		if(post.user instanceof ForeignUser || post.owner instanceof ForeignUser){
-			ActivityPubWorker.getInstance().sendUndoLikeActivity(post, self.user);
-		}
+		ActivityPubWorker.getInstance().sendUndoLikeActivity(post, self.user, id);
 		if(isAjax(req)){
 			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
 			WebDeltaResponseBuilder b=new WebDeltaResponseBuilder(resp)

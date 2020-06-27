@@ -1,8 +1,10 @@
 package smithereen;
 
+/**
+ * Throw this from a route handler to produce a 404 Not Found response.
+ */
 public class ObjectNotFoundException extends RuntimeException{
 	public ObjectNotFoundException(){
-		super();
 	}
 
 	public ObjectNotFoundException(String message){

@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 import smithereen.Config;
 import smithereen.ObjectNotFoundException;
 import smithereen.Utils;
+import smithereen.data.ForeignUser;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.feed.NewsfeedEntry;
@@ -409,5 +411,66 @@ public class PostStorage{
 		}
 
 		return result;
+	}
+
+	public static List<URI> getInboxesForPostInteractionForwarding(Post post) throws SQLException{
+		// Interaction on a top-level post:
+		// - local: send to everyone who replied + the post's original addressees (followers + mentions if any)
+		// - remote: send to the owner server only. It forwards as it pleases.
+		// On a comment: do all of the above for the parent top-level post, and
+		// - local: send to any mentioned users
+		// - remote: send to the owner server, if not sent already if the parent post is local
+		ArrayList<URI> inboxes=new ArrayList<>();
+		Post origPost=post;
+		if(post.getReplyLevel()>0){
+			post=getPostByID(post.replyKey[0]);
+			if(post==null)
+				return Collections.EMPTY_LIST;
+		}
+		if(post.user instanceof ForeignUser){
+			return Collections.singletonList(((ForeignUser) post.user).inbox);
+		}
+		Connection conn=DatabaseConnectionManager.getConnection();
+		ArrayList<String> queryParts=new ArrayList<>();
+		if(post.local){
+			queryParts.add("SELECT owner_user_id FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)");
+			if(post.owner instanceof ForeignUser)
+				queryParts.add("SELECT "+post.owner.id);
+			else
+				queryParts.add("SELECT follower_id FROM followings WHERE followee_id="+post.owner.id);
+			if(post.mentionedUsers!=null && !post.mentionedUsers.isEmpty()){
+				for(User user:post.mentionedUsers){
+					if(user instanceof ForeignUser)
+						queryParts.add("SELECT "+user.id);
+				}
+			}
+		}else{
+			queryParts.add("SELECT "+post.user.id);
+		}
+		if(origPost!=post){
+			if(origPost.local){
+				if(origPost.mentionedUsers!=null && !origPost.mentionedUsers.isEmpty()){
+					for(User user:origPost.mentionedUsers){
+						if(user instanceof ForeignUser)
+							queryParts.add("SELECT "+user.id);
+					}
+				}
+			}else{
+				queryParts.add("SELECT "+origPost.user.id);
+			}
+		}
+		PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT IFNULL(ap_shared_inbox, ap_inbox) FROM users WHERE id IN (" +
+				String.join(" UNION ", queryParts) +
+				") AND ap_inbox IS NOT NULL");
+		if(post.local)
+			stmt.setBytes(1, Utils.serializeIntArray(new int[]{post.id}));
+		try(ResultSet res=stmt.executeQuery()){
+			if(res.first()){
+				do{
+					inboxes.add(URI.create(res.getString(1)));
+				}while(res.next());
+			}
+		}
+		return inboxes;
 	}
 }

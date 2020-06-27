@@ -26,11 +26,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import smithereen.BadRequestException;
 import smithereen.BuildInfo;
 import smithereen.ObjectNotFoundException;
 import smithereen.activitypub.ActivityPub;
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPubCache;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubCollection;
@@ -66,6 +68,8 @@ import smithereen.storage.UserStorage;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
+
+import static smithereen.Utils.*;
 
 public class ActivityPubRoutes{
 
@@ -327,11 +331,31 @@ public class ActivityPubRoutes{
 		return root;
 	}
 
+	public static Object likeObject(Request req, Response resp) throws SQLException{
+		int id=parseIntOrDefault(req.params(":likeID"), 0);
+		if(id==0)
+			throw new ObjectNotFoundException();
+		Like l=LikeStorage.getByID(id);
+		if(l==null)
+			throw new ObjectNotFoundException();
+		resp.type(CONTENT_TYPE);
+		return l.asRootActivityPubObject();
+	}
+
+	public static Object undoLikeObject(Request req, Response resp) throws SQLException{
+		int id=parseIntOrDefault(req.params(":likeID"), 0);
+		if(id==0)
+			throw new ObjectNotFoundException();
+		Undo undo=ActivityPubCache.getUndoneLike(id);
+		if(undo==null)
+			throw new ObjectNotFoundException();
+		return undo.asRootActivityPubObject();
+	}
+
 	private static Object inbox(Request req, Response resp, User owner) throws SQLException{
 		if(req.headers("digest")!=null){
 			if(!verifyHttpDigest(req.headers("digest"), req.bodyAsBytes())){
-				resp.status(400);
-				return "Digest verification failed";
+				throw new BadRequestException("Digest verification failed");
 			}
 		}
 		String body=req.body();

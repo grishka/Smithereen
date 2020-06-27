@@ -137,6 +137,12 @@ public class Main{
 			post("/sharedInbox", ActivityPubRoutes::sharedInbox);
 			getLoggedIn("/externalInteraction", ActivityPubRoutes::externalInteraction);
 			get("/nodeinfo/2.0", ActivityPubRoutes::nodeInfo);
+			path("/objects", ()->{
+				path("/likes/:likeID", ()->{
+					get("", ActivityPubRoutes::likeObject);
+					get("/undo", ActivityPubRoutes::undoLikeObject);
+				});
+			});
 		});
 
 		path("/.well-known", ()->{
@@ -222,6 +228,18 @@ public class Main{
 		});
 
 
+		exception(ObjectNotFoundException.class, (x, req, resp)->{
+			resp.status(404);
+			resp.body("Not found");
+		});
+		exception(BadRequestException.class, (x, req, resp)->{
+			resp.status(400);
+			String msg=x.getMessage();
+			if(StringUtils.isNotEmpty(msg))
+				resp.body("Bad request: "+msg.replace("<", "&lt;"));
+			else
+				resp.body("Bad request");
+		});
 		exception(Exception.class, (exception, req, res) -> {
 			System.out.println("Exception while processing "+req.requestMethod()+" "+req.raw().getPathInfo());
 			exception.printStackTrace();

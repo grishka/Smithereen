@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.Utils;
@@ -187,39 +188,29 @@ public class ActivityPubWorker{
 		}
 	}
 
-	public void sendLikeActivity(Post post, User user){
+	public void sendLikeActivity(Post post, User user, int likeID) throws SQLException{
 		Like like=new Like();
-		like.activityPubID=Config.localURI(user.getFullUsername()+"#likePost"+post.id);
+		like.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID);
 		like.actor=new LinkOrObject(user.activityPubID);
 		like.object=new LinkOrObject(post.activityPubID);
-		ArrayList<URI> inboxes=new ArrayList<>();
-		if(post.user instanceof ForeignUser){
-			inboxes.add(((ForeignUser) post.user).inbox);
-		}
-		if(post.owner.id!=post.user.id && post.owner instanceof ForeignUser){
-			inboxes.add(((ForeignUser) post.owner).inbox);
-		}
+		List<URI> inboxes=PostStorage.getInboxesForPostInteractionForwarding(post);
+		System.out.println("Inboxes:\n"+inboxes.stream().map(URI::toString).collect(Collectors.joining("\n")));
 		for(URI inbox:inboxes){
 			executor.submit(new SendOneActivityRunnable(like, inbox, user));
 		}
 	}
 
-	public void sendUndoLikeActivity(Post post, User user){
+	public void sendUndoLikeActivity(Post post, User user, int likeID) throws SQLException{
 		Like like=new Like();
-		like.activityPubID=Config.localURI(user.getFullUsername()+"#likePost"+post.id);
+		like.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID);
 		like.actor=new LinkOrObject(user.activityPubID);
 		like.object=new LinkOrObject(post.activityPubID);
 		Undo undo=new Undo();
-		undo.activityPubID=Config.localURI(user.getFullUsername()+"#unlikePost"+post.id);
+		undo.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID+"/undo");
 		undo.object=new LinkOrObject(like);
 		undo.actor=new LinkOrObject(user.activityPubID);
-		ArrayList<URI> inboxes=new ArrayList<>();
-		if(post.user instanceof ForeignUser){
-			inboxes.add(((ForeignUser) post.user).inbox);
-		}
-		if(post.owner.id!=post.user.id && post.owner instanceof ForeignUser){
-			inboxes.add(((ForeignUser) post.owner).inbox);
-		}
+		ActivityPubCache.putUndoneLike(likeID, undo);
+		List<URI> inboxes=PostStorage.getInboxesForPostInteractionForwarding(post);
 		for(URI inbox:inboxes){
 			executor.submit(new SendOneActivityRunnable(undo, inbox, user));
 		}

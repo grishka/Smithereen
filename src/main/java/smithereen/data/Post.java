@@ -67,16 +67,14 @@ public class Post extends ActivityPubObject{
 			cc=Arrays.asList(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(owner.activityPubID));
 		}
 		String apid=res.getString("ap_id");
-		try{
-			if(apid==null){
-				activityPubID=Config.localURI("/posts/"+id);
-				url=activityPubID;
-				local=true;
-			}else{
-				activityPubID=new URI(apid);
-				url=new URI(res.getString("ap_url"));
-			}
-		}catch(URISyntaxException ignore){}
+		if(apid==null){
+			activityPubID=Config.localURI("/posts/"+id);
+			url=activityPubID;
+			local=true;
+		}else{
+			activityPubID=URI.create(apid);
+			url=URI.create(res.getString("ap_url"));
+		}
 
 		String att=res.getString("attachments");
 		if(att!=null){
