@@ -30,6 +30,8 @@ Example object:
 }
 ```
 TODO: capability negotiation
+#### A note about comments
+Since this is modelled after VK, comments aren't supposed to appear in newsfeeds by themselves; they only exist in the context of a top-level post. Thus, comments aren't addressed to anyone's followers. They're addressed to `as:Public`, the top-level post author, the parent comment author, and mentioned users, if any.
 ### Friends and Followers
 Any bilateral followings are considered friends. Even though all followers are accepted automatically, `Accept{Follow}` is expected from remote servers. Actors from servers running software that allows manually reviewing and accepting followers, e.g. Mastodon, are supported.
 ### Friend requests
