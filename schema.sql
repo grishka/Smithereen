@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-06-14 20:08:41 +0000
+# Generation Time: 2020-07-01 21:03:28 +0000
 # ************************************************************
 
 
@@ -258,9 +258,6 @@ CREATE TABLE `wall_posts` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `content_warning` text,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `reply_to` int(11) unsigned DEFAULT NULL,
-  `reply_level` int(11) unsigned DEFAULT '0',
-  `reply_top_level_post` int(11) unsigned DEFAULT NULL,
   `reply_key` varbinary(1024) DEFAULT NULL,
   `mentions` varbinary(1024) DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -268,7 +265,6 @@ CREATE TABLE `wall_posts` (
   KEY `owner_user_id` (`owner_user_id`),
   KEY `repost_of` (`repost_of`),
   KEY `author_id` (`author_id`),
-  KEY `reply_level` (`reply_level`),
   KEY `reply_key` (`reply_key`),
   CONSTRAINT `wall_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `wall_posts_ibfk_2` FOREIGN KEY (`repost_of`) REFERENCES `wall_posts` (`id`) ON DELETE SET NULL ON UPDATE NO ACTION,
