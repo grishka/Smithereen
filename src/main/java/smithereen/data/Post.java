@@ -58,9 +58,17 @@ public class Post extends ActivityPubObject{
 		summary=res.getString("content_warning");
 		attributedTo=user.activityPubID;
 
+		byte[] rk=res.getBytes("reply_key");
+		replyKey=Utils.deserializeIntArray(rk);
+		if(replyKey==null)
+			replyKey=new int[0];
+
 		if(user.id==owner.id){
 			to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
-			cc=Collections.singletonList(new LinkOrObject(user.getFollowersURL()));
+			if(replyKey.length==0)
+				cc=Collections.singletonList(new LinkOrObject(user.getFollowersURL()));
+			else
+				cc=Collections.EMPTY_LIST;
 		}else{
 			to=Collections.EMPTY_LIST;
 			cc=Arrays.asList(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(owner.activityPubID));
@@ -83,11 +91,6 @@ public class Post extends ActivityPubObject{
 		}
 
 		userLink=user.url.toString();
-
-		byte[] rk=res.getBytes("reply_key");
-		replyKey=Utils.deserializeIntArray(rk);
-		if(replyKey==null)
-			replyKey=new int[0];
 
 		if(replyKey.length>0){
 			inReplyTo=PostStorage.getActivityPubID(replyKey[replyKey.length-1]);

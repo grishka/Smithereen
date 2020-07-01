@@ -65,14 +65,15 @@ public class ActivityPubWorker{
 				create.to=post.to;
 				create.cc=post.cc;
 				create.published=post.published;
-				try{
-					create.activityPubID=new URI(post.activityPubID.getScheme(), post.activityPubID.getSchemeSpecificPart()+"/activityCreate", null);
-				}catch(URISyntaxException ignore){}
+				create.activityPubID=Config.localURI(post.activityPubID.getPath()+"/activityCreate");
 				try{
 					boolean sendToFollowers=post.owner.id==post.user.id;
 					ArrayList<URI> inboxes=new ArrayList<>();
 					if(sendToFollowers){
-						inboxes.addAll(UserStorage.getFollowerInboxes(post.owner.id));
+						if(post.getReplyLevel()==0)
+							inboxes.addAll(UserStorage.getFollowerInboxes(post.owner.id));
+						else
+							inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
 					}else if(post.owner instanceof ForeignUser){
 						inboxes.add(((ForeignUser)post.owner).inbox);
 					}

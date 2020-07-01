@@ -111,6 +111,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Delete.class, ForeignUser.class, new DeletePersonHandler());
 	}
 
+	@SuppressWarnings("SameParameterValue")
 	private static <A extends Actor, T extends Activity, O extends ActivityPubObject> void registerActivityHandler(@NotNull Class<A> actorClass,
 																												   @NotNull Class<T> activityClass,
 																												   @NotNull Class<O> objectClass,
@@ -119,6 +120,7 @@ public class ActivityPubRoutes{
 //		System.out.println("Registered handler "+handler.getClass().getName()+" for "+actorClass.getSimpleName()+" -> "+activityClass.getSimpleName()+"{"+objectClass.getSimpleName()+"}");
 	}
 
+	@SuppressWarnings("SameParameterValue")
 	private static <A extends Actor, T extends Activity, N extends Activity, O extends ActivityPubObject> void registerActivityHandler(@NotNull Class<A> actorClass,
 																												   @NotNull Class<T> activityClass,
 																												   @NotNull Class<N> nestedActivityClass,
@@ -128,12 +130,13 @@ public class ActivityPubRoutes{
 //		System.out.println("Registered handler "+handler.getClass().getName()+" for "+actorClass.getSimpleName()+" -> "+activityClass.getSimpleName()+"{"+nestedActivityClass.getSimpleName()+"{"+objectClass.getSimpleName()+"}}");
 	}
 
+	@SuppressWarnings("SameParameterValue")
 	private static <A extends Actor, T extends Activity, N extends Activity, NN extends Activity, O extends ActivityPubObject> void registerActivityHandler(@NotNull Class<A> actorClass,
-																																	   @NotNull Class<T> activityClass,
-																																	   @NotNull Class<N> nestedActivityClass,
-																																	   @NotNull Class<NN> doublyNestedActivityClass,
-																																	   @NotNull Class<O> objectClass,
-																																	   @NotNull NestedActivityTypeHandler<A, T, N, O> handler){
+																																							@NotNull Class<T> activityClass,
+																																							@NotNull Class<N> nestedActivityClass,
+																																							@NotNull Class<NN> doublyNestedActivityClass,
+																																							@NotNull Class<O> objectClass,
+																																							@NotNull NestedActivityTypeHandler<A, T, N, O> handler){
 		typeHandlers.add(new ActivityTypeHandlerRecord<>(actorClass, activityClass, nestedActivityClass, doublyNestedActivityClass, objectClass, handler));
 //		System.out.println("Registered handler "+handler.getClass().getName()+" for "+actorClass.getSimpleName()+" -> "+activityClass.getSimpleName()+"{"+nestedActivityClass.getSimpleName()+"{"+doublyNestedActivityClass.getSimpleName()+"{"+objectClass.getSimpleName()+"}}}");
 	}
