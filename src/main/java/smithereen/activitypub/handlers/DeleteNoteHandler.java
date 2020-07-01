@@ -17,6 +17,13 @@ public class DeleteNoteHandler extends ActivityTypeHandler<ForeignUser, Delete, 
 		if(post.canBeManagedBy(actor)){
 			PostStorage.deletePost(post.id);
 			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
+			if(post.getReplyLevel()>0){
+				Post topLevel=PostStorage.getPostByID(post.replyKey[0]);
+				if(topLevel!=null && topLevel.local){
+					if(context.ldSignatureOwner!=null)
+						context.forwardActivity(PostStorage.getInboxesForPostInteractionForwarding(topLevel), topLevel.user);
+				}
+			}
 		}else{
 			throw new IllegalArgumentException("No access to delete this post");
 		}

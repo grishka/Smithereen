@@ -81,12 +81,11 @@ public class ActivityPub{
 		}
 	}
 
-	public static void postActivity(URI inboxUrl, Activity activity, User user) throws IOException{
-		//System.out.println("Sending activity: "+activity);
-		String path=inboxUrl.getPath();
-		String host=inboxUrl.getHost();
-		if(inboxUrl.getPort()!=-1)
-			host+=":"+inboxUrl.getPort();
+	private static Request.Builder signRequest(Request.Builder builder, URI url, User user){
+		String path=url.getPath();
+		String host=url.getHost();
+		if(url.getPort()!=-1)
+			host+=":"+url.getPort();
 		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
 		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 		String date=dateFormat.format(new Date());
@@ -106,16 +105,23 @@ public class ActivityPub{
 
 		String keyID=user.activityPubID+"#main-key";
 		String sigHeader="keyId=\""+keyID+"\",headers=\"(request-target) host date\",signature=\""+Base64.getEncoder().encodeToString(signature)+"\"";
+		builder.header("Signature", sigHeader).header("Date", date);
+		return builder;
+	}
 
+	public static void postActivity(URI inboxUrl, Activity activity, User user) throws IOException{
 		JSONObject body=activity.asRootActivityPubObject();
-		LinkedDataSignatures.sign(body, user.privateKey, keyID);
+		LinkedDataSignatures.sign(body, user.privateKey, user.activityPubID+"#main-key");
 		System.out.println("Sending activity: "+body);
+		postActivity(inboxUrl, body.toString(), user);
+	}
 
-		Request req=new Request.Builder()
-				.url(inboxUrl.toString())
-				.header("Signature", sigHeader)
-				.header("Date", date)
-				.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), body.toString()))
+	public static void postActivity(URI inboxUrl, String activityJson, User user) throws IOException{
+		Request req=signRequest(
+					new Request.Builder()
+					.url(inboxUrl.toString())
+					.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), activityJson)),
+				inboxUrl, user)
 				.build();
 		Response resp=httpClient.newCall(req).execute();
 		System.out.println(resp.toString());

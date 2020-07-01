@@ -27,6 +27,7 @@ import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
+import spark.utils.StringUtils;
 
 public abstract class ActivityPubObject{
 
@@ -170,7 +171,12 @@ public abstract class ActivityPubObject{
 		if(url==null || url.isEmpty())
 			return null;
 		try{
-			return new URI(url);
+			URI uri=new URI(url);
+			if(StringUtils.isEmpty(uri.getHost()))
+				throw new URISyntaxException(url, "Host is empty");
+			if(!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme()))
+				throw new URISyntaxException(url, "Invalid scheme");
+			return uri;
 		}catch(URISyntaxException x){
 			return null;
 		}

@@ -55,6 +55,14 @@ public class ActivityPubWorker{
 		return actor.sharedInbox!=null ? actor.sharedInbox : actor.inbox;
 	}
 
+	public void forwardActivity(String json, User signer, List<URI> inboxes, String originatingDomain){
+		for(URI inbox:inboxes){
+			if(inbox.getHost().equalsIgnoreCase(originatingDomain))
+				continue;
+			executor.submit(new ForwardOneActivityRunnable(json, inbox, signer));
+		}
+	}
+
 	public void sendCreatePostActivity(final Post post){
 		executor.submit(new Runnable(){
 			@Override
@@ -99,12 +107,8 @@ public class ActivityPubWorker{
 		executor.submit(new Runnable(){
 			@Override
 			public void run(){
-				Tombstone ts=new Tombstone();
-				ts.activityPubID=post.activityPubID;
-				ts.formerType="Note";
-
 				Delete delete=new Delete();
-				delete.object=new LinkOrObject(ts);
+				delete.object=new LinkOrObject(post.activityPubID);
 				delete.actor=new LinkOrObject(post.user.activityPubID);
 				delete.to=post.to;
 				delete.cc=post.cc;
@@ -114,13 +118,21 @@ public class ActivityPubWorker{
 				}catch(URISyntaxException ignore){}
 				try{
 					boolean sendToFollowers=post.owner.id==post.user.id;
-					List<URI> inboxes;
+					ArrayList<URI> inboxes=new ArrayList<>();
 					if(sendToFollowers){
-						inboxes=UserStorage.getFollowerInboxes(post.owner.id);
+						if(post.getReplyLevel()==0)
+							inboxes.addAll(UserStorage.getFollowerInboxes(post.owner.id));
+						else
+							inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
 					}else if(post.owner instanceof ForeignUser){
-						inboxes=Collections.singletonList(((ForeignUser) post.owner).inbox);
-					}else{
-						return;
+						inboxes.add(((ForeignUser)post.owner).inbox);
+					}
+					for(User user:post.mentionedUsers){
+						if(user instanceof ForeignUser){
+							URI inbox=actorInbox((ForeignUser) user);
+							if(!inboxes.contains(inbox))
+								inboxes.add(inbox);
+						}
 					}
 					System.out.println("Inboxes: "+inboxes);
 					for(URI inbox:inboxes){
@@ -236,6 +248,27 @@ public class ActivityPubWorker{
 		private User user;
 
 		public SendOneActivityRunnable(Activity activity, URI destination, User user){
+			this.activity=activity;
+			this.destination=destination;
+			this.user=user;
+		}
+
+		@Override
+		public void run(){
+			try{
+				ActivityPub.postActivity(destination, activity, user);
+			}catch(Exception x){
+				x.printStackTrace();
+			}
+		}
+	}
+
+	private static class ForwardOneActivityRunnable implements Runnable{
+		private String activity;
+		private URI destination;
+		private User user;
+
+		public ForwardOneActivityRunnable(String activity, URI destination, User user){
 			this.activity=activity;
 			this.destination=destination;
 			this.user=user;

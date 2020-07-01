@@ -27,6 +27,8 @@ public class LikeNoteHandler extends ActivityTypeHandler<ForeignUser, Like, Post
 			n.objectID=post.id;
 			n.objectType=Notification.ObjectType.POST;
 			NotificationsStorage.putNotification(post.user.id, n);
+			if(context.ldSignatureOwner!=null)
+				context.forwardActivity(PostStorage.getInboxesForPostInteractionForwarding(post), post.user);
 		}
 	}
 }
