@@ -171,12 +171,7 @@ public abstract class ActivityPubObject{
 		if(url==null || url.isEmpty())
 			return null;
 		try{
-			URI uri=new URI(url);
-			if(StringUtils.isEmpty(uri.getHost()))
-				throw new URISyntaxException(url, "Host is empty");
-			if(!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme()))
-				throw new URISyntaxException(url, "Invalid scheme");
-			return uri;
+			return new URI(url);
 		}catch(URISyntaxException x){
 			return null;
 		}
