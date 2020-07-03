@@ -14,7 +14,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import smithereen.Config;
 import static smithereen.Utils.*;
@@ -170,7 +169,7 @@ public class PostRoutes{
 
 			Post parent=null;
 			if(replyTo!=0){
-				parent=PostStorage.getPostByID(replyTo);
+				parent=PostStorage.getPostByID(replyTo, false);
 				if(parent==null){
 					resp.status(404);
 					return Utils.wrapError(req, resp, "err_post_not_found");
@@ -184,7 +183,7 @@ public class PostRoutes{
 				}
 				mentionedUsers.add(parent.user);
 				if(parent.replyKey.length>1){
-					Post topLevel=PostStorage.getPostByID(parent.replyKey[0]);
+					Post topLevel=PostStorage.getPostByID(parent.replyKey[0], false);
 					if(topLevel!=null)
 						mentionedUsers.add(topLevel.user);
 				}
@@ -193,7 +192,7 @@ public class PostRoutes{
 				postID=PostStorage.createUserWallPost(userID, user.id, text, null, mentionedUsers, attachments);
 			}
 
-			Post post=PostStorage.getPostByID(postID);
+			Post post=PostStorage.getPostByID(postID, false);
 			if(post==null)
 				throw new IllegalStateException("?!");
 			ActivityPubWorker.getInstance().sendCreatePostActivity(post);
@@ -255,7 +254,7 @@ public class PostRoutes{
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
-		Post post=PostStorage.getPostByID(postID);
+		Post post=PostStorage.getPostByID(postID, false);
 		if(post==null){
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");
@@ -340,7 +339,7 @@ public class PostRoutes{
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
-		Post post=PostStorage.getPostByID(postID);
+		Post post=PostStorage.getPostByID(postID, false);
 		if(post==null){
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");
@@ -370,7 +369,7 @@ public class PostRoutes{
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
-		Post post=PostStorage.getPostByID(postID);
+		Post post=PostStorage.getPostByID(postID, false);
 		if(post==null){
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");
@@ -407,7 +406,7 @@ public class PostRoutes{
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
-		Post post=PostStorage.getPostByID(postID);
+		Post post=PostStorage.getPostByID(postID, false);
 		if(post==null){
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");
@@ -441,7 +440,7 @@ public class PostRoutes{
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
-		Post post=PostStorage.getPostByID(postID);
+		Post post=PostStorage.getPostByID(postID, false);
 		if(post==null){
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");
@@ -481,7 +480,7 @@ public class PostRoutes{
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
-		Post post=PostStorage.getPostByID(postID);
+		Post post=PostStorage.getPostByID(postID, false);
 		if(post==null){
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_post_not_found");

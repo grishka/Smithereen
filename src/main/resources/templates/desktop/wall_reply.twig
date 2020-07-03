@@ -5,6 +5,7 @@
 		{%-if post.replyLevel>1%}
 		<td width="{{(post.replyLevel-1)*16}}" class="treeIndent">&nbsp;</td>
 		{%-endif%}
+		{%-if not(post.deleted)%}
 		<td width="40" valign="top">
 			<a href="{{post.user.profileURL}}">{{pictureForAvatar(post.user, 's', 40)}}</a>
 		</td>
@@ -29,6 +30,11 @@
 				{%-endif%}
 			</div>
 		</td>
+		{%else%}
+		<td class="postContentWrap">
+			<i>{{L('deleted_placeholder')}}</i>
+		</td>
+		{%endif%}
 	</tr>
 </table>
 <div id="postReplies{{post.id}}" class="replies">

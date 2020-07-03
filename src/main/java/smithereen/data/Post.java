@@ -18,7 +18,9 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
+import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
@@ -34,6 +36,7 @@ public class Post extends ActivityPubObject{
 	public int id;
 	public User user;
 	public User owner;
+	private boolean deleted;
 
 	public String userLink;
 
@@ -51,17 +54,39 @@ public class Post extends ActivityPubObject{
 
 	protected void fillFromResultSet(ResultSet res) throws SQLException{
 		id=res.getInt("id");
-		content=res.getString("text");
-		published=res.getTimestamp("created_at");
-		user=UserStorage.getById(res.getInt("author_id"));
-		owner=UserStorage.getById(res.getInt("owner_user_id"));
-		summary=res.getString("content_warning");
-		attributedTo=user.activityPubID;
+
+		String apid=res.getString("ap_id");
+		if(apid==null){
+			activityPubID=Config.localURI("/posts/"+id);
+			url=activityPubID;
+			local=true;
+		}else{
+			activityPubID=URI.create(apid);
+			url=URI.create(res.getString("ap_url"));
+		}
 
 		byte[] rk=res.getBytes("reply_key");
 		replyKey=Utils.deserializeIntArray(rk);
 		if(replyKey==null)
 			replyKey=new int[0];
+
+		if(replyKey.length>0){
+			inReplyTo=PostStorage.getActivityPubID(replyKey[replyKey.length-1]);
+		}
+
+		int uid=res.getInt("author_id");
+		if(!res.wasNull()){
+			user=UserStorage.getById(uid);
+			owner=UserStorage.getById(res.getInt("owner_user_id"));
+		}else{
+			deleted=true;
+			return;
+		}
+
+		content=res.getString("text");
+		published=res.getTimestamp("created_at");
+		summary=res.getString("content_warning");
+		attributedTo=user.activityPubID;
 
 		if(user.id==owner.id){
 			to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
@@ -73,15 +98,6 @@ public class Post extends ActivityPubObject{
 			to=Collections.EMPTY_LIST;
 			cc=Arrays.asList(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(owner.activityPubID));
 		}
-		String apid=res.getString("ap_id");
-		if(apid==null){
-			activityPubID=Config.localURI("/posts/"+id);
-			url=activityPubID;
-			local=true;
-		}else{
-			activityPubID=URI.create(apid);
-			url=URI.create(res.getString("ap_url"));
-		}
 
 		String att=res.getString("attachments");
 		if(att!=null){
@@ -91,10 +107,6 @@ public class Post extends ActivityPubObject{
 		}
 
 		userLink=user.url.toString();
-
-		if(replyKey.length>0){
-			inReplyTo=PostStorage.getActivityPubID(replyKey[replyKey.length-1]);
-		}
 
 		int[] mentions=Utils.deserializeIntArray(res.getBytes("mentions"));
 		if(mentions!=null && mentions.length>0){
@@ -120,12 +132,28 @@ public class Post extends ActivityPubObject{
 
 	@Override
 	public String getType(){
+		if(deleted)
+			return "Tombstone";
 		return "Note";
 	}
 
 	@Override
 	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
 		JSONObject root=super.asActivityPubObject(obj, contextCollector);
+
+		ActivityPubCollection replies=new ActivityPubCollection(false);
+		replies.activityPubID=Config.localURI("/posts/"+id+"/replies");
+		CollectionPage repliesPage=new CollectionPage(false);
+		repliesPage.next=Config.localURI("/posts/"+id+"/replies?offset=0&count=50");
+		repliesPage.partOf=replies.activityPubID;
+		repliesPage.items=Collections.EMPTY_LIST;
+		replies.first=new LinkOrObject(repliesPage);
+		root.put("replies", replies.asActivityPubObject(new JSONObject(), contextCollector));
+
+		if(deleted){
+			root.put("formerType", "Note");
+			return root;
+		}
 		root.put("sensitive", hasContentWarning());
 		contextCollector.addAlias("sensitive", "as:sensitive");
 
@@ -212,6 +240,18 @@ public class Post extends ActivityPubObject{
 
 	public int getReplyLevel(){
 		return replyKey.length;
+	}
+
+	// Reply key for posts that reply to this one.
+	public int[] getReplyKeyForReplies(){
+		int[] r=new int[replyKey.length+1];
+		System.arraycopy(replyKey, 0, r, 0, replyKey.length);
+		r[r.length-1]=id;
+		return r;
+	}
+
+	public boolean isDeleted(){
+		return deleted;
 	}
 
 	// for use in templates

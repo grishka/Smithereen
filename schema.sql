@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-07-01 21:03:28 +0000
+# Generation Time: 2020-07-03 12:40:30 +0000
 # ************************************************************
 
 
@@ -247,10 +247,10 @@ CREATE TABLE `users` (
 
 CREATE TABLE `wall_posts` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `author_id` int(11) unsigned NOT NULL,
+  `author_id` int(11) unsigned DEFAULT NULL,
   `owner_user_id` int(11) unsigned DEFAULT NULL,
   `owner_group_id` int(11) unsigned DEFAULT NULL,
-  `text` text NOT NULL,
+  `text` text,
   `attachments` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
   `repost_of` int(11) unsigned DEFAULT NULL,
   `ap_url` varchar(300) DEFAULT NULL,

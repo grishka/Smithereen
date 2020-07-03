@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 import smithereen.BadRequestException;
 import smithereen.BuildInfo;
@@ -160,12 +161,52 @@ public class ActivityPubRoutes{
 		if(postID==0){
 			throw new ObjectNotFoundException();
 		}
-		Post post=PostStorage.getPostByID(postID);
+		Post post=PostStorage.getPostByID(postID, true);
 		if(post==null || !Config.isLocal(post.activityPubID)){
 			throw new ObjectNotFoundException();
 		}
 		resp.type(CONTENT_TYPE);
 		return post.asRootActivityPubObject();
+	}
+
+	public static Object postReplies(Request req, Response resp) throws SQLException{
+		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		if(postID==0){
+			throw new ObjectNotFoundException();
+		}
+		Post post=PostStorage.getPostByID(postID, true);
+		if(post==null || !Config.isLocal(post.activityPubID)){
+			throw new ObjectNotFoundException();
+		}
+		resp.type(CONTENT_TYPE);
+		int offset=Math.max(parseIntOrDefault(req.queryParams("offset"), 0), 0);
+		int count=Math.min(Math.max(parseIntOrDefault(req.queryParams("count"), 0), 0), 100);
+		if(count==0){
+			ActivityPubCollection replies=new ActivityPubCollection(false);
+			replies.activityPubID=Config.localURI("/posts/"+post.id+"/replies");
+			CollectionPage repliesPage=new CollectionPage(false);
+			repliesPage.next=Config.localURI("/posts/"+post.id+"/replies?offset=0&count=50");
+			repliesPage.partOf=replies.activityPubID;
+			repliesPage.items=Collections.EMPTY_LIST;
+			replies.first=new LinkOrObject(repliesPage);
+			return replies.asRootActivityPubObject();
+		}
+		int[] _total={0};
+		List<URI> ids=PostStorage.getImmediateReplyActivityPubIDs(post.getReplyKeyForReplies(), offset, count, _total);
+		int total=_total[0];
+		CollectionPage page=new CollectionPage(false);
+		page.activityPubID=Config.localURI("/posts/"+post.id+"/replies?offset="+offset+"&count="+count);
+		page.partOf=Config.localURI("/posts/"+post.id+"/replies");
+		page.totalItems=total;
+		if(offset+count<total){
+			page.next=Config.localURI("/posts/"+post.id+"/replies?offset="+(offset+count)+"&count="+count);
+		}
+		if(offset>0){
+			page.prev=Config.localURI("/posts/"+post.id+"/replies?offset="+Math.max(offset-count, 0)+"&count="+count);
+			page.first=new LinkOrObject(Config.localURI("/posts/"+post.id+"/replies?offset=0&count="+count));
+		}
+		page.items=ids.stream().map(LinkOrObject::new).collect(Collectors.toList());
+		return page.asRootActivityPubObject();
 	}
 
 	public static Object inbox(Request req, Response resp) throws SQLException{

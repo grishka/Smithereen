@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.MultipartConfigElement;
@@ -27,7 +26,6 @@ import smithereen.data.PhotoSize;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
-import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.libvips.VImage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
@@ -117,7 +115,7 @@ public class SystemRoutes{
 			}
 		}else if("post_photo".equals(type)){
 			itemType=MediaCache.ItemType.PHOTO;
-			Post post=PostStorage.getPostByID(Utils.parseIntOrDefault(req.queryParams("post_id"), 0));
+			Post post=PostStorage.getPostByID(Utils.parseIntOrDefault(req.queryParams("post_id"), 0), false);
 			if(post==null || Config.isLocal(post.activityPubID))
 				return "";
 			int index=Utils.parseIntOrDefault(req.queryParams("index"), 0);

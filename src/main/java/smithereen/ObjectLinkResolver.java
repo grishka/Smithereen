@@ -25,7 +25,7 @@ public class ObjectLinkResolver{
 		int id=parseIntOrDefault(_id, 0);
 		if(id==0)
 			throw new ObjectNotFoundException("Invalid local post ID");
-		Post post=PostStorage.getPostByID(id);
+		Post post=PostStorage.getPostByID(id, false);
 		if(post==null)
 			throw new ObjectNotFoundException("Post with ID "+id+" not found");
 		return post;

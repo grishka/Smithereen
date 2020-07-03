@@ -51,7 +51,7 @@ public class NotificationsRoutes{
 		for(Integer pid:needPosts){
 			if(posts.containsKey(pid))
 				continue;
-			posts.put(pid, PostStorage.getPostByID(pid));
+			posts.put(pid, PostStorage.getPostByID(pid, false));
 		}
 
 		model.with("users", users).with("posts", posts);

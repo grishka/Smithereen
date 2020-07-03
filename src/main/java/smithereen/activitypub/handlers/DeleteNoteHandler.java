@@ -18,7 +18,7 @@ public class DeleteNoteHandler extends ActivityTypeHandler<ForeignUser, Delete, 
 			PostStorage.deletePost(post.id);
 			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
 			if(post.getReplyLevel()>0){
-				Post topLevel=PostStorage.getPostByID(post.replyKey[0]);
+				Post topLevel=PostStorage.getPostByID(post.replyKey[0], false);
 				if(topLevel!=null && topLevel.local){
 					if(context.ldSignatureOwner!=null)
 						context.forwardActivity(PostStorage.getInboxesForPostInteractionForwarding(topLevel), topLevel.user);

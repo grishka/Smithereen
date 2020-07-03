@@ -247,12 +247,15 @@ public class PostStorage{
 		return posts;
 	}
 
-	public static Post getPostByID(int postID) throws SQLException{
+	public static Post getPostByID(int postID, boolean wantDeleted) throws SQLException{
 		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("SELECT * FROM wall_posts WHERE id=?");
 		stmt.setInt(1, postID);
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
-				return Post.fromResultSet(res);
+				Post post=Post.fromResultSet(res);
+				if(post.isDeleted() && !wantDeleted)
+					return null;
+				return post;
 			}
 		}
 		return null;
@@ -266,7 +269,7 @@ public class PostStorage{
 			if(!"posts".equals(posts) || postID==0){
 				throw new ObjectNotFoundException("Invalid local URL "+apID);
 			}
-			return getPostByID(postID);
+			return getPostByID(postID, false);
 		}
 		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("SELECT * FROM `wall_posts` WHERE `ap_id`=?");
 		stmt.setString(1, apID.toString());
@@ -280,12 +283,36 @@ public class PostStorage{
 
 	public static void deletePost(int id) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("DELETE FROM `wall_posts` WHERE `id`=?");
-		stmt.setInt(1, id);
-		stmt.execute();
-		stmt=conn.prepareStatement("DELETE FROM `newsfeed` WHERE (`type`=0 OR `type`=1) AND `object_id`=?");
-		stmt.setInt(1, id);
-		stmt.execute();
+		Post post=getPostByID(id, false);
+		if(post==null)
+			return;
+		PreparedStatement stmt;
+		boolean needFullyDelete=true;
+		if(post.getReplyLevel()>0){
+			stmt=conn.prepareStatement("SELECT COUNT(*) FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)");
+			int[] rk=new int[post.replyKey.length+1];
+			System.arraycopy(post.replyKey, 0, rk, 0, post.replyKey.length);
+			rk[rk.length-1]=post.id;
+			stmt.setBytes(1, Utils.serializeIntArray(rk));
+			try(ResultSet res=stmt.executeQuery()){
+				res.first();
+				needFullyDelete=res.getInt(1)==0;
+			}
+		}
+
+		if(needFullyDelete){
+			stmt=conn.prepareStatement("DELETE FROM `wall_posts` WHERE `id`=?");
+			stmt.setInt(1, id);
+			stmt.execute();
+			stmt=conn.prepareStatement("DELETE FROM `newsfeed` WHERE (`type`=0 OR `type`=1) AND `object_id`=?");
+			stmt.setInt(1, id);
+			stmt.execute();
+		}else{
+			// (comments don't exist in the feed anyway)
+			stmt=conn.prepareStatement("UPDATE wall_posts SET author_id=NULL, owner_user_id=NULL, owner_group_id=NULL, text=NULL, attachments=NULL, content_warning=NULL, updated_at=NULL, mentions=NULL WHERE id=?");
+			stmt.setInt(1, id);
+			stmt.execute();
+		}
 	}
 
 	public static List<Post> getRepliesForFeed(int postID) throws SQLException{
@@ -423,7 +450,7 @@ public class PostStorage{
 		ArrayList<URI> inboxes=new ArrayList<>();
 		Post origPost=post;
 		if(post.getReplyLevel()>0){
-			post=getPostByID(post.replyKey[0]);
+			post=getPostByID(post.replyKey[0], false);
 			if(post==null)
 				return Collections.EMPTY_LIST;
 		}
@@ -472,5 +499,34 @@ public class PostStorage{
 			}
 		}
 		return inboxes;
+	}
+
+	public static List<URI> getImmediateReplyActivityPubIDs(int[] replyKey, int offset, int count, int[] total) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		byte[] serializedKey=Utils.serializeIntArray(replyKey);
+		PreparedStatement stmt=conn.prepareStatement("SELECT count(*) FROM wall_posts WHERE reply_key=?");
+		stmt.setBytes(1, serializedKey);
+		try(ResultSet res=stmt.executeQuery()){
+			res.first();
+			total[0]=res.getInt(1);
+		}
+		stmt=conn.prepareStatement("SELECT ap_id, id FROM wall_posts WHERE reply_key=? ORDER BY created_at ASC LIMIT ?,?");
+		stmt.setBytes(1, serializedKey);
+		stmt.setInt(2, offset);
+		stmt.setInt(3, count);
+		try(ResultSet res=stmt.executeQuery()){
+			if(res.first()){
+				ArrayList<URI> replies=new ArrayList<>();
+				do{
+					String apID=res.getString(1);
+					if(apID!=null)
+						replies.add(URI.create(apID));
+					else
+						replies.add(Config.localURI("/posts/"+res.getInt(2)));
+				}while(res.next());
+				return replies;
+			}
+			return Collections.EMPTY_LIST;
+		}
 	}
 }

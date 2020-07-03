@@ -10,7 +10,7 @@ import smithereen.activitypub.ParserContext;
 
 public class ActivityPubCollection extends ActivityPubObject{
 
-	public int totalItems;
+	public int totalItems=-1;
 	public URI current;
 	public LinkOrObject first;
 	public URI last;
@@ -30,7 +30,8 @@ public class ActivityPubCollection extends ActivityPubObject{
 	@Override
 	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
-		obj.put("totalItems", totalItems);
+		if(totalItems>0)
+			obj.put("totalItems", totalItems);
 		if(current!=null)
 			obj.put("current", current.toString());
 		if(first!=null)
@@ -45,7 +46,7 @@ public class ActivityPubCollection extends ActivityPubObject{
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		totalItems=obj.optInt("totalItems");
+		totalItems=obj.optInt("totalItems", -1);
 		current=tryParseURL(obj.optString("current"));
 		first=tryParseLinkOrObject(obj.optString("first"), parserContext);
 		last=tryParseURL(obj.optString("last"));
