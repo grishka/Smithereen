@@ -59,11 +59,26 @@ public class Main{
 	}
 
 	public static void main(String[] args){
+		if(args.length==0){
+			System.err.println("You need to specify the path to the config file as the first argument:\njava -jar smithereen.jar config.properties");
+			System.exit(1);
+		}
+
 		try{
 			Config.load(args[0]);
 			Config.loadFromDatabase();
 		}catch(IOException|SQLException x){
 			throw new RuntimeException(x);
+		}
+
+		if(args.length>1){
+			if(args[1].equalsIgnoreCase("init_admin")){
+				CLI.initializeAdmin();
+			}else{
+				System.err.println("Unknown argument: '"+args[1]+"'");
+				System.exit(1);
+			}
+			return;
 		}
 
 		ActivityPubRoutes.registerActivityHandlers();

@@ -35,5 +35,7 @@ RUN ARCH= && \
   mv jniPrebuilt/linux-$ARCH/libvips_jni.so libvips_jni.so && \
   rm -rf jniPrebuilt
 
+RUN echo -e '#!/bin/bash\njava -jar /opt/smithereen/smithereen.jar /usr/local/etc/config.properties init_admin' > smithereen-init-admin && chmod +x smithereen-init-admin
+
 EXPOSE 4567
 ENTRYPOINT java -jar /opt/smithereen/smithereen.jar /usr/local/etc/config.properties
