@@ -1,4 +1,4 @@
-name: Java & JNI CI
+name: Java CI
 
 on: [push]
 
@@ -22,29 +22,6 @@ jobs:
             ${{ runner.os }}-build-cache-maven-
             ${{ runner.os }}-build-
             ${{ runner.os }}-
-      - name: Cache libvips
-        uses: actions/cache@v1
-        with:
-          path: vips-8.8.4
-          key: ${{ runner.os }}-build-cache-libvips-8.8.4
-          restore-keys: |
-            ${{ runner.os }}-build-cache-libvips-8.8.4
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-      - name: Install libvips dependencies
-        run: sudo apt-get install libglib2.0-dev libpng-dev libjpeg-dev libgif-dev libwebp-dev libexpat-dev
-      - name: Download libvips 8.8.4
-        run: "if [[ ! -d vips-8.8.4 ]]; then curl -sL https://github.com/libvips/libvips/releases/download/v8.8.4/vips-8.8.4.tar.gz | tar xzvf -; fi"
-      - name: Build libvips
-        working-directory: ./vips-8.8.4
-        run: '[[ ! -f Makefile ]] && ./configure && make -j4; sudo make install'
-      - name: Build JNI library
-        run: g++ src/main/jni/libvips_jni.cpp -o libvips_jni.so -lvips -lpng -ljpeg -lglib-2.0 -lgobject-2.0 -lgmodule-2.0 -lgif -lwebp -lwebpmux -lwebpdemux -lexpat -shared `pkg-config --cflags-only-I glib-2.0` -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -std=c++11 -fPIC
-      - name: Upload JNI artifact
-        uses: actions/upload-artifact@v1
-        with:
-          name: libvips_jni.so
-          path: libvips_jni.so
       - name: Build with Maven
         run: mvn -B package --file pom.xml
       - name: Upload JAR artifact
