@@ -15,7 +15,7 @@ FROM openjdk:11-stretch
 SHELL ["bash", "-c"]
 
 RUN apt-get update
-RUN apt-get install -y --no-install-recommends libglib2.0-0 libpng16-16 libjpeg62-turbo libgif7 libwebp6 libexpat1
+RUN apt-get install -y --no-install-recommends libglib2.0-0 libpng16-16 libjpeg62-turbo libgif7 libwebp6 libwebpmux2 libwebpdemux2 libexpat1
 
 RUN mkdir -p /opt/smithereen
 WORKDIR /opt/smithereen
