@@ -1,0 +1,36 @@
+version: "3"
+services:
+ web:
+  build: .
+  ports:
+   - '4567:4567'
+  networks:
+   - external_network
+   - internal_network
+  depends_on:
+   - mysql
+  volumes:
+   - ./config.properties:/usr/local/etc/config.properties
+   # These need to be somewhere accessible by the web server.
+   # Change to whatever your web root is if it's not /var/www.
+   - /var/www/s/uploads:/opt/smithereen/uploads
+   - /var/www/s/media_cache:/opt/smithereen/media_cache
+  restart: always
+ mysql:
+  image: mysql:5
+  environment:
+   MYSQL_ROOT_PASSWORD: smithereen
+   MYSQL_DATABASE: smithereen
+  networks:
+   - internal_network
+  healthcheck:
+   test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+  volumes:
+   - ./mysql-data:/var/lib/mysql
+   - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+  restart: always
+
+networks:
+  external_network:
+  internal_network:
+    internal: true
