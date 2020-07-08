@@ -38,4 +38,4 @@ RUN ARCH= && \
 RUN echo -e '#!/bin/bash\njava -jar /opt/smithereen/smithereen.jar /usr/local/etc/config.properties init_admin' > smithereen-init-admin && chmod +x smithereen-init-admin
 
 EXPOSE 4567
-ENTRYPOINT java -jar /opt/smithereen/smithereen.jar /usr/local/etc/config.properties
+ENTRYPOINT java -Djava.library.path=/opt/smithereen -jar /opt/smithereen/smithereen.jar /usr/local/etc/config.properties
