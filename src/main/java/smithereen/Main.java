@@ -29,6 +29,7 @@ import smithereen.routes.SessionRoutes;
 import smithereen.routes.SettingsAdminRoutes;
 import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
+import smithereen.storage.DatabaseSchemaUpdater;
 import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
 import smithereen.storage.UserStorage;
@@ -67,6 +68,7 @@ public class Main{
 		try{
 			Config.load(args[0]);
 			Config.loadFromDatabase();
+			DatabaseSchemaUpdater.maybeUpdate();
 		}catch(IOException|SQLException x){
 			throw new RuntimeException(x);
 		}
