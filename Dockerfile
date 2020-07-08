@@ -8,7 +8,7 @@ RUN mvn dependency:go-offline
 COPY . .
 RUN mvn package
 
-FROM openjdk:11
+FROM openjdk:11-stretch
 
 # Install dependencies
 
