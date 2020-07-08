@@ -159,9 +159,9 @@ public class Post extends ActivityPubObject{
 
 		if(getReplyLevel()==0 && user.id!=owner.id){
 			if(owner instanceof ForeignUser)
-				root.put("partOf", ((ForeignUser) owner).outbox);
+				root.put("partOf", ((ForeignUser) owner).outbox.toString());
 			else
-				root.put("partOf", Config.localURI("/users/"+owner.id+"/outbox"));
+				root.put("partOf", Config.localURI("/users/"+owner.id+"/outbox").toString());
 		}
 
 		return root;
