@@ -41,12 +41,10 @@ public class Utils{
 
 	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my");
 	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
-	private static final SimpleDateFormat ISO_DATE_FORMAT;
+	private static final ThreadLocal<SimpleDateFormat> ISO_DATE_FORMAT=new ThreadLocal<>();
 	public static final String staticFileHash;
 
 	static{
-		ISO_DATE_FORMAT=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
-		ISO_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
 		staticFileHash=String.format(Locale.US, "%016x", new Random().nextLong());
 	}
 
@@ -234,13 +232,23 @@ public class Utils{
 		return Jsoup.clean(src, documentLocation.toString(), HTML_SANITIZER);
 	}
 
+	private static SimpleDateFormat isoDateFormat(){
+		SimpleDateFormat format=ISO_DATE_FORMAT.get();
+		if(format!=null)
+			return format;
+		format=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
+		format.setTimeZone(TimeZone.getTimeZone("GMT"));
+		ISO_DATE_FORMAT.set(format);
+		return format;
+	}
+
 	public static String formatDateAsISO(Date date){
-		return ISO_DATE_FORMAT.format(date);
+		return isoDateFormat().format(date);
 	}
 
 	public static Date parseISODate(String date){
 		try{
-			return ISO_DATE_FORMAT.parse(date);
+			return isoDateFormat().parse(date);
 		}catch(ParseException e){
 			return null;
 		}
