@@ -4,7 +4,7 @@
 	<!-- commercialized internet sucks ass -->
 	<title>{{ title }}</title>
 	<link rel="stylesheet" type="text/css" href="/res/desktop.css?{{staticHash}}"/>
-	{%if metaTags%}{%for tag in metaTags%}<meta property="{{tag.key}}" content="{{tag.value}}"/>
+	{%if metaTags is not null%}{%for tag in metaTags%}<meta property="{{tag.key}}" content="{{tag.value}}"/>
 	{%endfor%}{%endif%}
 	<script>
 		var userConfig={{jsConfig | raw}};
