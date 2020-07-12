@@ -2,7 +2,6 @@ package smithereen.routes;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.jtwig.JtwigModel;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -42,6 +41,7 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -201,7 +201,7 @@ public class PostRoutes{
 			SessionInfo sess=sessionInfo(req);
 			sess.postDraftAttachments.clear();
 			if(isAjax(req)){
-				String postHTML=Utils.renderTemplate(req, replyTo!=0 ? "wall_reply" : "wall_post", JtwigModel.newModel().with("post", post));
+				String postHTML=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post").with("post", post).renderToString(req);
 				resp.type("application/json");
 				WebDeltaResponseBuilder rb;
 				if(replyTo==0)
@@ -242,10 +242,10 @@ public class PostRoutes{
 		if(!feed.isEmpty() && startFromID==0)
 			startFromID=feed.get(0).id;
 		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete");
-		JtwigModel model=JtwigModel.newModel().with("title", Utils.lang(req).get("feed")).with("feed", feed).with("postInteractions", interactions)
+		return new RenderedTemplateResponse("feed").with("title", Utils.lang(req).get("feed")).with("feed", feed).with("postInteractions", interactions)
 				.with("paginationURL", "/feed?startFrom="+startFromID+"&offset=").with("total", total[0]).with("offset", offset)
-				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
-		return Utils.renderTemplate(req, "feed", model);
+				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments)
+				.renderToString(req);
 	}
 
 	public static Object standalonePost(Request req, Response resp) throws SQLException{
@@ -263,7 +263,7 @@ public class PostRoutes{
 		System.arraycopy(post.replyKey, 0, replyKey, 0, post.replyKey.length);
 		replyKey[replyKey.length-1]=post.id;
 		post.replies=PostStorage.getReplies(replyKey);
-		JtwigModel model=JtwigModel.newModel();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone");
 		model.with("post", post);
 		SessionInfo info=Utils.sessionInfo(req);
 		if(info!=null && info.account!=null)
@@ -278,7 +278,7 @@ public class PostRoutes{
 		model.with("postInteractions", interactions);
 		if(info==null || info.account==null){
 			HashMap<String, String> meta=new LinkedHashMap<>();
-			meta.put("og:site_name", "Smithereen");
+			meta.put("og:site_name", Config.serverDisplayName);
 			meta.put("og:type", "article");
 			meta.put("og:title", post.user.getFullName());
 			meta.put("og:url", post.url.toString());
@@ -319,7 +319,7 @@ public class PostRoutes{
 		if(post.getReplyLevel()>0){
 			model.with("jsRedirect", "/posts/"+post.replyKey[0]+"#comment"+post.id);
 		}
-		return Utils.renderTemplate(req, "wall_post_standalone", model);
+		return model.renderToString(req);
 	}
 
 	public static Object confirmDelete(Request req, Response resp, Account self) throws SQLException{
@@ -330,7 +330,7 @@ public class PostRoutes{
 			return Utils.wrapError(req, resp, "err_post_not_found");
 		}
 		String back=Utils.back(req);
-		return Utils.renderTemplate(req, "generic_confirm", JtwigModel.newModel().with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete?_redir="+URLEncoder.encode(back))).with("back", back));
+		return new RenderedTemplateResponse("generic_confirm").with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete?_redir="+URLEncoder.encode(back))).with("back", back).renderToString(req);
 	}
 
 	public static Object delete(Request req, Response resp, Account self) throws SQLException{
@@ -451,7 +451,7 @@ public class PostRoutes{
 		ArrayList<User> users=new ArrayList<>();
 		for(int id:ids)
 			users.add(UserStorage.getById(id));
-		String content=renderTemplate(req, "like_popover", JtwigModel.newModel().with("users", users));
+		String content=new RenderedTemplateResponse("like_popover").with("users", users).renderToString(req);
 		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), selfID).get(postID);
 		JSONObject o=new JSONObject();
 		o.put("content", content);
@@ -490,16 +490,16 @@ public class PostRoutes{
 		ArrayList<User> users=new ArrayList<>();
 		for(int id:ids)
 			users.add(UserStorage.getById(id));
-		JtwigModel model=JtwigModel.newModel().with("users", users);
+		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap").with("users", users);
 		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), 0).get(postID);
 		model.with("pageOffset", offset).with("total", interactions.likeCount).with("paginationUrlPrefix", "/posts/"+postID+"/likes?fromPagination&offset=");
 		if(isAjax(req)){
 			if(req.queryParams("fromPagination")==null)
-				return new WebDeltaResponseBuilder(resp).box(lang(req).get("likes_title"), renderTemplate(req, "user_grid", model), "likesList", 596);
+				return new WebDeltaResponseBuilder(resp).box(lang(req).get("likes_title"), model.renderToString(req), "likesList", 596);
 			else
-				return new WebDeltaResponseBuilder(resp).setContent("likesList", renderTemplate(req, "user_grid", model));
+				return new WebDeltaResponseBuilder(resp).setContent("likesList", model.renderToString(req));
 		}
 		model.with("contentTemplate", "user_grid").with("title", lang(req).get("likes_title"));
-		return renderTemplate(req, "content_wrap", model);
+		return model.renderToString(req);
 	}
 }

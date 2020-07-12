@@ -1,7 +1,5 @@
 package smithereen.routes;
 
-import org.jtwig.JtwigModel;
-
 import java.sql.SQLException;
 import java.util.List;
 
@@ -11,6 +9,7 @@ import smithereen.data.User;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.lang.Lang;
 import smithereen.storage.UserStorage;
+import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -19,7 +18,7 @@ import static smithereen.Utils.*;
 
 public class SettingsAdminRoutes{
 	public static Object index(Request req, Response resp, Account self){
-		JtwigModel model=JtwigModel.newModel();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_server_info");
 		Lang l=lang(req);
 		model.with("title", l.get("profile_edit_basic")+" | "+l.get("menu_admin"));
 		model.with("serverName", Config.getServerDisplayName())
@@ -31,7 +30,7 @@ public class SettingsAdminRoutes{
 			req.session().removeAttribute("admin.serverInfoMessage");
 			model.with("adminServerInfoMessage", msg);
 		}
-		return renderTemplate(req, "admin_server_info", model);
+		return model.renderToString(req);
 	}
 
 	public static Object updateServerInfo(Request req, Response resp, Account self) throws SQLException{
@@ -52,14 +51,14 @@ public class SettingsAdminRoutes{
 		}catch(IllegalArgumentException ignore){}
 
 		if(isAjax(req))
-			return new WebDeltaResponseBuilder(resp).show("adminServerInfoMessage").setContent("adminServerInfoMessage", lang(req).get("admin_server_info_updated")).json();
+			return new WebDeltaResponseBuilder(resp).show("formMessage_adminServerInfo").setContent("formMessage_adminServerInfo", lang(req).get("admin_server_info_updated")).json();
 		req.session().attribute("admin.serverInfoMessage", lang(req).get("admin_server_info_updated"));
 		resp.redirect("/settings/admin");
 		return "";
 	}
 
 	public static Object users(Request req, Response resp, Account self) throws SQLException{
-		JtwigModel model=JtwigModel.newModel();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users");
 		Lang l=lang(req);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
 		List<Account> accounts=UserStorage.getAllAccounts(offset, 100);
@@ -68,7 +67,7 @@ public class SettingsAdminRoutes{
 		model.with("total", UserStorage.getLocalUserCount());
 		model.with("pageOffset", offset);
 		jsLangKey(req, "cancel");
-		return renderTemplate(req, "admin_users", model);
+		return model.renderToString(req);
 	}
 
 	public static Object accessLevelForm(Request req, Response resp, Account self) throws SQLException{
@@ -77,7 +76,7 @@ public class SettingsAdminRoutes{
 		Account target=UserStorage.getAccount(accountID);
 		if(target==null || target.id==self.id)
 			return wrapError(req, resp, "err_user_not_found");
-		JtwigModel model=JtwigModel.newModel();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users_access_level");
 		model.with("targetAccount", target);
 		return wrapForm(req, resp, "admin_users_access_level", "/settings/admin/users/setAccessLevel", l.get("access_level"), "save", model);
 	}

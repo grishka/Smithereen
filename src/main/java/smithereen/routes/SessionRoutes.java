@@ -1,7 +1,5 @@
 package smithereen.routes;
 
-import org.jtwig.JtwigModel;
-
 import java.sql.SQLException;
 import java.util.Base64;
 import java.util.Locale;
@@ -12,6 +10,7 @@ import smithereen.data.Account;
 import smithereen.data.SessionInfo;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
+import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -45,7 +44,7 @@ public class SessionRoutes{
 		if(to!=null && to.startsWith("/activitypub")){
 			req.attribute("templateDir", "popup");
 		}
-		JtwigModel model=JtwigModel.newModel();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("login");
 		if(req.requestMethod().equalsIgnoreCase("post")){
 			Account acc=SessionStorage.getAccountForUsernameAndPassword(req.queryParams("username"), req.queryParams("password"));
 			if(acc!=null){
@@ -61,7 +60,7 @@ public class SessionRoutes{
 			model.with("message", Utils.lang(req).get("login_needed"));
 		}
 		model.with("additionalParams", "?"+req.queryString()).with("title", lang(req).get("login_title")+" | "+Config.serverDisplayName);
-		return Utils.renderTemplate(req, "login", model);
+		return model.renderToString(req);
 	}
 
 	public static Object logout(Request req, Response resp) throws SQLException{
@@ -78,7 +77,7 @@ public class SessionRoutes{
 	}
 
 	private static String regError(Request req, String errKey){
-		JtwigModel model=JtwigModel.newModel()
+		return new RenderedTemplateResponse("register")
 				.with("message", Utils.lang(req).get(errKey))
 				.with("username", req.queryParams("username"))
 				.with("password", req.queryParams("password"))
@@ -89,8 +88,8 @@ public class SessionRoutes{
 				.with("invite", req.queryParams("invite"))
 				.with("preFilledInvite", req.queryParams("_invite"))
 				.with("signupMode", Config.signupMode)
-				.with("title", lang(req).get("register"));
-		return Utils.renderTemplate(req, "register", model);
+				.with("title", lang(req).get("register"))
+				.renderToString(req);
 	}
 
 	public static Object register(Request req, Response resp) throws SQLException{
@@ -144,12 +143,12 @@ public class SessionRoutes{
 	public static Object registerForm(Request req, Response resp){
 		if(Config.signupMode==Config.SignupMode.CLOSED && StringUtils.isEmpty(req.queryParams("invite")))
 			return wrapError(req, resp, "signups_closed");
-		JtwigModel model=JtwigModel.newModel();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("register");
 		model.with("signupMode", Config.signupMode);
 		String invite=req.queryParams("invite");
 		if(StringUtils.isNotEmpty(invite))
 			model.with("preFilledInvite", invite);
 		model.with("title", lang(req).get("register"));
-		return renderTemplate(req, "register", model);
+		return model.renderToString(req);
 	}
 }

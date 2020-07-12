@@ -1,6 +1,6 @@
-{%-extends "page.twig"%}
-{%-block content%}
-{%include "admin_tabbar.twig" with {selected: 1}%}
+{%extends "page"%}
+{%block content%}
+{%include "admin_tabbar" with {'selected': 1}%}
 <div class="singleColumn">
 	<table width="100%" class="dataTable">
 		<tr class="tableHeader">
@@ -10,16 +10,16 @@
 			<th width="150">{{L('signup_date')}}</th>
 			<th width="150">{{L('actions')}}</th>
 		</tr>
-		{%-for acc in accounts%}
+		{%for acc in accounts%}
 		<tr>
 			<td>{{acc.id}} ({{acc.user.id}})</td>
 			<td class="ellipsize"><a href="{{acc.user.url}}"><span class="tinyInlineAva">{{acc.user | pictureForAvatar('s', 32)}}</span>{{acc.user.fullName}}</a></td>
-			<td class="ellipsize">{%if acc.invitedBy%}<a href="{{acc.invitedBy.url}}"><span class="tinyInlineAva">{{acc.invitedBy | pictureForAvatar('s', 32)}}</span>{{acc.invitedBy.fullName}}</a>{%else%}&mdash;{%endif%}</td>
+			<td class="ellipsize">{%if acc.invitedBy is not null%}<a href="{{acc.invitedBy.url}}"><span class="tinyInlineAva">{{acc.invitedBy | pictureForAvatar('s', 32)}}</span>{{acc.invitedBy.fullName}}</a>{%else%}&mdash;{%endif%}</td>
 			<td align="center">{{LD(acc.createdAt)}}</td>
 			<td>{%if acc.user.id!=currentUser.id%}<a href="/settings/admin/users/accessLevelForm?accountID={{acc.id}}" data-ajax="1">{{L('access_level')}}</a>{%endif%}</td>
 		</tr>
-		{%-endfor%}
+		{%endfor%}
 	</table>
-	{%include "pagination.twig" with {perPage: 100, offset: pageOffset, total: total, urlPrefix: "/settings/admin/users?offset="} only%}
+	{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': "/settings/admin/users?offset="}%}
 </div>
-{%-endblock%}
+{%endblock%}

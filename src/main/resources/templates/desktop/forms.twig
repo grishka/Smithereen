@@ -1,0 +1,67 @@
+{%macro start(id, message)%}
+<div class="settingsMessage" id="formMessage_{{id}}" style="{%if not(message)%}display: none{%endif%}">{{message}}</div>
+<table class="form">
+{%endmacro%}
+
+{%macro textInput(name, label, value, options)%}
+	{%if options is null%}{%set options={}%}{%endif%}
+	<tr>
+		<td class="label">
+			<label for="{{name}}">{{label}}</label>:
+		</td>
+		<td>
+			<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}"{%if options.maxlength is not null%} maxlength="{{options.maxlength}}"{%endif%}{%if options.required%} required{%endif%}/>
+		{%if options.explanation is not null%}
+			<br/><span class="formExplanation">{{options.explanation}}</span>
+		{%endif%}
+		</td>
+	</tr>
+{%endmacro%}
+
+{%macro textArea(name, label, value, options)%}
+{%if options is null%}{%set options={}%}{%endif%}
+	<tr>
+		<td class="label">
+			<label for="{{name}}">{{label}}</label>:
+		</td>
+		<td>
+			<textarea id="{{name}}" name="{{name}}" rows="4">{{value}}</textarea>
+			{%if options.explanation is not null%}
+			<br/><span class="formExplanation">{{options.explanation}}</span>
+			{%endif%}
+		</td>
+	</tr>
+{%endmacro%}
+
+{%macro select(name, label, selectOptions, options)%}
+{%if options is null%}{%set options={}%}{%endif%}
+	<tr>
+		<td class="label">
+			<label for="{{name}}">{{label}}</label>:
+		</td>
+		<td>
+			<select id="{{name}}" name="{{name}}">
+				{%for opt in selectOptions%}
+					<option value="{{opt.value}}"{%if opt.selected%} selected{%endif%}>{{opt.label}}</option>
+				{%endfor%}
+			</select>
+			{%if options.explanation is not null%}
+			<br/><span class="formExplanation">{{options.explanation}}</span>
+			{%endif%}
+		</td>
+	</tr>
+{%endmacro%}
+
+{%macro footer(submitTitle)%}
+	<tr class="footer">
+		<td class="label"></td>
+		<td>
+			<input type="submit" value="{{submitTitle}}"/>
+		</td>
+	</tr>
+{%endmacro%}
+
+
+{%macro end()%}
+</table>
+{%endmacro%}

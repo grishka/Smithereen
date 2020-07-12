@@ -1,4 +1,4 @@
-{%extends "page.twig"%}
+{%extends "page"%}
 {%block content%}
 <div class="singleColumn">
 {%if not(post.local)%}
@@ -7,12 +7,12 @@
 {%if post.replyLevel>0%}
 	<a href="/posts/{{post.getReplyChainElement(0)}}">Top-level</a><br/>
 {%endif%}
-{%include "wall_post.twig"%}
+{%include "wall_post"%}
 <div id="postReplies{{post.id}}">{%for reply in post.replies%}
-{%include "wall_reply.twig" with {post: reply}%}
+{%include "wall_reply" with {'post': reply}%}
 {%endfor%}</div>
 </div>
-{%if currentUser%}{%include "wall_post_form.twig" with {replyTo: post, id: "reply"}%}{%endif%}
+{%if currentUser is not null%}{%include "wall_post_form" with {'replyTo': post, 'id': "reply"}%}{%endif%}
 <script>
 	if(window.location.hash && window.location.hash.indexOf("comment")==1){
 		var el=document.getElementById(window.location.hash.replace("#comment", "post"));

@@ -1,9 +1,5 @@
 package smithereen;
 
-import org.jtwig.JtwigModel;
-import org.jtwig.environment.EnvironmentConfiguration;
-import org.jtwig.environment.EnvironmentConfigurationBuilder;
-
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -13,14 +9,6 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
-import smithereen.jtwigext.LangDateFunction;
-import smithereen.jtwigext.LangFunction;
-import smithereen.jtwigext.LangGenderedFunction;
-import smithereen.jtwigext.LangPluralFunction;
-import smithereen.jtwigext.NumberSequenceFunction;
-import smithereen.jtwigext.PhotoSizeFunction;
-import smithereen.jtwigext.PictureForAvatarFunction;
-import smithereen.jtwigext.RenderAttachmentsFunction;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.NotificationsRoutes;
 import smithereen.routes.PostRoutes;
@@ -33,6 +21,7 @@ import smithereen.storage.DatabaseSchemaUpdater;
 import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
 import smithereen.storage.UserStorage;
+import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -41,23 +30,6 @@ import static spark.Spark.*;
 import static smithereen.sparkext.SparkExtension.*;
 
 public class Main{
-
-	public static final EnvironmentConfiguration jtwigEnv;
-
-	static{
-		jtwigEnv=EnvironmentConfigurationBuilder.configuration()
-				.functions()
-					.add(new LangFunction())
-					.add(new LangPluralFunction())
-					.add(new LangDateFunction())
-					.add(new LangGenderedFunction())
-					.add(new PictureForAvatarFunction())
-					.add(new RenderAttachmentsFunction())
-					.add(new PhotoSizeFunction())
-					.add(new NumberSequenceFunction())
-				.and()
-				.build();
-	}
 
 	public static void main(String[] args){
 		if(args.length==0){
@@ -113,7 +85,7 @@ public class Main{
 //				hs+="["+h+": "+request.headers(h)+"] ";
 //			System.out.println(request.requestMethod()+" "+request.raw().getPathInfo()+" "+hs);
 			if(request.pathInfo().startsWith("/activitypub")){
-				request.attribute("templateDir", "popup");
+				request.attribute("popup", Boolean.TRUE);
 			}
 		});
 
@@ -277,7 +249,9 @@ public class Main{
 				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
 			}
 			if(req.attribute("isTemplate")!=null){
-				resp.header("Link", "</res/style.css?"+Utils.staticFileHash+">; rel=preload; as=style, </res/common.js?"+Utils.staticFileHash+">; rel=preload; as=script");
+				String cssName=req.attribute("mobile")!=null ? "mobile" : "desktop";
+				resp.header("Link", "</res/"+cssName+".css?"+Utils.staticFileHash+">; rel=preload; as=style, </res/common.js?"+Utils.staticFileHash+">; rel=preload; as=script");
+				resp.header("Vary", "User-Agent");
 			}
 
 			if(req.headers("accept")==null || !req.headers("accept").startsWith("application/")){
@@ -304,10 +278,10 @@ public class Main{
 			resp.redirect("/feed");
 			return "";
 		}
-		JtwigModel model=JtwigModel.newModel().with("title", Config.serverDisplayName)
+		return new RenderedTemplateResponse("index").with("title", Config.serverDisplayName)
 				.with("signupMode", Config.signupMode)
 				.with("serverDisplayName", Config.serverDisplayName)
-				.with("serverDescription", Config.serverDescription);
-		return Utils.renderTemplate(req, "index", model);
+				.with("serverDescription", Config.serverDescription)
+				.renderToString(req);
 	}
 }

@@ -1,33 +1,26 @@
-package smithereen.jtwigext;
+package smithereen.templates;
 
-import org.jtwig.escape.EscapeEngine;
-import org.jtwig.escape.NoneEscapeEngine;
-import org.jtwig.functions.FunctionRequest;
-import org.jtwig.functions.SimpleJtwigFunction;
-import org.jtwig.render.context.RenderContextHolder;
+import com.mitchellbosecke.pebble.error.PebbleException;
+import com.mitchellbosecke.pebble.extension.Filter;
+import com.mitchellbosecke.pebble.extension.escaper.SafeString;
+import com.mitchellbosecke.pebble.template.EvaluationContext;
+import com.mitchellbosecke.pebble.template.PebbleTemplate;
 
-import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import smithereen.data.PhotoSize;
 import smithereen.data.User;
 import smithereen.storage.MediaStorageUtils;
 
-public class PictureForAvatarFunction extends SimpleJtwigFunction{
+public class PictureForAvatarFilter implements Filter{
 	@Override
-	public String name(){
-		return "pictureForAvatar";
-	}
-
-	@Override
-	public Object execute(FunctionRequest functionRequest){
-		RenderContextHolder.get().set(EscapeEngine.class, NoneEscapeEngine.instance());
-
-		Object obj=functionRequest.get(0);
+	public Object apply(Object input, Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber) throws PebbleException{
 		List<PhotoSize> sizes;
 		String additionalClasses="";
-		if(obj instanceof User){
-			User user=(User) obj;
+		if(input instanceof User){
+			User user=(User) input;
 			sizes=user.getAvatar();
 			if(user.gender==User.Gender.FEMALE)
 				additionalClasses=" female";
@@ -35,7 +28,7 @@ public class PictureForAvatarFunction extends SimpleJtwigFunction{
 			return "";
 		}
 
-		String _type=(String) functionRequest.get(1);
+		String _type=(String) args.get("type");
 		PhotoSize.Type type, type2x;
 		int size;
 		boolean isRect=false;
@@ -75,10 +68,10 @@ public class PictureForAvatarFunction extends SimpleJtwigFunction{
 			default:
 				throw new IllegalArgumentException("Wrong size type "+_type);
 		}
-		if(functionRequest.getNumberOfArguments()>2)
-			size=((BigDecimal)functionRequest.get(2)).intValue();
+		if(args.containsKey("size"))
+			size=Templates.asInt(args.get("size"));
 		if(sizes==null)
-			return "<span class=\"ava avaPlaceholder size"+_type.toUpperCase()+additionalClasses+"\" style=\"width: "+size+"px;height: "+size+"px\"></span>";
+			return new SafeString("<span class=\"ava avaPlaceholder size"+_type.toUpperCase()+additionalClasses+"\" style=\"width: "+size+"px;height: "+size+"px\"></span>");
 
 		PhotoSize jpeg1x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.JPEG, type),
 				jpeg2x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.JPEG, type2x),
@@ -87,10 +80,15 @@ public class PictureForAvatarFunction extends SimpleJtwigFunction{
 
 		int width=size, height=isRect ? jpeg1x.height : size;
 
-		return "<span class=\"ava avaHasImage size"+_type.toUpperCase()+"\"><picture>" +
+		return new SafeString("<span class=\"ava avaHasImage size"+_type.toUpperCase()+"\"><picture>" +
 				"<source srcset=\""+webp1x.src+", "+webp2x.src+" 2x\" type=\"image/webp\"/>" +
 				"<source srcset=\""+jpeg1x.src+", "+jpeg2x.src+" 2x\" type=\"image/jpeg\"/>" +
 				"<img src=\""+jpeg1x.src+"\" width=\""+width+"\" height=\""+height+"\" class=\"avaImage\"/>" +
-				"</picture></span>";
+				"</picture></span>");
+	}
+
+	@Override
+	public List<String> getArgumentNames(){
+		return Arrays.asList("type", "size");
 	}
 }

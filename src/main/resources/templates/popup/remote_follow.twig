@@ -1,4 +1,4 @@
-{%extends "page.twig"%}
+{%extends "page"%}
 {%block content%}
 <center>
 	<div class="externalInteractionGraphic">
@@ -23,11 +23,11 @@
 		</svg>{{user | pictureForAvatar('s')}}
 	</div>
 	<p class="externalInteractionText">
-		{%-if user.supportsFriendRequests%}
+		{%if user.supportsFriendRequests%}
 		{{L('external_X_send_friend_req_to_X', currentUser.firstName, user.fullName, user.domain)}}
-		{%-else%}
+		{%else%}
 		{{L('external_X_follow_X', currentUser.firstName, user.fullName, user.domain)}}
-		{%-endif%}
+		{%endif%}
 	</p>
 	<form action="{{user.getProfileURL('remoteFollow')}}" method="post" class="externalInteractionForm">
 		<input type="hidden" name="csrf" value="{{csrf}}"/>

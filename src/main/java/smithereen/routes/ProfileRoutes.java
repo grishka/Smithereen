@@ -1,7 +1,6 @@
 package smithereen.routes;
 
 import org.jetbrains.annotations.Nullable;
-import org.jtwig.JtwigModel;
 
 import java.net.URLEncoder;
 import java.sql.SQLException;
@@ -12,6 +11,7 @@ import java.util.stream.Collectors;
 
 import static smithereen.Utils.*;
 
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.data.Account;
@@ -30,6 +30,7 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -44,7 +45,7 @@ public class ProfileRoutes{
 			int[] postCount={0};
 			int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
 			List<Post> wall=PostStorage.getUserWall(user.id, 0, 0, offset, postCount);
-			JtwigModel model=JtwigModel.newModel().with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
+			RenderedTemplateResponse model=new RenderedTemplateResponse("profile").with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
 			model.with("pageOffset", offset);
 
 			List<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toList());
@@ -88,7 +89,7 @@ public class ProfileRoutes{
 			}else{
 				HashMap<String, String> meta=new LinkedHashMap<>();
 				meta.put("og:type", "profile");
-				meta.put("og:site_name", "Smithereen");
+				meta.put("og:site_name", Config.serverDisplayName);
 				meta.put("og:title", user.getFullName());
 				meta.put("og:url", user.url.toString());
 				meta.put("og:username", user.getFullUsername());
@@ -116,7 +117,7 @@ public class ProfileRoutes{
 				model.with("metaTags", meta);
 			}
 			Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "remove_friend", "confirm_unfriend_X", "cancel", "delete");
-			return Utils.renderTemplate(req, "profile", model);
+			return model.renderToString(req);
 		}else{
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_user_not_found");
@@ -138,13 +139,13 @@ public class ProfileRoutes{
 					UserStorage.followUser(self.user.id, user.id, true);
 					return new WebDeltaResponseBuilder(resp).refresh().json();
 				}else{
-					JtwigModel model=JtwigModel.newModel();
+					RenderedTemplateResponse model=new RenderedTemplateResponse("form_page");
 					model.with("targetUser", user);
 					model.with("contentTemplate", "send_friend_request").with("formAction", user.getProfileURL("doSendFriendRequest")).with("submitButton", l.get("send"));
-					return renderTemplate(req, "form_page", model);
+					return model.renderToString(req);
 				}
 			}else if(status==FriendshipStatus.NONE){
-				JtwigModel model=JtwigModel.newModel();
+				RenderedTemplateResponse model=new RenderedTemplateResponse("send_friend_request");
 				model.with("targetUser", user);
 				return wrapForm(req, resp, "send_friend_request", user.getProfileURL("doSendFriendRequest"), l.get("add_friend"), "send", model);
 			}else if(status==FriendshipStatus.FRIENDS){
@@ -201,8 +202,7 @@ public class ProfileRoutes{
 			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
 				Lang l=Utils.lang(req);
 				String back=Utils.back(req);
-				JtwigModel model=JtwigModel.newModel().with("message", l.get("confirm_unfriend_X", escapeHTML(user.getFullName()))).with("formAction", user.getProfileURL("doRemoveFriend")+"?_redir="+URLEncoder.encode(back)).with("back", back);
-				return Utils.renderTemplate(req, "generic_confirm", model);
+				return new RenderedTemplateResponse("generic_confirm").with("message", l.get("confirm_unfriend_X", escapeHTML(user.getFullName()))).with("formAction", user.getProfileURL("doRemoveFriend")+"?_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
 			}else{
 				return Utils.wrapError(req, resp, "err_not_friends");
 			}
@@ -225,10 +225,10 @@ public class ProfileRoutes{
 			user=UserStorage.getByUsername(username);
 		}
 		if(user!=null){
-			JtwigModel model=JtwigModel.newModel();
+			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
 			jsLangKey(req, "remove_friend", "confirm_unfriend_X", "yes", "no");
-			return Utils.renderTemplate(req, "friends", model);
+			return model.renderToString(req);
 		}
 		resp.status(404);
 		return Utils.wrapError(req, resp, "user_not_found");
@@ -247,9 +247,9 @@ public class ProfileRoutes{
 			user=UserStorage.getByUsername(username);
 		}
 		if(user!=null){
-			JtwigModel model=JtwigModel.newModel();
+			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true).with("tab", 1);
-			return Utils.renderTemplate(req, "friends", model);
+			return model.renderToString(req);
 		}
 		resp.status(404);
 		return Utils.wrapError(req, resp, "user_not_found");
@@ -268,10 +268,10 @@ public class ProfileRoutes{
 			user=UserStorage.getByUsername(username);
 		}
 		if(user!=null){
-			JtwigModel model=JtwigModel.newModel();
+			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true).with("tab", 2);
 			jsLangKey(req, "unfollow", "confirm_unfollow_X", "yes", "no");
-			return Utils.renderTemplate(req, "friends", model);
+			return model.renderToString(req);
 		}
 		resp.status(404);
 		return Utils.wrapError(req, resp, "user_not_found");
@@ -279,9 +279,9 @@ public class ProfileRoutes{
 
 	public static Object incomingFriendRequests(Request req, Response resp, Account self) throws SQLException{
 		List<FriendRequest> requests=UserStorage.getIncomingFriendRequestsForUser(self.user.id, 0, 100);
-		JtwigModel model=JtwigModel.newModel();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("friend_requests");
 		model.with("friendRequests", requests);
-		return Utils.renderTemplate(req, "friend_requests", model);
+		return model.renderToString(req);
 	}
 
 	public static Object respondToFriendRequest(Request req, Response resp, Account self) throws SQLException{

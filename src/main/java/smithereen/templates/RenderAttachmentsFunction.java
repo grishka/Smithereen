@@ -1,39 +1,26 @@
-package smithereen.jtwigext;
+package smithereen.templates;
 
-import org.jtwig.escape.EscapeEngine;
-import org.jtwig.escape.NoneEscapeEngine;
-import org.jtwig.functions.FunctionRequest;
-import org.jtwig.functions.SimpleJtwigFunction;
-import org.jtwig.render.context.RenderContextHolder;
+import com.mitchellbosecke.pebble.extension.Function;
+import com.mitchellbosecke.pebble.extension.escaper.SafeString;
+import com.mitchellbosecke.pebble.template.EvaluationContext;
+import com.mitchellbosecke.pebble.template.PebbleTemplate;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
-import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.data.PhotoSize;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.VideoAttachment;
-import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
 
-public class RenderAttachmentsFunction extends SimpleJtwigFunction{
+public class RenderAttachmentsFunction implements Function{
 
 	@Override
-	public String name(){
-		return "renderAttachments";
-	}
-
-	@Override
-	public Object execute(FunctionRequest functionRequest){
-		functionRequest.minimumNumberOfArguments(1);
-		RenderContextHolder.get().set(EscapeEngine.class, NoneEscapeEngine.instance());
-
-		Object arg=functionRequest.get(0);
-		if(!(arg instanceof List))
-			return "";
-		List<Attachment> attachment=(List<Attachment>) functionRequest.get(0);
+	public Object execute(Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber){
+		List<Attachment> attachment=(List<Attachment>) args.get("attachments");
 
 		ArrayList<String> lines=new ArrayList<>();
 		for(Attachment obj:attachment){
@@ -59,6 +46,11 @@ public class RenderAttachmentsFunction extends SimpleJtwigFunction{
 			lines.add("</div>");
 			lines.add(0, "<div class=\"postAttachments\">");
 		}
-		return String.join("\n", lines);
+		return new SafeString(String.join("\n", lines));
+	}
+
+	@Override
+	public List<String> getArgumentNames(){
+		return Collections.singletonList("attachments");
 	}
 }

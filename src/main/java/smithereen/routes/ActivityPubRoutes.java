@@ -5,7 +5,6 @@ import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.jtwig.JtwigModel;
 
 import java.io.IOException;
 import java.net.URI;
@@ -82,6 +81,7 @@ import smithereen.jsonld.LinkedDataSignatures;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -316,8 +316,7 @@ public class ActivityPubRoutes{
 				}else if(status==FriendshipStatus.FRIENDS){
 					return Utils.wrapError(req, resp, "err_already_friends");
 				}
-				JtwigModel model=JtwigModel.newModel().with("user", foreignUser).with("title", Config.serverDisplayName);
-				return Utils.renderTemplate(req, "remote_follow", model);
+				return new RenderedTemplateResponse("remote_follow").with("user", foreignUser).with("title", Config.serverDisplayName).renderToString(req);
 			}catch(Exception x){
 				x.printStackTrace();
 				return x.toString();

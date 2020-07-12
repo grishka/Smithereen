@@ -1,28 +1,28 @@
-{%extends "page.twig"%}
+{%extends "page"%}
 {%block content%}
-{%include "wall_post_form.twig" with {id: "new"}%}
+{%include "wall_post_form" with {'id': "new"}%}
 <div class="singleColumn" id="postList">
 {%for entry in feed%}
 
 {%if entry.type=="POST"%}
-{%include "wall_post.twig" with {post: entry.post}%}
+{%include "wall_post" with {'post': entry.post}%}
 	<div class="commentsPreviewWrap">
 {%for reply in entry.post.replies%}
-{%include "wall_reply.twig" with {post: reply, hideReplyLink: true}%}
+{%include "wall_reply" with {'post': reply, 'hideReplyLink': true}%}
 {%endfor%}
 	</div>
 {%elseif entry.type=="RETOOT"%}
 🔁 <a href="{{entry.author.url}}">{{entry.author.fullName}}</a><br/>
-{%include "wall_post.twig" with {post: entry.post}%}
+{%include "wall_post" with {'post': entry.post}%}
 	<div class="commentsPreviewWrap">
 {%for reply in entry.post.replies%}
-{%include "wall_reply.twig" with {post: reply}%}
+{%include "wall_reply" with {'post': reply}%}
 {%endfor%}
 	</div>
 {%else%}
 Unknown entry type {{entry.type}}
 {%endif%}
 {%endfor%}
-	{%include "pagination.twig" with {perPage: 25, offset: offset, total: total, urlPrefix: paginationURL, firstPageURL: "/feed"} only%}
+	{%include "pagination" with {'perPage': 25, 'offset': offset, 'total': total, 'urlPrefix': paginationURL, 'firstPageURL': "/feed"}%}
 </div>
 {%endblock%}

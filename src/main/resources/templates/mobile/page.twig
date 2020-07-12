@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+{%autoescape "html"%}<html>
+<head>
+	<!-- commercialized internet sucks ass -->
+	<title>{{ title }}</title>
+	<link rel="stylesheet" type="text/css" href="/res/mobile.css?{{staticHash}}"/>
+	{%if metaTags%}{%for tag in metaTags%}<meta property="{{tag.key}}" content="{{tag.value}}"/>
+	{%endfor%}{%endif%}
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+	<script>
+		var userConfig={{jsConfig | raw}};
+		var langKeys={{jsLangKeys | raw}};
+	</script>
+	<style>
+		.js{display: none;}
+		.hasJS .js{display: block;}
+	</style>
+</head>
+<body>
+<script>document.body.classList.add("hasJS");{%if jsRedirect is not null%} window.location="{{jsRedirect}}";{%endif%}</script>
+<div class="header">
+	<div class="menuButton">
+		{%if currentUser is not null%}
+		<label for="mainMenuToggler"><span>{{L('Menu')}}</span></label>
+		{%else%}
+		<a href="/"><img src="/res/logo.svg" width="40" height="40"/></a>
+		{%endif%}
+	</div>
+{{title}}
+</div>
+<input type="checkbox" id="mainMenuToggler" style="display: none"/>
+<div class="mainMenu">
+{%block leftMenu%}
+{%if currentUser is not null%}
+<ul class="actionList">
+	<li class="hasAux"><a href="/{{currentUser.username}}" class="actionMain">{{L('menu_profile')}}</a><a href="/settings/profile/general" class="actionAux">{{L('menu_edit')}}</a></li>
+	<li><a href="/my/friends">{{L('menu_friends')}}{%if(userNotifications.newFriendRequestCount>0)%} (<b>{{userNotifications.newFriendRequestCount}}</b>){%endif%}</a></li>
+	<li><a href="/feed">{{L('menu_news')}}</a></li>
+	<li><a href="/my/notifications">{{L('menu_notifications')}}{%if(userNotifications.newNotificationsCount>0)%} (<b>{{userNotifications.newNotificationsCount}}</b>){%endif%}</a></li>
+	<li><a href="/settings/">{{L('menu_settings')}}</a></li>
+	{%if userAccessLevel.ordinal>=3%}
+	<li class="separator"></li>
+	<li><a href="/settings/admin">{{L('menu_admin')}}</a></li>
+	{%endif%}
+	<li class="separator"></li>
+	<li><a href="/account/logout?csrf={{csrf}}">{{L('log_out')}}</a></li>
+</ul>
+{%endif%}
+{%endblock%}
+</div>
+<div class="pageContent">
+{%block content%}{%endblock%}
+</div>
+<script src="/res/common.js?{{staticHash}}"></script>
+</body>
+</html>
+{%endautoescape%}

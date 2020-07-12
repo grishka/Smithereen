@@ -1,24 +1,6 @@
-$accent: #aab42f;
-$textOnAccent: #FFFFFF;
-$bg: #FFFFFF;
-$gray: #F7F7F7;
-$darkerGray: #DDDDDD;
-$textOnGray: #707070;
-$grayText: #909090;
-$text: #000;
+@import "common.scss";
 
 $siteWidth: 1280px;
-
-@mixin layer-shadow{
-	box-shadow:
-		0 1px 1.1px rgba(0, 0, 0, 0.028),
-		0 2.3px 2.7px rgba(0, 0, 0, 0.04),
-		0 4.4px 5px rgba(0, 0, 0, 0.05),
-		0 7.8px 8.9px rgba(0, 0, 0, 0.06),
-		0 14.6px 16.7px rgba(0, 0, 0, 0.072),
-		0 35px 40px rgba(0, 0, 0, 0.1)
-	;
-}
 
 @svg-load popoverArrowTop url(img/popover_arrow_top.svg) {
 	polygon[fill=red]{
@@ -50,16 +32,6 @@ body{
 
 table{
 	table-layout: fixed;
-}
-
-a, a:link, a:visited, .link{
-	color: color($accent shade(10%));
-	text-decoration: none;
-	cursor: pointer;
-}
-
-a:hover, a:visited:hover, .link:hover{
-	text-decoration: underline;
 }
 
 h2{
@@ -270,63 +242,6 @@ h2{
 	margin-top: 8px;
 }
 
-.ava{
-	border-radius: 4px;
-	display: inline-block;
-}
-
-.avaImage{
-	border-radius: 4px;
-	vertical-align: top;
-}
-
-.avaHasImage{
-	position: relative;
-}
-
-.avaHasImage::after{
-	content: "";
-	display: inline-block;
-	border: solid 1px rgba(0,0,0,0.13);
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	box-sizing: border-box;
-	border-radius: 4px;
-}
-
-.avaPlaceholder{
-	background: $gray;
-	vertical-align: top;
-	margin: 0;
-	background-image: svg-load("img/ava_placeholder_male_s.svg", fill: $darkerGray);
-	background-repeat: no-repeat;
-	background-position: center;
-	border: solid 1px $darkerGray;
-	box-sizing: border-box;
-	&.sizeM{
-		background-size: 32px;
-	}
-	&.sizeL{
-		background-size: 48px;
-	}
-	&.female{
-		background-image: svg-load("img/ava_placeholder_female_s.svg", fill: $darkerGray);
-	}
-	&.inProfile{
-		width: 200px;
-		height: 200px;
-		border: none;
-		position: relative;
-		background-image: svg-load("img/ava_placeholder_male_l.svg", fill: $darkerGray);
-		&.female{
-			background-image: svg-load("img/ava_placeholder_female_l.svg", fill: $darkerGray);
-		}
-	}
-}
-
 .ownProfileAvaPlaceholderLabel{
 	color: $grayText;
 	display: inline-block;
@@ -346,45 +261,6 @@ h2{
 	}
 }
 
-.post{
-	padding-bottom: 8px;
-	border-bottom: solid 1px color($accent lightness(+40%));
-	margin-bottom: 8px;
-	border-spacing: 0;
-	.authorName{
-		font-weight: bold;
-	}
-	p{
-		margin-top: 8px;
-		margin-bottom: 8px;
-		overflow-y: hidden;
-	}
-
-	p:first-child{
-		margin-top: 0;
-	}
-
-	p:last-child{
-		margin-bottom: 0;
-	}
-
-	.postContentWrap{
-		padding: 0 8px;
-		video{
-			max-width: 100%;
-		}
-	}
-}
-
-.postContent{
-	padding-top: 4px;
-	word-wrap: break-word;
-}
-
-.postAttachments{
-	padding-top: 8px;
-}
-
 .postInfo, .postLink:link, .postLink:visited{
 	padding-top: 4px;
 	font-size: 10px;
@@ -400,10 +276,6 @@ h2{
 	padding-bottom: 4px;
 	padding-top: 4px;
 	margin-bottom: 0;
-}
-
-.gray{
-	background: $gray;
 }
 
 .profileFields{
@@ -440,79 +312,6 @@ table.profileFields td{
 	}
 }
 
-.wallPostForm{
-	position: relative;
-	textarea{
-		width: 100%;
-		max-width: 100%;
-		resize: vertical;
-		box-sizing: border-box;
-		vertical-align: top;
-	}
-	.attachment{
-		width: 200px;
-		height: 150px;
-		position: relative;
-		display: inline-block;
-		margin-top: 8px;
-		margin-right: 8px;
-		.scrim, .progressBarFrame{
-			display: none;
-		}
-		.deleteBtn{
-			position: absolute;
-			top: 0;
-			right: 0;
-			width: 32px;
-			height: 32px;
-			background-image: svg-load("img/attach_delete.svg"), radial-gradient(closest-side, rgba(0,0,0,.1), transparent);
-			background-position: center;
-			background-repeat: no-repeat;
-		}
-		img{
-			width: 100%;
-			height: 100%;
-			object-fit: cover;
-		}
-		&.uploading{
-			.scrim{
-				display: block;
-				background: rgba(0,0,0,.5);
-				position: absolute;
-				top: 0;
-				left: 0;
-				right: 0;
-				bottom: 0;
-			}
-			.progressBarFrame{
-				display: block;
-				position: absolute;
-				bottom: 0;
-				left: 0;
-				right: 0;
-				height: 4px;
-				border-radius: 2px;
-				background: rgba(0,0,0,.5);
-				overflow: hidden;
-				margin: 8px;
-			}
-			.progressBar{
-				width: 100%;
-				height: 100%;
-				background: #FFF;
-				transition: transform 0.3s ease-in-out;
-				transform-origin: left;
-			}
-		}
-	}
-	.bottomBar{
-		margin-top: 8px;
-		.left{
-			padding-left: 5px;
-		}
-	}
-}
-
 .fileIsBeingDragged .dropOverlay{
 	display: flex;
 }
@@ -525,23 +324,8 @@ table.profileFields td{
 	}
 }
 
-input[type=text], input[type=password], input[type=email], input[type=date], textarea, select{
-	border: solid 1px $grayText;
-	border-radius: 2px;
-	padding: 4px;
-	appearance: none;
-	background-color: $bg;
-}
-
 input[type=date], select{
 	height: 23px;
-}
-
-select{
-	background-image: svg-load("img/select_arrows.svg");
-	background-repeat: no-repeat;
-	background-position: center right;
-	padding: 0 16px 0 4px;
 }
 
 *:focus{
@@ -595,10 +379,6 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 			box-shadow: none;
 		}
 	}
-}
-
-::placeholder{
-	color: $grayText;
 }
 
 .tabbar{
@@ -661,35 +441,6 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 .formExplanation{
 	font-size: 10px;
 	color: $grayText;
-}
-
-#layerScrim, #layerContainer{
-	position: fixed;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	right: 0;
-}
-
-#layerScrim{
-	background-color: rgba(0, 0, 0, .4);
-}
-
-#layerContainer{
-	width: 100%;
-	height: 100%;
-	pointer-events: none;
-}
-
-.layerContent{
-	overflow-y: scroll;
-	max-height: 100%;
-	height: 100%;
-	display: flex;
-	align-items: center;
-	>div{
-		margin: auto;
-	}
 }
 
 @keyframes boxAppear{
@@ -1002,15 +753,6 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	}
 }
 
-@keyframes highlight{
-	0%, 100%{
-		background-color: color($accent alpha(0%));
-	}
-	3%, 50%{
-		background-color: color($accent alpha(15%));
-	}
-}
-
 .highlight{
 	animation: highlight 10s;
 }
@@ -1132,46 +874,6 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 
 .popoverPlace{
 	position: relative;
-}
-
-@keyframes slideFromBottom{
-	0%{
-		opacity: 0;
-		transform: translateY(16px);
-	}
-	100%{
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
-@keyframes slideFromTop{
-	0%{
-		opacity: 0;
-		transform: translateY(-16px);
-	}
-	100%{
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
-@keyframes fadeOut{
-	0%{
-		opacity: 1;
-	}
-	100%{
-		opacity: 0;
-	}
-}
-
-@keyframes fadeIn{
-	0%{
-		opacity: 0;
-	}
-	100%{
-		opacity: 1;
-	}
 }
 
 .popover{

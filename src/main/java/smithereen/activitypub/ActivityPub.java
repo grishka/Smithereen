@@ -31,6 +31,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import smithereen.BadRequestException;
 import smithereen.Config;
 import smithereen.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
@@ -58,6 +59,9 @@ public class ActivityPub{
 	}
 
 	public static ActivityPubObject fetchRemoteObject(String url) throws IOException, JSONException{
+		URI uri=URI.create(url);
+		if(Config.isLocal(uri))
+			throw new IllegalStateException("Local URI in fetchRemoteObject: "+url);
 		Request req=new Request.Builder()
 				.url(url)
 				.header("Accept", "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
@@ -74,7 +78,10 @@ public class ActivityPub{
 			try{
 				JSONObject converted=JLDProcessor.convertToLocalContext(new JSONObject(r));
 //				System.out.println(converted.toString(4));
-				return ActivityPubObject.parse(converted);
+				ActivityPubObject obj=ActivityPubObject.parse(converted);
+				if(obj.activityPubID!=null && !obj.activityPubID.getHost().equalsIgnoreCase(uri.getHost()))
+					throw new BadRequestException("Domain in object ID ("+obj.activityPubID+") doesn't match domain in its URI ("+url+")");
+				return obj;
 			}catch(Exception x){
 				throw new JSONException(x);
 			}

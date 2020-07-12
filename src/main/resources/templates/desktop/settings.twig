@@ -1,4 +1,4 @@
-{%extends "page.twig"%}
+{%extends "page"%}
 {%block content%}
 <div class="singleColumn gray">
 <form action="/settings/updatePassword" method="post" onsubmit="return ajaxSubmitForm(this)">
@@ -12,7 +12,7 @@
 		<tr class="footer"><td class="label"></td><td><input type="submit" value="{{L('save')}}"/></td></tr>
 	</table>
 </form>
-{%-if signupMode=='INVITE_ONLY' or (userAccessLevel=='ADMIN' and signupMode!='OPEN')%}
+{%if signupMode=='INVITE_ONLY' or (userAccessLevel=='ADMIN' and signupMode!='OPEN')%}
 <h2>{{L('invitations')}}</h2>
 {%if inviteMessage%}<h5>{{inviteMessage}}</h5>{%endif%}
 <table class="dataTable" width="60%" style="margin: auto; margin-top: 8px;">
@@ -36,7 +36,7 @@
 	<input type="hidden" name="csrf" value="{{csrf}}"/>
 	<center><input type="submit" value="{{L('create_invitation')}}"/></center>
 </form>
-{%-endif%}
+{%endif%}
 	<h2>{{L('language')}}</h2>
 	<form action="/settings/setLanguage" method="post">
 		<table class="form">

@@ -1,10 +1,7 @@
 package smithereen;
 
-import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Whitelist;
-import org.jtwig.JtwigModel;
-import org.jtwig.JtwigTemplate;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -14,7 +11,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
-import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -27,12 +23,10 @@ import java.util.Random;
 import java.util.TimeZone;
 import java.util.zip.CRC32;
 
-import smithereen.data.Account;
 import smithereen.data.SessionInfo;
-import smithereen.data.UserNotifications;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.lang.Lang;
-import smithereen.storage.NotificationsStorage;
+import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -56,53 +50,6 @@ public class Utils{
 		crc.update(sid, 5, 10);
 		long v2=crc.getValue();
 		return String.format(Locale.ENGLISH, "%08x%08x", v1, v2);
-	}
-
-	public static void addGlobalParamsToTemplate(Request req, JtwigModel model){
-		JSONObject jsConfig=new JSONObject();
-		if(req.session(false)!=null){
-			SessionInfo info=req.session().attribute("info");
-			if(info==null){
-				info=new SessionInfo();
-				req.session().attribute("info", info);
-			}
-			Account account=info.account;
-			if(account!=null){
-				model.with("currentUser", account.user);
-				model.with("csrf", info.csrfToken);
-				model.with("userAccessLevel", account.accessLevel);
-				jsConfig.put("csrf", info.csrfToken);
-				jsConfig.put("uid", info.account.user.id);
-				try{
-					UserNotifications notifications=NotificationsStorage.getNotificationsForUser(account.user.id, account.prefs.lastSeenNotificationID);
-					model.with("userNotifications", notifications);
-				}catch(SQLException x){
-					throw new RuntimeException(x);
-				}
-			}
-		}
-		TimeZone tz=timeZoneForRequest(req);
-		jsConfig.put("timeZone", tz!=null ? tz.getID() : null);
-		JSONObject jsLang=new JSONObject();
-		ArrayList<String> k=req.attribute("jsLang");
-		if(k!=null){
-			Lang lang=lang(req);
-			for(String key:k){
-				jsLang.put(key, lang.raw(key));
-			}
-		}
-		model.with("locale", localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString()).with("jsLangKeys", jsLang).with("staticHash", staticFileHash).with("serverName", Config.getServerDisplayName());
-	}
-
-	public static String renderTemplate(Request req, String name, JtwigModel model){
-		addGlobalParamsToTemplate(req, model);
-		String templateDir="desktop";
-		if(req.attribute("templateDir")!=null)
-			templateDir=req.attribute("templateDir");
-		JtwigTemplate template=JtwigTemplate.classpathTemplate("templates/"+templateDir+"/"+name+".twig", Main.jtwigEnv);
-		if(req.queryParams("_ajax")==null)
-			req.attribute("isTemplate", true);
-		return template.render(model);
 	}
 
 	public static boolean requireAccount(Request req, Response resp){
@@ -151,16 +98,17 @@ public class Utils{
 		if(isAjax(req)){
 			return new WebDeltaResponseBuilder(resp).messageBox(l.get("error"), msg, l.get("ok")).json().toString();
 		}
-		return renderTemplate(req, "generic_error", JtwigModel.newModel().with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error")));
+		return new RenderedTemplateResponse("generic_error").with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error")).renderToString(req);
 	}
 
-	public static String wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, JtwigModel templateModel){
+	public static String wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, RenderedTemplateResponse templateModel){
 		Lang l=lang(req);
 		if(isAjax(req)){
-			return new WebDeltaResponseBuilder(resp).formBox(title, renderTemplate(req, templateName, templateModel), formAction, l.get(buttonKey)).json().toString();
+			return new WebDeltaResponseBuilder(resp).formBox(title, templateModel.renderToString(req), formAction, l.get(buttonKey)).json().toString();
 		}else{
 			templateModel.with("contentTemplate", templateName).with("formAction", formAction).with("submitButton", l.get(buttonKey)).with("title", title);
-			return renderTemplate(req, "form_page", templateModel);
+			templateModel.setName("form_page");
+			return templateModel.renderToString(req);
 		}
 	}
 
@@ -355,5 +303,11 @@ public class Utils{
 
 	public static String escapeHTML(String s){
 		return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+	}
+
+	public static boolean isMobileUserAgent(String ua){
+		ua=ua.toLowerCase();
+		return ua.matches("(?i).*((android|bb\\d+|meego).+mobile|avantgo|bada\\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od|ad)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\\.(browser|link)|vodafone|wap|windows ce|xda|xiino).*")
+				|| (ua.length()>4 && ua.substring(0,4).matches("(?i)1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\\-(n|u)|c55\\/|capi|ccwa|cdm\\-|cell|chtm|cldc|cmd\\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\\-s|devi|dica|dmob|do(c|p)o|ds(12|\\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\\-|_)|g1 u|g560|gene|gf\\-5|g\\-mo|go(\\.w|od)|gr(ad|un)|haie|hcit|hd\\-(m|p|t)|hei\\-|hi(pt|ta)|hp( i|ip)|hs\\-c|ht(c(\\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\\-(20|go|ma)|i230|iac( |\\-|\\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\\/)|klon|kpt |kwc\\-|kyo(c|k)|le(no|xi)|lg( g|\\/(k|l|u)|50|54|\\-[a-w])|libw|lynx|m1\\-w|m3ga|m50\\/|ma(te|ui|xo)|mc(01|21|ca)|m\\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\\-2|po(ck|rt|se)|prox|psio|pt\\-g|qa\\-a|qc(07|12|21|32|60|\\-[2-7]|i\\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\\-|oo|p\\-)|sdk\\/|se(c(\\-|0|1)|47|mc|nd|ri)|sgh\\-|shar|sie(\\-|m)|sk\\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\\-|v\\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\\-|tdg\\-|tel(i|m)|tim\\-|t\\-mo|to(pl|sh)|ts(70|m\\-|m3|m5)|tx\\-9|up(\\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\\-|your|zeto|zte\\-"));
 	}
 }

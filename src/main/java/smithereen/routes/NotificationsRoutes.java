@@ -1,7 +1,5 @@
 package smithereen.routes;
 
-import org.jtwig.JtwigModel;
-
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,6 +14,7 @@ import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
+import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 
@@ -24,7 +23,7 @@ import static smithereen.Utils.*;
 public class NotificationsRoutes{
 	public static Object notifications(Request req, Response resp, Account self) throws SQLException{
 		int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
-		JtwigModel model=JtwigModel.newModel();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("notifications");
 		int[] total={0};
 		List<Notification> notifications=NotificationsStorage.getNotifications(self.user.id, offset, total);
 		model.with("title", lang(req).get("notifications")).with("notifications", notifications).with("offset", offset).with("total", total[0]);
@@ -65,6 +64,6 @@ public class NotificationsRoutes{
 		}
 		NotificationsStorage.getNotificationsForUser(self.user.id, self.prefs.lastSeenNotificationID).setNotificationsViewed();
 
-		return renderTemplate(req, "notifications", model);
+		return model.renderToString(req);
 	}
 }

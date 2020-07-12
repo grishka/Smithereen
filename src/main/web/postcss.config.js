@@ -1,5 +1,6 @@
 module.exports={
 	plugins:[
+		require('postcss-import')(),
 		require('postcss-advanced-variables')(),
 		require('postcss-color-function')(),
 		require('postcss-rgba-hex')({rgbOnly: true, silent: true}),

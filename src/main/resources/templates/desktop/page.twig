@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-{%autoescape "html"%}<html>
+<html>
 <head>
 	<!-- commercialized internet sucks ass -->
 	<title>{{ title }}</title>
-	<link rel="stylesheet" type="text/css" href="/res/style.css?{{staticHash}}"/>
-	{%if metaTags%}{%for key, value in metaTags%}<meta property="{{key}}" content="{{value}}"/>
-	{%endfor%}{%endif-%}
+	<link rel="stylesheet" type="text/css" href="/res/desktop.css?{{staticHash}}"/>
+	{%if metaTags%}{%for tag in metaTags%}<meta property="{{tag.key}}" content="{{tag.value}}"/>
+	{%endfor%}{%endif%}
 	<script>
-		var userConfig={{jsConfig | escape(false)}};
-		var langKeys={{jsLangKeys | escape(false)}};
+		var userConfig={{jsConfig | raw}};
+		var langKeys={{jsLangKeys | raw}};
 	</script>
 	<style>
 		.js{display: none;}
@@ -16,7 +16,7 @@
 	</style>
 </head>
 <body class="widePage">
-<script>document.body.classList.add("hasJS");{%if jsRedirect%} window.location="{{jsRedirect}}";{%endif%}</script>
+<script>document.body.classList.add("hasJS");{%if jsRedirect is not null%} window.location="{{jsRedirect}}";{%endif%}</script>
 <div class="wrap">
 	<div class="headerWrap">
 		<div class="headerBG"><div class="shadow"></div></div>
@@ -26,9 +26,9 @@
 			<a href="/"><img src="/res/logo.svg" height="36" width="36" border="0" alt="Smithereen"/>{{serverName}}</a>
 		</td>
 		<td align="right">
-			{%- if (currentUser) %}
+			{%if currentUser is not null%}
 			<a href="/account/logout?csrf={{ csrf }}" class="nav">{{ L("log_out") }}</a>
-			{%- endif %}
+			{%endif%}
 		</td>
 	</tr>
 </table>
@@ -36,18 +36,18 @@
 <table width="100%" class="contentWrap" cellpadding="0" cellspacing="0">
 	<tr>
 		<td width="158" class="leftMenu" valign="top">
-{%-block leftMenu%}
-			{%-if currentUser%}
+{%block leftMenu%}
+			{%if currentUser is not null%}
 			<ul class="actionList">
 				<li class="hasAux"><a href="/{{currentUser.username}}" class="actionMain">{{L('menu_profile')}}</a><a href="/settings/profile/general" class="actionAux">{{L('menu_edit')}}</a></li>
 				<li><a href="/my/friends">{{L('menu_friends')}}{%if(userNotifications.newFriendRequestCount>0)%} (<b>{{userNotifications.newFriendRequestCount}}</b>){%endif%}</a></li>
 				<li><a href="/feed">{{L('menu_news')}}</a></li>
 				<li><a href="/my/notifications">{{L('menu_notifications')}}{%if(userNotifications.newNotificationsCount>0)%} (<b>{{userNotifications.newNotificationsCount}}</b>){%endif%}</a></li>
 				<li><a href="/settings/">{{L('menu_settings')}}</a></li>
-				{%-if userAccessLevel.ordinal>=3%}
+				{%if userAccessLevel.ordinal>=3%}
 				<li class="separator"></li>
 				<li><a href="/settings/admin">{{L('menu_admin')}}</a></li>
-				{%-endif%}
+				{%endif%}
 			</ul>
 			{%else%}
 			<form action="/account/login" method="post">
@@ -58,7 +58,7 @@
 				<input type="submit" value="{{ L('log_in') }}"/>
 			</form>
 			{%endif%}
-{%-endblock-%}
+{%endblock%}
 		</td>
 		<td valign="top">
 			<div class="pageContent">
@@ -74,4 +74,3 @@
 <script src="/res/common.js?{{staticHash}}"></script>
 </body>
 </html>
-{%-endautoescape%}

@@ -1,6 +1,6 @@
-{%extends "page.twig"%}
+{%extends "page"%}
 {%block content%}
-{%-if user.domain%}
+{%if user.domain%}
 <div class="settingsMessage">
 	{{L('incomplete_profile')}}<br/>
 	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', user.domain)}}</a>
@@ -11,7 +11,7 @@
 		<!-- left column -->
 		<td width="200" id="left">
 			{%if user.hasAvatar%}
-			{%if currentUser and currentUser.id==user.id%}
+			{%if currentUser is not null and currentUser.id==user.id%}
 			<div class="selfAvaOverlay">
 				{{user | pictureForAvatar('rl')}}
 				<ul class="selfAvaActions actionList">
@@ -23,7 +23,7 @@
 			{{user | pictureForAvatar('rl')}}
 			{%endif%}
 			{%else%}
-			{%if currentUser and currentUser.id==user.id%}
+			{%if currentUser is not null and currentUser.id==user.id%}
 			<a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">
 				<span class="ava avaPlaceholder inProfile{%if user.gender=='FEMALE'%} female{%endif%}">
 					<span class="ownProfileAvaPlaceholderLabel">{{L('upload_avatar')}}</span>
@@ -33,20 +33,20 @@
 			<span class="ava avaPlaceholder inProfile{%if user.gender=='FEMALE'%} female{%endif%}"></span>
 			{%endif%}
 			{%endif%}
-			{%if currentUser and currentUser.id!=user.id%}
+			{%if currentUser is not null and currentUser.id!=user.id%}
 			<div class="profileBelowAva">
 				{{friendshipStatusText}}
-				{%-if not(isFriend) and not(following)%}
-				{%-if user.supportsFriendRequests%}
+				{%if not(isFriend) and not(following)%}
+				{%if user.supportsFriendRequests%}
 				<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("add_friend")}}</a>
-				{%-else%}
+				{%else%}
 				<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("follow")}}</a>
-				{%-endif%}
+				{%endif%}
 				{%endif%}
 			</div>
 			{%endif%}
 			<ul class="actionList marginAfter marginBefore">
-			{%if currentUser and currentUser.id!=user.id%}
+			{%if currentUser is not null and currentUser.id!=user.id%}
 			{%if isFriend or following%}
 				<li><a href="{{user.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},[{%if following%}'confirm_unfollow_X'{%else%}'confirm_unfriend_X'{%endif%},this.getAttribute('data-name')],'{{user.getProfileURL('doRemoveFriend')}}')" data-name="{{user.fullName}}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
 			{%endif%}
@@ -59,14 +59,14 @@
 				<tr><th colspan="3" class="blockHeader"><a href="{{user.getProfileURL('friends')}}">{{L("friends")}}</a></th></tr>
 				<tr><td colspan="3" class="blockSubheader">{{LP('X_friends', friendCount)}}</td></tr>
 				{%for friend in friends%}
-				{%if(loop.first or loop.index==4)%}<tr valign="top" class="membersRow">{%endif%}
+				{%if(loop.first or loop.index==3)%}<tr valign="top" class="membersRow">{%endif%}
 				<td align="center" width="33%" style="overflow: hidden;">
 					<a href="{{friend.url}}">
 						{{friend | pictureForAvatar('s')}}<br/>
 						<span class="memberName">{{friend.firstName}}<br/>{{friend.lastName}}</span>
 					</a>
 				</td>
-				{%if(loop.index==3 or loop.index==6)%}</tr>{%endif%}
+				{%if(loop.index==2 or loop.index==5)%}</tr>{%endif%}
 				{%endfor%}
 				{%if(friends.size%3!=0)%}
 				<td colspan="{{3-friends.size%3}}" width="{{(3-friends.size%3)*33}}%">&nbsp;</td></tr>
@@ -77,18 +77,18 @@
 		<td id="right">
 			<h2>{{user.fullName}}</h2>
 			<table class="profileBlock profileFields" width="100%">
-				{%if user.birthDate%}<tr><td class="label">{{L("birth_date")}}:</td><td>{{user.birthDate}}</td></tr>{%endif%}
-				{%if user.summary%}<tr><td class="label">{{L('profile_about')}}:</td><td>{{user.summary}}</td></tr>{%endif%}
+				{%if user.birthDate is not null%}<tr><td class="label">{{L("birth_date")}}:</td><td>{{user.birthDate}}</td></tr>{%endif%}
+				{%if user.summary is not null%}<tr><td class="label">{{L('profile_about')}}:</td><td>{{user.summary}}</td></tr>{%endif%}
 			</table>
 			<table width="100%" class="profileBlock">
 				<tr><th class="blockHeader"><a href="#">{{L('wall')}}</a></th></tr>
 				<tr><td class="blockSubheader">{{LP('X_posts', postCount)}}</td></tr>
-				{%if currentUser%}<tr><td>{%include "wall_post_form.twig" with {wallOwner: user}%}</td></tr>{%endif%}
+				{%if currentUser is not null%}<tr><td>{%include "wall_post_form" with {'wallOwner': user}%}</td></tr>{%endif%}
 				<tr><td class="padded" id="postList">
 			{%for post in wall%}
-			{%include "wall_post.twig" with {post: post}%}
+			{%include "wall_post" with {'post': post}%}
 			{%endfor%}
-					{%include "pagination.twig" with {perPage: 25, offset: pageOffset, total: postCount, urlPrefix: concat(user.profileURL, "?offset=")} only%}
+					{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (user.profileURL+"?offset=")}%}
 				</td></tr>
 			</table>
 		</td>

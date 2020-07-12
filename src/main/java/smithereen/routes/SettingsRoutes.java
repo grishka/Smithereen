@@ -1,6 +1,5 @@
 package smithereen.routes;
 
-import org.jtwig.JtwigModel;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,13 +32,14 @@ import smithereen.libvips.VImage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
+import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.Session;
 
 public class SettingsRoutes{
 	public static Object settings(Request req, Response resp, Account self) throws SQLException{
-		JtwigModel model=JtwigModel.newModel();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings");
 		model.with("invitations", UserStorage.getInvites(self.id, true));
 		model.with("signupMode", Config.signupMode);
 		model.with("languages", Lang.list).with("selectedLang", Utils.lang(req));
@@ -57,7 +57,7 @@ public class SettingsRoutes{
 			s.removeAttribute("settings.profilePicMessage");
 		}
 		model.with("title", lang(req).get("settings"));
-		return Utils.renderTemplate(req, "settings", model);
+		return model.renderToString(req);
 	}
 
 	public static Object createInvite(Request req, Response resp, Account self) throws SQLException{
@@ -277,7 +277,7 @@ public class SettingsRoutes{
 	}
 
 	public static Object profileEditGeneral(Request req, Response resp, Account self){
-		JtwigModel model=JtwigModel.newModel();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("profile_edit_general");
 		model.with("todayDate", new java.sql.Date(System.currentTimeMillis()).toString());
 		model.with("title", lang(req).get("edit_profile"));
 		Session s=req.session();
@@ -285,13 +285,13 @@ public class SettingsRoutes{
 			model.with("profileEditMessage", s.attribute("settings.profileEditMessage"));
 			s.removeAttribute("settings.profileEditMessage");
 		}
-		return renderTemplate(req, "profile_edit_general", model);
+		return model.renderToString(req);
 	}
 
 	public static Object confirmRemoveProfilePicture(Request req, Response resp, Account self){
 		req.attribute("noHistory", true);
 		String back=Utils.back(req);
-		return Utils.renderTemplate(req, "generic_confirm", JtwigModel.newModel().with("message", Utils.lang(req).get("confirm_remove_profile_picture")).with("formAction", Config.localURI("/settings/removeProfilePicture?_redir="+URLEncoder.encode(back))).with("back", back));
+		return new RenderedTemplateResponse("generic_confirm").with("message", Utils.lang(req).get("confirm_remove_profile_picture")).with("formAction", Config.localURI("/settings/removeProfilePicture?_redir="+URLEncoder.encode(back))).with("back", back).renderToString(req);
 	}
 
 	public static Object removeProfilePicture(Request req, Response resp, Account self) throws SQLException{

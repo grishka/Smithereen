@@ -1,0 +1,151 @@
+@import "common.scss";
+
+$contentPadding: 8px;
+
+body, html{
+	width: 100%;
+	overflow-x: hidden;
+}
+
+body{
+	margin: 0;
+	margin-top: 56px;
+}
+
+body, p, textarea, input, select{
+	font-family: Roboto, -apple-system, HelveticaNeue, sans-serif;
+	font-size: 15px;
+}
+
+.header{
+	color: $textOnAccent;
+	background: linear-gradient(to top, color($accent shade(10%)), $accent);
+	height: 56px;
+	width: 100%;
+	position: fixed;
+	top: 0;
+	font-size: 20px;
+	font-weight: 500;
+	text-shadow: 0 2px 2px rgba(0, 0, 0, .15);
+	text-align: center;
+	line-height: 56px;
+	z-index: 1;
+	padding-right: 56px;
+	text-overflow: ellipsis;
+	overflow-x: hidden;
+	box-sizing: border-box;
+	white-space: nowrap;
+	.menuButton{
+		width: 56px;
+		float: left;
+		img{
+			vertical-align: top;
+			margin-top: 8px;
+		}
+		label{
+			font-size: 0;
+			display: block;
+			width: 100%;
+			height: 100%;
+			background-image: svg-load("img/mobile_menu.svg");
+			background-position: center;
+			background-size: 40px;
+			background-repeat: no-repeat;
+			span{
+				visibility: hidden;
+			}
+		}
+	}
+}
+
+h2{
+	color: color($accent shade(20%));
+	font-weight: bold;
+	font-size: 20px;
+	margin: 0 -$contentPadding;
+	padding: 0 8px 2px 8px;
+	border-bottom: solid 1px color($accent lightness(+30%));
+}
+
+.singleColumn{
+	padding: $contentPadding;
+}
+
+.actionList{
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	a{
+		display: block;
+		line-height: 32px;
+		padding-left: 8px;
+		padding-right: 8px;
+	}
+	a:active, a:visited:active{
+		text-decoration: none;
+		background: color($accent lightness(+45%));
+		box-shadow: 0 1px 0 color($accent lightness(+40%)) inset;
+	}
+	li.hasAux{
+		display: table;
+		a{
+			display: table-cell;
+			&.actionMain{
+				width: 100%;
+			}
+			&.actionAux{
+				color: color($text alpha(50%));
+			}
+		}
+	}
+	li.separator{
+		border-bottom: solid 1px color($accent lightness(+40%));
+		margin: 8px 0;
+	}
+}
+
+input[type=submit], input[type=button], button, .button, .button:link, .button:visited{
+	appearance: none;
+	background-color: $accent;
+	border-radius: 8px;
+	border: none;
+	color: $textOnAccent;
+	padding: 0 16px;
+	height: 32px;
+	line-height: 32px;
+	display: inline-block;
+	box-sizing: border-box;
+	&.loading, &.loading:hover{
+		background-image: url(/res/loader_overlay.svg);
+	}
+
+	&:active{
+		text-decoration: none;
+		background-color: color($accent shade(20%));
+	}
+	&.secondary{
+		background-color: $gray;
+		color: $textOnGray;
+		&.loading, &.loading:hover{
+			background-image: url(/res/loader_overlay.svg);
+		}
+		&:active{
+			background: color($gray shade(20%));
+		}
+	}
+}
+
+input[type=text], input[type=password], input[type=email], input[type=date], textarea, select{
+	border-radius: 4px;
+}
+
+.mainMenu{
+	display: none;
+	padding: 8px 0;
+}
+
+#mainMenuToggler:checked+.mainMenu{
+	display: block;
+}
+
+

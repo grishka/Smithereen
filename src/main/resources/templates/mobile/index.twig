@@ -1,6 +1,14 @@
 {% extends "page" %}
 {% block content %}
 <div class="singleColumn">
+	<form action="/account/login" method="post">
+		{{ L("email_or_username") }}:<br/>
+		<input type="text" name="username"/><br/>
+		{{ L("password") }}:<br/>
+		<input type="password" name="password"/><br/>
+		<input type="submit" value="{{ L('log_in') }}"/>
+	</form>
+
 	<h2>{{serverDisplayName}}</h2>
 	<p>{{serverDescription | raw}}</p>
 	{%if signupMode=='OPEN' or signupMode=='INVITE_ONLY'%}
