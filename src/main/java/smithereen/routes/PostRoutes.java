@@ -201,7 +201,9 @@ public class PostRoutes{
 			SessionInfo sess=sessionInfo(req);
 			sess.postDraftAttachments.clear();
 			if(isAjax(req)){
-				String postHTML=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post").with("post", post).renderToString(req);
+				HashMap<Integer, UserInteractions> interactions=new HashMap<>();
+				interactions.put(post.id, new UserInteractions());
+				String postHTML=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post").with("post", post).with("postInteractions", interactions).renderToString(req);
 				resp.type("application/json");
 				WebDeltaResponseBuilder rb;
 				if(replyTo==0)
@@ -230,9 +232,11 @@ public class PostRoutes{
 			if(e instanceof PostNewsfeedEntry){
 				PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
 				if(pe.post!=null){
-					pe.post.replies=PostStorage.getRepliesForFeed(e.objectID);
 					postIDs.add(pe.post.id);
-					pe.post.getAllReplyIDs(postIDs);
+					if(req.attribute("mobile")==null){
+						pe.post.replies=PostStorage.getRepliesForFeed(e.objectID);
+						pe.post.getAllReplyIDs(postIDs);
+					}
 				}else{
 					System.err.println("No post: "+pe);
 				}
