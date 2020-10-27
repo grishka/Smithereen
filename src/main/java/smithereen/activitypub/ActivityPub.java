@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.text.SimpleDateFormat;
 import java.util.Base64;
@@ -88,7 +90,7 @@ public class ActivityPub{
 		}
 	}
 
-	private static Request.Builder signRequest(Request.Builder builder, URI url, User user){
+	private static Request.Builder signRequest(Request.Builder builder, URI url, User user, byte[] body){
 		String path=url.getPath();
 		String host=url.getHost();
 		if(url.getPort()!=-1)
@@ -96,7 +98,11 @@ public class ActivityPub{
 		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
 		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 		String date=dateFormat.format(new Date());
-		String strToSign="(request-target): post "+path+"\nhost: "+host+"\ndate: "+date;
+		String digestHeader="SHA-256=";
+		try{
+			digestHeader+=Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(body));
+		}catch(NoSuchAlgorithmException ignore){}
+		String strToSign="(request-target): post "+path+"\nhost: "+host+"\ndate: "+date+"\ndigest: "+digestHeader;
 
 		Signature sig;
 		byte[] signature;
@@ -111,8 +117,8 @@ public class ActivityPub{
 		}
 
 		String keyID=user.activityPubID+"#main-key";
-		String sigHeader="keyId=\""+keyID+"\",headers=\"(request-target) host date\",signature=\""+Base64.getEncoder().encodeToString(signature)+"\"";
-		builder.header("Signature", sigHeader).header("Date", date);
+		String sigHeader="keyId=\""+keyID+"\",headers=\"(request-target) host date digest\",signature=\""+Base64.getEncoder().encodeToString(signature)+"\"";
+		builder.header("Signature", sigHeader).header("Date", date).header("Digest", digestHeader);
 		return builder;
 	}
 
@@ -124,11 +130,12 @@ public class ActivityPub{
 	}
 
 	public static void postActivity(URI inboxUrl, String activityJson, User user) throws IOException{
+		byte[] body=activityJson.getBytes(StandardCharsets.UTF_8);
 		Request req=signRequest(
 					new Request.Builder()
 					.url(inboxUrl.toString())
-					.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), activityJson)),
-				inboxUrl, user)
+					.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), body)),
+				inboxUrl, user, body)
 				.build();
 		Response resp=httpClient.newCall(req).execute();
 		System.out.println(resp.toString());
