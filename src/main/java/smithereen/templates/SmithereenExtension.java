@@ -17,6 +17,7 @@ public class SmithereenExtension extends AbstractExtension{
 		r.put("LG", new LangGenderedFunction());
 		r.put("LP", new LangPluralFunction());
 		r.put("renderAttachments", new RenderAttachmentsFunction());
+		r.put("json", new JsonFunction());
 		return r;
 	}
 

@@ -11,8 +11,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import smithereen.Config;
 import static smithereen.Utils.*;
@@ -318,8 +320,18 @@ public class PostRoutes{
 			}
 			model.with("metaTags", meta);
 		}
-		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete");
+		Utils.jsLangKey(req, "yes", "no", "cancel", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete");
 		model.with("title", post.getShortTitle(50)+" | "+post.user.getFullName());
+		if(req.attribute("mobile")!=null){
+			model.with("toolbarTitle", lang(req).get("wall_post_title"));
+			List<User> likers=LikeStorage.getPostLikes(postID, info!=null && info.account!=null ? info.account.user.id : 0, 0, 10).stream().map(id->{
+				try{
+					return UserStorage.getById(id);
+				}catch(SQLException x){}
+				return null;
+			}).filter(Objects::nonNull).collect(Collectors.toList());
+			model.with("likedBy", likers);
+		}
 		if(post.getReplyLevel()>0){
 			model.with("jsRedirect", "/posts/"+post.replyKey[0]+"#comment"+post.id);
 		}

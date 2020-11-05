@@ -1,0 +1,87 @@
+{%extends "page"%}
+{%block content%}
+{%if notifications.empty%}
+	<center class="notMuchContent">{{L('no_notifications')}}</center>
+{%else%}
+<div>
+{%for notification in notifications%}
+{%set actor=users[notification.actorID]%}
+{%if notification.objectID!=0%}
+{%set object=posts[notification.objectID]%}
+{%set isComment=object is not null ? object.replyLevel>0 : false%}
+{%else%}
+{%set object=null%}
+{%endif%}
+{%if notification.relatedObjectID!=0%}
+{%set relatedObject=posts[notification.relatedObjectID]%}
+{%set relatedIsComment=relatedObject is not null ? relatedObject.replyLevel>0 : false%}
+{%else%}
+{%set relatedObject=null%}
+{%endif%}
+{%if actor is not null%}
+{%set actorName=actor.fullName%}
+{%set actorURL=actor.profileURL%}
+{%set actorAva=actor.avatar%}
+{%set actorGender=actor.gender%}
+{%else%}
+{%set actorName=L('deleted_placeholder')%}
+{%set actorURL="/users/"+notification.actorID%}
+{%set actorAva=null%}
+{%set actorGender=null%}
+{%endif%}
+{%set link=null%}
+<table width="100%" cellpadding="0" cellspacing="0" class="post notification notification{{notification.type | replace({'_': ' '}) | lower | title | replace({' ': ''})}}" id="notification{{notification.id}}">
+	<tr>
+		<td width="50" valign="top">
+			<div class="avaWrap">
+				<a href="{{actorURL}}">{{actor | pictureForAvatar('s')}}</a>
+				<span class="notificationIcon"></span>
+			</div>
+		</td>
+		<td valign="top" class="notificationContentWrap">
+			<a href="{{actorURL}}" class="authorName">{{actorName}}</a>
+			{%if notification.type=="REPLY"%}
+			{{LG(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', actorGender)}} <a href="{{relatedObject.internalURL}}">{{relatedObject.shortTitle}}</a>
+			<div class="postContent">
+				{{object.content | raw}}
+			</div>
+			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments)}}<br/>{%endif%}
+			{%set link=object.internalURL%}
+			{%elseif notification.type=="MENTION"%}
+			{{LG(isComment ? 'notification_mentioned_in_comment' : 'notification_mentioned_in_post', actorGender)}}
+			<div class="postContent">
+				{{object.content | raw}}
+			</div>
+			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments)}}<br/>{%endif%}
+			{%set link=object.internalURL%}
+			{%elseif notification.type=="LIKE"%}
+			{{LG(isComment ? 'notification_liked_comment' : 'notification_liked_post', actorGender)}} <a href="{{object.internalURL}}">{{object.shortTitle}}</a>
+			{%elseif notification.type=="RETOOT"%}
+			{{LG(isComment ? 'notification_reposted_comment' : 'notification_reposted_post', actorGender)}} <a href="{{object.internalURL}}">{{object.shortTitle}}</a>
+			{%elseif notification.type=="POST_OWN_WALL"%}
+			{{LG('notification_posted_on_wall', actorGender)}}
+			<div class="postContent">
+				{{object.content | raw}}
+			</div>
+			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments)}}<br/>{%endif%}
+			{%set link=object.internalURL%}
+			{%elseif notification.type=="INVITE_SIGNUP"%}
+			{{LG('notification_invite_signup', actorGender)}}
+			{%elseif notification.type=="FOLLOW"%}
+			{{LG('notification_follow', actorGender)}}
+			{%elseif notification.type=="FRIEND_REQ_ACCEPT"%}
+			{{LG('notification_friend_req_accept', actorGender)}}
+			{%else%}
+			<div class="postContent">
+				{{notification}}
+			</div>
+			{%endif%}
+			<div class="postInfo">{%if link is not null%}<a href="{{link}}" class="postLink">{%endif%}{{LD(notification.time)}}{%if link is not null%}</a>{%endif%}</div>
+		</td>
+	</tr>
+</table>
+{%endfor%}
+	{%include "pagination" with {'perPage': 50, 'offset': offset, 'total': total, 'urlPrefix': "/my/notifications?offset="}%}
+</div>
+{%endif%}
+{%endblock%}

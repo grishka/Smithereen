@@ -2,6 +2,7 @@
 
 declare var userConfig:any;
 declare var langKeys:{[key:string]:string|string[]};
+declare var mobile:boolean;
 
 // Use Cmd instead of Ctrl on Apple devices.
 var isApple:boolean=navigator.platform.indexOf("Mac")==0 || navigator.platform=="iPhone" || navigator.platform=="iPad" || navigator.platform=="iPod touch";

@@ -173,5 +173,8 @@
   "liked_by_X_people": ["%d person likes this", "%d people like this"],
   "incomplete_profile": "This profile might be incomplete.",
   "open_on_server_X": "Open on %s",
-  "likes_title": "Likes"
+  "likes_title": "Likes",
+  "wall_post_title": "Post",
+  "more_actions": "More...",
+  "choose_file_mobile": "Choose a file from your device"
 }

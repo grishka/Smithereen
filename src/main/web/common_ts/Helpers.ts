@@ -53,17 +53,24 @@ Array.prototype.remove=function(item){
 	this.splice(index, 1);
 };
 
+interface AnimationDescription{
+	keyframes:Keyframe[] | PropertyIndexedKeyframes | null;
+	options:number | KeyframeAnimationOptions;
+}
+
 interface HTMLElement{
 	popover:Popover;
 	customData:{[key:string]: any};
 
-	currentVisibilityAnimEndListener:{():void};
+	currentVisibilityAnimation:Animation;
 
 	qs<E extends HTMLElement>(sel:string):E;
 	hide():void;
 	show():void;
-	hideAnimated(animName?:string, onEnd?:{():void}):void;
-	showAnimated(animName?:string, onEnd?:{():void}):void;
+	hideAnimated(animName?:AnimationDescription, onEnd?:{():void}):void;
+	showAnimated(animName?:AnimationDescription, onEnd?:{():void}):void;
+
+	anim(keyframes: Keyframe[] | PropertyIndexedKeyframes | null, options?: number | KeyframeAnimationOptions, onEnd?:{():void}):Partial<Animation>;
 }
 
 HTMLElement.prototype.qs=function(sel:string){
@@ -74,40 +81,105 @@ HTMLElement.prototype.hide=function():void{
 	this.style.display="none";
 };
 
-HTMLElement.prototype.hideAnimated=function(animName:string="fadeOut 0.2s ease", onEnd:{():void}=null):void{
-	if(this.currentVisibilityAnimEndListener){
-		this.removeEventListener("animationend", this.currentVisibilityAnimEndListener);
-	}
-	var f=()=>{
-		this.style.animation="";
-		this.style.display="none";
-		this.removeEventListener("animationend", f);
-		this.currentVisibilityAnimEndListener=null;
+HTMLElement.prototype.hideAnimated=function(animName:AnimationDescription={keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: 200, easing: "ease"}}, onEnd:{():void}=null):void{
+	if(this.currentVisibilityAnimation)
+		this.currentVisibilityAnimation.cancel();
+	this.currentVisibilityAnimation=this.anim(animName.keyframes, animName.options, ()=>{
+		this.hide();
+		this.currentVisibilityAnimation=null;
 		if(onEnd) onEnd();
-	};
-	this.addEventListener("animationend", f);
-	this.currentVisibilityAnimEndListener=f;
-	this.style.animation=animName;
+	});
 };
 
 HTMLElement.prototype.show=function():void{
 	this.style.display="";
 };
 
-HTMLElement.prototype.showAnimated=function(animName:string="fadeIn 0.2s ease", onEnd:{():void}=null):void{
-	if(this.currentVisibilityAnimEndListener){
-		this.removeEventListener("animationend", this.currentVisibilityAnimEndListener);
+HTMLElement.prototype.showAnimated=function(animName:AnimationDescription={keyframes: [{opacity: 0}, {opacity: 1}], options: {duration: 200, easing: "ease"}}, onEnd:{():void}=null):void{
+	if(this.currentVisibilityAnimation)
+		this.currentVisibilityAnimation.cancel();
+	this.show();
+	this.currentVisibilityAnimation=this.anim(animName.keyframes, animName.options, ()=>{
+		this.currentVisibilityAnimation=null;
+		if(onEnd)
+			onEnd();
+	});
+};
+
+var compatAnimStyle:HTMLStyleElement;
+
+function cssRuleForCamelCase(s:string):string{
+	return s.replace( /([A-Z])/g, "-$1" );
+}
+
+function removeCssRuleByName(sheet:CSSStyleSheet, name:string){
+	for(var i=0;i<sheet.rules.length;i++){
+		if((sheet.rules[i] as any).name==name){
+			sheet.removeRule(i);
+			return;
+		}
 	}
-	var f=()=>{
-		this.style.animation="";
-		this.removeEventListener("animationend", f);
-		this.currentVisibilityAnimEndListener=null;
-		if(onEnd) onEnd();
-	};
-	this.style.display="";
-	this.addEventListener("animationend", f);
-	this.currentVisibilityAnimEndListener=f;
-	this.style.animation=animName;
+}
+
+HTMLElement.prototype.anim=function(keyframes, options, onFinish):Partial<Animation>{
+	if(this.animate!==undefined){
+		var a=this.animate(keyframes, options);
+		if(onFinish)
+			a.onfinish=onFinish;
+		return a;
+	}else if(this.style.animationName!==undefined || this.style.webkitAnimationName!==undefined){
+		if(!compatAnimStyle){
+			compatAnimStyle=ce("style");
+			document.body.appendChild(compatAnimStyle);
+		}
+		var ruleName="";
+		for(var i=0;i<40;i++){
+			ruleName+=String.fromCharCode(0x61+Math.floor(Math.random()*26));
+		}
+		var rule=(this.style.animationName===undefined ? "@-webkit-" : "@")+"keyframes "+ruleName+"{";
+		rule+="0%{";
+		var _keyframes:any=keyframes as any;
+		for(var k in _keyframes[0]){
+			rule+=cssRuleForCamelCase(k)+": "+_keyframes[0][k]+";";
+		}
+		rule+="} 100%{";
+		for(var k in _keyframes[1]){
+			rule+=cssRuleForCamelCase(k)+": "+_keyframes[1][k]+";";
+		}
+		rule+="}}";
+		var sheet:CSSStyleSheet=compatAnimStyle.sheet as CSSStyleSheet;
+		sheet.insertRule(rule, sheet.rules.length);
+		var duration:number=(options instanceof Number) ? (options as number) : ((options as KeyframeAnimationOptions).duration as number);
+		var easing=(options instanceof Number) ? "" : ((options as KeyframeAnimationOptions).easing);
+		if(this.style.animation!==undefined){
+			this.style.animation=ruleName+" "+(duration/1000)+"s "+easing;
+			var fn=()=>{
+				this.style.animation="";
+				removeCssRuleByName(sheet, ruleName);
+				if(onFinish) onFinish();
+				this.removeEventListener("animationend", fn);
+			};
+			this.addEventListener("animationend", fn);
+		}else{
+			this.style.webkitAnimation=ruleName+" "+(duration/1000)+"s "+easing;
+			var fn=()=>{
+				this.style.webkitAnimation="";
+				removeCssRuleByName(sheet, ruleName);
+				if(onFinish) onFinish();
+				this.removeEventListener("webkitanimationend", fn);
+			};
+			this.addEventListener("webkitanimationend", fn);
+		}
+		return {cancel: function(){
+			if(this.style.animation!==undefined)
+				this.style.animation="";
+			else
+				this.style.webkitAnimation="";
+		}};
+	}
+	if(onFinish)
+		onFinish();
+	return null;
 };
 
 function ajaxPost(uri:string, params:any, onDone:Function, onError:Function):void{
@@ -429,6 +501,7 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 	var liked=btn.classList.contains("liked");
 	var counter=ge("likeCounter"+objType.substring(0,1).toUpperCase()+objType.substring(1)+objID);
 	var count=parseInt(counter.innerText);
+	var ownAva=document.querySelector(".likeAvatars .currentUserLikeAva") as HTMLElement;
 	if(!liked){
 		counter.innerText=(count+1).toString();
 		btn.classList.add("liked");
@@ -440,6 +513,7 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 			btn.popover.setTitle(btn.customData.altPopoverTitle);
 			btn.customData.altPopoverTitle=title;
 		}
+		if(ownAva) ownAva.show();
 	}else{
 		counter.innerText=(count-1).toString();
 		btn.classList.remove("liked");
@@ -454,6 +528,7 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 			btn.popover.setTitle(btn.customData.altPopoverTitle);
 			btn.customData.altPopoverTitle=title;
 		}
+		if(ownAva) ownAva.hide();
 	}
 	btn.setAttribute("in_progress", "");
 	ajaxGet(btn.href, function(resp:any){
@@ -520,4 +595,9 @@ function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 			popover.hide();
 		}
 	}
+}
+
+function showOptions(el:HTMLElement){
+	new MobileOptionsBox(JSON.parse(el.getAttribute("data-options"))).show();
+	return false;
 }

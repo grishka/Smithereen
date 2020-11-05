@@ -1,29 +1,27 @@
 {%extends "page"%}
 {%block content%}
-<div class="tabbar">
-<a href="{{owner.getProfileURL('friends')}}" class="{%if tab==0%}selected{%endif%}">{{L('friends')}}</a><a href="{{owner.getProfileURL('followers')}}" class="{%if tab==1%}selected{%endif%}">{{L('followers')}}</a><a href="{{owner.getProfileURL('following')}}" class="{%if tab==2%}selected{%endif%}">{{L('following')}}</a>
-{%if currentUser is not null and currentUser.id==owner.id%}
-{%if userNotifications.newFriendRequestCount>0%}
-<a href="/my/incomingFriendRequests">{{LP('X_friend_requests', userNotifications.newFriendRequestCount)}}</a>
-{%endif%}
-{%endif%}
-</div>
+{% include 'friends_tabbar' %}
 <div class="singleColumn">
 {%for friend in friendList%}
-<table width="100%" class="friendsRow" id="frow{{friend.id}}">
+<table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
 	<tr valign="top">
 		<td width="100">
-			<a href="{{friend.url}}">{{friend | pictureForAvatar('m')}}</a>
+			<a href="{{friend.profileURL}}">{{friend | pictureForAvatar('m')}}</a>
 		</td>
 		<td class="info">
-			<b><a href="{{friend.url}}">{{friend.fullName}}</a></b>
+			<b><a href="{{friend.profileURL}}">{{friend.fullName}}</a></b>
 		</td>
 		<td width="200">
 			<ul class="actionList">
 				<li><a href="{{friend.getProfileURL('friends')}}">{{L('view_friends_of')}}</a></li>
-				{%if(currentUser is not null and currentUser.id==owner.id and not followers)%}<li>
-					<a href="{{friend.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},[{%if following%}'confirm_unfollow_X'{%else%}'confirm_unfriend_X'{%endif%},this.getAttribute('data-name')],'{{friend.getProfileURL('doRemoveFriend')}}?from=list')" data-name="{{friend.fullName}}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
-				</li>{%endif%}
+				{%if(currentUser is not null and currentUser.id==owner.id and not followers)%}
+					<li>
+						<a href="{{friend.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},[{%if following%}'confirm_unfollow_X'{%else%}'confirm_unfriend_X'{%endif%},this.getAttribute('data-name')],'{{friend.getProfileURL('doRemoveFriend')}}?from=list')" data-name="{{friend.fullName}}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
+					</li>
+				{%endif%}
+                {%if friend.domain is not null%}
+					<li><a href="{{ friend.url }}" target="_blank">{{ L('open_on_server_X', friend.domain) }}</a></li>
+				{%endif%}
 			</ul>
 		</td>
 	</tr>

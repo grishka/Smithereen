@@ -1,0 +1,38 @@
+{%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
+<div class="singleColumn wallPostForm" id="wallPostForm_{{id}}" data-unique-id="{{id}}">
+	<form action="{{wallOwner.getProfileURL('createWallPost')}}" method="post">
+		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="4" maxlength="65000" placeholder="{%if wallOwner.id!=currentUser.id%}{{L('write_on_X_wall', wallOwner.firstName)}}{%elseif replyTo is not null%}{{L('comment_placeholder')}}{%else%}{{L('write_on_own_wall')}}{%endif%}">{{prefilledPostText}}</textarea>
+		<input type="hidden" name="csrf" value="{{csrf}}"/>
+		{%if replyTo is not null%}
+		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}" value="{{replyTo.id}}"/>
+		{%endif%}
+		<input type="hidden" name="formID" value="{{id}}"/>
+		<div id="postFormAttachments_{{id}}">
+			{%set attachIDs=""%}
+			{%for attachment in draftAttachments%}
+			<div class="attachment" id="attachment_{{attachment.localID}}" data-id="{{attachment.localID}}">
+				{{attachment.sizes | photoPicture('xs')}}
+				<a href="/system/deleteDraftAttachment?id={{attachment.localID}}&csrf={{csrf}}" class="deleteBtn" title="{{L('delete')}}"></a>
+				{%set attachIDs=attachIDs+attachment.localID%}
+				{%if not loop.last%}{%set attachIDs=attachIDs+","%}{%endif%}
+			</div>
+			{%endfor%}
+		</div>
+		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
+		<table width="100%" cellpadding="0" cellspacing="0" class="bottomBar">
+			<tr><td width="50%" class="left">
+				<div class="js">
+					<input type="file" id="uploadField_{{id}}" multiple accept="image/*" style="display: none" form="attachmentUploadForm_{{id}}"/>
+					<label for="uploadField_{{id}}" class="link">{{L('attach_photo')}}</label>
+				</div>
+			</td><td align="right" class="right">
+				<input type="submit" value="{{L('send')}}"/>
+			</td></tr>
+		</table>
+	</form>
+	<form action="/system/upload/postPhoto?draft=1&csrf={{csrf}}" method="post" enctype="multipart/form-data" id="attachmentUploadForm_{{id}}">
+		<noscript>
+			<input type="file" name="file" accept="image/*"/><input type="submit" value="{{L('attach')}}"/>
+		</noscript>
+	</form>
+</div>

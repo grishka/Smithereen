@@ -1,12 +1,13 @@
 module.exports={
+	syntax: 'postcss-scss',
 	plugins:[
-		require('postcss-import')(),
 		require('postcss-advanced-variables')(),
+		require('postcss-import')(),
 		require('postcss-color-function')(),
 		require('postcss-rgba-hex')({rgbOnly: true, silent: true}),
-		require('postcss-calc')(),
 		require('postcss-nested')(),
 		require('postcss-inline-svg')(),
-		require('autoprefixer')()
+		require('autoprefixer')(),
+		require('cssnano')({preset: ['default', {}]})
 	]
 }

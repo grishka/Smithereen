@@ -87,6 +87,10 @@ public class Main{
 			if(request.pathInfo().startsWith("/activitypub")){
 				request.attribute("popup", Boolean.TRUE);
 			}
+			String ua=request.userAgent();
+			if(StringUtils.isNotEmpty(ua) && Utils.isMobileUserAgent(ua)){
+				request.attribute("mobile", Boolean.TRUE);
+			}
 		});
 
 		get("/", Main::indexPage);

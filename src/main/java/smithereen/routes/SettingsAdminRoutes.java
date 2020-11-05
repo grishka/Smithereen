@@ -20,7 +20,7 @@ public class SettingsAdminRoutes{
 	public static Object index(Request req, Response resp, Account self){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_server_info");
 		Lang l=lang(req);
-		model.with("title", l.get("profile_edit_basic")+" | "+l.get("menu_admin"));
+		model.with("title", l.get("profile_edit_basic")+" | "+l.get("menu_admin")).with("toolbarTitle", l.get("menu_admin"));
 		model.with("serverName", Config.getServerDisplayName())
 				.with("serverDescription", Config.serverDescription)
 				.with("serverAdminEmail", Config.serverAdminEmail)
@@ -63,7 +63,7 @@ public class SettingsAdminRoutes{
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
 		List<Account> accounts=UserStorage.getAllAccounts(offset, 100);
 		model.with("accounts", accounts);
-		model.with("title", l.get("admin_users")+" | "+l.get("menu_admin"));
+		model.with("title", l.get("admin_users")+" | "+l.get("menu_admin")).with("toolbarTitle", l.get("menu_admin"));
 		model.with("total", UserStorage.getLocalUserCount());
 		model.with("pageOffset", offset);
 		jsLangKey(req, "cancel");

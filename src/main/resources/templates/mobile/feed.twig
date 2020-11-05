@@ -1,0 +1,33 @@
+{%extends "page"%}
+{%block content%}
+	<div class="cardsBackdrop">
+		<div class="card">
+		{%include "wall_post_form" with {'id': "new"}%}
+		</div>
+<div id="postList">
+{%for entry in feed%}
+<div class="card">
+{%if entry.type=="POST"%}
+{%include "wall_post" with {'post': entry.post}%}
+	<div class="commentsPreviewWrap">
+{%for reply in entry.post.replies%}
+{%include "wall_reply" with {'post': reply, 'hideReplyLink': true}%}
+{%endfor%}
+	</div>
+{%elseif entry.type=="RETOOT"%}
+🔁 <a href="{{entry.author.url}}">{{entry.author.fullName}}</a><br/>
+{%include "wall_post" with {'post': entry.post}%}
+	<div class="commentsPreviewWrap">
+{%for reply in entry.post.replies%}
+{%include "wall_reply" with {'post': reply}%}
+{%endfor%}
+	</div>
+{%else%}
+Unknown entry type {{entry.type}}
+{%endif%}
+</div>
+{%endfor%}
+	{%include "pagination" with {'perPage': 25, 'offset': offset, 'total': total, 'urlPrefix': paginationURL, 'firstPageURL': "/feed"}%}
+</div>
+	</div>
+{%endblock%}

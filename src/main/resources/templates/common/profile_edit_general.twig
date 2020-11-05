@@ -1,0 +1,32 @@
+{%import "forms" as form%}
+{%extends "page"%}
+{%block content%}
+<div class="singleColumn gray">
+	<form action="/settings/updateProfileGeneral" method="post" onsubmit="return ajaxSubmitForm(this)">
+		<h2>{{L('profile_edit_basic')}}</h2>
+		{{ form.start('profileEdit', profileEditMessage) }}
+			{{ form.textInput('first_name', L('first_name'), currentUser.firstName, {'maxlength': 100, 'required': true}) }}
+			{{ form.textInput('last_name', L('last_name'), currentUser.lastName, {'maxlength': 100}) }}
+			{{ form.select('gender', L('gender'), [
+				{'value': 0, 'label': L('gender_none'), 'selected': currentUser.gender=='NONE'},
+				{'value': 1, 'label': L('gender_male'), 'selected': currentUser.gender=='MALE'},
+				{'value': 2, 'label': L('gender_female'), 'selected': currentUser.gender=='FEMALE'}
+			]) }}
+        	{{ form.textInput('bdate', L('birth_date'), currentUser.birthDate, {'type': 'date', 'max': todayDate}) }}
+			{{ form.footer(L('save')) }}
+		{{ form.end() }}
+		<input type="hidden" name="csrf" value="{{csrf}}"/>
+	</form>
+
+	<noscript>
+		<form action="/settings/updateProfilePicture?csrf={{csrf}}" method="post" enctype="multipart/form-data">
+			<h2>{{L('update_profile_picture')}}</h2>
+			{%if profilePicMessage%}<div class="settingsMessage">{{profilePicMessage}}</div>{%endif%}
+			<table class="form">
+				<tr><td class="label"></td><td><input type="file" name="pic" accept="image/*"/></td></tr>
+				<tr class="footer"><td class="label"></td><td><input type="submit" value="{{L('save')}}"/></td></tr>
+			</table>
+		</form>
+	</noscript>
+</div>
+{%endblock%}

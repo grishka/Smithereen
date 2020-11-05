@@ -1,0 +1,82 @@
+{%extends "page"%}
+{%block content%}
+{%if user.domain is not null%}
+<div class="cardsBackdrop">
+<div class="card padded">
+	{{L('incomplete_profile')}}<br/>
+	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', user.domain)}}</a>
+</div>
+{%endif%}
+<div class="card singleColumn">
+	<table width="100%" cellpadding="0" cellspacing="0" border="0" class="profileHeader">
+		<tr>
+			<td width="100">
+				{{ user | pictureForAvatar('m') }}
+			</td>
+			<td class="profileNameW">
+				<h2 class="profileName">{{ user.fullName }}</h2>
+			</td>
+		</tr>
+	</table>
+</div>
+<div class="card singleColumn">
+	{%if currentUser is not null and currentUser.id!=user.id%}
+		<div class="profileBelowAva">
+		{{friendshipStatusText}}
+			{%if not(isFriend) and not(following) and not(friendRequestSent) and not(followRequested)%}
+			{%if user.supportsFriendRequests%}
+				<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("add_friend")}}</a>
+			{%else%}
+				<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("follow")}}</a>
+			{%endif%}
+			{%endif%}
+		</div>
+	{%endif%}
+	<ul class="actionList">
+		{%if currentUser is not null and currentUser.id==user.id%}
+			{%if currentUser.hasAvatar%}
+				<li><a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">{{L('update_profile_picture')}}</a></li>
+				<li><a href="/settings/confirmRemoveProfilePicture" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture');">{{L('remove_profile_picture')}}</a></li>
+			{%else%}
+				<li><a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">{{L('upload_avatar')}}</a></li>
+			{%endif%}
+			<li class="separator"></li>
+		{%endif%}
+		<li><a href="{{ user.getProfileURL('friends') }}">{{ LP('X_friends', friendCount) }}</a></li>
+		<li class="separator"></li>
+		{%if currentUser is not null and currentUser.id!=user.id%}
+		{%if isFriend or following or friendRequestSent or followRequested%}
+			<li><a href="{{user.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},[{%if following or followRequested%}'confirm_unfollow_X'{%else%}'confirm_unfriend_X'{%endif%},this.getAttribute('data-name')],'{{user.getProfileURL('doRemoveFriend')}}')" data-name="{{user.fullName}}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
+		{%endif%}
+		{%endif%}
+		<li><a href="{{user.getProfileURL('followers')}}">{{L('followers')}}</a></li>
+		<li><a href="{{user.getProfileURL('following')}}">{{L('following')}}</a></li>
+	</ul>
+</div>
+
+<div class="card profileFields">
+{%if user.birthDate is not null%}
+	<div class="profileFieldName">{{L("birth_date")}}</div>
+	<div class="profileFieldValue">{{user.birthDate}}</div>
+{%endif%}
+{%if user.summary is not null%}
+	<div class="profileFieldName">{{L('profile_about')}}</div>
+	<div class="profileFieldValue">{{user.summary}}</div>
+{%endif%}
+</div>
+
+{%if currentUser is not null%}
+	<div class="card">
+		{%include "wall_post_form" with {'wallOwner': user}%}
+	</div>
+{%endif%}
+	{%for post in wall%}
+		<div class="card">
+			{%include "wall_post" with {'post': post}%}
+		</div>
+	{%endfor%}
+	<div class="singleColumn">
+		{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (user.profileURL+"?offset=")}%}
+	</div>
+</div>
+{%endblock%}

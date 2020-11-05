@@ -1,0 +1,41 @@
+{# @pebvariable name="post" type="smithereen.data.Post" #}
+<div class="post" id="post{{ post.id }}">
+	<table width="100%" cellpadding="0" cellspacing="0">
+		<tr>
+			<td width="50" valign="top">
+				<a href="{{post.user.profileURL}}">{{post.user | pictureForAvatar('s')}}</a>
+			</td>
+			<td valign="middle" class="headerRight">
+				<div class="singleLine authorNameW"><a href="{{post.user.profileURL}}" class="authorName">{{post.user.fullName}}</a></div>
+				<div class="singleLine timeW"><a href="{{post.internalURL}}" class="postLink">{{LD(post.published)}}</a></div>
+			</td>
+		</tr>
+	</table>
+	<div class="postContentWrap">
+		<div class="postContent">{{post.content | raw}}</div>
+		{%if post.attachment is not null%}{{renderAttachments(post.processedAttachments)}}{%endif%}
+	</div>
+	<table class="postActions" width="100%" cellpadding="0" cellspacing="0">
+		<tr>
+	{%if postInteractions is not null%}
+	{%set interactions=postInteractions[post.id]%}
+			<td width="50%" align="center">
+				<a href="{{ post.internalURL }}" class="action comment">
+					<span class="wideOnly">{{ L('comment') }}</span>
+					<span class="icon"> </span>{% if interactions.commentCount>0 %}<span class="counter">
+						{{- interactions.commentCount -}}
+					</span>{% endif %}
+				</a>
+			</td>
+			<td width="50%" align="center">
+				<a href="{{post.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{post.id}}" data-obj-type="post" data-obj-id="{{post.id}}" onclick="return likeOnClick(this)">
+					<span class="wideOnly">{{ L('like') }}</span>
+					<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{post.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+						{{- interactions.likeCount -}}
+					</span>
+				</a>
+			</td>
+	{%endif%}
+		</tr>
+	</table>
+</div>

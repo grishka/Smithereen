@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -171,6 +172,28 @@ public class ActivityPubWorker{
 		executor.submit(new SendOneActivityRunnable(follow, target.inbox, self));
 	}
 
+	public void sendFriendRequestActivity(User self, ForeignUser target, String message){
+		Follow follow=new Follow();
+		follow.actor=new LinkOrObject(self.activityPubID);
+		follow.object=new LinkOrObject(target.activityPubID);
+		follow.activityPubID=URI.create(self.activityPubID+"#follow"+target.id);
+		if(target.supportsFriendRequests()){
+			Offer offer=new Offer();
+			offer.actor=new LinkOrObject(self.activityPubID);
+			offer.activityPubID=URI.create(self.activityPubID+"#friend_request"+target.id);
+			if(StringUtils.isNotEmpty(message)){
+				offer.content=message;
+			}
+			Follow revFollow=new Follow();
+			revFollow.actor=new LinkOrObject(target.activityPubID);
+			revFollow.object=new LinkOrObject(self.activityPubID);
+			offer.object=new LinkOrObject(revFollow);
+			executor.submit(new SendActivitySequenceRunnable(Arrays.asList(follow, offer), target.inbox, self));
+		}else{
+			executor.submit(new SendOneActivityRunnable(follow, target.inbox, self));
+		}
+	}
+
 	public void sendAcceptFollowActivity(ForeignUser actor, User self, Follow follow){
 		Accept accept=new Accept();
 		accept.actor=new LinkOrObject(self.activityPubID);
@@ -257,6 +280,28 @@ public class ActivityPubWorker{
 		public void run(){
 			try{
 				ActivityPub.postActivity(destination, activity, user);
+			}catch(Exception x){
+				x.printStackTrace();
+			}
+		}
+	}
+
+	private static class SendActivitySequenceRunnable implements Runnable{
+		private List<Activity> activities;
+		private URI destination;
+		private User user;
+
+		public SendActivitySequenceRunnable(List<Activity> activities, URI destination, User user){
+			this.activities=activities;
+			this.destination=destination;
+			this.user=user;
+		}
+
+		@Override
+		public void run(){
+			try{
+				for(Activity activity:activities)
+					ActivityPub.postActivity(destination, activity, user);
 			}catch(Exception x){
 				x.printStackTrace();
 			}

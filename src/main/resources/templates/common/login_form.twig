@@ -1,0 +1,9 @@
+{%import "forms" as _form%}
+<h2>{{L('login_title')}}</h2>
+<form action="/account/login{{additionalParams}}" method="post">
+	{{ _form.start('login', message) }}
+		{{ _form.textInput('username', L('email_or_username')) }}
+		{{ _form.textInput('password', L('password'), '', {'type': 'password'}) }}
+		{{ _form.footer(L('log_in')) }}
+	{{ _form.end() }}
+</form>

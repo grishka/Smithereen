@@ -90,7 +90,7 @@ public class SettingsRoutes{
 			message=Utils.lang(req).get("password_changed");
 		}
 		if(isAjax(req)){
-			return new WebDeltaResponseBuilder(resp).show("passwordMessage").setContent("passwordMessage", message).json();
+			return new WebDeltaResponseBuilder(resp).show("formMessage_changePassword").setContent("formMessage_changePassword", message).json();
 		}
 		req.session().attribute("settings.passwordMessage", message);
 		resp.redirect("/settings/");
@@ -129,7 +129,7 @@ public class SettingsRoutes{
 			throw new IllegalStateException("?!");
 		ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
 		if(isAjax(req)){
-			return new WebDeltaResponseBuilder(resp).show("profileEditMessage").setContent("profileEditMessage", message).json();
+			return new WebDeltaResponseBuilder(resp).show("formMessage_profileEdit").setContent("formMessage_profileEdit", message).json();
 		}
 		req.session().attribute("settings.profileEditMessage", message);
 		resp.redirect("/settings/profile/general");

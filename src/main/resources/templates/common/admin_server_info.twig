@@ -5,19 +5,17 @@
 <div class="singleColumn gray">
 	<form action="/settings/admin/updateServerInfo" method="post" onsubmit="return ajaxSubmitForm(this)">
 		<h2>{{L('admin_server_info')}}</h2>
-		{%autoescape "none"%}
 		{{form.start('adminServerInfo', adminServerInfoMessage)}}
 			{{form.textInput('server_name', L('admin_server_name'), serverName, {'maxlength': 100, 'required': true})}}
 			{{form.textArea('server_description', L('admin_server_description'), serverDescription)}}
 			{{form.textInput('server_admin_email', L('admin_server_admin_email'), serverAdminEmail, {'type': 'email', 'maxlength': 100})}}
 			{{form.select('signup_mode', L('admin_signup_mode'), [
 				{'value': 'OPEN', 'label': L('admin_signup_mode_open'), 'selected': signupMode=='OPEN'},
-				{'value': 'INVITE', 'label': L('admin_signup_mode_invite'), 'selected': signupMode=='INVITE'},
+				{'value': 'INVITE_ONLY', 'label': L('admin_signup_mode_invite'), 'selected': signupMode=='INVITE_ONLY'},
 				{'value': 'CLOSED', 'label': L('admin_signup_mode_closed'), 'selected': signupMode=='CLOSED'}
 			], {'explanation': L('admin_signup_mode_explain')})}}
 			{{form.footer(L('save'))}}
 		{{form.end()}}
-		{%endautoescape%}
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
 	</form>
 </div>

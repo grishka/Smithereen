@@ -84,6 +84,8 @@ import spark.Request;
 		PebbleEngine engine=desktopEngine;
 		if(req.attribute("popup")!=null)
 			engine=popupEngine;
+		else if(req.attribute("mobile")!=null)
+			engine=mobileEngine;
 		return engine.getTemplate(name);
 	}
 

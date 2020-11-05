@@ -1,0 +1,13 @@
+{
+	"dependencies": {
+		"autoprefixer": "latest",
+		"cssnano": "latest",
+		"postcss-advanced-variables": "latest",
+		"postcss-color-function": "latest",
+		"postcss-import": "latest",
+		"postcss-inline-svg": "latest",
+		"postcss-nested": "latest",
+		"postcss-rgba-hex": "latest",
+		"postcss-scss": "latest"
+	}
+}

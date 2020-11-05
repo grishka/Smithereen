@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{%autoescape "html"%}<html>
+<html>
 <head>
 	<!-- commercialized internet sucks ass -->
 	<title>{{ title }}</title>
@@ -10,6 +10,7 @@
 	<script>
 		var userConfig={{jsConfig | raw}};
 		var langKeys={{jsLangKeys | raw}};
+		var mobile=true;
 	</script>
 	<style>
 		.js{display: none;}
@@ -20,19 +21,17 @@
 <script>document.body.classList.add("hasJS");{%if jsRedirect is not null%} window.location="{{jsRedirect}}";{%endif%}</script>
 <div class="header">
 	<div class="menuButton">
-		{%if currentUser is not null%}
-		<label for="mainMenuToggler"><span>{{L('Menu')}}</span></label>
-		{%else%}
-		<a href="/"><img src="/res/logo.svg" width="40" height="40"/></a>
-		{%endif%}
+		<label for="mainMenuToggler"><span>{{L('menu')}}</span></label>
 	</div>
-{{title}}
+	<span class="title">{{toolbarTitle is empty ? title : toolbarTitle}}</span>
 </div>
 <input type="checkbox" id="mainMenuToggler" style="display: none"/>
 <div class="mainMenu">
+	<div class="inner">
+		<label for="mainMenuToggler"></label>
 {%block leftMenu%}
-{%if currentUser is not null%}
 <ul class="actionList">
+{%if currentUser is not null%}
 	<li class="hasAux"><a href="/{{currentUser.username}}" class="actionMain">{{L('menu_profile')}}</a><a href="/settings/profile/general" class="actionAux">{{L('menu_edit')}}</a></li>
 	<li><a href="/my/friends">{{L('menu_friends')}}{%if(userNotifications.newFriendRequestCount>0)%} (<b>{{userNotifications.newFriendRequestCount}}</b>){%endif%}</a></li>
 	<li><a href="/feed">{{L('menu_news')}}</a></li>
@@ -44,9 +43,13 @@
 	{%endif%}
 	<li class="separator"></li>
 	<li><a href="/account/logout?csrf={{csrf}}">{{L('log_out')}}</a></li>
-</ul>
+{% else %}
+	<li><a href="/account/login">{{ L('log_in') }}</a></li>
+	<li><a href="/account/register">{{ L('register') }}</a></li>
 {%endif%}
+</ul>
 {%endblock%}
+	</div>
 </div>
 <div class="pageContent">
 {%block content%}{%endblock%}
@@ -54,4 +57,3 @@
 <script src="/res/common.js?{{staticHash}}"></script>
 </body>
 </html>
-{%endautoescape%}

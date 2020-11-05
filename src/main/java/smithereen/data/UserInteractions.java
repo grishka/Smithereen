@@ -6,4 +6,5 @@ package smithereen.data;
 public class UserInteractions{
 	public int likeCount;
 	public boolean isLiked;
+	public int commentCount;
 }

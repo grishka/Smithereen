@@ -1,5 +1,5 @@
 {%macro start(id, message)%}
-<div class="settingsMessage" id="formMessage_{{id}}" style="{%if not(message)%}display: none{%endif%}">{{message}}</div>
+<div class="settingsMessage" id="formMessage_{{id}}" style="{%if message is null%}display: none{%endif%}">{{message}}</div>
 <div class="form">
 {%endmacro%}
 
@@ -9,8 +9,8 @@
 		<div class="label">
 			<label for="{{name}}">{{label}}</label>:
 		</div>
-		<input type="{%if options.type%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}"{%if options.maxlength%} maxlength="{{options.maxlength}}"{%endif%}{%if options.required%} required{%endif%}/>
-		{%if options.explanation%}
+		<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}"{%if options.maxlength is not null%} maxlength="{{options.maxlength}}"{%endif%}{%if options.required%} required{%endif%}{%if options.max is not null%} max="{{ options.max }}"{%endif%}/>
+		{%if options.explanation is not null%}
 		<br/><span class="formExplanation">{{options.explanation}}</span>
 		{%endif%}
 	</div>
@@ -23,7 +23,7 @@
 			<label for="{{name}}">{{label}}</label>:
 		</div>
 		<textarea id="{{name}}" name="{{name}}" rows="4">{{value}}</textarea>
-		{%if options.explanation%}
+		{%if options.explanation is not null%}
 		<br/><span class="formExplanation">{{options.explanation}}</span>
 		{%endif%}
 	</div>
@@ -32,15 +32,17 @@
 {%macro select(name, label, selectOptions, options)%}
 	{%if options is null%}{%set options={}%}{%endif%}
 	<div class="row">
-		<div class="label">
-			<label for="{{name}}">{{label}}</label>:
-		</div>
+		{% if label is not empty %}
+			<div class="label">
+				<label for="{{name}}">{{label}}</label>:
+			</div>
+		{% endif %}
 		<select id="{{name}}" name="{{name}}">
 			{%for opt in selectOptions%}
 				<option value="{{opt.value}}"{%if opt.selected%} selected{%endif%}>{{opt.label}}</option>
 			{%endfor%}
 		</select>
-		{%if options.explanation%}
+		{%if options.explanation is not null%}
 		<br/><span class="formExplanation">{{options.explanation}}</span>
 		{%endif%}
 	</div>

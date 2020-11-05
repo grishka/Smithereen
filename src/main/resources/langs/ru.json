@@ -8,7 +8,7 @@
   "password": "Пароль",
   "password_confirm": "Пароль ещё раз",
   "send": "Отправить",
-  "feed": "Лента",
+  "feed": "Новости",
   "add_friend": "Добавить в друзья",
   "remove_friend": "Удалить из друзей",
   "cancel_friend_request": "Отменить заявку",
@@ -173,5 +173,8 @@
   "liked_by_X_people": ["Понравилось %d человеку", "Понравилось %d людям", "Понравилось %d людям"],
   "incomplete_profile": "Информация на этой странице может быть неполной.",
   "open_on_server_X": "Открыть на %s",
-  "likes_title": "Оценили"
+  "likes_title": "Оценили",
+  "wall_post_title": "Запись на стене",
+  "more_actions": "Ещё...",
+  "choose_file_mobile": "Выберите файл с вашего устройства"
 }

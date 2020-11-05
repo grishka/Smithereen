@@ -1,0 +1,15 @@
+<div class="singleColumn">
+	{%for user in users%}
+		<table width="100%" class="friendsRow noBorderSpacing">
+			<tr valign="top">
+				<td width="50">
+					<a href="{{user.profileURL}}">{{user | pictureForAvatar('s')}}</a>
+				</td>
+				<td class="info" valign="middle">
+					<b><a href="{{user.profileURL}}">{{user.fullName}}</a></b>
+				</td>
+			</tr>
+		</table>
+	{%endfor%}
+	{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': paginationUrlPrefix, 'ajax': true}%}
+</div>

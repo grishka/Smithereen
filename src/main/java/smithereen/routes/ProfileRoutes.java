@@ -63,7 +63,7 @@ public class ProfileRoutes{
 					// lang keys for profile picture update UI
 					jsLangKey(req, "update_profile_picture", "save", "profile_pic_select_square_version", "drag_or_choose_file", "choose_file",
 							"drop_files_here", "picture_too_wide", "picture_too_narrow", "ok", "error", "error_loading_picture",
-							"remove_profile_picture", "confirm_remove_profile_picture");
+							"remove_profile_picture", "confirm_remove_profile_picture", "choose_file_mobile");
 				}else{
 					FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 					if(status==FriendshipStatus.FRIENDS){
@@ -145,9 +145,13 @@ public class ProfileRoutes{
 					return model.renderToString(req);
 				}
 			}else if(status==FriendshipStatus.NONE){
-				RenderedTemplateResponse model=new RenderedTemplateResponse("send_friend_request");
-				model.with("targetUser", user);
-				return wrapForm(req, resp, "send_friend_request", user.getProfileURL("doSendFriendRequest"), l.get("add_friend"), "send", model);
+				if(user.supportsFriendRequests()){
+					RenderedTemplateResponse model=new RenderedTemplateResponse("send_friend_request");
+					model.with("targetUser", user);
+					return wrapForm(req, resp, "send_friend_request", user.getProfileURL("doSendFriendRequest"), l.get("add_friend"), "send", model);
+				}else{
+					return doSendFriendRequest(req, resp, self);
+				}
 			}else if(status==FriendshipStatus.FRIENDS){
 				return wrapError(req, resp, "err_already_friends");
 			}else if(status==FriendshipStatus.REQUEST_RECVD){
@@ -170,10 +174,17 @@ public class ProfileRoutes{
 			}
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 			if(status==FriendshipStatus.NONE || status==FriendshipStatus.FOLLOWED_BY){
-				if(status==FriendshipStatus.NONE)
-					UserStorage.putFriendRequest(self.user.id, user.id, req.queryParams("message"), true);
-				else
-					UserStorage.followUser(self.user.id, user.id, true);
+				if(status==FriendshipStatus.NONE && user.supportsFriendRequests()){
+					UserStorage.putFriendRequest(self.user.id, user.id, req.queryParams("message"), !(user instanceof ForeignUser));
+					if(user instanceof ForeignUser){
+						ActivityPubWorker.getInstance().sendFriendRequestActivity(self.user, (ForeignUser)user, req.queryParams("message"));
+					}
+				}else{
+					UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
+					if(user instanceof ForeignUser){
+						ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser)user);
+					}
+				}
 				if(isAjax(req)){
 					resp.type("application/json");
 					return new WebDeltaResponseBuilder().refresh().json();
@@ -199,7 +210,7 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
+			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING || status==FriendshipStatus.FOLLOW_REQUESTED){
 				Lang l=Utils.lang(req);
 				String back=Utils.back(req);
 				return new RenderedTemplateResponse("generic_confirm").with("message", l.get("confirm_unfriend_X", escapeHTML(user.getFullName()))).with("formAction", user.getProfileURL("doRemoveFriend")+"?_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
@@ -227,6 +238,7 @@ public class ProfileRoutes{
 		if(user!=null){
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
+			model.with("title", lang(req).get("friends"));
 			jsLangKey(req, "remove_friend", "confirm_unfriend_X", "yes", "no");
 			return model.renderToString(req);
 		}
@@ -248,6 +260,7 @@ public class ProfileRoutes{
 		}
 		if(user!=null){
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
+			model.with("title", lang(req).get("followers")).with("toolbarTitle", lang(req).get("friends"));
 			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true).with("tab", 1);
 			return model.renderToString(req);
 		}
@@ -269,6 +282,7 @@ public class ProfileRoutes{
 		}
 		if(user!=null){
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
+			model.with("title", lang(req).get("following")).with("toolbarTitle", lang(req).get("friends"));
 			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true).with("tab", 2);
 			jsLangKey(req, "unfollow", "confirm_unfollow_X", "yes", "no");
 			return model.renderToString(req);
@@ -281,6 +295,7 @@ public class ProfileRoutes{
 		List<FriendRequest> requests=UserStorage.getIncomingFriendRequestsForUser(self.user.id, 0, 100);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friend_requests");
 		model.with("friendRequests", requests);
+		model.with("title", lang(req).get("friend_requests")).with("toolbarTitle", lang(req).get("friends")).with("owner", self.user);
 		return model.renderToString(req);
 	}
 
@@ -318,7 +333,7 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user!=null){
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
+			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING || status==FriendshipStatus.FOLLOW_REQUESTED){
 				UserStorage.unfriendUser(self.user.id, user.id);
 				if(user instanceof ForeignUser){
 					ActivityPubWorker.getInstance().sendUnfriendActivity(self.user, user);

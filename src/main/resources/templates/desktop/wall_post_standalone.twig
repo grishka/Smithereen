@@ -1,9 +1,6 @@
 {%extends "page"%}
 {%block content%}
 <div class="singleColumn">
-{%if not(post.local)%}
-<a href="{{post.url}}" target="_blank">Original</a><br/>
-{%endif%}
 {%if post.replyLevel>0%}
 	<a href="/posts/{{post.getReplyChainElement(0)}}">Top-level</a><br/>
 {%endif%}

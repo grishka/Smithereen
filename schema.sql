@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-07-03 12:40:30 +0000
+# Generation Time: 2020-11-05 09:15:16 +0000
 # ************************************************************
 
 
@@ -260,6 +260,7 @@ CREATE TABLE `wall_posts` (
   `updated_at` timestamp NULL DEFAULT NULL,
   `reply_key` varbinary(1024) DEFAULT NULL,
   `mentions` varbinary(1024) DEFAULT NULL,
+  `reply_count` int(10) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),

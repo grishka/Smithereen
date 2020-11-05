@@ -11,10 +11,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -35,17 +37,7 @@ public class PostStorage{
 		stmt.setInt(1, userID);
 		stmt.setInt(2, ownerID);
 		stmt.setString(3, text);
-		byte[] _replyKey=null;
-		if(replyKey!=null){
-			ByteArrayOutputStream b=new ByteArrayOutputStream(replyKey.length*4);
-			try{
-				DataOutputStream o=new DataOutputStream(b);
-				for(int id:replyKey)
-					o.writeInt(id);
-			}catch(IOException ignore){}
-			_replyKey=b.toByteArray();
-		}
-		stmt.setBytes(4, _replyKey);
+		stmt.setBytes(4, Utils.serializeIntArray(replyKey));
 		byte[] mentions=null;
 		if(!mentionedUsers.isEmpty()){
 			ByteArrayOutputStream b=new ByteArrayOutputStream(mentionedUsers.size()*4);
@@ -68,6 +60,9 @@ public class PostStorage{
 				stmt.setInt(2, userID);
 				stmt.setInt(3, id);
 				stmt.execute();
+			}
+			if(replyKey!=null && replyKey.length>0){
+				conn.createStatement().execute("UPDATE wall_posts SET reply_count=reply_count+1 WHERE id IN ("+Arrays.stream(replyKey).mapToObj(String::valueOf).collect(Collectors.joining(","))+")");
 			}
 			return id;
 		}
@@ -127,6 +122,9 @@ public class PostStorage{
 				stmt.setInt(3, post.id);
 				stmt.setTimestamp(4, new Timestamp(post.published.getTime()));
 				stmt.execute();
+			}
+			if(post.getReplyLevel()>0){
+				conn.createStatement().execute("UPDATE wall_posts SET reply_count=reply_count+1 WHERE id IN ("+Arrays.stream(post.replyKey).mapToObj(String::valueOf).collect(Collectors.joining(","))+")");
 			}
 		}else{
 			post.id=existing.id;
@@ -313,6 +311,10 @@ public class PostStorage{
 			stmt.setInt(1, id);
 			stmt.execute();
 		}
+
+		if(post.getReplyLevel()>0){
+			conn.createStatement().execute("UPDATE wall_posts SET reply_count=GREATEST(1, reply_count)-1 WHERE id IN ("+Arrays.stream(post.replyKey).mapToObj(String::valueOf).collect(Collectors.joining(","))+")");
+		}
 	}
 
 	public static List<Post> getRepliesForFeed(int postID) throws SQLException{
@@ -434,6 +436,13 @@ public class PostStorage{
 						result.get(res.getInt(1)).isLiked=true;
 					}while(res.next());
 				}
+			}
+		}
+
+		try(ResultSet res=conn.createStatement().executeQuery("SELECT id, reply_count FROM wall_posts WHERE id IN ("+idsStr+")")){
+			res.beforeFirst();
+			while(res.next()){
+				result.get(res.getInt(1)).commentCount=res.getInt(2);
 			}
 		}
 

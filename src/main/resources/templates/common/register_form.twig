@@ -1,0 +1,19 @@
+{%import "forms" as form%}
+<form action="/account/register" method="post">
+	{%if preFilledInvite is not null%}
+	<input type="hidden" name="_invite" value="{{preFilledInvite}}"/>
+	{%endif%}
+	<h2>{{L('register')}}</h2>
+	{{ form.start("signup", message) }}
+		{{ form.textInput('username', L('username'), username, {'maxlength': 50, 'required': true, 'explanation': L('username_explain')}) }}
+		{{ form.textInput('password', L('password'), password, {'type': 'password', 'required': true}) }}
+		{{ form.textInput('password2', L('password_confirm'), password2, {'type': 'password', 'required': true}) }}
+		{{ form.textInput('first_name', L('first_name'), first_name, {'maxlength': 100, 'required': true}) }}
+		{{ form.textInput('last_name', L('last_name'), last_name, {'maxlength': 100}) }}
+		{{ form.textInput('email', L('email'), email, {'type': 'email', 'required': true}) }}
+		{%if signupMode!='OPEN' and preFilledInvite is null%}
+			{{ form.textInput('invite', L('invitation_code'), invite, {'maxlength': 32, 'required': true}) }}
+		{%endif%}
+		{{ form.footer(L('register')) }}
+	{{ form.end() }}
+</form>

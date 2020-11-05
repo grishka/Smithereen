@@ -1,3 +1,4 @@
+{# @pebvariable name="post" type="smithereen.data.Post" #}
 <table width="100%" cellpadding="0" cellspacing="0" class="post" id="post{{post.id}}">
 	<tr>
 		<td width="50" valign="top">
@@ -9,8 +10,11 @@
 			{%if post.attachment is not null%}{{renderAttachments(post.processedAttachments)}}{%endif%}
 			<div class="postInfo"><a href="{{post.internalURL}}" class="postLink">{{LD(post.published)}}</a>
 				{%if post.canBeManagedBy(currentUser)%} |
-				<a href="{{post.internalURL}}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{post.url}}/delete')">{{L('delete')}}</a>
+				<a href="{{post.internalURL}}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{post.internalURL}}/delete')">{{L('delete')}}</a>
 				{%endif%}
+				{% if not post.local %}
+					| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', post.url.host) }}</a>
+				{% endif %}
 				{%if postInteractions is not null%}
 				{%set interactions=postInteractions[post.id]%}
 				<span class="postActions">

@@ -1,0 +1,46 @@
+{%extends "page"%}
+{%block content%}
+{%include "wall_post" with {'postInteractions': null} %}
+<div class="postActions standaloneLikeBar">
+	{% set interactions=postInteractions[post.id] %}
+	<a href="{{post.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{post.id}}" data-obj-type="post" data-obj-id="{{post.id}}" onclick="return likeOnClick(this)">
+		<span class="wideOnly">{{ L('like') }}</span>
+		<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{post.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+		{{- interactions.likeCount -}}
+	</span>
+	</a>
+	<a href="{{ post.internalURL }}/likes" class="likeAvatars">
+		{% if currentUser is not null %}
+			<span class="currentUserLikeAva" style="{{ interactions.isLiked ? '' : 'display: none' }}">{{ currentUser | pictureForAvatar('s', 34) }}</span>
+		{% endif %}
+		{% for user in likedBy %}
+			{{ user | pictureForAvatar('s', 34) }}
+		{% endfor %}
+	</a>
+</div>
+<ul class="actionList">
+			{%if currentUser is not null and post.canBeManagedBy(currentUser)%}
+				<li><a href="{{ post.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{post.internalURL}}/delete')">{{ L('delete') }}</a></li>
+			{%endif%}
+			{%if not(post.local)%}
+				<li><a href="{{ post.url }}" target="_blank">{{ L('open_on_server_X', post.url.host) }}</a></li>
+			{%endif%}
+			{%if post.replyLevel>0%}
+				<li><a href="/posts/{{post.getReplyChainElement(0)}}">Top-level</a></li>
+			{%endif%}
+		</ul>
+<div id="postReplies{{post.id}}">
+	{%for reply in post.replies%}
+		{%include "wall_reply" with {'post': reply}%}
+	{%endfor%}
+</div>
+{%if currentUser is not null%}
+	{%include "wall_post_form" with {'replyTo': post, 'id': "reply"}%}
+{%endif%}
+<script>
+	if(window.location.hash && window.location.hash.indexOf("comment")==1){
+		var el=document.getElementById(window.location.hash.replace("#comment", "post"));
+		if(el) el.classList.add("highlight");
+	}
+</script>
+{%endblock%}

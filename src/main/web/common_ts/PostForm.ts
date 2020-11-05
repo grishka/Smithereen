@@ -30,13 +30,16 @@ class PostForm{
 			this.currentReplyName=this.input.getAttribute("data-reply-name");
 		}
 
-		this.dragOverlay.addEventListener("dragenter", function(ev:DragEvent){
-			this.dragOverlay.classList.add("over");
-		}.bind(this), false);
-		this.dragOverlay.addEventListener("dragleave", function(ev:DragEvent){
-			this.dragOverlay.classList.remove("over");
-		}.bind(this), false);
-		this.root.addEventListener("drop", this.onDrop.bind(this), false);
+		if(this.dragOverlay){
+			this.dragOverlay.addEventListener("dragenter", function(ev:DragEvent){
+				this.dragOverlay.classList.add("over");
+			}.bind(this), false);
+			this.dragOverlay.addEventListener("dragleave", function(ev:DragEvent){
+				this.dragOverlay.classList.remove("over");
+			}.bind(this), false);
+			this.root.addEventListener("drop", this.onDrop.bind(this), false);
+		}
+
 		this.fileField.addEventListener("change", function(ev:Event){
 			this.handleFiles(this.fileField.files);
 			this.fileField.form.reset();

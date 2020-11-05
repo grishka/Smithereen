@@ -1,4 +1,3 @@
-{%autoescape "html"%}
 <p>{{L('choose_access_level_for_X', targetAccount.user.fullName)}}</p>
 <input type="hidden" name="accountID" value="{{targetAccount.id}}"/>
 <div class="radioButtonWrap">
@@ -13,4 +12,3 @@
 	<input type="radio" name="level" value="ADMIN" id="accessLevelAdmin"{%if targetAccount.accessLevel=='ADMIN'%} checked{%endif%}/>
 	<label for="accessLevelAdmin">{{L('access_level_admin')}}</label>
 </div>
-{%endautoescape%}

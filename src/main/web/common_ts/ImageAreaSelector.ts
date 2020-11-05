@@ -30,9 +30,12 @@ class ImageAreaSelector{
 	private downSelectedY:number;
 	private downSelectedW:number;
 	private downSelectedH:number;
+	private trackedTouchID:number;
 
 	private mouseUpListener:any;
 	private mouseMoveListener:any;
+	private touchUpListener:any;
+	private touchMoveListener:any;
 
 	private square:boolean;
 	private enabled:boolean=true;
@@ -60,6 +63,7 @@ class ImageAreaSelector{
 		this.selected.className="selected";
 		this.container.appendChild(this.selected);
 		this.container.addEventListener("mousedown", this.onMouseDown.bind(this), false);
+		this.container.addEventListener("touchstart", this.onTouchDown.bind(this), false);
 		this.container.addEventListener("dragstart", function(ev:Event){ev.preventDefault();}, false);
 
 		var markerCont=ce("div");
@@ -127,30 +131,81 @@ class ImageAreaSelector{
 		this.scrimRight.style.width=(contW-x-w)+"px";
 	}
 
+	private onTouchDown(ev:TouchEvent):void{
+		ev.preventDefault();
+		if(this.trackedTouchID)
+			return;
+		var touch=ev.touches[0];
+		this.trackedTouchID=touch.identifier;
+		this.onPointerDown(Math.round(touch.clientX), Math.round(touch.clientY), touch.target as HTMLElement);
+		window.addEventListener("touchend", this.touchUpListener=this.onTouchUp.bind(this), false);
+		window.addEventListener("touchcancel", this.touchUpListener, false);
+		window.addEventListener("touchmove", this.touchMoveListener=this.onTouchMove.bind(this), false);
+	}
+
+	private onTouchMove(ev:TouchEvent):void{
+		// ev.preventDefault();
+		for(var i=0;i<ev.touches.length;i++){
+			var touch=ev.touches[i];
+			if(touch.identifier==this.trackedTouchID){
+				this.onPointerMove(Math.round(touch.clientX), Math.round(touch.clientY));
+				break;
+			}
+		}
+	}
+
+	private onTouchUp(ev:TouchEvent):void{
+		ev.preventDefault();
+		for(var i=0;i<ev.changedTouches.length;i++){
+			var touch=ev.changedTouches[i];
+			if(touch.identifier==this.trackedTouchID){
+				this.onPointerUp();
+				this.trackedTouchID=null;
+				window.removeEventListener("touchend", this.touchUpListener);
+				window.removeEventListener("touchcancel", this.touchUpListener);
+				window.removeEventListener("touchmove", this.touchMoveListener);
+				break;
+			}
+		}
+	}
+
 	private onMouseDown(ev:MouseEvent):void{
-		if(!this.enabled) return;
-		this.curTarget=ev.target as HTMLElement;
-		this.downX=ev.clientX;
-		this.downY=ev.clientY;
-		this.downSelectedX=this.curX;
-		this.downSelectedY=this.curY;
-		this.downSelectedW=this.curW;
-		this.downSelectedH=this.curH;
+		this.onPointerDown(ev.clientX, ev.clientY, ev.target as HTMLElement);
 		window.addEventListener("mouseup", this.mouseUpListener=this.onMouseUp.bind(this), false);
 		window.addEventListener("mousemove", this.mouseMoveListener=this.onMouseMove.bind(this), false);
 	}
 
 	private onMouseUp(ev:MouseEvent):void{
-		this.curTarget=null;
+		this.onPointerUp();
 		window.removeEventListener("mouseup", this.mouseUpListener);
 		window.removeEventListener("mousemove", this.mouseMoveListener);
 	}
 
 	private onMouseMove(ev:MouseEvent):void{
+		this.onPointerMove(ev.clientX, ev.clientY);
+	}
+
+
+	private onPointerDown(x:number, y:number, target:HTMLElement):void{
+		if(!this.enabled) return;
+		this.curTarget=target;
+		this.downX=x;
+		this.downY=y;
+		this.downSelectedX=this.curX;
+		this.downSelectedY=this.curY;
+		this.downSelectedW=this.curW;
+		this.downSelectedH=this.curH;
+	}
+
+	private onPointerUp():void{
+		this.curTarget=null;
+	}
+
+	private onPointerMove(x:number, y:number):void{
 		if(!this.curTarget)
 			return;
-		var dX=ev.clientX-this.downX;
-		var dY=ev.clientY-this.downY;
+		var dX=x-this.downX;
+		var dY=y-this.downY;
 		var contW=this.container.clientWidth;
 		var contH=this.container.clientHeight;
 		if(this.curTarget==this.selected){

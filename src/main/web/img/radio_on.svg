@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">
+  <title>radio_on</title>
+  <g>
+    <g>
+      <circle cx="7" cy="7" r="6.5" fill="#fff"/>
+      <path d="M7,1A6,6,0,1,1,1,7,6,6,0,0,1,7,1M7,0a7,7,0,1,0,7,7A7,7,0,0,0,7,0Z"/>
+    </g>
+    <circle cx="7" cy="7" r="3" fill="lime"/>
+    <g opacity="0.2">
+      <path d="M4,7V8a3,3,0,0,0,6,0V7Z" fill="lime"/>
+    </g>
+  </g>
+</svg>

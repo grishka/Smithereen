@@ -1,0 +1,15 @@
+{%set curPage=offset/perPage%}
+{%set totalPages=(total+perPage-1)/perPage%}
+{#- << 3 4 _5_ 6 7 >> -#}
+{#- NB: curPage starts at 0, users expect pages to start at 1 -#}
+{%if totalPages>1%}
+<div class="pagination">
+	{%- if curPage>2%}<a href="{{firstPageURL ? firstPageURL : (urlPrefix+'0')}}"{%if ajax%} data-ajax="1"{%endif%}>&laquo;</a>{%endif%}
+	{%- if curPage>1%}<a href="{{(firstPageURL and curPage==2) ? firstPageURL : (urlPrefix+(perPage*(curPage-2)))}}" class="page"{%if ajax%} data-ajax="1"{%endif%}>{{curPage-1}}</a>{%endif%}
+	{%- if curPage>0%}<a href="{{(firstPageURL and curPage==1) ? firstPageURL : (urlPrefix+(perPage*(curPage-1)))}}" class="page"{%if ajax%} data-ajax="1"{%endif%}>{{curPage}}</a>{%endif%}
+	<span class="curPage">{{curPage+1}}</span>
+	{%- if totalPages-curPage>1%}<a href="{{urlPrefix}}{{perPage*(curPage+1)}}" class="page"{%if ajax%} data-ajax="1"{%endif%}>{{curPage+2}}</a>{%endif%}
+	{%- if totalPages-curPage>2%}<a href="{{urlPrefix}}{{perPage*(curPage+2)}}" class="page"{%if ajax%} data-ajax="1"{%endif%}>{{curPage+3}}</a>{%endif%}
+	{%- if totalPages-curPage>3%}<a href="{{urlPrefix}}{{perPage*(totalPages-1)}}"{%if ajax%} data-ajax="1"{%endif%}>&raquo;</a>{%endif%}
+</div>
+{%endif%}

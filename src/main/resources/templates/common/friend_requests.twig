@@ -1,0 +1,31 @@
+{# @pebvariable name="friendRequests" type="java.util.List<smithereen.data.FriendRequest>" #}
+{%extends "page"%}
+{%block content%}
+{% include 'friends_tabbar' with {'tab': 3} %}
+<div class="singleColumn">
+	{% for req in friendRequests %}
+	<table width="100%" class="friendsRow noBorderSpacing">
+		<tr>
+			<td width="100" valign="top">
+				<a href="{{ req.from.profileURL }}">{{req.from | pictureForAvatar('m')}}</a>
+			</td>
+			<td class="info">
+				<form action="{{req.from.getProfileURL('respondToFriendRequest')}}" method="post">
+					<b><a href="{{req.from.profileURL}}">{{req.from.fullName}}</a></b>
+					{% if req.message is not empty %}
+						<blockquote>{{ req.message }}</blockquote>
+					{% endif %}
+					<input type="hidden" name="csrf" value="{{csrf}}"/>
+					<div id="friendReqBtns{{ req.from.id }}" class="buttons">
+						<input type="submit" name="accept" value="{{L('accept')}}"/>
+						<input type="submit" name="decline" value="{{L('decline')}}" class="secondary"/>
+					</div>
+				</form>
+			</td>
+		</tr>
+	</table>
+	{% else %}
+	<center class="notMuchContent">{{L('no_incoming_friend_requests')}}</center>
+	{% endfor %}
+</div>
+{%endblock%}

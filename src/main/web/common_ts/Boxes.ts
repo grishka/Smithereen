@@ -30,9 +30,12 @@ class LayerManager{
 	}
 
 	public show(layer:BaseLayer):void{
+		var layerContent:HTMLElement=layer.getContent();
+		this.layerContainer.appendChild(layerContent);
 		if(this.stack.length==0){
 			this.scrim.showAnimated();
 			this.layerContainer.show();
+			layerContent.showAnimated(layer.getCustomAppearAnimation());
 			document.body.addEventListener("keydown", this.escapeKeyListener);
 			document.body.style.overflowY="hidden";
 		}else{
@@ -41,8 +44,6 @@ class LayerManager{
 			prevLayer.onHidden();
 		}
 		this.stack.push(layer);
-		var layerContent:HTMLElement=layer.getContent();
-		this.layerContainer.appendChild(layerContent);
 		layer.onShown();
 	}
 
@@ -65,10 +66,11 @@ class LayerManager{
 			this.stack.splice(i, 1);
 		}
 		if(this.stack.length==0){
-			this.scrim.hideAnimated();
-				document.body.removeEventListener("keydown", this.escapeKeyListener);
+			document.body.removeEventListener("keydown", this.escapeKeyListener);
 			var anim=layer.getCustomDismissAnimation();
+			var duration=200;
 			if(anim){
+				duration=(anim.options as KeyframeAnimationOptions).duration as number;
 				layerContent.hideAnimated(anim, ()=>{
 					this.layerContainer.removeChild(layerContent);
 					this.layerContainer.hide();
@@ -79,6 +81,7 @@ class LayerManager{
 				this.layerContainer.hide();
 				document.body.style.overflowY="";
 			}
+			this.scrim.hideAnimated({keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: duration, easing: "ease"}});
 		}else{
 			this.layerContainer.removeChild(layerContent);
 		}
@@ -118,7 +121,12 @@ abstract class BaseLayer{
 
 	public onShown():void{}
 	public onHidden():void{}
-	public getCustomDismissAnimation():string{return null;}
+	public getCustomDismissAnimation():AnimationDescription{
+		return {keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: 200, easing: "ease"}};
+	}
+	public getCustomAppearAnimation():AnimationDescription{
+		return {keyframes: [{opacity: 0}, {opacity: 1}], options: {duration: 200, easing: "ease"}};
+	}
 }
 
 class Box extends BaseLayer{
@@ -132,6 +140,8 @@ class Box extends BaseLayer{
 	protected contentWrap:HTMLDivElement;
 	protected closeButton:HTMLElement;
 	protected closeable:boolean=true;
+	protected boxLayer:HTMLElement;
+	protected noPrimaryButton:boolean=false;
 
 	public constructor(title:string, buttonTitles:string[]=[], onButtonClick:{(index:number):void;}=null){
 		super();
@@ -149,12 +159,14 @@ class Box extends BaseLayer{
 			this.contentWrap,
 			this.buttonBar=ce("div", {className: "boxButtonBar"})
 		]);
+		if(!this.title) this.titleBar.hide();
 
 		if(this.closeable){
 			this.closeButton=ce("span", {className: "close", title: lang("close"), onclick: ()=>this.dismiss()});
 			this.titleBar.appendChild(this.closeButton);
 		}
 		this.updateButtonBar();
+		this.boxLayer=content;
 
 		return content;
 	}
@@ -185,8 +197,33 @@ class Box extends BaseLayer{
 		return this.closeable;
 	}
 
-	public getCustomDismissAnimation():string{
-		return "boxDisappear 0.2s";
+	public getCustomDismissAnimation(){
+		if(mobile){
+			var height=this.boxLayer.offsetHeight+32;
+			return {
+				keyframes: [{transform: "translateY(0)"}, {transform: "translateY(100%)"}],
+				options: {duration: 300, easing: "cubic-bezier(0.32, 0, 0.67, 0)"}
+			};
+		}
+		return {
+			keyframes: [{opacity: 1, transform: "scale(1)"}, {opacity: 0, transform: "scale(0.95)"}],
+			options: {duration: 200, easing: "ease"}
+		};
+	}
+
+	public getCustomAppearAnimation(){
+		if(mobile){
+			var height=this.boxLayer.offsetHeight+32;
+			console.log("height "+height);
+			return {
+				keyframes: [{transform: "translateY("+height+"px)"}, {transform: "translateY(0)"}],
+				options: {duration: 600, easing: "cubic-bezier(0.22, 1, 0.36, 1)"}
+			};
+		}
+		return {
+			keyframes: [{opacity: 0, transform: "scale(0.9)"}, {opacity: 1, transform: "scale(1)"}],
+			options: {duration: 300, easing: "ease"}
+		};
 	}
 
 	private updateButtonBar():void{
@@ -196,7 +233,7 @@ class Box extends BaseLayer{
 				this.buttonBar.lastChild.remove();
 			for(var i:number=0;i<this.buttonTitles.length;i++){
 				var btn:HTMLInputElement=ce("input", {type: "button", value: this.buttonTitles[i]});
-				if(i>0){
+				if(i>0 || this.noPrimaryButton){
 					btn.className="secondary";
 				}
 				if(this.onButtonClick){
@@ -274,32 +311,34 @@ abstract class FileUploadBox extends Box{
 		super(title, [lang("cancel")], function(idx:number){
 			this.dismiss();
 		});
-		if(!message) message=lang("drag_or_choose_file");
+		if(!message) message=lang(mobile ? "choose_file_mobile" : "drag_or_choose_file");
 		var content:HTMLDivElement=ce("div", {className: "fileUploadBoxContent", innerHTML:
 			`<div class="inner">${message}<br/>
 				<form>
 					<input type="file" id="fileUploadBoxInput" accept="image/*"/>
 					<label for="fileUploadBoxInput" class="button">${lang("choose_file")}</label>
 				</form>
-			</div>
-			<div class="dropOverlay">${lang("drop_files_here")}</div>`
+			</div>`
 		});
 
 		this.setContent(content);
 		this.fileField=content.qs("input[type=file]");
-		this.dragOverlay=content.qs(".dropOverlay");
 
-		this.dragOverlay.addEventListener("dragenter", function(ev:DragEvent){
-			this.dragOverlay.classList.add("over");
-		}.bind(this), false);
-		this.dragOverlay.addEventListener("dragleave", function(ev:DragEvent){
-			this.dragOverlay.classList.remove("over");
-		}.bind(this), false);
-		content.addEventListener("drop", function(ev:DragEvent){
-			ev.preventDefault();
-			this.dragOverlay.classList.remove("over");
-			this.handleFiles(ev.dataTransfer.files);
-		}.bind(this), false);
+		if(!mobile){
+			content.innerHTML+=`<div class="dropOverlay">${lang("drop_files_here")}</div>`
+			this.dragOverlay=content.qs(".dropOverlay");
+			this.dragOverlay.addEventListener("dragenter", function(ev:DragEvent){
+				this.dragOverlay.classList.add("over");
+			}.bind(this), false);
+			this.dragOverlay.addEventListener("dragleave", function(ev:DragEvent){
+				this.dragOverlay.classList.remove("over");
+			}.bind(this), false);
+			content.addEventListener("drop", function(ev:DragEvent){
+				ev.preventDefault();
+				this.dragOverlay.classList.remove("over");
+				this.handleFiles(ev.dataTransfer.files);
+			}.bind(this), false);
+		}
 		this.fileField.addEventListener("change", function(ev:Event){
 			this.handleFiles(this.fileField.files);
 			this.fileField.form.reset();
@@ -327,6 +366,8 @@ class ProfilePictureBox extends FileUploadBox{
 
 	public constructor(){
 		super(lang("update_profile_picture"));
+		if(mobile)
+			this.noPrimaryButton=true;
 	}
 
 	protected handleFile(file:File):void{
@@ -352,6 +393,8 @@ class ProfilePictureBox extends FileUploadBox{
 			content.appendChild(ce("br"));
 			content.appendChild(imgWrap);
 			this.setContent(content);
+			if(mobile)
+				this.noPrimaryButton=false;
 			this.setButtons([lang("save"), lang("cancel")], (idx:number)=>{
 				if(idx==1){
 					this.dismiss();
@@ -398,3 +441,34 @@ class ProfilePictureBox extends FileUploadBox{
 		});
 	}
 }
+
+class MobileOptionsBox extends Box{
+	public constructor(options:any[]){
+		super(null, [lang("cancel")]);
+		this.noPrimaryButton=true;
+		var list:HTMLElement;
+		var content:HTMLDivElement=ce("div", {}, [list=ce("ul", {className: "actionList"})]);
+		this.contentWrap.classList.add("optionsBoxContent");
+		options.forEach((opt)=>{
+			var attrs:Partial<HTMLAnchorElement>={innerText: opt.label};
+			if(opt.type=="link"){
+				attrs.href=opt.href;
+				if(opt.target){
+					attrs.target=opt.target;
+					attrs.rel="noopener";
+				}
+			}
+			attrs.onclick=()=>{
+				if(opt.type=="confirm"){
+					ajaxConfirm(opt.title, opt.msg, opt.url);
+				}
+				this.dismiss();
+			};
+			list.appendChild(ce("li", {}, [
+				ce("a", attrs)
+			]));
+		});
+		this.setContent(content);
+	}
+}
+

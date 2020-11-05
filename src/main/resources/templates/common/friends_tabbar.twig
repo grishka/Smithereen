@@ -1,0 +1,10 @@
+<div class="tabbar">
+	<a href="{{owner.getProfileURL('friends')}}" class="{%if tab==0%}selected{%endif%}">{{L('friends')}}</a>
+	<a href="{{owner.getProfileURL('followers')}}" class="{%if tab==1%}selected{%endif%}">{{L('followers')}}</a>
+	<a href="{{owner.getProfileURL('following')}}" class="{%if tab==2%}selected{%endif%}">{{L('following')}}</a>
+	{%if currentUser is not null and currentUser.id==owner.id%}
+	{%if userNotifications.newFriendRequestCount>0%}
+	<a href="/my/incomingFriendRequests" class="{%if tab==3%}selected{%endif%}">{{LP('X_friend_requests', userNotifications.newFriendRequestCount)}}</a>
+	{%endif%}
+	{%endif%}
+</div>

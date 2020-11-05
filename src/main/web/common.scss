@@ -1,3 +1,4 @@
+
 $accent: #aab42f;
 $textOnAccent: #FFFFFF;
 $bg: #FFFFFF;
@@ -6,6 +7,102 @@ $darkerGray: #DDDDDD;
 $textOnGray: #707070;
 $grayText: #909090;
 $text: #000;
+
+
+/* text */
+$normalLink: rgb(72, 92, 0);
+$boldHeaders: rgb(78, 112, 0);
+$auxiliaryGrey: rgb(119, 119, 119);
+$auxiliaryBlockHeader: rgb(171, 175, 114);
+/* separators */
+$wallPostSeparator: rgb(227, 225, 204);
+$menuItemsSeparator: rgb(235, 234, 225);
+$mainHeaderSeparator: rgb(236, 235, 226);
+$wallCommentSeparator: rgb(238, 238, 238);
+/* blocks */
+$textAreaBorder: rgb(203, 204, 153);
+$blockBorderTop: rgb(223, 218, 188);
+$blockBorderBottom: rgb(228, 223, 193);
+$blockBackground: rgb(234, 232, 203);
+$blockUnderboxBackground: rgb(241, 241, 241);
+$bgGrey: rgb(247, 247, 247);
+/* button */
+$buttonGradientBottom: rgb(96, 125, 0);
+$buttonBorder: rgb(100, 137, 0);
+$buttonBorderTop: rgb(136, 159, 61);
+$buttonGratientTop: rgb(143, 159, 68);
+/* tabs */
+$tabBackground: rgb(104, 132, 1);
+$simpleButton: rgb(92, 120, 0);
+/* header */
+$headerBorderTop: rgb(68, 107, 0);
+$headerGradientTop: rgb(76, 110, 0);
+$headerBorderBottomDark: rgb(75, 115, 0);
+$headerGradientBottom: rgb(105, 134, 0);
+$headerBorderBottomLight: rgb(118, 155, 27);
+/* icons */
+$iconColor: rgb(156, 168, 80);
+$likeIconColor: rgb(219, 216, 173);
+
+
+$normalLink: $headerGradientBottom;
+
+
+@svg-load radioOff url('img/radio_off.svg'){
+	fill: $textAreaBorder;
+}
+@svg-load radioOn url('img/radio_on.svg') {
+	fill: $textAreaBorder;
+	*[fill=lime]{
+		fill: $buttonBorder;
+	}
+}
+@svg-load radioOnHover url('img/radio_on_hover.svg') {
+	fill: $textAreaBorder;
+	*[fill=red]{
+		fill: $blockBackground;
+	}
+	*[fill=lime]{
+		fill: $buttonBorder;
+	}
+}
+@svg-load radioOffHover url('img/radio_off_hover.svg') {
+	fill: $textAreaBorder;
+	*[fill=red]{
+		fill: $blockBackground;
+	}
+}
+
+@svg-load checkboxOff url('img/checkbox_off.svg'){
+	fill: $textAreaBorder;
+}
+@svg-load checkboxOn url('img/checkbox_on.svg') {
+	fill: $textAreaBorder;
+	*[fill=lime]{
+		fill: $buttonBorder;
+	}
+}
+@svg-load checkboxOnHover url('img/checkbox_on_hover.svg') {
+	fill: $textAreaBorder;
+	*[fill=red]{
+		fill: $blockBackground;
+	}
+	*[fill=lime]{
+		fill: $buttonBorder;
+	}
+}
+@svg-load checkboxOffHover url('img/checkbox_off_hover.svg') {
+	fill: $textAreaBorder;
+	*[fill=red]{
+		fill: $blockBackground;
+	}
+}
+
+
+*{
+	box-sizing: border-box;
+}
+
 
 @mixin layer-shadow{
 	box-shadow:
@@ -60,21 +157,27 @@ $text: #000;
 
 @keyframes highlight{
 	0%, 100%{
-		background-color: color($accent alpha(0%));
+		background-color: color($blockBackground alpha(0%));
 	}
 	3%, 50%{
-		background-color: color($accent alpha(15%));
+		background-color: color($blockBackground alpha(100%));
 	}
 }
 
+table{
+	table-layout: fixed;
+}
+
 a, a:link, a:visited, .link{
-	color: color($accent shade(10%));
+	color: $normalLink;
 	text-decoration: none;
 	cursor: pointer;
 }
 
-a:hover, a:visited:hover, .link:hover{
-	text-decoration: underline;
+.singleLine{
+	overflow-x: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .ava{
@@ -144,12 +247,14 @@ a:hover, a:visited:hover, .link:hover{
 
 #layerScrim{
 	background-color: rgba(0, 0, 0, .4);
+	z-index: 100;
 }
 
 #layerContainer{
 	width: 100%;
 	height: 100%;
 	pointer-events: none;
+	z-index: 110;
 }
 
 .layerContent{
@@ -158,25 +263,20 @@ a:hover, a:visited:hover, .link:hover{
 	height: 100%;
 	display: flex;
 	align-items: center;
-	>div{
+	justify-content: center;
+	/*>div{
 		margin: auto;
-	}
+	}*/
 }
 
 input[type=text], input[type=password], input[type=email], input[type=date], textarea, select{
-	border: solid 1px $grayText;
+	border: solid 1px $textAreaBorder;
 	border-radius: 2px;
 	padding: 4px;
 	appearance: none;
 	background-color: $bg;
 }
 
-select{
-	background-image: svg-load("img/select_arrows.svg");
-	background-repeat: no-repeat;
-	background-position: center right;
-	padding: 0 16px 0 4px;
-}
 
 ::placeholder{
 	color: $grayText;
@@ -187,9 +287,6 @@ select{
 }
 
 .post{
-	padding-bottom: 8px;
-	border-bottom: solid 1px color($accent lightness(+40%));
-	margin-bottom: 8px;
 	border-spacing: 0;
 	.authorName{
 		font-weight: bold;
@@ -209,7 +306,6 @@ select{
 	}
 
 	.postContentWrap{
-		padding: 0 8px;
 		video{
 			max-width: 100%;
 		}
@@ -217,7 +313,6 @@ select{
 }
 
 .postContent{
-	padding-top: 4px;
 	word-wrap: break-word;
 }
 
@@ -296,4 +391,227 @@ select{
 			padding-left: 5px;
 		}
 	}
+}
+
+.notificationIcon{
+	border-radius: 50%;
+	width: 16px;
+	height: 16px;
+	margin: -13px;
+	position: absolute;
+	top: 100%;
+	left: 100%;
+	box-shadow: rgba(0,0,0,20%) 0 2px 4px;
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+.notification .avaWrap{
+	position: relative;
+}
+
+.notificationFollow .notificationIcon, .notificationInviteSignup .notificationIcon, .notificationFriendReqAccept .notificationIcon{
+	background-color: #2979FF;
+	background-image: svg-load('img/ntf_add.svg', fill: #FFF);
+}
+
+.notificationLike .notificationIcon{
+	background-color: #FF1744;
+	background-image: svg-load('img/ntf_like.svg', fill: #FFF);
+}
+
+.notificationMention .notificationIcon{
+	background-color: #4EBF4F;
+	background-image: svg-load('img/ntf_mention.svg', fill: #FFF);
+}
+
+.notificationPostOwnWall .notificationIcon, .notificationReply .notificationIcon{
+	background-color: #4EBF4F;
+	background-image: svg-load('img/ntf_comment.svg', fill: #FFF);
+}
+
+.notificationRetoot .notificationIcon, .notificationRepost .notificationIcon{
+	background-color: #4EBF4F;
+	background-image: svg-load('img/ntf_share.svg', fill: #FFF);
+}
+
+input[type=radio]{
+	appearance: none;
+	background: svg-inline(radioOff) no-repeat center;
+	margin: 0;
+	width: 16px;
+	height: 16px;
+	&:checked{
+		background: svg-inline(radioOn) no-repeat center;
+		&:hover{
+			background: svg-inline(radioOnHover) no-repeat center;
+		}
+	}
+	&:hover{
+		background: svg-inline(radioOffHover) no-repeat center;
+	}
+}
+
+input[type=checkbox]{
+	appearance: none;
+	background: svg-inline(checkboxOff) no-repeat center;
+	margin: 0;
+	width: 16px;
+	height: 16px;
+	&:checked{
+		background: svg-inline(checkboxOn) no-repeat center;
+		&:hover{
+			background: svg-inline(checkboxOnHover) no-repeat center;
+		}
+	}
+	&:hover{
+		background: svg-inline(checkboxOffHover) no-repeat center;
+	}
+}
+
+
+.dataTable{
+	.tableHeader{
+		height: 24px;
+		background: $blockBackground;
+		color: $boldHeaders;
+		td, th{
+			padding: 0;
+		}
+	}
+	td, th{
+		border-top: solid 1px $blockBorderTop;
+		padding: 4px 0;
+		min-height: 24px;
+		box-sizing: border-box;
+	}
+	border-spacing: 0;
+	border-bottom: solid 1px $blockBorderTop;
+	&.padAround{
+		margin: 8px 0;
+	}
+}
+
+.noBorderSpacing{
+	border-spacing: 0;
+}
+
+
+
+.fileUploadBoxContent{
+	position: relative;
+	input{
+		display: none;
+	}
+	form{
+		padding-top: 8px;
+	}
+	>.inner{
+		padding: 16px 0;
+		text-align: center;
+	}
+}
+
+.profilePictureBoxImgWrap{
+	margin-top: 8px;
+	display: inline-block;
+	position: relative;
+	>img{
+		max-width: 100%;
+		max-height: 800px;
+		vertical-align: top;
+		user-select: none;
+	}
+}
+
+.imageAreaSelector{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	.selected{
+		border: solid 1px rgba(50,50,50,.7);
+		position: absolute;
+		cursor: move;
+		.markerCont{
+			width: 100%;
+			height: 100%;
+			position: relative;
+		}
+		.marker{
+			width: $imgAreaSelectorMarkerSize;
+			height: $imgAreaSelectorMarkerSize;
+			border-radius: $imgAreaSelectorMarkerBorderRadius;
+			background: #FFF;
+			border: solid 1px rgba(0,0,0,0.15);
+			position: absolute;
+			&.tl{
+				top: calc(-$imgAreaSelectorMarkerSize/2);
+				left: calc(-$imgAreaSelectorMarkerSize/2);
+				cursor: nwse-resize;
+			}
+			&.tr{
+				top: calc(-$imgAreaSelectorMarkerSize/2);
+				right: calc(-$imgAreaSelectorMarkerSize/2);
+				cursor: nesw-resize;
+			}
+			&.bl{
+				bottom: calc(-$imgAreaSelectorMarkerSize/2);
+				left: calc(-$imgAreaSelectorMarkerSize/2);
+				cursor: nesw-resize;
+			}
+			&.br{
+				bottom: calc(-$imgAreaSelectorMarkerSize/2);
+				right: calc(-$imgAreaSelectorMarkerSize/2);
+				cursor: nwse-resize;
+			}
+		}
+		.edge{
+			position: absolute;
+			&.top{
+				top: calc(-$imgAreaSelectorMarkerSize/2);
+				left: calc($imgAreaSelectorMarkerSize/2);
+				right: calc($imgAreaSelectorMarkerSize/2);
+				height: $imgAreaSelectorMarkerSize;
+				cursor: ns-resize;
+			}
+			&.bottom{
+				bottom: calc(-$imgAreaSelectorMarkerSize/2);
+				left: calc($imgAreaSelectorMarkerSize/2);
+				right: calc($imgAreaSelectorMarkerSize/2);
+				height: $imgAreaSelectorMarkerSize;
+				cursor: ns-resize;
+			}
+			&.left{
+				left: calc(-$imgAreaSelectorMarkerSize/2);
+				top: calc($imgAreaSelectorMarkerSize/2);
+				bottom: calc($imgAreaSelectorMarkerSize/2);
+				width: $imgAreaSelectorMarkerSize;
+				cursor: ew-resize;
+			}
+			&.right{
+				right: calc(-$imgAreaSelectorMarkerSize/2);
+				top: calc($imgAreaSelectorMarkerSize/2);
+				bottom: calc($imgAreaSelectorMarkerSize/2);
+				width: $imgAreaSelectorMarkerSize;
+				cursor: ew-resize;
+			}
+		}
+	}
+	.scrim{
+		position: absolute;
+		background: rgba(50,50,50,.5);
+	}
+}
+
+.tinyInlineAva .ava{
+	vertical-align: middle;
+	margin-right: 8px;
+}
+
+.ellipsize{
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow: hidden;
 }

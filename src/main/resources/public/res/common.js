@@ -37,9 +37,12 @@ var LayerManager = /** @class */ (function () {
         return LayerManager.instance;
     };
     LayerManager.prototype.show = function (layer) {
+        var layerContent = layer.getContent();
+        this.layerContainer.appendChild(layerContent);
         if (this.stack.length == 0) {
             this.scrim.showAnimated();
             this.layerContainer.show();
+            layerContent.showAnimated(layer.getCustomAppearAnimation());
             document.body.addEventListener("keydown", this.escapeKeyListener);
             document.body.style.overflowY = "hidden";
         }
@@ -49,8 +52,6 @@ var LayerManager = /** @class */ (function () {
             prevLayer.onHidden();
         }
         this.stack.push(layer);
-        var layerContent = layer.getContent();
-        this.layerContainer.appendChild(layerContent);
         layer.onShown();
     };
     LayerManager.prototype.dismiss = function (layer) {
@@ -74,10 +75,11 @@ var LayerManager = /** @class */ (function () {
             this.stack.splice(i, 1);
         }
         if (this.stack.length == 0) {
-            this.scrim.hideAnimated();
             document.body.removeEventListener("keydown", this.escapeKeyListener);
             var anim = layer.getCustomDismissAnimation();
+            var duration = 200;
             if (anim) {
+                duration = anim.options.duration;
                 layerContent.hideAnimated(anim, function () {
                     _this.layerContainer.removeChild(layerContent);
                     _this.layerContainer.hide();
@@ -89,6 +91,7 @@ var LayerManager = /** @class */ (function () {
                 this.layerContainer.hide();
                 document.body.style.overflowY = "";
             }
+            this.scrim.hideAnimated({ keyframes: [{ opacity: 1 }, { opacity: 0 }], options: { duration: duration, easing: "ease" } });
         }
         else {
             this.layerContainer.removeChild(layerContent);
@@ -123,7 +126,12 @@ var BaseLayer = /** @class */ (function () {
     };
     BaseLayer.prototype.onShown = function () { };
     BaseLayer.prototype.onHidden = function () { };
-    BaseLayer.prototype.getCustomDismissAnimation = function () { return null; };
+    BaseLayer.prototype.getCustomDismissAnimation = function () {
+        return { keyframes: [{ opacity: 1 }, { opacity: 0 }], options: { duration: 200, easing: "ease" } };
+    };
+    BaseLayer.prototype.getCustomAppearAnimation = function () {
+        return { keyframes: [{ opacity: 0 }, { opacity: 1 }], options: { duration: 200, easing: "ease" } };
+    };
     return BaseLayer;
 }());
 var Box = /** @class */ (function (_super) {
@@ -133,6 +141,7 @@ var Box = /** @class */ (function (_super) {
         if (onButtonClick === void 0) { onButtonClick = null; }
         var _this = _super.call(this) || this;
         _this.closeable = true;
+        _this.noPrimaryButton = false;
         _this.title = title;
         _this.buttonTitles = buttonTitles;
         _this.onButtonClick = onButtonClick;
@@ -147,11 +156,14 @@ var Box = /** @class */ (function (_super) {
             this.contentWrap,
             this.buttonBar = ce("div", { className: "boxButtonBar" })
         ]);
+        if (!this.title)
+            this.titleBar.hide();
         if (this.closeable) {
             this.closeButton = ce("span", { className: "close", title: lang("close"), onclick: function () { return _this.dismiss(); } });
             this.titleBar.appendChild(this.closeButton);
         }
         this.updateButtonBar();
+        this.boxLayer = content;
         return content;
     };
     Box.prototype.setContent = function (content) {
@@ -176,7 +188,31 @@ var Box = /** @class */ (function (_super) {
         return this.closeable;
     };
     Box.prototype.getCustomDismissAnimation = function () {
-        return "boxDisappear 0.2s";
+        if (mobile) {
+            var height = this.boxLayer.offsetHeight + 32;
+            return {
+                keyframes: [{ transform: "translateY(0)" }, { transform: "translateY(100%)" }],
+                options: { duration: 300, easing: "cubic-bezier(0.32, 0, 0.67, 0)" }
+            };
+        }
+        return {
+            keyframes: [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.95)" }],
+            options: { duration: 200, easing: "ease" }
+        };
+    };
+    Box.prototype.getCustomAppearAnimation = function () {
+        if (mobile) {
+            var height = this.boxLayer.offsetHeight + 32;
+            console.log("height " + height);
+            return {
+                keyframes: [{ transform: "translateY(" + height + "px)" }, { transform: "translateY(0)" }],
+                options: { duration: 600, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+            };
+        }
+        return {
+            keyframes: [{ opacity: 0, transform: "scale(0.9)" }, { opacity: 1, transform: "scale(1)" }],
+            options: { duration: 300, easing: "ease" }
+        };
     };
     Box.prototype.updateButtonBar = function () {
         if (this.buttonTitles.length) {
@@ -185,7 +221,7 @@ var Box = /** @class */ (function (_super) {
                 this.buttonBar.lastChild.remove();
             for (var i = 0; i < this.buttonTitles.length; i++) {
                 var btn = ce("input", { type: "button", value: this.buttonTitles[i] });
-                if (i > 0) {
+                if (i > 0 || this.noPrimaryButton) {
                     btn.className = "secondary";
                 }
                 if (this.onButtonClick) {
@@ -274,23 +310,26 @@ var FileUploadBox = /** @class */ (function (_super) {
         }) || this;
         _this.acceptMultiple = false;
         if (!message)
-            message = lang("drag_or_choose_file");
-        var content = ce("div", { className: "fileUploadBoxContent", innerHTML: "<div class=\"inner\">" + message + "<br/>\n\t\t\t\t<form>\n\t\t\t\t\t<input type=\"file\" id=\"fileUploadBoxInput\" accept=\"image/*\"/>\n\t\t\t\t\t<label for=\"fileUploadBoxInput\" class=\"button\">" + lang("choose_file") + "</label>\n\t\t\t\t</form>\n\t\t\t</div>\n\t\t\t<div class=\"dropOverlay\">" + lang("drop_files_here") + "</div>"
+            message = lang(mobile ? "choose_file_mobile" : "drag_or_choose_file");
+        var content = ce("div", { className: "fileUploadBoxContent", innerHTML: "<div class=\"inner\">" + message + "<br/>\n\t\t\t\t<form>\n\t\t\t\t\t<input type=\"file\" id=\"fileUploadBoxInput\" accept=\"image/*\"/>\n\t\t\t\t\t<label for=\"fileUploadBoxInput\" class=\"button\">" + lang("choose_file") + "</label>\n\t\t\t\t</form>\n\t\t\t</div>"
         });
         _this.setContent(content);
         _this.fileField = content.qs("input[type=file]");
-        _this.dragOverlay = content.qs(".dropOverlay");
-        _this.dragOverlay.addEventListener("dragenter", function (ev) {
-            this.dragOverlay.classList.add("over");
-        }.bind(_this), false);
-        _this.dragOverlay.addEventListener("dragleave", function (ev) {
-            this.dragOverlay.classList.remove("over");
-        }.bind(_this), false);
-        content.addEventListener("drop", function (ev) {
-            ev.preventDefault();
-            this.dragOverlay.classList.remove("over");
-            this.handleFiles(ev.dataTransfer.files);
-        }.bind(_this), false);
+        if (!mobile) {
+            content.innerHTML += "<div class=\"dropOverlay\">" + lang("drop_files_here") + "</div>";
+            _this.dragOverlay = content.qs(".dropOverlay");
+            _this.dragOverlay.addEventListener("dragenter", function (ev) {
+                this.dragOverlay.classList.add("over");
+            }.bind(_this), false);
+            _this.dragOverlay.addEventListener("dragleave", function (ev) {
+                this.dragOverlay.classList.remove("over");
+            }.bind(_this), false);
+            content.addEventListener("drop", function (ev) {
+                ev.preventDefault();
+                this.dragOverlay.classList.remove("over");
+                this.handleFiles(ev.dataTransfer.files);
+            }.bind(_this), false);
+        }
         _this.fileField.addEventListener("change", function (ev) {
             this.handleFiles(this.fileField.files);
             this.fileField.form.reset();
@@ -315,6 +354,8 @@ var ProfilePictureBox = /** @class */ (function (_super) {
         var _this = _super.call(this, lang("update_profile_picture")) || this;
         _this.file = null;
         _this.areaSelector = null;
+        if (mobile)
+            _this.noPrimaryButton = true;
         return _this;
     }
     ProfilePictureBox.prototype.handleFile = function (file) {
@@ -341,6 +382,8 @@ var ProfilePictureBox = /** @class */ (function (_super) {
             content.appendChild(ce("br"));
             content.appendChild(imgWrap);
             _this.setContent(content);
+            if (mobile)
+                _this.noPrimaryButton = false;
             _this.setButtons([lang("save"), lang("cancel")], function (idx) {
                 if (idx == 1) {
                     _this.dismiss();
@@ -386,6 +429,38 @@ var ProfilePictureBox = /** @class */ (function (_super) {
     };
     return ProfilePictureBox;
 }(FileUploadBox));
+var MobileOptionsBox = /** @class */ (function (_super) {
+    __extends(MobileOptionsBox, _super);
+    function MobileOptionsBox(options) {
+        var _this = _super.call(this, null, [lang("cancel")]) || this;
+        _this.noPrimaryButton = true;
+        var list;
+        var content = ce("div", {}, [list = ce("ul", { className: "actionList" })]);
+        _this.contentWrap.classList.add("optionsBoxContent");
+        options.forEach(function (opt) {
+            var attrs = { innerText: opt.label };
+            if (opt.type == "link") {
+                attrs.href = opt.href;
+                if (opt.target) {
+                    attrs.target = opt.target;
+                    attrs.rel = "noopener";
+                }
+            }
+            attrs.onclick = function () {
+                if (opt.type == "confirm") {
+                    ajaxConfirm(opt.title, opt.msg, opt.url);
+                }
+                _this.dismiss();
+            };
+            list.appendChild(ce("li", {}, [
+                ce("a", attrs)
+            ]));
+        });
+        _this.setContent(content);
+        return _this;
+    }
+    return MobileOptionsBox;
+}(Box));
 var submittingForm = null;
 function ge(id) {
     return document.getElementById(id);
@@ -442,44 +517,109 @@ HTMLElement.prototype.hide = function () {
 };
 HTMLElement.prototype.hideAnimated = function (animName, onEnd) {
     var _this = this;
-    if (animName === void 0) { animName = "fadeOut 0.2s ease"; }
+    if (animName === void 0) { animName = { keyframes: [{ opacity: 1 }, { opacity: 0 }], options: { duration: 200, easing: "ease" } }; }
     if (onEnd === void 0) { onEnd = null; }
-    if (this.currentVisibilityAnimEndListener) {
-        this.removeEventListener("animationend", this.currentVisibilityAnimEndListener);
-    }
-    var f = function () {
-        _this.style.animation = "";
-        _this.style.display = "none";
-        _this.removeEventListener("animationend", f);
-        _this.currentVisibilityAnimEndListener = null;
+    if (this.currentVisibilityAnimation)
+        this.currentVisibilityAnimation.cancel();
+    this.currentVisibilityAnimation = this.anim(animName.keyframes, animName.options, function () {
+        _this.hide();
+        _this.currentVisibilityAnimation = null;
         if (onEnd)
             onEnd();
-    };
-    this.addEventListener("animationend", f);
-    this.currentVisibilityAnimEndListener = f;
-    this.style.animation = animName;
+    });
 };
 HTMLElement.prototype.show = function () {
     this.style.display = "";
 };
 HTMLElement.prototype.showAnimated = function (animName, onEnd) {
     var _this = this;
-    if (animName === void 0) { animName = "fadeIn 0.2s ease"; }
+    if (animName === void 0) { animName = { keyframes: [{ opacity: 0 }, { opacity: 1 }], options: { duration: 200, easing: "ease" } }; }
     if (onEnd === void 0) { onEnd = null; }
-    if (this.currentVisibilityAnimEndListener) {
-        this.removeEventListener("animationend", this.currentVisibilityAnimEndListener);
-    }
-    var f = function () {
-        _this.style.animation = "";
-        _this.removeEventListener("animationend", f);
-        _this.currentVisibilityAnimEndListener = null;
+    if (this.currentVisibilityAnimation)
+        this.currentVisibilityAnimation.cancel();
+    this.show();
+    this.currentVisibilityAnimation = this.anim(animName.keyframes, animName.options, function () {
+        _this.currentVisibilityAnimation = null;
         if (onEnd)
             onEnd();
-    };
-    this.style.display = "";
-    this.addEventListener("animationend", f);
-    this.currentVisibilityAnimEndListener = f;
-    this.style.animation = animName;
+    });
+};
+var compatAnimStyle;
+function cssRuleForCamelCase(s) {
+    return s.replace(/([A-Z])/g, "-$1");
+}
+function removeCssRuleByName(sheet, name) {
+    for (var i = 0; i < sheet.rules.length; i++) {
+        if (sheet.rules[i].name == name) {
+            sheet.removeRule(i);
+            return;
+        }
+    }
+}
+HTMLElement.prototype.anim = function (keyframes, options, onFinish) {
+    var _this = this;
+    if (this.animate !== undefined) {
+        var a = this.animate(keyframes, options);
+        if (onFinish)
+            a.onfinish = onFinish;
+        return a;
+    }
+    else if (this.style.animationName !== undefined || this.style.webkitAnimationName !== undefined) {
+        if (!compatAnimStyle) {
+            compatAnimStyle = ce("style");
+            document.body.appendChild(compatAnimStyle);
+        }
+        var ruleName = "";
+        for (var i = 0; i < 40; i++) {
+            ruleName += String.fromCharCode(0x61 + Math.floor(Math.random() * 26));
+        }
+        var rule = (this.style.animationName === undefined ? "@-webkit-" : "@") + "keyframes " + ruleName + "{";
+        rule += "0%{";
+        var _keyframes = keyframes;
+        for (var k in _keyframes[0]) {
+            rule += cssRuleForCamelCase(k) + ": " + _keyframes[0][k] + ";";
+        }
+        rule += "} 100%{";
+        for (var k in _keyframes[1]) {
+            rule += cssRuleForCamelCase(k) + ": " + _keyframes[1][k] + ";";
+        }
+        rule += "}}";
+        var sheet = compatAnimStyle.sheet;
+        sheet.insertRule(rule, sheet.rules.length);
+        var duration = (options instanceof Number) ? options : options.duration;
+        var easing = (options instanceof Number) ? "" : (options.easing);
+        if (this.style.animation !== undefined) {
+            this.style.animation = ruleName + " " + (duration / 1000) + "s " + easing;
+            var fn = function () {
+                _this.style.animation = "";
+                removeCssRuleByName(sheet, ruleName);
+                if (onFinish)
+                    onFinish();
+                _this.removeEventListener("animationend", fn);
+            };
+            this.addEventListener("animationend", fn);
+        }
+        else {
+            this.style.webkitAnimation = ruleName + " " + (duration / 1000) + "s " + easing;
+            var fn = function () {
+                _this.style.webkitAnimation = "";
+                removeCssRuleByName(sheet, ruleName);
+                if (onFinish)
+                    onFinish();
+                _this.removeEventListener("webkitanimationend", fn);
+            };
+            this.addEventListener("webkitanimationend", fn);
+        }
+        return { cancel: function () {
+                if (this.style.animation !== undefined)
+                    this.style.animation = "";
+                else
+                    this.style.webkitAnimation = "";
+            } };
+    }
+    if (onFinish)
+        onFinish();
+    return null;
 };
 function ajaxPost(uri, params, onDone, onError) {
     var xhr = new XMLHttpRequest();
@@ -797,6 +937,7 @@ function likeOnClick(btn) {
     var liked = btn.classList.contains("liked");
     var counter = ge("likeCounter" + objType.substring(0, 1).toUpperCase() + objType.substring(1) + objID);
     var count = parseInt(counter.innerText);
+    var ownAva = document.querySelector(".likeAvatars .currentUserLikeAva");
     if (!liked) {
         counter.innerText = (count + 1).toString();
         btn.classList.add("liked");
@@ -809,6 +950,8 @@ function likeOnClick(btn) {
             btn.popover.setTitle(btn.customData.altPopoverTitle);
             btn.customData.altPopoverTitle = title;
         }
+        if (ownAva)
+            ownAva.show();
     }
     else {
         counter.innerText = (count - 1).toString();
@@ -824,6 +967,8 @@ function likeOnClick(btn) {
             btn.popover.setTitle(btn.customData.altPopoverTitle);
             btn.customData.altPopoverTitle = title;
         }
+        if (ownAva)
+            ownAva.hide();
     }
     btn.setAttribute("in_progress", "");
     ajaxGet(btn.href, function (resp) {
@@ -895,6 +1040,10 @@ function likeOnMouseChange(wrap, entered) {
         }
     }
 }
+function showOptions(el) {
+    new MobileOptionsBox(JSON.parse(el.getAttribute("data-options"))).show();
+    return false;
+}
 var ImageAreaSelector = /** @class */ (function () {
     function ImageAreaSelector(parentEl, square) {
         if (square === void 0) { square = false; }
@@ -920,6 +1069,7 @@ var ImageAreaSelector = /** @class */ (function () {
         this.selected.className = "selected";
         this.container.appendChild(this.selected);
         this.container.addEventListener("mousedown", this.onMouseDown.bind(this), false);
+        this.container.addEventListener("touchstart", this.onTouchDown.bind(this), false);
         this.container.addEventListener("dragstart", function (ev) { ev.preventDefault(); }, false);
         var markerCont = ce("div");
         markerCont.className = "markers";
@@ -975,29 +1125,73 @@ var ImageAreaSelector = /** @class */ (function () {
         this.scrimLeft.style.width = x + "px";
         this.scrimRight.style.width = (contW - x - w) + "px";
     };
-    ImageAreaSelector.prototype.onMouseDown = function (ev) {
-        if (!this.enabled)
+    ImageAreaSelector.prototype.onTouchDown = function (ev) {
+        ev.preventDefault();
+        if (this.trackedTouchID)
             return;
-        this.curTarget = ev.target;
-        this.downX = ev.clientX;
-        this.downY = ev.clientY;
-        this.downSelectedX = this.curX;
-        this.downSelectedY = this.curY;
-        this.downSelectedW = this.curW;
-        this.downSelectedH = this.curH;
+        var touch = ev.touches[0];
+        this.trackedTouchID = touch.identifier;
+        this.onPointerDown(Math.round(touch.clientX), Math.round(touch.clientY), touch.target);
+        window.addEventListener("touchend", this.touchUpListener = this.onTouchUp.bind(this), false);
+        window.addEventListener("touchcancel", this.touchUpListener, false);
+        window.addEventListener("touchmove", this.touchMoveListener = this.onTouchMove.bind(this), false);
+    };
+    ImageAreaSelector.prototype.onTouchMove = function (ev) {
+        // ev.preventDefault();
+        for (var i = 0; i < ev.touches.length; i++) {
+            var touch = ev.touches[i];
+            if (touch.identifier == this.trackedTouchID) {
+                this.onPointerMove(Math.round(touch.clientX), Math.round(touch.clientY));
+                break;
+            }
+        }
+    };
+    ImageAreaSelector.prototype.onTouchUp = function (ev) {
+        ev.preventDefault();
+        for (var i = 0; i < ev.changedTouches.length; i++) {
+            var touch = ev.changedTouches[i];
+            if (touch.identifier == this.trackedTouchID) {
+                this.onPointerUp();
+                this.trackedTouchID = null;
+                window.removeEventListener("touchend", this.touchUpListener);
+                window.removeEventListener("touchcancel", this.touchUpListener);
+                window.removeEventListener("touchmove", this.touchMoveListener);
+                break;
+            }
+        }
+    };
+    ImageAreaSelector.prototype.onMouseDown = function (ev) {
+        this.onPointerDown(ev.clientX, ev.clientY, ev.target);
         window.addEventListener("mouseup", this.mouseUpListener = this.onMouseUp.bind(this), false);
         window.addEventListener("mousemove", this.mouseMoveListener = this.onMouseMove.bind(this), false);
     };
     ImageAreaSelector.prototype.onMouseUp = function (ev) {
-        this.curTarget = null;
+        this.onPointerUp();
         window.removeEventListener("mouseup", this.mouseUpListener);
         window.removeEventListener("mousemove", this.mouseMoveListener);
     };
     ImageAreaSelector.prototype.onMouseMove = function (ev) {
+        this.onPointerMove(ev.clientX, ev.clientY);
+    };
+    ImageAreaSelector.prototype.onPointerDown = function (x, y, target) {
+        if (!this.enabled)
+            return;
+        this.curTarget = target;
+        this.downX = x;
+        this.downY = y;
+        this.downSelectedX = this.curX;
+        this.downSelectedY = this.curY;
+        this.downSelectedW = this.curW;
+        this.downSelectedH = this.curH;
+    };
+    ImageAreaSelector.prototype.onPointerUp = function () {
+        this.curTarget = null;
+    };
+    ImageAreaSelector.prototype.onPointerMove = function (x, y) {
         if (!this.curTarget)
             return;
-        var dX = ev.clientX - this.downX;
-        var dY = ev.clientY - this.downY;
+        var dX = x - this.downX;
+        var dY = y - this.downY;
         var contW = this.container.clientWidth;
         var contH = this.container.clientHeight;
         if (this.curTarget == this.selected) {
@@ -1087,13 +1281,15 @@ var PostForm = /** @class */ (function () {
         if (this.input.hasAttribute("data-reply-name")) {
             this.currentReplyName = this.input.getAttribute("data-reply-name");
         }
-        this.dragOverlay.addEventListener("dragenter", function (ev) {
-            this.dragOverlay.classList.add("over");
-        }.bind(this), false);
-        this.dragOverlay.addEventListener("dragleave", function (ev) {
-            this.dragOverlay.classList.remove("over");
-        }.bind(this), false);
-        this.root.addEventListener("drop", this.onDrop.bind(this), false);
+        if (this.dragOverlay) {
+            this.dragOverlay.addEventListener("dragenter", function (ev) {
+                this.dragOverlay.classList.add("over");
+            }.bind(this), false);
+            this.dragOverlay.addEventListener("dragleave", function (ev) {
+                this.dragOverlay.classList.remove("over");
+            }.bind(this), false);
+            this.root.addEventListener("drop", this.onDrop.bind(this), false);
+        }
         this.fileField.addEventListener("change", function (ev) {
             this.handleFiles(this.fileField.files);
             this.fileField.form.reset();
