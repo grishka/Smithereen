@@ -386,7 +386,7 @@ public class Utils{
 				String url=matcher.group();
 
 				// Additionally validate IPv4 addresses
-				if(url.matches("[\\d.]+")){
+				if(url.matches("^[\\d.]+")){
 					Matcher matcher2=Pattern.compile("(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})").matcher(url);
 					if(!matcher2.find())
 						continue;
@@ -406,6 +406,7 @@ public class Utils{
 					realURL="http://"+url;
 				}
 				inner.wrap("<a href=\""+escapeHTML(realURL)+"\">");
+				return;
 			}
 		}
 	}
