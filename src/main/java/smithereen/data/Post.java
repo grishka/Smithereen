@@ -156,6 +156,8 @@ public class Post extends ActivityPubObject{
 		}
 		root.put("sensitive", hasContentWarning());
 		contextCollector.addAlias("sensitive", "as:sensitive");
+		if(root.has("content"))
+			root.put("content", Utils.postprocessPostHTMLForActivityPub(content));
 
 		if(getReplyLevel()==0 && user.id!=owner.id){
 			if(owner instanceof ForeignUser)

@@ -87,10 +87,7 @@ public class PostStorage{
 			stmt.setTimestamp(9, new Timestamp(post.published.getTime()));
 			byte[] mentions=null;
 			if(!post.mentionedUsers.isEmpty()){
-				int[] _mentions=new int[post.mentionedUsers.size()];
-				for(int i=0;i<post.mentionedUsers.size();i++)
-					_mentions[i]=post.mentionedUsers.get(i).id;
-				mentions=Utils.serializeIntArray(_mentions);
+				mentions=Utils.serializeIntArray(post.mentionedUsers.stream().mapToInt(u->u.id).toArray());
 			}
 			stmt.setBytes(10, mentions);
 		}else{
@@ -100,10 +97,7 @@ public class PostStorage{
 			stmt.setString(3, post.summary);
 			byte[] mentions=null;
 			if(!post.mentionedUsers.isEmpty()){
-				int[] _mentions=new int[post.mentionedUsers.size()];
-				for(int i=0;i<post.mentionedUsers.size();i++)
-					_mentions[i]=post.mentionedUsers.get(i).id;
-				mentions=Utils.serializeIntArray(_mentions);
+				mentions=Utils.serializeIntArray(post.mentionedUsers.stream().mapToInt(u->u.id).toArray());
 			}
 			stmt.setBytes(4, mentions);
 

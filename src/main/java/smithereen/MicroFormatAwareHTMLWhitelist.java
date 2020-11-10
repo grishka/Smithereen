@@ -19,7 +19,7 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 
 	public MicroFormatAwareHTMLWhitelist(){
 		addTags("a", "b", "i", "u", "s", "code", "p", "em", "strong", "span", "sarcasm", "sub", "sup", "br", "pre");
-		addAttributes("a", "href");
+		addAttributes("a", "href", "data-user-id");
 		addProtocols("a", "href", "http", "https");
 	}
 
@@ -33,23 +33,23 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 					URI uri=new URI(attr.getValue());
 					if(uri.getHost()==null)
 						return false;
-					if(!Config.isLocal(uri)){
-						el.attr("target", "_blank");
-					}
+//					if(!Config.isLocal(uri)){
+//						el.attr("target", "_blank");
+//					}
 				}catch(URISyntaxException x){
 					return false;
 				}
 				return true;
 			}
-			if(attr.getKey().equals("target") && attr.getValue().equals("_blank")){
-				if(el.hasAttr("href")){
-					try{
-						return !Config.isLocal(new URI(el.attr("href")));
-					}catch(URISyntaxException x){
-						return false;
-					}
-				}
-			}
+//			if(attr.getKey().equals("target") && attr.getValue().equals("_blank")){
+//				if(el.hasAttr("href")){
+//					try{
+//						return !Config.isLocal(new URI(el.attr("href")));
+//					}catch(URISyntaxException x){
+//						return false;
+//					}
+//				}
+//			}
 		}
 		if(super.isSafeAttribute(tagName, el, attr))
 			return true;

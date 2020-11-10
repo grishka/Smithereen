@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 import smithereen.BadRequestException;
+import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
@@ -20,6 +21,7 @@ import smithereen.data.User;
 import smithereen.data.notifications.NotificationUtils;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import spark.utils.StringUtils;
 
 public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, Post>{
 	@Override
@@ -104,6 +106,9 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 							post.mentionedUsers.add(mentionedUser);
 					}
 				}
+			}
+			if(!post.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.content)){
+				post.content=Utils.preprocessRemotePostMentions(post.content, post.mentionedUsers);
 			}
 		}
 		if(post.inReplyTo!=null){

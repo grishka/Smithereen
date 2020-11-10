@@ -4,6 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -58,90 +59,64 @@ public class PostRoutes{
 			if(text.length()==0 && StringUtils.isEmpty(req.queryParams("attachments")))
 				return "Empty post";
 
-
-			text=text.replace("\n", "<br>").replace("\r", "");
-			if(!text.startsWith("<p>")){
-				String[] paragraphs=text.split("(\n?<br>){2,}");
-				StringBuffer sb=new StringBuffer();
-				for(String paragraph:paragraphs){
-					String p=paragraph.trim();
-					if(p.isEmpty())
-						continue;
-					sb.append("<p>");
-					sb.append(p);
-					sb.append("</p>");
+			final ArrayList<User> mentionedUsers=new ArrayList<>();
+			text=preprocessPostHTML(text, new MentionCallback(){
+				@Override
+				public User resolveMention(String username, String domain){
+					try{
+						if(domain==null){
+							User user=UserStorage.getByUsername(username);
+							if(!mentionedUsers.contains(user))
+								mentionedUsers.add(user);
+							return user;
+						}
+						User user=UserStorage.getByUsername(username+"@"+domain);
+						if(user!=null){
+							if(!mentionedUsers.contains(user))
+								mentionedUsers.add(user);
+							return user;
+						}
+						URI uri=ActivityPub.resolveUsername(username, domain);
+						ActivityPubObject obj=ActivityPub.fetchRemoteObject(uri.toString());
+						if(obj instanceof ForeignUser){
+							ForeignUser _user=(ForeignUser)obj;
+							UserStorage.putOrUpdateForeignUser(_user);
+							if(!mentionedUsers.contains(_user))
+								mentionedUsers.add(_user);
+							return _user;
+						}
+					}catch(Exception x){
+						System.out.println("Can't resolve "+username+"@"+domain+": "+x.getMessage());
+					}
+					return null;
 				}
-				text=sb.toString();
-			}
+
+				@Override
+				public User resolveMention(String uri){
+					try{
+						URI u=new URI(uri);
+						if("acct".equalsIgnoreCase(u.getScheme())){
+							if(u.getSchemeSpecificPart().contains("@")){
+								String[] parts=u.getSchemeSpecificPart().split("@");
+								return resolveMention(parts[0], parts[1]);
+							}
+							return resolveMention(u.getSchemeSpecificPart(), null);
+						}
+						User user=UserStorage.getUserByActivityPubID(u);
+						if(user!=null){
+							if(!mentionedUsers.contains(user))
+								mentionedUsers.add(user);
+							return user;
+						}
+					}catch(Exception x){
+						System.out.println("Can't resolve "+uri+": "+x.getMessage());
+					}
+					return null;
+				}
+			});
 			int userID=self.user.id;
 			int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
 			int postID;
-
-			StringBuffer sb=new StringBuffer();
-			ArrayList<User> mentionedUsers=new ArrayList<>();
-			Pattern mentionRegex=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
-			Matcher matcher=mentionRegex.matcher(text);
-			while(matcher.find()){
-				String u=matcher.group(1);
-				String d=matcher.group(2);
-				if(d!=null && d.equalsIgnoreCase(Config.domain)){
-					d=null;
-				}
-				User mentionedUser;
-				if(d==null){
-					mentionedUser=UserStorage.getByUsername(u);
-				}else{
-					mentionedUser=UserStorage.getByUsername(u+"@"+d);
-				}
-				if(d!=null && mentionedUser==null){
-					try{
-						URI uri=ActivityPub.resolveUsername(u, d);
-						System.out.println(u+"@"+d+" -> "+uri);
-						ActivityPubObject obj=ActivityPub.fetchRemoteObject(uri.toString());
-						if(obj instanceof ForeignUser){
-							mentionedUser=(User) obj;
-							UserStorage.putOrUpdateForeignUser((ForeignUser) obj);
-						}
-					}catch(Exception x){
-						System.out.println("Can't resolve "+u+"@"+d+": "+x.getMessage());
-					}
-				}
-				if(mentionedUser!=null){
-					matcher.appendReplacement(sb, "<span class=\"h-card\"><a href=\""+mentionedUser.url+"\" class=\"u-url mention\">$0</a></span>");
-					mentionedUsers.add(mentionedUser);
-				}else{
-					System.out.println("ignoring mention "+matcher.group());
-					matcher.appendReplacement(sb, "$0");
-				}
-			}
-			if(!mentionedUsers.isEmpty()){
-				matcher.appendTail(sb);
-				text=sb.toString();
-			}
-
-			Pattern urlPattern=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
-			matcher=urlPattern.matcher(text);
-			sb=new StringBuffer();
-			while(matcher.find()){
-				String url=matcher.group();
-				String realURL=url;
-				if(StringUtils.isEmpty(matcher.group(1))){
-					realURL="http://"+url;
-				}
-				int start=matcher.start();
-				if(start>10){
-					String before=text.substring(0, start);
-					if(before.endsWith("href=\"") || before.endsWith("@")){
-						matcher.appendReplacement(sb, url);
-						continue;
-					}
-				}
-				matcher.appendReplacement(sb, "<a href=\""+realURL+"\">"+url+"</a>");
-			}
-			matcher.appendTail(sb);
-			text=sb.toString();
-
-			text=Utils.sanitizeHTML(text).trim();
 
 			String attachments=null;
 			if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
@@ -180,13 +155,14 @@ public class PostRoutes{
 				System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
 				replyKey[replyKey.length-1]=parent.id;
 				// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
-				if(parent.replyKey.length>0 && text.startsWith("<p>"+parent.user.getNameForReply()+", ")){
-					text="<p><span class=\"h-card\"><a href=\""+parent.user.url+"\" class=\"u-url mention\">"+parent.user.getNameForReply()+"</a></span>"+text.substring(parent.user.getNameForReply().length()+3);
+				if(parent.replyKey.length>0 && text.startsWith("<p>"+escapeHTML(parent.user.getNameForReply())+", ")){
+					text="<p><a href=\""+escapeHTML(parent.user.url.toString())+"\" class=\"mention\">"+escapeHTML(parent.user.getNameForReply())+"</a>"+text.substring(parent.user.getNameForReply().length()+3);
 				}
-				mentionedUsers.add(parent.user);
+				if(!mentionedUsers.contains(parent.user))
+					mentionedUsers.add(parent.user);
 				if(parent.replyKey.length>1){
 					Post topLevel=PostStorage.getPostByID(parent.replyKey[0], false);
-					if(topLevel!=null)
+					if(topLevel!=null && !mentionedUsers.contains(topLevel.user))
 						mentionedUsers.add(topLevel.user);
 				}
 				postID=PostStorage.createUserWallPost(userID, user.id, text, replyKey, mentionedUsers, attachments);

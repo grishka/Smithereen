@@ -6,7 +6,7 @@
 		</td>
 		<td valign="top" class="postContentWrap">
 			<a href="{{post.user.profileURL}}" class="authorName">{{post.user.fullName}}</a>
-			<div class="postContent">{{post.content | raw}}</div>
+			<div class="postContent">{{post.content | postprocessHTML}}</div>
 			{%if post.attachment is not null%}{{renderAttachments(post.processedAttachments)}}{%endif%}
 			<div class="postInfo"><a href="{{post.internalURL}}" class="postLink">{{LD(post.published)}}</a>
 				{%if post.canBeManagedBy(currentUser)%} |

@@ -12,7 +12,7 @@
 		</tr>
 	</table>
 	<div class="postContentWrap">
-		<div class="postContent">{{post.content | raw}}</div>
+		<div class="postContent">{{post.content | postprocessHTML}}</div>
 		{%if post.attachment is not null%}{{renderAttachments(post.processedAttachments)}}{%endif%}
 	</div>
 	<table class="postActions" width="100%" cellpadding="0" cellspacing="0">

@@ -1,7 +1,14 @@
 package smithereen;
 
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Comment;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Whitelist;
+import org.jsoup.select.Elements;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -11,6 +18,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -21,11 +29,16 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.CRC32;
 
+import smithereen.data.ForeignUser;
 import smithereen.data.SessionInfo;
+import smithereen.data.User;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.lang.Lang;
+import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
@@ -37,6 +50,9 @@ public class Utils{
 	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
 	private static final ThreadLocal<SimpleDateFormat> ISO_DATE_FORMAT=new ThreadLocal<>();
 	public static final String staticFileHash;
+
+	private static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
+	private static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
 
 	static{
 		staticFileHash=String.format(Locale.US, "%016x", new Random().nextLong());
@@ -309,5 +325,220 @@ public class Utils{
 		ua=ua.toLowerCase();
 		return ua.matches("(?i).*((android|bb\\d+|meego).+mobile|avantgo|bada\\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od|ad)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\\.(browser|link)|vodafone|wap|windows ce|xda|xiino).*")
 				|| (ua.length()>4 && ua.substring(0,4).matches("(?i)1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\\-(n|u)|c55\\/|capi|ccwa|cdm\\-|cell|chtm|cldc|cmd\\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\\-s|devi|dica|dmob|do(c|p)o|ds(12|\\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\\-|_)|g1 u|g560|gene|gf\\-5|g\\-mo|go(\\.w|od)|gr(ad|un)|haie|hcit|hd\\-(m|p|t)|hei\\-|hi(pt|ta)|hp( i|ip)|hs\\-c|ht(c(\\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\\-(20|go|ma)|i230|iac( |\\-|\\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\\/)|klon|kpt |kwc\\-|kyo(c|k)|le(no|xi)|lg( g|\\/(k|l|u)|50|54|\\-[a-w])|libw|m1\\-w|m3ga|m50\\/|ma(te|ui|xo)|mc(01|21|ca)|m\\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\\-2|po(ck|rt|se)|prox|psio|pt\\-g|qa\\-a|qc(07|12|21|32|60|\\-[2-7]|i\\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\\-|oo|p\\-)|sdk\\/|se(c(\\-|0|1)|47|mc|nd|ri)|sgh\\-|shar|sie(\\-|m)|sk\\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\\-|v\\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\\-|tdg\\-|tel(i|m)|tim\\-|t\\-mo|to(pl|sh)|ts(70|m\\-|m3|m5)|tx\\-9|up(\\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\\-|your|zeto|zte\\-"));
+	}
+
+
+	private static void preprocessInsidePre(Node node){
+		if(node instanceof Element){
+			if(node.childNodeSize()>0){
+				for(Node child:node.childNodes()){
+					preprocessInsidePre(child);
+				}
+			}
+		}else if(node instanceof Comment){
+			node.after("<br><br>").remove();
+		}
+	}
+
+	private static void makeLinksAndMentions(Node node, MentionCallback mentionCallback){
+		if(node instanceof Element){
+			Element el=(Element)node;
+			if(el.tagName().equalsIgnoreCase("pre")){
+				return;
+			}else if(el.tagName().equalsIgnoreCase("a")){
+				if(el.hasClass("mention")){
+					User user=mentionCallback.resolveMention(el.attr("href"));
+					if(user==null){
+						el.removeClass("mention");
+					}else{
+						el.attr("href", user.url.toString());
+						el.attr("data-user-id", user.id+"");
+					}
+				}
+				return;
+			}
+			for(int i=0;i<el.childNodeSize();i++){
+				makeLinksAndMentions(el.childNode(i), mentionCallback);
+			}
+		}else if(node instanceof TextNode){
+			TextNode text=(TextNode)node;
+			Matcher matcher=MENTION_PATTERN.matcher(text.text());
+			while(matcher.find()){
+				String u=matcher.group(1);
+				String d=matcher.group(2);
+				if(d!=null && d.equalsIgnoreCase(Config.domain)){
+					d=null;
+				}
+				User mentionedUser=mentionCallback.resolveMention(u, d);
+				if(mentionedUser!=null){
+					TextNode inner=matcher.start()==0 ? text : text.splitText(matcher.start());
+					int len=matcher.end()-matcher.start();
+					if(len<inner.text().length())
+						inner.splitText(len);
+					inner.wrap("<a href=\""+escapeHTML(mentionedUser.url.toString())+"\" class=\"mention\" data-user-id=\""+mentionedUser.id+"\">");
+					return;
+				}
+			}
+			matcher=URL_PATTERN.matcher(text.text());
+
+			outer:
+			while(matcher.find()){
+				String url=matcher.group();
+
+				// Additionally validate IPv4 addresses
+				if(url.matches("[\\d.]+")){
+					Matcher matcher2=Pattern.compile("(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})").matcher(url);
+					if(!matcher2.find())
+						continue;
+					for(int i=1;i<=4;i++){
+						int b=parseIntOrDefault(matcher2.group(i), -1);
+						if(b<0 || b>255)
+							continue outer;
+					}
+				}
+
+				TextNode inner=matcher.start()==0 ? text : text.splitText(matcher.start());
+				int len=matcher.end()-matcher.start();
+				if(len<inner.text().length())
+					inner.splitText(len);
+				String realURL=url;
+				if(StringUtils.isEmpty(matcher.group(1))){
+					realURL="http://"+url;
+				}
+				inner.wrap("<a href=\""+escapeHTML(realURL)+"\">");
+			}
+		}
+	}
+
+	public static String preprocessPostHTML(String text, MentionCallback mentionCallback){
+		text=text.replace("\r", "").replaceAll("(?s)<!--.*?-->", "").replaceAll("\n{2,}", "<!--p-->").replace("\n", "<br>");
+
+		Document doc=Jsoup.parseBodyFragment(text);
+		Element body=doc.body();
+
+		// Split into paragraphs
+		ArrayList<Node> currentParagraph=new ArrayList<>();
+		for(Node node:new ArrayList<>(body.childNodes())){
+			if(node instanceof Comment || (node instanceof Element && ((Element) node).isBlock())){
+				if(!currentParagraph.isEmpty()){
+					Element p=new Element("p");
+					currentParagraph.get(0).before(p);
+					currentParagraph.forEach(p::appendChild);
+					currentParagraph.clear();
+				}
+				if(node instanceof Comment){
+					node.remove();
+				}else{ // block
+					Element el=(Element) node;
+					if(!el.tagName().equalsIgnoreCase("p") && !el.tagName().equalsIgnoreCase("pre"))
+						el.tagName("p");
+					if(el.tagName().equalsIgnoreCase("pre")){
+						for(Node node1:new ArrayList<>(el.childNodes())){
+							preprocessInsidePre(node1);
+						}
+					}
+				}
+			}else{
+				currentParagraph.add(node);
+			}
+		}
+		if(!currentParagraph.isEmpty()){
+			Element p=new Element("p");
+			currentParagraph.get(0).before(p);
+			currentParagraph.forEach(p::appendChild);
+			currentParagraph.clear();
+		}
+
+		// Remove any leading and trailing <br> in each paragraph
+		for(Node node:body.childNodes()){
+			if(node.childNodeSize()==0) continue;
+			while(node.childNode(0) instanceof Element && ((Element) node.childNode(0)).tagName().equalsIgnoreCase("br")){
+				node.childNode(0).remove();
+			}
+			if(node.childNodeSize()==0) continue;
+			while(node.childNode(node.childNodeSize()-1) instanceof Element && ((Element) node.childNode(node.childNodeSize()-1)).tagName().equalsIgnoreCase("br")){
+				node.childNode(node.childNodeSize()-1).remove();
+			}
+
+			makeLinksAndMentions(node, mentionCallback);
+		}
+
+		doc=new Cleaner(HTML_SANITIZER).clean(doc);
+		body=doc.body();
+
+		return body.html();
+	}
+
+	public static String postprocessPostHTMLForDisplay(String text){
+		Document doc=Jsoup.parseBodyFragment(text);
+
+		for(Element el:doc.getElementsByTag("a")){
+			if(el.hasClass("mention") && el.hasAttr("data-user-id")){
+				int uid=parseIntOrDefault(el.attr("data-user-id"), 0);
+				if(uid>0){
+					try{
+						User user=UserStorage.getById(uid);
+						if(user!=null){
+							el.attr("href", "/"+user.getFullUsername());
+							el.addClass("u-url");
+							Element parent=el.parent();
+							if(parent==null || !parent.tagName().equalsIgnoreCase("span")){
+								el.wrap("<span class=\"h-card\">");
+							}
+						}
+					}catch(SQLException ignore){}
+				}
+			}else{
+				String href=el.attr("href");
+				try{
+					URI uri=new URI(href);
+					if(uri.isAbsolute() && !Config.isLocal(uri)){
+						el.attr("target", "_blank");
+						el.attr("rel", "noopener");
+					}
+				}catch(URISyntaxException x){}
+			}
+		}
+
+		return doc.body().html();
+	}
+
+	public static String postprocessPostHTMLForActivityPub(String text){
+		Document doc=Jsoup.parseBodyFragment(text);
+
+		for(Element el:doc.getElementsByTag("a")){
+			el.removeAttr("data-user-id");
+		}
+
+		return doc.body().html();
+	}
+
+	public static String preprocessRemotePostMentions(String text, List<User> users){
+		Document doc=Jsoup.parseBodyFragment(text);
+
+		for(Element link:doc.select("a.mention")){
+			URI href=URI.create(link.attr("href"));
+			boolean found=false;
+			for(User user:users){
+				if(href.equals(user.url) || href.equals(user.activityPubID)){
+					link.attr("data-user-id", user.id+"");
+					found=true;
+					break;
+				}
+			}
+			if(!found){
+				link.removeClass("mention");
+			}
+			Element parent=link.parent();
+			if(parent!=null && parent.tagName().equalsIgnoreCase("span"))
+				parent.unwrap();
+		}
+
+		return doc.body().html();
+	}
+
+	public interface MentionCallback{
+		User resolveMention(String username, String domain);
+		User resolveMention(String uri);
 	}
 }

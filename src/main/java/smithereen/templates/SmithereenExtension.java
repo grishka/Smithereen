@@ -25,6 +25,7 @@ public class SmithereenExtension extends AbstractExtension{
 	public Map<String, Filter> getFilters(){
 		HashMap<String, Filter> r=new HashMap<>();
 		r.put("pictureForAvatar", new PictureForAvatarFilter());
+		r.put("postprocessHTML", new PostprocessHTMLFilter());
 		return r;
 	}
 }
