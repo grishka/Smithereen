@@ -1,7 +1,7 @@
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
 <div class="gray singleColumn wallPostForm" id="wallPostForm_{{id}}" data-unique-id="{{id}}">
 	<form action="{{wallOwner.getProfileURL('createWallPost')}}" method="post">
-		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="4" maxlength="65000" placeholder="{%if wallOwner.id!=currentUser.id%}{{L('write_on_X_wall', wallOwner.firstName)}}{%elseif replyTo is not null%}{{L('comment_placeholder')}}{%else%}{{L('write_on_own_wall')}}{%endif%}">{{prefilledPostText}}</textarea>
+		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="4" maxlength="65000" placeholder="{%if wallOwner.id!=currentUser.id%}{{LI(key='write_on_X_wall', first=wallOwner.firstName, gender=wallOwner.gender)}}{%elseif replyTo is not null%}{{L('comment_placeholder')}}{%else%}{{L('write_on_own_wall')}}{%endif%}">{{prefilledPostText}}</textarea>
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
 		{%if replyTo is not null%}
 		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}" value="{{replyTo.id}}"/>

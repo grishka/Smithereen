@@ -1,6 +1,6 @@
 <?php
 
-$mf=json_decode(file_get_contents("https://w3c.github.io/json-ld-api/tests/toRdf-manifest.jsonld"));
+$mf=json_decode(file_get_contents("https://w3c.github.io/json-ld-api/tests/flatten-manifest.jsonld"));
 $j=[
 "package smithereen.jsonld;",
 "",
@@ -8,15 +8,14 @@ $j=[
 "import org.junit.jupiter.api.Test;",
 "",
 "import java.net.URI;",
-"import java.util.*;",
 "",
 "import org.json.*;",
 "",
 "import static org.junit.jupiter.api.Assertions.*;",
 "import static smithereen.jsonld.TestUtils.*;",
 "",
-"class ToRDFTests{",
-"",
+"class FlattenTests{",
+""
 ];
 
 foreach($mf->sequence as $test){
@@ -24,16 +23,14 @@ foreach($mf->sequence as $test){
 		echo "Skipping test {$test->name} because of incompatible spec version\n";
 		continue;
 	}
-	$type=$test->{"@type"}[0];
-	if($type=="jld:PositiveSyntaxTest"){
-		// skip
-		continue;
+	if(isset($test->context)){
+		continue; // not testing compaction
 	}
-	if($test->{"@id"}=="#te077") continue; // expandContext isn't a thing in real life
 	$j[]="\t/***\n\t* {$test->purpose}\n\t*/";
 	$j[]="\t@Test";
 	$j[]="\t@DisplayName(\"".str_replace('"', '\"', $test->name)."\")";
 	$j[]="\tvoid ".substr($test->{"@id"}, 1)."(){";
+	$type=$test->{"@type"}[0];
 	$inputURL="https://w3c.github.io/json-ld-api/tests/".$test->input;
 	if(!file_exists("src/test/resources/".$test->input)){
 		file_put_contents("src/test/resources/".$test->input, file_get_contents($inputURL));
@@ -45,18 +42,13 @@ foreach($mf->sequence as $test){
 		$inputURL=$test->option->base;
 	if($type=="jld:PositiveEvaluationTest"){
 		$j[]="\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
-		$j[]="\t\tArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create(\"$inputURL\"));";
-		if(filesize("src/test/resources/".$test->expect)>0){
-			$j[]="\t\tList<String> expect=readResourceAsLines(\"/{$test->expect}\");";
-			$j[]="\t\tassertEquals(expect.size(), result.size());";
-			$j[]="\t\tfor(RDFTriple t:result) assertTrue(expect.contains(t.toString()));";
-		}else{
-			$j[]="\t\tassertEquals(0, result.size());";
-		}
+		$j[]="\t\tObject expect=readResourceAsJSON(\"/{$test->expect}\");";
+		$j[]="\t\tJSONArray flattened=JLDProcessor.flatten(input, URI.create(\"$inputURL\"));";
+		$j[]="\t\tassertEqualJLD(expect, flattened);";
 	}else if($type=="jld:NegativeEvaluationTest"){
 		$j[]="\t\tassertThrows(JLDException.class, ()->{";
 		$j[]="\t\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
-		$j[]="\t\t\tJLDProcessor.toRDF(input, URI.create(\"$inputURL\"));";
+		$j[]="\t\t\tJLDProcessor.flatten(input, URI.create(\"$inputURL\"));";
 		$j[]="\t\t}, \"{$test->expectErrorCode}\");";
 	}else{
 		die("Unknown test type $type\n");
@@ -67,4 +59,4 @@ foreach($mf->sequence as $test){
 
 $j[]="}";
 
-file_put_contents("src/test/java/smithereen/jsonld/ToRDFTests.java", implode("\n", $j));
+file_put_contents("../src/test/java/smithereen/jsonld/FlattenTests.java", implode("\n", $j));

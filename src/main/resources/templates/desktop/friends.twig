@@ -16,7 +16,7 @@
 				<li><a href="{{friend.getProfileURL('friends')}}">{{L('view_friends_of')}}</a></li>
 				{%if(currentUser is not null and currentUser.id==owner.id and not followers)%}
 					<li>
-						<a href="{{friend.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},[{%if following%}'confirm_unfollow_X'{%else%}'confirm_unfriend_X'{%endif%},this.getAttribute('data-name')],'{{friend.getProfileURL('doRemoveFriend')}}?from=list')" data-name="{{friend.fullName}}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
+						<a href="{{friend.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'{{friend.getProfileURL('doRemoveFriend')}}?from=list')" data-confirm="{{ LI(key=(following ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), first=friend.firstName, last=friend.lastName, gender=friend.gender) | forceEscape }}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
 					</li>
 				{%endif%}
                 {%if friend.domain is not null%}

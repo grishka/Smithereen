@@ -24,9 +24,9 @@
 	</div>
 	<p class="externalInteractionText">
 		{%if user.supportsFriendRequests%}
-		{{L('external_X_send_friend_req_to_X', currentUser.firstName, user.fullName, user.domain)}}
+		{{LI(key='external_X_send_friend_req_to_X', first=user.firstName, last=user.lastName, gender=user.gender, args=[currentUser.firstName, user.domain])}}
 		{%else%}
-		{{L('external_X_follow_X', currentUser.firstName, user.fullName, user.domain)}}
+		{{LI(key='external_X_follow_X', first=user.firstName, last=user.lastName, gender=user.gender, args=[currentUser.firstName, user.domain])}}
 		{%endif%}
 	</p>
 	<form action="{{user.getProfileURL('remoteFollow')}}" method="post" class="externalInteractionForm">

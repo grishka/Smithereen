@@ -8,6 +8,7 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.data.Account;
 import smithereen.data.SessionInfo;
+import smithereen.data.User;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
@@ -122,11 +123,13 @@ public class SessionRoutes{
 				return regError(req, "err_invalid_invitation");
 		}
 
+		User.Gender gender=lang(req).detectGenderForName(first, last, null);
+
 		SessionStorage.SignupResult res;
 		if(Config.signupMode==Config.SignupMode.OPEN)
-			res=SessionStorage.registerNewAccount(username, password, email, first, last);
+			res=SessionStorage.registerNewAccount(username, password, email, first, last, gender);
 		else
-			res=SessionStorage.registerNewAccount(username, password, email, first, last, invite);
+			res=SessionStorage.registerNewAccount(username, password, email, first, last, gender, invite);
 		if(res==SessionStorage.SignupResult.SUCCESS){
 			Account acc=SessionStorage.getAccountForUsernameAndPassword(username, password);
 			setupSessionWithAccount(req, resp, acc);

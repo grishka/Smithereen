@@ -20,6 +20,7 @@ import java.util.Base64;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.jsonld.JLD;
 
 public class ForeignUser extends User{
 
@@ -137,9 +138,11 @@ public class ForeignUser extends User{
 		if(obj.has("gender")){
 			switch(obj.getString("gender")){
 				case "sc:Male":
+				case JLD.SCHEMA_ORG+"Male":
 					gender=Gender.MALE;
 					break;
 				case "sc:Female":
+				case JLD.SCHEMA_ORG+"Female":
 					gender=Gender.FEMALE;
 					break;
 				default:

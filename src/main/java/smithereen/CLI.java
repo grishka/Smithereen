@@ -5,6 +5,7 @@ import java.io.IOError;
 import java.sql.SQLException;
 
 import smithereen.data.Account;
+import smithereen.data.User;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 
@@ -79,7 +80,7 @@ public class CLI{
 				}
 				break;
 			}
-			SessionStorage.registerNewAccount(username, password, email, username, "");
+			SessionStorage.registerNewAccount(username, password, email, username, "", User.Gender.UNKNOWN);
 			Account acc=SessionStorage.getAccountForUsernameAndPassword(username, password);
 			UserStorage.setAccountAccessLevel(acc.id, Account.AccessLevel.ADMIN);
 			System.out.println(E_BOLD+"You're all set! Now, make sure your web server is properly configured, then navigate to this server in your web browser an log into your account."+E_RESET);

@@ -71,13 +71,13 @@ public class ProfileRoutes{
 						model.with("friendshipStatusText", Utils.lang(req).get("X_is_your_friend", user.firstName));
 					}else if(status==FriendshipStatus.REQUEST_SENT){
 						model.with("friendRequestSent", true);
-						model.with("friendshipStatusText", Utils.lang(req).get("you_sent_friend_req_to_X", user.firstName));
+						model.with("friendshipStatusText", Utils.lang(req).inflected("you_sent_friend_req_to_X", user.gender, user.firstName, null, null));
 					}else if(status==FriendshipStatus.REQUEST_RECVD){
 						model.with("friendRequestRecvd", true);
 						model.with("friendshipStatusText", Utils.lang(req).gendered("X_sent_you_friend_req", user.gender, user.firstName));
 					}else if(status==FriendshipStatus.FOLLOWING){
 						model.with("following", true);
-						model.with("friendshipStatusText", Utils.lang(req).get("you_are_following_X", user.firstName));
+						model.with("friendshipStatusText", Utils.lang(req).inflected("you_are_following_X", user.gender, user.firstName, null, null));
 					}else if(status==FriendshipStatus.FOLLOWED_BY){
 						model.with("followedBy", true);
 						model.with("friendshipStatusText", Utils.lang(req).gendered("X_is_following_you", user.gender, user.firstName));
@@ -116,7 +116,7 @@ public class ProfileRoutes{
 				}
 				model.with("metaTags", meta);
 			}
-			Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "remove_friend", "confirm_unfriend_X", "cancel", "delete");
+			Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "remove_friend", "cancel", "delete");
 			return model.renderToString(req);
 		}else{
 			resp.status(404);
@@ -213,7 +213,7 @@ public class ProfileRoutes{
 			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING || status==FriendshipStatus.FOLLOW_REQUESTED){
 				Lang l=Utils.lang(req);
 				String back=Utils.back(req);
-				return new RenderedTemplateResponse("generic_confirm").with("message", l.get("confirm_unfriend_X", escapeHTML(user.getFullName()))).with("formAction", user.getProfileURL("doRemoveFriend")+"?_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+				return new RenderedTemplateResponse("generic_confirm").with("message", l.inflected("confirm_unfriend_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", user.getProfileURL("doRemoveFriend")+"?_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
 			}else{
 				return Utils.wrapError(req, resp, "err_not_friends");
 			}
@@ -239,7 +239,7 @@ public class ProfileRoutes{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
 			model.with("title", lang(req).get("friends"));
-			jsLangKey(req, "remove_friend", "confirm_unfriend_X", "yes", "no");
+			jsLangKey(req, "remove_friend", "yes", "no");
 			return model.renderToString(req);
 		}
 		resp.status(404);
@@ -284,7 +284,7 @@ public class ProfileRoutes{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("title", lang(req).get("following")).with("toolbarTitle", lang(req).get("friends"));
 			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true).with("tab", 2);
-			jsLangKey(req, "unfollow", "confirm_unfollow_X", "yes", "no");
+			jsLangKey(req, "unfollow", "yes", "no");
 			return model.renderToString(req);
 		}
 		resp.status(404);

@@ -16,6 +16,7 @@ public class SmithereenExtension extends AbstractExtension{
 		r.put("LD", new LangDateFunction());
 		r.put("LG", new LangGenderedFunction());
 		r.put("LP", new LangPluralFunction());
+		r.put("LI", new LangInflectedFunction());
 		r.put("renderAttachments", new RenderAttachmentsFunction());
 		r.put("json", new JsonFunction());
 		return r;
@@ -26,6 +27,7 @@ public class SmithereenExtension extends AbstractExtension{
 		HashMap<String, Filter> r=new HashMap<>();
 		r.put("pictureForAvatar", new PictureForAvatarFilter());
 		r.put("postprocessHTML", new PostprocessHTMLFilter());
+		r.put("forceEscape", new ForceEscapeFilter());
 		return r;
 	}
 }

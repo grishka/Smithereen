@@ -41,4 +41,4 @@ foreach($mf->entries as $test){
 
 $j[]="}";
 
-file_put_contents("src/test/java/smithereen/jsonld/URDNA2015Tests.java", implode("\n", $j));
+file_put_contents("../src/test/java/smithereen/jsonld/URDNA2015Tests.java", implode("\n", $j));

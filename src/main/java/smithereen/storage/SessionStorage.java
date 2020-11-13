@@ -20,6 +20,7 @@ import java.util.Locale;
 import smithereen.Utils;
 import smithereen.data.Account;
 import smithereen.data.SessionInfo;
+import smithereen.data.User;
 import smithereen.data.UserPreferences;
 import smithereen.data.notifications.Notification;
 import spark.Request;
@@ -105,7 +106,7 @@ public class SessionStorage{
 		stmt.execute();
 	}
 
-	public static SignupResult registerNewAccount(@NotNull String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull String invite) throws SQLException{
+	public static SignupResult registerNewAccount(@NotNull String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		conn.createStatement().execute("START TRANSACTION");
 		try{
@@ -128,12 +129,13 @@ public class SessionStorage{
 			kpg.initialize(2048);
 			KeyPair pair=kpg.generateKeyPair();
 
-			stmt=conn.prepareStatement("INSERT INTO `users` (`fname`, `lname`, `username`, `public_key`, `private_key`) VALUES (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+			stmt=conn.prepareStatement("INSERT INTO `users` (`fname`, `lname`, `username`, `public_key`, `private_key`, gender) VALUES (?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 			stmt.setString(1, firstName);
 			stmt.setString(2, lastName);
 			stmt.setString(3, username);
 			stmt.setBytes(4, pair.getPublic().getEncoded());
 			stmt.setBytes(5, pair.getPrivate().getEncoded());
+			stmt.setInt(6, gender.ordinal());
 			stmt.execute();
 			int userID;
 			try(ResultSet res=stmt.getGeneratedKeys()){
@@ -185,7 +187,7 @@ public class SessionStorage{
 		return SignupResult.SUCCESS;
 	}
 
-	public static SignupResult registerNewAccount(@NotNull String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName) throws SQLException{
+	public static SignupResult registerNewAccount(@NotNull String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		conn.createStatement().execute("START TRANSACTION");
 		try{
@@ -193,12 +195,13 @@ public class SessionStorage{
 			kpg.initialize(2048);
 			KeyPair pair=kpg.generateKeyPair();
 
-			PreparedStatement stmt=conn.prepareStatement("INSERT INTO `users` (`fname`, `lname`, `username`, `public_key`, `private_key`) VALUES (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+			PreparedStatement stmt=conn.prepareStatement("INSERT INTO `users` (`fname`, `lname`, `username`, `public_key`, `private_key`, gender) VALUES (?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 			stmt.setString(1, firstName);
 			stmt.setString(2, lastName);
 			stmt.setString(3, username);
 			stmt.setBytes(4, pair.getPublic().getEncoded());
 			stmt.setBytes(5, pair.getPrivate().getEncoded());
+			stmt.setInt(6, gender.ordinal());
 			stmt.execute();
 			int userID;
 			try(ResultSet res=stmt.getGeneratedKeys()){

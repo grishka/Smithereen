@@ -48,7 +48,7 @@
 			<ul class="actionList marginAfter marginBefore">
 			{%if currentUser is not null and currentUser.id!=user.id%}
 			{%if isFriend or following or friendRequestSent or followRequested%}
-				<li><a href="{{user.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},[{%if following or followRequested%}'confirm_unfollow_X'{%else%}'confirm_unfriend_X'{%endif%},this.getAttribute('data-name')],'{{user.getProfileURL('doRemoveFriend')}}')" data-name="{{user.fullName}}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
+				<li><a href="{{user.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'{{user.getProfileURL('doRemoveFriend')}}')" data-confirm="{{ LI(key=(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), first=user.firstName, last=user.lastName, gender=user.gender) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
 			{%endif%}
 			{%endif%}
 				<li><a href="{{user.getProfileURL('followers')}}">{{L('followers')}}</a></li>

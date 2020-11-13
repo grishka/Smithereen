@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.stream.Stream;
 
 import smithereen.data.User;
 
@@ -77,6 +78,7 @@ public class Lang{
 	private final JSONObject data;
 	private final Locale locale;
 	private final PluralRules pluralRules;
+	private final Inflector inflector;
 	private final ThreadLocal<DateFormat> dateFormat=new ThreadLocal<>();
 	public final String name;
 
@@ -90,13 +92,16 @@ public class Lang{
 		switch(localeID){
 			case "ru":
 				pluralRules=new RussianPluralRules();
+				inflector=new RussianInflector();
 				break;
 			case "tr":
 				pluralRules=new SingleFormPluralRules();
+				inflector=null;
 				break;
 			case "en":
 			default:
 				pluralRules=new EnglishPluralRules();
+				inflector=null;
 				break;
 		}
 		name=data.getString("_name");
@@ -154,6 +159,59 @@ public class Lang{
 		}catch(JSONException x){
 			return key+" "+Arrays.toString(formatArgs);
 		}
+	}
+
+	public String inflected(String key, User.Gender gender, String first, String last, String middle, Object... formatArgs){
+		try{
+			JSONObject o=inflector==null ? null : data.optJSONObject(key);
+			if(o==null){
+				String name="";
+				if(first!=null)
+					name+=first;
+				if(middle!=null)
+					name+=" "+middle;
+				if(last!=null)
+					name+=" "+last;
+				Object[] args=new Object[formatArgs.length+1];
+				args[0]=name;
+				System.arraycopy(formatArgs, 0, args, 1, formatArgs.length);
+				return get(key, args);
+			}
+			String str=o.getString("str");
+			Inflector.Case c=Inflector.Case.valueOf(o.getString("case"));
+			String name="";
+			if(gender==null || gender==User.Gender.UNKNOWN){
+				gender=inflector.detectGender(first, last, middle);
+			}
+			if(gender==User.Gender.UNKNOWN){
+				if(first!=null)
+					name+=first;
+				if(middle!=null)
+					name+=" "+middle;
+				if(last!=null)
+					name+=" "+last;
+			}else{
+				if(first!=null)
+					name+=inflector.isInflectable(first) ? inflector.inflectNamePart(first, Inflector.NamePart.FIRST, gender, c) : first;
+				if(middle!=null)
+					name+=" "+(inflector.isInflectable(middle) ? inflector.inflectNamePart(middle, Inflector.NamePart.MIDDLE, gender, c) : middle);
+				if(last!=null)
+					name+=" "+(inflector.isInflectable(last) ? inflector.inflectNamePart(last, Inflector.NamePart.LAST, gender, c) : last);
+			}
+
+			Object[] args=new Object[formatArgs.length+1];
+			args[0]=name;
+			System.arraycopy(formatArgs, 0, args, 1, formatArgs.length);
+			return String.format(locale, str, args);
+		}catch(JSONException x){
+			return key+" "+first+" "+last+" "+middle+" "+Arrays.toString(formatArgs);
+		}
+	}
+
+	public User.Gender detectGenderForName(String first, String last, String middle){
+		if(inflector==null)
+			return User.Gender.UNKNOWN;
+		return inflector.detectGender(first, last, middle);
 	}
 
 	public String formatDate(Date date, TimeZone timeZone){

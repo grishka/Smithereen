@@ -9,6 +9,7 @@ import org.jsoup.nodes.TextNode;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Whitelist;
 import org.jsoup.select.Elements;
+import org.unbescape.html.HtmlEscape;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -318,7 +319,7 @@ public class Utils{
 	}
 
 	public static String escapeHTML(String s){
-		return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+		return HtmlEscape.escapeHtml4Xml(s);
 	}
 
 	public static boolean isMobileUserAgent(String ua){
