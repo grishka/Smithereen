@@ -37,6 +37,8 @@ public class Main{
 			System.exit(1);
 		}
 
+		System.setProperty("user.timezone", "UTC");
+
 		try{
 			Config.load(args[0]);
 			Config.loadFromDatabase();
