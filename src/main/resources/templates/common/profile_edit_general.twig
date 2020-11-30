@@ -6,7 +6,9 @@
 		<h2>{{L('profile_edit_basic')}}</h2>
 		{{ form.start('profileEdit', profileEditMessage) }}
 			{{ form.textInput('first_name', L('first_name'), currentUser.firstName, {'maxlength': 100, 'required': true}) }}
+			{{ form.textInput('middle_name', L('middle_name_or_nickname'), currentUser.middleName, {'maxlength': 100}) }}
 			{{ form.textInput('last_name', L('last_name'), currentUser.lastName, {'maxlength': 100}) }}
+			{{ form.textInput('maiden_name', L('maiden_name'), currentUser.maidenName, {'maxlength': 100}) }}
 			{{ form.select('gender', L('gender'), [
 				{'value': 0, 'label': L('gender_none'), 'selected': currentUser.gender=='NONE'},
 				{'value': 1, 'label': L('gender_male'), 'selected': currentUser.gender=='MALE'},

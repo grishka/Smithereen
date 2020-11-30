@@ -397,14 +397,16 @@ public class UserStorage{
 		stmt.execute();
 	}
 
-	public static void changeBasicInfo(int userID, String firstName, String lastName, User.Gender gender, java.sql.Date bdate) throws SQLException{
+	public static void changeBasicInfo(int userID, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, java.sql.Date bdate) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("UPDATE `users` SET `fname`=?, `lname`=?, `gender`=?, `bdate`=? WHERE `id`=?");
+		PreparedStatement stmt=conn.prepareStatement("UPDATE `users` SET `fname`=?, `lname`=?, `gender`=?, `bdate`=?, middle_name=?, maiden_name=? WHERE `id`=?");
 		stmt.setString(1, firstName);
 		stmt.setString(2, lastName);
 		stmt.setInt(3, gender.ordinal());
 		stmt.setDate(4, bdate);
-		stmt.setInt(5, userID);
+		stmt.setString(5, middleName);
+		stmt.setString(6, maidenName);
+		stmt.setInt(7, userID);
 		stmt.execute();
 		synchronized(UserStorage.class){
 			User user=cache.get(userID);
@@ -451,11 +453,11 @@ public class UserStorage{
 		}
 		if(existingUserID!=0){
 			stmt=conn.prepareStatement("UPDATE `users` SET `fname`=?,`lname`=?,`bdate`=?,`username`=?,`domain`=?,`public_key`=?,`ap_url`=?,`ap_inbox`=?,`ap_outbox`=?,`ap_shared_inbox`=?,`ap_id`=?,`ap_followers`=?,`ap_following`=?," +
-					"`about`=?,`gender`=?,`avatar`=?,`profile_fields`=?,`flags`=?,`last_updated`=CURRENT_TIMESTAMP() WHERE `id`=?");
-			stmt.setInt(19, existingUserID);
+					"`about`=?,`gender`=?,`avatar`=?,`profile_fields`=?,`flags`=?,middle_name=?,maiden_name=?`last_updated`=CURRENT_TIMESTAMP() WHERE `id`=?");
+			stmt.setInt(21, existingUserID);
 		}else{
-			stmt=conn.prepareStatement("INSERT INTO `users` (`fname`,`lname`,`bdate`,`username`,`domain`,`public_key`,`ap_url`,`ap_inbox`,`ap_outbox`,`ap_shared_inbox`,`ap_id`,`ap_followers`,`ap_following`,`about`,`gender`,`avatar`,`profile_fields`,`flags`,`last_updated`)" +
-					" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())", PreparedStatement.RETURN_GENERATED_KEYS);
+			stmt=conn.prepareStatement("INSERT INTO `users` (`fname`,`lname`,`bdate`,`username`,`domain`,`public_key`,`ap_url`,`ap_inbox`,`ap_outbox`,`ap_shared_inbox`,`ap_id`,`ap_followers`,`ap_following`,`about`,`gender`,`avatar`,`profile_fields`,`flags`,middle_name,maiden_name`last_updated`)" +
+					" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? CURRENT_TIMESTAMP())", PreparedStatement.RETURN_GENERATED_KEYS);
 		}
 
 		stmt.setString(1, user.firstName);
@@ -476,6 +478,8 @@ public class UserStorage{
 		stmt.setString(16, user.icon!=null ? user.icon.get(0).asActivityPubObject(new JSONObject(), new ContextCollector()).toString() : null);
 		stmt.setString(17, user.serializeProfileFields());
 		stmt.setLong(18, user.flags);
+		stmt.setString(19, user.middleName);
+		stmt.setString(20, user.maidenName);
 
 		stmt.executeUpdate();
 		if(existingUserID==0){

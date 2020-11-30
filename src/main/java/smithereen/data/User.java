@@ -37,6 +37,8 @@ public class User extends ActivityPubObject implements Actor{
 	public int id;
 	public String firstName;
 	public String lastName;
+	public String middleName;
+	public String maidenName;
 	public String username;
 	public java.sql.Date birthDate;
 	public Gender gender;
@@ -49,9 +51,29 @@ public class User extends ActivityPubObject implements Actor{
 	public boolean manuallyApprovesFollowers;
 
 	public String getFullName(){
-		if(lastName==null || lastName.length()==0)
+		if(StringUtils.isEmpty(lastName))
 			return firstName.isEmpty() ? ('@'+username) : firstName;
 		return firstName+" "+lastName;
+	}
+
+	public String getCompleteName(){
+		if(StringUtils.isEmpty(middleName) && StringUtils.isEmpty(maidenName))
+			return getFullName();
+		StringBuilder sb=new StringBuilder(firstName);
+		if(StringUtils.isNotEmpty(middleName)){
+			sb.append(' ');
+			sb.append(middleName);
+		}
+		if(StringUtils.isNotEmpty(lastName)){
+			sb.append(' ');
+			sb.append(lastName);
+		}
+		if(StringUtils.isNotEmpty(maidenName)){
+			sb.append(" (");
+			sb.append(maidenName);
+			sb.append(')');
+		}
+		return sb.toString();
 	}
 
 	public String getProfileURL(String action){
@@ -178,6 +200,8 @@ public class User extends ActivityPubObject implements Actor{
 		id=res.getInt("id");
 		firstName=res.getString("fname");
 		lastName=res.getString("lname");
+		middleName=res.getString("middle_name");
+		maidenName=res.getString("maiden_name");
 		username=res.getString("username");
 		birthDate=res.getDate("bdate");
 		gender=Gender.valueOf(res.getInt("gender"));
@@ -256,6 +280,12 @@ public class User extends ActivityPubObject implements Actor{
 		if(StringUtils.isNotEmpty(lastName)){
 			root.put("lastName", lastName);
 		}
+		if(StringUtils.isNotEmpty(middleName)){
+			root.put("middleName", middleName);
+		}
+		if(StringUtils.isNotEmpty(maidenName)){
+			root.put("maidenName", maidenName);
+		}
 		if(birthDate!=null){
 			root.put("birthDate", birthDate.toString());
 		}
@@ -285,11 +315,13 @@ public class User extends ActivityPubObject implements Actor{
 		contextCollector.addAlias("sc", JLD.SCHEMA_ORG);
 		contextCollector.addType("firstName", "sc:givenName", "sc:Text");
 		contextCollector.addType("lastName", "sc:familyName", "sc:Text");
+		contextCollector.addType("middleName", "sc:additionalName", "sc:Text");
 		contextCollector.addType("gender", "sc:gender", "sc:GenderType");
 		contextCollector.addType("birthDate", "sc:birthDate", "sc:Date");
 		contextCollector.addSchema(JLD.W3_SECURITY);
 		contextCollector.addAlias("sm", JLD.SMITHEREEN);
 		contextCollector.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
+		contextCollector.addAlias("maidenName", "sm:maidenName");
 
 		return root;
 	}

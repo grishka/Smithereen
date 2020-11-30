@@ -176,5 +176,7 @@
   "likes_title": "Оценили",
   "wall_post_title": "Запись на стене",
   "more_actions": "Ещё...",
-  "choose_file_mobile": "Выберите файл с вашего устройства"
+  "choose_file_mobile": "Выберите файл с вашего устройства",
+  "middle_name_or_nickname": "Отчество или никнейм",
+  "maiden_name": "Девичья фамилия"
 }

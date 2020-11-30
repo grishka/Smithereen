@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import smithereen.Config;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=2;
+	public static final int SCHEMA_VERSION=3;
 
 	public static void maybeUpdate() throws SQLException{
 		if(Config.dbSchemaVersion==0){
@@ -34,6 +34,8 @@ public class DatabaseSchemaUpdater{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		if(target==2){
 			conn.createStatement().execute("ALTER TABLE wall_posts ADD (reply_count INTEGER UNSIGNED NOT NULL DEFAULT 0)");
+		}else if(target==3){
+			conn.createStatement().execute("ALTER TABLE users ADD middle_name VARCHAR(100) DEFAULT NULL AFTER lname, ADD maiden_name VARCHAR(100) DEFAULT NULL AFTER middle_name");
 		}
 	}
 }
