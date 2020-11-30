@@ -4,6 +4,8 @@ Federated, ActivityPub-compatible social network with friends, walls, and (*at s
 
 **At the moment, this is very far from being production-ready. Things may and likely will break.**
 
+If you have any questions or feedback, there's a [Telegram chat](https://t.me/SmithereenProject) you can join.
+
 ## Building/installation
 
 ### Running directly on your server
