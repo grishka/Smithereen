@@ -321,11 +321,9 @@ abstract class FileUploadBox extends Box{
 			</div>`
 		});
 
-		this.setContent(content);
-		this.fileField=content.qs("input[type=file]");
 
 		if(!mobile){
-			content.innerHTML+=`<div class="dropOverlay">${lang("drop_files_here")}</div>`
+			content.innerHTML+=`<div class="dropOverlay">${lang("drop_files_here")}</div>`;
 			this.dragOverlay=content.qs(".dropOverlay");
 			this.dragOverlay.addEventListener("dragenter", function(ev:DragEvent){
 				this.dragOverlay.classList.add("over");
@@ -339,10 +337,14 @@ abstract class FileUploadBox extends Box{
 				this.handleFiles(ev.dataTransfer.files);
 			}.bind(this), false);
 		}
-		this.fileField.addEventListener("change", function(ev:Event){
+
+		this.setContent(content);
+		this.fileField=content.qs("input[type=file]");
+
+		this.fileField.addEventListener("change", (ev:Event)=>{
 			this.handleFiles(this.fileField.files);
 			this.fileField.form.reset();
-		}.bind(this), false);
+		});
 	}
 
 	protected abstract handleFile(file:File):void;

@@ -313,8 +313,6 @@ var FileUploadBox = /** @class */ (function (_super) {
             message = lang(mobile ? "choose_file_mobile" : "drag_or_choose_file");
         var content = ce("div", { className: "fileUploadBoxContent", innerHTML: "<div class=\"inner\">" + message + "<br/>\n\t\t\t\t<form>\n\t\t\t\t\t<input type=\"file\" id=\"fileUploadBoxInput\" accept=\"image/*\"/>\n\t\t\t\t\t<label for=\"fileUploadBoxInput\" class=\"button\">" + lang("choose_file") + "</label>\n\t\t\t\t</form>\n\t\t\t</div>"
         });
-        _this.setContent(content);
-        _this.fileField = content.qs("input[type=file]");
         if (!mobile) {
             content.innerHTML += "<div class=\"dropOverlay\">" + lang("drop_files_here") + "</div>";
             _this.dragOverlay = content.qs(".dropOverlay");
@@ -330,10 +328,12 @@ var FileUploadBox = /** @class */ (function (_super) {
                 this.handleFiles(ev.dataTransfer.files);
             }.bind(_this), false);
         }
+        _this.setContent(content);
+        _this.fileField = content.qs("input[type=file]");
         _this.fileField.addEventListener("change", function (ev) {
-            this.handleFiles(this.fileField.files);
-            this.fileField.form.reset();
-        }.bind(_this), false);
+            _this.handleFiles(_this.fileField.files);
+            _this.fileField.form.reset();
+        });
         return _this;
     }
     FileUploadBox.prototype.handleFiles = function (files) {
