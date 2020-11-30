@@ -453,11 +453,11 @@ public class UserStorage{
 		}
 		if(existingUserID!=0){
 			stmt=conn.prepareStatement("UPDATE `users` SET `fname`=?,`lname`=?,`bdate`=?,`username`=?,`domain`=?,`public_key`=?,`ap_url`=?,`ap_inbox`=?,`ap_outbox`=?,`ap_shared_inbox`=?,`ap_id`=?,`ap_followers`=?,`ap_following`=?," +
-					"`about`=?,`gender`=?,`avatar`=?,`profile_fields`=?,`flags`=?,middle_name=?,maiden_name=?`last_updated`=CURRENT_TIMESTAMP() WHERE `id`=?");
+					"`about`=?,`gender`=?,`avatar`=?,`profile_fields`=?,`flags`=?,middle_name=?,maiden_name=?,`last_updated`=CURRENT_TIMESTAMP() WHERE `id`=?");
 			stmt.setInt(21, existingUserID);
 		}else{
 			stmt=conn.prepareStatement("INSERT INTO `users` (`fname`,`lname`,`bdate`,`username`,`domain`,`public_key`,`ap_url`,`ap_inbox`,`ap_outbox`,`ap_shared_inbox`,`ap_id`,`ap_followers`,`ap_following`,`about`,`gender`,`avatar`,`profile_fields`,`flags`,middle_name,maiden_name`last_updated`)" +
-					" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? CURRENT_TIMESTAMP())", PreparedStatement.RETURN_GENERATED_KEYS);
+					" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())", PreparedStatement.RETURN_GENERATED_KEYS);
 		}
 
 		stmt.setString(1, user.firstName);

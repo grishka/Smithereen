@@ -132,6 +132,7 @@ public class Main{
 
 		path("/activitypub", ()->{
 			post("/sharedInbox", ActivityPubRoutes::sharedInbox);
+			get("/sharedInbox", Main::methodNotAllowed);
 			getLoggedIn("/externalInteraction", ActivityPubRoutes::externalInteraction);
 			get("/nodeinfo/2.0", ActivityPubRoutes::nodeInfo);
 			path("/objects", ()->{
@@ -170,11 +171,9 @@ public class Main{
 			});
 
 			post("/inbox", ActivityPubRoutes::inbox);
+			get("/inbox", Main::methodNotAllowed);
 			get("/outbox", ActivityPubRoutes::outbox);
-			post("/outbox", (req, resp)->{
-				resp.status(405);
-				return "";
-			});
+			post("/outbox", Main::methodNotAllowed);
 			get("/followers", ActivityPubRoutes::userFollowers);
 			get("/following", ActivityPubRoutes::userFollowing);
 		});
@@ -289,5 +288,10 @@ public class Main{
 				.with("serverDisplayName", Config.serverDisplayName)
 				.with("serverDescription", Config.serverDescription)
 				.renderToString(req);
+	}
+
+	private static Object methodNotAllowed(Request req, Response resp){
+		resp.status(405);
+		return "";
 	}
 }
