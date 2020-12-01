@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-11-05 09:15:16 +0000
+# Generation Time: 2020-12-01 13:40:06 +0000
 # ************************************************************
 
 
@@ -216,6 +216,8 @@ CREATE TABLE `users` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `fname` varchar(100) NOT NULL DEFAULT '',
   `lname` varchar(100) DEFAULT NULL,
+  `middle_name` varchar(100) DEFAULT NULL,
+  `maiden_name` varchar(100) DEFAULT NULL,
   `bdate` date DEFAULT NULL,
   `username` varchar(50) NOT NULL DEFAULT '',
   `domain` varchar(100) NOT NULL DEFAULT '',
