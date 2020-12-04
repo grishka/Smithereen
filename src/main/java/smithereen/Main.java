@@ -218,6 +218,7 @@ public class Main{
 			getLoggedIn("/confirmSendFriendRequest", ProfileRoutes::confirmSendFriendRequest);
 			postWithCSRF("/doSendFriendRequest", ProfileRoutes::doSendFriendRequest);
 			postWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
+			getWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
 			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
 			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
 			get("/friends", ProfileRoutes::friends);

@@ -320,6 +320,8 @@ public class ProfileRoutes{
 					ActivityPubWorker.getInstance().sendRejectFriendRequestActivity(self.user, (ForeignUser) user);
 				}
 			}
+			if(isAjax(req))
+				return new WebDeltaResponseBuilder(resp).refresh().json();
 			resp.redirect(Utils.back(req));
 		}else{
 			resp.status(404);
