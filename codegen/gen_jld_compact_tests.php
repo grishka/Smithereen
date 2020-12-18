@@ -64,4 +64,4 @@ foreach($mf->sequence as $test){
 
 $j[]="}";
 
-file_put_contents("../src/test/java/smithereen/jsonld/CompactTests.java", implode("\n", $j));
+file_put_contents("src/test/java/smithereen/jsonld/CompactTests.java", implode("\n", $j));
