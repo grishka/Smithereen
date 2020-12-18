@@ -5,16 +5,16 @@ import com.mitchellbosecke.pebble.extension.escaper.SafeString;
 import com.mitchellbosecke.pebble.template.EvaluationContext;
 import com.mitchellbosecke.pebble.template.PebbleTemplate;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import smithereen.data.PhotoSize;
+import smithereen.data.SizedImage;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.VideoAttachment;
-import smithereen.storage.MediaStorageUtils;
 
 public class RenderAttachmentsFunction implements Function{
 
@@ -28,15 +28,15 @@ public class RenderAttachmentsFunction implements Function{
 
 			if(obj instanceof PhotoAttachment){
 				PhotoAttachment photo=(PhotoAttachment)obj;
-				PhotoSize jpeg1x, jpeg2x, webp1x, webp2x;
-				jpeg1x=MediaStorageUtils.findBestPhotoSize(photo.sizes, PhotoSize.Format.JPEG, PhotoSize.Type.SMALL);
-				jpeg2x=MediaStorageUtils.findBestPhotoSize(photo.sizes, PhotoSize.Format.JPEG, PhotoSize.Type.MEDIUM);
-				webp1x=MediaStorageUtils.findBestPhotoSize(photo.sizes, PhotoSize.Format.WEBP, PhotoSize.Type.SMALL);
-				webp2x=MediaStorageUtils.findBestPhotoSize(photo.sizes, PhotoSize.Format.WEBP, PhotoSize.Type.MEDIUM);
+				URI jpeg1x, jpeg2x, webp1x, webp2x;
+				jpeg1x=photo.image.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.JPEG);
+				jpeg2x=photo.image.getUriForSizeAndFormat(SizedImage.Type.MEDIUM, SizedImage.Format.JPEG);
+				webp1x=photo.image.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.WEBP);
+				webp2x=photo.image.getUriForSizeAndFormat(SizedImage.Type.MEDIUM, SizedImage.Format.WEBP);
 				lines.add("<picture>" +
-						"<source srcset=\""+webp1x.src+", "+webp2x.src+" 2x\" type=\"image/webp\"/>" +
-						"<source srcset=\""+jpeg1x.src+", "+jpeg2x.src+" 2x\" type=\"image/jpeg\"/>" +
-						"<img src=\""+jpeg1x.src+"\"/>" +
+						"<source srcset=\""+webp1x+", "+webp2x+" 2x\" type=\"image/webp\"/>" +
+						"<source srcset=\""+jpeg1x+", "+jpeg2x+" 2x\" type=\"image/jpeg\"/>" +
+						"<img src=\""+jpeg1x+"\"/>" +
 						"</picture>");
 			}else if(obj instanceof VideoAttachment){
 				lines.add("<video src=\""+((VideoAttachment) obj).url+"\" controls></video>");

@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.util.List;
 
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
@@ -22,9 +21,10 @@ import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
-import smithereen.data.PhotoSize;
+import smithereen.data.CachedRemoteImage;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
+import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.libvips.VImage;
 import smithereen.storage.MediaCache;
@@ -44,45 +44,25 @@ public class SystemRoutes{
 		String mime;
 		URI uri=null;
 		MediaCache.ItemType itemType;
-		PhotoSize.Type sizeType;
-		PhotoSize.Format format;
+		SizedImage.Type sizeType;
+		SizedImage.Format format;
 
 		switch(req.queryParams("format")){
 			case "jpeg":
 			case "jpg":
-				format=PhotoSize.Format.JPEG;
+				format=SizedImage.Format.JPEG;
 				break;
 			case "webp":
-				format=PhotoSize.Format.WEBP;
+				format=SizedImage.Format.WEBP;
 				break;
 			default:
 				return "";
 		}
-		switch(req.queryParams("size")){
-			case "xs":
-				sizeType=PhotoSize.Type.XSMALL;
-				break;
-			case "s":
-				sizeType=PhotoSize.Type.SMALL;
-				break;
-			case "m":
-				sizeType=PhotoSize.Type.MEDIUM;
-				break;
-			case "l":
-				sizeType=PhotoSize.Type.LARGE;
-				break;
-			case "xl":
-				sizeType=PhotoSize.Type.XLARGE;
-				break;
-			case "rl":
-				sizeType=PhotoSize.Type.RECT_LARGE;
-				break;
-			case "rxl":
-				sizeType=PhotoSize.Type.RECT_XLARGE;
-				break;
-			default:
-				return "";
-		}
+		sizeType=SizedImage.Type.fromSuffix(req.queryParams("size"));
+		if(sizeType==null)
+			return "";
+
+		float[] cropRegion=null;
 
 		if("user_ava".equals(type)){
 			itemType=MediaCache.ItemType.AVATAR;
@@ -91,27 +71,14 @@ public class SystemRoutes{
 			if(user==null || Config.isLocal(user.activityPubID)){
 				return "";
 			}
-			if(user.icon!=null && user.icon.get(0).url!=null){
-				Image im=user.icon.get(0);
+			Image im=user.getBestAvatarImage();
+			if(im!=null && im.url!=null){
+				cropRegion=user.getAvatarCropRegion();
 				uri=im.url;
 				if(StringUtils.isNotEmpty(im.mediaType))
 					mime=im.mediaType;
-			}
-		}else if("user_ava_rect".equals(type)){
-			itemType=MediaCache.ItemType.AVATAR_RECT;
-			mime="image/jpeg";
-			User user=UserStorage.getById(Utils.parseIntOrDefault(req.queryParams("user_id"), 0));
-			if(user==null || Config.isLocal(user.activityPubID)){
-				return "";
-			}
-			if(user.icon!=null){
-				Image im=user.icon.get(0);
-				if(im.url!=null && im.image!=null && im.image.get(0).url!=null){
-					im=im.image.get(0);
-					uri=im.url;
-					if(StringUtils.isNotEmpty(im.mediaType))
-						mime=im.mediaType;
-				}
+				else
+					mime="image/jpeg";
 			}
 		}else if("post_photo".equals(type)){
 			itemType=MediaCache.ItemType.PHOTO;
@@ -137,7 +104,7 @@ public class SystemRoutes{
 			MediaCache.Item existing=cache.get(uri);
 			if(mime.startsWith("image/")){
 				if(existing!=null){
-					resp.redirect(getBestSizeURL(((MediaCache.PhotoItem)existing).sizes, sizeType, format));
+					resp.redirect(new CachedRemoteImage((MediaCache.PhotoItem) existing, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
 					return "";
 				}
 				try{
@@ -145,7 +112,7 @@ public class SystemRoutes{
 					if(item==null)
 						resp.redirect(uri.toString());
 					else
-						resp.redirect(getBestSizeURL(item.sizes, sizeType, format));
+						resp.redirect(new CachedRemoteImage(item, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
 					return "";
 				}catch(IOException x){
 					x.printStackTrace();
@@ -154,14 +121,6 @@ public class SystemRoutes{
 			}
 		}
 		return "";
-	}
-
-	private static String getBestSizeURL(List<PhotoSize> sizes, PhotoSize.Type size, PhotoSize.Format format){
-		for(PhotoSize s:sizes){
-			if(s.type==size && s.format==format)
-				return s.src.toString();
-		}
-		return null;
 	}
 
 	public static Object uploadPostPhoto(Request req, Response resp, Account self) throws SQLException{
@@ -187,13 +146,17 @@ public class SystemRoutes{
 			File postMediaDir=new File(Config.uploadPath, "post_media");
 			postMediaDir.mkdirs();
 			try{
-				MediaStorageUtils.writeResizedImages(img, new int[]{200, 400, 800, 1280, 2560}, new PhotoSize.Type[]{PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
-						93, 87, keyHex, postMediaDir, Config.uploadURLPath+"/post_media", photo.sizes);
+//				MediaStorageUtils.writeResizedImages(img, new int[]{200, 400, 800, 1280, 2560}, new PhotoSize.Type[]{PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
+//						93, 87, keyHex, postMediaDir, Config.uploadURLPath+"/post_media", photo.sizes);
+				int[] outSize={0,0};
+				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 90, keyHex, postMediaDir, outSize);
 
 				SessionInfo sess=Utils.sessionInfo(req);
 				photo.localID=keyHex;
 				photo.mediaType="image/jpeg";
 				photo.path="post_media";
+				photo.width=outSize[0];
+				photo.height=outSize[1];
 				if(req.queryParams("draft")!=null)
 					sess.postDraftAttachments.add(photo);
 				MediaCache.putDraftAttachment(photo, self.id);
@@ -208,8 +171,8 @@ public class SystemRoutes{
 				JSONObject obj=new JSONObject();
 				obj.put("id", keyHex);
 				JSONObject thumbs=new JSONObject();
-				thumbs.put("jpeg", getBestSizeURL(photo.sizes, PhotoSize.Type.XSMALL, PhotoSize.Format.JPEG));
-				thumbs.put("webp", getBestSizeURL(photo.sizes, PhotoSize.Type.XSMALL, PhotoSize.Format.WEBP));
+				thumbs.put("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.XSMALL, SizedImage.Format.JPEG).toString());
+				thumbs.put("webp", photo.getUriForSizeAndFormat(SizedImage.Type.XSMALL, SizedImage.Format.WEBP).toString());
 				obj.put("thumbs", thumbs);
 				return obj;
 			}

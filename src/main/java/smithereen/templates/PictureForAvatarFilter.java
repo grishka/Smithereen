@@ -6,22 +6,22 @@ import com.mitchellbosecke.pebble.extension.escaper.SafeString;
 import com.mitchellbosecke.pebble.template.EvaluationContext;
 import com.mitchellbosecke.pebble.template.PebbleTemplate;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import smithereen.data.PhotoSize;
+import smithereen.data.SizedImage;
 import smithereen.data.User;
-import smithereen.storage.MediaStorageUtils;
 
 public class PictureForAvatarFilter implements Filter{
 	@Override
 	public Object apply(Object input, Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber) throws PebbleException{
-		List<PhotoSize> sizes;
+		SizedImage image;
 		String additionalClasses="";
 		if(input instanceof User){
 			User user=(User) input;
-			sizes=user.getAvatar();
+			image=user.getAvatar();
 			if(user.gender==User.Gender.FEMALE)
 				additionalClasses=" female";
 		}else{
@@ -29,38 +29,38 @@ public class PictureForAvatarFilter implements Filter{
 		}
 
 		String _type=(String) args.get("type");
-		PhotoSize.Type type, type2x;
+		SizedImage.Type type, type2x;
 		int size;
 		boolean isRect=false;
 		switch(_type){
 			case "s":
-				type=PhotoSize.Type.SMALL;
-				type2x=PhotoSize.Type.MEDIUM;
+				type=SizedImage.Type.SQUARE_SMALL;
+				type2x=SizedImage.Type.SQUARE_MEDIUM;
 				size=50;
 				break;
 			case "m":
-				type=PhotoSize.Type.MEDIUM;
-				type2x=PhotoSize.Type.LARGE;
+				type=SizedImage.Type.SQUARE_MEDIUM;
+				type2x=SizedImage.Type.SQUARE_LARGE;
 				size=100;
 				break;
 			case "l":
-				type=PhotoSize.Type.LARGE;
-				type2x=PhotoSize.Type.XLARGE;
+				type=SizedImage.Type.SQUARE_LARGE;
+				type2x=SizedImage.Type.SQUARE_XLARGE;
 				size=200;
 				break;
 			case "xl":
-				type2x=type=PhotoSize.Type.XLARGE;
+				type2x=type=SizedImage.Type.SQUARE_XLARGE;
 				size=400;
 				break;
 			case "rl":
-				type=PhotoSize.Type.RECT_LARGE;
-				type2x=PhotoSize.Type.RECT_XLARGE;
+				type=SizedImage.Type.RECT_LARGE;
+				type2x=SizedImage.Type.RECT_XLARGE;
 				size=200;
 				_type="l";
 				isRect=true;
 				break;
 			case "rxl":
-				type=type2x=PhotoSize.Type.RECT_XLARGE;
+				type=type2x=SizedImage.Type.RECT_XLARGE;
 				size=400;
 				_type="xl";
 				isRect=true;
@@ -70,20 +70,27 @@ public class PictureForAvatarFilter implements Filter{
 		}
 		if(args.containsKey("size"))
 			size=Templates.asInt(args.get("size"));
-		if(sizes==null)
+		if(image==null)
 			return new SafeString("<span class=\"ava avaPlaceholder size"+_type.toUpperCase()+additionalClasses+"\" style=\"width: "+size+"px;height: "+size+"px\"></span>");
 
-		PhotoSize jpeg1x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.JPEG, type),
-				jpeg2x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.JPEG, type2x),
-				webp1x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.WEBP, type),
-				webp2x=MediaStorageUtils.findBestPhotoSize(sizes, PhotoSize.Format.WEBP, type2x);
+		URI jpeg1x=image.getUriForSizeAndFormat(type, SizedImage.Format.JPEG),
+				jpeg2x=image.getUriForSizeAndFormat(type2x, SizedImage.Format.JPEG),
+				webp1x=image.getUriForSizeAndFormat(type, SizedImage.Format.WEBP),
+				webp2x=image.getUriForSizeAndFormat(type2x, SizedImage.Format.WEBP);
 
-		int width=size, height=isRect ? jpeg1x.height : size;
+		int width, height;
+		if(isRect){
+			SizedImage.Dimensions sz=image.getDimensionsForSize(type);
+			width=sz.width;
+			height=sz.height;
+		}else{
+			width=height=size;
+		}
 
 		return new SafeString("<span class=\"ava avaHasImage size"+_type.toUpperCase()+"\"><picture>" +
-				"<source srcset=\""+webp1x.src+", "+webp2x.src+" 2x\" type=\"image/webp\"/>" +
-				"<source srcset=\""+jpeg1x.src+", "+jpeg2x.src+" 2x\" type=\"image/jpeg\"/>" +
-				"<img src=\""+jpeg1x.src+"\" width=\""+width+"\" height=\""+height+"\" class=\"avaImage\"/>" +
+				"<source srcset=\""+webp1x+", "+webp2x+" 2x\" type=\"image/webp\"/>" +
+				"<source srcset=\""+jpeg1x+", "+jpeg2x+" 2x\" type=\"image/jpeg\"/>" +
+				"<img src=\""+jpeg1x+"\" width=\""+width+"\" height=\""+height+"\" class=\"avaImage\"/>" +
 				"</picture></span>");
 	}
 

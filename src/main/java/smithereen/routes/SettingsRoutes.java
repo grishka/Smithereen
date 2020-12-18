@@ -23,7 +23,6 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
-import smithereen.data.PhotoSize;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponseBuilder;
@@ -153,7 +152,6 @@ public class SettingsRoutes{
 			File temp=new File(tmpDir, keyHex);
 			part.write(keyHex);
 			VImage img=new VImage(temp.getAbsolutePath());
-			VImage cropped=null;
 			float ratio=(float)img.getWidth()/(float)img.getHeight();
 			boolean ratioIsValid=ratio<=2.5f && ratio>=0.25f;
 			LocalImage ava=new LocalImage();
@@ -174,22 +172,23 @@ public class SettingsRoutes{
 							int x=Math.round(iw*x1);
 							int y=Math.round(ih*y1);
 							int size=Math.round(((x2-x1)*iw+(y2-y1)*ih)/2f);
-							cropped=img.crop(x, y, size, size);
 							ava.cropRegion=new float[]{x1, y1, x2, y2};
 						}
 					}
 				}catch(NumberFormatException ignore){}
 			}
-			if(cropped==null && img.getWidth()!=img.getHeight()){
+			if(ava.cropRegion==null && img.getWidth()!=img.getHeight()){
+				int cropSize, cropX=0;
 				if(img.getHeight()>img.getWidth()){
-					cropped=img.crop(0, 0, img.getWidth(), img.getWidth());
+					cropSize=img.getWidth();
 					ava.cropRegion=new float[]{0f, 0f, 1f, (float)img.getWidth()/(float)img.getHeight()};
 				}else{
-					int x=img.getWidth()/2-img.getHeight()/2;
-					cropped=img.crop(x, 0, img.getHeight(), img.getHeight());
-					ava.cropRegion=new float[]{(float)x/(float)img.getWidth(), 0f, (float)(x+img.getHeight())/(float)img.getWidth(), 1f};
+					cropSize=img.getHeight();
+					cropX=img.getWidth()/2-img.getHeight()/2;
+					ava.cropRegion=new float[]{(float)cropX/(float)img.getWidth(), 0f, (float)(cropX+img.getHeight())/(float)img.getWidth(), 1f};
 				}
 				if(!ratioIsValid){
+					VImage cropped=img.crop(cropX, 0, cropSize, cropSize);
 					img.release();
 					img=cropped;
 				}
@@ -198,24 +197,36 @@ public class SettingsRoutes{
 			File profilePicsDir=new File(Config.uploadPath, "avatars");
 			profilePicsDir.mkdirs();
 			try{
-				MediaStorageUtils.writeResizedImages(cropped!=null ? cropped : img, new int[]{50, 100, 200, 400}, new PhotoSize.Type[]{PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
-						85, 80, keyHex, profilePicsDir, Config.uploadURLPath+"/avatars", ava.sizes);
-				if(cropped!=null && img.getWidth()!=img.getHeight()){
-					MediaStorageUtils.writeResizedImages(img, new int[]{200, 400}, new int[]{500, 1000}, new PhotoSize.Type[]{PhotoSize.Type.RECT_LARGE, PhotoSize.Type.RECT_XLARGE},
-							85, 80, keyHex, profilePicsDir, Config.uploadURLPath+"/avatars", ava.sizes);
-				}
+//				MediaStorageUtils.writeResizedImages(cropped!=null ? cropped : img, new int[]{50, 100, 200, 400}, new PhotoSize.Type[]{PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
+//						85, 80, keyHex, profilePicsDir, Config.uploadURLPath+"/avatars", ava.sizes);
+//				if(cropped!=null && img.getWidth()!=img.getHeight()){
+//					MediaStorageUtils.writeResizedImages(img, new int[]{200, 400}, new int[]{500, 1000}, new PhotoSize.Type[]{PhotoSize.Type.RECT_LARGE, PhotoSize.Type.RECT_XLARGE},
+//							85, 80, keyHex, profilePicsDir, Config.uploadURLPath+"/avatars", ava.sizes);
+//				}
+				int[] size={0, 0};
+				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 90, keyHex, profilePicsDir, size);
 				ava.localID=keyHex;
 				ava.path="avatars";
-
+				ava.width=size[0];
+				ava.height=size[1];
+//
+//				if(self.user.icon!=null){
+//					for(PhotoSize size : ((LocalImage) self.user.icon.get(0)).sizes){
+//						String path=size.src.getPath();
+//						String name=path.substring(path.lastIndexOf('/')+1);
+//						File file=new File(profilePicsDir, name);
+//						if(file.exists()){
+//							System.out.println("deleting: "+file.getAbsolutePath());
+//							file.delete();
+//						}
+//					}
+//				}
 				if(self.user.icon!=null){
-					for(PhotoSize size : ((LocalImage) self.user.icon.get(0)).sizes){
-						String path=size.src.getPath();
-						String name=path.substring(path.lastIndexOf('/')+1);
-						File file=new File(profilePicsDir, name);
-						if(file.exists()){
-							System.out.println("deleting: "+file.getAbsolutePath());
-							file.delete();
-						}
+					LocalImage li=(LocalImage) self.user.icon.get(0);
+					File file=new File(profilePicsDir, li.localID+".webp");
+					if(file.exists()){
+						System.out.println("deleting: "+file.getAbsolutePath());
+						file.delete();
 					}
 				}
 
@@ -299,14 +310,11 @@ public class SettingsRoutes{
 	public static Object removeProfilePicture(Request req, Response resp, Account self) throws SQLException{
 		File profilePicsDir=new File(Config.uploadPath, "avatars");
 		if(self.user.icon!=null){
-			for(PhotoSize size : ((LocalImage) self.user.icon.get(0)).sizes){
-				String path=size.src.getPath();
-				String name=path.substring(path.lastIndexOf('/')+1);
-				File file=new File(profilePicsDir, name);
-				if(file.exists()){
-					System.out.println("deleting: "+file.getAbsolutePath());
-					file.delete();
-				}
+			LocalImage li=(LocalImage) self.user.icon.get(0);
+			File file=new File(profilePicsDir, li.localID+".webp");
+			if(file.exists()){
+				System.out.println("deleting: "+file.getAbsolutePath());
+				file.delete();
 			}
 		}
 

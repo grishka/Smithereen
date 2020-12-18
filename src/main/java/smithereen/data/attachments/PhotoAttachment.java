@@ -1,10 +1,7 @@
 package smithereen.data.attachments;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import smithereen.data.PhotoSize;
+import smithereen.data.SizedImage;
 
 public class PhotoAttachment extends Attachment{
-	public ArrayList<PhotoSize> sizes=new ArrayList<>();
+	public SizedImage image;
 }

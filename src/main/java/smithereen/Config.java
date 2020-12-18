@@ -35,6 +35,10 @@ public class Config{
 	public static String staticFilesPath;
 	public static final boolean DEBUG=System.getProperty("smithereen.debug")!=null;
 
+	public static String imgproxyUrl;
+	public static byte[] imgproxyKey;
+	public static byte[] imgproxySalt;
+
 	private static URI localURI;
 
 	// following fields are kept in the config table in database and some are configurable from /settings/admin
@@ -71,6 +75,12 @@ public class Config{
 		serverIP=props.getProperty("server.ip", "127.0.0.1");
 		serverPort=Utils.parseIntOrDefault(props.getProperty("server.port", "4567"), 4567);
 		staticFilesPath=props.getProperty("web.static_files_path");
+
+		imgproxyUrl=props.getProperty("imgproxy.url_prefix");
+		imgproxyKey=Utils.hexStringToByteArray(props.getProperty("imgproxy.key"));
+		imgproxySalt=Utils.hexStringToByteArray(props.getProperty("imgproxy.salt"));
+		if(imgproxyUrl.charAt(0)!='/')
+			imgproxyUrl='/'+imgproxyUrl;
 	}
 
 	public static void loadFromDatabase() throws SQLException{

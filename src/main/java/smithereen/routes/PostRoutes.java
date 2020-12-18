@@ -4,7 +4,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -13,8 +12,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -26,8 +23,8 @@ import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
-import smithereen.data.PhotoSize;
 import smithereen.data.SessionInfo;
+import smithereen.data.SizedImage;
 import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.data.attachments.Attachment;
@@ -273,22 +270,23 @@ public class PostRoutes{
 			if(post.attachment!=null && !post.attachment.isEmpty()){
 				for(Attachment att : post.getProcessedAttachments()){
 					if(att instanceof PhotoAttachment){
-						PhotoSize size=MediaStorageUtils.findBestPhotoSize(((PhotoAttachment) att).sizes, PhotoSize.Format.JPEG, PhotoSize.Type.MEDIUM);
-						if(size!=null){
-							meta.put("og:image", size.src.toString());
-							meta.put("og:image:width", size.width+"");
-							meta.put("og:image:height", size.height+"");
-							hasImage=true;
-						}
+//						PhotoSize size=MediaStorageUtils.findBestPhotoSize(((PhotoAttachment) att).sizes, PhotoSize.Format.JPEG, PhotoSize.Type.MEDIUM);
+//						if(size!=null){
+//							meta.put("og:image", size.src.toString());
+//							meta.put("og:image:width", size.width+"");
+//							meta.put("og:image:height", size.height+"");
+//							hasImage=true;
+//						}
 						break;
 					}
 				}
 			}
 			if(!hasImage){
 				if(post.user.hasAvatar()){
-					PhotoSize size=MediaStorageUtils.findBestPhotoSize(post.user.getAvatar(), PhotoSize.Format.JPEG, PhotoSize.Type.LARGE);
-					if(size!=null){
-						meta.put("og:image", size.src.toString());
+					URI img=post.user.getAvatar().getUriForSizeAndFormat(SizedImage.Type.LARGE, SizedImage.Format.JPEG);
+					if(img!=null){
+						SizedImage.Dimensions size=post.user.getAvatar().getDimensionsForSize(SizedImage.Type.LARGE);
+						meta.put("og:image", img.toString());
 						meta.put("og:image:width", size.width+"");
 						meta.put("og:image:height", size.height+"");
 					}

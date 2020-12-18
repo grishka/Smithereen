@@ -2,6 +2,7 @@ package smithereen.routes;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -18,15 +19,14 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
-import smithereen.data.PhotoSize;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
+import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.data.notifications.Notification;
 import smithereen.lang.Lang;
-import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -107,9 +107,10 @@ public class ProfileRoutes{
 				else if(user.gender==User.Gender.FEMALE)
 					meta.put("og:gender", "female");
 				if(user.hasAvatar()){
-					PhotoSize size=MediaStorageUtils.findBestPhotoSize(user.getAvatar(), PhotoSize.Format.JPEG, PhotoSize.Type.XLARGE);
-					if(size!=null){
-						meta.put("og:image", size.src.toString());
+					URI img=user.getAvatar().getUriForSizeAndFormat(SizedImage.Type.LARGE, SizedImage.Format.JPEG);
+					if(img!=null){
+						SizedImage.Dimensions size=user.getAvatar().getDimensionsForSize(SizedImage.Type.LARGE);
+						meta.put("og:image", img.toString());
 						meta.put("og:image:width", size.width+"");
 						meta.put("og:image:height", size.height+"");
 					}

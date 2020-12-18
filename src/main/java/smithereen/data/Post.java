@@ -21,6 +21,7 @@ import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.CollectionPage;
+import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
@@ -275,30 +276,29 @@ public class Post extends ActivityPubObject{
 		ArrayList<Attachment> result=new ArrayList<>();
 		int i=0;
 		for(ActivityPubObject o:attachment){
-			if(o.mediaType==null){
-				i++;
-				continue;
-			}
-			if(o.mediaType.startsWith("image/")){
+			String mediaType=o.mediaType==null ? "" : o.mediaType;
+			if(o instanceof Image || mediaType.startsWith("image/")){
 				PhotoAttachment att=new PhotoAttachment();
 				if(o instanceof LocalImage){
-					att.sizes=((LocalImage) o).sizes;
+					LocalImage li=((LocalImage) o);
+					att.image=li;
 				}else{
 					MediaCache.PhotoItem item=(MediaCache.PhotoItem) MediaCache.getInstance().get(o.url);
 					if(item!=null){
-						att.sizes=item.sizes;
+						att.image=new CachedRemoteImage(item);
 					}else{
-						String pathPrefix="/system/downloadExternalMedia?type=post_photo&post_id="+id+"&index="+i;
-						PhotoSize.Type[] sizes={PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
-						for(PhotoSize.Format format : PhotoSize.Format.values()){
-							for(PhotoSize.Type size : sizes){
-								att.sizes.add(new PhotoSize(Config.localURI(pathPrefix+"&size="+size.suffix()+"&format="+format.fileExtension()), PhotoSize.UNKNOWN, PhotoSize.UNKNOWN, size, format));
+						SizedImage.Dimensions size=SizedImage.Dimensions.UNKNOWN;
+						if(o instanceof Image){
+							Image im=(Image) o;
+							if(im.width>0 && im.height>0){
+								size=new SizedImage.Dimensions(im.width, im.height);
 							}
 						}
+						att.image=new NonCachedRemoteImage(new NonCachedRemoteImage.PostPhotoArgs(id, i), size);
 					}
 				}
 				result.add(att);
-			}else if(o.mediaType.startsWith("video/")){
+			}else if(mediaType.startsWith("video/")){
 				VideoAttachment att=new VideoAttachment();
 				att.url=o.url;
 				result.add(att);

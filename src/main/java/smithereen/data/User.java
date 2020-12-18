@@ -1,11 +1,8 @@
 package smithereen.data;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -13,11 +10,8 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
-import java.util.List;
 
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
@@ -88,63 +82,47 @@ public class User extends ActivityPubObject implements Actor{
 		return icon!=null;
 	}
 
-	public List<PhotoSize> getAvatar(){
-		Image icon=this.icon!=null ? this.icon.get(0) : null;
+	public SizedImage getAvatar(){
+		Image icon=getBestAvatarImage();
 		if(icon==null)
 			return null;
 		if(icon instanceof LocalImage){
-			return ((LocalImage) icon).sizes;
+			return (LocalImage) icon;
 		}
 		MediaCache cache=MediaCache.getInstance();
-		ArrayList<PhotoSize> sizes=new ArrayList<>();
 		try{
 			MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.get(icon.url);
 			if(item!=null){
-				sizes.addAll(item.sizes);
+				return new CachedRemoteImage(item, getAvatarCropRegion());
 			}else{
-				String pathPrefix="/system/downloadExternalMedia?type=user_ava&user_id="+id;
-				PhotoSize.Type[] types={PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
-				for(PhotoSize.Format format:PhotoSize.Format.values()){
-					for(PhotoSize.Type size:types){
-						String path=pathPrefix+"&format="+format.fileExtension()+"&size="+size.suffix();
-						sizes.add(new PhotoSize(Config.localURI(path), PhotoSize.UNKNOWN, PhotoSize.UNKNOWN, size, format));
-					}
+				SizedImage.Dimensions size=SizedImage.Dimensions.UNKNOWN;
+				if(icon.width>0 && icon.height>0){
+					size=new SizedImage.Dimensions(icon.width, icon.height);
 				}
-			}
-
-			if(icon.image!=null && icon.image.get(0).url!=null){
-				Image image=icon.image.get(0);
-				item=(MediaCache.PhotoItem) cache.get(image.url);
-				if(item!=null){
-					sizes.addAll(item.sizes);
-				}else{
-					String pathPrefix="/system/downloadExternalMedia?type=user_ava_rect&user_id="+id;
-					PhotoSize.Type[] types={PhotoSize.Type.RECT_LARGE, PhotoSize.Type.RECT_XLARGE};
-					for(PhotoSize.Format format:PhotoSize.Format.values()){
-						for(PhotoSize.Type size:types){
-							String path=pathPrefix+"&format="+format.fileExtension()+"&size="+size.suffix();
-							int width=image.width;
-							int height=image.height;
-							if(width==0 || height==0){
-								width=height=PhotoSize.UNKNOWN;
-							}else{
-								int newWidth;
-								if(size==PhotoSize.Type.RECT_LARGE)
-									newWidth=200;
-								else
-									newWidth=400;
-								height=Math.round((float)height/(float)width*(float)newWidth);
-								width=newWidth;
-							}
-							sizes.add(new PhotoSize(Config.localURI(path), width, height, size, format));
-						}
-					}
-				}
+				return new NonCachedRemoteImage(new NonCachedRemoteImage.ProfilePictureArgs(id), size);
 			}
 		}catch(SQLException e){
 			e.printStackTrace();
 		}
-		return sizes;
+		return null;
+	}
+
+	public Image getBestAvatarImage(){
+		Image icon=this.icon!=null ? this.icon.get(0) : null;
+		if(icon==null)
+			return null;
+		if(icon instanceof LocalImage)
+			return icon;
+		if(icon.image!=null && !icon.image.isEmpty() && icon.image.get(0).width>0 && icon.image.get(0).height>0)
+			return icon.image.get(0);
+		return icon;
+	}
+
+	public float[] getAvatarCropRegion(){
+		Image icon=this.icon!=null ? this.icon.get(0) : null;
+		if(icon==null)
+			return null;
+		return icon.cropRegion;
 	}
 
 	@Override
@@ -229,11 +207,11 @@ public class User extends ActivityPubObject implements Actor{
 				}catch(Exception ignore){}
 			}else{
 				LocalImage ava=new LocalImage();
-				PhotoSize.Type[] sizes={PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
+				SizedImage.Type[] sizes={SizedImage.Type.SMALL, SizedImage.Type.MEDIUM, SizedImage.Type.LARGE, SizedImage.Type.XLARGE};
 				int[] sizeDimens={50, 100, 200, 400};
-				for(PhotoSize.Format format : PhotoSize.Format.values()){
-					for(PhotoSize.Type size : sizes){
-						ava.sizes.add(new PhotoSize(Config.localURI(Config.uploadURLPath+"/avatars/"+_ava+"_"+size.suffix()+"."+format.fileExtension()), sizeDimens[size.ordinal()], sizeDimens[size.ordinal()], size, format));
+				for(SizedImage.Format format : SizedImage.Format.values()){
+					for(SizedImage.Type size : sizes){
+//						ava.sizes.add(new PhotoSize(Config.localURI(Config.uploadURLPath+"/avatars/"+_ava+"_"+size.suffix()+"."+format.fileExtension()), sizeDimens[size.ordinal()], sizeDimens[size.ordinal()], size, format));
 					}
 				}
 				icon=Collections.singletonList(ava);

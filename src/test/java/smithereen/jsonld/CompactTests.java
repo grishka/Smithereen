@@ -3,6 +3,11 @@ package smithereen.jsonld;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.net.URI;
+import java.util.Collections;
+
 import org.json.*;
 
 import static org.junit.jupiter.api.Assertions.*;

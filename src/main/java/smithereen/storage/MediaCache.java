@@ -36,7 +36,6 @@ import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.data.PhotoSize;
 import smithereen.libvips.VImage;
 
 public class MediaCache{
@@ -117,7 +116,7 @@ public class MediaCache{
 				return null;
 		}
 		try{
-			result.deserialize(new DataInputStream(new ByteArrayInputStream(info)), Config.mediaCacheURLPath+"/"+keyHex);
+			result.deserialize(new DataInputStream(new ByteArrayInputStream(info)), keyHex);
 		}catch(IOException x){
 			return null;
 		}
@@ -135,6 +134,7 @@ public class MediaCache{
 		Call call=httpClient.newCall(req);
 		Response resp=call.execute();
 		if(!resp.isSuccessful()){
+			resp.body().close();
 			return null;
 		}
 		Item result=null;
@@ -169,41 +169,12 @@ public class MediaCache{
 						img.release();
 						img=flat;
 					}
-					int[] dimensions;
-					int[] heights=null;
-					PhotoSize.Type[] sizes;
-					int jpegQuality;
-					int webpQuality;
-					if(type==ItemType.AVATAR){
-						if(img.getWidth()!=img.getHeight()){
-							VImage cropped;
-							if(img.getWidth()>img.getHeight()){
-								cropped=img.crop(0, 0, img.getHeight(), img.getHeight());
-							}else{
-								cropped=img.crop(0, 0, img.getWidth(), img.getWidth());
-							}
-							img.release();
-							img=cropped;
-						}
-						dimensions=new int[]{50, 100, 200, 400};
-						sizes=new PhotoSize.Type[]{PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
-						jpegQuality=85;
-						webpQuality=80;
-					}else if(type==ItemType.AVATAR_RECT){
-						dimensions=new int[]{200, 400};
-						heights=new int[]{500, 1000};
-						sizes=new PhotoSize.Type[]{PhotoSize.Type.RECT_LARGE, PhotoSize.Type.RECT_XLARGE};
-						jpegQuality=85;
-						webpQuality=80;
-					}else if(type==ItemType.PHOTO){
-						dimensions=new int[]{200, 400, 800, 1280, 2560};
-						sizes=new PhotoSize.Type[]{PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE};
-						jpegQuality=93;
-						webpQuality=87;
-					}else{
-						throw new IllegalArgumentException("Unknown type");
-					}
-					photo.totalSize=MediaStorageUtils.writeResizedImages(img, dimensions, heights, sizes, jpegQuality, webpQuality, keyHex, Config.mediaCachePath, Config.mediaCacheURLPath, photo.sizes);
+					int[] size={0,0};
+					photo.totalSize=MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 90, keyHex, Config.mediaCachePath, size);
+					photo.width=size[0];
+					photo.height=size[1];
+					photo.key=keyHex;
+//					photo.totalSize=MediaStorageUtils.writeResizedImages(img, dimensions, heights, sizes, jpegQuality, webpQuality, keyHex, Config.mediaCachePath, Config.mediaCacheURLPath, photo.sizes);
 				}catch(IOException x){
 					throw new IOException(x);
 				}finally{
@@ -298,8 +269,7 @@ public class MediaCache{
 
 	public enum ItemType{
 		PHOTO,
-		AVATAR,
-		AVATAR_RECT
+		AVATAR
 	}
 
 	public static abstract class Item{
@@ -307,12 +277,14 @@ public class MediaCache{
 
 		public abstract int getType();
 		public abstract void serialize(DataOutputStream out) throws IOException;
-		public abstract void deserialize(DataInputStream in, String basePath) throws IOException;
+		public abstract void deserialize(DataInputStream in, String key) throws IOException;
 		protected abstract void deleteFiles();
 	}
 
 	public static class PhotoItem extends Item{
-		public ArrayList<PhotoSize> sizes=new ArrayList<>();
+		public String src;
+		public int width, height;
+		public String key;
 
 		@Override
 		public int getType(){
@@ -321,36 +293,23 @@ public class MediaCache{
 
 		@Override
 		public void serialize(DataOutputStream out) throws IOException{
-			out.write(sizes.size());
-			for(PhotoSize s:sizes){
-				out.write(s.type.ordinal());
-				out.write(s.format.ordinal());
-				out.writeShort(s.width);
-				out.writeShort(s.height);
-			}
+			out.writeInt(width);
+			out.writeInt(height);
 		}
 
 		@Override
-		public void deserialize(DataInputStream in, String basePath) throws IOException{
-			int count=in.read();
-			for(int i=0;i<count;i++){
-				PhotoSize.Type type=PhotoSize.Type.values()[in.read()];
-				PhotoSize.Format format=PhotoSize.Format.values()[in.read()];
-				int width=in.readUnsignedShort();
-				int height=in.readUnsignedShort();
-				URI uri=Config.localURI(basePath+"_"+type.suffix()+"."+format.fileExtension());
-				sizes.add(new PhotoSize(uri, width, height, type, format));
-			}
+		public void deserialize(DataInputStream in, String key) throws IOException{
+			this.key=key;
+			src=Config.mediaCacheURLPath+key+".webp";
+			width=in.readInt();
+			height=in.readInt();
 		}
 
 		@Override
 		protected void deleteFiles(){
-			for(PhotoSize size:sizes){
-				String path=size.src.getPath();
-				File file=new File(Config.mediaCachePath, path.substring(path.lastIndexOf('/')+1));
-				if(!file.delete()){
-					System.out.println("Failed to delete "+file.getAbsolutePath());
-				}
+			File file=new File(Config.mediaCachePath, key+".webp");
+			if(!file.delete()){
+				System.out.println("Failed to delete "+file.getAbsolutePath());
 			}
 		}
 	}

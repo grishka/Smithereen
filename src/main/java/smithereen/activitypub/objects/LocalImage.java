@@ -3,73 +3,71 @@ package smithereen.activitypub.objects;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
+import java.net.URI;
 
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
-import smithereen.data.PhotoSize;
+import smithereen.data.SizedImage;
+import smithereen.storage.ImgProxy;
 
-public class LocalImage extends Image{
-	public ArrayList<PhotoSize> sizes=new ArrayList<>();
+public class LocalImage extends Image implements SizedImage{
 	public String path;
+	public Dimensions size=Dimensions.UNKNOWN;
 
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
 		localID=obj.getString("_lid");
 		JSONArray s=obj.getJSONArray("_sz");
-		String[] types=s.getString(0).split(" ");
 		path=obj.optString("_p", "post_media");
-		int offset=0;
-		for(String t:types){
-			PhotoSize.Type type=PhotoSize.Type.fromSuffix(t);
-			int width=s.getInt(++offset);
-			int height=s.getInt(++offset);
-			String name=Config.uploadURLPath+"/"+path+"/"+localID+"_"+type.suffix();
-			sizes.add(new PhotoSize(Config.localURI(name+".jpg"), width, height, type, PhotoSize.Format.JPEG));
-			sizes.add(new PhotoSize(Config.localURI(name+".webp"), width, height, type, PhotoSize.Format.WEBP));
-		}
-
+		width=s.getInt(0);
+		height=s.getInt(1);
+		size=new Dimensions(width, height);
 		return this;
 	}
 
 	@Override
 	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
-
-		PhotoSize biggest=null;
-		PhotoSize biggestRect=null;
-		int biggestArea=0, biggestRectArea=0;
-		for(PhotoSize s:sizes){
-			if(s.format!=PhotoSize.Format.JPEG)
-				continue;
-			int area=s.width*s.height;
-			if(s.type==PhotoSize.Type.RECT_LARGE || s.type==PhotoSize.Type.RECT_XLARGE){
-				if(area>biggestRectArea){
-					biggestRectArea=area;
-					biggestRect=s;
-				}
-				continue;
-			}
-			if(area>biggestArea){
-				biggestArea=area;
-				biggest=s;
-			}
+		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.uploadURLPath+"/"+path+"/"+localID+".webp")
+				.format(SizedImage.Format.JPEG);
+		int croppedWidth=width, croppedHeight=height;
+		if(cropRegion!=null){
+			int x=Math.round(cropRegion[0]*width);
+			int y=Math.round(cropRegion[1]*height);
+			builder.crop(x, y, croppedWidth=Math.round(cropRegion[2]*width-x), croppedHeight=Math.round(cropRegion[3]*height-y));
 		}
-		if(biggest!=null){
-			obj.put("url", biggest.src.toString());
-			obj.put("width", biggest.width);
-			obj.put("height", biggest.height);
-			if(biggestRect!=null){
-				Image im=new Image();
-				im.url=biggestRect.src;
-				im.width=biggestRect.width;
-				im.height=biggestRect.height;
-				obj.put("image", im.asActivityPubObject(null, contextCollector));
-			}
+		obj.put("url", builder.build().toString());
+		obj.put("width", croppedWidth);
+		obj.put("height", croppedHeight);
+		if(cropRegion!=null){
+			Image im=new Image();
+			im.width=width;
+			im.height=height;
+			im.url=new ImgProxy.UrlBuilder("local://"+Config.uploadURLPath+"/"+path+"/"+localID+".webp")
+					.format(SizedImage.Format.JPEG)
+					.build();
+			obj.put("image", im.asActivityPubObject(null, contextCollector));
 		}
-
 		return obj;
+	}
+
+	@Override
+	public URI getUriForSizeAndFormat(Type size, Format format){
+		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.uploadURLPath+"/"+path+"/"+localID+".webp")
+				.format(format)
+				.resize(size.getResizingType(), size.getMaxWidth(), size.getMaxHeight(), false, false);
+		if(cropRegion!=null && size.getResizingType()==ImgProxy.ResizingType.FILL){
+			int x=Math.round(cropRegion[0]*width);
+			int y=Math.round(cropRegion[1]*height);
+			builder.crop(x, y, Math.round(cropRegion[2]*width-x), Math.round(cropRegion[3]*height-y));
+		}
+		return builder.build();
+	}
+
+	@Override
+	public Dimensions getOriginalDimensions(){
+		return size;
 	}
 }
