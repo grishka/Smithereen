@@ -157,6 +157,7 @@ public class SystemRoutes{
 				photo.path="post_media";
 				photo.width=outSize[0];
 				photo.height=outSize[1];
+				photo.blurHash=img.blurHash(4, 4);
 				if(req.queryParams("draft")!=null)
 					sess.postDraftAttachments.add(photo);
 				MediaCache.putDraftAttachment(photo, self.id);

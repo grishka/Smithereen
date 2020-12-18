@@ -33,6 +33,7 @@ public class JLDProcessor{
 		JSONObject lc=new JSONObject();
 		lc.put("sc", JLD.SCHEMA_ORG);
 		lc.put("sm", JLD.SMITHEREEN);
+		lc.put("toot", JLD.MASTODON);
 
 		// schema.org aliases
 		lc.put("firstName", idAndTypeObject("sc:givenName", "sc:Text"));
@@ -44,6 +45,9 @@ public class JLDProcessor{
 		// ActivityStreams aliases
 		lc.put("sensitive", "as:sensitive");
 		lc.put("manuallyApprovesFollowers", "as:manuallyApprovesFollowers");
+
+		// Mastodon aliases
+		lc.put("blurhash", "toot:blurhash");
 
 		// custom aliases
 		lc.put("supportsFriendRequests", "sm:supportsFriendRequests");

@@ -26,6 +26,7 @@ public class VImage{
 	public native void writeToFile(String[] fileNames) throws IOException;
 	public native boolean hasAlpha();
 	public native VImage flatten(double r, double g, double b) throws IOException;
+	public native String blurHash(int xComponents, int yComponents) throws IOException;
 
 	private native long create(String filePath) throws IOException;
 }

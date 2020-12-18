@@ -3,6 +3,8 @@
 #include <jni.h>
 #include <stdint.h>
 
+#include "blurhash.h"
+
 namespace{
 	jfieldID nativePtrField;
 
@@ -126,5 +128,54 @@ extern "C" JNIEXPORT jobject Java_smithereen_libvips_VImage_flatten(JNIEnv* env,
 	vips_area_unref((VipsArea*)bgArray);
 	jclass cls=env->GetObjectClass(thiz);
 	return env->NewObject(cls, env->GetMethodID(cls, "<init>", "(J)V"), (jlong)(intptr_t)out);
+}
+
+extern "C" JNIEXPORT jstring Java_smithereen_libvips_VImage_blurHash(JNIEnv* env, jobject thiz, jint xComponents, jint yComponents){
+	VipsImage* img=(VipsImage*)(intptr_t)env->GetLongField(thiz, nativePtrField);
+	if(!ensureNotReleased(img, env))
+		return NULL;
+
+	int width=vips_image_get_width(img);
+	int height=vips_image_get_height(img);
+	VipsImage* resized;
+	if(vips_resize(img, &resized, 32.0/width, "vscale", 32.0/height, NULL)!=0){
+		env->ThrowNew(env->FindClass("java/io/IOException"), vips_error_buffer());
+		vips_error_clear();
+		return NULL;
+	}
+
+	if(vips_image_get_bands(resized)!=3){
+		g_object_unref(resized);
+		return NULL;
+	}
+	VipsBandFormat format=vips_image_get_format(resized);
+	if(format!=VIPS_FORMAT_UCHAR){
+		VipsImage* converted;
+		if(vips_cast_uchar(resized, &converted, NULL)!=0){
+			g_object_unref(resized);
+			env->ThrowNew(env->FindClass("java/io/IOException"), vips_error_buffer());
+			vips_error_clear();
+			return NULL;
+		}
+		g_object_unref(resized);
+		resized=converted;
+	}
+
+	VipsRegion* region=vips_region_new(resized);
+	VipsRect rect={0, 0, vips_image_get_width(resized), vips_image_get_height(resized)};
+	if(vips_region_prepare(region, &rect)!=0){
+		g_object_unref(region);
+		g_object_unref(resized);
+		env->ThrowNew(env->FindClass("java/io/IOException"), vips_error_buffer());
+		vips_error_clear();
+		return NULL;
+	}
+
+	std::string hash=blurHashForPixels(xComponents, yComponents, rect.width, rect.height, VIPS_REGION_ADDR_TOPLEFT(region), VIPS_REGION_LSKIP(region));
+	
+	g_object_unref(region);
+	g_object_unref(resized);
+
+	return env->NewStringUTF(hash.c_str());
 }
 
