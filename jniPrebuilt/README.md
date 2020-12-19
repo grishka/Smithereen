@@ -37,7 +37,7 @@ make
 ```
 If you want to statically link libvips like I did here, there's unfortunately no clean and nice way of doing it, so run this atrocious command after make:
 ```bash
-g++ *.o -o libvips_jni.so -shared -L/usr/local/lib -l:libvips.a -l:libwebp.a -l:libwebpmux.a -l:libwebpdemux.a -ljpeg -lgif -lpng -lexpat -lgobject-2.0 -lglib-2.0
+g++ *.o -o libvips_jni.so -shared -L/usr/local/lib -l:libvips.a -l:libwebp.a -l:libwebpmux.a -l:libwebpdemux.a -ljpeg -lgif -lpng -lexpat -lgobject-2.0 -lglib-2.0 -lgmodule-2.0 -lgio-2.0
 ```
 
 #### Mac OS
