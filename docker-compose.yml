@@ -29,6 +29,23 @@ services:
    - ./mysql-data:/var/lib/mysql
    - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
   restart: always
+ imgproxy:
+  image: darthsim/imgproxy:latest
+  ports:
+   - '4560:8080'
+  environment:
+   IMGPROXY_PATH_PREFIX: "/i"
+   IMGPROXY_ALLOWED_SOURCES: "local://"
+   IMGPROXY_LOCAL_FILESYSTEM_ROOT: "/uploads"
+   # See README or config_docker.properties for how to generate these.
+   # Must match config, otherwise you won't be seeing any memes in the newsfeed.
+   IMGPROXY_KEY: GENERATE YOUR OWN
+   IMGPROXY_SALT: GENERATE YOUR OWN
+  volumes:
+   - /var/www/s:/uploads
+  restart: always
+  networks:
+   - external_network
 
 networks:
   external_network:
