@@ -1,14 +1,14 @@
 ifeq ($(OS),Windows_NT)
-	LIB_EXT := dll
+LIB_EXT := dll
 JNI_PLATFORM := win32
 else
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-	LIB_EXT := jnilib
-	JNI_PLATFORM := darwin
+LIB_EXT := jnilib
+JNI_PLATFORM := darwin
 else
-	LIB_EXT := so
-	JNI_PLATFORM := linux
+LIB_EXT := so
+JNI_PLATFORM := linux
 endif
 endif
 
