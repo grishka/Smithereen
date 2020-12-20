@@ -150,9 +150,11 @@ public class Lang{
 					s=ar.getString(1);
 					break;
 				case MALE:
+					s=ar.getString(0);
+					break;
 				case UNKNOWN:
 				default:
-					s=ar.getString(0);
+					s=ar.getString(ar.length()>2 ? 3 : 0);
 					break;
 			}
 			return formatArgs.length>0 ? String.format(locale, s, formatArgs) : s;

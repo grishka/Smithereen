@@ -1,7 +1,10 @@
 $imgAreaSelectorMarkerSize: 10px;
 $imgAreaSelectorMarkerBorderRadius: 2px;
 $mobile: false;
-$siteWidth: 1280px;
+$siteWidthWide: 1280px;
+$siteWidthNarrow: 791px;
+$leftMenuWidth: 147px; /* from the left edge of the header to the left edge of the content area */
+$headerHeight: 40px;
 
 @import "common.scss";
 
@@ -48,7 +51,7 @@ h2{
 
 .headerWrap{
 	position: relative;
-	height: 48px;
+	height: $headerHeight;
 	padding: 0 8px;
 }
 
@@ -58,7 +61,7 @@ h2{
 	top: 0;
 	left: 12px;
 	right: 12px;
-	height: 48px;
+	height: $headerHeight;
 	padding-right: 12px;
 	margin: 0 -8px;
 	.logo{
@@ -71,7 +74,7 @@ h2{
 			width: 100%;
 			color: $textOnAccent;
 			font-weight: bold;
-			line-height: 48px;
+			line-height: $headerHeight;
 			text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
 			text-overflow: ellipsis;
 			white-space: nowrap;
@@ -86,8 +89,8 @@ h2{
 		color: $textOnAccent;
 		font-weight: bold;
 		display: inline-block;
-		line-height: 48px;
-		height: 48px;
+		line-height: $headerHeight;
+		height: $headerHeight;
 		padding: 0 8px;
 		text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
 		vertical-align: top;
@@ -112,7 +115,7 @@ h2{
 	background: linear-gradient(to bottom, $headerGradientTop, $headerGradientBottom);
 	border: solid 1px $headerBorderBottomDark;
 	border-top: none;
-	border-radius: 0 0 10px 10px;
+	border-radius: 0 0 8px 8px;
 	overflow: hidden;
 	.shadow{
 		width: 100%;
@@ -124,11 +127,26 @@ h2{
 	}
 }
 
+.headerWrap{
+	margin-left: auto;
+	margin-right: auto;
+}
+
 .widePage{
 	.headerWrap{
-		width: calc($siteWidth - 40px);
-		margin-left: auto;
-		margin-right: auto;
+		width: $siteWidthWide;
+	}
+	.contentWrap{
+		width: $siteWidthWide;
+	}
+}
+
+.narrowPage{
+	.headerWrap{
+		width: $siteWidthNarrow;
+	}
+	.contentWrap{
+		width: $siteWidthNarrow;
 	}
 }
 
@@ -143,12 +161,16 @@ h2{
 }
 
 .leftMenu{
-	padding: 12px 12px 0 0;
+	padding: 8px 8px 0 0;
 	box-sizing: border-box;
+	width: $leftMenuWidth;
 	input{
 		width: 100%;
 		box-sizing: border-box;
 		margin: 4px 0;
+	}
+	li a:not(.actionAux){
+		padding-left: 11px;
 	}
 }
 
@@ -208,15 +230,14 @@ h2{
 }
 
 .contentWrap{
-	width: calc($siteWidth - 60px);
 	margin-left: auto;
 	margin-right: auto;
-	margin-top: 1px;
 }
 
 .pageContent{
-	box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+	box-shadow: 0 1px 1px 1px rgba(0, 0, 0, .1);
 	overflow: hidden; /* prevent margin collapse */
+	margin-right: 17px;
 }
 
 .wrap{
@@ -447,7 +468,7 @@ select{
 
 .form{
 	border-spacing: 0;
-	width: 60%;
+	width: 80%;
 	margin: auto;
 	margin-top: 8px;
 	margin-bottom: 8px;
@@ -620,7 +641,7 @@ select{
 
 .dataTable{
 	&.smallTable{
-		width: 60%;
+		width: 80%;
 		margin-left: auto;
 		margin-right: auto;
 	}

@@ -66,6 +66,7 @@ public class SettingsAdminRoutes{
 		model.with("title", l.get("admin_users")+" | "+l.get("menu_admin")).with("toolbarTitle", l.get("menu_admin"));
 		model.with("total", UserStorage.getLocalUserCount());
 		model.with("pageOffset", offset);
+		model.with("wideOnDesktop", true);
 		jsLangKey(req, "cancel");
 		return model.renderToString(req);
 	}
