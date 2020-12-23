@@ -161,7 +161,7 @@ public class SystemRoutes{
 //				MediaStorageUtils.writeResizedImages(img, new int[]{200, 400, 800, 1280, 2560}, new PhotoSize.Type[]{PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
 //						93, 87, keyHex, postMediaDir, Config.uploadURLPath+"/post_media", photo.sizes);
 				int[] outSize={0,0};
-				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 90, keyHex, postMediaDir, outSize);
+				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, keyHex, postMediaDir, outSize);
 
 				SessionInfo sess=Utils.sessionInfo(req);
 				photo.localID=keyHex;

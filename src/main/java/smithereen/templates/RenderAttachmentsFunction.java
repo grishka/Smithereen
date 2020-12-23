@@ -131,11 +131,16 @@ public class RenderAttachmentsFunction implements Function{
 		URI jpeg2x=photo.image.getUriForSizeAndFormat(type2x, SizedImage.Format.JPEG);
 		URI webp1x=photo.image.getUriForSizeAndFormat(type, SizedImage.Format.WEBP);
 		URI webp2x=photo.image.getUriForSizeAndFormat(type2x, SizedImage.Format.WEBP);
-		lines.add("<picture>"+
+
+		URI jpegFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.JPEG);
+		URI webpFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.WEBP);
+
+		lines.add("<a class=\"photo\" href=\""+jpegFull+"\" data-full-jpeg=\""+jpegFull+"\" data-full-webp=\""+webpFull+"\" data-size=\""+photo.getWidth()+" "+photo.getHeight()+"\" onclick=\"return openPhotoViewer(this)\">"+
+				"<picture>"+
 				"<source srcset=\""+webp1x+", "+webp2x+" 2x\" type=\"image/webp\"/>"+
 				"<source srcset=\""+jpeg1x+", "+jpeg2x+" 2x\" type=\"image/jpeg\"/>"+
 				"<img src=\""+jpeg1x+"\"/>"+
-				"</picture>");
+				"</picture></a>");
 	}
 
 	@NotNull

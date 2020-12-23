@@ -571,3 +571,19 @@ select{
 	margin-left: -12px;
 	margin-right: -12px;
 }
+
+.photoViewer{
+	display: flex;
+	max-height: 100%;
+	max-width: 100%;
+	.photoViewerNavButton{
+		display: none;
+	}
+
+	.photoWrap img{
+		max-height: 100vh;
+		max-width: 100vw;
+		width: auto;
+		height: auto;
+	}
+}

@@ -891,6 +891,37 @@ select{
 	}
 }
 
-.narrowWall .postAttachments .aspectWrapper .pseudoImage{
+.narrowWall .postAttachments .aspectWrapper .pseudoImage, .comment .postAttachments .aspectWrapper .pseudoImage{
 	max-width: 330px;
+}
+
+.photoViewer{
+	pointer-events: auto;
+	display: flex;
+	max-height: 100%;
+	max-width: 100%;
+	.photoViewerNavButton{
+		width: 40px;
+		transition: background-color .5s ease, opacity .5s ease;
+		opacity: .5;
+		background-position: center;
+		background-repeat: no-repeat;
+		&:hover{
+			opacity: 1;
+			background-color: rgba(0,0,0,.3);
+		}
+	}
+	.buttonNext{
+		background-image: svg-load("img/material/ic_arrow_forward.svg", fill: #FFF);
+	}
+	.buttonPrev{
+		background-image: svg-load("img/material/ic_arrow_back.svg", fill: #FFF);
+	}
+
+	.photoWrap img{
+		max-height: calc(100vh - 20px);
+		max-width: calc(100vw - 100px);
+		width: auto;
+		height: auto;
+	}
 }

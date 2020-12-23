@@ -170,7 +170,7 @@ public class MediaCache{
 						img=flat;
 					}
 					int[] size={0,0};
-					photo.totalSize=MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 90, keyHex, Config.mediaCachePath, size);
+					photo.totalSize=MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, keyHex, Config.mediaCachePath, size);
 					photo.width=size[0];
 					photo.height=size[1];
 					photo.key=keyHex;

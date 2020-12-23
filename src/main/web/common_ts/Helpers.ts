@@ -601,3 +601,22 @@ function showOptions(el:HTMLElement){
 	new MobileOptionsBox(JSON.parse(el.getAttribute("data-options"))).show();
 	return false;
 }
+
+function openPhotoViewer(el:HTMLElement){
+	var parent=el.parentNode.parentNode;
+	var photoList:PhotoInfo[]=[];
+	var index=0;
+	var j=0;
+	for(var i=0;i<parent.children.length;i++){
+		var link=parent.children[i].querySelector("a.photo");
+		if(!link) continue;
+		var size=link.getAttribute("data-size").split(" ");
+		photoList.push({webp: link.getAttribute("data-full-webp"), jpeg: link.getAttribute("data-full-jpeg"), width: parseInt(size[0]), height: parseInt(size[1])});
+		if(link==el){
+			index=j;
+		}
+		j++;
+	}
+	new PhotoViewerLayer(photoList, index).show();
+	return false;
+}

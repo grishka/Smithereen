@@ -474,3 +474,73 @@ class MobileOptionsBox extends Box{
 	}
 }
 
+interface PhotoInfo{
+	webp:string;
+	jpeg:string;
+	width:number;
+	height:number;
+}
+
+class PhotoViewerLayer extends BaseLayer{
+	
+	private photos:PhotoInfo[];
+	private index:number;
+	private contentWrap:HTMLDivElement;
+	private photoImage:HTMLImageElement;
+	private photoPicture:HTMLPictureElement;
+	private photoSourceWebp:HTMLSourceElement;
+
+	private arrowsKeyListener=(ev:KeyboardEvent)=>{
+		if(ev.keyCode==37){
+			this.showPreviousPhoto();
+		}else if(ev.keyCode==39){
+			this.showNextPhoto();
+		}
+	};
+
+	public constructor(photos:PhotoInfo[], index:number){
+		super();
+
+		this.photos=photos;
+		this.contentWrap=ce("div", {className: "photoViewer"}, [
+			ce("a", {className: "photoViewerNavButton buttonPrev", onclick: this.showPreviousPhoto.bind(this)}),
+			ce("div", {className: "photoWrap"}, [
+				this.photoPicture=ce("picture", {}, [
+					this.photoSourceWebp=ce("source", {type: "image/webp"}),
+					this.photoImage=ce("img")
+				])
+			]),
+			ce("a", {className: "photoViewerNavButton buttonNext", onclick: this.showNextPhoto.bind(this)})
+		]);
+		this.setCurrentPhotoIndex(index);
+	}
+
+	public setCurrentPhotoIndex(i:number){
+		this.index=i;
+		var ph=this.photos[this.index];
+		this.photoImage.width=ph.width;
+		this.photoImage.height=ph.height;
+		this.photoSourceWebp.srcset=ph.webp;
+		this.photoImage.src=ph.jpeg;
+	}
+
+	public showNextPhoto(){
+		this.setCurrentPhotoIndex((this.index+1)%this.photos.length);
+	}
+
+	public showPreviousPhoto(){
+		this.setCurrentPhotoIndex(this.index==0 ? this.photos.length-1 : this.index-1);
+	}
+
+	protected onCreateContentView():HTMLElement{
+		return this.contentWrap;
+	}
+
+	public onShown(){
+		document.body.addEventListener("keydown", this.arrowsKeyListener);
+	}
+
+	public onHidden(){
+		document.body.removeEventListener("keydown", this.arrowsKeyListener);
+	}
+}

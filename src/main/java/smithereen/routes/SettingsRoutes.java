@@ -204,7 +204,7 @@ public class SettingsRoutes{
 //							85, 80, keyHex, profilePicsDir, Config.uploadURLPath+"/avatars", ava.sizes);
 //				}
 				int[] size={0, 0};
-				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 90, keyHex, profilePicsDir, size);
+				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, keyHex, profilePicsDir, size);
 				ava.localID=keyHex;
 				ava.path="avatars";
 				ava.width=size[0];

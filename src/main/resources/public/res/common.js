@@ -461,6 +461,57 @@ var MobileOptionsBox = /** @class */ (function (_super) {
     }
     return MobileOptionsBox;
 }(Box));
+var PhotoViewerLayer = /** @class */ (function (_super) {
+    __extends(PhotoViewerLayer, _super);
+    function PhotoViewerLayer(photos, index) {
+        var _this = _super.call(this) || this;
+        _this.arrowsKeyListener = function (ev) {
+            if (ev.keyCode == 37) {
+                _this.showPreviousPhoto();
+            }
+            else if (ev.keyCode == 39) {
+                _this.showNextPhoto();
+            }
+        };
+        _this.photos = photos;
+        _this.contentWrap = ce("div", { className: "photoViewer" }, [
+            ce("a", { className: "photoViewerNavButton buttonPrev", onclick: _this.showPreviousPhoto.bind(_this) }),
+            ce("div", { className: "photoWrap" }, [
+                _this.photoPicture = ce("picture", {}, [
+                    _this.photoSourceWebp = ce("source", { type: "image/webp" }),
+                    _this.photoImage = ce("img")
+                ])
+            ]),
+            ce("a", { className: "photoViewerNavButton buttonNext", onclick: _this.showNextPhoto.bind(_this) })
+        ]);
+        _this.setCurrentPhotoIndex(index);
+        return _this;
+    }
+    PhotoViewerLayer.prototype.setCurrentPhotoIndex = function (i) {
+        this.index = i;
+        var ph = this.photos[this.index];
+        this.photoImage.width = ph.width;
+        this.photoImage.height = ph.height;
+        this.photoSourceWebp.srcset = ph.webp;
+        this.photoImage.src = ph.jpeg;
+    };
+    PhotoViewerLayer.prototype.showNextPhoto = function () {
+        this.setCurrentPhotoIndex((this.index + 1) % this.photos.length);
+    };
+    PhotoViewerLayer.prototype.showPreviousPhoto = function () {
+        this.setCurrentPhotoIndex(this.index == 0 ? this.photos.length - 1 : this.index - 1);
+    };
+    PhotoViewerLayer.prototype.onCreateContentView = function () {
+        return this.contentWrap;
+    };
+    PhotoViewerLayer.prototype.onShown = function () {
+        document.body.addEventListener("keydown", this.arrowsKeyListener);
+    };
+    PhotoViewerLayer.prototype.onHidden = function () {
+        document.body.removeEventListener("keydown", this.arrowsKeyListener);
+    };
+    return PhotoViewerLayer;
+}(BaseLayer));
 var submittingForm = null;
 function ge(id) {
     return document.getElementById(id);
@@ -1042,6 +1093,25 @@ function likeOnMouseChange(wrap, entered) {
 }
 function showOptions(el) {
     new MobileOptionsBox(JSON.parse(el.getAttribute("data-options"))).show();
+    return false;
+}
+function openPhotoViewer(el) {
+    var parent = el.parentNode.parentNode;
+    var photoList = [];
+    var index = 0;
+    var j = 0;
+    for (var i = 0; i < parent.children.length; i++) {
+        var link = parent.children[i].querySelector("a.photo");
+        if (!link)
+            continue;
+        var size = link.getAttribute("data-size").split(" ");
+        photoList.push({ webp: link.getAttribute("data-full-webp"), jpeg: link.getAttribute("data-full-jpeg"), width: parseInt(size[0]), height: parseInt(size[1]) });
+        if (link == el) {
+            index = j;
+        }
+        j++;
+    }
+    new PhotoViewerLayer(photoList, index).show();
     return false;
 }
 var ImageAreaSelector = /** @class */ (function () {
