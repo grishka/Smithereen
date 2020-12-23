@@ -587,3 +587,14 @@ select{
 		height: auto;
 	}
 }
+
+.feedCaptionWithAva{
+	line-height: 24px;
+	padding: 12px 12px 0;
+	img{
+		vertical-align: top;
+	}
+	.text{
+		margin-left: 8px;
+	}
+}

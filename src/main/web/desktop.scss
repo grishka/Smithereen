@@ -925,3 +925,14 @@ select{
 		height: auto;
 	}
 }
+
+.feedCaptionWithAva{
+	line-height: 24px;
+	margin-bottom: 10px;
+	img{
+		vertical-align: top;
+	}
+	.text{
+		margin-left: 8px;
+	}
+}

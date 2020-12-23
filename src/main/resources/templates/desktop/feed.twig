@@ -12,7 +12,9 @@
 {%endfor%}
 	</div>
 {%elseif entry.type=="RETOOT"%}
-🔁 <a href="{{entry.author.url}}">{{entry.author.fullName}}</a><br/>
+<div class="feedCaptionWithAva">
+	<a href="{{entry.author.profileURL}}">{{entry.author | pictureForAvatar('s', 24)}}</a><span class="text">{{ LG(entry.post.replyLevel==0 ? 'feed_retoot_before' : 'feed_retoot_before_comment', entry.author.gender) }}<b><a href="{{entry.author.profileURL}}">{{entry.author.fullName}}</a></b>{{ LG(entry.post.replyLevel==0 ? 'feed_retoot_after' : 'feed_retoot_after_comment', entry.author.gender) }}</span>
+</div>
 {%include "wall_post" with {'post': entry.post}%}
 	<div class="commentsPreviewWrap">
 {%for reply in entry.post.replies%}

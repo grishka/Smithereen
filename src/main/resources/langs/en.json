@@ -178,5 +178,9 @@
   "more_actions": "More...",
   "choose_file_mobile": "Choose a file from your device",
   "middle_name_or_nickname": "Middle name or nickname",
-  "maiden_name": "Maiden name"
+  "maiden_name": "Maiden name",
+  "feed_retoot_before": "",
+  "feed_retoot_after": " shared a post.",
+  "feed_retoot_before_comment": "",
+  "feed_retoot_after_comment": " shared a comment."
 }
