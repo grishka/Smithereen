@@ -16,12 +16,14 @@ import javax.servlet.http.Part;
 
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
 import smithereen.data.CachedRemoteImage;
+import smithereen.data.ForeignUser;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
@@ -63,11 +65,12 @@ public class SystemRoutes{
 			return "";
 
 		float[] cropRegion=null;
+		User user=null;
 
 		if("user_ava".equals(type)){
 			itemType=MediaCache.ItemType.AVATAR;
 			mime="image/jpeg";
-			User user=UserStorage.getById(Utils.parseIntOrDefault(req.queryParams("user_id"), 0));
+			user=UserStorage.getById(Utils.parseIntOrDefault(req.queryParams("user_id"), 0));
 			if(user==null || Config.isLocal(user.activityPubID)){
 				return "";
 			}
@@ -109,10 +112,19 @@ public class SystemRoutes{
 				}
 				try{
 					MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType);
-					if(item==null)
+					if(item==null){
+						if(itemType==MediaCache.ItemType.AVATAR && req.queryParams("retrying")==null){
+							ActivityPubObject obj=ActivityPub.fetchRemoteObject(user.activityPubID.toString());
+							if(obj instanceof ForeignUser){
+								ForeignUser updatedUser=(ForeignUser) obj;
+								UserStorage.putOrUpdateForeignUser(updatedUser);
+								resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+							}
+						}
 						resp.redirect(uri.toString());
-					else
+					}else{
 						resp.redirect(new CachedRemoteImage(item, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
+					}
 					return "";
 				}catch(IOException x){
 					x.printStackTrace();
