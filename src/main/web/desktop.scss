@@ -848,3 +848,49 @@ select{
 	}
 	margin: 8px 0;
 }
+
+.postAttachments{
+	.aspectWrapper{
+		position: relative;
+		white-space: nowrap;
+		font-size: 0;
+		.pseudoImage{
+			width: auto;
+			height: auto;
+			max-width: 510px;
+			max-height: 510px;
+			vertical-align: bottom;
+		}
+		.positioner{
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			.aspectBox{
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				white-space: normal;
+				font-size: 11px;
+				overflow: hidden;
+				display: grid;
+				grid-gap: 2px;
+			}
+		}
+	}
+	.aspectBox img{
+		object-fit: cover;
+		width: 100%;
+		height: 100%;
+	}
+	.aspectBox>div{
+		min-width: 0;
+		min-height: 0;
+	}
+}
+
+.narrowWall .postAttachments .aspectWrapper .pseudoImage{
+	max-width: 330px;
+}

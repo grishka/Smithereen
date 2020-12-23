@@ -88,7 +88,7 @@
 				<tr><th class="blockHeader"><a href="#">{{L('wall')}}</a></th></tr>
 				<tr><td class="blockSubheader">{{LP('X_posts', postCount)}}</td></tr>
 				{%if currentUser is not null%}<tr><td>{%include "wall_post_form" with {'wallOwner': user}%}</td></tr>{%endif%}
-				<tr><td class="padded" id="postList">
+				<tr><td class="padded narrowWall" id="postList">
 			{%for post in wall%}
 			{%include "wall_post" with {'post': post}%}
 			{%endfor%}

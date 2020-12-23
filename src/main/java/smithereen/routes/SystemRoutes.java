@@ -172,8 +172,8 @@ public class SystemRoutes{
 				JSONObject obj=new JSONObject();
 				obj.put("id", keyHex);
 				JSONObject thumbs=new JSONObject();
-				thumbs.put("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.XSMALL, SizedImage.Format.JPEG).toString());
-				thumbs.put("webp", photo.getUriForSizeAndFormat(SizedImage.Type.XSMALL, SizedImage.Format.WEBP).toString());
+				thumbs.put("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.JPEG).toString());
+				thumbs.put("webp", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.WEBP).toString());
 				obj.put("thumbs", thumbs);
 				return obj;
 			}

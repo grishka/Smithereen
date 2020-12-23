@@ -13,25 +13,25 @@ public interface SizedImage{
 
 	enum Type{
 		/**
-		 * Photos: 400x400
+		 * Photos: 256x256
 		 */
-		SMALL("s", 400, 400, ImgProxy.ResizingType.FIT),
+		SMALL("s", 256, 256, ImgProxy.ResizingType.FIT),
 		/**
-		 * Photos: 800x800
+		 * Photos: 512x512
 		 */
-		MEDIUM("m", 800, 800, ImgProxy.ResizingType.FIT),
+		MEDIUM("m", 512, 512, ImgProxy.ResizingType.FIT),
 		/**
-		 * Photos: 1280x1280
+		 * Photos: 1024x1024
 		 */
-		LARGE("l", 1280, 1280, ImgProxy.ResizingType.FIT),
+		LARGE("l", 1024, 1024, ImgProxy.ResizingType.FIT),
 		/**
 		 * Photos: 2560x2560
 		 */
 		XLARGE("xl", 2560, 2560, ImgProxy.ResizingType.FIT),
 		/**
-		 * Photos: 200x200
+		 * Photos: 128x128
 		 */
-		XSMALL("xs", 200, 200, ImgProxy.ResizingType.FIT),
+		XSMALL("xs", 128, 128, ImgProxy.ResizingType.FIT),
 
 		/**
 		 * Avatars: 200xH

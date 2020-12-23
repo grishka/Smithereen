@@ -133,7 +133,7 @@ class PostForm{
 		xhr.onload=function(){
 			cont.classList.remove("uploading");
 			var resp=xhr.response;
-			del.href="/system/deleteDraftAttachment?id="+resp.id;
+			del.href="/system/deleteDraftAttachment?id="+resp.id+"&csrf="+userConfig.csrf;
 			img.outerHTML='<picture><source srcset="'+resp.thumbs.webp+'" type="image/webp"/><source srcset="'+resp.thumbs.jpeg+'" type="image/jpeg"/><img src="'+resp.thumbs.jpeg+'"/></picture>';
 			del.onclick=function(ev:Event){
 				ev.preventDefault();
@@ -160,7 +160,7 @@ class PostForm{
 	private deleteAttachment(id:string):void{
 		var el=ge("attachment_"+id);
 		el.parentNode.removeChild(el);
-		ajaxGet("/system/deleteDraftAttachment?id="+id, function(){}, function(){});
+		ajaxGet("/system/deleteDraftAttachment?id="+id+"&csrf="+userConfig.csrf, function(){}, function(){});
 		this.attachmentIDs.remove(id);
 		this.attachField.value=this.attachmentIDs.join(",");
 	}
