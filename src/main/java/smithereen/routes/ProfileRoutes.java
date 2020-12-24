@@ -44,7 +44,7 @@ public class ProfileRoutes{
 		if(user!=null){
 			int[] postCount={0};
 			int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
-			List<Post> wall=PostStorage.getUserWall(user.id, 0, 0, offset, postCount);
+			List<Post> wall=PostStorage.getUserWall(user.id, 0, 0, offset, postCount, false);
 			RenderedTemplateResponse model=new RenderedTemplateResponse("profile").with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
 			model.with("pageOffset", offset);
 
@@ -362,4 +362,5 @@ public class ProfileRoutes{
 	public static Object follow(Request req, Response resp, Account self) throws SQLException{
 		return "";
 	}
+
 }

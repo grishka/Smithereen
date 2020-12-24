@@ -224,6 +224,11 @@ public class Main{
 			get("/friends", ProfileRoutes::friends);
 			get("/followers", ProfileRoutes::followers);
 			get("/following", ProfileRoutes::following);
+			path("/wall", ()->{
+				get("", PostRoutes::wallAll);
+				get("/own", PostRoutes::wallOwn);
+				get("/with/:other_username", PostRoutes::wallToWall);
+			});
 		});
 
 

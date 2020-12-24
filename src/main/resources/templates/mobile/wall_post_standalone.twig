@@ -28,6 +28,9 @@
 			{%if post.replyLevel>0%}
 				<li><a href="/posts/{{post.getReplyChainElement(0)}}">Top-level</a></li>
 			{%endif%}
+			{% if post.owner.id!=post.user.id %}
+				<li><a href="{{ post.owner.profileURL }}/wall/with/{{ post.user.fullUsername }}">{{ L('wall_to_wall') }}</a></li>
+			{% endif %}
 		</ul>
 <div id="postReplies{{post.id}}">
 	{%for reply in post.replies%}

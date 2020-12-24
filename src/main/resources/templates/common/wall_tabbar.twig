@@ -1,0 +1,10 @@
+{# @pebvariable name="owner" type="smithereen.data.User" #}
+<div class="tabbar">
+	<a href="{{ owner.profileURL }}/wall" class="{%if tab=="all"%}selected{%endif%}">{{ L('wall_all_posts') }}</a>
+	<a href="{{ owner.profileURL }}/wall/own" class="{%if tab=="own"%}selected{%endif%}">{{ owner==currentUser ? L('wall_my_posts') : LI(key='wall_posts_of_X', first=owner.firstName, gender=owner.gender) }}</a>
+	{% if tab=="single" %}
+	    <a href="#" class="selected">{{ L('wall_post_title') }}</a>
+	{% elseif tab=="wall2wall" %}
+		<a href="#" class="selected">{{ L('wall_X_and_Y', owner.firstName, otherUser.firstName) }}</a>
+	{% endif %}
+</div>

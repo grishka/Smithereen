@@ -85,7 +85,7 @@
 				{%if user.summary is not null%}<tr><td class="label">{{L('profile_about')}}:</td><td>{{user.summary}}</td></tr>{%endif%}
 			</table>
 			<table width="100%" class="profileBlock">
-				<tr><th class="blockHeader"><a href="#">{{L('wall')}}</a></th></tr>
+				<tr><th class="blockHeader"><a href="{{ user.profileURL }}/wall">{{L('wall')}}</a></th></tr>
 				<tr><td class="blockSubheader">{{LP('X_posts', postCount)}}</td></tr>
 				{%if currentUser is not null%}<tr><td>{%include "wall_post_form" with {'wallOwner': user}%}</td></tr>{%endif%}
 				<tr><td class="padded narrowWall" id="postList">

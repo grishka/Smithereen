@@ -234,7 +234,7 @@ public class ActivityPubRoutes{
 		int minID=Math.max(0, _minID);
 		int maxID=Math.max(0, _maxID);
 		int[] _total={0};
-		List<Post> posts=PostStorage.getUserWall(user.id, minID, maxID, 0, _total);
+		List<Post> posts=PostStorage.getUserWall(user.id, minID, maxID, 0, _total, false);
 		int total=_total[0];
 		CollectionPage page=new CollectionPage(true);
 		page.totalItems=total;

@@ -12,6 +12,9 @@
 				{%if post.canBeManagedBy(currentUser)%} |
 				<a href="{{post.internalURL}}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{post.internalURL}}/delete')">{{L('delete')}}</a>
 				{%endif%}
+				{% if post.owner.id!=post.user.id and tab!="wall2wall" %} |
+				    <a href="{{ post.owner.profileURL }}/wall/with/{{ post.user.fullUsername }}">{{ L('wall_to_wall') }}</a>
+				{% endif %}
 				{% if not post.local %}
 					| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', post.url.host) }}</a>
 				{% endif %}

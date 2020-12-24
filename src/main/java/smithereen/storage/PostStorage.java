@@ -207,11 +207,12 @@ public class PostStorage{
 		return posts;
 	}
 
-	public static List<Post> getUserWall(int userID, int minID, int maxID, int offset, int[] total) throws SQLException{
+	public static List<Post> getUserWall(int userID, int minID, int maxID, int offset, int[] total, boolean ownOnly) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt;
+		String ownCondition=ownOnly ? " AND owner_user_id=author_id" : "";
 		if(total!=null){
-			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `wall_posts` WHERE `owner_user_id`=? AND `reply_key` IS NULL");
+			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `wall_posts` WHERE `owner_user_id`=? AND `reply_key` IS NULL"+ownCondition);
 			stmt.setInt(1, userID);
 			try(ResultSet res=stmt.executeQuery()){
 				res.first();
@@ -219,15 +220,45 @@ public class PostStorage{
 			}
 		}
 		if(minID>0){
-			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `id`>? AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT 25");
+			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `id`>? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT 25");
 			stmt.setInt(2, minID);
 		}else if(maxID>0){
-			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `id`=<? AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT "+offset+",25");
+			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `id`=<? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+",25");
 			stmt.setInt(2, maxID);
 		}else{
-			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT "+offset+",25");
+			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+",25");
 		}
 		stmt.setInt(1, userID);
+		ArrayList<Post> posts=new ArrayList<>();
+		try(ResultSet res=stmt.executeQuery()){
+			if(res.first()){
+				do{
+					posts.add(Post.fromResultSet(res));
+				}while(res.next());
+			}
+		}
+		return posts;
+	}
+
+	public static List<Post> getWallToWall(int userID, int otherUserID, int offset, int[] total) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt;
+		if(total!=null){
+			stmt=conn.prepareStatement("SELECT COUNT(*) FROM wall_posts WHERE (owner_user_id=? AND author_id=?) OR (owner_user_id=? AND author_id=?) AND `reply_key` IS NULL");
+			stmt.setInt(1, userID);
+			stmt.setInt(2, otherUserID);
+			stmt.setInt(3, otherUserID);
+			stmt.setInt(4, userID);
+			try(ResultSet res=stmt.executeQuery()){
+				res.first();
+				total[0]=res.getInt(1);
+			}
+		}
+		stmt=conn.prepareStatement("SELECT * FROM wall_posts WHERE (owner_user_id=? AND author_id=?) OR (owner_user_id=? AND author_id=?) AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT "+offset+",25");
+		stmt.setInt(1, userID);
+		stmt.setInt(2, otherUserID);
+		stmt.setInt(3, otherUserID);
+		stmt.setInt(4, userID);
 		ArrayList<Post> posts=new ArrayList<>();
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){

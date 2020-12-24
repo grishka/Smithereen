@@ -1,5 +1,7 @@
+{# @pebvariable name="post" type="smithereen.data.Post" #}
 {%extends "page"%}
 {%block content%}
+{% include 'wall_tabbar' with {'tab': 'single', 'owner': post.owner} %}
 <div class="singleColumn">
 {%if post.replyLevel>0%}
 	<a href="/posts/{{post.getReplyChainElement(0)}}">Top-level</a><br/>

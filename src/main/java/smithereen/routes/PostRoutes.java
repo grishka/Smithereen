@@ -1,5 +1,6 @@
 package smithereen.routes;
 
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -35,6 +36,7 @@ import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.User;
 import smithereen.data.notifications.Notification;
 import smithereen.data.notifications.NotificationUtils;
+import smithereen.lang.Lang;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
@@ -491,5 +493,75 @@ public class PostRoutes{
 		}
 		model.with("contentTemplate", "user_grid").with("title", lang(req).get("likes_title"));
 		return model.renderToString(req);
+	}
+
+	public static Object wallAll(Request req, Response resp) throws SQLException{
+		return wall(req, resp, false);
+	}
+
+	public static Object wallOwn(Request req, Response resp) throws SQLException{
+		return wall(req, resp, true);
+	}
+
+	private static Object wall(Request req, Response resp, boolean ownOnly) throws SQLException{
+		String username=req.params(":username");
+		User user=UserStorage.getByUsername(username);
+		if(user==null){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "user_not_found");
+		}
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
+
+		int[] postCount={0};
+		int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
+		List<Post> wall=PostStorage.getUserWall(user.id, 0, 0, offset, postCount, ownOnly);
+		List<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toList());
+		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
+		return new RenderedTemplateResponse("wall_page")
+				.with("posts", wall)
+				.with("postInteractions", interactions)
+				.with("owner", user)
+				.with("postCount", postCount[0])
+				.with("pageOffset", offset)
+				.with("ownOnly", ownOnly)
+				.with("paginationUrlPrefix", Config.localURI("/"+username+"/wall"+(ownOnly ? "/own" : "")))
+				.with("tab", ownOnly ? "own" : "all")
+				.with("title", lang(req).inflected("wall_of_X", user.gender, user.firstName, user.lastName, null))
+				.renderToString(req);
+	}
+
+	public static Object wallToWall(Request req, Response resp) throws SQLException{
+		String username=req.params(":username");
+		User user=UserStorage.getByUsername(username);
+		if(user==null){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "user_not_found");
+		}
+		String otherUsername=req.params(":other_username");
+		User otherUser=UserStorage.getByUsername(otherUsername);
+		if(otherUser==null){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "user_not_found");
+		}
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
+
+		int[] postCount={0};
+		int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
+		List<Post> wall=PostStorage.getWallToWall(user.id, otherUser.id, offset, postCount);
+		List<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toList());
+		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
+		return new RenderedTemplateResponse("wall_page")
+				.with("posts", wall)
+				.with("postInteractions", interactions)
+				.with("owner", user)
+				.with("otherUser", otherUser)
+				.with("postCount", postCount[0])
+				.with("pageOffset", offset)
+				.with("paginationUrlPrefix", Config.localURI("/"+username+"/wall/with"+otherUsername))
+				.with("tab", "wall2wall")
+				.with("title", lang(req).inflected("wall_of_X", user.gender, user.firstName, user.lastName, null))
+				.renderToString(req);
 	}
 }

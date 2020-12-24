@@ -1,0 +1,10 @@
+{% extends 'page' %}
+{% block content %}
+{% include 'wall_tabbar' %}
+<div class="singleColumn">
+{% for post in posts %}
+    {% include 'wall_post' %}
+{% endfor %}
+{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (paginationUrlPrefix+"?offset=")}%}
+</div>
+{% endblock %}

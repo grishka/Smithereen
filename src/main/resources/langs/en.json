@@ -182,5 +182,12 @@
   "feed_retoot_before": "",
   "feed_retoot_after": " shared a post.",
   "feed_retoot_before_comment": "",
-  "feed_retoot_after_comment": " shared a comment."
+  "feed_retoot_after_comment": " shared a comment.",
+  "wall_to_wall": "Wall-to-wall",
+  "wall_all_posts": "All posts",
+  "wall_posts_of_X": "%s's posts",
+  "wall_go_to_X_wall": "Go to %s's wall",
+  "wall_of_X": "%s's wall",
+  "wall_X_and_Y": "%1$s and %2$s",
+  "wall_my_posts": "My posts"
 }
