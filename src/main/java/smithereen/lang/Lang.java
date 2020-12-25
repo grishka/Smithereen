@@ -11,14 +11,12 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
-import java.util.stream.Stream;
 
 import smithereen.data.User;
 
@@ -91,8 +89,12 @@ public class Lang{
 		locale=Locale.forLanguageTag(localeID);
 		switch(localeID){
 			case "ru":
-				pluralRules=new RussianPluralRules();
+				pluralRules=new SlavicPluralRules();
 				inflector=new RussianInflector();
+				break;
+			case "pl":
+				pluralRules=new SlavicPluralRules();
+				inflector=null;
 				break;
 			case "tr":
 				pluralRules=new SingleFormPluralRules();

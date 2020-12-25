@@ -1,6 +1,6 @@
 package smithereen.lang;
 
-public class RussianPluralRules extends PluralRules{
+public class SlavicPluralRules extends PluralRules{
 	@Override
 	public int getIndexForQuantity(int quantity){
 		if((quantity/10)%10==1)
