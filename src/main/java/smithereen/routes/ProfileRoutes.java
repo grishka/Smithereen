@@ -56,7 +56,7 @@ public class ProfileRoutes{
 			List<User> friends=UserStorage.getRandomFriendsForProfile(user.id, friendCount);
 			model.with("friendCount", friendCount[0]).with("friends", friends);
 
-			if(self!=null){
+			if(self!=null && user.id!=self.id){
 				int mutualFriendCount=UserStorage.getMutualFriendsCount(user.id, self.user.id);
 				if(mutualFriendCount>0){
 					List<User> mutualFriends=UserStorage.getRandomMutualFriendsForProfile(user.id, self.user.id);
