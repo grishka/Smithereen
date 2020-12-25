@@ -11,8 +11,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.LruCache;
@@ -25,12 +29,15 @@ import smithereen.data.FriendshipStatus;
 import smithereen.data.Invitation;
 import smithereen.data.User;
 import smithereen.data.UserNotifications;
+import spark.utils.StringUtils;
 
 public class UserStorage{
 	private static LruCache<Integer, User> cache=new LruCache<>(500);
 	private static LruCache<String, User> cacheByUsername=new LruCache<>(500);
 	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
 	private static LruCache<Integer, Account> accountCache=new LruCache<>(500);
+
+	private static Comparator<User> idComparator=Comparator.comparingInt(u->u.id);
 
 	public static synchronized User getById(int id) throws SQLException{
 		User user=cache.get(id);
@@ -47,6 +54,60 @@ public class UserStorage{
 			}
 		}
 		return null;
+	}
+
+	public static List<User> getById(List<Integer> ids) throws SQLException{
+		return getById(ids, true);
+	}
+
+	public static List<User> getById(List<Integer> ids, boolean sorted) throws SQLException{
+		if(ids.isEmpty())
+			return Collections.emptyList();
+		if(ids.size()==1)
+			return Collections.singletonList(getById(ids.get(0)));
+		List<User> result=new ArrayList<>(ids.size());
+		synchronized(UserStorage.class){
+			Iterator<Integer> itr=ids.iterator();
+			while(itr.hasNext()){
+				Integer id=itr.next();
+				User user=cache.get(id);
+				if(user!=null){
+					itr.remove();
+					result.add(user);
+				}
+			}
+		}
+		if(ids.isEmpty()){
+			if(sorted)
+				result.sort(idComparator);
+			return result;
+		}
+		Connection conn=DatabaseConnectionManager.getConnection();
+		try(ResultSet res=conn.createStatement().executeQuery("SELECT * FROM users WHERE id IN ("+ids.stream().map(Object::toString).collect(Collectors.joining(","))+")")){
+			res.beforeFirst();
+			int resultSizeBefore=result.size();
+			while(res.next()){
+				String domain=res.getString("domain");
+				User user;
+				if(StringUtils.isNotEmpty(domain))
+					user=ForeignUser.fromResultSet(res);
+				else
+					user=User.fromResultSet(res);
+				result.add(user);
+			}
+			synchronized(UserStorage.class){
+				for(User user:result.subList(resultSizeBefore, result.size())){
+					cache.put(user.id, user);
+					cacheByUsername.put(user.getFullUsername(), user);
+					if(user instanceof ForeignUser){
+						cacheByActivityPubID.put(user.activityPubID, (ForeignUser) user);
+					}
+				}
+			}
+			if(sorted)
+				result.sort(idComparator);
+			return result;
+		}
 	}
 
 	public static synchronized User getByUsername(@NotNull String username) throws SQLException{
@@ -74,6 +135,9 @@ public class UserStorage{
 					user=User.fromResultSet(res);
 				cacheByUsername.put(username, user);
 				cache.put(user.id, user);
+				if(user instanceof ForeignUser){
+					cacheByActivityPubID.put(user.activityPubID, (ForeignUser) user);
+				}
 				return user;
 			}
 		}
@@ -171,24 +235,11 @@ public class UserStorage{
 
 	public static List<User> getFriendListForUser(int userID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT `users`.* FROM `followings` INNER JOIN `users` ON `users`.`id`=`followings`.`followee_id` WHERE `follower_id`=? AND `mutual`=1");
+		PreparedStatement stmt=conn.prepareStatement("SELECT followee_id FROM `followings` WHERE `follower_id`=? AND `mutual`=1");
 		stmt.setInt(1, userID);
-		ArrayList<User> friends=new ArrayList<>();
 		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				do{
-					User user;
-					if(res.getString("domain").length()>0)
-						user=ForeignUser.fromResultSet(res);
-					else
-						user=User.fromResultSet(res);
-					cache.put(user.id, user);
-					cacheByUsername.put(user.getFullUsername(), user);
-					friends.add(user);
-				}while(res.next());
-			}
+			return getById(DatabaseUtils.intResultSetToList(res));
 		}
-		return friends;
 	}
 
 	public static List<User> getRandomFriendsForProfile(int userID, int[] outTotal) throws SQLException{
@@ -201,51 +252,59 @@ public class UserStorage{
 				outTotal[0]=res.getInt(1);
 			}
 		}
-		PreparedStatement stmt=conn.prepareStatement("SELECT `users`.* FROM `followings` INNER JOIN `users` ON `users`.`id`=`followings`.`followee_id` WHERE `follower_id`=? AND `mutual`=1 ORDER BY RAND() LIMIT 6");
+		PreparedStatement stmt=conn.prepareStatement("SELECT followee_id FROM `followings` WHERE `follower_id`=? AND `mutual`=1 ORDER BY RAND() LIMIT 6");
 		stmt.setInt(1, userID);
-		ArrayList<User> friends=new ArrayList<>();
 		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				do{
-					User user;
-					if(res.getString("domain").length()>0)
-						user=ForeignUser.fromResultSet(res);
-					else
-						user=User.fromResultSet(res);
-					cache.put(user.id, user);
-					cacheByUsername.put(user.getFullUsername(), user);
-					friends.add(user);
-				}while(res.next());
-			}
+			return getById(DatabaseUtils.intResultSetToList(res), false);
 		}
-		return friends;
+	}
+
+	public static int getMutualFriendsCount(int userID, int otherUserID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("SELECT COUNT(*) FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1");
+		stmt.setInt(1, userID);
+		stmt.setInt(2, otherUserID);
+		try(ResultSet res=stmt.executeQuery()){
+			res.first();
+			return res.getInt(1);
+		}
+	}
+
+	public static List<User> getRandomMutualFriendsForProfile(int userID, int otherUserID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("SELECT friends1.followee_id FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1 ORDER BY RAND() LIMIT 3");
+		stmt.setInt(1, userID);
+		stmt.setInt(2, otherUserID);
+		try(ResultSet res=stmt.executeQuery()){
+			return getById(DatabaseUtils.intResultSetToList(res), false);
+		}
+	}
+
+	public static List<User> getMutualFriendListForUser(int userID, int otherUserID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("SELECT friends1.followee_id FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1");
+		stmt.setInt(1, userID);
+		stmt.setInt(2, otherUserID);
+		try(ResultSet res=stmt.executeQuery()){
+			return getById(DatabaseUtils.intResultSetToList(res));
+		}
 	}
 
 	public static List<User> getNonMutualFollowers(int userID, boolean followers, boolean accepted) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		String fld1=followers ? "follower_id" : "followee_id";
 		String fld2=followers ? "followee_id" : "follower_id";
-		PreparedStatement stmt=conn.prepareStatement("SELECT `users`.* FROM `followings` INNER JOIN `users` ON `users`.`id`=`followings`.`"+fld1+"` WHERE `"+fld2+"`=? AND `mutual`=0 AND `accepted`=?");
+		PreparedStatement stmt=conn.prepareStatement("SELECT `"+fld1+"` FROM followings WHERE `"+fld2+"`=? AND `mutual`=0 AND `accepted`=?");
 		stmt.setInt(1, userID);
 		stmt.setBoolean(2, accepted);
-		ArrayList<User> friends=new ArrayList<>();
 		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				do{
-					User user;
-					user=User.fromResultSet(res);
-					cache.put(user.id, user);
-					cacheByUsername.put(user.getFullUsername(), user);
-					friends.add(user);
-				}while(res.next());
-			}
+			return getById(DatabaseUtils.intResultSetToList(res));
 		}
-		return friends;
 	}
 
 	public static List<FriendRequest> getIncomingFriendRequestsForUser(int userID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT `friend_requests`.`message`, `users`.* FROM `friend_requests` INNER JOIN `users` ON `friend_requests`.`from_user_id`=`users`.`id` WHERE `to_user_id`=? LIMIT ?,?");
+		PreparedStatement stmt=conn.prepareStatement("SELECT message, from_user_id FROM `friend_requests` WHERE `to_user_id`=? LIMIT ?,?");
 		stmt.setInt(1, userID);
 		stmt.setInt(2, offset);
 		stmt.setInt(3, count);
@@ -254,8 +313,6 @@ public class UserStorage{
 			if(res.first()){
 				do{
 					FriendRequest req=FriendRequest.fromResultSet(res);
-					cache.put(req.from.id, req.from);
-					cacheByUsername.put(req.from.getFullUsername(), req.from);
 					reqs.add(req);
 				}while(res.next());
 			}

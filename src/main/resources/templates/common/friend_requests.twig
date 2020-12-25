@@ -1,7 +1,7 @@
 {# @pebvariable name="friendRequests" type="java.util.List<smithereen.data.FriendRequest>" #}
 {%extends "page"%}
 {%block content%}
-{% include 'friends_tabbar' with {'tab': 3} %}
+{% include 'friends_tabbar' with {'tab': 'requests'} %}
 <div class="singleColumn">
 	{% for req in friendRequests %}
 	<table width="100%" class="friendsRow noBorderSpacing">

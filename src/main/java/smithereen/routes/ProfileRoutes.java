@@ -55,6 +55,15 @@ public class ProfileRoutes{
 			int[] friendCount={0};
 			List<User> friends=UserStorage.getRandomFriendsForProfile(user.id, friendCount);
 			model.with("friendCount", friendCount[0]).with("friends", friends);
+
+			if(self!=null){
+				int mutualFriendCount=UserStorage.getMutualFriendsCount(user.id, self.user.id);
+				if(mutualFriendCount>0){
+					List<User> mutualFriends=UserStorage.getRandomMutualFriendsForProfile(user.id, self.user.id);
+					model.with("mutualFriendCount", mutualFriendCount).with("mutualFriends", mutualFriends);
+				}
+			}
+
 			if(info!=null && self!=null){
 				model.with("draftAttachments", info.postDraftAttachments);
 			}
@@ -225,11 +234,13 @@ public class ProfileRoutes{
 	}
 
 	public static Object friends(Request req, Response resp) throws SQLException{
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
 		String username=req.params(":username");
 		User user;
 		if(username==null){
 			if(requireAccount(req, resp)){
-				user=sessionInfo(req).account.user;
+				user=self.user;
 			}else{
 				return "";
 			}
@@ -240,6 +251,28 @@ public class ProfileRoutes{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
 			model.with("title", lang(req).get("friends"));
+			if(self!=null && user.id!=self.id){
+				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
+				model.with("mutualCount", mutualCount);
+			}
+			model.with("tab", "friends");
+			jsLangKey(req, "remove_friend", "yes", "no");
+			return model.renderToString(req);
+		}
+		resp.status(404);
+		return Utils.wrapError(req, resp, "user_not_found");
+	}
+
+	public static Object mutualFriends(Request req, Response resp, Account self) throws SQLException{
+		String username=req.params(":username");
+		User user=UserStorage.getByUsername(username);
+		if(user!=null){
+			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
+			model.with("friendList", UserStorage.getMutualFriendListForUser(user.id, self.user.id)).with("owner", user).with("tab", 0);
+			model.with("title", lang(req).get("friends"));
+			model.with("tab", "mutual");
+			int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
+			model.with("mutualCount", mutualCount);
 			jsLangKey(req, "remove_friend", "yes", "no");
 			return model.renderToString(req);
 		}
@@ -248,6 +281,8 @@ public class ProfileRoutes{
 	}
 
 	public static Object followers(Request req, Response resp) throws SQLException{
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
 		String username=req.params(":username");
 		User user;
 		if(username==null){
@@ -262,7 +297,11 @@ public class ProfileRoutes{
 		if(user!=null){
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("title", lang(req).get("followers")).with("toolbarTitle", lang(req).get("friends"));
-			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true).with("tab", 1);
+			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true).with("tab", "followers");
+			if(self!=null && user.id!=self.id){
+				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
+				model.with("mutualCount", mutualCount);
+			}
 			return model.renderToString(req);
 		}
 		resp.status(404);
@@ -270,6 +309,8 @@ public class ProfileRoutes{
 	}
 
 	public static Object following(Request req, Response resp) throws SQLException{
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
 		String username=req.params(":username");
 		User user;
 		if(username==null){
@@ -284,7 +325,11 @@ public class ProfileRoutes{
 		if(user!=null){
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("title", lang(req).get("following")).with("toolbarTitle", lang(req).get("friends"));
-			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true).with("tab", 2);
+			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true).with("tab", "following");
+			if(self!=null && user.id!=self.id){
+				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
+				model.with("mutualCount", mutualCount);
+			}
 			jsLangKey(req, "unfollow", "yes", "no");
 			return model.renderToString(req);
 		}

@@ -221,7 +221,10 @@ public class Main{
 			getWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
 			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
 			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
-			get("/friends", ProfileRoutes::friends);
+			path("/friends", ()->{
+				get("", ProfileRoutes::friends);
+				getLoggedIn("/mutual", ProfileRoutes::mutualFriends);
+			});
 			get("/followers", ProfileRoutes::followers);
 			get("/following", ProfileRoutes::following);
 			path("/wall", ()->{

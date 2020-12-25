@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-12-01 13:40:06 +0000
+# Generation Time: 2020-12-24 16:53:04 +0000
 # ************************************************************
 
 
@@ -76,6 +76,8 @@ CREATE TABLE `followings` (
   `accepted` tinyint(1) NOT NULL DEFAULT '1',
   KEY `follower_id` (`follower_id`),
   KEY `followee_id` (`followee_id`),
+  KEY `mutual` (`mutual`),
+  KEY `accepted` (`accepted`),
   CONSTRAINT `followings_ibfk_1` FOREIGN KEY (`follower_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `followings_ibfk_2` FOREIGN KEY (`followee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -189,5 +189,8 @@
   "wall_go_to_X_wall": "Go to %s's wall",
   "wall_of_X": "%s's wall",
   "wall_X_and_Y": "%1$s and %2$s",
-  "wall_my_posts": "My posts"
+  "wall_my_posts": "My posts",
+  "mutual_friends": "Mutual friends",
+  "X_mutual_friends": ["%d mutual friend", "%d mutual friends"],
+  "X_mutual_friends_short": ["%d mutual", "%d mutual"]
 }

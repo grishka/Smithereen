@@ -189,5 +189,8 @@
   "wall_go_to_X_wall": {"str": "Перейти к стене %s", "case": "GENITIVE"},
   "wall_of_X": {"str": "Стена %s", "case": "GENITIVE"},
   "wall_X_and_Y": "%1$s и %2$s",
-  "wall_my_posts": "Мои записи"
+  "wall_my_posts": "Мои записи",
+  "mutual_friends": "Общие друзья",
+  "X_mutual_friends": ["%d общий друг", "%d общих друга", "%d общих друзей"],
+  "X_mutual_friends_short": ["%d общий", "%d общих", "%d общих"]
 }
