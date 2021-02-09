@@ -6,6 +6,7 @@ import org.json.JSONObject;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -19,13 +20,14 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 import smithereen.data.User;
+import spark.utils.StringUtils;
 
 public class Lang{
 	private static HashMap<String, Lang> langsByLocale=new HashMap<>();
 	public static List<Lang> list;
 
 	public static Lang get(Locale locale){
-		Lang l=langsByLocale.get(locale.getLanguage());
+		Lang l=langsByLocale.get(locale.toLanguageTag());
 		if(l!=null)
 			return l;
 		return langsByLocale.get("en");
@@ -71,6 +73,11 @@ public class Lang{
 				return o1.locale.toString().compareTo(o2.locale.toString());
 			}
 		});
+
+		for(Lang lang:list){
+			if(lang.fallbackLocale!=null)
+				lang.fallback=langsByLocale.get(lang.fallbackLocale.toLanguageTag());
+		}
 	}
 
 	private final JSONObject data;
@@ -78,15 +85,26 @@ public class Lang{
 	private final PluralRules pluralRules;
 	private final Inflector inflector;
 	private final ThreadLocal<DateFormat> dateFormat=new ThreadLocal<>();
+	private Lang fallback;
 	public final String name;
+	private final Locale fallbackLocale;
 
 	private Lang(String localeID) throws IOException, JSONException{
-		DataInputStream in=new DataInputStream(Lang.class.getClassLoader().getResourceAsStream("langs/"+localeID+".json"));
-		byte[] buf=new byte[in.available()];
-		in.readFully(buf);
-		in.close();
-		data=new JSONObject(new String(buf, StandardCharsets.UTF_8));
+		try(InputStream _in=Lang.class.getClassLoader().getResourceAsStream("langs/"+localeID+".json")){
+			DataInputStream in=new DataInputStream(_in);
+			byte[] buf=new byte[in.available()];
+			in.readFully(buf);
+			data=new JSONObject(new String(buf, StandardCharsets.UTF_8));
+		}
 		locale=Locale.forLanguageTag(localeID);
+		String fallbackLocaleID=data.optString("_fallback");
+		if(StringUtils.isNotEmpty(fallbackLocaleID)){
+			fallbackLocale=Locale.forLanguageTag(fallbackLocaleID);
+			if(fallbackLocale.equals(locale))
+				throw new IllegalArgumentException("Language can't have itself as its fallback ("+fallbackLocale+" = "+locale+")");
+		}else{
+			fallbackLocale=null;
+		}
 		switch(localeID){
 			case "ru":
 				pluralRules=new SlavicPluralRules();
@@ -113,7 +131,7 @@ public class Lang{
 		try{
 			return data.getString(key);
 		}catch(JSONException x){
-			return key;
+			return fallback!=null ? fallback.get(key) : key;
 		}
 	}
 
@@ -121,7 +139,7 @@ public class Lang{
 		try{
 			return String.format(locale, data.getString(key), formatArgs);
 		}catch(JSONException x){
-			return key+" "+Arrays.toString(formatArgs);
+			return fallback!=null ? fallback.get(key, formatArgs) : key+" "+Arrays.toString(formatArgs);
 		}
 	}
 
@@ -137,7 +155,7 @@ public class Lang{
 				return String.format(locale, v.getString(pluralRules.getIndexForQuantity(quantity)), quantity);
 			}
 		}catch(JSONException x){
-			return quantity+" "+key+" "+Arrays.toString(formatArgs);
+			return fallback!=null ? fallback.plural(key, quantity, formatArgs) : quantity+" "+key+" "+Arrays.toString(formatArgs);
 		}
 	}
 
@@ -161,7 +179,7 @@ public class Lang{
 			}
 			return formatArgs.length>0 ? String.format(locale, s, formatArgs) : s;
 		}catch(JSONException x){
-			return key+" "+Arrays.toString(formatArgs);
+			return fallback!=null ? fallback.gendered(key, gender, formatArgs) : key+" "+Arrays.toString(formatArgs);
 		}
 	}
 
@@ -208,7 +226,7 @@ public class Lang{
 			System.arraycopy(formatArgs, 0, args, 1, formatArgs.length);
 			return String.format(locale, str, args);
 		}catch(JSONException x){
-			return key+" "+first+" "+last+" "+middle+" "+Arrays.toString(formatArgs);
+			return fallback!=null ? fallback.inflected(key, gender, first, last, middle, formatArgs) : key+" "+first+" "+last+" "+middle+" "+Arrays.toString(formatArgs);
 		}
 	}
 
