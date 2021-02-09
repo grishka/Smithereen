@@ -1,4 +1,4 @@
-package smithereen;
+package smithereen.exceptions;
 
 /**
  * Throw this from a route handler to produce a 404 Not Found response.

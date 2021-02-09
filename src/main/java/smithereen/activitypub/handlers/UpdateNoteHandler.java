@@ -4,9 +4,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Date;
 
-import smithereen.ObjectNotFoundException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;
@@ -32,7 +31,7 @@ public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, 
 			if(post.user.id!=existing.user.id){
 				throw new IllegalArgumentException("Post author doesn't match existing");
 			}
-			if(post.owner.id!=existing.owner.id){
+			if(!post.owner.activityPubID.equals(existing.owner.activityPubID)){
 				throw new IllegalArgumentException("Post owner doesn't match existing");
 			}
 			if(post.tag!=null){

@@ -23,12 +23,15 @@ import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
 import smithereen.data.CachedRemoteImage;
+import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
+import smithereen.data.Group;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.libvips.VImage;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PostStorage;
@@ -66,6 +69,7 @@ public class SystemRoutes{
 
 		float[] cropRegion=null;
 		User user=null;
+		Group group=null;
 
 		if("user_ava".equals(type)){
 			itemType=MediaCache.ItemType.AVATAR;
@@ -77,6 +81,22 @@ public class SystemRoutes{
 			Image im=user.getBestAvatarImage();
 			if(im!=null && im.url!=null){
 				cropRegion=user.getAvatarCropRegion();
+				uri=im.url;
+				if(StringUtils.isNotEmpty(im.mediaType))
+					mime=im.mediaType;
+				else
+					mime="image/jpeg";
+			}
+		}else if("group_ava".equals(type)){
+			itemType=MediaCache.ItemType.AVATAR;
+			mime="image/jpeg";
+			group=GroupStorage.getByID(Utils.parseIntOrDefault(req.queryParams("group_id"), 0));
+			if(group==null || Config.isLocal(group.activityPubID)){
+				return "";
+			}
+			Image im=group.getBestAvatarImage();
+			if(im!=null && im.url!=null){
+				cropRegion=group.getAvatarCropRegion();
 				uri=im.url;
 				if(StringUtils.isNotEmpty(im.mediaType))
 					mime=im.mediaType;
@@ -114,11 +134,20 @@ public class SystemRoutes{
 					MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType);
 					if(item==null){
 						if(itemType==MediaCache.ItemType.AVATAR && req.queryParams("retrying")==null){
-							ActivityPubObject obj=ActivityPub.fetchRemoteObject(user.activityPubID.toString());
-							if(obj instanceof ForeignUser){
-								ForeignUser updatedUser=(ForeignUser) obj;
-								UserStorage.putOrUpdateForeignUser(updatedUser);
-								resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+							if(user!=null){
+								ActivityPubObject obj=ActivityPub.fetchRemoteObject(user.activityPubID.toString());
+								if(obj instanceof ForeignUser){
+									ForeignUser updatedUser=(ForeignUser) obj;
+									UserStorage.putOrUpdateForeignUser(updatedUser);
+									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+								}
+							}else if(group!=null){
+								ActivityPubObject obj=ActivityPub.fetchRemoteObject(group.activityPubID.toString());
+								if(obj instanceof ForeignGroup){
+									ForeignGroup updatedGroup=(ForeignGroup) obj;
+									GroupStorage.putOrUpdateForeignGroup(updatedGroup);
+									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+								}
 							}
 						}
 						resp.redirect(uri.toString());

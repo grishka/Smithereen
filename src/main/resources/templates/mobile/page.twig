@@ -34,10 +34,11 @@
 {%if currentUser is not null%}
 	<li class="hasAux"><a href="/{{currentUser.username}}" class="actionMain">{{L('menu_profile')}}</a><a href="/settings/profile/general" class="actionAux">{{L('menu_edit')}}</a></li>
 	<li><a href="/my/friends">{{L('menu_friends')}}{%if(userNotifications.newFriendRequestCount>0)%} (<b>{{userNotifications.newFriendRequestCount}}</b>){%endif%}</a></li>
+	<li><a href="/my/groups">{{ L('menu_groups') }}</a></li>
 	<li><a href="/feed">{{L('menu_news')}}</a></li>
 	<li><a href="/my/notifications">{{L('menu_notifications')}}{%if(userNotifications.newNotificationsCount>0)%} (<b>{{userNotifications.newNotificationsCount}}</b>){%endif%}</a></li>
 	<li><a href="/settings/">{{L('menu_settings')}}</a></li>
-	{%if userAccessLevel.ordinal>=3%}
+	{%if userPermissions.serverAccessLevel.ordinal>=3%}
 	<li class="separator"></li>
 	<li><a href="/settings/admin">{{L('menu_admin')}}</a></li>
 	{%endif%}

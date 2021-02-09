@@ -1,0 +1,27 @@
+{# @pebvariable name="group" type="smithereen.data.Group" #}
+{% import "forms" as form %}
+{% extends "page" %}
+{% block content %}
+<div class="singleColumn gray">
+	<form action="/groups/{{ group.id }}/saveGeneral" method="post" onsubmit="return ajaxSubmitForm(this)">
+		<h2>{{L('profile_edit_basic')}}</h2>
+		{{ form.start('groupEdit', groupEditMessage) }}
+			{{ form.textInput('name', L('group_name'), group.name, {'maxlength': 200, 'required': true}) }}
+			{{ form.textArea('about', L('about_group'), group.summary) }}
+			{{ form.footer(L('save')) }}
+		{{ form.end() }}
+		<input type="hidden" name="csrf" value="{{csrf}}"/>
+	</form>
+
+	<noscript>
+		<form action="/settings/updateProfilePicture?csrf={{csrf}}&group={{ group.id }}" method="post" enctype="multipart/form-data">
+			<h2>{{L('update_profile_picture')}}</h2>
+			{%if profilePicMessage%}<div class="settingsMessage">{{profilePicMessage}}</div>{%endif%}
+			<table class="form">
+				<tr><td class="label"></td><td><input type="file" name="pic" accept="image/*"/></td></tr>
+				<tr class="footer"><td class="label"></td><td><input type="submit" value="{{L('save')}}"/></td></tr>
+			</table>
+		</form>
+	</noscript>
+</div>
+{% endblock %}

@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -97,11 +98,7 @@ public class UserStorage{
 			}
 			synchronized(UserStorage.class){
 				for(User user:result.subList(resultSizeBefore, result.size())){
-					cache.put(user.id, user);
-					cacheByUsername.put(user.getFullUsername(), user);
-					if(user instanceof ForeignUser){
-						cacheByActivityPubID.put(user.activityPubID, (ForeignUser) user);
-					}
+					putIntoCache(user);
 				}
 			}
 			if(sorted)
@@ -133,11 +130,7 @@ public class UserStorage{
 					user=ForeignUser.fromResultSet(res);
 				else
 					user=User.fromResultSet(res);
-				cacheByUsername.put(username, user);
-				cache.put(user.id, user);
-				if(user instanceof ForeignUser){
-					cacheByActivityPubID.put(user.activityPubID, (ForeignUser) user);
-				}
+				putIntoCache(user);
 				return user;
 			}
 		}
@@ -234,9 +227,7 @@ public class UserStorage{
 	}
 
 	public static List<User> getFriendListForUser(int userID) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT followee_id FROM `followings` WHERE `follower_id`=? AND `mutual`=1");
-		stmt.setInt(1, userID);
+		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("followings").columns("followee_id").where("follower_id=? AND mutual=1", userID).createStatement();
 		try(ResultSet res=stmt.executeQuery()){
 			return getById(DatabaseUtils.intResultSetToList(res));
 		}
@@ -454,7 +445,7 @@ public class UserStorage{
 		stmt.execute();
 	}
 
-	public static void changeBasicInfo(int userID, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, java.sql.Date bdate) throws SQLException{
+	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, java.sql.Date bdate) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=conn.prepareStatement("UPDATE `users` SET `fname`=?, `lname`=?, `gender`=?, `bdate`=?, middle_name=?, maiden_name=? WHERE `id`=?");
 		stmt.setString(1, firstName);
@@ -463,15 +454,10 @@ public class UserStorage{
 		stmt.setDate(4, bdate);
 		stmt.setString(5, middleName);
 		stmt.setString(6, maidenName);
-		stmt.setInt(7, userID);
+		stmt.setInt(7, user.id);
 		stmt.execute();
 		synchronized(UserStorage.class){
-			User user=cache.get(userID);
-			if(user!=null){
-				cache.remove(userID);
-				cacheByActivityPubID.remove(user.activityPubID);
-				cacheByUsername.remove(user.getFullUsername());
-			}
+			removeFromCache(user);
 		}
 	}
 
@@ -483,19 +469,14 @@ public class UserStorage{
 		}
 	}
 
-	public static void updateProfilePicture(int userID, String serializedPic) throws SQLException{
+	public static void updateProfilePicture(User user, String serializedPic) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=conn.prepareStatement("UPDATE `users` SET `avatar`=? WHERE `id`=?");
 		stmt.setString(1, serializedPic);
-		stmt.setInt(2, userID);
+		stmt.setInt(2, user.id);
 		stmt.execute();
 		synchronized(UserStorage.class){
-			User user=cache.get(userID);
-			if(user!=null){
-				cache.remove(userID);
-				cacheByActivityPubID.remove(user.activityPubID);
-				cacheByUsername.remove(user.getFullUsername());
-			}
+			removeFromCache(user);
 		}
 	}
 
@@ -546,9 +527,7 @@ public class UserStorage{
 			}
 		}
 		user.id=existingUserID;
-		cache.put(user.id, user);
-		cacheByUsername.put(user.getFullUsername(), user);
-		cacheByActivityPubID.put(user.activityPubID, user);
+		putIntoCache(user);
 
 		return existingUserID;
 	}
@@ -577,6 +556,7 @@ public class UserStorage{
 				user=ForeignUser.fromResultSet(res);
 				cacheByActivityPubID.put(apID, user);
 				cache.put(user.id, user);
+				cacheByUsername.put(user.getFullUsername().toLowerCase(), user);
 				return user;
 			}
 		}
@@ -617,7 +597,7 @@ public class UserStorage{
 			}
 		}
 		if(count>0){
-			stmt=conn.prepareStatement("SELECT `ap_id`,`username` FROM `followings` INNER JOIN `users` ON `users`.`id`=`"+fld1+"` WHERE `"+fld2+"`=? AND `accepted`=1 LIMIT ? OFFSET ?");
+			stmt=conn.prepareStatement("SELECT `ap_id`,`id` FROM `followings` INNER JOIN `users` ON `users`.`id`=`"+fld1+"` WHERE `"+fld2+"`=? AND `accepted`=1 LIMIT ? OFFSET ?");
 			stmt.setInt(1, userID);
 			stmt.setInt(2, count);
 			stmt.setInt(3, offset);
@@ -627,7 +607,7 @@ public class UserStorage{
 					do{
 						String _u=res.getString(1);
 						if(_u==null){
-							list.add(Config.localURI(res.getString(2)));
+							list.add(Config.localURI("/users/"+res.getInt(2)));
 						}else{
 							list.add(URI.create(_u));
 						}
@@ -636,7 +616,7 @@ public class UserStorage{
 			}
 			return list;
 		}
-		return Collections.EMPTY_LIST;
+		return Collections.emptyList();
 	}
 
 	public static void setFollowAccepted(int followerID, int followeeID, boolean accepted) throws SQLException{
@@ -699,5 +679,19 @@ public class UserStorage{
 		synchronized(UserStorage.class){
 			accountCache.remove(id);
 		}
+	}
+
+	private static void putIntoCache(User user){
+		cache.put(user.id, user);
+		cacheByUsername.put(user.getFullUsername().toLowerCase(), user);
+		if(user instanceof ForeignUser)
+			cacheByActivityPubID.put(user.activityPubID, (ForeignUser) user);
+	}
+
+	private static void removeFromCache(User user){
+		cache.remove(user.id);
+		cacheByUsername.remove(user.getFullUsername().toLowerCase());
+		if(user instanceof ForeignUser)
+			cacheByActivityPubID.remove(user.activityPubID);
 	}
 }

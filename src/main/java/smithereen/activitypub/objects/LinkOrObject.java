@@ -21,6 +21,8 @@ public class LinkOrObject{
 	}
 
 	public Object serialize(ContextCollector contextCollector){
+		if(link==null && object==null)
+			throw new NullPointerException("Both link and object are null");
 		if(link!=null)
 			return link.toString();
 		return object.asActivityPubObject(null, contextCollector);

@@ -37,11 +37,11 @@ import smithereen.BadRequestException;
 import smithereen.Config;
 import smithereen.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
-import smithereen.ObjectNotFoundException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
 import smithereen.data.NodeInfo;
-import smithereen.data.User;
 import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
@@ -57,6 +57,7 @@ public class ActivityPub{
 	static{
 		httpClient=new OkHttpClient.Builder()
 				.addNetworkInterceptor(new DisallowLocalhostInterceptor())
+//				.addNetworkInterceptor(new LoggingInterceptor())
 				.build();
 	}
 
@@ -90,7 +91,7 @@ public class ActivityPub{
 		}
 	}
 
-	private static Request.Builder signRequest(Request.Builder builder, URI url, User user, byte[] body){
+	private static Request.Builder signRequest(Request.Builder builder, URI url, Actor actor, byte[] body){
 		String path=url.getPath();
 		String host=url.getHost();
 		if(url.getPort()!=-1)
@@ -108,7 +109,7 @@ public class ActivityPub{
 		byte[] signature;
 		try{
 			sig=Signature.getInstance("SHA256withRSA");
-			sig.initSign(user.privateKey);
+			sig.initSign(actor.privateKey);
 			sig.update(strToSign.getBytes(StandardCharsets.UTF_8));
 			signature=sig.sign();
 		}catch(Exception x){
@@ -116,26 +117,31 @@ public class ActivityPub{
 			throw new RuntimeException(x);
 		}
 
-		String keyID=user.activityPubID+"#main-key";
-		String sigHeader="keyId=\""+keyID+"\",headers=\"(request-target) host date digest\",signature=\""+Base64.getEncoder().encodeToString(signature)+"\"";
+		String keyID=actor.activityPubID+"#main-key";
+		String sigHeader="keyId=\""+keyID+"\",headers=\"(request-target) host date digest\",algorithm=\"rsa-sha256\",signature=\""+Base64.getEncoder().encodeToString(signature)+"\"";
 		builder.header("Signature", sigHeader).header("Date", date).header("Digest", digestHeader);
 		return builder;
 	}
 
-	public static void postActivity(URI inboxUrl, Activity activity, User user) throws IOException{
+	public static void postActivity(URI inboxUrl, Activity activity, Actor actor) throws IOException{
+		if(actor.privateKey==null)
+			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 		JSONObject body=activity.asRootActivityPubObject();
-		LinkedDataSignatures.sign(body, user.privateKey, user.activityPubID+"#main-key");
+		LinkedDataSignatures.sign(body, actor.privateKey, actor.activityPubID+"#main-key");
 		System.out.println("Sending activity: "+body);
-		postActivity(inboxUrl, body.toString(), user);
+		postActivity(inboxUrl, body.toString(), actor);
 	}
 
-	public static void postActivity(URI inboxUrl, String activityJson, User user) throws IOException{
+	public static void postActivity(URI inboxUrl, String activityJson, Actor actor) throws IOException{
+		if(actor.privateKey==null)
+			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
+
 		byte[] body=activityJson.getBytes(StandardCharsets.UTF_8);
 		Request req=signRequest(
 					new Request.Builder()
 					.url(inboxUrl.toString())
 					.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), body)),
-				inboxUrl, user, body)
+				inboxUrl, actor, body)
 				.build();
 		Response resp=httpClient.newCall(req).execute();
 		System.out.println(resp.toString());

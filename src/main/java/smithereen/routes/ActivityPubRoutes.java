@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 import smithereen.BadRequestException;
 import smithereen.BuildInfo;
 import smithereen.ObjectLinkResolver;
-import smithereen.ObjectNotFoundException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;
 import smithereen.Config;
@@ -39,19 +39,24 @@ import smithereen.activitypub.ActivityPubCache;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.DoublyNestedActivityTypeHandler;
 import smithereen.activitypub.NestedActivityTypeHandler;
+import smithereen.activitypub.handlers.AcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.AcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.AnnounceNoteHandler;
 import smithereen.activitypub.handlers.CreateNoteHandler;
 import smithereen.activitypub.handlers.DeleteNoteHandler;
 import smithereen.activitypub.handlers.DeletePersonHandler;
+import smithereen.activitypub.handlers.FollowGroupHandler;
 import smithereen.activitypub.handlers.FollowPersonHandler;
+import smithereen.activitypub.handlers.LeaveGroupHandler;
 import smithereen.activitypub.handlers.LikeNoteHandler;
 import smithereen.activitypub.handlers.OfferFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
+import smithereen.activitypub.handlers.UndoFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoLikeNoteHandler;
+import smithereen.activitypub.handlers.UpdateGroupHandler;
 import smithereen.activitypub.handlers.UpdateNoteHandler;
 import smithereen.activitypub.handlers.UpdatePersonHandler;
 import smithereen.activitypub.objects.Activity;
@@ -67,18 +72,22 @@ import smithereen.activitypub.objects.activities.Announce;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
+import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.Account;
+import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
+import smithereen.data.Group;
 import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -111,6 +120,12 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Reject.class, Offer.class, Follow.class, User.class, new RejectOfferFollowPersonHandler());
 		registerActivityHandler(ForeignUser.class, Update.class, ForeignUser.class, new UpdatePersonHandler());
 		registerActivityHandler(ForeignUser.class, Delete.class, ForeignUser.class, new DeletePersonHandler());
+
+		registerActivityHandler(ForeignGroup.class, Update.class, ForeignGroup.class, new UpdateGroupHandler());
+		registerActivityHandler(ForeignUser.class, Follow.class, Group.class, new FollowGroupHandler());
+		registerActivityHandler(ForeignUser.class, Undo.class, Follow.class, Group.class, new UndoFollowGroupHandler());
+		registerActivityHandler(ForeignUser.class, Leave.class, Group.class, new LeaveGroupHandler());
+		registerActivityHandler(ForeignGroup.class, Accept.class, Follow.class, User.class, new AcceptFollowGroupHandler());
 	}
 
 	@SuppressWarnings("SameParameterValue")
@@ -138,21 +153,39 @@ public class ActivityPubRoutes{
 																																							@NotNull Class<N> nestedActivityClass,
 																																							@NotNull Class<NN> doublyNestedActivityClass,
 																																							@NotNull Class<O> objectClass,
-																																							@NotNull NestedActivityTypeHandler<A, T, N, O> handler){
+																																							@NotNull DoublyNestedActivityTypeHandler<A, T, N, NN, O> handler){
 		typeHandlers.add(new ActivityTypeHandlerRecord<>(actorClass, activityClass, nestedActivityClass, doublyNestedActivityClass, objectClass, handler));
 //		System.out.println("Registered handler "+handler.getClass().getName()+" for "+actorClass.getSimpleName()+" -> "+activityClass.getSimpleName()+"{"+nestedActivityClass.getSimpleName()+"{"+doublyNestedActivityClass.getSimpleName()+"{"+objectClass.getSimpleName()+"}}}");
 	}
 
 	public static Object userActor(Request req, Response resp) throws SQLException{
 		String username=req.params(":username");
-		User user;
-		if(username!=null)
-			user=UserStorage.getByUsername(username);
-		else
-			user=UserStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
-		if(user!=null && !(user instanceof ForeignUser)){
+		Actor actor;
+		if(username!=null){
+			actor=UserStorage.getByUsername(username);
+			if(actor==null){
+				actor=GroupStorage.getByUsername(username);
+			}
+		}else{
+			actor=UserStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
+		}
+		if(actor!=null && !(actor instanceof ForeignUser) && !(actor instanceof ForeignGroup)){
 			resp.type(CONTENT_TYPE);
-			return user.asRootActivityPubObject();
+			return actor.asRootActivityPubObject();
+		}
+		throw new ObjectNotFoundException();
+	}
+
+	public static Object groupActor(Request req, Response resp) throws SQLException{
+		String username=req.params(":username");
+		Group group;
+		if(username!=null)
+			group=GroupStorage.getByUsername(username);
+		else
+			group=GroupStorage.getByID(Utils.parseIntOrDefault(req.params(":id"), 0));
+		if(group!=null && !(group instanceof ForeignGroup)){
+			resp.type(CONTENT_TYPE);
+			return group.asRootActivityPubObject();
 		}
 		throw new ObjectNotFoundException();
 	}
@@ -210,8 +243,9 @@ public class ActivityPubRoutes{
 		return page.asRootActivityPubObject();
 	}
 
-	public static Object inbox(Request req, Response resp) throws SQLException{
+	public static Object userInbox(Request req, Response resp) throws SQLException{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+		System.out.println("user inbox ID="+id);
 		User user=UserStorage.getById(id);
 		if(user==null || user instanceof ForeignUser){
 			throw new ObjectNotFoundException();
@@ -219,11 +253,19 @@ public class ActivityPubRoutes{
 		return inbox(req, resp, user);
 	}
 
+	public static Object groupInbox(Request req, Response resp) throws SQLException{
+		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+		Group group=GroupStorage.getByID(id);
+		if(group==null || group instanceof ForeignGroup)
+			throw new ObjectNotFoundException();
+		return inbox(req, resp, group);
+	}
+
 	public static Object sharedInbox(Request req, Response resp) throws SQLException{
 		return inbox(req, resp, null);
 	}
 
-	public static Object outbox(Request req, Response resp) throws SQLException{
+	public static Object userOutbox(Request req, Response resp) throws SQLException{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 		User user=UserStorage.getById(id);
 		if(user==null || user instanceof ForeignUser){
@@ -234,7 +276,7 @@ public class ActivityPubRoutes{
 		int minID=Math.max(0, _minID);
 		int maxID=Math.max(0, _maxID);
 		int[] _total={0};
-		List<Post> posts=PostStorage.getUserWall(user.id, minID, maxID, 0, _total, false);
+		List<Post> posts=PostStorage.getWallPosts(user.id, false, minID, maxID, 0, _total, true);
 		int total=_total[0];
 		CollectionPage page=new CollectionPage(true);
 		page.totalItems=total;
@@ -322,6 +364,11 @@ public class ActivityPubRoutes{
 				x.printStackTrace();
 				return x.toString();
 			}
+		}else if(remoteObj instanceof ForeignGroup){
+			ForeignGroup group=(ForeignGroup) remoteObj;
+			GroupStorage.putOrUpdateForeignGroup(group);
+			resp.redirect(Config.localURI("/"+group.getFullUsername()).toString());
+			return "";
 		}else if(remoteObj instanceof Post){
 			try{
 				// TODO refactor this to simulate Create{Note}
@@ -482,7 +529,7 @@ public class ActivityPubRoutes{
 		return undo.asRootActivityPubObject();
 	}
 
-	private static Object inbox(Request req, Response resp, User owner) throws SQLException{
+	private static Object inbox(Request req, Response resp, Actor owner) throws SQLException{
 		if(req.headers("digest")!=null){
 			if(!verifyHttpDigest(req.headers("digest"), req.bodyAsBytes())){
 				throw new BadRequestException("Digest verification failed");
@@ -584,7 +631,12 @@ public class ActivityPubRoutes{
 				aobj=activity.object.object;
 				// special case: Mastodon sends Delete{Tombstone} for post deletions
 				if(aobj instanceof Tombstone){
-					aobj=ObjectLinkResolver.resolve(aobj.activityPubID);
+					try{
+						aobj=ObjectLinkResolver.resolve(aobj.activityPubID);
+					}catch(ObjectNotFoundException x){
+						// Fail silently. We didn't have that object anyway, there's nothing to delete.
+						return "";
+					}
 				}
 			}else{
 				try{
@@ -657,7 +709,7 @@ public class ActivityPubRoutes{
 		return r;
 	}
 
-	private static Object followersOrFollowing(Request req, Response resp, boolean f) throws SQLException{
+	private static Object followersOrFollowing(Request req, Response resp, boolean isFollowers) throws SQLException{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 		User user=UserStorage.getById(id);
 		if(user==null || user instanceof ForeignUser){
@@ -668,7 +720,7 @@ public class ActivityPubRoutes{
 		int pageIndex=Math.max(1, Utils.parseIntOrDefault(req.queryParams("page"), 1));
 		int offset=(pageIndex-1)*50;
 		int count=50;
-		List<URI> followers=UserStorage.getUserFollowerURIs(user.id, f, offset, count, _total);
+		List<URI> followers=UserStorage.getUserFollowerURIs(user.id, isFollowers, offset, count, _total);
 		int total=_total[0];
 		int lastPage=total/50;
 		CollectionPage page=new CollectionPage(true);
@@ -678,7 +730,7 @@ public class ActivityPubRoutes{
 		}
 		page.items=list;
 		page.totalItems=total;
-		URI baseURI=Config.localURI("/users/"+user.id+"/"+(f ? "followers" : "following"));
+		URI baseURI=Config.localURI("/users/"+user.id+"/"+(isFollowers ? "followers" : "following"));
 		page.activityPubID=URI.create(baseURI+"?page="+pageIndex);
 		page.partOf=baseURI;
 		if(pageIndex>1){
@@ -706,6 +758,49 @@ public class ActivityPubRoutes{
 
 	public static Object userFollowing(Request req, Response resp) throws SQLException{
 		return followersOrFollowing(req, resp, false);
+	}
+
+	public static Object groupFollowers(Request req, Response resp) throws SQLException{
+		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+		Group group=GroupStorage.getByID(id);
+		if(group==null || group instanceof ForeignGroup){
+			resp.status(404);
+			return "Group not found";
+		}
+		int[] _total={0};
+		int pageIndex=Math.max(1, Utils.parseIntOrDefault(req.queryParams("page"), 1));
+		int offset=(pageIndex-1)*50;
+		int count=50;
+		List<URI> followers=GroupStorage.getGroupMemberURIs(group.id, false, offset, count, _total);
+		int total=_total[0];
+		int lastPage=total/50;
+		CollectionPage page=new CollectionPage(true);
+		ArrayList<LinkOrObject> list=new ArrayList<>();
+		for(URI uri:followers){
+			list.add(new LinkOrObject(uri));
+		}
+		page.items=list;
+		page.totalItems=total;
+		URI baseURI=Config.localURI("/groups/"+group.id+"/followers");
+		page.activityPubID=URI.create(baseURI+"?page="+pageIndex);
+		page.partOf=baseURI;
+		if(pageIndex>1){
+			page.first=new LinkOrObject(URI.create(baseURI+"?page=1"));
+			page.prev=URI.create(baseURI+"?page="+(pageIndex-1));
+		}
+		if(pageIndex<lastPage){
+			page.last=URI.create(baseURI+"?page="+lastPage);
+			page.next=URI.create(baseURI+"?page="+(pageIndex+1));
+		}
+		if(pageIndex==1 && req.queryParams("page")==null){
+			ActivityPubCollection collection=new ActivityPubCollection(true);
+			collection.totalItems=total;
+			collection.first=new LinkOrObject(page);
+			collection.activityPubID=page.partOf;
+			return collection.asRootActivityPubObject();
+		}
+		resp.type(CONTENT_TYPE);
+		return page.asRootActivityPubObject();
 	}
 
 

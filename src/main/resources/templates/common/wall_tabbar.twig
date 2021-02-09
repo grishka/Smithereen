@@ -1,7 +1,9 @@
 {# @pebvariable name="owner" type="smithereen.data.User" #}
 <div class="tabbar">
-	<a href="{{ owner.profileURL }}/wall" class="{%if tab=="all"%}selected{%endif%}">{{ L('wall_all_posts') }}</a>
+	<a href="{{ owner.profileURL }}/wall" class="{%if tab=="all"%}selected{%endif%}">{{ L(isGroup ? 'wall_of_group' : 'wall_all_posts') }}</a>
+	{% if not isGroup %}
 	<a href="{{ owner.profileURL }}/wall/own" class="{%if tab=="own"%}selected{%endif%}">{{ owner==currentUser ? L('wall_my_posts') : LI(key='wall_posts_of_X', first=owner.firstName, gender=owner.gender) }}</a>
+	{% endif %}
 	{% if tab=="single" %}
 	    <a href="#" class="selected">{{ L('wall_post_title') }}</a>
 	{% elseif tab=="wall2wall" %}

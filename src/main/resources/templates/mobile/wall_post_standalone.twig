@@ -19,7 +19,7 @@
 	</a>
 </div>
 <ul class="actionList">
-			{%if currentUser is not null and post.canBeManagedBy(currentUser)%}
+			{%if currentUser is not null and userPermissions is not null and userPermissions.canDeletePost(post)%}
 				<li><a href="{{ post.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{post.internalURL}}/delete')">{{ L('delete') }}</a></li>
 			{%endif%}
 			{%if not(post.local)%}

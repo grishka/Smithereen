@@ -10,7 +10,11 @@
 			<label for="{{name}}">{{label}}</label>:
 		</td>
 		<td>
-			<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}"{%if options.maxlength is not null%} maxlength="{{options.maxlength}}"{%endif%}{%if options.required%} required{%endif%}{%if options.max is not null%} max="{{ options.max }}"{%endif%}/>
+			<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}"
+			{%- if options.maxlength is not null %} maxlength="{{options.maxlength}}"{%endif%}
+			{%- if options.required %} required{%endif%}
+			{%- if options.autocomplete==false %} autocomplete="off"{% endif %}
+			{%- if options.max is not null %} max="{{ options.max }}"{%endif%}/>
 		{%if options.explanation is not null%}
 			<br/><span class="formExplanation">{{options.explanation}}</span>
 		{%endif%}

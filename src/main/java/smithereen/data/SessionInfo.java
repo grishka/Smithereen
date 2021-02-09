@@ -13,6 +13,7 @@ public class SessionInfo{
 	public String csrfToken;
 	public TimeZone timeZone;
 	public ArrayList<ActivityPubObject> postDraftAttachments=new ArrayList<>();
+	public UserPermissions permissions;
 
 	public static class PageHistory{
 		public ArrayList<String> entries=new ArrayList<>();

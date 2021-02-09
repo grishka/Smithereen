@@ -1,0 +1,5 @@
+{% import "forms" as form %}
+{{ form.start('createGroup', createGroupMessage) }}
+	{{ form.textInput('name', L('group_name'), groupName, {'maxlength': '200', 'required': true, 'autocomplete': false}) }}
+	{{ form.textInput('username', L('group_username'), groupUsername, {'maxlength': 50, 'required': true, 'autocomplete': false}) }}
+{{ form.end() }}

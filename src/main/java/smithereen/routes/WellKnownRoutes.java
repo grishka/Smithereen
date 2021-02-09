@@ -1,6 +1,5 @@
 package smithereen.routes;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.sql.SQLException;
@@ -8,8 +7,11 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import smithereen.Config;
+import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
+import smithereen.data.Group;
 import smithereen.data.User;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
 import spark.Response;
@@ -39,6 +41,20 @@ public class WellKnownRoutes{
 
 					root.put("links", Arrays.asList(selfLink, authLink));
 					return root;
+				}else if(user==null){
+					Group group=GroupStorage.getByUsername(username);
+					if(group!=null && !(group instanceof ForeignGroup)){
+						resp.type("application/json");
+						JSONObject root=new JSONObject();
+						root.put("subject", "acct:"+group.username+"@"+Config.domain);
+
+						JSONObject selfLink=new JSONObject();
+						selfLink.put("rel", "self");
+						selfLink.put("type", "application/activity+json");
+						selfLink.put("href", group.activityPubID);
+						root.put("links", Collections.singletonList(selfLink));
+						return root;
+					}
 				}
 			}
 		}

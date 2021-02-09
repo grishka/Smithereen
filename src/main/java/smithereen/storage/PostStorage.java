@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -20,9 +21,11 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
-import smithereen.ObjectNotFoundException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.Utils;
+import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
+import smithereen.data.Group;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.feed.NewsfeedEntry;
@@ -31,30 +34,32 @@ import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.feed.RetootNewsfeedEntry;
 
 public class PostStorage{
-	public static int createUserWallPost(int userID, int ownerID, String text, int[] replyKey, List<User> mentionedUsers, String attachments) throws SQLException{
+	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, int[] replyKey, List<User> mentionedUsers, String attachments) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `reply_key`, `mentions`, `attachments`) VALUES (?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+		PreparedStatement stmt=conn.prepareStatement("INSERT INTO wall_posts (author_id, owner_user_id, owner_group_id, `text`, reply_key, mentions, attachments) VALUES (?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 		stmt.setInt(1, userID);
-		stmt.setInt(2, ownerID);
-		stmt.setString(3, text);
-		stmt.setBytes(4, Utils.serializeIntArray(replyKey));
+		if(ownerUserID>0){
+			stmt.setInt(2, ownerUserID);
+			stmt.setNull(3, Types.INTEGER);
+		}else if(ownerGroupID>0){
+			stmt.setNull(2, Types.INTEGER);
+			stmt.setInt(3, ownerGroupID);
+		}else{
+			throw new IllegalArgumentException("Need either ownerUserID or ownerGroupID");
+		}
+		stmt.setString(4, text);
+		stmt.setBytes(5, Utils.serializeIntArray(replyKey));
 		byte[] mentions=null;
 		if(!mentionedUsers.isEmpty()){
-			ByteArrayOutputStream b=new ByteArrayOutputStream(mentionedUsers.size()*4);
-			try{
-				DataOutputStream o=new DataOutputStream(b);
-				for(User user:mentionedUsers)
-					o.writeInt(user.id);
-			}catch(IOException ignore){}
-			mentions=b.toByteArray();
+			mentions=Utils.serializeIntArray(mentionedUsers.stream().mapToInt(u->u.id).toArray());
 		}
-		stmt.setBytes(5, mentions);
-		stmt.setString(6, attachments);
+		stmt.setBytes(6, mentions);
+		stmt.setString(7, attachments);
 		stmt.execute();
 		try(ResultSet keys=stmt.getGeneratedKeys()){
 			keys.first();
 			int id=keys.getInt(1);
-			if(userID==ownerID && replyKey==null){
+			if(userID==ownerUserID && replyKey==null){
 				stmt=conn.prepareStatement("INSERT INTO `newsfeed` (`type`, `author_id`, `object_id`) VALUES (?, ?, ?)");
 				stmt.setInt(1, NewsfeedEntry.Type.POST.ordinal());
 				stmt.setInt(2, userID);
@@ -74,22 +79,30 @@ public class PostStorage{
 
 		PreparedStatement stmt;
 		if(existing==null){
-			stmt=conn.prepareStatement("INSERT INTO `wall_posts` (`author_id`, `owner_user_id`, `text`, `attachments`, `content_warning`, `ap_url`, `ap_id`, `reply_key`, `created_at`, `mentions`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+			stmt=conn.prepareStatement("INSERT INTO wall_posts (author_id, owner_user_id, owner_group_id, `text`, attachments, content_warning, ap_url, ap_id, reply_key, created_at, mentions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 			stmt.setInt(1, post.user.id);
-			stmt.setInt(2, post.owner.id);
-			stmt.setString(3, post.content);
-			stmt.setString(4, post.serializeAttachments());
-			stmt.setString(5, post.summary);
-			stmt.setString(6, post.url.toString());
-			stmt.setString(7, post.activityPubID.toString());
+			if(post.owner instanceof User){
+				stmt.setInt(2, ((User) post.owner).id);
+				stmt.setNull(3, Types.INTEGER);
+			}else if(post.owner instanceof Group){
+				stmt.setNull(2, Types.INTEGER);
+				stmt.setInt(3, ((Group) post.owner).id);
+			}else{
+				throw new IllegalArgumentException("Unexpected post owner type: "+post.owner.getClass().getName());
+			}
+			stmt.setString(4, post.content);
+			stmt.setString(5, post.serializeAttachments());
+			stmt.setString(6, post.summary);
+			stmt.setString(7, post.url.toString());
+			stmt.setString(8, post.activityPubID.toString());
 			byte[] replyKey=Utils.serializeIntArray(post.replyKey);
-			stmt.setBytes(8, replyKey);
-			stmt.setTimestamp(9, new Timestamp(post.published.getTime()));
+			stmt.setBytes(9, replyKey);
+			stmt.setTimestamp(10, new Timestamp(post.published.getTime()));
 			byte[] mentions=null;
 			if(!post.mentionedUsers.isEmpty()){
 				mentions=Utils.serializeIntArray(post.mentionedUsers.stream().mapToInt(u->u.id).toArray());
 			}
-			stmt.setBytes(10, mentions);
+			stmt.setBytes(11, mentions);
 		}else{
 			stmt=DatabaseConnectionManager.getConnection().prepareStatement("UPDATE `wall_posts` SET `text`=?, `attachments`=?, `content_warning`=?, `mentions`=? WHERE `ap_id`=?");
 			stmt.setString(1, post.content);
@@ -207,28 +220,29 @@ public class PostStorage{
 		return posts;
 	}
 
-	public static List<Post> getUserWall(int userID, int minID, int maxID, int offset, int[] total, boolean ownOnly) throws SQLException{
+	public static List<Post> getWallPosts(int ownerID, boolean isGroup, int minID, int maxID, int offset, int[] total, boolean ownOnly) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt;
 		String ownCondition=ownOnly ? " AND owner_user_id=author_id" : "";
+		String ownerField=isGroup ? "owner_group_id" : "owner_user_id";
 		if(total!=null){
-			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `wall_posts` WHERE `owner_user_id`=? AND `reply_key` IS NULL"+ownCondition);
-			stmt.setInt(1, userID);
+			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+ownCondition);
+			stmt.setInt(1, ownerID);
 			try(ResultSet res=stmt.executeQuery()){
 				res.first();
 				total[0]=res.getInt(1);
 			}
 		}
 		if(minID>0){
-			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `id`>? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT 25");
+			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`>? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT 25");
 			stmt.setInt(2, minID);
 		}else if(maxID>0){
-			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `id`=<? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+",25");
+			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`=<? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+",25");
 			stmt.setInt(2, maxID);
 		}else{
-			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `owner_user_id`=? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+",25");
+			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+",25");
 		}
-		stmt.setInt(1, userID);
+		stmt.setInt(1, ownerID);
 		ArrayList<Post> posts=new ArrayList<>();
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
@@ -496,9 +510,14 @@ public class PostStorage{
 		if(post.local){
 			queryParts.add("SELECT owner_user_id FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)");
 			if(post.owner instanceof ForeignUser)
-				queryParts.add("SELECT "+post.owner.id);
-			else
-				queryParts.add("SELECT follower_id FROM followings WHERE followee_id="+post.owner.id);
+				queryParts.add("SELECT "+((ForeignUser)post.owner).id);
+			else if(post.owner instanceof User)
+				queryParts.add("SELECT follower_id FROM followings WHERE followee_id="+((User)post.owner).id);
+			else if(post.owner instanceof ForeignGroup)
+				inboxes.add(Objects.requireNonNullElse(post.owner.sharedInbox, post.owner.inbox));
+			else if(post.owner instanceof Group)
+				queryParts.add("SELECT user_id FROM group_members WHERE group_id="+((Group)post.owner).id);
+
 			if(post.mentionedUsers!=null && !post.mentionedUsers.isEmpty()){
 				for(User user:post.mentionedUsers){
 					if(user instanceof ForeignUser)
@@ -528,10 +547,13 @@ public class PostStorage{
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
 				do{
-					inboxes.add(URI.create(res.getString(1)));
+					URI uri=URI.create(res.getString(1));
+					if(!inboxes.contains(uri))
+						inboxes.add(uri);
 				}while(res.next());
 			}
 		}
+
 		return inboxes;
 	}
 

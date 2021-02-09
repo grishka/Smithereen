@@ -1,5 +1,6 @@
 package smithereen;
 
+import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Comment;
 import org.jsoup.nodes.Document;
@@ -341,14 +342,14 @@ public class Utils{
 		}
 	}
 
-	private static void makeLinksAndMentions(Node node, MentionCallback mentionCallback){
+	private static void makeLinksAndMentions(Node node, @Nullable MentionCallback mentionCallback){
 		if(node instanceof Element){
 			Element el=(Element)node;
 			if(el.tagName().equalsIgnoreCase("pre")){
 				return;
 			}else if(el.tagName().equalsIgnoreCase("a")){
 				if(el.hasClass("mention")){
-					User user=mentionCallback.resolveMention(el.attr("href"));
+					User user=mentionCallback==null ? null : mentionCallback.resolveMention(el.attr("href"));
 					if(user==null){
 						el.removeClass("mention");
 					}else{
@@ -370,7 +371,7 @@ public class Utils{
 				if(d!=null && d.equalsIgnoreCase(Config.domain)){
 					d=null;
 				}
-				User mentionedUser=mentionCallback.resolveMention(u, d);
+				User mentionedUser=mentionCallback==null ? null : mentionCallback.resolveMention(u, d);
 				if(mentionedUser!=null){
 					TextNode inner=matcher.start()==0 ? text : text.splitText(matcher.start());
 					int len=matcher.end()-matcher.start();

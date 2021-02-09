@@ -30,7 +30,7 @@ public class UriBuilder{
 		authority=baseURI.getAuthority();
 		String path=baseURI.getRawPath();
 		if(path!=null && path.length()>1){
-			pathSegments=new ArrayList<>(Arrays.asList(path.split("/")));
+			pathSegments=new ArrayList<>(Arrays.asList(path.substring(1).split("/")));
 		}
 		String query=baseURI.getRawQuery();
 		if(StringUtils.isNotEmpty(query)){

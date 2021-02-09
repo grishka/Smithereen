@@ -1,5 +1,6 @@
 package smithereen.routes;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -22,8 +23,10 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
+import smithereen.data.Group;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
 import smithereen.data.UserInteractions;
@@ -36,7 +39,7 @@ import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.User;
 import smithereen.data.notifications.Notification;
 import smithereen.data.notifications.NotificationUtils;
-import smithereen.lang.Lang;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
@@ -50,151 +53,178 @@ import spark.utils.StringUtils;
 
 public class PostRoutes{
 
-	public static Object createWallPost(Request req, Response resp, Account self) throws Exception{
-		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
-		if(user!=null){
-			String text=req.queryParams("text");
-			if(text.length()==0 && StringUtils.isEmpty(req.queryParams("attachments")))
-				return "Empty post";
-
-			final ArrayList<User> mentionedUsers=new ArrayList<>();
-			text=preprocessPostHTML(text, new MentionCallback(){
-				@Override
-				public User resolveMention(String username, String domain){
-					try{
-						if(domain==null){
-							User user=UserStorage.getByUsername(username);
-							if(!mentionedUsers.contains(user))
-								mentionedUsers.add(user);
-							return user;
-						}
-						User user=UserStorage.getByUsername(username+"@"+domain);
-						if(user!=null){
-							if(!mentionedUsers.contains(user))
-								mentionedUsers.add(user);
-							return user;
-						}
-						URI uri=ActivityPub.resolveUsername(username, domain);
-						ActivityPubObject obj=ActivityPub.fetchRemoteObject(uri.toString());
-						if(obj instanceof ForeignUser){
-							ForeignUser _user=(ForeignUser)obj;
-							UserStorage.putOrUpdateForeignUser(_user);
-							if(!mentionedUsers.contains(_user))
-								mentionedUsers.add(_user);
-							return _user;
-						}
-					}catch(Exception x){
-						System.out.println("Can't resolve "+username+"@"+domain+": "+x.getMessage());
-					}
-					return null;
-				}
-
-				@Override
-				public User resolveMention(String uri){
-					try{
-						URI u=new URI(uri);
-						if("acct".equalsIgnoreCase(u.getScheme())){
-							if(u.getSchemeSpecificPart().contains("@")){
-								String[] parts=u.getSchemeSpecificPart().split("@");
-								return resolveMention(parts[0], parts[1]);
-							}
-							return resolveMention(u.getSchemeSpecificPart(), null);
-						}
-						User user=UserStorage.getUserByActivityPubID(u);
-						if(user!=null){
-							if(!mentionedUsers.contains(user))
-								mentionedUsers.add(user);
-							return user;
-						}
-					}catch(Exception x){
-						System.out.println("Can't resolve "+uri+": "+x.getMessage());
-					}
-					return null;
-				}
-			});
-			int userID=self.user.id;
-			int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
-			int postID;
-
-			String attachments=null;
-			if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
-				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
-				String[] aids=req.queryParams("attachments").split(",");
-				for(String id:aids){
-					if(!id.matches("^[a-fA-F0-9]{32}$"))
-						continue;
-					ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(id, self.id);
-					if(obj!=null)
-						attachObjects.add(obj);
-				}
-				if(!attachObjects.isEmpty()){
-					if(attachObjects.size()==1){
-						attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
-					}else{
-						JSONArray ar=new JSONArray();
-						for(ActivityPubObject o:attachObjects){
-							ar.put(MediaStorageUtils.serializeAttachment(o));
-						}
-						attachments=ar.toString();
-					}
-				}
-			}
-			if(text.length()==0 && StringUtils.isEmpty(attachments))
-				return "Empty post";
-
-			Post parent=null;
-			if(replyTo!=0){
-				parent=PostStorage.getPostByID(replyTo, false);
-				if(parent==null){
-					resp.status(404);
-					return Utils.wrapError(req, resp, "err_post_not_found");
-				}
-				int[] replyKey=new int[parent.replyKey.length+1];
-				System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
-				replyKey[replyKey.length-1]=parent.id;
-				// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
-				if(parent.replyKey.length>0 && text.startsWith("<p>"+escapeHTML(parent.user.getNameForReply())+", ")){
-					text="<p><a href=\""+escapeHTML(parent.user.url.toString())+"\" class=\"mention\">"+escapeHTML(parent.user.getNameForReply())+"</a>"+text.substring(parent.user.getNameForReply().length()+3);
-				}
-				if(!mentionedUsers.contains(parent.user))
-					mentionedUsers.add(parent.user);
-				if(parent.replyKey.length>1){
-					Post topLevel=PostStorage.getPostByID(parent.replyKey[0], false);
-					if(topLevel!=null && !mentionedUsers.contains(topLevel.user))
-						mentionedUsers.add(topLevel.user);
-				}
-				postID=PostStorage.createUserWallPost(userID, user.id, text, replyKey, mentionedUsers, attachments);
-			}else{
-				postID=PostStorage.createUserWallPost(userID, user.id, text, null, mentionedUsers, attachments);
-			}
-
-			Post post=PostStorage.getPostByID(postID, false);
-			if(post==null)
-				throw new IllegalStateException("?!");
-			ActivityPubWorker.getInstance().sendCreatePostActivity(post);
-			NotificationUtils.putNotificationsForPost(post, parent);
-
-			SessionInfo sess=sessionInfo(req);
-			sess.postDraftAttachments.clear();
-			if(isAjax(req)){
-				HashMap<Integer, UserInteractions> interactions=new HashMap<>();
-				interactions.put(post.id, new UserInteractions());
-				String postHTML=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post").with("post", post).with("postInteractions", interactions).renderToString(req);
-				resp.type("application/json");
-				WebDeltaResponseBuilder rb;
-				if(replyTo==0)
-					rb=new WebDeltaResponseBuilder().insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
-				else
-					rb=new WebDeltaResponseBuilder().insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML);
-				String formID=req.queryParams("formID");
-				return rb.setInputValue("postFormText_"+formID, "").setContent("postFormAttachments_"+formID, "").json();
-			}
-			resp.redirect(Utils.back(req));
-		}else{
+	public static Object createUserWallPost(Request req, Response resp, Account self) throws Exception{
+		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+		User user=UserStorage.getById(id);
+		if(user==null){
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_user_not_found");
 		}
+		return createWallPost(req, resp, self, user);
+	}
+
+	public static Object createGroupWallPost(Request req, Response resp, Account self) throws Exception{
+		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+		Group group=GroupStorage.getByID(id);
+		if(group==null){
+			resp.status(404);
+			return Utils.wrapError(req, resp, "err_group_not_found");
+		}
+		return createWallPost(req, resp, self, group);
+	}
+
+	public static Object createWallPost(Request req, Response resp, Account self, @NotNull Actor owner) throws Exception{
+		String text=req.queryParams("text");
+		if(text.length()==0 && StringUtils.isEmpty(req.queryParams("attachments")))
+			return "Empty post";
+
+		final ArrayList<User> mentionedUsers=new ArrayList<>();
+		text=preprocessPostHTML(text, new MentionCallback(){
+			@Override
+			public User resolveMention(String username, String domain){
+				try{
+					if(domain==null){
+						User user=UserStorage.getByUsername(username);
+						if(!mentionedUsers.contains(user))
+							mentionedUsers.add(user);
+						return user;
+					}
+					User user=UserStorage.getByUsername(username+"@"+domain);
+					if(user!=null){
+						if(!mentionedUsers.contains(user))
+							mentionedUsers.add(user);
+						return user;
+					}
+					URI uri=ActivityPub.resolveUsername(username, domain);
+					ActivityPubObject obj=ActivityPub.fetchRemoteObject(uri.toString());
+					if(obj instanceof ForeignUser){
+						ForeignUser _user=(ForeignUser)obj;
+						UserStorage.putOrUpdateForeignUser(_user);
+						if(!mentionedUsers.contains(_user))
+							mentionedUsers.add(_user);
+						return _user;
+					}
+				}catch(Exception x){
+					System.out.println("Can't resolve "+username+"@"+domain+": "+x.getMessage());
+				}
+				return null;
+			}
+
+			@Override
+			public User resolveMention(String uri){
+				try{
+					URI u=new URI(uri);
+					if("acct".equalsIgnoreCase(u.getScheme())){
+						if(u.getSchemeSpecificPart().contains("@")){
+							String[] parts=u.getSchemeSpecificPart().split("@");
+							return resolveMention(parts[0], parts[1]);
+						}
+						return resolveMention(u.getSchemeSpecificPart(), null);
+					}
+					User user=UserStorage.getUserByActivityPubID(u);
+					if(user!=null){
+						if(!mentionedUsers.contains(user))
+							mentionedUsers.add(user);
+						return user;
+					}
+				}catch(Exception x){
+					System.out.println("Can't resolve "+uri+": "+x.getMessage());
+				}
+				return null;
+			}
+		});
+		int userID=self.user.id;
+		int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
+		int postID;
+
+		String attachments=null;
+		if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
+			ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
+			String[] aids=req.queryParams("attachments").split(",");
+			for(String id:aids){
+				if(!id.matches("^[a-fA-F0-9]{32}$"))
+					continue;
+				ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(id, self.id);
+				if(obj!=null)
+					attachObjects.add(obj);
+			}
+			if(!attachObjects.isEmpty()){
+				if(attachObjects.size()==1){
+					attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
+				}else{
+					JSONArray ar=new JSONArray();
+					for(ActivityPubObject o:attachObjects){
+						ar.put(MediaStorageUtils.serializeAttachment(o));
+					}
+					attachments=ar.toString();
+				}
+			}
+		}
+		if(text.length()==0 && StringUtils.isEmpty(attachments))
+			return "Empty post";
+
+		Post parent=null;
+		int ownerUserID=owner instanceof User ? ((User) owner).id : 0;
+		int ownerGroupID=owner instanceof Group ? ((Group) owner).id : 0;
+		if(replyTo!=0){
+			parent=PostStorage.getPostByID(replyTo, false);
+			if(parent==null){
+				resp.status(404);
+				return Utils.wrapError(req, resp, "err_post_not_found");
+			}
+			int[] replyKey=new int[parent.replyKey.length+1];
+			System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
+			replyKey[replyKey.length-1]=parent.id;
+			// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
+			if(parent.replyKey.length>0 && text.startsWith("<p>"+escapeHTML(parent.user.getNameForReply())+", ")){
+				text="<p><a href=\""+escapeHTML(parent.user.url.toString())+"\" class=\"mention\">"+escapeHTML(parent.user.getNameForReply())+"</a>"+text.substring(parent.user.getNameForReply().length()+3);
+			}
+			if(!mentionedUsers.contains(parent.user))
+				mentionedUsers.add(parent.user);
+			Post topLevel;
+			if(parent.replyKey.length>1){
+				topLevel=PostStorage.getPostByID(parent.replyKey[0], false);
+				if(topLevel!=null && !mentionedUsers.contains(topLevel.user))
+					mentionedUsers.add(topLevel.user);
+			}else{
+				topLevel=parent;
+			}
+			if(topLevel!=null){
+				if(topLevel.isGroupOwner()){
+					ownerGroupID=((Group) topLevel.owner).id;
+					ownerUserID=0;
+				}else{
+					ownerGroupID=0;
+					ownerUserID=((User) topLevel.owner).id;
+				}
+			}
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, replyKey, mentionedUsers, attachments);
+		}else{
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, null, mentionedUsers, attachments);
+		}
+
+		Post post=PostStorage.getPostByID(postID, false);
+		if(post==null)
+			throw new IllegalStateException("?!");
+		ActivityPubWorker.getInstance().sendCreatePostActivity(post);
+		NotificationUtils.putNotificationsForPost(post, parent);
+
+		SessionInfo sess=sessionInfo(req);
+		sess.postDraftAttachments.clear();
+		if(isAjax(req)){
+			HashMap<Integer, UserInteractions> interactions=new HashMap<>();
+			interactions.put(post.id, new UserInteractions());
+			String postHTML=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post").with("post", post).with("postInteractions", interactions).renderToString(req);
+			resp.type("application/json");
+			WebDeltaResponseBuilder rb;
+			if(replyTo==0)
+				rb=new WebDeltaResponseBuilder().insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
+			else
+				rb=new WebDeltaResponseBuilder().insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML);
+			String formID=req.queryParams("formID");
+			return rb.setInputValue("postFormText_"+formID, "").setContent("postFormAttachments_"+formID, "").json();
+		}
+		resp.redirect(Utils.back(req));
 		return "";
 	}
 
@@ -246,9 +276,14 @@ public class PostRoutes{
 		post.replies=PostStorage.getReplies(replyKey);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone");
 		model.with("post", post);
+		model.with("isGroup", post.owner instanceof Group);
 		SessionInfo info=Utils.sessionInfo(req);
-		if(info!=null && info.account!=null)
+		if(info!=null && info.account!=null){
 			model.with("draftAttachments", info.postDraftAttachments);
+			if(post.isGroupOwner() && post.getReplyLevel()==0){
+				model.with("groupAdminLevel", GroupStorage.getGroupMemberAdminLevel(((Group) post.owner).id, info.account.user.id));
+			}
+		}
 		if(post.replyKey.length>0){
 			model.with("prefilledPostText", post.user.getNameForReply()+", ");
 		}
@@ -506,29 +541,43 @@ public class PostRoutes{
 	private static Object wall(Request req, Response resp, boolean ownOnly) throws SQLException{
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
+		Group group=null;
 		if(user==null){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "user_not_found");
+			group=GroupStorage.getByUsername(username);
+			if(group==null){
+				resp.status(404);
+				return Utils.wrapError(req, resp, "err_user_not_found");
+			}else if(ownOnly){
+				resp.redirect(Config.localURI("/"+username+"/wall").toString());
+				return "";
+			}
 		}
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 
 		int[] postCount={0};
 		int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
-		List<Post> wall=PostStorage.getUserWall(user.id, 0, 0, offset, postCount, ownOnly);
+		List<Post> wall=PostStorage.getWallPosts(user==null ? group.id : user.id, group!=null, 0, 0, offset, postCount, ownOnly);
 		List<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toList());
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
-		return new RenderedTemplateResponse("wall_page")
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_page")
 				.with("posts", wall)
 				.with("postInteractions", interactions)
-				.with("owner", user)
+				.with("owner", user!=null ? user : group)
+				.with("isGroup", group!=null)
 				.with("postCount", postCount[0])
 				.with("pageOffset", offset)
 				.with("ownOnly", ownOnly)
 				.with("paginationUrlPrefix", Config.localURI("/"+username+"/wall"+(ownOnly ? "/own" : "")))
-				.with("tab", ownOnly ? "own" : "all")
-				.with("title", lang(req).inflected("wall_of_X", user.gender, user.firstName, user.lastName, null))
-				.renderToString(req);
+				.with("tab", ownOnly ? "own" : "all");
+
+		if(user!=null){
+			model.with("title", lang(req).inflected("wall_of_X", user.gender, user.firstName, user.lastName, null));
+		}else{
+			model.with("title", lang(req).get("wall_of_group"));
+		}
+
+		return model.renderToString(req);
 	}
 
 	public static Object wallToWall(Request req, Response resp) throws SQLException{
@@ -536,7 +585,7 @@ public class PostRoutes{
 		User user=UserStorage.getByUsername(username);
 		if(user==null){
 			resp.status(404);
-			return Utils.wrapError(req, resp, "user_not_found");
+			return Utils.wrapError(req, resp, "err_user_not_found");
 		}
 		String otherUsername=req.params(":other_username");
 		User otherUser=UserStorage.getByUsername(otherUsername);

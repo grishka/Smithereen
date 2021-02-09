@@ -217,13 +217,16 @@ a, a:link, a:visited, .link{
 	border: solid 1px $darkerGray;
 	box-sizing: border-box;
 	&.sizeM{
-		background-size: 32px;
+		background-size: auto 32px;
 	}
 	&.sizeL{
-		background-size: 48px;
+		background-size: auto 48px;
 	}
 	&.female{
 		background-image: svg-load("img/ava_placeholder_female_s.svg", fill: $darkerGray);
+	}
+	&.group{
+		background-image: svg-load("img/ava_placeholder_group_s.svg", fill: $darkerGray);
 	}
 	&.inProfile{
 		width: 200px;
@@ -233,6 +236,9 @@ a, a:link, a:visited, .link{
 		background-image: svg-load("img/ava_placeholder_male_l.svg", fill: $darkerGray);
 		&.female{
 			background-image: svg-load("img/ava_placeholder_female_l.svg", fill: $darkerGray);
+		}
+		&.group{
+			background-image: svg-load("img/ava_placeholder_group_l.svg", fill: $darkerGray);
 		}
 	}
 }

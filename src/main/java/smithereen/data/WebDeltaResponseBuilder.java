@@ -121,6 +121,14 @@ public class WebDeltaResponseBuilder{
 		return this;
 	}
 
+	public WebDeltaResponseBuilder replaceLocation(String url){
+		JSONObject cmd=new JSONObject();
+		cmd.put("a", "location");
+		cmd.put("l", url);
+		commands.put(cmd);
+		return this;
+	}
+
 	public WebDeltaResponseBuilder addClass(@NotNull String id, @NotNull String className){
 		JSONObject cmd=new JSONObject();
 		cmd.put("a", "addClass");

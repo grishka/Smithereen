@@ -2,13 +2,11 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
-import smithereen.ObjectNotFoundException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
-import smithereen.data.User;
 import smithereen.data.notifications.Notification;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.NotificationsStorage;

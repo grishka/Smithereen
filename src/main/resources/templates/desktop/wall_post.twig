@@ -9,10 +9,10 @@
 			<div class="postContent">{{post.content | postprocessHTML}}</div>
 			{%if post.attachment is not null%}{{renderAttachments(post.processedAttachments)}}{%endif%}
 			<div class="postInfo"><a href="{{post.internalURL}}" class="postLink">{{LD(post.published)}}</a>
-				{%if post.canBeManagedBy(currentUser)%} |
+				{%if userPermissions is not null and userPermissions.canDeletePost(post)%} |
 				<a href="{{post.internalURL}}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{post.internalURL}}/delete')">{{L('delete')}}</a>
 				{%endif%}
-				{% if post.owner.id!=post.user.id and tab!="wall2wall" %} |
+				{% if post.owner.id!=post.user.id and tab!="wall2wall" and not post.isGroupOwner %} |
 				    <a href="{{ post.owner.profileURL }}/wall/with/{{ post.user.fullUsername }}">{{ L('wall_to_wall') }}</a>
 				{% endif %}
 				{% if not post.local %}

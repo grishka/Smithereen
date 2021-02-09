@@ -29,11 +29,11 @@ public class NonCachedRemoteImage implements SizedImage{
 		protected abstract void addToUriBuilder(UriBuilder builder);
 	}
 
-	public static class ProfilePictureArgs extends Args{
+	public static class UserProfilePictureArgs extends Args{
 
 		private final int userID;
 
-		public ProfilePictureArgs(int userID){
+		public UserProfilePictureArgs(int userID){
 			this.userID=userID;
 		}
 
@@ -41,6 +41,21 @@ public class NonCachedRemoteImage implements SizedImage{
 		protected void addToUriBuilder(UriBuilder builder){
 			builder.queryParam("type", "user_ava");
 			builder.queryParam("user_id", userID+"");
+		}
+	}
+
+	public static class GroupProfilePictureArgs extends Args{
+
+		private final int groupID;
+
+		public GroupProfilePictureArgs(int groupID){
+			this.groupID=groupID;
+		}
+
+		@Override
+		protected void addToUriBuilder(UriBuilder builder){
+			builder.queryParam("type", "group_ava");
+			builder.queryParam("group_id", groupID+"");
 		}
 	}
 

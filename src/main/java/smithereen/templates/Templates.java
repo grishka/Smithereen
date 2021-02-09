@@ -56,7 +56,7 @@ import spark.Request;
 			if(account!=null){
 				model.with("currentUser", account.user);
 				model.with("csrf", info.csrfToken);
-				model.with("userAccessLevel", account.accessLevel);
+				model.with("userPermissions", info.permissions);
 				jsConfig.put("csrf", info.csrfToken);
 				jsConfig.put("uid", info.account.user.id);
 				try{

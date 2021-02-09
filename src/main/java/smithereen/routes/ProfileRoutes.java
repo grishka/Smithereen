@@ -19,6 +19,7 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
+import smithereen.data.Group;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
@@ -27,6 +28,7 @@ import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.data.notifications.Notification;
 import smithereen.lang.Lang;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -44,7 +46,7 @@ public class ProfileRoutes{
 		if(user!=null){
 			int[] postCount={0};
 			int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
-			List<Post> wall=PostStorage.getUserWall(user.id, 0, 0, offset, postCount, false);
+			List<Post> wall=PostStorage.getWallPosts(user.id, false, 0, 0, offset, postCount, false);
 			RenderedTemplateResponse model=new RenderedTemplateResponse("profile").with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
 			model.with("pageOffset", offset);
 
@@ -129,6 +131,10 @@ public class ProfileRoutes{
 			Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "remove_friend", "cancel", "delete");
 			return model.renderToString(req);
 		}else{
+			Group g=GroupStorage.getByUsername(username);
+			if(g!=null){
+				return GroupsRoutes.groupProfile(req, resp, g);
+			}
 			resp.status(404);
 			return Utils.wrapError(req, resp, "err_user_not_found");
 		}
@@ -146,7 +152,10 @@ public class ProfileRoutes{
 			Lang l=lang(req);
 			if(status==FriendshipStatus.FOLLOWED_BY){
 				if(isAjax(req) && verifyCSRF(req, resp)){
-					UserStorage.followUser(self.user.id, user.id, true);
+					UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
+					if(user instanceof ForeignUser){
+						ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser)user);
+					}
 					return new WebDeltaResponseBuilder(resp).refresh().json();
 				}else{
 					RenderedTemplateResponse model=new RenderedTemplateResponse("form_page");

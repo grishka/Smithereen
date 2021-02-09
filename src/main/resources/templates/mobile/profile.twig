@@ -65,7 +65,7 @@
 {%endif%}
 {%if user.summary is not null%}
 	<div class="profileFieldName">{{L('profile_about')}}</div>
-	<div class="profileFieldValue">{{user.summary}}</div>
+	<div class="profileFieldValue">{{ user.summary | postprocessHTML }}</div>
 {%endif%}
 </div>
 

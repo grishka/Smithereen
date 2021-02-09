@@ -48,13 +48,13 @@ public class NotificationUtils{
 		}
 
 		// Finally, if it's a wall post on a local user's wall, notify them
-		if(!post.owner.equals(post.user) && !(post.owner instanceof ForeignUser)){
+		if(!post.owner.equals(post.user) && !(post.owner instanceof ForeignUser) && post.owner instanceof User){
 			Notification n=new Notification();
 			n.type=Notification.Type.POST_OWN_WALL;
 			n.objectID=post.id;
 			n.objectType=Notification.ObjectType.POST;
 			n.actorID=post.user.id;
-			NotificationsStorage.putNotification(post.owner.id, n);
+			NotificationsStorage.putNotification(((User) post.owner).id, n);
 		}
 	}
 }

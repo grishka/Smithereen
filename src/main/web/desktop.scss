@@ -271,6 +271,10 @@ h2{
 	padding-left: 8px;
 }
 
+.rightNarrow #left{
+	padding-right: 8px;
+}
+
 .marginAfter{
 	margin-bottom: 8px;
 }
@@ -445,6 +449,15 @@ select{
 	a.selected, .a.selected:hover, a.selected:visited:hover{
 		background: $tabBackground;
 		color: $textOnAccent;
+	}
+	a.aux{
+		float: right;
+		padding: 0;
+		border-radius: 0;
+		&:hover, &:visited:hover{
+			background: none;
+			text-decoration: underline;
+		}
 	}
 }
 

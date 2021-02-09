@@ -11,6 +11,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import smithereen.activitypub.objects.Actor;
+import smithereen.data.Group;
 import smithereen.data.SizedImage;
 import smithereen.data.User;
 
@@ -19,11 +21,13 @@ public class PictureForAvatarFilter implements Filter{
 	public Object apply(Object input, Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber) throws PebbleException{
 		SizedImage image;
 		String additionalClasses="";
-		if(input instanceof User){
-			User user=(User) input;
-			image=user.getAvatar();
-			if(user.gender==User.Gender.FEMALE)
+		if(input instanceof Actor){
+			Actor actor=(Actor) input;
+			image=actor.getAvatar();
+			if(actor instanceof User && ((User)actor).gender==User.Gender.FEMALE)
 				additionalClasses=" female";
+			else if(actor instanceof Group)
+				additionalClasses=" group";
 		}else{
 			return "";
 		}

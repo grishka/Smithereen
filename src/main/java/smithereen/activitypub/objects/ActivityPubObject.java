@@ -20,11 +20,13 @@ import smithereen.activitypub.objects.activities.Announce;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
+import smithereen.activitypub.objects.activities.Join;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
+import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
 import spark.utils.StringUtils;
@@ -448,6 +450,8 @@ public abstract class ActivityPubObject{
 	}
 
 	public static ActivityPubObject parse(JSONObject obj, ParserContext parserContext) throws Exception{
+		if(obj==null)
+			return null;
 		String type=obj.getString("type");
 		ActivityPubObject res=null;
 		switch(type){
@@ -457,6 +461,10 @@ public abstract class ActivityPubObject{
 				break;
 			case "Service":
 				res=obj.has("id") ? new ForeignUser() : new Service();
+				break;
+			case "Group":
+			case "Organization":
+				res=new ForeignGroup();
 				break;
 
 			// Objects
@@ -513,6 +521,9 @@ public abstract class ActivityPubObject{
 				break;
 			case "Follow":
 				res=new Follow();
+				break;
+			case "Join":
+				res=new Join();
 				break;
 			case "Like":
 				res=new Like();

@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -19,6 +20,7 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.Tombstone;
@@ -31,10 +33,14 @@ import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
+import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
+import smithereen.data.Group;
 import smithereen.data.Post;
+import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.data.notifications.NotificationUtils;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.utils.StringUtils;
@@ -43,6 +49,7 @@ public class ActivityPubWorker{
 	private static final ActivityPubWorker instance=new ActivityPubWorker();
 
 	private ExecutorService executor;
+	private Random rand=new Random();
 
 	public static ActivityPubWorker getInstance(){
 		return instance;
@@ -56,11 +63,59 @@ public class ActivityPubWorker{
 		return actor.sharedInbox!=null ? actor.sharedInbox : actor.inbox;
 	}
 
+	private long rand(){
+		return Math.abs(rand.nextLong());
+	}
+
 	public void forwardActivity(String json, User signer, List<URI> inboxes, String originatingDomain){
 		for(URI inbox:inboxes){
 			if(inbox.getHost().equalsIgnoreCase(originatingDomain))
 				continue;
 			executor.submit(new ForwardOneActivityRunnable(json, inbox, signer));
+		}
+	}
+
+	private List<URI> getInboxesForPost(Post post) throws SQLException{
+		ArrayList<URI> inboxes=new ArrayList<>();
+		if(post.owner instanceof User){
+			boolean sendToFollowers=((User) post.owner).id==post.user.id;
+			if(post.owner instanceof ForeignUser){
+				inboxes.add(post.owner.inbox);
+			}else if(sendToFollowers){
+				if(post.getReplyLevel()==0)
+					inboxes.addAll(UserStorage.getFollowerInboxes(((User) post.owner).id));
+				else
+					inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
+			}
+		}else if(post.owner instanceof Group){
+			if(post.owner instanceof ForeignGroup){
+				inboxes.add(post.owner.inbox);
+			}else{
+				if(post.getReplyLevel()==0)
+					inboxes.addAll(GroupStorage.getGroupMemberInboxes(((Group) post.owner).id));
+				else
+					inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
+			}
+		}
+		for(User user:post.mentionedUsers){
+			if(user instanceof ForeignUser){
+				URI inbox=actorInbox((ForeignUser) user);
+				if(!inboxes.contains(inbox))
+					inboxes.add(inbox);
+			}
+		}
+		return inboxes;
+	}
+
+	private void sendActivityForPost(Post post, Activity activity, Actor actor){
+		try{
+			List<URI> inboxes=getInboxesForPost(post);
+			System.out.println("Inboxes: "+inboxes);
+			for(URI inbox:inboxes){
+				executor.submit(new SendOneActivityRunnable(activity, inbox, actor));
+			}
+		}catch(SQLException x){
+			x.printStackTrace();
 		}
 	}
 
@@ -75,31 +130,7 @@ public class ActivityPubWorker{
 				create.cc=post.cc;
 				create.published=post.published;
 				create.activityPubID=Config.localURI(post.activityPubID.getPath()+"/activityCreate");
-				try{
-					boolean sendToFollowers=post.owner.id==post.user.id;
-					ArrayList<URI> inboxes=new ArrayList<>();
-					if(sendToFollowers){
-						if(post.getReplyLevel()==0)
-							inboxes.addAll(UserStorage.getFollowerInboxes(post.owner.id));
-						else
-							inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
-					}else if(post.owner instanceof ForeignUser){
-						inboxes.add(((ForeignUser)post.owner).inbox);
-					}
-					for(User user:post.mentionedUsers){
-						if(user instanceof ForeignUser){
-							URI inbox=actorInbox((ForeignUser) user);
-							if(!inboxes.contains(inbox))
-								inboxes.add(inbox);
-						}
-					}
-					System.out.println("Inboxes: "+inboxes);
-					for(URI inbox:inboxes){
-						executor.submit(new SendOneActivityRunnable(create, inbox, post.user));
-					}
-				}catch(SQLException x){
-					x.printStackTrace();
-				}
+				sendActivityForPost(post, create, post.user);
 			}
 		});
 	}
@@ -117,31 +148,7 @@ public class ActivityPubWorker{
 				try{
 					delete.activityPubID=new URI(post.activityPubID.getScheme(), post.activityPubID.getSchemeSpecificPart(), "delete");
 				}catch(URISyntaxException ignore){}
-				try{
-					boolean sendToFollowers=post.owner.id==post.user.id;
-					ArrayList<URI> inboxes=new ArrayList<>();
-					if(sendToFollowers){
-						if(post.getReplyLevel()==0)
-							inboxes.addAll(UserStorage.getFollowerInboxes(post.owner.id));
-						else
-							inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
-					}else if(post.owner instanceof ForeignUser){
-						inboxes.add(((ForeignUser)post.owner).inbox);
-					}
-					for(User user:post.mentionedUsers){
-						if(user instanceof ForeignUser){
-							URI inbox=actorInbox((ForeignUser) user);
-							if(!inboxes.contains(inbox))
-								inboxes.add(inbox);
-						}
-					}
-					System.out.println("Inboxes: "+inboxes);
-					for(URI inbox:inboxes){
-						executor.submit(new SendOneActivityRunnable(delete, inbox, post.user));
-					}
-				}catch(SQLException x){
-					x.printStackTrace();
-				}
+				sendActivityForPost(post, delete, post.user);
 			}
 		});
 	}
@@ -149,38 +156,58 @@ public class ActivityPubWorker{
 	public void sendUnfriendActivity(User self, User target){
 		if(!(target instanceof ForeignUser))
 			return;
-		try{
-			Undo undo=new Undo();
-			undo.activityPubID=new URI(self.activityPubID.getScheme(), self.activityPubID.getSchemeSpecificPart(), "unfollow"+target.id);
-			undo.actor=new LinkOrObject(self.activityPubID);
+		Undo undo=new Undo();
+		undo.activityPubID=new UriBuilder(self.activityPubID).fragment("unfollowUser"+target.id+"_"+rand()).build();
+		undo.actor=new LinkOrObject(self.activityPubID);
 
-			Follow follow=new Follow();
-			follow.actor=new LinkOrObject(self.activityPubID);
-			follow.object=new LinkOrObject(target.activityPubID);
-			follow.activityPubID=new URI(self.activityPubID.getScheme(), self.activityPubID.getSchemeSpecificPart(), "follow"+target.id);
-			undo.object=new LinkOrObject(follow);
+		Follow follow=new Follow();
+		follow.actor=new LinkOrObject(self.activityPubID);
+		follow.object=new LinkOrObject(target.activityPubID);
+		follow.activityPubID=new UriBuilder(self.activityPubID).fragment("followUser"+target.id+"_"+rand()).build();
+		undo.object=new LinkOrObject(follow);
 
-			executor.submit(new SendOneActivityRunnable(undo, ((ForeignUser) target).inbox, self));
-		}catch(URISyntaxException ignore){}
+		executor.submit(new SendOneActivityRunnable(undo, ((ForeignUser) target).inbox, self));
 	}
 
 	public void sendFollowActivity(User self, ForeignUser target){
 		Follow follow=new Follow();
 		follow.actor=new LinkOrObject(self.activityPubID);
 		follow.object=new LinkOrObject(target.activityPubID);
-		follow.activityPubID=URI.create(self.activityPubID+"#follow"+target.id);
+		follow.activityPubID=new UriBuilder(self.activityPubID).fragment("followUser"+target.id+"_"+rand()).build();
 		executor.submit(new SendOneActivityRunnable(follow, target.inbox, self));
+	}
+
+	public void sendFollowActivity(User self, ForeignGroup target){
+		Follow follow=new Follow();
+		follow.actor=new LinkOrObject(self.activityPubID);
+		follow.object=new LinkOrObject(target.activityPubID);
+		follow.activityPubID=new UriBuilder(self.activityPubID).fragment("joinGroup"+target.id+"_"+rand()).build();
+		executor.submit(new SendOneActivityRunnable(follow, target.inbox, self));
+	}
+
+	public void sendUnfollowActivity(User self, ForeignGroup target){
+		Undo undo=new Undo();
+		undo.activityPubID=new UriBuilder(self.activityPubID).fragment("leaveGroup"+target.id+"_"+rand()).build();
+		undo.actor=new LinkOrObject(self.activityPubID);
+
+		Follow follow=new Follow();
+		follow.actor=new LinkOrObject(self.activityPubID);
+		follow.object=new LinkOrObject(target.activityPubID);
+		follow.activityPubID=new UriBuilder(self.activityPubID).fragment("joinGroup"+target.id+"_"+rand()).build();
+		undo.object=new LinkOrObject(follow);
+
+		executor.submit(new SendOneActivityRunnable(undo, target.inbox, self));
 	}
 
 	public void sendFriendRequestActivity(User self, ForeignUser target, String message){
 		Follow follow=new Follow();
 		follow.actor=new LinkOrObject(self.activityPubID);
 		follow.object=new LinkOrObject(target.activityPubID);
-		follow.activityPubID=URI.create(self.activityPubID+"#follow"+target.id);
+		follow.activityPubID=URI.create(self.activityPubID+"#follow"+target.id+"_"+rand());
 		if(target.supportsFriendRequests()){
 			Offer offer=new Offer();
 			offer.actor=new LinkOrObject(self.activityPubID);
-			offer.activityPubID=URI.create(self.activityPubID+"#friend_request"+target.id);
+			offer.activityPubID=URI.create(self.activityPubID+"#friend_request"+target.id+"_"+rand());
 			if(StringUtils.isNotEmpty(message)){
 				offer.content=message;
 			}
@@ -194,11 +221,12 @@ public class ActivityPubWorker{
 		}
 	}
 
-	public void sendAcceptFollowActivity(ForeignUser actor, User self, Follow follow){
+	public void sendAcceptFollowActivity(ForeignUser actor, Actor self, Follow follow){
+		self.ensureLocal();
 		Accept accept=new Accept();
 		accept.actor=new LinkOrObject(self.activityPubID);
 		accept.object=new LinkOrObject(follow);
-		accept.activityPubID=Config.localURI("/"+self.username+"#acceptFollow"+actor.id);
+		accept.activityPubID=UriBuilder.local().rawPath(self.getTypeAndIdForURL()).fragment("acceptFollow"+actor.id).build();
 		executor.submit(new SendOneActivityRunnable(accept, actor.inbox, self));
 	}
 
@@ -227,6 +255,23 @@ public class ActivityPubWorker{
 			List<URI> inboxes=UserStorage.getFollowerInboxes(user.id);
 			for(URI inbox:inboxes){
 				executor.submit(new SendOneActivityRunnable(update, inbox, user));
+			}
+		}catch(SQLException x){
+			x.printStackTrace();
+		}
+	}
+
+	public void sendUpdateGroupActivity(Group group){
+		Update update=new Update();
+		update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
+		update.activityPubID=URI.create(group.activityPubID+"#updateProfile"+System.currentTimeMillis());
+		update.object=new LinkOrObject(group);
+		update.actor=new LinkOrObject(group.activityPubID);
+
+		try{
+			List<URI> inboxes=GroupStorage.getGroupMemberInboxes(group.id);
+			for(URI inbox:inboxes){
+				executor.submit(new SendOneActivityRunnable(update, inbox, group));
 			}
 		}catch(SQLException x){
 			x.printStackTrace();
@@ -268,18 +313,18 @@ public class ActivityPubWorker{
 	private static class SendOneActivityRunnable implements Runnable{
 		private Activity activity;
 		private URI destination;
-		private User user;
+		private Actor actor;
 
-		public SendOneActivityRunnable(Activity activity, URI destination, User user){
+		public SendOneActivityRunnable(Activity activity, URI destination, Actor actor){
 			this.activity=activity;
 			this.destination=destination;
-			this.user=user;
+			this.actor=actor;
 		}
 
 		@Override
 		public void run(){
 			try{
-				ActivityPub.postActivity(destination, activity, user);
+				ActivityPub.postActivity(destination, activity, actor);
 			}catch(Exception x){
 				x.printStackTrace();
 			}
@@ -366,7 +411,7 @@ public class ActivityPubWorker{
 						}
 					}
 					if(!mentionsLocalUsers){
-						System.out.println("Post from unknown user "+topLevel.attributedTo);
+						System.out.println("Top-level post from unknown user "+topLevel.attributedTo+" and there are no local user mentions — dropping the thread");
 						return;
 					}
 				}

@@ -20,7 +20,7 @@
 						{%if not hideReplyLink%}<a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}})">{{L('add_reply')}}</a>{%endif%}
 						{% set options=[] %}
 						{% set _=options.add({'type': 'link', 'href': "#{post.internalURL}/likes", 'label': L('likes_title').toString()}) %}
-						{% if post.canBeManagedBy(currentUser) %}
+						{% if userPermissions is not null and userPermissions.canDeletePost(post) %}
 						    {% set _=options.add({'type': 'confirm', 'label': L('delete').toString(), 'title': 'delete_reply', 'msg': 'delete_reply_confirm', 'url': "#{post.url}/delete"}) %}
 						{% endif %}
 						{% if not post.local %}

@@ -1,0 +1,27 @@
+{% extends "page" %}
+{% block content %}
+{% include 'groups_tabbar' %}
+<div class="singleColumn">
+{% for group in groups %}
+<table width="100%" class="friendsRow noBorderSpacing" id="grow{{group.id}}">
+	<tr valign="top">
+		<td width="100">
+			<a href="{{group.profileURL}}">{{group | pictureForAvatar('m')}}</a>
+		</td>
+		<td class="info">
+			<b><a href="{{group.profileURL}}">{{group.name}}</a></b>
+		</td>
+		<td width="200">
+			<ul class="actionList">
+                {%if group.domain is not null%}
+					<li><a href="{{ group.url }}" target="_blank">{{ L('open_on_server_X', group.domain) }}</a></li>
+				{%endif%}
+			</ul>
+		</td>
+	</tr>
+</table>
+{% else %}
+<center class="notMuchContent">{{L('no_groups')}}</center>
+{% endfor %}
+</div>
+{% endblock %}

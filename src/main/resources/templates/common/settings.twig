@@ -11,7 +11,7 @@
 		{{ form.footer(L('save')) }}
 	{{ form.end() }}
 </form>
-{%if signupMode=='INVITE_ONLY' or (userAccessLevel=='ADMIN' and signupMode!='OPEN')%}
+{%if signupMode=='INVITE_ONLY' or (userPermissions.serverAccessLevel=='ADMIN' and signupMode!='OPEN')%}
 <form action="/settings/createInvite?csrf={{ csrf }}" method="post">
 	<h2>{{L('invitations')}}</h2>
 	{% if inviteMessage is not null %}

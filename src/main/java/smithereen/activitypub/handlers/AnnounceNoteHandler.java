@@ -7,8 +7,6 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import smithereen.BadRequestException;
-import smithereen.Config;
-import smithereen.ObjectNotFoundException;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;

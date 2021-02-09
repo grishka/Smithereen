@@ -284,12 +284,22 @@ class FormBox extends Box{
 	public constructor(title:string, c:string, btn:string, act:string){
 		super(title, [btn, lang("cancel")], function(idx:number){
 			if(idx==0){
-				var btn=this.getButton(0);
-				btn.setAttribute("disabled", "");
-				this.getButton(1).setAttribute("disabled", "");
-				btn.classList.add("loading");
-				setGlobalLoading(true);
-				ajaxSubmitForm(this.form, this.dismiss.bind(this));
+				if(this.form.checkValidity()){
+					var btn=this.getButton(0);
+					btn.setAttribute("disabled", "");
+					this.getButton(1).setAttribute("disabled", "");
+					btn.classList.add("loading");
+					ajaxSubmitForm(this.form, (resp)=>{
+						if(resp){
+							this.dismiss();
+						}else{
+							var btn=this.getButton(0);
+							btn.removeAttribute("disabled");
+							this.getButton(1).removeAttribute("disabled");
+							btn.classList.remove("loading");
+						}
+					});
+				}
 			}else{
 				this.dismiss();
 			}
@@ -365,11 +375,13 @@ class ProfilePictureBox extends FileUploadBox{
 
 	private file:File=null;
 	private areaSelector:ImageAreaSelector=null;
+	private groupID:number=null;
 
-	public constructor(){
+	public constructor(groupID:number=null){
 		super(lang("update_profile_picture"));
 		if(mobile)
 			this.noPrimaryButton=true;
+		this.groupID=groupID;
 	}
 
 	protected handleFile(file:File):void{
@@ -436,7 +448,7 @@ class ProfilePictureBox extends FileUploadBox{
 		btn.classList.add("loading");
 		setGlobalLoading(true);
 
-		ajaxUpload("/settings/updateProfilePicture?x1="+x1+"&y1="+y1+"&x2="+x2+"&y2="+y2, "pic", this.file, (resp:any)=>{
+		ajaxUpload("/settings/updateProfilePicture?x1="+x1+"&y1="+y1+"&x2="+x2+"&y2="+y2+(this.groupID ? ("&group="+this.groupID) : ""), "pic", this.file, (resp:any)=>{
 			this.dismiss();
 			setGlobalLoading(false);
 			return false;

@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.TimeZone;
@@ -21,13 +22,17 @@ import static smithereen.Utils.*;
 
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
+import smithereen.data.ForeignGroup;
+import smithereen.data.Group;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.lang.Lang;
 import smithereen.libvips.VImage;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
@@ -122,7 +127,7 @@ public class SettingsRoutes{
 		if(first.length()<2){
 			message=Utils.lang(req).get("err_name_too_short");
 		}else{
-			UserStorage.changeBasicInfo(self.user.id, first, last, middle, maiden, gender, bdate);
+			UserStorage.changeBasicInfo(self.user, first, last, middle, maiden, gender, bdate);
 			message=Utils.lang(req).get("profile_info_updated");
 		}
 		self.user=UserStorage.getById(self.user.id);
@@ -139,6 +144,16 @@ public class SettingsRoutes{
 
 	public static Object updateProfilePicture(Request req, Response resp, Account self) throws SQLException{
 		try{
+			int groupID=parseIntOrDefault(req.queryParams("group"), 0);
+			Group group=null;
+			if(groupID!=0){
+				group=GroupStorage.getByID(groupID);
+				if(group==null || !GroupStorage.getGroupMemberAdminLevel(groupID, self.user.id).isAtLeast(Group.AdminLevel.ADMIN)){
+					resp.status(403);
+					return "";
+				}
+			}
+
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 5*1024*1024, -1L, 0));
 			Part part=req.raw().getPart("pic");
 			if(part.getSize()>5*1024*1024){
@@ -197,43 +212,39 @@ public class SettingsRoutes{
 			File profilePicsDir=new File(Config.uploadPath, "avatars");
 			profilePicsDir.mkdirs();
 			try{
-//				MediaStorageUtils.writeResizedImages(cropped!=null ? cropped : img, new int[]{50, 100, 200, 400}, new PhotoSize.Type[]{PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
-//						85, 80, keyHex, profilePicsDir, Config.uploadURLPath+"/avatars", ava.sizes);
-//				if(cropped!=null && img.getWidth()!=img.getHeight()){
-//					MediaStorageUtils.writeResizedImages(img, new int[]{200, 400}, new int[]{500, 1000}, new PhotoSize.Type[]{PhotoSize.Type.RECT_LARGE, PhotoSize.Type.RECT_XLARGE},
-//							85, 80, keyHex, profilePicsDir, Config.uploadURLPath+"/avatars", ava.sizes);
-//				}
 				int[] size={0, 0};
 				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, keyHex, profilePicsDir, size);
 				ava.localID=keyHex;
 				ava.path="avatars";
 				ava.width=size[0];
 				ava.height=size[1];
-//
-//				if(self.user.icon!=null){
-//					for(PhotoSize size : ((LocalImage) self.user.icon.get(0)).sizes){
-//						String path=size.src.getPath();
-//						String name=path.substring(path.lastIndexOf('/')+1);
-//						File file=new File(profilePicsDir, name);
-//						if(file.exists()){
-//							System.out.println("deleting: "+file.getAbsolutePath());
-//							file.delete();
-//						}
-//					}
-//				}
-				if(self.user.icon!=null){
-					LocalImage li=(LocalImage) self.user.icon.get(0);
-					File file=new File(profilePicsDir, li.localID+".webp");
-					if(file.exists()){
-						System.out.println("deleting: "+file.getAbsolutePath());
-						file.delete();
-					}
-				}
 
-				UserStorage.updateProfilePicture(self.user.id, MediaStorageUtils.serializeAttachment(ava).toString());
-				self.user=UserStorage.getById(self.user.id);
+				if(group==null){
+					if(self.user.icon!=null){
+						LocalImage li=(LocalImage) self.user.icon.get(0);
+						File file=new File(profilePicsDir, li.localID+".webp");
+						if(file.exists()){
+							System.out.println("deleting: "+file.getAbsolutePath());
+							file.delete();
+						}
+					}
+					UserStorage.updateProfilePicture(self.user, MediaStorageUtils.serializeAttachment(ava).toString());
+					self.user=UserStorage.getById(self.user.id);
+					ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
+				}else{
+					if(group.icon!=null && !(group instanceof ForeignGroup)){
+						LocalImage li=(LocalImage) group.icon.get(0);
+						File file=new File(profilePicsDir, li.localID+".webp");
+						if(file.exists()){
+							System.out.println("deleting: "+file.getAbsolutePath());
+							file.delete();
+						}
+					}
+					GroupStorage.updateProfilePicture(group, MediaStorageUtils.serializeAttachment(ava).toString());
+					group=GroupStorage.getByID(group.id);
+					ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
+				}
 				temp.delete();
-				ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
 			}finally{
 				img.release();
 			}
@@ -304,13 +315,25 @@ public class SettingsRoutes{
 	public static Object confirmRemoveProfilePicture(Request req, Response resp, Account self){
 		req.attribute("noHistory", true);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm").with("message", Utils.lang(req).get("confirm_remove_profile_picture")).with("formAction", Config.localURI("/settings/removeProfilePicture?_redir="+URLEncoder.encode(back))).with("back", back).renderToString(req);
+		String groupParam=req.queryParams("group")!=null ? ("&group="+req.queryParams("group")) : "";
+		return new RenderedTemplateResponse("generic_confirm").with("message", Utils.lang(req).get("confirm_remove_profile_picture")).with("formAction", Config.localURI("/settings/removeProfilePicture?_redir="+URLEncoder.encode(back)+groupParam)).with("back", back).renderToString(req);
 	}
 
 	public static Object removeProfilePicture(Request req, Response resp, Account self) throws SQLException{
+		int groupID=parseIntOrDefault(req.queryParams("group"), 0);
+		Group group=null;
+		if(groupID!=0){
+			group=GroupStorage.getByID(groupID);
+			if(group==null || !GroupStorage.getGroupMemberAdminLevel(groupID, self.user.id).isAtLeast(Group.AdminLevel.ADMIN)){
+				resp.status(403);
+				return "";
+			}
+		}
+
 		File profilePicsDir=new File(Config.uploadPath, "avatars");
-		if(self.user.icon!=null){
-			LocalImage li=(LocalImage) self.user.icon.get(0);
+		List<Image> icon=group!=null ? group.icon : self.user.icon;
+		if(icon!=null && !icon.isEmpty() && icon.get(0) instanceof LocalImage){
+			LocalImage li=(LocalImage) icon.get(0);
 			File file=new File(profilePicsDir, li.localID+".webp");
 			if(file.exists()){
 				System.out.println("deleting: "+file.getAbsolutePath());
@@ -318,9 +341,15 @@ public class SettingsRoutes{
 			}
 		}
 
-		UserStorage.updateProfilePicture(self.user.id, null);
-		self.user=UserStorage.getById(self.user.id);
-		ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
+		if(group!=null){
+			GroupStorage.updateProfilePicture(group, null);
+			group=GroupStorage.getByID(groupID);
+			ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
+		}else{
+			UserStorage.updateProfilePicture(self.user, null);
+			self.user=UserStorage.getById(self.user.id);
+			ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
+		}
 		if(isAjax(req))
 			return new WebDeltaResponseBuilder(resp).refresh().json();
 		resp.redirect("/settings/");

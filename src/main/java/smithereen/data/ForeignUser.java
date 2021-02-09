@@ -21,16 +21,11 @@ import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.jsonld.JLD;
+import spark.utils.StringUtils;
 
 public class ForeignUser extends User{
 
-	public String domain;
-	public URI inbox;
-	public URI outbox;
-	public URI sharedInbox;
-	public URI followers;
-	public URI following;
-	public Timestamp lastUpdated;
+	private URI wall;
 
 	public static ForeignUser fromResultSet(ResultSet res) throws SQLException{
 		ForeignUser user=new ForeignUser();
@@ -50,6 +45,7 @@ public class ForeignUser extends User{
 		followers=tryParseURL(res.getString("ap_followers"));
 		following=tryParseURL(res.getString("ap_following"));
 		lastUpdated=res.getTimestamp("last_updated");
+		wall=tryParseURL(res.getString("ap_wall"));
 	}
 
 	@Override
@@ -107,15 +103,6 @@ public class ForeignUser extends User{
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		username=obj.optString("preferredUsername", null);
-		if(username==null){
-			username=Utils.getLastPathSegment(activityPubID);
-		}
-		domain=activityPubID.getHost();
-		if(activityPubID.getPort()!=-1)
-			domain+=":"+activityPubID.getPort();
-		if(url==null)
-			url=activityPubID;
 		if(obj.has("firstName")){
 			firstName=obj.getString("firstName");
 			lastName=obj.optString("lastName", null);
@@ -127,16 +114,6 @@ public class ForeignUser extends User{
 		if(obj.has("birthDate")){
 			birthDate=Date.valueOf(obj.getString("birthDate"));
 		}
-		inbox=tryParseURL(obj.getString("inbox"));
-		outbox=tryParseURL(obj.optString("outbox", null));
-		followers=tryParseURL(obj.optString("followers", null));
-		following=tryParseURL(obj.optString("following", null));
-		if(obj.has("endpoints")){
-			JSONObject endpoints=obj.getJSONObject("endpoints");
-			sharedInbox=tryParseURL(endpoints.optString("sharedInbox", null));
-		}
-		if(sharedInbox==null)
-			sharedInbox=inbox;
 		if(obj.has("gender")){
 			switch(obj.getString("gender")){
 				case "sc:Male":
@@ -154,28 +131,12 @@ public class ForeignUser extends User{
 		}else{
 			gender=Gender.UNKNOWN;
 		}
-		JSONObject pkey=obj.getJSONObject("publicKey");
-		URI keyOwner=tryParseURL(pkey.getString("owner"));
-		if(!keyOwner.equals(activityPubID))
-			throw new IllegalArgumentException("Key owner ("+keyOwner+") is not equal to user ID ("+activityPubID+")");
-		String pkeyEncoded=pkey.getString("publicKeyPem");
-		pkeyEncoded=pkeyEncoded.replaceAll("-----(BEGIN|END) (RSA )?PUBLIC KEY-----", "").replace("\n", "").trim();
-		byte[] key=Base64.getDecoder().decode(pkeyEncoded);
-		try{
-			X509EncodedKeySpec spec=new X509EncodedKeySpec(key);
-			publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
-		}catch(InvalidKeySpecException x){
-			// a simpler RSA key format, used at least by Misskey
-			// FWIW, Misskey user objects also contain a key "isCat" which I ignore
-			RSAPublicKeySpec spec=decodeSimpleRSAKey(key);
-			publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
-		}
 		manuallyApprovesFollowers=obj.optBoolean("manuallyApprovesFollowers", false);
-		if(summary!=null)
-			summary=Utils.sanitizeHTML(summary);
 		if(obj.optBoolean("supportsFriendRequests", false)){
 			flags|=FLAG_SUPPORTS_FRIEND_REQS;
 		}
+		if(StringUtils.isNotEmpty(summary))
+			summary=Utils.sanitizeHTML(summary);
 		return this;
 	}
 
@@ -194,39 +155,13 @@ public class ForeignUser extends User{
 		return (flags & FLAG_SUPPORTS_FRIEND_REQS)==FLAG_SUPPORTS_FRIEND_REQS;
 	}
 
-	private static RSAPublicKeySpec decodeSimpleRSAKey(byte[] key) throws IOException{
-		ByteArrayInputStream in=new ByteArrayInputStream(key);
-		int id=in.read();
-		if(id!=0x30)
-			throw new IOException("Must start with SEQUENCE");
-		int seqLen=readDerLength(in);
-		id=in.read();
-		if(id!=2)
-			throw new IOException("SEQUENCE must be followed by INTEGER");
-		int modLen=readDerLength(in);
-		byte[] modBytes=new byte[modLen];
-		in.read(modBytes);
-		id=in.read();
-		if(id!=2)
-			throw new IOException("SEQUENCE must be followed by INTEGER");
-		int expLen=readDerLength(in);
-		byte[] expBytes=new byte[expLen];
-		in.read(expBytes);
-		return new RSAPublicKeySpec(new BigInteger(modBytes), new BigInteger(expBytes));
+	@Override
+	public URI getWallURL(){
+		return wall;
 	}
 
-	private static int readDerLength(InputStream in) throws IOException{
-		int length=in.read();
-		if((length & 0x80)!=0){
-			int additionalBytes=length & 0x7F;
-			if(additionalBytes>4)
-				throw new IOException("Invalid length value");
-			length=0;
-			for(int i=0;i<additionalBytes;i++){
-				length=length<<8;
-				length|=in.read() & 0xFF;
-			}
-		}
-		return length;
+	@Override
+	protected NonCachedRemoteImage.Args getAvatarArgs(){
+		return new NonCachedRemoteImage.UserProfilePictureArgs(id);
 	}
 }

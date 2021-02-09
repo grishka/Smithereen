@@ -1,0 +1,20 @@
+{%extends "page"%}
+{%block content%}
+{% include 'groups_tabbar' %}
+<div class="singleColumn">
+{% for group in groups %}
+<table width="100%" class="friendsRow noBorderSpacing" id="grow{{group.id}}">
+	<tr valign="top">
+		<td width="50">
+			<a href="{{ group.profileURL }}">{{ group | pictureForAvatar('s') }}</a>
+		</td>
+		<td class="info" valign="middle">
+			<b><a href="{{ group.profileURL }}">{{ group.name }}</a></b>
+		</td>
+	</tr>
+</table>
+{%else%}
+<center class="notMuchContent">{{ L('no_groups') }}</center>
+{%endfor%}
+</div>
+{%endblock%}

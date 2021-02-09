@@ -281,13 +281,25 @@ var FormBox = /** @class */ (function (_super) {
     __extends(FormBox, _super);
     function FormBox(title, c, btn, act) {
         var _this = _super.call(this, title, [btn, lang("cancel")], function (idx) {
+            var _this = this;
             if (idx == 0) {
-                var btn = this.getButton(0);
-                btn.setAttribute("disabled", "");
-                this.getButton(1).setAttribute("disabled", "");
-                btn.classList.add("loading");
-                setGlobalLoading(true);
-                ajaxSubmitForm(this.form, this.dismiss.bind(this));
+                if (this.form.checkValidity()) {
+                    var btn = this.getButton(0);
+                    btn.setAttribute("disabled", "");
+                    this.getButton(1).setAttribute("disabled", "");
+                    btn.classList.add("loading");
+                    ajaxSubmitForm(this.form, function (resp) {
+                        if (resp) {
+                            _this.dismiss();
+                        }
+                        else {
+                            var btn = _this.getButton(0);
+                            btn.removeAttribute("disabled");
+                            _this.getButton(1).removeAttribute("disabled");
+                            btn.classList.remove("loading");
+                        }
+                    });
+                }
             }
             else {
                 this.dismiss();
@@ -350,12 +362,15 @@ var FileUploadBox = /** @class */ (function (_super) {
 }(Box));
 var ProfilePictureBox = /** @class */ (function (_super) {
     __extends(ProfilePictureBox, _super);
-    function ProfilePictureBox() {
+    function ProfilePictureBox(groupID) {
+        if (groupID === void 0) { groupID = null; }
         var _this = _super.call(this, lang("update_profile_picture")) || this;
         _this.file = null;
         _this.areaSelector = null;
+        _this.groupID = null;
         if (mobile)
             _this.noPrimaryButton = true;
+        _this.groupID = groupID;
         return _this;
     }
     ProfilePictureBox.prototype.handleFile = function (file) {
@@ -421,7 +436,7 @@ var ProfilePictureBox = /** @class */ (function (_super) {
         this.getButton(1).setAttribute("disabled", "");
         btn.classList.add("loading");
         setGlobalLoading(true);
-        ajaxUpload("/settings/updateProfilePicture?x1=" + x1 + "&y1=" + y1 + "&x2=" + x2 + "&y2=" + y2, "pic", this.file, function (resp) {
+        ajaxUpload("/settings/updateProfilePicture?x1=" + x1 + "&y1=" + y1 + "&x2=" + x2 + "&y2=" + y2 + (this.groupID ? ("&group=" + this.groupID) : ""), "pic", this.file, function (resp) {
             _this.dismiss();
             setGlobalLoading(false);
             return false;
@@ -791,6 +806,12 @@ function ajaxSubmitForm(form, onDone) {
     if (onDone === void 0) { onDone = null; }
     if (submittingForm)
         return false;
+    if (!form.checkValidity()) {
+        if (submitBtn)
+            submitBtn.classList.remove("loading");
+        setGlobalLoading(false);
+        return false;
+    }
     submittingForm = form;
     var submitBtn = form.querySelector("input[type=submit]");
     if (submitBtn)
@@ -817,7 +838,7 @@ function ajaxSubmitForm(form, onDone) {
             }
         }
         if (onDone)
-            onDone();
+            onDone(!(resp instanceof Array));
     }, function () {
         submittingForm = null;
         if (submitBtn)
@@ -825,7 +846,7 @@ function ajaxSubmitForm(form, onDone) {
         setGlobalLoading(false);
         new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
         if (onDone)
-            onDone();
+            onDone(false);
     });
     return false;
 }
@@ -962,6 +983,9 @@ function applyServerCommand(cmd) {
             break;
         case "refresh":
             location.reload();
+            break;
+        case "location":
+            location.href = cmd.l;
             break;
     }
 }

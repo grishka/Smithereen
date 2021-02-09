@@ -17,10 +17,13 @@ import java.sql.Types;
 import java.util.Base64;
 import java.util.Locale;
 
+import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.data.Account;
+import smithereen.data.Group;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.data.UserPermissions;
 import smithereen.data.UserPreferences;
 import smithereen.data.notifications.Notification;
 import spark.Request;
@@ -29,6 +32,8 @@ import spark.Session;
 public class SessionStorage{
 
 	private static SecureRandom random=new SecureRandom();
+
+	private static LruCache<Integer, UserPermissions> permissionsCache=new LruCache<>(500);
 
 	public static String putNewSession(@NotNull Session sess) throws SQLException{
 		byte[] sid=new byte[64];
@@ -247,6 +252,30 @@ public class SessionStorage{
 		stmt.setString(1, prefs.toJSON().toString());
 		stmt.setInt(2, accountID);
 		stmt.execute();
+	}
+
+	public static synchronized void removeFromUserPermissionsCache(int userID){
+		permissionsCache.remove(userID);
+	}
+
+	public static synchronized UserPermissions getUserPermissions(Account account) throws SQLException{
+		UserPermissions r=permissionsCache.get(account.user.id);
+		if(r!=null)
+			return r;
+		r=new UserPermissions(account);
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("group_admins")
+				.columns("group_id", "level")
+				.where("user_id=?", account.user.id)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			while(res.next()){
+				r.managedGroups.put(res.getInt(1), Group.AdminLevel.values()[res.getInt(2)]);
+			}
+		}
+		permissionsCache.put(account.user.id, r);
+		return r;
 	}
 
 	public enum SignupResult{

@@ -59,6 +59,16 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					break;
 				}
 			}
+			if(!isPublic && post.cc!=null){
+				for(LinkOrObject cc:post.cc){
+					if(cc.link==null)
+						throw new BadRequestException("post.cc must only contain links");
+					if(ActivityPub.isPublic(cc.link)){
+						isPublic=true;
+						break;
+					}
+				}
+			}
 		}
 		if(!isPublic)
 			throw new BadRequestException("Only public posts are supported");

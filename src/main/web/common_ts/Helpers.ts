@@ -300,9 +300,15 @@ function ajaxConfirm(titleKey:string, msgKey:(string|Array<string>), url:string,
 	return false;
 }
 
-function ajaxSubmitForm(form:HTMLFormElement, onDone:{():void}=null):boolean{
+function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):boolean{
 	if(submittingForm)
 		return false;
+	if(!form.checkValidity()){
+		if(submitBtn)
+			submitBtn.classList.remove("loading");
+		setGlobalLoading(false);
+		return false;
+	}
 	submittingForm=form;
 	var submitBtn=form.querySelector("input[type=submit]");
 	if(submitBtn)
@@ -328,14 +334,14 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{():void}=null):boolean{
 				applyServerCommand(resp[i]);
 			}
 		}
-		if(onDone) onDone();
+		if(onDone) onDone(!(resp instanceof Array));
 	}, function(){
 		submittingForm=null;
 		if(submitBtn)
 			submitBtn.classList.remove("loading");
 		setGlobalLoading(false);
 		new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
-		if(onDone) onDone();
+		if(onDone) onDone(false);
 	});
 	return false;
 }
@@ -471,6 +477,9 @@ function applyServerCommand(cmd:any){
 		break;
 		case "refresh":
 			location.reload();
+			break;
+		case "location":
+			location.href=cmd.l;
 			break;
 	}
 }

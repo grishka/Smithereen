@@ -4,12 +4,18 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.sql.SQLException;
+import java.util.Objects;
 
 import smithereen.data.Account;
+import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
+import smithereen.data.Group;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.routes.ActivityPubRoutes;
+import smithereen.routes.GroupsRoutes;
 import smithereen.routes.NotificationsRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
@@ -18,6 +24,7 @@ import smithereen.routes.SettingsAdminRoutes;
 import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
 import smithereen.storage.DatabaseSchemaUpdater;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
 import smithereen.storage.UserStorage;
@@ -81,12 +88,13 @@ public class Main{
 			SessionInfo info=Utils.sessionInfo(request);
 			if(info!=null && info.account!=null){
 				info.account=UserStorage.getAccount(info.account.id);
+				info.permissions=SessionStorage.getUserPermissions(info.account);
 			}
 //			String hs="";
 //			for(String h:request.headers())
 //				hs+="["+h+": "+request.headers(h)+"] ";
 //			System.out.println(request.requestMethod()+" "+request.raw().getPathInfo()+" "+hs);
-			if(request.pathInfo().startsWith("/activitypub")){
+			if(request.pathInfo().startsWith("/activitypub/")){
 				request.attribute("popup", Boolean.TRUE);
 			}
 			String ua=request.userAgent();
@@ -170,12 +178,45 @@ public class Main{
 				return "";
 			});
 
-			post("/inbox", ActivityPubRoutes::inbox);
+			post("/inbox", ActivityPubRoutes::userInbox);
 			get("/inbox", Main::methodNotAllowed);
-			get("/outbox", ActivityPubRoutes::outbox);
+			get("/outbox", ActivityPubRoutes::userOutbox);
 			post("/outbox", Main::methodNotAllowed);
 			get("/followers", ActivityPubRoutes::userFollowers);
 			get("/following", ActivityPubRoutes::userFollowing);
+
+			postWithCSRF("/createWallPost", PostRoutes::createUserWallPost);
+		});
+
+		path("/groups/:id", ()->{
+			get("", "application/activity+json", ActivityPubRoutes::groupActor);
+			get("", "application/ld+json", ActivityPubRoutes::groupActor);
+			get("", (req, resp)->{
+				int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+				Group group=GroupStorage.getByID(id);
+				if(group==null || group instanceof ForeignGroup){
+					resp.status(404);
+				}else{
+					resp.redirect("/"+group.username);
+				}
+				return "";
+			});
+
+			postWithCSRF("/createWallPost", PostRoutes::createGroupWallPost);
+
+			getWithCSRF("/join", GroupsRoutes::join);
+			getWithCSRF("/leave", GroupsRoutes::leave);
+
+			post("/inbox", ActivityPubRoutes::groupInbox);
+			get("/inbox", Main::methodNotAllowed);
+//			get("/outbox", ActivityPubRoutes::userOutbox);
+			post("/outbox", Main::methodNotAllowed);
+			get("/followers", ActivityPubRoutes::groupFollowers);
+
+			getLoggedIn("/edit", GroupsRoutes::editGeneral);
+			postWithCSRF("/saveGeneral", GroupsRoutes::saveGeneral);
+
+			get("/members", GroupsRoutes::members);
 		});
 
 		path("/posts/:postID", ()->{
@@ -205,13 +246,19 @@ public class Main{
 			get("/followers", ProfileRoutes::followers);
 			get("/following", ProfileRoutes::following);
 			getLoggedIn("/notifications", NotificationsRoutes::notifications);
+			path("/groups", ()->{
+				getLoggedIn("", GroupsRoutes::myGroups);
+				getLoggedIn("/create", GroupsRoutes::createGroup);
+				postWithCSRF("/create", GroupsRoutes::doCreateGroup);
+			});
 		});
 
 		path("/:username", ()->{
+			// These also handle groups
 			get("", "application/activity+json", ActivityPubRoutes::userActor);
 			get("", "application/ld+json", ActivityPubRoutes::userActor);
 			get("", ProfileRoutes::profile);
-			postWithCSRF("/createWallPost", PostRoutes::createWallPost);
+
 
 			postWithCSRF("/remoteFollow", ActivityPubRoutes::remoteFollow);
 
@@ -237,7 +284,11 @@ public class Main{
 
 		exception(ObjectNotFoundException.class, (x, req, resp)->{
 			resp.status(404);
-			resp.body("Not found");
+			resp.body(Utils.wrapError(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_not_found")));
+		});
+		exception(UserActionNotAllowedException.class, (x, req, resp)->{
+			resp.status(403);
+			resp.body(Utils.wrapError(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_access")));
 		});
 		exception(BadRequestException.class, (x, req, resp)->{
 			resp.status(400);

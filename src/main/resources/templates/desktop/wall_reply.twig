@@ -13,7 +13,7 @@
 			<a href="{{post.user.profileURL}}" class="authorName">{{post.user.fullName}}</a><br/>
 			<div class="postContent">{{post.content | postprocessHTML}}</div>
 			{%if post.attachment is not null%}{{renderAttachments(post.processedAttachments)}}{%endif%}
-			<div class="postInfo"><a href="{{post.internalURL}}" onclick="return highlightComment({{post.id}})" class="postLink">{{LD(post.published)}}</a>{%if post.canBeManagedBy(currentUser)%} |
+			<div class="postInfo"><a href="{{post.internalURL}}" onclick="return highlightComment({{post.id}})" class="postLink">{{LD(post.published)}}</a>{%if userPermissions is not null and userPermissions.canDeletePost(post)%} |
 				<a href="{{post.url}}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{post.url}}/delete')">{{L('delete')}}</a>{%endif%}
 				{%if not hideReplyLink%}
 					| <a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}})">{{L('add_reply')}}</a>

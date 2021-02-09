@@ -9,6 +9,7 @@ import smithereen.Utils;
 import smithereen.data.Account;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.storage.DatabaseUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
@@ -95,6 +96,23 @@ public class SessionRoutes{
 
 	public static Object register(Request req, Response resp) throws SQLException{
 		String username=req.queryParams("username");
+		if(StringUtils.isEmpty(username) || !Utils.isValidUsername(username))
+			return regError(req, "err_reg_invalid_username");
+		if(Utils.isReservedUsername(username))
+			return regError(req, "err_reg_reserved_username");
+		if(UserStorage.getByUsername(username)!=null)
+			return regError(req, "err_reg_username_taken");
+
+		final Object[] result={null};
+		boolean r=DatabaseUtils.runWithUniqueUsername(username, ()->result[0]=doRegister(req, resp));
+		if(!r){
+			return regError(req, "err_reg_username_taken");
+		}
+		return result[0];
+	}
+
+	public static Object doRegister(Request req, Response resp) throws SQLException{
+		String username=req.queryParams("username");
 		String password=req.queryParams("password");
 		String password2=req.queryParams("password2");
 		String email=req.queryParams("email");
@@ -102,12 +120,6 @@ public class SessionRoutes{
 		String last=req.queryParams("last_name");
 		String invite=req.queryParams("invite");
 
-		if(StringUtils.isEmpty(username) || !Utils.isValidUsername(username))
-			return regError(req, "err_reg_invalid_username");
-		if(Utils.isReservedUsername(username))
-			return regError(req, "err_reg_reserved_username");
-		if(UserStorage.getByUsername(username)!=null)
-			return regError(req, "err_reg_username_taken");
 		if(StringUtils.isEmpty(password) || password.length()<4)
 			return regError(req, "err_password_short");
 		if(StringUtils.isEmpty(password2) || !password.equals(password2))

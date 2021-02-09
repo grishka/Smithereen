@@ -20,6 +20,7 @@ import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LinkOrObject;
@@ -28,6 +29,7 @@ import smithereen.activitypub.objects.Mention;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.VideoAttachment;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -36,7 +38,7 @@ import spark.utils.StringUtils;
 public class Post extends ActivityPubObject{
 	public int id;
 	public User user;
-	public User owner;
+	public Actor owner;
 	private boolean deleted;
 
 	public String userLink;
@@ -78,7 +80,11 @@ public class Post extends ActivityPubObject{
 		int uid=res.getInt("author_id");
 		if(!res.wasNull()){
 			user=UserStorage.getById(uid);
-			owner=UserStorage.getById(res.getInt("owner_user_id"));
+			int ownerUserID=res.getInt("owner_user_id");
+			if(!res.wasNull())
+				owner=UserStorage.getById(ownerUserID);
+			else
+				owner=GroupStorage.getByID(res.getInt("owner_group_id"));
 		}else{
 			deleted=true;
 			return;
@@ -89,14 +95,17 @@ public class Post extends ActivityPubObject{
 		summary=res.getString("content_warning");
 		attributedTo=user.activityPubID;
 
-		if(user.id==owner.id){
+		if(owner instanceof User && user.id==((User)owner).id){
 			to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
 			if(replyKey.length==0)
 				cc=Collections.singletonList(new LinkOrObject(user.getFollowersURL()));
 			else
-				cc=Collections.EMPTY_LIST;
+				cc=Collections.emptyList();
+		}else if(owner instanceof Group){
+			to=Collections.singletonList(new LinkOrObject(owner.getFollowersURL()));
+			cc=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
 		}else{
-			to=Collections.EMPTY_LIST;
+			to=Collections.emptyList();
 			cc=Arrays.asList(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(owner.activityPubID));
 		}
 
@@ -160,11 +169,11 @@ public class Post extends ActivityPubObject{
 		if(root.has("content"))
 			root.put("content", Utils.postprocessPostHTMLForActivityPub(content));
 
-		if(getReplyLevel()==0 && user.id!=owner.id){
-			if(owner instanceof ForeignUser)
-				root.put("partOf", ((ForeignUser) owner).outbox.toString());
-			else
-				root.put("partOf", Config.localURI("/users/"+owner.id+"/outbox").toString());
+		if(getReplyLevel()==0 && (!(owner instanceof User) || user.id!=((User)owner).id)){
+			ActivityPubCollection wall=new ActivityPubCollection(false);
+			wall.activityPubID=owner.getWallURL();
+			wall.attributedTo=owner.activityPubID;
+			root.put("partOf", wall.asActivityPubObject(new JSONObject(), contextCollector));
 		}
 
 		return root;
@@ -188,23 +197,33 @@ public class Post extends ActivityPubObject{
 		if(published==null)
 			published=new Date();
 
-		URI partOf=tryParseURL(obj.optString("partOf", null));
-		if(partOf!=null && inReplyTo==null){
-			if(Config.isLocal(partOf)){
-				String[] parts=partOf.getPath().split("/");
-				if(parts.length==4 && "users".equals(parts[1]) && "outbox".equals(parts[3])){ // "", "users", id, "outbox"
+		ActivityPubObject partOf=parse(obj.optJSONObject("partOf"), parserContext);
+		if(partOf instanceof ActivityPubCollection && partOf.attributedTo!=null && partOf.activityPubID!=null && inReplyTo==null){
+			URI ownerID=partOf.attributedTo;
+			if(Config.isLocal(ownerID)){
+				String[] parts=ownerID.getPath().split("/");
+				if(parts.length==3){ // "", "users", id
 					int id=Utils.parseIntOrDefault(parts[2], 0);
-					owner=UserStorage.getById(id);
-					if(owner instanceof ForeignUser)
-						owner=null;
+					if("users".equals(parts[1])){
+						owner=UserStorage.getById(id);
+						if(owner instanceof ForeignUser)
+							owner=null;
+					}else if("groups".equals(parts[1])){
+						owner=GroupStorage.getByID(id);
+						if(owner instanceof ForeignGroup)
+							owner=null;
+					}
 				}
 			}else{
-				owner=UserStorage.getByOutbox(partOf);
+				owner=UserStorage.getForeignUserByActivityPubID(ownerID);
+				if(owner==null)
+					owner=GroupStorage.getForeignGroupByActivityPubID(ownerID);
 			}
+			if(owner!=null && !partOf.activityPubID.equals(owner.getWallURL()))
+				owner=null;
 		}else{
 			owner=user;
 		}
-
 		return this;
 	}
 
@@ -217,7 +236,7 @@ public class Post extends ActivityPubObject{
 	public boolean canBeManagedBy(User user){
 		if(user==null)
 			return false;
-		return owner.id==user.id || this.user.id==user.id;
+		return (owner instanceof User && ((User)owner).id==user.id) || this.user.id==user.id;
 	}
 
 	public URI getInternalURL(){
@@ -239,6 +258,7 @@ public class Post extends ActivityPubObject{
 		if(mentionedUsers.isEmpty())
 			mentionedUsers=new ArrayList<>();
 		mentionedUsers.add(parent.user);
+		owner=parent.owner;
 	}
 
 	public int getReplyLevel(){
@@ -327,5 +347,9 @@ public class Post extends ActivityPubObject{
 			out.add(reply.id);
 			reply.getAllReplyIDs(out);
 		}
+	}
+
+	public boolean isGroupOwner(){
+		return owner instanceof Group;
 	}
 }
