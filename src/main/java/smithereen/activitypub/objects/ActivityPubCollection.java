@@ -30,7 +30,7 @@ public class ActivityPubCollection extends ActivityPubObject{
 	@Override
 	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
-		if(totalItems>0)
+		if(totalItems>=0)
 			obj.put("totalItems", totalItems);
 		if(current!=null)
 			obj.put("current", current.toString());

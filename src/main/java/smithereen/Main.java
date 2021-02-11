@@ -165,8 +165,7 @@ public class Main{
 		});
 
 		path("/users/:id", ()->{
-			get("", "application/activity+json", ActivityPubRoutes::userActor);
-			get("", "application/ld+json", ActivityPubRoutes::userActor);
+			getActivityPub("", ActivityPubRoutes::userActor);
 			get("", (req, resp)->{
 				int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 				User user=UserStorage.getById(id);
@@ -182,8 +181,9 @@ public class Main{
 			get("/inbox", Main::methodNotAllowed);
 			get("/outbox", ActivityPubRoutes::userOutbox);
 			post("/outbox", Main::methodNotAllowed);
-			get("/followers", ActivityPubRoutes::userFollowers);
-			get("/following", ActivityPubRoutes::userFollowing);
+			getActivityPubCollection("/followers", 50, ActivityPubRoutes::userFollowers);
+			getActivityPubCollection("/following", 50, ActivityPubRoutes::userFollowing);
+			getActivityPubCollection("/wall", 50, ActivityPubRoutes::userWall);
 
 			postWithCSRF("/createWallPost", PostRoutes::createUserWallPost);
 		});
@@ -209,9 +209,10 @@ public class Main{
 
 			post("/inbox", ActivityPubRoutes::groupInbox);
 			get("/inbox", Main::methodNotAllowed);
-//			get("/outbox", ActivityPubRoutes::userOutbox);
+			getActivityPubCollection("/outbox", 50, ActivityPubRoutes::groupOutbox);
 			post("/outbox", Main::methodNotAllowed);
-			get("/followers", ActivityPubRoutes::groupFollowers);
+			getActivityPubCollection("/followers", 50, ActivityPubRoutes::groupFollowers);
+			getActivityPubCollection("/wall", 50, ActivityPubRoutes::groupWall);
 
 			getLoggedIn("/edit", GroupsRoutes::editGeneral);
 			postWithCSRF("/saveGeneral", GroupsRoutes::saveGeneral);
@@ -220,8 +221,7 @@ public class Main{
 		});
 
 		path("/posts/:postID", ()->{
-			get("", "application/activity+json", ActivityPubRoutes::post);
-			get("", "application/ld+json", ActivityPubRoutes::post);
+			getActivityPub("", ActivityPubRoutes::post);
 			get("", PostRoutes::standalonePost);
 
 			getLoggedIn("/confirmDelete", PostRoutes::confirmDelete);
@@ -232,7 +232,7 @@ public class Main{
 			get("/likePopover", PostRoutes::likePopover);
 			get("/likes", PostRoutes::likeList);
 
-			get("/replies", ActivityPubRoutes::postReplies);
+			getActivityPubCollection("/replies", 50, ActivityPubRoutes::postReplies);
 		});
 
 		get("/robots.txt", (req, resp)->{
@@ -255,8 +255,7 @@ public class Main{
 
 		path("/:username", ()->{
 			// These also handle groups
-			get("", "application/activity+json", ActivityPubRoutes::userActor);
-			get("", "application/ld+json", ActivityPubRoutes::userActor);
+			getActivityPub("", ActivityPubRoutes::userActor);
 			get("", ProfileRoutes::profile);
 
 

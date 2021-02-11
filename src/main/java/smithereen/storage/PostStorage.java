@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
+import smithereen.data.UriBuilder;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.Utils;
 import smithereen.data.ForeignGroup;
@@ -32,6 +33,7 @@ import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.Post;
 import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.feed.RetootNewsfeedEntry;
+import spark.utils.StringUtils;
 
 public class PostStorage{
 	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, int[] replyKey, List<User> mentionedUsers, String attachments) throws SQLException{
@@ -252,6 +254,40 @@ public class PostStorage{
 			}
 		}
 		return posts;
+	}
+
+	public static List<URI> getWallPostActivityPubIDs(int ownerID, boolean isGroup, int offset, int count, int[] total) throws SQLException{
+		String ownerField=isGroup ? "owner_group_id" : "owner_user_id";
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("wall_posts")
+				.count()
+				.where(ownerField+"=? AND reply_key IS NULL", ownerID)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			res.first();
+			total[0]=res.getInt(1);
+		}
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("wall_posts")
+				.columns("id", "ap_id")
+				.where(ownerField+"=? AND reply_key IS NULL", ownerID)
+				.orderBy("id ASC")
+				.limit(count, offset)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			List<URI> ids=new ArrayList<>();
+			while(res.next()){
+				String apID=res.getString(2);
+				if(StringUtils.isNotEmpty(apID)){
+					ids.add(URI.create(apID));
+				}else{
+					ids.add(UriBuilder.local().path("posts", res.getInt(1)+"").build());
+				}
+			}
+			return ids;
+		}
 	}
 
 	public static List<Post> getWallToWall(int userID, int otherUserID, int offset, int[] total) throws SQLException{

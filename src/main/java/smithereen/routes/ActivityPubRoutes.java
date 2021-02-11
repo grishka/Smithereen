@@ -87,6 +87,7 @@ import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
+import smithereen.sparkext.ActivityPubCollectionPageResponse;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.PostStorage;
@@ -100,7 +101,6 @@ import static smithereen.Utils.*;
 
 public class ActivityPubRoutes{
 
-	private static final String CONTENT_TYPE="application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"";
 	private static ArrayList<ActivityTypeHandlerRecord<?, ?, ?, ?, ?>> typeHandlers=new ArrayList<>();
 
 	public static void registerActivityHandlers(){
@@ -170,7 +170,7 @@ public class ActivityPubRoutes{
 			actor=UserStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
 		}
 		if(actor!=null && !(actor instanceof ForeignUser) && !(actor instanceof ForeignGroup)){
-			resp.type(CONTENT_TYPE);
+			resp.type(ActivityPub.CONTENT_TYPE);
 			return actor.asRootActivityPubObject();
 		}
 		throw new ObjectNotFoundException();
@@ -184,7 +184,7 @@ public class ActivityPubRoutes{
 		else
 			group=GroupStorage.getByID(Utils.parseIntOrDefault(req.params(":id"), 0));
 		if(group!=null && !(group instanceof ForeignGroup)){
-			resp.type(CONTENT_TYPE);
+			resp.type(ActivityPub.CONTENT_TYPE);
 			return group.asRootActivityPubObject();
 		}
 		throw new ObjectNotFoundException();
@@ -199,11 +199,11 @@ public class ActivityPubRoutes{
 		if(post==null || !Config.isLocal(post.activityPubID)){
 			throw new ObjectNotFoundException();
 		}
-		resp.type(CONTENT_TYPE);
+		resp.type(ActivityPub.CONTENT_TYPE);
 		return post.asRootActivityPubObject();
 	}
 
-	public static Object postReplies(Request req, Response resp) throws SQLException{
+	public static ActivityPubCollectionPageResponse postReplies(Request req, Response resp, int offset, int count) throws SQLException{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
 			throw new ObjectNotFoundException();
@@ -212,40 +212,13 @@ public class ActivityPubRoutes{
 		if(post==null || !Config.isLocal(post.activityPubID)){
 			throw new ObjectNotFoundException();
 		}
-		resp.type(CONTENT_TYPE);
-		int offset=Math.max(parseIntOrDefault(req.queryParams("offset"), 0), 0);
-		int count=Math.min(Math.max(parseIntOrDefault(req.queryParams("count"), 0), 0), 100);
-		if(count==0){
-			ActivityPubCollection replies=new ActivityPubCollection(false);
-			replies.activityPubID=Config.localURI("/posts/"+post.id+"/replies");
-			CollectionPage repliesPage=new CollectionPage(false);
-			repliesPage.next=Config.localURI("/posts/"+post.id+"/replies?offset=0&count=50");
-			repliesPage.partOf=replies.activityPubID;
-			repliesPage.items=Collections.EMPTY_LIST;
-			replies.first=new LinkOrObject(repliesPage);
-			return replies.asRootActivityPubObject();
-		}
 		int[] _total={0};
 		List<URI> ids=PostStorage.getImmediateReplyActivityPubIDs(post.getReplyKeyForReplies(), offset, count, _total);
-		int total=_total[0];
-		CollectionPage page=new CollectionPage(false);
-		page.activityPubID=Config.localURI("/posts/"+post.id+"/replies?offset="+offset+"&count="+count);
-		page.partOf=Config.localURI("/posts/"+post.id+"/replies");
-		page.totalItems=total;
-		if(offset+count<total){
-			page.next=Config.localURI("/posts/"+post.id+"/replies?offset="+(offset+count)+"&count="+count);
-		}
-		if(offset>0){
-			page.prev=Config.localURI("/posts/"+post.id+"/replies?offset="+Math.max(offset-count, 0)+"&count="+count);
-			page.first=new LinkOrObject(Config.localURI("/posts/"+post.id+"/replies?offset=0&count="+count));
-		}
-		page.items=ids.stream().map(LinkOrObject::new).collect(Collectors.toList());
-		return page.asRootActivityPubObject();
+		return ActivityPubCollectionPageResponse.forLinks(ids, _total[0]);
 	}
 
 	public static Object userInbox(Request req, Response resp) throws SQLException{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
-		System.out.println("user inbox ID="+id);
 		User user=UserStorage.getById(id);
 		if(user==null || user instanceof ForeignUser){
 			throw new ObjectNotFoundException();
@@ -310,8 +283,34 @@ public class ActivityPubRoutes{
 				return collection.asRootActivityPubObject();
 			}
 		}catch(URISyntaxException ignore){}
-		resp.type(CONTENT_TYPE);
+		resp.type(ActivityPub.CONTENT_TYPE);
 		return page.asRootActivityPubObject();
+	}
+
+	public static ActivityPubCollectionPageResponse groupOutbox(Request req, Response resp, int offset, int count){
+		return ActivityPubCollectionPageResponse.forLinks(Collections.emptyList(), 0);
+	}
+
+	public static ActivityPubCollectionPageResponse userWall(Request req, Response resp, int offset, int count) throws SQLException{
+		int id=parseIntOrDefault(req.params(":id"), 0);
+		User user=UserStorage.getById(id);
+		if(user==null || user instanceof ForeignUser)
+			throw new ObjectNotFoundException();
+		return actorWall(req, resp, offset, count, user);
+	}
+
+	public static ActivityPubCollectionPageResponse groupWall(Request req, Response resp, int offset, int count) throws SQLException{
+		int id=parseIntOrDefault(req.params(":id"), 0);
+		Group group=GroupStorage.getByID(id);
+		if(group==null || group instanceof ForeignGroup)
+			throw new ObjectNotFoundException();
+		return actorWall(req, resp, offset, count, group);
+	}
+
+	private static ActivityPubCollectionPageResponse actorWall(Request req, Response resp, int offset, int count, Actor actor) throws SQLException{
+		int[] total={0};
+		List<URI> posts=PostStorage.getWallPostActivityPubIDs(actor.getLocalID(), actor instanceof Group, offset, count, total);
+		return ActivityPubCollectionPageResponse.forLinks(posts, total[0]);
 	}
 
 	public static Object externalInteraction(Request req, Response resp, Account self) throws SQLException{
@@ -515,7 +514,7 @@ public class ActivityPubRoutes{
 		Like l=LikeStorage.getByID(id);
 		if(l==null)
 			throw new ObjectNotFoundException();
-		resp.type(CONTENT_TYPE);
+		resp.type(ActivityPub.CONTENT_TYPE);
 		return l.asRootActivityPubObject();
 	}
 
@@ -709,98 +708,34 @@ public class ActivityPubRoutes{
 		return r;
 	}
 
-	private static Object followersOrFollowing(Request req, Response resp, boolean isFollowers) throws SQLException{
+	private static ActivityPubCollectionPageResponse followersOrFollowing(Request req, Response resp, boolean isFollowers, int offset, int count) throws SQLException{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 		User user=UserStorage.getById(id);
 		if(user==null || user instanceof ForeignUser){
-			resp.status(404);
-			return "User not found";
+			throw new ObjectNotFoundException();
 		}
 		int[] _total={0};
-		int pageIndex=Math.max(1, Utils.parseIntOrDefault(req.queryParams("page"), 1));
-		int offset=(pageIndex-1)*50;
-		int count=50;
 		List<URI> followers=UserStorage.getUserFollowerURIs(user.id, isFollowers, offset, count, _total);
-		int total=_total[0];
-		int lastPage=total/50;
-		CollectionPage page=new CollectionPage(true);
-		ArrayList<LinkOrObject> list=new ArrayList<>();
-		for(URI uri:followers){
-			list.add(new LinkOrObject(uri));
-		}
-		page.items=list;
-		page.totalItems=total;
-		URI baseURI=Config.localURI("/users/"+user.id+"/"+(isFollowers ? "followers" : "following"));
-		page.activityPubID=URI.create(baseURI+"?page="+pageIndex);
-		page.partOf=baseURI;
-		if(pageIndex>1){
-			page.first=new LinkOrObject(URI.create(baseURI+"?page=1"));
-			page.prev=URI.create(baseURI+"?page="+(pageIndex-1));
-		}
-		if(pageIndex<lastPage){
-			page.last=URI.create(baseURI+"?page="+lastPage);
-			page.next=URI.create(baseURI+"?page="+(pageIndex+1));
-		}
-		if(pageIndex==1 && req.queryParams("page")==null){
-			ActivityPubCollection collection=new ActivityPubCollection(true);
-			collection.totalItems=total;
-			collection.first=new LinkOrObject(page);
-			collection.activityPubID=page.partOf;
-			return collection.asRootActivityPubObject();
-		}
-		resp.type(CONTENT_TYPE);
-		return page.asRootActivityPubObject();
+		return ActivityPubCollectionPageResponse.forLinks(followers, _total[0]);
 	}
 
-	public static Object userFollowers(Request req, Response resp) throws SQLException{
-		return followersOrFollowing(req, resp, true);
+	public static ActivityPubCollectionPageResponse userFollowers(Request req, Response resp, int offset, int count) throws SQLException{
+		return followersOrFollowing(req, resp, true, offset, count);
 	}
 
-	public static Object userFollowing(Request req, Response resp) throws SQLException{
-		return followersOrFollowing(req, resp, false);
+	public static ActivityPubCollectionPageResponse userFollowing(Request req, Response resp, int offset, int count) throws SQLException{
+		return followersOrFollowing(req, resp, false, offset, count);
 	}
 
-	public static Object groupFollowers(Request req, Response resp) throws SQLException{
+	public static ActivityPubCollectionPageResponse groupFollowers(Request req, Response resp, int offset, int count) throws SQLException{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 		Group group=GroupStorage.getByID(id);
 		if(group==null || group instanceof ForeignGroup){
-			resp.status(404);
-			return "Group not found";
+			throw new ObjectNotFoundException();
 		}
 		int[] _total={0};
-		int pageIndex=Math.max(1, Utils.parseIntOrDefault(req.queryParams("page"), 1));
-		int offset=(pageIndex-1)*50;
-		int count=50;
 		List<URI> followers=GroupStorage.getGroupMemberURIs(group.id, false, offset, count, _total);
-		int total=_total[0];
-		int lastPage=total/50;
-		CollectionPage page=new CollectionPage(true);
-		ArrayList<LinkOrObject> list=new ArrayList<>();
-		for(URI uri:followers){
-			list.add(new LinkOrObject(uri));
-		}
-		page.items=list;
-		page.totalItems=total;
-		URI baseURI=Config.localURI("/groups/"+group.id+"/followers");
-		page.activityPubID=URI.create(baseURI+"?page="+pageIndex);
-		page.partOf=baseURI;
-		if(pageIndex>1){
-			page.first=new LinkOrObject(URI.create(baseURI+"?page=1"));
-			page.prev=URI.create(baseURI+"?page="+(pageIndex-1));
-		}
-		if(pageIndex<lastPage){
-			page.last=URI.create(baseURI+"?page="+lastPage);
-			page.next=URI.create(baseURI+"?page="+(pageIndex+1));
-		}
-		if(pageIndex==1 && req.queryParams("page")==null){
-			ActivityPubCollection collection=new ActivityPubCollection(true);
-			collection.totalItems=total;
-			collection.first=new LinkOrObject(page);
-			collection.activityPubID=page.partOf;
-			return collection.asRootActivityPubObject();
-		}
-		resp.type(CONTENT_TYPE);
-		return page.asRootActivityPubObject();
+		return ActivityPubCollectionPageResponse.forLinks(followers, _total[0]);
 	}
 
 

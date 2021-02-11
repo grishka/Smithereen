@@ -50,6 +50,7 @@ import spark.utils.StringUtils;
 public class ActivityPub{
 
 	public static final URI AS_PUBLIC=URI.create(JLD.ACTIVITY_STREAMS+"#Public");
+	public static final String CONTENT_TYPE="application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"";
 
 	private static OkHttpClient httpClient;
 	private static LruCache<String, String> domainRedirects=new LruCache<>(100);

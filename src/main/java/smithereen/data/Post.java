@@ -154,9 +154,8 @@ public class Post extends ActivityPubObject{
 		ActivityPubCollection replies=new ActivityPubCollection(false);
 		replies.activityPubID=Config.localURI("/posts/"+id+"/replies");
 		CollectionPage repliesPage=new CollectionPage(false);
-		repliesPage.next=Config.localURI("/posts/"+id+"/replies?offset=0&count=50");
+		repliesPage.next=Config.localURI("/posts/"+id+"/replies?page=1");
 		repliesPage.partOf=replies.activityPubID;
-		repliesPage.items=Collections.EMPTY_LIST;
 		replies.first=new LinkOrObject(repliesPage);
 		root.put("replies", replies.asActivityPubObject(new JSONObject(), contextCollector));
 

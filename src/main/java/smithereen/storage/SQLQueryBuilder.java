@@ -22,6 +22,7 @@ public class SQLQueryBuilder{
 	private Object[] conditionArgs;
 	private int limit, offset;
 	private boolean hasLimit;
+	private String orderBy;
 
 	public SQLQueryBuilder() throws SQLException{
 		conn=DatabaseConnectionManager.getConnection();
@@ -125,6 +126,11 @@ public class SQLQueryBuilder{
 		this.limit=limit;
 		this.offset=offset;
 		hasLimit=true;
+		return this;
+	}
+
+	public SQLQueryBuilder orderBy(String order){
+		orderBy=order;
 		return this;
 	}
 
@@ -246,6 +252,11 @@ public class SQLQueryBuilder{
 				sb.append(" ON DUPLICATE KEY UPDATE ");
 				appendUpdateValues(sb);
 				break;
+		}
+
+		if(orderBy!=null){
+			sb.append(" ORDER BY ");
+			sb.append(orderBy);
 		}
 
 		if(hasLimit){

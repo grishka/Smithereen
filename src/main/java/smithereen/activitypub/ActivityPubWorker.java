@@ -63,6 +63,10 @@ public class ActivityPubWorker{
 		return actor.sharedInbox!=null ? actor.sharedInbox : actor.inbox;
 	}
 
+	private URI actorInbox(ForeignGroup actor){
+		return actor.sharedInbox!=null ? actor.sharedInbox : actor.inbox;
+	}
+
 	private long rand(){
 		return Math.abs(rand.nextLong());
 	}
@@ -80,7 +84,7 @@ public class ActivityPubWorker{
 		if(post.owner instanceof User){
 			boolean sendToFollowers=((User) post.owner).id==post.user.id;
 			if(post.owner instanceof ForeignUser){
-				inboxes.add(post.owner.inbox);
+				inboxes.add(actorInbox((ForeignUser) post.owner));
 			}else if(sendToFollowers){
 				if(post.getReplyLevel()==0)
 					inboxes.addAll(UserStorage.getFollowerInboxes(((User) post.owner).id));
@@ -89,7 +93,7 @@ public class ActivityPubWorker{
 			}
 		}else if(post.owner instanceof Group){
 			if(post.owner instanceof ForeignGroup){
-				inboxes.add(post.owner.inbox);
+				inboxes.add(actorInbox((ForeignGroup) post.owner));
 			}else{
 				if(post.getReplyLevel()==0)
 					inboxes.addAll(GroupStorage.getGroupMemberInboxes(((Group) post.owner).id));
