@@ -172,7 +172,7 @@ public class Post extends ActivityPubObject{
 			ActivityPubCollection wall=new ActivityPubCollection(false);
 			wall.activityPubID=owner.getWallURL();
 			wall.attributedTo=owner.activityPubID;
-			root.put("partOf", wall.asActivityPubObject(new JSONObject(), contextCollector));
+			root.put("target", wall.asActivityPubObject(new JSONObject(), contextCollector));
 		}
 
 		return root;
@@ -196,9 +196,9 @@ public class Post extends ActivityPubObject{
 		if(published==null)
 			published=new Date();
 
-		ActivityPubObject partOf=parse(obj.optJSONObject("partOf"), parserContext);
-		if(partOf instanceof ActivityPubCollection && partOf.attributedTo!=null && partOf.activityPubID!=null && inReplyTo==null){
-			URI ownerID=partOf.attributedTo;
+		ActivityPubObject target=parse(obj.optJSONObject("target"), parserContext);
+		if(target instanceof ActivityPubCollection && target.attributedTo!=null && target.activityPubID!=null && inReplyTo==null){
+			URI ownerID=target.attributedTo;
 			if(Config.isLocal(ownerID)){
 				String[] parts=ownerID.getPath().split("/");
 				if(parts.length==3){ // "", "users", id
@@ -218,7 +218,7 @@ public class Post extends ActivityPubObject{
 				if(owner==null)
 					owner=GroupStorage.getForeignGroupByActivityPubID(ownerID);
 			}
-			if(owner!=null && !partOf.activityPubID.equals(owner.getWallURL()))
+			if(owner!=null && !target.activityPubID.equals(owner.getWallURL()))
 				owner=null;
 		}else{
 			owner=user;
