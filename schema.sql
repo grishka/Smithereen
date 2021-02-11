@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2020-12-24 16:53:04 +0000
+# Generation Time: 2021-02-11 21:45:17 +0000
 # ************************************************************
 
 
@@ -95,6 +95,73 @@ CREATE TABLE `friend_requests` (
   KEY `to_user_id` (`to_user_id`),
   CONSTRAINT `friend_requests_ibfk_1` FOREIGN KEY (`from_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `friend_requests_ibfk_2` FOREIGN KEY (`to_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table group_admins
+# ------------------------------------------------------------
+
+CREATE TABLE `group_admins` (
+  `user_id` int(11) unsigned NOT NULL,
+  `group_id` int(11) unsigned NOT NULL,
+  `level` int(11) unsigned NOT NULL,
+  `title` varchar(300) DEFAULT NULL,
+  KEY `user_id` (`user_id`),
+  KEY `group_id` (`group_id`),
+  CONSTRAINT `group_admins_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `group_admins_ibfk_2` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table group_memberships
+# ------------------------------------------------------------
+
+CREATE TABLE `group_memberships` (
+  `user_id` int(11) unsigned NOT NULL,
+  `group_id` int(11) unsigned NOT NULL,
+  `post_feed_visibility` tinyint(4) unsigned NOT NULL DEFAULT '0',
+  `tentative` tinyint(1) NOT NULL DEFAULT '0',
+  `accepted` tinyint(1) NOT NULL DEFAULT '1',
+  UNIQUE KEY `user_id` (`user_id`,`group_id`),
+  KEY `group_id` (`group_id`),
+  CONSTRAINT `group_memberships_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `group_memberships_ibfk_2` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table groups
+# ------------------------------------------------------------
+
+CREATE TABLE `groups` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(200) NOT NULL DEFAULT '',
+  `username` varchar(50) NOT NULL DEFAULT '',
+  `domain` varchar(100) NOT NULL DEFAULT '',
+  `ap_id` varchar(300) CHARACTER SET ascii DEFAULT NULL,
+  `ap_url` varchar(300) DEFAULT NULL,
+  `ap_inbox` varchar(300) DEFAULT NULL,
+  `ap_shared_inbox` varchar(300) DEFAULT NULL,
+  `ap_outbox` varchar(300) DEFAULT NULL,
+  `public_key` blob NOT NULL,
+  `private_key` blob,
+  `avatar` text,
+  `about` text,
+  `profile_fields` text,
+  `event_start_time` timestamp NULL DEFAULT NULL,
+  `event_end_time` timestamp NULL DEFAULT NULL,
+  `type` tinyint(3) unsigned NOT NULL DEFAULT '0',
+  `member_count` int(10) unsigned NOT NULL DEFAULT '0',
+  `tentative_member_count` int(10) unsigned NOT NULL DEFAULT '0',
+  `ap_followers` varchar(300) DEFAULT NULL,
+  `ap_wall` varchar(300) DEFAULT NULL,
+  `last_updated` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`,`domain`),
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `type` (`type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -230,7 +297,7 @@ CREATE TABLE `users` (
   `ap_outbox` varchar(300) DEFAULT NULL,
   `ap_shared_inbox` varchar(300) DEFAULT NULL,
   `about` text,
-  `gender` tinyint(4) NOT NULL DEFAULT '0',
+  `gender` tinyint(4) unsigned NOT NULL DEFAULT '0',
   `profile_fields` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
   `avatar` text,
   `ap_id` varchar(300) CHARACTER SET ascii DEFAULT NULL,
@@ -238,6 +305,7 @@ CREATE TABLE `users` (
   `ap_following` varchar(300) DEFAULT NULL,
   `last_updated` timestamp NULL DEFAULT NULL,
   `flags` bigint(20) unsigned NOT NULL,
+  `ap_wall` varchar(300) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
   UNIQUE KEY `ap_id` (`ap_id`),
@@ -271,9 +339,11 @@ CREATE TABLE `wall_posts` (
   KEY `repost_of` (`repost_of`),
   KEY `author_id` (`author_id`),
   KEY `reply_key` (`reply_key`),
+  KEY `owner_group_id` (`owner_group_id`),
   CONSTRAINT `wall_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `wall_posts_ibfk_2` FOREIGN KEY (`repost_of`) REFERENCES `wall_posts` (`id`) ON DELETE SET NULL ON UPDATE NO ACTION,
-  CONSTRAINT `wall_posts_ibfk_3` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  CONSTRAINT `wall_posts_ibfk_3` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `wall_posts_ibfk_4` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
