@@ -118,6 +118,7 @@ public class Lang{
 				pluralRules=new SingleFormPluralRules();
 				inflector=null;
 				break;
+			case "es": //Spanish plural rules are the same than english
 			case "en":
 			default:
 				pluralRules=new EnglishPluralRules();
