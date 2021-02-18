@@ -284,7 +284,7 @@ class FormBox extends Box{
 	public constructor(title:string, c:string, btn:string, act:string){
 		super(title, [btn, lang("cancel")], function(idx:number){
 			if(idx==0){
-				if(this.form.checkValidity()){
+				if(this.form.reportValidity()){
 					var btn=this.getButton(0);
 					btn.setAttribute("disabled", "");
 					this.getButton(1).setAttribute("disabled", "");

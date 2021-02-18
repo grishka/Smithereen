@@ -30,6 +30,9 @@ public class Lang{
 		Lang l=langsByLocale.get(locale.toLanguageTag());
 		if(l!=null)
 			return l;
+		l=langsByLocale.get(locale.getLanguage());
+		if(l!=null)
+			return l;
 		return langsByLocale.get("en");
 	}
 

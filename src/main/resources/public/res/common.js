@@ -283,7 +283,7 @@ var FormBox = /** @class */ (function (_super) {
         var _this = _super.call(this, title, [btn, lang("cancel")], function (idx) {
             var _this = this;
             if (idx == 0) {
-                if (this.form.checkValidity()) {
+                if (this.form.reportValidity()) {
                     var btn = this.getButton(0);
                     btn.setAttribute("disabled", "");
                     this.getButton(1).setAttribute("disabled", "");
