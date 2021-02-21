@@ -199,7 +199,7 @@
   "create_group": "Utwórz grupe",
   "create": "Utwórz",
   "group_name": "Nazwa",
-  "group_username": "Adres,
+  "group_username": "Adres",
   "err_group_name_too_short": "Nazwa grupy jest zbyt krótka",
   "err_group_invalid_username": "Adres musi zaczynać się literą i może zawierać tylko litery, cyfry, kropki lub podkreślniki.",
   "err_group_username_taken": "Ten adres jest zajęty.",
