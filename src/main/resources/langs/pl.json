@@ -204,7 +204,7 @@
   "err_group_invalid_username": "Adres musi zaczynać się literą i może zawierać tylko litery, cyfry, kropki lub podkreślniki.",
   "err_group_username_taken": "Ten adres jest zajęty.",
   "err_group_reserved_username": "Ten adres jest zajęta przez system. Nie możesz go użyć.",
-  "X_members": ["%d członek", "%d członków", "%d członków],
+  "X_members": ["%d członek", "%d członków", "%d członków"],
   "members": "Członkowie",
   "leave_group": "Opuść grupę",
   "join_group": "Dołącz do grupy",
