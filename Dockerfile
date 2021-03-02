@@ -1,4 +1,4 @@
-FROM maven:3-jdk-11 as builder
+FROM maven:3.6.3-openjdk-15 as builder
 
 # Build JAR
 
@@ -8,7 +8,7 @@ RUN mvn dependency:go-offline
 COPY . .
 RUN mvn package
 
-FROM openjdk:11-stretch
+FROM openjdk:15-buster
 
 # Install dependencies
 
