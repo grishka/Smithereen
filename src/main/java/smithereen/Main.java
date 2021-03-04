@@ -218,6 +218,7 @@ public class Main{
 			postWithCSRF("/saveGeneral", GroupsRoutes::saveGeneral);
 
 			get("/members", GroupsRoutes::members);
+			get("/admins", GroupsRoutes::admins);
 		});
 
 		path("/posts/:postID", ()->{

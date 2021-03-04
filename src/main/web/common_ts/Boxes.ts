@@ -15,6 +15,7 @@ class LayerManager{
 			this.maybeDismissTopLayer();
 		}
 	};
+	private boxLoader:HTMLDivElement;
 
 	private constructor(){
 		this.scrim=ce("div", {id: "layerScrim", onclick: ()=>{
@@ -22,6 +23,10 @@ class LayerManager{
 		}});
 		this.scrim.hide();
 		document.body.appendChild(this.scrim);
+
+		this.boxLoader=ce("div", {id: "boxLoader"}, [ce("div")]);
+		this.boxLoader.hide();
+		document.body.appendChild(this.boxLoader);
 
 		var container:HTMLDivElement=ce("div", {id: "layerContainer"});
 		container.hide();
@@ -45,6 +50,7 @@ class LayerManager{
 		}
 		this.stack.push(layer);
 		layer.onShown();
+		this.boxLoader.hideAnimated();
 	}
 
 	public dismiss(layer:BaseLayer):void{
@@ -91,6 +97,10 @@ class LayerManager{
 		var topLayer=this.stack[this.stack.length-1];
 		if(topLayer.allowDismiss())
 			this.dismiss(topLayer);
+	}
+
+	public showBoxLoader(){
+		this.boxLoader.showAnimated();
 	}
 }
 
@@ -256,6 +266,57 @@ class BoxWithoutContentPadding extends Box{
 	}
 }
 
+class ScrollableBox extends BoxWithoutContentPadding{
+
+	private scrollAtTop:boolean=true;
+	private scrollAtBottom:boolean=false;
+	private contentWrapWrap:HTMLDivElement;
+
+	public constructor(title:string, buttonTitles:string[]=[], onButtonClick:{(index:number):void;}=null){
+		super(title, buttonTitles, onButtonClick);
+		this.contentWrap.addEventListener("scroll", this.onContentScroll.bind(this));
+	}
+
+	protected onCreateContentView():HTMLElement{
+		var cont=super.onCreateContentView();
+		cont.classList.add("scrollable");
+		var shadowTop;
+
+		this.contentWrapWrap=ce("div", {className: "scrollableShadowWrap scrollAtTop"}, [
+			shadowTop=ce("div", {className: "shadowTop"}),
+			ce("div", {className: "shadowBottom"})
+		]);
+		cont.insertBefore(this.contentWrapWrap, this.contentWrap);
+		this.contentWrapWrap.insertBefore(this.contentWrap, shadowTop);
+
+		return cont;
+	}
+
+	public onShown(){
+		super.onShown();
+		this.onContentScroll(null);
+	}
+	
+	protected onContentScroll(e:Event){
+		var atTop=this.contentWrap.scrollTop==0;
+		var atBottom=this.contentWrap.scrollTop>=this.contentWrap.scrollHeight-this.contentWrap.offsetHeight;
+		if(this.scrollAtTop!=atTop){
+			this.scrollAtTop=atTop;
+			if(atTop)
+				this.contentWrapWrap.classList.add("scrollAtTop");
+			else
+				this.contentWrapWrap.classList.remove("scrollAtTop");
+		}
+		if(this.scrollAtBottom!=atBottom){
+			this.scrollAtBottom=atBottom;
+			if(atBottom)
+				this.contentWrapWrap.classList.add("scrollAtBottom");
+			else
+				this.contentWrapWrap.classList.remove("scrollAtBottom");
+		}
+	}
+}
+
 class ConfirmBox extends Box{
 	public constructor(title:string, msg:string, onConfirmed:{():void}){
 		super(title, [lang("yes"), lang("no")], function(idx:number){
@@ -368,6 +429,12 @@ abstract class FileUploadBox extends Box{
 					return;
 			}
 		}
+	}
+
+	protected onCreateContentView():HTMLElement{
+		var cont=super.onCreateContentView();
+		cont.classList.add("wide");
+		return cont;
 	}
 }
 

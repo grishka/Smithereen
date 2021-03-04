@@ -8,6 +8,6 @@ module.exports={
 		require('postcss-nested')(),
 		require('postcss-inline-svg')(),
 		require('autoprefixer')(),
-		require('cssnano')({preset: ['default', {}]})
+		require('cssnano')({preset: 'default'})
 	]
 }

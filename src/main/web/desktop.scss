@@ -302,6 +302,17 @@ h2{
 	}
 }
 
+.oneMemberRow{
+	td{
+		padding-top: 8px;
+		padding-left: 8px;
+	}
+	.info{
+		margin-top: 4px;
+		color: $grayText;
+	}
+}
+
 .postInfo, .postLink:link, .postLink:visited{
 	padding-top: 4px;
 	font-size: 10px;
@@ -381,9 +392,9 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	color: $textOnAccent;
 	box-shadow: 0 1px 0 $buttonBorderTop inset;
 	cursor: pointer;
-	padding: 0 10px;
-	height: 24px;
-	line-height: 22px;
+	padding: 0 14px;
+	height: 25px;
+	line-height: 23px;
 	display: inline-block;
 	box-sizing: border-box;
 	&.loading, &.loading:hover{
@@ -511,37 +522,71 @@ select{
 }
 
 .boxLayer{
-	width: 500px;
-	border-radius: 6px;
+	width: 410px;
+	border-radius: 2px;
 	overflow: hidden;
 	pointer-events: auto;
 	@include layer-shadow;
+	&.wide{
+		width: 520px;
+	}
+	&.scrollable{
+		width: 520px;
+		.boxContent{
+			max-height: 330px;
+			overflow-y: auto;
+			position: relative;
+		}
+		.scrollableShadowWrap{
+			position: relative;
+			.shadowTop, .shadowBottom{
+				position: absolute;
+				height: 2px;
+				left: 0;
+				right: 0;
+				background: #000;
+				opacity: .08;
+				transition: opacity .15s ease;
+			}
+			.shadowTop{
+				top: 0;
+			}
+			.shadowBottom{
+				bottom: 0;
+			}
+			&.scrollAtTop .shadowTop, &.scrollAtBottom .shadowBottom{
+				opacity: 0;
+			}
+		}
+	}
 }
 
 .boxTitleBar{
-	background: $simpleButton;
+	background: $headerGradientBottom;
 	color: $textOnAccent;
-	height: 48px;
-	line-height: 48px;
+	height: 32px;
+	line-height: 30px;
 	font-weight: bold;
 	font-size: 13px;
 	overflow-x: hidden;
 	text-overflow: ellipsis;
-	padding-left: 16px;
+	padding-left: 10px;
 	padding-right: 64px;
+	border: solid 1px $headerBorderBottomDark;
+	box-shadow: 0 1px 0 $headerBorderBottomLight inset;
 	position: relative;
 	.close{
 		display: block;
-		width: 48px;
-		height: 48px;
+		width: 32px;
+		height: 32px;
 		cursor: pointer;
 		position: absolute;
-		right: 0;
-		top: 0;
-		background: svg-load("img/box_close.svg", stroke: $textOnAccent) no-repeat;
+		right: -1px;
+		top: -1px;
+		background: svg-load("img/box_close.svg", fill: $textOnAccent) no-repeat;
 		background-position: center;
-		background-size: 16px 16px;
-		opacity: .5;
+		background-size: 11px 11px;
+		opacity: .45;
 		transition: opacity .3s ease;
 		&:hover{
 			opacity: 1;
@@ -550,20 +595,20 @@ select{
 }
 
 .boxButtonBar{
-	height: 48px;
+	height: 46px;
 	background: $gray;
-	border-top: solid 1px color($gray shade(10%));
+	border-top: solid 1px $blockBorderBottom;
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
-	padding: 0 12px;
+	padding: 0 5px;
 	>input{
-		margin: 0 4px;
+		margin: 0 5px;
 	}
 }
 
 .boxContent{
-	padding: 16px;
+	padding: 16px 14px;
 	background: #FFF;
 	p{
 		margin-top: 0;
@@ -947,5 +992,19 @@ select{
 	}
 	.text{
 		margin-left: 8px;
+	}
+}
+
+.userList{
+	padding: 15px 20px 0 20px;
+	td{
+		padding-bottom: 15px;
+	}
+	.info{
+		padding-left: 15px;
+		.subtitle{
+			margin-top: 5px;
+			color: $grayText;
+		}
 	}
 }

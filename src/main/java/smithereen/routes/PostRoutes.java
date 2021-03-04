@@ -522,7 +522,7 @@ public class PostRoutes{
 		model.with("pageOffset", offset).with("total", interactions.likeCount).with("paginationUrlPrefix", "/posts/"+postID+"/likes?fromPagination&offset=");
 		if(isAjax(req)){
 			if(req.queryParams("fromPagination")==null)
-				return new WebDeltaResponseBuilder(resp).box(lang(req).get("likes_title"), model.renderToString(req), "likesList", 596);
+				return new WebDeltaResponseBuilder(resp).box(lang(req).get("likes_title"), model.renderToString(req), "likesList", 610);
 			else
 				return new WebDeltaResponseBuilder(resp).setContent("likesList", model.renderToString(req));
 		}

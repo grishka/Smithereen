@@ -351,6 +351,11 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 		ajaxGetAndApplyActions(link.href);
 		return true;
 	}
+	if(link.getAttribute("data-ajax-box")){
+		LayerManager.getInstance().showBoxLoader();
+		ajaxGetAndApplyActions(link.href);
+		return true;
+	}
 	return false;
 }
 
@@ -411,7 +416,7 @@ function applyServerCommand(cmd:any){
 			break;
 		case "box":
 		{
-			var box=new BoxWithoutContentPadding(cmd.t);
+			var box=cmd.s ? new ScrollableBox(cmd.t, [lang("close")]) : new BoxWithoutContentPadding(cmd.t);
 			var cont=ce("div");
 			if(cmd.i){
 				cont.id=cmd.i;
@@ -579,6 +584,7 @@ function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 					popover=new Popover(wrap.querySelector(".popoverPlace"));
 					popover.setOnClick(()=>{
 						popover.hide();
+						LayerManager.getInstance().showBoxLoader();
 						ajaxGetAndApplyActions(resp.fullURL);
 					});
 					btn.popover=popover;

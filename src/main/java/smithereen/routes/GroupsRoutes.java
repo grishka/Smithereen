@@ -117,7 +117,7 @@ public class GroupsRoutes{
 		model.with("postInteractions", interactions);
 		model.with("title", group.name);
 		model.with("admins", GroupStorage.getGroupAdmins(group.id));
-		jsLangKey(req, "yes", "no", "cancel");
+		jsLangKey(req, "yes", "no", "cancel", "close");
 		if(self!=null){
 			Group.AdminLevel level=GroupStorage.getGroupMemberAdminLevel(group.id, self.user.id);
 			model.with("membershipState", GroupStorage.getUserMembershipState(group.id, self.user.id));
@@ -214,6 +214,16 @@ public class GroupsRoutes{
 //				return new WebDeltaResponseBuilder(resp).setContent("likesList", model.renderToString(req));
 //		}
 		model.with("contentTemplate", "user_grid").with("title", lang(req).get("members"));
+		return model.renderToString(req);
+	}
+
+	public static Object admins(Request req, Response resp) throws SQLException{
+		Group group=getGroup(req);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_admins");
+		model.with("admins", GroupStorage.getGroupAdmins(group.id));
+		if(isAjax(req)){
+			return new WebDeltaResponseBuilder(resp).box(lang(req).get("group_admins"), model.renderContentBlock(req), null, true).json();
+		}
 		return model.renderToString(req);
 	}
 }

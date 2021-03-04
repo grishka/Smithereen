@@ -223,5 +223,6 @@
   "about_group": "About",
   "about_event": "About",
   "group_info_updated": "Group info has been updated",
-  "event_info_updated": "Event info has been updated"
+  "event_info_updated": "Event info has been updated",
+  "close": "Close"
 }

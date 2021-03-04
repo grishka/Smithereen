@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="8">
+	<rect x="2" y="2" width="8" height="4">
+		<animate attributeName="opacity" values="1;.33;.33" dur=".7s" repeatCount="indefinite" keyTimes="0;0.285;1"/>
+	</rect>
+	<rect x="12" y="2" width="8" height="4">
+		<animate attributeName="opacity" values="0;0;1;.33;.33" dur=".7s" repeatCount="indefinite" keyTimes="0;.142;.143;.428;1"/>
+	</rect>
+	<rect x="22" y="2" width="8" height="4">
+		<animate attributeName="opacity" values="0;0;1;.33;.33" dur=".7s" repeatCount="indefinite" keyTimes="0;.284;.285;.571;1"/>
+	</rect>
+</svg>

@@ -25,6 +25,9 @@ var LayerManager = /** @class */ (function () {
             } });
         this.scrim.hide();
         document.body.appendChild(this.scrim);
+        this.boxLoader = ce("div", { id: "boxLoader" }, [ce("div")]);
+        this.boxLoader.hide();
+        document.body.appendChild(this.boxLoader);
         var container = ce("div", { id: "layerContainer" });
         container.hide();
         this.layerContainer = container;
@@ -53,6 +56,7 @@ var LayerManager = /** @class */ (function () {
         }
         this.stack.push(layer);
         layer.onShown();
+        this.boxLoader.hideAnimated();
     };
     LayerManager.prototype.dismiss = function (layer) {
         var _this = this;
@@ -101,6 +105,9 @@ var LayerManager = /** @class */ (function () {
         var topLayer = this.stack[this.stack.length - 1];
         if (topLayer.allowDismiss())
             this.dismiss(topLayer);
+    };
+    LayerManager.prototype.showBoxLoader = function () {
+        this.boxLoader.showAnimated();
     };
     return LayerManager;
 }());
@@ -250,6 +257,53 @@ var BoxWithoutContentPadding = /** @class */ (function (_super) {
     }
     return BoxWithoutContentPadding;
 }(Box));
+var ScrollableBox = /** @class */ (function (_super) {
+    __extends(ScrollableBox, _super);
+    function ScrollableBox(title, buttonTitles, onButtonClick) {
+        if (buttonTitles === void 0) { buttonTitles = []; }
+        if (onButtonClick === void 0) { onButtonClick = null; }
+        var _this = _super.call(this, title, buttonTitles, onButtonClick) || this;
+        _this.scrollAtTop = true;
+        _this.scrollAtBottom = false;
+        _this.contentWrap.addEventListener("scroll", _this.onContentScroll.bind(_this));
+        return _this;
+    }
+    ScrollableBox.prototype.onCreateContentView = function () {
+        var cont = _super.prototype.onCreateContentView.call(this);
+        cont.classList.add("scrollable");
+        var shadowTop;
+        this.contentWrapWrap = ce("div", { className: "scrollableShadowWrap scrollAtTop" }, [
+            shadowTop = ce("div", { className: "shadowTop" }),
+            ce("div", { className: "shadowBottom" })
+        ]);
+        cont.insertBefore(this.contentWrapWrap, this.contentWrap);
+        this.contentWrapWrap.insertBefore(this.contentWrap, shadowTop);
+        return cont;
+    };
+    ScrollableBox.prototype.onShown = function () {
+        _super.prototype.onShown.call(this);
+        this.onContentScroll(null);
+    };
+    ScrollableBox.prototype.onContentScroll = function (e) {
+        var atTop = this.contentWrap.scrollTop == 0;
+        var atBottom = this.contentWrap.scrollTop >= this.contentWrap.scrollHeight - this.contentWrap.offsetHeight;
+        if (this.scrollAtTop != atTop) {
+            this.scrollAtTop = atTop;
+            if (atTop)
+                this.contentWrapWrap.classList.add("scrollAtTop");
+            else
+                this.contentWrapWrap.classList.remove("scrollAtTop");
+        }
+        if (this.scrollAtBottom != atBottom) {
+            this.scrollAtBottom = atBottom;
+            if (atBottom)
+                this.contentWrapWrap.classList.add("scrollAtBottom");
+            else
+                this.contentWrapWrap.classList.remove("scrollAtBottom");
+        }
+    };
+    return ScrollableBox;
+}(BoxWithoutContentPadding));
 var ConfirmBox = /** @class */ (function (_super) {
     __extends(ConfirmBox, _super);
     function ConfirmBox(title, msg, onConfirmed) {
@@ -357,6 +411,11 @@ var FileUploadBox = /** @class */ (function (_super) {
                     return;
             }
         }
+    };
+    FileUploadBox.prototype.onCreateContentView = function () {
+        var cont = _super.prototype.onCreateContentView.call(this);
+        cont.classList.add("wide");
+        return cont;
     };
     return FileUploadBox;
 }(Box));
@@ -855,6 +914,11 @@ function ajaxFollowLink(link) {
         ajaxGetAndApplyActions(link.href);
         return true;
     }
+    if (link.getAttribute("data-ajax-box")) {
+        LayerManager.getInstance().showBoxLoader();
+        ajaxGetAndApplyActions(link.href);
+        return true;
+    }
     return false;
 }
 function ajaxGetAndApplyActions(url) {
@@ -913,7 +977,7 @@ function applyServerCommand(cmd) {
             break;
         case "box":
             {
-                var box = new BoxWithoutContentPadding(cmd.t);
+                var box = cmd.s ? new ScrollableBox(cmd.t, [lang("close")]) : new BoxWithoutContentPadding(cmd.t);
                 var cont = ce("div");
                 if (cmd.i) {
                     cont.id = cmd.i;
@@ -1087,6 +1151,7 @@ function likeOnMouseChange(wrap, entered) {
                     popover = new Popover(wrap.querySelector(".popoverPlace"));
                     popover.setOnClick(function () {
                         popover.hide();
+                        LayerManager.getInstance().showBoxLoader();
                         ajaxGetAndApplyActions(resp.fullURL);
                     });
                     btn.popover = popover;

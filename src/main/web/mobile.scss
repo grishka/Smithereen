@@ -406,6 +406,51 @@ select{
 			font-weight: 500;
 		}
 	}
+
+	&.scrollable{
+		max-height: calc(100vh - 32px);
+		.boxContent{
+			overflow-y: auto;
+			position: relative;
+			max-height: calc(100vh - 160px);
+		}
+		.scrollableShadowWrap{
+			position: relative;
+			.shadowTop, .shadowBottom{
+				position: absolute;
+				height: 10px;
+				left: 0;
+				right: 0;
+				opacity: 1;
+				transition: opacity .15s ease;
+			}
+			.shadowTop{
+				top: 0;
+				box-shadow:
+				  0 0.2px 0.2px rgba(0, 0, 0, 0.02) inset,
+				  0 0.4px 0.4px rgba(0, 0, 0, 0.028) inset,
+				  0 0.8px 0.8px rgba(0, 0, 0, 0.035) inset,
+				  0 1.3px 1.3px rgba(0, 0, 0, 0.042) inset,
+				  0 2.5px 2.5px rgba(0, 0, 0, 0.05) inset,
+				  0 6px 6px rgba(0, 0, 0, 0.07) inset
+				;
+			}
+			.shadowBottom{
+				bottom: 0;
+				box-shadow:
+				  0 -0.2px 0.2px rgba(0, 0, 0, 0.02) inset,
+				  0 -0.4px 0.4px rgba(0, 0, 0, 0.028) inset,
+				  0 -0.8px 0.8px rgba(0, 0, 0, 0.035) inset,
+				  0 -1.3px 1.3px rgba(0, 0, 0, 0.042) inset,
+				  0 -2.5px 2.5px rgba(0, 0, 0, 0.05) inset,
+				  0 -6px 6px rgba(0, 0, 0, 0.07) inset
+				;
+			}
+			&.scrollAtTop .shadowTop, &.scrollAtBottom .shadowBottom{
+				opacity: 0;
+			}
+		}
+	}
 }
 
 .form{
@@ -596,5 +641,19 @@ select{
 	}
 	.text{
 		margin-left: 8px;
+	}
+}
+
+.userList{
+	padding: 0 16px;
+	td{
+		padding-bottom: 8px;
+	}
+	.info{
+		padding-left: 16px;
+		.subtitle{
+			margin-top: 5px;
+			color: $grayText;
+		}
 	}
 }

@@ -1,0 +1,18 @@
+{% extends "page" %}
+{% block content %}
+<table width="100%" class="userList" cellspacing="0">
+{% for admin in admins %}
+	<tr>
+		<td width="50">
+			<a href="{{ admin.user.profileURL }}">{{ admin.user | pictureForAvatar('s') }}</a>
+		</td>
+		<td class="info" valign="middle">
+			<b><a href="{{ admin.user.profileURL }}">{{ admin.user.fullName }}</a></b>
+			{% if admin.title is not empty %}
+				<div class="subtitle">{{ admin.title }}</div>
+			{% endif %}
+		</td>
+	</tr>
+{% endfor %}
+</table>
+{% endblock %}

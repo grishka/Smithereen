@@ -29,11 +29,16 @@ public class RenderedTemplateResponse{
 		templateName=name;
 	}
 
-	private void renderToWriter(Request req, Writer writer){
+	private PebbleTemplate getAndPrepareTemplate(Request req){
 		PebbleTemplate template=Templates.getTemplate(req, templateName);
 		if(template==null)
 			throw new IllegalStateException("Template with name '"+templateName+"' not found");
 		Templates.addGlobalParamsToTemplate(req, this);
+		return template;
+	}
+
+	private void renderToWriter(Request req, Writer writer){
+		PebbleTemplate template=getAndPrepareTemplate(req);
 		Locale locale=Utils.localeForRequest(req);
 		try{
 			template.evaluate(writer, model, locale);
@@ -54,5 +59,15 @@ public class RenderedTemplateResponse{
 			resp.type("text/html; charset=UTF-8");
 			renderToWriter(req, resp.raw().getWriter());
 		}catch(IOException ignore){}
+	}
+
+	public String renderContentBlock(Request req){
+		PebbleTemplate template=getAndPrepareTemplate(req);
+		Locale locale=Utils.localeForRequest(req);
+		StringWriter writer=new StringWriter();
+		try{
+			template.evaluateBlock("content", writer, model, locale);
+		}catch(IOException ignore){}
+		return writer.toString();
 	}
 }

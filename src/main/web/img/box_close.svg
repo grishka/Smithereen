@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
-<line stroke-width="3" stroke-miterlimit="10" x1="2.5" y1="2.5" x2="13.5" y2="13.5"/>
-<line stroke-width="3" stroke-miterlimit="10" x1="2.5" y1="13.5" x2="13.5" y2="2.5"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="11px" height="11px" viewBox="0 0 11 11">
+<polygon fill="#FFFFFF" points="0,2.5 2.5,0 5.5,3 8.5,0 11,2.5 8,5.5 11,8.5 8.5,11 5.5,8 2.5,11 0,8.5 3,5.5 "/>
 </svg>

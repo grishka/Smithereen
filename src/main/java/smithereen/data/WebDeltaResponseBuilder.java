@@ -45,11 +45,12 @@ public class WebDeltaResponseBuilder{
 		return this;
 	}
 
-	public WebDeltaResponseBuilder box(@NotNull String title, @NotNull String content, @Nullable String id){
+	public WebDeltaResponseBuilder box(@NotNull String title, @NotNull String content, @Nullable String id, boolean scrollable){
 		JSONObject cmd=new JSONObject();
 		cmd.put("a", "box");
 		cmd.put("t", title);
 		cmd.put("c", content);
+		cmd.put("s", scrollable);
 		if(id!=null)
 			cmd.put("i", id);
 		commands.put(cmd);

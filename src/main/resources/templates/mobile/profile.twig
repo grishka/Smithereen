@@ -28,7 +28,7 @@
 				{% if friendRequestRecvd %}
 					<a href="{{user.profileURL}}/respondToFriendRequest?csrf={{csrf}}&accept" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("accept")}}</a>
 				{% else %}
-					<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("add_friend")}}</a>
+					<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax-box="1">{{L("add_friend")}}</a>
 				{% endif %}
 			{%else%}
 				<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("follow")}}</a>

@@ -78,7 +78,7 @@
 			{% endif %}
 			</ul>
 
-			<table width="100%" style="table-layout: fixed;" class="profileBlock">
+			<table width="100%" style="table-layout: fixed;" class="profileBlock marginAfter">
 				<tr><th colspan="3" class="blockHeader"><a href="/groups/{{ group.id }}/members">{{ L("members") }}</a></th></tr>
 				<tr><td colspan="3" class="blockSubheader">{{ LP('X_members', group.memberCount) }}</td></tr>
 				{% for member in members %}
@@ -94,6 +94,25 @@
 				{%if(members.size%3!=0)%}
 				<td colspan="{{3-members.size%3}}" width="{{(3-members.size%3)*33}}%">&nbsp;</td></tr>
 				{%endif%}
+			</table>
+
+			<table width="100%" style="table-layout: fixed;" class="profileBlock">
+				<colgroup><col width="48"/><col width="*"/></colgroup>
+				<tr><th colspan="2" class="blockHeader"><a href="/groups/{{ group.id }}/admins" data-ajax-box="1">{{ L("group_admins") }}</a></th></tr>
+				<tr><td colspan="2" class="blockSubheader">{{ LP('group_X_admins', admins.size) }}</td></tr>
+				{% for admin in admins %}
+					{% if loop.index<5 %}
+						<tr class="oneMemberRow">
+							<td><a href="{{ admin.user.profileURL }}">{{ admin.user | pictureForAvatar('s', 40) }}</a></td>
+							<td class="nameAndInfo">
+								<div><a href="{{ admin.user.profileURL }}">{{ admin.user.fullName }}</a></div>
+								{% if admin.title is not empty %}
+									<div class="info">{{ admin.title }}</div>
+								{% endif %}
+							</td>
+						</tr>
+					{% endif %}
+				{% endfor %}
 			</table>
 		</td>
 	</tr>

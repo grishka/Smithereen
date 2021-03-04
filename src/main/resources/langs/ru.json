@@ -105,7 +105,7 @@
   "X_sent_you_friend_req": ["%s отправил Вам заявку в друзья", "%s отправила Вам заявку в друзья"],
   "you_are_following_X": {"str": "Вы подписаны на %s", "case": "ACCUSATIVE"},
   "X_is_following_you": ["%s подписан на Вас", "%s подписана на Вас"],
-  "waiting_for_X_to_accept_follow_req": {"str": "Вы ожидаете принятия %s запроса на подписку", "case": "INSTRUMENTAL"},
+  "waiting_for_X_to_accept_follow_req": "Вы ожидаете, пока %s примет запрос на подписку",
   "cancel": "Отмена",
   "menu_notifications": "Мои Уведомления",
   "notifications": "Уведомления",
@@ -223,5 +223,6 @@
   "about_group": "О группе",
   "about_event": "О встрече",
   "group_info_updated": "Информация о группе обновлена",
-  "event_info_updated": "Информация о встрече обновлена"
+  "event_info_updated": "Информация о встрече обновлена",
+  "close": "Закрыть"
 }
