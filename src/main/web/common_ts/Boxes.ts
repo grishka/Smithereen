@@ -42,7 +42,7 @@ class LayerManager{
 			this.layerContainer.show();
 			layerContent.showAnimated(layer.getCustomAppearAnimation());
 			document.body.addEventListener("keydown", this.escapeKeyListener);
-			document.body.style.overflowY="hidden";
+			this.lockPageScroll();
 		}else{
 			var prevLayer:BaseLayer=this.stack[this.stack.length-1];
 			prevLayer.getContent().hide();
@@ -80,12 +80,13 @@ class LayerManager{
 				layerContent.hideAnimated(anim, ()=>{
 					this.layerContainer.removeChild(layerContent);
 					this.layerContainer.hide();
-					document.body.style.overflowY="";
+					this.unlockPageScroll();
 				});	
 			}else{
 				this.layerContainer.removeChild(layerContent);
 				this.layerContainer.hide();
-				document.body.style.overflowY="";
+
+				this.unlockPageScroll();
 			}
 			this.scrim.hideAnimated({keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: duration, easing: "ease"}});
 		}else{
@@ -97,6 +98,18 @@ class LayerManager{
 		var topLayer=this.stack[this.stack.length-1];
 		if(topLayer.allowDismiss())
 			this.dismiss(topLayer);
+	}
+
+	private lockPageScroll(){
+		document.body.style.top = `-${window.scrollY}px`;
+		document.body.style.position="fixed";
+	}
+
+	private unlockPageScroll(){
+		var scrollY = document.body.style.top;
+		document.body.style.position = '';
+		document.body.style.top = '';
+		window.scrollTo(0, parseInt(scrollY || '0') * -1);
 	}
 
 	public showBoxLoader(){

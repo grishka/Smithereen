@@ -47,7 +47,7 @@ var LayerManager = /** @class */ (function () {
             this.layerContainer.show();
             layerContent.showAnimated(layer.getCustomAppearAnimation());
             document.body.addEventListener("keydown", this.escapeKeyListener);
-            document.body.style.overflowY = "hidden";
+            this.lockPageScroll();
         }
         else {
             var prevLayer = this.stack[this.stack.length - 1];
@@ -87,13 +87,13 @@ var LayerManager = /** @class */ (function () {
                 layerContent.hideAnimated(anim, function () {
                     _this.layerContainer.removeChild(layerContent);
                     _this.layerContainer.hide();
-                    document.body.style.overflowY = "";
+                    _this.unlockPageScroll();
                 });
             }
             else {
                 this.layerContainer.removeChild(layerContent);
                 this.layerContainer.hide();
-                document.body.style.overflowY = "";
+                this.unlockPageScroll();
             }
             this.scrim.hideAnimated({ keyframes: [{ opacity: 1 }, { opacity: 0 }], options: { duration: duration, easing: "ease" } });
         }
@@ -105,6 +105,16 @@ var LayerManager = /** @class */ (function () {
         var topLayer = this.stack[this.stack.length - 1];
         if (topLayer.allowDismiss())
             this.dismiss(topLayer);
+    };
+    LayerManager.prototype.lockPageScroll = function () {
+        document.body.style.top = "-" + window.scrollY + "px";
+        document.body.style.position = "fixed";
+    };
+    LayerManager.prototype.unlockPageScroll = function () {
+        var scrollY = document.body.style.top;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
     };
     LayerManager.prototype.showBoxLoader = function () {
         this.boxLoader.showAnimated();
