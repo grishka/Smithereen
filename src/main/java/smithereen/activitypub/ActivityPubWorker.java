@@ -2,6 +2,7 @@ package smithereen.activitypub;
 
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
@@ -446,6 +447,16 @@ public class ActivityPubWorker{
 							if(tag instanceof Mention){
 								URI uri=((Mention) tag).href;
 								User mentionedUser=UserStorage.getUserByActivityPubID(uri);
+								if(mentionedUser==null){
+									try{
+										ActivityPubObject _user=ActivityPub.fetchRemoteObject(uri.toString());
+										if(_user instanceof ForeignUser){
+											ForeignUser u=(ForeignUser) _user;
+											UserStorage.putOrUpdateForeignUser(u);
+											mentionedUser=u;
+										}
+									}catch(IOException ignore){}
+								}
 								if(mentionedUser!=null){
 									if(p.mentionedUsers.isEmpty())
 										p.mentionedUsers=new ArrayList<>();
@@ -453,6 +464,9 @@ public class ActivityPubWorker{
 										p.mentionedUsers.add(mentionedUser);
 								}
 							}
+						}
+						if(!p.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(p.content)){
+							p.content=Utils.preprocessRemotePostMentions(p.content, p.mentionedUsers);
 						}
 					}
 					PostStorage.putForeignWallPost(p);
