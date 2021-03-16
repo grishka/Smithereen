@@ -140,20 +140,33 @@ public class ActivityPubWorker{
 		});
 	}
 
-	public void sendDeletePostActivity(final Post post){
+	public void sendDeletePostActivity(final Post post, final User actualActor){
 		executor.submit(new Runnable(){
 			@Override
 			public void run(){
+				Actor actor;
 				Delete delete=new Delete();
 				delete.object=new LinkOrObject(post.activityPubID);
-				delete.actor=new LinkOrObject(post.user.activityPubID);
+				if(post.user.id==actualActor.id)
+					actor=actualActor;
+				else if(!post.isGroupOwner() && ((User)post.owner).id==actualActor.id)
+					actor=actualActor;
+				else if(post.isGroupOwner())
+					actor=post.owner;
+				else{
+					System.out.println("Shouldn't happen: post "+post+" actor for delete can't be chosen");
+					return;
+				}
+				if(actor instanceof ForeignGroup || actor instanceof ForeignUser){
+					System.out.println("Shouldn't happen: "+post+" actor for delete is a foreign actor");
+					return;
+				}
+				delete.actor=new LinkOrObject(actor.activityPubID);
 				delete.to=post.to;
 				delete.cc=post.cc;
 				delete.published=new Date();
-				try{
-					delete.activityPubID=new URI(post.activityPubID.getScheme(), post.activityPubID.getSchemeSpecificPart(), "delete");
-				}catch(URISyntaxException ignore){}
-				sendActivityForPost(post, delete, post.user);
+				delete.activityPubID=new UriBuilder(post.activityPubID).appendPath("delete").build();
+				sendActivityForPost(post, delete, actor);
 			}
 		});
 	}

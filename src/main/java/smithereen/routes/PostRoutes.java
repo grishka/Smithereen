@@ -380,7 +380,7 @@ public class PostRoutes{
 		if(Config.isLocal(post.activityPubID) && post.attachment!=null && !post.attachment.isEmpty()){
 			MediaStorageUtils.deleteAttachmentFiles(post.attachment);
 		}
-		ActivityPubWorker.getInstance().sendDeletePostActivity(post);
+		ActivityPubWorker.getInstance().sendDeletePostActivity(post, self.user);
 		if(isAjax(req)){
 			resp.type("application/json");
 			return new WebDeltaResponseBuilder().remove("post"+postID).json();
