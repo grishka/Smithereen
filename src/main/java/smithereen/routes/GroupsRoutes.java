@@ -64,6 +64,13 @@ public class GroupsRoutes{
 		return model.renderToString(req);
 	}
 
+	public static Object myManagedGroups(Request req, Response resp, Account self) throws SQLException{
+		jsLangKey(req, "cancel", "create");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("groups").with("tab", "managed").with("title", lang(req).get("groups"));
+		model.with("groups", GroupStorage.getUserManagedGroups(self.user.id));
+		return model.renderToString(req);
+	}
+
 	public static Object createGroup(Request req, Response resp, Account self) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("create_group");
 		return wrapForm(req, resp, "create_group", "/my/groups/create", lang(req).get("create_group"), "create", model);

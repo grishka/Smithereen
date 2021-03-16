@@ -195,7 +195,7 @@
   "X_mutual_friends_short": ["%d mutuo", "%d mutuos"],
   "menu_groups": "Mis grupos",
   "groups": "Grupos",
-  "groups_management": "Administración",
+  "groups_managed": "Administración",
   "create_group": "Crear un grupo",
   "create": "Crear",
   "group_name": "Nombre",

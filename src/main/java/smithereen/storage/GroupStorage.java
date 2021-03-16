@@ -309,6 +309,13 @@ public class GroupStorage{
 		}
 	}
 
+	public static List<Group> getUserManagedGroups(int userID) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("group_admins").columns("group_id").where("user_id=?", userID).createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			return getByID(DatabaseUtils.intResultSetToList(res));
+		}
+	}
+
 	public static List<URI> getGroupMemberURIs(int groupID, boolean tentative, int offset, int count, int[] total) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt;

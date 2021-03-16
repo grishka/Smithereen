@@ -195,7 +195,7 @@
   "X_mutual_friends_short": ["%d общий", "%d общих", "%d общих"],
   "menu_groups": "Мои Группы",
   "groups": "Группы",
-  "groups_management": "Управление",
+  "groups_managed": "Управление",
   "create_group": "Создать группу",
   "create": "Создать",
   "group_name": "Название",

@@ -256,6 +256,7 @@ public class Main{
 			getLoggedIn("/notifications", NotificationsRoutes::notifications);
 			path("/groups", ()->{
 				getLoggedIn("", GroupsRoutes::myGroups);
+				getLoggedIn("/managed", GroupsRoutes::myManagedGroups);
 				getLoggedIn("/create", GroupsRoutes::createGroup);
 				postWithCSRF("/create", GroupsRoutes::doCreateGroup);
 			});
