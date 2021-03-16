@@ -215,7 +215,7 @@
   "err_group_not_member": "Вы не состоите в этой группе.",
   "server_of_user_X_no_wall": {"str": "Сервер %s не поддерживает стены.", "case": "GENITIVE"},
   "server_of_group_no_wall": "Сервер этой группы не поддерживает стены.",
-  "group_admins": "Руководители",
+  "group_admins": "Руководство",
   "group_X_admins": ["%d руководитель", "%d руководителя", "%d руководителей"],
   "edit_group": "Редактировать группу",
   "edit_event": "Редактировать встречу",
@@ -224,5 +224,16 @@
   "about_event": "О встрече",
   "group_info_updated": "Информация о группе обновлена",
   "event_info_updated": "Информация о встрече обновлена",
-  "close": "Закрыть"
+  "close": "Закрыть",
+  "back_to_profile": "Вернуться к странице",
+  "back_to_group": "Вернуться к группе",
+  "back_to_event": "Вернуться к встрече",
+  "edit": "Редактировать",
+  "group_admin_demote": "Разжаловать",
+  "group_admin_promote": "Назначить руководителем",
+  "group_access_admin_explain": "Может редактировать информацию о группе и назначать других руководителей.",
+  "group_access_moderator_explain": "Может удалять контент и блокировать участников группы.",
+  "group_admin_title": "Должность",
+  "group_admin_title_explain": "Будет отображаться в общедоступном списке руководителей.",
+  "group_admin_demote_confirm": {"str": "Вы действительно хотите исключить %s из руководства группы?", "case": "GENITIVE"}
 }

@@ -54,6 +54,26 @@
 	</div>
 {%endmacro%}
 
+{%macro radioGroup(name, label, selectOptions, options)%}
+	{%if options is null%}{%set options={}%}{%endif%}
+	<div class="row">
+		{% if label is not empty %}
+			<div class="label">
+				{{label}}:
+			</div>
+		{% endif %}
+		{% for opt in selectOptions %}
+			<div class="radioButtonWrap">
+				<input type="radio" name="{{ name }}" value="{{ opt.value }}" id="{{ name }}{{ loop.index }}" {{ opt.selected ? 'checked' : '' }}/>
+				<label for="{{ name }}{{ loop.index }}">{{ opt.label }}</label>
+			</div>
+			{% if opt.explanation is not empty %}
+				<span class="formExplanation">{{ opt.explanation }}</span>
+			{% endif %}
+		{% endfor %}
+	</div>
+{%endmacro%}
+
 {%macro footer(submitTitle)%}
 	<div class="footer">
 		<input type="submit" value="{{submitTitle}}"/>

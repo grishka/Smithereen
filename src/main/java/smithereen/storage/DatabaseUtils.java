@@ -19,7 +19,14 @@ public class DatabaseUtils{
 		while(res.next()){
 			list.add(res.getInt(1));
 		}
+		res.close();
 		return list;
+	}
+
+	public static int oneFieldToInt(final ResultSet res) throws SQLException{
+		try(res){
+			return res.first() ? res.getInt(1) : -1;
+		}
 	}
 
 	public static boolean runWithUniqueUsername(String username, DatabaseRunnable action) throws SQLException{

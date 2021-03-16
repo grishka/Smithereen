@@ -121,7 +121,8 @@ h2{
 		width: 100%;
 		height: 6px;
 		border-radius: 0 0 6px 6px;
-		box-shadow: 0 -1px 1px $headerBorderBottomLight inset;
+		// box-shadow: 0 -1px 1px $headerBorderBottomLight inset;
+		border-bottom: solid 1px $headerBorderBottomLight;
 		position: absolute;
 		bottom: 0;
 	}
@@ -243,6 +244,11 @@ h2{
 .wrap{
 }
 
+.wallPostForm{
+	padding: 8px;
+	background: $gray;
+}
+
 .profileBlock{
 	border-collapse: collapse;
 	.blockHeader{
@@ -265,6 +271,10 @@ h2{
 
 .columnLayout, .singleColumn, .profileBlock .padded{
 	padding: 8px;
+}
+
+.singleColumn.gray{
+	padding: 20px;
 }
 
 .leftNarrow #right{
@@ -443,14 +453,14 @@ select{
 
 .tabbar{
 	border-bottom: solid 1px $tabBackground;
-	padding: 8px 8px 0 8px;
-	height: 33px;
+	padding: 11px 10px 0;
+	height: 35px;
 	a{
-		display: inline-block;
-		padding: 0 8px 0 8px;
-		margin-right: 2px;
-		border-radius: 4px 4px 0 0;
-		line-height: 24px;
+		display: block;
+		padding: 0 10px;
+		margin-right: 5px;
+		border-radius: 3px 3px 0 0;
+		line-height: 23px;
 		float: left;
 	}
 	a:hover, a:visited:hover{
@@ -464,6 +474,7 @@ select{
 	a.aux{
 		float: right;
 		padding: 0;
+		margin-right: 0;
 		border-radius: 0;
 		&:hover, &:visited:hover{
 			background: none;
@@ -503,7 +514,7 @@ select{
 		padding: 5px 8px 4px 8px;
 		width: 30%;
 	}
-	tr:not(.footer) input, tr:not(.footer) select, tr:not(.footer) textarea{
+	tr:not(.footer) input:not([type=radio]):not([type=checkbox]), tr:not(.footer) select, tr:not(.footer) textarea{
 		width: 100%;
 	}
 	td{
@@ -568,7 +579,7 @@ select{
 	line-height: 30px;
 	font-weight: bold;
 	font-size: 13px;
-	overflow-x: hidden;
+	overflow: hidden;
 	text-overflow: ellipsis;
 	padding-left: 10px;
 	padding-right: 64px;
@@ -577,12 +588,12 @@ select{
 	position: relative;
 	.close{
 		display: block;
-		width: 32px;
-		height: 32px;
+		width: 30px;
+		height: 30px;
 		cursor: pointer;
 		position: absolute;
-		right: -1px;
-		top: -1px;
+		right: 0;
+		top: 0;
 		background: svg-load("img/box_close.svg", fill: $textOnAccent) no-repeat;
 		background-position: center;
 		background-size: 11px 11px;
@@ -612,6 +623,10 @@ select{
 	background: #FFF;
 	p{
 		margin-top: 0;
+	}
+	.form{
+		margin: 0;
+		width: 100%;
 	}
 }
 
@@ -1005,6 +1020,50 @@ select{
 		.subtitle{
 			margin-top: 5px;
 			color: $grayText;
+		}
+	}
+}
+
+
+.groupEditMemberList .groupEditMember{
+	background-color: $bg;
+	border: solid 1px $textAreaBorder;
+	padding: 10px;
+	margin-bottom: 10px;
+	.ava{
+		float: left;
+		margin-right: 10px;
+	}
+	.name{
+		font-weight: bold;
+	}
+	.ellipsize{
+		margin-bottom: 4px;
+	}
+}
+
+.groupEditMemberList{
+	.reorderableItemWrap{
+		margin-bottom: 10px;
+		.groupEditMember{
+			margin-bottom: 0;
+		}
+	}
+}
+
+.reorderableList{
+	.reorderableItem{
+		cursor: move;
+		transition: opacity .2s ease-out;
+	}
+
+	.reorderableItemWrap.beingDragged{
+		border: dashed 1px $textAreaBorder;
+		background: $bg;
+		.reorderableItem{
+			margin: -1px;
+			opacity: .8;
+			user-select: none;
 		}
 	}
 }

@@ -20,6 +20,8 @@ var LayerManager = /** @class */ (function () {
                 _this.maybeDismissTopLayer();
             }
         };
+        this.animatingHide = false;
+        this.hideAnimCanceled = false;
         this.scrim = ce("div", { id: "layerScrim", onclick: function () {
                 _this.maybeDismissTopLayer();
             } });
@@ -40,6 +42,10 @@ var LayerManager = /** @class */ (function () {
         return LayerManager.instance;
     };
     LayerManager.prototype.show = function (layer) {
+        if (this.animatingHide) {
+            this.hideAnimCanceled = true;
+            this.layerContainer.innerHTML = "";
+        }
         var layerContent = layer.getContent();
         this.layerContainer.appendChild(layerContent);
         if (this.stack.length == 0) {
@@ -84,10 +90,17 @@ var LayerManager = /** @class */ (function () {
             var duration = 200;
             if (anim) {
                 duration = anim.options.duration;
+                this.animatingHide = true;
                 layerContent.hideAnimated(anim, function () {
-                    _this.layerContainer.removeChild(layerContent);
-                    _this.layerContainer.hide();
-                    _this.unlockPageScroll();
+                    if (_this.hideAnimCanceled) {
+                        _this.hideAnimCanceled = false;
+                    }
+                    else {
+                        _this.layerContainer.removeChild(layerContent);
+                        _this.layerContainer.hide();
+                        _this.unlockPageScroll();
+                    }
+                    _this.animatingHide = false;
                 });
             }
             else {
@@ -275,7 +288,7 @@ var ScrollableBox = /** @class */ (function (_super) {
         var _this = _super.call(this, title, buttonTitles, onButtonClick) || this;
         _this.scrollAtTop = true;
         _this.scrollAtBottom = false;
-        _this.contentWrap.addEventListener("scroll", _this.onContentScroll.bind(_this));
+        _this.contentWrap.addEventListener("scroll", _this.onContentScroll.bind(_this), { passive: true });
         return _this;
     }
     ScrollableBox.prototype.onCreateContentView = function () {
@@ -530,15 +543,23 @@ var MobileOptionsBox = /** @class */ (function (_super) {
                     attrs.rel = "noopener";
                 }
             }
-            attrs.onclick = function () {
+            var link;
+            list.appendChild(ce("li", {}, [
+                link = ce("a", attrs)
+            ]));
+            link.addEventListener("click", function (ev) {
                 if (opt.type == "confirm") {
                     ajaxConfirm(opt.title, opt.msg, opt.url);
                 }
+                if (opt.ajax) {
+                    if (opt.ajax == "box") {
+                        LayerManager.getInstance().showBoxLoader();
+                    }
+                    ajaxGetAndApplyActions(link.href);
+                    ev.preventDefault();
+                }
                 _this.dismiss();
-            };
-            list.appendChild(ce("li", {}, [
-                ce("a", attrs)
-            ]));
+            }, false);
         });
         _this.setContent(content);
         return _this;
@@ -654,8 +675,9 @@ HTMLElement.prototype.hideAnimated = function (animName, onEnd) {
     var _this = this;
     if (animName === void 0) { animName = { keyframes: [{ opacity: 1 }, { opacity: 0 }], options: { duration: 200, easing: "ease" } }; }
     if (onEnd === void 0) { onEnd = null; }
-    if (this.currentVisibilityAnimation)
+    if (this.currentVisibilityAnimation) {
         this.currentVisibilityAnimation.cancel();
+    }
     this.currentVisibilityAnimation = this.anim(animName.keyframes, animName.options, function () {
         _this.hide();
         _this.currentVisibilityAnimation = null;
@@ -670,14 +692,28 @@ HTMLElement.prototype.showAnimated = function (animName, onEnd) {
     var _this = this;
     if (animName === void 0) { animName = { keyframes: [{ opacity: 0 }, { opacity: 1 }], options: { duration: 200, easing: "ease" } }; }
     if (onEnd === void 0) { onEnd = null; }
-    if (this.currentVisibilityAnimation)
+    if (this.currentVisibilityAnimation) {
         this.currentVisibilityAnimation.cancel();
+    }
     this.show();
     this.currentVisibilityAnimation = this.anim(animName.keyframes, animName.options, function () {
         _this.currentVisibilityAnimation = null;
         if (onEnd)
             onEnd();
     });
+};
+NodeList.prototype.unfuck = function () {
+    var arr = [];
+    for (var i = 0; i < this.length; i++)
+        arr.push(this[i]);
+    return arr;
+};
+TouchList.prototype.unfuck = function () {
+    var arr = [];
+    for (var i = 0; i < this.length; i++) {
+        arr.push(this.item(i));
+    }
+    return arr;
 };
 var compatAnimStyle;
 function cssRuleForCamelCase(s) {
@@ -927,6 +963,10 @@ function ajaxFollowLink(link) {
     if (link.getAttribute("data-ajax-box")) {
         LayerManager.getInstance().showBoxLoader();
         ajaxGetAndApplyActions(link.href);
+        return true;
+    }
+    if (link.getAttribute("data-confirm-action")) {
+        ajaxConfirm(link.getAttribute("data-confirm-title"), link.getAttribute("data-confirm-message").escapeHTML(), link.getAttribute("data-confirm-action"));
         return true;
     }
     return false;
@@ -1701,5 +1741,139 @@ var Popover = /** @class */ (function () {
         this.header.onclick = onClick;
     };
     return Popover;
+}());
+var ReorderableList = /** @class */ (function () {
+    function ReorderableList(root, reorderUrl) {
+        var _this = this;
+        this.currentTouchID = undefined;
+        this.items = root.querySelectorAll(".reorderableItemWrap").unfuck();
+        this.items.forEach(function (el) {
+            el.addEventListener("mousedown", _this.onMouseDown.bind(_this), false);
+            var grip = el.qs(".draggyGrippyThing");
+            if (grip) {
+                grip.addEventListener("touchstart", _this.onTouchStart.bind(_this), false);
+            }
+        });
+        this.root = root;
+        this.reorderUrl = reorderUrl;
+    }
+    ReorderableList.prototype.onMouseDown = function (ev) {
+        var target = ev.target;
+        if (target.tagName == "A")
+            return;
+        if (this.items.length < 2)
+            return;
+        this.startDragging(ev.pageX, ev.pageY, target);
+        document.addEventListener("mousemove", this.moveListener = this.onMouseMove.bind(this), false);
+        document.addEventListener("mouseup", this.upListener = this.onMouseUp.bind(this), false);
+    };
+    ReorderableList.prototype.onTouchStart = function (ev) {
+        var target = ev.target;
+        if (this.items.length < 2)
+            return;
+        if (this.currentTouchID)
+            return;
+        this.currentTouchID = ev.touches[0].identifier;
+        this.startDragging(0, ev.touches[0].pageY, target);
+        ev.preventDefault();
+        document.addEventListener("touchmove", this.moveListener = this.onTouchMove.bind(this), false);
+        document.addEventListener("touchend", this.upListener = this.onTouchEnd.bind(this), false);
+        document.addEventListener("touchcancel", this.upListener, false);
+    };
+    ReorderableList.prototype.onMouseMove = function (ev) {
+        this.drag(ev.pageX, ev.pageY);
+    };
+    ReorderableList.prototype.onTouchMove = function (ev) {
+        var _this = this;
+        if (ev.touches.length == 1) {
+            this.drag(0, ev.touches[0].pageY);
+        }
+        else {
+            ev.touches.unfuck().forEach(function (touch) {
+                if (touch.identifier == _this.currentTouchID) {
+                    _this.drag(0, touch.pageY);
+                }
+            });
+        }
+    };
+    ReorderableList.prototype.onMouseUp = function (ev) {
+        document.removeEventListener("mousemove", this.moveListener);
+        document.removeEventListener("mouseup", this.upListener);
+        this.endDragging();
+    };
+    ReorderableList.prototype.onTouchEnd = function (ev) {
+        var _this = this;
+        ev.changedTouches.unfuck().forEach(function (touch) {
+            if (touch.identifier == _this.currentTouchID) {
+                _this.currentTouchID = undefined;
+                document.removeEventListener("touchmove", _this.moveListener);
+                document.removeEventListener("touchend", _this.upListener);
+                document.removeEventListener("touchcancel", _this.upListener);
+                _this.endDragging();
+            }
+        });
+    };
+    ReorderableList.prototype.startDragging = function (pageX, pageY, target) {
+        while (!target.classList.contains("reorderableItemWrap")) {
+            target = target.parentElement;
+        }
+        this.draggedWrap = target;
+        this.draggedEl = target.qs(".reorderableItem");
+        var wrapRect = this.root.getBoundingClientRect();
+        wrapRect = this.draggedWrap.getBoundingClientRect();
+        this.offsetX = pageX - (wrapRect.left + window.pageXOffset);
+        this.offsetY = pageY - (wrapRect.top + window.pageYOffset);
+        this.initialIdx = this.idx = this.items.indexOf(this.draggedWrap);
+        this.draggedWrap.classList.add("beingDragged");
+    };
+    ReorderableList.prototype.drag = function (pageX, pageY) {
+        var wrapRect = this.draggedWrap.getBoundingClientRect();
+        var dx = Math.round(pageX - (wrapRect.left + window.pageXOffset) - this.offsetX);
+        var dy = Math.round(pageY - (wrapRect.top + window.pageYOffset) - this.offsetY);
+        var update = false;
+        // If the currently dragged item vertically overlaps more than half of a neighboring item, switch them around
+        if (dy < 0) {
+            if (this.idx > 0) {
+                var neighborRect = this.items[this.idx - 1].getBoundingClientRect();
+                if (wrapRect.top + dy < neighborRect.top + neighborRect.height * 0.5) {
+                    this.root.insertBefore(this.draggedWrap, this.items[this.idx - 1]);
+                    this.items = this.root.querySelectorAll(".reorderableItemWrap").unfuck();
+                    update = true;
+                    this.idx--;
+                }
+            }
+        }
+        else if (this.idx < this.items.length - 1) {
+            var neighborRect = this.items[this.idx + 1].getBoundingClientRect();
+            if (wrapRect.bottom + dy > neighborRect.top + neighborRect.height * 0.5) {
+                if (this.idx + 1 == this.items.length - 1) {
+                    this.root.appendChild(this.draggedWrap);
+                }
+                else {
+                    this.root.insertBefore(this.draggedWrap, this.items[this.idx + 2]);
+                }
+                this.items = this.root.querySelectorAll(".reorderableItemWrap").unfuck();
+                update = true;
+                this.idx++;
+            }
+        }
+        if (update) {
+            wrapRect = this.draggedWrap.getBoundingClientRect();
+            dx = Math.round(pageX - (wrapRect.left + window.pageXOffset) - this.offsetX);
+            dy = Math.round(pageY - (wrapRect.top + window.pageYOffset) - this.offsetY);
+        }
+        this.draggedEl.style.transform = "translate(" + dx + "px, " + dy + "px)";
+    };
+    ReorderableList.prototype.endDragging = function () {
+        var _this = this;
+        this.draggedEl.anim({ transform: [this.draggedEl.style.transform, "translate(0, 0)"] }, { duration: 200, easing: "ease-in-out" }, function () {
+            _this.draggedWrap.classList.remove("beingDragged");
+            _this.draggedEl.style.transform = "";
+        });
+        if (this.idx != this.initialIdx) {
+            ajaxPost(this.reorderUrl, { id: this.draggedEl.getAttribute("data-reorder-id"), order: this.idx, csrf: userConfig.csrf }, function () { }, function () { });
+        }
+    };
+    return ReorderableList;
 }());
 //# sourceMappingURL=common.js.map

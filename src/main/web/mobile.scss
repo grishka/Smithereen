@@ -390,6 +390,9 @@ select{
 		line-height: 56px;
 		height: 56px;
 		padding: 0 16px;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		overflow: hidden;
 	}
 	.boxContent{
 		padding: 0 16px;
@@ -459,7 +462,7 @@ select{
 		.label{
 			margin-bottom: 4px;
 		}
-		input, textarea, select{
+		input:not([type=radio]):not([type=checkbox]), textarea, select{
 			width: 100%;
 			min-height: 36px;
 		}
@@ -655,5 +658,58 @@ select{
 			margin-top: 5px;
 			color: $grayText;
 		}
+	}
+}
+
+.groupEditMemberList{
+	padding: 8px 0;
+	.groupEditMember{
+		padding: 8px 0;
+		&.nonReorderable{
+			padding-left: 16px;
+		}
+		.subtitle{
+			margin-top: 5px;
+			color: $grayText;
+		}
+		.ava{
+			float: left;
+			margin-right: 16px;
+		}
+		.nameWrap{
+			margin-top: 6px;
+			font-weight: 500;
+		}
+		.moreButton{
+			display: block;
+			float: right;
+			width: 32px;
+			height: 50px;
+			background: svg-load('img/material/ic_more_vert.svg', fill=$grayText) no-repeat center;
+		}
+	}
+}
+
+.reorderableList{
+	.reorderableItem{
+		transition: box-shadow .2s ease, opacity .2s ease-out;
+		background: $bg;
+		.draggyGrippyThing{
+			width: 32px;
+			height: 50px;
+			float: left;
+			background: svg-load('img/material/ic_reorder.svg', fill=$grayText) no-repeat center;
+		}
+	}
+	.beingDragged .reorderableItem{
+		box-shadow:
+		  0 0.2px 0.2px rgba(0, 0, 0, 0.02),
+		  0 0.4px 0.4px rgba(0, 0, 0, 0.028),
+		  0 0.8px 0.8px rgba(0, 0, 0, 0.035),
+		  0 1.3px 1.3px rgba(0, 0, 0, 0.042),
+		  0 2.5px 2.5px rgba(0, 0, 0, 0.05),
+		  0 6px 6px rgba(0, 0, 0, 0.07)
+		;
+		opacity: .8;
 	}
 }

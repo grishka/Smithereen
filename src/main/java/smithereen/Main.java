@@ -216,6 +216,13 @@ public class Main{
 
 			getLoggedIn("/edit", GroupsRoutes::editGeneral);
 			postWithCSRF("/saveGeneral", GroupsRoutes::saveGeneral);
+			getLoggedIn("/editAdmins", GroupsRoutes::editAdmins);
+			getLoggedIn("/editMembers", GroupsRoutes::editMembers);
+			getLoggedIn("/editAdminForm", GroupsRoutes::editAdminForm);
+			postWithCSRF("/saveAdmin", GroupsRoutes::saveAdmin);
+			getLoggedIn("/confirmDemoteAdmin", GroupsRoutes::confirmDemoteAdmin);
+			postWithCSRF("/removeAdmin", GroupsRoutes::removeAdmin);
+			postWithCSRF("/editAdminReorder", GroupsRoutes::editAdminReorder);
 
 			get("/members", GroupsRoutes::members);
 			get("/admins", GroupsRoutes::admins);

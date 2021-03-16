@@ -82,8 +82,9 @@ HTMLElement.prototype.hide=function():void{
 };
 
 HTMLElement.prototype.hideAnimated=function(animName:AnimationDescription={keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: 200, easing: "ease"}}, onEnd:{():void}=null):void{
-	if(this.currentVisibilityAnimation)
+	if(this.currentVisibilityAnimation){
 		this.currentVisibilityAnimation.cancel();
+	}
 	this.currentVisibilityAnimation=this.anim(animName.keyframes, animName.options, ()=>{
 		this.hide();
 		this.currentVisibilityAnimation=null;
@@ -96,8 +97,9 @@ HTMLElement.prototype.show=function():void{
 };
 
 HTMLElement.prototype.showAnimated=function(animName:AnimationDescription={keyframes: [{opacity: 0}, {opacity: 1}], options: {duration: 200, easing: "ease"}}, onEnd:{():void}=null):void{
-	if(this.currentVisibilityAnimation)
+	if(this.currentVisibilityAnimation){
 		this.currentVisibilityAnimation.cancel();
+	}
 	this.show();
 	this.currentVisibilityAnimation=this.anim(animName.keyframes, animName.options, ()=>{
 		this.currentVisibilityAnimation=null;
@@ -105,6 +107,31 @@ HTMLElement.prototype.showAnimated=function(animName:AnimationDescription={keyfr
 			onEnd();
 	});
 };
+
+// JavaScript is an immensely fucked up language for having some DOM APIs
+// return these "arrays that are not quite arrays" for no good reason whatsoever.
+interface NodeList{
+	unfuck():Node[];
+}
+
+NodeList.prototype.unfuck=function(){
+	var arr:Node[]=[];
+	for(var i=0;i<this.length;i++)
+		arr.push(this[i]);
+	return arr;
+};
+
+interface TouchList{
+	unfuck():Touch[];
+}
+
+TouchList.prototype.unfuck=function(){
+	var arr:Touch[]=[];
+	for(var i=0;i<this.length;i++){
+		arr.push(this.item(i));
+	}
+	return arr;
+}
 
 var compatAnimStyle:HTMLStyleElement;
 
@@ -354,6 +381,10 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	if(link.getAttribute("data-ajax-box")){
 		LayerManager.getInstance().showBoxLoader();
 		ajaxGetAndApplyActions(link.href);
+		return true;
+	}
+	if(link.getAttribute("data-confirm-action")){
+		ajaxConfirm(link.getAttribute("data-confirm-title"), link.getAttribute("data-confirm-message").escapeHTML(), link.getAttribute("data-confirm-action"));
 		return true;
 	}
 	return false;

@@ -4,8 +4,10 @@ import com.mitchellbosecke.pebble.extension.AbstractExtension;
 import com.mitchellbosecke.pebble.extension.Extension;
 import com.mitchellbosecke.pebble.extension.Filter;
 import com.mitchellbosecke.pebble.extension.Function;
+import com.mitchellbosecke.pebble.tokenParser.TokenParser;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SmithereenExtension extends AbstractExtension{
@@ -29,5 +31,10 @@ public class SmithereenExtension extends AbstractExtension{
 		r.put("postprocessHTML", new PostprocessHTMLFilter());
 		r.put("forceEscape", new ForceEscapeFilter());
 		return r;
+	}
+
+	@Override
+	public List<TokenParser> getTokenParsers(){
+		return List.of(new EnqueueScriptTokenParser());
 	}
 }

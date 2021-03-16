@@ -73,6 +73,7 @@ public class DatabaseSchemaUpdater{
 					  `group_id` int(11) unsigned NOT NULL,
 					  `level` int(11) unsigned NOT NULL,
 					  `title` varchar(300) DEFAULT NULL,
+					  `display_order` int(10) unsigned NOT NULL DEFAULT '0',
 					  KEY `user_id` (`user_id`),
 					  KEY `group_id` (`group_id`),
 					  CONSTRAINT `group_admins_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,

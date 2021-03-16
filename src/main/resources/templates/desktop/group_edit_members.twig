@@ -1,0 +1,25 @@
+{# @pebvariable name="group" type="smithereen.data.Group" #}
+{# @pebvariable name="members" type="simthereen.data.User[]" #}
+{# @pebvariable name="member" type="smithereen.data.User" #}
+{# @pebvariable name="adminIDs" type="int[]" #}
+{% extends "page" %}
+{% block content %}
+{% include "group_admin_tabbar" with {'tab': 'members'} %}
+<div class="singleColumn gray">
+	<div class="groupEditMemberList">
+		{% for member in members %}
+			<div class="groupEditMember">
+				{{ member | pictureForAvatar('s', 30) }}
+				<div class="ellipsize">
+					<a href="{{ member.profileURL }}" class="name">{{ member.fullName }}</a>
+				</div>
+				{% if not (adminIDs contains member.id) %}
+					<a href="/groups/{{ group.id }}/editAdminForm?id={{ member.id }}" data-ajax-box="1">{{ L('group_admin_promote') }}</a>
+				{% endif %}
+				<div class="clear"></div>
+			</div>
+		{% endfor %}
+	</div>
+</div>
+{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': paginationUrlPrefix}%}
+{% endblock %}

@@ -1,0 +1,7 @@
+{# @pebvariable name="group" type="smithereen.data.Group" #}
+<div class="tabbar">
+	<a href="/groups/{{ group.id }}/edit" class="{{ tab=='general' ? 'selected' : '' }}">{{ L('profile_edit_basic') }}</a>
+	<a href="/groups/{{ group.id }}/editAdmins" class="{{ tab=='admins' ? 'selected' : '' }}">{{ L('group_admins') }}</a>
+	<a href="/groups/{{ group.id }}/editMembers" class="{{ tab=='members' ? 'selected' : '' }}">{{ L('members') }}</a>
+	<a href="{{ group.profileURL }}" class="aux">{{ L('back_to_group') }}</a>
+</div>

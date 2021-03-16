@@ -167,6 +167,8 @@ public class SettingsRoutes{
 			File temp=new File(tmpDir, keyHex);
 			part.write(keyHex);
 			VImage img=new VImage(temp.getAbsolutePath());
+			if(img.hasAlpha())
+				img=img.flatten(1, 1, 1);
 			float ratio=(float)img.getWidth()/(float)img.getHeight();
 			boolean ratioIsValid=ratio<=2.5f && ratio>=0.25f;
 			LocalImage ava=new LocalImage();

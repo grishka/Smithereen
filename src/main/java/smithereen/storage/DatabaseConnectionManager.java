@@ -22,9 +22,14 @@ public class DatabaseConnectionManager{
 		System.out.println("Opening new database connection for thread "+Thread.currentThread().getName());
 		if(conn==null)
 			conn=new ConnectionWrapper();
-		conn.connection=DriverManager.getConnection("jdbc:mysql://"+Config.dbHost+"/"+Config.dbName+"?user="+Config.dbUser+"&password="+Config.dbPassword+"&useGmtMillisForDatetimes=true&serverTimezone=GMT&useUnicode=true&characterEncoding=UTF-8&connectTimeout=0&socketTimeout=0&autoReconnect=true");
+//		long t=System.currentTimeMillis();
+		conn.connection=DriverManager.getConnection("jdbc:mysql://"+Config.dbHost+"/"+Config.dbName+"?serverTimezone=GMT&connectionTimeZone=GMT&useUnicode=true&characterEncoding=UTF-8&forceConnectionTimeZoneToSession=true",
+				Config.dbUser, Config.dbPassword);
+//		System.out.println("open: "+(System.currentTimeMillis()-t));
 		conn.connection.createStatement().execute("SET @@SQL_MODE = REPLACE(@@SQL_MODE, 'STRICT_TRANS_TABLES', '')");
-		conn.connection.createStatement().execute("SET @@session.time_zone='+00:00'");
+//		System.out.println("set mode: "+(System.currentTimeMillis()-t));
+//		conn.connection.createStatement().execute("SET @@session.time_zone='+00:00'");
+//		System.out.println("set tz: "+(System.currentTimeMillis()-t));
 		conn.lastUsed=System.currentTimeMillis();
 		connection.set(conn);
 		return conn.connection;

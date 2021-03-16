@@ -2,6 +2,7 @@
 {% import "forms" as form %}
 {% extends "page" %}
 {% block content %}
+{% include "group_admin_tabbar" with {'tab': 'general'} %}
 <div class="singleColumn gray">
 	<form action="/groups/{{ group.id }}/saveGeneral" method="post" onsubmit="return ajaxSubmitForm(this)">
 		<h2>{{L('profile_edit_basic')}}</h2>

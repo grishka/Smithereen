@@ -647,3 +647,7 @@ input[type=checkbox]{
 		@include layer-shadow;
 	}
 }
+
+.clear{
+	clear: both;
+}

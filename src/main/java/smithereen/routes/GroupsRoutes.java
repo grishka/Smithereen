@@ -2,6 +2,7 @@ package smithereen.routes;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -9,7 +10,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import smithereen.BadRequestException;
 import smithereen.Config;
+import smithereen.data.GroupAdmin;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
@@ -168,7 +171,7 @@ public class GroupsRoutes{
 	public static Object editGeneral(Request req, Response resp, Account self) throws SQLException{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_general");
-		model.with("group", group);
+		model.with("group", group).with("title", group.name);
 		Session s=req.session();
 		if(s.attribute("settings.groupEditMessage")!=null){
 			model.with("groupEditMessage", s.attribute("settings.groupEditMessage"));
@@ -196,7 +199,7 @@ public class GroupsRoutes{
 		if(isAjax(req)){
 			return new WebDeltaResponseBuilder(resp).show("formMessage_groupEdit").setContent("formMessage_groupEdit", message).json();
 		}
-		req.session().attribute("settings.profileEditMessage", message);
+		req.session().attribute("settings.groupEditMessage", message);
 		resp.redirect("/groups/"+group.id+"/edit");
 		return "";
 	}
@@ -213,7 +216,7 @@ public class GroupsRoutes{
 //			else
 //				return new WebDeltaResponseBuilder(resp).setContent("likesList", model.renderToString(req));
 //		}
-		model.with("contentTemplate", "user_grid").with("title", lang(req).get("members"));
+		model.with("contentTemplate", "user_grid").with("title", group.name);
 		return model.renderToString(req);
 	}
 
@@ -225,5 +228,107 @@ public class GroupsRoutes{
 			return new WebDeltaResponseBuilder(resp).box(lang(req).get("group_admins"), model.renderContentBlock(req), null, true).json();
 		}
 		return model.renderToString(req);
+	}
+
+	public static Object editAdmins(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_admins");
+		model.with("group", group).with("title", group.name);
+		model.with("admins", GroupStorage.getGroupAdmins(group.id));
+		jsLangKey(req, "cancel", "group_admin_demote", "yes", "no");
+		return model.renderToString(req);
+	}
+
+	public static Object editMembers(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members");
+		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
+		List<User> users=GroupStorage.getMembers(group.id, offset, 100);
+		model.with("pageOffset", offset).with("total", group.memberCount).with("paginationUrlPrefix", "/groups/"+group.id+"/editMembers?offset=");
+		model.with("group", group).with("title", group.name);
+		model.with("members", users);
+		model.with("adminIDs", GroupStorage.getGroupAdmins(group.id).stream().map(adm->adm.user.id).collect(Collectors.toList()));
+		jsLangKey(req, "cancel");
+		return model.renderToString(req);
+	}
+
+	public static Object editAdminForm(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		int userID=parseIntOrDefault(req.queryParams("id"), 0);
+		User user=UserStorage.getById(userID);
+		if(user==null)
+			throw new ObjectNotFoundException("user_not_found");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_admin");
+		GroupAdmin admin=GroupStorage.getGroupAdmin(group.id, userID);
+		model.with("existingAdmin", admin);
+		return wrapForm(req, resp, "group_edit_admin", "/groups/"+group.id+"/saveAdmin?id="+userID, user.getFullName(), "save", model);
+	}
+
+	public static Object saveAdmin(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		int userID=parseIntOrDefault(req.queryParams("id"), 0);
+		User user=UserStorage.getById(userID);
+		if(user==null)
+			throw new ObjectNotFoundException("user_not_found");
+
+		String _lvl=req.queryParams("level");
+		String title=req.queryParams("title");
+		Group.AdminLevel lvl=null;
+		if(_lvl!=null){
+			try{
+				lvl=Group.AdminLevel.valueOf(_lvl);
+				if(lvl==Group.AdminLevel.OWNER)
+					lvl=null;
+			}catch(Exception x){
+				throw new BadRequestException(x);
+			}
+		}
+
+		GroupStorage.addOrUpdateGroupAdmin(group.id, userID, title, lvl);
+
+		if(isAjax(req)){
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		}
+		resp.redirect(Utils.back(req));
+		return "";
+	}
+
+	public static Object confirmDemoteAdmin(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		int userID=parseIntOrDefault(req.queryParams("id"), 0);
+		User user=UserStorage.getById(userID);
+		if(user==null)
+			throw new ObjectNotFoundException("user_not_found");
+
+		String back=Utils.back(req);
+		return new RenderedTemplateResponse("generic_confirm").with("message", Utils.lang(req).inflected("group_admin_demote_confirm", user.gender, user.firstName, user.lastName, null)).with("formAction", Config.localURI("/groups/"+group.id+"/removeAdmin?_redir="+URLEncoder.encode(back)+"&id="+userID)).with("back", back).renderToString(req);
+	}
+
+	public static Object removeAdmin(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		int userID=parseIntOrDefault(req.queryParams("id"), 0);
+		User user=UserStorage.getById(userID);
+		if(user==null)
+			throw new ObjectNotFoundException("user_not_found");
+
+		GroupStorage.removeGroupAdmin(group.id, userID);
+
+		if(isAjax(req)){
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		}
+		resp.redirect(Utils.back(req));
+		return "";
+	}
+
+	public static Object editAdminReorder(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		int userID=parseIntOrDefault(req.queryParams("id"), 0);
+		int order=parseIntOrDefault(req.queryParams("order"), 0);
+		if(order<0)
+			throw new BadRequestException();
+
+		GroupStorage.setGroupAdminOrder(group.id, userID, order);
+
+		return "";
 	}
 }

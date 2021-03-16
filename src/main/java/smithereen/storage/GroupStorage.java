@@ -1,5 +1,6 @@
 package smithereen.storage;
 
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
 
 import java.net.URI;
@@ -33,6 +34,8 @@ public class GroupStorage{
 	private static final LruCache<Integer, Group> cacheByID=new LruCache<>(500);
 	private static final LruCache<String, Group> cacheByUsername=new LruCache<>(500);
 	private static final LruCache<URI, ForeignGroup> cacheByActivityPubID=new LruCache<>(500);
+
+	private static final Object adminUpdateLock=new Object();
 
 	public static int createGroup(String name, String username, int userID) throws SQLException{
 		int id;
@@ -378,7 +381,8 @@ public class GroupStorage{
 		SQLQueryBuilder b=new SQLQueryBuilder()
 				.selectFrom("group_admins")
 				.columns("level", "user_id", "title")
-				.where("group_id=?", groupID);
+				.where("group_id=?", groupID)
+				.orderBy("display_order ASC");
 		try(ResultSet res=b.createStatement().executeQuery()){
 			ArrayList<GroupAdmin> admins=new ArrayList<>();
 			res.beforeFirst();
@@ -390,6 +394,122 @@ public class GroupStorage{
 				admins.add(admin);
 			}
 			return admins;
+		}
+	}
+
+	public static GroupAdmin getGroupAdmin(int groupID, int userID) throws SQLException{
+		SQLQueryBuilder b=new SQLQueryBuilder()
+				.selectFrom("group_admins")
+				.columns("level", "user_id", "title")
+				.where("group_id=? AND user_id=?", groupID, userID);
+		try(ResultSet res=b.createStatement().executeQuery()){
+			ArrayList<GroupAdmin> admins=new ArrayList<>();
+			if(res.first()){
+				GroupAdmin admin=new GroupAdmin();
+				admin.level=Group.AdminLevel.values()[res.getInt(1)];
+				admin.user=UserStorage.getById(res.getInt(2));
+				admin.title=res.getString(3);
+				return admin;
+			}
+			return null;
+		}
+	}
+
+	public static void addOrUpdateGroupAdmin(int groupID, int userID, String title, @Nullable Group.AdminLevel level) throws SQLException{
+		synchronized(adminUpdateLock){
+			GroupAdmin existing=getGroupAdmin(groupID, userID);
+			if(existing!=null){
+				SQLQueryBuilder b=new SQLQueryBuilder()
+						.update("group_admins")
+						.where("group_id=? AND user_id=?", groupID, userID)
+						.value("title", title);
+				if(existing.level!=Group.AdminLevel.OWNER && level!=null){
+					b.value("level", level.ordinal());
+				}
+				b.createStatement().execute();
+			}else if(level!=null){
+				int order=DatabaseUtils.intResultSetToList(new SQLQueryBuilder()
+						.selectFrom("group_admins")
+						.selectExpr("MAX(display_order)+1")
+						.where("group_id=?", groupID)
+						.createStatement()
+						.executeQuery()).get(0);
+				new SQLQueryBuilder()
+						.insertInto("group_admins")
+						.value("group_id", groupID)
+						.value("user_id", userID)
+						.value("title", title)
+						.value("level", level.ordinal())
+						.value("display_order", order)
+						.createStatement()
+						.execute();
+			}
+			SessionStorage.removeFromUserPermissionsCache(userID);
+		}
+	}
+
+	public static void removeGroupAdmin(int groupID, int userID) throws SQLException{
+		synchronized(adminUpdateLock){
+			Connection conn=DatabaseConnectionManager.getConnection();
+			PreparedStatement stmt=new SQLQueryBuilder(conn)
+					.selectFrom("group_admins")
+					.columns("display_order")
+					.where("group_id=? AND user_id=?", groupID, userID)
+					.createStatement();
+			List<Integer> _order=DatabaseUtils.intResultSetToList(stmt.executeQuery());
+			if(_order.isEmpty())
+				return;
+			int order=_order.get(0);
+			new SQLQueryBuilder(conn)
+					.deleteFrom("group_admins")
+					.where("group_id=? AND user_id=?", groupID, userID)
+					.createStatement()
+					.execute();
+			new SQLQueryBuilder(conn)
+					.update("group_admins")
+					.valueExpr("display_order", "display_order-1")
+					.where("group_id=? AND display_order>?", groupID, order)
+					.createStatement()
+					.execute();
+			SessionStorage.removeFromUserPermissionsCache(userID);
+		}
+	}
+
+	public static void setGroupAdminOrder(int groupID, int userID, int newOrder) throws SQLException{
+		synchronized(adminUpdateLock){
+			Connection conn=DatabaseConnectionManager.getConnection();
+			PreparedStatement stmt=new SQLQueryBuilder(conn)
+					.selectFrom("group_admins")
+					.columns("display_order")
+					.where("group_id=? AND user_id=?", groupID, userID)
+					.createStatement();
+			int order=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+			if(order==-1 || order==newOrder)
+				return;
+			int count=DatabaseUtils.oneFieldToInt(new SQLQueryBuilder(conn).selectFrom("group_admins").count().where("group_id=?", groupID).createStatement().executeQuery());
+			if(newOrder>=count)
+				return;
+			new SQLQueryBuilder(conn)
+					.update("group_admins")
+					.where("group_id=? AND user_id=?", groupID, userID)
+					.value("display_order", newOrder)
+					.createStatement()
+					.execute();
+			if(newOrder<order){
+				new SQLQueryBuilder(conn)
+						.update("group_admins")
+						.where("group_id=? AND display_order>=? AND display_order<? AND user_id<>?", groupID, newOrder, order, userID)
+						.valueExpr("display_order", "display_order+1")
+						.createStatement()
+						.execute();
+			}else{
+				new SQLQueryBuilder(conn)
+						.update("group_admins")
+						.where("group_id=? AND display_order<=? AND display_order>? AND user_id<>?", groupID, newOrder, order, userID)
+						.valueExpr("display_order", "display_order-1")
+						.createStatement()
+						.execute();
+			}
 		}
 	}
 

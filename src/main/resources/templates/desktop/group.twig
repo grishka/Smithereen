@@ -103,7 +103,7 @@
 				{% for admin in admins %}
 					{% if loop.index<5 %}
 						<tr class="oneMemberRow">
-							<td><a href="{{ admin.user.profileURL }}">{{ admin.user | pictureForAvatar('s', 40) }}</a></td>
+							<td valign="top"><a href="{{ admin.user.profileURL }}">{{ admin.user | pictureForAvatar('s', 40) }}</a></td>
 							<td class="nameAndInfo">
 								<div><a href="{{ admin.user.profileURL }}">{{ admin.user.fullName }}</a></div>
 								{% if admin.title is not empty %}

@@ -224,5 +224,16 @@
   "about_event": "About",
   "group_info_updated": "Group info has been updated",
   "event_info_updated": "Event info has been updated",
-  "close": "Close"
+  "close": "Close",
+  "back_to_profile": "Back to profile",
+  "back_to_group": "Back to group",
+  "back_to_event": "Back to event",
+  "edit": "Edit",
+  "group_admin_demote": "Demote",
+  "group_admin_promote": "Promote to management",
+  "group_access_admin_explain": "Can edit group info and appoint other managers.",
+  "group_access_moderator_explain": "Can delete content and block group members.",
+  "group_admin_title": "Title",
+  "group_admin_title_explain": "Will be shown in the public manager list.",
+  "group_admin_demote_confirm": "Are you sure you want to remove %s from group's management?"
 }

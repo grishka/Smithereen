@@ -14,6 +14,7 @@ public class SQLQueryBuilder{
 	private Action action;
 	private String table;
 	private String[] selectColumns;
+	private String selectExpr;
 	private boolean selectEverything=true;
 	private boolean selectCount;
 	private boolean selectDistinct;
@@ -89,6 +90,11 @@ public class SQLQueryBuilder{
 		return this;
 	}
 
+	public SQLQueryBuilder selectExpr(String expr){
+		selectExpr=expr;
+		return this;
+	}
+
 	public SQLQueryBuilder valueExpr(String key, String expr, Object... args){
 		if(values==null)
 			values=new ArrayList<>();
@@ -146,6 +152,8 @@ public class SQLQueryBuilder{
 			sb.append("COUNT(*)");
 		}else if(selectEverything){
 			sb.append("*");
+		}else if(selectExpr!=null){
+			sb.append(selectExpr);
 		}else{
 			int i=0;
 			for(String col : selectColumns){

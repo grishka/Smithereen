@@ -16,6 +16,8 @@ class LayerManager{
 		}
 	};
 	private boxLoader:HTMLDivElement;
+	private animatingHide:boolean=false;
+	private hideAnimCanceled:boolean=false;
 
 	private constructor(){
 		this.scrim=ce("div", {id: "layerScrim", onclick: ()=>{
@@ -35,6 +37,10 @@ class LayerManager{
 	}
 
 	public show(layer:BaseLayer):void{
+		if(this.animatingHide){
+			this.hideAnimCanceled=true;
+			this.layerContainer.innerHTML="";
+		}
 		var layerContent:HTMLElement=layer.getContent();
 		this.layerContainer.appendChild(layerContent);
 		if(this.stack.length==0){
@@ -77,10 +83,16 @@ class LayerManager{
 			var duration=200;
 			if(anim){
 				duration=(anim.options as KeyframeAnimationOptions).duration as number;
+				this.animatingHide=true;
 				layerContent.hideAnimated(anim, ()=>{
-					this.layerContainer.removeChild(layerContent);
-					this.layerContainer.hide();
-					this.unlockPageScroll();
+					if(this.hideAnimCanceled){
+						this.hideAnimCanceled=false;
+					}else{
+						this.layerContainer.removeChild(layerContent);
+						this.layerContainer.hide();
+						this.unlockPageScroll();
+					}
+					this.animatingHide=false;
 				});	
 			}else{
 				this.layerContainer.removeChild(layerContent);
@@ -287,7 +299,7 @@ class ScrollableBox extends BoxWithoutContentPadding{
 
 	public constructor(title:string, buttonTitles:string[]=[], onButtonClick:{(index:number):void;}=null){
 		super(title, buttonTitles, onButtonClick);
-		this.contentWrap.addEventListener("scroll", this.onContentScroll.bind(this));
+		this.contentWrap.addEventListener("scroll", this.onContentScroll.bind(this), {passive: true});
 	}
 
 	protected onCreateContentView():HTMLElement{
@@ -552,15 +564,23 @@ class MobileOptionsBox extends Box{
 					attrs.rel="noopener";
 				}
 			}
-			attrs.onclick=()=>{
+			var link:HTMLAnchorElement;
+			list.appendChild(ce("li", {}, [
+				link=ce("a", attrs)
+			]));
+			link.addEventListener("click", (ev:Event)=>{
 				if(opt.type=="confirm"){
 					ajaxConfirm(opt.title, opt.msg, opt.url);
 				}
+				if(opt.ajax){
+					if(opt.ajax=="box"){
+						LayerManager.getInstance().showBoxLoader();
+					}
+					ajaxGetAndApplyActions(link.href);
+					ev.preventDefault();
+				}
 				this.dismiss();
-			};
-			list.appendChild(ce("li", {}, [
-				ce("a", attrs)
-			]));
+			}, false);
 		});
 		this.setContent(content);
 	}
