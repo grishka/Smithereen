@@ -28,7 +28,7 @@ public class DatabaseConnectionManager{
 //		System.out.println("open: "+(System.currentTimeMillis()-t));
 		conn.connection.createStatement().execute("SET @@SQL_MODE = REPLACE(@@SQL_MODE, 'STRICT_TRANS_TABLES', '')");
 //		System.out.println("set mode: "+(System.currentTimeMillis()-t));
-//		conn.connection.createStatement().execute("SET @@session.time_zone='+00:00'");
+		conn.connection.createStatement().execute("SET @@session.time_zone='+00:00'");
 //		System.out.println("set tz: "+(System.currentTimeMillis()-t));
 		conn.lastUsed=System.currentTimeMillis();
 		connection.set(conn);
