@@ -1,10 +1,16 @@
 package smithereen.data;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
 
 import smithereen.Config;
+import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.Actor;
 import spark.utils.StringUtils;
 
@@ -12,6 +18,8 @@ public class Group extends Actor{
 
 	public int id;
 	public int memberCount;
+
+	public List<GroupAdmin> adminsForActivityPub;
 
 	public static Group fromResultSet(ResultSet res) throws SQLException{
 		Group g;
@@ -57,6 +65,25 @@ public class Group extends Actor{
 		url=Config.localURI(username);
 		memberCount=res.getInt("member_count");
 		summary=res.getString("about");
+	}
+
+	@Override
+	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+		obj=super.asActivityPubObject(obj, contextCollector);
+
+		JSONArray ar=new JSONArray();
+		for(GroupAdmin admin : adminsForActivityPub){
+			JSONObject ja=new JSONObject(Map.of(
+					"type", "Person",
+					"id", admin.user.activityPubID.toString()
+			));
+			if(StringUtils.isNotEmpty(admin.title))
+				ja.put("title", admin.title);
+			ar.put(ja);
+		}
+		obj.put("attributedTo", ar);
+
+		return obj;
 	}
 
 	public enum AdminLevel{

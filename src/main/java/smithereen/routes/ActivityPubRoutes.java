@@ -25,7 +25,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
-import java.util.stream.Collectors;
 
 import smithereen.BadRequestException;
 import smithereen.BuildInfo;
@@ -170,6 +169,10 @@ public class ActivityPubRoutes{
 			actor=UserStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
 		}
 		if(actor!=null && !(actor instanceof ForeignUser) && !(actor instanceof ForeignGroup)){
+			if(actor instanceof Group){
+				Group group=(Group) actor;
+				group.adminsForActivityPub=GroupStorage.getGroupAdmins(group.id);
+			}
 			resp.type(ActivityPub.CONTENT_TYPE);
 			return actor.asRootActivityPubObject();
 		}
@@ -184,6 +187,7 @@ public class ActivityPubRoutes{
 		else
 			group=GroupStorage.getByID(Utils.parseIntOrDefault(req.params(":id"), 0));
 		if(group!=null && !(group instanceof ForeignGroup)){
+			group.adminsForActivityPub=GroupStorage.getGroupAdmins(group.id);
 			resp.type(ActivityPub.CONTENT_TYPE);
 			return group.asRootActivityPubObject();
 		}
@@ -335,7 +339,7 @@ public class ActivityPubRoutes{
 					return "Invalid remote object URI";
 				}
 			}
-			remoteObj=ActivityPub.fetchRemoteObject(uri.toString());
+			remoteObj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, true, true);
 			if(remoteObj==null){
 				return "Error fetching remote object";
 			}
@@ -638,16 +642,8 @@ public class ActivityPubRoutes{
 					}
 				}
 			}else{
-				try{
-					aobj=ObjectLinkResolver.resolve(activity.object.link);
-				}catch(ObjectNotFoundException x){
-					// special case: fetch the object Announce{Note}
-					if(activity instanceof Announce){
-						aobj=ActivityPub.fetchRemoteObject(activity.object.link.toString());
-					}else{
-						throw x;
-					}
-				}
+				// special case: fetch the object Announce{Note}
+				aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce, false);
 			}
 			for(ActivityTypeHandlerRecord r : typeHandlers){
 				if(r.actorClass.isInstance(user)){

@@ -2,11 +2,13 @@ package smithereen;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
@@ -56,36 +58,66 @@ public class ObjectLinkResolver{
 		return group;
 	}
 
-	@NotNull
 	public static ActivityPubObject resolve(URI link) throws SQLException{
+		return resolve(link, ActivityPubObject.class, false, false);
+	}
+
+	@NotNull
+	public static <T extends ActivityPubObject> T resolve(URI link, Class<T> expectedType, boolean allowFetching, boolean forceRefetch) throws SQLException{
+		if(Config.DEBUG)
+			System.out.println("Resolving ActivityPub link: "+link+", expected type: "+expectedType.getName());
 		if(!Config.isLocal(link)){
-			User user=UserStorage.getUserByActivityPubID(link);
-			if(user!=null)
-				return user;
-			ForeignGroup group=GroupStorage.getForeignGroupByActivityPubID(link);
-			if(group!=null)
-				return group;
-			Post post=PostStorage.getPostByID(link);
-			if(post!=null)
-				return post;
+			if(!forceRefetch){
+				User user=UserStorage.getUserByActivityPubID(link);
+				if(user!=null)
+					return ensureTypeAndCast(user, expectedType);
+				ForeignGroup group=GroupStorage.getForeignGroupByActivityPubID(link);
+				if(group!=null)
+					return ensureTypeAndCast(group, expectedType);
+				Post post=PostStorage.getPostByID(link);
+				if(post!=null)
+					return ensureTypeAndCast(post, expectedType);
+			}
+			if(allowFetching){
+				try{
+					ActivityPubObject obj=ActivityPub.fetchRemoteObject(link.toString());
+					T o=ensureTypeAndCast(obj, expectedType);
+					o.resolveDependencies(allowFetching);
+					if(o instanceof ForeignUser)
+						UserStorage.putOrUpdateForeignUser((ForeignUser) o);
+					else if(o instanceof ForeignGroup)
+						GroupStorage.putOrUpdateForeignGroup((ForeignGroup) o);
+					else if(o instanceof Post)
+						PostStorage.putForeignWallPost((Post) o);
+					return o;
+				}catch(IOException x){
+					x.printStackTrace();
+				}
+			}
 			throw new ObjectNotFoundException("Can't resolve remote object: "+link);
 		}
 
 		Matcher matcher=POSTS.matcher(link.getPath());
 		if(matcher.find()){
-			return getPost(matcher.group(1));
+			return ensureTypeAndCast(getPost(matcher.group(1)), expectedType);
 		}
 
 		matcher=USERS.matcher(link.getPath());
 		if(matcher.find()){
-			return getUser(matcher.group(1));
+			return ensureTypeAndCast(getUser(matcher.group(1)), expectedType);
 		}
 
 		matcher=GROUPS.matcher(link.getPath());
 		if(matcher.find()){
-			return getGroup(matcher.group(1));
+			return ensureTypeAndCast(getGroup(matcher.group(1)), expectedType);
 		}
 
 		throw new ObjectNotFoundException("Invalid local URI");
+	}
+
+	private static <T extends ActivityPubObject> T ensureTypeAndCast(ActivityPubObject obj, Class<T> type){
+		if(type.isInstance(obj))
+			return type.cast(obj);
+		throw new IllegalStateException("Expected object of type "+type.getName()+", but got "+obj.getClass().getName()+" instead");
 	}
 }

@@ -4,7 +4,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -14,6 +13,7 @@ import java.util.Date;
 import java.util.List;
 
 import smithereen.Config;
+import smithereen.ObjectLinkResolver;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ContextCollector;
@@ -48,6 +48,8 @@ public class Post extends ActivityPubObject{
 	public List<Post> replies=new ArrayList<>();
 	public boolean local;
 	public List<User> mentionedUsers=Collections.EMPTY_LIST;
+
+	private ActivityPubObject activityPubTarget;
 
 	public static Post fromResultSet(ResultSet res) throws SQLException{
 		Post post=new Post();
@@ -217,6 +219,8 @@ public class Post extends ActivityPubObject{
 				owner=UserStorage.getForeignUserByActivityPubID(ownerID);
 				if(owner==null)
 					owner=GroupStorage.getForeignGroupByActivityPubID(ownerID);
+
+				activityPubTarget=target;
 			}
 			if(owner!=null && !target.activityPubID.equals(owner.getWallURL()))
 				owner=null;
@@ -350,5 +354,17 @@ public class Post extends ActivityPubObject{
 
 	public boolean isGroupOwner(){
 		return owner instanceof Group;
+	}
+
+	@Override
+	public void resolveDependencies(boolean allowFetching) throws SQLException{
+		if(user==null){
+			user=ObjectLinkResolver.resolve(attributedTo, ForeignUser.class, allowFetching, false);
+		}
+		if(owner==null && activityPubTarget!=null){
+			owner=ObjectLinkResolver.resolve(activityPubTarget.attributedTo, Actor.class, true, false);
+			if(!activityPubTarget.activityPubID.equals(owner.getWallURL()))
+				owner=null;
+		}
 	}
 }

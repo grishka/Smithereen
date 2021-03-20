@@ -5,6 +5,7 @@ import org.json.JSONObject;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -325,6 +326,10 @@ public abstract class ActivityPubObject{
 	}
 
 	//abstract String getType();
+
+	public void resolveDependencies(boolean allowFetching) throws SQLException{
+
+	}
 
 	@Override
 	public String toString(){

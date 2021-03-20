@@ -14,8 +14,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -117,9 +119,61 @@ public class GroupStorage{
 		if(existingGroupID==0){
 			group.id=DatabaseUtils.insertAndGetID(stmt);
 		}else{
+			group.id=existingGroupID;
 			stmt.execute();
 		}
 		putIntoCache(group);
+		synchronized(adminUpdateLock){
+			stmt=new SQLQueryBuilder(conn)
+					.selectFrom("group_admins")
+					.columns("user_id", "title")
+					.where("group_id=?", group.id)
+					.createStatement();
+			Map<Integer, GroupAdmin> admins=group.adminsForActivityPub.stream().collect(Collectors.toMap(adm->adm.user.id, adm->adm));
+			int count=0;
+			boolean needUpdate=false;
+			try(ResultSet res=stmt.executeQuery()){
+				res.beforeFirst();
+				while(res.next()){
+					count++;
+					int id=res.getInt(1);
+					String title=res.getString(2);
+					if(!admins.containsKey(id)){
+						needUpdate=true;
+						break;
+					}
+					GroupAdmin existing=admins.get(id);
+					if(!Objects.equals(title, existing.title)){
+						needUpdate=true;
+						break;
+					}
+				}
+			}
+			if(!needUpdate && count!=group.adminsForActivityPub.size())
+				needUpdate=true;
+
+			// TODO only update whatever has actually changed
+			if(needUpdate){
+				new SQLQueryBuilder(conn)
+						.deleteFrom("group_admins")
+						.where("group_id=?", group.id)
+						.createStatement()
+						.execute();
+				int order=0;
+				for(GroupAdmin admin:group.adminsForActivityPub){
+					new SQLQueryBuilder(conn)
+							.insertInto("group_admins")
+							.value("group_id", group.id)
+							.value("user_id", admin.user.id)
+							.value("title", admin.title)
+							.value("level", Group.AdminLevel.MODERATOR.ordinal())
+							.value("display_order", order)
+							.createStatement()
+							.execute();
+					order++;
+				}
+			}
+		}
 	}
 
 	public static synchronized Group getByID(int id) throws SQLException{
