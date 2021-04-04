@@ -49,25 +49,35 @@ public class ForeignGroup extends Group{
 		if(_attributedTo instanceof JSONArray){
 			JSONArray attributedTo=(JSONArray) _attributedTo;
 			for(int i=0;i<attributedTo.length();i++){
-				JSONObject adm=attributedTo.optJSONObject(i);
+				Object adm=attributedTo.opt(i);
 				doOneAdmin(adm);
 			}
-		}else if(_attributedTo instanceof JSONObject){
-			doOneAdmin((JSONObject) _attributedTo);
+		}else if(_attributedTo instanceof JSONObject || _attributedTo instanceof String){
+			doOneAdmin(_attributedTo);
 		}
 
 		return this;
 	}
 
-	private void doOneAdmin(JSONObject adm) throws Exception{
-		if(adm==null)
+	private void doOneAdmin(Object _adm) throws Exception{
+		if(_adm==null)
 			return;
-		if(!"Person".equals(adm.optString("type")))
-			return;
-		GroupAdmin admin=new GroupAdmin();
-		admin.activityPubUserID=new URI(adm.getString("id"));
-		admin.title=adm.optString("title", "");
-		adminsForActivityPub.add(admin);
+		if(_adm instanceof JSONObject){
+			JSONObject adm=(JSONObject) _adm;
+			if(!"Person".equals(adm.optString("type")))
+				return;
+			GroupAdmin admin=new GroupAdmin();
+			admin.activityPubUserID=new URI(adm.getString("id"));
+			admin.title=adm.optString("title", "");
+			adminsForActivityPub.add(admin);
+		}else if(_adm instanceof String){
+			URI adm=tryParseURL((String)_adm);
+			if(adm==null)
+				return;
+			GroupAdmin admin=new GroupAdmin();
+			admin.activityPubUserID=adm;
+			adminsForActivityPub.add(admin);
+		}
 	}
 
 	@Override
