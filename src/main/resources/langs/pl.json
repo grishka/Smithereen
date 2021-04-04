@@ -196,7 +196,7 @@
   "menu_groups": "Moje grupy",
   "groups": "Grupy",
   "groups_managed": "Zarządzanie",
-  "create_group": "Utwórz grupe",
+  "create_group": "Utwórz grupę",
   "create": "Utwórz",
   "group_name": "Nazwa",
   "group_username": "Adres",
@@ -223,5 +223,17 @@
   "about_group": "Informacje",
   "about_event": "Informacje",
   "group_info_updated": "Informacje o grupie zostały zaktualizowane",
-  "event_info_updated": "Informacje o wydarzeniu zostały zaktualizowane"
+  "event_info_updated": "Informacje o wydarzeniu zostały zaktualizowane",
+  "close": "Zamknij",
+  "back_to_profile": "Wróć na profil",
+  "back_to_group": "Wróć do grupy",
+  "back_to_event": "Wróć do wydarzenia",
+  "edit": "Edytuj",
+  "group_admin_demote": "Zdegraduj",
+  "group_admin_promote": "Dodaj do zarządzających",
+  "group_access_admin_explain": "Może edytować informacje o grupie i wyznaczać innych zarządzających.",
+  "group_access_moderator_explain": "Może usuwać treści i blokować członków grupy.",
+  "group_admin_title": "Tytuł",
+  "group_admin_title_explain": "Będzie wyświetlany na publicznej liście zarządzających.",
+  "group_admin_demote_confirm": "Czy na pewno chcesz usunąć %s z listy zarządzających grupą?"
 }
