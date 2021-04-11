@@ -188,9 +188,14 @@ public class Post extends ActivityPubObject{
 			content=((JSONArray) _content).getString(0);
 		}
 		if(!parserContext.isLocal){
+			if(StringUtils.isNotEmpty(name))
+				content="<p><b>"+name+"</b></p>"+content;
 			content=Utils.sanitizeHTML(content);
-			if(StringUtils.isNotEmpty(summary))
+			if(obj.optBoolean("sensitive") && summary!=null){
 				summary=Utils.sanitizeHTML(summary);
+			}else{
+				summary=null;
+			}
 		}
 		user=UserStorage.getUserByActivityPubID(attributedTo);
 		if(url==null)
