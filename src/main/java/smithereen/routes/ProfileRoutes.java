@@ -27,6 +27,7 @@ import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.data.notifications.Notification;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NotificationsStorage;
@@ -135,8 +136,7 @@ public class ProfileRoutes{
 			if(g!=null){
 				return GroupsRoutes.groupProfile(req, resp, g);
 			}
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_user_not_found");
+			throw new ObjectNotFoundException("err_user_not_found");
 		}
 	}
 
@@ -179,8 +179,7 @@ public class ProfileRoutes{
 				return wrapError(req, resp, "err_friend_req_already_sent");
 			}
 		}else{
-			resp.status(404);
-			return wrapError(req, resp, "user_not_found");
+			throw new ObjectNotFoundException("err_user_not_found");
 		}
 	}
 
@@ -218,8 +217,7 @@ public class ProfileRoutes{
 				return Utils.wrapError(req, resp, "err_friend_req_already_sent");
 			}
 		}else{
-			resp.status(404);
-			return Utils.wrapError(req, resp, "user_not_found");
+			throw new ObjectNotFoundException("err_user_not_found");
 		}
 	}
 
@@ -237,8 +235,7 @@ public class ProfileRoutes{
 				return Utils.wrapError(req, resp, "err_not_friends");
 			}
 		}else{
-			resp.status(404);
-			return Utils.wrapError(req, resp, "user_not_found");
+			throw new ObjectNotFoundException("err_user_not_found");
 		}
 	}
 
@@ -260,7 +257,7 @@ public class ProfileRoutes{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
 			model.with("title", lang(req).get("friends"));
-			if(self!=null && user.id!=self.id){
+			if(self!=null && user.id!=self.user.id){
 				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
 				model.with("mutualCount", mutualCount);
 			}
@@ -268,14 +265,13 @@ public class ProfileRoutes{
 			jsLangKey(req, "remove_friend", "yes", "no");
 			return model.renderToString(req);
 		}
-		resp.status(404);
-		return Utils.wrapError(req, resp, "user_not_found");
+		throw new ObjectNotFoundException("err_user_not_found");
 	}
 
 	public static Object mutualFriends(Request req, Response resp, Account self) throws SQLException{
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
-		if(user!=null){
+		if(user!=null && user.id!=self.user.id){
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("friendList", UserStorage.getMutualFriendListForUser(user.id, self.user.id)).with("owner", user).with("tab", 0);
 			model.with("title", lang(req).get("friends"));
@@ -285,8 +281,7 @@ public class ProfileRoutes{
 			jsLangKey(req, "remove_friend", "yes", "no");
 			return model.renderToString(req);
 		}
-		resp.status(404);
-		return Utils.wrapError(req, resp, "user_not_found");
+		throw new ObjectNotFoundException("err_user_not_found");
 	}
 
 	public static Object followers(Request req, Response resp) throws SQLException{
@@ -307,14 +302,13 @@ public class ProfileRoutes{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("title", lang(req).get("followers")).with("toolbarTitle", lang(req).get("friends"));
 			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true).with("tab", "followers");
-			if(self!=null && user.id!=self.id){
+			if(self!=null && user.id!=self.user.id){
 				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
 				model.with("mutualCount", mutualCount);
 			}
 			return model.renderToString(req);
 		}
-		resp.status(404);
-		return Utils.wrapError(req, resp, "user_not_found");
+		throw new ObjectNotFoundException("err_user_not_found");
 	}
 
 	public static Object following(Request req, Response resp) throws SQLException{
@@ -335,15 +329,14 @@ public class ProfileRoutes{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
 			model.with("title", lang(req).get("following")).with("toolbarTitle", lang(req).get("friends"));
 			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true).with("tab", "following");
-			if(self!=null && user.id!=self.id){
+			if(self!=null && user.id!=self.user.id){
 				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
 				model.with("mutualCount", mutualCount);
 			}
 			jsLangKey(req, "unfollow", "yes", "no");
 			return model.renderToString(req);
 		}
-		resp.status(404);
-		return Utils.wrapError(req, resp, "user_not_found");
+		throw new ObjectNotFoundException("err_user_not_found");
 	}
 
 	public static Object incomingFriendRequests(Request req, Response resp, Account self) throws SQLException{
