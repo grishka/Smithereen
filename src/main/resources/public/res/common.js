@@ -711,13 +711,15 @@ NodeList.prototype.unfuck = function () {
         arr.push(this[i]);
     return arr;
 };
-TouchList.prototype.unfuck = function () {
-    var arr = [];
-    for (var i = 0; i < this.length; i++) {
-        arr.push(this.item(i));
-    }
-    return arr;
-};
+if (window.TouchList != undefined) {
+    TouchList.prototype.unfuck = function () {
+        var arr = [];
+        for (var i = 0; i < this.length; i++) {
+            arr.push(this.item(i));
+        }
+        return arr;
+    };
+}
 HTMLCollection.prototype.unfuck = function () {
     var arr = [];
     for (var i = 0; i < this.length; i++)

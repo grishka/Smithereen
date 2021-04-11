@@ -125,12 +125,14 @@ interface TouchList{
 	unfuck():Touch[];
 }
 
-TouchList.prototype.unfuck=function(){
-	var arr:Touch[]=[];
-	for(var i=0;i<this.length;i++){
-		arr.push(this.item(i));
+if(window.TouchList!=undefined){
+	TouchList.prototype.unfuck=function(){
+		var arr:Touch[]=[];
+		for(var i=0;i<this.length;i++){
+			arr.push(this.item(i));
+		}
+		return arr;
 	}
-	return arr;
 }
 
 interface HTMLCollection{
