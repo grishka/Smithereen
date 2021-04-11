@@ -133,6 +133,17 @@ TouchList.prototype.unfuck=function(){
 	return arr;
 }
 
+interface HTMLCollection{
+	unfuck():HTMLElement[];
+}
+
+HTMLCollection.prototype.unfuck=function(){
+	var arr:HTMLElement[]=[];
+	for(var i=0;i<this.length;i++)
+		arr.push(this[i]);
+	return arr;
+};
+
 var compatAnimStyle:HTMLStyleElement;
 
 function cssRuleForCamelCase(s:string):string{

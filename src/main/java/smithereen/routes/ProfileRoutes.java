@@ -128,7 +128,7 @@ public class ProfileRoutes{
 				}
 				model.with("metaTags", meta);
 			}
-			Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "remove_friend", "cancel", "delete");
+			Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "remove_friend", "cancel", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw");
 			return model.renderToString(req);
 		}else{
 			Group g=GroupStorage.getByUsername(username);

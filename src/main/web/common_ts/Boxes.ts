@@ -571,13 +571,14 @@ class MobileOptionsBox extends Box{
 			link.addEventListener("click", (ev:Event)=>{
 				if(opt.type=="confirm"){
 					ajaxConfirm(opt.title, opt.msg, opt.url);
-				}
-				if(opt.ajax){
+				}else if(opt.ajax){
 					if(opt.ajax=="box"){
 						LayerManager.getInstance().showBoxLoader();
 					}
 					ajaxGetAndApplyActions(link.href);
 					ev.preventDefault();
+				}else if(opt.onclick){
+					opt.onclick();
 				}
 				this.dismiss();
 			}, false);

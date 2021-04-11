@@ -648,6 +648,19 @@ input[type=checkbox]{
 	}
 }
 
+.flR{
+	float: right;
+}
+
+.flL{
+	float: left;
+}
+
 .clear{
 	clear: both;
+}
+
+.marginsAreMessy{
+	height: 1px;
+	margin-top: -1px;
 }

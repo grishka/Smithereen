@@ -37,12 +37,19 @@
 			</div>
 			{%endfor%}
 		</div>
+		<div id="postFormAttachments2_{{ id }}"></div>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
 		<table width="100%" cellpadding="0" cellspacing="0" class="bottomBar">
 			<tr><td width="50%" class="left">
-				<div class="js">
-					<input type="file" id="uploadField_{{id}}" multiple accept="image/*" style="display: none" form="attachmentUploadForm_{{id}}"/>
-					<label for="uploadField_{{id}}" class="link">{{L('attach_photo')}}</label>
+
+				<div class="popupMenuW">
+					<span class="opener">{{ L('attach') }}</span>
+					<div class="popupMenu" style="display: none;">
+						<ul class="attachMenu">
+							<li data-act="photo"><span class="iconPhoto"></span>{{ L('attach_menu_photo') }}</li>
+							<li data-act="cw"><span class="iconCW"></span>{{ L('attach_menu_cw') }}</li>
+						</ul>
+					</div>
 				</div>
 			</td><td align="right" class="right">
 				<input type="submit" value="{{L('send')}}"/>

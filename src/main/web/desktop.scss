@@ -217,6 +217,10 @@ h2{
 	}
 	.postContent{
 		padding-top: 4px;
+		overflow-x: hidden;
+		pre{
+			overflow-x: auto;
+		}
 	}
 }
 
@@ -237,7 +241,7 @@ h2{
 
 .pageContent{
 	box-shadow: 0 1px 1px 1px rgba(0, 0, 0, .1);
-	overflow: hidden; /* prevent margin collapse */
+	// overflow-y: hidden; /* prevent margin collapse */
 	margin-right: 17px;
 }
 
@@ -964,6 +968,29 @@ select{
 	}
 }
 
+.postFormNonThumb{
+	margin-top: 10px;
+	h3{
+		margin: 0 0 10px 0;
+		font-size: 11px;
+		color: $boldHeaders;
+	}
+	.attachDelete{
+		display: inline-block;
+		width: 16px;
+		height: 16px;
+		background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
+		opacity: .7;
+		transition: opacity .2s ease;
+		&:hover{
+			opacity: 1;
+		}
+	}
+	&.postFormCW input{
+		width: 100%;
+	}
+}
+
 .narrowWall .postAttachments .aspectWrapper .pseudoImage, .comment .postAttachments .aspectWrapper .pseudoImage{
 	max-width: 330px;
 }
@@ -1065,5 +1092,78 @@ select{
 			opacity: .8;
 			user-select: none;
 		}
+	}
+}
+
+.popupMenuW{
+	position: relative;
+	display: inline-block;
+	.opener{
+		color: $normalLink;
+		cursor: pointer;
+	}
+	.popupMenu{
+		position: absolute;
+		z-index: 1;
+		left: -26px;
+		// border: solid 1px $textAreaBorder;
+		background: #fff;
+		cursor: pointer;
+		border-radius: 2px;
+		color: $normalLink;
+		box-shadow:
+			0 0.1px 0.1px rgba(0, 0, 0, 0.028),
+			0 0.1px 0.3px rgba(0, 0, 0, 0.04),
+			0 0.3px 0.5px rgba(0, 0, 0, 0.05),
+			0 0.4px 0.9px rgba(0, 0, 0, 0.06),
+			0 0.8px 1.7px rgba(0, 0, 0, 0.072),
+			0 2px 4px rgba(0, 0, 0, 0.1)
+		;
+		min-width: 115px;
+
+		ul{
+			list-style-type: none;
+			margin: 0;
+			padding: 0;
+
+			li{
+				height: 26px;
+				line-height: 26px;
+				padding-right: 10px;
+				white-space: nowrap;
+				&:hover, &.selected{
+					background-color: $blockBackground;
+				}
+			}
+		}
+		.menuTitle{
+			height: 26px;
+			line-height: 26px;
+			padding: 0 10px 0 26px;
+			background-color: color($blockBackground alpha(50%));
+		}
+		&.popupDown{
+			top: -6px;
+		}
+		&.popupUp{
+			bottom: -7px;
+		}
+	}
+}
+
+.attachMenu li span{
+	background-image: svg-load('img/attach_icons.svg', fill: $iconColor);
+	background-repeat: no-repeat;
+	width: 20px;
+	height: 20px;
+	margin: 3px;
+	display: inline-block;
+	font-size: 0;
+	vertical-align: top;
+	&.iconPhoto{
+		background-position: 0 0;
+	}
+	&.iconCW{
+		background-position: 0 -180px;
 	}
 }

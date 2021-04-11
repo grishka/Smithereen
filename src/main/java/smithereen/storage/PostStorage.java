@@ -36,9 +36,9 @@ import smithereen.data.feed.RetootNewsfeedEntry;
 import spark.utils.StringUtils;
 
 public class PostStorage{
-	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, int[] replyKey, List<User> mentionedUsers, String attachments) throws SQLException{
+	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, int[] replyKey, List<User> mentionedUsers, String attachments, String contentWarning) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO wall_posts (author_id, owner_user_id, owner_group_id, `text`, reply_key, mentions, attachments) VALUES (?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+		PreparedStatement stmt=conn.prepareStatement("INSERT INTO wall_posts (author_id, owner_user_id, owner_group_id, `text`, reply_key, mentions, attachments, content_warning) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 		stmt.setInt(1, userID);
 		if(ownerUserID>0){
 			stmt.setInt(2, ownerUserID);
@@ -57,6 +57,7 @@ public class PostStorage{
 		}
 		stmt.setBytes(6, mentions);
 		stmt.setString(7, attachments);
+		stmt.setString(8, contentWarning);
 		stmt.execute();
 		try(ResultSet keys=stmt.getGeneratedKeys()){
 			keys.first();

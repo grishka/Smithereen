@@ -235,5 +235,9 @@
   "group_access_moderator_explain": "Может удалять контент и блокировать участников группы.",
   "group_admin_title": "Должность",
   "group_admin_title_explain": "Будет отображаться в общедоступном списке руководителей.",
-  "group_admin_demote_confirm": {"str": "Вы действительно хотите исключить %s из руководства группы?", "case": "GENITIVE"}
+  "group_admin_demote_confirm": {"str": "Вы действительно хотите исключить %s из руководства группы?", "case": "GENITIVE"},
+  "attach_menu_photo": "Фотографию",
+  "attach_menu_cw": "Спойлер",
+  "post_form_cw": "Спойлер",
+  "post_form_cw_placeholder": "Заголовок спойлера"
 }

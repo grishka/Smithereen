@@ -551,12 +551,15 @@ var MobileOptionsBox = /** @class */ (function (_super) {
                 if (opt.type == "confirm") {
                     ajaxConfirm(opt.title, opt.msg, opt.url);
                 }
-                if (opt.ajax) {
+                else if (opt.ajax) {
                     if (opt.ajax == "box") {
                         LayerManager.getInstance().showBoxLoader();
                     }
                     ajaxGetAndApplyActions(link.href);
                     ev.preventDefault();
+                }
+                else if (opt.onclick) {
+                    opt.onclick();
                 }
                 _this.dismiss();
             }, false);
@@ -713,6 +716,12 @@ TouchList.prototype.unfuck = function () {
     for (var i = 0; i < this.length; i++) {
         arr.push(this.item(i));
     }
+    return arr;
+};
+HTMLCollection.prototype.unfuck = function () {
+    var arr = [];
+    for (var i = 0; i < this.length; i++)
+        arr.push(this[i]);
     return arr;
 };
 var compatAnimStyle;
@@ -1471,8 +1480,74 @@ var ImageAreaSelector = /** @class */ (function () {
     };
     return ImageAreaSelector;
 }());
+var PopupMenu = /** @class */ (function () {
+    function PopupMenu(el, listener) {
+        this.root = el;
+        this.listener = listener;
+        el.addEventListener("mouseenter", this.onMouseOver.bind(this), false);
+        el.addEventListener("mouseleave", this.onMouseOut.bind(this), false);
+        this.menu = el.qs(".popupMenu");
+        this.actualMenu = this.menu.qs("ul");
+        this.title = ce("div", { className: "menuTitle", innerText: el.qs(".opener").innerText });
+        this.actualMenu.addEventListener("click", this.onItemClick.bind(this), false);
+    }
+    PopupMenu.prototype.onMouseOver = function (ev) {
+        if (this.prepareCallback)
+            this.prepareCallback();
+        if (this.menu.contains(this.title))
+            this.menu.removeChild(this.title);
+        // show first, to know the height
+        this.menu.showAnimated();
+        var rect = this.menu.getBoundingClientRect();
+        var scrollH = document.documentElement.clientHeight;
+        if (rect.bottom + 26 > scrollH) {
+            this.menu.classList.add("popupUp");
+            this.menu.classList.remove("popupDown");
+            this.menu.insertAdjacentElement("beforeend", this.title);
+        }
+        else {
+            this.menu.classList.remove("popupUp");
+            this.menu.classList.add("popupDown");
+            this.menu.insertAdjacentElement("afterbegin", this.title);
+        }
+    };
+    PopupMenu.prototype.onMouseOut = function (ev) {
+        this.menu.hideAnimated();
+    };
+    PopupMenu.prototype.onItemClick = function (ev) {
+        var _this = this;
+        var t = ev.target;
+        var li = t.tagName == "LI" ? t : t.parentElement;
+        li.style.background = "none";
+        setTimeout(function () {
+            li.style.background = "";
+        }, 50);
+        setTimeout(function () {
+            _this.menu.hideAnimated();
+        }, 100);
+        this.listener(li.dataset.act);
+    };
+    PopupMenu.prototype.setItemVisibility = function (act, visible) {
+        for (var _i = 0, _a = this.actualMenu.children.unfuck(); _i < _a.length; _i++) {
+            var item = _a[_i];
+            if (item.dataset.act == act) {
+                if (visible)
+                    item.show();
+                else
+                    item.hide();
+                break;
+            }
+        }
+    };
+    PopupMenu.prototype.setPrepareCallback = function (prepareCallback) {
+        this.prepareCallback = prepareCallback;
+    };
+    return PopupMenu;
+}());
+///<reference path="./PopupMenu.ts"/>
 var PostForm = /** @class */ (function () {
     function PostForm(el) {
+        var _this = this;
         this.attachmentIDs = [];
         this.currentReplyName = "";
         this.id = el.getAttribute("data-unique-id");
@@ -1481,46 +1556,57 @@ var PostForm = /** @class */ (function () {
         this.form = el.getElementsByTagName("form")[0];
         this.dragOverlay = el.querySelector(".dropOverlay");
         this.attachContainer = ge("postFormAttachments_" + this.id);
-        this.fileField = ge("uploadField_" + this.id);
+        this.attachContainer2 = ge("postFormAttachments2_" + this.id);
+        // this.fileField=ge("uploadField_"+this.id);
+        this.fileField = ce("input", { type: "file" });
+        this.fileField.accept = "image/*";
+        this.fileField.multiple = true;
         this.attachField = el.querySelector("input[name=attachments]");
         this.replyToField = ge("postFormReplyTo_" + this.id);
         this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
         this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
         this.input.addEventListener("paste", this.onInputPaste.bind(this), false);
-        if (this.input.hasAttribute("data-reply-name")) {
-            this.currentReplyName = this.input.getAttribute("data-reply-name");
+        if (this.input.dataset.replyName) {
+            this.currentReplyName = this.input.dataset.replyName;
         }
         if (this.dragOverlay) {
             this.dragOverlay.addEventListener("dragenter", function (ev) {
-                this.dragOverlay.classList.add("over");
-            }.bind(this), false);
+                _this.dragOverlay.classList.add("over");
+            }, false);
             this.dragOverlay.addEventListener("dragleave", function (ev) {
-                this.dragOverlay.classList.remove("over");
-            }.bind(this), false);
+                _this.dragOverlay.classList.remove("over");
+            }, false);
             this.root.addEventListener("drop", this.onDrop.bind(this), false);
         }
         this.fileField.addEventListener("change", function (ev) {
-            this.handleFiles(this.fileField.files);
-            this.fileField.form.reset();
-        }.bind(this), false);
+            _this.handleFiles(_this.fileField.files);
+            _this.fileField.value = "";
+        }, false);
         if (this.attachContainer.children.length) {
             for (var i = 0; i < this.attachContainer.children.length; i++) {
                 var attach = this.attachContainer.children[i];
-                var aid = attach.getAttribute("data-id");
+                var aid = attach.dataset.id;
                 this.attachmentIDs.push(aid);
                 attach.querySelector(".deleteBtn").onclick = function (ev) {
                     ev.preventDefault();
-                    this.deleteAttachment(aid);
-                }.bind(this);
+                    _this.deleteAttachment(aid);
+                };
             }
         }
         window.addEventListener("beforeunload", function (ev) {
-            if ((this.input.value.length > 0 && this.input.value != this.currentReplyName) || this.attachmentIDs.length > 0) {
+            if ((_this.input.value.length > 0 && _this.input.value != _this.currentReplyName) || _this.attachmentIDs.length > 0) {
                 var msg = lang("confirm_discard_post_draft");
                 (ev || window.event).returnValue = msg;
                 return msg;
             }
-        }.bind(this));
+        });
+        if (mobile) {
+            ge("postFormAttachBtn_" + this.id).onclick = this.showMobileAttachMenu.bind(this);
+        }
+        else {
+            this.attachPopupMenu = new PopupMenu(el.qs(".popupMenuW"), this.onAttachMenuItemClick.bind(this));
+            this.attachPopupMenu.setPrepareCallback(this.onPrepareAttachMenu.bind(this));
+        }
     }
     PostForm.prototype.onFormSubmit = function (ev) {
         ev.preventDefault();
@@ -1552,25 +1638,17 @@ var PostForm = /** @class */ (function () {
     };
     PostForm.prototype.uploadFile = function (f) {
         var objURL = URL.createObjectURL(f);
-        var cont = ce("div");
-        cont.className = "attachment uploading";
-        var img = ce("img");
-        img.src = objURL;
-        cont.appendChild(img);
-        var scrim = ce("div");
-        scrim.className = "scrim";
-        cont.appendChild(scrim);
-        var pbar = ce("div");
-        pbar.className = "progressBarFrame";
-        var pbarInner = ce("div");
-        pbarInner.className = "progressBar";
-        pbar.appendChild(pbarInner);
-        cont.appendChild(pbar);
-        var del = ce("a");
-        del.className = "deleteBtn";
-        del.title = lang("delete");
-        del.href = "javascript:void(0)";
-        cont.appendChild(del);
+        var img;
+        var pbarInner;
+        var del;
+        var cont = ce("div", { className: "attachment uploading" }, [
+            img = ce("img", { src: objURL }),
+            ce("div", { className: "scrim" }),
+            ce("div", { className: "progressBarFrame" }, [
+                pbarInner = ce("div", { className: "progressBar" })
+            ]),
+            del = ce("a", { className: "deleteBtn", title: lang("delete") })
+        ]);
         pbarInner.style.transform = "scaleX(0)";
         this.attachContainer.appendChild(cont);
         var formData = new FormData();
@@ -1616,11 +1694,12 @@ var PostForm = /** @class */ (function () {
         ajaxSubmitForm(this.form, function () {
             this.attachmentIDs = [];
             this.attachField.value = "";
+            this.hideCWLayout();
         }.bind(this));
     };
     PostForm.prototype.setupForReplyTo = function (id) {
         this.replyToField.value = id + "";
-        var name = document.getElementById("post" + id).getAttribute("data-reply-name");
+        var name = document.getElementById("post" + id).dataset.replyName;
         if (name) {
             if (this.input.value.length == 0 || (this.input.value == this.currentReplyName)) {
                 this.input.value = name + ", ";
@@ -1628,6 +1707,42 @@ var PostForm = /** @class */ (function () {
             this.currentReplyName = name + ", ";
         }
         this.input.focus();
+    };
+    PostForm.prototype.onAttachMenuItemClick = function (id) {
+        if (id == "photo") {
+            this.fileField.click();
+        }
+        else if (id == "cw") {
+            this.showCWLayout();
+        }
+    };
+    PostForm.prototype.onPrepareAttachMenu = function () {
+        this.attachPopupMenu.setItemVisibility("cw", this.cwLayout == null);
+    };
+    PostForm.prototype.showCWLayout = function () {
+        this.cwLayout = ce("div", { className: "postFormCW postFormNonThumb" }, [
+            ce("a", { className: "attachDelete flR", onclick: this.hideCWLayout.bind(this), title: lang("delete") }),
+            ce("h3", { innerText: lang("post_form_cw") }),
+            ce("input", { type: "text", name: "contentWarning", placeholder: lang("post_form_cw_placeholder"), required: true, autocomplete: "off" })
+        ]);
+        this.attachContainer2.appendChild(this.cwLayout);
+    };
+    PostForm.prototype.hideCWLayout = function () {
+        if (!this.cwLayout)
+            return;
+        this.attachContainer2.removeChild(this.cwLayout);
+        this.cwLayout = null;
+    };
+    PostForm.prototype.showMobileAttachMenu = function () {
+        var _this = this;
+        var opts = [];
+        opts.push({ label: lang("attach_menu_photo"), onclick: function () {
+                _this.fileField.click();
+            } });
+        if (!this.cwLayout) {
+            opts.push({ label: lang("attach_menu_cw"), onclick: this.showCWLayout.bind(this) });
+        }
+        new MobileOptionsBox(opts).show();
     };
     return PostForm;
 }());

@@ -1,6 +1,7 @@
 {%extends "page"%}
 {%block content%}
 {%if user.domain%}
+<div class="marginsAreMessy"></div>
 <div class="settingsMessage">
 	{{L('incomplete_profile')}}<br/>
 	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', user.domain)}}</a>

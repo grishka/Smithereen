@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="11px" height="11px" viewBox="0 0 11 11">
-<polygon fill="#FFFFFF" points="0,2.5 2.5,0 5.5,3 8.5,0 11,2.5 8,5.5 11,8.5 8.5,11 5.5,8 2.5,11 0,8.5 3,5.5 "/>
+<polygon points="0,2.5 2.5,0 5.5,3 8.5,0 11,2.5 8,5.5 11,8.5 8.5,11 5.5,8 2.5,11 0,8.5 3,5.5 "/>
 </svg>

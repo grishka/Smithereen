@@ -163,6 +163,13 @@ public class PostRoutes{
 		if(text.length()==0 && StringUtils.isEmpty(attachments))
 			return "Empty post";
 
+		String contentWarning=req.queryParams("contentWarning");
+		if(contentWarning!=null){
+			contentWarning=contentWarning.trim();
+			if(contentWarning.length()==0)
+				contentWarning=null;
+		}
+
 		Post parent=null;
 		int ownerUserID=owner instanceof User ? ((User) owner).id : 0;
 		int ownerGroupID=owner instanceof Group ? ((Group) owner).id : 0;
@@ -198,9 +205,9 @@ public class PostRoutes{
 					ownerUserID=((User) topLevel.owner).id;
 				}
 			}
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, replyKey, mentionedUsers, attachments);
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, replyKey, mentionedUsers, attachments, contentWarning);
 		}else{
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, null, mentionedUsers, attachments);
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, null, mentionedUsers, attachments, contentWarning);
 		}
 
 		Post post=PostStorage.getPostByID(postID, false);
@@ -252,7 +259,7 @@ public class PostRoutes{
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self.user.id);
 		if(!feed.isEmpty() && startFromID==0)
 			startFromID=feed.get(0).id;
-		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete");
+		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw");
 		return new RenderedTemplateResponse("feed").with("title", Utils.lang(req).get("feed")).with("feed", feed).with("postInteractions", interactions)
 				.with("paginationURL", "/feed?startFrom="+startFromID+"&offset=").with("total", total[0]).with("offset", offset)
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments)
@@ -331,7 +338,7 @@ public class PostRoutes{
 			}
 			model.with("metaTags", meta);
 		}
-		Utils.jsLangKey(req, "yes", "no", "cancel", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete");
+		Utils.jsLangKey(req, "yes", "no", "cancel", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw");
 		model.with("title", post.getShortTitle(50)+" | "+post.user.getFullName());
 		if(req.attribute("mobile")!=null){
 			model.with("toolbarTitle", lang(req).get("wall_post_title"));

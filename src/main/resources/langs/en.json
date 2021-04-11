@@ -235,5 +235,9 @@
   "group_access_moderator_explain": "Can delete content and block group members.",
   "group_admin_title": "Title",
   "group_admin_title_explain": "Will be shown in the public manager list.",
-  "group_admin_demote_confirm": "Are you sure you want to remove %s from group's management?"
+  "group_admin_demote_confirm": "Are you sure you want to remove %s from group's management?",
+  "attach_menu_photo": "Photo",
+  "attach_menu_cw": "Content Warning",
+  "post_form_cw": "Content warning",
+  "post_form_cw_placeholder": "Title"
 }

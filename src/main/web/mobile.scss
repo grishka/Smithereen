@@ -713,3 +713,26 @@ select{
 		opacity: .8;
 	}
 }
+
+
+.postFormNonThumb{
+	margin-top: 10px;
+	h3{
+		margin: 0 0 10px 0;
+		font-size: 15px;
+		color: $boldHeaders;
+	}
+	.attachDelete{
+		display: inline-block;
+		width: 32px;
+		height: 32px;
+		background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
+	}
+	&.postFormCW input{
+		width: 100%;
+	}
+	&.postFormCW .attachDelete{
+		margin-top: -7px;
+		margin-right: -8px;
+	}
+}

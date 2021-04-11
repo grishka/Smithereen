@@ -475,6 +475,7 @@ public abstract class ActivityPubObject{
 			// Objects
 			case "Note":
 			case "Article":
+			case "Page":
 				res=new Post();
 				break;
 			case "Image":

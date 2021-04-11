@@ -48,7 +48,7 @@ public class NotificationUtils{
 		}
 
 		// Finally, if it's a wall post on a local user's wall, notify them
-		if(!post.owner.equals(post.user) && !(post.owner instanceof ForeignUser) && post.owner instanceof User){
+		if(post.getReplyLevel()==0 && !post.owner.equals(post.user) && !(post.owner instanceof ForeignUser) && post.owner instanceof User){
 			Notification n=new Notification();
 			n.type=Notification.Type.POST_OWN_WALL;
 			n.objectID=post.id;

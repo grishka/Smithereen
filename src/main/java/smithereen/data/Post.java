@@ -366,5 +366,7 @@ public class Post extends ActivityPubObject{
 			if(!activityPubTarget.activityPubID.equals(owner.getWallURL()))
 				owner=null;
 		}
+		if(owner==null)
+			owner=user;
 	}
 }

@@ -4,6 +4,7 @@
 {% set canEditGroup=userPermissions is not null and userPermissions.canEditGroup(group) %}
 {%block content%}
 {%if group.domain%}
+<div class="marginsAreMessy"></div>
 <div class="settingsMessage">
 	{{L('incomplete_profile')}}<br/>
 	<a href="{{group.url}}" target="_blank">{{L('open_on_server_X', group.domain)}}</a>
