@@ -152,12 +152,31 @@ h2{
 }
 
 .popupPage{
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-	justify-content: space-between;
+	.headerWrap{
+		position: absolute;
+		left: 0;
+		top: 0;
+		right: 0;
+	}
 	.header{
 		padding: 0;
+	}
+	.headerBG{
+		border-radius: 0;
+		border-left: none;
+		border-right: none;
+		.shadow{
+			border-radius: 0;
+		}
+	}
+	.popupContent{
+		min-height: 100vh;
+		display: flex;
+		align-items: center;
+		padding-top: 40px;
+		center{
+			flex-grow: 1;
+		}
 	}
 }
 

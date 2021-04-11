@@ -16,8 +16,11 @@
 </head>
 <body class="popupPage">
 <script>document.body.classList.add("hasJS");{%if jsRedirect is not null%} window.location="{{jsRedirect}}";{%endif%}</script>
-<div class="headerBG header" align="center">
-	<span class="logo"><a href="/"><img src="/res/logo.svg" height="36" width="36" border="0" alt="Smithereen"/>{{serverName}}</a></span>
+<div class="headerWrap">
+	<div class="headerBG"><div class="shadow"></div></div>
+<div class="header" align="center">
+	<span class="logo"><a href="/"><img src="/res/desktop_logo_v1.svg" height="28" width="27" border="0" alt="Smithereen"/>{{serverName}}</a></span>
+</div>
 </div>
 <div class="popupContent">
 	{%block content%}{%endblock%}
