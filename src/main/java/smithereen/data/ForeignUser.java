@@ -109,7 +109,7 @@ public class ForeignUser extends User{
 			middleName=obj.optString("middleName", null);
 			maidenName=obj.optString("maidenName", null);
 		}else{
-			firstName=name!=null ? name : "";
+			firstName=name!=null ? name : username;
 		}
 		if(obj.has("birthDate")){
 			birthDate=Date.valueOf(obj.getString("birthDate"));
