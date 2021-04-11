@@ -86,20 +86,18 @@ public class ActivityPubWorker{
 			boolean sendToFollowers=((User) post.owner).id==post.user.id;
 			if(post.owner instanceof ForeignUser){
 				inboxes.add(actorInbox((ForeignUser) post.owner));
-			}else if(sendToFollowers){
-				if(post.getReplyLevel()==0)
-					inboxes.addAll(UserStorage.getFollowerInboxes(((User) post.owner).id));
-				else
-					inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
+			}else if(sendToFollowers && post.getReplyLevel()==0){
+				inboxes.addAll(UserStorage.getFollowerInboxes(((User) post.owner).id));
+			}else{
+				inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
 			}
 		}else if(post.owner instanceof Group){
 			if(post.owner instanceof ForeignGroup){
 				inboxes.add(actorInbox((ForeignGroup) post.owner));
+			}else if(post.getReplyLevel()==0){
+				inboxes.addAll(GroupStorage.getGroupMemberInboxes(((Group) post.owner).id));
 			}else{
-				if(post.getReplyLevel()==0)
-					inboxes.addAll(GroupStorage.getGroupMemberInboxes(((Group) post.owner).id));
-				else
-					inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
+				inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
 			}
 		}
 		for(User user:post.mentionedUsers){
