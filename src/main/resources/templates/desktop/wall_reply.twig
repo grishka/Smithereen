@@ -11,8 +11,18 @@
 		</td>
 		<td class="postContentWrap">
 			<a href="{{post.user.profileURL}}" class="authorName">{{post.user.fullName}}</a><br/>
+			{% if post.hasContentWarning %}
+				<input type="checkbox" id="postCW_{{ post.id }}" style="display: none"/>
+			<div class="postCWWrap">
+				<label for="postCW_{{ post.id }}" class="postCWButton ellipsize">{{ post.summary }}</label>
+			{% endif %}
 			<div class="postContent">{{post.content | postprocessHTML}}</div>
-			{%if post.attachment is not null%}{{renderAttachments(post.processedAttachments)}}{%endif%}
+			{% if post.attachment is not null %}
+			{{ renderAttachments(post.processedAttachments) }}
+			{% endif %}
+			{% if post.hasContentWarning %}
+			</div>
+			{% endif %}
 			<div class="postInfo"><a href="{{post.internalURL}}" onclick="return highlightComment({{post.id}})" class="postLink">{{LD(post.published)}}</a>{%if userPermissions is not null and userPermissions.canDeletePost(post)%} |
 				<a href="{{post.url}}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{post.url}}/delete')">{{L('delete')}}</a>{%endif%}
 				{%if not hideReplyLink%}

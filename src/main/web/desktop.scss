@@ -1167,3 +1167,29 @@ select{
 		background-position: 0 -180px;
 	}
 }
+
+.postCWWrap{
+	padding-top: 10px;
+	.postCWButton{
+		display: block;
+		color: $normalLink;
+		font-weight: bold;
+		cursor: pointer;
+		height: 24px;
+		line-height: 24px;
+		padding-left: 23px;
+		background: color($blockBackground alpha(50%)) svg-load('img/flex_arrow_shut.svg', fill: color($iconColor alpha(70%))) no-repeat left center;
+	}
+	.postContent, .postAttachments{
+		display: none;
+	}
+}
+
+input:checked+.postCWWrap{
+	.postCWButton{
+		background-image: svg-load('img/flex_arrow_open.svg', fill: color($iconColor alpha(70%)));
+	}
+	.postContent, .postAttachments{
+		display: block;
+	}
+}

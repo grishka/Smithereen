@@ -736,3 +736,31 @@ select{
 		margin-right: -8px;
 	}
 }
+
+.postCWWrap{
+	padding-top: 6px;
+	.postCWButton{
+		display: block;
+		color: $normalLink;
+		font-weight: bold;
+		height: 32px;
+		line-height: 32px;
+		padding-left: 42px;
+		background: color($blockBackground alpha(50%)) svg-load('img/flex_arrow_shut.svg', fill: color($iconColor alpha(70%))) no-repeat left 6px center;
+		background-size: 30px 25.5px;
+		margin: 0 -12px;
+	}
+	.postContent, .postAttachments{
+		display: none;
+	}
+}
+
+input:checked+.postCWWrap{
+	.postCWButton{
+		background-image: svg-load('img/flex_arrow_open.svg', fill: color($iconColor alpha(70%)));
+		margin-bottom: 12px;
+	}
+	.postContent, .postAttachments{
+		display: block;
+	}
+}
