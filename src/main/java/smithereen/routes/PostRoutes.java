@@ -223,6 +223,9 @@ public class PostRoutes{
 			interactions.put(post.id, new UserInteractions());
 			String postHTML=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post").with("post", post).with("postInteractions", interactions).renderToString(req);
 			resp.type("application/json");
+			if(req.attribute("mobile")!=null){
+				postHTML="<div class=\"card\">"+postHTML+"</div>";
+			}
 			WebDeltaResponseBuilder rb;
 			if(replyTo==0)
 				rb=new WebDeltaResponseBuilder().insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
