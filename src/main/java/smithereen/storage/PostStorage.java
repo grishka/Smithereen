@@ -295,7 +295,7 @@ public class PostStorage{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt;
 		if(total!=null){
-			stmt=conn.prepareStatement("SELECT COUNT(*) FROM wall_posts WHERE (owner_user_id=? AND author_id=?) OR (owner_user_id=? AND author_id=?) AND `reply_key` IS NULL");
+			stmt=conn.prepareStatement("SELECT COUNT(*) FROM wall_posts WHERE ((owner_user_id=? AND author_id=?) OR (owner_user_id=? AND author_id=?)) AND `reply_key` IS NULL");
 			stmt.setInt(1, userID);
 			stmt.setInt(2, otherUserID);
 			stmt.setInt(3, otherUserID);
@@ -305,7 +305,7 @@ public class PostStorage{
 				total[0]=res.getInt(1);
 			}
 		}
-		stmt=conn.prepareStatement("SELECT * FROM wall_posts WHERE (owner_user_id=? AND author_id=?) OR (owner_user_id=? AND author_id=?) AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT "+offset+",25");
+		stmt=conn.prepareStatement("SELECT * FROM wall_posts WHERE ((owner_user_id=? AND author_id=?) OR (owner_user_id=? AND author_id=?)) AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT "+offset+",25");
 		stmt.setInt(1, userID);
 		stmt.setInt(2, otherUserID);
 		stmt.setInt(3, otherUserID);
