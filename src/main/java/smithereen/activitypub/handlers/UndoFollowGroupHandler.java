@@ -2,7 +2,7 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
-import smithereen.BadRequestException;
+import smithereen.exceptions.BadRequestException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Follow;

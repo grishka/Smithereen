@@ -681,6 +681,97 @@ public class UserStorage{
 		}
 	}
 
+	public static boolean isUserBlocked(int ownerID, int targetID) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("blocks_user_user")
+				.count()
+				.where("owner_id=? AND user_id=?", ownerID, targetID)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			res.first();
+			return res.getInt(1)==1;
+		}
+	}
+
+	public static void blockUser(int selfID, int targetID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		new SQLQueryBuilder(conn)
+				.insertInto("blocks_user_user")
+				.value("owner_id", selfID)
+				.value("user_id", targetID)
+				.createStatement()
+				.execute();
+		new SQLQueryBuilder(conn)
+				.deleteFrom("followings")
+				.where("(follower_id=? AND followee_id=?) OR (follower_id=? AND followee_id=?)", selfID, targetID, targetID, selfID)
+				.createStatement()
+				.execute();
+		new SQLQueryBuilder(conn)
+				.deleteFrom("friend_requests")
+				.where("(from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?)", selfID, targetID, targetID, selfID)
+				.createStatement()
+				.execute();
+	}
+
+	public static void unblockUser(int selfID, int targetID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("blocks_user_user")
+				.where("owner_id=? AND user_id=?", selfID, targetID)
+				.createStatement()
+				.execute();
+	}
+
+	public static List<User> getBlockedUsers(int selfID) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("blocks_user_user")
+				.columns("user_id")
+				.where("owner_id=?", selfID)
+				.createStatement();
+		return getById(DatabaseUtils.intResultSetToList(stmt.executeQuery()), true);
+	}
+
+	public static boolean isDomainBlocked(int selfID, String domain) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("blocks_user_domain")
+				.count()
+				.where("owner_id=? AND domain=?", selfID, domain)
+				.createStatement();
+		return DatabaseUtils.oneFieldToInt(stmt.executeQuery())==1;
+	}
+
+	public static List<String> getBlockedDomains(int selfID) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("blocks_user_domain")
+				.columns("domain")
+				.where("owner_id=?", selfID)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			ArrayList<String> arr=new ArrayList<>();
+			res.beforeFirst();
+			while(res.next()){
+				arr.add(res.getString(1));
+			}
+			return arr;
+		}
+	}
+
+	public static void blockDomain(int selfID, String domain) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("blocks_user_domain")
+				.value("owner_id", selfID)
+				.value("domain", domain)
+				.createStatement()
+				.execute();
+	}
+
+	public static void unblockDomain(int selfID, String domain) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("blocks_user_domain")
+				.where("owner_id=? AND domain=?", selfID, domain)
+				.createStatement()
+				.execute();
+	}
+
 	private static void putIntoCache(User user){
 		cache.put(user.id, user);
 		cacheByUsername.put(user.getFullUsername().toLowerCase(), user);

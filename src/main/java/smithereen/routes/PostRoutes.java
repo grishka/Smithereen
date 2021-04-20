@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import smithereen.exceptions.BadRequestException;
 import smithereen.Config;
 import static smithereen.Utils.*;
 
@@ -39,6 +40,7 @@ import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.User;
 import smithereen.data.notifications.Notification;
 import smithereen.data.notifications.NotificationUtils;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaCache;
@@ -56,27 +58,24 @@ public class PostRoutes{
 	public static Object createUserWallPost(Request req, Response resp, Account self) throws Exception{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 		User user=UserStorage.getById(id);
-		if(user==null){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_user_not_found");
-		}
+		if(user==null)
+			throw new ObjectNotFoundException("err_user_not_found");
+		ensureUserNotBlocked(self.user, user);
 		return createWallPost(req, resp, self, user);
 	}
 
 	public static Object createGroupWallPost(Request req, Response resp, Account self) throws Exception{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 		Group group=GroupStorage.getByID(id);
-		if(group==null){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_group_not_found");
-		}
+		if(group==null)
+			throw new ObjectNotFoundException("err_group_not_found");
 		return createWallPost(req, resp, self, group);
 	}
 
 	public static Object createWallPost(Request req, Response resp, Account self, @NotNull Actor owner) throws Exception{
 		String text=req.queryParams("text");
 		if(text.length()==0 && StringUtils.isEmpty(req.queryParams("attachments")))
-			return "Empty post";
+			throw new BadRequestException("Empty post");
 
 		final ArrayList<User> mentionedUsers=new ArrayList<>();
 		text=preprocessPostHTML(text, new MentionCallback(){
@@ -161,7 +160,7 @@ public class PostRoutes{
 			}
 		}
 		if(text.length()==0 && StringUtils.isEmpty(attachments))
-			return "Empty post";
+			throw new BadRequestException("Empty post");
 
 		String contentWarning=req.queryParams("contentWarning");
 		if(contentWarning!=null){
@@ -175,10 +174,8 @@ public class PostRoutes{
 		int ownerGroupID=owner instanceof Group ? ((Group) owner).id : 0;
 		if(replyTo!=0){
 			parent=PostStorage.getPostByID(replyTo, false);
-			if(parent==null){
-				resp.status(404);
-				return Utils.wrapError(req, resp, "err_post_not_found");
-			}
+			if(parent==null)
+				throw new ObjectNotFoundException("err_post_not_found");
 			int[] replyKey=new int[parent.replyKey.length+1];
 			System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
 			replyKey[replyKey.length-1]=parent.id;
@@ -200,9 +197,11 @@ public class PostRoutes{
 				if(topLevel.isGroupOwner()){
 					ownerGroupID=((Group) topLevel.owner).id;
 					ownerUserID=0;
+					ensureUserNotBlocked(self.user, (Group) topLevel.owner);
 				}else{
 					ownerGroupID=0;
 					ownerUserID=((User) topLevel.owner).id;
+					ensureUserNotBlocked(self.user, (User)topLevel.owner);
 				}
 			}
 			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, replyKey, mentionedUsers, attachments, contentWarning);
@@ -402,15 +401,15 @@ public class PostRoutes{
 	public static Object like(Request req, Response resp, Account self) throws SQLException{
 		req.attribute("noHistory", true);
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		if(postID==0){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
-		}
+		if(postID==0)
+			throw new ObjectNotFoundException("err_post_not_found");
 		Post post=PostStorage.getPostByID(postID, false);
-		if(post==null){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
-		}
+		if(post==null)
+			throw new ObjectNotFoundException("err_post_not_found");
+		if(post.owner instanceof User)
+			ensureUserNotBlocked(self.user, (User) post.owner);
+		else
+			ensureUserNotBlocked(self.user, (Group) post.owner);
 		String back=Utils.back(req);
 
 		int id=LikeStorage.setPostLiked(self.user.id, postID, true);
@@ -439,15 +438,11 @@ public class PostRoutes{
 	public static Object unlike(Request req, Response resp, Account self) throws SQLException{
 		req.attribute("noHistory", true);
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		if(postID==0){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
-		}
+		if(postID==0)
+			throw new ObjectNotFoundException("err_post_not_found");
 		Post post=PostStorage.getPostByID(postID, false);
-		if(post==null){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
-		}
+		if(post==null)
+			throw new ObjectNotFoundException("err_post_not_found");
 		String back=Utils.back(req);
 
 		int id=LikeStorage.setPostLiked(self.user.id, postID, false);
@@ -473,15 +468,11 @@ public class PostRoutes{
 	public static Object likePopover(Request req, Response resp) throws SQLException{
 		req.attribute("noHistory", true);
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		if(postID==0){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
-		}
+		if(postID==0)
+			throw new ObjectNotFoundException("err_post_not_found");
 		Post post=PostStorage.getPostByID(postID, false);
-		if(post==null){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
-		}
+		if(post==null)
+			throw new ObjectNotFoundException("err_post_not_found");
 		SessionInfo info=sessionInfo(req);
 		int selfID=info!=null && info.account!=null ? info.account.user.id : 0;
 		List<Integer> ids=LikeStorage.getPostLikes(postID, selfID, 0, 6);
@@ -513,15 +504,11 @@ public class PostRoutes{
 
 	public static Object likeList(Request req, Response resp) throws SQLException{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		if(postID==0){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
-		}
+		if(postID==0)
+			throw new ObjectNotFoundException("err_post_not_found");
 		Post post=PostStorage.getPostByID(postID, false);
-		if(post==null){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
-		}
+		if(post==null)
+			throw new ObjectNotFoundException("err_post_not_found");
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
 		List<Integer> ids=LikeStorage.getPostLikes(postID, 0, offset, 100);
 		ArrayList<User> users=new ArrayList<>();
@@ -593,16 +580,12 @@ public class PostRoutes{
 	public static Object wallToWall(Request req, Response resp) throws SQLException{
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
-		if(user==null){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_user_not_found");
-		}
+		if(user==null)
+			throw new ObjectNotFoundException("err_user_not_found");
 		String otherUsername=req.params(":other_username");
 		User otherUser=UserStorage.getByUsername(otherUsername);
-		if(otherUser==null){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "user_not_found");
-		}
+		if(otherUser==null)
+			throw new ObjectNotFoundException("err_user_not_found");
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 
@@ -618,7 +601,7 @@ public class PostRoutes{
 				.with("otherUser", otherUser)
 				.with("postCount", postCount[0])
 				.with("pageOffset", offset)
-				.with("paginationUrlPrefix", Config.localURI("/"+username+"/wall/with"+otherUsername))
+				.with("paginationUrlPrefix", Config.localURI("/"+username+"/wall/with/"+otherUsername))
 				.with("tab", "wall2wall")
 				.with("title", lang(req).inflected("wall_of_X", user.gender, user.firstName, user.lastName, null))
 				.renderToString(req);

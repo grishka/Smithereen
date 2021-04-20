@@ -20,7 +20,7 @@
 	</table>
 </div>
 <div class="card singleColumn">
-	{%if currentUser is not null and currentUser.id!=user.id%}
+	{% if currentUser is not null and currentUser.id!=user.id and not isSelfBlocked %}
 		<div class="profileBelowAva">
 		{{friendshipStatusText}}
 			{%if not(isFriend) and not(following) and not(friendRequestSent) and not(followRequested)%}
@@ -52,6 +52,11 @@
 		{%if isFriend or following or friendRequestSent or followRequested%}
 			<li><a href="{{user.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'{{user.getProfileURL('doRemoveFriend')}}')" data-confirm="{{ LI(key=(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), first=user.firstName, last=user.lastName, gender=user.gender) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
 		{%endif%}
+		{% if isBlocked %}
+			<li><a href="/users/{{ user.id }}/confirmUnblock" onclick="return ajaxConfirm('unblock', this.dataset.confirm, '/users/{{ user.id }}/unblock')" data-confirm="{{ LI(key='confirm_unblock_user_X', first=user.firstName, last=user.lastName, gender=user.gender) | forceEscape }}">{{ LI(key='unblock_user_X', first=user.firstName, gender=user.gender) }}</a></li>
+			{% else %}
+			<li><a href="/users/{{ user.id }}/confirmBlock" onclick="return ajaxConfirm('block', this.dataset.confirm, '/users/{{ user.id }}/block')" data-confirm="{{ LI(key='confirm_block_user_X', first=user.firstName, last=user.lastName, gender=user.gender) | forceEscape }}">{{ LI(key='block_user_X', first=user.firstName, gender=user.gender) }}</a></li>
+		{% endif %}
 		{%endif%}
 		<li><a href="{{user.getProfileURL('followers')}}">{{L('followers')}}</a></li>
 		<li><a href="{{user.getProfileURL('following')}}">{{L('following')}}</a></li>
@@ -69,7 +74,7 @@
 {%endif%}
 </div>
 
-{%if currentUser is not null%}
+{% if currentUser is not null and not isSelfBlocked %}
 	<div class="card">
 		{%include "wall_post_form" with {'wallOwner': user}%}
 	</div>

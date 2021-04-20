@@ -12,6 +12,7 @@ import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.routes.ActivityPubRoutes;
@@ -128,6 +129,11 @@ public class Main{
 			getLoggedIn("/confirmRemoveProfilePicture", SettingsRoutes::confirmRemoveProfilePicture);
 			post("/setLanguage", SettingsRoutes::setLanguage);
 			post("/setTimezone", SettingsRoutes::setTimezone);
+			getLoggedIn("/blocking", SettingsRoutes::blocking);
+			getLoggedIn("/blockDomainForm", SettingsRoutes::blockDomainForm);
+			postWithCSRF("/blockDomain", SettingsRoutes::blockDomain);
+			getLoggedIn("/confirmUnblockDomain", SettingsRoutes::confirmUnblockDomain);
+			postWithCSRF("/unblockDomain", SettingsRoutes::unblockDomain);
 
 			path("/admin", ()->{
 				getRequiringAccessLevel("", Account.AccessLevel.ADMIN, SettingsAdminRoutes::index);
@@ -186,6 +192,10 @@ public class Main{
 			getActivityPubCollection("/wall", 50, ActivityPubRoutes::userWall);
 
 			postWithCSRF("/createWallPost", PostRoutes::createUserWallPost);
+			getLoggedIn("/confirmBlock", ProfileRoutes::confirmBlockUser);
+			getLoggedIn("/confirmUnblock", ProfileRoutes::confirmUnblockUser);
+			postWithCSRF("/block", ProfileRoutes::blockUser);
+			postWithCSRF("/unblock", ProfileRoutes::unblockUser);
 		});
 
 		path("/groups/:id", ()->{
@@ -223,6 +233,16 @@ public class Main{
 			getLoggedIn("/confirmDemoteAdmin", GroupsRoutes::confirmDemoteAdmin);
 			postWithCSRF("/removeAdmin", GroupsRoutes::removeAdmin);
 			postWithCSRF("/editAdminReorder", GroupsRoutes::editAdminReorder);
+
+			getLoggedIn("/editBlocking", GroupsRoutes::blocking);
+			getLoggedIn("/confirmBlockUser", GroupsRoutes::confirmBlockUser);
+			getLoggedIn("/confirmUnblockUser", GroupsRoutes::confirmUnblockUser);
+			getLoggedIn("/blockDomainForm", GroupsRoutes::blockDomainForm);
+			getLoggedIn("/confirmUnblockDomain", GroupsRoutes::confirmUnblockDomain);
+			postWithCSRF("/blockUser", GroupsRoutes::blockUser);
+			postWithCSRF("/unblockUser", GroupsRoutes::unblockUser);
+			postWithCSRF("/blockDomain", GroupsRoutes::blockDomain);
+			postWithCSRF("/unblockDomain", GroupsRoutes::unblockDomain);
 
 			get("/members", GroupsRoutes::members);
 			get("/admins", GroupsRoutes::admins);

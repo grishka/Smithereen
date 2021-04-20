@@ -226,7 +226,10 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function):voi
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
 	xhr.open("POST", uri);
 	xhr.onload=function(){
-		onDone(xhr.response);
+		if(Math.floor(xhr.status/100)==2)
+			onDone(xhr.response);
+		else
+			onError(xhr.statusText);
 	};
 	xhr.onerror=function(ev:Event){
 		console.log(ev);
@@ -250,11 +253,14 @@ function ajaxGet(uri:string, onDone:Function, onError:Function):void{
 		uri+="?_ajax=1";
 	xhr.open("GET", uri);
 	xhr.onload=function(){
-		onDone(xhr.response);
+		if(Math.floor(xhr.status/100)==2)
+			onDone(xhr.response);
+		else
+			onError(xhr.statusText);
 	};
 	xhr.onerror=function(ev:Event){
 		console.log(ev);
-		onError();
+		onError(xhr.statusText);
 	};
 	xhr.responseType="json";
 	xhr.send();
@@ -330,10 +336,10 @@ function ajaxConfirm(titleKey:string, msgKey:(string|Array<string>), url:string,
 					applyServerCommand(resp[i]);
 				}
 			}
-		}, function(){
+		}, function(msg:string){
 			setGlobalLoading(false);
 			box.dismiss();
-			new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
 		});
 	});
 	box.show();
@@ -375,29 +381,29 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):bo
 			}
 		}
 		if(onDone) onDone(!(resp instanceof Array));
-	}, function(){
+	}, function(msg:string){
 		submittingForm=null;
 		if(submitBtn)
 			submitBtn.classList.remove("loading");
 		setGlobalLoading(false);
-		new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+		new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
 		if(onDone) onDone(false);
 	});
 	return false;
 }
 
 function ajaxFollowLink(link:HTMLAnchorElement):boolean{
-	if(link.getAttribute("data-ajax")){
+	if(link.dataset.ajax){
 		ajaxGetAndApplyActions(link.href);
 		return true;
 	}
-	if(link.getAttribute("data-ajax-box")){
+	if(link.dataset.ajaxBox){
 		LayerManager.getInstance().showBoxLoader();
 		ajaxGetAndApplyActions(link.href);
 		return true;
 	}
-	if(link.getAttribute("data-confirm-action")){
-		ajaxConfirm(link.getAttribute("data-confirm-title"), link.getAttribute("data-confirm-message").escapeHTML(), link.getAttribute("data-confirm-action"));
+	if(link.dataset.confirmAction){
+		ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage.escapeHTML(), link.dataset.confirmAction);
 		return true;
 	}
 	return false;
@@ -412,9 +418,9 @@ function ajaxGetAndApplyActions(url:string):void{
 				applyServerCommand(resp[i]);
 			}
 		}
-	}, function(){
+	}, function(msg:string){
 		setGlobalLoading(false);
-		new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+		new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
 	});
 }
 

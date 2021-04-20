@@ -36,10 +36,13 @@ import java.util.regex.Pattern;
 import java.util.zip.CRC32;
 
 import smithereen.data.ForeignUser;
+import smithereen.data.Group;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponseBuilder;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
@@ -538,6 +541,20 @@ public class Utils{
 		}
 
 		return doc.body().html();
+	}
+
+	public static void ensureUserNotBlocked(User self, User target) throws SQLException{
+		if(self instanceof ForeignUser && UserStorage.isDomainBlocked(target.id, self.domain))
+			throw new UserActionNotAllowedException();
+		if(UserStorage.isUserBlocked(target.id, self.id))
+			throw new UserActionNotAllowedException();
+	}
+
+	public static void ensureUserNotBlocked(User self, Group target) throws SQLException{
+		if(self instanceof ForeignUser && GroupStorage.isDomainBlocked(target.id, self.domain))
+			throw new UserActionNotAllowedException();
+		if(GroupStorage.isUserBlocked(target.id, self.id))
+			throw new UserActionNotAllowedException();
 	}
 
 	public interface MentionCallback{

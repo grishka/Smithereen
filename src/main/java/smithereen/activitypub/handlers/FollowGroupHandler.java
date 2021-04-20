@@ -2,9 +2,9 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
-import smithereen.BadRequestException;
+import smithereen.Utils;
+import smithereen.exceptions.BadRequestException;
 import smithereen.activitypub.ActivityHandlerContext;
-import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Follow;
@@ -18,6 +18,7 @@ public class FollowGroupHandler extends ActivityTypeHandler<ForeignUser, Follow,
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Follow activity, Group group) throws SQLException{
 		if(group instanceof ForeignGroup)
 			throw new BadRequestException("Follow is only supported for local groups");
+		Utils.ensureUserNotBlocked(actor, group);
 
 		Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, actor.id);
 		if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER){

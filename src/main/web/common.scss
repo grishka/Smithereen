@@ -8,6 +8,9 @@ $textOnGray: #707070;
 $grayText: #909090;
 $text: #000;
 
+$alertBackground: #F9F6E7;
+$alertBorder: #D4BC4C;
+
 
 /* text */
 $normalLink: rgb(72, 92, 0);
@@ -292,11 +295,15 @@ input[type=text], input[type=password], input[type=email], input[type=date], tex
 
 
 ::placeholder{
-	color: $grayText;
+	color: $auxiliaryGrey;
 }
 
 .gray{
 	background: $gray;
+}
+
+.grayText{
+	color: $auxiliaryGrey;
 }
 
 .post{
@@ -502,6 +509,13 @@ input[type=checkbox]{
 	border-bottom: solid 1px $blockBorderTop;
 	&.padAround{
 		margin: 8px 0;
+	}
+
+	&.noOuterBorders{
+		border-bottom: none;
+		tr:first-child td{
+			border-top: none;
+		}
 	}
 }
 

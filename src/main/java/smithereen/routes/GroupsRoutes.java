@@ -4,13 +4,12 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.URLEncoder;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import smithereen.BadRequestException;
+import smithereen.data.ForeignUser;
+import smithereen.exceptions.BadRequestException;
 import smithereen.Config;
 import smithereen.data.GroupAdmin;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -25,9 +24,9 @@ import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.lang.Lang;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
-import smithereen.storage.LikeStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
@@ -143,6 +142,7 @@ public class GroupsRoutes{
 
 	public static Object join(Request req, Response resp, Account self) throws SQLException{
 		Group group=getGroup(req);
+		ensureUserNotBlocked(self.user, group);
 		Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, self.user.id);
 		if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER){
 			return wrapError(req, resp, "err_group_already_member");
@@ -247,7 +247,8 @@ public class GroupsRoutes{
 	}
 
 	public static Object editMembers(Request req, Response resp, Account self) throws SQLException{
-		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		Group.AdminLevel level=GroupStorage.getGroupMemberAdminLevel(group.id, self.user.id);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members");
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
 		List<User> users=GroupStorage.getMembers(group.id, offset, 100);
@@ -255,7 +256,9 @@ public class GroupsRoutes{
 		model.with("group", group).with("title", group.name);
 		model.with("members", users);
 		model.with("adminIDs", GroupStorage.getGroupAdmins(group.id).stream().map(adm->adm.user.id).collect(Collectors.toList()));
-		jsLangKey(req, "cancel");
+		model.with("canAddAdmins", level.isAtLeast(Group.AdminLevel.ADMIN));
+		model.with("adminLevel", level);
+		jsLangKey(req, "cancel", "yes", "no");
 		return model.renderToString(req);
 	}
 
@@ -336,6 +339,109 @@ public class GroupsRoutes{
 
 		GroupStorage.setGroupAdminOrder(group.id, userID, order);
 
+		return "";
+	}
+
+	public static Object blocking(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		Group.AdminLevel level=GroupStorage.getGroupMemberAdminLevel(group.id, self.user.id);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_blocking").with("title", lang(req).get("settings_blocking"));
+		model.with("blockedUsers", GroupStorage.getBlockedUsers(group.id));
+		model.with("blockedDomains", GroupStorage.getBlockedDomains(group.id));
+		model.with("group", group);
+		model.with("adminLevel", level);
+		jsLangKey(req, "unblock", "yes", "no", "cancel");
+		return model.renderToString(req);
+	}
+
+	public static Object blockDomainForm(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("block_domain");
+		return wrapForm(req, resp, "block_domain", "/groups/"+group.id+"/blockDomain", lang(req).get("block_a_domain"), "block", model);
+	}
+
+	public static Object blockDomain(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		String domain=req.queryParams("domain");
+		if(domain.matches("^([a-zA-Z0-9-]+\\.)+[a-zA-Z0-9-]{2,}$")){
+			if(GroupStorage.isDomainBlocked(group.id, domain))
+				return wrapError(req, resp, "err_domain_already_blocked");
+			GroupStorage.blockDomain(group.id, domain);
+		}
+		if(isAjax(req))
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object confirmUnblockDomain(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		String domain=req.queryParams("domain");
+		Lang l=Utils.lang(req);
+		String back=Utils.back(req);
+		return new RenderedTemplateResponse("generic_confirm").with("message", l.get("confirm_unblock_domain_X", domain)).with("formAction", "/groups/"+group.id+"/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+	}
+
+	public static Object unblockDomain(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		String domain=req.queryParams("domain");
+		if(StringUtils.isNotEmpty(domain))
+			GroupStorage.unblockDomain(group.id, domain);
+		if(isAjax(req))
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	private static User getUserOrThrow(Request req) throws SQLException{
+		int id=parseIntOrDefault(req.queryParams("id"), 0);
+		if(id==0)
+			throw new ObjectNotFoundException("err_user_not_found");
+		User user=UserStorage.getById(id);
+		if(user==null)
+			throw new ObjectNotFoundException("err_user_not_found");
+		return user;
+	}
+
+	public static Object confirmBlockUser(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		User user=getUserOrThrow(req);
+		Lang l=Utils.lang(req);
+		String back=Utils.back(req);
+		return new RenderedTemplateResponse("generic_confirm").with("message", l.inflected("confirm_block_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/groups/"+group.id+"/blockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+	}
+
+	public static Object confirmUnblockUser(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		User user=getUserOrThrow(req);
+		Lang l=Utils.lang(req);
+		String back=Utils.back(req);
+		return new RenderedTemplateResponse("generic_confirm").with("message", l.inflected("confirm_unblock_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/groups/"+group.id+"/unblockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+	}
+
+	public static Object blockUser(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		User user=getUserOrThrow(req);
+		if(GroupStorage.getGroupMemberAdminLevel(group.id, user.id).isAtLeast(Group.AdminLevel.MODERATOR))
+			throw new BadRequestException("Can't block a group manager");
+		GroupStorage.blockUser(group.id, user.id);
+		if(user instanceof ForeignUser)
+			ActivityPubWorker.getInstance().sendBlockActivity(group, (ForeignUser) user);
+		if(isAjax(req))
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object unblockUser(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		User user=getUserOrThrow(req);
+		GroupStorage.unblockUser(group.id, user.id);
+		if(user instanceof ForeignUser)
+			ActivityPubWorker.getInstance().sendUndoBlockActivity(group, (ForeignUser) user);
+		if(isAjax(req))
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		resp.redirect(back(req));
 		return "";
 	}
 }

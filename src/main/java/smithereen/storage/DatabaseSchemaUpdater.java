@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import smithereen.Config;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=4;
+	public static final int SCHEMA_VERSION=5;
 
 	public static void maybeUpdate() throws SQLException{
 		if(Config.dbSchemaVersion==0){
@@ -94,6 +94,41 @@ public class DatabaseSchemaUpdater{
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 
 			conn.createStatement().execute("ALTER TABLE users ADD `ap_wall` varchar(300) DEFAULT NULL");
+		}else if(target==5){
+			conn.createStatement().execute("""
+					CREATE TABLE `blocks_group_domain` (
+					  `owner_id` int(10) unsigned NOT NULL,
+					  `domain` varchar(100) CHARACTER SET ascii NOT NULL,
+					  UNIQUE KEY `owner_id` (`owner_id`,`domain`),
+					  KEY `domain` (`domain`),
+					  CONSTRAINT `blocks_group_domain_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			conn.createStatement().execute("""
+					CREATE TABLE `blocks_group_user` (
+					  `owner_id` int(10) unsigned NOT NULL,
+					  `user_id` int(10) unsigned NOT NULL,
+					  UNIQUE KEY `owner_id` (`owner_id`,`user_id`),
+					  KEY `user_id` (`user_id`),
+					  CONSTRAINT `blocks_group_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE,
+					  CONSTRAINT `blocks_group_user_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			conn.createStatement().execute("""
+					CREATE TABLE `blocks_user_domain` (
+					  `owner_id` int(10) unsigned NOT NULL,
+					  `domain` varchar(100) CHARACTER SET ascii NOT NULL,
+					  UNIQUE KEY `owner_id` (`owner_id`,`domain`),
+					  KEY `domain` (`domain`),
+					  CONSTRAINT `blocks_user_domain_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			conn.createStatement().execute("""
+					CREATE TABLE `blocks_user_user` (
+					  `owner_id` int(10) unsigned NOT NULL,
+					  `user_id` int(10) unsigned NOT NULL,
+					  UNIQUE KEY `owner_id` (`owner_id`,`user_id`),
+					  KEY `user_id` (`user_id`),
+					  CONSTRAINT `blocks_user_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+					  CONSTRAINT `blocks_user_user_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 		}
 	}
 }

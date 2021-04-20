@@ -2,13 +2,10 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
-import smithereen.BadRequestException;
+import smithereen.exceptions.BadRequestException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
-import smithereen.activitypub.NestedActivityTypeHandler;
-import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Leave;
-import smithereen.activitypub.objects.activities.Undo;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;

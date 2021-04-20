@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -30,6 +31,7 @@ import smithereen.data.Group;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponseBuilder;
+import smithereen.exceptions.BadRequestException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VImage;
 import smithereen.storage.GroupStorage;
@@ -40,6 +42,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.Session;
+import spark.utils.StringUtils;
 
 public class SettingsRoutes{
 	public static Object settings(Request req, Response resp, Account self) throws SQLException{
@@ -355,6 +358,49 @@ public class SettingsRoutes{
 		if(isAjax(req))
 			return new WebDeltaResponseBuilder(resp).refresh().json();
 		resp.redirect("/settings/");
+		return "";
+	}
+
+	public static Object blocking(Request req, Response resp, Account self) throws SQLException{
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_blocking").with("title", lang(req).get("settings_blocking"));
+		model.with("blockedUsers", UserStorage.getBlockedUsers(self.user.id));
+		model.with("blockedDomains", UserStorage.getBlockedDomains(self.user.id));
+		jsLangKey(req, "unblock", "yes", "no", "cancel");
+		return model.renderToString(req);
+	}
+
+	public static Object blockDomainForm(Request req, Response resp, Account self) throws SQLException{
+		RenderedTemplateResponse model=new RenderedTemplateResponse("block_domain");
+		return wrapForm(req, resp, "block_domain", "/settings/blockDomain", lang(req).get("block_a_domain"), "block", model);
+	}
+
+	public static Object blockDomain(Request req, Response resp, Account self) throws SQLException{
+		String domain=req.queryParams("domain");
+		if(domain.matches("^([a-zA-Z0-9-]+\\.)+[a-zA-Z0-9-]{2,}$")){
+			if(UserStorage.isDomainBlocked(self.user.id, domain))
+				return wrapError(req, resp, "err_domain_already_blocked");
+			UserStorage.blockDomain(self.user.id, domain);
+		}
+		if(isAjax(req))
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object confirmUnblockDomain(Request req, Response resp, Account self){
+		String domain=req.queryParams("domain");
+		Lang l=Utils.lang(req);
+		String back=Utils.back(req);
+		return new RenderedTemplateResponse("generic_confirm").with("message", l.get("confirm_unblock_domain_X", domain)).with("formAction", "/settings/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+	}
+
+	public static Object unblockDomain(Request req, Response resp, Account self) throws SQLException{
+		String domain=req.queryParams("domain");
+		if(StringUtils.isNotEmpty(domain))
+			UserStorage.unblockDomain(self.user.id, domain);
+		if(isAjax(req))
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		resp.redirect(back(req));
 		return "";
 	}
 }

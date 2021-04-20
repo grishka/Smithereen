@@ -1,0 +1,49 @@
+{% extends "page" %}
+{% import "forms" as form %}
+{% block content %}
+{% include "group_admin_tabbar" with {'tab': 'blocking'} %}
+<div class="summaryWrap first">
+	<div class="summary">{{ L('settings_blocked_users') }}</div>
+</div>
+<div class="singleColumn">
+	<table width="100%" class="dataTable noOuterBorders">
+		<colgroup><col width="*"/><col width="100"/></colgroup>
+		{% for user in blockedUsers %}
+			<tr>
+				<td><a href="{{ user.profileURL }}"><span class="tinyInlineAva">{{user | pictureForAvatar('s', 32)}}</span>{{ user.fullName }}</a></td>
+				<td align="right">
+					<a href="/groups/{{ group.id }}/confirmUnblockUser?id={{ user.id }}" data-confirm-action="/groups/{{ group.id }}/unblockUser?id={{ user.od }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ LI(key='confirm_unblock_user_X', first=user.firstName, last=user.lastName, gender=user.gender) }}">{{ L('unblock') }}</a>
+				</td>
+			</tr>
+		{% else %}
+			<tr>
+				<td colspan="2" align="center" class="grayText"><br/>{{ L('settings_no_blocked_users') }}<br/><br/></td>
+			</tr>
+		{% endfor %}
+	</table>
+</div>
+
+<div class="summaryWrap">
+	<div class="auxLinks">
+		<a href="/groups/{{ group.id }}/blockDomainForm" data-ajax-box="1">{{ L('block_a_domain') }}</a>
+	</div>
+	<div class="summary">{{ L('settings_blocked_domains') }}</div>
+</div>
+<div class="singleColumn">
+	<table width="100%" class="dataTable noOuterBorders">
+		<colgroup><col width="*"/><col width="100"/></colgroup>
+		{% for domain in blockedDomains %}
+			<tr>
+				<td>{{ domain }}</td>
+				<td align="right">
+					<a href="/groups/{{ group.id }}/confirmUnblockDomain?domain={{ domain }}" data-confirm-action="/groups/{{ group.id }}/unblockDomain?domain={{ domain }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ L('confirm_unblock_domain_X', domain) }}">{{ L('unblock') }}</a>
+				</td>
+			</tr>
+			{% else %}
+			<tr>
+				<td colspan="2" align="center" class="grayText"><br/>{{ L('settings_no_blocked_domains') }}<br/><br/></td>
+			</tr>
+		{% endfor %}
+	</table>
+</div>
+{% endblock %}

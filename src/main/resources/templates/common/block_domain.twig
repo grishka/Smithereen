@@ -1,0 +1,4 @@
+{% import "forms" as form %}
+{{ form.start('blockDomain', blockDomainMessage) }}
+	{{ form.textInput('domain', L('domain'), groupName, {'maxlength': '100', 'required': true, 'autocomplete': false, 'pattern': '^([a-zA-Z0-9-]+\.)+[a-zA-Z0-9-]{2,}$'}) }}
+{{ form.end() }}

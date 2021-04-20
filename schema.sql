@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2021-03-16 20:01:34 +0000
+# Generation Time: 2021-04-20 04:13:47 +0000
 # ************************************************************
 
 
@@ -36,6 +36,60 @@ CREATE TABLE `accounts` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `accounts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table blocks_group_domain
+# ------------------------------------------------------------
+
+CREATE TABLE `blocks_group_domain` (
+  `owner_id` int(10) unsigned NOT NULL,
+  `domain` varchar(100) CHARACTER SET ascii NOT NULL,
+  UNIQUE KEY `owner_id` (`owner_id`,`domain`),
+  KEY `domain` (`domain`),
+  CONSTRAINT `blocks_group_domain_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table blocks_group_user
+# ------------------------------------------------------------
+
+CREATE TABLE `blocks_group_user` (
+  `owner_id` int(10) unsigned NOT NULL,
+  `user_id` int(10) unsigned NOT NULL,
+  UNIQUE KEY `owner_id` (`owner_id`,`user_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `blocks_group_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `blocks_group_user_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table blocks_user_domain
+# ------------------------------------------------------------
+
+CREATE TABLE `blocks_user_domain` (
+  `owner_id` int(10) unsigned NOT NULL,
+  `domain` varchar(100) CHARACTER SET ascii NOT NULL,
+  UNIQUE KEY `owner_id` (`owner_id`,`domain`),
+  KEY `domain` (`domain`),
+  CONSTRAINT `blocks_user_domain_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table blocks_user_user
+# ------------------------------------------------------------
+
+CREATE TABLE `blocks_user_user` (
+  `owner_id` int(10) unsigned NOT NULL,
+  `user_id` int(10) unsigned NOT NULL,
+  UNIQUE KEY `owner_id` (`owner_id`,`user_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `blocks_user_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `blocks_user_user_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -91,7 +145,7 @@ CREATE TABLE `friend_requests` (
   `from_user_id` int(11) unsigned NOT NULL,
   `to_user_id` int(11) unsigned NOT NULL,
   `message` text,
-  KEY `from_user_id` (`from_user_id`),
+  UNIQUE KEY `from_user_id` (`from_user_id`,`to_user_id`),
   KEY `to_user_id` (`to_user_id`),
   CONSTRAINT `friend_requests_ibfk_1` FOREIGN KEY (`from_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `friend_requests_ibfk_2` FOREIGN KEY (`to_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE

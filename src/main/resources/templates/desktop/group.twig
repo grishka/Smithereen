@@ -2,6 +2,7 @@
 {# @pebvariable name="canEditGroup" type="boolean" #}
 {%extends "page"%}
 {% set canEditGroup=userPermissions is not null and userPermissions.canEditGroup(group) %}
+{% set canManageGroup=userPermissions is not null and userPermissions.canManageGroup(group) %}
 {%block content%}
 {%if group.domain%}
 <div class="marginsAreMessy"></div>
@@ -76,6 +77,8 @@
 			{% endif %}
 			{% if canEditGroup %}
 				<li><a href="/groups/{{ group.id }}/edit">{{ L('edit_group') }}</a></li>
+			{% elseif canManageGroup %}
+				<li><a href="/groups/{{ group.id }}/editMembers">{{ L('manage_group') }}</a></li>
 			{% endif %}
 			</ul>
 

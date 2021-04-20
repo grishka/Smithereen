@@ -1,6 +1,7 @@
 {%extends "page"%}
 {%import "forms" as form%}
 {%block content%}
+{% include "settings_tabbar" with {'tab': 'general'} %}
 <div class="singleColumn gray">
 <form action="/settings/updatePassword?csrf={{ csrf }}" method="post" onsubmit="return ajaxSubmitForm(this)">
 	<h2>{{L('change_password')}}</h2>

@@ -121,7 +121,6 @@ h2{
 		width: 100%;
 		height: 6px;
 		border-radius: 0 0 6px 6px;
-		// box-shadow: 0 -1px 1px $headerBorderBottomLight inset;
 		border-bottom: solid 1px $headerBorderBottomLight;
 		position: absolute;
 		bottom: 0;
@@ -654,12 +653,10 @@ select{
 }
 
 .settingsMessage{
-	width: 60%;
-	margin: 16px auto;
-	border-radius: 8px;
-	padding: 16px;
-	border: solid 1px rgba(0, 0, 0, .1);
-	background: $bg;
+	margin: 8px;
+	padding: 8px 11px;;
+	border: solid 1px $alertBorder;
+	background: $alertBackground;
 }
 
 .profileBelowAva{
@@ -1210,5 +1207,25 @@ input:checked+.postCWWrap{
 	}
 	.postContent, .postAttachments{
 		display: block;
+	}
+}
+
+.summaryWrap{
+	color: $normalLink;
+	padding: 13px 15px 0;
+	border-bottom: solid 1px $wallPostSeparator;
+
+// 	&.first{
+// 		padding: 13px 15px 0;
+// 	}
+
+	.summary{
+		font-weight: bold;
+		padding: 3px 0 4px;
+	}
+
+	.auxLinks{
+		float: right;
+		padding: 3px 0 4px;
 	}
 }

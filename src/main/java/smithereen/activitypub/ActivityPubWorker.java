@@ -26,6 +26,7 @@ import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Accept;
+import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
@@ -320,6 +321,26 @@ public class ActivityPubWorker{
 		for(URI inbox:inboxes){
 			executor.submit(new SendOneActivityRunnable(undo, inbox, user));
 		}
+	}
+
+	public void sendBlockActivity(Actor self, ForeignUser target) throws SQLException{
+		Block block=new Block();
+		block.activityPubID=new UriBuilder(self.activityPubID).fragment("blockUser"+target.id+"_"+System.currentTimeMillis()).build();
+		block.actor=new LinkOrObject(self.activityPubID);
+		block.object=new LinkOrObject(target.activityPubID);
+		executor.submit(new SendOneActivityRunnable(block, target.inbox, self));
+	}
+
+	public void sendUndoBlockActivity(Actor self, ForeignUser target) throws SQLException{
+		Block block=new Block();
+		block.activityPubID=new UriBuilder(self.activityPubID).fragment("blockUser"+target.id+"_"+System.currentTimeMillis()).build();
+		block.actor=new LinkOrObject(self.activityPubID);
+		block.object=new LinkOrObject(target.activityPubID);
+		Undo undo=new Undo();
+		undo.activityPubID=new UriBuilder(self.activityPubID).fragment("undoBlockUser"+target.id+"_"+System.currentTimeMillis()).build();
+		undo.actor=new LinkOrObject(self.activityPubID);
+		undo.object=new LinkOrObject(block);
+		executor.submit(new SendOneActivityRunnable(undo, target.inbox, self));
 	}
 
 	public void fetchReplyThread(Post post){

@@ -10,6 +10,7 @@ import smithereen.data.ForeignUser;
 import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.storage.NotificationsStorage;
+import smithereen.storage.UserStorage;
 
 public class NotificationUtils{
 	public static void putNotificationsForPost(@NotNull Post post, @Nullable Post parent) throws SQLException{
@@ -38,6 +39,8 @@ public class NotificationUtils{
 			if(isReply && user.equals(parent.user))
 				continue;
 			if(user.equals(post.user))
+				continue;
+			if(UserStorage.isUserBlocked(user.id, post.user.id))
 				continue;
 			Notification n=new Notification();
 			n.type=Notification.Type.MENTION;

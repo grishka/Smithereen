@@ -1,16 +1,12 @@
 package smithereen.activitypub.handlers;
 
-import java.net.URI;
 import java.sql.SQLException;
 
-import smithereen.BadRequestException;
-import smithereen.Config;
+import smithereen.Utils;
+import smithereen.exceptions.BadRequestException;
 import smithereen.activitypub.ActivityHandlerContext;
-import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.ActivityTypeHandler;
-import smithereen.activitypub.objects.LinkOrObject;
-import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
@@ -24,6 +20,7 @@ public class FollowPersonHandler extends ActivityTypeHandler<ForeignUser, Follow
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Follow activity, User user) throws SQLException{
 		if(user instanceof ForeignUser)
 			throw new BadRequestException("Follow is only supported for local users");
+		Utils.ensureUserNotBlocked(actor, user);
 		FriendshipStatus status=UserStorage.getFriendshipStatus(actor.id, user.id);
 		if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
 			throw new BadRequestException("Already following");

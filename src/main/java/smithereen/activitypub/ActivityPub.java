@@ -33,7 +33,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import smithereen.BadRequestException;
+import smithereen.exceptions.BadRequestException;
 import smithereen.Config;
 import smithereen.DisallowLocalhostInterceptor;
 import smithereen.LruCache;

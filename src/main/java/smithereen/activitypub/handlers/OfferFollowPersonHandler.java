@@ -2,7 +2,8 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
-import smithereen.BadRequestException;
+import smithereen.Utils;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
@@ -19,6 +20,7 @@ public class OfferFollowPersonHandler extends NestedActivityTypeHandler<ForeignU
 		User user=UserStorage.getUserByActivityPubID(nested.actor.link);
 		if(user==null || user instanceof ForeignUser)
 			throw new ObjectNotFoundException("User not found");
+		Utils.ensureUserNotBlocked(actor, user);
 
 		FriendshipStatus status=UserStorage.getFriendshipStatus(actor.id, user.id);
 		if(status==FriendshipStatus.NONE || status==FriendshipStatus.FOLLOWING){

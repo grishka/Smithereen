@@ -97,6 +97,9 @@ public class ProfileRoutes{
 						model.with("followRequested", true);
 						model.with("friendshipStatusText", Utils.lang(req).get("waiting_for_X_to_accept_follow_req", user.firstName));
 					}
+					model.with("isBlocked", UserStorage.isUserBlocked(self.user.id, user.id));
+					model.with("isSelfBlocked", UserStorage.isUserBlocked(user.id, self.user.id));
+					jsLangKey(req, "block", "unblock");
 				}
 			}else{
 				HashMap<String, String> meta=new LinkedHashMap<>();
@@ -148,6 +151,7 @@ public class ProfileRoutes{
 			if(user.id==self.user.id){
 				return wrapError(req, resp, "err_cant_friend_self");
 			}
+			ensureUserNotBlocked(self.user, user);
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 			Lang l=lang(req);
 			if(status==FriendshipStatus.FOLLOWED_BY){
@@ -190,6 +194,7 @@ public class ProfileRoutes{
 			if(user.id==self.user.id){
 				return Utils.wrapError(req, resp, "err_cant_friend_self");
 			}
+			ensureUserNotBlocked(self.user, user);
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 			if(status==FriendshipStatus.NONE || status==FriendshipStatus.FOLLOWED_BY){
 				if(status==FriendshipStatus.NONE && user.supportsFriendRequests()){
@@ -406,8 +411,50 @@ public class ProfileRoutes{
 		return "";
 	}
 
-	public static Object follow(Request req, Response resp, Account self) throws SQLException{
+	public static Object confirmBlockUser(Request req, Response resp, Account self) throws SQLException{
+		User user=getUserOrThrow(req);
+		Lang l=Utils.lang(req);
+		String back=Utils.back(req);
+		return new RenderedTemplateResponse("generic_confirm").with("message", l.inflected("confirm_block_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/users/"+user.id+"/block?_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+	}
+
+	public static Object confirmUnblockUser(Request req, Response resp, Account self) throws SQLException{
+		User user=getUserOrThrow(req);
+		Lang l=Utils.lang(req);
+		String back=Utils.back(req);
+		return new RenderedTemplateResponse("generic_confirm").with("message", l.inflected("confirm_unblock_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/users/"+user.id+"/unblock?_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+	}
+
+	public static Object blockUser(Request req, Response resp, Account self) throws SQLException{
+		User user=getUserOrThrow(req);
+		UserStorage.blockUser(self.user.id, user.id);
+		if(user instanceof ForeignUser)
+			ActivityPubWorker.getInstance().sendBlockActivity(self.user, (ForeignUser) user);
+		if(isAjax(req))
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		resp.redirect(back(req));
 		return "";
 	}
 
+	public static Object unblockUser(Request req, Response resp, Account self) throws SQLException{
+		User user=getUserOrThrow(req);
+		UserStorage.unblockUser(self.user.id, user.id);
+		if(user instanceof ForeignUser)
+			ActivityPubWorker.getInstance().sendUndoBlockActivity(self.user, (ForeignUser) user);
+		if(isAjax(req))
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		resp.redirect(back(req));
+		return "";
+	}
+
+
+	private static User getUserOrThrow(Request req) throws SQLException{
+		int id=parseIntOrDefault(req.params(":id"), 0);
+		if(id==0)
+			throw new ObjectNotFoundException("err_user_not_found");
+		User user=UserStorage.getById(id);
+		if(user==null)
+			throw new ObjectNotFoundException("err_user_not_found");
+		return user;
+	}
 }

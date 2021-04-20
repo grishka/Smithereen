@@ -32,4 +32,8 @@ public class UserPermissions{
 	public boolean canEditGroup(Group group){
 		return managedGroups.getOrDefault(group.id, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.ADMIN);
 	}
+
+	public boolean canManageGroup(Group group){
+		return managedGroups.getOrDefault(group.id, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.MODERATOR);
+	}
 }

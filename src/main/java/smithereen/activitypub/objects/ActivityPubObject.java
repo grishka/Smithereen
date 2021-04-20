@@ -18,6 +18,7 @@ import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Announce;
+import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
@@ -545,6 +546,9 @@ public abstract class ActivityPubObject{
 				break;
 			case "Offer":
 				res=new Offer();
+				break;
+			case "Block":
+				res=new Block();
 				break;
 
 			default:

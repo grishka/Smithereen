@@ -2,7 +2,7 @@ package smithereen.activitypub;
 
 import java.sql.SQLException;
 
-import smithereen.BadRequestException;
+import smithereen.exceptions.BadRequestException;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;

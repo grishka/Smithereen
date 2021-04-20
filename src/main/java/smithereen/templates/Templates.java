@@ -10,6 +10,7 @@ import org.json.JSONObject;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
@@ -71,11 +72,14 @@ import spark.Request;
 		jsConfig.put("timeZone", tz!=null ? tz.getID() : null);
 		JSONObject jsLang=new JSONObject();
 		ArrayList<String> k=req.attribute("jsLang");
+		Lang lang=Utils.lang(req);
 		if(k!=null){
-			Lang lang=Utils.lang(req);
 			for(String key:k){
 				jsLang.put(key, lang.raw(key));
 			}
+		}
+		for(String key: List.of("error", "ok", "network_error", "close")){
+			jsLang.put(key, lang.raw(key));
 		}
 		model.with("locale", Utils.localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString()).with("jsLangKeys", jsLang).with("staticHash", Utils.staticFileHash).with("serverName", Config.getServerDisplayName());
 	}

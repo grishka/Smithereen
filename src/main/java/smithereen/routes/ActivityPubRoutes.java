@@ -26,7 +26,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
-import smithereen.BadRequestException;
+import smithereen.activitypub.handlers.GroupBlockPersonHandler;
+import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
+import smithereen.activitypub.handlers.PersonBlockPersonHandler;
+import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
+import smithereen.activitypub.objects.activities.Block;
+import smithereen.exceptions.BadRequestException;
 import smithereen.BuildInfo;
 import smithereen.ObjectLinkResolver;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -119,12 +124,16 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Reject.class, Offer.class, Follow.class, User.class, new RejectOfferFollowPersonHandler());
 		registerActivityHandler(ForeignUser.class, Update.class, ForeignUser.class, new UpdatePersonHandler());
 		registerActivityHandler(ForeignUser.class, Delete.class, ForeignUser.class, new DeletePersonHandler());
+		registerActivityHandler(ForeignUser.class, Block.class, User.class, new PersonBlockPersonHandler());
+		registerActivityHandler(ForeignUser.class, Undo.class, Block.class, User.class, new PersonUndoBlockPersonHandler());
 
 		registerActivityHandler(ForeignGroup.class, Update.class, ForeignGroup.class, new UpdateGroupHandler());
 		registerActivityHandler(ForeignUser.class, Follow.class, Group.class, new FollowGroupHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Follow.class, Group.class, new UndoFollowGroupHandler());
 		registerActivityHandler(ForeignUser.class, Leave.class, Group.class, new LeaveGroupHandler());
 		registerActivityHandler(ForeignGroup.class, Accept.class, Follow.class, User.class, new AcceptFollowGroupHandler());
+		registerActivityHandler(ForeignGroup.class, Block.class, User.class, new GroupBlockPersonHandler());
+		registerActivityHandler(ForeignGroup.class, Undo.class, Block.class, User.class, new GroupUndoBlockPersonHandler());
 	}
 
 	@SuppressWarnings("SameParameterValue")

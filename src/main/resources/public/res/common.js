@@ -807,7 +807,10 @@ function ajaxPost(uri, params, onDone, onError) {
     var xhr = new XMLHttpRequest();
     xhr.open("POST", uri);
     xhr.onload = function () {
-        onDone(xhr.response);
+        if (Math.floor(xhr.status / 100) == 2)
+            onDone(xhr.response);
+        else
+            onError(xhr.statusText);
     };
     xhr.onerror = function (ev) {
         console.log(ev);
@@ -830,11 +833,14 @@ function ajaxGet(uri, onDone, onError) {
         uri += "?_ajax=1";
     xhr.open("GET", uri);
     xhr.onload = function () {
-        onDone(xhr.response);
+        if (Math.floor(xhr.status / 100) == 2)
+            onDone(xhr.response);
+        else
+            onError(xhr.statusText);
     };
     xhr.onerror = function (ev) {
         console.log(ev);
-        onError();
+        onError(xhr.statusText);
     };
     xhr.responseType = "json";
     xhr.send();
@@ -909,10 +915,10 @@ function ajaxConfirm(titleKey, msgKey, url, params) {
                     applyServerCommand(resp[i]);
                 }
             }
-        }, function () {
+        }, function (msg) {
             setGlobalLoading(false);
             box.dismiss();
-            new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+            new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
         });
     });
     box.show();
@@ -955,29 +961,29 @@ function ajaxSubmitForm(form, onDone) {
         }
         if (onDone)
             onDone(!(resp instanceof Array));
-    }, function () {
+    }, function (msg) {
         submittingForm = null;
         if (submitBtn)
             submitBtn.classList.remove("loading");
         setGlobalLoading(false);
-        new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+        new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
         if (onDone)
             onDone(false);
     });
     return false;
 }
 function ajaxFollowLink(link) {
-    if (link.getAttribute("data-ajax")) {
+    if (link.dataset.ajax) {
         ajaxGetAndApplyActions(link.href);
         return true;
     }
-    if (link.getAttribute("data-ajax-box")) {
+    if (link.dataset.ajaxBox) {
         LayerManager.getInstance().showBoxLoader();
         ajaxGetAndApplyActions(link.href);
         return true;
     }
-    if (link.getAttribute("data-confirm-action")) {
-        ajaxConfirm(link.getAttribute("data-confirm-title"), link.getAttribute("data-confirm-message").escapeHTML(), link.getAttribute("data-confirm-action"));
+    if (link.dataset.confirmAction) {
+        ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage.escapeHTML(), link.dataset.confirmAction);
         return true;
     }
     return false;
@@ -991,9 +997,9 @@ function ajaxGetAndApplyActions(url) {
                 applyServerCommand(resp[i]);
             }
         }
-    }, function () {
+    }, function (msg) {
         setGlobalLoading(false);
-        new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+        new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
     });
 }
 function applyServerCommand(cmd) {

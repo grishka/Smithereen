@@ -5,7 +5,8 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
-import smithereen.BadRequestException;
+import smithereen.data.Group;
+import smithereen.exceptions.BadRequestException;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;
@@ -36,6 +37,10 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			throw new BadRequestException("Can only create posts for self");
 		if(post.owner==null)
 			throw new BadRequestException("Unknown wall owner (from partOf, which must be an outbox URI if present)");
+		if(post.owner instanceof User && ((User) post.owner).id!=post.user.id)
+			Utils.ensureUserNotBlocked(actor, (User) post.owner);
+		if(post.owner instanceof Group)
+			Utils.ensureUserNotBlocked(actor, (Group) post.owner);
 		boolean isPublic=false;
 		if(post.to==null || post.to.isEmpty()){
 			if(post.cc==null || post.cc.isEmpty()){
