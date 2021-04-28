@@ -4,6 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.net.URI;
+import java.security.PublicKey;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -12,9 +13,10 @@ import smithereen.ObjectLinkResolver;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.ForeignActor;
 import spark.utils.StringUtils;
 
-public class ForeignGroup extends Group{
+public class ForeignGroup extends Group implements ForeignActor{
 
 	private URI wall;
 
@@ -101,5 +103,10 @@ public class ForeignGroup extends Group{
 		for(GroupAdmin adm:adminsForActivityPub){
 			adm.user=ObjectLinkResolver.resolve(adm.activityPubUserID, User.class, allowFetching, false);
 		}
+	}
+
+	@Override
+	public boolean needUpdate(){
+		return System.currentTimeMillis()-lastUpdated.getTime()>24L*60*60*1000;
 	}
 }

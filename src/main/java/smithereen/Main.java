@@ -337,6 +337,7 @@ public class Main{
 			resp.body(Utils.wrapError(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_access")));
 		});
 		exception(BadRequestException.class, (x, req, resp)->{
+			x.printStackTrace();
 			resp.status(400);
 			String msg=x.getMessage();
 			if(StringUtils.isNotEmpty(msg))

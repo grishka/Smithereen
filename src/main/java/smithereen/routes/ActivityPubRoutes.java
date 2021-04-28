@@ -30,6 +30,7 @@ import smithereen.activitypub.handlers.GroupBlockPersonHandler;
 import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.PersonBlockPersonHandler;
 import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.activities.Block;
 import smithereen.exceptions.BadRequestException;
 import smithereen.BuildInfo;
@@ -131,7 +132,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Follow.class, Group.class, new FollowGroupHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Follow.class, Group.class, new UndoFollowGroupHandler());
 		registerActivityHandler(ForeignUser.class, Leave.class, Group.class, new LeaveGroupHandler());
-		registerActivityHandler(ForeignGroup.class, Accept.class, Follow.class, User.class, new AcceptFollowGroupHandler());
+		registerActivityHandler(ForeignGroup.class, Accept.class, Follow.class, ForeignGroup.class, new AcceptFollowGroupHandler());
 		registerActivityHandler(ForeignGroup.class, Block.class, User.class, new GroupBlockPersonHandler());
 		registerActivityHandler(ForeignGroup.class, Undo.class, Block.class, User.class, new GroupUndoBlockPersonHandler());
 	}
@@ -574,31 +575,27 @@ public class ActivityPubRoutes{
 		if(Config.isLocal(activity.actor.link))
 			throw new BadRequestException("User domain must be different from this server");
 
-		ForeignUser user=UserStorage.getForeignUserByActivityPubID(activity.actor.link);
-		if(user==null || user.lastUpdated==null || System.currentTimeMillis()-user.lastUpdated.getTime()>24L*60*60*1000){
-			// special case: when users delete themselves but are not in local database, ignore that
-			if(activity instanceof Delete && activity.object.link!=null && activity.object.link.equals(activity.actor.link))
-				return "";
-
+		Actor actor;
+		boolean canUpdate=true;
+		// special case: when users delete themselves but are not in local database, ignore that
+		if(activity instanceof Delete && activity.actor.link.equals(activity.object.link)){
 			try{
-				ActivityPubObject userObj=ActivityPub.fetchRemoteObject(activity.actor.link.toString());
-				if(!(userObj instanceof ForeignUser)){
-					resp.status(400);
-					return "Actor object must have Person type";
-				}
-				user=(ForeignUser) userObj;
-				UserStorage.putOrUpdateForeignUser(user);
-			}catch(SQLException x){
-				throw new SQLException(x);
-			}catch(Exception x){
-				if(user==null)
-					throw new BadRequestException(x.toString());
+				actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, false, false);
+			}catch(ObjectNotFoundException x){
+				return "";
 			}
+			canUpdate=false;
+		}else{
+			actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, true, false);
 		}
+		if(!(actor instanceof ForeignActor))
+			throw new BadRequestException("Actor is local");
+		if(((ForeignActor) actor).needUpdate() && canUpdate)
+			actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, true, true);
 
-		ForeignUser httpSigOwner;
+		Actor httpSigOwner;
 		try{
-			httpSigOwner=verifyHttpSignature(req, user);
+			httpSigOwner=verifyHttpSignature(req, actor);
 		}catch(Exception x){
 			x.printStackTrace();
 			resp.status(400);
@@ -613,11 +610,11 @@ public class ActivityPubRoutes{
 			try{
 				URI keyID=URI.create(sig.getString("creator"));
 				URI userID=Utils.userIdFromKeyId(keyID);
-				if(!userID.equals(user.activityPubID)){
+				if(!userID.equals(actor.activityPubID)){
 					resp.status(400);
 					return "LD-signature creator is not activity actor";
 				}
-				if(!LinkedDataSignatures.verify(rawActivity, user.publicKey)){
+				if(!LinkedDataSignatures.verify(rawActivity, actor.publicKey)){
 					resp.status(400);
 					return "LD-signature verification failed";
 				}
@@ -629,7 +626,7 @@ public class ActivityPubRoutes{
 				return x.toString();
 			}
 		}else{
-			if(!user.equals(httpSigOwner)){
+			if(!actor.equals(httpSigOwner)){
 				resp.status(400);
 				return "In the absence of an LD-signature, HTTP signature must be made by the activity actor";
 			}
@@ -642,7 +639,7 @@ public class ActivityPubRoutes{
 				activity=(Activity) _o;
 		}catch(Exception ignore){}
 
-		ActivityHandlerContext context=new ActivityHandlerContext(body, hasValidLDSignature ? user : null, httpSigOwner);
+		ActivityHandlerContext context=new ActivityHandlerContext(body, hasValidLDSignature ? actor : null, httpSigOwner);
 
 		try{
 			ActivityPubObject aobj;
@@ -653,6 +650,7 @@ public class ActivityPubRoutes{
 					try{
 						aobj=ObjectLinkResolver.resolve(aobj.activityPubID);
 					}catch(ObjectNotFoundException x){
+						System.out.println("Activity object not found for: "+getActivityType(activity));
 						// Fail silently. We didn't have that object anyway, there's nothing to delete.
 						return "";
 					}
@@ -662,7 +660,7 @@ public class ActivityPubRoutes{
 				aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce, false);
 			}
 			for(ActivityTypeHandlerRecord r : typeHandlers){
-				if(r.actorClass.isInstance(user)){
+				if(r.actorClass.isInstance(actor)){
 					if(r.activityClass.isInstance(activity)){
 						if(r.nestedActivityClass!=null && aobj instanceof Activity && r.nestedActivityClass.isInstance(aobj)){
 							Activity nestedActivity=(Activity)aobj;
@@ -682,17 +680,17 @@ public class ActivityPubRoutes{
 
 								if(r.objectClass.isInstance(doublyNestedObject)){
 									System.out.println("Found match: "+r.handler.getClass().getName());
-									((DoublyNestedActivityTypeHandler)r.handler).handle(context, user, activity, nestedActivity, doublyNestedActivity, doublyNestedObject);
+									((DoublyNestedActivityTypeHandler)r.handler).handle(context, actor, activity, nestedActivity, doublyNestedActivity, doublyNestedObject);
 									return "";
 								}
 							}else if(r.objectClass.isInstance(nestedObject)){
 								System.out.println("Found match: "+r.handler.getClass().getName());
-								((NestedActivityTypeHandler)r.handler).handle(context, user, activity, nestedActivity, nestedObject);
+								((NestedActivityTypeHandler)r.handler).handle(context, actor, activity, nestedActivity, nestedObject);
 								return "";
 							}
 						}else if(r.objectClass.isInstance(aobj)){
 							System.out.println("Found match: "+r.handler.getClass().getName());
-							r.handler.handle(context, user, activity, aobj);
+							r.handler.handle(context, actor, activity, aobj);
 							return "";
 						}
 					}
@@ -752,7 +750,7 @@ public class ActivityPubRoutes{
 
 
 
-	private static ForeignUser verifyHttpSignature(Request req, ForeignUser userHint) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, SQLException{
+	private static Actor verifyHttpSignature(Request req, Actor userHint) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, SQLException{
 		String sigHeader=req.headers("Signature");
 		if(sigHeader==null)
 			throw new IllegalArgumentException("Request is missing Signature header");
@@ -803,11 +801,11 @@ public class ActivityPubRoutes{
 			throw new IllegalArgumentException("Date is too far in the past (difference: "+diff+"ms)");
 
 		URI userID=Utils.userIdFromKeyId(URI.create(keyId));
-		ForeignUser user;
+		Actor user;
 		if(userHint.activityPubID.equals(userID))
 			user=userHint;
 		else
-			user=(ForeignUser)UserStorage.getUserByActivityPubID(userID);
+			user=ObjectLinkResolver.resolve(userID, Actor.class, false, false);
 		if(user==null)
 			throw new IllegalArgumentException("Request signed by unknown user: "+userID);
 

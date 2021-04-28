@@ -20,10 +20,11 @@ import java.util.Base64;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.jsonld.JLD;
 import spark.utils.StringUtils;
 
-public class ForeignUser extends User{
+public class ForeignUser extends User implements ForeignActor{
 
 	private URI wall;
 
@@ -164,5 +165,10 @@ public class ForeignUser extends User{
 	@Override
 	protected NonCachedRemoteImage.Args getAvatarArgs(){
 		return new NonCachedRemoteImage.UserProfilePictureArgs(id);
+	}
+
+	@Override
+	public boolean needUpdate(){
+		return System.currentTimeMillis()-lastUpdated.getTime()>24L*60*60*1000;
 	}
 }
