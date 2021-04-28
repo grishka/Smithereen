@@ -107,6 +107,6 @@ public class ForeignGroup extends Group implements ForeignActor{
 
 	@Override
 	public boolean needUpdate(){
-		return System.currentTimeMillis()-lastUpdated.getTime()>24L*60*60*1000;
+		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.getTime()>24L*60*60*1000;
 	}
 }
