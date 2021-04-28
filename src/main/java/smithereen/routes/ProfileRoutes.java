@@ -377,8 +377,7 @@ public class ProfileRoutes{
 				return new WebDeltaResponseBuilder(resp).refresh().json();
 			resp.redirect(Utils.back(req));
 		}else{
-			resp.status(404);
-			return Utils.wrapError(req, resp, "user_not_found");
+			throw new ObjectNotFoundException("err_user_not_found");
 		}
 		return "";
 	}
@@ -405,8 +404,7 @@ public class ProfileRoutes{
 				return Utils.wrapError(req, resp, "err_not_friends");
 			}
 		}else{
-			resp.status(404);
-			return Utils.wrapError(req, resp, "user_not_found");
+			throw new ObjectNotFoundException("err_user_not_found");
 		}
 		return "";
 	}

@@ -41,6 +41,7 @@ import smithereen.data.User;
 import smithereen.data.notifications.Notification;
 import smithereen.data.notifications.NotificationUtils;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaCache;
@@ -271,13 +272,11 @@ public class PostRoutes{
 	public static Object standalonePost(Request req, Response resp) throws SQLException{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
+			throw new ObjectNotFoundException("err_post_not_found");
 		}
 		Post post=PostStorage.getPostByID(postID, false);
 		if(post==null){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
+			throw new ObjectNotFoundException("err_post_not_found");
 		}
 		int[] replyKey=new int[post.replyKey.length+1];
 		System.arraycopy(post.replyKey, 0, replyKey, 0, post.replyKey.length);
@@ -362,8 +361,7 @@ public class PostRoutes{
 		req.attribute("noHistory", true);
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
+			throw new ObjectNotFoundException("err_post_not_found");
 		}
 		String back=Utils.back(req);
 		return new RenderedTemplateResponse("generic_confirm").with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete?_redir="+URLEncoder.encode(back))).with("back", back).renderToString(req);
@@ -372,17 +370,14 @@ public class PostRoutes{
 	public static Object delete(Request req, Response resp, Account self) throws SQLException{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
+			throw new ObjectNotFoundException("err_post_not_found");
 		}
 		Post post=PostStorage.getPostByID(postID, false);
 		if(post==null){
-			resp.status(404);
-			return Utils.wrapError(req, resp, "err_post_not_found");
+			throw new ObjectNotFoundException("err_post_not_found");
 		}
 		if(!post.canBeManagedBy(self.user)){
-			resp.status(403);
-			return Utils.wrapError(req, resp, "err_access");
+			throw new UserActionNotAllowedException();
 		}
 		PostStorage.deletePost(post.id);
 		NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
@@ -542,8 +537,7 @@ public class PostRoutes{
 		if(user==null){
 			group=GroupStorage.getByUsername(username);
 			if(group==null){
-				resp.status(404);
-				return Utils.wrapError(req, resp, "err_user_not_found");
+				throw new ObjectNotFoundException("err_user_not_found");
 			}else if(ownOnly){
 				resp.redirect(Config.localURI("/"+username+"/wall").toString());
 				return "";

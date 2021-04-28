@@ -30,6 +30,7 @@ import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
 import smithereen.data.User;
+import smithereen.exceptions.BadRequestException;
 import smithereen.libvips.VImage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
@@ -229,8 +230,7 @@ public class SystemRoutes{
 		SessionInfo sess=Utils.sessionInfo(req);
 		String id=req.queryParams("id");
 		if(id==null){
-			resp.status(400);
-			return "";
+			throw new BadRequestException();
 		}
 		if(MediaCache.deleteDraftAttachment(id, self.id)){
 			for(ActivityPubObject o : sess.postDraftAttachments){

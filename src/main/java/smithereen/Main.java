@@ -194,7 +194,7 @@ public class Main{
 				int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 				User user=UserStorage.getById(id);
 				if(user==null || user instanceof ForeignUser){
-					resp.status(404);
+					throw new ObjectNotFoundException("err_user_not_found");
 				}else{
 					resp.redirect("/"+user.username);
 				}
@@ -223,7 +223,7 @@ public class Main{
 				int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 				Group group=GroupStorage.getByID(id);
 				if(group==null || group instanceof ForeignGroup){
-					resp.status(404);
+					throw new ObjectNotFoundException("err_group_not_found");
 				}else{
 					resp.redirect("/"+group.username);
 				}
@@ -337,7 +337,6 @@ public class Main{
 			resp.body(Utils.wrapError(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_access")));
 		});
 		exception(BadRequestException.class, (x, req, resp)->{
-			x.printStackTrace();
 			resp.status(400);
 			String msg=x.getMessage();
 			if(StringUtils.isNotEmpty(msg))

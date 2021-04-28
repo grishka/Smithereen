@@ -32,6 +32,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VImage;
 import smithereen.storage.GroupStorage;
@@ -69,8 +70,7 @@ public class SettingsRoutes{
 
 	public static Object createInvite(Request req, Response resp, Account self) throws SQLException{
 		if(Config.signupMode==Config.SignupMode.OPEN){
-			resp.status(400);
-			return "";
+			throw new BadRequestException();
 		}
 		if(Config.signupMode==Config.SignupMode.CLOSED && self.accessLevel!=Account.AccessLevel.ADMIN)
 			return wrapError(req, resp, "err_access");
@@ -152,8 +152,7 @@ public class SettingsRoutes{
 			if(groupID!=0){
 				group=GroupStorage.getByID(groupID);
 				if(group==null || !GroupStorage.getGroupMemberAdminLevel(groupID, self.user.id).isAtLeast(Group.AdminLevel.ADMIN)){
-					resp.status(403);
-					return "";
+					throw new UserActionNotAllowedException();
 				}
 			}
 
@@ -330,8 +329,7 @@ public class SettingsRoutes{
 		if(groupID!=0){
 			group=GroupStorage.getByID(groupID);
 			if(group==null || !GroupStorage.getGroupMemberAdminLevel(groupID, self.user.id).isAtLeast(Group.AdminLevel.ADMIN)){
-				resp.status(403);
-				return "";
+				throw new UserActionNotAllowedException();
 			}
 		}
 

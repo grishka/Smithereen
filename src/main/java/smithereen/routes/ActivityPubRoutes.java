@@ -598,8 +598,7 @@ public class ActivityPubRoutes{
 			httpSigOwner=verifyHttpSignature(req, actor);
 		}catch(Exception x){
 			x.printStackTrace();
-			resp.status(400);
-			return x.toString();
+			throw new BadRequestException(x);
 		}
 
 		// if the activity has an LD-signature, verify that and allow any (cached) user to sign the HTTP signature
@@ -611,24 +610,20 @@ public class ActivityPubRoutes{
 				URI keyID=URI.create(sig.getString("creator"));
 				URI userID=Utils.userIdFromKeyId(keyID);
 				if(!userID.equals(actor.activityPubID)){
-					resp.status(400);
-					return "LD-signature creator is not activity actor";
+					throw new BadRequestException("LD-signature creator is not activity actor");
 				}
 				if(!LinkedDataSignatures.verify(rawActivity, actor.publicKey)){
-					resp.status(400);
-					return "LD-signature verification failed";
+					throw new BadRequestException("LD-signature verification failed");
 				}
 				System.out.println("verified LD signature by "+userID);
 				hasValidLDSignature=true;
 			}catch(Exception x){
 				x.printStackTrace();
-				resp.status(400);
-				return x.toString();
+				throw new BadRequestException(x);
 			}
 		}else{
 			if(!actor.equals(httpSigOwner)){
-				resp.status(400);
-				return "In the absence of an LD-signature, HTTP signature must be made by the activity actor";
+				throw new BadRequestException("In the absence of an LD-signature, HTTP signature must be made by the activity actor");
 			}
 			System.out.println("verified HTTP signature by "+httpSigOwner.activityPubID);
 		}
