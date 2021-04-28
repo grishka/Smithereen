@@ -373,6 +373,23 @@ public class SessionStorage{
 		return false;
 	}
 
+	public static void setLastActive(int accountID, String psid, Timestamp time) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		new SQLQueryBuilder(conn)
+				.update("accounts")
+				.value("last_active", time)
+				.where("id=?", accountID)
+				.createStatement()
+				.execute();
+		byte[] sid=Base64.getDecoder().decode(psid);
+		new SQLQueryBuilder(conn)
+				.update("sessions")
+				.value("last_active", time)
+				.where("id=?", sid)
+				.createStatement()
+				.execute();
+	}
+
 	public static synchronized void removeFromUserPermissionsCache(int userID){
 		permissionsCache.remove(userID);
 	}

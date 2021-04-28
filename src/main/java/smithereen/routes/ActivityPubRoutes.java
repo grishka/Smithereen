@@ -492,18 +492,25 @@ public class ActivityPubRoutes{
 	}
 
 	public static Object nodeInfo(Request req, Response resp) throws SQLException{
-		resp.type("application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/2.0#\"");
+		String ver=req.pathInfo().substring(req.pathInfo().length()-3);
+		resp.type("application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/"+ver+"#\"");
 		JSONObject root=new JSONObject();
-		root.put("version", "2.0");
+		root.put("version", ver);
 		root.put("protocols", Collections.singletonList("activitypub"));
 		JSONObject software=new JSONObject();
 		software.put("name", "smithereen");
 		software.put("version", BuildInfo.VERSION);
+		if(ver.equals("2.1")){
+			software.put("repository", "https://github.com/grishka/Smithereen");
+			software.put("homepage", "https://smithereen.software");
+		}
 		root.put("software", software);
 		root.put("openRegistrations", Config.signupMode==Config.SignupMode.OPEN);
 		JSONObject usage=new JSONObject();
 		JSONObject users=new JSONObject();
 		users.put("total", UserStorage.getLocalUserCount());
+		users.put("activeMonth", UserStorage.getActiveLocalUserCount(30*24*60*60*1000L));
+		users.put("activeHalfyear", UserStorage.getActiveLocalUserCount(180*24*60*60*1000L));
 		usage.put("users", users);
 		usage.put("localPosts", PostStorage.getLocalPostCount(false));
 		usage.put("localComments", PostStorage.getLocalPostCount(true));

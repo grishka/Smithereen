@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -463,10 +464,16 @@ public class UserStorage{
 
 	public static int getLocalUserCount() throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		try(ResultSet res=conn.createStatement().executeQuery("SELECT count(*) FROM `users` WHERE `domain`=''")){
-			res.first();
-			return res.getInt(1);
-		}
+		return DatabaseUtils.oneFieldToInt(conn.createStatement().executeQuery("SELECT count(*) FROM `accounts`"));
+	}
+
+	public static int getActiveLocalUserCount(long time) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("accounts")
+				.count()
+				.where("last_active>?", new Timestamp(System.currentTimeMillis()-time))
+				.createStatement();
+		return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 	}
 
 	public static void updateProfilePicture(User user, String serializedPic) throws SQLException{

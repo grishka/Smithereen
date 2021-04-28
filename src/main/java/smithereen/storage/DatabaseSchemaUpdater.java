@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import smithereen.Config;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=6;
+	public static final int SCHEMA_VERSION=7;
 
 	public static void maybeUpdate() throws SQLException{
 		if(Config.dbSchemaVersion==0){
@@ -141,6 +141,8 @@ public class DatabaseSchemaUpdater{
 					  KEY `account_id` (`account_id`),
 					  CONSTRAINT `email_codes_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+		}else if(target==7){
+			conn.createStatement().execute("ALTER TABLE accounts ADD `last_active` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP");
 		}
 	}
 }

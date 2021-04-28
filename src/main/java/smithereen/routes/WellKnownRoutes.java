@@ -5,6 +5,7 @@ import org.json.JSONObject;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import smithereen.Config;
 import smithereen.data.ForeignGroup;
@@ -65,10 +66,13 @@ public class WellKnownRoutes{
 	public static Object nodeInfo(Request req, Response resp){
 		resp.type("application/json");
 		JSONObject link=new JSONObject();
-		link.put("rel", "http://nodeinfo.diaspora.software/ns/schema/2.0");
-		link.put("href", Config.localURI("activitypub/nodeinfo/2.0"));
+		link.put("rel", "http://nodeinfo.diaspora.software/ns/schema/2.1");
+		link.put("href", Config.localURI("activitypub/nodeinfo/2.1"));
+		JSONObject link2=new JSONObject();
+		link2.put("rel", "http://nodeinfo.diaspora.software/ns/schema/2.0");
+		link2.put("href", Config.localURI("activitypub/nodeinfo/2.0"));
 		JSONObject root=new JSONObject();
-		root.put("links", Collections.singletonList(link));
+		root.put("links", List.of(link, link2));
 		return root;
 	}
 }

@@ -16,6 +16,7 @@ public class Account{
 	public AccessLevel accessLevel;
 	public UserPreferences prefs;
 	public Timestamp createdAt;
+	public Timestamp lastActive;
 
 	public User invitedBy; // used in admin UIs
 
@@ -28,6 +29,8 @@ public class Account{
 				", accessLevel="+accessLevel+
 				", prefs="+prefs+
 				", createdAt="+createdAt+
+				", lastActive="+lastActive+
+				", invitedBy="+invitedBy+
 				'}';
 	}
 
@@ -38,6 +41,7 @@ public class Account{
 		acc.accessLevel=AccessLevel.values()[res.getInt("access_level")];
 		acc.user=UserStorage.getById(res.getInt("user_id"));
 		acc.createdAt=res.getTimestamp("created_at");
+		acc.lastActive=res.getTimestamp("last_active");
 		String prefs=res.getString("preferences");
 		if(prefs==null){
 			acc.prefs=new UserPreferences();

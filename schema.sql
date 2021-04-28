@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2021-04-28 15:00:27 +0000
+# Generation Time: 2021-04-28 16:01:07 +0000
 # ************************************************************
 
 
@@ -33,6 +33,7 @@ CREATE TABLE `accounts` (
   `invited_by` int(11) unsigned DEFAULT NULL,
   `access_level` tinyint(3) unsigned NOT NULL DEFAULT '1',
   `preferences` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
+  `last_active` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `accounts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.Objects;
 
 import smithereen.data.Account;
@@ -93,6 +94,12 @@ public class Main{
 			if(info!=null && info.account!=null){
 				info.account=UserStorage.getAccount(info.account.id);
 				info.permissions=SessionStorage.getUserPermissions(info.account);
+
+				if(System.currentTimeMillis()-info.account.lastActive.getTime()>=10*60*1000){
+					Timestamp now=new Timestamp(System.currentTimeMillis());
+					info.account.lastActive=now;
+					SessionStorage.setLastActive(info.account.id, request.cookie("psid"), now);
+				}
 			}
 //			String hs="";
 //			for(String h:request.headers())
@@ -159,6 +166,7 @@ public class Main{
 			get("/sharedInbox", Main::methodNotAllowed);
 			getLoggedIn("/externalInteraction", ActivityPubRoutes::externalInteraction);
 			get("/nodeinfo/2.0", ActivityPubRoutes::nodeInfo);
+			get("/nodeinfo/2.1", ActivityPubRoutes::nodeInfo);
 			path("/objects", ()->{
 				path("/likes/:likeID", ()->{
 					get("", ActivityPubRoutes::likeObject);
