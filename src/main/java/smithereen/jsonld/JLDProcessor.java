@@ -53,6 +53,7 @@ public class JLDProcessor{
 		lc.put("supportsFriendRequests", "sm:supportsFriendRequests");
 		lc.put("cropRegion", idAndContainerObject("sm:cropRegion", "@list"));
 		lc.put("maidenName", "sm:maidenName");
+		lc.put("wall", "sm:wall");
 
 		localContext=updateContext(new JLDContext(), new JSONArray(Arrays.asList(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc)), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);

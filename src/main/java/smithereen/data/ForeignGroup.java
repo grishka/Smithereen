@@ -55,6 +55,7 @@ public class ForeignGroup extends Group{
 		}else if(_attributedTo instanceof JSONObject || _attributedTo instanceof String){
 			doOneAdmin(_attributedTo);
 		}
+		wall=tryParseURL(obj.optString("wall"));
 
 		return this;
 	}

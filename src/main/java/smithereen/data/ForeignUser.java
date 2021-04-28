@@ -137,6 +137,7 @@ public class ForeignUser extends User{
 		}
 		if(StringUtils.isNotEmpty(summary))
 			summary=Utils.sanitizeHTML(summary);
+		wall=tryParseURL(obj.optString("wall"));
 		return this;
 	}
 
