@@ -24,7 +24,7 @@ import smithereen.lang.Lang;
 import smithereen.storage.NotificationsStorage;
 import spark.Request;
 
-/*package*/ class Templates{
+public class Templates{
 	private static final PebbleEngine desktopEngine=makeEngineInstance("desktop", "common");
 	private static final PebbleEngine mobileEngine=makeEngineInstance("mobile", "common");
 	private static final PebbleEngine popupEngine=makeEngineInstance("popup");
@@ -36,7 +36,7 @@ import spark.Request;
 		return loader;
 	}
 
-	private static PebbleEngine makeEngineInstance(String... dirs){
+	public static PebbleEngine makeEngineInstance(String... dirs){
 		return new PebbleEngine.Builder()
 				.loader(new DelegatingLoader(Arrays.stream(dirs).map(Templates::makeClasspathLoader).collect(Collectors.toList())))
 				.defaultLocale(Locale.US)

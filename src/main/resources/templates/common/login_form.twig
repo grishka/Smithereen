@@ -4,6 +4,9 @@
 	{{ _form.start('login', message) }}
 		{{ _form.textInput('username', L('email_or_username')) }}
 		{{ _form.textInput('password', L('password'), '', {'type': 'password'}) }}
+		{{ _form.unlabeledRowStart() }}
+		<a href="/account/resetPassword">{{ L('forgot_password') }}</a>
+		{{ _form.unlabeledRowEnd() }}
 		{{ _form.footer(L('log_in')) }}
 	{{ _form.end() }}
 </form>

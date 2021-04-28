@@ -5,14 +5,18 @@ import java.util.Base64;
 import java.util.Locale;
 
 import smithereen.Config;
+import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.data.Account;
+import smithereen.data.EmailCode;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.exceptions.BadRequestException;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.FloodControl;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -165,5 +169,102 @@ public class SessionRoutes{
 			model.with("preFilledInvite", invite);
 		model.with("title", lang(req).get("register"));
 		return model.renderToString(req);
+	}
+
+	public static Object resetPasswordForm(Request req, Response resp){
+		return new RenderedTemplateResponse("reset_password").with("title", lang(req).get("reset_password_title")).renderToString(req);
+	}
+
+	public static Object resetPassword(Request req, Response resp) throws SQLException{
+		SessionInfo sess=sessionInfo(req);
+		if(sess!=null && sess.account!=null)
+			throw new BadRequestException();
+		String username=req.queryParams("username");
+		if(StringUtils.isEmpty(username))
+			throw new BadRequestException();
+
+		Account account;
+		if(username.contains("@"))
+			account=SessionStorage.getAccountByEmail(username);
+		else
+			account=SessionStorage.getAccountByUsername(username);
+		if(account==null){
+			return new RenderedTemplateResponse("reset_password")
+					.with("username", username)
+					.with("title", lang(req).get("reset_password_title"))
+					.with("passwordResetMessage", lang(req).get("password_reset_account_not_found"))
+					.renderToString(req);
+		}
+
+		FloodControl.PASSWORD_RESET.incrementOrThrow(account);
+
+		EmailCode code=new EmailCode();
+		code.type=EmailCode.Type.PASSWORD_RESET;
+		code.accountID=account.id;
+		String c=SessionStorage.storeEmailCode(code);
+		Mailer.getInstance().sendPasswordReset(req, account, c);
+
+		return new RenderedTemplateResponse("generic_message")
+				.with("title", lang(req).get("reset_password_title"))
+				.with("message", lang(req).get("password_reset_sent"))
+				.renderToString(req);
+	}
+
+	public static Object actuallyResetPasswordForm(Request req, Response resp) throws SQLException{
+		SessionInfo sess=sessionInfo(req);
+		if(sess!=null && sess.account!=null)
+			throw new BadRequestException();
+
+		String code=req.queryParams("code");
+		if(StringUtils.isEmpty(code))
+			throw new BadRequestException();
+		EmailCode c=SessionStorage.getEmailCode(code);
+		if(c==null)
+			throw new BadRequestException();
+		if(c.isExpired())
+			throw new BadRequestException();
+
+		return new RenderedTemplateResponse("reset_password_step2")
+				.with("code", code)
+				.with("title", lang(req).get("reset_password_title"))
+				.renderToString(req);
+	}
+
+	public static Object actuallyResetPassword(Request req, Response resp) throws SQLException{
+		SessionInfo sess=sessionInfo(req);
+		if(sess!=null && sess.account!=null)
+			throw new BadRequestException();
+
+		String code=req.queryParams("code");
+		if(StringUtils.isEmpty(code))
+			throw new BadRequestException();
+		EmailCode c=SessionStorage.getEmailCode(code);
+		if(c==null)
+			throw new BadRequestException();
+		if(c.isExpired())
+			throw new BadRequestException();
+
+		String error=null;
+		String password=req.queryParams("password");
+		String password2=req.queryParams("password2");
+		if(StringUtils.isEmpty(password) || password.length()<4)
+			error="err_password_short";
+		if(StringUtils.isEmpty(password2) || !password.equals(password2))
+			error="err_passwords_dont_match";
+
+		if(error!=null){
+			return new RenderedTemplateResponse("reset_password_step2")
+					.with("code", code)
+					.with("title", lang(req).get("reset_password_title"))
+					.with("passwordResetMessage", lang(req).get(error))
+					.renderToString(req);
+		}
+
+		SessionStorage.updatePassword(c.accountID, password);
+		SessionStorage.deleteEmailCode(code);
+		setupSessionWithAccount(req, resp, UserStorage.getAccount(c.accountID));
+		resp.redirect("/feed");
+
+		return "";
 	}
 }

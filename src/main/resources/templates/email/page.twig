@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+</head>
+<body bgcolor="#FFFFFF">
+<table cellpadding="5" cellspacing="0" border="0" width="100%" style="font-family: Tahoma, Arial, sans-serif; font-size: 11px;">
+	<tr bgcolor="#4E6C1A">
+		<td width="27"><img src="https://{{ domain }}/res/email_logo.png" width="27" height="28"/></td>
+		<td valign="middle" style="font-weight: bold; color: #FFFFFF;">{{ serverName }}</td>
+	</tr>
+	<tr>
+		<td colspan="2">{% block content %}{% endblock %}</td>
+	</tr>
+</table>
+</body>
+</html>

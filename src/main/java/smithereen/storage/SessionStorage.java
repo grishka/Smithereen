@@ -1,6 +1,7 @@
 package smithereen.storage;
 
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
@@ -13,13 +14,16 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Base64;
 import java.util.Locale;
+import java.util.Objects;
 
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.data.Account;
+import smithereen.data.EmailCode;
 import smithereen.data.Group;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
@@ -252,6 +256,121 @@ public class SessionStorage{
 		stmt.setString(1, prefs.toJSON().toString());
 		stmt.setInt(2, accountID);
 		stmt.execute();
+	}
+
+	public static Account getAccountByEmail(String email) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("accounts")
+				.allColumns()
+				.where("email=?", email)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			return res.first() ? Account.fromResultSet(res) : null;
+		}
+	}
+
+	public static Account getAccountByUsername(String username) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("users")
+				.columns("id")
+				.where("username=? AND ap_id IS NULL", username)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			if(res.first()){
+				int uid=res.getInt(1);
+				stmt=new SQLQueryBuilder(conn)
+						.selectFrom("accounts")
+						.allColumns()
+						.where("user_id=?", uid)
+						.createStatement();
+				try(ResultSet res2=stmt.executeQuery()){
+					res2.first();
+					return Account.fromResultSet(res2);
+				}
+			}
+		}
+		return null;
+	}
+
+	public static String storeEmailCode(EmailCode code) throws SQLException{
+		byte[] _id=new byte[64];
+		random.nextBytes(_id);
+		String id=Base64.getUrlEncoder().withoutPadding().encodeToString(_id);
+		new SQLQueryBuilder()
+				.insertInto("email_codes")
+				.value("code", _id)
+				.value("account_id", code.accountID)
+				.value("type", code.type)
+				.value("extra", Objects.toString(code.extra, null))
+				.createStatement()
+				.execute();
+		return id;
+	}
+
+	public static EmailCode getEmailCode(String id) throws SQLException{
+		byte[] _id;
+		try{
+			_id=Base64.getUrlDecoder().decode(id);
+		}catch(IllegalArgumentException x){
+			return null;
+		}
+		if(_id.length!=64)
+			return null;
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("email_codes")
+				.allColumns()
+				.where("code=?", (Object) _id)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			if(!res.first())
+				return null;
+			EmailCode code=new EmailCode();
+			code.accountID=res.getInt("account_id");
+			code.type=EmailCode.Type.values()[res.getInt("type")];
+			String extra=res.getString("extra");
+			if(extra!=null)
+				code.extra=new JSONObject(extra);
+			code.createdAt=res.getTimestamp("created_at");
+			return code;
+		}
+	}
+
+	public static void deleteEmailCode(String id) throws SQLException{
+		byte[] _id;
+		try{
+			_id=Base64.getUrlDecoder().decode(id);
+		}catch(IllegalArgumentException x){
+			return;
+		}
+		if(_id.length!=64)
+			return;
+		new SQLQueryBuilder()
+				.deleteFrom("email_codes")
+				.where("code=?", (Object) _id)
+				.createStatement()
+				.execute();
+	}
+
+	public static void deleteExpiredEmailCodes() throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("email_codes")
+				.where("created_at<?", new Timestamp(System.currentTimeMillis()-EmailCode.VALIDITY_MS))
+				.createStatement()
+				.execute();
+	}
+
+	public static boolean updatePassword(int accountID, String newPassword) throws SQLException{
+		try{
+			MessageDigest md=MessageDigest.getInstance("SHA-256");
+			byte[] hashedNew=md.digest(newPassword.getBytes(StandardCharsets.UTF_8));
+			Connection conn=DatabaseConnectionManager.getConnection();
+			PreparedStatement stmt=conn.prepareStatement("UPDATE `accounts` SET `password`=? WHERE `id`=?");
+			stmt.setBytes(1, hashedNew);
+			stmt.setInt(2, accountID);
+			return stmt.executeUpdate()==1;
+		}catch(NoSuchAlgorithmException ignore){}
+		return false;
 	}
 
 	public static synchronized void removeFromUserPermissionsCache(int userID){

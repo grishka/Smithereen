@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import smithereen.Config;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=5;
+	public static final int SCHEMA_VERSION=6;
 
 	public static void maybeUpdate() throws SQLException{
 		if(Config.dbSchemaVersion==0){
@@ -128,6 +128,18 @@ public class DatabaseSchemaUpdater{
 					  KEY `user_id` (`user_id`),
 					  CONSTRAINT `blocks_user_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
 					  CONSTRAINT `blocks_user_user_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+		}else if(target==6){
+			conn.createStatement().execute("""
+					CREATE TABLE `email_codes` (
+					  `code` binary(64) NOT NULL,
+					  `account_id` int(10) unsigned DEFAULT NULL,
+					  `type` int(11) NOT NULL,
+					  `extra` text,
+					  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					  PRIMARY KEY (`code`),
+					  KEY `account_id` (`account_id`),
+					  CONSTRAINT `email_codes_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 		}
 	}

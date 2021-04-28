@@ -1,0 +1,30 @@
+{% extends "page" %}
+{% block content %}
+{% import "forms" as form %}
+{% include "admin_tabbar" with {'tab': 'other'} %}
+<div class="singleColumn gray">
+	<h2>{{ L('admin_email_settings') }}</h2>
+	<form action="/settings/admin/updateEmailSettings" method="post" onsubmit="return ajaxSubmitForm(this)">
+		{{ form.start('adminEmailSettings', adminEmailSettingsMessage) }}
+			{{ form.textInput('from', L('admin_email_from'), from, {'type': 'email', 'maxlength': 100}) }}
+			{{ form.textInput('smtp_server', L('admin_email_smtp_server'), smtpServer) }}
+			{{ form.textInput('smtp_port', L('admin_email_smtp_port'), smtpPort, {'type': 'number', 'min': 1, 'max': 65535}) }}
+			{{ form.textInput('smtp_user', L('username'), smtpUser, {'autocomplete': false}) }}
+			{{ form.textInput('smtp_password', L('password'), smtpPassword, {'type': 'password', 'autocomplete': false, 'explanation': L('admin_email_auth_explain')}) }}
+			{{ form.unlabeledRowStart() }}
+			<div class="radioButtonWrap">
+				<input type="checkbox" name="smtp_use_tls" id="smtp_use_tls"{{ smtpUseTLS ? ' checked' : '' }}/>
+				<label for="smtp_use_tls">{{ L('admin_email_smtp_use_tls') }}</label>
+			</div>
+			{{ form.unlabeledRowEnd() }}
+			{{ form.footer(L('save')) }}
+		{{ form.end() }}
+	</form>
+	<form action="/settings/admin/sendTestEmail" method="post" onsubmit="return ajaxSubmitForm(this)">
+		{{ form.start('adminEmailTest', adminEmailTestMessage) }}
+			{{ form.textInput('email', L('admin_email_test_address'), '', {'type': 'email', 'maxlength': 100, 'required': true}) }}
+			{{ form.footer(L('admin_email_send_test')) }}
+		{{ form.end() }}
+	</form>
+</div>
+{% endblock %}

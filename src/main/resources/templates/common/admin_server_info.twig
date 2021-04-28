@@ -1,7 +1,7 @@
 {%extends "page"%}
 {%block content%}
 {%import "forms" as form%}
-{%include "admin_tabbar" with {'selected': 0}%}
+{%include "admin_tabbar" with {'tab': 'general'}%}
 <div class="singleColumn gray">
 	<form action="/settings/admin/updateServerInfo" method="post" onsubmit="return ajaxSubmitForm(this)">
 		<h2>{{L('admin_server_info')}}</h2>

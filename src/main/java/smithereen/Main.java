@@ -13,6 +13,7 @@ import smithereen.data.Group;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.routes.ActivityPubRoutes;
@@ -30,6 +31,8 @@ import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.FloodControl;
+import smithereen.util.MaintenanceScheduler;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -114,6 +117,10 @@ public class Main{
 			get("/logout", SessionRoutes::logout);
 			post("/register", SessionRoutes::register);
 			get("/register", SessionRoutes::registerForm);
+			get("/resetPassword", SessionRoutes::resetPasswordForm);
+			post("/resetPassword", SessionRoutes::resetPassword);
+			get("/actuallyResetPassword", SessionRoutes::actuallyResetPasswordForm);
+			post("/actuallyResetPassword", SessionRoutes::actuallyResetPassword);
 		});
 
 		path("/settings", ()->{
@@ -141,6 +148,9 @@ public class Main{
 				getRequiringAccessLevel("/users", Account.AccessLevel.ADMIN, SettingsAdminRoutes::users);
 				getRequiringAccessLevel("/users/accessLevelForm", Account.AccessLevel.ADMIN, SettingsAdminRoutes::accessLevelForm);
 				postRequiringAccessLevelWithCSRF("/users/setAccessLevel", Account.AccessLevel.ADMIN, SettingsAdminRoutes::setUserAccessLevel);
+				getRequiringAccessLevel("/other", Account.AccessLevel.ADMIN, SettingsAdminRoutes::otherSettings);
+				postRequiringAccessLevelWithCSRF("/updateEmailSettings", Account.AccessLevel.ADMIN, SettingsAdminRoutes::saveEmailSettings);
+				postRequiringAccessLevelWithCSRF("/sendTestEmail", Account.AccessLevel.ADMIN, SettingsAdminRoutes::sendTestEmail);
 			});
 		});
 
@@ -326,6 +336,10 @@ public class Main{
 			else
 				resp.body("Bad request");
 		});
+		exception(FloodControlViolationException.class, (x, req, resp)->{
+			resp.status(429);
+			resp.body(Utils.wrapError(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
+		});
 		exception(Exception.class, (exception, req, res) -> {
 			System.out.println("Exception while processing "+req.requestMethod()+" "+req.raw().getPathInfo());
 			exception.printStackTrace();
@@ -362,6 +376,13 @@ public class Main{
 					}
 				}catch(Throwable ignore){}
 			}
+		});
+
+		MaintenanceScheduler.runDaily(()->{
+			try{
+				SessionStorage.deleteExpiredEmailCodes();
+			}catch(SQLException ignore){}
+			FloodControl.PASSWORD_RESET.gc();
 		});
 	}
 

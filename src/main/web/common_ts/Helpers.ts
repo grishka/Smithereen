@@ -366,7 +366,7 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):bo
 		var el=elems[i] as any;
 		if(!el.name)
 			continue;
-		if(el.type!="radio" || (el.type=="radio" && el.checked))
+		if((el.type!="radio" && el.type!="checkbox") || ((el.type=="radio" || el.type=="checkbox") && el.checked))
 			data[el.name]=el.value;
 	}
 	data.csrf=userConfig.csrf;

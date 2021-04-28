@@ -8,8 +8,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 import smithereen.storage.DatabaseConnectionManager;
 import spark.utils.StringUtils;
@@ -48,6 +52,13 @@ public class Config{
 	public static String serverDescription;
 	public static String serverAdminEmail;
 	public static SignupMode signupMode=SignupMode.CLOSED;
+
+	public static String mailFrom;
+	public static String smtpServerAddress;
+	public static int smtpPort;
+	public static String smtpUsername;
+	public static String smtpPassword;
+	public static boolean smtpUseTLS;
 
 	public static void load(String filePath) throws IOException{
 		FileInputStream in=new FileInputStream(filePath);
@@ -103,6 +114,13 @@ public class Config{
 					signupMode=SignupMode.valueOf(_signupMode);
 				}catch(IllegalArgumentException ignore){}
 			}
+
+			smtpServerAddress=dbValues.getOrDefault("Mail_SMTP_ServerAddress", "127.0.0.1");
+			smtpPort=Utils.parseIntOrDefault(dbValues.get("Mail_SMTP_ServerPort"), 25);
+			mailFrom=dbValues.getOrDefault("MailFrom", "noreply@"+domain);
+			smtpUsername=dbValues.get("Mail_SMTP_Username");
+			smtpPassword=dbValues.get("Mail_SMTP_Password");
+			smtpUseTLS=Utils.parseIntOrDefault(dbValues.get("Mail_SMTP_UseTLS"), 0)==1;
 		}
 	}
 
@@ -112,6 +130,20 @@ public class Config{
 		stmt.setString(1, key);
 		stmt.setString(2, value);
 		stmt.executeUpdate();
+	}
+
+	public static void updateInDatabase(Map<String, String> values) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("INSERT INTO config (`key`, `value`) VALUES "+String.join(", ", Collections.nCopies(values.size(), "(?, ?)"))+" ON DUPLICATE KEY UPDATE `value`=values(`value`)");
+		int i=1;
+		for(Map.Entry<String, String> e: values.entrySet()){
+			stmt.setString(i, e.getKey());
+			stmt.setString(i+1, e.getValue());
+			i+=2;
+		}
+		if(DEBUG)
+			System.out.println(stmt);
+		stmt.execute();
 	}
 
 	public static URI localURI(String path){

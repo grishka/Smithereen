@@ -3,6 +3,18 @@
 <table class="form">
 {%endmacro%}
 
+{% macro unlabeledRowStart() %}
+	<tr>
+		<td></td>
+		<td>
+{% endmacro %}
+
+{% macro unlabeledRowEnd() %}
+		</td>
+	</tr>
+{% endmacro %}
+
+
 {%macro textInput(name, label, value, options)%}
 	{%if options is null%}{%set options={}%}{%endif%}
 	<tr>
@@ -16,6 +28,7 @@
 			{%- if options.required %} required{%endif%}
 			{%- if options.autocomplete==false %} autocomplete="off"{% endif %}
 			{%- if options.pattern is not empty %} pattern="{{ options.pattern }}"{% endif %}
+			{%- if options.min is not null %} min="{{options.min}}"{%endif%}
 			{%- if options.max is not null %} max="{{ options.max }}"{%endif%}/>
 		{%if options.explanation is not null%}
 			<br/><span class="formExplanation">{{options.explanation}}</span>

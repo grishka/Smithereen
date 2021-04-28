@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2021-04-20 04:13:47 +0000
+# Generation Time: 2021-04-28 15:00:27 +0000
 # ************************************************************
 
 
@@ -116,6 +116,22 @@ CREATE TABLE `draft_attachments` (
   PRIMARY KEY (`id`),
   KEY `owner_account_id` (`owner_account_id`),
   CONSTRAINT `draft_attachments_ibfk_1` FOREIGN KEY (`owner_account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table email_codes
+# ------------------------------------------------------------
+
+CREATE TABLE `email_codes` (
+  `code` binary(64) NOT NULL,
+  `account_id` int(10) unsigned DEFAULT NULL,
+  `type` int(11) NOT NULL,
+  `extra` text,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`code`),
+  KEY `account_id` (`account_id`),
+  CONSTRAINT `email_codes_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 

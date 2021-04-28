@@ -285,7 +285,7 @@ a, a:link, a:visited, .link{
 	}*/
 }
 
-input[type=text], input[type=password], input[type=email], input[type=date], textarea, select{
+input[type=text], input[type=password], input[type=email], input[type=date], input[type=number], textarea, select{
 	border: solid 1px $textAreaBorder;
 	border-radius: 2px;
 	padding: 4px;
