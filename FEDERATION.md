@@ -3,7 +3,7 @@ Here are the non-standard additions to ActivityPub that Smithereen uses in order
 
 The `sm:` JSON-LD namespace is short for `http://smithereen.software/ns#`; in relevant objects, any custom fields within that namespace are aliased in `@context` and thus appear throughout the object without any namespace.
 ### Wall posts
-People can post on other people's walls. These posts are exposed in the outbox of the wall owner, and could be, of course, fetched via a direct link. Compared to a "regular" post of a user on their own wall, these posts have an additional field `partOf` that points to the outbox of the owner. Addressing **must** include `as:Public` and the wall owner.
+People can post on other people's walls. Wall posts are part of the `sm:wall` collection, as per [FEP-400e](https://git.activitypub.dev/ActivityPubDev/Fediverse-Enhancement-Proposals/src/commit/f94077e1514928c2d2ae79d86a5953c93874b73d/feps/fep-400e.md). Addressing **must** include `as:Public` and the wall owner.
 
 Example object:
 ```json
@@ -22,7 +22,20 @@ Example object:
     "https://www.w3.org/ns/activitystreams#Public",
     "http://smithereen.local:8080/users/4"
   ],
-  "partOf": "http://smithereen.local:8080/users/4/outbox",
+  "target": {
+    "id": "http://smithereen.local:8080/users/4/wall",
+    "attributedTo": "http://smithereen.local:8080/users/4",
+    "type": "Collection"
+  },
+  "replies": {
+    "id": "http://smithereen.local:8080/posts/110/replies",
+    "type": "Collection",
+    "first": {
+      "next": "http://smithereen.local:8080/posts/110/replies?page=1",
+      "partOf": "http://smithereen.local:8080/posts/110/replies",
+      "type": "CollectionPage"
+    }
+  },
   "attributedTo": "http://smithereen.local:8080/users/1",
   "published": "2020-05-21T19:05:00Z",
   "sensitive": false,
@@ -68,3 +81,19 @@ Example:
   },
 ...
 ```
+### Groups
+Groups are like users, except they can't follow anything. Groups have walls that work the same way as user walls. Both `Join` and `Follow` activities work for joining groups, as well as `Leave` and `Undo{Follow}` for leaving. Outgoing activities are `Follow` and `Undo{Follow}` in order to maximize the compatibility.
+
+Groups have administrators that are listed in the `attributedTo` field:
+```json
+  "attributedTo": [
+    {
+      "type": "Person",
+      "title": "Group admins can have user-visible titles",
+      "id": "http://smithereen.local:8080/users/1"
+    }
+  ]
+```
+These links must point to a `Person` object and will be ignored otherwise.
+
+Any actions of the group administrators are federated as if the group actor itself performed them.
