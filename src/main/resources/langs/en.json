@@ -293,5 +293,7 @@
   "date_format_other_year": "%1$d %2$s %3$d",
   "time_X_minutes_ago": ["%d minute ago", "%d minutes ago"],
   "time_in_X_minutes": ["in %d minute", "in %d minutes"],
-  "time_just_now": "just now"
+  "time_just_now": "just now",
+
+  "go_up": "Go Up"
 }

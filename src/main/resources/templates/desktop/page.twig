@@ -71,9 +71,11 @@
 	</tr>
 </table>
 </div>
-<!--a id="elevator" href="#">
-	up
-</a-->
+<a id="elevator">
+	<div class="bg">
+		<div class="inner">{{ L('go_up') }}</div>
+	</div>
+</a>
 <script src="/res/common.js?{{staticHash}}"></script>
 {% if _bottomScripts is not empty %}
 <script>

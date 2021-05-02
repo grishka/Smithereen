@@ -293,5 +293,7 @@
   "date_format_other_year": "%1$d %2$s %3$d",
   "time_X_minutes_ago": ["%d минуту назад", "%d минуты назад", "%d минут назад"],
   "time_in_X_minutes": ["через %d минуту", "через %d минуты", "через %d минут"],
-  "time_just_now": "только что"
+  "time_just_now": "только что",
+
+  "go_up": "Наверх"
 }

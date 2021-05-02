@@ -245,11 +245,67 @@ h2{
 
 #elevator{
 	position: fixed;
-	width: 60px;
+	width: 130px;
 	top: 0;
 	bottom: 0;
 	left: 0;
-	display: block;
+
+	.bg{
+		height: 100%;
+		display: inline-block;
+		transition: background-color .1s ease;
+		background-color: color($blockBackground alpha(0%));
+		.inner{
+			font-weight: bold;
+			margin: 15px 31px 15px 15px;
+			padding: 0 20px;
+			overflow-x: hidden;
+			background: svg-load('img/toplink.svg', fill=$normalLink) no-repeat left 3px;
+			opacity: .5;
+			transition: opacity .1s ease;
+		}
+	}
+}
+
+.widePage #elevator{
+	width: calc(((100vw - (100vw - 100%)) - $siteWidthWide) / 2);
+}
+
+.narrowPage #elevator{
+	width: calc(((100vw - (100vw - 100%)) - $siteWidthNarrow) / 2);
+}
+
+// @media (max-width: calc($siteWidthNarrow + 130px * 2)){
+@media (max-width: 1051px){
+	.narrowPage #elevator{
+		display: none;
+	}
+}
+
+@media (max-width: 1540px){
+	.widePage #elevator{
+		display: none;
+	}
+}
+
+#elevator:hover{
+	text-decoration: none;
+	.bg{
+		background-color: $blockBackground;
+		.inner{
+			opacity: 1;
+		}
+	}
+}
+
+#elevator.goBackDown{
+	color: transparent;
+	&:hover .bg{
+		background-color: color($blockBackground alpha(0%));
+	}
+	.bg .inner{
+		background-position: left -8px;
+	}
 }
 
 .contentWrap{

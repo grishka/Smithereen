@@ -63,3 +63,55 @@ document.body.addEventListener("drop", function(ev:DragEvent){
 	dragEventCount=0;
 	document.body.classList.remove("fileIsBeingDragged");
 }, false);
+
+var elevator=ge("elevator");
+if(elevator){
+	var currentElevatorAlpha=0.0;
+	var elevatorBackY=0;
+	var elevatorVisible=document.documentElement.scrollTop>200;
+	if(!elevatorVisible)
+		elevator.hide();
+	document.addEventListener("scroll", function(ev:Event){
+		var sy=document.documentElement.scrollTop;
+		var alpha;
+		if(elevatorBackY>0 && sy>200){
+			elevatorBackY=0;
+			elevator.classList.remove("goBackDown");
+		}
+		if(sy>=200 && sy<400){
+			alpha=(sy-200)/200;
+		}else if(sy>=400){
+			alpha=1;
+		}else if(sy<200 && elevatorBackY>0){
+			alpha=1-sy/200;
+		}else{
+			alpha=0;
+			if(elevatorVisible){
+				elevatorVisible=false;
+				elevator.hide();
+			}
+		}
+		if(alpha>0 && !elevatorVisible){
+			elevatorVisible=true;
+			elevator.show();
+		}
+		if(alpha!=currentElevatorAlpha){
+			currentElevatorAlpha=alpha;
+			elevator.style.opacity=alpha+"";
+		}
+	}, {passive: true});
+	elevator.onclick=function(){
+		if(elevatorBackY>0){
+			document.documentElement.scrollTop=elevatorBackY;
+			elevatorBackY=0;
+			elevator.classList.remove("goBackDown");
+			document.body.qs(".wrap").anim([{transform: "translateY(20px)"}, {transform: "translateY(0)"}], {duration: 200, easing: "cubic-bezier(0.22, 1, 0.36, 1)"});
+		}else{
+			elevator.classList.add("goBackDown");
+			elevatorBackY=document.documentElement.scrollTop;
+			document.documentElement.scrollTop=0;
+			document.body.qs(".wrap").anim([{transform: "translateY(-20px)"}, {transform: "translateY(0)"}], {duration: 200, easing: "cubic-bezier(0.22, 1, 0.36, 1)"});
+		}
+		return false;
+	};
+}
