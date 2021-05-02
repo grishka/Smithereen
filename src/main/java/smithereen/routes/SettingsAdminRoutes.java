@@ -168,7 +168,7 @@ public class SettingsAdminRoutes{
 		String to=req.queryParams("email");
 		String result;
 		if(isValidEmail(to)){
-			Mailer.getInstance().sendTest(req, to);
+			Mailer.getInstance().sendTest(req, to, self);
 			result="admin_email_test_sent";
 		}else{
 			result="err_invalid_email";

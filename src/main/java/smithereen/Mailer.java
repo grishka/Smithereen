@@ -79,13 +79,14 @@ public class Mailer{
 				"domain", Config.domain,
 				"serverName", Config.serverDisplayName,
 				"name", account.user.firstName,
+				"gender", account.user.gender,
 				"passwordResetLink", link
 		), l.getLocale());
 	}
 
-	public void sendTest(Request req, String to){
+	public void sendTest(Request req, String to, Account self){
 		Lang l=Utils.lang(req);
-		send(to, l.get("email_test_subject"), l.get("email_test"), "test", Collections.emptyMap(), l.getLocale());
+		send(to, l.get("email_test_subject"), l.get("email_test"), "test", Map.of("gender", self.user.gender), l.getLocale());
 	}
 
 	private void send(String to, String subject, String plaintext, String templateName, Map<String, Object> templateParams, Locale templateLocale){
