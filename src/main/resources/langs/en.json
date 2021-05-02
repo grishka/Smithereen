@@ -280,5 +280,18 @@
   "admin_email_test_sent": "Test email has been sent",
   "admin_email_test_address": "Address",
   "email_test_subject": "Test email",
-  "email_test": "If you're reading this, you've probably configured your server correctly."
+  "email_test": "If you're reading this, you've probably configured your server correctly.",
+
+  "date_today": "today",
+  "date_yesterday": "yesterday",
+  "date_tomorrow": "tomorrow",
+  "months_full": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  "months_short": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+  "months_standalone": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  "date_time_format": "%1$s at %2$s",
+  "date_format_current_year": "%1$d %2$s",
+  "date_format_other_year": "%1$d %2$s %3$d",
+  "time_X_minutes_ago": ["%d minute ago", "%d minutes ago"],
+  "time_in_X_minutes": ["in %d minute", "in %d minutes"],
+  "time_just_now": "just now"
 }

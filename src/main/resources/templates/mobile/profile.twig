@@ -66,7 +66,7 @@
 <div class="card profileFields">
 {%if user.birthDate is not null%}
 	<div class="profileFieldName">{{L("birth_date")}}</div>
-	<div class="profileFieldValue">{{user.birthDate}}</div>
+	<div class="profileFieldValue">{{ LD(user.birthDate) }}</div>
 {%endif%}
 {%if user.summary is not null%}
 	<div class="profileFieldName">{{L('profile_about')}}</div>

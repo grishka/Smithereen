@@ -10,6 +10,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -240,12 +243,53 @@ public class Lang{
 		return inflector.detectGender(first, last, middle);
 	}
 
-	public String formatDate(Date date, TimeZone timeZone){
-		DateFormat format=dateFormat.get();
-		if(format==null)
-			dateFormat.set(format=new SimpleDateFormat("dd MMMM yyyy, HH:mm", locale));
-		format.setTimeZone(timeZone);
-		return format.format(date);
+	public String formatDay(LocalDate date){
+		JSONArray months=data.getJSONArray("months_full");
+		return get("date_format_other_year", date.getDayOfMonth(), months.getString(date.getMonthValue()-1), date.getYear());
+	}
+
+	public String formatDate(Date date, TimeZone timeZone, boolean forceAbsolute){
+		long ts=date.getTime();
+		long tsNow=System.currentTimeMillis();
+		long diff=tsNow-ts;
+
+		if(!forceAbsolute){
+			if(diff>=0 && diff<60_000){
+				return get("time_just_now");
+			}else if(diff>=60_000 && diff<3600_000){
+				return plural("time_X_minutes_ago", (int) (diff/60_000));
+			}else if(diff<0 && diff>-3600_000){
+				return plural("time_in_X_minutes", -(int) (diff/60_000));
+			}
+		}
+
+		ZonedDateTime now=ZonedDateTime.now(timeZone.toZoneId());
+		ZonedDateTime dt=date.toInstant().atZone(timeZone.toZoneId());
+		String day=null;
+		if(Math.abs(diff)<=2*24*60*60*1000){
+			if(now.getYear()==dt.getYear() && now.getDayOfYear()==dt.getDayOfYear()){
+				day=get("date_today");
+			}else if(diff>0){
+				ZonedDateTime yesterday=now.minusDays(1);
+				if(yesterday.getYear()==dt.getYear() && yesterday.getDayOfYear()==dt.getDayOfYear())
+					day=get("date_yesterday");
+			}else{
+				ZonedDateTime tomorrow=now.plusDays(1);
+				if(tomorrow.getYear()==dt.getYear() && tomorrow.getDayOfYear()==dt.getDayOfYear())
+					day=get("date_tomorrow");
+			}
+		}
+		if(day==null){
+			if(now.getYear()==dt.getYear()){
+				JSONArray months=data.getJSONArray("months_full");
+				day=get("date_format_current_year", dt.getDayOfMonth(), months.getString(dt.getMonthValue()-1));
+			}else{
+				JSONArray months=data.getJSONArray("months_short");
+				day=get("date_format_other_year", dt.getDayOfMonth(), months.getString(dt.getMonthValue()-1), dt.getYear());
+			}
+		}
+
+		return get("date_time_format", day, String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute()));
 	}
 
 	public Object raw(String key){
