@@ -280,5 +280,21 @@
   "admin_email_test_sent": "Wysłano testowy e-mail",
   "admin_email_test_address": "Adres",
   "email_test_subject": "E-mail testowy",
-  "email_test": ["Jeżeli to czytasz, prawdopodobnie skonfigurowałeś swój serwer prawidłowo.", "Jeżeli to czytasz, prawdopodobnie skonfigurowałaś swój serwer prawidłowo."]
+  "email_test": ["Jeżeli to czytasz, prawdopodobnie skonfigurowałeś swój serwer prawidłowo.", "Jeżeli to czytasz, prawdopodobnie skonfigurowałaś swój serwer prawidłowo."],
+
+  "date_today": "dzisiaj",
+  "date_yesterday": "wczoraj",
+  "date_tomorrow": "jutro",
+  "months_full": ["stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca", "lipca", "sierpnia", "września", "października", "listopada", "grudnia"],
+  "months_short": ["st.", "lt.", "mr.", "kw.", "mj.", "cz.", "lp.", "sr.", "wr.", "pź.", "ls.", "gr."],
+  "months_standalone": ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień", "październrik", "listopad", "grudzień"],
+  "date_time_format": "%1$s o %2$s",
+  "date_format_current_year": "%1$d %2$s",
+  "date_format_other_year": "%1$d %2$s %3$d",
+  "time_X_minutes_ago": ["%d minutę temu", "%d minuty temu", "%d minut temu"],
+  "time_in_X_minutes": ["za %d minutę", "za %d minuty", "za %d minut"],
+  "time_just_now": "właśnie teraz",
+
+  "go_up": "Idź do góry",
+  "X_groups": ["%d grupa", "%d grupy", "%d grup"]
 }
