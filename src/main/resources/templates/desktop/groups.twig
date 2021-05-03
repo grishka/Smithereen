@@ -1,6 +1,8 @@
 {% extends "page" %}
 {% block content %}
+{% if currentUser is not null and owner.id==currentUser.id %}
 {% include 'groups_tabbar' %}
+{% endif %}
 <div class="singleColumn">
 {% for group in groups %}
 <table width="100%" class="friendsRow noBorderSpacing" id="grow{{group.id}}">

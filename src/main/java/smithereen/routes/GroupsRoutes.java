@@ -60,6 +60,21 @@ public class GroupsRoutes{
 		jsLangKey(req, "cancel", "create");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups").with("tab", "groups").with("title", lang(req).get("groups"));
 		model.with("groups", GroupStorage.getUserGroups(self.user.id));
+		model.with("owner", self.user);
+		return model.renderToString(req);
+	}
+
+	public static Object userGroups(Request req, Response resp) throws SQLException{
+		int uid=parseIntOrDefault(req.params(":id"), 0);
+		if(uid==0)
+			throw new ObjectNotFoundException("err_user_not_found");
+		User user=UserStorage.getById(uid);
+		if(user==null)
+			throw new ObjectNotFoundException("err_user_not_found");
+		jsLangKey(req, "cancel", "create");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("groups").with("tab", "groups").with("title", lang(req).get("groups"));
+		model.with("groups", GroupStorage.getUserGroups(user.id));
+		model.with("owner", user);
 		return model.renderToString(req);
 	}
 

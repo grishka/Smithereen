@@ -60,6 +60,9 @@
 		{%endif%}
 		<li><a href="{{user.getProfileURL('followers')}}">{{L('followers')}}</a></li>
 		<li><a href="{{user.getProfileURL('following')}}">{{L('following')}}</a></li>
+		{% if groups is not empty %}
+		<li><a href="/users/{{ user.id }}/groups">{{ LP('X_groups', groups.size) }}</a></li>
+		{% endif %}
 	</ul>
 </div>
 

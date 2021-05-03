@@ -214,6 +214,8 @@ public class Main{
 			getLoggedIn("/confirmUnblock", ProfileRoutes::confirmUnblockUser);
 			postWithCSRF("/block", ProfileRoutes::blockUser);
 			postWithCSRF("/unblock", ProfileRoutes::unblockUser);
+
+			get("/groups", GroupsRoutes::userGroups);
 		});
 
 		path("/groups/:id", ()->{

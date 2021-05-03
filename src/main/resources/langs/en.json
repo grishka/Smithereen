@@ -295,5 +295,6 @@
   "time_in_X_minutes": ["in %d minute", "in %d minutes"],
   "time_just_now": "just now",
 
-  "go_up": "Go Up"
+  "go_up": "Go Up",
+  "X_groups": ["%d group", "%d groups"]
 }
