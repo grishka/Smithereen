@@ -1274,11 +1274,11 @@ function autoSizeTextArea(el) {
     var st = window.getComputedStyle(el);
     var borderWidth = parseInt(st.borderBottomWidth) + parseInt(st.borderTopWidth);
     var minHeight = parseInt(st.minHeight);
-    console.log(borderWidth, minHeight);
+    el.style.height = minHeight + "px";
+    el.style.height = (el.scrollHeight + borderWidth) + "px";
     el.addEventListener("input", function (ev) {
         el.style.height = minHeight + "px";
         el.style.height = (el.scrollHeight + borderWidth) + "px";
-        // console.log(ev);
     }, false);
 }
 var ImageAreaSelector = /** @class */ (function () {

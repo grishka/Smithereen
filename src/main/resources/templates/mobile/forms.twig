@@ -37,11 +37,14 @@
 		<div class="label">
 			<label for="{{name}}">{{label}}</label>:
 		</div>
-		<textarea id="{{name}}" name="{{name}}" rows="4">{{value}}</textarea>
+		<textarea id="{{name}}" name="{{name}}" rows="3">{{value}}</textarea>
 		{%if options.explanation is not null%}
 		<br/><span class="formExplanation">{{options.explanation}}</span>
 		{%endif%}
 	</div>
+{% script %}
+autoSizeTextArea(ge("{{ name }}"));
+{% endscript %}
 {%endmacro%}
 
 {%macro select(name, label, selectOptions, options)%}
