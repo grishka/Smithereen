@@ -1270,6 +1270,17 @@ function openPhotoViewer(el) {
     new PhotoViewerLayer(photoList, index).show();
     return false;
 }
+function autoSizeTextArea(el) {
+    var st = window.getComputedStyle(el);
+    var borderWidth = parseInt(st.borderBottomWidth) + parseInt(st.borderTopWidth);
+    var minHeight = parseInt(st.minHeight);
+    console.log(borderWidth, minHeight);
+    el.addEventListener("input", function (ev) {
+        el.style.height = minHeight + "px";
+        el.style.height = (el.scrollHeight + borderWidth) + "px";
+        // console.log(ev);
+    }, false);
+}
 var ImageAreaSelector = /** @class */ (function () {
     function ImageAreaSelector(parentEl, square) {
         if (square === void 0) { square = false; }
@@ -1574,6 +1585,7 @@ var PostForm = /** @class */ (function () {
         this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
         this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
         this.input.addEventListener("paste", this.onInputPaste.bind(this), false);
+        autoSizeTextArea(this.input);
         if (this.input.dataset.replyName) {
             this.currentReplyName = this.input.dataset.replyName;
         }

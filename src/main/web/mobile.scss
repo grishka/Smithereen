@@ -590,17 +590,21 @@ select{
 			bottom: 0;
 			left: 0;
 			right: 0;
-			.aspectBox{
+			.safariSucks{
 				position: absolute;
 				top: 0;
 				left: 0;
 				right: 0;
 				bottom: 0;
+			}
+			.aspectBox{
 				white-space: normal;
 				font-size: 11px;
 				overflow: hidden;
 				display: grid;
 				grid-gap: 2px;
+				width: 100%;
+				height: 100%;
 			}
 		}
 	}
@@ -608,6 +612,7 @@ select{
 		object-fit: cover;
 		width: 100%;
 		height: 100%;
+		display: block;
 	}
 	.aspectBox>div{
 		min-width: 0;
@@ -763,4 +768,9 @@ input:checked+.postCWWrap{
 	.postContent, .postAttachments{
 		display: block;
 	}
+}
+
+textarea{
+	line-height: 18px;
+	min-height: 70px;
 }

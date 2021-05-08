@@ -293,6 +293,10 @@ input[type=text], input[type=password], input[type=email], input[type=date], inp
 	background-color: $bg;
 }
 
+textarea{
+	resize: none;
+}
+
 
 ::placeholder{
 	color: $auxiliaryGrey;
@@ -345,8 +349,6 @@ input[type=text], input[type=password], input[type=email], input[type=date], inp
 	textarea{
 		width: 100%;
 		max-width: 100%;
-		resize: vertical;
-		box-sizing: border-box;
 		vertical-align: top;
 	}
 	.attachment{

@@ -61,6 +61,7 @@ public class RenderAttachmentsFunction implements Function{
 					"<svg class=\"pseudoImage\" width=\"%d\" height=\"%d\"></svg>" +
 					"<div class=\"positioner\">" +
 					"<div style=\"padding-top: %.2f%%\">" +
+					"<div class=\"safariSucks\">" +
 					"<div class=\"aspectBox\" style=\"%s\">", pseudoWidth, pseudoHeight, (1f/aspect)*100f, gridStyle));
 
 			if(sized.size()==1){
@@ -91,7 +92,7 @@ public class RenderAttachmentsFunction implements Function{
 					i++;
 				}
 			}
-			lines.add("</div></div></div></span>");
+			lines.add("</div></div></div></div></span>");
 		}
 
 		// Now do non-sized attachments

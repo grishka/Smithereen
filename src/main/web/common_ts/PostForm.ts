@@ -35,6 +35,7 @@ class PostForm{
 		this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
 		this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
 		this.input.addEventListener("paste", this.onInputPaste.bind(this), false);
+		autoSizeTextArea(this.input);
 		if(this.input.dataset.replyName){
 			this.currentReplyName=this.input.dataset.replyName;
 		}

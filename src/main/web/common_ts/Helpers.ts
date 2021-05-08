@@ -685,3 +685,15 @@ function openPhotoViewer(el:HTMLElement){
 	new PhotoViewerLayer(photoList, index).show();
 	return false;
 }
+
+function autoSizeTextArea(el:HTMLTextAreaElement){
+	var st=window.getComputedStyle(el);
+	var borderWidth=parseInt(st.borderBottomWidth)+parseInt(st.borderTopWidth);
+	var minHeight=parseInt(st.minHeight);
+	console.log(borderWidth, minHeight);
+	el.addEventListener("input", (ev:InputEvent)=>{
+		el.style.height=minHeight+"px";
+		el.style.height=(el.scrollHeight+borderWidth)+"px";
+		// console.log(ev);
+	}, false);
+}
