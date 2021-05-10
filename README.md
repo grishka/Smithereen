@@ -1,8 +1,6 @@
 # Smithereen
 
-Federated, ActivityPub-compatible social network with friends, walls, and (*at some point in the future*) groups.
-
-**At the moment, this is very far from being production-ready. Things may and likely will break.**
+Federated, ActivityPub-compatible social network with friends, walls, and groups.
 
 If you have any questions or feedback, there's a [Telegram chat](https://t.me/SmithereenProject) you can join.
 
