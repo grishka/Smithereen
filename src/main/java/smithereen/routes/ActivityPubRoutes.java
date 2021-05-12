@@ -547,8 +547,10 @@ public class ActivityPubRoutes{
 		}
 		if(o instanceof Activity)
 			activity=(Activity)o;
-		else
+		else if(o!=null)
 			throw new BadRequestException("Unsupported object type '"+o.getType()+"'");
+		else
+			throw new BadRequestException("Unsupported object type");
 
 		if(Config.isLocal(activity.actor.link))
 			throw new BadRequestException("User domain must be different from this server");

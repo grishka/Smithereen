@@ -17,6 +17,7 @@ import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.activities.Accept;
+import smithereen.activitypub.objects.activities.Add;
 import smithereen.activitypub.objects.activities.Announce;
 import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
@@ -520,6 +521,9 @@ public abstract class ActivityPubObject{
 			// Activities
 			case "Accept":
 				res=new Accept();
+				break;
+			case "Add":
+				res=new Add();
 				break;
 			case "Announce":
 				res=new Announce();
