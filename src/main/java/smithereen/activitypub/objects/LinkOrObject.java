@@ -11,11 +11,15 @@ public class LinkOrObject{
 	public final ActivityPubObject object;
 
 	public LinkOrObject(URI link){
+		if(link==null)
+			throw new IllegalArgumentException("link can't be null");
 		this.link=link;
 		object=null;
 	}
 
 	public LinkOrObject(ActivityPubObject object){
+		if(object==null)
+			throw new IllegalArgumentException("object can't be null");
 		this.object=object;
 		link=null;
 	}

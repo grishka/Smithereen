@@ -149,7 +149,7 @@ public class ActivityPubWorker{
 					add.activityPubID=UriBuilder.local().path("posts", post.id+"", "activityAdd").build();
 					add.object=new LinkOrObject(post.activityPubID);
 					add.actor=new LinkOrObject(post.owner.activityPubID);
-					add.to=List.of(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(post.owner.followers), new LinkOrObject(post.user.activityPubID));
+					add.to=List.of(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(post.owner.getFollowersURL()), new LinkOrObject(post.user.activityPubID));
 					if(!post.mentionedUsers.isEmpty()){
 						ArrayList<LinkOrObject> cc=new ArrayList<>();
 						for(User user : post.mentionedUsers){
