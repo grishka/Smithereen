@@ -34,33 +34,7 @@ public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, 
 			if(!post.owner.activityPubID.equals(existing.owner.activityPubID)){
 				throw new IllegalArgumentException("Post owner doesn't match existing");
 			}
-			if(post.tag!=null){
-				for(ActivityPubObject tag:post.tag){
-					if(tag instanceof Mention){
-						URI uri=((Mention) tag).href;
-						User mentionedUser=UserStorage.getUserByActivityPubID(uri);
-						if(mentionedUser==null){
-							try{
-								ActivityPubObject _user=ActivityPub.fetchRemoteObject(uri.toString());
-								if(_user instanceof ForeignUser){
-									ForeignUser u=(ForeignUser) _user;
-									UserStorage.putOrUpdateForeignUser(u);
-									mentionedUser=u;
-								}
-							}catch(IOException ignore){}
-						}
-						if(mentionedUser!=null){
-							if(post.mentionedUsers.isEmpty())
-								post.mentionedUsers=new ArrayList<>();
-							if(!post.mentionedUsers.contains(mentionedUser))
-								post.mentionedUsers.add(mentionedUser);
-						}
-					}
-				}
-				if(!post.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.content)){
-					post.content=Utils.preprocessRemotePostMentions(post.content, post.mentionedUsers);
-				}
-			}
+			Utils.loadAndPreprocessRemotePostMentions(post);
 			PostStorage.putForeignWallPost(post);
 		}else{
 			throw new IllegalArgumentException("No access to update this post");

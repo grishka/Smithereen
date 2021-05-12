@@ -35,11 +35,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.CRC32;
 
+import smithereen.activitypub.ActivityPub;
+import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Mention;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponseBuilder;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
@@ -541,6 +546,36 @@ public class Utils{
 		}
 
 		return doc.body().html();
+	}
+
+	public static void loadAndPreprocessRemotePostMentions(Post post) throws SQLException{
+		if(post.tag!=null){
+			for(ActivityPubObject tag:post.tag){
+				if(tag instanceof Mention){
+					URI uri=((Mention) tag).href;
+					User mentionedUser=UserStorage.getUserByActivityPubID(uri);
+					if(mentionedUser==null){
+						try{
+							ActivityPubObject _user=ActivityPub.fetchRemoteObject(uri.toString());
+							if(_user instanceof ForeignUser){
+								ForeignUser u=(ForeignUser) _user;
+								UserStorage.putOrUpdateForeignUser(u);
+								mentionedUser=u;
+							}
+						}catch(IOException|ObjectNotFoundException ignore){}
+					}
+					if(mentionedUser!=null){
+						if(post.mentionedUsers.isEmpty())
+							post.mentionedUsers=new ArrayList<>();
+						if(!post.mentionedUsers.contains(mentionedUser))
+							post.mentionedUsers.add(mentionedUser);
+					}
+				}
+			}
+			if(!post.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.content)){
+				post.content=Utils.preprocessRemotePostMentions(post.content, post.mentionedUsers);
+			}
+		}
 	}
 
 	public static void ensureUserNotBlocked(User self, User target) throws SQLException{

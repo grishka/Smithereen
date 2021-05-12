@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.exceptions.BadRequestException;
 import smithereen.Config;
 import static smithereen.Utils.*;
@@ -213,7 +214,11 @@ public class PostRoutes{
 		Post post=PostStorage.getPostByID(postID, false);
 		if(post==null)
 			throw new IllegalStateException("?!");
-		ActivityPubWorker.getInstance().sendCreatePostActivity(post);
+		if(replyTo==0 && (ownerGroupID!=0 || ownerUserID!=userID) && !(owner instanceof ForeignActor)){
+			ActivityPubWorker.getInstance().sendAddPostToWallActivity(post);
+		}else{
+			ActivityPubWorker.getInstance().sendCreatePostActivity(post);
+		}
 		NotificationUtils.putNotificationsForPost(post, parent);
 
 		SessionInfo sess=sessionInfo(req);

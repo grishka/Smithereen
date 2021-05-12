@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Objects;
 
+import smithereen.ObjectLinkResolver;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.data.Group;
 import smithereen.exceptions.BadRequestException;
 import smithereen.Utils;
@@ -33,12 +36,16 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			// Already exists. Ignore and return 200 OK.
 			return;
 		}
+		post.resolveDependencies(true, false);
 		if(post.user==null || post.user.id!=actor.id)
 			throw new BadRequestException("Can only create posts for self");
 		if(post.owner==null)
-			throw new BadRequestException("Unknown wall owner (from partOf, which must be an outbox URI if present)");
-		if(post.owner instanceof User && ((User) post.owner).id!=post.user.id)
+			throw new BadRequestException("Unknown wall owner (from target, which must be a link to sm:wall if present - see FEP-400e)");
+		if(post.owner instanceof User && !Objects.equals(post.owner.activityPubID, post.user.activityPubID)){
 			Utils.ensureUserNotBlocked(actor, (User) post.owner);
+			if(post.owner instanceof ForeignActor)
+				throw new BadRequestException("Create{Note} can't be used to notify about posts on foreign actors' walls. Wall owner must send an Add{Note} instead.");
+		}
 		if(post.owner instanceof Group)
 			Utils.ensureUserNotBlocked(actor, (Group) post.owner);
 		boolean isPublic=false;
@@ -99,40 +106,14 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				return;
 			}
 		}
-		if(post.tag!=null){
-			for(ActivityPubObject tag:post.tag){
-				if(tag instanceof Mention){
-					URI uri=((Mention) tag).href;
-					User mentionedUser=UserStorage.getUserByActivityPubID(uri);
-					if(mentionedUser==null){
-						try{
-							ActivityPubObject _user=ActivityPub.fetchRemoteObject(uri.toString());
-							if(_user instanceof ForeignUser){
-								ForeignUser u=(ForeignUser) _user;
-								UserStorage.putOrUpdateForeignUser(u);
-								mentionedUser=u;
-							}
-						}catch(IOException ignore){}
-					}
-					if(mentionedUser!=null){
-						if(post.mentionedUsers.isEmpty())
-							post.mentionedUsers=new ArrayList<>();
-						if(!post.mentionedUsers.contains(mentionedUser))
-							post.mentionedUsers.add(mentionedUser);
-					}
-				}
-			}
-			if(!post.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.content)){
-				post.content=Utils.preprocessRemotePostMentions(post.content, post.mentionedUsers);
-			}
-		}
+		Utils.loadAndPreprocessRemotePostMentions(post);
 		if(post.inReplyTo!=null){
 			if(post.inReplyTo.equals(post.activityPubID))
 				throw new BadRequestException("Post can't be a reply to itself. This makes no sense.");
 			Post parent=PostStorage.getPostByID(post.inReplyTo);
 			if(parent!=null){
 				post.setParent(parent);
-				PostStorage.putForeignWallPost(post);
+				ObjectLinkResolver.storeOrUpdateRemoteObject(post);
 				NotificationUtils.putNotificationsForPost(post, parent);
 				Post topLevel=PostStorage.getPostByID(post.replyKey[0], false);
 				if(topLevel!=null && topLevel.local){
@@ -144,8 +125,11 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				ActivityPubWorker.getInstance().fetchReplyThread(post);
 			}
 		}else{
-			PostStorage.putForeignWallPost(post);
+			ObjectLinkResolver.storeOrUpdateRemoteObject(post);
 			NotificationUtils.putNotificationsForPost(post, null);
+			if(!Objects.equals(post.owner.activityPubID, post.user.activityPubID)){
+				ActivityPubWorker.getInstance().sendAddPostToWallActivity(post);
+			}
 		}
 	}
 }

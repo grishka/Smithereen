@@ -22,6 +22,7 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
@@ -362,16 +363,24 @@ public class Post extends ActivityPubObject{
 	}
 
 	@Override
-	public void resolveDependencies(boolean allowFetching) throws SQLException{
+	public void resolveDependencies(boolean allowFetching, boolean allowStorage) throws SQLException{
 		if(user==null){
-			user=ObjectLinkResolver.resolve(attributedTo, ForeignUser.class, allowFetching, false);
+			user=ObjectLinkResolver.resolve(attributedTo, ForeignUser.class, allowFetching, allowStorage, false);
 		}
 		if(owner==null && activityPubTarget!=null){
-			owner=ObjectLinkResolver.resolve(activityPubTarget.attributedTo, Actor.class, true, false);
+			owner=ObjectLinkResolver.resolve(activityPubTarget.attributedTo, Actor.class, allowFetching, allowStorage, false);
 			if(!activityPubTarget.activityPubID.equals(owner.getWallURL()))
 				owner=null;
 		}
 		if(owner==null)
 			owner=user;
+	}
+
+	@Override
+	public void storeDependencies() throws SQLException{
+		if(user instanceof ForeignUser && user.id==0)
+			ObjectLinkResolver.storeOrUpdateRemoteObject(user);
+		if(owner!=user && ((owner instanceof ForeignUser && ((ForeignUser) owner).id==0) || (owner instanceof ForeignGroup && ((ForeignGroup) owner).id==0)))
+			ObjectLinkResolver.storeOrUpdateRemoteObject(owner);
 	}
 }

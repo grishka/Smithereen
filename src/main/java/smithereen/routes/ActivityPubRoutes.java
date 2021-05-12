@@ -26,11 +26,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import smithereen.activitypub.handlers.AddNoteHandler;
 import smithereen.activitypub.handlers.GroupBlockPersonHandler;
 import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.PersonBlockPersonHandler;
 import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.activitypub.objects.activities.Add;
 import smithereen.activitypub.objects.activities.Block;
 import smithereen.exceptions.BadRequestException;
 import smithereen.BuildInfo;
@@ -135,6 +137,8 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignGroup.class, Accept.class, Follow.class, ForeignGroup.class, new AcceptFollowGroupHandler());
 		registerActivityHandler(ForeignGroup.class, Block.class, User.class, new GroupBlockPersonHandler());
 		registerActivityHandler(ForeignGroup.class, Undo.class, Block.class, User.class, new GroupUndoBlockPersonHandler());
+
+		registerActivityHandler(Actor.class, Add.class, Post.class, new AddNoteHandler());
 	}
 
 	@SuppressWarnings("SameParameterValue")
@@ -349,7 +353,7 @@ public class ActivityPubRoutes{
 					return "Invalid remote object URI";
 				}
 			}
-			remoteObj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, true, true);
+			remoteObj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, true, true, true);
 			if(remoteObj==null){
 				return "Error fetching remote object";
 			}
@@ -404,33 +408,7 @@ public class ActivityPubRoutes{
 						throw new UnsupportedOperationException("no parent post - not yet implemented");
 					post.setParent(parent);
 				}
-				if(post.tag!=null){
-					for(ActivityPubObject tag:post.tag){
-						if(tag instanceof Mention){
-							URI uri=((Mention) tag).href;
-							User mentionedUser=UserStorage.getUserByActivityPubID(uri);
-							if(mentionedUser==null){
-								try{
-									ActivityPubObject _user=ActivityPub.fetchRemoteObject(uri.toString());
-									if(_user instanceof ForeignUser){
-										ForeignUser u=(ForeignUser) _user;
-										UserStorage.putOrUpdateForeignUser(u);
-										mentionedUser=u;
-									}
-								}catch(IOException ignore){}
-							}
-							if(mentionedUser!=null){
-								if(post.mentionedUsers.isEmpty())
-									post.mentionedUsers=new ArrayList<>();
-								if(!post.mentionedUsers.contains(mentionedUser))
-									post.mentionedUsers.add(mentionedUser);
-							}
-						}
-					}
-					if(!post.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.content)){
-						post.content=Utils.preprocessRemotePostMentions(post.content, post.mentionedUsers);
-					}
-				}
+				Utils.loadAndPreprocessRemotePostMentions(post);
 				PostStorage.putForeignWallPost(post);
 				resp.redirect("/posts/"+post.id);
 				return "";
@@ -580,18 +558,23 @@ public class ActivityPubRoutes{
 		// special case: when users delete themselves but are not in local database, ignore that
 		if(activity instanceof Delete && activity.actor.link.equals(activity.object.link)){
 			try{
-				actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, false, false);
+				actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, false, false, false);
 			}catch(ObjectNotFoundException x){
 				return "";
 			}
 			canUpdate=false;
 		}else{
-			actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, true, false);
+			actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, true, true, false);
 		}
 		if(!(actor instanceof ForeignActor))
 			throw new BadRequestException("Actor is local");
-		if(((ForeignActor) actor).needUpdate() && canUpdate)
-			actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, true, true);
+		if(((ForeignActor) actor).needUpdate() && canUpdate){
+			try{
+				actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, true, true, true);
+			}catch(ObjectNotFoundException x){
+				System.out.println("Warning: ["+x+"] while refreshing remote actor");
+			}
+		}
 
 		Actor httpSigOwner;
 		try{
@@ -651,8 +634,8 @@ public class ActivityPubRoutes{
 					}
 				}
 			}else{
-				// special case: fetch the object Announce{Note}
-				aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce, false);
+				// special case: fetch the object of Announce{Note} or Add{...}
+				aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add, false, false);
 			}
 			for(ActivityTypeHandlerRecord r : typeHandlers){
 				if(r.actorClass.isInstance(actor)){
@@ -800,7 +783,7 @@ public class ActivityPubRoutes{
 		if(userHint.activityPubID.equals(userID))
 			user=userHint;
 		else
-			user=ObjectLinkResolver.resolve(userID, Actor.class, false, false);
+			user=ObjectLinkResolver.resolve(userID, Actor.class, false, true, false);
 		if(user==null)
 			throw new IllegalArgumentException("Request signed by unknown user: "+userID);
 

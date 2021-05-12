@@ -4,7 +4,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.net.URI;
-import java.security.PublicKey;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -99,9 +98,18 @@ public class ForeignGroup extends Group implements ForeignActor{
 	}
 
 	@Override
-	public void resolveDependencies(boolean allowFetching) throws SQLException{
+	public void resolveDependencies(boolean allowFetching, boolean allowStorage) throws SQLException{
 		for(GroupAdmin adm:adminsForActivityPub){
-			adm.user=ObjectLinkResolver.resolve(adm.activityPubUserID, User.class, allowFetching, false);
+			adm.user=ObjectLinkResolver.resolve(adm.activityPubUserID, User.class, allowFetching, allowStorage, false);
+		}
+	}
+
+	@Override
+	public void storeDependencies() throws SQLException{
+		for(GroupAdmin adm:adminsForActivityPub){
+			if(adm.user instanceof ForeignUser && adm.user.id==0){
+				ObjectLinkResolver.storeOrUpdateRemoteObject(adm.user);
+			}
 		}
 	}
 

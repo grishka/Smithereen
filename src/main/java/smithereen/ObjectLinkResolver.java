@@ -59,11 +59,11 @@ public class ObjectLinkResolver{
 	}
 
 	public static ActivityPubObject resolve(URI link) throws SQLException{
-		return resolve(link, ActivityPubObject.class, false, false);
+		return resolve(link, ActivityPubObject.class, false, true, false);
 	}
 
 	@NotNull
-	public static <T extends ActivityPubObject> T resolve(URI link, Class<T> expectedType, boolean allowFetching, boolean forceRefetch) throws SQLException{
+	public static <T extends ActivityPubObject> T resolve(URI link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch) throws SQLException{
 		if(Config.DEBUG)
 			System.out.println("Resolving ActivityPub link: "+link+", expected type: "+expectedType.getName());
 		if(!Config.isLocal(link)){
@@ -81,15 +81,12 @@ public class ObjectLinkResolver{
 			if(allowFetching){
 				try{
 					ActivityPubObject obj=ActivityPub.fetchRemoteObject(link.toString());
-					T o=ensureTypeAndCast(obj, expectedType);
-					o.resolveDependencies(allowFetching);
-					if(o instanceof ForeignUser)
-						UserStorage.putOrUpdateForeignUser((ForeignUser) o);
-					else if(o instanceof ForeignGroup)
-						GroupStorage.putOrUpdateForeignGroup((ForeignGroup) o);
-					else if(o instanceof Post)
-						PostStorage.putForeignWallPost((Post) o);
-					return o;
+					if(obj!=null){
+						T o=ensureTypeAndCast(obj, expectedType);
+						o.resolveDependencies(allowFetching, allowStorage);
+						storeOrUpdateRemoteObject(o);
+						return o;
+					}
 				}catch(IOException x){
 					x.printStackTrace();
 				}
@@ -113,6 +110,16 @@ public class ObjectLinkResolver{
 		}
 
 		throw new ObjectNotFoundException("Invalid local URI");
+	}
+
+	public static void storeOrUpdateRemoteObject(ActivityPubObject o) throws SQLException{
+		o.storeDependencies();
+		if(o instanceof ForeignUser)
+			UserStorage.putOrUpdateForeignUser((ForeignUser) o);
+		else if(o instanceof ForeignGroup)
+			GroupStorage.putOrUpdateForeignGroup((ForeignGroup) o);
+		else if(o instanceof Post)
+			PostStorage.putForeignWallPost((Post) o);
 	}
 
 	private static <T extends ActivityPubObject> T ensureTypeAndCast(ActivityPubObject obj, Class<T> type){

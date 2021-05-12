@@ -328,7 +328,11 @@ public abstract class ActivityPubObject{
 
 	//abstract String getType();
 
-	public void resolveDependencies(boolean allowFetching) throws SQLException{
+	public void resolveDependencies(boolean allowFetching, boolean allowStorage) throws SQLException{
+
+	}
+
+	public void storeDependencies() throws SQLException{
 
 	}
 

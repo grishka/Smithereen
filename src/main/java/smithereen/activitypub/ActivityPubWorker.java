@@ -26,6 +26,7 @@ import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Accept;
+import smithereen.activitypub.objects.activities.Add;
 import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
@@ -135,6 +136,54 @@ public class ActivityPubWorker{
 				create.published=post.published;
 				create.activityPubID=Config.localURI(post.activityPubID.getPath()+"/activityCreate");
 				sendActivityForPost(post, create, post.user);
+			}
+		});
+	}
+
+	public void sendAddPostToWallActivity(final Post post){
+		executor.submit(new Runnable(){
+			@Override
+			public void run(){
+				try{
+					Add add=new Add();
+					add.activityPubID=UriBuilder.local().path("posts", post.id+"", "activityAdd").build();
+					add.object=new LinkOrObject(post.activityPubID);
+					add.actor=new LinkOrObject(post.owner.activityPubID);
+					add.to=List.of(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(post.owner.followers), new LinkOrObject(post.user.activityPubID));
+					if(!post.mentionedUsers.isEmpty()){
+						ArrayList<LinkOrObject> cc=new ArrayList<>();
+						for(User user : post.mentionedUsers){
+							cc.add(new LinkOrObject(user.activityPubID));
+						}
+						add.cc=cc;
+					}
+					add.target=new LinkOrObject(post.owner.getWallURL());
+
+					ArrayList<URI> inboxes=new ArrayList<>();
+					if(post.owner instanceof User)
+						inboxes.addAll(UserStorage.getFollowerInboxes(((User) post.owner).id));
+					else
+						inboxes.addAll(GroupStorage.getGroupMemberInboxes(((Group) post.owner).id));
+
+					for(User user:post.mentionedUsers){
+						if(user instanceof ForeignUser){
+							URI inbox=actorInbox((ForeignUser) user);
+							if(!inboxes.contains(inbox))
+								inboxes.add(inbox);
+						}
+					}
+					if(post.user instanceof ForeignUser){
+						URI inbox=actorInbox((ForeignUser) post.user);
+						if(!inboxes.contains(inbox))
+							inboxes.add(inbox);
+					}
+
+					for(URI inbox:inboxes){
+						executor.submit(new SendOneActivityRunnable(add, inbox, post.owner));
+					}
+				}catch(SQLException x){
+					x.printStackTrace();
+				}
 			}
 		});
 	}
@@ -474,33 +523,7 @@ public class ActivityPubWorker{
 						p.content=Utils.sanitizeHTML(p.content);
 					if(StringUtils.isNotEmpty(p.summary))
 						p.summary=Utils.sanitizeHTML(p.summary);
-					if(p.tag!=null){
-						for(ActivityPubObject tag:p.tag){
-							if(tag instanceof Mention){
-								URI uri=((Mention) tag).href;
-								User mentionedUser=UserStorage.getUserByActivityPubID(uri);
-								if(mentionedUser==null){
-									try{
-										ActivityPubObject _user=ActivityPub.fetchRemoteObject(uri.toString());
-										if(_user instanceof ForeignUser){
-											ForeignUser u=(ForeignUser) _user;
-											UserStorage.putOrUpdateForeignUser(u);
-											mentionedUser=u;
-										}
-									}catch(IOException ignore){}
-								}
-								if(mentionedUser!=null){
-									if(p.mentionedUsers.isEmpty())
-										p.mentionedUsers=new ArrayList<>();
-									if(!p.mentionedUsers.contains(mentionedUser))
-										p.mentionedUsers.add(mentionedUser);
-								}
-							}
-						}
-						if(!p.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(p.content)){
-							p.content=Utils.preprocessRemotePostMentions(p.content, p.mentionedUsers);
-						}
-					}
+					Utils.loadAndPreprocessRemotePostMentions(p);
 					PostStorage.putForeignWallPost(p);
 					NotificationUtils.putNotificationsForPost(p, prev);
 				}
