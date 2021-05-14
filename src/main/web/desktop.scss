@@ -26,7 +26,7 @@ $headerHeight: 40px;
 	}
 }
 
-body, p, textarea, input, select{
+body, p, textarea, input, select, button{
 	font-family: Tahoma, Helvetica, Arial, Roboto, sans-serif;
 	font-size: 11px;
 }
@@ -180,16 +180,13 @@ h2{
 }
 
 .leftMenu{
-	padding: 8px 8px 0 0;
+	padding: 5px 8px 0 5px;
 	box-sizing: border-box;
 	width: $leftMenuWidth;
 	input{
 		width: 100%;
 		box-sizing: border-box;
 		margin: 4px 0;
-	}
-	li a:not(.actionAux){
-		padding-left: 11px;
 	}
 }
 
@@ -199,7 +196,7 @@ h2{
 	padding: 0;
 	a{
 		display: block;
-		line-height: 24px;
+		line-height: 21px;
 		padding-left: 6px;
 		padding-right: 6px;
 	}
@@ -222,7 +219,7 @@ h2{
 	}
 	li.separator{
 		border-bottom: solid 1px $menuItemsSeparator;
-		margin: 8px 0;
+		margin: 3px 0;
 	}
 }
 
@@ -324,26 +321,30 @@ h2{
 
 .wallPostForm{
 	padding: 8px;
-	background: $gray;
+	background: $bgGrey;
+	border-top: solid 1px $wallPostSeparator;
+	border-bottom: solid 1px $wallPostSeparator;
 }
 
 .profileBlock{
 	border-collapse: collapse;
 	.blockHeader{
 		text-align: left;
-		height: 24px;
-		padding: 0 6px;
-		box-shadow: 0 1px 0 $blockBorderTop inset;
+		height: 20px;
+		border-top: solid 1px $blockBorderTop;
+		padding: 0 8px;
 		background: $blockBackground;
 		a{
 			color: $normalLink;
 		}
 	}
 	.blockSubheader{
-		height: 24px;
-		background: $blockUnderboxBackground;
+		height: 19px;
+		background: $wallCommentSeparator;
+		// background: $auxiliaryBlockHeader;
+		border-top: solid 1px $blockBorderBottom;
 		color: $auxiliaryGrey;
-		padding: 0 6px;
+		padding: 0 8px;
 	}
 }
 
@@ -473,50 +474,64 @@ input[type=date], select{
 }
 
 input[type=submit], input[type=button], button, .button, .button:link, .button:visited{
-	background: linear-gradient(to bottom, $headerGradientBottom, $headerGradientTop);
-	text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
+	background: linear-gradient(to top, $buttonGradientBottom, $buttonGradientTop) repeat-x top;
+	background-size: 1px 42px;
+	background-position: 0 -16px;
+	text-shadow: 0 1px 0 $headerBorderTop;
 	border: solid 1px $headerBorderTop;
 	border-radius: 2px;
 	color: $textOnAccent;
-	box-shadow: 0 1px 0 $buttonBorderTop inset;
+	box-shadow: 0 1px 0 $buttonBorderTop inset, 0 0 0 1px $buttonBorder inset;
 	cursor: pointer;
 	padding: 0 14px;
 	height: 25px;
 	line-height: 23px;
 	display: inline-block;
 	box-sizing: border-box;
-	&.loading, &.loading:hover{
-		background: url(/res/loader_overlay.svg), linear-gradient(to bottom, $headerGradientBottom, $headerGradientTop);
+	&.loading{
+		color: transparent;
+		text-shadow: none;
+		position: relative;
+		&:after{
+			content: ' ';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: svg-load('img/loading_anim.svg', fill=$textOnAccent) no-repeat center;
+		}
 	}
 
 	&:hover, &:visited:hover{
 		text-decoration: none;
-		background: linear-gradient(to bottom, color($headerGradientBottom lightness(+7%)), color($headerGradientTop lightness(+7%)));
-		box-shadow: 0 1px 0 color($buttonBorderTop lightness(+7%)) inset;
+		background-position: 0 -8px;
 	}
 	&:active{
 		text-decoration: none;
-		background: $headerBorderTop;
+		background: $buttonGradientBottom;
 		box-shadow: none;
-		padding-top: 1px;
 	}
 	&.secondary{
-		background: linear-gradient(to bottom, $gray, color($gray shade(10%)));
-		text-shadow: 0 1px 1px rgba(255, 255, 255, .8);
-		border: solid 1px color($gray shade(20%));
-		color: $auxiliaryGrey;
-		box-shadow: 0 1px 0 color($gray lightness(+10%)) inset;
-		&.loading, &.loading:hover{
-			background: url(/res/loader_overlay.svg), linear-gradient(to bottom, $gray, color($gray shade(10%)));
-		}
+		background: linear-gradient(to top, $buttonGrayGradientBottom, $buttonGrayGradientTop) repeat-x top;
+		background-size: 1px 42px;
+		text-shadow: 0 1px 0 #FFF;
+		border: solid 1px $buttonGrayBorder;
+		color: $darkGrey;
+		box-shadow: 0 1px 0 #FFF inset, 0 0 0 1px $buttonGrayBorderInner inset;
+		background-position: 0 -12px;
+		// &.loading{
+		// 	color: transparent;
+		// 	text-shadow: none;
+		// 	&:after{
+		// 		background: svg-load('img/loading_anim.svg', fill=$darkGrey) no-repeat center;
+		// 	}
+		// }
 		&:hover{
-			text-decoration: none;
-			background: linear-gradient(to bottom, color($gray lightness(+3%)), color($gray shade(5%)));
-			box-shadow: 0 1px 0 color($gray lightness(+13%)) inset;
+			background-position: 0 -4px;
 		}
 		&:active{
-			text-decoration: none;
-			background: color($gray shade(20%));
+			background: $buttonGrayActive;
 			box-shadow: none;
 		}
 	}
@@ -691,7 +706,7 @@ select{
 	align-items: center;
 	justify-content: flex-end;
 	padding: 0 5px;
-	>input{
+	>button{
 		margin: 0 5px;
 	}
 }
@@ -1072,6 +1087,10 @@ select{
 	max-width: 330px;
 }
 
+.paddedProfileBlock{
+	padding: 8px;
+}
+
 .photoViewer{
 	pointer-events: auto;
 	display: flex;
@@ -1197,6 +1216,7 @@ select{
 			0 2px 4px rgba(0, 0, 0, 0.1)
 		;
 		min-width: 115px;
+		text-align: left;
 
 		ul{
 			list-style-type: none;
@@ -1294,4 +1314,22 @@ input:checked+.postCWWrap{
 textarea{
 	line-height: 13px;
 	min-height: 49px;
+}
+
+.profileColumnBorder{
+	position: relative;
+	.leftColumnBorder, .rightColumnBorder{
+		position: absolute;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		right: 0;
+		z-index: -1;
+	}
+	.leftColumnBorder{
+		border-right: solid 1px $blockUnderboxBackground;
+	}
+	.rightColumnBorder{
+		border-left: solid 1px $blockUnderboxBackground;
+	}
 }

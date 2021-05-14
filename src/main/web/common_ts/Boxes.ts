@@ -267,7 +267,8 @@ class Box extends BaseLayer{
 			while(this.buttonBar.firstChild)
 				this.buttonBar.lastChild.remove();
 			for(var i:number=0;i<this.buttonTitles.length;i++){
-				var btn:HTMLInputElement=ce("input", {type: "button", value: this.buttonTitles[i]});
+				var btn:HTMLButtonElement=ce("button", {type: "button"});
+				btn.innerText=this.buttonTitles[i];
 				if(i>0 || this.noPrimaryButton){
 					btn.className="secondary";
 				}

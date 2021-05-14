@@ -15,7 +15,7 @@ body{
 	margin-top: 56px;
 }
 
-body, p, textarea, input, select{
+body, p, textarea, input, select, button{
 	font-family: Roboto, -apple-system, HelveticaNeue, sans-serif;
 	font-size: 15px;
 }
@@ -400,7 +400,7 @@ select{
 	.boxButtonBar{
 		padding: 16px 4px 8px 4px;
 		display: flex;
-		input{
+		button{
 			flex-grow: 1;
 			flex-basis: 0;
 			margin: 0 4px;

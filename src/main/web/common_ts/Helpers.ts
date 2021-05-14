@@ -356,7 +356,7 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):bo
 		return false;
 	}
 	submittingForm=form;
-	var submitBtn=form.querySelector("input[type=submit]");
+	var submitBtn=form.querySelector("button");
 	if(submitBtn)
 		submitBtn.classList.add("loading");
 	setGlobalLoading(true);
@@ -690,10 +690,11 @@ function autoSizeTextArea(el:HTMLTextAreaElement){
 	var st=window.getComputedStyle(el);
 	var borderWidth=parseInt(st.borderBottomWidth)+parseInt(st.borderTopWidth);
 	var minHeight=parseInt(st.minHeight);
-	el.style.height=minHeight+"px";
-	el.style.height=(el.scrollHeight+borderWidth)+"px";
-	el.addEventListener("input", (ev:InputEvent)=>{
+	var updateHeight=function(){
 		el.style.height=minHeight+"px";
 		el.style.height=(el.scrollHeight+borderWidth)+"px";
+	};
+	el.addEventListener("input", (ev:InputEvent)=>{
+		updateHeight();
 	}, false);
 }

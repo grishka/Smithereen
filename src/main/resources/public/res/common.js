@@ -250,7 +250,8 @@ var Box = /** @class */ (function (_super) {
             while (this.buttonBar.firstChild)
                 this.buttonBar.lastChild.remove();
             for (var i = 0; i < this.buttonTitles.length; i++) {
-                var btn = ce("input", { type: "button", value: this.buttonTitles[i] });
+                var btn = ce("button", { type: "button" });
+                btn.innerText = this.buttonTitles[i];
                 if (i > 0 || this.noPrimaryButton) {
                     btn.className = "secondary";
                 }
@@ -935,7 +936,7 @@ function ajaxSubmitForm(form, onDone) {
         return false;
     }
     submittingForm = form;
-    var submitBtn = form.querySelector("input[type=submit]");
+    var submitBtn = form.querySelector("button");
     if (submitBtn)
         submitBtn.classList.add("loading");
     setGlobalLoading(true);
@@ -1274,11 +1275,12 @@ function autoSizeTextArea(el) {
     var st = window.getComputedStyle(el);
     var borderWidth = parseInt(st.borderBottomWidth) + parseInt(st.borderTopWidth);
     var minHeight = parseInt(st.minHeight);
-    el.style.height = minHeight + "px";
-    el.style.height = (el.scrollHeight + borderWidth) + "px";
-    el.addEventListener("input", function (ev) {
+    var updateHeight = function () {
         el.style.height = minHeight + "px";
         el.style.height = (el.scrollHeight + borderWidth) + "px";
+    };
+    el.addEventListener("input", function (ev) {
+        updateHeight();
     }, false);
 }
 var ImageAreaSelector = /** @class */ (function () {

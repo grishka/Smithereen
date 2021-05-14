@@ -17,6 +17,8 @@ $normalLink: rgb(72, 92, 0);
 $boldHeaders: rgb(78, 112, 0);
 $auxiliaryGrey: rgb(119, 119, 119);
 $auxiliaryBlockHeader: rgb(171, 175, 114);
+
+$darkGrey: #444444;
 /* separators */
 $wallPostSeparator: rgb(227, 225, 204);
 $menuItemsSeparator: rgb(235, 234, 225);
@@ -33,7 +35,14 @@ $bgGrey: rgb(247, 247, 247);
 $buttonGradientBottom: rgb(96, 125, 0);
 $buttonBorder: rgb(100, 137, 0);
 $buttonBorderTop: rgb(136, 159, 61);
-$buttonGratientTop: rgb(143, 159, 68);
+$buttonGradientTop: rgb(143, 159, 68);
+
+$buttonGrayBorder: #b3b3b3;
+$buttonGrayGradientTop: #fafafa;
+$buttonGrayGradientBottom: #d4d4d4;
+$buttonGrayBorderInner: #e7e7e7;
+$buttonGrayActive: #dcdcdc;
+
 /* tabs */
 $tabBackground: rgb(104, 132, 1);
 $simpleButton: rgb(92, 120, 0);
@@ -409,8 +418,8 @@ textarea{
 	}
 	.bottomBar{
 		margin-top: 8px;
-		.left{
-			padding-left: 5px;
+		.right{
+			padding-right: 5px;
 		}
 	}
 }
