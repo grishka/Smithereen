@@ -112,7 +112,7 @@
 			<table width="100%" style="table-layout: fixed;" class="profileBlock">
 				<tr><th class="blockHeader"><a href="/users/{{ user.id }}/groups">{{ L('groups') }}</a></th></tr>
 				<tr><td class="blockSubheader">{{ LP('X_groups', groups.size) }}</td></tr>
-				<tr><td style="overflow: hidden" class="paddedProfileBlock">
+				<tr><td style="overflow: hidden" class="padded">
 				{% for group in groups %}
 					<a href="{{ group.profileURL }}">{{ group.name }}</a>{% if not loop.last %} &bull; {% endif %}
 				{% endfor %}
@@ -124,10 +124,12 @@
 		<!-- right column -->
 		<td id="right">
 			<h2>{{user.completeName}}</h2>
-			<table class="profileBlock profileFields" width="100%">
-				{%if user.birthDate is not null%}<tr><td class="label">{{L("birth_date")}}:</td><td>{{ LD(user.birthDate) }}</td></tr>{%endif%}
-				{%if user.summary is not null%}<tr><td class="label">{{L('profile_about')}}:</td><td>{{ user.summary | postprocessHTML }}</td></tr>{%endif%}
-			</table>
+			<div class="profileFields">
+				<table class="profileBlock" width="100%">
+					{%if user.birthDate is not null%}<tr><td class="label">{{L("birth_date")}}:</td><td>{{ LD(user.birthDate) }}</td></tr>{%endif%}
+					{%if user.summary is not null%}<tr><td class="label">{{L('profile_about')}}:</td><td>{{ user.summary | postprocessHTML }}</td></tr>{%endif%}
+				</table>
+			</div>
 			<table width="100%" class="profileBlock">
 				<tr><th class="blockHeader"><a href="{{ user.profileURL }}/wall">{{L('wall')}}</a></th></tr>
 				<tr><td class="blockSubheader">{{LP('X_posts', postCount)}}</td></tr>
@@ -136,7 +138,7 @@
 						<div class="marginBefore">{%include "wall_post_form" with {'wallOwner': user}%}</div>
 					</td></tr>
 				{%endif%}
-				<tr><td class="padded narrowWall" id="postList">
+				<tr><td class="narrowWall" id="postList">
 			{%for post in wall%}
 			{%include "wall_post" with {'post': post}%}
 			{%endfor%}

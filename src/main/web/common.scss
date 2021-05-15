@@ -296,8 +296,7 @@ a, a:link, a:visited, .link{
 
 input[type=text], input[type=password], input[type=email], input[type=date], input[type=number], textarea, select{
 	border: solid 1px $textAreaBorder;
-	border-radius: 2px;
-	padding: 4px;
+	padding: 3px;
 	appearance: none;
 	background-color: $bg;
 }
@@ -309,6 +308,12 @@ textarea{
 
 ::placeholder{
 	color: $auxiliaryGrey;
+	opacity: 1;
+	transition: opacity .2s ease;
+}
+
+:focus::placeholder{
+	opacity: .7;
 }
 
 .gray{
@@ -420,6 +425,12 @@ textarea{
 		margin-top: 8px;
 		.right{
 			padding-right: 5px;
+		}
+	}
+
+	&.collapsed{
+		.bottomBar{
+			display: none;
 		}
 	}
 }

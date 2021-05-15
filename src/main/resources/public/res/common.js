@@ -1272,13 +1272,14 @@ function openPhotoViewer(el) {
     return false;
 }
 function autoSizeTextArea(el) {
-    var st = window.getComputedStyle(el);
-    var borderWidth = parseInt(st.borderBottomWidth) + parseInt(st.borderTopWidth);
-    var minHeight = parseInt(st.minHeight);
     var updateHeight = function () {
+        var st = window.getComputedStyle(el);
+        var borderWidth = parseInt(st.borderBottomWidth) + parseInt(st.borderTopWidth);
+        var minHeight = parseInt(st.minHeight);
         el.style.height = minHeight + "px";
         el.style.height = (el.scrollHeight + borderWidth) + "px";
     };
+    el.resizeToFitContent = updateHeight;
     el.addEventListener("input", function (ev) {
         updateHeight();
     }, false);
@@ -1587,6 +1588,8 @@ var PostForm = /** @class */ (function () {
         this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
         this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
         this.input.addEventListener("paste", this.onInputPaste.bind(this), false);
+        this.input.addEventListener("focus", this.onInputFocus.bind(this), false);
+        this.input.addEventListener("blur", this.onInputBlur.bind(this), false);
         autoSizeTextArea(this.input);
         if (this.input.dataset.replyName) {
             this.currentReplyName = this.input.dataset.replyName;
@@ -1629,6 +1632,8 @@ var PostForm = /** @class */ (function () {
             this.attachPopupMenu = new PopupMenu(el.qs(".popupMenuW"), this.onAttachMenuItemClick.bind(this));
             this.attachPopupMenu.setPrepareCallback(this.onPrepareAttachMenu.bind(this));
         }
+        if (!this.isDirty())
+            this.setCollapsed(true);
     }
     PostForm.prototype.onFormSubmit = function (ev) {
         ev.preventDefault();
@@ -1645,10 +1650,22 @@ var PostForm = /** @class */ (function () {
             this.handleFiles(ev.clipboardData.files);
         }
     };
+    PostForm.prototype.onInputFocus = function (ev) {
+        console.log(ev);
+        if (this.collapsed)
+            this.setCollapsed(false);
+    };
+    PostForm.prototype.onInputBlur = function (ev) {
+        if (!this.isDirty()) {
+            this.setCollapsed(true);
+        }
+    };
     PostForm.prototype.onDrop = function (ev) {
         ev.preventDefault();
         this.dragOverlay.classList.remove("over");
         this.handleFiles(ev.dataTransfer.files);
+        if (this.collapsed)
+            this.setCollapsed(false);
     };
     PostForm.prototype.handleFiles = function (files) {
         for (var i = 0; i < files.length; i++) {
@@ -1716,6 +1733,7 @@ var PostForm = /** @class */ (function () {
         ajaxSubmitForm(this.form, function () {
             this.attachmentIDs = [];
             this.attachField.value = "";
+            this.input.resizeToFitContent();
             this.hideCWLayout();
         }.bind(this));
     };
@@ -1765,6 +1783,17 @@ var PostForm = /** @class */ (function () {
             opts.push({ label: lang("attach_menu_cw"), onclick: this.showCWLayout.bind(this) });
         }
         new MobileOptionsBox(opts).show();
+    };
+    PostForm.prototype.isDirty = function () {
+        return this.input.value.length > 0 || this.attachmentIDs.length > 0 || this.cwLayout != null;
+    };
+    PostForm.prototype.setCollapsed = function (collapsed) {
+        this.collapsed = collapsed;
+        if (collapsed)
+            this.root.classList.add("collapsed");
+        else
+            this.root.classList.remove("collapsed");
+        this.input.resizeToFitContent();
     };
     return PostForm;
 }());

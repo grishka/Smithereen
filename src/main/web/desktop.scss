@@ -225,13 +225,14 @@ h2{
 
 .post{
 	border-bottom: solid 1px $wallPostSeparator;
-	margin-bottom: 8px;
-	padding-bottom: 8px;
+	margin-bottom: 10px;
+	padding-bottom: 10px;
 	.postContentWrap{
 		padding: 0 8px;
 	}
 	.postContent{
-		padding-top: 4px;
+		padding-top: 2px;
+		line-height: 130%;
 		overflow-x: hidden;
 		pre{
 			overflow-x: auto;
@@ -348,7 +349,11 @@ h2{
 	}
 }
 
-.columnLayout, .singleColumn, .profileBlock .padded{
+.columnLayout, .singleColumn{
+	padding: 10px;
+}
+
+.profileBlock .padded{
 	padding: 8px;
 }
 
@@ -357,11 +362,11 @@ h2{
 }
 
 .leftNarrow #right{
-	padding-left: 8px;
+	padding-left: 10px;
 }
 
 .rightNarrow #left{
-	padding-right: 8px;
+	padding-right: 10px;
 }
 
 .marginAfter{
@@ -405,7 +410,7 @@ h2{
 .postInfo, .postLink:link, .postLink:visited{
 	padding-top: 4px;
 	font-size: 10px;
-	color: $grayText;
+	color: $auxiliaryGrey;
 }
 
 .commentsPreviewWrap{
@@ -420,16 +425,21 @@ h2{
 }
 
 .profileFields{
-	margin: 8px;
-}
-
-table.profileFields td{
-	vertical-align: top;
-}
-
-.profileFields .label{
-	color: $grayText;
-	width: 30%;
+	line-height: 140%;
+    padding: 10px 6px 15px;
+	td{
+		vertical-align: top;
+		p:first-child{
+			margin-top: 0;
+		}
+		p:last-child{
+			margin-bottom: 0;
+		}
+	}
+	.label{
+		color: $auxiliaryGrey;
+		width: 30%;
+	}
 }
 
 .dropOverlay{
@@ -466,7 +476,7 @@ table.profileFields td{
 }
 
 input[type=date], select{
-	height: 23px;
+	height: 21px;
 }
 
 *:focus{
@@ -1087,8 +1097,8 @@ select{
 	max-width: 330px;
 }
 
-.paddedProfileBlock{
-	padding: 8px;
+.narrowWall{
+	padding: 10px 1px;
 }
 
 .photoViewer{
@@ -1266,7 +1276,7 @@ select{
 }
 
 .postCWWrap{
-	padding-top: 10px;
+	padding-top: 4px;
 	.postCWButton{
 		display: block;
 		color: $normalLink;
@@ -1313,7 +1323,11 @@ input:checked+.postCWWrap{
 
 textarea{
 	line-height: 13px;
-	min-height: 49px;
+	min-height: 47px;
+}
+
+.wallPostForm.collapsed textarea{
+	min-height: 21px;
 }
 
 .profileColumnBorder{

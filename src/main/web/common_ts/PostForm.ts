@@ -16,6 +16,7 @@ class PostForm{
 	private currentReplyName:string="";
 	private attachPopupMenu:PopupMenu;
 	private cwLayout:HTMLElement;
+	private collapsed:boolean;
 
 	public constructor(el:HTMLElement){
 		this.id=el.getAttribute("data-unique-id");
@@ -35,6 +36,8 @@ class PostForm{
 		this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
 		this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
 		this.input.addEventListener("paste", this.onInputPaste.bind(this), false);
+		this.input.addEventListener("focus", this.onInputFocus.bind(this), false);
+		this.input.addEventListener("blur", this.onInputBlur.bind(this), false);
 		autoSizeTextArea(this.input);
 		if(this.input.dataset.replyName){
 			this.currentReplyName=this.input.dataset.replyName;
@@ -81,6 +84,8 @@ class PostForm{
 			this.attachPopupMenu=new PopupMenu(el.qs(".popupMenuW"), this.onAttachMenuItemClick.bind(this));
 			this.attachPopupMenu.setPrepareCallback(this.onPrepareAttachMenu.bind(this));
 		}
+		if(!this.isDirty())
+			this.setCollapsed(true);
 	}
 
 	private onFormSubmit(ev:Event):void{
@@ -101,10 +106,24 @@ class PostForm{
 		}
 	}
 
+	private onInputFocus(ev:FocusEvent):void{
+		console.log(ev);
+		if(this.collapsed)
+			this.setCollapsed(false);
+	}
+
+	private onInputBlur(ev:FocusEvent):void{
+		if(!this.isDirty()){
+			this.setCollapsed(true);
+		}
+	}
+
 	private onDrop(ev:DragEvent):void{
 		ev.preventDefault();
 		this.dragOverlay.classList.remove("over");
 		this.handleFiles(ev.dataTransfer.files);
+		if(this.collapsed)
+			this.setCollapsed(false);
 	}
 
 	private handleFiles(files:FileList):void{
@@ -180,6 +199,7 @@ class PostForm{
 		ajaxSubmitForm(this.form, function(){
 			this.attachmentIDs=[];
 			this.attachField.value="";
+			this.input.resizeToFitContent();
 			this.hideCWLayout();
 		}.bind(this));
 	}
@@ -233,5 +253,18 @@ class PostForm{
 			opts.push({label: lang("attach_menu_cw"), onclick: this.showCWLayout.bind(this)});
 		}
 		new MobileOptionsBox(opts).show();
+	}
+
+	public isDirty():boolean{
+		return this.input.value.length>0 || this.attachmentIDs.length>0 || this.cwLayout!=null;
+	}
+
+	private setCollapsed(collapsed:boolean){
+		this.collapsed=collapsed;
+		if(collapsed)
+			this.root.classList.add("collapsed");
+		else
+			this.root.classList.remove("collapsed");
+		this.input.resizeToFitContent();
 	}
 }

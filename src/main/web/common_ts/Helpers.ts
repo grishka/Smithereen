@@ -146,6 +146,10 @@ HTMLCollection.prototype.unfuck=function(){
 	return arr;
 };
 
+interface HTMLTextAreaElement{
+	resizeToFitContent():void;
+}
+
 var compatAnimStyle:HTMLStyleElement;
 
 function cssRuleForCamelCase(s:string):string{
@@ -687,13 +691,14 @@ function openPhotoViewer(el:HTMLElement){
 }
 
 function autoSizeTextArea(el:HTMLTextAreaElement){
-	var st=window.getComputedStyle(el);
-	var borderWidth=parseInt(st.borderBottomWidth)+parseInt(st.borderTopWidth);
-	var minHeight=parseInt(st.minHeight);
 	var updateHeight=function(){
+		var st=window.getComputedStyle(el);
+		var borderWidth=parseInt(st.borderBottomWidth)+parseInt(st.borderTopWidth);
+		var minHeight=parseInt(st.minHeight);
 		el.style.height=minHeight+"px";
 		el.style.height=(el.scrollHeight+borderWidth)+"px";
 	};
+	el.resizeToFitContent=updateHeight;
 	el.addEventListener("input", (ev:InputEvent)=>{
 		updateHeight();
 	}, false);

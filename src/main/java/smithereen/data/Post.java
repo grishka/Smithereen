@@ -98,18 +98,23 @@ public class Post extends ActivityPubObject{
 		summary=res.getString("content_warning");
 		attributedTo=user.activityPubID;
 
-		if(owner instanceof User && user.id==((User)owner).id){
-			to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
-			if(replyKey.length==0)
-				cc=Collections.singletonList(new LinkOrObject(user.getFollowersURL()));
-			else
-				cc=Collections.emptyList();
-		}else if(owner instanceof Group){
-			to=Collections.singletonList(new LinkOrObject(owner.getFollowersURL()));
-			cc=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
+		if(local){
+			if(owner instanceof User && user.id==((User) owner).id){
+				to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
+				if(replyKey.length==0)
+					cc=Collections.singletonList(new LinkOrObject(user.getFollowersURL()));
+				else
+					cc=Collections.emptyList();
+			}else if(owner instanceof Group){
+				to=Collections.singletonList(new LinkOrObject(owner.getFollowersURL()));
+				cc=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
+			}else{
+				to=Collections.emptyList();
+				cc=Arrays.asList(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(owner.activityPubID));
+			}
 		}else{
+			cc=Collections.emptyList();
 			to=Collections.emptyList();
-			cc=Arrays.asList(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(owner.activityPubID));
 		}
 
 		String att=res.getString("attachments");
@@ -130,10 +135,12 @@ public class Post extends ActivityPubObject{
 				User user=UserStorage.getById(id);
 				if(user!=null){
 					mentionedUsers.add(user);
-					addToCC(user.activityPubID);
-					Mention mention=new Mention();
-					mention.href=user.activityPubID;
-					tag.add(mention);
+					if(local){
+						addToCC(user.activityPubID);
+						Mention mention=new Mention();
+						mention.href=user.activityPubID;
+						tag.add(mention);
+					}
 				}
 			}
 		}
