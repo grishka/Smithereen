@@ -282,7 +282,6 @@ public class MediaCache{
 	}
 
 	public static class PhotoItem extends Item{
-		public String src;
 		public int width, height;
 		public String key;
 
@@ -300,7 +299,6 @@ public class MediaCache{
 		@Override
 		public void deserialize(DataInputStream in, String key) throws IOException{
 			this.key=key;
-			src=Config.mediaCacheURLPath+key+".webp";
 			width=in.readInt();
 			height=in.readInt();
 		}

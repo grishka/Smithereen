@@ -30,7 +30,7 @@ public class CachedRemoteImage implements SizedImage{
 
 	@Override
 	public URI getUriForSizeAndFormat(Type size, Format format){
-		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.mediaCacheURLPath+"/"+cacheKey+".webp")
+		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalMediaCache+"/"+cacheKey+".webp")
 				.resize(size.getMaxWidth(), size.getMaxHeight())
 				.format(format)
 				.quality(90);

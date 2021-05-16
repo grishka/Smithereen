@@ -30,7 +30,7 @@ public class LocalImage extends Image implements SizedImage{
 	@Override
 	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
-		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.uploadURLPath+"/"+path+"/"+localID+".webp")
+		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalUploads+"/"+path+"/"+localID+".webp")
 				.format(SizedImage.Format.JPEG);
 		int croppedWidth=width, croppedHeight=height;
 		if(cropRegion!=null){
@@ -45,7 +45,7 @@ public class LocalImage extends Image implements SizedImage{
 			Image im=new Image();
 			im.width=width;
 			im.height=height;
-			im.url=new ImgProxy.UrlBuilder("local://"+Config.uploadURLPath+"/"+path+"/"+localID+".webp")
+			im.url=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalUploads+"/"+path+"/"+localID+".webp")
 					.format(SizedImage.Format.JPEG)
 					.build();
 			obj.put("image", im.asActivityPubObject(null, contextCollector));
@@ -55,7 +55,7 @@ public class LocalImage extends Image implements SizedImage{
 
 	@Override
 	public URI getUriForSizeAndFormat(Type size, Format format){
-		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.uploadURLPath+"/"+path+"/"+localID+".webp")
+		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalUploads+"/"+path+"/"+localID+".webp")
 				.format(format)
 				.resize(size.getResizingType(), size.getMaxWidth(), size.getMaxHeight(), false, false);
 		if(cropRegion!=null && size.getResizingType()==ImgProxy.ResizingType.FILL){

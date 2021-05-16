@@ -33,12 +33,12 @@ public class Config{
 	public static File mediaCachePath;
 	public static long mediaCacheMaxSize;
 	public static long mediaCacheFileSizeLimit;
-	public static String uploadURLPath;
-	public static String mediaCacheURLPath;
 	public static boolean useHTTP;
 	public static String staticFilesPath;
 	public static final boolean DEBUG=System.getProperty("smithereen.debug")!=null;
 
+	public static String imgproxyLocalUploads;
+	public static String imgproxyLocalMediaCache;
 	public static String imgproxyUrl;
 	public static byte[] imgproxyKey;
 	public static byte[] imgproxySalt;
@@ -74,11 +74,9 @@ public class Config{
 		domain=props.getProperty("domain");
 
 		uploadPath=new File(props.getProperty("upload.path"));
-		uploadURLPath=props.getProperty("upload.urlpath");
 		mediaCachePath=new File(props.getProperty("media_cache.path"));
 		mediaCacheMaxSize=Utils.parseFileSize(props.getProperty("media_cache.max_size"));
 		mediaCacheFileSizeLimit=Utils.parseFileSize(props.getProperty("media_cache.file_size_limit"));
-		mediaCacheURLPath=props.getProperty("media_cache.urlpath");
 
 		useHTTP=Boolean.parseBoolean(props.getProperty("use_http_scheme.i_know_what_i_am_doing", "false"));
 		localURI=URI.create("http"+(useHTTP ? "" : "s")+"://"+domain+"/");
@@ -88,6 +86,8 @@ public class Config{
 		staticFilesPath=props.getProperty("web.static_files_path");
 
 		imgproxyUrl=props.getProperty("imgproxy.url_prefix");
+		imgproxyLocalUploads=props.getProperty("imgproxy.local_uploads");
+		imgproxyLocalMediaCache=props.getProperty("imgproxy.local_media_cache");
 		imgproxyKey=Utils.hexStringToByteArray(props.getProperty("imgproxy.key"));
 		imgproxySalt=Utils.hexStringToByteArray(props.getProperty("imgproxy.salt"));
 		if(imgproxyUrl.charAt(0)!='/')
