@@ -738,6 +738,7 @@ public class ActivityPubRoutes{
 		String keyId=null;
 		byte[] signature=null;
 		List<String> headers=null;
+		String algorithm=null;
 		for(String part:parts){
 			String[] kv=part.split("=", 2);
 			String key=kv[0];
@@ -755,6 +756,9 @@ public class ActivityPubRoutes{
 				case "headers":
 					headers=Arrays.asList(value.split(" "));
 					break;
+				case "algorithm":
+					algorithm=value.toLowerCase();
+					break;
 			}
 		}
 		if(keyId==null)
@@ -763,6 +767,8 @@ public class ActivityPubRoutes{
 			throw new IllegalArgumentException("Signature header is missing signature field");
 		if(headers==null)
 			throw new IllegalArgumentException("Signature header is missing headers field");
+		if(algorithm!=null && !algorithm.equals("rsa-sha256"))
+			throw new IllegalArgumentException("Unsupported signature algorithm \""+algorithm+"\", expected \"rsa-sha256\"");
 		if(!headers.contains("(request-target)"))
 			throw new IllegalArgumentException("(request-target) is not in signed headers");
 		if(!headers.contains("date"))
