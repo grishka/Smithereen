@@ -6,7 +6,7 @@
 {%if post.replyLevel>0%}
 	<a href="/posts/{{post.getReplyChainElement(0)}}">Top-level</a><br/>
 {%endif%}
-{%include "wall_post"%}
+{% include "wall_post" with {'standalone': true} %}
 <div id="postReplies{{post.id}}">{%for reply in post.replies%}
 {%include "wall_reply" with {'post': reply}%}
 {%endfor%}</div>

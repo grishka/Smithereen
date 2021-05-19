@@ -368,7 +368,8 @@ public class Main{
 			if(req.attribute("isTemplate")!=null){
 				String cssName=req.attribute("mobile")!=null ? "mobile" : "desktop";
 				resp.header("Link", "</res/"+cssName+".css?"+Utils.staticFileHash+">; rel=preload; as=style, </res/common.js?"+Utils.staticFileHash+">; rel=preload; as=script");
-				resp.header("Vary", "User-Agent");
+				resp.header("Vary", "User-Agent, Accept-Language");
+				resp.header("X-Powered-By", "frustration with attention economy");
 			}
 
 			if(req.headers("accept")==null || !req.headers("accept").startsWith("application/")){

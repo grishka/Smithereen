@@ -1651,7 +1651,6 @@ var PostForm = /** @class */ (function () {
         }
     };
     PostForm.prototype.onInputFocus = function (ev) {
-        console.log(ev);
         if (this.collapsed)
             this.setCollapsed(false);
     };

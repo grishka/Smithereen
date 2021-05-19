@@ -22,7 +22,7 @@
 			<label for="{{name}}">{{label}}</label>:
 		</td>
 		<td>
-			<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}"
+			<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}" class="control"
 			{%- if options.maxlength is not null %} maxlength="{{options.maxlength}}"{%endif%}
 			{%- if options.minlength is not null %} minlength="{{options.minlength}}"{%endif%}
 			{%- if options.required %} required{%endif%}
@@ -44,7 +44,7 @@
 			<label for="{{name}}">{{label}}</label>:
 		</td>
 		<td>
-			<textarea id="{{name}}" name="{{name}}" rows="3">{{value}}</textarea>
+			<textarea id="{{name}}" name="{{name}}" rows="3" class="control">{{value}}</textarea>
 			{%if options.explanation is not null%}
 			<br/><span class="formExplanation">{{options.explanation}}</span>
 			{%endif%}
@@ -64,7 +64,7 @@ autoSizeTextArea(ge("{{ name }}"));
 			{% endif %}
 		</td>
 		<td>
-			<select id="{{name}}" name="{{name}}">
+			<select id="{{name}}" name="{{name}}" class="control">
 				{%for opt in selectOptions%}
 					<option value="{{opt.value}}"{%if opt.selected%} selected{%endif%}>{{opt.label}}</option>
 				{%endfor%}

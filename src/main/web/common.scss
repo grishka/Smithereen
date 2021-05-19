@@ -427,11 +427,11 @@ textarea{
 			padding-right: 5px;
 		}
 	}
+}
 
-	&.collapsed{
-		.bottomBar{
-			display: none;
-		}
+.hasJS .wallPostForm.collapsed{
+	.bottomBar{
+		display: none;
 	}
 }
 

@@ -107,7 +107,6 @@ class PostForm{
 	}
 
 	private onInputFocus(ev:FocusEvent):void{
-		console.log(ev);
 		if(this.collapsed)
 			this.setCollapsed(false);
 	}

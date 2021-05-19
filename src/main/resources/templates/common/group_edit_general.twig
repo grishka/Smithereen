@@ -3,9 +3,8 @@
 {% extends "page" %}
 {% block content %}
 {% include "group_admin_tabbar" with {'tab': 'general'} %}
-<div class="singleColumn gray">
+<div class="singleColumn gray wideForms">
 	<form action="/groups/{{ group.id }}/saveGeneral" method="post" onsubmit="return ajaxSubmitForm(this)">
-		<h2>{{L('profile_edit_basic')}}</h2>
 		{{ form.start('groupEdit', groupEditMessage) }}
 			{{ form.textInput('name', L('group_name'), group.name, {'maxlength': 200, 'required': true}) }}
 			{{ form.textArea('about', L('about_group'), group.summary) }}

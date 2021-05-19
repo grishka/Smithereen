@@ -774,3 +774,8 @@ textarea{
 	line-height: 18px;
 	min-height: 70px;
 }
+
+.hasJS .wallPostForm.collapsed textarea{
+	min-height: 34px;
+	height: 34px;
+}

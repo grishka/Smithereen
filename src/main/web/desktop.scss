@@ -358,7 +358,51 @@ h2{
 }
 
 .singleColumn.gray{
-	padding: 20px;
+	padding: 15px;
+}
+
+.narrowForms form{
+	h2{
+		width: 400px;
+		margin: auto;
+	}
+
+	.form{
+		width: 400px;
+		.label{
+			width: 140px;
+			padding: 4px 10px 5px 0;
+		}
+		.control{
+			width: 150px;
+		}
+	}
+}
+
+.wideForms form{
+	.form{
+		width: 100%;
+		.label{
+			width: 190px;
+			padding: 4px 10px 5px 0;
+		}
+		.control{
+			width: 220px;
+		}
+	}
+}
+
+.notMuchContent form{
+	.form{
+		width: 100%;
+		.label{
+			width: 145px;
+			padding: 4px 10px 5px 0;
+		}
+		.control{
+			width: 200px;
+		}
+	}
 }
 
 .leftNarrow #right{
@@ -468,7 +512,9 @@ h2{
 }
 
 .notMuchContent{
-	padding: 64px 16px;
+	width: 463px;
+	margin: auto;
+	padding: 60px 0 38px;
 	p{
 		margin-top: 0;
 		margin-bottom: 16px;
@@ -613,20 +659,19 @@ select{
 	.label{
 		text-align: right;
 		color: $auxiliaryGrey;
-		vertical-align: top;
 		padding: 5px 8px 4px 8px;
 		width: 30%;
 	}
-	tr:not(.footer) input:not([type=radio]):not([type=checkbox]), tr:not(.footer) select, tr:not(.footer) textarea{
+	.control{
 		width: 100%;
 	}
 	td{
 		padding: 0;
-		padding-bottom: 8px;
+		padding-bottom: 5px;
+		vertical-align: top;
 	}
 	.footer td{
-		padding-top: 16px;
-		border-top: solid 1px $mainHeaderSeparator;
+		padding-top: 5px;
 	}
 }
 
@@ -1326,8 +1371,9 @@ textarea{
 	min-height: 47px;
 }
 
-.wallPostForm.collapsed textarea{
+.hasJS .wallPostForm.collapsed textarea{
 	min-height: 21px;
+	height: 21px;
 }
 
 .profileColumnBorder{

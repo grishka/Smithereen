@@ -28,6 +28,9 @@
 				{% if not post.local %}
 					| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', post.url.host) }}</a>
 				{% endif %}
+				{% if not standalone %}
+					| <a href="{{ post.internalURL }}">{{ L('add_comment') }}</a>
+				{% endif %}
 				{%if postInteractions is not null%}
 				{%set interactions=postInteractions[post.id]%}
 				<span class="postActions">

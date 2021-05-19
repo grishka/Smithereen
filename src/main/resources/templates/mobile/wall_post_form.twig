@@ -1,5 +1,5 @@
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
-<div class="singleColumn wallPostForm" id="wallPostForm_{{id}}" data-unique-id="{{id}}">
+<div class="singleColumn wallPostForm collapsed" id="wallPostForm_{{id}}" data-unique-id="{{id}}">
 	<form action="{{wallOwner.typeAndIdForURL}}/createWallPost" method="post">
 	{% if isGroup %}
 		{% set fieldPlaceholder=L('write_on_group_wall') %}

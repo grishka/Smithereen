@@ -2,14 +2,14 @@
 {%import "forms" as form%}
 {%block content%}
 {% include "settings_tabbar" with {'tab': 'general'} %}
-<div class="singleColumn gray">
+<div class="singleColumn gray narrowForms">
 <form action="/settings/updatePassword?csrf={{ csrf }}" method="post" onsubmit="return ajaxSubmitForm(this)">
 	<h2>{{L('change_password')}}</h2>
 	{{ form.start("changePassword", passwordMessage) }}
 		{{ form.textInput("current", L('current_password'), "", {'type' : 'password'}) }}
 		{{ form.textInput("new", L('new_password'), "", {'type' : 'password'}) }}
 		{{ form.textInput("new2", L('new_password_confirm'), "", {'type' : 'password'}) }}
-		{{ form.footer(L('save')) }}
+		{{ form.footer(L('change_password')) }}
 	{{ form.end() }}
 </form>
 {%if signupMode=='INVITE_ONLY' or (userPermissions.serverAccessLevel=='ADMIN' and signupMode!='OPEN')%}
@@ -40,8 +40,8 @@
 	{{ form.end() }}
 </form>
 {%endif%}
-	<h2>{{L('language')}}</h2>
 	<form action="/settings/setLanguage?csrf={{ csrf }}" method="post">
+		<h2>{{L('language')}}</h2>
 		{{ form.start("language") }}
 			{% set options=[] %}
 			{% for lang in languages %}
