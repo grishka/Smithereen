@@ -8,7 +8,7 @@ If you have any questions or feedback, there's a [Telegram chat](https://t.me/Sm
 
 ### Running directly on your server
 
-1. Install and configure MySQL
+1. Install and configure MySQL 5
 2. Install maven if you don't have it already
 3. Build the jar by running `mvn package` and place the one with dependencies at `/opt/smithereen/smithereen.jar`
 4. Set up the native library ([libvips](https://github.com/libvips/libvips) and JNI bindings): pick a binary for your OS and CPU from [prebuilt ones](jniPrebuilt) or build your own
