@@ -2,9 +2,9 @@
 {% block content %}
 {% import "forms" as form %}
 {% include "admin_tabbar" with {'tab': 'other'} %}
-<div class="singleColumn gray">
-	<h2>{{ L('admin_email_settings') }}</h2>
+<div class="singleColumn gray narrowForms">
 	<form action="/settings/admin/updateEmailSettings" method="post" onsubmit="return ajaxSubmitForm(this)">
+		<h2>{{ L('admin_email_settings') }}</h2>
 		{{ form.start('adminEmailSettings', adminEmailSettingsMessage) }}
 			{{ form.textInput('from', L('admin_email_from'), from, {'type': 'email', 'maxlength': 100}) }}
 			{{ form.textInput('smtp_server', L('admin_email_smtp_server'), smtpServer) }}

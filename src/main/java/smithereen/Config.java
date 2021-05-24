@@ -50,6 +50,8 @@ public class Config{
 	public static int dbSchemaVersion;
 	public static String serverDisplayName;
 	public static String serverDescription;
+	public static String serverShortDescription;
+	public static String serverPolicy;
 	public static String serverAdminEmail;
 	public static SignupMode signupMode=SignupMode.CLOSED;
 
@@ -107,6 +109,8 @@ public class Config{
 
 			serverDisplayName=dbValues.get("ServerDisplayName");
 			serverDescription=dbValues.get("ServerDescription");
+			serverShortDescription=dbValues.get("ServerShortDescription");
+			serverPolicy=dbValues.get("ServerPolicy");
 			serverAdminEmail=dbValues.get("ServerAdminEmail");
 			String _signupMode=dbValues.get("SignupMode");
 			if(StringUtils.isNotEmpty(_signupMode)){

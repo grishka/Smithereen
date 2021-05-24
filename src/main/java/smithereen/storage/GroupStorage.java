@@ -685,6 +685,16 @@ public class GroupStorage{
 				.execute();
 	}
 
+	public static int getLocalGroupCount() throws SQLException{
+		ResultSet res=new SQLQueryBuilder()
+				.selectFrom("groups")
+				.count()
+				.where("domain=''")
+				.createStatement()
+				.executeQuery();
+		return DatabaseUtils.oneFieldToInt(res);
+	}
+
 	private static void putIntoCache(Group group){
 		cacheByID.put(group.id, group);
 		cacheByUsername.put(group.getFullUsername().toLowerCase(), group);

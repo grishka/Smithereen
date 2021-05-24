@@ -8,6 +8,8 @@
 		{{form.start('adminServerInfo', adminServerInfoMessage)}}
 			{{form.textInput('server_name', L('admin_server_name'), serverName, {'maxlength': 100, 'required': true})}}
 			{{form.textArea('server_description', L('admin_server_description'), serverDescription)}}
+			{{form.textArea('server_short_description', L('admin_server_short_description'), serverShortDescription)}}
+			{{form.textArea('server_policy', L('admin_server_policy'), serverPolicy, {'explanation': L('admin_server_info_html_explain')})}}
 			{{form.textInput('server_admin_email', L('admin_server_admin_email'), serverAdminEmail, {'type': 'email', 'maxlength': 100})}}
 			{{form.select('signup_mode', L('admin_signup_mode'), [
 				{'value': 'OPEN', 'label': L('admin_signup_mode_open'), 'selected': signupMode=='OPEN'},

@@ -1,0 +1,44 @@
+{% extends "page" %}
+{% block content %}
+<div class="singleColumn">
+<h2>{{ L('about_stats') }}</h2>
+<div class="padTop">
+	{{ L('about_on_this_server') }}:
+	<ul class="actualList">
+		<li><span>{{ LP('about_X_users', totalUsers) }}</span></li>
+		<li><span>{{ LP('about_X_groups', totalGroups) }}</span></li>
+		<li><span>{{ LP('about_X_posts', totalPosts) }}</span></li>
+	</ul>
+</div>
+
+<h2>{{ L('about_admins') }}</h2>
+<div class="padTop">
+{% for admin in serverAdmins %}
+	<table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
+		<tr valign="top">
+			<td width="50">
+				<a href="{{admin.profileURL}}">{{admin | pictureForAvatar('s')}}</a>
+			</td>
+			<td class="info" valign="middle">
+				<b><a href="{{admin.profileURL}}">{{admin.fullName}}</a></b>
+			</td>
+		</tr>
+	</table>
+{% endfor %}
+</div>
+
+{% if serverAdminEmail is not empty %}
+	<h2>{{ L('about_contact') }}</h2>
+	<div class="padTop">
+		<a href="mailto:{{ serverAdminEmail }}">{{ serverAdminEmail }}</a>
+	</div>
+{% endif %}
+</div>
+
+<div class="singleColumn">
+	{{ serverPolicy | raw }}
+</div>
+<div class="singleColumn" align="center">
+	{{ L('about_software1') }}<a href="https://smithereen.software/" target="_blank">Smithereen</a>{{ L('about_software2') }}{{ serverVersion }}{{ L('about_software3') }}
+</div>
+{% endblock %}

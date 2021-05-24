@@ -3,6 +3,7 @@
 <div class="singleColumn">
 	<h2>{{serverDisplayName}}</h2>
 	<p>{{serverDescription | raw}}</p>
+	<p align="center"><a href="/system/about">{{ L('about_server') }} &raquo;</a></p>
 	{%if signupMode=='OPEN' or signupMode=='INVITE_ONLY'%}
 	{%include "register_form"%}
 	{%elseif signupMode=='CLOSED'%}

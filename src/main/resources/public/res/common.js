@@ -1283,6 +1283,7 @@ function autoSizeTextArea(el) {
     el.addEventListener("input", function (ev) {
         updateHeight();
     }, false);
+    updateHeight();
 }
 var ImageAreaSelector = /** @class */ (function () {
     function ImageAreaSelector(parentEl, square) {

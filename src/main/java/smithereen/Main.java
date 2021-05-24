@@ -186,6 +186,7 @@ public class Main{
 			path("/upload", ()->{
 				postWithCSRF("/postPhoto", SystemRoutes::uploadPostPhoto);
 			});
+			get("/about", SystemRoutes::aboutServer);
 		});
 
 		path("/users/:id", ()->{

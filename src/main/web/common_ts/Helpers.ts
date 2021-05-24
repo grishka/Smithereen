@@ -702,4 +702,5 @@ function autoSizeTextArea(el:HTMLTextAreaElement){
 	el.addEventListener("input", (ev:InputEvent)=>{
 		updateHeight();
 	}, false);
+	updateHeight();
 }

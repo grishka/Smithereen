@@ -689,6 +689,16 @@ public class UserStorage{
 		}
 	}
 
+	public static List<User> getAdmins() throws SQLException{
+		ResultSet res=new SQLQueryBuilder()
+				.selectFrom("accounts")
+				.columns("user_id")
+				.where("access_level=?", Account.AccessLevel.ADMIN.ordinal())
+				.createStatement()
+				.executeQuery();
+		return getById(DatabaseUtils.intResultSetToList(res), true);
+	}
+
 	public static boolean isUserBlocked(int ownerID, int targetID) throws SQLException{
 		PreparedStatement stmt=new SQLQueryBuilder()
 				.selectFrom("blocks_user_user")

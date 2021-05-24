@@ -297,5 +297,19 @@
 
   "go_up": "Go Up",
   "X_groups": ["%d group", "%d groups"],
-  "add_comment": "Comment"
+  "add_comment": "Comment",
+  "admin_server_short_description": "Short description",
+  "admin_server_policy": "Policy",
+  "admin_server_info_html_explain": "You can use HTML in the description and policy fields.",
+  "about_server": "About this server",
+  "about_stats": "Statistics",
+  "about_X_users": ["<b>%d</b> user", "<b>%d</b> users"],
+  "about_X_posts": ["<b>%d</b> wall post", "<b>%d</b> wall posts"],
+  "about_X_groups": ["<b>%d</b> group", "<b>%d</b> groups"],
+  "about_contact": "Contact",
+  "about_admins": "Administrators",
+  "about_software1": "This server runs ",
+  "about_software2": " version ",
+  "about_software3": ".",
+  "about_on_this_server": "On this server are"
 }

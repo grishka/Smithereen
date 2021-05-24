@@ -26,6 +26,8 @@ public class SettingsAdminRoutes{
 		model.with("title", l.get("profile_edit_basic")+" | "+l.get("menu_admin")).with("toolbarTitle", l.get("menu_admin"));
 		model.with("serverName", Config.getServerDisplayName())
 				.with("serverDescription", Config.serverDescription)
+				.with("serverShortDescription", Config.serverShortDescription)
+				.with("serverPolicy", Config.serverPolicy)
 				.with("serverAdminEmail", Config.serverAdminEmail)
 				.with("signupMode", Config.signupMode);
 		String msg=req.session().attribute("admin.serverInfoMessage");
@@ -39,14 +41,22 @@ public class SettingsAdminRoutes{
 	public static Object updateServerInfo(Request req, Response resp, Account self) throws SQLException{
 		String name=req.queryParams("server_name");
 		String descr=req.queryParams("server_description");
+		String shortDescr=req.queryParams("server_short_description");
+		String policy=req.queryParams("server_policy");
 		String email=req.queryParams("server_admin_email");
 
 		Config.serverDisplayName=name;
 		Config.serverDescription=descr;
+		Config.serverShortDescription=shortDescr;
+		Config.serverPolicy=policy;
 		Config.serverAdminEmail=email;
-		Config.updateInDatabase("ServerDisplayName", name);
-		Config.updateInDatabase("ServerDescription", descr);
-		Config.updateInDatabase("ServerAdminEmail", email);
+		Config.updateInDatabase(Map.of(
+				"ServerDisplayName", name,
+				"ServerDescription", descr,
+				"ServerShortDescription", shortDescr,
+				"ServerPolicy", policy,
+				"ServerAdminEmail", email
+		));
 		try{
 			Config.SignupMode signupMode=Config.SignupMode.valueOf(req.queryParams("signup_mode"));
 			Config.signupMode=signupMode;

@@ -14,6 +14,7 @@ import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
 import javax.servlet.http.Part;
 
+import smithereen.BuildInfo;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
@@ -37,6 +38,7 @@ import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -248,5 +250,19 @@ public class SystemRoutes{
 		}
 		resp.redirect(Utils.back(req));
 		return "";
+	}
+
+	public static Object aboutServer(Request req, Response resp) throws SQLException{
+		RenderedTemplateResponse model=new RenderedTemplateResponse("about_server");
+		model.with("title", lang(req).get("about_server"));
+		model.with("serverPolicy", Config.serverPolicy)
+				.with("serverAdmins", UserStorage.getAdmins())
+				.with("serverAdminEmail", Config.serverAdminEmail)
+				.with("totalUsers", UserStorage.getLocalUserCount())
+				.with("totalPosts", PostStorage.getLocalPostCount(false))
+				.with("totalGroups", GroupStorage.getLocalGroupCount())
+				.with("serverVersion", BuildInfo.VERSION);
+
+		return model.renderToString(req);
 	}
 }

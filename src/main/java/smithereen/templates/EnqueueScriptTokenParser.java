@@ -77,13 +77,12 @@ public class EnqueueScriptTokenParser implements TokenParser{
 					return;
 				names.add(scriptName);
 			}
-			String bottomScripts=(String) Objects.requireNonNullElse(context.getVariable("_bottomScripts"), "");
 			StringWriter sw=new StringWriter();
 			content.render(self, sw, context);
 			List<Scope> scopes=context.getScopeChain().getGlobalScopes();
-			scopes.get(scopes.size()-1).put("_bottomScripts", bottomScripts+sw.toString().trim()+"\n");
-//			context.getScopeChain().set("_bottomScripts", );
-			System.out.println(context.getVariable("_bottomScripts"));
+			Scope lastScope=scopes.get(scopes.size()-1);
+			String bottomScripts=(String) Objects.requireNonNullElse(lastScope.get("_bottomScripts"), "");
+			lastScope.put("_bottomScripts", bottomScripts+sw.toString().trim()+"\n");
 		}
 
 		@Override

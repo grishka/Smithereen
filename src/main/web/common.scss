@@ -700,3 +700,16 @@ input[type=checkbox]{
 	height: 1px;
 	margin-top: -1px;
 }
+
+ul.actualList{
+	list-style-type: square;
+	color: $normalLink;
+	padding: 0;
+	padding-left: 15px;
+	li{
+		margin-bottom: 5px;
+		span{
+			color: $text;
+		}
+	}
+}

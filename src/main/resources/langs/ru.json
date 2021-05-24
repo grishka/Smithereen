@@ -297,5 +297,19 @@
 
   "go_up": "Наверх",
   "X_groups": ["%d группа", "%d группы", "%d групп"],
-  "add_comment": "Комментировать"
+  "add_comment": "Комментировать",
+  "admin_server_short_description": "Краткое описание",
+  "admin_server_policy": "Правила",
+  "admin_server_info_html_explain": "В полях описания и правил можно использовать HTML.",
+  "about_server": "Об этом сервере",
+  "about_stats": "Статистика",
+  "about_X_users": ["<b>%,d</b> пользователь", "<b>%,d</b> пользователя", "<b>%,d</b> пользователей"],
+  "about_X_posts": ["<b>%,d</b> запись на стенах", "<b>%,d</b> записи на стенах", "<b>%,d</b> записей на стенах"],
+  "about_X_groups": ["<b>%,d</b> группа", "<b>%,d</b> группы", "<b>%,d</b> групп"],
+  "about_contact": "Контакт",
+  "about_admins": "Администраторы",
+  "about_software1": "Этот сервер работает под управлением ",
+  "about_software2": " версии ",
+  "about_software3": ".",
+  "about_on_this_server": "На этом сервере"
 }

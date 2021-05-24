@@ -1,0 +1,46 @@
+{% extends "page" %}
+{% block content %}
+<table width="100%" cellpadding="0" cellspacing="0" class="columnLayout leftNarrow">
+	<tr valign="top">
+		<!-- left column -->
+		<td width="200" id="left">
+			<h2>{{ L('about_stats') }}</h2>
+			<div class="marginBefore">
+				{{ L('about_on_this_server') }}:
+				<ul class="actualList">
+					<li><span>{{ LP('about_X_users', totalUsers) }}</span></li>
+					<li><span>{{ LP('about_X_groups', totalGroups) }}</span></li>
+					<li><span>{{ LP('about_X_posts', totalPosts) }}</span></li>
+				</ul>
+			</div>
+		</td>
+		<!-- right column -->
+		<td id="right">
+			<h2>{{ L('about_admins') }}</h2>
+			<table width="100%" style="table-layout: fixed;" class="profileBlock marginAfter">
+				<colgroup><col width="48"/><col width="*"/></colgroup>
+				{% for admin in serverAdmins %}
+					<tr class="oneMemberRow">
+						<td valign="top"><a href="{{ admin.profileURL }}">{{ admin | pictureForAvatar('s', 40) }}</a></td>
+						<td class="nameAndInfo">
+							<div><a href="{{ admin.profileURL }}">{{ admin.fullName }}</a></div>
+						</td>
+					</tr>
+				{% endfor %}
+			</table>
+			{% if serverAdminEmail is not empty %}
+				<h2>{{ L('about_contact') }}</h2>
+				<div class="marginBefore">
+					<a href="mailto:{{ serverAdminEmail }}">{{ serverAdminEmail }}</a>
+				</div>
+			{% endif %}
+		</td>
+	</tr>
+</table>
+<div class="singleColumn">
+	{{ serverPolicy | raw }}
+</div>
+<div class="singleColumn" align="center">
+	{{ L('about_software1') }}<a href="https://smithereen.software/" target="_blank">Smithereen</a>{{ L('about_software2') }}{{ serverVersion }}{{ L('about_software3') }}
+</div>
+{% endblock %}
