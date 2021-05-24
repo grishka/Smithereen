@@ -19,7 +19,9 @@ import java.security.Signature;
 import java.text.SimpleDateFormat;
 import java.util.Base64;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -33,6 +35,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import smithereen.Utils;
 import smithereen.exceptions.BadRequestException;
 import smithereen.Config;
 import smithereen.DisallowLocalhostInterceptor;
@@ -119,8 +122,14 @@ public class ActivityPub{
 		}
 
 		String keyID=actor.activityPubID+"#main-key";
-		String sigHeader="keyId=\""+keyID+"\",headers=\"(request-target) host date digest\",algorithm=\"rsa-sha256\",signature=\""+Base64.getEncoder().encodeToString(signature)+"\"";
-		builder.header("Signature", sigHeader).header("Date", date).header("Digest", digestHeader);
+		builder.header("Signature", Utils.serializeSignatureHeader(List.of(Map.of(
+					"keyId", keyID,
+					"headers", "(request-target) host date digest",
+					"algorithm", "rsa-sha256",
+					"signature", Base64.getEncoder().encodeToString(signature)
+				))))
+				.header("Date", date)
+				.header("Digest", digestHeader);
 		return builder;
 	}
 

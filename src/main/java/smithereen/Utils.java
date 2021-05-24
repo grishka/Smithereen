@@ -27,12 +27,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
 import smithereen.activitypub.ActivityPub;
@@ -63,6 +66,7 @@ public class Utils{
 
 	private static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
 	private static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
+	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([a-zA-Z0-9]+)=\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\"\\s*([,;])?\\s*");
 
 	static{
 		staticFileHash=String.format(Locale.US, "%016x", new Random().nextLong());
@@ -590,6 +594,30 @@ public class Utils{
 			throw new UserActionNotAllowedException();
 		if(GroupStorage.isUserBlocked(target.id, self.id))
 			throw new UserActionNotAllowedException();
+	}
+
+	public static List<Map<String, String>> parseSignatureHeader(String header){
+		Matcher matcher=SIGNATURE_HEADER_PATTERN.matcher(header);
+		ArrayList<Map<String, String>> res=new ArrayList<>();
+		HashMap<String, String> curMap=new HashMap<>();
+		while(matcher.find()){
+			String key=matcher.group(1);
+			String value=matcher.group(2).replace("\\\"", "\"").replace("\\\\", "\\");
+			String separator=matcher.group(3);
+			curMap.put(key, value);
+			if(separator==null || ";".equals(separator)){
+				res.add(curMap);
+				if(";".equals(separator))
+					curMap=new HashMap<>();
+			}
+		}
+		return res;
+	}
+
+	public static String serializeSignatureHeader(List<Map<String, String>> sig){
+		return sig.stream().map(map->{
+			return map.entrySet().stream().map(e->e.getKey()+"=\""+e.getValue().replace("\\", "\\\\").replace("\"", "\\\"")+"\"").collect(Collectors.joining(","));
+		}).collect(Collectors.joining(";"));
 	}
 
 	public interface MentionCallback{

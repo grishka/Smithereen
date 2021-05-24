@@ -24,6 +24,7 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
 
 import smithereen.activitypub.handlers.AddNoteHandler;
@@ -733,48 +734,37 @@ public class ActivityPubRoutes{
 	private static Actor verifyHttpSignature(Request req, Actor userHint) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, SQLException{
 		String sigHeader=req.headers("Signature");
 		if(sigHeader==null)
-			throw new IllegalArgumentException("Request is missing Signature header");
-		String[] parts=sigHeader.split(",");
-		String keyId=null;
-		byte[] signature=null;
-		List<String> headers=null;
-		String algorithm=null;
-		for(String part:parts){
-			String[] kv=part.split("=", 2);
-			String key=kv[0];
-			String value=kv[1];
-			if(value.charAt(0)=='"'){
-				value=value.substring(1, value.length()-1);
-			}
-			switch(key){
-				case "keyId":
-					keyId=value;
-					break;
-				case "signature":
-					signature=Base64.getDecoder().decode(value);
-					break;
-				case "headers":
-					headers=Arrays.asList(value.split(" "));
-					break;
-				case "algorithm":
-					algorithm=value.toLowerCase();
-					break;
+			throw new BadRequestException("Request is missing Signature header");
+		List<Map<String, String>> values=parseSignatureHeader(sigHeader);
+		if(values.isEmpty())
+			throw new BadRequestException("Signature header has invalid format");
+		Map<String, String> supportedSig=null;
+		for(Map<String, String> sig:values){
+			if("rsa-sha256".equalsIgnoreCase(sig.get("algorithm"))){
+				supportedSig=sig;
+				break;
 			}
 		}
-		if(keyId==null)
-			throw new IllegalArgumentException("Signature header is missing keyId field");
-		if(signature==null)
-			throw new IllegalArgumentException("Signature header is missing signature field");
-		if(headers==null)
-			throw new IllegalArgumentException("Signature header is missing headers field");
-		if(algorithm!=null && !algorithm.equals("rsa-sha256"))
-			throw new IllegalArgumentException("Unsupported signature algorithm \""+algorithm+"\", expected \"rsa-sha256\"");
+		if(supportedSig==null)
+			throw new BadRequestException("Unsupported signature algorithm \""+values.get(0).get("algorithm")+"\", expected \"rsa-sha256\"");
+
+		if(!supportedSig.containsKey("keyId"))
+			throw new BadRequestException("Signature header is missing keyId field");
+		if(!supportedSig.containsKey("signature"))
+			throw new BadRequestException("Signature header is missing signature field");
+		if(!supportedSig.containsKey("headers"))
+			throw new BadRequestException("Signature header is missing headers field");
+
+		String keyId=supportedSig.get("keyId");
+		byte[] signature=Base64.getDecoder().decode(supportedSig.get("signature"));
+		List<String> headers=Arrays.asList(supportedSig.get("headers").split(" "));
+
 		if(!headers.contains("(request-target)"))
-			throw new IllegalArgumentException("(request-target) is not in signed headers");
+			throw new BadRequestException("(request-target) is not in signed headers");
 		if(!headers.contains("date"))
-			throw new IllegalArgumentException("date is not in signed headers");
+			throw new BadRequestException("date is not in signed headers");
 		if(!headers.contains("host"))
-			throw new IllegalArgumentException("host is not in signed headers");
+			throw new BadRequestException("host is not in signed headers");
 
 		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
 		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -782,9 +772,9 @@ public class ActivityPubRoutes{
 		long now=System.currentTimeMillis();
 		long diff=now-unixtime;
 		if(diff>30000L)
-			throw new IllegalArgumentException("Date is too far in the future (difference: "+diff+"ms)");
+			throw new BadRequestException("Date is too far in the future (difference: "+diff+"ms)");
 		if(diff<-30000L)
-			throw new IllegalArgumentException("Date is too far in the past (difference: "+diff+"ms)");
+			throw new BadRequestException("Date is too far in the past (difference: "+diff+"ms)");
 
 		URI userID=Utils.userIdFromKeyId(URI.create(keyId));
 		Actor user;
@@ -793,7 +783,7 @@ public class ActivityPubRoutes{
 		else
 			user=ObjectLinkResolver.resolve(userID, Actor.class, false, true, false);
 		if(user==null)
-			throw new IllegalArgumentException("Request signed by unknown user: "+userID);
+			throw new BadRequestException("Request signed by unknown user: "+userID);
 
 		ArrayList<String> sigParts=new ArrayList<>();
 		for(String header:headers){
@@ -812,7 +802,7 @@ public class ActivityPubRoutes{
 		if(!sig.verify(signature)){
 			System.out.println("Failed sig: "+sigHeader);
 			System.out.println("Failed sig string: '"+sigStr+"'");
-			throw new IllegalArgumentException("Signature failed to verify");
+			throw new BadRequestException("Signature failed to verify");
 		}
 		return user;
 	}
