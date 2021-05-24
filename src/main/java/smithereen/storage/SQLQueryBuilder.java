@@ -92,6 +92,7 @@ public class SQLQueryBuilder{
 
 	public SQLQueryBuilder selectExpr(String expr){
 		selectExpr=expr;
+		selectEverything=false;
 		return this;
 	}
 

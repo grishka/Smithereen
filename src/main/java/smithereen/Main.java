@@ -18,6 +18,7 @@ import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.routes.ActivityPubRoutes;
+import smithereen.routes.ApiRoutes;
 import smithereen.routes.GroupsRoutes;
 import smithereen.routes.NotificationsRoutes;
 import smithereen.routes.PostRoutes;
@@ -79,6 +80,8 @@ public class Main{
 			staticFileLocation("/public");
 		staticFiles.expireTime(7*24*60*60);
 		before((request, response) -> {
+			if(request.pathInfo().startsWith("/api/"))
+				return;
 			request.attribute("start_time", System.currentTimeMillis());
 			if(request.session(false)==null || request.session().attribute("info")==null){
 				String psid=request.cookie("psid");
@@ -300,6 +303,15 @@ public class Main{
 				getLoggedIn("/managed", GroupsRoutes::myManagedGroups);
 				getLoggedIn("/create", GroupsRoutes::createGroup);
 				postWithCSRF("/create", GroupsRoutes::doCreateGroup);
+			});
+		});
+
+		path("/api/v1", ()->{
+			getApi("/instance", ApiRoutes::instance);
+			getApi("/instance/peers", ApiRoutes::instancePeers);
+
+			before("/*", (req, resp)->{
+				resp.type("application/json");
 			});
 		});
 

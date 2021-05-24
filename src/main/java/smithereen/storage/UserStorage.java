@@ -699,6 +699,34 @@ public class UserStorage{
 		return getById(DatabaseUtils.intResultSetToList(res), true);
 	}
 
+	public static int getPeerDomainCount() throws SQLException{
+		ResultSet res=new SQLQueryBuilder()
+				.selectFrom("users")
+				.selectExpr("COUNT(DISTINCT domain)")
+				.createStatement()
+				.executeQuery();
+		return DatabaseUtils.oneFieldToInt(res)-1; // -1 for local domain (empty string)
+	}
+
+	public static List<String> getPeerDomains() throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("users")
+				.distinct()
+				.columns("domain")
+				.orderBy("domain asc")
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			ArrayList<String> domains=new ArrayList<>();
+			res.beforeFirst();
+			while(res.next()){
+				String d=res.getString(1);
+				if(d.length()>0)
+					domains.add(d);
+			}
+			return domains;
+		}
+	}
+
 	public static boolean isUserBlocked(int ownerID, int targetID) throws SQLException{
 		PreparedStatement stmt=new SQLQueryBuilder()
 				.selectFrom("blocks_user_user")
