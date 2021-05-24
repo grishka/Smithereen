@@ -6,6 +6,9 @@
 	<link rel="stylesheet" type="text/css" href="/res/desktop.css?{{staticHash}}"/>
 	{%if metaTags is not null%}{%for tag in metaTags%}<meta property="{{tag.key}}" content="{{tag.value}}"/>
 	{%endfor%}{%endif%}
+	{% if noindex %}
+		<meta name="robots" content="noindex"/>
+	{% endif %}
 	<script>
 		var userConfig={{jsConfig | raw}};
 		var langKeys={{jsLangKeys | raw}};

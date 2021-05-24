@@ -141,6 +141,8 @@ public class GroupsRoutes{
 		model.with("postInteractions", interactions);
 		model.with("title", group.name);
 		model.with("admins", GroupStorage.getGroupAdmins(group.id));
+		if(group instanceof ForeignGroup)
+			model.with("noindex", true);
 		jsLangKey(req, "yes", "no", "cancel", "close", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "delete_post", "delete_post_confirm");
 		if(self!=null){
 			Group.AdminLevel level=GroupStorage.getGroupMemberAdminLevel(group.id, self.user.id);
