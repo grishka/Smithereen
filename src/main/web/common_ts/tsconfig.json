@@ -2,6 +2,7 @@
 	"compilerOptions":{
 		"outFile": "../../resources/public/res/common.js",
 		"sourceMap": true,
+		"sourceRoot": "/res/common_ts/",
 		"noImplicitAny": true,
 	},
 	"include":["*"]

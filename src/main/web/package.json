@@ -8,6 +8,9 @@
 		"postcss-inline-svg": "latest",
 		"postcss-nested": "latest",
 		"postcss-rgba-hex": "latest",
-		"postcss-scss": "latest"
+		"postcss-cli": "latest",
+		"postcss": "latest",
+		"typescript": "latest",
+		"uglify-js": "latest"
 	}
 }

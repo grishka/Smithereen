@@ -1,5 +1,5 @@
 module.exports={
-	syntax: 'postcss-scss',
+	//syntax: 'postcss-scss',
 	plugins:[
 		require('postcss-advanced-variables')(),
 		require('postcss-import')(),

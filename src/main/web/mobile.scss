@@ -67,7 +67,7 @@ span.wideOnly{
 			display: block;
 			width: 100%;
 			height: 100%;
-			background-image: svg-load("img/material/ic_menu.svg", fill: $iconColor);
+			background-image: svg-load('img/material/ic_menu.svg', fill: $iconColor);
 			background-position: center;
 			background-repeat: no-repeat;
 			span{
@@ -194,7 +194,7 @@ select{
 			width: 56px;
 			height: 56px;
 			margin-bottom: 8px;
-			background: svg-load('img/material/ic_close.svg', fill=$auxiliaryGrey) no-repeat center;
+			background: svg-load('img/material/ic_close.svg', fill: $auxiliaryGrey) no-repeat center;
 		}
 	}
 }
@@ -694,7 +694,7 @@ select{
 			float: right;
 			width: 32px;
 			height: 50px;
-			background: svg-load('img/material/ic_more_vert.svg', fill=$grayText) no-repeat center;
+			background: svg-load('img/material/ic_more_vert.svg', fill: $grayText) no-repeat center;
 		}
 	}
 }
@@ -707,7 +707,7 @@ select{
 			width: 32px;
 			height: 50px;
 			float: left;
-			background: svg-load('img/material/ic_reorder.svg', fill=$grayText) no-repeat center;
+			background: svg-load('img/material/ic_reorder.svg', fill: $grayText) no-repeat center;
 		}
 	}
 	.beingDragged .reorderableItem{

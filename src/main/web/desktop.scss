@@ -258,7 +258,7 @@ h2{
 			margin: 15px 31px 15px 15px;
 			padding: 0 20px;
 			overflow-x: hidden;
-			background: svg-load('img/toplink.svg', fill=$normalLink) no-repeat left 3px;
+			background: svg-load('img/toplink.svg', fill: $normalLink) no-repeat left 3px;
 			opacity: .5;
 			transition: opacity .1s ease;
 		}
@@ -273,7 +273,6 @@ h2{
 	width: calc(((100vw - (100vw - 100%)) - $siteWidthNarrow) / 2);
 }
 
-// @media (max-width: calc($siteWidthNarrow + 130px * 2)){
 @media (max-width: 1051px){
 	.narrowPage #elevator{
 		display: none;
@@ -313,7 +312,6 @@ h2{
 
 .pageContent{
 	box-shadow: 0 1px 1px 1px rgba(0, 0, 0, .1);
-	// overflow-y: hidden; /* prevent margin collapse */
 	margin-right: 17px;
 }
 
@@ -342,7 +340,6 @@ h2{
 	.blockSubheader{
 		height: 19px;
 		background: $wallCommentSeparator;
-		// background: $auxiliaryBlockHeader;
 		border-top: solid 1px $blockBorderBottom;
 		color: $auxiliaryGrey;
 		padding: 0 8px;
@@ -555,7 +552,7 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 			left: 0;
 			right: 0;
 			bottom: 0;
-			background: svg-load('img/loading_anim.svg', fill=$textOnAccent) no-repeat center;
+			background: svg-load('img/loading_anim.svg', fill: $textOnAccent) no-repeat center;
 		}
 	}
 
@@ -576,13 +573,6 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 		color: $darkGrey;
 		box-shadow: 0 1px 0 #FFF inset, 0 0 0 1px $buttonGrayBorderInner inset;
 		background-position: 0 -12px;
-		// &.loading{
-		// 	color: transparent;
-		// 	text-shadow: none;
-		// 	&:after{
-		// 		background: svg-load('img/loading_anim.svg', fill=$darkGrey) no-repeat center;
-		// 	}
-		// }
 		&:hover{
 			background-position: 0 -4px;
 		}
@@ -1257,7 +1247,6 @@ select{
 		position: absolute;
 		z-index: 1;
 		left: -26px;
-		// border: solid 1px $textAreaBorder;
 		background: #fff;
 		cursor: pointer;
 		border-radius: 2px;
@@ -1350,10 +1339,6 @@ input:checked+.postCWWrap{
 	color: $normalLink;
 	padding: 13px 15px 0;
 	border-bottom: solid 1px $wallPostSeparator;
-
-// 	&.first{
-// 		padding: 13px 15px 0;
-// 	}
 
 	.summary{
 		font-weight: bold;
