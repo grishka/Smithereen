@@ -17,6 +17,7 @@ class PostForm{
 	private attachPopupMenu:PopupMenu;
 	private cwLayout:HTMLElement;
 	private collapsed:boolean;
+	private mouseInside:boolean=false;
 
 	public constructor(el:HTMLElement){
 		this.id=el.getAttribute("data-unique-id");
@@ -38,6 +39,8 @@ class PostForm{
 		this.input.addEventListener("paste", this.onInputPaste.bind(this), false);
 		this.input.addEventListener("focus", this.onInputFocus.bind(this), false);
 		this.input.addEventListener("blur", this.onInputBlur.bind(this), false);
+		this.root.addEventListener("mouseenter", ()=>{this.mouseInside=true;}, false);
+		this.root.addEventListener("mouseleave", ()=>{this.mouseInside=false;}, false);
 		autoSizeTextArea(this.input);
 		if(this.input.dataset.replyName){
 			this.currentReplyName=this.input.dataset.replyName;
@@ -112,7 +115,7 @@ class PostForm{
 	}
 
 	private onInputBlur(ev:FocusEvent):void{
-		if(!this.isDirty()){
+		if(!this.isDirty() && !this.mouseInside){
 			this.setCollapsed(true);
 		}
 	}
