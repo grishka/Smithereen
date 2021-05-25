@@ -155,7 +155,7 @@ public class Main{
 			path("/admin", ()->{
 				getRequiringAccessLevel("", Account.AccessLevel.ADMIN, SettingsAdminRoutes::index);
 				postRequiringAccessLevelWithCSRF("/updateServerInfo", Account.AccessLevel.ADMIN, SettingsAdminRoutes::updateServerInfo);
-				getRequiringAccessLevel("/users", Account.AccessLevel.ADMIN, SettingsAdminRoutes::users);
+				getRequiringAccessLevel("/users", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::users);
 				getRequiringAccessLevel("/users/accessLevelForm", Account.AccessLevel.ADMIN, SettingsAdminRoutes::accessLevelForm);
 				postRequiringAccessLevelWithCSRF("/users/setAccessLevel", Account.AccessLevel.ADMIN, SettingsAdminRoutes::setUserAccessLevel);
 				getRequiringAccessLevel("/other", Account.AccessLevel.ADMIN, SettingsAdminRoutes::otherSettings);

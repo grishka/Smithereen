@@ -1,5 +1,9 @@
 <div class="tabbar">
+	{% if userPermissions.serverAccessLevel.ordinal>=3 %}
 	<a href="/settings/admin" class="{% if tab=='general' %}selected{% endif %}">{{L('profile_edit_basic')}}</a>
+	{% endif %}
 	<a href="/settings/admin/users" class="{% if tab=='users' %}selected{% endif %}">{{L('admin_users')}}</a>
+	{% if userPermissions.serverAccessLevel.ordinal>=3 %}
 	<a href="/settings/admin/other" class="{% if tab=='other' %}selected{% endif %}">{{L('admin_other')}}</a>
+	{% endif %}
 </div>
