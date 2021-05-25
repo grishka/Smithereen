@@ -17,6 +17,9 @@ public class UserPermissions{
 	}
 
 	public boolean canDeletePost(Post post){
+		// Moderators can delete any local posts
+		if(post.local && serverAccessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal())
+			return true;
 		// Users can always delete their own posts
 		if(post.user.id==userID)
 			return true;

@@ -381,7 +381,7 @@ public class PostRoutes{
 		if(post==null){
 			throw new ObjectNotFoundException("err_post_not_found");
 		}
-		if(!post.canBeManagedBy(self.user)){
+		if(!sessionInfo(req).permissions.canDeletePost(post)){
 			throw new UserActionNotAllowedException();
 		}
 		PostStorage.deletePost(post.id);
@@ -389,7 +389,12 @@ public class PostRoutes{
 		if(Config.isLocal(post.activityPubID) && post.attachment!=null && !post.attachment.isEmpty()){
 			MediaStorageUtils.deleteAttachmentFiles(post.attachment);
 		}
-		ActivityPubWorker.getInstance().sendDeletePostActivity(post, self.user);
+		User deleteActor=self.user;
+		// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
+		if(self.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal() && post.user.id!=self.id && !post.isGroupOwner() && post.owner.getLocalID()!=self.id && !(post.user instanceof ForeignUser)){
+			deleteActor=post.user;
+		}
+		ActivityPubWorker.getInstance().sendDeletePostActivity(post, deleteActor);
 		if(isAjax(req)){
 			resp.type("application/json");
 			return new WebDeltaResponseBuilder().remove("post"+postID).json();
