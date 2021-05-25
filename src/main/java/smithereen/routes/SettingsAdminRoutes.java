@@ -1,16 +1,21 @@
 package smithereen.routes;
 
+import java.net.URLEncoder;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
 import smithereen.Config;
 import smithereen.Mailer;
+import smithereen.Utils;
 import smithereen.data.Account;
+import smithereen.data.FriendshipStatus;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
+import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
@@ -80,7 +85,7 @@ public class SettingsAdminRoutes{
 		model.with("total", UserStorage.getLocalUserCount());
 		model.with("pageOffset", offset);
 		model.with("wideOnDesktop", true);
-		jsLangKey(req, "cancel");
+		jsLangKey(req, "cancel", "yes", "no");
 		return model.renderToString(req);
 	}
 
@@ -107,6 +112,57 @@ public class SettingsAdminRoutes{
 			resp.type("application/json");
 			return "[]";
 		}
+		return "";
+	}
+
+	public static Object banUserForm(Request req, Response resp, Account self) throws SQLException{
+		Lang l=lang(req);
+		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
+		Account target=UserStorage.getAccount(accountID);
+		if(target==null || target.id==self.id || target.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal())
+			throw new ObjectNotFoundException("err_user_not_found");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_ban_user");
+		model.with("targetAccount", target);
+		return wrapForm(req, resp, "admin_ban_user", "/settings/admin/users/ban?accountID="+accountID, l.get("admin_ban"), "admin_ban", model);
+	}
+
+	public static Object banUser(Request req, Response resp, Account self) throws SQLException{
+		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
+		Account target=UserStorage.getAccount(accountID);
+		if(target==null || target.id==self.id || target.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal())
+			throw new ObjectNotFoundException("err_user_not_found");
+		Account.BanInfo banInfo=new Account.BanInfo();
+		banInfo.reason=req.queryParams("message");
+		banInfo.adminUserId=self.user.id;
+		banInfo.when=Instant.now();
+		UserStorage.putAccountBanInfo(accountID, banInfo);
+		if(isAjax(req))
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object confirmUnbanUser(Request req, Response resp, Account self) throws SQLException{
+		req.attribute("noHistory", true);
+		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
+		Account target=UserStorage.getAccount(accountID);
+		if(target==null)
+			throw new ObjectNotFoundException("err_user_not_found");
+		Lang l=Utils.lang(req);
+		String back=Utils.back(req);
+		User user=target.user;
+		return new RenderedTemplateResponse("generic_confirm").with("message", l.inflected("admin_unban_X_confirm", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/settings/admin/users/unban?accountID="+accountID+"&_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+	}
+
+	public static Object unbanUser(Request req, Response resp, Account self) throws SQLException{
+		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
+		Account target=UserStorage.getAccount(accountID);
+		if(target==null)
+			throw new ObjectNotFoundException("err_user_not_found");
+		UserStorage.putAccountBanInfo(accountID, null);
+		if(isAjax(req))
+			return new WebDeltaResponseBuilder(resp).refresh().json();
+		resp.redirect(back(req));
 		return "";
 	}
 

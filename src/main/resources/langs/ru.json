@@ -311,5 +311,11 @@
   "about_software1": "Этот сервер работает под управлением ",
   "about_software2": " версии ",
   "about_software3": ".",
-  "about_on_this_server": "На этом сервере"
+  "about_on_this_server": "На этом сервере",
+  "admin_ban": "Забанить",
+  "admin_unban": "Разбанить",
+  "admin_ban_X_confirm": {"str": "Вы действительно хотите заблокировать аккаунт <b>%s</b>?", "case": "ACCUSATIVE"},
+  "admin_unban_X_confirm": {"str": "Вы действительно хотите разблокировать аккаунт <b>%s</b>?", "case": "ACCUSATIVE"},
+  "ban_reason": "Причина блокировки",
+  "your_account_is_banned": "Ваша учётная запись заблокирована администрацией сервера."
 }

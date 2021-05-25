@@ -30,6 +30,7 @@ public class SmithereenExtension extends AbstractExtension{
 		r.put("pictureForAvatar", new PictureForAvatarFilter());
 		r.put("postprocessHTML", new PostprocessHTMLFilter());
 		r.put("forceEscape", new ForceEscapeFilter());
+		r.put("nl2br", new Nl2brFilter());
 		return r;
 	}
 

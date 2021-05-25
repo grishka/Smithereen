@@ -311,5 +311,11 @@
   "about_software1": "This server runs ",
   "about_software2": " version ",
   "about_software3": ".",
-  "about_on_this_server": "On this server are"
+  "about_on_this_server": "On this server are",
+  "admin_ban": "Ban",
+  "admin_unban": "Unban",
+  "admin_ban_X_confirm": "Are you sure you want to ban <b>%s</b>'s account?",
+  "admin_unban_X_confirm": "Are you sure you want to unban <b>%s</b>'s account?",
+  "ban_reason": "Reason for ban",
+  "your_account_is_banned": "Your account has been banned by this server's administrators."
 }

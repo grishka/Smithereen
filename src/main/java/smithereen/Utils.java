@@ -1,5 +1,9 @@
 package smithereen;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.internal.bind.TypeAdapters;
+
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Comment;
@@ -21,8 +25,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
+import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,6 +47,7 @@ import java.util.zip.CRC32;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Mention;
+import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.Post;
@@ -53,6 +60,7 @@ import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.InstantMillisJsonAdapter;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -67,6 +75,8 @@ public class Utils{
 	private static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
 	private static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([a-zA-Z0-9]+)=\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\"\\s*([,;])?\\s*");
+
+	public static final Gson gson=new GsonBuilder().disableHtmlEscaping().registerTypeAdapter(Instant.class, new InstantMillisJsonAdapter()).create();
 
 	static{
 		staticFileHash=String.format(Locale.US, "%016x", new Random().nextLong());
@@ -89,6 +99,15 @@ public class Utils{
 			if(StringUtils.isNotEmpty(query))
 				to+="?"+query;
 			resp.redirect("/account/login?to="+URLEncoder.encode(to));
+			return false;
+		}
+		Account acc=sessionInfo(req).account;
+		if(acc.banInfo!=null){
+			Lang l=lang(req);
+			String msg=l.get("your_account_is_banned");
+			if(StringUtils.isNotEmpty(acc.banInfo.reason))
+				msg+="\n\n"+l.get("ban_reason")+": "+acc.banInfo.reason;
+			resp.body(new RenderedTemplateResponse("generic_message").with("message", msg).renderToString(req));
 			return false;
 		}
 		return true;

@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import smithereen.Config;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=7;
+	public static final int SCHEMA_VERSION=8;
 
 	public static void maybeUpdate() throws SQLException{
 		if(Config.dbSchemaVersion==0){
@@ -143,6 +143,8 @@ public class DatabaseSchemaUpdater{
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 		}else if(target==7){
 			conn.createStatement().execute("ALTER TABLE accounts ADD `last_active` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP");
+		}else if(target==8){
+			conn.createStatement().execute("ALTER TABLE accounts ADD `ban_info` text DEFAULT NULL");
 		}
 	}
 }

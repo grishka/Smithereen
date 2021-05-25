@@ -16,7 +16,18 @@
 			<td class="ellipsize"><a href="{{acc.user.url}}"><span class="tinyInlineAva">{{acc.user | pictureForAvatar('s', 32)}}</span>{{acc.user.fullName}}</a></td>
 			<td class="ellipsize">{%if acc.invitedBy is not null%}<a href="{{acc.invitedBy.url}}"><span class="tinyInlineAva">{{acc.invitedBy | pictureForAvatar('s', 32)}}</span>{{acc.invitedBy.fullName}}</a>{%else%}&mdash;{%endif%}</td>
 			<td align="center">{{LD(acc.createdAt)}}</td>
-			<td>{%if acc.user.id!=currentUser.id%}<a href="/settings/admin/users/accessLevelForm?accountID={{acc.id}}" data-ajax-box="1">{{L('access_level')}}</a>{%endif%}</td>
+			<td>
+				{% if acc.user.id!=currentUser.id %}
+					<a href="/settings/admin/users/accessLevelForm?accountID={{ acc.id }}" data-ajax-box="1">{{ L('access_level') }}</a>
+				{% endif %}
+				{% if acc.accessLevel!='ADMIN' and acc.accessLevel!='MODERATOR' %}
+					{% if acc.banInfo is null %}
+						| <a href="/settings/admin/users/banForm?accountID={{ acc.id }}" data-ajax-box="1">{{ L('admin_ban') }}</a>
+					{% else %}
+						| <a href="/settings/admin/users/confirmUnban?accountID={{ acc.id }}" data-confirm-action="/settings/admin/users/unban?accountID={{ acc.id }}" data-confirm-title="{{ L('admin_unban') }}" data-confirm-message="{{ LI(key="admin_unban_X_confirm", first=acc.user.firstName, last=acc.user.lastName, gender=acc.user.gender) | forceEscape }}">{{ L('admin_unban') }}</a>
+					{% endif %}
+				{% endif %}
+			</td>
 		</tr>
 		{%endfor%}
 	</table>

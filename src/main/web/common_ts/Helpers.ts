@@ -407,7 +407,7 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 		return true;
 	}
 	if(link.dataset.confirmAction){
-		ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage.escapeHTML(), link.dataset.confirmAction);
+		ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage, link.dataset.confirmAction);
 		return true;
 	}
 	return false;

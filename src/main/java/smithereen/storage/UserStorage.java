@@ -831,4 +831,16 @@ public class UserStorage{
 		if(user instanceof ForeignUser)
 			cacheByActivityPubID.remove(user.activityPubID);
 	}
+
+	public static void putAccountBanInfo(int accountID, Account.BanInfo banInfo) throws SQLException{
+		new SQLQueryBuilder()
+				.update("accounts")
+				.value("ban_info", banInfo!=null ? Utils.gson.toJson(banInfo) : null)
+				.where("id=?", accountID)
+				.createStatement()
+				.execute();
+		synchronized(UserStorage.class){
+			accountCache.remove(accountID);
+		}
+	}
 }

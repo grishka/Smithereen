@@ -161,6 +161,10 @@ public class Main{
 				getRequiringAccessLevel("/other", Account.AccessLevel.ADMIN, SettingsAdminRoutes::otherSettings);
 				postRequiringAccessLevelWithCSRF("/updateEmailSettings", Account.AccessLevel.ADMIN, SettingsAdminRoutes::saveEmailSettings);
 				postRequiringAccessLevelWithCSRF("/sendTestEmail", Account.AccessLevel.ADMIN, SettingsAdminRoutes::sendTestEmail);
+				getRequiringAccessLevel("/users/banForm", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::banUserForm);
+				getRequiringAccessLevel("/users/confirmUnban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::confirmUnbanUser);
+				postRequiringAccessLevelWithCSRF("/users/ban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::banUser);
+				postRequiringAccessLevelWithCSRF("/users/unban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::unbanUser);
 			});
 		});
 
