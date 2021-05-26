@@ -72,7 +72,7 @@ public class Utils{
 	private static final ThreadLocal<SimpleDateFormat> ISO_DATE_FORMAT=new ThreadLocal<>();
 	public static final String staticFileHash;
 
-	private static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
+	private static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
 	private static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([a-zA-Z0-9]+)=\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\"\\s*([,;])?\\s*");
 
@@ -395,24 +395,7 @@ public class Utils{
 			}
 		}else if(node instanceof TextNode){
 			TextNode text=(TextNode)node;
-			Matcher matcher=MENTION_PATTERN.matcher(text.text());
-			while(matcher.find()){
-				String u=matcher.group(1);
-				String d=matcher.group(2);
-				if(d!=null && d.equalsIgnoreCase(Config.domain)){
-					d=null;
-				}
-				User mentionedUser=mentionCallback==null ? null : mentionCallback.resolveMention(u, d);
-				if(mentionedUser!=null){
-					TextNode inner=matcher.start()==0 ? text : text.splitText(matcher.start());
-					int len=matcher.end()-matcher.start();
-					if(len<inner.text().length())
-						inner.splitText(len);
-					inner.wrap("<a href=\""+escapeHTML(mentionedUser.url.toString())+"\" class=\"mention\" data-user-id=\""+mentionedUser.id+"\">");
-					return;
-				}
-			}
-			matcher=URL_PATTERN.matcher(text.text());
+			Matcher matcher=URL_PATTERN.matcher(text.text());
 
 			outer:
 			while(matcher.find()){
@@ -440,6 +423,24 @@ public class Utils{
 				}
 				inner.wrap("<a href=\""+escapeHTML(realURL)+"\">");
 				return;
+			}
+
+			matcher=MENTION_PATTERN.matcher(text.text());
+			while(matcher.find()){
+				String u=matcher.group(1);
+				String d=matcher.group(2);
+				if(d!=null && d.equalsIgnoreCase(Config.domain)){
+					d=null;
+				}
+				User mentionedUser=mentionCallback==null ? null : mentionCallback.resolveMention(u, d);
+				if(mentionedUser!=null){
+					TextNode inner=matcher.start()==0 ? text : text.splitText(matcher.start());
+					int len=matcher.end()-matcher.start();
+					if(len<inner.text().length())
+						inner.splitText(len);
+					inner.wrap("<a href=\""+escapeHTML(mentionedUser.url.toString())+"\" class=\"mention\" data-user-id=\""+mentionedUser.id+"\">");
+					return;
+				}
 			}
 		}
 	}

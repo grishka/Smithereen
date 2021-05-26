@@ -86,7 +86,7 @@ public class PostRoutes{
 				try{
 					if(domain==null){
 						User user=UserStorage.getByUsername(username);
-						if(!mentionedUsers.contains(user))
+						if(user!=null && !mentionedUsers.contains(user))
 							mentionedUsers.add(user);
 						return user;
 					}
