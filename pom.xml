@@ -10,7 +10,7 @@
 
 	<groupId>me.grishka.smithereen</groupId>
 	<artifactId>server</artifactId>
-	<version>0.0.1-pre-alpha</version>
+	<version>0.1</version>
 	<build>
 		<plugins>
 
