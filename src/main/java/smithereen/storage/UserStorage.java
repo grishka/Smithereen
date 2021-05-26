@@ -446,17 +446,20 @@ public class UserStorage{
 		stmt.execute();
 	}
 
-	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, java.sql.Date bdate) throws SQLException{
+	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, java.sql.Date bdate, String about) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("UPDATE `users` SET `fname`=?, `lname`=?, `gender`=?, `bdate`=?, middle_name=?, maiden_name=? WHERE `id`=?");
-		stmt.setString(1, firstName);
-		stmt.setString(2, lastName);
-		stmt.setInt(3, gender.ordinal());
-		stmt.setDate(4, bdate);
-		stmt.setString(5, middleName);
-		stmt.setString(6, maidenName);
-		stmt.setInt(7, user.id);
-		stmt.execute();
+		new SQLQueryBuilder()
+				.update("users")
+				.where("id=?", user.id)
+				.value("fname", firstName)
+				.value("lname", lastName)
+				.value("gender", gender)
+				.value("bdate", bdate)
+				.value("middle_name", middleName)
+				.value("maiden_name", maidenName)
+				.value("about", about)
+				.createStatement()
+				.execute();
 		synchronized(UserStorage.class){
 			removeFromCache(user);
 		}
