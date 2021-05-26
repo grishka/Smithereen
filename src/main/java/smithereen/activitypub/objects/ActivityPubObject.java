@@ -503,6 +503,9 @@ public abstract class ActivityPubObject{
 			case "Relationship":
 				res=new Relationship();
 				break;
+			case "PropertyValue":
+				res=new PropertyValue();
+				break;
 
 			// Collections
 			case "Collection":

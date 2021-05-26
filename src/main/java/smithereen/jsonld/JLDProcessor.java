@@ -36,11 +36,13 @@ public class JLDProcessor{
 		lc.put("toot", JLD.MASTODON);
 
 		// schema.org aliases
-		lc.put("firstName", idAndTypeObject("sc:givenName", "sc:Text"));
-		lc.put("lastName", idAndTypeObject("sc:familyName", "sc:Text"));
-		lc.put("middleName", idAndTypeObject("sc:additionalName", "sc:Text"));
+		lc.put("firstName", "sc:givenName");
+		lc.put("lastName", "sc:familyName");
+		lc.put("middleName", "sc:additionalName");
 		lc.put("gender", idAndTypeObject("sc:gender", "sc:GenderType"));
 		lc.put("birthDate", idAndTypeObject("sc:birthDate", "sc:Date"));
+		lc.put("value", "sc:value");
+		lc.put("PropertyValue", "sc:PropertyValue");
 
 		// ActivityStreams aliases
 		lc.put("sensitive", "as:sensitive");

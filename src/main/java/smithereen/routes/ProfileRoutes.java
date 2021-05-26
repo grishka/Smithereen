@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,6 +16,7 @@ import static smithereen.Utils.*;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.objects.PropertyValue;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
@@ -44,6 +46,7 @@ public class ProfileRoutes{
 		@Nullable Account self=info!=null ? info.account : null;
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
+		Lang l=lang(req);
 		if(user!=null){
 			int[] postCount={0};
 			int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
@@ -66,6 +69,15 @@ public class ProfileRoutes{
 					model.with("mutualFriendCount", mutualFriendCount).with("mutualFriends", mutualFriends);
 				}
 			}
+
+			ArrayList<PropertyValue> profileFields=new ArrayList<>();
+			if(user.birthDate!=null)
+				profileFields.add(new PropertyValue(l.get("birth_date"), l.formatDay(user.birthDate.toLocalDate())));
+			if(StringUtils.isNotEmpty(user.summary))
+				profileFields.add(new PropertyValue(l.get("profile_about"), user.summary));
+			if(user.attachment!=null)
+				user.attachment.stream().filter(o->o instanceof PropertyValue).forEach(o->profileFields.add((PropertyValue) o));
+			model.with("profileFields", profileFields);
 
 			if(info!=null && self!=null){
 				model.with("draftAttachments", info.postDraftAttachments);
@@ -112,7 +124,6 @@ public class ProfileRoutes{
 					meta.put("og:first_name", user.firstName);
 				if(StringUtils.isNotEmpty(user.lastName))
 					meta.put("og:last_name", user.lastName);
-				Lang l=Utils.lang(req);
 				String descr=l.plural("X_friends", friendCount[0])+", "+l.plural("X_posts", postCount[0]);
 				if(StringUtils.isNotEmpty(user.summary))
 					descr+="\n"+user.summary;

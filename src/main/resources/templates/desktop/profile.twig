@@ -126,8 +126,12 @@
 			<h2>{{user.completeName}}</h2>
 			<div class="profileFields">
 				<table class="profileBlock" width="100%">
-					{%if user.birthDate is not null%}<tr><td class="label">{{L("birth_date")}}:</td><td>{{ LD(user.birthDate) }}</td></tr>{%endif%}
-					{%if user.summary is not null%}<tr><td class="label">{{L('profile_about')}}:</td><td>{{ user.summary | postprocessHTML }}</td></tr>{%endif%}
+					{% for fld in profileFields %}
+						<tr>
+							<td class="label">{{ fld.name }}:</td>
+							<td>{{ fld.value | postprocessHTML }}</td>
+						</tr>
+					{% endfor %}
 				</table>
 			</div>
 			<table width="100%" class="profileBlock">

@@ -489,43 +489,46 @@ public class UserStorage{
 
 	public static synchronized int putOrUpdateForeignUser(ForeignUser user) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT `id` FROM `users` WHERE `ap_id`=?");
-		stmt.setString(1, Objects.toString(user.activityPubID, null));
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("users")
+				.columns("id")
+				.where("ap_id=?", Objects.toString(user.activityPubID))
+				.createStatement();
 		int existingUserID=0;
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first())
 				existingUserID=res.getInt(1);
 		}
+		SQLQueryBuilder bldr=new SQLQueryBuilder(conn);
 		if(existingUserID!=0){
-			stmt=conn.prepareStatement("UPDATE `users` SET `fname`=?,`lname`=?,`bdate`=?,`username`=?,`domain`=?,`public_key`=?,`ap_url`=?,`ap_inbox`=?,`ap_outbox`=?,`ap_shared_inbox`=?,`ap_id`=?,`ap_followers`=?,`ap_following`=?," +
-					"`about`=?,`gender`=?,`avatar`=?,`profile_fields`=?,`flags`=?,middle_name=?,maiden_name=?,ap_wall=?,`last_updated`=CURRENT_TIMESTAMP() WHERE `id`=?");
-			stmt.setInt(22, existingUserID);
+			bldr.update("users").where("id=?", existingUserID);
 		}else{
-			stmt=conn.prepareStatement("INSERT INTO `users` (`fname`,`lname`,`bdate`,`username`,`domain`,`public_key`,`ap_url`,`ap_inbox`,`ap_outbox`,`ap_shared_inbox`,`ap_id`,`ap_followers`,`ap_following`,`about`,`gender`,`avatar`,`profile_fields`,`flags`,middle_name,maiden_name,ap_wall,`last_updated`)" +
-					" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())", PreparedStatement.RETURN_GENERATED_KEYS);
+			bldr.insertInto("users");
 		}
 
-		stmt.setString(1, user.firstName);
-		stmt.setString(2, user.lastName);
-		stmt.setDate(3, user.birthDate);
-		stmt.setString(4, user.username);
-		stmt.setString(5, user.domain);
-		stmt.setBytes(6, user.publicKey.getEncoded());
-		stmt.setString(7, Objects.toString(user.url, null));
-		stmt.setString(8, Objects.toString(user.inbox, null));
-		stmt.setString(9, Objects.toString(user.outbox, null));
-		stmt.setString(10, Objects.toString(user.sharedInbox, null));
-		stmt.setString(11, Objects.toString(user.activityPubID, null));
-		stmt.setString(12, Objects.toString(user.followers, null));
-		stmt.setString(13, Objects.toString(user.following, null));
-		stmt.setString(14, user.summary);
-		stmt.setInt(15, user.gender==null ? 0 : user.gender.ordinal());
-		stmt.setString(16, user.icon!=null ? user.icon.get(0).asActivityPubObject(new JSONObject(), new ContextCollector()).toString() : null);
-		stmt.setString(17, user.serializeProfileFields());
-		stmt.setLong(18, user.flags);
-		stmt.setString(19, user.middleName);
-		stmt.setString(20, user.maidenName);
-		stmt.setString(21, Objects.toString(user.getWallURL(), null));
+		bldr.valueExpr("last_updated", "CURRENT_TIMESTAMP()")
+				.value("fname", user.firstName)
+				.value("lname", user.lastName)
+				.value("bdate", user.birthDate)
+				.value("username", user.username)
+				.value("domain", user.domain)
+				.value("public_key", user.publicKey.getEncoded())
+				.value("ap_url", Objects.toString(user.url, null))
+				.value("ap_inbox", Objects.toString(user.inbox, null))
+				.value("ap_outbox", Objects.toString(user.outbox, null))
+				.value("ap_shared_inbox", Objects.toString(user.sharedInbox, null))
+				.value("ap_id", user.activityPubID.toString())
+				.value("ap_followers", Objects.toString(user.followers, null))
+				.value("ap_following", Objects.toString(user.following, null))
+				.value("about", user.summary)
+				.value("gender", user.gender)
+				.value("avatar", user.icon!=null ? user.icon.get(0).asActivityPubObject(new JSONObject(), new ContextCollector()).toString() : null)
+				.value("profile_fields", user.serializeProfileFields())
+				.value("flags", user.flags)
+				.value("middle_name", user.middleName)
+				.value("maiden_name", user.maidenName)
+				.value("ap_wall", Objects.toString(user.getWallURL(), null));
+		stmt=existingUserID==0 ? bldr.createStatement() : bldr.createStatement(PreparedStatement.RETURN_GENERATED_KEYS);
 
 		stmt.executeUpdate();
 		if(existingUserID==0){

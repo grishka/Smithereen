@@ -67,14 +67,10 @@
 </div>
 
 <div class="card profileFields">
-{%if user.birthDate is not null%}
-	<div class="profileFieldName">{{L("birth_date")}}</div>
-	<div class="profileFieldValue">{{ LD(user.birthDate) }}</div>
-{%endif%}
-{%if user.summary is not null%}
-	<div class="profileFieldName">{{L('profile_about')}}</div>
-	<div class="profileFieldValue">{{ user.summary | postprocessHTML }}</div>
-{%endif%}
+{% for fld in profileFields %}
+	<div class="profileFieldName">{{ fld.name }}</div>
+	<div class="profileFieldValue">{{ fld.value | postprocessHTML }}</div>
+{% endfor %}
 </div>
 
 {% if currentUser is not null and not isSelfBlocked %}

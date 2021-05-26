@@ -469,6 +469,7 @@ h2{
 	line-height: 140%;
     padding: 10px 6px 15px;
 	td{
+		padding-top: 3px;
 		vertical-align: top;
 		p:first-child{
 			margin-top: 0;
@@ -476,6 +477,9 @@ h2{
 		p:last-child{
 			margin-bottom: 0;
 		}
+	}
+	tr:first-child td{
+		padding-top: 0;
 	}
 	.label{
 		color: $auxiliaryGrey;

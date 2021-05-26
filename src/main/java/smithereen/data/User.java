@@ -1,5 +1,6 @@
 package smithereen.data;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.net.URI;
@@ -10,8 +11,10 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.Map;
 
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
@@ -20,6 +23,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.activitypub.objects.PropertyValue;
 import smithereen.jsonld.JLD;
 import smithereen.storage.MediaCache;
 import spark.utils.StringUtils;
@@ -135,6 +139,18 @@ public class User extends Actor{
 		if(StringUtils.isNotEmpty(fields)){
 			JSONObject o=new JSONObject(fields);
 			manuallyApprovesFollowers=o.optBoolean("manuallyApprovesFollowers", false);
+			if(o.has("custom")){
+				if(attachment==null)
+					attachment=new ArrayList<>();
+				JSONArray custom=o.getJSONArray("custom");
+				for(int i=0;i<custom.length();i++){
+					JSONObject fld=custom.getJSONObject(i);
+					PropertyValue pv=new PropertyValue();
+					pv.name=fld.getString("n");
+					pv.value=fld.getString("v");
+					attachment.add(pv);
+				}
+			}
 		}
 	}
 
@@ -195,6 +211,19 @@ public class User extends Actor{
 		JSONObject o=new JSONObject();
 		if(manuallyApprovesFollowers)
 			o.put("manuallyApprovesFollowers", true);
+		JSONArray custom=null;
+		if(attachment!=null){
+			for(ActivityPubObject att:attachment){
+				if(att instanceof PropertyValue){
+					if(custom==null)
+						custom=new JSONArray();
+					PropertyValue pv=(PropertyValue) att;
+					custom.put(Map.of("n", pv.name, "v", pv.value));
+				}
+			}
+		}
+		if(custom!=null)
+			o.put("custom", custom);
 		return o.toString();
 	}
 

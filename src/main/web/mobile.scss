@@ -574,6 +574,12 @@ select{
 	}
 	.profileFieldValue{
 		padding-bottom: 16px;
+		p:first-child{
+			margin-top: 0;
+		}
+		p:last-child{
+			margin-bottom: 0;
+		}
 	}
 }
 
