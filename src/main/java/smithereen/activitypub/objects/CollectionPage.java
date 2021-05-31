@@ -1,6 +1,6 @@
 package smithereen.activitypub.objects;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 import java.net.URI;
 
@@ -23,23 +23,23 @@ public class CollectionPage extends ActivityPubCollection{
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
 		if(partOf!=null)
-			obj.put("partOf", partOf.toString());
+			obj.addProperty("partOf", partOf.toString());
 		if(prev!=null)
-			obj.put("prev", prev.toString());
+			obj.addProperty("prev", prev.toString());
 		if(next!=null)
-			obj.put("next", next.toString());
+			obj.addProperty("next", next.toString());
 		return obj;
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		partOf=tryParseURL(obj.optString("partOf"));
-		prev=tryParseURL(obj.optString("prev"));
-		next=tryParseURL(obj.optString("next"));
+		partOf=tryParseURL(optString(obj, "partOf"));
+		prev=tryParseURL(optString(obj, "prev"));
+		next=tryParseURL(optString(obj, "next"));
 		return this;
 	}
 }

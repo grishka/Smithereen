@@ -1,6 +1,6 @@
 package smithereen.jsonld;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -20,7 +20,7 @@ public class URDNA2015{
 		return new NormalizationState().normalize(input);
 	}
 
-	public static String canonicalize(JSONObject json, URI baseURI){
+	public static String canonicalize(JsonObject json, URI baseURI){
 		List<RDFTriple> norm=normalize(JLDProcessor.toRDF(json, baseURI));
 		ArrayList<String> lines=new ArrayList<>(norm.size());
 		for(RDFTriple t:norm)

@@ -1,60 +1,32 @@
 package smithereen.data;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
 
 public class NodeInfo{
-	public static final int CAP_FRIEND_REQUESTS=1;
+	public String version;
+	public List<String> protocols;
+	public boolean openRegistrations;
+	public Software software;
+	public Usage usage;
+	public Map<String, Object> metadata;
 
-	public String host;
-	public String softwareName;
-	public String softwareVersion;
-	public long capabilities;
-
-	public NodeInfo(JSONObject o, String host){
-		this.host=host;
-		if(o==null)
-			return;
-		JSONObject software=o.optJSONObject("software");
-		if(software!=null){
-			softwareName=software.optString("name", null);
-			softwareVersion=software.optString("version", null);
-		}
-		JSONObject meta=o.optJSONObject("metadata");
-		if(meta!=null){
-			JSONArray caps=meta.optJSONArray("capabilities");
-			if(caps!=null){
-				for(Object _o:caps){
-					if(!(_o instanceof String))
-						continue;
-					String c=(String)_o;
-					switch(c){
-						case "friendRequests":
-							capabilities|=CAP_FRIEND_REQUESTS;
-							break;
-					}
-				}
-			}
-		}
+	public static class Software{
+		public String name;
+		public String version;
+		public String repository;
+		public String homepage;
 	}
 
-	public NodeInfo(ResultSet res) throws SQLException{
-		host=res.getString("host");
-		softwareName=res.getString("software");
-		softwareVersion=res.getString("version");
-		capabilities=res.getLong("capabilities");
-	}
+	public static class Usage{
+		public int localPosts;
+		public int localComments;
+		public Users users;
 
-	@Override
-	public String toString(){
-		return "NodeInfo{"+
-				"host='"+host+'\''+
-				", softwareName='"+softwareName+'\''+
-				", softwareVersion='"+softwareVersion+'\''+
-				", capabilities="+capabilities+
-				'}';
+		public static class Users{
+			public int total;
+			public int activeMonth;
+			public int activeHalfyear;
+		}
 	}
 }

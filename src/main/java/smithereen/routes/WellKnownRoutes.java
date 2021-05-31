@@ -1,19 +1,19 @@
 package smithereen.routes;
 
-import org.json.JSONObject;
-
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import smithereen.Config;
+import smithereen.Utils;
+import smithereen.activitypub.objects.WebfingerResponse;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.User;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -29,32 +29,31 @@ public class WellKnownRoutes{
 				User user=UserStorage.getByUsername(username);
 				if(user!=null && !(user instanceof ForeignUser)){
 					resp.type("application/json");
-					JSONObject root=new JSONObject();
-					root.put("subject", "acct:"+user.username+"@"+Config.domain);
 
-					JSONObject selfLink=new JSONObject();
-					selfLink.put("rel", "self");
-					selfLink.put("type", "application/activity+json");
-					selfLink.put("href", user.activityPubID);
-					JSONObject authLink=new JSONObject();
-					authLink.put("rel", "http://ostatus.org/schema/1.0/subscribe");
-					authLink.put("template", Config.localURI("activitypub/externalInteraction?uri")+"={uri}");
-
-					root.put("links", Arrays.asList(selfLink, authLink));
-					return root;
+					WebfingerResponse wfr=new WebfingerResponse();
+					wfr.subject="acct:"+user.username+"@"+Config.domain;
+					WebfingerResponse.Link selfLink=new WebfingerResponse.Link();
+					selfLink.rel="self";
+					selfLink.type="application/activitypub+json";
+					selfLink.href=user.activityPubID;
+					WebfingerResponse.Link authLink=new WebfingerResponse.Link();
+					authLink.rel="http://ostatus.org/schema/1.0/subscribe";
+					authLink.template=Config.localURI("activitypub/externalInteraction?uri")+"={uri}";
+					wfr.links=List.of(selfLink, authLink);
+					return Utils.gson.toJson(wfr);
 				}else if(user==null){
 					Group group=GroupStorage.getByUsername(username);
 					if(group!=null && !(group instanceof ForeignGroup)){
 						resp.type("application/json");
-						JSONObject root=new JSONObject();
-						root.put("subject", "acct:"+group.username+"@"+Config.domain);
 
-						JSONObject selfLink=new JSONObject();
-						selfLink.put("rel", "self");
-						selfLink.put("type", "application/activity+json");
-						selfLink.put("href", group.activityPubID);
-						root.put("links", Collections.singletonList(selfLink));
-						return root;
+						WebfingerResponse wfr=new WebfingerResponse();
+						wfr.subject="acct:"+group.username+"@"+Config.domain;
+						WebfingerResponse.Link selfLink=new WebfingerResponse.Link();
+						selfLink.rel="self";
+						selfLink.type="application/activitypub+json";
+						selfLink.href=group.activityPubID;
+						wfr.links=List.of(selfLink);
+						return Utils.gson.toJson(wfr);
 					}
 				}
 			}
@@ -65,14 +64,15 @@ public class WellKnownRoutes{
 
 	public static Object nodeInfo(Request req, Response resp){
 		resp.type("application/json");
-		JSONObject link=new JSONObject();
-		link.put("rel", "http://nodeinfo.diaspora.software/ns/schema/2.1");
-		link.put("href", Config.localURI("activitypub/nodeinfo/2.1"));
-		JSONObject link2=new JSONObject();
-		link2.put("rel", "http://nodeinfo.diaspora.software/ns/schema/2.0");
-		link2.put("href", Config.localURI("activitypub/nodeinfo/2.0"));
-		JSONObject root=new JSONObject();
-		root.put("links", List.of(link, link2));
-		return root;
+		return new JsonObjectBuilder()
+				.add("links",
+						new JsonArrayBuilder()
+						.add(new JsonObjectBuilder()
+								.add("rel", "http://nodeinfo.diaspora.software/ns/schema/2.1")
+								.add("href", Config.localURI("activitypub/nodeinfo/2.1").toString()))
+						.add(new JsonObjectBuilder()
+								.add("rel", "http://nodeinfo.diaspora.software/ns/schema/2.0")
+								.add("href", Config.localURI("activitypub/nodeinfo/2.0").toString()))
+			).build();
 	}
 }

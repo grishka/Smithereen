@@ -1,6 +1,6 @@
 package smithereen.activitypub.objects;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 import java.net.URI;
 import java.util.List;
@@ -28,29 +28,29 @@ public class ActivityPubCollection extends ActivityPubObject{
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
 		if(totalItems>=0)
-			obj.put("totalItems", totalItems);
+			obj.addProperty("totalItems", totalItems);
 		if(current!=null)
-			obj.put("current", current.toString());
+			obj.addProperty("current", current.toString());
 		if(first!=null)
-			obj.put("first", first.serialize(contextCollector));
+			obj.add("first", first.serialize(contextCollector));
 		if(last!=null)
-			obj.put("last", last.toString());
+			obj.addProperty("last", last.toString());
 		if(items!=null)
-			obj.put(ordered ? "orderedItems" : "items", serializeLinkOrObjectArray(items, contextCollector));
+			obj.add(ordered ? "orderedItems" : "items", serializeLinkOrObjectArray(items, contextCollector));
 		return obj;
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		totalItems=obj.optInt("totalItems", -1);
-		current=tryParseURL(obj.optString("current"));
-		first=tryParseLinkOrObject(obj.optString("first"), parserContext);
-		last=tryParseURL(obj.optString("last"));
-		items=tryParseArrayOfLinksOrObjects(obj.opt(ordered ? "orderedItems" : "items"), parserContext);
+		totalItems=optInt(obj, "totalItems");
+		current=tryParseURL(optString(obj, "current"));
+		first=tryParseLinkOrObject(obj.get("first"), parserContext);
+		last=tryParseURL(optString(obj, "last"));
+		items=tryParseArrayOfLinksOrObjects(obj.get(ordered ? "orderedItems" : "items"), parserContext);
 		return this;
 	}
 }

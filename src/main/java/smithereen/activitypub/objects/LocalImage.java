@@ -1,9 +1,10 @@
 package smithereen.activitypub.objects;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import java.net.URI;
+import java.util.Objects;
 
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
@@ -16,19 +17,19 @@ public class LocalImage extends Image implements SizedImage{
 	public Dimensions size=Dimensions.UNKNOWN;
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		localID=obj.getString("_lid");
-		JSONArray s=obj.getJSONArray("_sz");
-		path=obj.optString("_p", "post_media");
-		width=s.getInt(0);
-		height=s.getInt(1);
+		localID=obj.get("_lid").getAsString();
+		JsonArray s=obj.getAsJsonArray("_sz");
+		path=Objects.requireNonNullElse(optString(obj, "_p"), "post_media");
+		width=s.get(0).getAsInt();
+		height=s.get(1).getAsInt();
 		size=new Dimensions(width, height);
 		return this;
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
 		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalUploads+"/"+path+"/"+localID+".webp")
 				.format(SizedImage.Format.JPEG);
@@ -38,9 +39,9 @@ public class LocalImage extends Image implements SizedImage{
 			int y=Math.round(cropRegion[1]*height);
 			builder.crop(x, y, croppedWidth=Math.round(cropRegion[2]*width-x), croppedHeight=Math.round(cropRegion[3]*height-y));
 		}
-		obj.put("url", builder.build().toString());
-		obj.put("width", croppedWidth);
-		obj.put("height", croppedHeight);
+		obj.addProperty("url", builder.build().toString());
+		obj.addProperty("width", croppedWidth);
+		obj.addProperty("height", croppedHeight);
 		if(cropRegion!=null){
 			Image im=new Image();
 			im.width=width;
@@ -48,7 +49,7 @@ public class LocalImage extends Image implements SizedImage{
 			im.url=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalUploads+"/"+path+"/"+localID+".webp")
 					.format(SizedImage.Format.JPEG)
 					.build();
-			obj.put("image", im.asActivityPubObject(null, contextCollector));
+			obj.add("image", im.asActivityPubObject(null, contextCollector));
 		}
 		return obj;
 	}

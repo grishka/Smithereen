@@ -1,6 +1,6 @@
 package smithereen.activitypub.objects;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
@@ -18,17 +18,17 @@ public class Document extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		blurHash=obj.optString("blurhash");
+		blurHash=optString(obj, "blurhash");
 		return this;
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
 		if(StringUtils.isNotEmpty(blurHash)){
-			obj.put("blurhash", blurHash);
+			obj.addProperty("blurhash", blurHash);
 			contextCollector.addAlias("toot", JLD.MASTODON);
 			contextCollector.addAlias("blurhash", "toot:blurhash");
 		}

@@ -1,7 +1,8 @@
 package smithereen.storage;
 
+import com.google.gson.JsonObject;
+
 import org.jetbrains.annotations.NotNull;
-import org.json.JSONObject;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -15,9 +16,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -525,7 +524,7 @@ public class UserStorage{
 				.value("ap_following", Objects.toString(user.following, null))
 				.value("about", user.summary)
 				.value("gender", user.gender)
-				.value("avatar", user.icon!=null ? user.icon.get(0).asActivityPubObject(new JSONObject(), new ContextCollector()).toString() : null)
+				.value("avatar", user.icon!=null ? user.icon.get(0).asActivityPubObject(new JsonObject(), new ContextCollector()).toString() : null)
 				.value("profile_fields", user.serializeProfileFields())
 				.value("flags", user.flags)
 				.value("middle_name", user.middleName)

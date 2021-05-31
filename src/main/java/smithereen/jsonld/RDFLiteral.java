@@ -8,6 +8,8 @@ public class RDFLiteral{
 	public String languageTag;
 
 	public RDFLiteral(String lexicalForm, URI datatype, String languageTag){
+		if(lexicalForm==null)
+			throw new NullPointerException();
 		this.lexicalForm=lexicalForm;
 		this.datatype=datatype;
 		this.languageTag=languageTag;

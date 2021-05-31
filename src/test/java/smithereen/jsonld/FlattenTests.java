@@ -5,8 +5,9 @@ import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 
-import org.json.*;
+import com.google.gson.*;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static smithereen.jsonld.TestUtils.*;
 
 class FlattenTests{
@@ -17,10 +18,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("drop free-floating nodes")
 	void t0001(){
-		Object input=readResourceAsJSON("/flatten/0001-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0001-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0001-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0001-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0001-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0001-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -29,10 +30,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("basic")
 	void t0002(){
-		Object input=readResourceAsJSON("/flatten/0002-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0002-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0002-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0002-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0002-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0002-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -41,10 +42,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("drop null and unmapped properties")
 	void t0003(){
-		Object input=readResourceAsJSON("/flatten/0003-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0003-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0003-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0003-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0003-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0003-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -53,10 +54,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("optimize @set, keep empty arrays")
 	void t0004(){
-		Object input=readResourceAsJSON("/flatten/0004-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0004-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0004-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0004-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0004-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0004-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -65,10 +66,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("do not expand aliased @id/@type")
 	void t0005(){
-		Object input=readResourceAsJSON("/flatten/0005-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0005-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0005-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0005-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0005-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0005-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -77,10 +78,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("alias keywords")
 	void t0006(){
-		Object input=readResourceAsJSON("/flatten/0006-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0006-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0006-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0006-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0006-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0006-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -89,10 +90,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("date type-coercion")
 	void t0007(){
-		Object input=readResourceAsJSON("/flatten/0007-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0007-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0007-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0007-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0007-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0007-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -101,10 +102,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("@value with @language")
 	void t0008(){
-		Object input=readResourceAsJSON("/flatten/0008-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0008-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0008-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0008-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0008-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0008-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -113,10 +114,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("@graph with terms")
 	void t0009(){
-		Object input=readResourceAsJSON("/flatten/0009-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0009-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0009-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0009-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0009-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0009-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -125,10 +126,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("native types")
 	void t0010(){
-		Object input=readResourceAsJSON("/flatten/0010-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0010-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0010-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0010-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0010-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0010-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -137,10 +138,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("coerced @id")
 	void t0011(){
-		Object input=readResourceAsJSON("/flatten/0011-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0011-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0011-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0011-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0011-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0011-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -149,10 +150,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("@graph with embed")
 	void t0012(){
-		Object input=readResourceAsJSON("/flatten/0012-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0012-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0012-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0012-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0012-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0012-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -161,10 +162,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("flatten already expanded")
 	void t0013(){
-		Object input=readResourceAsJSON("/flatten/0013-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0013-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0013-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0013-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0013-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0013-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -173,10 +174,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("@set of @value objects with keyword aliases")
 	void t0014(){
-		Object input=readResourceAsJSON("/flatten/0014-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0014-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0014-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0014-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0014-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0014-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -185,10 +186,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("collapse set of sets, keep empty lists")
 	void t0015(){
-		Object input=readResourceAsJSON("/flatten/0015-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0015-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0015-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0015-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0015-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0015-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -197,10 +198,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("context reset")
 	void t0016(){
-		Object input=readResourceAsJSON("/flatten/0016-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0016-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0016-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0016-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0016-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0016-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -209,10 +210,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("@graph and @id aliased")
 	void t0017(){
-		Object input=readResourceAsJSON("/flatten/0017-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0017-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0017-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0017-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0017-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0017-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -221,10 +222,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("override default @language")
 	void t0018(){
-		Object input=readResourceAsJSON("/flatten/0018-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0018-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0018-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0018-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0018-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0018-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -233,10 +234,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("remove @value = null")
 	void t0019(){
-		Object input=readResourceAsJSON("/flatten/0019-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0019-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0019-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0019-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0019-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0019-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -245,10 +246,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("do not remove @graph if not at top-level")
 	void t0020(){
-		Object input=readResourceAsJSON("/flatten/0020-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0020-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0020-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0020-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0020-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0020-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -257,10 +258,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("do not remove @graph at top-level if not only property")
 	void t0021(){
-		Object input=readResourceAsJSON("/flatten/0021-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0021-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0021-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0021-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0021-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0021-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -269,10 +270,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("flatten value with default language")
 	void t0022(){
-		Object input=readResourceAsJSON("/flatten/0022-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0022-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0022-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0022-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0022-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0022-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -281,10 +282,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Flattening list/set with coercion")
 	void t0023(){
-		Object input=readResourceAsJSON("/flatten/0023-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0023-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0023-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0023-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0023-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0023-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -293,10 +294,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Multiple contexts")
 	void t0024(){
-		Object input=readResourceAsJSON("/flatten/0024-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0024-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0024-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0024-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0024-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0024-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -305,10 +306,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Problematic IRI flattening tests")
 	void t0025(){
-		Object input=readResourceAsJSON("/flatten/0025-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0025-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0025-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0025-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0025-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0025-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -317,10 +318,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Term definition with @id: @type")
 	void t0026(){
-		Object input=readResourceAsJSON("/flatten/0026-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0026-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0026-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0026-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0026-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0026-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -329,10 +330,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Duplicate values in @list and @set")
 	void t0027(){
-		Object input=readResourceAsJSON("/flatten/0027-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0027-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0027-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0027-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0027-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0027-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -341,10 +342,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Use @vocab in properties and @type but not in @id")
 	void t0028(){
-		Object input=readResourceAsJSON("/flatten/0028-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0028-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0028-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0028-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0028-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0028-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -353,10 +354,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Language maps")
 	void t0030(){
-		Object input=readResourceAsJSON("/flatten/0030-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0030-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0030-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0030-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0030-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0030-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -365,10 +366,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("type-coercion of native types")
 	void t0031(){
-		Object input=readResourceAsJSON("/flatten/0031-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0031-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0031-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0031-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0031-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0031-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -377,10 +378,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Null term and @vocab")
 	void t0032(){
-		Object input=readResourceAsJSON("/flatten/0032-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0032-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0032-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0032-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0032-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0032-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -389,10 +390,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Using @vocab with with type-coercion")
 	void t0033(){
-		Object input=readResourceAsJSON("/flatten/0033-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0033-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0033-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0033-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0033-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0033-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -401,10 +402,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Multiple properties expanding to the same IRI")
 	void t0034(){
-		Object input=readResourceAsJSON("/flatten/0034-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0034-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0034-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0034-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0034-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0034-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -413,10 +414,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Language maps with @vocab, default language, and colliding property")
 	void t0035(){
-		Object input=readResourceAsJSON("/flatten/0035-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0035-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0035-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0035-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0035-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0035-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -425,10 +426,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Flattening @index")
 	void t0036(){
-		Object input=readResourceAsJSON("/flatten/0036-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0036-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0036-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0036-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0036-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0036-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -437,10 +438,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Flattening reverse properties")
 	void t0037(){
-		Object input=readResourceAsJSON("/flatten/0037-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0037-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0037-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0037-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0037-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0037-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -449,10 +450,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Flattening blank node labels")
 	void t0038(){
-		Object input=readResourceAsJSON("/flatten/0038-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0038-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0038-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0038-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0038-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0038-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -461,10 +462,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Using terms in a reverse-maps")
 	void t0039(){
-		Object input=readResourceAsJSON("/flatten/0039-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0039-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0039-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0039-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0039-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0039-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -473,10 +474,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("language and index expansion on non-objects")
 	void t0040(){
-		Object input=readResourceAsJSON("/flatten/0040-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0040-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0040-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0040-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0040-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0040-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -485,10 +486,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Free-floating sets and lists")
 	void t0041(){
-		Object input=readResourceAsJSON("/flatten/0041-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0041-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0041-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0041-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0041-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0041-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -497,10 +498,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("List objects not equivalent")
 	void t0042(){
-		Object input=readResourceAsJSON("/flatten/0042-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0042-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0042-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0042-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0042-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0042-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -509,10 +510,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Sample test manifest extract")
 	void t0043(){
-		Object input=readResourceAsJSON("/flatten/0043-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0043-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0043-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0043-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0043-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0043-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -521,10 +522,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Blank nodes with reverse properties")
 	void t0045(){
-		Object input=readResourceAsJSON("/flatten/0045-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0045-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0045-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0045-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0045-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0045-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -533,10 +534,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Empty string as identifier")
 	void t0046(){
-		Object input=readResourceAsJSON("/flatten/0046-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0046-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0046-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0046-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0046-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0046-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -545,10 +546,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("Flatten using relative fragment identifier properly joins to base")
 	void t0047(){
-		Object input=readResourceAsJSON("/flatten/0047-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0047-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("http://example.org/"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0047-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0047-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("http://example.org/"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -557,10 +558,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("@list with embedded object")
 	void t0048(){
-		Object input=readResourceAsJSON("/flatten/0048-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0048-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0048-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0048-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0048-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0048-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 	/***
@@ -569,10 +570,10 @@ class FlattenTests{
 	@Test
 	@DisplayName("context with JavaScript Object property names")
 	void t0049(){
-		Object input=readResourceAsJSON("/flatten/0049-in.jsonld");
-		Object expect=readResourceAsJSON("/flatten/0049-out.jsonld");
-		JSONArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0049-in.jsonld"));
-		assertEqualJLD(expect, flattened);
+		JsonElement input=readResourceAsJSON("/flatten/0049-in.jsonld");
+		JsonElement expect=readResourceAsJSON("/flatten/0049-out.jsonld");
+		JsonArray flattened=JLDProcessor.flatten(input, URI.create("https://w3c.github.io/json-ld-api/tests/flatten/0049-in.jsonld"));
+		assertEquals(expect, flattened);
 	}
 
 }

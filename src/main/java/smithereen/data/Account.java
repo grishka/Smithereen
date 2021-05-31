@@ -1,13 +1,11 @@
 package smithereen.data;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.JsonParseException;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Date;
 
 import smithereen.Utils;
 import smithereen.storage.UserStorage;
@@ -54,8 +52,8 @@ public class Account{
 			acc.prefs=new UserPreferences();
 		}else{
 			try{
-				acc.prefs=UserPreferences.fromJSON(new JSONObject(prefs));
-			}catch(JSONException x){
+				acc.prefs=Utils.gson.fromJson(prefs, UserPreferences.class);
+			}catch(JsonParseException x){
 				acc.prefs=new UserPreferences();
 			}
 		}

@@ -1,31 +1,21 @@
 package smithereen.data;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.net.URI;
-import java.security.KeyFactory;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.Map;
 
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
-import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
-import smithereen.activitypub.objects.Image;
-import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.jsonld.JLD;
-import smithereen.storage.MediaCache;
 import spark.utils.StringUtils;
 
 public class User extends Actor{
@@ -137,17 +127,17 @@ public class User extends Actor{
 
 		String fields=res.getString("profile_fields");
 		if(StringUtils.isNotEmpty(fields)){
-			JSONObject o=new JSONObject(fields);
-			manuallyApprovesFollowers=o.optBoolean("manuallyApprovesFollowers", false);
+			JsonObject o=JsonParser.parseString(fields).getAsJsonObject();
+			manuallyApprovesFollowers=optBoolean(o, "manuallyApprovesFollowers");
 			if(o.has("custom")){
 				if(attachment==null)
 					attachment=new ArrayList<>();
-				JSONArray custom=o.getJSONArray("custom");
-				for(int i=0;i<custom.length();i++){
-					JSONObject fld=custom.getJSONObject(i);
+				JsonArray custom=o.getAsJsonArray("custom");
+				for(JsonElement _fld:custom){
+					JsonObject fld=_fld.getAsJsonObject();
 					PropertyValue pv=new PropertyValue();
-					pv.name=fld.getString("n");
-					pv.value=fld.getString("v");
+					pv.name=fld.get("n").getAsString();
+					pv.value=fld.get("v").getAsString();
 					attachment.add(pv);
 				}
 			}
@@ -160,41 +150,41 @@ public class User extends Actor{
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		name=getFullName();
-		JSONObject root=super.asActivityPubObject(obj, contextCollector);
+		obj=super.asActivityPubObject(obj, contextCollector);
 
-		root.put("firstName", firstName);
+		obj.addProperty("firstName", firstName);
 		if(StringUtils.isNotEmpty(lastName)){
-			root.put("lastName", lastName);
+			obj.addProperty("lastName", lastName);
 		}
 		if(StringUtils.isNotEmpty(middleName)){
-			root.put("middleName", middleName);
+			obj.addProperty("middleName", middleName);
 		}
 		if(StringUtils.isNotEmpty(maidenName)){
-			root.put("maidenName", maidenName);
+			obj.addProperty("maidenName", maidenName);
 		}
 		if(birthDate!=null){
-			root.put("birthDate", birthDate.toString());
+			obj.addProperty("birthDate", birthDate.toString());
 		}
 		switch(gender){
-			case MALE -> root.put("gender", "http://schema.org#Male");
-			case FEMALE -> root.put("gender", "http://schema.org#Female");
+			case MALE -> obj.addProperty("gender", "http://schema.org#Male");
+			case FEMALE -> obj.addProperty("gender", "http://schema.org#Female");
 		}
 
-		root.put("supportsFriendRequests", true);
+		obj.addProperty("supportsFriendRequests", true);
 
 		contextCollector.addAlias("sc", JLD.SCHEMA_ORG);
-		contextCollector.addType("firstName", "sc:givenName", "sc:Text");
-		contextCollector.addType("lastName", "sc:familyName", "sc:Text");
-		contextCollector.addType("middleName", "sc:additionalName", "sc:Text");
+		contextCollector.addAlias("firstName", "sc:givenName");
+		contextCollector.addAlias("lastName", "sc:familyName");
+		contextCollector.addAlias("middleName", "sc:additionalName");
 		contextCollector.addType("gender", "sc:gender", "sc:GenderType");
 		contextCollector.addType("birthDate", "sc:birthDate", "sc:Date");
 		contextCollector.addAlias("sm", JLD.SMITHEREEN);
 		contextCollector.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
 		contextCollector.addAlias("maidenName", "sm:maidenName");
 
-		return root;
+		return obj;
 	}
 
 	@Override
@@ -208,22 +198,25 @@ public class User extends Actor{
 	}
 
 	public String serializeProfileFields(){
-		JSONObject o=new JSONObject();
+		JsonObject o=new JsonObject();
 		if(manuallyApprovesFollowers)
-			o.put("manuallyApprovesFollowers", true);
-		JSONArray custom=null;
+			o.addProperty("manuallyApprovesFollowers", true);
+		JsonArray custom=null;
 		if(attachment!=null){
 			for(ActivityPubObject att:attachment){
 				if(att instanceof PropertyValue){
 					if(custom==null)
-						custom=new JSONArray();
+						custom=new JsonArray();
 					PropertyValue pv=(PropertyValue) att;
-					custom.put(Map.of("n", pv.name, "v", pv.value));
+					JsonObject fld=new JsonObject();
+					fld.addProperty("n", pv.name);
+					fld.addProperty("v", pv.value);
+					custom.add(fld);
 				}
 			}
 		}
 		if(custom!=null)
-			o.put("custom", custom);
+			o.add("custom", custom);
 		return o.toString();
 	}
 

@@ -1,21 +1,11 @@
 package smithereen.data;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.math.BigInteger;
 import java.net.URI;
-import java.security.KeyFactory;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.RSAPublicKeySpec;
-import java.security.spec.X509EncodedKeySpec;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.util.Base64;
 
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
@@ -102,43 +92,35 @@ public class ForeignUser extends User implements ForeignActor{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		if(obj.has("firstName")){
-			firstName=obj.getString("firstName");
-			lastName=obj.optString("lastName", null);
-			middleName=obj.optString("middleName", null);
-			maidenName=obj.optString("maidenName", null);
+		if(obj.has("firstName") && obj.get("firstName").isJsonPrimitive()){
+			firstName=obj.get("firstName").getAsString();
+			lastName=optString(obj, "lastName");
+			middleName=optString(obj, "middleName");
+			maidenName=optString(obj, "maidenName");
 		}else{
 			firstName=name!=null ? name : username;
 		}
 		if(obj.has("birthDate")){
-			birthDate=Date.valueOf(obj.getString("birthDate"));
+			birthDate=Date.valueOf(obj.get("birthDate").getAsString());
 		}
 		if(obj.has("gender")){
-			switch(obj.getString("gender")){
-				case "sc:Male":
-				case JLD.SCHEMA_ORG+"Male":
-					gender=Gender.MALE;
-					break;
-				case "sc:Female":
-				case JLD.SCHEMA_ORG+"Female":
-					gender=Gender.FEMALE;
-					break;
-				default:
-					gender=Gender.UNKNOWN;
-					break;
-			}
+			gender=switch(obj.get("gender").getAsString()){
+				case "sc:Male", JLD.SCHEMA_ORG+"Male" -> Gender.MALE;
+				case "sc:Female", JLD.SCHEMA_ORG+"Female" -> Gender.FEMALE;
+				default -> Gender.UNKNOWN;
+			};
 		}else{
 			gender=Gender.UNKNOWN;
 		}
-		manuallyApprovesFollowers=obj.optBoolean("manuallyApprovesFollowers", false);
-		if(obj.optBoolean("supportsFriendRequests", false)){
+		manuallyApprovesFollowers=optBoolean(obj, "manuallyApprovesFollowers");
+		if(optBoolean(obj, "supportsFriendRequests")){
 			flags|=FLAG_SUPPORTS_FRIEND_REQS;
 		}
 		if(StringUtils.isNotEmpty(summary))
 			summary=Utils.sanitizeHTML(summary);
-		wall=tryParseURL(obj.optString("wall"));
+		wall=tryParseURL(optString(obj, "wall"));
 		return this;
 	}
 

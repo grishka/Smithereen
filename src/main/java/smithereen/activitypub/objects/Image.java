@@ -1,7 +1,7 @@
 package smithereen.activitypub.objects;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
@@ -19,16 +19,16 @@ public class Image extends Document{
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
 		if(width>0)
-			obj.put("width", width);
+			obj.addProperty("width", width);
 		if(height>0)
-			obj.put("height", height);
+			obj.addProperty("height", height);
 		if(cropRegion!=null){
-			JSONArray _cr=new JSONArray();
-			for(float f:cropRegion) _cr.put((double)f);
-			obj.put("cropRegion", _cr);
+			JsonArray _cr=new JsonArray();
+			for(float f:cropRegion) _cr.add((double)f);
+			obj.add("cropRegion", _cr);
 			contextCollector.addAlias("sm", JLD.SMITHEREEN);
 			contextCollector.addContainerType("cropRegion", "sm:cropRegion", "@list");
 		}
@@ -36,15 +36,15 @@ public class Image extends Document{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		width=obj.optInt("width");
-		height=obj.optInt("height");
-		JSONArray _cr=obj.optJSONArray("cropRegion");
-		if(_cr!=null && _cr.length()==4){
+		width=optInt(obj, "width");
+		height=optInt(obj, "height");
+		JsonArray _cr=optArray(obj, "cropRegion");
+		if(_cr!=null && _cr.size()==4){
 			cropRegion=new float[4];
 			for(int i=0;i<4;i++)
-				cropRegion[i]=_cr.optFloat(i);
+				cropRegion[i]=_cr.get(i).getAsFloat();
 		}
 		return this;
 	}

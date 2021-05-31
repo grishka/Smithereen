@@ -1,8 +1,10 @@
 package smithereen.activitypub;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -11,7 +13,6 @@ import org.xml.sax.SAXException;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -35,16 +36,16 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import smithereen.Utils;
-import smithereen.exceptions.BadRequestException;
 import smithereen.Config;
 import smithereen.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
-import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
-import smithereen.data.NodeInfo;
+import smithereen.activitypub.objects.WebfingerResponse;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
@@ -65,7 +66,7 @@ public class ActivityPub{
 				.build();
 	}
 
-	public static ActivityPubObject fetchRemoteObject(String url) throws IOException, JSONException{
+	public static ActivityPubObject fetchRemoteObject(String url) throws IOException{
 		URI uri=URI.create(url);
 		if(Config.isLocal(uri))
 			throw new IllegalStateException("Local URI in fetchRemoteObject: "+url);
@@ -81,16 +82,17 @@ public class ActivityPub{
 				return null;
 			}
 
-			String r=body.string();
 			try{
-				JSONObject converted=JLDProcessor.convertToLocalContext(new JSONObject(r));
+				JsonElement el=JsonParser.parseReader(body.charStream());
+				JsonObject converted=JLDProcessor.convertToLocalContext(el.getAsJsonObject());
 //				System.out.println(converted.toString(4));
 				ActivityPubObject obj=ActivityPubObject.parse(converted);
 				if(obj.activityPubID!=null && !obj.activityPubID.getHost().equalsIgnoreCase(uri.getHost()))
 					throw new BadRequestException("Domain in object ID ("+obj.activityPubID+") doesn't match domain in its URI ("+url+")");
 				return obj;
 			}catch(Exception x){
-				throw new JSONException(x);
+				x.printStackTrace();
+				throw new IOException(x);
 			}
 		}
 	}
@@ -136,7 +138,7 @@ public class ActivityPub{
 	public static void postActivity(URI inboxUrl, Activity activity, Actor actor) throws IOException{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
-		JSONObject body=activity.asRootActivityPubObject();
+		JsonObject body=activity.asRootActivityPubObject();
 		LinkedDataSignatures.sign(body, actor.privateKey, actor.activityPubID+"#main-key");
 		System.out.println("Sending activity: "+body);
 		postActivity(inboxUrl, body.toString(), actor);
@@ -161,43 +163,6 @@ public class ActivityPub{
 		}
 	}
 
-	public static NodeInfo fetchNodeInfo(String host) throws IOException{
-		Request req=new Request.Builder()
-				.url("http"+(Config.useHTTP ? "" : "s")+"://"+host+"/.well-known/nodeinfo")
-				.build();
-		Response resp=httpClient.newCall(req).execute();
-		if(resp.code()==404){
-			return new NodeInfo(null, host);
-		}else if(!resp.isSuccessful()){
-			throw new IOException("Failed to fetch nodeinfo for "+host);
-		}
-		String href=null;
-		try(ResponseBody body=resp.body()){
-			JSONObject l=new JSONObject(body.string());
-			for(Object o : l.getJSONArray("links")){
-				JSONObject link=(JSONObject) o;
-				if("http://nodeinfo.diaspora.software/ns/schema/2.0".equals(link.optString("rel"))){
-					href=link.getString("href");
-					break;
-				}
-			}
-		}catch(JSONException x){}
-		if(href==null){
-			return new NodeInfo(null, host);
-		}
-		req=new Request.Builder()
-				.url(href)
-				.build();
-		resp=httpClient.newCall(req).execute();
-		if(!resp.isSuccessful()){
-			return new NodeInfo(null, host);
-		}
-		try(ResponseBody body=resp.body()){
-			JSONObject ni=new JSONObject(body.string());
-			return new NodeInfo(ni, host);
-		}
-	}
-
 	public static boolean isPublic(URI uri){
 		return uri.equals(AS_PUBLIC) || ("as".equals(uri.getScheme()) && "Public".equals(uri.getSchemeSpecificPart()));
 	}
@@ -216,16 +181,13 @@ public class ActivityPub{
 		Response resp=httpClient.newCall(req).execute();
 		try(ResponseBody body=resp.body()){
 			if(resp.isSuccessful()){
-				JSONObject o=new JSONObject(body.string());
-				if(!o.getString("subject").equalsIgnoreCase(resource))
+				WebfingerResponse wr=Utils.gson.fromJson(body.charStream(), WebfingerResponse.class);
+
+				if(!resource.equalsIgnoreCase(wr.subject))
 					throw new IOException("Invalid response");
-				JSONArray links=o.getJSONArray("links");
-				for(Object _l:links){
-					JSONObject l=(JSONObject)_l;
-					if(l.has("rel") && l.has("type") && l.has("href")){
-						if("self".equals(l.getString("rel")) && "application/activity+json".equals(l.getString("type"))){
-							return new URI(l.getString("href"));
-						}
+				for(WebfingerResponse.Link link:wr.links){
+					if("self".equals(link.rel) && "application/activity+json".equals(link.type) && link.href!=null){
+						return link.href;
 					}
 				}
 				throw new IOException("Link not found");
@@ -234,7 +196,7 @@ public class ActivityPub{
 			}else{
 				throw new IOException("Failed to resolve username "+username+"@"+domain);
 			}
-		}catch(JSONException|URISyntaxException x){
+		}catch(JsonParseException x){
 			throw new IOException("Response parse failed", x);
 		}
 	}

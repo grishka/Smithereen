@@ -2,7 +2,6 @@ package smithereen;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.internal.bind.TypeAdapters;
 
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
@@ -13,7 +12,6 @@ import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Whitelist;
-import org.jsoup.select.Elements;
 import org.unbescape.html.HtmlEscape;
 
 import java.io.ByteArrayInputStream;
@@ -25,7 +23,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
-import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -61,6 +58,8 @@ import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.InstantMillisJsonAdapter;
+import smithereen.util.LocaleJsonAdapter;
+import smithereen.util.TimeZoneJsonAdapter;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -76,7 +75,12 @@ public class Utils{
 	private static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([a-zA-Z0-9]+)=\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\"\\s*([,;])?\\s*");
 
-	public static final Gson gson=new GsonBuilder().disableHtmlEscaping().registerTypeAdapter(Instant.class, new InstantMillisJsonAdapter()).create();
+	public static final Gson gson=new GsonBuilder()
+			.disableHtmlEscaping()
+			.registerTypeAdapter(Instant.class, new InstantMillisJsonAdapter())
+			.registerTypeAdapter(Locale.class, new LocaleJsonAdapter())
+			.registerTypeAdapter(TimeZone.class, new TimeZoneJsonAdapter())
+			.create();
 
 	static{
 		staticFileHash=String.format(Locale.US, "%016x", new Random().nextLong());

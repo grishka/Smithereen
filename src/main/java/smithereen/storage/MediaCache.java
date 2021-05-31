@@ -1,7 +1,8 @@
 package smithereen.storage;
 
+import com.google.gson.JsonParser;
+
 import org.jetbrains.annotations.NotNull;
-import org.json.JSONObject;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -230,7 +231,7 @@ public class MediaCache{
 		stmt.setInt(2, ownerID);
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
-				ActivityPubObject obj=ActivityPubObject.parse(new JSONObject(res.getString(1)), ParserContext.LOCAL);
+				ActivityPubObject obj=ActivityPubObject.parse(JsonParser.parseString(res.getString(1)).getAsJsonObject(), ParserContext.LOCAL);
 				if(obj instanceof Document)
 					MediaStorageUtils.deleteAttachmentFiles((Document)obj);
 			}else{
@@ -253,7 +254,7 @@ public class MediaCache{
 		stmt.setInt(2, ownerID);
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
-				result=ActivityPubObject.parse(new JSONObject(res.getString(1)), ParserContext.LOCAL);
+				result=ActivityPubObject.parse(JsonParser.parseString(res.getString(1)).getAsJsonObject(), ParserContext.LOCAL);
 			}else{
 				return null;
 			}

@@ -1,11 +1,10 @@
 package smithereen.templates;
 
+import com.google.gson.JsonObject;
 import com.mitchellbosecke.pebble.PebbleEngine;
 import com.mitchellbosecke.pebble.loader.ClasspathLoader;
 import com.mitchellbosecke.pebble.loader.DelegatingLoader;
 import com.mitchellbosecke.pebble.template.PebbleTemplate;
-
-import org.json.JSONObject;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -46,7 +45,7 @@ public class Templates{
 	}
 
 	public static void addGlobalParamsToTemplate(Request req, RenderedTemplateResponse model){
-		JSONObject jsConfig=new JSONObject();
+		JsonObject jsConfig=new JsonObject();
 		if(req.session(false)!=null){
 			SessionInfo info=req.session().attribute("info");
 			if(info==null){
@@ -58,8 +57,8 @@ public class Templates{
 				model.with("currentUser", account.user);
 				model.with("csrf", info.csrfToken);
 				model.with("userPermissions", info.permissions);
-				jsConfig.put("csrf", info.csrfToken);
-				jsConfig.put("uid", info.account.user.id);
+				jsConfig.addProperty("csrf", info.csrfToken);
+				jsConfig.addProperty("uid", info.account.user.id);
 				try{
 					UserNotifications notifications=NotificationsStorage.getNotificationsForUser(account.user.id, account.prefs.lastSeenNotificationID);
 					model.with("userNotifications", notifications);
@@ -69,17 +68,17 @@ public class Templates{
 			}
 		}
 		TimeZone tz=Utils.timeZoneForRequest(req);
-		jsConfig.put("timeZone", tz!=null ? tz.getID() : null);
-		JSONObject jsLang=new JSONObject();
+		jsConfig.addProperty("timeZone", tz!=null ? tz.getID() : null);
+		JsonObject jsLang=new JsonObject();
 		ArrayList<String> k=req.attribute("jsLang");
 		Lang lang=Utils.lang(req);
 		if(k!=null){
 			for(String key:k){
-				jsLang.put(key, lang.raw(key));
+				jsLang.add(key, lang.raw(key));
 			}
 		}
 		for(String key: List.of("error", "ok", "network_error", "close")){
-			jsLang.put(key, lang.raw(key));
+			jsLang.add(key, lang.raw(key));
 		}
 		model.with("locale", Utils.localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString()).with("jsLangKeys", jsLang).with("staticHash", Utils.staticFileHash).with("serverName", Config.getServerDisplayName());
 	}

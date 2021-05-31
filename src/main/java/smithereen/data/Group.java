@@ -1,13 +1,12 @@
 package smithereen.data;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
 
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
@@ -68,20 +67,19 @@ public class Group extends Actor{
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
 
-		JSONArray ar=new JSONArray();
+		JsonArray ar=new JsonArray();
 		for(GroupAdmin admin : adminsForActivityPub){
-			JSONObject ja=new JSONObject(Map.of(
-					"type", "Person",
-					"id", admin.user.activityPubID.toString()
-			));
+			JsonObject ja=new JsonObject();
+			ja.addProperty("type", "Person");
+			ja.addProperty("id", admin.user.activityPubID.toString());
 			if(StringUtils.isNotEmpty(admin.title))
-				ja.put("title", admin.title);
-			ar.put(ja);
+				ja.addProperty("title", admin.title);
+			ar.add(ja);
 		}
-		obj.put("attributedTo", ar);
+		obj.add("attributedTo", ar);
 
 		return obj;
 	}

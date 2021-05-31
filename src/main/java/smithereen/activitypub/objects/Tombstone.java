@@ -1,6 +1,6 @@
 package smithereen.activitypub.objects;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 import java.util.Date;
 
@@ -19,21 +19,21 @@ public class Tombstone extends ActivityPubObject{
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
 		if(formerType!=null)
-			obj.put("formerType", formerType);
+			obj.addProperty("formerType", formerType);
 		if(deleted!=null)
-			obj.put("deleted", Utils.formatDateAsISO(deleted));
+			obj.addProperty("deleted", Utils.formatDateAsISO(deleted));
 		return obj;
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		formerType=obj.optString("formerType", null);
+		formerType=optString(obj, "formerType");
 		if(obj.has("deleted"))
-			deleted=tryParseDate(obj.getString("deleted"));
+			deleted=tryParseDate(obj.get("deleted").getAsString());
 		return this;
 	}
 }

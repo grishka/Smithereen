@@ -1,7 +1,7 @@
 package smithereen.storage;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,21 +60,21 @@ public class MediaStorageUtils{
 		}
 	}
 
-	public static JSONObject serializeAttachment(ActivityPubObject att){
-		JSONObject o=att.asActivityPubObject(null, new ContextCollector());
+	public static JsonObject serializeAttachment(ActivityPubObject att){
+		JsonObject o=att.asActivityPubObject(null, new ContextCollector());
 		if(att instanceof Document){
 			Document d=(Document) att;
 			if(StringUtils.isNotEmpty(d.localID)){
-				o.put("_lid", d.localID);
+				o.addProperty("_lid", d.localID);
 				if(d instanceof LocalImage){
 					LocalImage im=(LocalImage) d;
-					JSONArray sizes=new JSONArray();
-					sizes.put(im.width);
-					sizes.put(im.height);
-					o.put("_sz", sizes);
+					JsonArray sizes=new JsonArray();
+					sizes.add(im.width);
+					sizes.add(im.height);
+					o.add("_sz", sizes);
 					if(im.path!=null)
-						o.put("_p", im.path);
-					o.put("type", "_LocalImage");
+						o.addProperty("_p", im.path);
+					o.addProperty("type", "_LocalImage");
 				}
 				o.remove("url");
 				o.remove("id");

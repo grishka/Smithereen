@@ -9,8 +9,9 @@ $j=[
 "",
 "import java.net.URI;",
 "import java.util.*;",
+"import java.util.stream.Collectors;",
 "",
-"import org.json.*;",
+"import com.google.gson.*;",
 "",
 "import static org.junit.jupiter.api.Assertions.*;",
 "import static smithereen.jsonld.TestUtils.*;",
@@ -30,6 +31,7 @@ foreach($mf->sequence as $test){
 		continue;
 	}
 	if($test->{"@id"}=="#te077") continue; // expandContext isn't a thing in real life
+	if(substr($test->{"@id"}, 0, 4)=="#ter") continue;
 	$j[]="\t/***\n\t* {$test->purpose}\n\t*/";
 	$j[]="\t@Test";
 	$j[]="\t@DisplayName(\"".str_replace('"', '\"', $test->name)."\")";
@@ -44,18 +46,18 @@ foreach($mf->sequence as $test){
 	if(isset($test->option) && isset($test->option->base))
 		$inputURL=$test->option->base;
 	if($type=="jld:PositiveEvaluationTest"){
-		$j[]="\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
+		$j[]="\t\tJsonElement input=readResourceAsJSON(\"/{$test->input}\");";
 		$j[]="\t\tArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create(\"$inputURL\"));";
 		if(filesize("src/test/resources/".$test->expect)>0){
 			$j[]="\t\tList<String> expect=readResourceAsLines(\"/{$test->expect}\");";
-			$j[]="\t\tassertEquals(expect.size(), result.size());";
-			$j[]="\t\tfor(RDFTriple t:result) assertTrue(expect.contains(t.toString()));";
+			$j[]="\t\tCollections.sort(expect);";
+			$j[]="\t\tassertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));";
 		}else{
-			$j[]="\t\tassertEquals(0, result.size());";
+			$j[]="\t\tassertLinesMatch(Collections.emptyList(), result.stream().map(Object::toString).sorted().collect(Collectors.toList()));";
 		}
 	}else if($type=="jld:NegativeEvaluationTest"){
 		$j[]="\t\tassertThrows(JLDException.class, ()->{";
-		$j[]="\t\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
+		$j[]="\t\t\tJsonElement input=readResourceAsJSON(\"/{$test->input}\");";
 		$j[]="\t\t\tJLDProcessor.toRDF(input, URI.create(\"$inputURL\"));";
 		$j[]="\t\t}, \"{$test->expectErrorCode}\");";
 	}else{
@@ -67,4 +69,4 @@ foreach($mf->sequence as $test){
 
 $j[]="}";
 
-file_put_contents("../src/test/java/smithereen/jsonld/ToRDFTests.java", implode("\n", $j));
+file_put_contents("src/test/java/smithereen/jsonld/ToRDFTests.java", implode("\n", $j));

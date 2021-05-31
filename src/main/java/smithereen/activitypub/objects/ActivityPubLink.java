@@ -1,6 +1,6 @@
 package smithereen.activitypub.objects;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 import java.net.URI;
 
@@ -11,16 +11,16 @@ public abstract class ActivityPubLink extends ActivityPubObject{
 	public URI href;
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
-		obj.put("href", href.toString());
+		obj.addProperty("href", href.toString());
 		return obj;
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		href=tryParseURL(obj.getString("href"));
+		href=tryParseURL(obj.get("href").getAsString());
 		return this;
 	}
 

@@ -1,7 +1,8 @@
 package smithereen.data;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.net.URI;
 import java.sql.ResultSet;
@@ -22,7 +23,6 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
-import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
@@ -120,7 +120,7 @@ public class Post extends ActivityPubObject{
 		String att=res.getString("attachments");
 		if(att!=null){
 			try{
-				attachment=parseSingleObjectOrArray(att.charAt(0)=='[' ? new JSONArray(att) : new JSONObject(att), ParserContext.LOCAL);
+				attachment=parseSingleObjectOrArray(JsonParser.parseString(att), ParserContext.LOCAL);
 			}catch(Exception ignore){}
 		}
 
@@ -158,8 +158,8 @@ public class Post extends ActivityPubObject{
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
-		JSONObject root=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
+		JsonObject root=super.asActivityPubObject(obj, contextCollector);
 
 		ActivityPubCollection replies=new ActivityPubCollection(false);
 		replies.activityPubID=Config.localURI("/posts/"+id+"/replies");
@@ -167,39 +167,39 @@ public class Post extends ActivityPubObject{
 		repliesPage.next=Config.localURI("/posts/"+id+"/replies?page=1");
 		repliesPage.partOf=replies.activityPubID;
 		replies.first=new LinkOrObject(repliesPage);
-		root.put("replies", replies.asActivityPubObject(new JSONObject(), contextCollector));
+		root.add("replies", replies.asActivityPubObject(new JsonObject(), contextCollector));
 
 		if(deleted){
-			root.put("formerType", "Note");
+			root.addProperty("formerType", "Note");
 			return root;
 		}
-		root.put("sensitive", hasContentWarning());
+		root.addProperty("sensitive", hasContentWarning());
 		contextCollector.addAlias("sensitive", "as:sensitive");
 		if(root.has("content"))
-			root.put("content", Utils.postprocessPostHTMLForActivityPub(content));
+			root.addProperty("content", Utils.postprocessPostHTMLForActivityPub(content));
 
 		if(getReplyLevel()==0 && (!(owner instanceof User) || user.id!=((User)owner).id)){
 			ActivityPubCollection wall=new ActivityPubCollection(false);
 			wall.activityPubID=owner.getWallURL();
 			wall.attributedTo=owner.activityPubID;
-			root.put("target", wall.asActivityPubObject(new JSONObject(), contextCollector));
+			root.add("target", wall.asActivityPubObject(new JsonObject(), contextCollector));
 		}
 
 		return root;
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		Object _content=obj.get("content");
-		if(_content instanceof JSONArray){
-			content=((JSONArray) _content).getString(0);
+		JsonElement _content=obj.get("content");
+		if(_content.isJsonArray()){
+			content=_content.getAsJsonArray().get(0).getAsString();
 		}
 		if(!parserContext.isLocal){
 			if(StringUtils.isNotEmpty(name))
 				content="<p><b>"+name+"</b></p>"+content;
 			content=Utils.sanitizeHTML(content);
-			if(obj.optBoolean("sensitive") && summary!=null){
+			if(obj.has("sensitive") && obj.get("sensitive").getAsBoolean() && summary!=null){
 				summary=Utils.sanitizeHTML(summary);
 			}else{
 				summary=null;
@@ -211,7 +211,7 @@ public class Post extends ActivityPubObject{
 		if(published==null)
 			published=new Date();
 
-		ActivityPubObject target=parse(obj.optJSONObject("target"), parserContext);
+		ActivityPubObject target=parse(optObject(obj, "target"), parserContext);
 		if(target instanceof ActivityPubCollection && target.attributedTo!=null && target.activityPubID!=null && inReplyTo==null){
 			URI ownerID=target.attributedTo;
 			if(Config.isLocal(ownerID)){

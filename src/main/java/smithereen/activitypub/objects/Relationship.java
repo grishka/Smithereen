@@ -1,6 +1,6 @@
 package smithereen.activitypub.objects;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 import java.net.URI;
 
@@ -21,18 +21,18 @@ public class Relationship extends ActivityPubObject{
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
-		obj.put("relationship", relationship.toString());
-		obj.put("object", object.serialize(contextCollector));
-		obj.put("subject", subject.serialize(contextCollector));
+		obj.addProperty("relationship", relationship.toString());
+		obj.add("object", object.serialize(contextCollector));
+		obj.add("subject", subject.serialize(contextCollector));
 		return obj;
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		relationship=tryParseURL(obj.getString("relationship"));
+		relationship=tryParseURL(obj.get("relationship").getAsString());
 		object=tryParseLinkOrObject(obj.get("object"), parserContext);
 		subject=tryParseLinkOrObject(obj.get("subject"), parserContext);
 		return this;

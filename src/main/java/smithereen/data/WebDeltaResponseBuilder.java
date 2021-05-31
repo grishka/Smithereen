@@ -1,14 +1,18 @@
 package smithereen.data;
 
+import com.google.gson.annotations.SerializedName;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import smithereen.Utils;
 import spark.Response;
 
 public class WebDeltaResponseBuilder{
-	private JSONArray commands=new JSONArray();
+	private ArrayList<Command> commands=new ArrayList<>();
 
 	public WebDeltaResponseBuilder(){
 
@@ -19,158 +23,274 @@ public class WebDeltaResponseBuilder{
 	}
 
 	public WebDeltaResponseBuilder setContent(@NotNull String containerID, @NotNull String html){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "setContent");
-		cmd.put("id", containerID);
-		cmd.put("c", html);
-		commands.put(cmd);
+		commands.add(new SetContentCommand(containerID, html));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder remove(@NotNull String... ids){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "remove");
-		cmd.put("ids", new JSONArray(ids));
-		commands.put(cmd);
+		commands.add(new RemoveElementsCommand(ids));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder messageBox(@NotNull String title, @NotNull String msg, @NotNull String button){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "msgBox");
-		cmd.put("m", msg);
-		cmd.put("t", title);
-		cmd.put("b", button);
-		commands.put(cmd);
+		commands.add(new MessageBoxCommand(title, msg, button));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder box(@NotNull String title, @NotNull String content, @Nullable String id, boolean scrollable){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "box");
-		cmd.put("t", title);
-		cmd.put("c", content);
-		cmd.put("s", scrollable);
-		if(id!=null)
-			cmd.put("i", id);
-		commands.put(cmd);
+		commands.add(new BoxCommand(title, content, id, scrollable, null));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder box(@NotNull String title, @NotNull String content, @Nullable String id, int width){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "box");
-		cmd.put("t", title);
-		cmd.put("c", content);
-		cmd.put("w", width);
-		if(id!=null)
-			cmd.put("i", id);
-		commands.put(cmd);
+		commands.add(new BoxCommand(title, content, id, null, width));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder formBox(@NotNull String title, @NotNull String content, @NotNull String formAction, @NotNull String button){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "formBox");
-		cmd.put("m", content);
-		cmd.put("t", title);
-		cmd.put("b", button);
-		cmd.put("fa", formAction);
-		commands.put(cmd);
+		commands.add(new FormBoxCommand(content, title, button, formAction));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder show(@NotNull String... ids){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "show");
-		cmd.put("ids", new JSONArray(ids));
-		commands.put(cmd);
+		commands.add(new ShowHideElementsCommand(true, ids));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder hide(@NotNull String... ids){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "hide");
-		cmd.put("ids", new JSONArray(ids));
-		commands.put(cmd);
+		commands.add(new ShowHideElementsCommand(false, ids));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder insertHTML(@NotNull ElementInsertionMode mode, @NotNull String id, @NotNull String html){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "insert");
-		cmd.put("id", id);
-		cmd.put("c", html);
-		cmd.put("m", new String[]{"bb", "ab", "be", "ae"}[mode.ordinal()]);
-		commands.put(cmd);
+		commands.add(new InsertHtmlCommand(id, html, mode));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder setInputValue(@NotNull String id, @NotNull String value){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "setValue");
-		cmd.put("id", id);
-		cmd.put("v", value);
-		commands.put(cmd);
+		commands.add(new SetInputValueCommand(id, value));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder refresh(){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "refresh");
-		commands.put(cmd);
+		commands.add(new RefreshCommand());
 		return this;
 	}
 
 	public WebDeltaResponseBuilder replaceLocation(String url){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "location");
-		cmd.put("l", url);
-		commands.put(cmd);
+		commands.add(new ReplaceLocationCommand(url));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder addClass(@NotNull String id, @NotNull String className){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "addClass");
-		cmd.put("id", id);
-		cmd.put("cl", className);
-		commands.put(cmd);
+		commands.add(new AddRemoveClassCommand(true, id, className));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder removeClass(@NotNull String id, @NotNull String className){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "remClass");
-		cmd.put("id", id);
-		cmd.put("cl", className);
-		commands.put(cmd);
+		commands.add(new AddRemoveClassCommand(false, id, className));
 		return this;
 	}
 
 	public WebDeltaResponseBuilder setAttribute(@NotNull String id, @NotNull String name, @NotNull String value){
-		JSONObject cmd=new JSONObject();
-		cmd.put("a", "setAttr");
-		cmd.put("id", id);
-		cmd.put("n", name);
-		cmd.put("v", value);
-		commands.put(cmd);
+		commands.add(new SetAttributeCommand(id, name, value));
 		return this;
 	}
 
-	public JSONArray json(){
-		return commands;
+	public String json(){
+		return Utils.gson.toJson(commands);
 	}
 
 	@Override
 	public String toString(){
-		return commands.toString();
+		return json();
+	}
+
+	public List<Command> commands(){
+		return commands;
 	}
 
 	public enum ElementInsertionMode{
+		@SerializedName("bb")
 		BEFORE_BEGIN,
+		@SerializedName("ab")
 		AFTER_BEGIN,
+		@SerializedName("be")
 		BEFORE_END,
+		@SerializedName("ae")
 		AFTER_END
+	}
+
+	public static abstract class Command{
+		@SerializedName("a")
+		public String action;
+
+		public Command(String action){
+			this.action=action;
+		}
+	}
+
+	private static class SetContentCommand extends Command{
+		@SerializedName("id")
+		public String containerID;
+		@SerializedName("c")
+		public String content;
+
+		public SetContentCommand(String containerID, String content){
+			super("setContent");
+			this.containerID=containerID;
+			this.content=content;
+		}
+	}
+
+	private static class RemoveElementsCommand extends Command{
+		@SerializedName("ids")
+		public String[] elementIDs;
+
+		public RemoveElementsCommand(String[] elementIDs){
+			super("remove");
+			this.elementIDs=elementIDs;
+		}
+	}
+
+	private static class MessageBoxCommand extends Command{
+		@SerializedName("t")
+		public String title;
+		@SerializedName("m")
+		public String message;
+		@SerializedName("b")
+		public String button;
+
+		public MessageBoxCommand(String title, String message, String button){
+			super("msgBox");
+			this.title=title;
+			this.message=message;
+			this.button=button;
+		}
+	}
+
+	public static class BoxCommand extends Command{
+		@SerializedName("t")
+		public String title;
+		@SerializedName("c")
+		public String content;
+		@SerializedName("i")
+		public String id;
+		@SerializedName("s")
+		public Boolean scrollable;
+		@SerializedName("w")
+		public Integer width;
+
+		public BoxCommand(String title, String content, String id, Boolean scrollable, Integer width){
+			super("box");
+			this.title=title;
+			this.content=content;
+			this.id=id;
+			this.scrollable=scrollable;
+			this.width=width;
+		}
+	}
+
+	public static class FormBoxCommand extends Command{
+		@SerializedName("m")
+		public String content;
+		@SerializedName("t")
+		public String title;
+		@SerializedName("b")
+		public String button;
+		@SerializedName("fa")
+		public String formAction;
+
+		public FormBoxCommand(String content, String title, String button, String formAction){
+			super("formBox");
+			this.content=content;
+			this.title=title;
+			this.button=button;
+			this.formAction=formAction;
+		}
+	}
+
+	private static class ShowHideElementsCommand extends Command{
+		@SerializedName("ids")
+		public String[] elementIDs;
+
+		public ShowHideElementsCommand(boolean show, String[] elementIDs){
+			super(show ? "show" : "hide");
+			this.elementIDs=elementIDs;
+		}
+	}
+
+	private static class InsertHtmlCommand extends Command{
+		@SerializedName("id")
+		public String id;
+		@SerializedName("c")
+		public String html;
+		@SerializedName("m")
+		public ElementInsertionMode insertionMode;
+
+		public InsertHtmlCommand(String id, String html, ElementInsertionMode insertionMode){
+			super("insert");
+			this.id=id;
+			this.html=html;
+			this.insertionMode=insertionMode;
+		}
+	}
+
+	private static class SetInputValueCommand extends Command{
+		@SerializedName("id")
+		public String id;
+		@SerializedName("v")
+		public String value;
+
+		public SetInputValueCommand(String id, String value){
+			super("setValue");
+			this.id=id;
+			this.value=value;
+		}
+	}
+
+	private static class RefreshCommand extends Command{
+		public RefreshCommand(){
+			super("refresh");
+		}
+	}
+
+	public static class ReplaceLocationCommand extends Command{
+		@SerializedName("l")
+		public String location;
+
+		public ReplaceLocationCommand(String location){
+			super("location");
+			this.location=location;
+		}
+	}
+
+	public static class AddRemoveClassCommand extends Command{
+		@SerializedName("id")
+		public String id;
+		@SerializedName("cl")
+		public String className;
+
+		public AddRemoveClassCommand(boolean add, String id, String className){
+			super(add ? "addClass" : "remClass");
+			this.id=id;
+			this.className=className;
+		}
+	}
+
+	public static class SetAttributeCommand extends Command{
+		@SerializedName("id")
+		public String id;
+		@SerializedName("n")
+		public String name;
+		@SerializedName("v")
+		public String value;
+
+		public SetAttributeCommand(String id, String name, String value){
+			super("setAttr");
+			this.id=id;
+			this.name=name;
+			this.value=value;
+		}
 	}
 }

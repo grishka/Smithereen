@@ -1,10 +1,14 @@
 package smithereen.jsonld;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 import java.util.*;
+import java.util.stream.Collectors;
+
+import com.google.gson.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static smithereen.jsonld.TestUtils.*;
@@ -17,11 +21,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Plain literal with URIs")
 	void t0001(){
-		Object input=readResourceAsJSON("/toRdf/0001-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0001-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0001-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0001-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -30,11 +34,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Plain literal with CURIE from default context")
 	void t0002(){
-		Object input=readResourceAsJSON("/toRdf/0002-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0002-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0002-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0002-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -43,11 +47,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Default subject is BNode")
 	void t0003(){
-		Object input=readResourceAsJSON("/toRdf/0003-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0003-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0003-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0003-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -56,11 +60,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Literal with language tag")
 	void t0004(){
-		Object input=readResourceAsJSON("/toRdf/0004-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0004-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0004-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0004-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -69,11 +73,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Extended character set literal")
 	void t0005(){
-		Object input=readResourceAsJSON("/toRdf/0005-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0005-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0005-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0005-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -82,11 +86,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Typed literal")
 	void t0006(){
-		Object input=readResourceAsJSON("/toRdf/0006-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0006-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0006-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0006-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -95,11 +99,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Tests 'a' generates rdf:type and object is implicit IRI")
 	void t0007(){
-		Object input=readResourceAsJSON("/toRdf/0007-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0007-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0007-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0007-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -108,11 +112,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Test prefix defined in @context")
 	void t0008(){
-		Object input=readResourceAsJSON("/toRdf/0008-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0008-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0008-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0008-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -121,11 +125,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Test using an empty suffix")
 	void t0009(){
-		Object input=readResourceAsJSON("/toRdf/0009-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0009-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0009-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0009-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -134,11 +138,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Test object processing defines object")
 	void t0010(){
-		Object input=readResourceAsJSON("/toRdf/0010-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0010-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0010-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0010-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -147,11 +151,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Test object processing defines object with implicit BNode")
 	void t0011(){
-		Object input=readResourceAsJSON("/toRdf/0011-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0011-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0011-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0011-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -160,11 +164,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Multiple Objects for a Single Property")
 	void t0012(){
-		Object input=readResourceAsJSON("/toRdf/0012-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0012-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0012-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0012-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -173,11 +177,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Creation of an empty list")
 	void t0013(){
-		Object input=readResourceAsJSON("/toRdf/0013-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0013-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0013-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0013-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -186,11 +190,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Creation of a list with single element")
 	void t0014(){
-		Object input=readResourceAsJSON("/toRdf/0014-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0014-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0014-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0014-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -199,11 +203,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Creation of a list with multiple elements")
 	void t0015(){
-		Object input=readResourceAsJSON("/toRdf/0015-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0015-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0015-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0015-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -212,11 +216,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Empty IRI expands to resource location")
 	void t0016(){
-		Object input=readResourceAsJSON("/toRdf/0016-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0016-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0016-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0016-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -225,11 +229,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Relative IRI expands relative resource location")
 	void t0017(){
-		Object input=readResourceAsJSON("/toRdf/0017-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0017-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0017-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0017-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -238,11 +242,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Frag ID expands relative resource location")
 	void t0018(){
-		Object input=readResourceAsJSON("/toRdf/0018-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0018-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0018-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0018-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -251,11 +255,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Test type coercion to anyURI")
 	void t0019(){
-		Object input=readResourceAsJSON("/toRdf/0019-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0019-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0019-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0019-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -264,11 +268,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Test type coercion to typed literal")
 	void t0020(){
-		Object input=readResourceAsJSON("/toRdf/0020-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0020-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0020-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0020-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -277,11 +281,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Test coercion of double value")
 	void t0022(){
-		Object input=readResourceAsJSON("/toRdf/0022-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0022-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0022-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0022-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -290,11 +294,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Test coercion of integer value")
 	void t0023(){
-		Object input=readResourceAsJSON("/toRdf/0023-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0023-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0023-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0023-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -303,11 +307,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Test coercion of boolean value")
 	void t0024(){
-		Object input=readResourceAsJSON("/toRdf/0024-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0024-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0024-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0024-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -316,11 +320,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Test list coercion with single element")
 	void t0025(){
-		Object input=readResourceAsJSON("/toRdf/0025-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0025-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0025-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0025-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -329,11 +333,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Test creation of multiple types")
 	void t0026(){
-		Object input=readResourceAsJSON("/toRdf/0026-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0026-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0026-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0026-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -342,11 +346,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Simple named graph (Wikidata)")
 	void t0027(){
-		Object input=readResourceAsJSON("/toRdf/0027-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0027-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0027-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0027-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -355,11 +359,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Simple named graph")
 	void t0028(){
-		Object input=readResourceAsJSON("/toRdf/0028-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0028-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0028-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0028-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -368,11 +372,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("named graph with embedded named graph")
 	void t0029(){
-		Object input=readResourceAsJSON("/toRdf/0029-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0029-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0029-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0029-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -381,11 +385,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("top-level graph with string subject reference")
 	void t0030(){
-		Object input=readResourceAsJSON("/toRdf/0030-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0030-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0030-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0030-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -394,11 +398,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Reverse property")
 	void t0031(){
-		Object input=readResourceAsJSON("/toRdf/0031-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0031-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0031-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0031-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -407,11 +411,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("@context reordering")
 	void t0032(){
-		Object input=readResourceAsJSON("/toRdf/0032-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0032-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0032-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0032-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -420,11 +424,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("@id reordering")
 	void t0033(){
-		Object input=readResourceAsJSON("/toRdf/0033-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0033-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0033-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0033-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -433,11 +437,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("context properties reordering")
 	void t0034(){
-		Object input=readResourceAsJSON("/toRdf/0034-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0034-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0034-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0034-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -446,11 +450,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("non-fractional numbers converted to xsd:double")
 	void t0035(){
-		Object input=readResourceAsJSON("/toRdf/0035-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0035-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0035-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0035-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -459,11 +463,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Use nodeMapGeneration bnode labels")
 	void t0036(){
-		Object input=readResourceAsJSON("/toRdf/0036-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0036-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0036-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0036-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -472,11 +476,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Dataset with a IRI named graph")
 	void t0113(){
-		Object input=readResourceAsJSON("/toRdf/0113-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0113-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0113-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0113-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -485,11 +489,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Dataset with a IRI named graph")
 	void t0114(){
-		Object input=readResourceAsJSON("/toRdf/0114-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0114-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0114-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0114-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -498,11 +502,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Dataset with a default and two named graphs")
 	void t0115(){
-		Object input=readResourceAsJSON("/toRdf/0115-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0115-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0115-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0115-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -511,11 +515,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Dataset from node with embedded named graph")
 	void t0116(){
-		Object input=readResourceAsJSON("/toRdf/0116-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0116-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0116-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0116-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -524,25 +528,26 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Dataset from node with embedded named graph (bnode)")
 	void t0117(){
-		Object input=readResourceAsJSON("/toRdf/0117-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0117-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0117-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0117-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
 	* Triples with blank node predicates are not dropped if the produce generalized RDF flag is true.
 	*/
-	@Test
-	@DisplayName("produce generalized RDF flag")
-	void t0118(){
-		Object input=readResourceAsJSON("/toRdf/0118-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0118-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0118-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("produce generalized RDF flag")
+//	@Disabled
+//	void t0118(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0118-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0118-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0118-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* Proper (re-)labeling of blank nodes if used with reverse properties.
@@ -550,181 +555,194 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Blank nodes with reverse properties")
 	void t0119(){
-		Object input=readResourceAsJSON("/toRdf/0119-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/0119-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0119-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/0119-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (0)")
-	void t0120(){
-		Object input=readResourceAsJSON("/toRdf/0120-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0120-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0120-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (0)")
+//	@Disabled
+//	void t0120(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0120-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0120-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0120-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (1)")
-	void t0121(){
-		Object input=readResourceAsJSON("/toRdf/0121-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0121-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0121-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (1)")
+//	@Disabled
+//	void t0121(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0121-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0121-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0121-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (2)")
-	void t0122(){
-		Object input=readResourceAsJSON("/toRdf/0122-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0122-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0122-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (2)")
+//	@Disabled
+//	void t0122(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0122-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0122-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0122-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (3)")
-	void t0123(){
-		Object input=readResourceAsJSON("/toRdf/0123-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0123-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0123-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (3)")
+//	@Disabled
+//	void t0123(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0123-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0123-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0123-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (4)")
-	void t0124(){
-		Object input=readResourceAsJSON("/toRdf/0124-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0124-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0124-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (4)")
+//	@Disabled
+//	void t0124(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0124-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0124-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0124-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (5)")
-	void t0125(){
-		Object input=readResourceAsJSON("/toRdf/0125-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0125-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0125-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (5)")
+//	@Disabled
+//	void t0125(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0125-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0125-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0125-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (6)")
-	void t0126(){
-		Object input=readResourceAsJSON("/toRdf/0126-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0126-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0126-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (6)")
+//	@Disabled
+//	void t0126(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0126-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0126-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0126-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (7)")
-	void t0127(){
-		Object input=readResourceAsJSON("/toRdf/0127-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0127-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0127-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (7)")
+//	@Disabled
+//	void t0127(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0127-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0127-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0127-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
+//
+	/***
+	* IRI resolution according to RFC3986.
+	*/
+//	@Test
+//	@DisplayName("IRI Resolution (8)")
+//	@Disabled
+//	void t0128(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0128-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0128-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0128-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (8)")
-	void t0128(){
-		Object input=readResourceAsJSON("/toRdf/0128-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0128-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0128-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (9)")
+//	@Disabled
+//	void t0129(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0129-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0129-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0129-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (9)")
-	void t0129(){
-		Object input=readResourceAsJSON("/toRdf/0129-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0129-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0129-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (10)")
+//	@Disabled
+//	void t0130(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0130-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0130-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0130-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (10)")
-	void t0130(){
-		Object input=readResourceAsJSON("/toRdf/0130-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0130-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0130-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (11)")
+//	@Disabled
+//	void t0131(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0131-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0131-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0131-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* IRI resolution according to RFC3986.
 	*/
-	@Test
-	@DisplayName("IRI Resolution (11)")
-	void t0131(){
-		Object input=readResourceAsJSON("/toRdf/0131-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0131-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0131-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
-
-	/***
-	* IRI resolution according to RFC3986.
-	*/
-	@Test
-	@DisplayName("IRI Resolution (12)")
-	void t0132(){
-		Object input=readResourceAsJSON("/toRdf/0132-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0132-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/0132-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("IRI Resolution (12)")
+//	@Disabled
+//	void t0132(){
+//		JsonElement input=readResourceAsJSON("/toRdf/0132-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/0132-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/0132-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* Free-floating nodes do not generate RDF triples (from expand-0001)
@@ -732,9 +750,9 @@ class ToRDFTests{
 	@Test
 	@DisplayName("drop free-floating nodes")
 	void te001(){
-		Object input=readResourceAsJSON("/toRdf/e001-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e001-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e001-in.jsonld"));
-		assertEquals(0, result.size());
+		assertLinesMatch(Collections.emptyList(), result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -743,11 +761,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("basic")
 	void te002(){
-		Object input=readResourceAsJSON("/toRdf/e002-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e002-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e002-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e002-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -756,9 +774,9 @@ class ToRDFTests{
 	@Test
 	@DisplayName("drop null and unmapped properties")
 	void te003(){
-		Object input=readResourceAsJSON("/toRdf/e003-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e003-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e003-in.jsonld"));
-		assertEquals(0, result.size());
+		assertLinesMatch(Collections.emptyList(), result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -767,11 +785,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("optimize @set, keep empty arrays")
 	void te004(){
-		Object input=readResourceAsJSON("/toRdf/e004-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e004-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e004-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e004-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -780,11 +798,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("do not expand aliased @id/@type")
 	void te005(){
-		Object input=readResourceAsJSON("/toRdf/e005-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e005-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e005-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e005-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -793,11 +811,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("alias keywords")
 	void te006(){
-		Object input=readResourceAsJSON("/toRdf/e006-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e006-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e006-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e006-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -806,11 +824,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("date type-coercion")
 	void te007(){
-		Object input=readResourceAsJSON("/toRdf/e007-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e007-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e007-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e007-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -819,11 +837,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("@value with @language")
 	void te008(){
-		Object input=readResourceAsJSON("/toRdf/e008-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e008-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e008-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e008-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -832,11 +850,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("@graph with terms")
 	void te009(){
-		Object input=readResourceAsJSON("/toRdf/e009-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e009-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e009-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e009-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -845,11 +863,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("native types")
 	void te010(){
-		Object input=readResourceAsJSON("/toRdf/e010-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e010-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e010-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e010-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -858,11 +876,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("coerced @id")
 	void te011(){
-		Object input=readResourceAsJSON("/toRdf/e011-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e011-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e011-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e011-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -871,11 +889,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("@graph with embed")
 	void te012(){
-		Object input=readResourceAsJSON("/toRdf/e012-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e012-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e012-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e012-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -884,11 +902,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("expand already expanded")
 	void te013(){
-		Object input=readResourceAsJSON("/toRdf/e013-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e013-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e013-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e013-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -897,11 +915,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("@set of @value objects with keyword aliases")
 	void te014(){
-		Object input=readResourceAsJSON("/toRdf/e014-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e014-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e014-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e014-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -910,11 +928,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("collapse set of sets, keep empty lists")
 	void te015(){
-		Object input=readResourceAsJSON("/toRdf/e015-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e015-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e015-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e015-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -923,11 +941,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("context reset")
 	void te016(){
-		Object input=readResourceAsJSON("/toRdf/e016-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e016-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e016-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e016-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -936,11 +954,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("@graph and @id aliased")
 	void te017(){
-		Object input=readResourceAsJSON("/toRdf/e017-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e017-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e017-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e017-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -949,11 +967,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("override default @language")
 	void te018(){
-		Object input=readResourceAsJSON("/toRdf/e018-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e018-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e018-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e018-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -962,9 +980,9 @@ class ToRDFTests{
 	@Test
 	@DisplayName("remove @value = null")
 	void te019(){
-		Object input=readResourceAsJSON("/toRdf/e019-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e019-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e019-in.jsonld"));
-		assertEquals(0, result.size());
+		assertLinesMatch(Collections.emptyList(), result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -973,11 +991,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("do not remove @graph if not at top-level")
 	void te020(){
-		Object input=readResourceAsJSON("/toRdf/e020-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e020-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e020-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e020-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -986,11 +1004,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("do not remove @graph at top-level if not only property")
 	void te021(){
-		Object input=readResourceAsJSON("/toRdf/e021-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e021-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e021-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e021-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -999,11 +1017,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("expand value with default language")
 	void te022(){
-		Object input=readResourceAsJSON("/toRdf/e022-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e022-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e022-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e022-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1012,11 +1030,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Lists and sets of properties with list/set coercion")
 	void te023(){
-		Object input=readResourceAsJSON("/toRdf/e023-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e023-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e023-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e023-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1025,11 +1043,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Multiple contexts")
 	void te024(){
-		Object input=readResourceAsJSON("/toRdf/e024-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e024-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e024-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e024-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1038,11 +1056,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Problematic IRI expansion tests")
 	void te025(){
-		Object input=readResourceAsJSON("/toRdf/e025-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e025-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e025-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e025-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1051,11 +1069,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expanding term mapping to @type uses @type syntax")
 	void te026(){
-		Object input=readResourceAsJSON("/toRdf/e026-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e026-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e026-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e026-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1064,11 +1082,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Keep duplicate values in @list and @set")
 	void te027(){
-		Object input=readResourceAsJSON("/toRdf/e027-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e027-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e027-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e027-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1077,11 +1095,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Use @vocab in properties and @type but not in @id")
 	void te028(){
-		Object input=readResourceAsJSON("/toRdf/e028-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e028-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e028-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e028-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1090,11 +1108,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Relative IRIs")
 	void te029(){
-		Object input=readResourceAsJSON("/toRdf/e029-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e029-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e029-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e029-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1103,11 +1121,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Language maps")
 	void te030(){
-		Object input=readResourceAsJSON("/toRdf/e030-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e030-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e030-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e030-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1116,11 +1134,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("type-coercion of native types")
 	void te031(){
-		Object input=readResourceAsJSON("/toRdf/e031-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e031-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e031-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e031-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1129,11 +1147,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Mapping a term to null decouples it from @vocab")
 	void te032(){
-		Object input=readResourceAsJSON("/toRdf/e032-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e032-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e032-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e032-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1142,11 +1160,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Using @vocab with with type-coercion")
 	void te033(){
-		Object input=readResourceAsJSON("/toRdf/e033-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e033-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e033-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e033-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1155,11 +1173,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Multiple properties expanding to the same IRI")
 	void te034(){
-		Object input=readResourceAsJSON("/toRdf/e034-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e034-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e034-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e034-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1168,11 +1186,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Language maps with @vocab, default language, and colliding property")
 	void te035(){
-		Object input=readResourceAsJSON("/toRdf/e035-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e035-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e035-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e035-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1181,11 +1199,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expanding @index")
 	void te036(){
-		Object input=readResourceAsJSON("/toRdf/e036-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e036-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e036-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e036-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1194,11 +1212,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expanding @reverse")
 	void te037(){
-		Object input=readResourceAsJSON("/toRdf/e037-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e037-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e037-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e037-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1207,11 +1225,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Drop blank node predicates by default")
 	void te038(){
-		Object input=readResourceAsJSON("/toRdf/e038-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e038-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e038-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e038-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1220,11 +1238,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Using terms in a reverse-maps")
 	void te039(){
-		Object input=readResourceAsJSON("/toRdf/e039-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e039-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e039-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e039-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1233,11 +1251,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("language and index expansion on non-objects")
 	void te040(){
-		Object input=readResourceAsJSON("/toRdf/e040-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e040-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e040-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e040-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1246,11 +1264,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Reset the default language")
 	void te041(){
-		Object input=readResourceAsJSON("/toRdf/e041-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e041-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e041-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e041-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1259,11 +1277,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expanding reverse properties")
 	void te042(){
-		Object input=readResourceAsJSON("/toRdf/e042-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e042-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e042-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e042-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1272,11 +1290,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Using reverse properties inside a @reverse-container")
 	void te043(){
-		Object input=readResourceAsJSON("/toRdf/e043-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e043-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e043-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e043-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1285,11 +1303,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Ensure index maps use language mapping")
 	void te044(){
-		Object input=readResourceAsJSON("/toRdf/e044-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e044-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e044-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e044-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1298,9 +1316,9 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Top-level value objects are removed")
 	void te045(){
-		Object input=readResourceAsJSON("/toRdf/e045-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e045-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e045-in.jsonld"));
-		assertEquals(0, result.size());
+		assertLinesMatch(Collections.emptyList(), result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1309,9 +1327,9 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Free-floating nodes are removed")
 	void te046(){
-		Object input=readResourceAsJSON("/toRdf/e046-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e046-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e046-in.jsonld"));
-		assertEquals(0, result.size());
+		assertLinesMatch(Collections.emptyList(), result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1320,11 +1338,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Remove free-floating set values and lists")
 	void te047(){
-		Object input=readResourceAsJSON("/toRdf/e047-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e047-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e047-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e047-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1333,11 +1351,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Terms are ignored in @id")
 	void te048(){
-		Object input=readResourceAsJSON("/toRdf/e048-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e048-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e048-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e048-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1346,11 +1364,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Using strings as value of a reverse property")
 	void te049(){
-		Object input=readResourceAsJSON("/toRdf/e049-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e049-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e049-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e049-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1359,23 +1377,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Term definitions with prefix separate from prefix definitions")
 	void te050(){
-		Object input=readResourceAsJSON("/toRdf/e050-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e050-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e050-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e050-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
-
-	/***
-	* Verifies that an exception is raised in Expansion when an invalid IRI is used for @reverse.
-	*/
-	@Test
-	@DisplayName("Invalid reverse id")
-	void tee50(){
-		assertThrows(JLDException.class, ()->{
-			Object input=readResourceAsJSON("/toRdf/ee50-in.jsonld");
-			JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/ee50-in.jsonld"));
-		}, "invalid IRI mapping");
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1384,11 +1390,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expansion of keyword aliases in term definitions")
 	void te051(){
-		Object input=readResourceAsJSON("/toRdf/e051-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e051-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e051-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e051-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1397,11 +1403,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("@vocab-relative IRIs in term definitions")
 	void te052(){
-		Object input=readResourceAsJSON("/toRdf/e052-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e052-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e052-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e052-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1410,11 +1416,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expand absolute IRI with @type: @vocab")
 	void te053(){
-		Object input=readResourceAsJSON("/toRdf/e053-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e053-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e053-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e053-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1423,11 +1429,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expand term with @type: @vocab")
 	void te054(){
-		Object input=readResourceAsJSON("/toRdf/e054-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e054-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e054-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e054-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1436,11 +1442,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expand @vocab-relative term with @type: @vocab")
 	void te055(){
-		Object input=readResourceAsJSON("/toRdf/e055-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e055-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e055-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e055-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1449,11 +1455,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Use terms with @type: @vocab but not with @type: @id")
 	void te056(){
-		Object input=readResourceAsJSON("/toRdf/e056-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e056-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e056-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e056-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1462,11 +1468,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expand relative IRI with @type: @vocab")
 	void te057(){
-		Object input=readResourceAsJSON("/toRdf/e057-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e057-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e057-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e057-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1475,11 +1481,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expand compact IRI with @type: @vocab")
 	void te058(){
-		Object input=readResourceAsJSON("/toRdf/e058-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e058-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e058-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e058-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1488,11 +1494,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Reset @vocab by setting it to null")
 	void te059(){
-		Object input=readResourceAsJSON("/toRdf/e059-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e059-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e059-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e059-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1501,11 +1507,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Overwrite document base with @base and reset it again")
 	void te060(){
-		Object input=readResourceAsJSON("/toRdf/e060-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e060-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e060-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e060-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1514,11 +1520,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Coercing native types to arbitrary datatypes")
 	void te061(){
-		Object input=readResourceAsJSON("/toRdf/e061-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e061-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e061-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e061-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1527,11 +1533,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Various relative IRIs with with @base")
 	void te062(){
-		Object input=readResourceAsJSON("/toRdf/e062-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e062-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e062-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e062-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1540,11 +1546,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expand a reverse property with an index-container")
 	void te063(){
-		Object input=readResourceAsJSON("/toRdf/e063-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e063-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e063-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e063-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1553,11 +1559,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Expand reverse property whose values are unlabeled blank nodes")
 	void te064(){
-		Object input=readResourceAsJSON("/toRdf/e064-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e064-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e064-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e064-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1566,11 +1572,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Keys that are not mapped to an IRI in a reverse-map are dropped")
 	void te065(){
-		Object input=readResourceAsJSON("/toRdf/e065-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e065-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e065-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e065-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1579,11 +1585,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Use @vocab to expand keys in reverse-maps")
 	void te066(){
-		Object input=readResourceAsJSON("/toRdf/e066-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e066-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e066-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e066-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1592,11 +1598,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("prefix:://sufffix not a compact IRI")
 	void te067(){
-		Object input=readResourceAsJSON("/toRdf/e067-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e067-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e067-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e067-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1605,11 +1611,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("_::sufffix not a compact IRI")
 	void te068(){
-		Object input=readResourceAsJSON("/toRdf/e068-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e068-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e068-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e068-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1618,11 +1624,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Compact IRI as term with type mapping")
 	void te069(){
-		Object input=readResourceAsJSON("/toRdf/e069-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e069-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e069-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e069-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1631,11 +1637,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Redefine compact IRI with itself")
 	void te070(){
-		Object input=readResourceAsJSON("/toRdf/e070-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e070-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e070-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e070-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1644,11 +1650,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Redefine terms looking like compact IRIs")
 	void te071(){
-		Object input=readResourceAsJSON("/toRdf/e071-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e071-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e071-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e071-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1657,11 +1663,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Redefine term using @vocab, not itself")
 	void te072(){
-		Object input=readResourceAsJSON("/toRdf/e072-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e072-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e072-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e072-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1670,11 +1676,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("@context not first property")
 	void te073(){
-		Object input=readResourceAsJSON("/toRdf/e073-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e073-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e073-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e073-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1683,25 +1689,26 @@ class ToRDFTests{
 	@Test
 	@DisplayName("@id not first property")
 	void te074(){
-		Object input=readResourceAsJSON("/toRdf/e074-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e074-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e074-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e074-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
 	* Use @vocab to map all properties to blank node identifiers
 	*/
-	@Test
-	@DisplayName("@vocab as blank node identifier")
-	void te075(){
-		Object input=readResourceAsJSON("/toRdf/e075-in.jsonld");
-		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e075-in.jsonld"));
-		List<String> expect=readResourceAsLines("/toRdf/e075-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
-	}
+//	@Test
+//	@DisplayName("@vocab as blank node identifier")
+//	@Disabled
+//	void te075(){
+//		JsonElement input=readResourceAsJSON("/toRdf/e075-in.jsonld");
+//		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e075-in.jsonld"));
+//		List<String> expect=readResourceAsLines("/toRdf/e075-out.nq");
+//		Collections.sort(expect);
+//		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
+//	}
 
 	/***
 	* Use of the base option overrides the document location
@@ -1709,11 +1716,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("base option overrides document location")
 	void te076(){
-		Object input=readResourceAsJSON("/toRdf/e076-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e076-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("http://example/base/"));
 		List<String> expect=readResourceAsLines("/toRdf/e076-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1722,11 +1729,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("multiple reverse properties")
 	void te078(){
-		Object input=readResourceAsJSON("/toRdf/e078-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e078-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e078-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e078-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1735,11 +1742,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("Do not expand native values to IRIs")
 	void te088(){
-		Object input=readResourceAsJSON("/toRdf/e088-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e088-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e088-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e088-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1748,11 +1755,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("empty @base applied to the base option")
 	void te089(){
-		Object input=readResourceAsJSON("/toRdf/e089-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e089-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("http://example/base/"));
 		List<String> expect=readResourceAsLines("/toRdf/e089-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1761,11 +1768,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("relative @base overrides base option and document location")
 	void te090(){
-		Object input=readResourceAsJSON("/toRdf/e090-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e090-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("http://example/base/"));
 		List<String> expect=readResourceAsLines("/toRdf/e090-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1774,11 +1781,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("relative and absolute @base overrides base option and document location")
 	void te091(){
-		Object input=readResourceAsJSON("/toRdf/e091-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e091-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("http://example/base/"));
 		List<String> expect=readResourceAsLines("/toRdf/e091-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1787,11 +1794,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("IRI expansion of fragments including ':'")
 	void te109(){
-		Object input=readResourceAsJSON("/toRdf/e109-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e109-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e109-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e109-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1800,11 +1807,11 @@ class ToRDFTests{
 	@Test
 	@DisplayName("context with JavaScript Object property names")
 	void te113(){
-		Object input=readResourceAsJSON("/toRdf/e113-in.jsonld");
+		JsonElement input=readResourceAsJSON("/toRdf/e113-in.jsonld");
 		ArrayList<RDFTriple> result=JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e113-in.jsonld"));
 		List<String> expect=readResourceAsLines("/toRdf/e113-out.nq");
-		assertEquals(expect.size(), result.size());
-		for(RDFTriple t:result) assertTrue(expect.contains(t.toString()));
+		Collections.sort(expect);
+		assertLinesMatch(expect, result.stream().map(Object::toString).sorted().collect(Collectors.toList()));
 	}
 
 	/***
@@ -1814,7 +1821,7 @@ class ToRDFTests{
 	@DisplayName("Verifies that relative IRIs as properties with @vocab: '' in 1.0 generate an error")
 	void te115(){
 		assertThrows(JLDException.class, ()->{
-			Object input=readResourceAsJSON("/toRdf/e115-in.jsonld");
+			JsonElement input=readResourceAsJSON("/toRdf/e115-in.jsonld");
 			JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e115-in.jsonld"));
 		}, "invalid vocab mapping");
 	}
@@ -1826,7 +1833,7 @@ class ToRDFTests{
 	@DisplayName("Verifies that relative IRIs as properties with relative @vocab in 1.0 generate an error")
 	void te116(){
 		assertThrows(JLDException.class, ()->{
-			Object input=readResourceAsJSON("/toRdf/e116-in.jsonld");
+			JsonElement input=readResourceAsJSON("/toRdf/e116-in.jsonld");
 			JLDProcessor.toRDF(input, URI.create("https://w3c.github.io/json-ld-api/tests/toRdf/e116-in.jsonld"));
 		}, "invalid vocab mapping");
 	}

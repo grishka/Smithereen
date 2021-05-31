@@ -1,10 +1,11 @@
 package smithereen.routes;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.URI;
@@ -27,37 +28,32 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
-import smithereen.activitypub.handlers.AddNoteHandler;
-import smithereen.activitypub.handlers.GroupBlockPersonHandler;
-import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
-import smithereen.activitypub.handlers.PersonBlockPersonHandler;
-import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
-import smithereen.activitypub.objects.ForeignActor;
-import smithereen.activitypub.objects.activities.Add;
-import smithereen.activitypub.objects.activities.Block;
-import smithereen.exceptions.BadRequestException;
 import smithereen.BuildInfo;
+import smithereen.Config;
 import smithereen.ObjectLinkResolver;
-import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;
-import smithereen.Config;
-import smithereen.Utils;
 import smithereen.activitypub.ActivityPubCache;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.DoublyNestedActivityTypeHandler;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.handlers.AcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.AcceptFollowPersonHandler;
+import smithereen.activitypub.handlers.AddNoteHandler;
 import smithereen.activitypub.handlers.AnnounceNoteHandler;
 import smithereen.activitypub.handlers.CreateNoteHandler;
 import smithereen.activitypub.handlers.DeleteNoteHandler;
 import smithereen.activitypub.handlers.DeletePersonHandler;
 import smithereen.activitypub.handlers.FollowGroupHandler;
 import smithereen.activitypub.handlers.FollowPersonHandler;
+import smithereen.activitypub.handlers.GroupBlockPersonHandler;
+import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.LeaveGroupHandler;
 import smithereen.activitypub.handlers.LikeNoteHandler;
 import smithereen.activitypub.handlers.OfferFollowPersonHandler;
+import smithereen.activitypub.handlers.PersonBlockPersonHandler;
+import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
@@ -72,11 +68,13 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
-import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Accept;
+import smithereen.activitypub.objects.activities.Add;
 import smithereen.activitypub.objects.activities.Announce;
+import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
@@ -91,8 +89,11 @@ import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Group;
+import smithereen.data.NodeInfo;
 import smithereen.data.Post;
 import smithereen.data.User;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
 import smithereen.sparkext.ActivityPubCollectionPageResponse;
@@ -105,7 +106,9 @@ import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.*;
+import static smithereen.Utils.gson;
+import static smithereen.Utils.parseIntOrDefault;
+import static smithereen.Utils.parseSignatureHeader;
 
 public class ActivityPubRoutes{
 
@@ -361,7 +364,7 @@ public class ActivityPubRoutes{
 			if(remoteObj.activityPubID.getHost()==null || uri.getHost()==null || !remoteObj.activityPubID.getHost().equals(uri.getHost())){
 				return "Object ID host doesn't match URI host";
 			}
-		}catch(IOException|JSONException|URISyntaxException x){
+		}catch(IOException|JsonParseException|URISyntaxException x){
 			return x.getMessage();
 		}
 		if(remoteObj instanceof ForeignUser){
@@ -474,37 +477,28 @@ public class ActivityPubRoutes{
 	public static Object nodeInfo(Request req, Response resp) throws SQLException{
 		String ver=req.pathInfo().substring(req.pathInfo().length()-3);
 		resp.type("application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/"+ver+"#\"");
-		JSONObject root=new JSONObject();
-		root.put("version", ver);
-		root.put("protocols", Collections.singletonList("activitypub"));
-		JSONObject software=new JSONObject();
-		software.put("name", "smithereen");
-		software.put("version", BuildInfo.VERSION);
+
+		NodeInfo nodeInfo=new NodeInfo();
+		nodeInfo.version=ver;
+		nodeInfo.protocols=List.of("activitypub");
+		nodeInfo.openRegistrations=Config.signupMode==Config.SignupMode.OPEN;
+		nodeInfo.software=new NodeInfo.Software();
+		nodeInfo.software.name="smithereen";
+		nodeInfo.software.version=BuildInfo.VERSION;
 		if(ver.equals("2.1")){
-			software.put("repository", "https://github.com/grishka/Smithereen");
-			software.put("homepage", "https://smithereen.software");
+			nodeInfo.software.repository="https://github.com/grishka/Smithereen";
+			nodeInfo.software.homepage="https://smithereen.software";
 		}
-		root.put("software", software);
-		root.put("openRegistrations", Config.signupMode==Config.SignupMode.OPEN);
-		JSONObject usage=new JSONObject();
-		JSONObject users=new JSONObject();
-		users.put("total", UserStorage.getLocalUserCount());
-		users.put("activeMonth", UserStorage.getActiveLocalUserCount(30*24*60*60*1000L));
-		users.put("activeHalfyear", UserStorage.getActiveLocalUserCount(180*24*60*60*1000L));
-		usage.put("users", users);
-		usage.put("localPosts", PostStorage.getLocalPostCount(false));
-		usage.put("localComments", PostStorage.getLocalPostCount(true));
-		root.put("usage", usage);
-		JSONObject services=new JSONObject();
-		services.put("inbound", Collections.EMPTY_LIST);
-		services.put("outbound", Collections.EMPTY_LIST);
-		root.put("services", services);
-		JSONObject meta=new JSONObject();
-		JSONArray caps=new JSONArray();
-		caps.put("friendRequests");
-		meta.put("capabilities", caps);
-		root.put("metadata", meta);
-		return root;
+		nodeInfo.usage=new NodeInfo.Usage();
+		nodeInfo.usage.localPosts=PostStorage.getLocalPostCount(false);
+		nodeInfo.usage.localComments=PostStorage.getLocalPostCount(true);
+		nodeInfo.usage.users=new NodeInfo.Usage.Users();
+		nodeInfo.usage.users.total=UserStorage.getLocalUserCount();
+		nodeInfo.usage.users.activeMonth=UserStorage.getActiveLocalUserCount(30*24*60*60*1000L);
+		nodeInfo.usage.users.activeHalfyear=UserStorage.getActiveLocalUserCount(180*24*60*60*1000L);
+		nodeInfo.metadata=Map.of();
+
+		return gson.toJson(nodeInfo);
 	}
 
 	public static Object likeObject(Request req, Response resp) throws SQLException{
@@ -536,8 +530,8 @@ public class ActivityPubRoutes{
 		}
 		String body=req.body();
 		System.out.println(body);
-		JSONObject rawActivity=new JSONObject(body);
-		JSONObject obj=JLDProcessor.convertToLocalContext(rawActivity);
+		JsonObject rawActivity=JsonParser.parseString(body).getAsJsonObject();
+		JsonObject obj=JLDProcessor.convertToLocalContext(rawActivity);
 
 		Activity activity;
 		ActivityPubObject o;
@@ -591,9 +585,9 @@ public class ActivityPubRoutes{
 		// if it does not, the owner of the HTTP signature must match the actor
 		boolean hasValidLDSignature=false;
 		if(rawActivity.has("signature")){
-			JSONObject sig=rawActivity.getJSONObject("signature");
+			JsonObject sig=rawActivity.getAsJsonObject("signature");
 			try{
-				URI keyID=URI.create(sig.getString("creator"));
+				URI keyID=URI.create(sig.get("creator").getAsString());
 				URI userID=Utils.userIdFromKeyId(keyID);
 				if(!userID.equals(actor.activityPubID)){
 					throw new BadRequestException("LD-signature creator is not activity actor");

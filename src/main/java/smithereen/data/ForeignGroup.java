@@ -1,12 +1,13 @@
 package smithereen.data;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Objects;
 
 import smithereen.ObjectLinkResolver;
 import smithereen.Utils;
@@ -40,40 +41,40 @@ public class ForeignGroup extends Group implements ForeignActor{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
 		if(StringUtils.isNotEmpty(summary))
 			summary=Utils.sanitizeHTML(summary);
 
 		adminsForActivityPub=new ArrayList<>();
-		Object _attributedTo=obj.opt("attributedTo");
-		if(_attributedTo instanceof JSONArray){
-			JSONArray attributedTo=(JSONArray) _attributedTo;
-			for(int i=0;i<attributedTo.length();i++){
-				Object adm=attributedTo.opt(i);
-				doOneAdmin(adm);
+		JsonElement _attributedTo=obj.get("attributedTo");
+		if(_attributedTo!=null){
+			if(_attributedTo.isJsonArray()){
+				for(JsonElement adm:_attributedTo.getAsJsonArray()){
+					doOneAdmin(adm);
+				}
+			}else{
+				doOneAdmin(_attributedTo);
 			}
-		}else if(_attributedTo instanceof JSONObject || _attributedTo instanceof String){
-			doOneAdmin(_attributedTo);
 		}
-		wall=tryParseURL(obj.optString("wall"));
+		wall=tryParseURL(optString(obj, "wall"));
 
 		return this;
 	}
 
-	private void doOneAdmin(Object _adm) throws Exception{
+	private void doOneAdmin(JsonElement _adm) throws Exception{
 		if(_adm==null)
 			return;
-		if(_adm instanceof JSONObject){
-			JSONObject adm=(JSONObject) _adm;
-			if(!"Person".equals(adm.optString("type")))
+		if(_adm.isJsonObject()){
+			JsonObject adm=_adm.getAsJsonObject();
+			if(!"Person".equals(optString(adm, "type")))
 				return;
 			GroupAdmin admin=new GroupAdmin();
-			admin.activityPubUserID=new URI(adm.getString("id"));
-			admin.title=adm.optString("title", "");
+			admin.activityPubUserID=new URI(adm.get("id").getAsString());
+			admin.title=Objects.requireNonNullElse(optString(adm, "title"), "");
 			adminsForActivityPub.add(admin);
-		}else if(_adm instanceof String){
-			URI adm=tryParseURL((String)_adm);
+		}else if(_adm.isJsonPrimitive()){
+			URI adm=tryParseURL(_adm.getAsString());
 			if(adm==null)
 				return;
 			GroupAdmin admin=new GroupAdmin();

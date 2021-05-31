@@ -1,6 +1,7 @@
 package smithereen.jsonld;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -26,13 +27,13 @@ public class LinkedDataSignaturesTests{
 	private ForeignUser actor;
 
 	public LinkedDataSignaturesTests() throws Exception{
-		actor=(ForeignUser) ForeignUser.parse(JLDProcessor.convertToLocalContext((JSONObject)readResourceAsJSON("/ld-signature/mastodon_actor.json")));
+		actor=(ForeignUser) ForeignUser.parse(JLDProcessor.convertToLocalContext(readResourceAsJSON("/ld-signature/mastodon_actor.json").getAsJsonObject()));
 	}
 
 	@Test
 	@DisplayName("C14N only: activity object")
 	void testCanonicalizationActivity(){
-		JSONObject in=(JSONObject) readResourceAsJSON("/ld-signature/00a-unsigned_payload.json");
+		JsonObject in=readResourceAsJSON("/ld-signature/00a-unsigned_payload.json").getAsJsonObject();
 		String out=URDNA2015.canonicalize(in, null);
 		List<String> expect=readResourceAsLines("/ld-signature/02a-normalized_activity.rdf");
 		assertLinesMatch(expect, Arrays.asList(out.split("\n")));
@@ -41,7 +42,7 @@ public class LinkedDataSignaturesTests{
 	@Test
 	@DisplayName("C14N only: signature options object")
 	void testCanonicalizationOptions(){
-		JSONObject in=(JSONObject) readResourceAsJSON("/ld-signature/00b-options_payload.json");
+		JsonObject in=readResourceAsJSON("/ld-signature/00b-options_payload.json").getAsJsonObject();
 		String out=URDNA2015.canonicalize(in, null);
 		List<String> expect=readResourceAsLines("/ld-signature/02a-normalized_options.rdf");
 		assertLinesMatch(expect, Arrays.asList(out.split("\n")));
@@ -50,21 +51,21 @@ public class LinkedDataSignaturesTests{
 	@Test
 	@DisplayName("Signature verification: Create activity (Mastodon)")
 	void testVerificationValidCreate(){
-		JSONObject in=(JSONObject)readResourceAsJSON("/ld-signature/mastodon_signed_create.json");
+		JsonObject in=readResourceAsJSON("/ld-signature/mastodon_signed_create.json").getAsJsonObject();
 		assertTrue(LinkedDataSignatures.verify(in, actor.publicKey));
 	}
 
 	@Test
 	@DisplayName("Signature verification: Delete activity (Mastodon)")
 	void testVerificationValidDelete(){
-		JSONObject in=(JSONObject)readResourceAsJSON("/ld-signature/mastodon_signed_delete.json");
+		JsonObject in=readResourceAsJSON("/ld-signature/mastodon_signed_delete.json").getAsJsonObject();
 		assertTrue(LinkedDataSignatures.verify(in, actor.publicKey));
 	}
 
 	@Test
 	@DisplayName("Signature verification fails on a modified object")
 	void testVerificationTampered(){
-		JSONObject in=(JSONObject)readResourceAsJSON("/ld-signature/mastodon_signed_create_tampered.json");
+		JsonObject in=readResourceAsJSON("/ld-signature/mastodon_signed_create_tampered.json").getAsJsonObject();
 		assertFalse(LinkedDataSignatures.verify(in, actor.publicKey));
 	}
 
@@ -82,7 +83,7 @@ public class LinkedDataSignaturesTests{
 		stream.close();
 		PrivateKey privateKey=KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(buf));
 
-		JSONObject in=(JSONObject) readResourceAsJSON("/ld-signature/00a-unsigned_payload.json");
+		JsonObject in=readResourceAsJSON("/ld-signature/00a-unsigned_payload.json").getAsJsonObject();
 		LinkedDataSignatures.sign(in, privateKey, "https://example.com/user#main-key");
 
 		assertTrue(in.has("signature"));

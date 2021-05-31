@@ -1,6 +1,7 @@
 package smithereen.activitypub.objects;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -112,44 +113,44 @@ public abstract class Actor extends ActivityPubObject{
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
-		JSONObject root=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
+		obj=super.asActivityPubObject(obj, contextCollector);
 
 		String userURL=activityPubID.toString();
-		root.put("preferredUsername", username);
-		root.put("inbox", userURL+"/inbox");
-		root.put("outbox", userURL+"/outbox");
-		root.put("followers", userURL+"/followers");
+		obj.addProperty("preferredUsername", username);
+		obj.addProperty("inbox", userURL+"/inbox");
+		obj.addProperty("outbox", userURL+"/outbox");
+		obj.addProperty("followers", userURL+"/followers");
 		if(canFollowOtherActors())
-			root.put("following", userURL+"/following");
+			obj.addProperty("following", userURL+"/following");
 
-		JSONObject endpoints=new JSONObject();
-		endpoints.put("sharedInbox", Config.localURI("/activitypub/sharedInbox").toString());
-		root.put("endpoints", endpoints);
+		JsonObject endpoints=new JsonObject();
+		endpoints.addProperty("sharedInbox", Config.localURI("/activitypub/sharedInbox").toString());
+		obj.add("endpoints", endpoints);
 
-		JSONObject pubkey=new JSONObject();
-		pubkey.put("id", userURL+"#main-key");
-		pubkey.put("owner", userURL);
+		JsonObject pubkey=new JsonObject();
+		pubkey.addProperty("id", userURL+"#main-key");
+		pubkey.addProperty("owner", userURL);
 		String pkey="-----BEGIN PUBLIC KEY-----\n";
 		pkey+=Base64.getEncoder().encodeToString(publicKey.getEncoded());
 		pkey+="\n-----END PUBLIC KEY-----\n";
-		pubkey.put("publicKeyPem", pkey);
-		root.put("publicKey", pubkey);
+		pubkey.addProperty("publicKeyPem", pkey);
+		obj.add("publicKey", pubkey);
 
-		root.put("wall", getWallURL().toString());
+		obj.addProperty("wall", getWallURL().toString());
 		contextCollector.addAlias("wall", "sm:wall");
 		contextCollector.addAlias("sm", JLD.SMITHEREEN);
 
 		contextCollector.addSchema(JLD.W3_SECURITY);
 
-		return root;
+		return obj;
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
 
-		username=obj.optString("preferredUsername", null);
+		username=optString(obj, "preferredUsername");
 		if(username==null){
 			username=Utils.getLastPathSegment(activityPubID);
 		}
@@ -159,11 +160,11 @@ public abstract class Actor extends ActivityPubObject{
 		if(url==null)
 			url=activityPubID;
 
-		JSONObject pkey=obj.getJSONObject("publicKey");
-		URI keyOwner=tryParseURL(pkey.getString("owner"));
+		JsonObject pkey=obj.getAsJsonObject("publicKey");
+		URI keyOwner=tryParseURL(pkey.get("owner").getAsString());
 		if(!keyOwner.equals(activityPubID))
 			throw new IllegalArgumentException("Key owner ("+keyOwner+") is not equal to user ID ("+activityPubID+")");
-		String pkeyEncoded=pkey.getString("publicKeyPem");
+		String pkeyEncoded=pkey.get("publicKeyPem").getAsString();
 		pkeyEncoded=pkeyEncoded.replaceAll("-----(BEGIN|END) (RSA )?PUBLIC KEY-----", "").replace("\n", "").trim();
 		byte[] key=Base64.getDecoder().decode(pkeyEncoded);
 		try{
@@ -176,13 +177,13 @@ public abstract class Actor extends ActivityPubObject{
 			publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
 		}
 
-		inbox=tryParseURL(obj.getString("inbox"));
-		outbox=tryParseURL(obj.optString("outbox", null));
-		followers=tryParseURL(obj.optString("followers", null));
-		following=tryParseURL(obj.optString("following", null));
+		inbox=tryParseURL(obj.get("inbox").getAsString());
+		outbox=tryParseURL(optString(obj, "outbox"));
+		followers=tryParseURL(optString(obj, "followers"));
+		following=tryParseURL(optString(obj, "following"));
 		if(obj.has("endpoints")){
-			JSONObject endpoints=obj.getJSONObject("endpoints");
-			sharedInbox=tryParseURL(endpoints.optString("sharedInbox", null));
+			JsonObject endpoints=obj.getAsJsonObject("endpoints");
+			sharedInbox=tryParseURL(optString(endpoints, "sharedInbox"));
 		}
 		if(sharedInbox==null)
 			sharedInbox=inbox;
@@ -251,7 +252,7 @@ public abstract class Actor extends ActivityPubObject{
 		if(_ava!=null){
 			if(_ava.startsWith("{")){
 				try{
-					icon=Collections.singletonList((Image)ActivityPubObject.parse(new JSONObject(_ava), ParserContext.LOCAL));
+					icon=Collections.singletonList((Image)ActivityPubObject.parse(JsonParser.parseString(_ava).getAsJsonObject(), ParserContext.LOCAL));
 				}catch(Exception ignore){}
 			}
 		}

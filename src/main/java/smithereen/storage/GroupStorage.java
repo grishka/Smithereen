@@ -1,12 +1,12 @@
 package smithereen.storage;
 
+import com.google.gson.JsonObject;
+
 import org.jetbrains.annotations.Nullable;
-import org.json.JSONObject;
 
 import java.net.URI;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,7 +14,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +24,6 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.activitypub.ContextCollector;
 import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.GroupAdmin;
 import smithereen.data.User;
@@ -110,7 +108,7 @@ public class GroupStorage{
 				.value("ap_shared_inbox", Objects.toString(group.sharedInbox, null))
 				.value("ap_outbox", Objects.toString(group.outbox, null))
 				.value("public_key", group.publicKey.getEncoded())
-				.value("avatar", group.hasAvatar() ? group.icon.get(0).asActivityPubObject(new JSONObject(), new ContextCollector()).toString() : null)
+				.value("avatar", group.hasAvatar() ? group.icon.get(0).asActivityPubObject(new JsonObject(), new ContextCollector()).toString() : null)
 				.value("ap_followers", Objects.toString(group.followers, null))
 				.value("ap_wall", Objects.toString(group.getWallURL(), null))
 				.valueExpr("last_updated", "CURRENT_TIMESTAMP()");

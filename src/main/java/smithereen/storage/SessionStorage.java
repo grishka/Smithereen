@@ -1,7 +1,8 @@
 package smithereen.storage;
 
+import com.google.gson.JsonParser;
+
 import org.jetbrains.annotations.NotNull;
-import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
@@ -253,7 +254,7 @@ public class SessionStorage{
 	public static void updatePreferences(int accountID, UserPreferences prefs) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=conn.prepareStatement("UPDATE `accounts` SET `preferences`=? WHERE `id`=?");
-		stmt.setString(1, prefs.toJSON().toString());
+		stmt.setString(1, Utils.gson.toJson(prefs));
 		stmt.setInt(2, accountID);
 		stmt.execute();
 	}
@@ -330,7 +331,7 @@ public class SessionStorage{
 			code.type=EmailCode.Type.values()[res.getInt("type")];
 			String extra=res.getString("extra");
 			if(extra!=null)
-				code.extra=new JSONObject(extra);
+				code.extra=JsonParser.parseString(extra).getAsJsonObject();
 			code.createdAt=res.getTimestamp("created_at");
 			return code;
 		}

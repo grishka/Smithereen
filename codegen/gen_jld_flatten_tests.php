@@ -9,7 +9,7 @@ $j=[
 "",
 "import java.net.URI;",
 "",
-"import org.json.*;",
+"import com.google.gson.*;",
 "",
 "import static org.junit.jupiter.api.Assertions.*;",
 "import static smithereen.jsonld.TestUtils.*;",
@@ -41,13 +41,13 @@ foreach($mf->sequence as $test){
 	if(isset($test->option) && isset($test->option->base))
 		$inputURL=$test->option->base;
 	if($type=="jld:PositiveEvaluationTest"){
-		$j[]="\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
-		$j[]="\t\tObject expect=readResourceAsJSON(\"/{$test->expect}\");";
-		$j[]="\t\tJSONArray flattened=JLDProcessor.flatten(input, URI.create(\"$inputURL\"));";
-		$j[]="\t\tassertEqualJLD(expect, flattened);";
+		$j[]="\t\tJsonElement input=readResourceAsJSON(\"/{$test->input}\");";
+		$j[]="\t\tJsonElement expect=readResourceAsJSON(\"/{$test->expect}\");";
+		$j[]="\t\tJsonArray flattened=JLDProcessor.flatten(input, URI.create(\"$inputURL\"));";
+		$j[]="\t\tassertEquals(expect, flattened);";
 	}else if($type=="jld:NegativeEvaluationTest"){
 		$j[]="\t\tassertThrows(JLDException.class, ()->{";
-		$j[]="\t\t\tObject input=readResourceAsJSON(\"/{$test->input}\");";
+		$j[]="\t\t\tJsonElement input=readResourceAsJSON(\"/{$test->input}\");";
 		$j[]="\t\t\tJLDProcessor.flatten(input, URI.create(\"$inputURL\"));";
 		$j[]="\t\t}, \"{$test->expectErrorCode}\");";
 	}else{
@@ -59,4 +59,4 @@ foreach($mf->sequence as $test){
 
 $j[]="}";
 
-file_put_contents("../src/test/java/smithereen/jsonld/FlattenTests.java", implode("\n", $j));
+file_put_contents("src/test/java/smithereen/jsonld/FlattenTests.java", implode("\n", $j));

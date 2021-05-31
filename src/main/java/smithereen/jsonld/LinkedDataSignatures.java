@@ -1,8 +1,7 @@
 package smithereen.jsonld;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -17,11 +16,11 @@ import java.util.Date;
 import smithereen.Utils;
 
 public class LinkedDataSignatures{
-	public static void sign(JSONObject toSign, PrivateKey pkey, String keyID){
-		JSONObject options=new JSONObject();
-		options.put("creator", keyID);
-		options.put("created", Utils.formatDateAsISO(new Date()));
-		options.put("@context", JLD.W3_IDENTITY);
+	public static void sign(JsonObject toSign, PrivateKey pkey, String keyID){
+		JsonObject options=new JsonObject();
+		options.addProperty("creator", keyID);
+		options.addProperty("created", Utils.formatDateAsISO(new Date()));
+		options.addProperty("@context", JLD.W3_IDENTITY);
 
 		String cOptions=URDNA2015.canonicalize(options, null);
 		String cData=URDNA2015.canonicalize(toSign, null);
@@ -37,22 +36,22 @@ public class LinkedDataSignatures{
 			signer.update(sigData);
 			byte[] sig=signer.sign();
 
-			options.put("type", "RsaSignature2017");
-			options.put("signatureValue", Base64.getEncoder().encodeToString(sig));
+			options.addProperty("type", "RsaSignature2017");
+			options.addProperty("signatureValue", Base64.getEncoder().encodeToString(sig));
 			options.remove("@context");
-			toSign.put("signature", options);
+			toSign.add("signature", options);
 		}catch(NoSuchAlgorithmException|InvalidKeyException|SignatureException x){
 			x.printStackTrace();
 		}
 	}
 
-	public static boolean verify(JSONObject obj, PublicKey pkey){
-		JSONObject sig=obj.getJSONObject("signature");
-		if(!sig.getString("type").equals("RsaSignature2017"))
+	public static boolean verify(JsonObject obj, PublicKey pkey){
+		JsonObject sig=obj.getAsJsonObject("signature");
+		if(!sig.get("type").getAsString().equals("RsaSignature2017"))
 			return false;
-		byte[] signature=Base64.getDecoder().decode(sig.getString("signatureValue"));
-		JSONObject options=new JSONObject();
-		options.put("@context", JLD.W3_IDENTITY);
+		byte[] signature=Base64.getDecoder().decode(sig.get("signatureValue").getAsString());
+		JsonObject options=new JsonObject();
+		options.addProperty("@context", JLD.W3_IDENTITY);
 		for(String key:sig.keySet()){
 			switch(key){
 				case "type":
@@ -60,13 +59,13 @@ public class LinkedDataSignatures{
 				case "signatureValue":
 					continue;
 				default:
-					options.put(key, sig.get(key));
+					options.add(key, sig.get(key));
 			}
 		}
-		JSONObject data=new JSONObject();
+		JsonObject data=new JsonObject();
 		for(String key:obj.keySet()){
 			if(!"signature".equals(key))
-				data.put(key, obj.get(key));
+				data.add(key, obj.get(key));
 		}
 
 		String cOptions=URDNA2015.canonicalize(options, null);

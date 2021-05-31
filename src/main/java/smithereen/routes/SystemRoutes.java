@@ -1,7 +1,5 @@
 package smithereen.routes;
 
-import org.json.JSONObject;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -39,11 +37,13 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.JsonObjectBuilder;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.*;
+import static smithereen.Utils.isAjax;
+import static smithereen.Utils.lang;
 
 public class SystemRoutes{
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
@@ -213,13 +213,12 @@ public class SystemRoutes{
 
 			if(isAjax(req)){
 				resp.type("application/json");
-				JSONObject obj=new JSONObject();
-				obj.put("id", keyHex);
-				JSONObject thumbs=new JSONObject();
-				thumbs.put("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.JPEG).toString());
-				thumbs.put("webp", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.WEBP).toString());
-				obj.put("thumbs", thumbs);
-				return obj;
+				return new JsonObjectBuilder()
+						.add("id", keyHex)
+						.add("thumbs", new JsonObjectBuilder()
+								.add("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.JPEG).toString())
+								.add("webp", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.WEBP).toString())
+						).build();
 			}
 			resp.redirect(Utils.back(req));
 		}catch(IOException|ServletException|NoSuchAlgorithmException x){

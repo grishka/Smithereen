@@ -1,6 +1,6 @@
 package smithereen.data;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 import java.sql.Timestamp;
 
@@ -9,7 +9,7 @@ public class EmailCode{
 	public static final long VALIDITY_MS=24*60*60*1000;
 
 	public int accountID;
-	public JSONObject extra;
+	public JsonObject extra;
 	public Type type;
 	public Timestamp createdAt;
 

@@ -113,9 +113,13 @@ public class UriBuilder{
 	}
 
 	public URI build(){
-		StringBuilder sb=new StringBuilder(scheme);
-		sb.append("://");
-		sb.append(authority);
+		StringBuilder sb=new StringBuilder();
+		if(StringUtils.isNotEmpty(scheme)){
+			sb.append(scheme);
+			sb.append("://");
+		}
+		if(StringUtils.isNotEmpty(authority))
+			sb.append(authority);
 		if((pathSegments!=null && !pathSegments.isEmpty()) || (query!=null && !query.isEmpty()) || StringUtils.isNotEmpty(fragment))
 			sb.append('/');
 		if(pathSegments!=null){

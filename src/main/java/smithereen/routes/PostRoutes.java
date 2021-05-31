@@ -1,9 +1,9 @@
 package smithereen.routes;
 
+import com.google.gson.JsonArray;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -16,31 +16,29 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import smithereen.activitypub.objects.ForeignActor;
-import smithereen.exceptions.BadRequestException;
 import smithereen.Config;
-import static smithereen.Utils.*;
-
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
+import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponseBuilder;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.feed.NewsfeedEntry;
-import smithereen.data.Post;
 import smithereen.data.feed.PostNewsfeedEntry;
-import smithereen.data.User;
 import smithereen.data.notifications.Notification;
 import smithereen.data.notifications.NotificationUtils;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.GroupStorage;
@@ -54,6 +52,16 @@ import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
+
+import static smithereen.Utils.MentionCallback;
+import static smithereen.Utils.ensureUserNotBlocked;
+import static smithereen.Utils.escapeHTML;
+import static smithereen.Utils.gson;
+import static smithereen.Utils.isAjax;
+import static smithereen.Utils.lang;
+import static smithereen.Utils.parseIntOrDefault;
+import static smithereen.Utils.preprocessPostHTML;
+import static smithereen.Utils.sessionInfo;
 
 public class PostRoutes{
 
@@ -153,9 +161,9 @@ public class PostRoutes{
 				if(attachObjects.size()==1){
 					attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
 				}else{
-					JSONArray ar=new JSONArray();
+					JsonArray ar=new JsonArray();
 					for(ActivityPubObject o:attachObjects){
-						ar.put(MediaStorageUtils.serializeAttachment(o));
+						ar.add(MediaStorageUtils.serializeAttachment(o));
 					}
 					attachments=ar.toString();
 				}
@@ -470,6 +478,15 @@ public class PostRoutes{
 		return "";
 	}
 
+	private static class LikePopoverResponse{
+		public String content;
+		public String title;
+		public String altTitle;
+		public String fullURL;
+		public List<WebDeltaResponseBuilder.Command> actions;
+		public boolean show;
+	}
+
 	public static Object likePopover(Request req, Response resp) throws SQLException{
 		req.attribute("noHistory", true);
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
@@ -484,14 +501,8 @@ public class PostRoutes{
 		ArrayList<User> users=new ArrayList<>();
 		for(int id:ids)
 			users.add(UserStorage.getById(id));
-		String content=new RenderedTemplateResponse("like_popover").with("users", users).renderToString(req);
+		String _content=new RenderedTemplateResponse("like_popover").with("users", users).renderToString(req);
 		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), selfID).get(postID);
-		JSONObject o=new JSONObject();
-		o.put("content", content);
-		o.put("title", lang(req).plural("liked_by_X_people", interactions.likeCount));
-		if(selfID!=0){
-			o.put("altTitle", lang(req).plural("liked_by_X_people", interactions.likeCount+(interactions.isLiked ? -1 : 1)));
-		}
 		WebDeltaResponseBuilder b=new WebDeltaResponseBuilder(resp)
 				.setContent("likeCounterPost"+postID, interactions.likeCount+"");
 		if(info!=null && info.account!=null){
@@ -501,10 +512,15 @@ public class PostRoutes{
 			b.hide("likeCounterPost"+postID);
 		else
 			b.show("likeCounterPost"+postID);
-		o.put("actions", b.json());
-		o.put("show", interactions.likeCount>0);
-		o.put("fullURL", "/posts/"+postID+"/likes");
-		return o;
+
+		LikePopoverResponse o=new LikePopoverResponse();
+		o.content=_content;
+		o.title=lang(req).plural("liked_by_X_people", interactions.likeCount);
+		o.altTitle=selfID==0 ? null : lang(req).plural("liked_by_X_people", interactions.likeCount+(interactions.isLiked ? -1 : 1));
+		o.actions=b.commands();
+		o.show=interactions.likeCount>0;
+		o.fullURL="/posts/"+postID+"/likes";
+		return gson.toJson(o);
 	}
 
 	public static Object likeList(Request req, Response resp) throws SQLException{

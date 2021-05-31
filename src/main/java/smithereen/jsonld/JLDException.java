@@ -1,8 +1,6 @@
 package smithereen.jsonld;
 
-import org.json.JSONException;
-
-public class JLDException extends JSONException{
+public class JLDException extends RuntimeException{
 	public JLDException(String message){
 		super(message);
 	}

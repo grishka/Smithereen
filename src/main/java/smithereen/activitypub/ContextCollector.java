@@ -1,53 +1,56 @@
 package smithereen.activitypub;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.util.Collections;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import smithereen.jsonld.JLD;
 
 public class ContextCollector{
 
-	private JSONObject additionalContext;
-	private JSONArray context=new JSONArray(Collections.singletonList(JLD.ACTIVITY_STREAMS));
+	private JsonObject additionalContext;
+	private JsonArray context=new JsonArray();
+
+	public ContextCollector(){
+		context.add(JLD.ACTIVITY_STREAMS);
+	}
 
 	public void addSchema(String schema){
-		context.put(schema);
+		context.add(schema);
 	}
 
 	public void addAlias(String key, String value){
 		if(additionalContext==null){
-			additionalContext=new JSONObject();
-			context.put(additionalContext);
+			additionalContext=new JsonObject();
+			context.add(additionalContext);
 		}
-		additionalContext.put(key, value);
+		additionalContext.addProperty(key, value);
 	}
 
 	public void addType(String key, String id, String type){
 		if(additionalContext==null){
-			additionalContext=new JSONObject();
-			context.put(additionalContext);
+			additionalContext=new JsonObject();
+			context.add(additionalContext);
 		}
-		JSONObject o=new JSONObject();
-		o.put("@id", id);
-		o.put("@type", type);
-		additionalContext.put(key, o);
+		JsonObject o=new JsonObject();
+		o.addProperty("@id", id);
+		o.addProperty("@type", type);
+		additionalContext.add(key, o);
 	}
 
 	public void addContainerType(String key, String id, String type){
 		if(additionalContext==null){
-			additionalContext=new JSONObject();
-			context.put(additionalContext);
+			additionalContext=new JsonObject();
+			context.add(additionalContext);
 		}
-		JSONObject o=new JSONObject();
-		o.put("@id", id);
-		o.put("@container", type);
-		additionalContext.put(key, o);
+		JsonObject o=new JsonObject();
+		o.addProperty("@id", id);
+		o.addProperty("@container", type);
+		additionalContext.add(key, o);
 	}
 
-	public Object toContext(){
-		if(context.length()==1)
+	public JsonElement toContext(){
+		if(context.size()==1)
 			return context.get(0);
 		return context;
 	}

@@ -1,6 +1,6 @@
 package smithereen.activitypub.objects;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
@@ -24,16 +24,16 @@ public class PropertyValue extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JSONObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
-		value=Utils.sanitizeHTML(obj.getString("value"));
+		value=Utils.sanitizeHTML(obj.get("value").getAsString());
 		return this;
 	}
 
 	@Override
-	public JSONObject asActivityPubObject(JSONObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
-		obj.put("value", value);
+		obj.addProperty("value", value);
 		contextCollector.addAlias("value", JLD.SCHEMA_ORG+"value");
 		contextCollector.addAlias("PropertyValue", JLD.SCHEMA_ORG+"PropertyValue");
 		return obj;

@@ -1,10 +1,6 @@
 package smithereen.activitypub;
 
-import org.json.JSONObject;
-
-import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,7 +10,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -23,8 +18,6 @@ import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LinkOrObject;
-import smithereen.activitypub.objects.Mention;
-import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Add;
 import smithereen.activitypub.objects.activities.Block;

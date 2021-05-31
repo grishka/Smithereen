@@ -1,6 +1,6 @@
 package smithereen.jsonld;
 
-import org.json.JSONArray;
+import com.google.gson.JsonParser;
 
 import java.net.URI;
 import java.util.regex.Matcher;
@@ -66,7 +66,7 @@ public class RDFTriple{
 			Matcher m=ptn.matcher(_object);
 			if(!m.find())
 				throw new IllegalArgumentException("Malformed RDF literal "+_object);
-			String lex=new JSONArray("[\""+m.group(1)+"\"]").getString(0);
+			String lex=JsonParser.parseString("[\""+m.group(1)+"\"]").getAsJsonArray().get(0).getAsString();
 			URI datatype;
 			if(m.group(2)!=null)
 				datatype=URI.create(m.group(2));
