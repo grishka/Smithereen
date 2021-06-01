@@ -530,7 +530,7 @@ public class UserStorage{
 				.value("middle_name", user.middleName)
 				.value("maiden_name", user.maidenName)
 				.value("ap_wall", Objects.toString(user.getWallURL(), null));
-		stmt=existingUserID==0 ? bldr.createStatement() : bldr.createStatement(PreparedStatement.RETURN_GENERATED_KEYS);
+		stmt=existingUserID!=0 ? bldr.createStatement() : bldr.createStatement(PreparedStatement.RETURN_GENERATED_KEYS);
 
 		stmt.executeUpdate();
 		if(existingUserID==0){
