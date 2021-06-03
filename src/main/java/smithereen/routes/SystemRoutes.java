@@ -184,7 +184,7 @@ public class SystemRoutes{
 			File tmpDir = new File(System.getProperty("java.io.tmpdir"));
 			File temp=new File(tmpDir, keyHex);
 			part.write(keyHex);
-			VImage img=new VImage(temp.getAbsolutePath());
+			VImage img=new VImage(temp.getAbsolutePath()+"[autorotate=true]");
 
 			LocalImage photo=new LocalImage();
 			File postMediaDir=new File(Config.uploadPath, "post_media");

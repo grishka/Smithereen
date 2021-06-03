@@ -173,7 +173,7 @@ public class SettingsRoutes{
 			File tmpDir = new File(System.getProperty("java.io.tmpdir"));
 			File temp=new File(tmpDir, keyHex);
 			part.write(keyHex);
-			VImage img=new VImage(temp.getAbsolutePath());
+			VImage img=new VImage(temp.getAbsolutePath()+"[autorotate=true]");
 			if(img.hasAlpha())
 				img=img.flatten(1, 1, 1);
 			float ratio=(float)img.getWidth()/(float)img.getHeight();
