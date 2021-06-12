@@ -27,9 +27,13 @@ document.body.addEventListener("click", function(ev){
 	}
 }, false);
 
-document.querySelectorAll(".wallPostForm").forEach(function(el){
-	postForms[el.id]=new PostForm(el as HTMLElement);
-});
+function updatePostForms(){
+	document.querySelectorAll(".wallPostForm").forEach(function(el){
+		if(!postForms[el.id])
+			postForms[el.id]=new PostForm(el as HTMLElement);
+	});
+}
+updatePostForms();
 
 var dragTimeout=-1;
 var dragEventCount=0;

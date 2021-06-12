@@ -97,6 +97,11 @@ public class WebDeltaResponseBuilder{
 		return this;
 	}
 
+	public WebDeltaResponseBuilder runScript(@NotNull String script){
+		commands.add(new RunScriptCommand(script));
+		return this;
+	}
+
 	public String json(){
 		return Utils.gson.toJson(commands);
 	}
@@ -291,6 +296,16 @@ public class WebDeltaResponseBuilder{
 			this.id=id;
 			this.name=name;
 			this.value=value;
+		}
+	}
+
+	public static class RunScriptCommand extends Command{
+		@SerializedName("s")
+		public String script;
+
+		public RunScriptCommand(String script){
+			super("run");
+			this.script=script;
 		}
 	}
 }

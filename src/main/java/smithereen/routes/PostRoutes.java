@@ -246,12 +246,18 @@ public class PostRoutes{
 			String postHTML=model.renderToString(req);
 			if(req.attribute("mobile")!=null && replyTo==0){
 				postHTML="<div class=\"card\">"+postHTML+"</div>";
+			}else if(replyTo==0){
+				String cl="feed".equals(formID) ? "feedRow" : "wallRow";
+				postHTML="<div class=\""+cl+"\">"+postHTML+"</div>";
 			}
 			WebDeltaResponseBuilder rb;
 			if(replyTo==0)
 				rb=new WebDeltaResponseBuilder(resp).insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
 			else
 				rb=new WebDeltaResponseBuilder(resp).insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML);
+			if(req.attribute("mobile")==null && replyTo==0){
+				rb.runScript("updatePostForms();");
+			}
 			return rb.setInputValue("postFormText_"+formID, "").setContent("postFormAttachments_"+formID, "").json();
 		}
 		resp.redirect(Utils.back(req));

