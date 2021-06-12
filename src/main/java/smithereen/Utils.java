@@ -405,6 +405,10 @@ public class Utils{
 			while(matcher.find()){
 				String url=matcher.group();
 
+				// don't make domain.com in a @user@domain.com mention a link
+				if(matcher.start()>0 && text.text().charAt(matcher.start()-1)=='@')
+					continue;
+
 				// Additionally validate IPv4 addresses
 				if(url.matches("^[\\d.]+")){
 					Matcher matcher2=Pattern.compile("(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})").matcher(url);
