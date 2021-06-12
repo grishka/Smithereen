@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static smithereen.Utils.*;
@@ -22,6 +24,7 @@ import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Group;
+import smithereen.data.ListAndTotal;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
@@ -54,7 +57,20 @@ public class ProfileRoutes{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("profile").with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
 			model.with("pageOffset", offset);
 
-			List<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toList());
+			Set<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toSet());
+
+			if(req.attribute("mobile")==null){
+				Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
+				for(Post post:wall){
+					ListAndTotal<Post> comments=allComments.get(post.id);
+					if(comments!=null){
+						post.replies=comments.list;
+						post.totalTopLevelComments=comments.total;
+						post.getAllReplyIDs(postIDs);
+					}
+				}
+			}
+
 			HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
 			model.with("postInteractions", interactions);
 

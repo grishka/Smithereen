@@ -11,9 +11,12 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -26,6 +29,7 @@ import smithereen.activitypub.objects.ForeignActor;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.ListAndTotal;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
@@ -232,19 +236,22 @@ public class PostRoutes{
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();
 		if(isAjax(req)){
+			String formID=req.queryParams("formID");
 			HashMap<Integer, UserInteractions> interactions=new HashMap<>();
 			interactions.put(post.id, new UserInteractions());
-			String postHTML=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post").with("post", post).with("postInteractions", interactions).renderToString(req);
-			resp.type("application/json");
-			if(req.attribute("mobile")!=null){
+			RenderedTemplateResponse model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post").with("post", post).with("postInteractions", interactions);
+			if(replyTo!=0){
+				model.with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
+			}
+			String postHTML=model.renderToString(req);
+			if(req.attribute("mobile")!=null && replyTo==0){
 				postHTML="<div class=\"card\">"+postHTML+"</div>";
 			}
 			WebDeltaResponseBuilder rb;
 			if(replyTo==0)
-				rb=new WebDeltaResponseBuilder().insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
+				rb=new WebDeltaResponseBuilder(resp).insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
 			else
-				rb=new WebDeltaResponseBuilder().insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML);
-			String formID=req.queryParams("formID");
+				rb=new WebDeltaResponseBuilder(resp).insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML);
 			return rb.setInputValue("postFormText_"+formID, "").setContent("postFormAttachments_"+formID, "").json();
 		}
 		resp.redirect(Utils.back(req));
@@ -257,18 +264,30 @@ public class PostRoutes{
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
 		int[] total={0};
 		List<NewsfeedEntry> feed=PostStorage.getFeed(userID, startFromID, offset, total);
-		ArrayList<Integer> postIDs=new ArrayList<>();
+		HashSet<Integer> postIDs=new HashSet<>();
 		for(NewsfeedEntry e:feed){
 			if(e instanceof PostNewsfeedEntry){
 				PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
 				if(pe.post!=null){
 					postIDs.add(pe.post.id);
-					if(req.attribute("mobile")==null){
-						pe.post.replies=PostStorage.getRepliesForFeed(e.objectID);
-						pe.post.getAllReplyIDs(postIDs);
-					}
 				}else{
 					System.err.println("No post: "+pe);
+				}
+			}
+		}
+		if(req.attribute("mobile")==null && !postIDs.isEmpty()){
+			Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
+			for(NewsfeedEntry e:feed){
+				if(e instanceof PostNewsfeedEntry){
+					PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
+					if(pe.post!=null){
+						ListAndTotal<Post> comments=allComments.get(pe.post.id);
+						if(comments!=null){
+							pe.post.replies=comments.list;
+							pe.post.totalTopLevelComments=comments.total;
+							pe.post.getAllReplyIDs(postIDs);
+						}
+					}
 				}
 			}
 		}
@@ -282,8 +301,7 @@ public class PostRoutes{
 				.renderToString(req);
 	}
 
-	public static Object standalonePost(Request req, Response resp) throws SQLException{
-		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+	private static Post getPostOrThrow(int postID) throws SQLException{
 		if(postID==0){
 			throw new ObjectNotFoundException("err_post_not_found");
 		}
@@ -291,6 +309,12 @@ public class PostRoutes{
 		if(post==null){
 			throw new ObjectNotFoundException("err_post_not_found");
 		}
+		return post;
+	}
+
+	public static Object standalonePost(Request req, Response resp) throws SQLException{
+		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		Post post=getPostOrThrow(postID);
 		int[] replyKey=new int[post.replyKey.length+1];
 		System.arraycopy(post.replyKey, 0, replyKey, 0, post.replyKey.length);
 		replyKey[replyKey.length-1]=post.id;
@@ -328,13 +352,12 @@ public class PostRoutes{
 			if(post.attachment!=null && !post.attachment.isEmpty()){
 				for(Attachment att : post.getProcessedAttachments()){
 					if(att instanceof PhotoAttachment){
-//						PhotoSize size=MediaStorageUtils.findBestPhotoSize(((PhotoAttachment) att).sizes, PhotoSize.Format.JPEG, PhotoSize.Type.MEDIUM);
-//						if(size!=null){
-//							meta.put("og:image", size.src.toString());
-//							meta.put("og:image:width", size.width+"");
-//							meta.put("og:image:height", size.height+"");
-//							hasImage=true;
-//						}
+						PhotoAttachment pa=(PhotoAttachment) att;
+						SizedImage.Dimensions size=((PhotoAttachment) att).image.getDimensionsForSize(SizedImage.Type.MEDIUM);
+						meta.put("og:image", pa.image.getUriForSizeAndFormat(SizedImage.Type.MEDIUM, SizedImage.Format.JPEG).toString());
+						meta.put("og:image:width", size.width+"");
+						meta.put("og:image:height", size.height+"");
+						hasImage=true;
 						break;
 					}
 				}
@@ -525,11 +548,7 @@ public class PostRoutes{
 
 	public static Object likeList(Request req, Response resp) throws SQLException{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		if(postID==0)
-			throw new ObjectNotFoundException("err_post_not_found");
-		Post post=PostStorage.getPostByID(postID, false);
-		if(post==null)
-			throw new ObjectNotFoundException("err_post_not_found");
+		Post post=getPostOrThrow(postID);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
 		List<Integer> ids=LikeStorage.getPostLikes(postID, 0, offset, 100);
 		ArrayList<User> users=new ArrayList<>();
@@ -572,10 +591,24 @@ public class PostRoutes{
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 
+
 		int[] postCount={0};
 		int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
 		List<Post> wall=PostStorage.getWallPosts(user==null ? group.id : user.id, group!=null, 0, 0, offset, postCount, ownOnly);
-		List<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toList());
+		Set<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toSet());
+
+		if(req.attribute("mobile")==null){
+			Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
+			for(Post post:wall){
+				ListAndTotal<Post> comments=allComments.get(post.id);
+				if(comments!=null){
+					post.replies=comments.list;
+					post.totalTopLevelComments=comments.total;
+					post.getAllReplyIDs(postIDs);
+				}
+			}
+		}
+
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_page")
 				.with("posts", wall)
@@ -612,7 +645,20 @@ public class PostRoutes{
 		int[] postCount={0};
 		int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
 		List<Post> wall=PostStorage.getWallToWall(user.id, otherUser.id, offset, postCount);
-		List<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toList());
+		Set<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toSet());
+
+		if(req.attribute("mobile")==null){
+			Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
+			for(Post post:wall){
+				ListAndTotal<Post> comments=allComments.get(post.id);
+				if(comments!=null){
+					post.replies=comments.list;
+					post.totalTopLevelComments=comments.total;
+					post.getAllReplyIDs(postIDs);
+				}
+			}
+		}
+
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
 		return new RenderedTemplateResponse("wall_page")
 				.with("posts", wall)
@@ -625,5 +671,53 @@ public class PostRoutes{
 				.with("tab", "wall2wall")
 				.with("title", lang(req).inflected("wall_of_X", user.gender, user.firstName, user.lastName, null))
 				.renderToString(req);
+	}
+
+	public static Object ajaxCommentPreview(Request req, Response resp) throws SQLException{
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
+
+		Post post=getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
+		int maxID=parseIntOrDefault(req.queryParams("firstID"), 0);
+		if(maxID==0)
+			throw new BadRequestException();
+		int[] total={0};
+		List<Post> comments=PostStorage.getRepliesExact(new int[]{post.id}, maxID, 100, total);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list");
+		model.with("comments", comments);
+		List<Integer> postIDs=comments.stream().map((Post p)->p.id).collect(Collectors.toList());
+		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
+		model.with("postInteractions", interactions)
+					.with("preview", true)
+					.with("replyFormID", "wallPostForm_commentReplyPost"+post.id);
+		WebDeltaResponseBuilder rb=new WebDeltaResponseBuilder(resp)
+				.insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString(req))
+				.hide("prevLoader"+post.id);
+		if(total[0]>100){
+			rb.show("loadPrevBtn"+post.id).setAttribute("loadPrevBtn"+post.id, "data-first-id", comments.get(0).id+"");
+		}
+		return rb.json();
+	}
+
+	public static Object ajaxCommentBranch(Request req, Response resp) throws SQLException{
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
+
+		Post post=getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
+
+		List<Post> comments=PostStorage.getReplies(post.getReplyKeyForReplies());
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list");
+		model.with("comments", comments);
+		ArrayList<Integer> postIDs=new ArrayList<>();
+		for(Post comment:comments){
+			postIDs.add(comment.id);
+			comment.getAllReplyIDs(postIDs);
+		}
+		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
+		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
+		return new WebDeltaResponseBuilder(resp)
+				.insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString(req))
+				.remove("loadRepliesLink"+post.id, "repliesLoader"+post.id)
+				.json();
 	}
 }

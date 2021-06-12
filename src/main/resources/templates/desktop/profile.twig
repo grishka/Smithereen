@@ -144,7 +144,7 @@
 				{%endif%}
 				<tr><td class="narrowWall" id="postList">
 			{%for post in wall%}
-			{%include "wall_post" with {'post': post}%}
+				<div class="wallRow">{%include "wall_post" with {'post': post}%}</div>
 			{%endfor%}
 					{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (user.profileURL+"?offset=")}%}
 				</td></tr>

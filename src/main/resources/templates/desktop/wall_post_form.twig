@@ -1,6 +1,6 @@
 {# @pebvariable name="wallOwner" type="smithereen.activitypub.objects.Actor" #}
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
-<div class="wallPostForm collapsed" id="wallPostForm_{{id}}" data-unique-id="{{id}}">
+<div class="wallPostForm collapsed" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}">
 	{% if not wallOwner.hasWall %}
 		<div class="wallPostFormError">
 		{% if isGroup %}

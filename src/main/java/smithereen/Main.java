@@ -287,6 +287,8 @@ public class Main{
 			getWithCSRF("/unlike", PostRoutes::unlike);
 			get("/likePopover", PostRoutes::likePopover);
 			get("/likes", PostRoutes::likeList);
+			get("/ajaxCommentPreview", PostRoutes::ajaxCommentPreview);
+			get("/ajaxCommentBranch", PostRoutes::ajaxCommentBranch);
 
 			getActivityPubCollection("/replies", 50, ActivityPubRoutes::postReplies);
 		});

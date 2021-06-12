@@ -317,5 +317,7 @@
   "admin_ban_X_confirm": "Are you sure you want to ban <b>%s</b>'s account?",
   "admin_unban_X_confirm": "Are you sure you want to unban <b>%s</b>'s account?",
   "ban_reason": "Reason for ban",
-  "your_account_is_banned": "Your account has been banned by this server's administrators."
+  "your_account_is_banned": "Your account has been banned by this server's administrators.",
+  "show_previous_comments": "Show previous comments",
+  "comments_show_X_replies": ["Show %d reply", "Show %d replies"]
 }

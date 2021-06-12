@@ -100,31 +100,20 @@ public interface SizedImage{
 		}
 
 		public static Type fromSuffix(String s){
-			switch(s){
-				case "xs":
-					return XSMALL;
-				case "s":
-					return SMALL;
-				case "m":
-					return MEDIUM;
-				case "l":
-					return LARGE;
-				case "xl":
-					return XLARGE;
-				case "rl":
-					return RECT_LARGE;
-				case "rxl":
-					return RECT_XLARGE;
-				case "sqs":
-					return SQUARE_SMALL;
-				case "sqm":
-					return SQUARE_MEDIUM;
-				case "sql":
-					return SQUARE_LARGE;
-				case "sqxl":
-					return SQUARE_XLARGE;
-			}
-			return null;
+			return switch(s){
+				case "xs" -> XSMALL;
+				case "s" -> SMALL;
+				case "m" -> MEDIUM;
+				case "l" -> LARGE;
+				case "xl" -> XLARGE;
+				case "rl" -> RECT_LARGE;
+				case "rxl" -> RECT_XLARGE;
+				case "sqs" -> SQUARE_SMALL;
+				case "sqm" -> SQUARE_MEDIUM;
+				case "sql" -> SQUARE_LARGE;
+				case "sqxl" -> SQUARE_XLARGE;
+				default -> null;
+			};
 		}
 	}
 
@@ -134,16 +123,11 @@ public interface SizedImage{
 		AVIF;
 
 		public String fileExtension(){
-			switch(this){
-				case JPEG:
-					return "jpg";
-				case WEBP:
-					return "webp";
-				case AVIF:
-					return "avif";
-				default:
-					throw new IllegalArgumentException();
-			}
+			return switch(this){
+				case JPEG -> "jpg";
+				case WEBP -> "webp";
+				case AVIF -> "avif";
+			};
 		}
 	}
 

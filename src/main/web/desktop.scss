@@ -228,7 +228,8 @@ h2{
 	margin-bottom: 10px;
 	padding-bottom: 10px;
 	.postContentWrap{
-		padding: 0 8px;
+		padding-left: 5px;
+		padding-right: 5px;
 	}
 	.postContent{
 		padding-top: 2px;
@@ -237,6 +238,21 @@ h2{
 		pre{
 			overflow-x: auto;
 		}
+	}
+}
+
+.post.comment .authorName{
+	font-weight: normal;
+}
+
+.feedRow, .wallRow{
+	border-bottom: solid 1px $wallPostSeparator;
+	margin-bottom: 10px;
+	padding-bottom: 10px;
+	>.post{
+		border: none;
+		margin: 0;
+		padding: 0;
 	}
 }
 
@@ -455,14 +471,44 @@ h2{
 }
 
 .commentsPreviewWrap{
-	padding-left: 58px;
+	padding-left: 55px;
+	.loadPrev{
+		display: block;
+		height: 30px;
+		width: 100%;
+		line-height: 31px;
+		text-align: center;
+		background-color: $menuItemsSeparator;
+		&:hover{
+			text-decoration: none;
+		}
+	}
+	.prevLoader{
+		height: 30px;
+		background-color: $menuItemsSeparator;
+	}
+	>*:first-child{
+		margin-top: 5px;
+	}
 }
 
 .comment{
 	border-bottom: none;
-	padding-bottom: 4px;
-	padding-top: 4px;
+	padding-bottom: 5px;
 	margin-bottom: 0;
+	td{
+		border-top: solid 1px $menuItemsSeparator;
+		padding-top: 5px;
+		&.postContentWrap{
+			padding-top: 7px;
+		}
+	}
+	.treeIndent{
+		border-top: none;
+	}
+	&:hover .treeIndent{
+		background: svg-load('img/comments_tree_indent.svg', fill: $wallPostSeparator, stroke: $wallPostSeparator) top 14px left -5px repeat-x;
+	}
 }
 
 .profileFields{
@@ -1380,5 +1426,19 @@ textarea{
 	}
 	.rightColumnBorder{
 		border-left: solid 1px $blockUnderboxBackground;
+	}
+}
+
+.loadRepliesLink{
+	display: block;
+	padding-left: 24px;
+	margin-top: -5px;
+	margin-left: 37px;
+	height: 26px;
+	line-height: 26px;
+	background: svg-load('img/load_replies.svg', stroke: color($iconColor alpha(70%))) no-repeat left center;
+	background-size: 16px;
+	.loader{
+		display: inline-block;
 	}
 }

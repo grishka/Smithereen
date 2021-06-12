@@ -6,9 +6,12 @@ import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.data.ForeignUser;
+import smithereen.data.ListAndTotal;
 import smithereen.exceptions.BadRequestException;
 import smithereen.Config;
 import smithereen.data.GroupAdmin;
@@ -133,7 +136,19 @@ public class GroupsRoutes{
 		List<User> members=GroupStorage.getRandomMembersForProfile(group.id);
 		int[] totalPosts={0};
 		List<Post> wall=PostStorage.getWallPosts(group.id, true, 0, 0, pageOffset, totalPosts, false);
-		List<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toList());
+		Set<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toSet());
+
+		if(req.attribute("mobile")==null){
+			Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
+			for(Post post:wall){
+				ListAndTotal<Post> comments=allComments.get(post.id);
+				if(comments!=null){
+					post.replies=comments.list;
+					post.totalTopLevelComments=comments.total;
+					post.getAllReplyIDs(postIDs);
+				}
+			}
+		}
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group");

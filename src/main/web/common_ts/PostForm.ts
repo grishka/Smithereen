@@ -261,6 +261,10 @@ class PostForm{
 		return this.input.value.length>0 || this.attachmentIDs.length>0 || this.cwLayout!=null;
 	}
 
+	public focus(){
+		this.input.focus();
+	}
+
 	private setCollapsed(collapsed:boolean){
 		this.collapsed=collapsed;
 		if(collapsed)

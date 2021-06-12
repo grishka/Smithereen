@@ -13,14 +13,18 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
+import smithereen.data.ListAndTotal;
 import smithereen.data.UriBuilder;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.Utils;
@@ -393,24 +397,39 @@ public class PostStorage{
 		}
 	}
 
-	public static List<Post> getRepliesForFeed(int postID) throws SQLException{
+	public static Map<Integer, ListAndTotal<Post>> getRepliesForFeed(Set<Integer> postIDs) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `reply_key`=? ORDER BY `id` ASC LIMIT 3");
-		stmt.setBytes(1, new byte[]{
-				(byte)((postID >> 24) & 0xFF),
-				(byte)((postID >> 16) & 0xFF),
-				(byte)((postID >> 8) & 0xFF),
-				(byte)((postID) & 0xFF)
-		});
-		ArrayList<Post> posts=new ArrayList<>();
+		PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postIDs.size(), "(SELECT * FROM wall_posts WHERE reply_key=? ORDER BY id DESC LIMIT 3)")));
+		int i=0;
+		for(int id:postIDs){
+			stmt.setBytes(i+1, Utils.serializeIntArray(new int[]{id}));
+			i++;
+		}
+		if(Config.DEBUG)
+			System.out.println(stmt);
+		HashMap<Integer, ListAndTotal<Post>> map=new HashMap<>();
 		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				do{
-					posts.add(Post.fromResultSet(res));
-				}while(res.next());
+			res.afterLast();
+			while(res.previous()){
+				Post post=Post.fromResultSet(res);
+				List<Post> posts=map.computeIfAbsent(post.getReplyChainElement(0), (k)->new ListAndTotal<>(new ArrayList<>(), 0)).list;
+				posts.add(post);
 			}
 		}
-		return posts;
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("wall_posts")
+				.selectExpr("count(*), reply_key")
+				.groupBy("reply_key")
+				.whereIn("reply_key", postIDs.stream().map(id->Utils.serializeIntArray(new int[]{id})).collect(Collectors.toList()))
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			while(res.next()){
+				int id=Utils.deserializeIntArray(res.getBytes(2))[0];
+				map.get(id).total=res.getInt(1);
+			}
+		}
+		return map;
 	}
 
 	public static List<Post> getReplies(int[] prefix) throws SQLException{
@@ -454,6 +473,33 @@ public class PostStorage{
 		return posts;
 	}
 
+	public static List<Post> getRepliesExact(int[] replyKey, int maxID, int limit, int[] total) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		if(total!=null){
+			PreparedStatement stmt=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.count()
+					.where("reply_key=? AND id<?", Utils.serializeIntArray(replyKey), maxID)
+					.createStatement();
+			total[0]=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		}
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("wall_posts")
+				.allColumns()
+				.where("reply_key=? AND id<?", Utils.serializeIntArray(replyKey), maxID)
+				.limit(limit, 0)
+				.orderBy("id ASC")
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			ArrayList<Post> posts=new ArrayList<>();
+			res.beforeFirst();
+			while(res.next()){
+				posts.add(Post.fromResultSet(res));
+			}
+			return posts;
+		}
+	}
+
 	public static URI getActivityPubID(int postID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=conn.prepareStatement("SELECT `ap_id`,`owner_user_id` FROM `wall_posts` WHERE `id`=?");
@@ -487,7 +533,7 @@ public class PostStorage{
 		}
 	}
 
-	public static HashMap<Integer, UserInteractions> getPostInteractions(List<Integer> postIDs, int userID) throws SQLException{
+	public static HashMap<Integer, UserInteractions> getPostInteractions(Collection<Integer> postIDs, int userID) throws SQLException{
 		HashMap<Integer, UserInteractions> result=new HashMap<>();
 		if(postIDs.isEmpty())
 			return result;

@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -47,6 +48,8 @@ public class Post extends ActivityPubObject{
 	public int[] replyKey={};
 
 	public List<Post> replies=new ArrayList<>();
+	public int totalTopLevelComments;
+	public int replyCount;
 	public boolean local;
 	public List<User> mentionedUsers=Collections.EMPTY_LIST;
 
@@ -144,6 +147,8 @@ public class Post extends ActivityPubObject{
 				}
 			}
 		}
+
+		replyCount=res.getInt("reply_count");
 	}
 
 	public boolean hasContentWarning(){
@@ -358,7 +363,7 @@ public class Post extends ActivityPubObject{
 		return "";
 	}
 
-	public void getAllReplyIDs(ArrayList<Integer> out){
+	public void getAllReplyIDs(Collection<Integer> out){
 		for(Post reply:replies){
 			out.add(reply.id);
 			reply.getAllReplyIDs(out);

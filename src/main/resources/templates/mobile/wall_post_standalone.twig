@@ -34,11 +34,12 @@
 		</ul>
 <div id="postReplies{{post.id}}">
 	{%for reply in post.replies%}
-		{%include "wall_reply" with {'post': reply}%}
+		{%include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.id}"}%}
 	{%endfor%}
 </div>
 {%if currentUser is not null%}
-	{%include "wall_post_form" with {'replyTo': post, 'id': "reply"}%}
+	{% include "wall_post_form" with {'id': "commentReplyPost#{post.id}", 'replyTo': post, 'hidden': true} %}
+	{% include "wall_post_form" with {'id': "commentPost#{post.id}", 'replyTo': post} %}
 {%endif%}
 <script>
 	if(window.location.hash && window.location.hash.indexOf("comment")==1){

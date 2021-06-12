@@ -28,8 +28,8 @@
 				{% if not post.local %}
 					| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', post.url.host) }}</a>
 				{% endif %}
-				{% if not standalone %}
-					| <a href="{{ post.internalURL }}">{{ L('add_comment') }}</a>
+				{% if not standalone and currentUser is not null %}
+					<span id="postCommentLinkWrap{{ post.id }}" style="{{ post.replies is empty ? '' : 'display: none;' }}">| <a href="{{ post.internalURL }}" onclick="return showPostCommentForm({{ post.id }})">{{ L('add_comment') }}</a></span>
 				{% endif %}
 				{%if postInteractions is not null%}
 				{%set interactions=postInteractions[post.id]%}
@@ -47,3 +47,21 @@
 		</td>
 	</tr>
 </table>
+{% if not standalone and interactions is not null %}
+<div class="commentsPreviewWrap">
+	{% if post.totalTopLevelComments>post.replies.size %}
+		<a href="{{ post.internalURL }}" onclick="return loadOlderComments({{ post.id }})" class="loadPrev" id="loadPrevBtn{{ post.id }}" data-first-id="{{ post.replies[0].id }}">{{ L('show_previous_comments') }}</a>
+		<div class="prevLoader loader" id="prevLoader{{ post.id }}" style="display: none;"></div>
+	{% endif %}
+	<div class="commentsPreview" id="postReplies{{ post.id }}">
+	{%for reply in post.replies%}
+		{%include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': "wallPostForm_commentReplyPost#{post.id}"}%}
+	{%endfor%}
+	</div>
+	{%set interactions=postInteractions[post.id]%}
+{% if currentUser is not null %}
+	{% include "wall_post_form" with {'id': "commentReplyPost#{post.id}", 'replyTo': post, 'hidden': true} %}
+	{% include "wall_post_form" with {'id': "commentPost#{post.id}", 'replyTo': post, 'hidden': interactions.commentCount==0} %}
+{% endif %}
+</div>
+{% endif %}

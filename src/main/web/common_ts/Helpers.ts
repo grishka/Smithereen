@@ -413,7 +413,7 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	return false;
 }
 
-function ajaxGetAndApplyActions(url:string):void{
+function ajaxGetAndApplyActions(url:string, onDone:{():void}=null, onError:{():void}=null):void{
 	setGlobalLoading(true);
 	ajaxGet(url, function(resp:any){
 		setGlobalLoading(false);
@@ -422,9 +422,11 @@ function ajaxGetAndApplyActions(url:string):void{
 				applyServerCommand(resp[i]);
 			}
 		}
+		if(onDone) onDone();
 	}, function(msg:string){
 		setGlobalLoading(false);
 		new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
+		if(onError) onError();
 	});
 }
 
@@ -543,13 +545,23 @@ function applyServerCommand(cmd:any){
 	}
 }
 
-function showPostReplyForm(id:number):boolean{
-	var form=document.getElementById("wallPostForm_reply");
-	var replies=document.getElementById("postReplies"+id);
-	replies.insertAdjacentElement("afterbegin", form);
+function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveForm:boolean=true):boolean{
+	var form=ge(formID);
+	form.show();
+	if(moveForm){
+		var replies=ge("postReplies"+id);
+		replies.insertAdjacentElement("afterbegin", form);
+	}
+	postForms[formID].setupForReplyTo(id);
+	return false;
+}
 
-	postForms["wallPostForm_reply"].setupForReplyTo(id);
-
+function showPostCommentForm(id:number):boolean{
+	var form=ge("wallPostForm_commentPost"+id);
+	var link=ge("postCommentLinkWrap"+id);
+	link.hide();
+	form.show();
+	postForms[form.id].focus();
 	return false;
 }
 
@@ -563,6 +575,8 @@ function highlightComment(id:number):boolean{
 
 function likeOnClick(btn:HTMLAnchorElement):boolean{
 	if(btn.hasAttribute("in_progress"))
+		return false;
+	if(!userConfig.uid)
 		return false;
 	var objType=btn.getAttribute("data-obj-type");
 	var objID=btn.getAttribute("data-obj-id");
@@ -703,4 +717,29 @@ function autoSizeTextArea(el:HTMLTextAreaElement){
 		updateHeight();
 	}, false);
 	updateHeight();
+}
+
+function loadOlderComments(id:number){
+	var btn=ge("loadPrevBtn"+id);
+	var loader=ge("prevLoader"+id);
+	btn.hide();
+	loader.show();
+	var firstID=parseInt(btn.dataset.firstId);
+	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentPreview?firstID="+firstID, null, ()=>{
+		btn.show();
+		loader.hide();
+	});
+	return false;
+}
+
+function loadCommentBranch(id:number){
+	var btn=ge("loadRepliesLink"+id);
+	var loader=ge("repliesLoader"+id);
+	btn.hide();
+	loader.show();
+	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentBranch", null, ()=>{
+		btn.show();
+		loader.hide();
+	});
+	return false;
 }

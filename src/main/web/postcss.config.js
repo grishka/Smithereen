@@ -1,3 +1,4 @@
+const { extendDefaultPlugins } = require('svgo');
 module.exports={
 	//syntax: 'postcss-scss',
 	plugins:[
@@ -8,6 +9,16 @@ module.exports={
 		require('postcss-nested')(),
 		require('postcss-inline-svg')(),
 		require('autoprefixer')(),
-		require('cssnano')({preset: 'default'})
+		require('cssnano')({preset: ['default', {
+			svgo: {
+				plugins: extendDefaultPlugins(["convertStyleToAttrs", {
+					name: "removeAttrs",
+					params: {
+						elemSeparator: "!",
+						attrs: ["svg!clip-rule", "svg!fill-rule", "svg!stroke-miterlimit", "svg!xml:space", "svg!version"]
+					}
+				}])
+			}
+		}]})
 	]
 }

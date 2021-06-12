@@ -3,11 +3,11 @@
 <table width="100%" class="post comment" id="post{{post.id}}" data-reply-name="{{post.user.nameForReply}}">
 	<tr>
 		{%if post.replyLevel>1%}
-		<td width="{{(post.replyLevel-1)*16}}" class="treeIndent">&nbsp;</td>
+		<td width="{{ min(post.replyLevel-1, 10)*16 }}" class="treeIndent">&nbsp;</td>
 		{%endif%}
 		{%if not(post.deleted)%}
-		<td width="40" valign="top">
-			<a href="{{post.user.profileURL}}">{{post.user | pictureForAvatar('s', 40)}}</a>
+		<td width="32" valign="top">
+			<a href="{{post.user.profileURL}}">{{post.user | pictureForAvatar('s', 32)}}</a>
 		</td>
 		<td class="postContentWrap">
 			<a href="{{post.user.profileURL}}" class="authorName">{{post.user.fullName}}</a><br/>
@@ -26,7 +26,7 @@
 			<div class="postInfo"><a href="{{post.internalURL}}" onclick="return highlightComment({{post.id}})" class="postLink">{{LD(post.published)}}</a>{%if userPermissions is not null and userPermissions.canDeletePost(post)%} |
 				<a href="{{post.url}}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{post.url}}/delete')">{{L('delete')}}</a>{%endif%}
 				{%if not hideReplyLink%}
-					| <a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}})">{{L('add_reply')}}</a>
+					| <a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}')">{{L('add_reply')}}</a>
 				{%endif%}
 				{% if not post.local %}
 					| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', post.url.host) }}</a>
@@ -53,7 +53,14 @@
 	</tr>
 </table>
 <div id="postReplies{{post.id}}" class="replies">
+{% if preview %}
+	{% if post.replyCount>0 %}
+		<a class="loadRepliesLink" onclick="return loadCommentBranch({{ post.id }})" id="loadRepliesLink{{ post.id }}">{{ LP('comments_show_X_replies', post.replyCount) }}</a>
+		<div class="loadRepliesLink" id="repliesLoader{{ post.id }}" style="display: none;"><span class="loader"></span></div>
+	{% endif %}
+{% else %}
 	{%for reply in post.replies%}
 	{%include "wall_reply" with {'post': reply}%}
 	{%endfor%}
+{% endif %}
 </div>
