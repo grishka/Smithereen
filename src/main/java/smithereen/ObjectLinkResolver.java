@@ -84,7 +84,8 @@ public class ObjectLinkResolver{
 					if(obj!=null){
 						T o=ensureTypeAndCast(obj, expectedType);
 						o.resolveDependencies(allowFetching, allowStorage);
-						storeOrUpdateRemoteObject(o);
+						if(allowStorage)
+							storeOrUpdateRemoteObject(o);
 						return o;
 					}
 				}catch(IOException x){

@@ -357,7 +357,7 @@ public class ActivityPubRoutes{
 					return "Invalid remote object URI";
 				}
 			}
-			remoteObj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, true, true, true);
+			remoteObj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, true, false, true);
 			if(remoteObj==null){
 				return "Error fetching remote object";
 			}
