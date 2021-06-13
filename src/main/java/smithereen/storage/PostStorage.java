@@ -398,6 +398,8 @@ public class PostStorage{
 	}
 
 	public static Map<Integer, ListAndTotal<Post>> getRepliesForFeed(Set<Integer> postIDs) throws SQLException{
+		if(postIDs.isEmpty())
+			return Collections.emptyMap();
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postIDs.size(), "(SELECT * FROM wall_posts WHERE reply_key=? ORDER BY id DESC LIMIT 3)")));
 		int i=0;
