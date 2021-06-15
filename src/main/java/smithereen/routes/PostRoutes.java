@@ -254,7 +254,7 @@ public class PostRoutes{
 			if(replyTo==0)
 				rb=new WebDeltaResponseBuilder(resp).insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
 			else
-				rb=new WebDeltaResponseBuilder(resp).insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML);
+				rb=new WebDeltaResponseBuilder(resp).insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML).show("postReplies"+replyTo);
 			if(req.attribute("mobile")==null && replyTo==0){
 				rb.runScript("updatePostForms();");
 			}

@@ -172,22 +172,20 @@ public class PostStorage{
 					NewsfeedEntry.Type type=NewsfeedEntry.Type.values()[res.getInt(1)];
 					NewsfeedEntry _entry=null;
 					switch(type){
-						case POST:{
+						case POST -> {
 							PostNewsfeedEntry entry=new PostNewsfeedEntry();
 							entry.objectID=res.getInt(2);
 							posts.add(entry);
 							needPosts.add(entry.objectID);
 							_entry=entry;
-							break;
 						}
-						case RETOOT:{
+						case RETOOT -> {
 							RetootNewsfeedEntry entry=new RetootNewsfeedEntry();
 							entry.objectID=res.getInt(2);
 							entry.author=UserStorage.getById(res.getInt(3));
 							posts.add(entry);
 							needPosts.add(entry.objectID);
 							_entry=entry;
-							break;
 						}
 					}
 					_entry.type=type;
@@ -465,12 +463,7 @@ public class PostStorage{
 				}
 			}
 		}
-		Iterator<Post> itr=posts.iterator();
-		while(itr.hasNext()){
-			Post post=itr.next();
-			if(post.getReplyLevel()>prefix.length)
-				itr.remove();
-		}
+		posts.removeIf(post->post.getReplyLevel()>prefix.length);
 
 		return posts;
 	}
@@ -585,7 +578,7 @@ public class PostStorage{
 		if(post.getReplyLevel()>0){
 			post=getPostByID(post.replyKey[0], false);
 			if(post==null)
-				return Collections.EMPTY_LIST;
+				return Collections.emptyList();
 		}
 		if(post.user instanceof ForeignUser){
 			return Collections.singletonList(((ForeignUser) post.user).inbox);
@@ -667,7 +660,7 @@ public class PostStorage{
 				}while(res.next());
 				return replies;
 			}
-			return Collections.EMPTY_LIST;
+			return Collections.emptyList();
 		}
 	}
 }

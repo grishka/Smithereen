@@ -53,7 +53,7 @@
 		<a href="{{ post.internalURL }}" onclick="return loadOlderComments({{ post.id }})" class="loadPrev" id="loadPrevBtn{{ post.id }}" data-first-id="{{ post.replies[0].id }}">{{ L('show_previous_comments') }}</a>
 		<div class="prevLoader loader" id="prevLoader{{ post.id }}" style="display: none;"></div>
 	{% endif %}
-	<div class="commentsPreview" id="postReplies{{ post.id }}">
+	<div class="commentsPreview" id="postReplies{{ post.id }}" style="{{ post.replies is empty ? 'display: none;' : '' }}">
 	{%for reply in post.replies%}
 		{%include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': "wallPostForm_commentReplyPost#{post.id}"}%}
 	{%endfor%}
