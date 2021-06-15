@@ -252,7 +252,7 @@ public class SystemRoutes{
 	}
 
 	public static Object aboutServer(Request req, Response resp) throws SQLException{
-		RenderedTemplateResponse model=new RenderedTemplateResponse("about_server");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("about_server", req);
 		model.with("title", lang(req).get("about_server"));
 		model.with("serverPolicy", Config.serverPolicy)
 				.with("serverAdmins", UserStorage.getAdmins())
@@ -262,6 +262,6 @@ public class SystemRoutes{
 				.with("totalGroups", GroupStorage.getLocalGroupCount())
 				.with("serverVersion", BuildInfo.VERSION);
 
-		return model.renderToString(req);
+		return model;
 	}
 }

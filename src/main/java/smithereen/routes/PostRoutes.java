@@ -35,7 +35,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
-import smithereen.data.WebDeltaResponseBuilder;
+import smithereen.data.WebDeltaResponse;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.feed.NewsfeedEntry;
@@ -239,26 +239,26 @@ public class PostRoutes{
 			String formID=req.queryParams("formID");
 			HashMap<Integer, UserInteractions> interactions=new HashMap<>();
 			interactions.put(post.id, new UserInteractions());
-			RenderedTemplateResponse model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post").with("post", post).with("postInteractions", interactions);
+			RenderedTemplateResponse model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post", req).with("post", post).with("postInteractions", interactions);
 			if(replyTo!=0){
 				model.with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
 			}
-			String postHTML=model.renderToString(req);
+			String postHTML=model.renderToString();
 			if(req.attribute("mobile")!=null && replyTo==0){
 				postHTML="<div class=\"card\">"+postHTML+"</div>";
 			}else if(replyTo==0){
 				String cl="feed".equals(formID) ? "feedRow" : "wallRow";
 				postHTML="<div class=\""+cl+"\">"+postHTML+"</div>";
 			}
-			WebDeltaResponseBuilder rb;
+			WebDeltaResponse rb;
 			if(replyTo==0)
-				rb=new WebDeltaResponseBuilder(resp).insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
+				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
 			else
-				rb=new WebDeltaResponseBuilder(resp).insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML).show("postReplies"+replyTo);
+				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML).show("postReplies"+replyTo);
 			if(req.attribute("mobile")==null && replyTo==0){
 				rb.runScript("updatePostForms();");
 			}
-			return rb.setInputValue("postFormText_"+formID, "").setContent("postFormAttachments_"+formID, "").json();
+			return rb.setInputValue("postFormText_"+formID, "").setContent("postFormAttachments_"+formID, "");
 		}
 		resp.redirect(Utils.back(req));
 		return "";
@@ -301,10 +301,9 @@ public class PostRoutes{
 		if(!feed.isEmpty() && startFromID==0)
 			startFromID=feed.get(0).id;
 		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw");
-		return new RenderedTemplateResponse("feed").with("title", Utils.lang(req).get("feed")).with("feed", feed).with("postInteractions", interactions)
+		return new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed).with("postInteractions", interactions)
 				.with("paginationURL", "/feed?startFrom="+startFromID+"&offset=").with("total", total[0]).with("offset", offset)
-				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments)
-				.renderToString(req);
+				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
 	}
 
 	private static Post getPostOrThrow(int postID) throws SQLException{
@@ -325,7 +324,7 @@ public class PostRoutes{
 		System.arraycopy(post.replyKey, 0, replyKey, 0, post.replyKey.length);
 		replyKey[replyKey.length-1]=post.id;
 		post.replies=PostStorage.getReplies(replyKey);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone", req);
 		model.with("post", post);
 		model.with("isGroup", post.owner instanceof Group);
 		SessionInfo info=Utils.sessionInfo(req);
@@ -396,7 +395,7 @@ public class PostRoutes{
 		if(post.getReplyLevel()>0){
 			model.with("jsRedirect", "/posts/"+post.replyKey[0]+"#comment"+post.id);
 		}
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object confirmDelete(Request req, Response resp, Account self) throws SQLException{
@@ -406,7 +405,7 @@ public class PostRoutes{
 			throw new ObjectNotFoundException("err_post_not_found");
 		}
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm").with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete?_redir="+URLEncoder.encode(back))).with("back", back).renderToString(req);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete?_redir="+URLEncoder.encode(back))).with("back", back);
 	}
 
 	public static Object delete(Request req, Response resp, Account self) throws SQLException{
@@ -434,7 +433,7 @@ public class PostRoutes{
 		ActivityPubWorker.getInstance().sendDeletePostActivity(post, deleteActor);
 		if(isAjax(req)){
 			resp.type("application/json");
-			return new WebDeltaResponseBuilder().remove("post"+postID).json();
+			return new WebDeltaResponse().remove("post"+postID);
 		}
 		resp.redirect(Utils.back(req));
 		return "";
@@ -468,10 +467,9 @@ public class PostRoutes{
 		ActivityPubWorker.getInstance().sendLikeActivity(post, self.user, id);
 		if(isAjax(req)){
 			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
-			return new WebDeltaResponseBuilder(resp)
+			return new WebDeltaResponse(resp)
 					.setContent("likeCounterPost"+postID, interactions.likeCount+"")
-					.setAttribute("likeButtonPost"+postID, "href", post.getInternalURL()+"/unlike?csrf="+sessionInfo(req).csrfToken)
-					.json();
+					.setAttribute("likeButtonPost"+postID, "href", post.getInternalURL()+"/unlike?csrf="+sessionInfo(req).csrfToken);
 		}
 		resp.redirect(back);
 		return "";
@@ -496,12 +494,12 @@ public class PostRoutes{
 		ActivityPubWorker.getInstance().sendUndoLikeActivity(post, self.user, id);
 		if(isAjax(req)){
 			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
-			WebDeltaResponseBuilder b=new WebDeltaResponseBuilder(resp)
+			WebDeltaResponse b=new WebDeltaResponse(resp)
 					.setContent("likeCounterPost"+postID, interactions.likeCount+"")
 					.setAttribute("likeButtonPost"+postID, "href", post.getInternalURL()+"/like?csrf="+sessionInfo(req).csrfToken);
 			if(interactions.likeCount==0)
 				b.hide("likeCounterPost"+postID);
-			return b.json();
+			return b;
 		}
 		resp.redirect(back);
 		return "";
@@ -512,7 +510,7 @@ public class PostRoutes{
 		public String title;
 		public String altTitle;
 		public String fullURL;
-		public List<WebDeltaResponseBuilder.Command> actions;
+		public List<WebDeltaResponse.Command> actions;
 		public boolean show;
 	}
 
@@ -530,9 +528,9 @@ public class PostRoutes{
 		ArrayList<User> users=new ArrayList<>();
 		for(int id:ids)
 			users.add(UserStorage.getById(id));
-		String _content=new RenderedTemplateResponse("like_popover").with("users", users).renderToString(req);
+		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
 		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), selfID).get(postID);
-		WebDeltaResponseBuilder b=new WebDeltaResponseBuilder(resp)
+		WebDeltaResponse b=new WebDeltaResponse(resp)
 				.setContent("likeCounterPost"+postID, interactions.likeCount+"");
 		if(info!=null && info.account!=null){
 			b.setAttribute("likeButtonPost"+postID, "href", post.getInternalURL()+"/"+(interactions.isLiked ? "un" : "")+"like?csrf="+sessionInfo(req).csrfToken);
@@ -560,17 +558,17 @@ public class PostRoutes{
 		ArrayList<User> users=new ArrayList<>();
 		for(int id:ids)
 			users.add(UserStorage.getById(id));
-		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap").with("users", users);
+		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users);
 		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), 0).get(postID);
 		model.with("pageOffset", offset).with("total", interactions.likeCount).with("paginationUrlPrefix", "/posts/"+postID+"/likes?fromPagination&offset=");
 		if(isAjax(req)){
 			if(req.queryParams("fromPagination")==null)
-				return new WebDeltaResponseBuilder(resp).box(lang(req).get("likes_title"), model.renderToString(req), "likesList", 610);
+				return new WebDeltaResponse(resp).box(lang(req).get("likes_title"), model.renderToString(), "likesList", 610);
 			else
-				return new WebDeltaResponseBuilder(resp).setContent("likesList", model.renderToString(req));
+				return new WebDeltaResponse(resp).setContent("likesList", model.renderToString());
 		}
 		model.with("contentTemplate", "user_grid").with("title", lang(req).get("likes_title"));
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object wallAll(Request req, Response resp) throws SQLException{
@@ -616,7 +614,7 @@ public class PostRoutes{
 		}
 
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_page")
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_page", req)
 				.with("posts", wall)
 				.with("postInteractions", interactions)
 				.with("owner", user!=null ? user : group)
@@ -633,7 +631,7 @@ public class PostRoutes{
 			model.with("title", lang(req).get("wall_of_group"));
 		}
 
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object wallToWall(Request req, Response resp) throws SQLException{
@@ -666,7 +664,7 @@ public class PostRoutes{
 		}
 
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
-		return new RenderedTemplateResponse("wall_page")
+		return new RenderedTemplateResponse("wall_page", req)
 				.with("posts", wall)
 				.with("postInteractions", interactions)
 				.with("owner", user)
@@ -675,8 +673,7 @@ public class PostRoutes{
 				.with("pageOffset", offset)
 				.with("paginationUrlPrefix", Config.localURI("/"+username+"/wall/with/"+otherUsername))
 				.with("tab", "wall2wall")
-				.with("title", lang(req).inflected("wall_of_X", user.gender, user.firstName, user.lastName, null))
-				.renderToString(req);
+				.with("title", lang(req).inflected("wall_of_X", user.gender, user.firstName, user.lastName, null));
 	}
 
 	public static Object ajaxCommentPreview(Request req, Response resp) throws SQLException{
@@ -689,20 +686,20 @@ public class PostRoutes{
 			throw new BadRequestException();
 		int[] total={0};
 		List<Post> comments=PostStorage.getRepliesExact(new int[]{post.id}, maxID, 100, total);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments);
 		List<Integer> postIDs=comments.stream().map((Post p)->p.id).collect(Collectors.toList());
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
 		model.with("postInteractions", interactions)
 					.with("preview", true)
 					.with("replyFormID", "wallPostForm_commentReplyPost"+post.id);
-		WebDeltaResponseBuilder rb=new WebDeltaResponseBuilder(resp)
-				.insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString(req))
+		WebDeltaResponse rb=new WebDeltaResponse(resp)
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString())
 				.hide("prevLoader"+post.id);
 		if(total[0]>100){
 			rb.show("loadPrevBtn"+post.id).setAttribute("loadPrevBtn"+post.id, "data-first-id", comments.get(0).id+"");
 		}
-		return rb.json();
+		return rb;
 	}
 
 	public static Object ajaxCommentBranch(Request req, Response resp) throws SQLException{
@@ -712,7 +709,7 @@ public class PostRoutes{
 		Post post=getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
 
 		List<Post> comments=PostStorage.getReplies(post.getReplyKeyForReplies());
-		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments);
 		ArrayList<Integer> postIDs=new ArrayList<>();
 		for(Post comment:comments){
@@ -721,9 +718,8 @@ public class PostRoutes{
 		}
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
 		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
-		return new WebDeltaResponseBuilder(resp)
-				.insertHTML(WebDeltaResponseBuilder.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString(req))
-				.remove("loadRepliesLink"+post.id, "repliesLoader"+post.id)
-				.json();
+		return new WebDeltaResponse(resp)
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString())
+				.remove("loadRepliesLink"+post.id, "repliesLoader"+post.id);
 	}
 }

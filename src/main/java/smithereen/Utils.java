@@ -50,7 +50,7 @@ import smithereen.data.Group;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
-import smithereen.data.WebDeltaResponseBuilder;
+import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
@@ -111,7 +111,7 @@ public class Utils{
 			String msg=l.get("your_account_is_banned");
 			if(StringUtils.isNotEmpty(acc.banInfo.reason))
 				msg+="\n\n"+l.get("ban_reason")+": "+acc.banInfo.reason;
-			resp.body(new RenderedTemplateResponse("generic_message").with("message", msg).renderToString(req));
+			resp.body(new RenderedTemplateResponse("generic_message", req).with("message", msg).renderToString());
 			return false;
 		}
 		return true;
@@ -144,24 +144,34 @@ public class Utils{
 		}
 	}
 
-	public static String wrapError(Request req, Response resp, String errorKey, Object... formatArgs){
+	public static Object wrapError(Request req, Response resp, String errorKey, Object... formatArgs){
 		SessionInfo info=req.session().attribute("info");
 		Lang l=lang(req);
 		String msg=formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
-			return new WebDeltaResponseBuilder(resp).messageBox(l.get("error"), msg, l.get("ok")).json().toString();
+			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok"));
 		}
-		return new RenderedTemplateResponse("generic_error").with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error")).renderToString(req);
+		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error"));
 	}
 
-	public static String wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, RenderedTemplateResponse templateModel){
+	public static String wrapErrorString(Request req, Response resp, String errorKey, Object... formatArgs){
+		SessionInfo info=req.session().attribute("info");
+		Lang l=lang(req);
+		String msg=formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok")).json();
+		}
+		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error")).renderToString();
+	}
+
+	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, RenderedTemplateResponse templateModel){
 		Lang l=lang(req);
 		if(isAjax(req)){
-			return new WebDeltaResponseBuilder(resp).formBox(title, templateModel.renderToString(req), formAction, l.get(buttonKey)).json().toString();
+			return new WebDeltaResponse(resp).formBox(title, templateModel.renderToString(), formAction, l.get(buttonKey));
 		}else{
 			templateModel.with("contentTemplate", templateName).with("formAction", formAction).with("submitButton", l.get(buttonKey)).with("title", title);
 			templateModel.setName("form_page");
-			return templateModel.renderToString(req);
+			return templateModel;
 		}
 	}
 

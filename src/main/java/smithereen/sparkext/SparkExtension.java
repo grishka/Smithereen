@@ -54,4 +54,8 @@ public class SparkExtension{
 	public static void getApi(String path, Route route){
 		get(path, route, model->gson.toJson(model));
 	}
+
+	public static <T> void responseTypeSerializer(Class<T> type, ResponseSerializer<T> serializer){
+		ExtendedStreamingSerializer.typeSerializers.add(new ExtendedStreamingSerializer.Entry<>(type, serializer));
+	}
 }

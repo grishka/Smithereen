@@ -50,7 +50,7 @@ public class SessionRoutes{
 		if(to!=null && to.startsWith("/activitypub")){
 			req.attribute("templateDir", "popup");
 		}
-		RenderedTemplateResponse model=new RenderedTemplateResponse("login");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("login", req);
 		if(req.requestMethod().equalsIgnoreCase("post")){
 			Account acc=SessionStorage.getAccountForUsernameAndPassword(req.queryParams("username"), req.queryParams("password"));
 			if(acc!=null){
@@ -66,7 +66,7 @@ public class SessionRoutes{
 			model.with("message", Utils.lang(req).get("login_needed"));
 		}
 		model.with("additionalParams", "?"+req.queryString()).with("title", lang(req).get("login_title")+" | "+Config.serverDisplayName);
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object logout(Request req, Response resp) throws SQLException{
@@ -82,8 +82,8 @@ public class SessionRoutes{
 		return null;
 	}
 
-	private static String regError(Request req, String errKey){
-		return new RenderedTemplateResponse("register")
+	private static RenderedTemplateResponse regError(Request req, String errKey){
+		return new RenderedTemplateResponse("register", req)
 				.with("message", Utils.lang(req).get(errKey))
 				.with("username", req.queryParams("username"))
 				.with("password", req.queryParams("password"))
@@ -95,7 +95,7 @@ public class SessionRoutes{
 				.with("preFilledInvite", req.queryParams("_invite"))
 				.with("signupMode", Config.signupMode)
 				.with("title", lang(req).get("register"))
-				.renderToString(req);
+				;
 	}
 
 	public static Object register(Request req, Response resp) throws SQLException{
@@ -162,17 +162,17 @@ public class SessionRoutes{
 	public static Object registerForm(Request req, Response resp){
 		if(Config.signupMode==Config.SignupMode.CLOSED && StringUtils.isEmpty(req.queryParams("invite")))
 			return wrapError(req, resp, "signups_closed");
-		RenderedTemplateResponse model=new RenderedTemplateResponse("register");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("register", req);
 		model.with("signupMode", Config.signupMode);
 		String invite=req.queryParams("invite");
 		if(StringUtils.isNotEmpty(invite))
 			model.with("preFilledInvite", invite);
 		model.with("title", lang(req).get("register"));
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object resetPasswordForm(Request req, Response resp){
-		return new RenderedTemplateResponse("reset_password").with("title", lang(req).get("reset_password_title")).renderToString(req);
+		return new RenderedTemplateResponse("reset_password", req).with("title", lang(req).get("reset_password_title"));
 	}
 
 	public static Object resetPassword(Request req, Response resp) throws SQLException{
@@ -189,11 +189,10 @@ public class SessionRoutes{
 		else
 			account=SessionStorage.getAccountByUsername(username);
 		if(account==null){
-			return new RenderedTemplateResponse("reset_password")
+			return new RenderedTemplateResponse("reset_password", req)
 					.with("username", username)
 					.with("title", lang(req).get("reset_password_title"))
-					.with("passwordResetMessage", lang(req).get("password_reset_account_not_found"))
-					.renderToString(req);
+					.with("passwordResetMessage", lang(req).get("password_reset_account_not_found"));
 		}
 
 		FloodControl.PASSWORD_RESET.incrementOrThrow(account);
@@ -204,10 +203,9 @@ public class SessionRoutes{
 		String c=SessionStorage.storeEmailCode(code);
 		Mailer.getInstance().sendPasswordReset(req, account, c);
 
-		return new RenderedTemplateResponse("generic_message")
+		return new RenderedTemplateResponse("generic_message", req)
 				.with("title", lang(req).get("reset_password_title"))
-				.with("message", lang(req).get("password_reset_sent"))
-				.renderToString(req);
+				.with("message", lang(req).get("password_reset_sent"));
 	}
 
 	public static Object actuallyResetPasswordForm(Request req, Response resp) throws SQLException{
@@ -224,10 +222,9 @@ public class SessionRoutes{
 		if(c.isExpired())
 			throw new BadRequestException();
 
-		return new RenderedTemplateResponse("reset_password_step2")
+		return new RenderedTemplateResponse("reset_password_step2", req)
 				.with("code", code)
-				.with("title", lang(req).get("reset_password_title"))
-				.renderToString(req);
+				.with("title", lang(req).get("reset_password_title"));
 	}
 
 	public static Object actuallyResetPassword(Request req, Response resp) throws SQLException{
@@ -253,11 +250,10 @@ public class SessionRoutes{
 			error="err_passwords_dont_match";
 
 		if(error!=null){
-			return new RenderedTemplateResponse("reset_password_step2")
+			return new RenderedTemplateResponse("reset_password_step2", req)
 					.with("code", code)
 					.with("title", lang(req).get("reset_password_title"))
-					.with("passwordResetMessage", lang(req).get(error))
-					.renderToString(req);
+					.with("passwordResetMessage", lang(req).get(error));
 		}
 
 		SessionStorage.updatePassword(c.accountID, password);

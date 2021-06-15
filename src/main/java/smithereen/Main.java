@@ -1,18 +1,26 @@
 package smithereen;
 
+import com.google.gson.Gson;
+
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Objects;
 
+import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.data.Account;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -27,6 +35,7 @@ import smithereen.routes.SessionRoutes;
 import smithereen.routes.SettingsAdminRoutes;
 import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
+import smithereen.sparkext.ExtendedStreamingSerializer;
 import smithereen.storage.DatabaseSchemaUpdater;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.SessionStorage;
@@ -37,6 +46,13 @@ import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
 import spark.Request;
 import spark.Response;
+import spark.Service;
+import spark.Spark;
+import spark.embeddedserver.jetty.EmbeddedJettyServer;
+import spark.embeddedserver.jetty.JettyHandler;
+import spark.http.matching.MatcherFilter;
+import spark.serialization.Serializer;
+import spark.serialization.SerializerChain;
 import spark.utils.StringUtils;
 
 import static spark.Spark.*;
@@ -351,11 +367,11 @@ public class Main{
 
 		exception(ObjectNotFoundException.class, (x, req, resp)->{
 			resp.status(404);
-			resp.body(Utils.wrapError(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_not_found")));
+			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_not_found")));
 		});
 		exception(UserActionNotAllowedException.class, (x, req, resp)->{
 			resp.status(403);
-			resp.body(Utils.wrapError(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_access")));
+			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_access")));
 		});
 		exception(BadRequestException.class, (x, req, resp)->{
 			resp.status(400);
@@ -367,7 +383,7 @@ public class Main{
 		});
 		exception(FloodControlViolationException.class, (x, req, resp)->{
 			resp.status(429);
-			resp.body(Utils.wrapError(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
+			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
 		});
 		exception(Exception.class, (exception, req, res) -> {
 			System.out.println("Exception while processing "+req.requestMethod()+" "+req.raw().getPathInfo());
@@ -408,6 +424,26 @@ public class Main{
 			}
 		});
 
+		setupCustomSerializer();
+
+		responseTypeSerializer(ActivityPubObject.class, (out, obj) -> {
+			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
+			Utils.gson.toJson(obj.asRootActivityPubObject(), writer);
+			writer.flush();
+		});
+
+		responseTypeSerializer(RenderedTemplateResponse.class, (out, obj) -> {
+			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
+			obj.renderToWriter(writer);
+			writer.flush();
+		});
+
+		responseTypeSerializer(WebDeltaResponse.class, (out, obj) -> {
+			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
+			Utils.gson.toJson(obj.commands(), writer);
+			writer.flush();
+		});
+
 		MaintenanceScheduler.runDaily(()->{
 			try{
 				SessionStorage.deleteExpiredEmailCodes();
@@ -422,15 +458,42 @@ public class Main{
 			resp.redirect("/feed");
 			return "";
 		}
-		return new RenderedTemplateResponse("index").with("title", Config.serverDisplayName)
+		return new RenderedTemplateResponse("index", req).with("title", Config.serverDisplayName)
 				.with("signupMode", Config.signupMode)
 				.with("serverDisplayName", Config.serverDisplayName)
-				.with("serverDescription", Config.serverDescription)
-				.renderToString(req);
+				.with("serverDescription", Config.serverDescription);
 	}
 
 	private static Object methodNotAllowed(Request req, Response resp){
 		resp.status(405);
 		return "";
+	}
+
+	private static void setupCustomSerializer(){
+		try{
+			Method m=Spark.class.getDeclaredMethod("getInstance");
+			m.setAccessible(true);
+			Service svc=(Service) m.invoke(null);
+			Field serverFld=svc.getClass().getDeclaredField("server");
+			serverFld.setAccessible(true);
+			EmbeddedJettyServer server=(EmbeddedJettyServer) serverFld.get(svc);
+			Field handlerFld=server.getClass().getDeclaredField("handler");
+			handlerFld.setAccessible(true);
+			JettyHandler handler=(JettyHandler) handlerFld.get(server);
+			Field filterFld=handler.getClass().getDeclaredField("filter");
+			filterFld.setAccessible(true);
+			MatcherFilter matcher=(MatcherFilter) filterFld.get(handler);
+			Field serializerChainFld=matcher.getClass().getDeclaredField("serializerChain");
+			serializerChainFld.setAccessible(true);
+			SerializerChain chain=(SerializerChain) serializerChainFld.get(matcher);
+			Field rootFld=chain.getClass().getDeclaredField("root");
+			rootFld.setAccessible(true);
+			Serializer serializer=(Serializer) rootFld.get(chain);
+			ExtendedStreamingSerializer mySerializer=new ExtendedStreamingSerializer();
+			mySerializer.setNext(serializer);
+			rootFld.set(chain, mySerializer);
+		}catch(Exception x){
+			x.printStackTrace();
+		}
 	}
 }

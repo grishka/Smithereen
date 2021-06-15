@@ -15,9 +15,14 @@ import spark.Response;
 public class RenderedTemplateResponse{
 	String templateName;
 	final HashMap<String, Object> model=new HashMap<>();
+	private PebbleTemplate template;
+	private Locale locale;
 
-	public RenderedTemplateResponse(String templateName){
+	public RenderedTemplateResponse(String templateName, Request req){
 		this.templateName=templateName;
+		template=getAndPrepareTemplate(req);
+		locale=Utils.localeForRequest(req);
+		req.attribute("isTemplate", Boolean.TRUE);
 	}
 
 	public RenderedTemplateResponse with(String key, Object value){
@@ -29,6 +34,20 @@ public class RenderedTemplateResponse{
 		templateName=name;
 	}
 
+	public void renderToWriter(Writer writer) throws IOException{
+		if(template==null)
+			throw new IllegalStateException("template==null");
+		template.evaluate(writer, model, locale);
+	}
+
+	public String renderToString(){
+		StringWriter writer=new StringWriter();
+		try{
+			renderToWriter(writer);
+		}catch(IOException ignore){}
+		return writer.toString();
+	}
+
 	private PebbleTemplate getAndPrepareTemplate(Request req){
 		PebbleTemplate template=Templates.getTemplate(req, templateName);
 		if(template==null)
@@ -37,33 +56,7 @@ public class RenderedTemplateResponse{
 		return template;
 	}
 
-	private void renderToWriter(Request req, Writer writer){
-		PebbleTemplate template=getAndPrepareTemplate(req);
-		Locale locale=Utils.localeForRequest(req);
-		try{
-			template.evaluate(writer, model, locale);
-		}catch(IOException ignore){}
-	}
-
-	public String renderToString(Request req){
-		req.attribute("isTemplate", Boolean.TRUE);
-		StringWriter writer=new StringWriter();
-		renderToWriter(req, writer);
-		return writer.toString();
-	}
-
-	public void renderToResponse(Request req, Response resp){
-		try{
-			req.attribute("isTemplate", Boolean.TRUE);
-			resp.raw().setCharacterEncoding("UTF-8");
-			resp.type("text/html; charset=UTF-8");
-			renderToWriter(req, resp.raw().getWriter());
-		}catch(IOException ignore){}
-	}
-
-	public String renderContentBlock(Request req){
-		PebbleTemplate template=getAndPrepareTemplate(req);
-		Locale locale=Utils.localeForRequest(req);
+	public String renderContentBlock(){
 		StringWriter writer=new StringWriter();
 		try{
 			template.evaluateBlock("content", writer, model, locale);

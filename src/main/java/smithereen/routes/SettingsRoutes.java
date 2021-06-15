@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -30,7 +29,7 @@ import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
-import smithereen.data.WebDeltaResponseBuilder;
+import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
@@ -47,7 +46,7 @@ import spark.utils.StringUtils;
 
 public class SettingsRoutes{
 	public static Object settings(Request req, Response resp, Account self) throws SQLException{
-		RenderedTemplateResponse model=new RenderedTemplateResponse("settings");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings", req);
 		model.with("invitations", UserStorage.getInvites(self.id, true));
 		model.with("signupMode", Config.signupMode);
 		model.with("languages", Lang.list).with("selectedLang", Utils.lang(req));
@@ -65,7 +64,7 @@ public class SettingsRoutes{
 			s.removeAttribute("settings.profilePicMessage");
 		}
 		model.with("title", lang(req).get("settings"));
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object createInvite(Request req, Response resp, Account self) throws SQLException{
@@ -97,7 +96,7 @@ public class SettingsRoutes{
 			message=Utils.lang(req).get("password_changed");
 		}
 		if(isAjax(req)){
-			return new WebDeltaResponseBuilder(resp).show("formMessage_changePassword").setContent("formMessage_changePassword", message).json();
+			return new WebDeltaResponse(resp).show("formMessage_changePassword").setContent("formMessage_changePassword", message);
 		}
 		req.session().attribute("settings.passwordMessage", message);
 		resp.redirect("/settings/");
@@ -143,7 +142,7 @@ public class SettingsRoutes{
 			throw new IllegalStateException("?!");
 		ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
 		if(isAjax(req)){
-			return new WebDeltaResponseBuilder(resp).show("formMessage_profileEdit").setContent("formMessage_profileEdit", message).json();
+			return new WebDeltaResponse(resp).show("formMessage_profileEdit").setContent("formMessage_profileEdit", message);
 		}
 		req.session().attribute("settings.profileEditMessage", message);
 		resp.redirect("/settings/profile/general");
@@ -258,7 +257,7 @@ public class SettingsRoutes{
 				img.release();
 			}
 			if(isAjax(req))
-				return new WebDeltaResponseBuilder(resp).refresh().json();
+				return new WebDeltaResponse(resp).refresh();
 
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("avatar_updated"));
 			resp.redirect("/settings/");
@@ -266,7 +265,7 @@ public class SettingsRoutes{
 			x.printStackTrace();
 			if(isAjax(req)){
 				Lang l=lang(req);
-				return new WebDeltaResponseBuilder(resp).messageBox(l.get("error"), l.get("image_upload_error")+"<br/>"+x.getMessage(), l.get("ok")).json();
+				return new WebDeltaResponse(resp).messageBox(l.get("error"), l.get("image_upload_error")+"<br/>"+x.getMessage(), l.get("ok"));
 			}
 
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("image_upload_error"));
@@ -310,7 +309,7 @@ public class SettingsRoutes{
 	}
 
 	public static Object profileEditGeneral(Request req, Response resp, Account self){
-		RenderedTemplateResponse model=new RenderedTemplateResponse("profile_edit_general");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("profile_edit_general", req);
 		model.with("todayDate", new java.sql.Date(System.currentTimeMillis()).toString());
 		model.with("title", lang(req).get("edit_profile"));
 		Session s=req.session();
@@ -318,14 +317,14 @@ public class SettingsRoutes{
 			model.with("profileEditMessage", s.attribute("settings.profileEditMessage"));
 			s.removeAttribute("settings.profileEditMessage");
 		}
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object confirmRemoveProfilePicture(Request req, Response resp, Account self){
 		req.attribute("noHistory", true);
 		String back=Utils.back(req);
 		String groupParam=req.queryParams("group")!=null ? ("&group="+req.queryParams("group")) : "";
-		return new RenderedTemplateResponse("generic_confirm").with("message", Utils.lang(req).get("confirm_remove_profile_picture")).with("formAction", Config.localURI("/settings/removeProfilePicture?_redir="+URLEncoder.encode(back)+groupParam)).with("back", back).renderToString(req);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", Utils.lang(req).get("confirm_remove_profile_picture")).with("formAction", Config.localURI("/settings/removeProfilePicture?_redir="+URLEncoder.encode(back)+groupParam)).with("back", back);
 	}
 
 	public static Object removeProfilePicture(Request req, Response resp, Account self) throws SQLException{
@@ -359,21 +358,21 @@ public class SettingsRoutes{
 			ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
 		}
 		if(isAjax(req))
-			return new WebDeltaResponseBuilder(resp).refresh().json();
+			return new WebDeltaResponse(resp).refresh();
 		resp.redirect("/settings/");
 		return "";
 	}
 
 	public static Object blocking(Request req, Response resp, Account self) throws SQLException{
-		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_blocking").with("title", lang(req).get("settings_blocking"));
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_blocking", req).with("title", lang(req).get("settings_blocking"));
 		model.with("blockedUsers", UserStorage.getBlockedUsers(self.user.id));
 		model.with("blockedDomains", UserStorage.getBlockedDomains(self.user.id));
 		jsLangKey(req, "unblock", "yes", "no", "cancel");
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object blockDomainForm(Request req, Response resp, Account self) throws SQLException{
-		RenderedTemplateResponse model=new RenderedTemplateResponse("block_domain");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("block_domain", req);
 		return wrapForm(req, resp, "block_domain", "/settings/blockDomain", lang(req).get("block_a_domain"), "block", model);
 	}
 
@@ -385,7 +384,7 @@ public class SettingsRoutes{
 			UserStorage.blockDomain(self.user.id, domain);
 		}
 		if(isAjax(req))
-			return new WebDeltaResponseBuilder(resp).refresh().json();
+			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}
@@ -394,7 +393,7 @@ public class SettingsRoutes{
 		String domain=req.queryParams("domain");
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm").with("message", l.get("confirm_unblock_domain_X", domain)).with("formAction", "/settings/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_domain_X", domain)).with("formAction", "/settings/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object unblockDomain(Request req, Response resp, Account self) throws SQLException{
@@ -402,7 +401,7 @@ public class SettingsRoutes{
 		if(StringUtils.isNotEmpty(domain))
 			UserStorage.unblockDomain(self.user.id, domain);
 		if(isAjax(req))
-			return new WebDeltaResponseBuilder(resp).refresh().json();
+			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}

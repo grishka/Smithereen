@@ -23,7 +23,7 @@ import static smithereen.Utils.*;
 public class NotificationsRoutes{
 	public static Object notifications(Request req, Response resp, Account self) throws SQLException{
 		int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("notifications");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("notifications", req);
 		int[] total={0};
 		List<Notification> notifications=NotificationsStorage.getNotifications(self.user.id, offset, total);
 		model.with("title", lang(req).get("notifications")).with("notifications", notifications).with("offset", offset).with("total", total[0]);
@@ -64,6 +64,6 @@ public class NotificationsRoutes{
 		}
 		NotificationsStorage.getNotificationsForUser(self.user.id, self.prefs.lastSeenNotificationID).setNotificationsViewed();
 
-		return model.renderToString(req);
+		return model;
 	}
 }

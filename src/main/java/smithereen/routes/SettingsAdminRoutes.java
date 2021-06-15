@@ -10,12 +10,10 @@ import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.data.Account;
-import smithereen.data.FriendshipStatus;
 import smithereen.data.User;
-import smithereen.data.WebDeltaResponseBuilder;
+import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
-import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
@@ -26,7 +24,7 @@ import static smithereen.Utils.*;
 
 public class SettingsAdminRoutes{
 	public static Object index(Request req, Response resp, Account self){
-		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_server_info");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_server_info", req);
 		Lang l=lang(req);
 		model.with("title", l.get("profile_edit_basic")+" | "+l.get("menu_admin")).with("toolbarTitle", l.get("menu_admin"));
 		model.with("serverName", Config.getServerDisplayName())
@@ -40,7 +38,7 @@ public class SettingsAdminRoutes{
 			req.session().removeAttribute("admin.serverInfoMessage");
 			model.with("adminServerInfoMessage", msg);
 		}
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object updateServerInfo(Request req, Response resp, Account self) throws SQLException{
@@ -69,14 +67,14 @@ public class SettingsAdminRoutes{
 		}catch(IllegalArgumentException ignore){}
 
 		if(isAjax(req))
-			return new WebDeltaResponseBuilder(resp).show("formMessage_adminServerInfo").setContent("formMessage_adminServerInfo", lang(req).get("admin_server_info_updated")).json();
+			return new WebDeltaResponse(resp).show("formMessage_adminServerInfo").setContent("formMessage_adminServerInfo", lang(req).get("admin_server_info_updated"));
 		req.session().attribute("admin.serverInfoMessage", lang(req).get("admin_server_info_updated"));
 		resp.redirect("/settings/admin");
 		return "";
 	}
 
 	public static Object users(Request req, Response resp, Account self) throws SQLException{
-		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users", req);
 		Lang l=lang(req);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
 		List<Account> accounts=UserStorage.getAllAccounts(offset, 100);
@@ -86,7 +84,7 @@ public class SettingsAdminRoutes{
 		model.with("pageOffset", offset);
 		model.with("wideOnDesktop", true);
 		jsLangKey(req, "cancel", "yes", "no");
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object accessLevelForm(Request req, Response resp, Account self) throws SQLException{
@@ -95,7 +93,7 @@ public class SettingsAdminRoutes{
 		Account target=UserStorage.getAccount(accountID);
 		if(target==null || target.id==self.id)
 			throw new ObjectNotFoundException("err_user_not_found");
-		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users_access_level");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users_access_level", req);
 		model.with("targetAccount", target);
 		return wrapForm(req, resp, "admin_users_access_level", "/settings/admin/users/setAccessLevel", l.get("access_level"), "save", model);
 	}
@@ -121,7 +119,7 @@ public class SettingsAdminRoutes{
 		Account target=UserStorage.getAccount(accountID);
 		if(target==null || target.id==self.id || target.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal())
 			throw new ObjectNotFoundException("err_user_not_found");
-		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_ban_user");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_ban_user", req);
 		model.with("targetAccount", target);
 		return wrapForm(req, resp, "admin_ban_user", "/settings/admin/users/ban?accountID="+accountID, l.get("admin_ban"), "admin_ban", model);
 	}
@@ -137,7 +135,7 @@ public class SettingsAdminRoutes{
 		banInfo.when=Instant.now();
 		UserStorage.putAccountBanInfo(accountID, banInfo);
 		if(isAjax(req))
-			return new WebDeltaResponseBuilder(resp).refresh().json();
+			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}
@@ -151,7 +149,7 @@ public class SettingsAdminRoutes{
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
 		User user=target.user;
-		return new RenderedTemplateResponse("generic_confirm").with("message", l.inflected("admin_unban_X_confirm", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/settings/admin/users/unban?accountID="+accountID+"&_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.inflected("admin_unban_X_confirm", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/settings/admin/users/unban?accountID="+accountID+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object unbanUser(Request req, Response resp, Account self) throws SQLException{
@@ -161,14 +159,14 @@ public class SettingsAdminRoutes{
 			throw new ObjectNotFoundException("err_user_not_found");
 		UserStorage.putAccountBanInfo(accountID, null);
 		if(isAjax(req))
-			return new WebDeltaResponseBuilder(resp).refresh().json();
+			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}
 
 	public static Object otherSettings(Request req, Response resp, Account self) throws SQLException{
 		Lang l=lang(req);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_other_settings");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_other_settings", req);
 		model.with("title", l.get("admin_other")+" | "+l.get("menu_admin")).with("toolbarTitle", l.get("menu_admin"));
 		model.with("from", Config.mailFrom)
 				.with("smtpServer", Config.smtpServerAddress)
@@ -186,7 +184,7 @@ public class SettingsAdminRoutes{
 			req.session().removeAttribute("admin.emailSettingsMessage");
 			model.with("adminEmailSettingsMessage", msg);
 		}
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object saveEmailSettings(Request req, Response resp, Account self) throws SQLException{
@@ -224,7 +222,7 @@ public class SettingsAdminRoutes{
 		}
 
 		if(isAjax(req))
-			return new WebDeltaResponseBuilder(resp).show("formMessage_adminEmailSettings").setContent("formMessage_adminEmailSettings", lang(req).get(result)).json();
+			return new WebDeltaResponse(resp).show("formMessage_adminEmailSettings").setContent("formMessage_adminEmailSettings", lang(req).get(result));
 		req.session().attribute("admin.emailSettingsMessage", lang(req).get(result));
 		resp.redirect("/settings/admin/other");
 		return "";
@@ -241,7 +239,7 @@ public class SettingsAdminRoutes{
 		}
 
 		if(isAjax(req))
-			return new WebDeltaResponseBuilder(resp).show("formMessage_adminEmailTest").setContent("formMessage_adminEmailTest", lang(req).get(result)).json();
+			return new WebDeltaResponse(resp).show("formMessage_adminEmailTest").setContent("formMessage_adminEmailTest", lang(req).get(result));
 		req.session().attribute("admin.emailTestMessage", lang(req).get(result));
 		resp.redirect("/settings/admin/other");
 		return "";

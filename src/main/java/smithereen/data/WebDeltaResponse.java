@@ -11,93 +11,93 @@ import java.util.List;
 import smithereen.Utils;
 import spark.Response;
 
-public class WebDeltaResponseBuilder{
+public class WebDeltaResponse{
 	private ArrayList<Command> commands=new ArrayList<>();
 
-	public WebDeltaResponseBuilder(){
+	public WebDeltaResponse(){
 
 	}
 
-	public WebDeltaResponseBuilder(Response resp){
+	public WebDeltaResponse(Response resp){
 		resp.type("application/json");
 	}
 
-	public WebDeltaResponseBuilder setContent(@NotNull String containerID, @NotNull String html){
+	public WebDeltaResponse setContent(@NotNull String containerID, @NotNull String html){
 		commands.add(new SetContentCommand(containerID, html));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder remove(@NotNull String... ids){
+	public WebDeltaResponse remove(@NotNull String... ids){
 		commands.add(new RemoveElementsCommand(ids));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder messageBox(@NotNull String title, @NotNull String msg, @NotNull String button){
+	public WebDeltaResponse messageBox(@NotNull String title, @NotNull String msg, @NotNull String button){
 		commands.add(new MessageBoxCommand(title, msg, button));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder box(@NotNull String title, @NotNull String content, @Nullable String id, boolean scrollable){
+	public WebDeltaResponse box(@NotNull String title, @NotNull String content, @Nullable String id, boolean scrollable){
 		commands.add(new BoxCommand(title, content, id, scrollable, null));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder box(@NotNull String title, @NotNull String content, @Nullable String id, int width){
+	public WebDeltaResponse box(@NotNull String title, @NotNull String content, @Nullable String id, int width){
 		commands.add(new BoxCommand(title, content, id, null, width));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder formBox(@NotNull String title, @NotNull String content, @NotNull String formAction, @NotNull String button){
+	public WebDeltaResponse formBox(@NotNull String title, @NotNull String content, @NotNull String formAction, @NotNull String button){
 		commands.add(new FormBoxCommand(content, title, button, formAction));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder show(@NotNull String... ids){
+	public WebDeltaResponse show(@NotNull String... ids){
 		commands.add(new ShowHideElementsCommand(true, ids));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder hide(@NotNull String... ids){
+	public WebDeltaResponse hide(@NotNull String... ids){
 		commands.add(new ShowHideElementsCommand(false, ids));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder insertHTML(@NotNull ElementInsertionMode mode, @NotNull String id, @NotNull String html){
+	public WebDeltaResponse insertHTML(@NotNull ElementInsertionMode mode, @NotNull String id, @NotNull String html){
 		commands.add(new InsertHtmlCommand(id, html, mode));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder setInputValue(@NotNull String id, @NotNull String value){
+	public WebDeltaResponse setInputValue(@NotNull String id, @NotNull String value){
 		commands.add(new SetInputValueCommand(id, value));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder refresh(){
+	public WebDeltaResponse refresh(){
 		commands.add(new RefreshCommand());
 		return this;
 	}
 
-	public WebDeltaResponseBuilder replaceLocation(String url){
+	public WebDeltaResponse replaceLocation(String url){
 		commands.add(new ReplaceLocationCommand(url));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder addClass(@NotNull String id, @NotNull String className){
+	public WebDeltaResponse addClass(@NotNull String id, @NotNull String className){
 		commands.add(new AddRemoveClassCommand(true, id, className));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder removeClass(@NotNull String id, @NotNull String className){
+	public WebDeltaResponse removeClass(@NotNull String id, @NotNull String className){
 		commands.add(new AddRemoveClassCommand(false, id, className));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder setAttribute(@NotNull String id, @NotNull String name, @NotNull String value){
+	public WebDeltaResponse setAttribute(@NotNull String id, @NotNull String name, @NotNull String value){
 		commands.add(new SetAttributeCommand(id, name, value));
 		return this;
 	}
 
-	public WebDeltaResponseBuilder runScript(@NotNull String script){
+	public WebDeltaResponse runScript(@NotNull String script){
 		commands.add(new RunScriptCommand(script));
 		return this;
 	}

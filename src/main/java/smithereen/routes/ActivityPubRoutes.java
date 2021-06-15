@@ -192,7 +192,7 @@ public class ActivityPubRoutes{
 				group.adminsForActivityPub=GroupStorage.getGroupAdmins(group.id);
 			}
 			resp.type(ActivityPub.CONTENT_TYPE);
-			return actor.asRootActivityPubObject();
+			return actor;
 		}
 		throw new ObjectNotFoundException();
 	}
@@ -207,7 +207,7 @@ public class ActivityPubRoutes{
 		if(group!=null && !(group instanceof ForeignGroup)){
 			group.adminsForActivityPub=GroupStorage.getGroupAdmins(group.id);
 			resp.type(ActivityPub.CONTENT_TYPE);
-			return group.asRootActivityPubObject();
+			return group;
 		}
 		throw new ObjectNotFoundException();
 	}
@@ -222,7 +222,7 @@ public class ActivityPubRoutes{
 			throw new ObjectNotFoundException();
 		}
 		resp.type(ActivityPub.CONTENT_TYPE);
-		return post.asRootActivityPubObject();
+		return post;
 	}
 
 	public static ActivityPubCollectionPageResponse postReplies(Request req, Response resp, int offset, int count) throws SQLException{
@@ -302,11 +302,11 @@ public class ActivityPubRoutes{
 				collection.activityPubID=page.partOf;
 				collection.totalItems=total;
 				collection.first=new LinkOrObject(page);
-				return collection.asRootActivityPubObject();
+				return collection;
 			}
 		}catch(URISyntaxException ignore){}
 		resp.type(ActivityPub.CONTENT_TYPE);
-		return page.asRootActivityPubObject();
+		return page;
 	}
 
 	public static ActivityPubCollectionPageResponse groupOutbox(Request req, Response resp, int offset, int count){
@@ -380,7 +380,7 @@ public class ActivityPubRoutes{
 				}else if(status==FriendshipStatus.FRIENDS){
 					return Utils.wrapError(req, resp, "err_already_friends");
 				}
-				return new RenderedTemplateResponse("remote_follow").with("user", foreignUser).with("title", Config.serverDisplayName).renderToString(req);
+				return new RenderedTemplateResponse("remote_follow", req).with("user", foreignUser).with("title", Config.serverDisplayName);
 			}catch(Exception x){
 				x.printStackTrace();
 				return x.toString();
@@ -509,7 +509,7 @@ public class ActivityPubRoutes{
 		if(l==null)
 			throw new ObjectNotFoundException();
 		resp.type(ActivityPub.CONTENT_TYPE);
-		return l.asRootActivityPubObject();
+		return l;
 	}
 
 	public static Object undoLikeObject(Request req, Response resp) throws SQLException{
@@ -519,7 +519,7 @@ public class ActivityPubRoutes{
 		Undo undo=ActivityPubCache.getUndoneLike(id);
 		if(undo==null)
 			throw new ObjectNotFoundException();
-		return undo.asRootActivityPubObject();
+		return undo;
 	}
 
 	private static Object inbox(Request req, Response resp, Actor owner) throws SQLException{

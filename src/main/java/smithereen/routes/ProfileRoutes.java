@@ -30,7 +30,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
-import smithereen.data.WebDeltaResponseBuilder;
+import smithereen.data.WebDeltaResponse;
 import smithereen.data.notifications.Notification;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
@@ -54,7 +54,7 @@ public class ProfileRoutes{
 			int[] postCount={0};
 			int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
 			List<Post> wall=PostStorage.getWallPosts(user.id, false, 0, 0, offset, postCount, false);
-			RenderedTemplateResponse model=new RenderedTemplateResponse("profile").with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
+			RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req).with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
 			model.with("pageOffset", offset);
 
 			Set<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toSet());
@@ -165,7 +165,7 @@ public class ProfileRoutes{
 
 			model.with("groups", GroupStorage.getUserGroups(user.id));
 			Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "remove_friend", "cancel", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw");
-			return model.renderToString(req);
+			return model;
 		}else{
 			Group g=GroupStorage.getByUsername(username);
 			if(g!=null){
@@ -192,16 +192,16 @@ public class ProfileRoutes{
 					if(user instanceof ForeignUser){
 						ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser)user);
 					}
-					return new WebDeltaResponseBuilder(resp).refresh().json();
+					return new WebDeltaResponse(resp).refresh();
 				}else{
-					RenderedTemplateResponse model=new RenderedTemplateResponse("form_page");
+					RenderedTemplateResponse model=new RenderedTemplateResponse("form_page", req);
 					model.with("targetUser", user);
 					model.with("contentTemplate", "send_friend_request").with("formAction", user.getProfileURL("doSendFriendRequest")).with("submitButton", l.get("send"));
-					return model.renderToString(req);
+					return model;
 				}
 			}else if(status==FriendshipStatus.NONE){
 				if(user.supportsFriendRequests()){
-					RenderedTemplateResponse model=new RenderedTemplateResponse("send_friend_request");
+					RenderedTemplateResponse model=new RenderedTemplateResponse("send_friend_request", req);
 					model.with("targetUser", user);
 					return wrapForm(req, resp, "send_friend_request", user.getProfileURL("doSendFriendRequest"), l.get("add_friend"), "send", model);
 				}else{
@@ -242,7 +242,7 @@ public class ProfileRoutes{
 				}
 				if(isAjax(req)){
 					resp.type("application/json");
-					return new WebDeltaResponseBuilder().refresh().json();
+					return new WebDeltaResponse().refresh();
 				}
 				resp.redirect(Utils.back(req));
 				return "";
@@ -267,7 +267,7 @@ public class ProfileRoutes{
 			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING || status==FriendshipStatus.FOLLOW_REQUESTED){
 				Lang l=Utils.lang(req);
 				String back=Utils.back(req);
-				return new RenderedTemplateResponse("generic_confirm").with("message", l.inflected("confirm_unfriend_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", user.getProfileURL("doRemoveFriend")+"?_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+				return new RenderedTemplateResponse("generic_confirm", req).with("message", l.inflected("confirm_unfriend_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", user.getProfileURL("doRemoveFriend")+"?_redir="+URLEncoder.encode(back)).with("back", back);
 			}else{
 				return Utils.wrapError(req, resp, "err_not_friends");
 			}
@@ -291,7 +291,7 @@ public class ProfileRoutes{
 			user=UserStorage.getByUsername(username);
 		}
 		if(user!=null){
-			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
+			RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 			model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
 			model.with("title", lang(req).get("friends"));
 			if(self!=null && user.id!=self.user.id){
@@ -300,7 +300,7 @@ public class ProfileRoutes{
 			}
 			model.with("tab", "friends");
 			jsLangKey(req, "remove_friend", "yes", "no");
-			return model.renderToString(req);
+			return model;
 		}
 		throw new ObjectNotFoundException("err_user_not_found");
 	}
@@ -309,14 +309,14 @@ public class ProfileRoutes{
 		String username=req.params(":username");
 		User user=UserStorage.getByUsername(username);
 		if(user!=null && user.id!=self.user.id){
-			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
+			RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 			model.with("friendList", UserStorage.getMutualFriendListForUser(user.id, self.user.id)).with("owner", user).with("tab", 0);
 			model.with("title", lang(req).get("friends"));
 			model.with("tab", "mutual");
 			int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
 			model.with("mutualCount", mutualCount);
 			jsLangKey(req, "remove_friend", "yes", "no");
-			return model.renderToString(req);
+			return model;
 		}
 		throw new ObjectNotFoundException("err_user_not_found");
 	}
@@ -336,14 +336,14 @@ public class ProfileRoutes{
 			user=UserStorage.getByUsername(username);
 		}
 		if(user!=null){
-			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
+			RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 			model.with("title", lang(req).get("followers")).with("toolbarTitle", lang(req).get("friends"));
 			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true).with("tab", "followers");
 			if(self!=null && user.id!=self.user.id){
 				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
 				model.with("mutualCount", mutualCount);
 			}
-			return model.renderToString(req);
+			return model;
 		}
 		throw new ObjectNotFoundException("err_user_not_found");
 	}
@@ -363,7 +363,7 @@ public class ProfileRoutes{
 			user=UserStorage.getByUsername(username);
 		}
 		if(user!=null){
-			RenderedTemplateResponse model=new RenderedTemplateResponse("friends");
+			RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 			model.with("title", lang(req).get("following")).with("toolbarTitle", lang(req).get("friends"));
 			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true).with("tab", "following");
 			if(self!=null && user.id!=self.user.id){
@@ -371,17 +371,17 @@ public class ProfileRoutes{
 				model.with("mutualCount", mutualCount);
 			}
 			jsLangKey(req, "unfollow", "yes", "no");
-			return model.renderToString(req);
+			return model;
 		}
 		throw new ObjectNotFoundException("err_user_not_found");
 	}
 
 	public static Object incomingFriendRequests(Request req, Response resp, Account self) throws SQLException{
 		List<FriendRequest> requests=UserStorage.getIncomingFriendRequestsForUser(self.user.id, 0, 100);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("friend_requests");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("friend_requests", req);
 		model.with("friendRequests", requests);
 		model.with("title", lang(req).get("friend_requests")).with("toolbarTitle", lang(req).get("friends")).with("owner", self.user);
-		return model.renderToString(req);
+		return model;
 	}
 
 	public static Object respondToFriendRequest(Request req, Response resp, Account self) throws SQLException{
@@ -406,7 +406,7 @@ public class ProfileRoutes{
 				}
 			}
 			if(isAjax(req))
-				return new WebDeltaResponseBuilder(resp).refresh().json();
+				return new WebDeltaResponse(resp).refresh();
 			resp.redirect(Utils.back(req));
 		}else{
 			throw new ObjectNotFoundException("err_user_not_found");
@@ -427,9 +427,9 @@ public class ProfileRoutes{
 				if(isAjax(req)){
 					resp.type("application/json");
 					if("list".equals(req.queryParams("from")))
-						return new WebDeltaResponseBuilder().remove("frow"+user.id).json();
+						return new WebDeltaResponse().remove("frow"+user.id);
 					else
-						return new WebDeltaResponseBuilder().refresh().json();
+						return new WebDeltaResponse().refresh();
 				}
 				resp.redirect(Utils.back(req));
 			}else{
@@ -445,14 +445,14 @@ public class ProfileRoutes{
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm").with("message", l.inflected("confirm_block_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/users/"+user.id+"/block?_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.inflected("confirm_block_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/users/"+user.id+"/block?_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object confirmUnblockUser(Request req, Response resp, Account self) throws SQLException{
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm").with("message", l.inflected("confirm_unblock_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/users/"+user.id+"/unblock?_redir="+URLEncoder.encode(back)).with("back", back).renderToString(req);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.inflected("confirm_unblock_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/users/"+user.id+"/unblock?_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object blockUser(Request req, Response resp, Account self) throws SQLException{
@@ -461,7 +461,7 @@ public class ProfileRoutes{
 		if(user instanceof ForeignUser)
 			ActivityPubWorker.getInstance().sendBlockActivity(self.user, (ForeignUser) user);
 		if(isAjax(req))
-			return new WebDeltaResponseBuilder(resp).refresh().json();
+			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}
@@ -472,7 +472,7 @@ public class ProfileRoutes{
 		if(user instanceof ForeignUser)
 			ActivityPubWorker.getInstance().sendUndoBlockActivity(self.user, (ForeignUser) user);
 		if(isAjax(req))
-			return new WebDeltaResponseBuilder(resp).refresh().json();
+			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}

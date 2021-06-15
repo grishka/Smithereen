@@ -52,9 +52,9 @@ public class ActivityPubCollectionRouteAdapter implements Route{
 			collection.totalItems=total;
 			collection.first=new LinkOrObject(page);
 			collection.activityPubID=page.partOf;
-			return collection.asRootActivityPubObject();
+			return collection;
 		}
 		resp.type(ActivityPub.CONTENT_TYPE);
-		return page.asRootActivityPubObject();
+		return page;
 	}
 }
