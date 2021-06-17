@@ -178,12 +178,23 @@ public abstract class Actor extends ActivityPubObject{
 		}
 
 		inbox=tryParseURL(obj.get("inbox").getAsString());
+		if(!inbox.getHost().equals(activityPubID.getHost()))
+			throw new IllegalArgumentException("incorrect inbox host");
 		outbox=tryParseURL(optString(obj, "outbox"));
+		if(outbox!=null && !outbox.getHost().equals(activityPubID.getHost()))
+			throw new IllegalArgumentException("incorrect outbox host");
 		followers=tryParseURL(optString(obj, "followers"));
+		if(followers!=null && !followers.getHost().equals(activityPubID.getHost()))
+			throw new IllegalArgumentException("incorrect followers host");
 		following=tryParseURL(optString(obj, "following"));
+		if(following!=null && !following.getHost().equals(activityPubID.getHost()))
+			throw new IllegalArgumentException("incorrect following host");
 		if(obj.has("endpoints")){
 			JsonObject endpoints=obj.getAsJsonObject("endpoints");
 			sharedInbox=tryParseURL(optString(endpoints, "sharedInbox"));
+			if(sharedInbox!=null && !sharedInbox.getHost().equals(activityPubID.getHost()))
+				throw new IllegalArgumentException("incorrect sharedInbox host");
+
 		}
 		if(sharedInbox==null)
 			sharedInbox=inbox;
