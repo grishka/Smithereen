@@ -335,6 +335,22 @@ public class ActivityPubRoutes{
 		return ActivityPubCollectionPageResponse.forLinks(posts, total[0]);
 	}
 
+	public static ActivityPubCollectionPageResponse userFriends(Request req, Response resp, int offset, int count) throws SQLException{
+		int id=parseIntOrDefault(req.params(":id"), 0);
+		User user=UserStorage.getById(id);
+		if(user==null || user instanceof ForeignUser)
+			throw new ObjectNotFoundException();
+		return ActivityPubCollectionPageResponse.forLinks(UserStorage.getActivityPubFriendList(id, offset, count), UserStorage.getUserFriendsCount(id));
+	}
+
+	public static ActivityPubCollectionPageResponse userGroups(Request req, Response resp, int offset, int count) throws SQLException{
+		int id=parseIntOrDefault(req.params(":id"), 0);
+		User user=UserStorage.getById(id);
+		if(user==null || user instanceof ForeignUser)
+			throw new ObjectNotFoundException();
+		return ActivityPubCollectionPageResponse.forLinks(GroupStorage.getUserGroupIDs(id, offset, count));
+	}
+
 	public static Object externalInteraction(Request req, Response resp, Account self) throws SQLException{
 		// ?type=reblog
 		// ?type=favourite

@@ -28,6 +28,7 @@ import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Invitation;
+import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.data.UserNotifications;
 import spark.utils.StringUtils;
@@ -231,6 +232,32 @@ public class UserStorage{
 		try(ResultSet res=stmt.executeQuery()){
 			return getById(DatabaseUtils.intResultSetToList(res));
 		}
+	}
+
+	public static List<URI> getActivityPubFriendList(int userID, int offset, int count) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("SELECT followee_id, ap_id FROM followings JOIN users ON followee_id=users.id WHERE follower_id=? AND mutual=1 ORDER BY followee_id ASC LIMIT ? OFFSET ?");
+		stmt.setInt(1, userID);
+		stmt.setInt(2, count);
+		stmt.setInt(3, offset);
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			ArrayList<URI> ids=new ArrayList<>();
+			while(res.next()){
+				String apID=res.getString(2);
+				ids.add(apID==null ? Config.localURI("/users/"+res.getInt(1)) : URI.create(apID));
+			}
+			return ids;
+		}
+	}
+
+	public static int getUserFriendsCount(int userID) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("followings")
+				.count()
+				.where("follower_id=? AND mutual=1", userID)
+				.createStatement();
+		return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 	}
 
 	public static List<User> getRandomFriendsForProfile(int userID, int[] outTotal) throws SQLException{
@@ -529,7 +556,9 @@ public class UserStorage{
 				.value("flags", user.flags)
 				.value("middle_name", user.middleName)
 				.value("maiden_name", user.maidenName)
-				.value("ap_wall", Objects.toString(user.getWallURL(), null));
+				.value("ap_wall", Objects.toString(user.getWallURL(), null))
+				.value("ap_friends", Objects.toString(user.getFriendsURL(), null))
+				.value("ap_groups", Objects.toString(user.getGroupsURL(), null));
 		stmt=existingUserID!=0 ? bldr.createStatement() : bldr.createStatement(PreparedStatement.RETURN_GENERATED_KEYS);
 
 		stmt.executeUpdate();

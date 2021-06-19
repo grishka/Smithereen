@@ -26,6 +26,7 @@ public class ActivityPubCollectionRouteAdapter implements Route{
 
 	@Override
 	public Object handle(Request req, Response resp) throws Exception{
+		resp.type(ActivityPub.CONTENT_TYPE);
 		int pageIndex=Math.max(1, Utils.parseIntOrDefault(req.queryParams("page"), 1));
 		int offset=(pageIndex-1)*perPage;
 
@@ -54,7 +55,6 @@ public class ActivityPubCollectionRouteAdapter implements Route{
 			collection.activityPubID=page.partOf;
 			return collection;
 		}
-		resp.type(ActivityPub.CONTENT_TYPE);
 		return page;
 	}
 }

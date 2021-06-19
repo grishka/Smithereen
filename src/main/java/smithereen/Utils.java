@@ -62,6 +62,7 @@ import smithereen.util.LocaleJsonAdapter;
 import smithereen.util.TimeZoneJsonAdapter;
 import spark.Request;
 import spark.Response;
+import spark.Session;
 import spark.utils.StringUtils;
 
 public class Utils{
@@ -314,7 +315,10 @@ public class Utils{
 	}
 
 	public static SessionInfo sessionInfo(Request req){
-		SessionInfo info=req.session().attribute("info");
+		Session sess=req.session(false);
+		if(sess==null)
+			return null;
+		SessionInfo info=sess.attribute("info");
 		return info;
 	}
 

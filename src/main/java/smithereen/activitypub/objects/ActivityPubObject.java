@@ -367,6 +367,11 @@ public abstract class ActivityPubObject{
 
 	}
 
+	protected void ensureHostMatchesID(URI uri, String property){
+		if(activityPubID!=null && uri!=null && !activityPubID.getHost().equalsIgnoreCase(uri.getHost()))
+			throw new IllegalArgumentException("URI in property '"+property+"' "+uri+" must have the same host as the object ID "+activityPubID);
+	}
+
 	@Override
 	public String toString(){
 		StringBuilder sb=new StringBuilder("ActivityPubObject{");

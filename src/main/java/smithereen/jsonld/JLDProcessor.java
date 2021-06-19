@@ -57,7 +57,9 @@ public class JLDProcessor{
 		lc.addProperty("supportsFriendRequests", "sm:supportsFriendRequests");
 		lc.add("cropRegion", idAndContainerObject("sm:cropRegion", "@list"));
 		lc.addProperty("maidenName", "sm:maidenName");
-		lc.addProperty("wall", "sm:wall");
+		lc.add("wall", idAndTypeObject("sm:wall", "@id"));
+		lc.add("friends", idAndTypeObject("sm:friends", "@id"));
+		lc.add("groups", idAndTypeObject("sm:groups", "@id"));
 
 		localContext=updateContext(new JLDContext(), makeArray(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);

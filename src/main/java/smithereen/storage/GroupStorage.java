@@ -26,6 +26,7 @@ import smithereen.activitypub.ContextCollector;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
 import smithereen.data.GroupAdmin;
+import smithereen.data.ListAndTotal;
 import smithereen.data.User;
 import spark.utils.StringUtils;
 
@@ -358,6 +359,29 @@ public class GroupStorage{
 		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("group_memberships").columns("group_id").where("user_id=? AND accepted=1", userID).createStatement();
 		try(ResultSet res=stmt.executeQuery()){
 			return getByID(DatabaseUtils.intResultSetToList(res));
+		}
+	}
+
+	public static ListAndTotal<URI> getUserGroupIDs(int userID, int offset, int count) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=conn.prepareStatement("SELECT count(*) FROM group_memberships WHERE user_id=? AND accepted=1");
+		stmt.setInt(1, userID);
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(total==0)
+			return new ListAndTotal<>(Collections.emptyList(), 0);
+
+		stmt=conn.prepareStatement("SELECT group_id, ap_id FROM group_memberships JOIN groups ON group_id=id WHERE user_id=? AND accepted=1 LIMIT ? OFFSET ?");
+		stmt.setInt(1, userID);
+		stmt.setInt(2, count);
+		stmt.setInt(3, offset);
+		try(ResultSet res=stmt.executeQuery()){
+			ArrayList<URI> list=new ArrayList<>();
+			res.beforeFirst();
+			while(res.next()){
+				String apID=res.getString(2);
+				list.add(apID!=null ? URI.create(apID) : Config.localURI("/groups/"+res.getInt(1)));
+			}
+			return new ListAndTotal<>(list, total);
 		}
 	}
 

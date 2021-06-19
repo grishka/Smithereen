@@ -229,9 +229,11 @@ public class Main{
 			get("/inbox", Main::methodNotAllowed);
 			get("/outbox", ActivityPubRoutes::userOutbox);
 			post("/outbox", Main::methodNotAllowed);
-			getActivityPubCollection("/followers", 50, ActivityPubRoutes::userFollowers);
-			getActivityPubCollection("/following", 50, ActivityPubRoutes::userFollowing);
-			getActivityPubCollection("/wall", 50, ActivityPubRoutes::userWall);
+			getActivityPubCollection("/followers", 100, ActivityPubRoutes::userFollowers);
+			getActivityPubCollection("/following", 100, ActivityPubRoutes::userFollowing);
+			getActivityPubCollection("/wall", 100, ActivityPubRoutes::userWall);
+			getActivityPubCollection("/friends", 100, ActivityPubRoutes::userFriends);
+			getActivityPubCollection("/groups", 100, ActivityPubRoutes::userGroups);
 
 			postWithCSRF("/createWallPost", PostRoutes::createUserWallPost);
 			getLoggedIn("/confirmBlock", ProfileRoutes::confirmBlockUser);
@@ -407,7 +409,7 @@ public class Main{
 				resp.header("X-Powered-By", "frustration with attention economy");
 			}
 
-			if(req.headers("accept")==null || !req.headers("accept").startsWith("application/")){
+			if(req.attribute("isTemplate")!=null){
 				try{
 					if(req.session().attribute("info")==null)
 						req.session().attribute("info", new SessionInfo());

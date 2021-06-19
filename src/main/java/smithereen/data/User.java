@@ -173,6 +173,8 @@ public class User extends Actor{
 		}
 
 		obj.addProperty("supportsFriendRequests", true);
+		obj.addProperty("friends", getFriendsURL().toString());
+		obj.addProperty("groups", getGroupsURL().toString());
 
 		contextCollector.addAlias("sc", JLD.SCHEMA_ORG);
 		contextCollector.addAlias("firstName", "sc:givenName");
@@ -183,6 +185,8 @@ public class User extends Actor{
 		contextCollector.addAlias("sm", JLD.SMITHEREEN);
 		contextCollector.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
 		contextCollector.addAlias("maidenName", "sm:maidenName");
+		contextCollector.addType("friends", "sm:friends", "@id");
+		contextCollector.addType("groups", "sm:groups", "@id");
 
 		return obj;
 	}
@@ -238,6 +242,14 @@ public class User extends Actor{
 	@Override
 	public URI getWallURL(){
 		return Config.localURI("/users/"+id+"/wall");
+	}
+
+	public URI getFriendsURL(){
+		return Config.localURI("/users/"+id+"/friends");
+	}
+
+	public URI getGroupsURL(){
+		return Config.localURI("/users/"+id+"/groups");
 	}
 
 	@Override

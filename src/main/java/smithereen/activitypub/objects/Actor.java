@@ -138,7 +138,7 @@ public abstract class Actor extends ActivityPubObject{
 		obj.add("publicKey", pubkey);
 
 		obj.addProperty("wall", getWallURL().toString());
-		contextCollector.addAlias("wall", "sm:wall");
+		contextCollector.addType("wall", "sm:wall", "@id");
 		contextCollector.addAlias("sm", JLD.SMITHEREEN);
 
 		contextCollector.addSchema(JLD.W3_SECURITY);
@@ -149,6 +149,8 @@ public abstract class Actor extends ActivityPubObject{
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
 		super.parseActivityPubObject(obj, parserContext);
+		if(activityPubID==null)
+			throw new IllegalArgumentException("id is required for actors");
 
 		username=optString(obj, "preferredUsername");
 		if(username==null){
@@ -178,23 +180,17 @@ public abstract class Actor extends ActivityPubObject{
 		}
 
 		inbox=tryParseURL(obj.get("inbox").getAsString());
-		if(!inbox.getHost().equals(activityPubID.getHost()))
-			throw new IllegalArgumentException("incorrect inbox host");
+		ensureHostMatchesID(inbox, "inbox");
 		outbox=tryParseURL(optString(obj, "outbox"));
-		if(outbox!=null && !outbox.getHost().equals(activityPubID.getHost()))
-			throw new IllegalArgumentException("incorrect outbox host");
+		ensureHostMatchesID(outbox, "outbox");
 		followers=tryParseURL(optString(obj, "followers"));
-		if(followers!=null && !followers.getHost().equals(activityPubID.getHost()))
-			throw new IllegalArgumentException("incorrect followers host");
+		ensureHostMatchesID(followers, "followers");
 		following=tryParseURL(optString(obj, "following"));
-		if(following!=null && !following.getHost().equals(activityPubID.getHost()))
-			throw new IllegalArgumentException("incorrect following host");
+		ensureHostMatchesID(following, "following");
 		if(obj.has("endpoints")){
 			JsonObject endpoints=obj.getAsJsonObject("endpoints");
 			sharedInbox=tryParseURL(optString(endpoints, "sharedInbox"));
-			if(sharedInbox!=null && !sharedInbox.getHost().equals(activityPubID.getHost()))
-				throw new IllegalArgumentException("incorrect sharedInbox host");
-
+			ensureHostMatchesID(sharedInbox, "sharedInbox");
 		}
 		if(sharedInbox==null)
 			sharedInbox=inbox;

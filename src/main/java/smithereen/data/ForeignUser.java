@@ -16,7 +16,7 @@ import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
 
-	private URI wall;
+	private URI wall, friends, groups;
 
 	public static ForeignUser fromResultSet(ResultSet res) throws SQLException{
 		ForeignUser user=new ForeignUser();
@@ -37,6 +37,8 @@ public class ForeignUser extends User implements ForeignActor{
 		following=tryParseURL(res.getString("ap_following"));
 		lastUpdated=res.getTimestamp("last_updated");
 		wall=tryParseURL(res.getString("ap_wall"));
+		friends=tryParseURL(res.getString("ap_friends"));
+		groups=tryParseURL(res.getString("ap_groups"));
 	}
 
 	@Override
@@ -121,6 +123,11 @@ public class ForeignUser extends User implements ForeignActor{
 		if(StringUtils.isNotEmpty(summary))
 			summary=Utils.sanitizeHTML(summary);
 		wall=tryParseURL(optString(obj, "wall"));
+		ensureHostMatchesID(wall, "wall");
+		friends=tryParseURL(optString(obj, "friends"));
+		ensureHostMatchesID(friends, "friends");
+		groups=tryParseURL(optString(obj, "groups"));
+		ensureHostMatchesID(groups, "groups");
 		return this;
 	}
 
@@ -142,6 +149,16 @@ public class ForeignUser extends User implements ForeignActor{
 	@Override
 	public URI getWallURL(){
 		return wall;
+	}
+
+	@Override
+	public URI getFriendsURL(){
+		return friends;
+	}
+
+	@Override
+	public URI getGroupsURL(){
+		return groups;
 	}
 
 	@Override
