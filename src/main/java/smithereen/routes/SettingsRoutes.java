@@ -168,11 +168,14 @@ public class SettingsRoutes{
 
 			byte[] key=MessageDigest.getInstance("MD5").digest((self.user.username+","+System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8));
 			String keyHex=Utils.byteArrayToHexString(key);
+			String mime=part.getContentType();
+			if(!mime.startsWith("image/"))
+				throw new IOException("incorrect mime type");
 
 			File tmpDir = new File(System.getProperty("java.io.tmpdir"));
 			File temp=new File(tmpDir, keyHex);
 			part.write(keyHex);
-			VImage img=new VImage(temp.getAbsolutePath()+"[autorotate=true]");
+			VImage img=new VImage(temp.getAbsolutePath()+(mime.equals("image/png") ? "" : "[autorotate=true]"));
 			if(img.hasAlpha())
 				img=img.flatten(1, 1, 1);
 			float ratio=(float)img.getWidth()/(float)img.getHeight();
