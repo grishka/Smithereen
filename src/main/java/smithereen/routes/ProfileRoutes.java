@@ -238,11 +238,12 @@ public class ProfileRoutes{
 					UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
 					if(user instanceof ForeignUser){
 						ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser)user);
+					}else{
+						ActivityPubWorker.getInstance().sendAddToFriendsCollectionActivity(self.user, user);
 					}
 				}
 				if(isAjax(req)){
-					resp.type("application/json");
-					return new WebDeltaResponse().refresh();
+					return new WebDeltaResponse(resp).refresh();
 				}
 				resp.redirect(Utils.back(req));
 				return "";
@@ -398,6 +399,7 @@ public class ProfileRoutes{
 					n.type=Notification.Type.FRIEND_REQ_ACCEPT;
 					n.actorID=self.user.id;
 					NotificationsStorage.putNotification(user.id, n);
+					ActivityPubWorker.getInstance().sendAddToFriendsCollectionActivity(self.user, user);
 				}
 			}else if(req.queryParams("decline")!=null){
 				UserStorage.deleteFriendRequest(self.user.id, user.id);
@@ -423,6 +425,9 @@ public class ProfileRoutes{
 				UserStorage.unfriendUser(self.user.id, user.id);
 				if(user instanceof ForeignUser){
 					ActivityPubWorker.getInstance().sendUnfriendActivity(self.user, user);
+				}
+				if(status==FriendshipStatus.FRIENDS){
+					ActivityPubWorker.getInstance().sendRemoveFromFriendsCollectionActivity(self.user, user);
 				}
 				if(isAjax(req)){
 					resp.type("application/json");
@@ -457,9 +462,13 @@ public class ProfileRoutes{
 
 	public static Object blockUser(Request req, Response resp, Account self) throws SQLException{
 		User user=getUserOrThrow(req);
+		FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 		UserStorage.blockUser(self.user.id, user.id);
 		if(user instanceof ForeignUser)
 			ActivityPubWorker.getInstance().sendBlockActivity(self.user, (ForeignUser) user);
+		if(status==FriendshipStatus.FRIENDS){
+			ActivityPubWorker.getInstance().sendRemoveFromFriendsCollectionActivity(self.user, user);
+		}
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));

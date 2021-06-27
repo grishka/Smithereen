@@ -27,6 +27,7 @@ import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
+import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignGroup;
@@ -226,6 +227,40 @@ public class ActivityPubWorker{
 		undo.object=new LinkOrObject(follow);
 
 		executor.submit(new SendOneActivityRunnable(undo, ((ForeignUser) target).inbox, self));
+	}
+
+	public void sendRemoveFromFriendsCollectionActivity(User self, User exFriend){
+		Remove remove=new Remove();
+		remove.activityPubID=new UriBuilder(self.activityPubID).fragment("unfriendUserCollection"+exFriend.id+"_"+rand()).build();
+		remove.actor=new LinkOrObject(self.activityPubID);
+		remove.object=new LinkOrObject(exFriend.activityPubID);
+		remove.target=new LinkOrObject(self.getFriendsURL());
+
+		try{
+			List<URI> inboxes=UserStorage.getFollowerInboxes(self.id);
+			for(URI inbox:inboxes){
+				executor.submit(new SendOneActivityRunnable(remove, inbox, self));
+			}
+		}catch(SQLException x){
+			x.printStackTrace();
+		}
+	}
+
+	public void sendAddToFriendsCollectionActivity(User self, User friend){
+		Add add=new Add();
+		add.activityPubID=new UriBuilder(self.activityPubID).fragment("addFriendUserCollection"+friend.id+"_"+rand()).build();
+		add.actor=new LinkOrObject(self.activityPubID);
+		add.object=new LinkOrObject(friend.activityPubID);
+		add.target=new LinkOrObject(self.getFriendsURL());
+
+		try{
+			List<URI> inboxes=UserStorage.getFollowerInboxes(self.id);
+			for(URI inbox:inboxes){
+				executor.submit(new SendOneActivityRunnable(add, inbox, self));
+			}
+		}catch(SQLException x){
+			x.printStackTrace();
+		}
 	}
 
 	public void sendFollowActivity(User self, ForeignUser target){
