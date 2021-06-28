@@ -27,7 +27,7 @@
 				<a href="{{post.internalURL}}" onclick="return highlightComment({{post.id}})" class="postLink">{{LD(post.published)}}</a>
 				<div class="actions">
 					{% if currentUser is not null %}
-						{%if not hideReplyLink%}<a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}})">{{L('add_reply')}}</a>{%endif%}
+						{%if not hideReplyLink%}<a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}')">{{L('add_reply')}}</a>{%endif%}
 						{% set options=[] %}
 						{% set _=options.add({'type': 'link', 'href': "#{post.internalURL}/likes", 'label': L('likes_title').toString()}) %}
 						{% if userPermissions is not null and userPermissions.canDeletePost(post) %}
