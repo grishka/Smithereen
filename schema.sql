@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2021-05-25 05:56:55 +0000
+# Generation Time: 2021-06-28 21:55:15 +0000
 # ************************************************************
 
 
@@ -247,6 +247,7 @@ CREATE TABLE `likes` (
   `user_id` int(11) unsigned NOT NULL,
   `object_id` int(11) unsigned NOT NULL,
   `object_type` int(11) unsigned NOT NULL,
+  `ap_id` varchar(300) DEFAULT NULL,
   UNIQUE KEY `user_id` (`user_id`,`object_id`,`object_type`),
   UNIQUE KEY `id` (`id`),
   KEY `object_type` (`object_type`,`object_id`),
@@ -379,6 +380,8 @@ CREATE TABLE `users` (
   `last_updated` timestamp NULL DEFAULT NULL,
   `flags` bigint(20) unsigned NOT NULL,
   `ap_wall` varchar(300) DEFAULT NULL,
+  `ap_friends` varchar(300) DEFAULT NULL,
+  `ap_groups` varchar(300) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
   UNIQUE KEY `ap_id` (`ap_id`),
