@@ -40,6 +40,12 @@ public class SQLQueryBuilder{
 		return this;
 	}
 
+	public SQLQueryBuilder insertIgnoreInto(String table){
+		action=Action.INSERT_IGNORE;
+		this.table=table;
+		return this;
+	}
+
 	public SQLQueryBuilder selectFrom(String table){
 		action=Action.SELECT;
 		this.table=table;
@@ -243,6 +249,12 @@ public class SQLQueryBuilder{
 				sb.append("` ");
 				appendInsertValues(sb);
 			}
+			case INSERT_IGNORE -> {
+				sb.append("INSERT IGNORE INTO `");
+				sb.append(table);
+				sb.append("` ");
+				appendInsertValues(sb);
+			}
 			case UPDATE -> {
 				ensureHasCondition();
 				sb.append("UPDATE `");
@@ -312,12 +324,28 @@ public class SQLQueryBuilder{
 		return stmt;
 	}
 
+	public static PreparedStatement prepareStatement(Connection conn, String sql, Object... args) throws SQLException{
+		PreparedStatement stmt=conn.prepareStatement(sql);
+		int i=1;
+		for(Object arg:args){
+			if(arg instanceof Enum)
+				stmt.setInt(i, ((Enum<?>)arg).ordinal());
+			else
+				stmt.setObject(i, arg);
+			i++;
+		}
+		if(Config.DEBUG)
+			System.out.println(stmt);
+		return stmt;
+	}
+
 	private enum Action{
 		SELECT,
 		INSERT,
 		UPDATE,
 		DELETE,
-		INSERT_OR_UPDATE
+		INSERT_OR_UPDATE,
+		INSERT_IGNORE
 	}
 
 	private static class Value{

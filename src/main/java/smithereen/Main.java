@@ -309,6 +309,7 @@ public class Main{
 			get("/ajaxCommentBranch", PostRoutes::ajaxCommentBranch);
 
 			getActivityPubCollection("/replies", 50, ActivityPubRoutes::postReplies);
+			getActivityPubCollection("/likes", 50, ActivityPubRoutes::postLikes);
 		});
 
 		get("/robots.txt", (req, resp)->{

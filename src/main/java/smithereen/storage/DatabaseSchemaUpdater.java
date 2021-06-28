@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import smithereen.Config;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=9;
+	public static final int SCHEMA_VERSION=10;
 
 	public static void maybeUpdate() throws SQLException{
 		if(Config.dbSchemaVersion==0){
@@ -147,6 +147,9 @@ public class DatabaseSchemaUpdater{
 			conn.createStatement().execute("ALTER TABLE accounts ADD `ban_info` text DEFAULT NULL");
 		}else if(target==9){
 			conn.createStatement().execute("ALTER TABLE users ADD `ap_friends` varchar(300) DEFAULT NULL, ADD `ap_groups` varchar(300) DEFAULT NULL");
+		}else if(target==10){
+			conn.createStatement().execute("ALTER TABLE likes ADD `ap_id` varchar(300) DEFAULT NULL");
+			conn.createStatement().execute("UPDATE likes SET object_type=0");
 		}
 	}
 }

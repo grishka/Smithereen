@@ -7,4 +7,8 @@ public class Like extends Activity{
 	public String getType(){
 		return "Like";
 	}
+
+	public enum ObjectType{
+		POST
+	}
 }

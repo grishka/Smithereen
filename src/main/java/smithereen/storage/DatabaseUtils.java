@@ -13,7 +13,7 @@ public class DatabaseUtils{
 
 	private static final Object UNIQUE_USERNAME_LOCK=new Object();
 
-	public static List<Integer> intResultSetToList(ResultSet res) throws SQLException{
+	public static ArrayList<Integer> intResultSetToList(ResultSet res) throws SQLException{
 		res.beforeFirst();
 		ArrayList<Integer> list=new ArrayList<>();
 		while(res.next()){

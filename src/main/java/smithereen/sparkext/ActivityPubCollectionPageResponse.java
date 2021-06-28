@@ -13,7 +13,7 @@ public class ActivityPubCollectionPageResponse{
 	public List<LinkOrObject> items;
 	public boolean ordered;
 
-	public static ActivityPubCollectionPageResponse forObjects(List<ActivityPubObject> objects, int total){
+	public static ActivityPubCollectionPageResponse forObjects(List<? extends ActivityPubObject> objects, int total){
 		ActivityPubCollectionPageResponse r=new ActivityPubCollectionPageResponse();
 		r.items=objects.stream().map(LinkOrObject::new).collect(Collectors.toList());
 		r.totalItems=total;
@@ -31,7 +31,7 @@ public class ActivityPubCollectionPageResponse{
 		return forLinks(lt.list, lt.total);
 	}
 
-	public static ActivityPubCollectionPageResponse forObjects(ListAndTotal<ActivityPubObject> lt){
+	public static ActivityPubCollectionPageResponse forObjects(ListAndTotal<? extends ActivityPubObject> lt){
 		return forObjects(lt.list, lt.total);
 	}
 

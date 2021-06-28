@@ -1,5 +1,7 @@
 package smithereen.storage;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -323,6 +325,15 @@ public class PostStorage{
 		return posts;
 	}
 
+	public static @NotNull Post getPostOrThrow(int postID, boolean onlyLocal) throws SQLException{
+		if(postID<=0)
+			throw new ObjectNotFoundException("err_post_not_found");
+		Post post=getPostByID(postID, false);
+		if(post==null || (onlyLocal && !Config.isLocal(post.activityPubID)))
+			throw new ObjectNotFoundException("err_post_not_found");
+		return post;
+	}
+
 	public static Post getPostByID(int postID, boolean wantDeleted) throws SQLException{
 		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("SELECT * FROM wall_posts WHERE id=?");
 		stmt.setInt(1, postID);
@@ -537,7 +548,7 @@ public class PostStorage{
 		String idsStr=postIDs.stream().map(Object::toString).collect(Collectors.joining(","));
 
 		Connection conn=DatabaseConnectionManager.getConnection();
-		try(ResultSet res=conn.createStatement().executeQuery("SELECT object_id, COUNT(*) FROM likes WHERE object_type=1 AND object_id IN ("+idsStr+") GROUP BY object_id")){
+		try(ResultSet res=conn.createStatement().executeQuery("SELECT object_id, COUNT(*) FROM likes WHERE object_type=0 AND object_id IN ("+idsStr+") GROUP BY object_id")){
 			if(res.first()){
 				do{
 					result.get(res.getInt(1)).likeCount=res.getInt(2);
@@ -545,7 +556,7 @@ public class PostStorage{
 			}
 		}
 		if(userID!=0){
-			PreparedStatement stmt=conn.prepareStatement("SELECT object_id FROM likes WHERE object_type=1 AND object_id IN ("+idsStr+") AND user_id=?");
+			PreparedStatement stmt=conn.prepareStatement("SELECT object_id FROM likes WHERE object_type=0 AND object_id IN ("+idsStr+") AND user_id=?");
 			stmt.setInt(1, userID);
 			try(ResultSet res=stmt.executeQuery()){
 				if(res.first()){

@@ -189,6 +189,7 @@ public class Post extends ActivityPubObject{
 			wall.attributedTo=owner.activityPubID;
 			root.add("target", wall.asActivityPubObject(new JsonObject(), contextCollector));
 		}
+		root.addProperty("likes", Config.localURI("/posts/"+id+"/likes").toString());
 
 		return root;
 	}

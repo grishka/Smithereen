@@ -92,6 +92,7 @@ import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Group;
+import smithereen.data.ListAndTotal;
 import smithereen.data.NodeInfo;
 import smithereen.data.Post;
 import smithereen.data.User;
@@ -220,29 +221,23 @@ public class ActivityPubRoutes{
 
 	public static Object post(Request req, Response resp) throws SQLException{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		if(postID==0){
-			throw new ObjectNotFoundException();
-		}
-		Post post=PostStorage.getPostByID(postID, true);
-		if(post==null || !Config.isLocal(post.activityPubID)){
-			throw new ObjectNotFoundException();
-		}
+		Post post=PostStorage.getPostOrThrow(postID, true);
 		resp.type(ActivityPub.CONTENT_TYPE);
 		return post;
 	}
 
 	public static ActivityPubCollectionPageResponse postReplies(Request req, Response resp, int offset, int count) throws SQLException{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		if(postID==0){
-			throw new ObjectNotFoundException();
-		}
-		Post post=PostStorage.getPostByID(postID, true);
-		if(post==null || !Config.isLocal(post.activityPubID)){
-			throw new ObjectNotFoundException();
-		}
+		Post post=PostStorage.getPostOrThrow(postID, true);
 		int[] _total={0};
 		List<URI> ids=PostStorage.getImmediateReplyActivityPubIDs(post.getReplyKeyForReplies(), offset, count, _total);
 		return ActivityPubCollectionPageResponse.forLinks(ids, _total[0]);
+	}
+
+	public static ActivityPubCollectionPageResponse postLikes(Request req, Response resp, int offset, int count) throws SQLException{
+		Post post=PostStorage.getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
+		ListAndTotal<Like> likes=LikeStorage.getLikes(post.id, post.activityPubID, Like.ObjectType.POST, offset, count);
+		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
 	}
 
 	public static Object userInbox(Request req, Response resp) throws SQLException{
