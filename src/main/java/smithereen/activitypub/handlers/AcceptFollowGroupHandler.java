@@ -2,6 +2,7 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
+import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.activitypub.ActivityHandlerContext;
@@ -19,6 +20,8 @@ public class AcceptFollowGroupHandler extends NestedActivityTypeHandler<ForeignG
 		User follower=UserStorage.getUserByActivityPubID(nested.actor.link);
 		if(follower==null)
 			throw new ObjectNotFoundException("Follower not found");
+		follower.ensureLocal();
 		GroupStorage.setMemberAccepted(actor.id, follower.id, true);
+		ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(follower, actor);
 	}
 }

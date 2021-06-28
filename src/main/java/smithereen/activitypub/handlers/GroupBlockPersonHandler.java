@@ -3,6 +3,7 @@ package smithereen.activitypub.handlers;
 import java.sql.SQLException;
 
 import smithereen.activitypub.ActivityHandlerContext;
+import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Block;
 import smithereen.data.ForeignGroup;
@@ -15,6 +16,8 @@ public class GroupBlockPersonHandler extends ActivityTypeHandler<ForeignGroup, B
 
 	@Override
 	public void handle(ActivityHandlerContext context, ForeignGroup actor, Block activity, User object) throws SQLException{
+		object.ensureLocal();
 		GroupStorage.blockUser(actor.id, object.id);
+		ActivityPubWorker.getInstance().sendRemoveFromGroupsCollectionActivity(object, actor);
 	}
 }

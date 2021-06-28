@@ -263,6 +263,40 @@ public class ActivityPubWorker{
 		}
 	}
 
+	public void sendAddToGroupsCollectionActivity(User self, Group group){
+		Add add=new Add();
+		add.activityPubID=new UriBuilder(self.activityPubID).fragment("addGroupCollection"+group.id+"_"+rand()).build();
+		add.actor=new LinkOrObject(self.activityPubID);
+		add.object=new LinkOrObject(group.activityPubID);
+		add.target=new LinkOrObject(self.getGroupsURL());
+
+		try{
+			List<URI> inboxes=UserStorage.getFollowerInboxes(self.id);
+			for(URI inbox:inboxes){
+				executor.submit(new SendOneActivityRunnable(add, inbox, self));
+			}
+		}catch(SQLException x){
+			x.printStackTrace();
+		}
+	}
+
+	public void sendRemoveFromGroupsCollectionActivity(User self, Group group){
+		Remove remove=new Remove();
+		remove.activityPubID=new UriBuilder(self.activityPubID).fragment("removeGroupCollection"+group.id+"_"+rand()).build();
+		remove.actor=new LinkOrObject(self.activityPubID);
+		remove.object=new LinkOrObject(group.activityPubID);
+		remove.target=new LinkOrObject(self.getGroupsURL());
+
+		try{
+			List<URI> inboxes=UserStorage.getFollowerInboxes(self.id);
+			for(URI inbox:inboxes){
+				executor.submit(new SendOneActivityRunnable(remove, inbox, self));
+			}
+		}catch(SQLException x){
+			x.printStackTrace();
+		}
+	}
+
 	public void sendFollowActivity(User self, ForeignUser target){
 		Follow follow=new Follow();
 		follow.actor=new LinkOrObject(self.activityPubID);

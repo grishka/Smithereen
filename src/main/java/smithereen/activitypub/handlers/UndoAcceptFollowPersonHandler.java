@@ -2,6 +2,8 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
+import smithereen.activitypub.ActivityPubWorker;
+import smithereen.data.FriendshipStatus;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.DoublyNestedActivityTypeHandler;
@@ -18,6 +20,11 @@ public class UndoAcceptFollowPersonHandler extends DoublyNestedActivityTypeHandl
 		User follower=UserStorage.getUserByActivityPubID(follow.actor.link);
 		if(follower==null)
 			throw new ObjectNotFoundException("Follower not found");
+		follower.ensureLocal();
+		FriendshipStatus status=UserStorage.getFriendshipStatus(follower.id, actor.id);
 		UserStorage.setFollowAccepted(follower.id, actor.id, false);
+		if(status==FriendshipStatus.FRIENDS){
+			ActivityPubWorker.getInstance().sendRemoveFromFriendsCollectionActivity(follower, actor);
+		}
 	}
 }

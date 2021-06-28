@@ -117,6 +117,7 @@ public class GroupsRoutes{
 		});
 
 		if(r){
+			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(self.user, GroupStorage.getByID(id[0]));
 			if(isAjax(req)){
 				return new WebDeltaResponse(resp).replaceLocation("/"+username);
 			}else{
@@ -182,6 +183,8 @@ public class GroupsRoutes{
 		GroupStorage.joinGroup(group, self.user.id, false, !(group instanceof ForeignGroup));
 		if(group instanceof ForeignGroup){
 			ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignGroup) group);
+		}else{
+			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(self.user, group);
 		}
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
@@ -199,6 +202,8 @@ public class GroupsRoutes{
 		GroupStorage.leaveGroup(group, self.user.id, state==Group.MembershipState.TENTATIVE_MEMBER);
 		if(group instanceof ForeignGroup){
 			ActivityPubWorker.getInstance().sendUnfollowActivity(self.user, (ForeignGroup) group);
+		}else{
+			ActivityPubWorker.getInstance().sendRemoveFromGroupsCollectionActivity(self.user, group);
 		}
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
