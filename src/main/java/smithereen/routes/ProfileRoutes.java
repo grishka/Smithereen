@@ -1,6 +1,8 @@
 package smithereen.routes;
 
 import org.jetbrains.annotations.Nullable;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Whitelist;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -142,7 +144,7 @@ public class ProfileRoutes{
 					meta.put("og:last_name", user.lastName);
 				String descr=l.plural("X_friends", friendCount[0])+", "+l.plural("X_posts", postCount[0]);
 				if(StringUtils.isNotEmpty(user.summary))
-					descr+="\n"+user.summary;
+					descr+="\n"+Jsoup.clean(user.summary, Whitelist.none());
 				meta.put("og:description", descr);
 				if(user.gender==User.Gender.MALE)
 					meta.put("og:gender", "male");
@@ -158,10 +160,12 @@ public class ProfileRoutes{
 					}
 				}
 				model.with("metaTags", meta);
+				model.with("moreMetaTags", Map.of("description", descr));
 			}
 
 			if(user instanceof ForeignUser)
 				model.with("noindex", true);
+			model.with("activityPubURL", user.activityPubID);
 
 			model.with("groups", GroupStorage.getUserGroups(user.id));
 			Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "remove_friend", "cancel", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw");

@@ -343,6 +343,7 @@ public class PostRoutes{
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, info!=null && info.account!=null ? info.account.user.id : 0);
 		model.with("postInteractions", interactions);
 		if(info==null || info.account==null){
+			HashMap<String, String> moreMeta=new LinkedHashMap<>();
 			HashMap<String, String> meta=new LinkedHashMap<>();
 			meta.put("og:site_name", Config.serverDisplayName);
 			meta.put("og:type", "article");
@@ -351,7 +352,9 @@ public class PostRoutes{
 			meta.put("og:published_time", Utils.formatDateAsISO(post.published));
 			meta.put("og:author", post.user.url.toString());
 			if(StringUtils.isNotEmpty(post.content)){
-				meta.put("og:description", Utils.truncateOnWordBoundary(post.content, 250));
+				String text=Utils.truncateOnWordBoundary(post.content, 250);
+				meta.put("og:description", text);
+				moreMeta.put("description", text);
 			}
 			boolean hasImage=false;
 			if(post.attachment!=null && !post.attachment.isEmpty()){
@@ -379,6 +382,7 @@ public class PostRoutes{
 				}
 			}
 			model.with("metaTags", meta);
+			model.with("moreMetaTags", moreMeta);
 		}
 		Utils.jsLangKey(req, "yes", "no", "cancel", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw");
 		model.with("title", post.getShortTitle(50)+" | "+post.user.getFullName());
@@ -395,6 +399,7 @@ public class PostRoutes{
 		if(post.getReplyLevel()>0){
 			model.with("jsRedirect", "/posts/"+post.replyKey[0]+"#comment"+post.id);
 		}
+		model.with("activityPubURL", post.activityPubID);
 		return model;
 	}
 

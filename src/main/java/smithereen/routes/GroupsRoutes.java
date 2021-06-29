@@ -1,10 +1,14 @@
 package smithereen.routes;
 
 import org.jetbrains.annotations.Nullable;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Whitelist;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -12,6 +16,7 @@ import java.util.stream.Collectors;
 
 import smithereen.data.ForeignUser;
 import smithereen.data.ListAndTotal;
+import smithereen.data.SizedImage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.Config;
 import smithereen.data.GroupAdmin;
@@ -169,7 +174,31 @@ public class GroupsRoutes{
 						"drop_files_here", "picture_too_wide", "picture_too_narrow", "ok", "error", "error_loading_picture",
 						"remove_profile_picture", "confirm_remove_profile_picture", "choose_file_mobile");
 			}
+		}else{
+			Lang l=lang(req);
+			HashMap<String, String> meta=new LinkedHashMap<>();
+			meta.put("og:type", "profile");
+			meta.put("og:site_name", Config.serverDisplayName);
+			meta.put("og:title", group.name);
+			meta.put("og:url", group.url.toString());
+			meta.put("og:username", group.getFullUsername());
+			String descr=l.plural("X_members", group.memberCount)+", "+l.plural("X_posts", totalPosts[0]);
+			if(StringUtils.isNotEmpty(group.summary))
+				descr+="\n"+Jsoup.clean(group.summary, Whitelist.none());
+			meta.put("og:description", descr);
+			if(group.hasAvatar()){
+				URI img=group.getAvatar().getUriForSizeAndFormat(SizedImage.Type.LARGE, SizedImage.Format.JPEG);
+				if(img!=null){
+					SizedImage.Dimensions size=group.getAvatar().getDimensionsForSize(SizedImage.Type.LARGE);
+					meta.put("og:image", img.toString());
+					meta.put("og:image:width", size.width+"");
+					meta.put("og:image:height", size.height+"");
+				}
+			}
+			model.with("metaTags", meta);
+			model.with("moreMetaTags", Map.of("description", descr));
 		}
+		model.with("activityPubURL", group.activityPubID);
 		return model;
 	}
 

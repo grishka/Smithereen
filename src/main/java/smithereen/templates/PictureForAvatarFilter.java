@@ -91,15 +91,20 @@ public class PictureForAvatarFilter implements Filter{
 			width=height=size;
 		}
 
+		String classes="avaImage";
+		if(args.containsKey("classes")){
+			classes+=" "+args.get("classes");
+		}
+
 		return new SafeString("<span class=\"ava avaHasImage size"+_type.toUpperCase()+"\"><picture>" +
 				"<source srcset=\""+webp1x+", "+webp2x+" 2x\" type=\"image/webp\"/>" +
 				"<source srcset=\""+jpeg1x+", "+jpeg2x+" 2x\" type=\"image/jpeg\"/>" +
-				"<img src=\""+jpeg1x+"\" width=\""+width+"\" height=\""+height+"\" class=\"avaImage\"/>" +
+				"<img src=\""+jpeg1x+"\" width=\""+width+"\" height=\""+height+"\" class=\""+classes+"\"/>" +
 				"</picture></span>");
 	}
 
 	@Override
 	public List<String> getArgumentNames(){
-		return Arrays.asList("type", "size");
+		return Arrays.asList("type", "size", "classes");
 	}
 }

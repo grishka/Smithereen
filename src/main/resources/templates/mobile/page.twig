@@ -4,8 +4,19 @@
 	<!-- commercialized internet sucks ass -->
 	<title>{{ title }}</title>
 	<link rel="stylesheet" type="text/css" href="/res/mobile.css?{{staticHash}}"/>
-	{%if metaTags is not null%}{%for tag in metaTags%}<meta property="{{tag.key}}" content="{{tag.value}}"/>
-	{%endfor%}{%endif%}
+	{% if activityPubURL is not null %}
+	<link rel="alternate" type="application/activity+json" href="{{ activityPubURL }}"/>
+	{% endif %}
+	{%if metaTags is not null%}
+		{%for tag in metaTags%}
+			<meta property="{{tag.key}}" content="{{tag.value}}"/>
+		{%endfor%}
+	{%endif%}
+	{% if moreMetaTags is not null %}
+		{%for tag in moreMetaTags%}
+			<meta name="{{tag.key}}" content="{{tag.value}}"/>
+		{%endfor%}
+	{% endif %}
 	{% if noindex %}
 		<meta name="robots" content="noindex"/>
 	{% endif %}
