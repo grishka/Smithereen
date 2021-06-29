@@ -26,6 +26,10 @@ import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalField;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -260,8 +264,8 @@ public class Utils{
 
 	public static Date parseISODate(String date){
 		try{
-			return isoDateFormat().parse(date);
-		}catch(ParseException e){
+			return new Date(DateTimeFormatter.ISO_INSTANT.parse(date).getLong(ChronoField.INSTANT_SECONDS)*1000L);
+		}catch(DateTimeParseException x){
 			return null;
 		}
 	}
