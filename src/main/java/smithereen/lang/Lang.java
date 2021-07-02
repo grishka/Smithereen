@@ -159,8 +159,8 @@ public class Lang{
 			if(el.isJsonArray()){
 				JsonArray ar=el.getAsJsonArray();
 				String s=switch(gender){
-					case MALE -> ar.get(1).getAsString();
-					case FEMALE -> ar.get(0).getAsString();
+					case MALE -> ar.get(0).getAsString();
+					case FEMALE -> ar.get(1).getAsString();
 					case UNKNOWN -> ar.get(ar.size()>2 ? 3 : 0).getAsString();
 				};
 				return formatArgs.length>0 ? String.format(locale, s, formatArgs) : s;

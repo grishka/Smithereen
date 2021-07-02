@@ -24,7 +24,7 @@ public class LangGenderedFunction implements Function{
 
 		String key=(String) args.get("0");
 		User.Gender gender=(User.Gender)args.get("1");
-		if(args.size()==1){
+		if(args.size()==2){
 			return new SafeString(Lang.get(locale).gendered(key, gender));
 		}else{
 			String[] formatArgs=new String[args.size()-2];

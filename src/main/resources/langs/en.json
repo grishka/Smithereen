@@ -180,9 +180,9 @@
   "middle_name_or_nickname": "Middle name or nickname",
   "maiden_name": "Maiden name",
   "feed_retoot_before": "",
-  "feed_retoot_after": " shared a post.",
+  "feed_retoot_after": " shared a post:",
   "feed_retoot_before_comment": "",
-  "feed_retoot_after_comment": " shared a comment.",
+  "feed_retoot_after_comment": " shared a comment:",
   "wall_to_wall": "Wall-to-wall",
   "wall_all_posts": "All posts",
   "wall_posts_of_X": "%s's posts",
@@ -319,5 +319,10 @@
   "ban_reason": "Reason for ban",
   "your_account_is_banned": "Your account has been banned by this server's administrators.",
   "show_previous_comments": "Show previous comments",
-  "comments_show_X_replies": ["Show %d reply", "Show %d replies"]
+  "comments_show_X_replies": ["Show %d reply", "Show %d replies"],
+  "feed_added_friend_before": " added ",
+  "feed_added_friend_name": "%s",
+  "feed_added_friend_after": " as a friend.",
+  "feed_joined_group_before": " joined group ",
+  "feed_joined_group_after": "."
 }

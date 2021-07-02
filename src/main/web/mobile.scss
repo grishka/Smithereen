@@ -789,3 +789,22 @@ textarea{
 	min-height: 34px;
 	height: 34px;
 }
+
+.feedRow{
+	.feedIcon{
+		width: 24px;
+		height: 24px;
+		background-size: 24px;
+		float: left;
+		margin: 12px 0 0 12px;
+	}
+	.feedRowTime{
+		float: right;
+		margin: 8px 8px 0 0;
+		font-size: 13px;
+		color: $grayText;
+	}
+	.feedRowContent{
+		padding: 12px 0 8px 44px;
+	}
+}

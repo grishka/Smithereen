@@ -49,6 +49,10 @@ h2{
 	border-bottom: solid 1px $mainHeaderSeparator;
 }
 
+small{
+	font-size: 10px;
+}
+
 .headerWrap{
 	position: relative;
 	height: $headerHeight;
@@ -245,8 +249,36 @@ h2{
 	font-weight: normal;
 }
 
-.feedRow, .wallRow{
-	border-bottom: solid 1px $wallPostSeparator;
+.feedRow{
+	margin-bottom: 5px;
+	padding-bottom: 5px;
+	&.feedPostRow{
+		padding-bottom: 10px;
+	}
+	>.post{
+		border: none;
+		margin: 0;
+		padding: 5px 0 0 0;
+	}
+	.feedIcon{
+		margin-left: 5px;
+	}
+	.feedRowContent{
+		padding-left: 30px;
+		padding-top: 2px;
+		&+.post{
+			padding-top: 7px;
+		}
+	}
+	.feedRowTime{
+		font-size: 9px;
+		float: right;
+		color: $darkGrey;
+		padding-top: 2px;
+	}
+}
+
+.wallRow{
 	margin-bottom: 10px;
 	padding-bottom: 10px;
 	>.post{
@@ -254,6 +286,10 @@ h2{
 		margin: 0;
 		padding: 0;
 	}
+}
+
+.feedRow, .wallRow{
+	border-bottom: solid 1px $wallPostSeparator;
 }
 
 

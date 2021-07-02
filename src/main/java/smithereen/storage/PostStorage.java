@@ -28,6 +28,8 @@ import java.util.stream.Collectors;
 import smithereen.Config;
 import smithereen.data.ListAndTotal;
 import smithereen.data.UriBuilder;
+import smithereen.data.feed.AddFriendNewsfeedEntry;
+import smithereen.data.feed.JoinGroupNewsfeedEntry;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.Utils;
 import smithereen.data.ForeignGroup;
@@ -160,7 +162,7 @@ public class PostStorage{
 				total[0]=res.getInt(1);
 			}
 		}
-		stmt=conn.prepareStatement("SELECT `type`, `object_id`, `author_id`, `id` FROM `newsfeed` WHERE `author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? UNION SELECT ?) AND `id`<=? ORDER BY `time` DESC LIMIT ?,25");
+		stmt=conn.prepareStatement("SELECT `type`, `object_id`, `author_id`, `id`, `time` FROM `newsfeed` WHERE (`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=? ORDER BY `time` DESC LIMIT ?,25");
 		stmt.setInt(1, userID);
 		stmt.setInt(2, userID);
 		stmt.setInt(3, startFromID==0 ? Integer.MAX_VALUE : startFromID);
@@ -172,26 +174,39 @@ public class PostStorage{
 			if(res.first()){
 				do{
 					NewsfeedEntry.Type type=NewsfeedEntry.Type.values()[res.getInt(1)];
-					NewsfeedEntry _entry=null;
-					switch(type){
+					NewsfeedEntry entry=switch(type){
 						case POST -> {
-							PostNewsfeedEntry entry=new PostNewsfeedEntry();
-							entry.objectID=res.getInt(2);
-							posts.add(entry);
-							needPosts.add(entry.objectID);
-							_entry=entry;
+							PostNewsfeedEntry _entry=new PostNewsfeedEntry();
+							_entry.objectID=res.getInt(2);
+							needPosts.add(_entry.objectID);
+							yield _entry;
 						}
 						case RETOOT -> {
-							RetootNewsfeedEntry entry=new RetootNewsfeedEntry();
-							entry.objectID=res.getInt(2);
-							entry.author=UserStorage.getById(res.getInt(3));
-							posts.add(entry);
-							needPosts.add(entry.objectID);
-							_entry=entry;
+							RetootNewsfeedEntry _entry=new RetootNewsfeedEntry();
+							_entry.objectID=res.getInt(2);
+							_entry.author=UserStorage.getById(res.getInt(3));
+							needPosts.add(_entry.objectID);
+							yield _entry;
 						}
-					}
-					_entry.type=type;
-					_entry.id=res.getInt(4);
+						case ADD_FRIEND -> {
+							AddFriendNewsfeedEntry _entry=new AddFriendNewsfeedEntry();
+							_entry.objectID=res.getInt(2);
+							_entry.friend=UserStorage.getById(_entry.objectID);
+							_entry.author=UserStorage.getById(res.getInt(3));
+							yield _entry;
+						}
+						case JOIN_GROUP -> {
+							JoinGroupNewsfeedEntry _entry=new JoinGroupNewsfeedEntry();
+							_entry.objectID=res.getInt(2);
+							_entry.group=GroupStorage.getByID(_entry.objectID);
+							_entry.author=UserStorage.getById(res.getInt(3));
+							yield _entry;
+						}
+					};
+					entry.type=type;
+					entry.id=res.getInt(4);
+					entry.time=res.getTimestamp(5).toInstant();
+					posts.add(entry);
 				}while(res.next());
 			}
 		}

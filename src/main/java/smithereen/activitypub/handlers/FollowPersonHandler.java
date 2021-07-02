@@ -3,6 +3,7 @@ package smithereen.activitypub.handlers;
 import java.sql.SQLException;
 
 import smithereen.Utils;
+import smithereen.data.feed.NewsfeedEntry;
 import smithereen.exceptions.BadRequestException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPubWorker;
@@ -12,6 +13,7 @@ import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.User;
 import smithereen.data.notifications.Notification;
+import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
 
@@ -34,5 +36,10 @@ public class FollowPersonHandler extends ActivityTypeHandler<ForeignUser, Follow
 		n.type=status==FriendshipStatus.REQUEST_RECVD ? Notification.Type.FRIEND_REQ_ACCEPT : Notification.Type.FOLLOW;
 		n.actorID=actor.id;
 		NotificationsStorage.putNotification(user.id, n);
+
+		if(status==FriendshipStatus.REQUEST_RECVD || status==FriendshipStatus.FOLLOWED_BY){
+			ActivityPubWorker.getInstance().sendAddToFriendsCollectionActivity(user, actor);
+			NewsfeedStorage.putEntry(user.id, actor.id, NewsfeedEntry.Type.ADD_FRIEND, null);
+		}
 	}
 }

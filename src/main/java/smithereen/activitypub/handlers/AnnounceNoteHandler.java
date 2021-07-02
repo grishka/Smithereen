@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import smithereen.ObjectLinkResolver;
+import smithereen.data.feed.NewsfeedEntry;
 import smithereen.exceptions.BadRequestException;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
@@ -32,7 +33,7 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 		Utils.loadAndPreprocessRemotePostMentions(post);
 		ObjectLinkResolver.storeOrUpdateRemoteObject(post);
 		long time=activity.published==null ? System.currentTimeMillis() : activity.published.getTime();
-		NewsfeedStorage.putRetoot(actor.id, post.id, new Timestamp(time));
+		NewsfeedStorage.putEntry(actor.id, post.id, NewsfeedEntry.Type.RETOOT, new Timestamp(time));
 
 		if(!(post.user instanceof ForeignUser)){
 			Notification n=new Notification();

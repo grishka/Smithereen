@@ -1,5 +1,5 @@
 {
-  "_fallback": null,
+  "_fallback": "en",
   "_name": "Deutsch",
 
   "log_in": "Anmelden",
@@ -180,9 +180,9 @@
   "middle_name_or_nickname": "Zweiter Vorname oder Nickname",
   "maiden_name": "Geburtsname",
   "feed_retoot_before": "",
-  "feed_retoot_after": " teilte einen Beitrag.",
+  "feed_retoot_after": " teilte einen Beitrag:",
   "feed_retoot_before_comment": "",
-  "feed_retoot_after_comment": " teilte ein Kommentar.",
+  "feed_retoot_after_comment": " teilte ein Kommentar:",
   "wall_to_wall": "Pinnwand-zu-Pinnwand",
   "wall_all_posts": "Beiträge",
   "wall_posts_of_X": "Beiträge von %s",

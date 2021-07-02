@@ -33,10 +33,12 @@ import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponse;
+import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.notifications.Notification;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -404,7 +406,9 @@ public class ProfileRoutes{
 					n.actorID=self.user.id;
 					NotificationsStorage.putNotification(user.id, n);
 					ActivityPubWorker.getInstance().sendAddToFriendsCollectionActivity(self.user, user);
+					NewsfeedStorage.putEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
 				}
+				NewsfeedStorage.putEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
 			}else if(req.queryParams("decline")!=null){
 				UserStorage.deleteFriendRequest(self.user.id, user.id);
 				if(user instanceof ForeignUser){
@@ -432,6 +436,10 @@ public class ProfileRoutes{
 				}
 				if(status==FriendshipStatus.FRIENDS){
 					ActivityPubWorker.getInstance().sendRemoveFromFriendsCollectionActivity(self.user, user);
+					NewsfeedStorage.deleteEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND);
+					if(!(user instanceof ForeignUser)){
+						NewsfeedStorage.deleteEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND);
+					}
 				}
 				if(isAjax(req)){
 					resp.type("application/json");
@@ -472,6 +480,10 @@ public class ProfileRoutes{
 			ActivityPubWorker.getInstance().sendBlockActivity(self.user, (ForeignUser) user);
 		if(status==FriendshipStatus.FRIENDS){
 			ActivityPubWorker.getInstance().sendRemoveFromFriendsCollectionActivity(self.user, user);
+			NewsfeedStorage.deleteEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND);
+			if(!(user instanceof ForeignUser)){
+				NewsfeedStorage.deleteEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND);
+			}
 		}
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();

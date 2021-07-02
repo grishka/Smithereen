@@ -720,3 +720,18 @@ ul.actualList{
 	min-width: 32px;
 	min-height: 8px;
 }
+
+.feedIcon{
+	width: 16px;
+	height: 16px;
+	float: left;
+	&.feedIconAdd{
+		background: svg-load('img/friends_s.svg');
+	}
+	&.feedIconGroup{
+		background: svg-load('img/groups_s.svg');
+	}
+	&.feedIconStatus{
+		background: svg-load('img/statuses_s.svg');
+	}
+}

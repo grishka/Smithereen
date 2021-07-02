@@ -9,6 +9,8 @@ import smithereen.activitypub.objects.activities.Block;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.User;
+import smithereen.data.feed.NewsfeedEntry;
+import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.UserStorage;
 
 public class PersonBlockPersonHandler extends ActivityTypeHandler<ForeignUser, Block, User>{
@@ -19,6 +21,7 @@ public class PersonBlockPersonHandler extends ActivityTypeHandler<ForeignUser, B
 		UserStorage.blockUser(actor.id, object.id);
 		if(status==FriendshipStatus.FRIENDS){
 			ActivityPubWorker.getInstance().sendRemoveFromFriendsCollectionActivity(object, actor);
+			NewsfeedStorage.deleteEntry(object.id, actor.id, NewsfeedEntry.Type.ADD_FRIEND);
 		}
 	}
 }

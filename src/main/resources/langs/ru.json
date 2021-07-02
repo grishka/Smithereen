@@ -180,9 +180,9 @@
   "middle_name_or_nickname": "Отчество или никнейм",
   "maiden_name": "Девичья фамилия",
   "feed_retoot_before": "",
-  "feed_retoot_after": [" поделился записью.", " поделилась записью."],
+  "feed_retoot_after": [" поделился записью:", " поделилась записью:"],
   "feed_retoot_before_comment": "",
-  "feed_retoot_after_comment": [" поделился комментарием.", " поделилась комментарием."],
+  "feed_retoot_after_comment": [" поделился комментарием:", " поделилась комментарием:"],
   "wall_to_wall": "Тет-а-тет",
   "wall_all_posts": "Все записи",
   "wall_posts_of_X": {"str": "Записи %s", "case": "GENITIVE"},
@@ -319,5 +319,10 @@
   "ban_reason": "Причина блокировки",
   "your_account_is_banned": "Ваша учётная запись заблокирована администрацией сервера.",
   "show_previous_comments": "Показать предыдущие комментарии",
-  "comments_show_X_replies": ["Показать %d ответ", "Показать %d ответа", "Показать %d ответов"]
+  "comments_show_X_replies": ["Показать %d ответ", "Показать %d ответа", "Показать %d ответов"],
+  "feed_added_friend_before": [" добавил в друзья ", " добавила в друзья "],
+  "feed_added_friend_name": {"str": "%s", "case": "ACCUSATIVE"},
+  "feed_added_friend_after": ".",
+  "feed_joined_group_before": [" вступил в группу ", " вступила в группу "],
+  "feed_joined_group_after": "."
 }

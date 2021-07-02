@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import smithereen.data.ForeignUser;
 import smithereen.data.ListAndTotal;
 import smithereen.data.SizedImage;
+import smithereen.data.feed.NewsfeedEntry;
 import smithereen.exceptions.BadRequestException;
 import smithereen.Config;
 import smithereen.data.GroupAdmin;
@@ -35,6 +36,7 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
@@ -215,6 +217,7 @@ public class GroupsRoutes{
 		}else{
 			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(self.user, group);
 		}
+		NewsfeedStorage.putEntry(self.user.id, group.id, NewsfeedEntry.Type.JOIN_GROUP, null);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
@@ -234,6 +237,7 @@ public class GroupsRoutes{
 		}else{
 			ActivityPubWorker.getInstance().sendRemoveFromGroupsCollectionActivity(self.user, group);
 		}
+		NewsfeedStorage.deleteEntry(self.user.id, group.id, NewsfeedEntry.Type.JOIN_GROUP);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}

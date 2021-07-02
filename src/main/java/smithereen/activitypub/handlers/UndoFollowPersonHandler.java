@@ -10,6 +10,8 @@ import smithereen.activitypub.objects.activities.Undo;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.User;
+import smithereen.data.feed.NewsfeedEntry;
+import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.UserStorage;
 
 public class UndoFollowPersonHandler extends NestedActivityTypeHandler<ForeignUser, Undo, Follow, User>{
@@ -20,6 +22,7 @@ public class UndoFollowPersonHandler extends NestedActivityTypeHandler<ForeignUs
 		UserStorage.unfriendUser(actor.id, user.id);
 		if(status==FriendshipStatus.FRIENDS){
 			ActivityPubWorker.getInstance().sendRemoveFromFriendsCollectionActivity(user, actor);
+			NewsfeedStorage.deleteEntry(user.id, actor.id, NewsfeedEntry.Type.ADD_FRIEND);
 		}
 	}
 }
