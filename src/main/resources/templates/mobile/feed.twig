@@ -10,12 +10,14 @@
 {%if entry.type=="POST"%}
 {%include "wall_post" with {'post': entry.post}%}
 {%elseif entry.type=="RETOOT"%}
+<div class="feedRow">
 <div class="feedIcon feedIconStatus"></div>
 <div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 <div class="feedRowContent">
 	{{ LG(entry.post.replyLevel==0 ? 'feed_retoot_before' : 'feed_retoot_before_comment', entry.author.gender) -}}
 	<a href="{{entry.author.profileURL}}">{{entry.author.fullName}}</a>
 	{{- LG(entry.post.replyLevel==0 ? 'feed_retoot_after' : 'feed_retoot_after_comment', entry.author.gender) -}}
+</div>
 </div>
 {%include "wall_post" with {'post': entry.post}%}
 {% elseif entry.type=="ADD_FRIEND" %}
