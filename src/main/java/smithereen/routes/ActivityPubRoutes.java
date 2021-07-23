@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 
 import smithereen.BuildInfo;
 import smithereen.Config;
@@ -35,6 +36,7 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubCache;
+import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.DoublyNestedActivityTypeHandler;
 import smithereen.activitypub.NestedActivityTypeHandler;
@@ -418,29 +420,29 @@ public class ActivityPubRoutes{
 			return "";
 		}else if(remoteObj instanceof Post){
 			try{
-				// TODO refactor this to simulate Create{Note}
 				Post post=(Post) remoteObj;
-				if(post.user==null){
-					ActivityPubObject obj=ActivityPub.fetchRemoteObject(post.attributedTo.toString());
-					if(obj instanceof ForeignUser){
-						post.user=(ForeignUser) obj;
-						UserStorage.putOrUpdateForeignUser((ForeignUser) obj);
-					}else{
-						throw new IllegalArgumentException("Error fetching post author");
-					}
-				}
-				if(post.owner==null){
-					throw new UnsupportedOperationException("no post owner user - not yet implemented");
-				}
+				Post topLevelPost;
+				Utils.loadAndPreprocessRemotePostMentions(post);
 				if(post.inReplyTo!=null){
 					Post parent=PostStorage.getPostByID(post.inReplyTo);
-					if(parent==null)
-						throw new UnsupportedOperationException("no parent post - not yet implemented");
-					post.setParent(parent);
+					if(parent==null){
+						List<Post> thread=ActivityPubWorker.getInstance().fetchReplyThread(post).get(30, TimeUnit.SECONDS);
+						topLevelPost=thread.get(0);
+					}else{
+						post.setParent(parent);
+						post.storeDependencies();
+						PostStorage.putForeignWallPost(post);
+						topLevelPost=PostStorage.getPostByID(parent.getReplyChainElement(0), false);
+						if(topLevelPost==null)
+							throw new BadRequestException("Top-level post is not available");
+					}
+				}else{
+					topLevelPost=post;
+					post.storeDependencies();
+					PostStorage.putForeignWallPost(post);
 				}
-				Utils.loadAndPreprocessRemotePostMentions(post);
-				PostStorage.putForeignWallPost(post);
-				resp.redirect("/posts/"+post.id);
+				ActivityPubWorker.getInstance().fetchAllReplies(topLevelPost);
+				resp.redirect("/posts/"+topLevelPost.id);
 				return "";
 			}catch(Exception x){
 				x.printStackTrace();
