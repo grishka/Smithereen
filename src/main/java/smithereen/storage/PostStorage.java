@@ -600,7 +600,7 @@ public class PostStorage{
 			if(post==null)
 				return Collections.emptyList();
 		}
-		if(post.user instanceof ForeignUser){
+		if(post.user instanceof ForeignUser && origPost.getReplyLevel()==0){
 			return Collections.singletonList(((ForeignUser) post.user).inbox);
 		}
 		Connection conn=DatabaseConnectionManager.getConnection();
