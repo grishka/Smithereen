@@ -37,11 +37,15 @@
 		<div class="headerBG"><div class="shadow"></div></div>
 <table width="100%" class="header" cellpadding="0" cellspacing="0" border="0">
 	<tr>
-		<td width="158" align="left" class="logo">
+		<td width="142" align="left" class="logo">
 			<a href="/"><img src="/res/desktop_logo_v1.svg" height="28" width="27" border="0" alt="Smithereen"/>{{serverName}}</a>
 		</td>
-		<td align="right">
+		<td align="right" id="headerNav">
 			{%if currentUser is not null%}
+			<div id="qsearchWrap">
+				<input type="text" id="qsearchField" placeholder="{{ L('search') }}" autocomplete="off" autocapitalize="off"/>
+				<div id="qsearchResults" style="display: none"></div>
+			</div>
 			<a href="/account/logout?csrf={{ csrf }}" class="nav">{{ L("log_out") }}</a>
 			{%endif%}
 		</td>

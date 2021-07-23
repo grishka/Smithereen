@@ -154,7 +154,7 @@ public class SettingsRoutes{
 			int groupID=parseIntOrDefault(req.queryParams("group"), 0);
 			Group group=null;
 			if(groupID!=0){
-				group=GroupStorage.getByID(groupID);
+				group=GroupStorage.getById(groupID);
 				if(group==null || !GroupStorage.getGroupMemberAdminLevel(groupID, self.user.id).isAtLeast(Group.AdminLevel.ADMIN)){
 					throw new UserActionNotAllowedException();
 				}
@@ -252,7 +252,7 @@ public class SettingsRoutes{
 						}
 					}
 					GroupStorage.updateProfilePicture(group, MediaStorageUtils.serializeAttachment(ava).toString());
-					group=GroupStorage.getByID(group.id);
+					group=GroupStorage.getById(group.id);
 					ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
 				}
 				temp.delete();
@@ -334,7 +334,7 @@ public class SettingsRoutes{
 		int groupID=parseIntOrDefault(req.queryParams("group"), 0);
 		Group group=null;
 		if(groupID!=0){
-			group=GroupStorage.getByID(groupID);
+			group=GroupStorage.getById(groupID);
 			if(group==null || !GroupStorage.getGroupMemberAdminLevel(groupID, self.user.id).isAtLeast(Group.AdminLevel.ADMIN)){
 				throw new UserActionNotAllowedException();
 			}
@@ -353,7 +353,7 @@ public class SettingsRoutes{
 
 		if(group!=null){
 			GroupStorage.updateProfilePicture(group, null);
-			group=GroupStorage.getByID(groupID);
+			group=GroupStorage.getById(groupID);
 			ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
 		}else{
 			UserStorage.updateProfilePicture(self.user, null);

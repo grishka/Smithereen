@@ -68,7 +68,7 @@ public class ProfileRoutes{
 				for(Post post:wall){
 					ListAndTotal<Post> comments=allComments.get(post.id);
 					if(comments!=null){
-						post.replies=comments.list;
+						post.repliesObjects=comments.list;
 						post.totalTopLevelComments=comments.total;
 						post.getAllReplyIDs(postIDs);
 					}

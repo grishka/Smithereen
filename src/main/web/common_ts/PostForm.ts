@@ -33,6 +33,8 @@ class PostForm{
 		this.fileField.multiple=true;
 		this.attachField=el.querySelector("input[name=attachments]") as HTMLInputElement;
 		this.replyToField=ge("postFormReplyTo_"+this.id);
+		if(!this.form)
+			return;
 
 		this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
 		this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
@@ -115,6 +117,8 @@ class PostForm{
 	}
 
 	private onInputBlur(ev:FocusEvent):void{
+		if(ev.target===document.activeElement)
+			return;
 		if(!this.isDirty() && !this.mouseInside){
 			this.setCollapsed(true);
 		}

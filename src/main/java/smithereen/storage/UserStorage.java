@@ -12,11 +12,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -39,8 +44,6 @@ public class UserStorage{
 	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
 	private static LruCache<Integer, Account> accountCache=new LruCache<>(500);
 
-	private static Comparator<User> idComparator=Comparator.comparingInt(u->u.id);
-
 	public static synchronized User getById(int id) throws SQLException{
 		User user=cache.get(id);
 		if(user!=null)
@@ -58,16 +61,25 @@ public class UserStorage{
 		return null;
 	}
 
-	public static List<User> getById(List<Integer> ids) throws SQLException{
-		return getById(ids, true);
-	}
-
-	public static List<User> getById(List<Integer> ids, boolean sorted) throws SQLException{
+	public static List<User> getByIdAsList(List<Integer> ids) throws SQLException{
 		if(ids.isEmpty())
 			return Collections.emptyList();
 		if(ids.size()==1)
 			return Collections.singletonList(getById(ids.get(0)));
-		List<User> result=new ArrayList<>(ids.size());
+		Map<Integer, User> users=getById(ids);
+		return ids.stream().map(users::get).filter(Objects::nonNull).collect(Collectors.toList());
+	}
+
+	public static Map<Integer, User> getById(Collection<Integer> _ids) throws SQLException{
+		if(_ids.isEmpty())
+			return Collections.emptyMap();
+		if(_ids.size()==1){
+			for(int id:_ids){
+				return Collections.singletonMap(id, getById(id));
+			}
+		}
+		Set<Integer> ids=new HashSet<>(_ids);
+		Map<Integer, User> result=new HashMap<>(ids.size());
 		synchronized(UserStorage.class){
 			Iterator<Integer> itr=ids.iterator();
 			while(itr.hasNext()){
@@ -75,19 +87,21 @@ public class UserStorage{
 				User user=cache.get(id);
 				if(user!=null){
 					itr.remove();
-					result.add(user);
+					result.put(id, user);
 				}
 			}
 		}
 		if(ids.isEmpty()){
-			if(sorted)
-				result.sort(idComparator);
 			return result;
 		}
 		Connection conn=DatabaseConnectionManager.getConnection();
-		try(ResultSet res=conn.createStatement().executeQuery("SELECT * FROM users WHERE id IN ("+ids.stream().map(Object::toString).collect(Collectors.joining(","))+")")){
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("users")
+				.allColumns()
+				.whereIn("id", ids)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
 			res.beforeFirst();
-			int resultSizeBefore=result.size();
 			while(res.next()){
 				String domain=res.getString("domain");
 				User user;
@@ -95,15 +109,15 @@ public class UserStorage{
 					user=ForeignUser.fromResultSet(res);
 				else
 					user=User.fromResultSet(res);
-				result.add(user);
+				result.put(user.id, user);
 			}
 			synchronized(UserStorage.class){
-				for(User user:result.subList(resultSizeBefore, result.size())){
-					putIntoCache(user);
+				for(int id:ids){
+					User u=result.get(id);
+					if(u!=null)
+						putIntoCache(u);
 				}
 			}
-			if(sorted)
-				result.sort(idComparator);
 			return result;
 		}
 	}
@@ -134,17 +148,6 @@ public class UserStorage{
 				putIntoCache(user);
 				return user;
 			}
-		}
-		return null;
-	}
-
-	public static ForeignUser getByOutbox(URI outbox) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM `users` WHERE `ap_outbox`=?");
-		stmt.setString(1, outbox.toString());
-		try(ResultSet res=stmt.executeQuery()){
-			if(res.first())
-				return ForeignUser.fromResultSet(res);
 		}
 		return null;
 	}
@@ -230,7 +233,7 @@ public class UserStorage{
 	public static List<User> getFriendListForUser(int userID) throws SQLException{
 		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("followings").columns("followee_id").where("follower_id=? AND mutual=1", userID).createStatement();
 		try(ResultSet res=stmt.executeQuery()){
-			return getById(DatabaseUtils.intResultSetToList(res));
+			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
 		}
 	}
 
@@ -273,7 +276,7 @@ public class UserStorage{
 		PreparedStatement stmt=conn.prepareStatement("SELECT followee_id FROM `followings` WHERE `follower_id`=? AND `mutual`=1 ORDER BY RAND() LIMIT 6");
 		stmt.setInt(1, userID);
 		try(ResultSet res=stmt.executeQuery()){
-			return getById(DatabaseUtils.intResultSetToList(res), false);
+			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
 		}
 	}
 
@@ -294,7 +297,7 @@ public class UserStorage{
 		stmt.setInt(1, userID);
 		stmt.setInt(2, otherUserID);
 		try(ResultSet res=stmt.executeQuery()){
-			return getById(DatabaseUtils.intResultSetToList(res), false);
+			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
 		}
 	}
 
@@ -304,7 +307,7 @@ public class UserStorage{
 		stmt.setInt(1, userID);
 		stmt.setInt(2, otherUserID);
 		try(ResultSet res=stmt.executeQuery()){
-			return getById(DatabaseUtils.intResultSetToList(res));
+			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
 		}
 	}
 
@@ -316,7 +319,7 @@ public class UserStorage{
 		stmt.setInt(1, userID);
 		stmt.setBoolean(2, accepted);
 		try(ResultSet res=stmt.executeQuery()){
-			return getById(DatabaseUtils.intResultSetToList(res));
+			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
 		}
 	}
 
@@ -489,6 +492,7 @@ public class UserStorage{
 		synchronized(UserStorage.class){
 			removeFromCache(user);
 		}
+		updateQSearchIndex(getById(user.id));
 	}
 
 	public static int getLocalUserCount() throws SQLException{
@@ -562,6 +566,7 @@ public class UserStorage{
 		stmt=existingUserID!=0 ? bldr.createStatement() : bldr.createStatement(PreparedStatement.RETURN_GENERATED_KEYS);
 
 		stmt.executeUpdate();
+		boolean isNew=existingUserID==0;
 		if(existingUserID==0){
 			try(ResultSet res=stmt.getGeneratedKeys()){
 				res.first();
@@ -570,6 +575,17 @@ public class UserStorage{
 		}
 		user.id=existingUserID;
 		putIntoCache(user);
+
+		if(isNew){
+			new SQLQueryBuilder(conn)
+					.insertInto("qsearch_index")
+					.value("user_id", existingUserID)
+					.value("string", getQSearchStringForUser(user))
+					.createStatement()
+					.execute();
+		}else{
+			updateQSearchIndex(user);
+		}
 
 		return existingUserID;
 	}
@@ -730,7 +746,7 @@ public class UserStorage{
 				.where("access_level=?", Account.AccessLevel.ADMIN.ordinal())
 				.createStatement()
 				.executeQuery();
-		return getById(DatabaseUtils.intResultSetToList(res), true);
+		return getByIdAsList(DatabaseUtils.intResultSetToList(res));
 	}
 
 	public static int getPeerDomainCount() throws SQLException{
@@ -807,7 +823,7 @@ public class UserStorage{
 				.columns("user_id")
 				.where("owner_id=?", selfID)
 				.createStatement();
-		return getById(DatabaseUtils.intResultSetToList(stmt.executeQuery()), true);
+		return getByIdAsList(DatabaseUtils.intResultSetToList(stmt.executeQuery()));
 	}
 
 	public static boolean isDomainBlocked(int selfID, String domain) throws SQLException{
@@ -876,5 +892,37 @@ public class UserStorage{
 		synchronized(UserStorage.class){
 			accountCache.remove(accountID);
 		}
+	}
+
+	static String getQSearchStringForUser(User user){
+		StringBuilder sb=new StringBuilder(Utils.transliterate(user.firstName));
+		if(user.lastName!=null){
+			sb.append(' ');
+			sb.append(Utils.transliterate(user.lastName));
+		}
+		if(user.middleName!=null){
+			sb.append(' ');
+			sb.append(Utils.transliterate(user.middleName));
+		}
+		if(user.maidenName!=null){
+			sb.append(' ');
+			sb.append(Utils.transliterate(user.maidenName));
+		}
+		sb.append(' ');
+		sb.append(user.username);
+		if(user.domain!=null){
+			sb.append(' ');
+			sb.append(user.domain);
+		}
+		return sb.toString();
+	}
+
+	static void updateQSearchIndex(User user) throws SQLException{
+		new SQLQueryBuilder()
+				.update("qsearch_index")
+				.value("string", getQSearchStringForUser(user))
+				.where("user_id=?", user.id)
+				.createStatement()
+				.execute();
 	}
 }

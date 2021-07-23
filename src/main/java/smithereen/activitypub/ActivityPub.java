@@ -87,6 +87,8 @@ public class ActivityPub{
 				JsonObject converted=JLDProcessor.convertToLocalContext(el.getAsJsonObject());
 //				System.out.println(converted.toString(4));
 				ActivityPubObject obj=ActivityPubObject.parse(converted);
+				if(obj==null)
+					return null;
 				if(obj.activityPubID!=null && !obj.activityPubID.getHost().equalsIgnoreCase(uri.getHost()))
 					throw new BadRequestException("Domain in object ID ("+obj.activityPubID+") doesn't match domain in its URI ("+url+")");
 				return obj;
@@ -202,6 +204,8 @@ public class ActivityPub{
 	}
 
 	public static URI resolveUsername(String username, String domain) throws IOException{
+		if(domain!=null && domain.equalsIgnoreCase(Config.domain))
+			throw new IllegalArgumentException("Local domain in resolveUsername");
 		String redirect;
 		synchronized(ActivityPub.class){
 			redirect=domainRedirects.get(domain);

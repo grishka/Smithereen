@@ -1,22 +1,37 @@
 package smithereen.activitypub;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.RecursiveTask;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
+import smithereen.ObjectLinkResolver;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
+import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Add;
@@ -44,16 +59,20 @@ import spark.utils.StringUtils;
 
 public class ActivityPubWorker{
 	private static final ActivityPubWorker instance=new ActivityPubWorker();
+	private static final Logger LOG=LoggerFactory.getLogger(ActivityPubWorker.class);
+	private static final int MAX_COMMENTS=1000;
 
-	private ExecutorService executor;
+	private ForkJoinPool executor;
 	private Random rand=new Random();
+	private HashMap<URI, Future<List<Post>>> fetchingReplyThreads=new HashMap<>();
+	private HashMap<URI, Future<Post>> fetchingAllReplies=new HashMap<>();
 
 	public static ActivityPubWorker getInstance(){
 		return instance;
 	}
 
 	private ActivityPubWorker(){
-		executor=Executors.newCachedThreadPool();
+		executor=new ForkJoinPool(Runtime.getRuntime().availableProcessors()*2);
 	}
 
 	private URI actorInbox(ForeignUser actor){
@@ -454,8 +473,12 @@ public class ActivityPubWorker{
 		executor.submit(new SendOneActivityRunnable(undo, target.inbox, self));
 	}
 
-	public void fetchReplyThread(Post post){
-		executor.submit(new FetchReplyThreadRunnable(post));
+	public synchronized Future<List<Post>> fetchReplyThread(Post post){
+		return fetchingReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchReplyThreadRunnable(post)));
+	}
+
+	public synchronized Future<Post> fetchAllReplies(Post post){
+		return fetchingAllReplies.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchAllRepliesTask(post)));
 	}
 
 	private static class SendOneActivityRunnable implements Runnable{
@@ -522,8 +545,9 @@ public class ActivityPubWorker{
 		}
 	}
 
-	private static class FetchReplyThreadRunnable implements Runnable{
+	private static class FetchReplyThreadRunnable implements Callable<List<Post>>{
 		private ArrayList<Post> thread=new ArrayList<>();
+		private Set<URI> seenPosts=new HashSet<>();
 		private Post initialPost;
 
 		public FetchReplyThreadRunnable(Post post){
@@ -532,67 +556,201 @@ public class ActivityPubWorker{
 		}
 
 		@Override
-		public void run(){
-			try{
-				while(thread.get(0).inReplyTo!=null){
-					Post _post=PostStorage.getPostByID(thread.get(0).inReplyTo);
-					if(_post==null){
-						ActivityPubObject obj=ActivityPub.fetchRemoteObject(thread.get(0).inReplyTo.toString());
-						if(obj instanceof Post){
-							thread.add(0, (Post) obj);
-						}else if(obj!=null){
-							throw new IllegalArgumentException("Incorrect parent object type "+obj.getType());
-						}else{
-							throw new IllegalArgumentException("Failed to fetch "+thread.get(0).inReplyTo);
-						}
-					}else{
-						thread.add(0, _post);
-					}
+		public List<Post> call() throws Exception{
+			LOG.debug("Started fetching parent thread for post {}", initialPost.activityPubID);
+			seenPosts.add(initialPost.activityPubID);
+			while(thread.get(0).inReplyTo!=null){
+				Post post=ObjectLinkResolver.resolve(thread.get(0).inReplyTo, Post.class, true, false, false);
+				if(seenPosts.contains(post.activityPubID)){
+					LOG.warn("Already seen post {} while fetching parent thread for {}", post.activityPubID, initialPost.activityPubID);
+					throw new IllegalStateException("Reply thread contains a loop of links");
 				}
-				Post topLevel=thread.get(0);
-				if(topLevel.owner==null){
-					boolean mentionsLocalUsers=false;
-					for(User user:initialPost.mentionedUsers){
-						if(!(user instanceof ForeignUser)){
-							mentionsLocalUsers=true;
+				seenPosts.add(post.activityPubID);
+				thread.add(0, post);
+			}
+			Post topLevel=thread.get(0);
+			for(int i=0;i<thread.size();i++){
+				Post p=thread.get(i);
+				if(p.id!=0)
+					continue;
+				p.storeDependencies();
+				Post prev=null;
+				if(i>0){
+					prev=thread.get(i-1);
+					p.setParent(prev);
+				}
+				if(StringUtils.isNotEmpty(p.content))
+					p.content=Utils.sanitizeHTML(p.content);
+				if(StringUtils.isNotEmpty(p.summary))
+					p.summary=Utils.sanitizeHTML(p.summary);
+				Utils.loadAndPreprocessRemotePostMentions(p);
+				PostStorage.putForeignWallPost(p);
+				NotificationUtils.putNotificationsForPost(p, prev);
+			}
+			LOG.info("Done fetching parent thread for post {}", topLevel.activityPubID);
+			synchronized(instance){
+				instance.fetchingReplyThreads.remove(initialPost.activityPubID);
+				return thread;
+			}
+		}
+	}
+
+	private static class FetchAllRepliesTask extends RecursiveTask<Post>{
+		protected Post post;
+		/**
+		 * This keeps track of all the posts we've seen in this comment thread, to prevent a DoS via infinite recursion.
+		 * NB: used from multiple threads simultaneously
+		 */
+		protected final Set<URI> seenPosts;
+
+		public FetchAllRepliesTask(Post post, Set<URI> seenPosts){
+			this.post=post;
+			this.seenPosts=seenPosts;
+		}
+
+		public FetchAllRepliesTask(Post post){
+			this(post, new HashSet<>());
+			if(post.getReplyLevel()>0)
+				throw new IllegalArgumentException("This constructor is only for top-level posts");
+		}
+
+		@Override
+		protected Post compute(){
+			LOG.debug("Started fetching full reply tree for post {}", post.activityPubID);
+			try{
+				if(post.replies==null){
+					if(post.local){
+						post.repliesObjects=PostStorage.getRepliesExact(post.getReplyKeyForReplies(), Integer.MAX_VALUE, 1000, null);
+					}else{
+						return post;
+					}
+				}else{
+					ActivityPubCollection collection;
+					if(post.replies.link!=null){
+						collection=ObjectLinkResolver.resolve(post.replies.link, ActivityPubCollection.class, true, false, false);
+					}else if(post.replies.object instanceof ActivityPubCollection){
+						collection=(ActivityPubCollection) post.replies.object;
+					}else{
+						LOG.warn("Post {} doesn't have a replies collection", post.activityPubID);
+						return post;
+					}
+					LOG.trace("collection: {}", collection);
+					if(collection.first==null){
+						LOG.warn("Post {} doesn't have replies.first", post.activityPubID);
+						return post;
+					}
+					CollectionPage page;
+					if(collection.first.link!=null){
+						page=ObjectLinkResolver.resolve(collection.first.link, CollectionPage.class, true, false, false);
+					}else if(collection.first.object instanceof CollectionPage){
+						page=(CollectionPage) collection.first.object;
+					}else{
+						LOG.warn("Post {} doesn't have a correct CollectionPage in replies.first", post.activityPubID);
+						return post;
+					}
+					LOG.trace("first page: {}", page);
+					if(page.items!=null && !page.items.isEmpty()){
+						doOneCollectionPage(page.items);
+					}
+					while(page.next!=null){
+						LOG.trace("getting next page: {}", page.next);
+						page=ObjectLinkResolver.resolve(page.next, CollectionPage.class, true, false, false);
+						if(page.items==null){ // you're supposed to not return the "next" field when there are no more pages, but mastodon still does...
+							LOG.debug("done fetching replies because page.items is empty");
 							break;
 						}
-					}
-					if(!mentionsLocalUsers){
-						System.out.println("Top-level post from unknown user "+topLevel.attributedTo+" and there are no local user mentions — dropping the thread");
-						return;
+						doOneCollectionPage(page.items);
 					}
 				}
-				for(int i=0;i<thread.size();i++){
-					Post p=thread.get(i);
-					if(p.id!=0)
-						continue;
-					if(p.owner==null){
-						ActivityPubObject owner=ActivityPub.fetchRemoteObject(p.attributedTo.toString());
-						if(owner instanceof ForeignUser){
-							UserStorage.putOrUpdateForeignUser((ForeignUser) owner);
-							p.owner=p.user=(ForeignUser)owner;
-						}else{
-							throw new IllegalArgumentException("Failed to get owner for post "+p.activityPubID);
-						}
-					}
-					Post prev=null;
-					if(i>0){
-						prev=thread.get(i-1);
-						p.setParent(prev);
-					}
-					if(StringUtils.isNotEmpty(p.content))
-						p.content=Utils.sanitizeHTML(p.content);
-					if(StringUtils.isNotEmpty(p.summary))
-						p.summary=Utils.sanitizeHTML(p.summary);
-					Utils.loadAndPreprocessRemotePostMentions(p);
-					PostStorage.putForeignWallPost(p);
-					NotificationUtils.putNotificationsForPost(p, prev);
-				}
-				System.out.println("Done fetching parent thread for "+topLevel.activityPubID);
 			}catch(Exception x){
-				x.printStackTrace();
+				completeExceptionally(x);
 			}
+			if(post.getReplyLevel()==0){
+				synchronized(instance){
+					instance.fetchingAllReplies.remove(post.activityPubID);
+					return post;
+				}
+			}
+			return post;
+		}
+
+		private void doOneCollectionPage(List<LinkOrObject> page) throws Exception{
+			ArrayList<FetchAllRepliesTask> subtasks=new ArrayList<>();
+			for(LinkOrObject item:page){
+				Post post;
+				if(item.link!=null){
+					synchronized(seenPosts){
+						if(seenPosts.contains(item.link)){
+							LOG.warn("Already seen post {}", item.link);
+							continue;
+						}
+						if(seenPosts.size()>=MAX_COMMENTS){
+							LOG.warn("Reached limit of {} on comment thread length. Stopping.", MAX_COMMENTS);
+							return;
+						}
+						seenPosts.add(item.link);
+					}
+					FetchPostAndRepliesTask subtask=new FetchPostAndRepliesTask(item.link, this.post, seenPosts);
+					subtasks.add(subtask);
+					subtask.fork();
+				}else if(item.object instanceof Post){
+					synchronized(seenPosts){
+						if(seenPosts.contains(item.object.activityPubID)){
+							LOG.warn("Already seen post {}", item.object.activityPubID);
+							continue;
+						}
+						if(seenPosts.size()>=MAX_COMMENTS){
+							LOG.warn("Reached limit of {} on comment thread length. Stopping.", MAX_COMMENTS);
+							return;
+						}
+						seenPosts.add(item.object.activityPubID);
+					}
+					post=(Post) item.object;
+					post.setParent(this.post);
+					post.resolveDependencies(true, true);
+					PostStorage.putForeignWallPost(post);
+					LOG.trace("got post: {}", post);
+					FetchAllRepliesTask subtask=new FetchAllRepliesTask(post, seenPosts);
+					subtasks.add(subtask);
+					subtask.fork();
+				}else{
+					LOG.warn("reply object isn't a post: {}", item.object);
+					continue;
+				}
+			}
+			for(FetchAllRepliesTask task:subtasks){
+				try{
+//					post.repliesObjects.add(task.join());
+					task.join();
+				}catch(Exception x){
+					LOG.warn("error fetching reply", x);
+				}
+			}
+		}
+	}
+
+	private static class FetchPostAndRepliesTask extends FetchAllRepliesTask{
+		private URI postID;
+		private Post parentPost;
+
+		public FetchPostAndRepliesTask(URI postID, Post parentPost, Set<URI> seenPosts){
+			super(null, seenPosts);
+			this.postID=postID;
+			this.parentPost=parentPost;
+		}
+
+		@Override
+		protected Post compute(){
+			try{
+				LOG.trace("Fetching remote reply from {}", postID);
+				post=ObjectLinkResolver.resolve(postID, Post.class, true, false, false);
+				post.setParent(parentPost);
+				post.storeDependencies();
+				PostStorage.putForeignWallPost(post);
+			}catch(Exception x){
+				completeExceptionally(x);
+			}
+			return super.compute();
 		}
 	}
 }

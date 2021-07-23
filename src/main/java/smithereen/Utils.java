@@ -45,6 +45,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
+import cz.jirutka.unidecode.Unidecode;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Mention;
@@ -75,9 +76,11 @@ public class Utils{
 	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
 	private static final ThreadLocal<SimpleDateFormat> ISO_DATE_FORMAT=new ThreadLocal<>();
 	public static final String staticFileHash;
+	private static Unidecode unidecode=Unidecode.toAscii();
 
-	private static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
-	private static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
+	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
+	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
+	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+)");
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([a-zA-Z0-9]+)=\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\"\\s*([,;])?\\s*");
 
 	public static final Gson gson=new GsonBuilder()
@@ -513,11 +516,11 @@ public class Utils{
 		// Remove any leading and trailing <br> in each paragraph
 		for(Node node:body.childNodes()){
 			if(node.childNodeSize()==0) continue;
-			while(node.childNode(0) instanceof Element && ((Element) node.childNode(0)).tagName().equalsIgnoreCase("br")){
+			while(node.childNodeSize()>0 && node.childNode(0) instanceof Element && ((Element) node.childNode(0)).tagName().equalsIgnoreCase("br")){
 				node.childNode(0).remove();
 			}
 			if(node.childNodeSize()==0) continue;
-			while(node.childNode(node.childNodeSize()-1) instanceof Element && ((Element) node.childNode(node.childNodeSize()-1)).tagName().equalsIgnoreCase("br")){
+			while(node.childNodeSize()>0 && node.childNode(node.childNodeSize()-1) instanceof Element && ((Element) node.childNode(node.childNodeSize()-1)).tagName().equalsIgnoreCase("br")){
 				node.childNode(node.childNodeSize()-1).remove();
 			}
 
@@ -664,6 +667,26 @@ public class Utils{
 		return sig.stream().map(map->{
 			return map.entrySet().stream().map(e->e.getKey()+"=\""+e.getValue().replace("\\", "\\\\").replace("\"", "\\\"")+"\"").collect(Collectors.joining(","));
 		}).collect(Collectors.joining(";"));
+	}
+
+	public static String transliterate(String in){
+		if(in==null)
+			return null;
+		return unidecode.decode(in.trim());
+	}
+
+	public static boolean isURL(String in){
+		if(in==null)
+			return false;
+		Matcher matcher=URL_PATTERN.matcher(in);
+		return matcher.find() && matcher.start()==0 && matcher.end()==in.length();
+	}
+
+	public static boolean isUsernameAndDomain(String in){
+		if(in==null)
+			return false;
+		Matcher matcher=USERNAME_DOMAIN_PATTERN.matcher(in);
+		return matcher.find() && matcher.start()==0 && matcher.end()==in.length();
 	}
 
 	public interface MentionCallback{

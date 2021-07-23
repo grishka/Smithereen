@@ -13,15 +13,20 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.LruCache;
+import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
@@ -72,6 +77,13 @@ public class GroupStorage{
 					.value("level", Group.AdminLevel.OWNER)
 					.createStatement()
 					.execute();
+
+			new SQLQueryBuilder(conn)
+					.insertInto("qsearch_index")
+					.value("string", Utils.transliterate(name)+" "+username)
+					.value("group_id", id)
+					.createStatement()
+					.execute();
 		}catch(Exception x){
 			conn.createStatement().execute("ROLLBACK");
 			throw new SQLException(x);
@@ -117,9 +129,21 @@ public class GroupStorage{
 		stmt=builder.createStatement(Statement.RETURN_GENERATED_KEYS);
 		if(existingGroupID==0){
 			group.id=DatabaseUtils.insertAndGetID(stmt);
+			new SQLQueryBuilder(conn)
+					.insertInto("qsearch_index")
+					.value("group_id", group.id)
+					.value("string", getQSearchStringForGroup(group))
+					.createStatement()
+					.execute();
 		}else{
 			group.id=existingGroupID;
 			stmt.execute();
+			new SQLQueryBuilder(conn)
+					.update("qsearch_index")
+					.value("string", getQSearchStringForGroup(group))
+					.where("group_id=?", existingGroupID)
+					.createStatement()
+					.execute();
 		}
 		putIntoCache(group);
 		synchronized(adminUpdateLock){
@@ -175,7 +199,7 @@ public class GroupStorage{
 		}
 	}
 
-	public static synchronized Group getByID(int id) throws SQLException{
+	public static synchronized Group getById(int id) throws SQLException{
 		Group g=cacheByID.get(id);
 		if(g!=null)
 			return g;
@@ -228,12 +252,27 @@ public class GroupStorage{
 		}
 	}
 
-	public static List<Group> getByID(List<Integer> ids) throws SQLException{
+	public static List<Group> getByIdAsList(Collection<Integer> ids) throws SQLException{
 		if(ids.isEmpty())
 			return Collections.emptyList();
-		if(ids.size()==1)
-			return Collections.singletonList(getByID(ids.get(0)));
-		List<Group> result=new ArrayList<>(ids.size());
+		if(ids.size()==1){
+			for(int id:ids)
+				return Collections.singletonList(getById(id));
+		}
+		Map<Integer, Group> groups=getById(ids);
+		return ids.stream().map(groups::get).filter(Objects::nonNull).collect(Collectors.toList());
+	}
+
+	public static Map<Integer, Group> getById(Collection<Integer> _ids) throws SQLException{
+		if(_ids.isEmpty())
+			return Collections.emptyMap();
+		if(_ids.size()==1){
+			for(int id:_ids){
+				return Collections.singletonMap(id, getById(id));
+			}
+		}
+		Set<Integer> ids=new HashSet<>(_ids);
+		Map<Integer, Group> result=new HashMap<>(ids.size());
 		synchronized(GroupStorage.class){
 			Iterator<Integer> itr=ids.iterator();
 			while(itr.hasNext()){
@@ -241,7 +280,7 @@ public class GroupStorage{
 				Group group=cacheByID.get(id);
 				if(group!=null){
 					itr.remove();
-					result.add(group);
+					result.put(id, group);
 				}
 			}
 		}
@@ -254,7 +293,6 @@ public class GroupStorage{
 				.createStatement();
 		try(ResultSet res=stmt.executeQuery()){
 			res.beforeFirst();
-			int resultSizeBefore=result.size();
 			while(res.next()){
 				String domain=res.getString("domain");
 				Group group;
@@ -262,15 +300,13 @@ public class GroupStorage{
 					group=ForeignGroup.fromResultSet(res);
 				else
 					group=Group.fromResultSet(res);
-				result.add(group);
+				result.put(group.id, group);
 			}
 			synchronized(GroupStorage.class){
-				for(Group group:result.subList(resultSizeBefore, result.size())){
-					putIntoCache(group);
+				for(int id:ids){
+					putIntoCache(result.get(id));
 				}
 			}
-//			if(sorted)
-//				result.sort(idComparator);
 			return result;
 		}
 	}
@@ -280,7 +316,7 @@ public class GroupStorage{
 		PreparedStatement stmt=conn.prepareStatement("SELECT user_id FROM group_memberships WHERE group_id=? ORDER BY RAND() LIMIT 6");
 		stmt.setInt(1, groupID);
 		try(ResultSet res=stmt.executeQuery()){
-			return UserStorage.getById(DatabaseUtils.intResultSetToList(res), false);
+			return UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(res));
 		}
 	}
 
@@ -291,7 +327,7 @@ public class GroupStorage{
 				.limit(count, offset)
 				.createStatement();
 		try(ResultSet res=stmt.executeQuery()){
-			return UserStorage.getById(DatabaseUtils.intResultSetToList(res));
+			return UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(res));
 		}
 	}
 
@@ -358,7 +394,7 @@ public class GroupStorage{
 	public static List<Group> getUserGroups(int userID) throws SQLException{
 		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("group_memberships").columns("group_id").where("user_id=? AND accepted=1", userID).createStatement();
 		try(ResultSet res=stmt.executeQuery()){
-			return getByID(DatabaseUtils.intResultSetToList(res));
+			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
 		}
 	}
 
@@ -388,7 +424,7 @@ public class GroupStorage{
 	public static List<Group> getUserManagedGroups(int userID) throws SQLException{
 		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("group_admins").columns("group_id").where("user_id=?", userID).createStatement();
 		try(ResultSet res=stmt.executeQuery()){
-			return getByID(DatabaseUtils.intResultSetToList(res));
+			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
 		}
 	}
 
@@ -616,6 +652,15 @@ public class GroupStorage{
 				.where("id=?", group.id)
 				.createStatement()
 				.execute();
+
+		group.name=name;
+		new SQLQueryBuilder()
+				.update("qsearch_index")
+				.value("string", getQSearchStringForGroup(group))
+				.where("group_id=?", group.id)
+				.createStatement()
+				.execute();
+
 		synchronized(GroupStorage.class){
 			removeFromCache(group);
 		}
@@ -662,7 +707,7 @@ public class GroupStorage{
 				.columns("user_id")
 				.where("owner_id=?", selfID)
 				.createStatement();
-		return UserStorage.getById(DatabaseUtils.intResultSetToList(stmt.executeQuery()), true);
+		return UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(stmt.executeQuery()));
 	}
 
 	public static boolean isDomainBlocked(int selfID, String domain) throws SQLException{
@@ -729,5 +774,12 @@ public class GroupStorage{
 		cacheByUsername.remove(group.getFullUsername().toLowerCase());
 		if(group instanceof ForeignGroup)
 			cacheByActivityPubID.remove(group.activityPubID);
+	}
+
+	static String getQSearchStringForGroup(Group group){
+		String s=Utils.transliterate(group.name)+" "+group.username;
+		if(group.domain!=null)
+			s+=" "+group.domain;
+		return s;
 	}
 }

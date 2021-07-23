@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2021-06-28 21:55:15 +0000
+# Generation Time: 2021-07-23 14:34:38 +0000
 # ************************************************************
 
 
@@ -308,6 +308,22 @@ CREATE TABLE `notifications` (
 
 
 
+# Dump of table qsearch_index
+# ------------------------------------------------------------
+
+CREATE TABLE `qsearch_index` (
+  `string` text NOT NULL,
+  `user_id` int(10) unsigned DEFAULT NULL,
+  `group_id` int(10) unsigned DEFAULT NULL,
+  KEY `user_id` (`user_id`),
+  KEY `group_id` (`group_id`),
+  FULLTEXT KEY `string` (`string`),
+  CONSTRAINT `qsearch_index_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `qsearch_index_ibfk_2` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=ascii;
+
+
+
 # Dump of table servers
 # ------------------------------------------------------------
 
@@ -409,6 +425,7 @@ CREATE TABLE `wall_posts` (
   `reply_key` varbinary(1024) DEFAULT NULL,
   `mentions` varbinary(1024) DEFAULT NULL,
   `reply_count` int(10) unsigned NOT NULL DEFAULT '0',
+  `ap_replies` varchar(300) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),

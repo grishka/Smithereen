@@ -1,3 +1,4 @@
+{# @pebvariable name="post" type="smithereen.data.Post" #}
 {%extends "page"%}
 {%block content%}
 {%include "wall_post" with {'postInteractions': null} %}
@@ -33,7 +34,7 @@
 			{% endif %}
 		</ul>
 <div id="postReplies{{post.id}}">
-	{%for reply in post.replies%}
+	{%for reply in post.repliesObjects%}
 		{%include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.id}"}%}
 	{%endfor%}
 </div>

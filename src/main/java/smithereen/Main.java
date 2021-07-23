@@ -1,6 +1,7 @@
 package smithereen;
 
-import com.google.gson.Gson;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -65,6 +66,9 @@ public class Main{
 			System.err.println("You need to specify the path to the config file as the first argument:\njava -jar smithereen.jar config.properties");
 			System.exit(1);
 		}
+		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
+		if(Config.DEBUG)
+			System.setProperty("org.slf4j.simpleLogger.log.smithereen", "trace");
 
 		System.setProperty("user.timezone", "UTC");
 
@@ -210,6 +214,8 @@ public class Main{
 				postWithCSRF("/postPhoto", SystemRoutes::uploadPostPhoto);
 			});
 			get("/about", SystemRoutes::aboutServer);
+			getLoggedIn("/qsearch", SystemRoutes::quickSearch);
+			postLoggedIn("/loadRemoteObject", SystemRoutes::loadRemoteObject);
 		});
 
 		path("/users/:id", ()->{
@@ -249,7 +255,7 @@ public class Main{
 			get("", "application/ld+json", ActivityPubRoutes::groupActor);
 			get("", (req, resp)->{
 				int id=Utils.parseIntOrDefault(req.params(":id"), 0);
-				Group group=GroupStorage.getByID(id);
+				Group group=GroupStorage.getById(id);
 				if(group==null || group instanceof ForeignGroup){
 					throw new ObjectNotFoundException("err_group_not_found");
 				}else{

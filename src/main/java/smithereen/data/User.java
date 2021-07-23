@@ -36,7 +36,7 @@ public class User extends Actor{
 
 	public String getFullName(){
 		if(StringUtils.isEmpty(lastName))
-			return firstName.isEmpty() ? ('@'+username) : firstName;
+			return firstName.isEmpty() ? username : firstName;
 		return firstName+" "+lastName;
 	}
 

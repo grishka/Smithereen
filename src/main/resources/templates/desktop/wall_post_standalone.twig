@@ -7,7 +7,7 @@
 	<a href="/posts/{{post.getReplyChainElement(0)}}">Top-level</a><br/>
 {%endif%}
 {% include "wall_post" with {'standalone': true} %}
-<div id="postReplies{{post.id}}">{%for reply in post.replies%}
+<div id="postReplies{{post.id}}">{%for reply in post.repliesObjects%}
 {%include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.id}"}%}
 {%endfor%}</div>
 </div>

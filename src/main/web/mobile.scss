@@ -12,7 +12,10 @@ body, html{
 
 body{
 	margin: 0;
-	margin-top: 56px;
+}
+
+.pageContent{
+	padding-top: 56px;
 }
 
 body, p, textarea, input, select, button{
@@ -197,6 +200,18 @@ select{
 			background: svg-load('img/material/ic_close.svg', fill: $auxiliaryGrey) no-repeat center;
 		}
 	}
+}
+
+#mainMenuSearchButton{
+	display: none;
+	float: right;
+	width: 56px;
+	height: 56px;
+	background: svg-load('img/material/ic_search.svg', fill: $auxiliaryGrey) no-repeat center;
+}
+
+.hasJS #mainMenuSearchButton{
+	display: block;
 }
 
 #mainMenuToggler:checked+.mainMenu{
@@ -807,4 +822,115 @@ textarea{
 	.feedRowContent{
 		padding: 12px 0 8px 44px;
 	}
+}
+
+#qsearchWrap{
+	width: 100%;
+	height: 100%;
+	pointer-events: auto;
+	position: relative;
+}
+
+#qsearchFieldWrap, #qsearchResultsWrap{
+	background: $bg;
+	box-shadow:
+	  0 0.1px 0.3px rgba(0, 0, 0, 0.022),
+	  0 0.26px 0.9px rgba(0, 0, 0, 0.031),
+	  0 0.53px 1.8px rgba(0, 0, 0, 0.039),
+	  0 1.1px 3.7px rgba(0, 0, 0, 0.048),
+	  0 3px 10px rgba(0, 0, 0, 0.07)
+	;
+	border-radius: 4px;
+}
+
+#qsearchFieldWrap{
+	position: relative;
+	height: 48px;
+	margin: 16px;
+}
+
+#qsearchIHateCSS{
+	position: absolute;
+	left: 48px;
+	top: 0;
+	right: 0;
+	bottom: 0;
+}
+
+#qsearchField{
+	height: 48px;
+	width: 100%;
+	border: none;
+	background: none;
+	padding-left: 0;
+	&:focus{
+		outline: none;
+	}
+}
+
+#qsearchClose{
+	width: 48px;
+	height: 48px;
+	display: block;
+	float: left;
+	background: svg-load('img/material/ic_arrow_back.svg', fill: $auxiliaryGrey) no-repeat center;
+}
+
+#qsearchResultsWrap{
+	position: absolute;
+	left: 16px;
+	top: calc(16px + 16px + 48px);
+	right: 16px;
+	bottom: 16px;
+	overflow-y: auto;
+}
+
+#qsearchHint, .qsearchNoResults{
+	text-align: center;
+	font-size: 15px;
+	padding: 32px;
+	color: $auxiliaryGrey;
+}
+
+#qsearchHint, #qsearchLoader{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+}
+
+#qsearchLoader{
+	background-size: 64px 16px;
+	margin-top: 32px;
+}
+
+#qsearchResultsInner{
+	position: relative;
+}
+
+#qsearchResults{
+	padding: 8px 0;
+}
+
+.qsearchResult{
+	display: block;
+	padding: 8px 16px;
+	height: 64px;
+	line-height: 48px;
+	.ava{
+		display: block;
+		float: left;
+		margin-right: 16px;
+	}
+	&:link, &:visited{
+		color: $text;
+	}
+}
+
+.qsearchSection{
+	padding: 8px 16px 0;
+	font-weight: 500;
+	text-transform: uppercase;
+	font-size: 14px;
+	color: $grayText;
 }

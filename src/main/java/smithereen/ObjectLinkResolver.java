@@ -16,6 +16,7 @@ import smithereen.data.Group;
 import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -52,7 +53,7 @@ public class ObjectLinkResolver{
 		int id=parseIntOrDefault(_id, 0);
 		if(id==0)
 			throw new ObjectNotFoundException();
-		Group group=GroupStorage.getByID(id);
+		Group group=GroupStorage.getById(id);
 		if(group==null || group instanceof ForeignGroup)
 			throw new ObjectNotFoundException();
 		return group;
@@ -87,6 +88,8 @@ public class ObjectLinkResolver{
 						if(allowStorage)
 							storeOrUpdateRemoteObject(o);
 						return o;
+					}else{
+						throw new UnsupportedRemoteObjectTypeException();
 					}
 				}catch(IOException x){
 					x.printStackTrace();

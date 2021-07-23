@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import smithereen.Config;
@@ -132,7 +133,7 @@ public class SQLQueryBuilder{
 		return this;
 	}
 
-	public SQLQueryBuilder whereIn(String column, List<?> args){
+	public SQLQueryBuilder whereIn(String column, Collection<?> args){
 		return whereIn(column, args.toArray(new Object[0]));
 	}
 

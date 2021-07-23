@@ -324,5 +324,14 @@
   "feed_added_friend_name": "%s",
   "feed_added_friend_after": " as a friend.",
   "feed_joined_group_before": " joined group ",
-  "feed_joined_group_after": "."
+  "feed_joined_group_after": ".",
+  "search": "Search",
+  "qsearch_hint": "Start typing a name or paste a link",
+  "unsupported_remote_object_type": "Objects of this type are not supported.",
+  "remote_object_not_found": "Remote object not found. It may be deleted, or you may have specified an incorrect link.",
+  "remote_object_network_error": "Network error while retrieving the object from the remote server.",
+  "search_people": "People",
+  "search_groups": "Groups",
+  "search_external_objects": "External objects",
+  "nothing_found": "Nothing found"
 }

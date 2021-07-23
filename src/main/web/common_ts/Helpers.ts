@@ -172,6 +172,7 @@ HTMLElement.prototype.anim=function(keyframes, options, onFinish):Partial<Animat
 			a.onfinish=onFinish;
 		return a;
 	}else if(this.style.animationName!==undefined || this.style.webkitAnimationName!==undefined){
+		var needsWebkitPrefix=this.style.animationName===undefined;
 		if(!compatAnimStyle){
 			compatAnimStyle=ce("style");
 			document.body.appendChild(compatAnimStyle);
@@ -180,7 +181,7 @@ HTMLElement.prototype.anim=function(keyframes, options, onFinish):Partial<Animat
 		for(var i=0;i<40;i++){
 			ruleName+=String.fromCharCode(0x61+Math.floor(Math.random()*26));
 		}
-		var rule=(this.style.animationName===undefined ? "@-webkit-" : "@")+"keyframes "+ruleName+"{";
+		var rule=(needsWebkitPrefix ? "@-webkit-" : "@")+"keyframes "+ruleName+"{";
 		rule+="0%{";
 		var _keyframes:any=keyframes as any;
 		for(var k in _keyframes[0]){
@@ -195,7 +196,7 @@ HTMLElement.prototype.anim=function(keyframes, options, onFinish):Partial<Animat
 		sheet.insertRule(rule, sheet.rules.length);
 		var duration:number=(options instanceof Number) ? (options as number) : ((options as KeyframeAnimationOptions).duration as number);
 		var easing=(options instanceof Number) ? "" : ((options as KeyframeAnimationOptions).easing);
-		if(this.style.animation!==undefined){
+		if(!needsWebkitPrefix){
 			this.style.animation=ruleName+" "+(duration/1000)+"s "+easing;
 			var fn=()=>{
 				this.style.animation="";
@@ -215,7 +216,9 @@ HTMLElement.prototype.anim=function(keyframes, options, onFinish):Partial<Animat
 			this.addEventListener("webkitanimationend", fn);
 		}
 		return {cancel: function(){
-			if(this.style.animation!==undefined)
+			if(!this.style)
+				return;
+			if(!needsWebkitPrefix)
 				this.style.animation="";
 			else
 				this.style.webkitAnimation="";
@@ -226,7 +229,7 @@ HTMLElement.prototype.anim=function(keyframes, options, onFinish):Partial<Animat
 	return null;
 };
 
-function ajaxPost(uri:string, params:any, onDone:Function, onError:Function):void{
+function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, responseType:XMLHttpRequestResponseType="json"):XMLHttpRequest{
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
 	xhr.open("POST", uri);
 	xhr.onload=function(){
@@ -245,11 +248,12 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function):voi
 		formData.push(key+"="+encodeURIComponent(params[key]));
 	}
 	formData.push("_ajax=1");
-	xhr.responseType="json";
+	xhr.responseType=responseType;
 	xhr.send(formData.join("&"));
+	return xhr;
 }
 
-function ajaxGet(uri:string, onDone:Function, onError:Function):void{
+function ajaxGet(uri:string, onDone:Function, onError:Function, responseType:XMLHttpRequestResponseType="json"):XMLHttpRequest{
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
 	if(uri.indexOf("?")!=-1)
 		uri+="&_ajax=1";
@@ -266,8 +270,9 @@ function ajaxGet(uri:string, onDone:Function, onError:Function):void{
 		console.log(ev);
 		onError(xhr.statusText);
 	};
-	xhr.responseType="json";
+	xhr.responseType=responseType;
 	xhr.send();
+	return xhr;
 }
 
 function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):boolean}=null, onError:Function=null, onProgress:{(progress:number):void}=null):void{

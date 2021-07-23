@@ -18,7 +18,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -90,42 +89,30 @@ public class PostStorage{
 
 		PreparedStatement stmt;
 		if(existing==null){
-			stmt=conn.prepareStatement("INSERT INTO wall_posts (author_id, owner_user_id, owner_group_id, `text`, attachments, content_warning, ap_url, ap_id, reply_key, created_at, mentions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
-			stmt.setInt(1, post.user.id);
-			if(post.owner instanceof User){
-				stmt.setInt(2, ((User) post.owner).id);
-				stmt.setNull(3, Types.INTEGER);
-			}else if(post.owner instanceof Group){
-				stmt.setNull(2, Types.INTEGER);
-				stmt.setInt(3, ((Group) post.owner).id);
-			}else{
-				throw new IllegalArgumentException("Unexpected post owner type: "+post.owner.getClass().getName());
-			}
-			stmt.setString(4, post.content);
-			stmt.setString(5, post.serializeAttachments());
-			stmt.setString(6, post.summary);
-			stmt.setString(7, post.url.toString());
-			stmt.setString(8, post.activityPubID.toString());
-			byte[] replyKey=Utils.serializeIntArray(post.replyKey);
-			stmt.setBytes(9, replyKey);
-			stmt.setTimestamp(10, new Timestamp(post.published.getTime()));
-			byte[] mentions=null;
-			if(!post.mentionedUsers.isEmpty()){
-				mentions=Utils.serializeIntArray(post.mentionedUsers.stream().mapToInt(u->u.id).toArray());
-			}
-			stmt.setBytes(11, mentions);
+			stmt=new SQLQueryBuilder(conn)
+					.insertInto("wall_posts")
+					.value("author_id", post.user.id)
+					.value("owner_user_id", post.owner instanceof User ? post.owner.getLocalID() : null)
+					.value("owner_group_id", post.owner instanceof Group ? post.owner.getLocalID() : null)
+					.value("text", post.content)
+					.value("attachments", post.serializeAttachments())
+					.value("content_warning", post.hasContentWarning() ? post.summary : null)
+					.value("ap_url", post.url.toString())
+					.value("ap_id", post.activityPubID.toString())
+					.value("reply_key", Utils.serializeIntArray(post.replyKey))
+					.value("created_at", new Timestamp(post.published.getTime()))
+					.value("mentions", post.mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(post.mentionedUsers.stream().mapToInt(u->u.id).toArray()))
+					.value("ap_replies", Objects.toString(post.getRepliesURL(), null))
+					.createStatement(Statement.RETURN_GENERATED_KEYS);
 		}else{
-			stmt=DatabaseConnectionManager.getConnection().prepareStatement("UPDATE `wall_posts` SET `text`=?, `attachments`=?, `content_warning`=?, `mentions`=? WHERE `ap_id`=?");
-			stmt.setString(1, post.content);
-			stmt.setString(2, post.serializeAttachments());
-			stmt.setString(3, post.summary);
-			byte[] mentions=null;
-			if(!post.mentionedUsers.isEmpty()){
-				mentions=Utils.serializeIntArray(post.mentionedUsers.stream().mapToInt(u->u.id).toArray());
-			}
-			stmt.setBytes(4, mentions);
-
-			stmt.setString(5, post.activityPubID.toString());
+			stmt=new SQLQueryBuilder(conn)
+					.update("wall_posts")
+					.where("ap_id=?", post.activityPubID.toString())
+					.value("text", post.content)
+					.value("attachments", post.serializeAttachments())
+					.value("content_warning", post.hasContentWarning() ? post.summary : null)
+					.value("mentions", post.mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(post.mentionedUsers.stream().mapToInt(u->u.id).toArray()))
+					.createStatement();
 		}
 		stmt.execute();
 		if(existing==null){
@@ -134,15 +121,22 @@ public class PostStorage{
 				post.id=res.getInt(1);
 			}
 			if(post.owner.equals(post.user) && post.getReplyLevel()==0){
-				stmt=conn.prepareStatement("INSERT INTO `newsfeed` (`type`, `author_id`, `object_id`, `time`) VALUES (?, ?, ?, ?)");
-				stmt.setInt(1, NewsfeedEntry.Type.POST.ordinal());
-				stmt.setInt(2, post.user.id);
-				stmt.setInt(3, post.id);
-				stmt.setTimestamp(4, new Timestamp(post.published.getTime()));
-				stmt.execute();
+				new SQLQueryBuilder(conn)
+						.insertInto("newsfeed")
+						.value("type", NewsfeedEntry.Type.POST)
+						.value("author_id", post.user.id)
+						.value("object_id", post.id)
+						.value("time", new Timestamp(post.published.getTime()))
+						.createStatement()
+						.execute();
 			}
 			if(post.getReplyLevel()>0){
-				conn.createStatement().execute("UPDATE wall_posts SET reply_count=reply_count+1 WHERE id IN ("+Arrays.stream(post.replyKey).mapToObj(String::valueOf).collect(Collectors.joining(","))+")");
+				new SQLQueryBuilder(conn)
+						.update("wall_posts")
+						.valueExpr("reply_count", "reply_count+1")
+						.whereIn("id", Arrays.stream(post.replyKey).boxed().collect(Collectors.toList()))
+						.createStatement()
+						.execute();
 			}
 		}else{
 			post.id=existing.id;
@@ -198,7 +192,7 @@ public class PostStorage{
 						case JOIN_GROUP -> {
 							JoinGroupNewsfeedEntry _entry=new JoinGroupNewsfeedEntry();
 							_entry.objectID=res.getInt(2);
-							_entry.group=GroupStorage.getByID(_entry.objectID);
+							_entry.group=GroupStorage.getById(_entry.objectID);
 							_entry.author=UserStorage.getById(res.getInt(3));
 							yield _entry;
 						}
@@ -485,7 +479,7 @@ public class PostStorage{
 			if(post.getReplyLevel()>prefix.length){
 				Post parent=postMap.get(post.replyKey[post.replyKey.length-1]);
 				if(parent!=null){
-					parent.replies.add(post);
+					parent.repliesObjects.add(post);
 				}
 			}
 		}

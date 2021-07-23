@@ -61,7 +61,7 @@
 	</tr>
 </table>
 <div id="postReplies{{post.id}}" class="replies">
-	{%for reply in post.replies%}
+	{%for reply in post.repliesObjects%}
 	{%include "wall_reply" with {'post': reply}%}
 	{%endfor%}
 </div>

@@ -42,4 +42,24 @@ public class CollectionPage extends ActivityPubCollection{
 		next=tryParseURL(optString(obj, "next"));
 		return this;
 	}
+
+	@Override
+	public String toString(){
+		StringBuilder sb=new StringBuilder("CollectionPage{");
+		sb.append(super.toString());
+		if(partOf!=null){
+			sb.append("partOf=");
+			sb.append(partOf);
+		}
+		if(prev!=null){
+			sb.append(", prev=");
+			sb.append(prev);
+		}
+		if(next!=null){
+			sb.append(", next=");
+			sb.append(next);
+		}
+		sb.append('}');
+		return sb.toString();
+	}
 }

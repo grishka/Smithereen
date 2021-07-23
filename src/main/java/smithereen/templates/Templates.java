@@ -80,7 +80,16 @@ public class Templates{
 		for(String key: List.of("error", "ok", "network_error", "close")){
 			jsLang.add(key, lang.raw(key));
 		}
-		model.with("locale", Utils.localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString()).with("jsLangKeys", jsLang).with("staticHash", Utils.staticFileHash).with("serverName", Config.getServerDisplayName());
+		if(req.attribute("mobile")!=null){
+			for(String key: List.of("search", "qsearch_hint")){
+				jsLang.add(key, lang.raw(key));
+			}
+		}
+		model.with("locale", Utils.localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString())
+				.with("jsLangKeys", jsLang)
+				.with("staticHash", Utils.staticFileHash)
+				.with("serverName", Config.getServerDisplayName())
+				.with("isMobile", req.attribute("mobile")!=null);
 	}
 
 	public static PebbleTemplate getTemplate(Request req, String name){

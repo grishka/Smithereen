@@ -80,7 +80,7 @@ public class PostRoutes{
 
 	public static Object createGroupWallPost(Request req, Response resp, Account self) throws Exception{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
-		Group group=GroupStorage.getByID(id);
+		Group group=GroupStorage.getById(id);
 		if(group==null)
 			throw new ObjectNotFoundException("err_group_not_found");
 		return createWallPost(req, resp, self, group);
@@ -289,7 +289,7 @@ public class PostRoutes{
 					if(pe.post!=null){
 						ListAndTotal<Post> comments=allComments.get(pe.post.id);
 						if(comments!=null){
-							pe.post.replies=comments.list;
+							pe.post.repliesObjects=comments.list;
 							pe.post.totalTopLevelComments=comments.total;
 							pe.post.getAllReplyIDs(postIDs);
 						}
@@ -323,7 +323,7 @@ public class PostRoutes{
 		int[] replyKey=new int[post.replyKey.length+1];
 		System.arraycopy(post.replyKey, 0, replyKey, 0, post.replyKey.length);
 		replyKey[replyKey.length-1]=post.id;
-		post.replies=PostStorage.getReplies(replyKey);
+		post.repliesObjects=PostStorage.getReplies(replyKey);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone", req);
 		model.with("post", post);
 		model.with("isGroup", post.owner instanceof Group);
@@ -611,7 +611,7 @@ public class PostRoutes{
 			for(Post post:wall){
 				ListAndTotal<Post> comments=allComments.get(post.id);
 				if(comments!=null){
-					post.replies=comments.list;
+					post.repliesObjects=comments.list;
 					post.totalTopLevelComments=comments.total;
 					post.getAllReplyIDs(postIDs);
 				}
@@ -661,7 +661,7 @@ public class PostRoutes{
 			for(Post post:wall){
 				ListAndTotal<Post> comments=allComments.get(post.id);
 				if(comments!=null){
-					post.replies=comments.list;
+					post.repliesObjects=comments.list;
 					post.totalTopLevelComments=comments.total;
 					post.getAllReplyIDs(postIDs);
 				}

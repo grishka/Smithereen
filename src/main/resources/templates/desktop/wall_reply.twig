@@ -59,7 +59,7 @@
 		<div class="loadRepliesLink" id="repliesLoader{{ post.id }}" style="display: none;"><span class="loader"></span></div>
 	{% endif %}
 {% else %}
-	{%for reply in post.replies%}
+	{%for reply in post.repliesObjects%}
 	{%include "wall_reply" with {'post': reply}%}
 	{%endfor%}
 {% endif %}

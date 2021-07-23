@@ -53,7 +53,7 @@ public abstract class ActivityPubObject{
 	public LinkOrObject location;
 	public LinkOrObject preview;
 	public Date published;
-	public ActivityPubCollection replies;
+	public LinkOrObject replies;
 	public Date startTime;
 	public String summary;
 	public List<ActivityPubObject> tag;
@@ -113,7 +113,7 @@ public abstract class ActivityPubObject{
 		if(published!=null)
 			obj.addProperty("published", Utils.formatDateAsISO(published));
 		if(replies!=null)
-			obj.add("replies", replies.asActivityPubObject(null, contextCollector));
+			obj.add("replies", replies.serialize(contextCollector));
 		if(startTime!=null)
 			obj.addProperty("startTime", Utils.formatDateAsISO(startTime));
 		if(summary!=null)
@@ -342,7 +342,7 @@ public abstract class ActivityPubObject{
 		location=tryParseLinkOrObject(obj.get("location"), parserContext);
 		preview=tryParseLinkOrObject(obj.get("preview"), parserContext);
 		published=tryParseDate(optString(obj, "published"));
-		replies=parseSingleObject(optObject(obj, "replies"), parserContext);
+		replies=tryParseLinkOrObject(obj.get("replies"), parserContext);
 		startTime=tryParseDate(optString(obj, "startTime"));
 		summary=optString(obj, "summary");
 		tag=parseSingleObjectOrArray(obj.get("tag"), parserContext);

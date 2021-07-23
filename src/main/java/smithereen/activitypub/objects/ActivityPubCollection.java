@@ -53,4 +53,32 @@ public class ActivityPubCollection extends ActivityPubObject{
 		items=tryParseArrayOfLinksOrObjects(obj.get(ordered ? "orderedItems" : "items"), parserContext);
 		return this;
 	}
+
+	@Override
+	public String toString(){
+		StringBuilder sb=new StringBuilder("ActivityPubCollection{");
+		sb.append(super.toString());
+		sb.append("totalItems=");
+		sb.append(totalItems);
+		if(current!=null){
+			sb.append(", current=");
+			sb.append(current);
+		}
+		if(first!=null){
+			sb.append(", first=");
+			sb.append(first);
+		}
+		if(last!=null){
+			sb.append(", last=");
+			sb.append(last);
+		}
+		if(items!=null){
+			sb.append(", items=");
+			sb.append(items);
+		}
+		sb.append(", ordered=");
+		sb.append(ordered);
+		sb.append('}');
+		return sb.toString();
+	}
 }

@@ -219,7 +219,7 @@ public class ActivityPubRoutes{
 		if(username!=null)
 			group=GroupStorage.getByUsername(username);
 		else
-			group=GroupStorage.getByID(Utils.parseIntOrDefault(req.params(":id"), 0));
+			group=GroupStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
 		if(group!=null && !(group instanceof ForeignGroup)){
 			group.adminsForActivityPub=GroupStorage.getGroupAdmins(group.id);
 			resp.type(ActivityPub.CONTENT_TYPE);
@@ -260,7 +260,7 @@ public class ActivityPubRoutes{
 
 	public static Object groupInbox(Request req, Response resp) throws SQLException{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
-		Group group=GroupStorage.getByID(id);
+		Group group=GroupStorage.getById(id);
 		if(group==null || group instanceof ForeignGroup)
 			throw new ObjectNotFoundException();
 		return inbox(req, resp, group);
@@ -333,7 +333,7 @@ public class ActivityPubRoutes{
 
 	public static ActivityPubCollectionPageResponse groupWall(Request req, Response resp, int offset, int count) throws SQLException{
 		int id=parseIntOrDefault(req.params(":id"), 0);
-		Group group=GroupStorage.getByID(id);
+		Group group=GroupStorage.getById(id);
 		if(group==null || group instanceof ForeignGroup)
 			throw new ObjectNotFoundException();
 		return actorWall(req, resp, offset, count, group);
@@ -740,7 +740,7 @@ public class ActivityPubRoutes{
 
 	public static ActivityPubCollectionPageResponse groupFollowers(Request req, Response resp, int offset, int count) throws SQLException{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
-		Group group=GroupStorage.getByID(id);
+		Group group=GroupStorage.getById(id);
 		if(group==null || group instanceof ForeignGroup){
 			throw new ObjectNotFoundException();
 		}

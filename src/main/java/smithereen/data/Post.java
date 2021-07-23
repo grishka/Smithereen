@@ -47,7 +47,7 @@ public class Post extends ActivityPubObject{
 
 	public int[] replyKey={};
 
-	public List<Post> replies=new ArrayList<>();
+	public List<Post> repliesObjects=new ArrayList<>();
 	public int totalTopLevelComments;
 	public int replyCount;
 	public boolean local;
@@ -83,6 +83,10 @@ public class Post extends ActivityPubObject{
 			inReplyTo=PostStorage.getActivityPubID(replyKey[replyKey.length-1]);
 		}
 
+		String _replies=res.getString("ap_replies");
+		if(_replies!=null)
+			replies=new LinkOrObject(URI.create(_replies));
+
 		int uid=res.getInt("author_id");
 		if(!res.wasNull()){
 			user=UserStorage.getById(uid);
@@ -90,7 +94,7 @@ public class Post extends ActivityPubObject{
 			if(!res.wasNull())
 				owner=UserStorage.getById(ownerUserID);
 			else
-				owner=GroupStorage.getByID(res.getInt("owner_group_id"));
+				owner=GroupStorage.getById(res.getInt("owner_group_id"));
 		}else{
 			deleted=true;
 			return;
@@ -229,7 +233,7 @@ public class Post extends ActivityPubObject{
 						if(owner instanceof ForeignUser)
 							owner=null;
 					}else if("groups".equals(parts[1])){
-						owner=GroupStorage.getByID(id);
+						owner=GroupStorage.getById(id);
 						if(owner instanceof ForeignGroup)
 							owner=null;
 					}
@@ -365,7 +369,7 @@ public class Post extends ActivityPubObject{
 	}
 
 	public void getAllReplyIDs(Collection<Integer> out){
-		for(Post reply:replies){
+		for(Post reply: repliesObjects){
 			out.add(reply.id);
 			reply.getAllReplyIDs(out);
 		}
@@ -395,5 +399,13 @@ public class Post extends ActivityPubObject{
 			ObjectLinkResolver.storeOrUpdateRemoteObject(user);
 		if(owner!=user && ((owner instanceof ForeignUser && ((ForeignUser) owner).id==0) || (owner instanceof ForeignGroup && ((ForeignGroup) owner).id==0)))
 			ObjectLinkResolver.storeOrUpdateRemoteObject(owner);
+	}
+
+	public URI getRepliesURL(){
+		if(replies==null)
+			return null;
+		if(replies.link!=null)
+			return replies.link;
+		return replies.object.activityPubID;
 	}
 }

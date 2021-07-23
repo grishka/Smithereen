@@ -190,6 +190,13 @@ public class SessionStorage{
 				n.type=Notification.Type.INVITE_SIGNUP;
 				NotificationsStorage.putNotification(inviterUserID, n);
 			}
+
+			new SQLQueryBuilder(conn)
+					.insertInto("qsearch_index")
+					.value("user_id", userID)
+					.value("string", UserStorage.getQSearchStringForUser(UserStorage.getById(userID)))
+					.createStatement()
+					.execute();
 		}catch(SQLException x){
 			conn.createStatement().execute("ROLLBACK");
 			throw new SQLException(x);
@@ -229,6 +236,12 @@ public class SessionStorage{
 			stmt.execute();
 
 			conn.createStatement().execute("COMMIT");
+			new SQLQueryBuilder(conn)
+					.insertInto("qsearch_index")
+					.value("user_id", userID)
+					.value("string", UserStorage.getQSearchStringForUser(UserStorage.getById(userID)))
+					.createStatement()
+					.execute();
 		}catch(SQLException x){
 			conn.createStatement().execute("ROLLBACK");
 			throw new SQLException(x);

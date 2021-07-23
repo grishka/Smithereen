@@ -102,7 +102,7 @@ public class ForeignUser extends User implements ForeignActor{
 			middleName=optString(obj, "middleName");
 			maidenName=optString(obj, "maidenName");
 		}else{
-			firstName=name!=null ? name : username;
+			firstName=StringUtils.isNotEmpty(name) ? name : username;
 		}
 		if(obj.has("birthDate")){
 			birthDate=Date.valueOf(obj.get("birthDate").getAsString());

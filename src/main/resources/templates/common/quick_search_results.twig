@@ -1,0 +1,34 @@
+{# @pebvariable name="users" type="smithereen.data.User[]" #}
+{# @pebvariable name="groups" type="smithereen.data.Group[]" #}
+{# @pebvariable name="externalObjects" type="java.net.URI[]" #}
+{# @pebvariable name="avaSize" type="int" #}
+{% if users is not empty %}
+<div class="qsearchSection ellipsize">{{ L('search_people') }}</div>
+{% for user in users %}
+<a class="qsearchResult" href="{{ user.profileURL }}">
+	{{ user | pictureForAvatar('s', avaSize) }}
+	<div class="qsearchName ellipsize">{{ user.fullName }}</div>
+</a>
+{% endfor %}
+{% endif %}
+{% if groups is not empty %}
+<div class="qsearchSection ellipsize">{{ L('search_groups') }}</div>
+{% for group in groups %}
+<a class="qsearchResult" href="{{ group.profileURL }}">
+	{{ group | pictureForAvatar('s', avaSize) }}
+	<div class="qsearchName ellipsize">{{ group.name }}</div>
+</a>
+{% endfor %}
+{% endif %}
+{% if externalObjects is not empty %}
+<div class="qsearchSection ellipsize">{{ L('search_external_objects') }}</div>
+{% for url in externalObjects %}
+<a class="qsearchResult" onclick="loadRemoteObject(this.dataset.url)" data-url="{{ url }}">
+	<span class="ava avaPlaceholder sizeS link" style="width:{{ avaSize }}px;height:{{ avaSize }}px"></span>
+	<div class="qsearchName ellipsize">{{ url }}</div>
+</a>
+{% endfor %}
+{% endif %}
+{% if users is empty and groups is empty and externalObjects is empty %}
+<div class="qsearchNoResults">{{ L('nothing_found') }}</div>
+{% endif %}

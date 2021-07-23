@@ -51,7 +51,7 @@ public class GroupsRoutes{
 
 	private static Group getGroup(Request req) throws SQLException{
 		int id=parseIntOrDefault(req.params(":id"), 0);
-		Group group=GroupStorage.getByID(id);
+		Group group=GroupStorage.getById(id);
 		if(group==null){
 			throw new ObjectNotFoundException("err_group_not_found");
 		}
@@ -124,7 +124,7 @@ public class GroupsRoutes{
 		});
 
 		if(r){
-			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(self.user, GroupStorage.getByID(id[0]));
+			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(self.user, GroupStorage.getById(id[0]));
 			if(isAjax(req)){
 				return new WebDeltaResponse(resp).replaceLocation("/"+username);
 			}else{
@@ -151,7 +151,7 @@ public class GroupsRoutes{
 			for(Post post:wall){
 				ListAndTotal<Post> comments=allComments.get(post.id);
 				if(comments!=null){
-					post.replies=comments.list;
+					post.repliesObjects=comments.list;
 					post.totalTopLevelComments=comments.total;
 					post.getAllReplyIDs(postIDs);
 				}
@@ -271,7 +271,7 @@ public class GroupsRoutes{
 			GroupStorage.updateGroupGeneralInfo(group, name, about);
 			message=lang(req).get("group_info_updated");
 		}
-		group=GroupStorage.getByID(group.id);
+		group=GroupStorage.getById(group.id);
 		ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).show("formMessage_groupEdit").setContent("formMessage_groupEdit", message);

@@ -107,6 +107,67 @@ small{
 	td{
 		vertical-align: top;
 	}
+	#qsearchWrap{
+		width: 172px;
+		float: left;
+		margin-top: 8px;
+		display: none;
+		position: relative;
+	}
+	#qsearchField{
+		width: 100%;
+		height: 23px;
+		border-radius: 3px;
+		border: solid 1px $headerBorderTop;
+		box-shadow: 0 1px 0 $headerBorderBottomLight, 0 1px 4px #c0c0c0 inset;
+		background: svg-load('img/search_icon.svg', fill: color($iconColor alpha(65%))) no-repeat 6px 5px, linear-gradient(to bottom, #efefef 0%, #ffffff 100%);
+		padding: 3px 3px 3px 21px;
+	}
+	#qsearchResults{
+		position: absolute;
+		top: 42px;
+		background: #FFF;
+		width: 211px;
+		border-radius: 3px;
+		box-shadow: 0 0 6px #999;
+		color: $text;
+		text-align: left;
+		z-index: 1;
+		padding: 4px 0;
+	}
+}
+
+.hasJS #qsearchWrap{
+	display: block;
+}
+
+.qsearchResult{
+	padding: 4px 8px;
+	height: 38px;
+	display: block;
+	.ava{
+		float: left;
+		margin-right: 8px;
+	}
+	.qsearchName{
+		line-height: 30px;
+	}
+	&:hover{
+		text-decoration: none;
+		background: $blockBackground;
+	}
+}
+
+.qsearchSection{
+	padding: 4px 8px;
+	font-weight: bold;
+	color: $boldHeaders;
+}
+
+.qsearchNoResults{
+	padding: 8px;
+	text-align: center;
+	color: $auxiliaryGrey;
 }
 
 .headerBG{

@@ -42,6 +42,9 @@
 <input type="checkbox" id="mainMenuToggler" style="display: none"/>
 <div class="mainMenu">
 	<div class="inner">
+		{% if currentUser is not null %}
+		<a id="mainMenuSearchButton" title="{{ L('search') }}"></a>
+		{% endif %}
 		<label for="mainMenuToggler"></label>
 {%block leftMenu%}
 <ul class="actionList">
