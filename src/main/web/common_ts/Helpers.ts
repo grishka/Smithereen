@@ -215,9 +215,7 @@ HTMLElement.prototype.anim=function(keyframes, options, onFinish):Partial<Animat
 			};
 			this.addEventListener("webkitanimationend", fn);
 		}
-		return {cancel: function(){
-			if(!this.style)
-				return;
+		return {cancel: ()=>{
 			if(!needsWebkitPrefix)
 				this.style.animation="";
 			else
