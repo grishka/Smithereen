@@ -22,6 +22,7 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.RecursiveTask;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -65,6 +66,7 @@ public class ActivityPubWorker{
 	private ForkJoinPool executor;
 	private Random rand=new Random();
 	private HashMap<URI, Future<List<Post>>> fetchingReplyThreads=new HashMap<>();
+	private HashMap<URI, List<Consumer<List<Post>>>> afterFetchReplyThreadActions=new HashMap<>();
 	private HashMap<URI, Future<Post>> fetchingAllReplies=new HashMap<>();
 
 	public static ActivityPubWorker getInstance(){
@@ -477,6 +479,11 @@ public class ActivityPubWorker{
 		return fetchingReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchReplyThreadRunnable(post)));
 	}
 
+	public synchronized Future<List<Post>> fetchReplyThreadAndThen(Post post, Consumer<List<Post>> action){
+		afterFetchReplyThreadActions.computeIfAbsent(post.activityPubID, (uri)->new ArrayList<>()).add(action);
+		return fetchReplyThread(post);
+	}
+
 	public synchronized Future<Post> fetchAllReplies(Post post){
 		return fetchingAllReplies.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchAllRepliesTask(post)));
 	}
@@ -590,6 +597,12 @@ public class ActivityPubWorker{
 			LOG.info("Done fetching parent thread for post {}", topLevel.activityPubID);
 			synchronized(instance){
 				instance.fetchingReplyThreads.remove(initialPost.activityPubID);
+				List<Consumer<List<Post>>> actions=instance.afterFetchReplyThreadActions.remove(initialPost.activityPubID);
+				if(actions!=null){
+					for(Consumer<List<Post>> action:actions){
+						instance.executor.submit(()->action.accept(thread));
+					}
+				}
 				return thread;
 			}
 		}
