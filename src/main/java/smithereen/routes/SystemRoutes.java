@@ -205,6 +205,11 @@ public class SystemRoutes{
 			File temp=new File(tmpDir, keyHex);
 			part.write(keyHex);
 			VipsImage img=new VipsImage(temp.getAbsolutePath());
+			if(img.hasAlpha()){
+				VipsImage flat=img.flatten(255, 255, 255);
+				img.release();
+				img=flat;
+			}
 
 			LocalImage photo=new LocalImage();
 			File postMediaDir=new File(Config.uploadPath, "post_media");
