@@ -35,7 +35,7 @@ public class CollectionPage extends ActivityPubCollection{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		partOf=tryParseURL(optString(obj, "partOf"));
 		prev=tryParseURL(optString(obj, "prev"));

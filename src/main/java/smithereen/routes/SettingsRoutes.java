@@ -33,7 +33,7 @@ import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
-import smithereen.libvips.VImage;
+import smithereen.libvips.VipsImage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
@@ -175,7 +175,7 @@ public class SettingsRoutes{
 			File tmpDir = new File(System.getProperty("java.io.tmpdir"));
 			File temp=new File(tmpDir, keyHex);
 			part.write(keyHex);
-			VImage img=new VImage(temp.getAbsolutePath()+(mime.equals("image/png") ? "" : "[autorotate=true]"));
+			VipsImage img=new VipsImage(temp.getAbsolutePath());
 			if(img.hasAlpha())
 				img=img.flatten(1, 1, 1);
 			float ratio=(float)img.getWidth()/(float)img.getHeight();
@@ -214,7 +214,7 @@ public class SettingsRoutes{
 					ava.cropRegion=new float[]{(float)cropX/(float)img.getWidth(), 0f, (float)(cropX+img.getHeight())/(float)img.getWidth(), 1f};
 				}
 				if(!ratioIsValid){
-					VImage cropped=img.crop(cropX, 0, cropSize, cropSize);
+					VipsImage cropped=img.crop(cropX, 0, cropSize, cropSize);
 					img.release();
 					img=cropped;
 				}

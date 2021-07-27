@@ -18,7 +18,7 @@ public abstract class ActivityPubLink extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		href=tryParseURL(obj.get("href").getAsString());
 		return this;

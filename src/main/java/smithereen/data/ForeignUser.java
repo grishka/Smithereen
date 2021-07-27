@@ -94,7 +94,7 @@ public class ForeignUser extends User implements ForeignActor{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		if(obj.has("firstName") && obj.get("firstName").isJsonPrimitive()){
 			firstName=obj.get("firstName").getAsString();

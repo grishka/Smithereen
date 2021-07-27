@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.exceptions.BadRequestException;
 import spark.utils.StringUtils;
 
 public class ForeignGroup extends Group implements ForeignActor{
@@ -41,7 +43,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		if(StringUtils.isNotEmpty(summary))
 			summary=Utils.sanitizeHTML(summary);
@@ -62,7 +64,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 		return this;
 	}
 
-	private void doOneAdmin(JsonElement _adm) throws Exception{
+	private void doOneAdmin(JsonElement _adm){
 		if(_adm==null)
 			return;
 		if(_adm.isJsonObject()){
@@ -70,7 +72,11 @@ public class ForeignGroup extends Group implements ForeignActor{
 			if(!"Person".equals(optString(adm, "type")))
 				return;
 			GroupAdmin admin=new GroupAdmin();
-			admin.activityPubUserID=new URI(adm.get("id").getAsString());
+			try{
+				admin.activityPubUserID=new URI(adm.get("id").getAsString());
+			}catch(URISyntaxException x){
+				throw new BadRequestException(x);
+			}
 			admin.title=Objects.requireNonNullElse(optString(adm, "title"), "");
 			adminsForActivityPub.add(admin);
 		}else if(_adm.isJsonPrimitive()){

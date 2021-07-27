@@ -9,6 +9,7 @@ import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -90,7 +91,7 @@ public class Lang{
 
 	private Lang(String localeID) throws IOException{
 		try(InputStream in=Lang.class.getClassLoader().getResourceAsStream("langs/"+localeID+".json")){
-			data=JsonParser.parseReader(new InputStreamReader(in)).getAsJsonObject();
+			data=JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
 		}
 		locale=Locale.forLanguageTag(localeID);
 		String fallbackLocaleID=data.has("_fallback") && data.get("_fallback").isJsonPrimitive() ? data.get("_fallback").getAsString() : null;

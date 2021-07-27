@@ -12,12 +12,12 @@ import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.libvips.VImage;
+import smithereen.libvips.VipsImage;
 import spark.utils.StringUtils;
 
 public class MediaStorageUtils{
 
-	public static long writeResizedWebpImage(VImage img, int widthOrSize, int height, int quality, String keyHex, File basePath, int[] outSize) throws IOException{
+	public static long writeResizedWebpImage(VipsImage img, int widthOrSize, int height, int quality, String keyHex, File basePath, int[] outSize) throws IOException{
 		File file=new File(basePath, keyHex+".webp");
 		double factor;
 		if(height==0){
@@ -25,14 +25,21 @@ public class MediaStorageUtils{
 		}else{
 			factor=Math.min((double)widthOrSize/(double)img.getWidth(), (double)height/(double)img.getHeight());
 		}
+		boolean strip=!img.hasColorProfile();
+		if(!strip){
+			for(String key:img.getFields()){
+				if(!"icc-profile-data".equals(key))
+					img.removeField(key);
+			}
+		}
 		if(factor>1.0){
-			img.writeToFile(new String[]{file.getAbsolutePath()+"[Q="+quality+",strip=true]"});
+			img.writeToFile(file.getAbsolutePath()+"[Q="+quality+(strip ? ",strip=true" : "")+"]");
 			outSize[0]=img.getWidth();
 			outSize[1]=img.getHeight();
 		}else{
-			VImage resized=img.resize(factor);
+			VipsImage resized=img.resize(factor);
 			try{
-				resized.writeToFile(new String[]{file.getAbsolutePath()+"[Q="+quality+",strip=true]"});
+				resized.writeToFile(file.getAbsolutePath()+"[Q="+quality+(strip ? ",strip=true" : "")+"]");
 				outSize[0]=resized.getWidth();
 				outSize[1]=resized.getHeight();
 			}finally{

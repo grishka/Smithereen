@@ -140,7 +140,7 @@ public abstract class ActivityPubObject{
 		return obj;
 	}
 
-	protected <T extends ActivityPubObject> List<T> parseSingleObjectOrArray(JsonElement o, ParserContext parserContext) throws Exception{
+	protected <T extends ActivityPubObject> List<T> parseSingleObjectOrArray(JsonElement o, ParserContext parserContext){
 		if(o==null)
 			return null;
 		try{
@@ -162,7 +162,7 @@ public abstract class ActivityPubObject{
 		return null;
 	}
 
-	protected <T extends ActivityPubObject> T parseSingleObject(JsonObject o, ParserContext parserContext) throws Exception{
+	protected <T extends ActivityPubObject> T parseSingleObject(JsonObject o, ParserContext parserContext){
 		if(o==null)
 			return null;
 		try{
@@ -188,7 +188,7 @@ public abstract class ActivityPubObject{
 		return Utils.parseISODate(date);
 	}
 
-	protected LinkOrObject tryParseLinkOrObject(JsonElement o, ParserContext parserContext) throws Exception{
+	protected LinkOrObject tryParseLinkOrObject(JsonElement o, ParserContext parserContext){
 		if(o==null)
 			return null;
 		if(o.isJsonPrimitive() && o.getAsJsonPrimitive().isString()){
@@ -203,7 +203,7 @@ public abstract class ActivityPubObject{
 		return null;
 	}
 
-	protected List<LinkOrObject> tryParseArrayOfLinksOrObjects(JsonElement o, ParserContext parserContext) throws Exception{
+	protected List<LinkOrObject> tryParseArrayOfLinksOrObjects(JsonElement o, ParserContext parserContext){
 		if(o==null)
 			return null;
 		if(o.isJsonArray()){
@@ -327,7 +327,7 @@ public abstract class ActivityPubObject{
 		return null;
 	}
 
-	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		activityPubID=tryParseURL(optString(obj, "id"));
 		attachment=parseSingleObjectOrArray(obj.get("attachment"), parserContext);
 		attributedTo=tryParseURL(optString(obj, "attributedTo"));
@@ -491,11 +491,11 @@ public abstract class ActivityPubObject{
 		return sb.toString();
 	}
 
-	public static ActivityPubObject parse(JsonObject obj) throws Exception{
+	public static ActivityPubObject parse(JsonObject obj){
 		return parse(obj, ParserContext.FOREIGN);
 	}
 
-	public static ActivityPubObject parse(JsonObject obj, ParserContext parserContext) throws Exception{
+	public static ActivityPubObject parse(JsonObject obj, ParserContext parserContext){
 		if(obj==null)
 			return null;
 		String type=Objects.requireNonNull(obj.get("type"), "type must not be null").getAsString();

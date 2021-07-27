@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.URI;
 import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
@@ -28,6 +29,7 @@ import smithereen.activitypub.ParserContext;
 import smithereen.data.CachedRemoteImage;
 import smithereen.data.NonCachedRemoteImage;
 import smithereen.data.SizedImage;
+import smithereen.exceptions.BadRequestException;
 import smithereen.jsonld.JLD;
 import smithereen.storage.MediaCache;
 import spark.utils.StringUtils;
@@ -147,7 +149,7 @@ public abstract class Actor extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		if(activityPubID==null)
 			throw new IllegalArgumentException("id is required for actors");
@@ -175,9 +177,14 @@ public abstract class Actor extends ActivityPubObject{
 		}catch(InvalidKeySpecException x){
 			// a simpler RSA key format, used at least by Misskey
 			// FWIW, Misskey user objects also contain a key "isCat" which I ignore
-			RSAPublicKeySpec spec=decodeSimpleRSAKey(key);
-			publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
-		}
+			try{
+				RSAPublicKeySpec spec=decodeSimpleRSAKey(key);
+				publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
+			}catch(NoSuchAlgorithmException ignore){
+			}catch(InvalidKeySpecException|IOException xx){
+				throw new BadRequestException(xx);
+			}
+		}catch(NoSuchAlgorithmException ignore){}
 
 		inbox=tryParseURL(obj.get("inbox").getAsString());
 		ensureHostMatchesID(inbox, "inbox");

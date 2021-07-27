@@ -46,7 +46,9 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.WebfingerResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.jsonld.JLD;
+import smithereen.jsonld.JLDException;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
 import spark.utils.StringUtils;
@@ -78,8 +80,7 @@ public class ActivityPub{
 		Response resp=call.execute();
 		try(ResponseBody body=resp.body()){
 			if(!resp.isSuccessful()){
-				System.out.println(resp);
-				return null;
+				throw new ObjectNotFoundException("Response is not successful: remote server returned "+resp.code()+" "+resp.message());
 			}
 
 			try{
@@ -88,11 +89,11 @@ public class ActivityPub{
 //				System.out.println(converted.toString(4));
 				ActivityPubObject obj=ActivityPubObject.parse(converted);
 				if(obj==null)
-					return null;
+					throw new UnsupportedRemoteObjectTypeException("Unsupported object type "+converted.get("type"));
 				if(obj.activityPubID!=null && !obj.activityPubID.getHost().equalsIgnoreCase(uri.getHost()))
 					throw new BadRequestException("Domain in object ID ("+obj.activityPubID+") doesn't match domain in its URI ("+url+")");
 				return obj;
-			}catch(Exception x){
+			}catch(JLDException|JsonParseException x){
 				x.printStackTrace();
 				throw new IOException(x);
 			}

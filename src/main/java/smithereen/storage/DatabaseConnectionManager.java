@@ -23,7 +23,7 @@ public class DatabaseConnectionManager{
 		if(conn==null)
 			conn=new ConnectionWrapper();
 //		long t=System.currentTimeMillis();
-		conn.connection=DriverManager.getConnection("jdbc:mysql://"+Config.dbHost+"/"+Config.dbName+"?serverTimezone=GMT&connectionTimeZone=GMT&useUnicode=true&characterEncoding=UTF-8&forceConnectionTimeZoneToSession=true",
+		conn.connection=DriverManager.getConnection("jdbc:mysql://"+Config.dbHost+"/"+Config.dbName+"?serverTimezone=GMT&connectionTimeZone=GMT&useUnicode=true&characterEncoding=UTF-8&forceConnectionTimeZoneToSession=true&useSSL=false",
 				Config.dbUser, Config.dbPassword);
 //		System.out.println("open: "+(System.currentTimeMillis()-t));
 		conn.connection.createStatement().execute("SET @@SQL_MODE = REPLACE(@@SQL_MODE, 'STRICT_TRANS_TABLES', '')");

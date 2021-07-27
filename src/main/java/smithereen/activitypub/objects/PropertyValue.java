@@ -24,7 +24,7 @@ public class PropertyValue extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		value=Utils.sanitizeHTML(obj.get("value").getAsString());
 		return this;

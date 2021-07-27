@@ -92,10 +92,10 @@ public class ObjectLinkResolver{
 						throw new UnsupportedRemoteObjectTypeException();
 					}
 				}catch(IOException x){
-					x.printStackTrace();
+					throw new ObjectNotFoundException("Can't resolve remote object: "+link, x);
 				}
 			}
-			throw new ObjectNotFoundException("Can't resolve remote object: "+link);
+			throw new ObjectNotFoundException("Can't resolve remote object locally: "+link);
 		}
 
 		Matcher matcher=POSTS.matcher(link.getPath());

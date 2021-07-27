@@ -17,7 +17,7 @@ public class LocalImage extends Image implements SizedImage{
 	public Dimensions size=Dimensions.UNKNOWN;
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		localID=obj.get("_lid").getAsString();
 		JsonArray s=obj.getAsJsonArray("_sz");

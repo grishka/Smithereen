@@ -37,7 +37,7 @@ import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.libvips.VImage;
+import smithereen.libvips.VipsImage;
 
 public class MediaCache{
 
@@ -161,12 +161,12 @@ public class MediaCache{
 			if(mime.startsWith("image/")){
 				PhotoItem photo=new PhotoItem();
 				result=photo;
-				VImage img=null;
+				VipsImage img=null;
 				try{
-					img=new VImage(tmp.getAbsolutePath());
+					img=new VipsImage(tmp.getAbsolutePath());
 					//System.out.println(img.getWidth()+"x"+img.getHeight());
 					if(img.hasAlpha()){
-						VImage flat=img.flatten(255, 255, 255);
+						VipsImage flat=img.flatten(255, 255, 255);
 						img.release();
 						img=flat;
 					}

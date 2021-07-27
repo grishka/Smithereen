@@ -199,7 +199,7 @@ public class Post extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		JsonElement _content=obj.get("content");
 		if(_content.isJsonArray()){
@@ -215,40 +215,44 @@ public class Post extends ActivityPubObject{
 				summary=null;
 			}
 		}
-		user=UserStorage.getUserByActivityPubID(attributedTo);
-		if(url==null)
-			url=activityPubID;
-		if(published==null)
-			published=new Date();
+		try{
+			user=UserStorage.getUserByActivityPubID(attributedTo);
+			if(url==null)
+				url=activityPubID;
+			if(published==null)
+				published=new Date();
 
-		ActivityPubObject target=parse(optObject(obj, "target"), parserContext);
-		if(target instanceof ActivityPubCollection && target.attributedTo!=null && target.activityPubID!=null && inReplyTo==null){
-			URI ownerID=target.attributedTo;
-			if(Config.isLocal(ownerID)){
-				String[] parts=ownerID.getPath().split("/");
-				if(parts.length==3){ // "", "users", id
-					int id=Utils.parseIntOrDefault(parts[2], 0);
-					if("users".equals(parts[1])){
-						owner=UserStorage.getById(id);
-						if(owner instanceof ForeignUser)
-							owner=null;
-					}else if("groups".equals(parts[1])){
-						owner=GroupStorage.getById(id);
-						if(owner instanceof ForeignGroup)
-							owner=null;
+			ActivityPubObject target=parse(optObject(obj, "target"), parserContext);
+			if(target instanceof ActivityPubCollection && target.attributedTo!=null && target.activityPubID!=null && inReplyTo==null){
+				URI ownerID=target.attributedTo;
+				if(Config.isLocal(ownerID)){
+					String[] parts=ownerID.getPath().split("/");
+					if(parts.length==3){ // "", "users", id
+						int id=Utils.parseIntOrDefault(parts[2], 0);
+						if("users".equals(parts[1])){
+							owner=UserStorage.getById(id);
+							if(owner instanceof ForeignUser)
+								owner=null;
+						}else if("groups".equals(parts[1])){
+							owner=GroupStorage.getById(id);
+							if(owner instanceof ForeignGroup)
+								owner=null;
+						}
 					}
-				}
-			}else{
-				owner=UserStorage.getForeignUserByActivityPubID(ownerID);
-				if(owner==null)
-					owner=GroupStorage.getForeignGroupByActivityPubID(ownerID);
+				}else{
+					owner=UserStorage.getForeignUserByActivityPubID(ownerID);
+					if(owner==null)
+						owner=GroupStorage.getForeignGroupByActivityPubID(ownerID);
 
-				activityPubTarget=target;
+					activityPubTarget=target;
+				}
+				if(owner!=null && !target.activityPubID.equals(owner.getWallURL()))
+					owner=null;
+			}else{
+				owner=user;
 			}
-			if(owner!=null && !target.activityPubID.equals(owner.getWallURL()))
-				owner=null;
-		}else{
-			owner=user;
+		}catch(SQLException x){
+			throw new IllegalStateException(x);
 		}
 		return this;
 	}

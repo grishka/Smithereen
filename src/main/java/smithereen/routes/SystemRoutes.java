@@ -45,7 +45,7 @@ import smithereen.data.User;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
-import smithereen.libvips.VImage;
+import smithereen.libvips.VipsImage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
@@ -53,6 +53,7 @@ import smithereen.storage.PostStorage;
 import smithereen.storage.SearchStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.BlurHash;
 import smithereen.util.JsonObjectBuilder;
 import spark.Request;
 import spark.Response;
@@ -203,7 +204,7 @@ public class SystemRoutes{
 			File tmpDir = new File(System.getProperty("java.io.tmpdir"));
 			File temp=new File(tmpDir, keyHex);
 			part.write(keyHex);
-			VImage img=new VImage(temp.getAbsolutePath()+(mime.equals("image/png") ? "" : "[autorotate=true]"));
+			VipsImage img=new VipsImage(temp.getAbsolutePath());
 
 			LocalImage photo=new LocalImage();
 			File postMediaDir=new File(Config.uploadPath, "post_media");
@@ -220,7 +221,7 @@ public class SystemRoutes{
 				photo.path="post_media";
 				photo.width=outSize[0];
 				photo.height=outSize[1];
-				photo.blurHash=img.blurHash(4, 4);
+				photo.blurHash=BlurHash.encode(img, 4, 4);
 				if(req.queryParams("draft")!=null)
 					sess.postDraftAttachments.add(photo);
 				MediaCache.putDraftAttachment(photo, self.id);

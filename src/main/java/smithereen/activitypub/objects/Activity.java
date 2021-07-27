@@ -36,7 +36,7 @@ public abstract class Activity extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		actor=tryParseLinkOrObject(Objects.requireNonNull(obj.get("actor"), "actor must not be null"), parserContext);
 		object=tryParseLinkOrObject(Objects.requireNonNull(obj.get("object"), "object must not be null"), parserContext);

@@ -30,7 +30,7 @@ public class Relationship extends ActivityPubObject{
 	}
 
 	@Override
-	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext) throws Exception{
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		relationship=tryParseURL(obj.get("relationship").getAsString());
 		object=tryParseLinkOrObject(obj.get("object"), parserContext);
