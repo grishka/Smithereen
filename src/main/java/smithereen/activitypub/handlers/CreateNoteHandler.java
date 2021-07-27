@@ -1,11 +1,15 @@
 package smithereen.activitypub.handlers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Objects;
 
+import smithereen.Config;
 import smithereen.ObjectLinkResolver;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.data.Group;
@@ -28,6 +32,8 @@ import smithereen.storage.UserStorage;
 import spark.utils.StringUtils;
 
 public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, Post>{
+	private static final Logger LOG=LoggerFactory.getLogger(CreateNoteHandler.class);
+
 	@Override
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Create activity, Post post) throws SQLException{
 		if(!post.attributedTo.equals(actor.activityPubID))
@@ -102,7 +108,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				}
 			}
 			if(!addressesAnyFollowers){
-				System.out.println("Dropping this post because it's public but doesn't address any followers");
+				LOG.warn("Dropping this post {} because it's public but doesn't address any followers", post.activityPubID);
 				return;
 			}
 		}
@@ -121,7 +127,20 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 						context.forwardActivity(PostStorage.getInboxesForPostInteractionForwarding(topLevel), topLevel.user);
 				}
 			}else{
-				System.out.println("Don't have parent post "+post.inReplyTo+" for "+post.activityPubID);
+				LOG.info("Don't have parent post {} for {}", post.inReplyTo, post.activityPubID);
+				boolean mentionsLocalUsers=false;
+				for(ActivityPubObject tag:post.tag){
+					if(tag instanceof Mention){
+						if(Config.isLocal(((Mention) tag).href)){
+							mentionsLocalUsers=true;
+							break;
+						}
+					}
+				}
+				if(!mentionsLocalUsers){
+					LOG.warn("Dropping post {} because its parent isn't known and it doesn't mention local users.", post.activityPubID);
+					return;
+				}
 				ActivityPubWorker.getInstance().fetchReplyThread(post);
 			}
 		}else{
