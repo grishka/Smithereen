@@ -24,6 +24,7 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
+import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
@@ -338,8 +339,8 @@ public class Post extends ActivityPubObject{
 						att.image=new CachedRemoteImage(item);
 					}else{
 						SizedImage.Dimensions size=SizedImage.Dimensions.UNKNOWN;
-						if(o instanceof Image){
-							Image im=(Image) o;
+						if(o instanceof Document){
+							Document im=(Document) o;
 							if(im.width>0 && im.height>0){
 								size=new SizedImage.Dimensions(im.width, im.height);
 							}
