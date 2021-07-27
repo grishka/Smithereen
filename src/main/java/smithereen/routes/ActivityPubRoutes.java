@@ -6,6 +6,8 @@ import com.google.gson.JsonParser;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -122,6 +124,8 @@ import static smithereen.Utils.parseIntOrDefault;
 import static smithereen.Utils.parseSignatureHeader;
 
 public class ActivityPubRoutes{
+
+	private static final Logger LOG=LoggerFactory.getLogger(ActivityPubRoutes.class);
 
 	private static ArrayList<ActivityTypeHandlerRecord<?, ?, ?, ?, ?>> typeHandlers=new ArrayList<>();
 
@@ -659,8 +663,18 @@ public class ActivityPubRoutes{
 					}
 				}
 			}else{
-				// special case: fetch the object of Announce{Note} or Add{...}
-				aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add, false, false);
+				if(activity instanceof Like){
+					try{
+						aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, false, false, false);
+					}catch(ObjectNotFoundException x){
+						// Fail silently. Pleroma sends all likes to followers, including for objects they may not have.
+						LOG.info("Activity object not known for {}: {}", activity.getType(), activity.object.link);
+						return "";
+					}
+				}else{
+					// special case: fetch the object of Announce{Note} or Add{...}
+					aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add, false, false);
+				}
 			}
 			for(ActivityTypeHandlerRecord r : typeHandlers){
 				if(r.actorClass.isInstance(actor)){
