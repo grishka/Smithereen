@@ -142,6 +142,10 @@ class PostForm{
 	}
 
 	private uploadFile(f:File):void{
+		if(f.size>10*1024*1024){
+			new MessageBox(lang("error"), lang(["max_file_size_exceeded", 10]), lang("ok")).show();
+			return;
+		}
 		var objURL=URL.createObjectURL(f);
 
 		var img:HTMLElement;

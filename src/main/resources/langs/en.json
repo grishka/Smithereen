@@ -333,5 +333,6 @@
   "search_people": "People",
   "search_groups": "Groups",
   "search_external_objects": "External objects",
-  "nothing_found": "Nothing found"
+  "nothing_found": "Nothing found",
+  "max_file_size_exceeded": "This file is larger than the maximum size of %d MB."
 }

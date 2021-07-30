@@ -20,16 +20,17 @@ interface String{
 	escapeHTML():string;
 }
 
-String.prototype.format=function(...args:(string|number)[]){
+function formatString(str:string, args:(string|number)[]){
 	var currentIndex=0;
-	return this.replace(/%(?:(\d+)\$)?([ds%])/gm, function(match:string, g1:string, g2:string){
+	console.log(str);
+	return str.replace(/%(?:(\d+)\$)?([ds%])/gm, function(match:string, g1:string, g2:string){
 		if(g2=="%")
 			return "%";
 		var index=g1 ? (parseInt(g1)-1) : currentIndex;
 		currentIndex++;
 		switch(g2){
 			case "d":
-				return Number(args[index]);
+				return Number(args[index]).toString();
 			case "s":
 				return args[index].toString().escapeHTML();
 		}
@@ -313,13 +314,13 @@ function isVisible(el:HTMLElement):boolean{
 	return el.style.display!="none";
 }
 
-function lang(key:string|string[]):string{
+function lang(key:string|(string|number)[]):string{
 	if(typeof key==="string")
 		return (langKeys[key] ? langKeys[key] : key) as string;
 	var _key=key[0];
 	if(!langKeys[_key])
 		return key.toString().escapeHTML();
-	return (langKeys[_key] as string).format.apply(key.slice(1));
+	return formatString(langKeys[_key] as string, key.slice(1));
 }
 
 function setGlobalLoading(loading:boolean):void{

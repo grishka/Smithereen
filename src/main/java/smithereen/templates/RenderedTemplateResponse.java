@@ -17,11 +17,12 @@ public class RenderedTemplateResponse{
 	final HashMap<String, Object> model=new HashMap<>();
 	private PebbleTemplate template;
 	private Locale locale;
+	private Request req;
 
 	public RenderedTemplateResponse(String templateName, Request req){
 		this.templateName=templateName;
-		template=getAndPrepareTemplate(req);
 		locale=Utils.localeForRequest(req);
+		this.req=req;
 		req.attribute("isTemplate", Boolean.TRUE);
 	}
 
@@ -35,8 +36,7 @@ public class RenderedTemplateResponse{
 	}
 
 	public void renderToWriter(Writer writer) throws IOException{
-		if(template==null)
-			throw new IllegalStateException("template==null");
+		template=getAndPrepareTemplate(req);
 		template.evaluate(writer, model, locale);
 	}
 

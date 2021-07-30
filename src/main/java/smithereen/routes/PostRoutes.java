@@ -300,7 +300,7 @@ public class PostRoutes{
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self.user.id);
 		if(!feed.isEmpty() && startFromID==0)
 			startFromID=feed.get(0).id;
-		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw");
+		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw", "max_file_size_exceeded");
 		return new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed).with("postInteractions", interactions)
 				.with("paginationURL", "/feed?startFrom="+startFromID+"&offset=").with("total", total[0]).with("offset", offset)
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);

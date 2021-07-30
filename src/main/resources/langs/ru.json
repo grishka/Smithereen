@@ -333,5 +333,6 @@
   "search_people": "Люди",
   "search_groups": "Группы",
   "search_external_objects": "Внешние объекты",
-  "nothing_found": "Ничего не найдено"
+  "nothing_found": "Ничего не найдено",
+  "max_file_size_exceeded": "Этот файл превышает максимальный размер в %d Мб."
 }
