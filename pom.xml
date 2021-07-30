@@ -30,7 +30,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>smithereen.Main</mainClass>
+							<mainClass>smithereen.SmithereenApplication</mainClass>
 						</manifest>
 					</archive>
 					<finalName>smithereen</finalName>
@@ -52,7 +52,7 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>smithereen.Main</mainClass>
+							<mainClass>smithereen.SmithereenApplication</mainClass>
 						</manifest>
 					</archive>
 					<finalName>smithereen</finalName>

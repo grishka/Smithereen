@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Objects;
 
+import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.data.Account;
 import smithereen.data.ForeignGroup;
@@ -59,7 +60,8 @@ import spark.utils.StringUtils;
 import static spark.Spark.*;
 import static smithereen.sparkext.SparkExtension.*;
 
-public class Main{
+public class SmithereenApplication{
+	private static final Logger LOG=LoggerFactory.getLogger(SmithereenApplication.class);
 
 	public static void main(String[] args){
 		if(args.length==0){
@@ -137,7 +139,7 @@ public class Main{
 			}
 		});
 
-		get("/", Main::indexPage);
+		get("/", SmithereenApplication::indexPage);
 
 		getLoggedIn("/feed", PostRoutes::feed);
 
@@ -190,7 +192,7 @@ public class Main{
 
 		path("/activitypub", ()->{
 			post("/sharedInbox", ActivityPubRoutes::sharedInbox);
-			get("/sharedInbox", Main::methodNotAllowed);
+			get("/sharedInbox", SmithereenApplication::methodNotAllowed);
 			getLoggedIn("/externalInteraction", ActivityPubRoutes::externalInteraction);
 			get("/nodeinfo/2.0", ActivityPubRoutes::nodeInfo);
 			get("/nodeinfo/2.1", ActivityPubRoutes::nodeInfo);
@@ -232,9 +234,9 @@ public class Main{
 			});
 
 			post("/inbox", ActivityPubRoutes::userInbox);
-			get("/inbox", Main::methodNotAllowed);
+			get("/inbox", SmithereenApplication::methodNotAllowed);
 			get("/outbox", ActivityPubRoutes::userOutbox);
-			post("/outbox", Main::methodNotAllowed);
+			post("/outbox", SmithereenApplication::methodNotAllowed);
 			getActivityPubCollection("/followers", 100, ActivityPubRoutes::userFollowers);
 			getActivityPubCollection("/following", 100, ActivityPubRoutes::userFollowing);
 			getActivityPubCollection("/wall", 100, ActivityPubRoutes::userWall);
@@ -270,9 +272,9 @@ public class Main{
 			getWithCSRF("/leave", GroupsRoutes::leave);
 
 			post("/inbox", ActivityPubRoutes::groupInbox);
-			get("/inbox", Main::methodNotAllowed);
+			get("/inbox", SmithereenApplication::methodNotAllowed);
 			getActivityPubCollection("/outbox", 50, ActivityPubRoutes::groupOutbox);
-			post("/outbox", Main::methodNotAllowed);
+			post("/outbox", SmithereenApplication::methodNotAllowed);
 			getActivityPubCollection("/followers", 50, ActivityPubRoutes::groupFollowers);
 			getActivityPubCollection("/wall", 50, ActivityPubRoutes::groupWall);
 
@@ -459,6 +461,25 @@ public class Main{
 			}catch(SQLException ignore){}
 			FloodControl.PASSWORD_RESET.gc();
 		});
+
+		Runtime.getRuntime().addShutdownHook(new Thread(()->{
+			LOG.info("Stopping Spark");
+			Spark.awaitStop();
+			LOG.info("Stopped Spark");
+			// These try-catch blocks are needed because these classes might not have been loaded by the time the process is shut down,
+			// and the JVM refuses to load any new classes from within a shutdown hook.
+			try{
+				ActivityPubWorker.shutDown();
+			}catch(NoClassDefFoundError ignore){}
+			try{
+				MaintenanceScheduler.shutDown();
+			}catch(NoClassDefFoundError ignore){}
+			try{
+				Mailer.shutDown();
+			}catch(NoClassDefFoundError ignore){}
+			// Set the exit code to 0 so systemd doesn't say "Failed with result 'exit-code'".
+			Runtime.getRuntime().halt(0);
+		}));
 	}
 
 	private static Object indexPage(Request req, Response resp){

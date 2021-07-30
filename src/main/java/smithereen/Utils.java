@@ -12,6 +12,7 @@ import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Whitelist;
+import org.slf4j.Logger;
 import org.unbescape.html.HtmlEscape;
 
 import java.io.ByteArrayInputStream;
@@ -40,6 +41,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.TimeZone;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -687,6 +690,15 @@ public class Utils{
 			return false;
 		Matcher matcher=USERNAME_DOMAIN_PATTERN.matcher(in);
 		return matcher.find() && matcher.start()==0 && matcher.end()==in.length();
+	}
+
+	public static void stopExecutorBlocking(ExecutorService executor, Logger log){
+		executor.shutdown();
+		try{
+			while(!executor.awaitTermination(1, TimeUnit.SECONDS)){
+				log.info("Still waiting...");
+			}
+		}catch(InterruptedException ignore){}
 	}
 
 	public interface MentionCallback{

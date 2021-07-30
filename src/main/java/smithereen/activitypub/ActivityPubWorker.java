@@ -59,7 +59,7 @@ import smithereen.storage.UserStorage;
 import spark.utils.StringUtils;
 
 public class ActivityPubWorker{
-	private static final ActivityPubWorker instance=new ActivityPubWorker();
+	private static ActivityPubWorker instance;
 	private static final Logger LOG=LoggerFactory.getLogger(ActivityPubWorker.class);
 	private static final int MAX_COMMENTS=1000;
 
@@ -70,11 +70,21 @@ public class ActivityPubWorker{
 	private HashMap<URI, Future<Post>> fetchingAllReplies=new HashMap<>();
 
 	public static ActivityPubWorker getInstance(){
+		if(instance==null)
+			instance=new ActivityPubWorker();
 		return instance;
 	}
 
 	private ActivityPubWorker(){
 		executor=new ForkJoinPool(Runtime.getRuntime().availableProcessors()*2);
+	}
+
+	public static void shutDown(){
+		if(instance==null)
+			return;
+		LOG.info("Stopping thread pool");
+		Utils.stopExecutorBlocking(instance.executor, LOG);
+		LOG.info("Stopped");
 	}
 
 	private URI actorInbox(ForeignUser actor){

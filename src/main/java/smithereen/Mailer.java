@@ -3,6 +3,9 @@ package smithereen;
 import com.mitchellbosecke.pebble.PebbleEngine;
 import com.mitchellbosecke.pebble.template.PebbleTemplate;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.Collections;
@@ -33,6 +36,7 @@ import spark.utils.StringUtils;
 
 public class Mailer{
 	private static Mailer instance;
+	private static final Logger LOG=LoggerFactory.getLogger(Mailer.class);
 
 	private Session session;
 	private PebbleEngine templateEngine;
@@ -49,6 +53,14 @@ public class Mailer{
 		executor=Executors.newSingleThreadExecutor();
 		updateSession();
 		templateEngine=Templates.makeEngineInstance("email");
+	}
+
+	public static void shutDown(){
+		if(instance==null)
+			return;
+		LOG.info("Stopping thread pool");
+		Utils.stopExecutorBlocking(instance.executor, LOG);
+		LOG.info("Stopped");
 	}
 
 	public void updateSession(){
