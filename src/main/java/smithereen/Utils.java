@@ -90,7 +90,7 @@ public class Utils{
 			.disableHtmlEscaping()
 			.registerTypeAdapter(Instant.class, new InstantMillisJsonAdapter())
 			.registerTypeAdapter(Locale.class, new LocaleJsonAdapter())
-			.registerTypeAdapter(TimeZone.class, new TimeZoneJsonAdapter())
+			.registerTypeHierarchyAdapter(TimeZone.class, new TimeZoneJsonAdapter())
 			.create();
 
 	static{
