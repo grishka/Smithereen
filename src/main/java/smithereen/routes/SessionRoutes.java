@@ -41,11 +41,9 @@ public class SessionRoutes{
 	}
 
 	public static Object login(Request req, Response resp) throws SQLException{
-		SessionInfo info=Utils.sessionInfo(req);
-		if(info!=null && info.account!=null){
-			resp.redirect("/feed");
+		if(redirectIfLoggedIn(req, resp))
 			return "";
-		}
+
 		String to=req.queryParams("to");
 		if(to!=null && to.startsWith("/activitypub")){
 			req.attribute("templateDir", "popup");
@@ -67,6 +65,15 @@ public class SessionRoutes{
 		}
 		model.with("additionalParams", "?"+req.queryString()).with("title", lang(req).get("login_title")+" | "+Config.serverDisplayName);
 		return model;
+	}
+
+	private static boolean redirectIfLoggedIn(Request req, Response resp){
+		SessionInfo info=Utils.sessionInfo(req);
+		if(info!=null && info.account!=null){
+			resp.redirect("/feed");
+			return true;
+		}
+		return false;
 	}
 
 	public static Object logout(Request req, Response resp) throws SQLException{
@@ -99,6 +106,9 @@ public class SessionRoutes{
 	}
 
 	public static Object register(Request req, Response resp) throws SQLException{
+		if(redirectIfLoggedIn(req, resp))
+			return "";
+
 		String username=req.queryParams("username");
 		if(StringUtils.isEmpty(username) || !Utils.isValidUsername(username))
 			return regError(req, "err_reg_invalid_username");
@@ -116,6 +126,9 @@ public class SessionRoutes{
 	}
 
 	public static Object doRegister(Request req, Response resp) throws SQLException{
+		if(redirectIfLoggedIn(req, resp))
+			return "";
+
 		String username=req.queryParams("username");
 		String password=req.queryParams("password");
 		String password2=req.queryParams("password2");
@@ -160,6 +173,9 @@ public class SessionRoutes{
 	}
 
 	public static Object registerForm(Request req, Response resp){
+		if(redirectIfLoggedIn(req, resp))
+			return "";
+
 		if(Config.signupMode==Config.SignupMode.CLOSED && StringUtils.isEmpty(req.queryParams("invite")))
 			return wrapError(req, resp, "signups_closed");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("register", req);
@@ -172,6 +188,9 @@ public class SessionRoutes{
 	}
 
 	public static Object resetPasswordForm(Request req, Response resp){
+		if(redirectIfLoggedIn(req, resp))
+			return "";
+
 		return new RenderedTemplateResponse("reset_password", req).with("title", lang(req).get("reset_password_title"));
 	}
 
