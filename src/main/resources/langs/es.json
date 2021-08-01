@@ -51,7 +51,7 @@
   "register": "Registrarse",
   "email": "Correo electrónico",
   "username": "Nombre de usuario",
-  "username_explain": "Puede contener letras, números, punto y guión bajo. Elige bien, ¡no podrás cambiarlo!",
+  "username_explain": "Puede contener letras, números, punto y guión bajo.",
   "created": "Creado",
   "create_invitation": "Crear una nueva invitación",
   "no_invitations": "No tienes ninguna invitación",

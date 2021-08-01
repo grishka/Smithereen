@@ -294,11 +294,26 @@ a, a:link, a:visited, .link{
 	}*/
 }
 
-input[type=text], input[type=password], input[type=email], input[type=date], input[type=number], textarea, select{
+input[type=text], input[type=password], input[type=email], input[type=date], input[type=number], textarea, select, .prefixedInput{
 	border: solid 1px $textAreaBorder;
 	padding: 3px;
 	appearance: none;
 	background-color: $bg;
+}
+
+.prefixedInput{
+	display: inline-flex;
+	padding: 0 0 0 3px;
+	input[type=text]{
+		border: none;
+		padding-left: 0;
+		flex-grow: 1;
+	}
+	.prefix{
+		color: $auxiliaryGrey;
+		padding: 3px 0;
+		cursor: text;
+	}
 }
 
 textarea{

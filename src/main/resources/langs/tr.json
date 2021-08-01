@@ -51,7 +51,7 @@
   "register": "Kayıt ol",
   "email": "E-posta",
   "username": "Kullanıcı adı",
-  "username_explain": "Harf, sayı, nokta ve alt çizgi içerebilir. Akıllıca seç — değiştiremeyeceksin!",
+  "username_explain": "Harf, sayı, nokta ve alt çizgi içerebilir.",
   "created": "Oluşturuldu",
   "create_invitation": "Yeni bir davetiye oluştur",
   "no_invitations": "Herhangi bir davetiyen yok",

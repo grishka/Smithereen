@@ -89,6 +89,7 @@ public class Templates{
 				.with("jsLangKeys", jsLang)
 				.with("staticHash", Utils.staticFileHash)
 				.with("serverName", Config.getServerDisplayName())
+				.with("serverDomain", Config.domain)
 				.with("isMobile", req.attribute("mobile")!=null);
 	}
 

@@ -51,7 +51,7 @@
   "register": "Sign up",
   "email": "E-mail",
   "username": "Username",
-  "username_explain": "Can contain letters, numbers, period and underscore. Choose wisely — you won't be able to change it!",
+  "username_explain": "Can contain letters, numbers, period and underscore.",
   "created": "Created",
   "create_invitation": "Create a new invitation",
   "no_invitations": "You don't have any invitations",

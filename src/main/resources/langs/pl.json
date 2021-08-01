@@ -51,7 +51,7 @@
   "register": "Zarejestruj się",
   "email": "Adres e-mail",
   "username": "Nazwa użytkownika",
-  "username_explain": "Może zawierać litery, cyfry, kropki lub podkreślniki. Wybierz uważnie — nie możesz go później zmienić!",
+  "username_explain": "Może zawierać litery, cyfry, kropki lub podkreślniki.",
   "created": "Utworzono",
   "create_invitation": "Utwórz nowe zaproszenie",
   "no_invitations": "Nie masz żadnych zaproszeń",

@@ -168,6 +168,19 @@ input[type=text], input[type=password], input[type=email], input[type=date], tex
 	padding: 8px;
 }
 
+.prefixedInput{
+	padding: 0 0 0 8px;
+	border-radius: 4px;
+	input[type=text]{
+		padding-left: 3px;
+	}
+	.prefix{
+		color: $auxiliaryGrey;
+		padding: 8px 0;
+		cursor: text;
+	}
+}
+
 select{
 	background: #FFF svg-load("img/material/ic_expand.svg") no-repeat center right;
 }
@@ -481,7 +494,7 @@ select{
 		.label{
 			margin-bottom: 4px;
 		}
-		input:not([type=radio]):not([type=checkbox]), textarea, select{
+		input:not([type=radio]):not([type=checkbox]), textarea, select, .control{
 			width: 100%;
 			min-height: 36px;
 		}

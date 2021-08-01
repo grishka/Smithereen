@@ -51,7 +51,7 @@
   "register": "Registrieren",
   "email": "E-Mail",
   "username": "Benutzername",
-  "username_explain": "Kann Buchstaben, Zahlen, Punkte und Unterstriche enthalten. Wähle weise — du kannst ihn später nicht ändern!",
+  "username_explain": "Kann Buchstaben, Zahlen, Punkte und Unterstriche enthalten.",
   "created": "Erstellt",
   "create_invitation": "Neue Einladung erstellen",
   "no_invitations": "Es liegen keine Einladungen vor",

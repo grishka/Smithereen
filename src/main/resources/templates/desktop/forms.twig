@@ -22,7 +22,11 @@
 			<label for="{{name}}">{{label}}</label>:
 		</td>
 		<td>
-			<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}" class="control"
+			{% if options.prefix is not empty %}
+			<div class="prefixedInput control">
+				<label class="prefix" for="{{ name }}">{{ options.prefix }}</label>
+			{% endif %}
+			<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}" class="{{ options.prefix is empty ?  'control' : '' }}"
 			{%- if options.maxlength is not null %} maxlength="{{options.maxlength}}"{%endif%}
 			{%- if options.minlength is not null %} minlength="{{options.minlength}}"{%endif%}
 			{%- if options.required %} required{%endif%}
@@ -30,6 +34,9 @@
 			{%- if options.pattern is not empty %} pattern="{{ options.pattern }}"{% endif %}
 			{%- if options.min is not null %} min="{{options.min}}"{%endif%}
 			{%- if options.max is not null %} max="{{ options.max }}"{%endif%}/>
+			{% if options.prefix is not empty %}
+			</div>
+			{% endif %}
 		{%if options.explanation is not null%}
 			<br/><span class="formExplanation">{{options.explanation}}</span>
 		{%endif%}
