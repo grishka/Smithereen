@@ -70,11 +70,13 @@
 		{%include "wall_post_form" with {'wallOwner': group, 'isGroup': true}%}
 	</div>
 {%endif%}
+	<div id="postList">
 	{%for post in wall%}
 		<div class="card">
 			{%include "wall_post" with {'post': post}%}
 		</div>
 	{%endfor%}
+	</div>
 	<div class="singleColumn">
 		{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (group.profileURL+"?offset=")}%}
 	</div>
