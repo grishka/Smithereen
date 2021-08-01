@@ -91,6 +91,9 @@ public class PostRoutes{
 		if(text.length()==0 && StringUtils.isEmpty(req.queryParams("attachments")))
 			throw new BadRequestException("Empty post");
 
+		if(!owner.hasWall())
+			throw new BadRequestException("This actor doesn't support wall posts");
+
 		final ArrayList<User> mentionedUsers=new ArrayList<>();
 		text=preprocessPostHTML(text, new MentionCallback(){
 			@Override

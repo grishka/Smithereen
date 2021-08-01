@@ -1,5 +1,14 @@
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
 <div class="singleColumn wallPostForm collapsed" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}">
+	{% if not wallOwner.hasWall %}
+	<div class="wallPostFormError">
+			{% if isGroup %}
+		{{ L('server_of_group_no_wall') }}
+	{% else %}
+		{{ LI('server_of_user_X_no_wall', first=wallOwner.firstName, gender=wallOwner.gender) }}
+	{% endif %}
+	</div>
+	{% else %}
 	<form action="{{wallOwner.typeAndIdForURL}}/createWallPost" method="post">
 	{% if isGroup %}
 		{% set fieldPlaceholder=L('write_on_group_wall') %}
@@ -42,4 +51,5 @@
 			<input type="file" name="file" accept="image/*"/><input type="submit" value="{{L('attach')}}"/>
 		</noscript>
 	</form>
+	{% endif %}
 </div>
