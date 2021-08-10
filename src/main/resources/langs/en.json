@@ -334,5 +334,11 @@
   "search_groups": "Groups",
   "search_external_objects": "External objects",
   "nothing_found": "Nothing found",
-  "max_file_size_exceeded": "This file is larger than the maximum size of %d MB."
+  "max_file_size_exceeded": "This file is larger than the maximum size of %d MB.",
+  "in_reply_to_before": "In reply to ",
+  "in_reply_to_name": "%s",
+  "in_reply_to_after": "",
+  "replied_to_before": "replied to ",
+  "replied_to_name": "%s",
+  "replied_to_after": ""
 }

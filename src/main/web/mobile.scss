@@ -1,13 +1,14 @@
 $imgAreaSelectorMarkerSize: 20px;
 $imgAreaSelectorMarkerBorderRadius: 10px;
 $contentPadding: 8px;
+$mediumWeight: 500;
 
 @import "common.scss";
 
 
 body, html{
 	width: 100%;
-	overflow-x: hidden;
+	/*overflow-x: hidden;*/
 }
 
 body{
@@ -16,6 +17,7 @@ body{
 
 .pageContent{
 	padding-top: 56px;
+	min-height: 100vh;
 }
 
 body, p, textarea, input, select, button{
@@ -50,14 +52,12 @@ span.wideOnly{
 	overflow-x: hidden;
 	white-space: nowrap;
 	box-shadow:
-	  0 0.2px 0.2px rgba(0, 0, 0, 0.02),
-	  0 0.4px 0.4px rgba(0, 0, 0, 0.028),
-	  0 0.8px 0.8px rgba(0, 0, 0, 0.035),
-	  0 1.3px 1.3px rgba(0, 0, 0, 0.042),
-	  0 2.5px 2.5px rgba(0, 0, 0, 0.05),
-	  0 6px 6px rgba(0, 0, 0, 0.07)
-	;
-	
+		0 0.2px 0.2px rgba(0, 0, 0, 0.02),
+		0 0.4px 0.4px rgba(0, 0, 0, 0.028),
+		0 0.8px 0.8px rgba(0, 0, 0, 0.035),
+		0 1.3px 1.3px rgba(0, 0, 0, 0.042),
+		0 2.5px 2.5px rgba(0, 0, 0, 0.05),
+		0 6px 6px rgba(0, 0, 0, 0.07);
 	.menuButton{
 		width: 56px;
 		float: left;
@@ -376,12 +376,11 @@ select{
 
 .card{
 	box-shadow:
-	  0 0.1px 0.3px rgba(0, 0, 0, 0.022),
-	  0 0.26px 0.9px rgba(0, 0, 0, 0.031),
-	  0 0.53px 1.8px rgba(0, 0, 0, 0.039),
-	  0 1.1px 3.7px rgba(0, 0, 0, 0.048),
-	  0 3px 10px rgba(0, 0, 0, 0.07)
-	;
+		0 0.1px 0.3px rgba(0, 0, 0, 0.022),
+		0 0.26px 0.9px rgba(0, 0, 0, 0.031),
+		0 0.53px 1.8px rgba(0, 0, 0, 0.039),
+		0 1.1px 3.7px rgba(0, 0, 0, 0.048),
+		0 3px 10px rgba(0, 0, 0, 0.07);
 	background: $bg;
 	margin: 8px 0;
 	&.padded{
@@ -462,24 +461,22 @@ select{
 			.shadowTop{
 				top: 0;
 				box-shadow:
-				  0 0.2px 0.2px rgba(0, 0, 0, 0.02) inset,
-				  0 0.4px 0.4px rgba(0, 0, 0, 0.028) inset,
-				  0 0.8px 0.8px rgba(0, 0, 0, 0.035) inset,
-				  0 1.3px 1.3px rgba(0, 0, 0, 0.042) inset,
-				  0 2.5px 2.5px rgba(0, 0, 0, 0.05) inset,
-				  0 6px 6px rgba(0, 0, 0, 0.07) inset
-				;
+					0 0.2px 0.2px rgba(0, 0, 0, 0.02) inset,
+					0 0.4px 0.4px rgba(0, 0, 0, 0.028) inset,
+					0 0.8px 0.8px rgba(0, 0, 0, 0.035) inset,
+					0 1.3px 1.3px rgba(0, 0, 0, 0.042) inset,
+					0 2.5px 2.5px rgba(0, 0, 0, 0.05) inset,
+					0 6px 6px rgba(0, 0, 0, 0.07) inset;
 			}
 			.shadowBottom{
 				bottom: 0;
 				box-shadow:
-				  0 -0.2px 0.2px rgba(0, 0, 0, 0.02) inset,
-				  0 -0.4px 0.4px rgba(0, 0, 0, 0.028) inset,
-				  0 -0.8px 0.8px rgba(0, 0, 0, 0.035) inset,
-				  0 -1.3px 1.3px rgba(0, 0, 0, 0.042) inset,
-				  0 -2.5px 2.5px rgba(0, 0, 0, 0.05) inset,
-				  0 -6px 6px rgba(0, 0, 0, 0.07) inset
-				;
+					0 -0.2px 0.2px rgba(0, 0, 0, 0.02) inset,
+					0 -0.4px 0.4px rgba(0, 0, 0, 0.028) inset,
+					0 -0.8px 0.8px rgba(0, 0, 0, 0.035) inset,
+					0 -1.3px 1.3px rgba(0, 0, 0, 0.042) inset,
+					0 -2.5px 2.5px rgba(0, 0, 0, 0.05) inset,
+					0 -6px 6px rgba(0, 0, 0, 0.07) inset;
 			}
 			&.scrollAtTop .shadowTop, &.scrollAtBottom .shadowBottom{
 				opacity: 0;
@@ -746,13 +743,12 @@ select{
 	}
 	.beingDragged .reorderableItem{
 		box-shadow:
-		  0 0.2px 0.2px rgba(0, 0, 0, 0.02),
-		  0 0.4px 0.4px rgba(0, 0, 0, 0.028),
-		  0 0.8px 0.8px rgba(0, 0, 0, 0.035),
-		  0 1.3px 1.3px rgba(0, 0, 0, 0.042),
-		  0 2.5px 2.5px rgba(0, 0, 0, 0.05),
-		  0 6px 6px rgba(0, 0, 0, 0.07)
-		;
+			0 0.2px 0.2px rgba(0, 0, 0, 0.02),
+			0 0.4px 0.4px rgba(0, 0, 0, 0.028),
+			0 0.8px 0.8px rgba(0, 0, 0, 0.035),
+			0 1.3px 1.3px rgba(0, 0, 0, 0.042),
+			0 2.5px 2.5px rgba(0, 0, 0, 0.05),
+			0 6px 6px rgba(0, 0, 0, 0.07);
 		opacity: .8;
 	}
 }
@@ -847,12 +843,11 @@ textarea{
 #qsearchFieldWrap, #qsearchResultsWrap{
 	background: $bg;
 	box-shadow:
-	  0 0.1px 0.3px rgba(0, 0, 0, 0.022),
-	  0 0.26px 0.9px rgba(0, 0, 0, 0.031),
-	  0 0.53px 1.8px rgba(0, 0, 0, 0.039),
-	  0 1.1px 3.7px rgba(0, 0, 0, 0.048),
-	  0 3px 10px rgba(0, 0, 0, 0.07)
-	;
+		0 0.1px 0.3px rgba(0, 0, 0, 0.022),
+		0 0.26px 0.9px rgba(0, 0, 0, 0.031),
+		0 0.53px 1.8px rgba(0, 0, 0, 0.039),
+		0 1.1px 3.7px rgba(0, 0, 0, 0.048),
+		0 3px 10px rgba(0, 0, 0, 0.07);
 	border-radius: 4px;
 }
 
@@ -950,4 +945,92 @@ textarea{
 
 .wallPostFormError{
 	padding: 8px;
+}
+
+.mobileCommentForm{
+	position: sticky;
+	bottom: 0;
+	background: $bg;
+	box-shadow:
+		0 -0.1px 0.3px rgba(0, 0, 0, 0.022),
+		0 -0.26px 0.9px rgba(0, 0, 0, 0.031),
+		0 -0.53px 1.8px rgba(0, 0, 0, 0.039),
+		0 -1.1px 3.7px rgba(0, 0, 0, 0.048),
+		0 -3px 10px rgba(0, 0, 0, 0.07);
+	margin-top: 16px;
+	form{
+		display: flex;
+		button{
+			width: 48px;
+			height: 48px;
+			background: no-repeat center;
+			padding: 0;
+			margin: 0;
+			flex-shrink: 0;
+			align-self: flex-end;
+			&.attachBtn{
+				background-image: svg-load('img/material/ic_attachment.svg', fill: $auxiliaryGrey);
+			}
+			&.sendBtn{
+				background-image: svg-load('img/material/ic_send.svg', fill: $iconColor);
+			}
+		}
+		textarea{
+			flex-grow: 1;
+			align-self: center;
+			padding-left: 4px;
+			padding-right: 4px;
+			min-height: 34px;
+			max-height: 106px;
+			&:focus{
+				outline: none;
+			}
+		}
+	}
+	.attachmentsWrap{
+		overflow-x: auto;
+		padding: 0 4px;
+		.attachment{
+			margin: 8px 4px;
+			width: 96px;
+			height: 72px;
+			border-radius: 4px;
+			overflow: hidden;
+		}
+		.nonThumbAttachment{
+			background-color: $auxiliaryGrey;
+			color: $bg;
+			display: inline-flex;
+			text-align: center;
+			flex-direction: column;
+			justify-content: center;
+			font-size: 12px;
+			.attTitle{
+				font-weight: $mediumWeight;
+				margin: 6px 0 2px;
+			}
+			.attContent{
+				margin: 0 4px;
+			}
+		}
+		>div{
+			float: left;
+		}
+	}
+	.mobileCommentReplying{
+		background: $gray;
+		color: $textOnGray;
+		padding: 4px 8px;
+		font-size: 13px;
+		line-height: 15px;
+		font-weight: $mediumWeight;
+		.cancelReply{
+			width: 15px;
+			height: 15px;
+			vertical-align: bottom;
+			display: inline-block;
+			margin-left: 2px;
+			background: svg-load('img/close_15px.svg', stroke: $textOnGray, replace: true);
+		}
+	}
 }

@@ -35,17 +35,16 @@
 		</ul>
 <div id="postReplies{{post.id}}">
 	{%for reply in post.repliesObjects%}
-		{%include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.id}"}%}
+		{%include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentPost#{post.id}"}%}
 	{%endfor%}
 </div>
 {%if currentUser is not null%}
-	{% include "wall_post_form" with {'id': "commentReplyPost#{post.id}", 'replyTo': post, 'hidden': true} %}
-	{% include "wall_post_form" with {'id': "commentPost#{post.id}", 'replyTo': post} %}
+	{% include "comment_form" with {'id': "commentPost#{post.id}", 'replyTo': post} %}
 {%endif%}
-<script>
+{% script %}
 	if(window.location.hash && window.location.hash.indexOf("comment")==1){
 		var el=document.getElementById(window.location.hash.replace("#comment", "post"));
 		if(el) el.classList.add("highlight");
 	}
-</script>
+{% endscript %}
 {%endblock%}

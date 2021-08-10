@@ -249,7 +249,6 @@ class Box extends BaseLayer{
 	public getCustomAppearAnimation(){
 		if(mobile){
 			var height=this.boxLayer.offsetHeight+32;
-			console.log("height "+height);
 			return {
 				keyframes: [{transform: "translateY("+height+"px)"}, {transform: "translateY(0)"}],
 				options: {duration: 600, easing: "cubic-bezier(0.22, 1, 0.36, 1)"}

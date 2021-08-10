@@ -7,6 +7,7 @@ class PostForm{
 	private input:HTMLTextAreaElement;
 	private form:HTMLFormElement;
 	private dragOverlay:HTMLElement;
+	private attachWrap:HTMLElement;
 	private attachContainer:HTMLElement;
 	private attachContainer2:HTMLElement;
 	private fileField:HTMLInputElement;
@@ -18,6 +19,13 @@ class PostForm{
 	private cwLayout:HTMLElement;
 	private collapsed:boolean;
 	private mouseInside:boolean=false;
+	private isMobileComment:boolean;
+	private mobileCommentCWAttach:HTMLElement;
+	private replyBar:HTMLElement;
+	private replyName:HTMLElement;
+	private replyCancel:HTMLElement;
+
+	private origReplyID:string;
 
 	public constructor(el:HTMLElement){
 		this.id=el.getAttribute("data-unique-id");
@@ -27,12 +35,14 @@ class PostForm{
 		this.dragOverlay=el.querySelector(".dropOverlay");
 		this.attachContainer=ge("postFormAttachments_"+this.id);
 		this.attachContainer2=ge("postFormAttachments2_"+this.id);
-		// this.fileField=ge("uploadField_"+this.id);
 		this.fileField=ce("input", {type: "file"});
 		this.fileField.accept="image/*";
 		this.fileField.multiple=true;
 		this.attachField=el.querySelector("input[name=attachments]") as HTMLInputElement;
 		this.replyToField=ge("postFormReplyTo_"+this.id);
+		this.replyBar=ge("commentReplying_"+this.id);
+		this.replyName=ge("replyingName_"+this.id);
+		this.replyCancel=ge("cancelReply_"+this.id);
 		if(!this.form)
 			return;
 
@@ -47,6 +57,8 @@ class PostForm{
 		if(this.input.dataset.replyName){
 			this.currentReplyName=this.input.dataset.replyName;
 		}
+
+		this.isMobileComment=this.root.classList.contains("mobileCommentForm");
 
 		if(this.dragOverlay){
 			this.dragOverlay.addEventListener("dragenter", (ev:DragEvent)=>{
@@ -91,6 +103,14 @@ class PostForm{
 		}
 		if(!this.isDirty())
 			this.setCollapsed(true);
+		if(this.replyToField){
+			this.origReplyID=this.replyToField.value;
+		}
+		if(this.replyBar){
+			this.replyBar.onclick=()=>{
+				this.resetReply();
+			};
+		}
 	}
 
 	private onFormSubmit(ev:Event):void{
@@ -206,17 +226,29 @@ class PostForm{
 	private send():void{
 		if(this.input.value.length==0 && this.attachmentIDs.length==0)
 			return;
-		ajaxSubmitForm(this.form, function(){
+		ajaxSubmitForm(this.form, ()=>{
 			this.attachmentIDs=[];
 			this.attachField.value="";
 			this.input.resizeToFitContent();
 			this.hideCWLayout();
-		}.bind(this));
+			if(this.isMobileComment){
+				this.resetReply();
+			}
+		});
+	}
+
+	private resetReply(){
+		this.replyBar.hide();
+		this.replyToField.value=this.origReplyID;
+		if(this.input.value==this.currentReplyName){
+			this.input.value="";
+		}
 	}
 
 	public setupForReplyTo(id:number):void{
 		this.replyToField.value=id+"";
-		var name:string=document.getElementById("post"+id).dataset.replyName;
+		var postEl=ge("post"+id);
+		var name:string=postEl.dataset.replyName;
 		if(name){
 			if(this.input.value.length==0 || (this.input.value==this.currentReplyName)){
 				this.input.value=name+", ";
@@ -224,6 +256,10 @@ class PostForm{
 			this.currentReplyName=name+", ";
 		}
 		this.input.focus();
+		if(this.isMobileComment){
+			this.replyBar.show();
+			this.replyName.innerText=postEl.dataset.replyingName;
+		}
 	}
 
 	private onAttachMenuItemClick(id:string){
@@ -238,19 +274,58 @@ class PostForm{
 		this.attachPopupMenu.setItemVisibility("cw", this.cwLayout==null);
 	}
 
-	private showCWLayout(){
-		this.cwLayout=ce("div", {className: "postFormCW postFormNonThumb"}, [
-			ce("a", {className: "attachDelete flR", onclick: this.hideCWLayout.bind(this), title: lang("delete")}),
-			ce("h3", {innerText: lang("post_form_cw")}),
-			ce("input", {type: "text", name: "contentWarning", placeholder: lang("post_form_cw_placeholder"), required: true, autocomplete: "off"})
+	private makeNonThumbLayout(title:string, content:string, onRemoveClick:{():void}):HTMLElement{
+		var layout=ce("div", {className: "attachment nonThumbAttachment"}, [
+			ce("div", {className: "attTitle", innerText: title}),
+			ce("div", {className: "attContent ellipsize", innerText: content}),
+			ce("a", {className: "deleteBtn", title: lang("delete"), onclick: ()=>{
+				onRemoveClick();
+			}})
 		]);
-		this.attachContainer2.appendChild(this.cwLayout);
+		return layout;
+	}
+
+	private showCWLayout(){
+		if(this.isMobileComment){
+			var input=ce("input", {type: "text", name: "contentWarning", placeholder: lang("post_form_cw_placeholder"), required: true, autocomplete: "off"});
+			input.style.width="100%";
+			var box=new Box(lang("post_form_cw"), [lang("ok"), lang("cancel")], (btn)=>{
+				if(btn==1){
+					box.dismiss();
+					return;
+				}
+				if(!input.reportValidity())
+					return;
+				this.attachContainer2.appendChild(this.mobileCommentCWAttach=this.makeNonThumbLayout(lang("post_form_cw"), input.value, ()=>{
+					this.hideCWLayout();
+				}));
+				this.cwLayout=ce("input", {type: "hidden", name: "contentWarning", value: input.value});
+				this.form.appendChild(this.cwLayout);
+				box.dismiss();
+			});
+			box.setContent(input);
+			box.show();
+			input.focus();
+		}else{
+			this.cwLayout=ce("div", {className: "postFormCW postFormNonThumb"}, [
+				ce("a", {className: "attachDelete flR", onclick: this.hideCWLayout.bind(this), title: lang("delete")}),
+				ce("h3", {innerText: lang("post_form_cw")}),
+				ce("input", {type: "text", name: "contentWarning", placeholder: lang("post_form_cw_placeholder"), required: true, autocomplete: "off"})
+			]);
+			this.attachContainer2.appendChild(this.cwLayout);
+		}
 	}
 
 	private hideCWLayout(){
 		if(!this.cwLayout)
 			return;
-		this.attachContainer2.removeChild(this.cwLayout);
+		if(this.isMobileComment){
+			this.attachContainer2.removeChild(this.mobileCommentCWAttach);
+			this.form.removeChild(this.cwLayout);
+			this.mobileCommentCWAttach=null;
+		}else{
+			this.attachContainer2.removeChild(this.cwLayout);
+		}
 		this.cwLayout=null;
 	}
 
@@ -274,6 +349,8 @@ class PostForm{
 	}
 
 	private setCollapsed(collapsed:boolean){
+		if(this.isMobileComment)
+			return;
 		this.collapsed=collapsed;
 		if(collapsed)
 			this.root.classList.add("collapsed");

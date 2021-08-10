@@ -334,5 +334,11 @@
   "search_groups": "Группы",
   "search_external_objects": "Внешние объекты",
   "nothing_found": "Ничего не найдено",
-  "max_file_size_exceeded": "Этот файл превышает максимальный размер в %d Мб."
+  "max_file_size_exceeded": "Этот файл превышает максимальный размер в %d Мб.",
+  "in_reply_to_before": "В ответ ",
+  "in_reply_to_name": {"str": "%s", "case": "DATIVE"},
+  "in_reply_to_after": "",
+  "replied_to_before": ["ответил ", "ответила "],
+  "replied_to_name": {"str": "%s", "case": "DATIVE"},
+  "replied_to_after": ""
 }
