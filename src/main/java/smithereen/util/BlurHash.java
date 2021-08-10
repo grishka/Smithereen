@@ -8,7 +8,7 @@ import smithereen.libvips.VipsRegion;
 
 // adapted from https://github.com/hsch/blurhash-java
 public class BlurHash{
-	private static final char[] ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~".toCharArray();
+	private static final String ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~";
 
 	private static void applyBasisFunction(byte[] pixels, int width, int height, double normalisation, int i, int j, double[][] factors, int index){
 		double r=0, g=0, b=0;
@@ -82,8 +82,17 @@ public class BlurHash{
 		int exp = 1;
 		for (int i = 1; i <= length; i++, exp *= 83) {
 			int digit = (int)(value / exp % 83);
-			buffer[offset + length - i] = ALPHABET[digit];
+			buffer[offset + length - i] = ALPHABET.charAt(digit);
 		}
+	}
+
+	private static long base83Decode(String str){
+		long value=0;
+		for(int i=0;i<str.length();i++){
+			char c=str.charAt(i);
+			value=value*83+ALPHABET.indexOf(c);
+		}
+		return value;
 	}
 
 	public static String encode(VipsImage img, int componentX, int componentY) throws IOException{
@@ -149,5 +158,13 @@ public class BlurHash{
 			if(resized!=null)
 				resized.release();
 		}
+	}
+
+	public static int decodeToSingleColor(String hash){
+		if(hash.length()<6)
+			return 0;
+
+		int value=(int)base83Decode(hash.substring(2, 6));
+		return value & 0xFFFFFF;
 	}
 }

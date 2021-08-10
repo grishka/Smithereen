@@ -4,6 +4,7 @@ import smithereen.data.SizedImage;
 
 public class PhotoAttachment extends Attachment implements SizedAttachment{
 	public SizedImage image;
+	public String blurHash;
 
 	@Override
 	public int getWidth(){

@@ -23,6 +23,8 @@ import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.SizedAttachment;
 import smithereen.data.attachments.VideoAttachment;
+import smithereen.util.BlurHash;
+import spark.utils.StringUtils;
 
 public class RenderAttachmentsFunction implements Function{
 
@@ -136,11 +138,16 @@ public class RenderAttachmentsFunction implements Function{
 		URI jpegFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.JPEG);
 		URI webpFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.WEBP);
 
+		String styleAttr="";
+		if(StringUtils.isNotEmpty(photo.blurHash)){
+			styleAttr=String.format(Locale.US, " style=\"background-color: #%06X\"", BlurHash.decodeToSingleColor(photo.blurHash));
+		}
+
 		lines.add("<a class=\"photo\" href=\""+jpegFull+"\" data-full-jpeg=\""+jpegFull+"\" data-full-webp=\""+webpFull+"\" data-size=\""+photo.getWidth()+" "+photo.getHeight()+"\" onclick=\"return openPhotoViewer(this)\">"+
 				"<picture>"+
 				"<source srcset=\""+webp1x+", "+webp2x+" 2x\" type=\"image/webp\"/>"+
 				"<source srcset=\""+jpeg1x+", "+jpeg2x+" 2x\" type=\"image/jpeg\"/>"+
-				"<img src=\""+jpeg1x+"\"/>"+
+				"<img src=\""+jpeg1x+"\""+styleAttr+"/>"+
 				"</picture></a>");
 	}
 

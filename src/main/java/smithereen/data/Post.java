@@ -348,6 +348,11 @@ public class Post extends ActivityPubObject{
 						att.image=new NonCachedRemoteImage(new NonCachedRemoteImage.PostPhotoArgs(id, i), size);
 					}
 				}
+				if(o instanceof Document){
+					Document doc=(Document) o;
+					if(StringUtils.isNotEmpty(doc.blurHash))
+						att.blurHash=doc.blurHash;
+				}
 				result.add(att);
 			}else if(mediaType.startsWith("video/")){
 				VideoAttachment att=new VideoAttachment();
