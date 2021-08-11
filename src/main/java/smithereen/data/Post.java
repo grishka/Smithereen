@@ -107,18 +107,18 @@ public class Post extends ActivityPubObject{
 		attributedTo=user.activityPubID;
 
 		if(local){
-			if(owner instanceof User && user.id==((User) owner).id){
-				to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
+			if(owner instanceof User || replyKey.length>0){
+				to=Collections.singletonList(LinkOrObject.PUBLIC);
 				if(replyKey.length==0)
 					cc=Collections.singletonList(new LinkOrObject(user.getFollowersURL()));
 				else
 					cc=Collections.emptyList();
 			}else if(owner instanceof Group){
-				to=Collections.singletonList(new LinkOrObject(owner.getFollowersURL()));
-				cc=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
+				to=List.of(LinkOrObject.PUBLIC, new LinkOrObject(owner.getFollowersURL()));
+				cc=Collections.emptyList();
 			}else{
-				to=Collections.emptyList();
-				cc=Arrays.asList(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(owner.activityPubID));
+				to=Arrays.asList(LinkOrObject.PUBLIC, new LinkOrObject(owner.activityPubID));
+				cc=Collections.emptyList();
 			}
 		}else{
 			cc=Collections.emptyList();

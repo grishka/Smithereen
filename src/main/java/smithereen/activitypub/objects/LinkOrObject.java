@@ -6,9 +6,12 @@ import com.google.gson.JsonPrimitive;
 import java.net.URI;
 import java.util.Objects;
 
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ContextCollector;
 
 public class LinkOrObject{
+	public static final LinkOrObject PUBLIC=new LinkOrObject(ActivityPub.AS_PUBLIC);
+
 	public final URI link;
 	public final ActivityPubObject object;
 
