@@ -59,6 +59,7 @@ public class RenderedTemplateResponse{
 	public String renderContentBlock(){
 		StringWriter writer=new StringWriter();
 		try{
+			template=getAndPrepareTemplate(req);
 			template.evaluateBlock("content", writer, model, locale);
 		}catch(IOException ignore){}
 		return writer.toString();
