@@ -70,6 +70,7 @@ public class Group extends Actor{
 	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
 
+		String userURL=activityPubID.toString();
 		JsonArray ar=new JsonArray();
 		for(GroupAdmin admin : adminsForActivityPub){
 			JsonObject ja=new JsonObject();
@@ -80,6 +81,9 @@ public class Group extends Actor{
 			ar.add(ja);
 		}
 		obj.add("attributedTo", ar);
+
+		obj.addProperty("members", userURL+"/followers");
+		contextCollector.addType("members", "sm:members", "@id");
 
 		return obj;
 	}
