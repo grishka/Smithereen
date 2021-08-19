@@ -90,6 +90,7 @@ public class Group extends Actor{
 		capabilities.addProperty("acceptsJoins", true);
 		obj.add("capabilities", capabilities);
 		contextCollector.addAlias("capabilities", "litepub:capabilities");
+		contextCollector.addAlias("acceptsJoins", "litepub:acceptsJoins");
 		contextCollector.addAlias("litepub", JLD.LITEPUB);
 
 		return obj;
