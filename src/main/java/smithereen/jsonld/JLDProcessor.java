@@ -52,6 +52,7 @@ public class JLDProcessor{
 
 		// Mastodon aliases
 		lc.addProperty("blurhash", "toot:blurhash");
+		lc.addProperty("votersCount", "toot:votersCount");
 
 		// custom aliases
 		lc.addProperty("supportsFriendRequests", "sm:supportsFriendRequests");

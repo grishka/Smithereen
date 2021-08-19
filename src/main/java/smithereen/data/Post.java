@@ -1,5 +1,6 @@
 package smithereen.data;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -36,6 +37,8 @@ import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import spark.utils.StringUtils;
 
 public class Post extends ActivityPubObject{
@@ -53,6 +56,7 @@ public class Post extends ActivityPubObject{
 	public int replyCount;
 	public boolean local;
 	public List<User> mentionedUsers=Collections.EMPTY_LIST;
+	public Poll poll;
 
 	private ActivityPubObject activityPubTarget;
 
@@ -154,6 +158,10 @@ public class Post extends ActivityPubObject{
 		}
 
 		replyCount=res.getInt("reply_count");
+		int pollID=res.getInt("poll_id");
+		if(!res.wasNull()){
+			poll=PostStorage.getPoll(pollID);
+		}
 	}
 
 	public boolean hasContentWarning(){
@@ -164,6 +172,8 @@ public class Post extends ActivityPubObject{
 	public String getType(){
 		if(deleted)
 			return "Tombstone";
+		if(poll!=null)
+			return "Question";
 		return "Note";
 	}
 
@@ -254,6 +264,30 @@ public class Post extends ActivityPubObject{
 			}
 		}catch(SQLException x){
 			throw new IllegalStateException(x);
+		}
+		String type=obj.get("type").getAsString();
+		if(type.equals("Question") && (obj.has("oneOf") || obj.has("anyOf"))){
+			poll=new Poll();
+			poll.multipleChoice=obj.has("anyOf");
+			poll.question=obj.has("name") ? obj.get("name").getAsString() : null;
+			poll.numVoters=obj.has("votersCount") ? obj.get("votersCount").getAsInt() : 0;
+			JsonArray opts=obj.getAsJsonArray(obj.has("anyOf") ? "anyOf" : "oneOf");
+			poll.anonymous=true;
+			poll.options=new ArrayList<>(opts.size());
+			poll.activityPubID=activityPubID;
+			if(endTime!=null){
+				poll.endTime=endTime;
+			}else if(obj.has("closed")){
+				poll.endTime=tryParseDate(obj.get("closed").getAsString());
+			}
+			for(JsonElement _opt:opts){
+				JsonObject opt=_opt.getAsJsonObject();
+				PollOption o=new PollOption();
+				o.parseActivityPubObject(opt, parserContext);
+				poll.options.add(o);
+			}
+			if(poll.options.isEmpty())
+				poll=null;
 		}
 		return this;
 	}

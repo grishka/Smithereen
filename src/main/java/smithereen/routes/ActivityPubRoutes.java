@@ -663,7 +663,7 @@ public class ActivityPubRoutes{
 					}
 				}
 			}else{
-				if(activity instanceof Like){
+				if(activity instanceof Like || activity instanceof Delete){
 					try{
 						aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, false, false, false);
 					}catch(ObjectNotFoundException x){

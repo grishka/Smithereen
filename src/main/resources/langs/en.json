@@ -340,5 +340,14 @@
   "in_reply_to_after": "",
   "replied_to_before": "replied to ",
   "replied_to_name": "%s",
-  "replied_to_after": ""
+  "replied_to_after": "",
+  "poll": "Poll",
+  "submit_vote": "Vote",
+  "X_people_voted": ["<b>%,d</b> person voted.", "<b>%,d</b> people voted."],
+  "anonymous_poll": "Anonymous poll",
+  "public_poll": "Public poll",
+  "poll_voting_until": "Voting ends <b>%s</b>.",
+  "poll_expired": "Voting ended <b>%s</b>.",
+  "err_poll_already_voted": "You've already voted in this poll.",
+  "err_poll_expired": "Voting in this poll has already ended."
 }

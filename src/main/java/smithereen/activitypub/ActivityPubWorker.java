@@ -49,6 +49,9 @@ import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.Poll;
+import smithereen.data.PollOption;
+import smithereen.data.PollVote;
 import smithereen.data.Post;
 import smithereen.data.UriBuilder;
 import smithereen.data.User;
@@ -483,6 +486,36 @@ public class ActivityPubWorker{
 		undo.actor=new LinkOrObject(self.activityPubID);
 		undo.object=new LinkOrObject(block);
 		executor.submit(new SendOneActivityRunnable(undo, target.inbox, self));
+	}
+
+	public void sendPollVotes(User self, Poll poll, Actor pollOwner, List<PollOption> chosenOptions, int[] voteIDs){
+		if(Config.isLocal(pollOwner.activityPubID))
+			return;
+
+		for(int i=0;i<voteIDs.length;i++){
+			PollOption opt=chosenOptions.get(i);
+			int voteID=voteIDs[i];
+
+			PollVote vote=new PollVote();
+			vote.inReplyTo=poll.activityPubID;
+			vote.name=opt.name;
+			vote.activityPubID=Config.localURI("/activitypub/objects/pollVotes/"+voteID);
+			vote.attributedTo=self.activityPubID;
+			if(poll.anonymous)
+				vote.to=Collections.singletonList(new LinkOrObject(pollOwner.activityPubID));
+			else
+				vote.to=List.of(LinkOrObject.PUBLIC, new LinkOrObject(pollOwner.activityPubID));
+			vote.cc=Collections.emptyList();
+			Create create=new Create();
+			create.activityPubID=Config.localURI("/activitypub/objects/pollVotes/"+voteID+"/activity");
+			create.to=vote.to;
+			create.cc=vote.cc;
+			create.actor=new LinkOrObject(self.activityPubID);
+			create.object=new LinkOrObject(vote);
+			create.published=new Date();
+
+			executor.submit(new SendOneActivityRunnable(create, pollOwner.inbox, self));
+		}
 	}
 
 	public synchronized Future<List<Post>> fetchReplyThread(Post post){

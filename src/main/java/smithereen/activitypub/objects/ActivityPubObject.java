@@ -499,107 +499,48 @@ public abstract class ActivityPubObject{
 		if(obj==null)
 			return null;
 		String type=Objects.requireNonNull(obj.get("type"), "type must not be null").getAsString();
-		ActivityPubObject res=null;
-		switch(type){
+		ActivityPubObject res=switch(type){
 			// Actors
-			case "Person":
-				res=new ForeignUser();
-				break;
-			case "Service":
-				res=obj.has("id") ? new ForeignUser() : new Service();
-				break;
-			case "Group":
-			case "Organization":
-				res=new ForeignGroup();
-				break;
+			case "Person" -> new ForeignUser();
+			case "Service" -> obj.has("id") ? new ForeignUser() : new Service();
+			case "Group", "Organization" -> new ForeignGroup();
 
 			// Objects
-			case "Note":
-			case "Article":
-			case "Page":
-				res=new Post();
-				break;
-			case "Image":
-				res=new Image();
-				break;
-			case "_LocalImage":
-				if(parserContext.isLocal)
-					res=new LocalImage();
-				break;
-			case "Document":
-				res=new Document();
-				break;
-			case "Tombstone":
-				res=new Tombstone();
-				break;
-			case "Mention":
-				res=new Mention();
-				break;
-			case "Relationship":
-				res=new Relationship();
-				break;
-			case "PropertyValue":
-				res=new PropertyValue();
-				break;
+			case "Note", "Article", "Page", "Question" -> new Post();
+			case "Image" -> new Image();
+			case "_LocalImage" -> parserContext.isLocal ? new LocalImage() : null;
+			case "Document" -> new Document();
+			case "Tombstone" -> new Tombstone();
+			case "Mention" -> new Mention();
+			case "Relationship" -> new Relationship();
+			case "PropertyValue" -> new PropertyValue();
 
 			// Collections
-			case "Collection":
-				res=new ActivityPubCollection(false);
-				break;
-			case "OrderedCollection":
-				res=new ActivityPubCollection(true);
-				break;
-			case "CollectionPage":
-				res=new CollectionPage(false);
-				break;
-			case "OrderedCollectionPage":
-				res=new CollectionPage(true);
-				break;
+			case "Collection" -> new ActivityPubCollection(false);
+			case "OrderedCollection" -> new ActivityPubCollection(true);
+			case "CollectionPage" -> new CollectionPage(false);
+			case "OrderedCollectionPage" -> new CollectionPage(true);
 
 			// Activities
-			case "Accept":
-				res=new Accept();
-				break;
-			case "Add":
-				res=new Add();
-				break;
-			case "Announce":
-				res=new Announce();
-				break;
-			case "Create":
-				res=new Create();
-				break;
-			case "Delete":
-				res=new Delete();
-				break;
-			case "Follow":
-				res=new Follow();
-				break;
-			case "Join":
-				res=new Join();
-				break;
-			case "Like":
-				res=new Like();
-				break;
-			case "Undo":
-				res=new Undo();
-				break;
-			case "Update":
-				res=new Update();
-				break;
-			case "Reject":
-				res=new Reject();
-				break;
-			case "Offer":
-				res=new Offer();
-				break;
-			case "Block":
-				res=new Block();
-				break;
+			case "Accept" -> new Accept();
+			case "Add" -> new Add();
+			case "Announce" -> new Announce();
+			case "Create" -> new Create();
+			case "Delete" -> new Delete();
+			case "Follow" -> new Follow();
+			case "Join" -> new Join();
+			case "Like" -> new Like();
+			case "Undo" -> new Undo();
+			case "Update" -> new Update();
+			case "Reject" -> new Reject();
+			case "Offer" -> new Offer();
+			case "Block" -> new Block();
 
-			default:
+			default -> {
 				System.out.println("Unknown object type "+type);
-		}
+				yield null;
+			}
+		};
 		if(res!=null)
 			return res.parseActivityPubObject(obj, parserContext);
 		return null;

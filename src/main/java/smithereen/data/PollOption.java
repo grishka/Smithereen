@@ -1,0 +1,70 @@
+package smithereen.data;
+
+import com.google.gson.JsonObject;
+
+import java.net.URI;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import smithereen.activitypub.ParserContext;
+import smithereen.activitypub.objects.ActivityPubCollection;
+import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.LinkOrObject;
+
+public class PollOption extends ActivityPubObject{
+	public int id;
+
+	@Override
+	public String getType(){
+		return "Note";
+	}
+
+	@Override
+	public ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
+		return super.parseActivityPubObject(obj, parserContext);
+	}
+
+	@Override
+	public String toString(){
+		StringBuilder sb=new StringBuilder("PollOption{");
+		sb.append(super.toString());
+		sb.append("id=");
+		sb.append(id);
+		sb.append('}');
+		return sb.toString();
+	}
+
+	public int getNumVotes(){
+		if(replies!=null && replies.object instanceof ActivityPubCollection){
+			ActivityPubCollection replies=(ActivityPubCollection) this.replies.object;
+			return replies.totalItems;
+		}
+		return 0;
+	}
+
+	public void addVotes(int n){
+		if(replies==null || !(replies.object instanceof ActivityPubCollection))
+			throw new IllegalStateException("replies is null");
+		ActivityPubCollection replies=(ActivityPubCollection) this.replies.object;
+		replies.totalItems+=n;
+	}
+
+	public void setNumVotes(int n){
+		if(replies==null || !(replies.object instanceof ActivityPubCollection))
+			throw new IllegalStateException("replies is null");
+		ActivityPubCollection replies=(ActivityPubCollection) this.replies.object;
+		replies.totalItems=n;
+	}
+
+	public static PollOption fromResultSet(ResultSet res) throws SQLException{
+		PollOption opt=new PollOption();
+		opt.id=res.getInt("id");
+		String _id=res.getString("ap_id");
+		opt.activityPubID=_id==null ? null : URI.create(_id);
+		opt.name=res.getString("text");
+		ActivityPubCollection replies=new ActivityPubCollection(false);
+		replies.totalItems=res.getInt("num_votes");
+		opt.replies=new LinkOrObject(replies);
+		return opt;
+	}
+}

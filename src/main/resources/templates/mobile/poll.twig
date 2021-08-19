@@ -1,0 +1,59 @@
+{# @pebvariable name="poll" type="smithereen.data.Poll" #}
+{# @pebvariable name="interactions" type="smithereen.data.UserInteractions" #}
+<div class="poll" id="poll{{ poll.id }}">
+{% block inner %}
+	<div>
+		<h3 class="question">{{ poll.question is empty ? L('poll') : poll.question }}</h3>
+		<div class="grayText padTop">{{ L(poll.anonymous ? 'anonymous_poll' : 'public_poll') }}</div>
+	</div>
+	{% if currentUser is not null and interactions.pollChoices is empty and not poll.expired %}
+		<form action="/system/votePoll?id={{ poll.id }}&csrf={{ csrf }}" method="post" onsubmit="return ajaxSubmitForm(this)">
+			{% if poll.multipleChoice %}
+				{% for opt in poll.options %}
+					<label>
+						<input type="checkbox" name="option" value="{{ opt.id }}" onchange="onPollInputChange(this)"/>
+						{{ opt.name }}
+					</label>
+				{% endfor %}
+				<input type="submit" value="{{ L('submit_vote') }}" id="pollSubmit{{ poll.id }}"/>
+				{% script %}
+				ge("pollSubmit{{ poll.id }}").disabled=true;
+				{% endscript %}
+			{% else %}
+				{% for opt in poll.options %}
+					<label>
+						<input type="radio" name="option" value="{{ opt.id }}" onchange="onPollInputChange(this)"/>
+						{{ opt.name }}
+					</label>
+				{% endfor %}
+				<noscript>
+					<input type="submit" value="{{ L('submit_vote') }}"/>
+				</noscript>
+			{% endif %}
+		</form>
+	{% else %}
+		{% set maxOptionVotes=0 %}
+		{% for opt in poll.options %}
+			{% set maxOptionVotes=max(opt.numVotes, maxOptionVotes) %}
+		{% endfor %}
+		{% for opt in poll.options %}
+			{# @pebvariable name="fraction" type="float" #}
+			{% set fraction=(poll.numVoters==0 ? 0 : (opt.numVotes*1.0)/poll.numVoters) %}
+			<div class="pollResultRow{{ interactions.pollChoices contains opt.id ? ' userChoice' : '' }}">
+				{{ opt.name }}
+				<div class="pollResultBarW">
+					<div class="pollResultBarBG">
+						<div class="pollResultBarFG" style="transform: scaleX({{ maxOptionVotes>0 ? (opt.numVotes*1.0)/maxOptionVotes : 0 }})"></div>
+						<div class="pollResultNumVotes">{{ opt.numVotes | numberformat("#,###") }}</div>
+					</div>
+					<div class="pollResultPercent">{{ fraction | numberformat("#.#%") }}</div>
+				</div>
+			</div>
+		{% endfor %}
+	{% endif %}
+	{{ LP('X_people_voted', poll.numVoters) }}
+	{% if poll.endTime is not null %}
+		<br/>{{ L(poll.expired ? 'poll_expired' : 'poll_voting_until', LD(poll.endTime)) }}
+	{% endif %}
+{% endblock %}
+</div>

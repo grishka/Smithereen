@@ -1,4 +1,7 @@
 {# @pebvariable name="post" type="smithereen.data.Post" #}
+{% if postInteractions is not null %}
+{% set interactions=postInteractions[post.id] %}
+{% endif %}
 <table width="100%" cellpadding="0" cellspacing="0" class="post" id="post{{post.id}}">
 	<tr>
 		<td width="50" valign="top">
@@ -12,6 +15,9 @@
 				<label for="postCW_{{ post.id }}" class="postCWButton ellipsize">{{ post.summary }}</label>
 			{% endif %}
 			<div class="postContent">{{post.content | postprocessHTML}}</div>
+			{% if post.poll is not null %}
+			{% include "poll" with {'poll': post.poll, 'interactions': interactions} %}
+			{% endif %}
 			{% if post.attachment is not null %}
 				{{ renderAttachments(post.processedAttachments) }}
 			{% endif %}
@@ -31,8 +37,7 @@
 				{% if not standalone and currentUser is not null %}
 					<span id="postCommentLinkWrap{{ post.id }}" style="{{ post.repliesObjects is empty ? '' : 'display: none;' }}">| <a href="{{ post.internalURL }}" onclick="return showPostCommentForm({{ post.id }})">{{ L('add_comment') }}</a></span>
 				{% endif %}
-				{%if postInteractions is not null%}
-				{%set interactions=postInteractions[post.id]%}
+				{%if interactions is not null%}
 				<span class="postActions">
 					<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
 						<a href="{{post.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{post.id}}" data-obj-type="post" data-obj-id="{{post.id}}" data-popover-url="{{post.internalURL}}/likePopover" onclick="return likeOnClick(this)">

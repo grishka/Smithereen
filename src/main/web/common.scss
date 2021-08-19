@@ -729,11 +729,15 @@ ul.actualList{
 	}
 }
 
-.loader{
+.loader, .inlineLoader{
 	background: svg-load('img/loading_anim.svg', fill: $normalLink) no-repeat center;
 	background-size: 32px 8px;
 	min-width: 32px;
 	min-height: 8px;
+}
+
+.inlineLoader{
+	display: inline-block;
 }
 
 .feedIcon{

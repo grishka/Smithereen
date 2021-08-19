@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.data.ListAndTotal;
+import smithereen.data.Poll;
+import smithereen.data.PollOption;
 import smithereen.data.UriBuilder;
 import smithereen.data.feed.AddFriendNewsfeedEntry;
 import smithereen.data.feed.JoinGroupNewsfeedEntry;
@@ -89,6 +91,46 @@ public class PostStorage{
 
 		PreparedStatement stmt;
 		if(existing==null){
+			if(post.poll!=null){
+				stmt=new SQLQueryBuilder(conn)
+						.insertInto("polls")
+						.value("ap_id", post.activityPubID.toString())
+						.value("owner_id", post.user.id)
+						.value("question", post.poll.question)
+						.value("is_anonymous", post.poll.anonymous)
+						.value("end_time", post.poll.endTime!=null ? new Timestamp(post.poll.endTime.getTime()) : null)
+						.value("is_multi_choice", post.poll.multipleChoice)
+						.value("num_voted_users", post.poll.numVoters)
+						.createStatement(Statement.RETURN_GENERATED_KEYS);
+				stmt.execute();
+				try(ResultSet res=stmt.getGeneratedKeys()){
+					res.first();
+					post.poll.id=res.getInt(1);
+				}
+				stmt=new SQLQueryBuilder(conn)
+						.insertInto("poll_options")
+						.value("poll_id", post.poll.id)
+						.value("ap_id", null)
+						.value("text", null)
+						.value("num_votes", 0)
+						.createStatement(Statement.RETURN_GENERATED_KEYS);
+				boolean hasIDs=false;
+				for(PollOption opt:post.poll.options){
+					if(opt.activityPubID!=null)
+						hasIDs=true;
+					else if(hasIDs)
+						throw new IllegalStateException("all options must either have or not have IDs");
+					stmt.setString(2, Objects.toString(opt.activityPubID, null));
+					stmt.setString(3, opt.name);
+					stmt.setInt(4, opt.getNumVotes());
+					stmt.execute();
+					try(ResultSet res=stmt.getGeneratedKeys()){
+						res.first();
+						opt.id=res.getInt(1);
+					}
+				}
+			}
+
 			stmt=new SQLQueryBuilder(conn)
 					.insertInto("wall_posts")
 					.value("author_id", post.user.id)
@@ -103,8 +145,48 @@ public class PostStorage{
 					.value("created_at", new Timestamp(post.published.getTime()))
 					.value("mentions", post.mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(post.mentionedUsers.stream().mapToInt(u->u.id).toArray()))
 					.value("ap_replies", Objects.toString(post.getRepliesURL(), null))
+					.value("poll_id", post.poll!=null ? post.poll.id : null)
 					.createStatement(Statement.RETURN_GENERATED_KEYS);
 		}else{
+			if(existing.poll!=null && post.poll!=null){
+				stmt=new SQLQueryBuilder(conn)
+						.update("polls")
+						.value("num_voted_users", post.poll.numVoters)
+						.where("id=?", existing.poll.id)
+						.createStatement();
+				stmt.execute();
+				post.poll.id=existing.poll.id;
+
+				if(post.poll.options.get(0).activityPubID!=null){ // Match options using IDs
+					HashMap<URI, PollOption> optMap=new HashMap<>(post.poll.options.size());
+					for(PollOption opt:existing.poll.options){
+						optMap.put(opt.activityPubID, opt);
+					}
+					for(PollOption opt:post.poll.options){
+						PollOption existingOpt=optMap.get(opt.activityPubID);
+						if(existingOpt==null)
+							throw new IllegalStateException("option with id "+opt.activityPubID+" not found in existing poll");
+						opt.id=existingOpt.id;
+						if(opt.getNumVotes()!=existingOpt.getNumVotes()){
+							SQLQueryBuilder.prepareStatement(conn, "UPDATE poll_options SET num_votes=? WHERE id=? AND poll_id=?", opt.getNumVotes(), opt.id, post.poll.id).execute();
+						}
+					}
+				}else{ // Match options using titles
+					HashMap<String, PollOption> optMap=new HashMap<>(post.poll.options.size());
+					for(PollOption opt:existing.poll.options){
+						optMap.put(opt.name, opt);
+					}
+					for(PollOption opt:post.poll.options){
+						PollOption existingOpt=optMap.get(opt.name);
+						if(existingOpt==null)
+							throw new IllegalStateException("option with name '"+opt.name+"' not found in existing poll");
+						opt.id=existingOpt.id;
+						if(opt.getNumVotes()!=existingOpt.getNumVotes()){
+							SQLQueryBuilder.prepareStatement(conn, "UPDATE poll_options SET num_votes=? WHERE id=? AND poll_id=?", opt.getNumVotes(), opt.id, post.poll.id).execute();
+						}
+					}
+				}
+			}
 			stmt=new SQLQueryBuilder(conn)
 					.update("wall_posts")
 					.where("ap_id=?", post.activityPubID.toString())
@@ -576,10 +658,25 @@ public class PostStorage{
 			}
 		}
 
-		try(ResultSet res=conn.createStatement().executeQuery("SELECT id, reply_count FROM wall_posts WHERE id IN ("+idsStr+")")){
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT option_id FROM poll_votes WHERE user_id=? AND poll_id=?", userID);
+		try(ResultSet res=conn.createStatement().executeQuery("SELECT id, reply_count, poll_id FROM wall_posts WHERE id IN ("+idsStr+")")){
 			res.beforeFirst();
 			while(res.next()){
-				result.get(res.getInt(1)).commentCount=res.getInt(2);
+				UserInteractions interactions=result.get(res.getInt(1));
+				interactions.commentCount=res.getInt(2);
+				if(userID!=0){
+					int pollID=res.getInt(3);
+					if(!res.wasNull()){
+						stmt.setInt(2, pollID);
+						try(ResultSet res2=stmt.executeQuery()){
+							res2.beforeFirst();
+							interactions.pollChoices=new ArrayList<>();
+							while(res2.next()){
+								interactions.pollChoices.add(res2.getInt(1));
+							}
+						}
+					}
+				}
 			}
 		}
 
@@ -682,5 +779,80 @@ public class PostStorage{
 			}
 			return Collections.emptyList();
 		}
+	}
+
+	public static Poll getPoll(int id) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("polls")
+				.allColumns()
+				.where("id=?", id)
+				.createStatement();
+		Poll poll;
+		try(ResultSet res=stmt.executeQuery()){
+			if(!res.first())
+				return null;
+			poll=Poll.fromResultSet(res);
+		}
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("poll_options")
+				.where("poll_id=?", id)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			while(res.next()){
+				poll.options.add(PollOption.fromResultSet(res));
+			}
+		}
+		return poll;
+	}
+
+	public static synchronized int[] voteInPoll(int userID, int pollID, int[] optionIDs) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("poll_votes")
+				.count()
+				.where("user_id=? AND poll_id=?", userID, pollID)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			res.first();
+			if(res.getInt(1)>0)
+				return null;
+		}
+
+		PreparedStatement stmt1=new SQLQueryBuilder(conn)
+				.insertInto("poll_votes")
+				.value("option_id", 0)
+				.value("user_id", userID)
+				.value("poll_id", pollID)
+				.createStatement(Statement.RETURN_GENERATED_KEYS);
+
+		PreparedStatement stmt2=new SQLQueryBuilder(conn)
+				.update("poll_options")
+				.where("id=?", 0)
+				.valueExpr("num_votes", "num_votes+1")
+				.createStatement();
+
+		int[] voteIDs=new int[optionIDs.length];
+		int i=0;
+		for(int optID:optionIDs){
+			stmt1.setInt(1, optID);
+			stmt1.execute();
+			stmt2.setInt(1, optID);
+			stmt2.execute();
+			try(ResultSet res=stmt1.getGeneratedKeys()){
+				res.first();
+				voteIDs[i++]=res.getInt(1);
+			}
+		}
+
+		stmt=new SQLQueryBuilder(conn)
+				.update("polls")
+				.valueExpr("num_voted_users", "num_voted_users+1")
+				.where("id=?", pollID)
+				.createStatement();
+		stmt.execute();
+
+		return voteIDs;
 	}
 }

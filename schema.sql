@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2021-07-23 14:34:38 +0000
+# Generation Time: 2021-08-19 23:02:03 +0000
 # ************************************************************
 
 
@@ -308,6 +308,62 @@ CREATE TABLE `notifications` (
 
 
 
+# Dump of table poll_options
+# ------------------------------------------------------------
+
+CREATE TABLE `poll_options` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `poll_id` int(10) unsigned NOT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii DEFAULT NULL,
+  `text` text NOT NULL,
+  `num_votes` int(10) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `poll_id` (`poll_id`),
+  CONSTRAINT `poll_options_ibfk_1` FOREIGN KEY (`poll_id`) REFERENCES `polls` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table poll_votes
+# ------------------------------------------------------------
+
+CREATE TABLE `poll_votes` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) unsigned NOT NULL,
+  `poll_id` int(10) unsigned NOT NULL,
+  `option_id` int(10) unsigned NOT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `user_id` (`user_id`),
+  KEY `poll_id` (`poll_id`),
+  KEY `option_id` (`option_id`),
+  CONSTRAINT `poll_votes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `poll_votes_ibfk_2` FOREIGN KEY (`poll_id`) REFERENCES `polls` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `poll_votes_ibfk_3` FOREIGN KEY (`option_id`) REFERENCES `poll_options` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table polls
+# ------------------------------------------------------------
+
+CREATE TABLE `polls` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `owner_id` int(10) unsigned NOT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii DEFAULT NULL,
+  `question` text,
+  `is_anonymous` tinyint(1) NOT NULL DEFAULT '0',
+  `is_multi_choice` tinyint(1) NOT NULL DEFAULT '0',
+  `end_time` timestamp NULL DEFAULT NULL,
+  `num_voted_users` int(10) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ap_id` (`ap_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
 # Dump of table qsearch_index
 # ------------------------------------------------------------
 
@@ -426,6 +482,7 @@ CREATE TABLE `wall_posts` (
   `mentions` varbinary(1024) DEFAULT NULL,
   `reply_count` int(10) unsigned NOT NULL DEFAULT '0',
   `ap_replies` varchar(300) DEFAULT NULL,
+  `poll_id` int(10) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),

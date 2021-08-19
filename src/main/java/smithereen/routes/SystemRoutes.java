@@ -9,6 +9,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -16,6 +17,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
+import java.util.stream.Collectors;
 
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
@@ -37,11 +39,15 @@ import smithereen.data.CachedRemoteImage;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.Poll;
+import smithereen.data.PollOption;
 import smithereen.data.Post;
 import smithereen.data.SearchResult;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
 import smithereen.data.User;
+import smithereen.data.UserInteractions;
+import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
@@ -60,10 +66,14 @@ import spark.Response;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.USERNAME_DOMAIN_PATTERN;
+import static smithereen.Utils.back;
+import static smithereen.Utils.ensureUserNotBlocked;
 import static smithereen.Utils.isAjax;
 import static smithereen.Utils.isURL;
 import static smithereen.Utils.isUsernameAndDomain;
 import static smithereen.Utils.lang;
+import static smithereen.Utils.parseIntOrDefault;
+import static smithereen.Utils.wrapError;
 
 public class SystemRoutes{
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
@@ -444,6 +454,77 @@ public class SystemRoutes{
 		}else{
 			return new JsonObjectBuilder().add("error", lang(req).get("unsupported_remote_object_type")).build();
 		}
+		return "";
+	}
+
+	public static Object votePoll(Request req, Response resp, Account self) throws SQLException{
+		int id=parseIntOrDefault(req.queryParams("id"), 0);
+		if(id==0)
+			throw new ObjectNotFoundException();
+		Poll poll=PostStorage.getPoll(id);
+		if(poll==null)
+			throw new ObjectNotFoundException();
+
+		Actor owner;
+		if(poll.ownerID>0){
+			User _owner=UserStorage.getById(poll.ownerID);
+			ensureUserNotBlocked(self.user, _owner);
+			owner=_owner;
+		}else{
+			Group _owner=GroupStorage.getById(-poll.ownerID);
+			ensureUserNotBlocked(self.user, _owner);
+			owner=_owner;
+		}
+
+		String[] _options=req.queryMap("option").values();
+		if(_options.length<1)
+			throw new BadRequestException("options param is empty");
+		if(_options.length!=1 && !poll.multipleChoice)
+			throw new BadRequestException("invalid option count");
+		if(_options.length>poll.options.size())
+			throw new BadRequestException("invalid option count");
+		int[] optionIDs=new int[_options.length];
+		List<PollOption> options=new ArrayList<>(_options.length);
+		for(int i=0;i<_options.length;i++){
+			int optID=parseIntOrDefault(_options[i], 0);
+			if(optID<=0)
+				throw new BadRequestException("invalid option id '"+_options[i]+"'");
+			PollOption option=null;
+			for(PollOption opt:poll.options){
+				if(opt.id==optID){
+					option=opt;
+					break;
+				}
+			}
+			if(option==null)
+				throw new BadRequestException("option with id "+optID+" does not exist in this poll");
+			if(options.contains(option))
+				throw new BadRequestException("option with id "+optID+" seen more than once");
+			optionIDs[i]=optID;
+			options.add(option);
+		}
+
+		if(poll.isExpired())
+			return wrapError(req, resp, "err_poll_expired");
+
+		int[] voteIDs=PostStorage.voteInPoll(self.user.id, poll.id, optionIDs);
+		if(voteIDs==null)
+			return wrapError(req, resp, "err_poll_already_voted");
+
+		poll.numVoters++;
+		for(PollOption opt:options)
+			opt.addVotes(1);
+
+		ActivityPubWorker.getInstance().sendPollVotes(self.user, poll, owner, options, voteIDs);
+
+		if(isAjax(req)){
+			UserInteractions interactions=new UserInteractions();
+			interactions.pollChoices=Arrays.stream(optionIDs).boxed().collect(Collectors.toList());
+			RenderedTemplateResponse model=new RenderedTemplateResponse("poll", req).with("poll", poll).with("interactions", interactions);
+			return new WebDeltaResponse(resp).setContent("poll"+poll.id, model.renderBlock("inner"));
+		}
+
+		resp.redirect(back(req));
 		return "";
 	}
 }

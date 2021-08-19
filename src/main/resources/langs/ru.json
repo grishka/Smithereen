@@ -340,5 +340,14 @@
   "in_reply_to_after": "",
   "replied_to_before": ["ответил ", "ответила "],
   "replied_to_name": {"str": "%s", "case": "DATIVE"},
-  "replied_to_after": ""
+  "replied_to_after": "",
+  "poll": "Опрос",
+  "submit_vote": "Проголосовать",
+  "X_people_voted": ["Проголосовал <b>%,d</b> человек.", "Проголосовало <b>%,d</b> человека.", "Проголосовало <b>%,d</b> человек."],
+  "anonymous_poll": "Анонимное голосование",
+  "public_poll": "Открытое голосование",
+  "poll_voting_until": "Голосование заканчивается <b>%s</b>.",
+  "poll_expired": "Голосование завершено <b>%s</b>.",
+  "err_poll_already_voted": "Вы уже голосовали в этом опросе.",
+  "err_poll_expired": "Время голосования в этом опросе истекло."
 }

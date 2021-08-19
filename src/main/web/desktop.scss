@@ -49,6 +49,15 @@ h2{
 	border-bottom: solid 1px $mainHeaderSeparator;
 }
 
+h3{
+	color: $boldHeaders;
+	font-weight: bold;
+	margin: 0;
+	padding-bottom: 2px;
+	font-size: 11px;
+	border-bottom: solid 1px $mainHeaderSeparator;
+}
+
 small{
 	font-size: 10px;
 }
@@ -701,6 +710,9 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 			bottom: 0;
 			background: svg-load('img/loading_anim.svg', fill: $textOnAccent) no-repeat center;
 		}
+	}
+	&:disabled{
+		opacity: .5;
 	}
 
 	&:hover, &:visited:hover{
@@ -1537,5 +1549,66 @@ textarea{
 	background-size: 16px;
 	.loader{
 		display: inline-block;
+	}
+}
+
+.poll{
+	max-width: 400px;
+	padding: 6px 0 3px;
+	label{
+		display: block;
+		padding: 3px 0;
+		cursor: pointer;
+		input{
+			vertical-align: -3px;
+		}
+	}
+	form{
+		padding: 3px 0;
+	}
+	input[type=submit]{
+		margin: 5px 0;
+	}
+	.pollResultRow{
+		margin: 10px 0;
+		.pollResultBarW{
+			display: flex;
+			margin-top: 2px;
+			line-height: 15px;
+		}
+		.pollResultPercent{
+			width: 45px;
+			font-weight: bold;
+			text-align: right;
+		}
+		.pollResultBarBG{
+			background-color: $bgGrey;
+			height: 15px;
+			position: relative;
+			flex-grow: 1;
+		}
+		.pollResultNumVotes{
+			position: absolute;
+			text-align: center;
+			color: $auxiliaryBlockHeader;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+		}
+		.pollResultBarFG{
+			background-color: $blockBackground;
+			position: absolute;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			transform-origin: 0;
+		}
+		&.userChoice .pollResultNumVotes{
+			background: svg-load('img/poll_check.svg', fill: $auxiliaryBlockHeader) no-repeat;
+			background-position: right 3px top 2px;
+			opacity: .7;
+		}
 	}
 }

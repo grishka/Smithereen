@@ -750,3 +750,23 @@ function loadCommentBranch(id:number){
 	});
 	return false;
 }
+
+function onPollInputChange(el:HTMLInputElement){
+	var form=el.form;
+	if(submittingForm==form)
+		return;
+	if(el.type=="radio"){
+		el.labels[0].appendChild(ce("span", {className: "inlineLoader"}));
+		ajaxSubmitForm(form);
+	}else{
+		var cboxes=el.form.querySelectorAll("input[type=checkbox]").unfuck();
+		var anyChecked=false;
+		for(var cbox of cboxes){
+			if((cbox as HTMLInputElement).checked){
+				anyChecked=true;
+				break;
+			}
+		}
+		(el.form.qs("input[type=submit]") as HTMLInputElement).disabled=!anyChecked;
+	}
+}

@@ -12,6 +12,7 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.Objects;
 
 import smithereen.activitypub.ActivityPubWorker;
@@ -218,6 +219,7 @@ public class SmithereenApplication{
 			get("/about", SystemRoutes::aboutServer);
 			getLoggedIn("/qsearch", SystemRoutes::quickSearch);
 			postLoggedIn("/loadRemoteObject", SystemRoutes::loadRemoteObject);
+			postWithCSRF("/votePoll", SystemRoutes::votePoll);
 		});
 
 		path("/users/:id", ()->{
