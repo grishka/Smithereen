@@ -11,6 +11,7 @@ import java.util.List;
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.Actor;
+import smithereen.jsonld.JLD;
 import spark.utils.StringUtils;
 
 public class Group extends Actor{
@@ -84,6 +85,12 @@ public class Group extends Actor{
 
 		obj.addProperty("members", userURL+"/followers");
 		contextCollector.addType("members", "sm:members", "@id");
+
+		JsonObject capabilities=new JsonObject();
+		capabilities.addProperty("acceptsJoins", false);
+		obj.add("capabilities", capabilities);
+		contextCollector.addAlias("capabilities", "litepub:capabilities");
+		contextCollector.addAlias("litepub", JLD.LITEPUB);
 
 		return obj;
 	}

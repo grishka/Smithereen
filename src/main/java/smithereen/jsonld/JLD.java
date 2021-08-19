@@ -7,4 +7,5 @@ public class JLD{
 	public static final String SCHEMA_ORG="http://schema.org#";
 	public static final String SMITHEREEN="http://smithereen.software/ns#";
 	public static final String MASTODON="http://joinmastodon.org/ns#";
+	public static final String LITEPUB="http://litepub.social/ns#";
 }
