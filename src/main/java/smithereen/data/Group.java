@@ -87,7 +87,7 @@ public class Group extends Actor{
 		contextCollector.addType("members", "sm:members", "@id");
 
 		JsonObject capabilities=new JsonObject();
-		capabilities.addProperty("acceptsJoins", false);
+		capabilities.addProperty("acceptsJoins", true);
 		obj.add("capabilities", capabilities);
 		contextCollector.addAlias("capabilities", "litepub:capabilities");
 		contextCollector.addAlias("litepub", JLD.LITEPUB);
