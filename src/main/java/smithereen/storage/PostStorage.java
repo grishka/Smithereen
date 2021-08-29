@@ -711,7 +711,7 @@ public class PostStorage{
 			else if(post.owner instanceof ForeignGroup)
 				inboxes.add(Objects.requireNonNullElse(post.owner.sharedInbox, post.owner.inbox));
 			else if(post.owner instanceof Group)
-				queryParts.add("SELECT user_id FROM group_members WHERE group_id="+((Group)post.owner).id);
+				queryParts.add("SELECT user_id FROM group_memberships WHERE group_id="+((Group)post.owner).id);
 
 			if(post.mentionedUsers!=null && !post.mentionedUsers.isEmpty()){
 				for(User user:post.mentionedUsers){
