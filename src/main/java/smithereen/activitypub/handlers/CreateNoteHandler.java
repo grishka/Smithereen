@@ -59,9 +59,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 		// Special handling for poll votes because using a separate activity type would've been too easy.
 		if((post.attachment==null || post.attachment.isEmpty()) && StringUtils.isEmpty(post.content) && post.inReplyTo!=null && post.name!=null){
 			Post parent=ObjectLinkResolver.resolve(post.inReplyTo, Post.class, false, false, false);
-			LOG.info("got post {} to test for poll", post.inReplyTo);
 			if(parent.poll!=null){
-				LOG.info("parent post is a poll");
 				int optionID=0;
 				if(post.context!=null){
 					for(PollOption opt:parent.poll.options){
@@ -78,7 +76,6 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 						}
 					}
 				}
-				LOG.info("found option ID {}", optionID);
 				if(optionID!=0){
 					PostStorage.voteInPoll(actor.id, parent.poll.id, optionID, post.activityPubID, parent.poll.multipleChoice);
 					return;
