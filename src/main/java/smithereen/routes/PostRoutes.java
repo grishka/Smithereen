@@ -9,7 +9,9 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -57,15 +59,7 @@ import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.MentionCallback;
-import static smithereen.Utils.ensureUserNotBlocked;
-import static smithereen.Utils.escapeHTML;
-import static smithereen.Utils.gson;
-import static smithereen.Utils.isAjax;
-import static smithereen.Utils.lang;
-import static smithereen.Utils.parseIntOrDefault;
-import static smithereen.Utils.preprocessPostHTML;
-import static smithereen.Utils.sessionInfo;
+import static smithereen.Utils.*;
 
 public class PostRoutes{
 
@@ -88,7 +82,9 @@ public class PostRoutes{
 
 	public static Object createWallPost(Request req, Response resp, Account self, @NotNull Actor owner) throws Exception{
 		String text=req.queryParams("text");
-		if(text.length()==0 && StringUtils.isEmpty(req.queryParams("attachments")))
+		String pollQuestion=req.queryParams("pollQuestion");
+		String[] pollOptions=req.queryParams("pollOption")!=null ? req.queryMap("pollOption").values() : new String[0];
+		if(text.length()==0 && StringUtils.isEmpty(req.queryParams("attachments")) && (StringUtils.isEmpty(pollQuestion) || pollOptions.length<2))
 			throw new BadRequestException("Empty post");
 
 		if(!owner.hasWall())
@@ -152,7 +148,26 @@ public class PostRoutes{
 		int userID=self.user.id;
 		int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
 		int postID;
+		int pollID=0;
 
+		if(StringUtils.isNotEmpty(pollQuestion) && pollOptions.length>=2){
+			List<String> opts=Arrays.stream(pollOptions).map(String::trim).filter(StringUtils::isNotEmpty).collect(Collectors.toList());
+			if(opts.size()>=2){
+				boolean anonymous="on".equals(req.queryParams("pollAnonymous"));
+				boolean multiChoice="on".equals(req.queryParams("pollMultiChoice"));
+				boolean timeLimit="on".equals(req.queryParams("pollTimeLimit"));
+				Date endTime=null;
+				if(timeLimit){
+					int seconds=parseIntOrDefault(req.queryParams("pollTimeLimitValue"), 0);
+					if(seconds>60)
+						endTime=new Date(System.currentTimeMillis()+(seconds*1000L));
+				}
+				pollID=PostStorage.createPoll(self.user.id, pollQuestion, opts, anonymous, multiChoice, endTime);
+			}
+		}
+
+		int maxAttachments=replyTo!=0 ? 2 : 10;
+		int attachmentCount=pollID!=0 ? 1 : 0;
 		String attachments=null;
 		if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
 			ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
@@ -161,8 +176,12 @@ public class PostRoutes{
 				if(!id.matches("^[a-fA-F0-9]{32}$"))
 					continue;
 				ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(id, self.id);
-				if(obj!=null)
+				if(obj!=null){
 					attachObjects.add(obj);
+					attachmentCount++;
+				}
+				if(attachmentCount==maxAttachments)
+					break;
 			}
 			if(!attachObjects.isEmpty()){
 				if(attachObjects.size()==1){
@@ -176,8 +195,6 @@ public class PostRoutes{
 				}
 			}
 		}
-		if(text.length()==0 && StringUtils.isEmpty(attachments))
-			throw new BadRequestException("Empty post");
 
 		String contentWarning=req.queryParams("contentWarning");
 		if(contentWarning!=null){
@@ -185,6 +202,10 @@ public class PostRoutes{
 			if(contentWarning.length()==0)
 				contentWarning=null;
 		}
+
+
+		if(text.length()==0 && StringUtils.isEmpty(attachments) && pollID==0)
+			throw new BadRequestException("Empty post");
 
 		Post parent=null;
 		int ownerUserID=owner instanceof User ? ((User) owner).id : 0;
@@ -221,9 +242,9 @@ public class PostRoutes{
 					ensureUserNotBlocked(self.user, (User)topLevel.owner);
 				}
 			}
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, replyKey, mentionedUsers, attachments, contentWarning);
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, replyKey, mentionedUsers, attachments, contentWarning, pollID);
 		}else{
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, null, mentionedUsers, attachments, contentWarning);
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, null, mentionedUsers, attachments, contentWarning, pollID);
 		}
 
 		Post post=PostStorage.getPostByID(postID, false);
@@ -303,7 +324,8 @@ public class PostRoutes{
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self.user.id);
 		if(!feed.isEmpty() && startFromID==0)
 			startFromID=feed.get(0).id;
-		Utils.jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw", "max_file_size_exceeded");
+		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
+		jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
 		return new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed).with("postInteractions", interactions)
 				.with("paginationURL", "/feed?startFrom="+startFromID+"&offset=").with("total", total[0]).with("offset", offset)
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);

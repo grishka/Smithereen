@@ -6,4 +6,9 @@ public class SingleFormPluralRules extends PluralRules{
 	public int getIndexForQuantity(int quantity){
 		return 0;
 	}
+
+	@Override
+	public String getName(){
+		return "single";
+	}
 }

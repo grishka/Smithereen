@@ -349,5 +349,17 @@
   "poll_voting_until": "Голосование заканчивается <b>%s</b>.",
   "poll_expired": "Голосование завершено <b>%s</b>.",
   "err_poll_already_voted": "Вы уже голосовали в этом опросе.",
-  "err_poll_expired": "Время голосования в этом опросе истекло."
+  "err_poll_expired": "Время голосования в этом опросе истекло.",
+  "attach_menu_poll": "Опрос",
+  "create_poll_question": "Тема опроса",
+  "create_poll_options": "Варианты ответа",
+  "create_poll_add_option": "Добавить вариант",
+  "create_poll_delete_option": "Удалить вариант",
+  "create_poll_multi_choice": "Выбор нескольких вариантов",
+  "create_poll_anonymous": "Анонимное голосование",
+  "create_poll_time_limit": "Ограниченное время голосования",
+  "X_days": ["%d день", "%d дня", "%d дней"],
+  "X_hours": ["%d час", "%d часа", "%d часов"],
+  "remove_attachment": "Не прикреплять",
+  "max_attachment_count_exceeded": ["Вы можете добавить не более %d вложения.", "Вы може добавить не более %d вложений.", "Вы може добавить не более %d вложений."]
 }

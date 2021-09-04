@@ -13,6 +13,7 @@ import smithereen.Config;
 import smithereen.ObjectLinkResolver;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.data.Group;
+import smithereen.data.PollOption;
 import smithereen.exceptions.BadRequestException;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
@@ -54,6 +55,37 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 		}
 		if(post.owner instanceof Group)
 			Utils.ensureUserNotBlocked(actor, (Group) post.owner);
+
+		// Special handling for poll votes because using a separate activity type would've been too easy.
+		if((post.attachment==null || post.attachment.isEmpty()) && StringUtils.isEmpty(post.content) && post.inReplyTo!=null && post.name!=null){
+			Post parent=ObjectLinkResolver.resolve(post.inReplyTo, Post.class, false, false, false);
+			LOG.info("got post {} to test for poll", post.inReplyTo);
+			if(parent.poll!=null){
+				LOG.info("parent post is a poll");
+				int optionID=0;
+				if(post.context!=null){
+					for(PollOption opt:parent.poll.options){
+						if(post.context.equals(opt.activityPubID)){
+							optionID=opt.id;
+							break;
+						}
+					}
+				}else{
+					for(PollOption opt:parent.poll.options){
+						if(post.name.equals(opt.name)){
+							optionID=opt.id;
+							break;
+						}
+					}
+				}
+				LOG.info("found option ID {}", optionID);
+				if(optionID!=0){
+					PostStorage.voteInPoll(actor.id, parent.poll.id, optionID, post.activityPubID, parent.poll.multipleChoice);
+					return;
+				}
+			}
+		}
+
 		boolean isPublic=false;
 		if(post.to==null || post.to.isEmpty()){
 			if(post.cc==null || post.cc.isEmpty()){

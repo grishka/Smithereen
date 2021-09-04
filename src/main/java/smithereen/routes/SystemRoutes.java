@@ -461,7 +461,7 @@ public class SystemRoutes{
 		int id=parseIntOrDefault(req.queryParams("id"), 0);
 		if(id==0)
 			throw new ObjectNotFoundException();
-		Poll poll=PostStorage.getPoll(id);
+		Poll poll=PostStorage.getPoll(id, null);
 		if(poll==null)
 			throw new ObjectNotFoundException();
 

@@ -570,7 +570,7 @@ public class ActivityPubRoutes{
 		try{
 			o=ActivityPubObject.parse(obj);
 		}catch(Exception e){
-			throw new BadRequestException("Failed to parse object: "+e.toString());
+			throw new BadRequestException("Failed to parse object: "+e.toString(), e);
 		}
 		if(o instanceof Activity)
 			activity=(Activity)o;

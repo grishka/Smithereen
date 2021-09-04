@@ -4,13 +4,16 @@ function ge<E extends HTMLElement>(id:string):E{
 	return document.getElementById(id) as E;
 }
 
-function ce<K extends keyof HTMLElementTagNameMap>(tag:K, attrs:Partial<HTMLElementTagNameMap[K]>={}, children:HTMLElement[]=[]):HTMLElementTagNameMap[K]{
+function ce<K extends keyof HTMLElementTagNameMap>(tag:K, attrs:Partial<HTMLElementTagNameMap[K]>={}, children:(HTMLElement|string)[]=[]):HTMLElementTagNameMap[K]{
 	var el=document.createElement(tag);
 	for(var attrName in attrs){
 		el[attrName]=attrs[attrName];
 	}
 	for(var child of children){
-		el.appendChild(child);
+		if(child instanceof HTMLElement)
+			el.appendChild(child);
+		else
+			el.appendChild(document.createTextNode(child));
 	}
 	return el;
 };
@@ -22,7 +25,6 @@ interface String{
 
 function formatString(str:string, args:(string|number)[]){
 	var currentIndex=0;
-	console.log(str);
 	return str.replace(/%(?:(\d+)\$)?([ds%])/gm, function(match:string, g1:string, g2:string){
 		if(g2=="%")
 			return "%";
@@ -244,7 +246,15 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, res
 	xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 	var formData:string[]=[];
 	for(var key in params){
-		formData.push(key+"="+encodeURIComponent(params[key]));
+		var val=params[key];
+		if(val instanceof Array){
+			var arr=val as any[];
+			for(var e of arr){
+				formData.push(key+"="+encodeURIComponent(e));
+			}
+		}else{
+			formData.push(key+"="+encodeURIComponent(params[key]));
+		}
 	}
 	formData.push("_ajax=1");
 	xhr.responseType=responseType;
@@ -323,6 +333,31 @@ function lang(key:string|(string|number)[]):string{
 	return formatString(langKeys[_key] as string, key.slice(1));
 }
 
+var langPluralRules:{[key:string]:(quantity:number)=>number}={
+	single: function(quantity:number){
+		return 0;
+	},
+	english: function(quantity:number){
+		return quantity==1 ? 0 : 1;
+	},
+	slavic: function(quantity:number){
+		if(Math.floor(quantity/10)%10==1)
+			return 2;
+		var units=quantity%10;
+		if(units==1)
+			return 0;
+		if(units>1 && units<5)
+			return 1;
+		return 2;
+	}
+};
+
+function langPlural(key:string, quantity:number):string{
+	if(!langKeys[key])
+		return quantity+" "+key;
+	return formatString(langKeys[key][langPluralRules[userConfig.langPluralRulesName](quantity)], [quantity]);
+}
+
 function setGlobalLoading(loading:boolean):void{
 	document.body.style.cursor=loading ? "progress" : "";
 }
@@ -374,8 +409,17 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):bo
 		var el=elems[i] as any;
 		if(!el.name)
 			continue;
-		if((el.type!="radio" && el.type!="checkbox") || ((el.type=="radio" || el.type=="checkbox") && el.checked))
-			data[el.name]=el.value;
+		if((el.type!="radio" && el.type!="checkbox") || ((el.type=="radio" || el.type=="checkbox") && el.checked)){
+			if(data[el.name]){
+				var existing=data[el.name];
+				if(existing instanceof Array)
+					(existing as any[]).push(el.value);
+				else
+					data[el.name]=[existing, el.value];
+			}else{
+				data[el.name]=el.value;
+			}
+		}
 	}
 	data.csrf=userConfig.csrf;
 	ajaxPost(form.action, data, function(resp:any){
@@ -388,7 +432,7 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):bo
 				applyServerCommand(resp[i]);
 			}
 		}
-		if(onDone) onDone(!(resp instanceof Array));
+		if(onDone) onDone(true);
 	}, function(msg:string){
 		submittingForm=null;
 		if(submitBtn)

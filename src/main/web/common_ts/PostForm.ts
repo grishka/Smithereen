@@ -14,6 +14,7 @@ class PostForm{
 	private attachField:HTMLInputElement;
 	private replyToField:HTMLInputElement;
 	private attachmentIDs:string[]=[];
+	private uploadingAttachmentCount:number=0;
 	private currentReplyName:string="";
 	private attachPopupMenu:PopupMenu;
 	private cwLayout:HTMLElement;
@@ -24,6 +25,12 @@ class PostForm{
 	private replyBar:HTMLElement;
 	private replyName:HTMLElement;
 	private replyCancel:HTMLElement;
+
+	private pollLayout:HTMLElement;
+	private pollQuestionField:HTMLInputElement;
+	private pollOptionFields:HTMLInputElement[];
+	private pollOptionsWrap:HTMLElement;
+	private pollTimeSelect:HTMLSelectElement;
 
 	private origReplyID:string;
 
@@ -88,7 +95,7 @@ class PostForm{
 		}
 
 		window.addEventListener("beforeunload", (ev:BeforeUnloadEvent)=>{
-			if((this.input.value.length>0 && this.input.value!=this.currentReplyName) || this.attachmentIDs.length>0){
+			if(this.isDirty()){
 				var msg:string=lang("confirm_discard_post_draft");
 				(ev || window.event).returnValue=msg;
 				return msg;
@@ -111,6 +118,7 @@ class PostForm{
 				this.resetReply();
 			};
 		}
+		this.pollOptionFields=[];
 	}
 
 	private onFormSubmit(ev:Event):void{
@@ -166,6 +174,9 @@ class PostForm{
 			new MessageBox(lang("error"), lang(["max_file_size_exceeded", 10]), lang("ok")).show();
 			return;
 		}
+		if(!this.checkAttachmentCount()){
+			return;
+		}
 		var objURL=URL.createObjectURL(f);
 
 		var img:HTMLElement;
@@ -183,35 +194,38 @@ class PostForm{
 		pbarInner.style.transform="scaleX(0)";
 
 		this.attachContainer.appendChild(cont);
+		this.uploadingAttachmentCount++;
 
 		var formData=new FormData();
 		formData.append("file", f);
 		var xhr=new XMLHttpRequest();
 		xhr.open("POST", "/system/upload/postPhoto?_ajax=1&csrf="+userConfig.csrf);
-		xhr.onload=function(){
+		xhr.onload=()=>{
 			cont.classList.remove("uploading");
 			var resp=xhr.response;
 			del.href="/system/deleteDraftAttachment?id="+resp.id+"&csrf="+userConfig.csrf;
 			img.outerHTML='<picture><source srcset="'+resp.thumbs.webp+'" type="image/webp"/><source srcset="'+resp.thumbs.jpeg+'" type="image/jpeg"/><img src="'+resp.thumbs.jpeg+'"/></picture>';
-			del.onclick=function(ev:Event){
+			del.onclick=(ev:Event)=>{
 				ev.preventDefault();
 				this.deleteAttachment(resp.id);
-			}.bind(this);
+			};
 			cont.id="attachment_"+resp.id;
 			this.attachmentIDs.push(resp.id);
 			this.attachField.value=this.attachmentIDs.join(",");
-		}.bind(this);
-		xhr.onerror=function(ev:ProgressEvent){
+			this.uploadingAttachmentCount--;
+		};
+		xhr.onerror=(ev:ProgressEvent)=>{
 			console.log(ev);
 		};
-		xhr.upload.onprogress=function(ev:ProgressEvent){
+		xhr.upload.onprogress=(ev:ProgressEvent)=>{
 			pbarInner.style.transform="scaleX("+(ev.loaded/ev.total)+")";
 		};
 		xhr.responseType="json";
 		xhr.send(formData);
-		del.onclick=function(){
+		del.onclick=()=>{
 			xhr.abort();
 			cont.parentNode.removeChild(cont);
+			this.uploadingAttachmentCount--;
 		};
 	}
 
@@ -224,13 +238,35 @@ class PostForm{
 	}
 
 	private send():void{
-		if(this.input.value.length==0 && this.attachmentIDs.length==0)
-			return;
-		ajaxSubmitForm(this.form, ()=>{
+		if(this.input.value.length==0 && this.attachmentIDs.length==0){
+			if(this.pollLayout!=null){
+				if(!this.pollQuestionField.reportValidity())
+					return;
+				var optionCount=0;
+				for(var opt of this.pollOptionFields){
+					if(opt.value.length>0)
+						optionCount++;
+				}
+				if(optionCount<2){
+					for(var opt of this.pollOptionFields){
+						if(opt.value.length==0){
+							opt.focus();
+							return;
+						}
+					}
+				}
+			}else{
+				return;
+			}
+		}
+		ajaxSubmitForm(this.form, (resp)=>{
+			if(resp===false)
+				return;
 			this.attachmentIDs=[];
 			this.attachField.value="";
 			this.input.resizeToFitContent();
 			this.hideCWLayout();
+			this.hidePollLayout();
 			if(this.isMobileComment){
 				this.resetReply();
 			}
@@ -267,11 +303,14 @@ class PostForm{
 			this.fileField.click();
 		}else if(id=="cw"){
 			this.showCWLayout();
+		}else if(id=="poll"){
+			this.showPollLayout();
 		}
 	}
 
 	private onPrepareAttachMenu(){
 		this.attachPopupMenu.setItemVisibility("cw", this.cwLayout==null);
+		this.attachPopupMenu.setItemVisibility("poll", this.pollLayout==null);
 	}
 
 	private makeNonThumbLayout(title:string, content:string, onRemoveClick:{():void}):HTMLElement{
@@ -308,7 +347,7 @@ class PostForm{
 			input.focus();
 		}else{
 			this.cwLayout=ce("div", {className: "postFormCW postFormNonThumb"}, [
-				ce("a", {className: "attachDelete flR", onclick: this.hideCWLayout.bind(this), title: lang("delete")}),
+				ce("a", {className: "attachDelete flR", onclick: this.hideCWLayout.bind(this), title: lang("remove_attachment")}),
 				ce("h3", {innerText: lang("post_form_cw")}),
 				ce("input", {type: "text", name: "contentWarning", placeholder: lang("post_form_cw_placeholder"), required: true, autocomplete: "off"})
 			]);
@@ -329,11 +368,127 @@ class PostForm{
 		this.cwLayout=null;
 	}
 
+	private showPollLayout(){
+		if(!this.checkAttachmentCount())
+			return;
+		var optionField1, optionField2, optionFieldAdd;
+		var optionDel1, optionDel2, optionDelAdd;
+		this.pollLayout=ce("div", {className: "postFormPoll postFormNonThumb"}, [
+			ce("a", {className: "attachDelete flR", onclick: this.hidePollLayout.bind(this), title: lang("remove_attachment")}),
+			ce("h4", {innerText: lang("create_poll_question")}),
+			this.pollQuestionField=ce("input", {type: "text", required: true, name: "pollQuestion", autocomplete: "off"}),
+			ce("h4", {innerText: lang("create_poll_options")}),
+			this.pollOptionsWrap=ce("div", {}, [
+				ce("div", {className: "pollOptionW"}, [
+					optionField1=ce("input", {type: "text", name: "pollOption", autocomplete: "off"}),
+					optionDel1=ce("a", {className: "attachDelete", title: lang("create_poll_delete_option"), onclick: this.deletePollOption.bind(this)})
+				]),
+				ce("div", {className: "pollOptionW"}, [
+					optionField2=ce("input", {type: "text", name: "pollOption", autocomplete: "off"}),
+					optionDel2=ce("a", {className: "attachDelete", title: lang("create_poll_delete_option"), onclick: this.deletePollOption.bind(this)})
+				]),
+				this.makeAddPollOptionLayout()
+			]),
+			ce("label", {className: "radioButtonWrap pollSetting"}, [
+				ce("input", {type: "checkbox", name: "pollAnonymous"}),
+				lang("create_poll_anonymous")
+			]),
+			ce("label", {className: "radioButtonWrap pollSetting"}, [
+				ce("input", {type: "checkbox", name: "pollMultiChoice"}),
+				lang("create_poll_multi_choice")
+			]),
+			ce("label", {className: "radioButtonWrap pollSetting"}, [
+				ce("input", {type: "checkbox", name: "pollTimeLimit", onchange: (ev)=>{
+					if((ev.target as HTMLInputElement).checked){
+						this.pollTimeSelect.show();
+					}else{
+						this.pollTimeSelect.hide();
+					}
+				}}),
+				lang("create_poll_time_limit")
+			]),
+			this.pollTimeSelect=ce("select", {name: "pollTimeLimitValue"}, [
+				ce("option", {value: "3600", innerText: langPlural("X_hours", 1)}),
+				ce("option", {value: "43200", innerText: langPlural("X_hours", 12)}),
+				ce("option", {value: "86400", innerText: langPlural("X_days", 1), selected: true}),
+				ce("option", {value: "259200", innerText: langPlural("X_days", 3)}),
+				ce("option", {value: "604800", innerText: langPlural("X_days", 7)}),
+				ce("option", {value: "1209600", innerText: langPlural("X_days", 14)}),
+				ce("option", {value: "2592000", innerText: langPlural("X_days", 30)}),
+			]),
+		]);
+		this.pollTimeSelect.hide();
+		this.attachContainer2.appendChild(this.pollLayout);
+
+		this.pollOptionFields.push(optionField1, optionField2);
+	}
+
+	private deletePollOption(ev:MouseEvent){
+		if(this.pollOptionFields.length<=2)
+			return;
+		var el=(ev.target as HTMLElement).parentElement;
+		var input=el.qs("input") as HTMLInputElement;
+		if(this.pollOptionFields.length==10)
+			this.pollOptionsWrap.appendChild(this.makeAddPollOptionLayout());
+		this.pollOptionFields.remove(input);
+		this.pollOptionsWrap.removeChild(el);
+	}
+
+	private onAddPollOptionInput(ev:Event){
+		this.addPollOption(ev.target as HTMLInputElement);
+	}
+
+	private onAddPollOptionClick(ev:MouseEvent){
+		this.addPollOption(ev.target as HTMLInputElement);
+	}
+
+	private makeAddPollOptionLayout():HTMLElement{
+		var input, del;
+		var el=ce("div", {className: "pollOptionW addOption"}, [
+			input=ce("input", {type: "text", placeholder: lang("create_poll_add_option"), autocomplete: "off"}),
+			del=ce("a", {className: "attachDelete", title: lang("create_poll_delete_option"), onclick: this.deletePollOption.bind(this)})
+		]);
+		del.hide();
+		var inputListener, clickListener;
+		input.addEventListener("input", inputListener=this.onAddPollOptionInput.bind(this), false);
+		input.addEventListener("click", clickListener=this.onAddPollOptionClick.bind(this), false);
+		input.customData={'tmpListeners': {input: inputListener, click: clickListener}};
+		return el;
+	}
+
+	private addPollOption(el:HTMLInputElement){
+		el.removeEventListener("input", el.customData['tmpListeners'].input);
+		el.removeEventListener("click", el.customData['tmpListeners'].click);
+		delete el.customData['tmpListeners'];
+		var wrap=el.parentElement;
+		wrap.qs(".attachDelete").show();
+		wrap.classList.remove("addOption");
+		el.placeholder="";
+		el.name="pollOption";
+		this.pollOptionFields.push(el);
+		if(this.pollOptionFields.length<10)
+			this.pollOptionsWrap.appendChild(this.makeAddPollOptionLayout());
+	}
+
+	private hidePollLayout(){
+		if(!this.pollLayout)
+			return;
+		this.attachContainer2.removeChild(this.pollLayout);
+		this.pollLayout=null;
+		this.pollOptionFields=[];
+		this.pollQuestionField=null;
+		this.pollOptionsWrap=null;
+		this.pollTimeSelect=null;
+	}
+
 	private showMobileAttachMenu(){
 		var opts:any[]=[];
 		opts.push({label: lang("attach_menu_photo"), onclick: ()=>{
 			this.fileField.click();
 		}});
+		if(!this.pollLayout){
+			opts.push({label: lang("attach_menu_poll"), onclick: this.showPollLayout.bind(this)});
+		}
 		if(!this.cwLayout){
 			opts.push({label: lang("attach_menu_cw"), onclick: this.showCWLayout.bind(this)});
 		}
@@ -341,7 +496,7 @@ class PostForm{
 	}
 
 	public isDirty():boolean{
-		return this.input.value.length>0 || this.attachmentIDs.length>0 || this.cwLayout!=null;
+		return this.input.value.length>0 || this.attachmentIDs.length>0 || this.cwLayout!=null || this.pollLayout!=null;
 	}
 
 	public focus(){
@@ -357,5 +512,17 @@ class PostForm{
 		else
 			this.root.classList.remove("collapsed");
 		this.input.resizeToFitContent();
+	}
+
+	private checkAttachmentCount():boolean{
+		var count=this.attachmentIDs.length+this.uploadingAttachmentCount;
+		if(this.pollLayout)
+			count++;
+		var maxCount=this.replyToField ? 2 : 10;
+		if(count<maxCount){
+			return true;
+		}
+		new MessageBox(lang("error"), langPlural("max_attachment_count_exceeded", maxCount), lang("ok")).show();
+		return false;
 	}
 }

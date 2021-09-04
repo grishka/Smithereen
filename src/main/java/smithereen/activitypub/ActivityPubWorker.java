@@ -499,7 +499,9 @@ public class ActivityPubWorker{
 			PollVote vote=new PollVote();
 			vote.inReplyTo=poll.activityPubID;
 			vote.name=opt.name;
-			vote.activityPubID=Config.localURI("/activitypub/objects/pollVotes/"+voteID);
+			if(opt.activityPubID!=null)
+				vote.context=opt.activityPubID;
+			vote.activityPubID=new UriBuilder(self.activityPubID).fragment("pollVotes/"+voteID).build();
 			vote.attributedTo=self.activityPubID;
 			if(poll.anonymous)
 				vote.to=Collections.singletonList(new LinkOrObject(pollOwner.activityPubID));
@@ -507,7 +509,7 @@ public class ActivityPubWorker{
 				vote.to=List.of(LinkOrObject.PUBLIC, new LinkOrObject(pollOwner.activityPubID));
 			vote.cc=Collections.emptyList();
 			Create create=new Create();
-			create.activityPubID=Config.localURI("/activitypub/objects/pollVotes/"+voteID+"/activity");
+			create.activityPubID=new UriBuilder(self.activityPubID).fragment("pollVotes/"+voteID+"/activity").build();
 			create.to=vote.to;
 			create.cc=vote.cc;
 			create.actor=new LinkOrObject(self.activityPubID);

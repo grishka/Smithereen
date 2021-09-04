@@ -72,6 +72,7 @@ public class Templates{
 		JsonObject jsLang=new JsonObject();
 		ArrayList<String> k=req.attribute("jsLang");
 		Lang lang=Utils.lang(req);
+		jsConfig.addProperty("langPluralRulesName", lang.getPluralRulesName());
 		if(k!=null){
 			for(String key:k){
 				jsLang.add(key, lang.raw(key));

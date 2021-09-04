@@ -84,7 +84,7 @@ span.wideOnly{
 }
 
 h2{
-	color: color($accent shade(20%));
+	color: $boldHeaders;
 	font-weight: bold;
 	font-size: 20px;
 	margin: 0 -$contentPadding;
@@ -93,11 +93,18 @@ h2{
 }
 
 h3{
-	color: color($accent shade(20%));
+	color: $boldHeaders;
 	font-weight: bold;
 	margin: 0 -$contentPadding;
 	padding: 0 8px 2px 8px;
 	border-bottom: solid 1px color($accent lightness(+30%));
+}
+
+h4{
+	color: $boldHeaders;
+	font-weight: bold;
+	margin: 8px -$contentPadding 2px;
+	padding: 0 8px;
 }
 
 .singleColumn{
@@ -778,12 +785,27 @@ select{
 		height: 32px;
 		background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
 	}
-	&.postFormCW input{
+	&.postFormCW input, &.postFormPoll input[type=text]{
 		width: 100%;
 	}
-	&.postFormCW .attachDelete{
+	&.postFormCW .attachDelete, &.postFormPoll>.attachDelete{
 		margin-top: -7px;
 		margin-right: -8px;
+	}
+	&.postFormPoll .pollOptionW{
+		display: flex;
+		margin-top: 5px;
+		.attachDelete{
+			width: 36px;
+			height: 36px;
+			margin-left: 5px;
+		}
+		&.addOption{
+			padding-right: 37px;
+		}
+	}
+	.pollSetting{
+		display: block;
 	}
 }
 
@@ -1108,4 +1130,15 @@ textarea{
 			opacity: .7;
 		}
 	}
+}
+
+.radioButtonWrap{
+	line-height: 24px;
+	input{
+		vertical-align: top;
+		margin-right: 8px;
+		width: 24px;
+		height: 24px;
+	}
+	margin: 8px 0;
 }

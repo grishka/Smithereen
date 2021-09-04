@@ -48,6 +48,9 @@
 					<div class="popupMenu" style="display: none;">
 						<ul class="attachMenu">
 							<li data-act="photo"><span class="iconPhoto"></span>{{ L('attach_menu_photo') }}</li>
+							{% if replyTo is empty %}
+							<li data-act="poll"><span class="iconPoll"></span>{{ L('attach_menu_poll') }}</li>
+							{% endif %}
 							<li data-act="cw"><span class="iconCW"></span>{{ L('attach_menu_cw') }}</li>
 						</ul>
 					</div>

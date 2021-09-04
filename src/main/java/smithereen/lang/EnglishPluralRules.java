@@ -5,4 +5,9 @@ public class EnglishPluralRules extends PluralRules{
 	public int getIndexForQuantity(int quantity){
 		return quantity==1 ? 0 : 1;
 	}
+
+	@Override
+	public String getName(){
+		return "english";
+	}
 }

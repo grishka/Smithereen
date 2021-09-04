@@ -12,4 +12,9 @@ public class SlavicPluralRules extends PluralRules{
 			return 1;
 		return 2; // 6 хреней
 	}
+
+	@Override
+	public String getName(){
+		return "slavic";
+	}
 }

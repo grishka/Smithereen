@@ -349,5 +349,17 @@
   "poll_voting_until": "Voting ends <b>%s</b>.",
   "poll_expired": "Voting ended <b>%s</b>.",
   "err_poll_already_voted": "You've already voted in this poll.",
-  "err_poll_expired": "Voting in this poll has already ended."
+  "err_poll_expired": "Voting in this poll has already ended.",
+  "attach_menu_poll": "Poll",
+  "create_poll_question": "Question",
+  "create_poll_options": "Poll options",
+  "create_poll_add_option": "Add an option",
+  "create_poll_delete_option": "Remove this option",
+  "create_poll_multi_choice": "Multiple choice",
+  "create_poll_anonymous": "Anonymous voting",
+  "create_poll_time_limit": "Limit voting time",
+  "X_days": ["%d day", "%d days"],
+  "X_hours": ["%d hour", "%d hours"],
+  "remove_attachment": "Remove attachment",
+  "max_attachment_count_exceeded": ["You can add no more than %d attachment.", "You can add no more than %d attachments."]
 }

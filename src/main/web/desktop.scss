@@ -58,6 +58,13 @@ h3{
 	border-bottom: solid 1px $mainHeaderSeparator;
 }
 
+h4{
+	color: $boldHeaders;
+	font-weight: bold;
+	margin: 4px 0;
+	font-size: 11px;
+}
+
 small{
 	font-size: 10px;
 }
@@ -1207,9 +1214,7 @@ select{
 }
 
 .radioButtonWrap{
-	label{
-		line-height: 16px;
-	}
+	line-height: 16px;
 	input{
 		vertical-align: top;
 		margin-right: 4px;
@@ -1282,8 +1287,23 @@ select{
 			opacity: 1;
 		}
 	}
-	&.postFormCW input{
+	&.postFormCW input, &.postFormPoll input[type=text]{
 		width: 100%;
+	}
+	&.postFormPoll .pollOptionW{
+		display: flex;
+		margin-top: 5px;
+		.attachDelete{
+			width: 21px;
+			height: 21px;
+			margin-left: 5px;
+		}
+		&.addOption{
+			padding-right: 25px;
+		}
+	}
+	.pollSetting{
+		display: block;
 	}
 }
 
@@ -1465,6 +1485,9 @@ select{
 	}
 	&.iconCW{
 		background-position: 0 -180px;
+	}
+	&.iconPoll{
+		background-position: 0 -100px;
 	}
 }
 

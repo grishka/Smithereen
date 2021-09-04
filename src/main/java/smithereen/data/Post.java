@@ -33,6 +33,7 @@ import smithereen.activitypub.objects.Mention;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.VideoAttachment;
+import smithereen.jsonld.JLD;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.PostStorage;
@@ -160,7 +161,7 @@ public class Post extends ActivityPubObject{
 		replyCount=res.getInt("reply_count");
 		int pollID=res.getInt("poll_id");
 		if(!res.wasNull()){
-			poll=PostStorage.getPoll(pollID);
+			poll=PostStorage.getPoll(pollID, activityPubID);
 		}
 	}
 
@@ -206,6 +207,21 @@ public class Post extends ActivityPubObject{
 		}
 		root.addProperty("likes", Config.localURI("/posts/"+id+"/likes").toString());
 
+		if(poll!=null){
+			root.addProperty("name", poll.question);
+			JsonArray opts=new JsonArray();
+			for(PollOption opt: poll.options){
+				opts.add(opt.asActivityPubObject(new JsonObject(), contextCollector));
+			}
+			root.add(poll.multipleChoice ? "anyOf" : "oneOf", opts);
+			if(poll.endTime!=null){
+				root.addProperty(poll.endTime.getTime()<System.currentTimeMillis() ? "closed" : "endTime", Utils.formatDateAsISO(poll.endTime));
+			}
+			root.addProperty("votersCount", poll.numVoters);
+			contextCollector.addAlias("toot", JLD.MASTODON);
+			contextCollector.addAlias("votersCount", "toot:votersCount");
+		}
+
 		return root;
 	}
 
@@ -213,10 +229,10 @@ public class Post extends ActivityPubObject{
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		JsonElement _content=obj.get("content");
-		if(_content.isJsonArray()){
+		if(_content!=null && _content.isJsonArray()){
 			content=_content.getAsJsonArray().get(0).getAsString();
 		}
-		if(!parserContext.isLocal){
+		if(content!=null && !parserContext.isLocal){
 			if(StringUtils.isNotEmpty(name))
 				content="<p><b>"+name+"</b></p>"+content;
 			content=Utils.sanitizeHTML(content);

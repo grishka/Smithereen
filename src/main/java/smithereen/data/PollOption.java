@@ -6,6 +6,7 @@ import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import smithereen.Config;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -56,11 +57,15 @@ public class PollOption extends ActivityPubObject{
 		replies.totalItems=n;
 	}
 
-	public static PollOption fromResultSet(ResultSet res) throws SQLException{
+	public static PollOption fromResultSet(ResultSet res, URI pollApID) throws SQLException{
 		PollOption opt=new PollOption();
 		opt.id=res.getInt("id");
 		String _id=res.getString("ap_id");
-		opt.activityPubID=_id==null ? null : URI.create(_id);
+		if(_id==null){
+			opt.activityPubID=pollApID!=null && Config.isLocal(pollApID) ? new UriBuilder(pollApID).fragment("options/"+opt.id).build() : null;
+		}else{
+			opt.activityPubID=URI.create(_id);
+		}
 		opt.name=res.getString("text");
 		ActivityPubCollection replies=new ActivityPubCollection(false);
 		replies.totalItems=res.getInt("num_votes");

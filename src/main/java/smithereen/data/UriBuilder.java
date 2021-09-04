@@ -108,7 +108,7 @@ public class UriBuilder{
 	}
 
 	public UriBuilder fragment(String fragment){
-		this.fragment=urlEncode(fragment);
+		this.fragment=fragment;
 		return this;
 	}
 

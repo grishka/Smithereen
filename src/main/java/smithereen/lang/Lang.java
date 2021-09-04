@@ -280,4 +280,8 @@ public class Lang{
 	public Locale getLocale(){
 		return locale;
 	}
+
+	public String getPluralRulesName(){
+		return pluralRules.getName();
+	}
 }

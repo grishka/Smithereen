@@ -1,6 +1,7 @@
 package smithereen.storage;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,9 +47,9 @@ import smithereen.data.feed.RetootNewsfeedEntry;
 import spark.utils.StringUtils;
 
 public class PostStorage{
-	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, int[] replyKey, List<User> mentionedUsers, String attachments, String contentWarning) throws SQLException{
+	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, int[] replyKey, List<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO wall_posts (author_id, owner_user_id, owner_group_id, `text`, reply_key, mentions, attachments, content_warning) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+		PreparedStatement stmt=conn.prepareStatement("INSERT INTO wall_posts (author_id, owner_user_id, owner_group_id, `text`, reply_key, mentions, attachments, content_warning, poll_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 		stmt.setInt(1, userID);
 		if(ownerUserID>0){
 			stmt.setInt(2, ownerUserID);
@@ -67,6 +69,10 @@ public class PostStorage{
 		stmt.setBytes(6, mentions);
 		stmt.setString(7, attachments);
 		stmt.setString(8, contentWarning);
+		if(pollID>0)
+			stmt.setInt(9, pollID);
+		else
+			stmt.setNull(9, Types.INTEGER);
 		stmt.execute();
 		try(ResultSet keys=stmt.getGeneratedKeys()){
 			keys.first();
@@ -478,6 +484,10 @@ public class PostStorage{
 			}
 		}
 
+		if(post.poll!=null && post.poll.ownerID==post.user.id){
+			SQLQueryBuilder.prepareStatement(conn, "DELETE FROM polls WHERE id=?", post.poll.id).execute();
+		}
+
 		if(needFullyDelete){
 			stmt=conn.prepareStatement("DELETE FROM `wall_posts` WHERE `id`=?");
 			stmt.setInt(1, id);
@@ -781,7 +791,7 @@ public class PostStorage{
 		}
 	}
 
-	public static Poll getPoll(int id) throws SQLException{
+	public static Poll getPoll(int id, URI parentApID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=new SQLQueryBuilder(conn)
 				.selectFrom("polls")
@@ -801,7 +811,7 @@ public class PostStorage{
 		try(ResultSet res=stmt.executeQuery()){
 			res.beforeFirst();
 			while(res.next()){
-				poll.options.add(PollOption.fromResultSet(res));
+				poll.options.add(PollOption.fromResultSet(res, poll.activityPubID==null ? parentApID : poll.activityPubID));
 			}
 		}
 		return poll;
@@ -854,5 +864,91 @@ public class PostStorage{
 		stmt.execute();
 
 		return voteIDs;
+	}
+
+	// This is called once for each choice in a multiple-choice poll
+	public static synchronized int voteInPoll(int userID, int pollID, int optionID, URI voteID, boolean allowMultiple) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("poll_votes")
+				.columns("option_id")
+				.where("user_id=? AND poll_id=?", userID, pollID)
+				.createStatement();
+		boolean userVoted=false;
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			while(res.next()){
+				// this is a single-choice poll and there's already a vote
+				if(!allowMultiple)
+					return 0;
+				userVoted=true;
+				int optID=res.getInt(1);
+				if(optID==optionID)
+					return 0;
+			}
+		}
+
+		PreparedStatement stmt1=new SQLQueryBuilder(conn)
+				.insertInto("poll_votes")
+				.value("option_id", optionID)
+				.value("user_id", userID)
+				.value("poll_id", pollID)
+				.value("ap_id", voteID)
+				.createStatement(Statement.RETURN_GENERATED_KEYS);
+
+		PreparedStatement stmt2=new SQLQueryBuilder(conn)
+				.update("poll_options")
+				.where("id=?", optionID)
+				.valueExpr("num_votes", "num_votes+1")
+				.createStatement();
+
+		int rVoteID;
+		stmt1.execute();
+		stmt2.execute();
+		try(ResultSet res=stmt1.getGeneratedKeys()){
+			res.first();
+			rVoteID=res.getInt(1);
+		}
+
+		if(!userVoted){
+			stmt=new SQLQueryBuilder(conn)
+					.update("polls")
+					.valueExpr("num_voted_users", "num_voted_users+1")
+					.where("id=?", pollID)
+					.createStatement();
+			stmt.execute();
+		}
+
+		return rVoteID;
+	}
+
+	public static int createPoll(int ownerID, @NotNull String question, @NotNull List<String> options, boolean anonymous, boolean multiChoice, @Nullable Date endTime) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.insertInto("polls")
+				.value("owner_id", ownerID)
+				.value("question", question)
+				.value("is_anonymous", anonymous)
+				.value("is_multi_choice", multiChoice)
+				.value("end_time", endTime!=null ? new Timestamp(endTime.getTime()) : null)
+				.createStatement(Statement.RETURN_GENERATED_KEYS);
+		stmt.execute();
+		int pollID;
+		try(ResultSet res=stmt.getGeneratedKeys()){
+			res.first();
+			pollID=res.getInt(1);
+		}
+
+		stmt=new SQLQueryBuilder(conn)
+				.insertInto("poll_options")
+				.value("text", "")
+				.value("poll_id", pollID)
+				.createStatement();
+		for(String opt:options){
+			stmt.setString(1, opt);
+			stmt.execute();
+		}
+
+		return pollID;
 	}
 }
