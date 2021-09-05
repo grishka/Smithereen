@@ -131,7 +131,7 @@ public class ProfileRoutes{
 					}
 					model.with("isBlocked", UserStorage.isUserBlocked(self.user.id, user.id));
 					model.with("isSelfBlocked", UserStorage.isUserBlocked(user.id, self.user.id));
-					jsLangKey(req, "block", "unblock");
+					jsLangKey(req, "block", "unblock", "unfollow", "remove_friend");
 				}
 			}else{
 				HashMap<String, String> meta=new LinkedHashMap<>();

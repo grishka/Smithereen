@@ -361,5 +361,6 @@
   "X_days": ["%d day", "%d days"],
   "X_hours": ["%d hour", "%d hours"],
   "remove_attachment": "Remove attachment",
-  "max_attachment_count_exceeded": ["You can add no more than %d attachment.", "You can add no more than %d attachments."]
+  "max_attachment_count_exceeded": ["You can add no more than %d attachment.", "You can add no more than %d attachments."],
+  "confirm_unfollow_X": "Are you sure you want to unfollow <b>%s</b>?"
 }
