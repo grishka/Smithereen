@@ -80,7 +80,8 @@ public class SmithereenApplication{
 			Config.loadFromDatabase();
 			DatabaseSchemaUpdater.maybeUpdate();
 		}catch(IOException|SQLException x){
-			throw new RuntimeException(x);
+			x.printStackTrace();
+			System.exit(1);
 		}
 
 		if(args.length>1){
