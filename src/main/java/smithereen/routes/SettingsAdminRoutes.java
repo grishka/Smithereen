@@ -218,6 +218,8 @@ public class SettingsAdminRoutes{
 					"Mail_SMTP_UseTLS", smtpUseTLS ? "1" : "0"
 			));
 
+			Mailer.getInstance().updateSession();
+
 			result="settings_saved";
 		}
 
