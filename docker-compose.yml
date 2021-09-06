@@ -1,4 +1,4 @@
-version: "2.4"
+version: "3"
 services:
   web:
     build: .
@@ -11,7 +11,6 @@ services:
       # These need to be somewhere accessible by the web server.
       # Change to whatever your web root is if it's not /var/www.
       - smithereen-media:/opt/smithereen/media
-    mem_limit: 200m
     restart: always
   imgproxy:
     image: darthsim/imgproxy:latest
@@ -27,7 +26,6 @@ services:
       IMGPROXY_SALT: 573751dab84e8513f45dbb7879d20d97d6c13cd8f16b412664da06b6bdfbdaea
     volumes:
       - smithereen-media:/uploads
-    mem_limit: 100m
     restart: always
     networks:
       - external_network
