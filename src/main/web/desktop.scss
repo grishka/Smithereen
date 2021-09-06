@@ -1503,7 +1503,7 @@ select{
 		padding-left: 23px;
 		background: color($blockBackground alpha(50%)) svg-load('img/flex_arrow_shut.svg', fill: color($iconColor alpha(70%))) no-repeat left center;
 	}
-	.postContent, .postAttachments{
+	.postContent, .postAttachments, .poll{
 		display: none;
 	}
 }
@@ -1512,7 +1512,7 @@ input:checked+.postCWWrap{
 	.postCWButton{
 		background-image: svg-load('img/flex_arrow_open.svg', fill: color($iconColor alpha(70%)));
 	}
-	.postContent, .postAttachments{
+	.postContent, .postAttachments, .poll{
 		display: block;
 	}
 }
