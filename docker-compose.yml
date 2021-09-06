@@ -1,35 +1,54 @@
 version: "3"
 services:
-  web:
-    build: .
-    ports:
-      - '4567:4567'
-    networks:
-      - external_network
-    volumes:
-      - ./config.properties:/usr/local/etc/config.properties:ro
-      # These need to be somewhere accessible by the web server.
-      # Change to whatever your web root is if it's not /var/www.
-      - smithereen-media:/opt/smithereen/media
-    restart: always
-  imgproxy:
-    image: darthsim/imgproxy:latest
-    ports:
-      - '4560:8080'
-    environment:
-      IMGPROXY_PATH_PREFIX: "/i"
-      IMGPROXY_ALLOWED_SOURCES: "local://"
-      IMGPROXY_LOCAL_FILESYSTEM_ROOT: "/uploads"
-      # See README or config_docker.properties for how to generate these.
-      # Must match config, otherwise you won't be seeing any memes in the newsfeed.
-      IMGPROXY_KEY: b6033ee3c72c328f925ab4c082858bf47b18bc1b3a993ef9dfdb9c09014a41cf
-      IMGPROXY_SALT: 573751dab84e8513f45dbb7879d20d97d6c13cd8f16b412664da06b6bdfbdaea
-    volumes:
-      - smithereen-media:/uploads
-    restart: always
-    networks:
-      - external_network
+ web:
+  build: .
+  ports:
+   - '4567:4567'
+  networks:
+   - external_network
+   - internal_network
+  depends_on:
+   - mysql
+  volumes:
+   - ./config.properties:/usr/local/etc/config.properties
+   - smithereen-media:/uploads
+  restart: always
+ mysql:
+  image: mysql:5
+  environment:
+   MYSQL_ROOT_PASSWORD: smithereen
+   MYSQL_DATABASE: smithereen
+  networks:
+   - internal_network
+  healthcheck:
+   test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+  volumes:
+   - smithereen-mysql-data:/var/lib/mysql
+   - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+  restart: always
+ imgproxy:
+  image: darthsim/imgproxy:latest
+  ports:
+   - '4560:8080'
+  environment:
+   IMGPROXY_PATH_PREFIX: "/i"
+   IMGPROXY_ALLOWED_SOURCES: "local://"
+   IMGPROXY_LOCAL_FILESYSTEM_ROOT: "/uploads"
+   # See README or config_docker.properties for how to generate these.
+   # Must match config, otherwise you won't be seeing any memes in the newsfeed.
+   IMGPROXY_KEY: GENERATE YOUR OWN
+   IMGPROXY_SALT: GENERATE YOUR OWN
+  volumes:
+   - smithereen-media:/uploads
+  restart: always
+  networks:
+   - external_network
+
 networks:
   external_network:
+  internal_network:
+    internal: true
+
 volumes:
   smithereen-media:
+  smithereen-mysql-data:
