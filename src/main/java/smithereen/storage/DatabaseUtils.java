@@ -36,14 +36,14 @@ public class DatabaseUtils{
 			return false;
 		synchronized(UNIQUE_USERNAME_LOCK){
 			Connection conn=DatabaseConnectionManager.getConnection();
-			PreparedStatement stmt=conn.prepareStatement("SELECT COUNT(*) FROM users WHERE username=? AND domain=''");
+			PreparedStatement stmt=conn.prepareStatement("SELECT COUNT(*) FROM `users` WHERE username=? AND domain=''");
 			stmt.setString(1, username);
 			try(ResultSet res=stmt.executeQuery()){
 				res.first();
 				if(res.getInt(1)>0)
 					return false;
 			}
-			stmt=conn.prepareStatement("SELECT COUNT(*) FROM groups WHERE username=? AND domain=''");
+			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `groups` WHERE username=? AND domain=''");
 			stmt.setString(1, username);
 			try(ResultSet res=stmt.executeQuery()){
 				res.first();
