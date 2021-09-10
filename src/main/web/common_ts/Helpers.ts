@@ -635,6 +635,10 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 	var counter=ge("likeCounter"+objType.substring(0,1).toUpperCase()+objType.substring(1)+objID);
 	var count=parseInt(counter.innerText);
 	var ownAva=document.querySelector(".likeAvatars .currentUserLikeAva") as HTMLElement;
+	if(btn.customData && btn.customData.popoverTimeout){
+		clearTimeout(btn.customData.popoverTimeout);
+		delete btn.customData.popoverTimeout;
+	}
 	if(!liked){
 		counter.innerText=(count+1).toString();
 		btn.classList.add("liked");
@@ -688,7 +692,7 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 }
 
 function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
-	var btn=wrap.querySelector(".like") as HTMLElement;
+	var btn=wrap.querySelector(".popoverButton") as HTMLElement;
 	var objID=btn.getAttribute("data-obj-id");
 	var objType=btn.getAttribute("data-obj-type");
 

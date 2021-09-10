@@ -1,3 +1,4 @@
+{% if users is not empty %}
 <div class="userGrid">
 	{%for user in users%}
 	<div class="userGridItem">
@@ -9,3 +10,10 @@
 	{%endfor%}
 	{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': paginationUrlPrefix, 'ajax': true}%}
 </div>
+{% else %}
+<div class="singleColumn">
+	<div class="emptyState">
+		{{ emptyMessage }}
+	</div>
+</div>
+{% endif %}

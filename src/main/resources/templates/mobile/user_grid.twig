@@ -10,6 +10,8 @@
 				</td>
 			</tr>
 		</table>
+	{% else %}
+	<div class="emptyState">{{ emptyMessage }}</div>
 	{%endfor%}
 	{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': paginationUrlPrefix, 'ajax': true}%}
 </div>

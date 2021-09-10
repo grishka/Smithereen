@@ -203,6 +203,9 @@ public class SmithereenApplication{
 					get("", ActivityPubRoutes::likeObject);
 					get("/undo", ActivityPubRoutes::undoLikeObject);
 				});
+				path("/polls/:pollID", ()->{
+					getActivityPubCollection("/options/:optionID/votes", 100, ActivityPubRoutes::pollVoters);
+				});
 			});
 		});
 
@@ -321,6 +324,9 @@ public class SmithereenApplication{
 
 			getActivityPubCollection("/replies", 50, ActivityPubRoutes::postReplies);
 			getActivityPubCollection("/likes", 50, ActivityPubRoutes::postLikes);
+
+			get("/pollVoters/:optionID", PostRoutes::pollOptionVoters);
+			get("/pollVoters/:optionID/popover", PostRoutes::pollOptionVotersPopover);
 		});
 
 		get("/robots.txt", (req, resp)->{

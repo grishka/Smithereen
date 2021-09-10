@@ -32,6 +32,7 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.ListAndTotal;
+import smithereen.data.PollOption;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
@@ -584,13 +585,10 @@ public class PostRoutes{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		Post post=getPostOrThrow(postID);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		List<Integer> ids=LikeStorage.getPostLikes(postID, 0, offset, 100);
-		ArrayList<User> users=new ArrayList<>();
-		for(int id:ids)
-			users.add(UserStorage.getById(id));
+		List<User> users=UserStorage.getByIdAsList(LikeStorage.getPostLikes(postID, 0, offset, 100));
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users);
 		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), 0).get(postID);
-		model.with("pageOffset", offset).with("total", interactions.likeCount).with("paginationUrlPrefix", "/posts/"+postID+"/likes?fromPagination&offset=");
+		model.with("pageOffset", offset).with("total", interactions.likeCount).with("paginationUrlPrefix", "/posts/"+postID+"/likes?fromPagination&offset=").with("emptyMessage", lang(req).get("likes_empty"));
 		if(isAjax(req)){
 			if(req.queryParams("fromPagination")==null)
 				return new WebDeltaResponse(resp).box(lang(req).get("likes_title"), model.renderToString(), "likesList", 610);
@@ -751,5 +749,75 @@ public class PostRoutes{
 		return new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString())
 				.remove("loadRepliesLink"+post.id, "repliesLoader"+post.id);
+	}
+
+	public static Object pollOptionVoters(Request req, Response resp) throws SQLException{
+		int postID=parseIntOrDefault(req.params(":postID"), 0);
+		int optionID=parseIntOrDefault(req.params(":optionID"), 0);
+		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
+		Post post=getPostOrThrow(postID);
+		if(post.poll==null)
+			throw new ObjectNotFoundException();
+		if(post.poll.anonymous)
+			throw new UserActionNotAllowedException();
+
+		PollOption option=null;
+		for(PollOption opt:post.poll.options){
+			if(opt.id==optionID){
+				option=opt;
+				break;
+			}
+		}
+		if(option==null)
+			throw new ObjectNotFoundException();
+
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
+
+		List<User> users=UserStorage.getByIdAsList(PostStorage.getPollOptionVoters(option.id, offset, 100));
+		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users);
+		model.with("pageOffset", offset).with("total", option.getNumVotes()).with("paginationUrlPrefix", "/posts/"+postID+"/pollVoters/"+option.id+"?fromPagination&offset=").with("emptyMessage", lang(req).get("poll_option_votes_empty"));
+		if(isAjax(req)){
+			if(req.queryParams("fromPagination")==null)
+				return new WebDeltaResponse(resp).box(option.name, model.renderToString(), "likesList", 610);
+			else
+				return new WebDeltaResponse(resp).setContent("likesList", model.renderToString());
+		}
+		model.with("contentTemplate", "user_grid").with("title", option.name);
+		return model;
+	}
+
+	public static Object pollOptionVotersPopover(Request req, Response resp) throws SQLException{
+		int postID=parseIntOrDefault(req.params(":postID"), 0);
+		int optionID=parseIntOrDefault(req.params(":optionID"), 0);
+		Post post=getPostOrThrow(postID);
+		if(post.poll==null)
+			throw new ObjectNotFoundException();
+		if(post.poll.anonymous)
+			throw new UserActionNotAllowedException();
+
+		PollOption option=null;
+		for(PollOption opt:post.poll.options){
+			if(opt.id==optionID){
+				option=opt;
+				break;
+			}
+		}
+		if(option==null)
+			throw new ObjectNotFoundException();
+
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
+
+		List<User> users=UserStorage.getByIdAsList(PostStorage.getPollOptionVoters(option.id, 0, 6));
+		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
+
+		LikePopoverResponse r=new LikePopoverResponse();
+		r.actions=Collections.emptyList();
+		r.title=lang(req).plural("X_people_voted_title", option.getNumVotes());
+		r.content=_content;
+		r.show=true;
+		r.fullURL="/posts/"+postID+"/pollVoters/"+optionID;
+		return gson.toJson(r);
 	}
 }

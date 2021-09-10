@@ -24,11 +24,16 @@ if(!userConfig || !userConfig["timeZone"] || timeZone!=userConfig.timeZone){
 }
 
 document.body.addEventListener("click", function(ev){
-	if((ev.target as HTMLElement).tagName=="A"){
-		if(ajaxFollowLink(ev.target as HTMLAnchorElement)){
-			ev.preventDefault();
+	var el:HTMLElement=ev.target as HTMLElement;
+	do{
+		if(el.tagName=="A"){
+			if(ajaxFollowLink(el as HTMLAnchorElement)){
+				ev.preventDefault();
+			}
+			return;
 		}
-	}
+		el=el.parentElement;
+	}while(el && el.tagName!="BODY");
 }, false);
 
 function updatePostForms(){

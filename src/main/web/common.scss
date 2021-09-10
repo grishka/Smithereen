@@ -754,3 +754,10 @@ ul.actualList{
 		background: svg-load('img/statuses_s.svg');
 	}
 }
+
+.undecoratedLink{
+	&, &:link, &:hover, &:visited, &:visited:hover{
+		color: $text;
+		text-decoration: none;
+	}
+}

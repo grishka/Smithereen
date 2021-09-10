@@ -39,6 +39,10 @@
 		{% for opt in poll.options %}
 			{# @pebvariable name="fraction" type="float" #}
 			{% set fraction=(poll.numVoters==0 ? 0 : (opt.numVotes*1.0)/poll.numVoters) %}
+			{% if not poll.anonymous %}
+			<div class="pollResultRowW"{% if opt.numVotes>0 %} onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)"{% endif %}>
+			<a href="/posts/{{ post.id }}/pollVoters/{{ opt.id }}" class="undecoratedLink popoverButton" data-ajax-box="1" data-popover-url="/posts/{{ post.id }}/pollVoters/{{ opt.id }}/popover">
+			{% endif %}
 			<div class="pollResultRow{{ interactions.pollChoices contains opt.id ? ' userChoice' : '' }}">
 				{{ opt.name }}
 				<div class="pollResultBarW">
@@ -49,6 +53,11 @@
 					<div class="pollResultPercent">{{ fraction | numberformat("#.#%") }}</div>
 				</div>
 			</div>
+			{% if not poll.anonymous %}
+			</a>
+			<div class="popoverPlaceW"><div class="popoverPlace pollVotersPopoverWrap"></div></div>
+			</div>
+			{% endif %}
 		{% endfor %}
 	{% endif %}
 	{{ LP('X_people_voted', poll.numVoters) }}

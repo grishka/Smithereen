@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
 
 import smithereen.Config;
 import smithereen.activitypub.ParserContext;
@@ -57,7 +58,7 @@ public class PollOption extends ActivityPubObject{
 		replies.totalItems=n;
 	}
 
-	public static PollOption fromResultSet(ResultSet res, URI pollApID) throws SQLException{
+	public static PollOption fromResultSet(ResultSet res, URI pollApID, Poll poll) throws SQLException{
 		PollOption opt=new PollOption();
 		opt.id=res.getInt("id");
 		String _id=res.getString("ap_id");
@@ -69,6 +70,10 @@ public class PollOption extends ActivityPubObject{
 		opt.name=res.getString("text");
 		ActivityPubCollection replies=new ActivityPubCollection(false);
 		replies.totalItems=res.getInt("num_votes");
+		if(!poll.anonymous && (_id==null || (pollApID!=null && Config.isLocal(pollApID)))){
+			replies.items=Collections.emptyList();
+			replies.activityPubID=Config.localURI("/activitypub/objects/polls/"+poll.id+"/options/"+opt.id+"/votes");
+		}
 		opt.replies=new LinkOrObject(replies);
 		return opt;
 	}

@@ -61,6 +61,7 @@ public class JLDProcessor{
 		lc.add("wall", idAndTypeObject("sm:wall", "@id"));
 		lc.add("friends", idAndTypeObject("sm:friends", "@id"));
 		lc.add("groups", idAndTypeObject("sm:groups", "@id"));
+		lc.addProperty("nonAnonymous", "sm:nonAnonymous");
 
 		localContext=updateContext(new JLDContext(), makeArray(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);

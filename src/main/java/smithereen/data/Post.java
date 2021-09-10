@@ -218,8 +218,11 @@ public class Post extends ActivityPubObject{
 				root.addProperty(poll.endTime.getTime()<System.currentTimeMillis() ? "closed" : "endTime", Utils.formatDateAsISO(poll.endTime));
 			}
 			root.addProperty("votersCount", poll.numVoters);
+			root.addProperty("nonAnonymous", !poll.anonymous);
 			contextCollector.addAlias("toot", JLD.MASTODON);
+			contextCollector.addAlias("sm", JLD.SMITHEREEN);
 			contextCollector.addAlias("votersCount", "toot:votersCount");
+			contextCollector.addAlias("nonAnonymous", "sm:nonAnonymous");
 		}
 
 		return root;
@@ -288,7 +291,7 @@ public class Post extends ActivityPubObject{
 			poll.question=obj.has("name") ? obj.get("name").getAsString() : null;
 			poll.numVoters=obj.has("votersCount") ? obj.get("votersCount").getAsInt() : 0;
 			JsonArray opts=obj.getAsJsonArray(obj.has("anyOf") ? "anyOf" : "oneOf");
-			poll.anonymous=true;
+			poll.anonymous=!obj.has("nonAnonymous") || !optBoolean(obj, "nonAnonymous");
 			poll.options=new ArrayList<>(opts.size());
 			poll.activityPubID=activityPubID;
 			if(endTime!=null){

@@ -1174,6 +1174,14 @@ select{
 	}
 }
 
+.pollVotersPopoverWrap .popover{
+	width: 230px;
+	left: 0;
+	.popoverArrow{
+		left: 16px;
+	}
+}
+
 .likePopoverContent{
 	padding: 4px 0;
 	overflow-x: hidden;
@@ -1632,6 +1640,38 @@ textarea{
 			background: svg-load('img/poll_check.svg', fill: $auxiliaryBlockHeader) no-repeat;
 			background-position: right 3px top 2px;
 			opacity: .7;
+		}
+	}
+}
+
+.emptyState{
+	text-align: center;
+	font-size: 13px;
+	height: 276px;
+	border: solid 1px #bcbcbc;
+	color: $darkGrey;
+	background-color: $bgGrey;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.boxContent .emptyState{
+	height: auto;
+	padding: 50px 0;
+	border: none;
+	background: none;
+}
+
+.pollResultRowW{
+	position: relative;
+	.popoverPlaceW{
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		.popoverPlace{
+			height: 100%;
 		}
 	}
 }

@@ -77,7 +77,8 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					}
 				}
 				if(optionID!=0){
-					PostStorage.voteInPoll(actor.id, parent.poll.id, optionID, post.activityPubID, parent.poll.multipleChoice);
+					if(!parent.poll.isExpired())
+						PostStorage.voteInPoll(actor.id, parent.poll.id, optionID, post.activityPubID, parent.poll.multipleChoice);
 					return;
 				}
 			}

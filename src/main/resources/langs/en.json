@@ -362,5 +362,8 @@
   "X_hours": ["%d hour", "%d hours"],
   "remove_attachment": "Remove attachment",
   "max_attachment_count_exceeded": ["You can add no more than %d attachment.", "You can add no more than %d attachments."],
-  "confirm_unfollow_X": "Are you sure you want to unfollow <b>%s</b>?"
+  "confirm_unfollow_X": "Are you sure you want to unfollow <b>%s</b>?",
+  "poll_option_votes_empty": "No one voted for this option.",
+  "likes_empty": "There are no likes.",
+  "X_people_voted_title": ["%,d person voted", "%,d people voted"]
 }

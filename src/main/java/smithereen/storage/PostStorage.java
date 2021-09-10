@@ -811,7 +811,7 @@ public class PostStorage{
 		try(ResultSet res=stmt.executeQuery()){
 			res.beforeFirst();
 			while(res.next()){
-				poll.options.add(PollOption.fromResultSet(res, poll.activityPubID==null ? parentApID : poll.activityPubID));
+				poll.options.add(PollOption.fromResultSet(res, poll.activityPubID==null ? parentApID : poll.activityPubID, poll));
 			}
 		}
 		return poll;
@@ -950,5 +950,30 @@ public class PostStorage{
 		}
 
 		return pollID;
+	}
+
+	public static List<Integer> getPollOptionVoters(int optionID, int offset, int count) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("poll_votes")
+				.columns("user_id")
+				.where("option_id=?", optionID)
+				.orderBy("id ASC")
+				.limit(count, offset)
+				.createStatement();
+		return DatabaseUtils.intResultSetToList(stmt.executeQuery());
+	}
+
+	public static List<URI> getPollOptionVotersApIDs(int optionID, int offset, int count) throws SQLException{
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(DatabaseConnectionManager.getConnection(),
+				"SELECT users.id, users.ap_id FROM poll_votes JOIN users ON poll_votes.user_id=users.id WHERE poll_votes.option_id=? LIMIT ? OFFSET ?", optionID, count, offset);
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			ArrayList<URI> r=new ArrayList<>();
+			while(res.next()){
+				String apID=res.getString(2);
+				r.add(apID!=null ? URI.create(apID) : Config.localURI("/users/"+res.getInt(1)));
+			}
+			return r;
+		}
 	}
 }

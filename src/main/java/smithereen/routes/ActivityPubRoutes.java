@@ -30,6 +30,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import smithereen.BuildInfo;
 import smithereen.Config;
@@ -103,10 +104,14 @@ import smithereen.data.FriendshipStatus;
 import smithereen.data.Group;
 import smithereen.data.ListAndTotal;
 import smithereen.data.NodeInfo;
+import smithereen.data.Poll;
+import smithereen.data.PollOption;
+import smithereen.data.PollVote;
 import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
 import smithereen.sparkext.ActivityPubCollectionPageResponse;
@@ -253,6 +258,35 @@ public class ActivityPubRoutes{
 		Post post=PostStorage.getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
 		ListAndTotal<Like> likes=LikeStorage.getLikes(post.id, post.activityPubID, Like.ObjectType.POST, offset, count);
 		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
+	}
+
+	public static ActivityPubCollectionPageResponse pollVoters(Request req, Response resp, int offset, int count) throws SQLException{
+		Poll poll=PostStorage.getPoll(parseIntOrDefault(req.params(":pollID"), 0), null);
+		int optionID=parseIntOrDefault(req.params(":optionID"), 0);
+
+		if(poll==null)
+			throw new ObjectNotFoundException();
+		if(poll.activityPubID!=null && !Config.isLocal(poll.activityPubID))
+			throw new ObjectNotFoundException();
+		if(poll.anonymous)
+			throw new UserActionNotAllowedException();
+
+		PollOption option=null;
+		for(PollOption opt:poll.options){
+			if(opt.id==optionID){
+				option=opt;
+				break;
+			}
+		}
+		if(option==null)
+			throw new ObjectNotFoundException();
+
+		List<PollVote> votes=PostStorage.getPollOptionVotersApIDs(optionID, offset, count).stream().map(id->{
+			PollVote vote=new PollVote();
+			vote.attributedTo=id;
+			return vote;
+		}).collect(Collectors.toList());
+		return ActivityPubCollectionPageResponse.forObjects(votes, option.getNumVotes()).ordered();
 	}
 
 	public static Object userInbox(Request req, Response resp) throws SQLException{
