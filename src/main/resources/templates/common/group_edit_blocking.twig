@@ -17,7 +17,7 @@
 			</tr>
 		{% else %}
 			<tr>
-				<td colspan="2" align="center" class="grayText"><br/>{{ L('settings_no_blocked_users') }}<br/><br/></td>
+				<td colspan="2" ><div class="emptyState">{{ L('settings_no_blocked_users') }}</div></td>
 			</tr>
 		{% endfor %}
 	</table>
@@ -41,7 +41,7 @@
 			</tr>
 			{% else %}
 			<tr>
-				<td colspan="2" align="center" class="grayText"><br/>{{ L('settings_no_blocked_domains') }}<br/><br/></td>
+				<td colspan="2"><div class="emptyState">{{ L('settings_no_blocked_domains') }}</div></td>
 			</tr>
 		{% endfor %}
 	</table>

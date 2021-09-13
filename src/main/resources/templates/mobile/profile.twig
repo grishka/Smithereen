@@ -73,20 +73,6 @@
 {% endfor %}
 </div>
 
-{% if currentUser is not null and not isSelfBlocked %}
-	<div class="card">
-		{%include "wall_post_form" with {'wallOwner': user}%}
-	</div>
-{%endif%}
-	<div id="postList">
-	{%for post in wall%}
-		<div class="card">
-			{%include "wall_post" with {'post': post}%}
-		</div>
-	{%endfor%}
-	</div>
-	<div class="singleColumn">
-		{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (user.profileURL+"?offset=")}%}
-	</div>
+{% include "wall_profile_block" with {'wallOwner': user} %}
 </div>
 {%endblock%}

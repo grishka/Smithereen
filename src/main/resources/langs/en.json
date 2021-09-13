@@ -365,5 +365,8 @@
   "confirm_unfollow_X": "Are you sure you want to unfollow <b>%s</b>?",
   "poll_option_votes_empty": "No one voted for this option.",
   "likes_empty": "There are no likes.",
-  "X_people_voted_title": ["%,d person voted", "%,d people voted"]
+  "X_people_voted_title": ["%,d person voted", "%,d people voted"],
+  "feed_empty": "Updates from your friends will appear here.",
+  "notifications_empty": "Your notifications will appear here.",
+  "wall_empty": "No one has written anything here... Yet."
 }

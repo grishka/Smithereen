@@ -23,21 +23,7 @@
 				{% endif %}
 			</table>
 			</div>
-			<table width="100%" class="profileBlock">
-				<tr><th class="blockHeader"><a href="{{ group.profileURL }}/wall">{{ L('wall') }}</a></th></tr>
-				<tr><td class="blockSubheader">{{LP('X_posts', postCount)}}</td></tr>
-				{%if currentUser is not null%}
-					<tr><td>
-						<div class="marginBefore">{%include "wall_post_form" with {'wallOwner': group, 'isGroup': true}%}</div>
-					</td></tr>
-				{%endif%}
-				<tr><td class="narrowWall" id="postList">
-			{%for post in wall%}
-				<div class="wallRow">{%include "wall_post" with {'post': post}%}</div>
-			{%endfor%}
-					{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (group.profileURL+"?offset=")}%}
-				</td></tr>
-			</table>
+			{% include 'wall_profile_block' with {'wallOwner': group, 'isGroup': true, 'fullWallURL': "#{group.profileURL}/wall"} %}
 		</td>
 
 		<!-- right column -->

@@ -43,6 +43,8 @@
 {%else%}
 Unknown entry type {{entry.type}}
 {%endif%}
+{% else %}
+<div class="emptyState" id="wallEmptyState">{{ L('feed_empty') }}</div>
 {%endfor%}
 	{%include "pagination" with {'perPage': 25, 'offset': offset, 'total': total, 'urlPrefix': paginationURL, 'firstPageURL': "/feed"}%}
 </div>

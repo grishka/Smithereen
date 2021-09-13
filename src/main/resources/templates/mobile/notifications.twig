@@ -80,6 +80,8 @@
 		</td>
 	</tr>
 </table>
+{% else %}
+<div class="emptyState">{{ L('notifications_empty') }}</div>
 {%endfor%}
 	{%include "pagination" with {'perPage': 50, 'offset': offset, 'total': total, 'urlPrefix': "/my/notifications?offset="}%}
 </div>

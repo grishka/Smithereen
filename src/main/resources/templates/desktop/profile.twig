@@ -134,21 +134,7 @@
 					{% endfor %}
 				</table>
 			</div>
-			<table width="100%" class="profileBlock">
-				<tr><th class="blockHeader"><a href="{{ user.profileURL }}/wall">{{L('wall')}}</a></th></tr>
-				<tr><td class="blockSubheader">{{LP('X_posts', postCount)}}</td></tr>
-				{% if currentUser is not null and not isSelfBlocked %}
-					<tr><td>
-						<div class="marginBefore">{%include "wall_post_form" with {'wallOwner': user}%}</div>
-					</td></tr>
-				{%endif%}
-				<tr><td class="narrowWall" id="postList">
-			{%for post in wall%}
-				<div class="wallRow">{%include "wall_post" with {'post': post}%}</div>
-			{%endfor%}
-					{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (user.profileURL+"?offset=")}%}
-				</td></tr>
-			</table>
+			{% include "wall_profile_block" with {'wallOwner': user, 'fullWallURL': "#{user.profileURL}/wall"} %}
 		</td>
 	</tr>
 </table>

@@ -1,0 +1,19 @@
+{% if currentUser is not null and not isSelfBlocked %}
+<div class="card">
+{% include "wall_post_form" %}
+</div>
+{%endif%}
+<div id="postList">
+	{%for post in wall%}
+	<div class="card">
+		{%include "wall_post" with {'post': post}%}
+	</div>
+	{% else %}
+	<div class="card">
+		{{ L('wall_empty') }}
+	</div>
+	{%endfor%}
+</div>
+<div class="singleColumn">
+	{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (user.profileURL+"?offset=")}%}
+</div>
