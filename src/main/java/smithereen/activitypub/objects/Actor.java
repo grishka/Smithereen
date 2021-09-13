@@ -122,7 +122,8 @@ public abstract class Actor extends ActivityPubObject{
 		obj.addProperty("preferredUsername", username);
 		obj.addProperty("inbox", userURL+"/inbox");
 		obj.addProperty("outbox", userURL+"/outbox");
-		obj.addProperty("followers", userURL+"/followers");
+		if(canBeFollowed())
+			obj.addProperty("followers", userURL+"/followers");
 		if(canFollowOtherActors())
 			obj.addProperty("following", userURL+"/following");
 
@@ -139,9 +140,12 @@ public abstract class Actor extends ActivityPubObject{
 		pubkey.addProperty("publicKeyPem", pkey);
 		obj.add("publicKey", pubkey);
 
-		obj.addProperty("wall", getWallURL().toString());
-		contextCollector.addType("wall", "sm:wall", "@id");
-		contextCollector.addAlias("sm", JLD.SMITHEREEN);
+		URI wallUrl=getWallURL();
+		if(wallUrl!=null){
+			obj.addProperty("wall", wallUrl.toString());
+			contextCollector.addType("wall", "sm:wall", "@id");
+			contextCollector.addAlias("sm", JLD.SMITHEREEN);
+		}
 
 		contextCollector.addSchema(JLD.W3_SECURITY);
 
@@ -289,6 +293,10 @@ public abstract class Actor extends ActivityPubObject{
 	}
 
 	protected boolean canFollowOtherActors(){
+		return true;
+	}
+
+	protected boolean canBeFollowed(){
 		return true;
 	}
 }

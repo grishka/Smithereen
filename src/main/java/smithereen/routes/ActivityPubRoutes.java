@@ -82,6 +82,7 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Add;
@@ -797,6 +798,11 @@ public class ActivityPubRoutes{
 		int[] _total={0};
 		List<URI> followers=GroupStorage.getGroupMemberURIs(group.id, false, offset, count, _total);
 		return ActivityPubCollectionPageResponse.forLinks(followers, _total[0]);
+	}
+
+	public static Object serviceActor(Request req, Response resp) throws SQLException{
+		resp.type(ActivityPub.CONTENT_TYPE);
+		return ServiceActor.getInstance().asRootActivityPubObject();
 	}
 
 

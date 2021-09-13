@@ -4,11 +4,22 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.EncodedKeySpec;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -61,6 +72,9 @@ public class Config{
 	public static String smtpUsername;
 	public static String smtpPassword;
 	public static boolean smtpUseTLS;
+
+	public static PrivateKey serviceActorPrivateKey;
+	public static PublicKey serviceActorPublicKey;
 
 	public static void load(String filePath) throws IOException{
 		FileInputStream in=new FileInputStream(filePath);
@@ -125,6 +139,28 @@ public class Config{
 			smtpUsername=dbValues.get("Mail_SMTP_Username");
 			smtpPassword=dbValues.get("Mail_SMTP_Password");
 			smtpUseTLS=Utils.parseIntOrDefault(dbValues.get("Mail_SMTP_UseTLS"), 0)==1;
+
+			String pkey=dbValues.get("ServiceActorPrivateKey");
+			try{
+				if(pkey==null){
+					KeyPairGenerator kpg=KeyPairGenerator.getInstance("RSA");
+					kpg.initialize(2048);
+					KeyPair pair=kpg.generateKeyPair();
+					PrivateKey priv=pair.getPrivate();
+					PublicKey pub=pair.getPublic();
+					updateInDatabase(Map.of(
+							"ServiceActorPrivateKey", Base64.getEncoder().encodeToString(priv.getEncoded()),
+							"ServiceActorPublicKey", Base64.getEncoder().encodeToString(pub.getEncoded())
+					));
+					serviceActorPrivateKey=priv;
+					serviceActorPublicKey=pub;
+				}else{
+					EncodedKeySpec spec=new PKCS8EncodedKeySpec(Base64.getDecoder().decode(pkey));
+					serviceActorPrivateKey=KeyFactory.getInstance("RSA").generatePrivate(spec);
+					spec=new X509EncodedKeySpec(Base64.getDecoder().decode(dbValues.get("ServiceActorPublicKey")));
+					serviceActorPublicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
+				}
+			}catch(NoSuchAlgorithmException|InvalidKeySpecException ignore){}
 		}
 	}
 

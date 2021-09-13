@@ -38,11 +38,13 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import smithereen.Config;
 import smithereen.DisallowLocalhostInterceptor;
+import smithereen.LoggingInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.WebfingerResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -72,10 +74,11 @@ public class ActivityPub{
 		URI uri=URI.create(url);
 		if(Config.isLocal(uri))
 			throw new IllegalStateException("Local URI in fetchRemoteObject: "+url);
-		Request req=new Request.Builder()
+		Request.Builder builder=new Request.Builder()
 				.url(url)
-				.header("Accept", "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
-				.build();
+				.header("Accept", CONTENT_TYPE);
+		signRequest(builder, uri, ServiceActor.getInstance(), null, "get");
+		Request req=builder.build();
 		Call call=httpClient.newCall(req);
 		Response resp=call.execute();
 		try(ResponseBody body=resp.body()){
@@ -100,7 +103,7 @@ public class ActivityPub{
 		}
 	}
 
-	private static Request.Builder signRequest(Request.Builder builder, URI url, Actor actor, byte[] body){
+	private static Request.Builder signRequest(Request.Builder builder, URI url, Actor actor, byte[] body, String method){
 		String path=url.getPath();
 		String host=url.getHost();
 		if(url.getPort()!=-1)
@@ -108,11 +111,18 @@ public class ActivityPub{
 		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
 		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 		String date=dateFormat.format(new Date());
-		String digestHeader="SHA-256=";
-		try{
-			digestHeader+=Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(body));
-		}catch(NoSuchAlgorithmException ignore){}
-		String strToSign="(request-target): post "+path+"\nhost: "+host+"\ndate: "+date+"\ndigest: "+digestHeader;
+		String digestHeader;
+		if(body!=null){
+			digestHeader="SHA-256=";
+			try{
+				digestHeader+=Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(body));
+			}catch(NoSuchAlgorithmException ignore){}
+		}else{
+			digestHeader=null;
+		}
+		String strToSign="(request-target): "+method.toLowerCase()+" "+path+"\nhost: "+host+"\ndate: "+date;
+		if(digestHeader!=null)
+			strToSign+="\ndigest: "+digestHeader;
 
 		Signature sig;
 		byte[] signature;
@@ -129,12 +139,13 @@ public class ActivityPub{
 		String keyID=actor.activityPubID+"#main-key";
 		builder.header("Signature", Utils.serializeSignatureHeader(List.of(Map.of(
 					"keyId", keyID,
-					"headers", "(request-target) host date digest",
+					"headers", "(request-target) host date"+(digestHeader!=null ? " digest" : ""),
 					"algorithm", "rsa-sha256",
 					"signature", Base64.getEncoder().encodeToString(signature)
 				))))
-				.header("Date", date)
-				.header("Digest", digestHeader);
+				.header("Date", date);
+		if(digestHeader!=null)
+			builder.header("Digest", digestHeader);
 		return builder;
 	}
 
@@ -156,7 +167,7 @@ public class ActivityPub{
 					new Request.Builder()
 					.url(inboxUrl.toString())
 					.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), body)),
-				inboxUrl, actor, body)
+				inboxUrl, actor, body, "post")
 				.build();
 		Response resp=httpClient.newCall(req).execute();
 		System.out.println(resp.toString());

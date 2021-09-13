@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Objects;
 
 import smithereen.activitypub.ActivityPubWorker;
@@ -38,6 +39,7 @@ import smithereen.routes.SessionRoutes;
 import smithereen.routes.SettingsAdminRoutes;
 import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
+import smithereen.sparkext.ActivityPubCollectionPageResponse;
 import smithereen.sparkext.ExtendedStreamingSerializer;
 import smithereen.storage.DatabaseSchemaUpdater;
 import smithereen.storage.GroupStorage;
@@ -206,6 +208,13 @@ public class SmithereenApplication{
 				path("/polls/:pollID", ()->{
 					getActivityPubCollection("/options/:optionID/votes", 100, ActivityPubRoutes::pollVoters);
 				});
+			});
+			path("/serviceActor", ()->{
+				get("", ActivityPubRoutes::serviceActor);
+				post("/inbox", ActivityPubRoutes::sharedInbox);
+				get("/inbox", SmithereenApplication::methodNotAllowed);
+				getActivityPubCollection("/outbox", 1, (req, resp, offset, count)->ActivityPubCollectionPageResponse.forObjects(Collections.emptyList(), 0));
+				post("/outbox", SmithereenApplication::methodNotAllowed);
 			});
 		});
 

@@ -26,6 +26,18 @@ public class WellKnownRoutes{
 			String[] parts=resource.substring(5).split("@", 2);
 			if(parts.length==2 && parts[1].equals(Config.domain)){
 				String username=parts[0];
+				if("activitypub_service_actor".equals(username)){
+					resp.type("application/json");
+
+					WebfingerResponse wfr=new WebfingerResponse();
+					wfr.subject="acct:"+username+"@"+Config.domain;
+					WebfingerResponse.Link selfLink=new WebfingerResponse.Link();
+					selfLink.rel="self";
+					selfLink.type="application/activitypub+json";
+					selfLink.href=Config.localURI("/activitypub/serviceActor");
+					wfr.links=List.of(selfLink);
+					return Utils.gson.toJson(wfr);
+				}
 				User user=UserStorage.getByUsername(username);
 				if(user!=null && !(user instanceof ForeignUser)){
 					resp.type("application/json");
