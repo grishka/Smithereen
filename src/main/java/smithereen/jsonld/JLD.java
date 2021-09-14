@@ -8,4 +8,5 @@ public class JLD{
 	public static final String SMITHEREEN="http://smithereen.software/ns#";
 	public static final String MASTODON="http://joinmastodon.org/ns#";
 	public static final String LITEPUB="http://litepub.social/ns#";
+	public static final String VCARD="http://www.w3.org/2006/vcard/ns#";
 }

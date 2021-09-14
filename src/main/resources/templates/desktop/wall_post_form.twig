@@ -1,7 +1,7 @@
 {# @pebvariable name="wallOwner" type="smithereen.activitypub.objects.Actor" #}
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
 <div class="wallPostForm collapsed" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}">
-	{% if not wallOwner.hasWall %}
+	{% if not wallOwner.hasWall and replyTo is null %}
 		<div class="wallPostFormError">
 		{% if isGroup %}
 			{{ L('server_of_group_no_wall') }}
@@ -11,12 +11,12 @@
 		</div>
 	{% else %}
 	<form action="{{wallOwner.typeAndIdForURL}}/createWallPost" method="post">
-	{% if isGroup %}
+	{% if replyTo is not null %}
+		{% set fieldPlaceholder=L('comment_placeholder') %}
+	{% elseif isGroup %}
 		{% set fieldPlaceholder=L('write_on_group_wall') %}
 	{% elseif wallOwner.id!=currentUser.id%}
 		{% set fieldPlaceholder=LI(key='write_on_X_wall', first=wallOwner.firstName, gender=wallOwner.gender) %}
-	{% elseif replyTo is not null %}
-		{% set fieldPlaceholder=L('comment_placeholder') %}
 	{% else %}
 		{% set fieldPlaceholder=L('write_on_own_wall') %}
 	{% endif %}

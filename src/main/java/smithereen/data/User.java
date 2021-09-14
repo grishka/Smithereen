@@ -165,7 +165,7 @@ public class User extends Actor{
 			obj.addProperty("maidenName", maidenName);
 		}
 		if(birthDate!=null){
-			obj.addProperty("birthDate", birthDate.toString());
+			obj.addProperty("vcard:bday", birthDate.toString());
 		}
 		switch(gender){
 			case MALE -> obj.addProperty("gender", "http://schema.org#Male");
@@ -181,12 +181,12 @@ public class User extends Actor{
 		contextCollector.addAlias("lastName", "sc:familyName");
 		contextCollector.addAlias("middleName", "sc:additionalName");
 		contextCollector.addType("gender", "sc:gender", "sc:GenderType");
-		contextCollector.addType("birthDate", "sc:birthDate", "sc:Date");
 		contextCollector.addAlias("sm", JLD.SMITHEREEN);
 		contextCollector.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
 		contextCollector.addAlias("maidenName", "sm:maidenName");
 		contextCollector.addType("friends", "sm:friends", "@id");
 		contextCollector.addType("groups", "sm:groups", "@id");
+		contextCollector.addAlias("vcard", JLD.VCARD);
 
 		return obj;
 	}

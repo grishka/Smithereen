@@ -104,8 +104,8 @@ public class ForeignUser extends User implements ForeignActor{
 		}else{
 			firstName=StringUtils.isNotEmpty(name) ? name : username;
 		}
-		if(obj.has("birthDate")){
-			birthDate=Date.valueOf(obj.get("birthDate").getAsString());
+		if(obj.has("vcard:bday")){
+			birthDate=Date.valueOf(obj.get("vcard:bday").getAsString());
 		}
 		if(obj.has("gender")){
 			gender=switch(obj.get("gender").getAsString()){

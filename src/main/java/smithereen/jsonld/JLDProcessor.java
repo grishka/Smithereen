@@ -36,13 +36,14 @@ public class JLDProcessor{
 		lc.addProperty("sc", JLD.SCHEMA_ORG);
 		lc.addProperty("sm", JLD.SMITHEREEN);
 		lc.addProperty("toot", JLD.MASTODON);
+		lc.addProperty("vcard", JLD.VCARD);
+		lc.addProperty("litepub", JLD.LITEPUB);
 
 		// schema.org aliases
 		lc.addProperty("firstName", "sc:givenName");
 		lc.addProperty("lastName", "sc:familyName");
 		lc.addProperty("middleName", "sc:additionalName");
 		lc.add("gender", idAndTypeObject("sc:gender", "sc:GenderType"));
-		lc.add("birthDate", idAndTypeObject("sc:birthDate", "sc:Date"));
 		lc.addProperty("value", "sc:value");
 		lc.addProperty("PropertyValue", "sc:PropertyValue");
 
