@@ -368,5 +368,14 @@
   "X_people_voted_title": ["%,d person voted", "%,d people voted"],
   "feed_empty": "Updates from your friends will appear here.",
   "notifications_empty": "Your notifications will appear here.",
-  "wall_empty": "No one has written anything here... Yet."
+  "wall_empty": "No one has written anything here... Yet.",
+  "reminder": "Reminder",
+  "reminder_today": "Today",
+  "reminder_tomorrow": "Tomorrow",
+  "birthday_reminder_before": "",
+  "birthday_reminder_middle": " is ",
+  "birthday_reminder_after": "'s birthday.",
+  "birthday_reminder_name": "%s",
+  "birthday_reminder_separator": ", ",
+  "birthday_reminder_separator_last": " and "
 }

@@ -368,5 +368,14 @@
   "X_people_voted_title": ["Проголосовал %,d человек", "Проголосовало %,d человека", "Проголосовало %,d человек"],
   "feed_empty": "Обновления от Ваших друзей появятся здесь.",
   "notifications_empty": "Ваши уведомления появятся здесь.",
-  "wall_empty": "Здесь никто ничего не написал... Пока."
+  "wall_empty": "Здесь никто ничего не написал... Пока.",
+  "reminder": "Напоминание",
+  "reminder_today": "Сегодня",
+  "reminder_tomorrow": "Завтра",
+  "birthday_reminder_before": "",
+  "birthday_reminder_middle": " день рождения ",
+  "birthday_reminder_after": ".",
+  "birthday_reminder_name": {"str": "%s", "case": "ACCUSATIVE"},
+  "birthday_reminder_separator": ", ",
+  "birthday_reminder_separator_last": " и "
 }

@@ -69,6 +69,21 @@
 				<li><a href="/settings/admin">{{L('menu_admin')}}</a></li>
 				{%endif%}
 			</ul>
+				{% if birthdayUsers is not empty %}
+					<div class="leftReminder">
+						<h3>{{ L('reminder') }}</h3>
+						{{ L('birthday_reminder_before') -}}
+						{{- L(birthdaysAreToday ? 'reminder_today' : 'reminder_tomorrow') -}}
+						{{- L('birthday_reminder_middle') -}}
+						{%- for user in birthdayUsers -%}
+							<a href="{{ user.profileURL }}">{{ LI(key='birthday_reminder_name', first=user.firstName, last=user.lastName, gender=user.gender) }}</a>
+							{%- if not loop.last -%}
+								{{- L(loop.revindex>1 ? 'birthday_reminder_separator' : 'birthday_reminder_separator_last') -}}
+							{%- endif -%}
+						{%- endfor -%}
+						{{- L('birthday_reminder_after') -}}
+					</div>
+				{% endif %}
 			{%else%}
 			<form action="/account/login" method="post">
 				{{ L("email_or_username") }}:<br/>

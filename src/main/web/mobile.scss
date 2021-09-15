@@ -1148,3 +1148,15 @@ textarea{
 	padding: 48px 16px;
 	color: $grayText;
 }
+
+.leftReminder{
+	background-color: $bgGrey;
+	margin: 16px;
+	padding: 16px;
+	text-align: center;
+	h3{
+		border: none;
+		padding-bottom: 0;
+		margin-bottom: 16px;
+	}
+}

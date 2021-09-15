@@ -7,6 +7,7 @@ import com.mitchellbosecke.pebble.loader.DelegatingLoader;
 import com.mitchellbosecke.pebble.template.PebbleTemplate;
 
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -17,10 +18,12 @@ import java.util.stream.Collectors;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.data.Account;
+import smithereen.data.BirthdayReminder;
 import smithereen.data.SessionInfo;
 import smithereen.data.UserNotifications;
 import smithereen.lang.Lang;
 import smithereen.storage.NotificationsStorage;
+import smithereen.storage.UserStorage;
 import spark.Request;
 
 public class Templates{
@@ -46,6 +49,7 @@ public class Templates{
 
 	public static void addGlobalParamsToTemplate(Request req, RenderedTemplateResponse model){
 		JsonObject jsConfig=new JsonObject();
+		TimeZone tz=Utils.timeZoneForRequest(req);
 		if(req.session(false)!=null){
 			SessionInfo info=req.session().attribute("info");
 			if(info==null){
@@ -62,12 +66,18 @@ public class Templates{
 				try{
 					UserNotifications notifications=NotificationsStorage.getNotificationsForUser(account.user.id, account.prefs.lastSeenNotificationID);
 					model.with("userNotifications", notifications);
+
+					LocalDate today=LocalDate.now(tz.toZoneId());
+					BirthdayReminder reminder=UserStorage.getBirthdayReminderForUser(account.user.id, today);
+					if(!reminder.userIDs.isEmpty()){
+						model.with("birthdayUsers", UserStorage.getByIdAsList(reminder.userIDs));
+						model.with("birthdaysAreToday", reminder.day.equals(today));
+					}
 				}catch(SQLException x){
 					throw new RuntimeException(x);
 				}
 			}
 		}
-		TimeZone tz=Utils.timeZoneForRequest(req);
 		jsConfig.addProperty("timeZone", tz!=null ? tz.getID() : null);
 		JsonObject jsLang=new JsonObject();
 		ArrayList<String> k=req.attribute("jsLang");

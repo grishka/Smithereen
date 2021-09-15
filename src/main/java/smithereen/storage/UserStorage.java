@@ -7,10 +7,12 @@ import org.jetbrains.annotations.NotNull;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -29,6 +31,7 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.data.Account;
+import smithereen.data.BirthdayReminder;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
@@ -43,6 +46,7 @@ public class UserStorage{
 	private static LruCache<String, User> cacheByUsername=new LruCache<>(500);
 	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
 	private static LruCache<Integer, Account> accountCache=new LruCache<>(500);
+	private static final LruCache<Integer, BirthdayReminder> birthdayReminderCache=new LruCache<>(500);
 
 	public static synchronized User getById(int id) throws SQLException{
 		User user=cache.get(id);
@@ -231,9 +235,13 @@ public class UserStorage{
 	}
 
 	public static List<User> getFriendListForUser(int userID) throws SQLException{
+		return getByIdAsList(getFriendIDsForUser(userID));
+	}
+
+	public static List<Integer> getFriendIDsForUser(int userID) throws SQLException{
 		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("followings").columns("followee_id").where("follower_id=? AND mutual=1", userID).createStatement();
 		try(ResultSet res=stmt.executeQuery()){
-			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
+			return DatabaseUtils.intResultSetToList(res);
 		}
 	}
 
@@ -372,6 +380,7 @@ public class UserStorage{
 				if(n!=null)
 					n.incNewFriendRequestCount(-1);
 			}
+			removeBirthdayReminderFromCache(List.of(userID, targetUserID));
 		}catch(SQLException x){
 			conn.createStatement().execute("ROLLBACK");
 			throw new SQLException(x);
@@ -404,6 +413,7 @@ public class UserStorage{
 			stmt.setInt(2, userID);
 			stmt.execute();
 			conn.createStatement().execute("COMMIT");
+			removeBirthdayReminderFromCache(List.of(userID, targetUserID));
 		}catch(SQLException x){
 			conn.createStatement().execute("ROLLBACK");
 			throw new SQLException(x);
@@ -442,6 +452,7 @@ public class UserStorage{
 				stmt.setInt(1, targetUserID);
 				stmt.setInt(2, userID);
 				stmt.execute();
+				removeBirthdayReminderFromCache(List.of(userID, targetUserID));
 			}
 
 			conn.createStatement().execute("COMMIT");
@@ -476,7 +487,6 @@ public class UserStorage{
 	}
 
 	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, java.sql.Date bdate, String about) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
 		new SQLQueryBuilder()
 				.update("users")
 				.where("id=?", user.id)
@@ -493,6 +503,7 @@ public class UserStorage{
 			removeFromCache(user);
 		}
 		updateQSearchIndex(getById(user.id));
+		removeBirthdayReminderFromCache(getFriendIDsForUser(user.id));
 	}
 
 	public static int getLocalUserCount() throws SQLException{
@@ -924,5 +935,56 @@ public class UserStorage{
 				.where("user_id=?", user.id)
 				.createStatement()
 				.execute();
+	}
+
+	public static void removeBirthdayReminderFromCache(List<Integer> userIDs){
+		synchronized(birthdayReminderCache){
+			for(Integer id:userIDs){
+				birthdayReminderCache.remove(id);
+			}
+		}
+	}
+
+	public static BirthdayReminder getBirthdayReminderForUser(int userID, LocalDate date) throws SQLException{
+		synchronized(birthdayReminderCache){
+			BirthdayReminder r=birthdayReminderCache.get(userID);
+			if(r!=null && r.forDay.equals(date))
+				return r;
+		}
+		LocalDate nextDay=date.plusDays(1);
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT users.id, users.bdate FROM users RIGHT JOIN followings ON followings.followee_id=users.id" +
+				" WHERE followings.follower_id=? AND followings.mutual=1 AND users.bdate IS NOT NULL" +
+				" AND ((DAY(users.bdate)=? AND MONTH(users.bdate)=?) OR (DAY(users.bdate)=? AND MONTH(users.bdate)=?))",
+				userID, date.getDayOfMonth(), date.getMonthValue(), nextDay.getDayOfMonth(), nextDay.getMonthValue());
+
+		List<Integer> today=new ArrayList<>(), tomorrow=new ArrayList<>();
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			while(res.next()){
+				int id=res.getInt(1);
+				Date bdate=res.getDate(2);
+				if(bdate.getDate()==date.getDayOfMonth()){
+					today.add(id);
+				}else{
+					tomorrow.add(id);
+				}
+			}
+		}
+		BirthdayReminder r=new BirthdayReminder();
+		r.forDay=date;
+		if(!today.isEmpty()){
+			r.day=date;
+			r.userIDs=today;
+		}else if(!tomorrow.isEmpty()){
+			r.day=nextDay;
+			r.userIDs=tomorrow;
+		}else{
+			r.userIDs=Collections.emptyList();
+		}
+		synchronized(birthdayReminderCache){
+			birthdayReminderCache.put(userID, r);
+			return r;
+		}
 	}
 }

@@ -207,7 +207,7 @@ public class Utils{
 			if(info.preferredLocale!=null)
 				return info.timeZone;
 		}
-		return null;
+		return TimeZone.getDefault();
 	}
 
 	public static Lang lang(Request req){
