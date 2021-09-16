@@ -58,33 +58,6 @@ class LibVips{
 		throw new IOException(err);
 	}
 
-	public static void test(){
-		String file="/Users/grishka/Music/The Killers - Discography (2004-2012) [FLAC]/2004 Hot Fuss (CD)/cover.jpg";
-//		String file="/Users/grishka/Pictures/smithereen/newer logo 240px.png";
-//		String file="/Users/grishka/Downloads/rgb-to-gbr-test.jpg";
-//		String file="/Users/grishka/Downloads/PXL_20201130_192552468.jpg";
-		try{
-			VipsImage img=new VipsImage(file);
-			System.out.println("size "+img.getWidth()+"x"+img.getHeight());
-			System.out.println("bands "+img.getBands()+" format "+img.getFormat());
-			System.out.println(BlurHash.encode(img, 4, 4));
-			List<String> fields=img.getFields();
-			System.out.println("fields "+fields);
-			for(String field:fields){
-				if(!"icc-profile-data".equals(field)){
-					boolean r=vips_image_remove(img.nativePtr, field);
-					System.out.println("remove "+field+" "+r);
-				}
-			}
-			fields=img.getFields();
-			System.out.println("fields "+fields);
-			img.writeToFile("/Users/grishka/Downloads/libvips_test.jpg[Q=90]");
-			img.release();
-		}catch(IOException x){
-			x.printStackTrace();
-		}
-	}
-
 	static class LibGObject{
 		static native void g_object_unref(Pointer obj);
 	}
