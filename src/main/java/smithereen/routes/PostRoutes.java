@@ -109,7 +109,7 @@ public class PostRoutes{
 						return user;
 					}
 					URI uri=ActivityPub.resolveUsername(username, domain);
-					ActivityPubObject obj=ActivityPub.fetchRemoteObject(uri.toString());
+					ActivityPubObject obj=ActivityPub.fetchRemoteObject(uri);
 					if(obj instanceof ForeignUser){
 						ForeignUser _user=(ForeignUser)obj;
 						UserStorage.putOrUpdateForeignUser(_user);

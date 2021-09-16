@@ -2,6 +2,8 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 
 import smithereen.activitypub.ContextCollector;
@@ -41,6 +43,14 @@ public class CollectionPage extends ActivityPubCollection{
 		prev=tryParseURL(optString(obj, "prev"));
 		next=tryParseURL(optString(obj, "next"));
 		return this;
+	}
+
+	@Override
+	public void validate(@Nullable URI parentID, String propertyName){
+		super.validate(parentID, propertyName);
+		ensureHostMatchesID(partOf, parentID, propertyName+".partOf");
+		ensureHostMatchesID(prev, parentID, propertyName+".prev");
+		ensureHostMatchesID(next, parentID, propertyName+".next");
 	}
 
 	@Override

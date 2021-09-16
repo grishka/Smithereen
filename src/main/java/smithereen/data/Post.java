@@ -303,10 +303,17 @@ public class Post extends ActivityPubObject{
 				JsonObject opt=_opt.getAsJsonObject();
 				PollOption o=new PollOption();
 				o.parseActivityPubObject(opt, parserContext);
+				ensureHostMatchesID(o.activityPubID, "answer.id");
 				poll.options.add(o);
 			}
 			if(poll.options.isEmpty())
 				poll=null;
+		}
+		if(replies!=null){
+			if(replies.object!=null)
+				replies.object.validate(activityPubID, "replies");
+			else
+				ensureHostMatchesID(replies.link, "replies");
 		}
 		return this;
 	}
@@ -328,6 +335,8 @@ public class Post extends ActivityPubObject{
 	}
 
 	public void setParent(Post parent){
+		if(inReplyTo!=null && !inReplyTo.equals(parent.activityPubID))
+			throw new IllegalStateException("inReplyTo != parent.id");
 		replyKey=new int[parent.replyKey.length+1];
 		System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
 		replyKey[replyKey.length-1]=parent.id;

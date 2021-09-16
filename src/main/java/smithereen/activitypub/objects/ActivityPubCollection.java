@@ -2,6 +2,8 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.util.List;
 
@@ -41,6 +43,20 @@ public class ActivityPubCollection extends ActivityPubObject{
 		if(items!=null)
 			obj.add(ordered ? "orderedItems" : "items", serializeLinkOrObjectArray(items, contextCollector));
 		return obj;
+	}
+
+	@Override
+	public void validate(@Nullable URI parentID, String propertyName){
+		super.validate(parentID, propertyName);
+		ensureHostMatchesID(activityPubID, parentID, propertyName+".id");
+		ensureHostMatchesID(current, parentID, propertyName+".current");
+		ensureHostMatchesID(last, parentID, propertyName+".last");
+		if(first!=null){
+			if(first.link!=null)
+				ensureHostMatchesID(first.link, parentID, propertyName+".first");
+			else
+				first.object.validate(parentID, propertyName+".first");
+		}
 	}
 
 	@Override

@@ -14,6 +14,7 @@ import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.Post;
+import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
@@ -64,9 +65,15 @@ public class ObjectLinkResolver{
 	}
 
 	@NotNull
-	public static <T extends ActivityPubObject> T resolve(URI link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch) throws SQLException{
+	public static <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch) throws SQLException{
 		if(Config.DEBUG)
-			System.out.println("Resolving ActivityPub link: "+link+", expected type: "+expectedType.getName());
+			System.out.println("Resolving ActivityPub link: "+_link+", expected type: "+expectedType.getName());
+		URI link;
+		if("bear".equals(_link.getScheme())){
+			link=URI.create(UriBuilder.parseQueryString(_link.getRawQuery()).get("u"));
+		}else{
+			link=_link;
+		}
 		if(!Config.isLocal(link)){
 			if(!forceRefetch){
 				User user=UserStorage.getUserByActivityPubID(link);
@@ -81,7 +88,7 @@ public class ObjectLinkResolver{
 			}
 			if(allowFetching){
 				try{
-					ActivityPubObject obj=ActivityPub.fetchRemoteObject(link.toString());
+					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link);
 					if(obj!=null){
 						T o=ensureTypeAndCast(obj, expectedType);
 						o.resolveDependencies(allowFetching, allowStorage);

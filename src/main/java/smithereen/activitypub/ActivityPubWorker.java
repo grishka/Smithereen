@@ -686,6 +686,7 @@ public class ActivityPubWorker{
 					ActivityPubCollection collection;
 					if(post.replies.link!=null){
 						collection=ObjectLinkResolver.resolve(post.replies.link, ActivityPubCollection.class, true, false, false);
+						collection.validate(post.activityPubID, "replies");
 					}else if(post.replies.object instanceof ActivityPubCollection){
 						collection=(ActivityPubCollection) post.replies.object;
 					}else{
@@ -700,6 +701,7 @@ public class ActivityPubWorker{
 					CollectionPage page;
 					if(collection.first.link!=null){
 						page=ObjectLinkResolver.resolve(collection.first.link, CollectionPage.class, true, false, false);
+						page.validate(post.activityPubID, "replies.first");
 					}else if(collection.first.object instanceof CollectionPage){
 						page=(CollectionPage) collection.first.object;
 					}else{

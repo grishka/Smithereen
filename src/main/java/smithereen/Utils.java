@@ -612,7 +612,7 @@ public class Utils{
 					User mentionedUser=UserStorage.getUserByActivityPubID(uri);
 					if(mentionedUser==null){
 						try{
-							ActivityPubObject _user=ActivityPub.fetchRemoteObject(uri.toString());
+							ActivityPubObject _user=ActivityPub.fetchRemoteObject(uri);
 							if(_user instanceof ForeignUser){
 								ForeignUser u=(ForeignUser) _user;
 								UserStorage.putOrUpdateForeignUser(u);

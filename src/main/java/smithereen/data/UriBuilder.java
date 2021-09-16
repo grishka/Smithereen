@@ -2,10 +2,14 @@ package smithereen.data;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -144,13 +148,28 @@ public class UriBuilder{
 		return URI.create(sb.toString());
 	}
 
+	public static Map<String, String> parseQueryString(String query){
+		if(StringUtils.isNotEmpty(query)){
+			return Arrays.stream(query.split("&")).map(s->{
+				int offset=s.indexOf('=');
+				if(offset==-1)
+					return new KeyValuePair(s, null);
+				return new KeyValuePair(s.substring(0, offset), urlDecode(s.substring(offset+1)));
+			}).collect(Collectors.toMap(kv->kv.key, kv->kv.value));
+		}
+		return Collections.emptyMap();
+	}
+
 	private static String urlEncode(String in){
 		if(in==null)
 			return null;
-		try{
-			return URLEncoder.encode(in, "UTF-8");
-		}catch(UnsupportedEncodingException ignore){}
-		throw new RuntimeException("unreachable");
+		return URLEncoder.encode(in, StandardCharsets.UTF_8);
+	}
+
+	private static String urlDecode(String in){
+		if(in==null)
+			return null;
+		return URLDecoder.decode(in, StandardCharsets.UTF_8);
 	}
 
 	private static class KeyValuePair{

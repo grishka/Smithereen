@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
@@ -11,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,6 +37,9 @@ import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
+import smithereen.data.UriBuilder;
+import spark.QueryParamsMap;
+import spark.utils.StringUtils;
 
 public abstract class ActivityPubObject{
 
@@ -176,7 +182,20 @@ public abstract class ActivityPubObject{
 		if(url==null || url.isEmpty())
 			return null;
 		try{
-			return new URI(url);
+			URI uri=new URI(url);
+			if("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))
+				return uri;
+			if("bear".equals(uri.getScheme())){
+				Map<String, String> params=UriBuilder.parseQueryString(uri.getRawQuery());
+				String token=params.get("t");
+				String _url=params.get("u");
+				if(StringUtils.isNotEmpty(token) && StringUtils.isNotEmpty(_url)){
+					URI actualURL=new URI(_url);
+					if("https".equals(actualURL.getScheme()) || "http".equals(actualURL.getScheme()))
+						return uri;
+				}
+			}
+			return null;
 		}catch(URISyntaxException x){
 			return null;
 		}
@@ -367,9 +386,23 @@ public abstract class ActivityPubObject{
 
 	}
 
+	public void validate(@Nullable URI parentID, String propertyName){
+
+	}
+
 	protected void ensureHostMatchesID(URI uri, String property){
-		if(activityPubID!=null && uri!=null && !activityPubID.getHost().equalsIgnoreCase(uri.getHost()))
-			throw new IllegalArgumentException("URI in property '"+property+"' "+uri+" must have the same host as the object ID "+activityPubID);
+		if(activityPubID!=null)
+			ensureHostMatchesID(uri, activityPubID, property);
+	}
+
+	protected void ensureHostMatchesID(URI uri, URI base, String property){
+		if(uri!=null){
+			URI actualURI=uri;
+			if("bear".equals(uri.getScheme()))
+				actualURI=URI.create(UriBuilder.parseQueryString(uri.getRawQuery()).get("u"));
+			if(!base.getHost().equalsIgnoreCase(actualURI.getHost()))
+				throw new IllegalArgumentException("URI in property '"+property+"' "+uri+" must have the same host as the object ID "+activityPubID);
+		}
 	}
 
 	@Override

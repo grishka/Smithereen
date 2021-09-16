@@ -168,14 +168,14 @@ public class SystemRoutes{
 					if(item==null){
 						if(itemType==MediaCache.ItemType.AVATAR && req.queryParams("retrying")==null){
 							if(user!=null){
-								ActivityPubObject obj=ActivityPub.fetchRemoteObject(user.activityPubID.toString());
+								ActivityPubObject obj=ActivityPub.fetchRemoteObject(user.activityPubID);
 								if(obj instanceof ForeignUser){
 									ForeignUser updatedUser=(ForeignUser) obj;
 									UserStorage.putOrUpdateForeignUser(updatedUser);
 									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
 								}
 							}else if(group!=null){
-								ActivityPubObject obj=ActivityPub.fetchRemoteObject(group.activityPubID.toString());
+								ActivityPubObject obj=ActivityPub.fetchRemoteObject(group.activityPubID);
 								if(obj instanceof ForeignGroup){
 									ForeignGroup updatedGroup=(ForeignGroup) obj;
 									GroupStorage.putOrUpdateForeignGroup(updatedGroup);

@@ -46,6 +46,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.WebfingerResponse;
+import smithereen.data.UriBuilder;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
@@ -70,13 +71,28 @@ public class ActivityPub{
 				.build();
 	}
 
-	public static ActivityPubObject fetchRemoteObject(String url) throws IOException{
-		URI uri=URI.create(url);
+	public static ActivityPubObject fetchRemoteObject(URI _uri) throws IOException{
+		URI uri;
+		String token;
+		if("bear".equals(_uri.getScheme())){
+			Map<String, String> params=UriBuilder.parseQueryString(_uri.getRawQuery());
+			if(!params.containsKey("u") || !params.containsKey("t"))
+				throw new IllegalArgumentException("Malformed bearcap URI: "+_uri);
+			uri=URI.create(params.get("u"));
+			token=params.get("t");
+		}else{
+			uri=_uri;
+			token=null;
+		}
 		if(Config.isLocal(uri))
-			throw new IllegalStateException("Local URI in fetchRemoteObject: "+url);
+			throw new IllegalStateException("Local URI in fetchRemoteObject: "+_uri);
+		if(!"https".equals(uri.getScheme()) && !"http".equals(uri.getScheme()))
+			throw new IllegalStateException("Invalid URI scheme in fetchRemoteObject: "+uri);
 		Request.Builder builder=new Request.Builder()
-				.url(url)
+				.url(uri.toString())
 				.header("Accept", CONTENT_TYPE);
+		if(token!=null)
+			builder.header("Authorization", "Bearer "+token);
 		signRequest(builder, uri, ServiceActor.getInstance(), null, "get");
 		Request req=builder.build();
 		Call call=httpClient.newCall(req);
@@ -94,7 +110,7 @@ public class ActivityPub{
 				if(obj==null)
 					throw new UnsupportedRemoteObjectTypeException("Unsupported object type "+converted.get("type"));
 				if(obj.activityPubID!=null && !obj.activityPubID.getHost().equalsIgnoreCase(uri.getHost()))
-					throw new BadRequestException("Domain in object ID ("+obj.activityPubID+") doesn't match domain in its URI ("+url+")");
+					throw new BadRequestException("Domain in object ID ("+obj.activityPubID+") doesn't match domain in its URI ("+uri+")");
 				return obj;
 			}catch(JLDException|JsonParseException x){
 				x.printStackTrace();
