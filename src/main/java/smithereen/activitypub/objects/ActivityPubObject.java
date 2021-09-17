@@ -183,7 +183,7 @@ public abstract class ActivityPubObject{
 			return null;
 		try{
 			URI uri=new URI(url);
-			if("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))
+			if("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()) || "as".equals(uri.getScheme()))
 				return uri;
 			if("bear".equals(uri.getScheme())){
 				Map<String, String> params=UriBuilder.parseQueryString(uri.getRawQuery());
