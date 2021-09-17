@@ -377,5 +377,6 @@
   "birthday_reminder_after": ".",
   "birthday_reminder_name": {"str": "%s", "case": "ACCUSATIVE"},
   "birthday_reminder_separator": ", ",
-  "birthday_reminder_separator_last": " и "
+  "birthday_reminder_separator_last": " и ",
+  "expand_text": "Показать полностью..."
 }

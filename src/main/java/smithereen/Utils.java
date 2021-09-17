@@ -80,6 +80,7 @@ public class Utils{
 	private static final ThreadLocal<SimpleDateFormat> ISO_DATE_FORMAT=new ThreadLocal<>();
 	public static final String staticFileHash;
 	private static Unidecode unidecode=Unidecode.toAscii();
+	private static Random rand=new Random();
 
 	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
 	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
@@ -699,6 +700,15 @@ public class Utils{
 				log.info("Still waiting...");
 			}
 		}catch(InterruptedException ignore){}
+	}
+
+	public static String randomAlphanumericString(int length){
+		char[] chars=new char[length];
+		String alphabet="1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM";
+		for(int i=0;i<length;i++){
+			chars[i]=alphabet.charAt(rand.nextInt(alphabet.length()));
+		}
+		return new String(chars);
 	}
 
 	public interface MentionCallback{

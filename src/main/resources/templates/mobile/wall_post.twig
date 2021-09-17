@@ -20,7 +20,11 @@
 		<div class="postCWWrap">
 			<label for="postCW_{{ post.id }}" class="postCWButton ellipsize">{{ post.summary }}</label>
 		{% endif %}
-		<div class="postContent">{{post.content | postprocessHTML}}</div>
+		{% if standalone %}
+		<div class="postContent">{{ post.content | postprocessHTML }}</div>
+		{% else %}
+		<div class="postContent">{{ post.content | postprocessHTML | truncateText }}</div>
+		{% endif %}
 		{% if post.attachment is not null %}
 		{{ renderAttachments(post.processedAttachments) }}
 		{% endif %}

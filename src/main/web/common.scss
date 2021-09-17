@@ -761,3 +761,25 @@ ul.actualList{
 		text-decoration: none;
 	}
 }
+
+.expandableText>.full{
+	display: none;
+}
+
+.textExpander:checked+.expandableText{
+	>.full{
+		display: block;
+	}
+	>.truncated, >label{
+		display: none;
+	}
+}
+
+.textExpander{
+	display: none;
+}
+
+.expandableText>label{
+	cursor: pointer;
+	color: $normalLink;
+}

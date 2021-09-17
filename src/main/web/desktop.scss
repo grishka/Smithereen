@@ -1688,3 +1688,12 @@ textarea{
 		padding-bottom: 3px;
 	}
 }
+
+.expandableText>label{
+	font-weight: bold;
+	opacity: .8;
+	transition: opacity .15s ease;
+	&:hover{
+		opacity: 1;
+	}
+}

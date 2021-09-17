@@ -32,6 +32,7 @@ public class SmithereenExtension extends AbstractExtension{
 		r.put("postprocessHTML", new PostprocessHTMLFilter());
 		r.put("forceEscape", new ForceEscapeFilter());
 		r.put("nl2br", new Nl2brFilter());
+		r.put("truncateText", new TruncateTextFilter());
 		return r;
 	}
 

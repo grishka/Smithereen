@@ -377,5 +377,6 @@
   "birthday_reminder_after": "'s birthday.",
   "birthday_reminder_name": "%s",
   "birthday_reminder_separator": ", ",
-  "birthday_reminder_separator_last": " and "
+  "birthday_reminder_separator_last": " and ",
+  "expand_text": "Expand text..."
 }
