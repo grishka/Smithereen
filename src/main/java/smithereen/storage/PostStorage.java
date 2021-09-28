@@ -2,6 +2,8 @@ package smithereen.storage;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -44,9 +46,12 @@ import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.Post;
 import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.feed.RetootNewsfeedEntry;
+import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
 
 public class PostStorage{
+	private static final Logger LOG=LoggerFactory.getLogger(PostStorage.class);
+
 	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, int[] replyKey, List<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=conn.prepareStatement("INSERT INTO wall_posts (author_id, owner_user_id, owner_group_id, `text`, reply_key, mentions, attachments, content_warning, poll_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
@@ -86,6 +91,8 @@ public class PostStorage{
 			}
 			if(replyKey!=null && replyKey.length>0){
 				conn.createStatement().execute("UPDATE wall_posts SET reply_count=reply_count+1 WHERE id IN ("+Arrays.stream(replyKey).mapToObj(String::valueOf).collect(Collectors.joining(","))+")");
+				SQLQueryBuilder.prepareStatement(conn, "INSERT INTO newsfeed_comments (user_id, object_type, object_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE object_id=object_id", userID, 0, replyKey[0]).execute();
+				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(replyKey[0]));
 			}
 			return id;
 		}
@@ -225,6 +232,7 @@ public class PostStorage{
 						.whereIn("id", Arrays.stream(post.replyKey).boxed().collect(Collectors.toList()))
 						.createStatement()
 						.execute();
+				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey[0]));
 			}
 		}else{
 			post.id=existing.id;
@@ -504,6 +512,9 @@ public class PostStorage{
 
 		if(post.getReplyLevel()>0){
 			conn.createStatement().execute("UPDATE wall_posts SET reply_count=GREATEST(1, reply_count)-1 WHERE id IN ("+Arrays.stream(post.replyKey).mapToObj(String::valueOf).collect(Collectors.joining(","))+")");
+			BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey[0]));
+		}else{
+			BackgroundTaskRunner.getInstance().submit(new DeleteCommentBookmarksRunnable(id));
 		}
 	}
 
@@ -974,6 +985,64 @@ public class PostStorage{
 				r.add(apID!=null ? URI.create(apID) : Config.localURI("/users/"+res.getInt(1)));
 			}
 			return r;
+		}
+	}
+
+	private static class DeleteCommentBookmarksRunnable implements Runnable{
+		private final int postID;
+
+		public DeleteCommentBookmarksRunnable(int postID){
+			this.postID=postID;
+		}
+
+		@Override
+		public void run(){
+			try{
+				new SQLQueryBuilder()
+						.deleteFrom("newsfeed_comments")
+						.where("object_type=? AND object_id=?", 0, postID)
+						.createStatement()
+						.execute();
+			}catch(SQLException x){
+				LOG.warn("Error deleting comment bookmarks for post {}", postID, x);
+			}
+		}
+	}
+
+	private static class UpdateCommentBookmarksRunnable implements Runnable{
+		private final int postID;
+
+		public UpdateCommentBookmarksRunnable(int postID){
+			this.postID=postID;
+		}
+
+		@Override
+		public void run(){
+			try{
+				Connection conn=DatabaseConnectionManager.getConnection();
+				PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT MAX(created_at) FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)", (Object) Utils.serializeIntArray(new int[]{postID}));
+				Timestamp ts;
+				try(ResultSet res=stmt.executeQuery()){
+					res.first();
+					ts=res.getTimestamp(1);
+				}
+				if(ts==null){
+					new SQLQueryBuilder(conn)
+							.deleteFrom("newsfeed_comments")
+							.where("object_type=? AND object_id=?", 0, postID)
+							.createStatement()
+							.execute();
+				}else{
+					new SQLQueryBuilder(conn)
+							.update("newsfeed_comments")
+							.value("last_comment_time", ts)
+							.where("object_type=? AND object_id=?", 0, postID)
+							.createStatement()
+							.execute();
+				}
+			}catch(SQLException x){
+				LOG.warn("Error updating comment bookmarks for post {}", postID, x);
+			}
 		}
 	}
 }

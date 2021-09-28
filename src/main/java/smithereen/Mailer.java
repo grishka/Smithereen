@@ -31,6 +31,7 @@ import smithereen.data.Account;
 import smithereen.data.UriBuilder;
 import smithereen.lang.Lang;
 import smithereen.templates.Templates;
+import smithereen.util.BackgroundTaskRunner;
 import spark.Request;
 import spark.utils.StringUtils;
 
@@ -40,7 +41,6 @@ public class Mailer{
 
 	private Session session;
 	private PebbleEngine templateEngine;
-	private ExecutorService executor;
 
 	public static Mailer getInstance(){
 		if(instance==null){
@@ -50,17 +50,8 @@ public class Mailer{
 	}
 
 	private Mailer(){
-		executor=Executors.newSingleThreadExecutor();
 		updateSession();
 		templateEngine=Templates.makeEngineInstance("email");
-	}
-
-	public static void shutDown(){
-		if(instance==null)
-			return;
-		LOG.info("Stopping thread pool");
-		Utils.stopExecutorBlocking(instance.executor, LOG);
-		LOG.info("Stopped");
 	}
 
 	public void updateSession(){
@@ -127,7 +118,7 @@ public class Mailer{
 
 			msg.setContent(multipart);
 
-			executor.submit(new SendRunnable(msg));
+			BackgroundTaskRunner.getInstance().submit(new SendRunnable(msg));
 		}catch(MessagingException|IOException x){
 			x.printStackTrace();
 		}

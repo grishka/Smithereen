@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2021-08-19 23:02:03 +0000
+# Generation Time: 2021-09-28 08:49:15 +0000
 # ************************************************************
 
 
@@ -284,6 +284,22 @@ CREATE TABLE `newsfeed` (
   UNIQUE KEY `type` (`type`,`object_id`,`author_id`),
   KEY `time` (`time`),
   KEY `author_id` (`author_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+# Dump of table newsfeed_comments
+# ------------------------------------------------------------
+
+CREATE TABLE `newsfeed_comments` (
+  `user_id` int(10) unsigned NOT NULL,
+  `object_type` int(10) unsigned NOT NULL,
+  `object_id` int(10) unsigned NOT NULL,
+  `last_comment_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`object_type`,`object_id`,`user_id`),
+  KEY `user_id` (`user_id`),
+  KEY `last_comment_time` (`last_comment_time`),
+  CONSTRAINT `newsfeed_comments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 

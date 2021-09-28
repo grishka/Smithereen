@@ -47,6 +47,7 @@ import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
 import spark.Request;
@@ -68,6 +69,7 @@ public class SmithereenApplication{
 
 	static{
 		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
+		System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
 		if(Config.DEBUG)
 			System.setProperty("org.slf4j.simpleLogger.log.smithereen", "trace");
 		LOG=LoggerFactory.getLogger(SmithereenApplication.class);
@@ -497,7 +499,7 @@ public class SmithereenApplication{
 				MaintenanceScheduler.shutDown();
 			}catch(NoClassDefFoundError ignore){}
 			try{
-				Mailer.shutDown();
+				BackgroundTaskRunner.shutDown();
 			}catch(NoClassDefFoundError ignore){}
 			// Set the exit code to 0 so systemd doesn't say "Failed with result 'exit-code'".
 			Runtime.getRuntime().halt(0);
