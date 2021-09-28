@@ -31,7 +31,7 @@ public class AddGroupHandler extends ActivityTypeHandler<ForeignUser, Add, Group
 
 			NewsfeedStorage.putEntry(actor.id, object.id, NewsfeedEntry.Type.JOIN_GROUP, null);
 		}else{
-			System.out.println("Unknown Add{Group} target "+target);
+			LOG.warn("Unknown Add{Group} target {}", target);
 		}
 	}
 }

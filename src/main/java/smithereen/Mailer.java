@@ -120,7 +120,7 @@ public class Mailer{
 
 			BackgroundTaskRunner.getInstance().submit(new SendRunnable(msg));
 		}catch(MessagingException|IOException x){
-			x.printStackTrace();
+			LOG.error("Exception while creating an email", x);
 		}
 	}
 
@@ -137,7 +137,7 @@ public class Mailer{
 			try{
 				Transport.send(msg);
 			}catch(MessagingException x){
-				x.printStackTrace();
+				LOG.error("Exception while sending an email", x);
 			}
 		}
 	}

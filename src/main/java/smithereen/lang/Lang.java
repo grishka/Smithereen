@@ -6,6 +6,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -25,6 +28,8 @@ import smithereen.data.User;
 import spark.utils.StringUtils;
 
 public class Lang{
+	private static final Logger LOG=LoggerFactory.getLogger(Lang.class);
+
 	private static HashMap<String, Lang> langsByLocale=new HashMap<>();
 	public static List<Lang> list;
 
@@ -45,12 +50,8 @@ public class Lang{
 			JsonArray arr=JsonParser.parseReader(new InputStreamReader(in)).getAsJsonArray();
 			for(JsonElement el:arr)
 				files.add(el.getAsString());
-		}catch(IOException x){
-			System.err.println("Error reading langs/index.json");
-			x.printStackTrace();
-		}catch(JsonParseException x){
-			System.err.println("Error parsing langs/index.json");
-			x.printStackTrace();
+		}catch(IOException|JsonParseException x){
+			LOG.error("Error reading langs/index.json", x);
 		}
 		if(files.isEmpty())
 			throw new IllegalArgumentException("No language files to load; check langs/index.json");
@@ -59,12 +60,8 @@ public class Lang{
 				Lang l=new Lang(langFileName);
 				langsByLocale.put(langFileName, l);
 				list.add(l);
-			}catch(IOException x){
-				System.err.println("Error reading langs/"+langFileName+".json");
-				x.printStackTrace();
-			}catch(JsonParseException x){
-				System.err.println("Error parsing langs/"+langFileName+".json");
-				x.printStackTrace();
+			}catch(IOException|JsonParseException x){
+				LOG.error("Error reading langs/{}.json", langFileName, x);
 			}
 		}
 

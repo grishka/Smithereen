@@ -528,8 +528,7 @@ public class PostStorage{
 			stmt.setBytes(i+1, Utils.serializeIntArray(new int[]{id}));
 			i++;
 		}
-		if(Config.DEBUG)
-			System.out.println(stmt);
+		LOG.debug("{}", stmt);
 		HashMap<Integer, ListAndTotal<Post>> map=new HashMap<>();
 		try(ResultSet res=stmt.executeQuery()){
 			res.afterLast();

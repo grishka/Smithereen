@@ -1,5 +1,8 @@
 package smithereen.routes;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -76,6 +79,8 @@ import static smithereen.Utils.parseIntOrDefault;
 import static smithereen.Utils.wrapError;
 
 public class SystemRoutes{
+	private static final Logger LOG=LoggerFactory.getLogger(SystemRoutes.class);
+
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
 		MediaCache cache=MediaCache.getInstance();
 		String type=req.queryParams("type");
@@ -189,7 +194,7 @@ public class SystemRoutes{
 					}
 					return "";
 				}catch(IOException x){
-					x.printStackTrace();
+					LOG.warn("Exception while downloading external media file from {}", uri, x);
 				}
 				resp.redirect(uri.toString());
 			}
@@ -257,7 +262,7 @@ public class SystemRoutes{
 			}
 			resp.redirect(Utils.back(req));
 		}catch(IOException|ServletException|NoSuchAlgorithmException x){
-			x.printStackTrace();
+			LOG.warn("Exception while processing a post photo upload", x);
 		}
 		return "";
 	}
@@ -398,12 +403,10 @@ public class SystemRoutes{
 		try{
 			obj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, true, false, false);
 		}catch(UnsupportedRemoteObjectTypeException x){
-			if(Config.DEBUG)
-				x.printStackTrace();
+			LOG.debug("Unsupported remote object", x);
 			return new JsonObjectBuilder().add("error", lang(req).get("unsupported_remote_object_type")).build();
 		}catch(ObjectNotFoundException x){
-			if(Config.DEBUG)
-				x.printStackTrace();
+			LOG.debug("Remote object not found", x);
 			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_not_found")).build();
 		}
 		if(obj instanceof ForeignUser){

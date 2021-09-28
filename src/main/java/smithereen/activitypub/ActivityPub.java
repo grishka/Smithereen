@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -60,6 +62,7 @@ public class ActivityPub{
 
 	public static final URI AS_PUBLIC=URI.create(JLD.ACTIVITY_STREAMS+"#Public");
 	public static final String CONTENT_TYPE="application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"";
+	private static final Logger LOG=LoggerFactory.getLogger(ActivityPub.class);
 
 	private static OkHttpClient httpClient;
 	private static LruCache<String, String> domainRedirects=new LruCache<>(100);
@@ -114,7 +117,7 @@ public class ActivityPub{
 					throw new BadRequestException("Domain in object ID ("+obj.activityPubID+") doesn't match domain in its URI ("+uri+")");
 				return obj;
 			}catch(JLDException|JsonParseException x){
-				x.printStackTrace();
+				LOG.error("Exception while parsing or converting remote object", x);
 				throw new IOException(x);
 			}
 		}
@@ -149,7 +152,7 @@ public class ActivityPub{
 			sig.update(strToSign.getBytes(StandardCharsets.UTF_8));
 			signature=sig.sign();
 		}catch(Exception x){
-			x.printStackTrace();
+			LOG.error("Exception while signing request", x);
 			throw new RuntimeException(x);
 		}
 
@@ -171,7 +174,7 @@ public class ActivityPub{
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 		JsonObject body=activity.asRootActivityPubObject();
 		LinkedDataSignatures.sign(body, actor.privateKey, actor.activityPubID+"#main-key");
-		System.out.println("Sending activity: "+body);
+		LOG.info("Sending activity: {}", body);
 		postActivity(inboxUrl, body.toString(), actor);
 	}
 
@@ -187,10 +190,10 @@ public class ActivityPub{
 				inboxUrl, actor, body, "post")
 				.build();
 		Response resp=httpClient.newCall(req).execute();
-		System.out.println(resp.toString());
+		LOG.info("Post activity response: {}", resp);
 		try(ResponseBody rb=resp.body()){
 			if(!resp.isSuccessful())
-				System.out.println(rb.string());
+				LOG.info("Response body: {}", rb.string());
 		}
 	}
 
@@ -282,7 +285,7 @@ public class ActivityPub{
 													// don't repeat the request, we already know that username doesn't exist (but the webfinger endpoint does)
 													throw new ObjectNotFoundException(x);
 												}else{
-													System.out.println("Found domain redirect: "+domain+" -> "+template);
+													LOG.info("Found domain redirect: {} -> {}", domain, template);
 													domainRedirects.put(domain, template);
 												}
 											}

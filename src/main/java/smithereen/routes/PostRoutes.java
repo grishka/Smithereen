@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -63,6 +65,7 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.*;
 
 public class PostRoutes{
+	private static final Logger LOG=LoggerFactory.getLogger(PostRoutes.class);
 
 	public static Object createUserWallPost(Request req, Response resp, Account self) throws Exception{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
@@ -118,7 +121,7 @@ public class PostRoutes{
 						return _user;
 					}
 				}catch(Exception x){
-					System.out.println("Can't resolve "+username+"@"+domain+": "+x.getMessage());
+					LOG.warn("Can't resolve {}@{}", username, domain, x);
 				}
 				return null;
 			}
@@ -141,7 +144,7 @@ public class PostRoutes{
 						return user;
 					}
 				}catch(Exception x){
-					System.out.println("Can't resolve "+uri+": "+x.getMessage());
+					LOG.warn("Can't resolve {}", uri, x);
 				}
 				return null;
 			}

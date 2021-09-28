@@ -26,7 +26,7 @@ public class RemovePersonHandler extends ActivityTypeHandler<ForeignUser, Remove
 
 			NewsfeedStorage.deleteEntry(actor.id, object.id, NewsfeedEntry.Type.ADD_FRIEND);
 		}else{
-			System.out.println("Unknown Remove{Person} target "+target);
+			LOG.warn("Unknown Remove{Person} target {}", target);
 		}
 	}
 }

@@ -357,7 +357,6 @@ public class UserStorage{
 			stmt.setInt(1, targetUserID);
 			stmt.setInt(2, userID);
 			if(stmt.executeUpdate()!=1){
-				System.out.println("fail 1");
 				conn.createStatement().execute("ROLLBACK");
 				return;
 			}
@@ -370,7 +369,6 @@ public class UserStorage{
 			stmt.setInt(1, targetUserID);
 			stmt.setInt(2, userID);
 			if(stmt.executeUpdate()!=1){
-				System.out.println("fail 2");
 				conn.createStatement().execute("ROLLBACK");
 				return;
 			}

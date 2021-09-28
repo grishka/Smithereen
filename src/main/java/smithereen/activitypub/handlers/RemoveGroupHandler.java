@@ -22,7 +22,7 @@ public class RemoveGroupHandler extends ActivityTypeHandler<ForeignUser, Remove,
 		if(target.equals(actor.getFriendsURL())){
 			NewsfeedStorage.deleteEntry(actor.id, object.id, NewsfeedEntry.Type.JOIN_GROUP);
 		}else{
-			System.out.println("Unknown Remove{Group} target "+target);
+			LOG.warn("Unknown Remove{Group} target {}", target);
 		}
 	}
 }

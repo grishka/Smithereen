@@ -3,6 +3,9 @@ package smithereen.storage;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -16,6 +19,7 @@ import smithereen.libvips.VipsImage;
 import spark.utils.StringUtils;
 
 public class MediaStorageUtils{
+	private static final Logger LOG=LoggerFactory.getLogger(MediaStorageUtils.class);
 
 	public static long writeResizedWebpImage(VipsImage img, int widthOrSize, int height, int quality, String keyHex, File basePath, int[] outSize) throws IOException{
 		File file=new File(basePath, keyHex+".webp");
@@ -63,7 +67,7 @@ public class MediaStorageUtils{
 			if(file.exists())
 				file.delete();
 			else
-				System.out.println(file.getAbsolutePath()+" does not exist");
+				LOG.warn("{} does not exist", file.getAbsolutePath());
 		}
 	}
 

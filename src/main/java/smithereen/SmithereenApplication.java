@@ -421,8 +421,7 @@ public class SmithereenApplication{
 			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
 		});
 		exception(Exception.class, (exception, req, res) -> {
-			System.out.println("Exception while processing "+req.requestMethod()+" "+req.raw().getPathInfo());
-			exception.printStackTrace();
+			LOG.warn("Exception while processing {} {}", req.requestMethod(), req.raw().getPathInfo(), exception);
 			res.status(500);
 			StringWriter sw=new StringWriter();
 			exception.printStackTrace(new PrintWriter(sw));
@@ -547,7 +546,7 @@ public class SmithereenApplication{
 			mySerializer.setNext(serializer);
 			rootFld.set(chain, mySerializer);
 		}catch(Exception x){
-			x.printStackTrace();
+			LOG.error("Exception while setting up custom serializer", x);
 		}
 	}
 }

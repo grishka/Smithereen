@@ -3,6 +3,9 @@ package smithereen.libvips;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.PointerByReference;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,12 +24,14 @@ public class VipsImage{
 	Pointer nativePtr;
 	private boolean released;
 
+	private static final Logger LOG=LoggerFactory.getLogger(VipsImage.class);
+
 	public VipsImage(String filePath) throws IOException{
 		String loader=vips_foreign_find_load(filePath);
 		if(loader==null)
 			throw new IOException("File format not supported");
 		if(!LOADER_WHITELIST.contains(loader)){
-			System.out.println("libvips loader not allowed: "+loader);
+			LOG.warn("libvips loader not allowed: {}", loader);
 			throw new IOException("File format not supported");
 		}
 		if(loader.equals("VipsForeignLoadJpegFile")){

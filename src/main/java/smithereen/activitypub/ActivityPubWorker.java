@@ -143,12 +143,12 @@ public class ActivityPubWorker{
 	private void sendActivityForPost(Post post, Activity activity, Actor actor){
 		try{
 			List<URI> inboxes=getInboxesForPost(post);
-			System.out.println("Inboxes: "+inboxes);
+			LOG.info("Inboxes: {}", inboxes);
 			for(URI inbox:inboxes){
 				executor.submit(new SendOneActivityRunnable(activity, inbox, actor));
 			}
 		}catch(SQLException x){
-			x.printStackTrace();
+			LOG.error("Exception while sending activity for post {}", post.activityPubID, x);
 		}
 	}
 
@@ -210,7 +210,7 @@ public class ActivityPubWorker{
 						executor.submit(new SendOneActivityRunnable(add, inbox, post.owner));
 					}
 				}catch(SQLException x){
-					x.printStackTrace();
+					LOG.error("Exception while sending wall post {}", post.activityPubID, x);
 				}
 			}
 		});
@@ -230,11 +230,11 @@ public class ActivityPubWorker{
 				else if(post.isGroupOwner())
 					actor=post.owner;
 				else{
-					System.out.println("Shouldn't happen: post "+post+" actor for delete can't be chosen");
+					LOG.error("Shouldn't happen: post {} actor for delete can't be chosen", post.id);
 					return;
 				}
 				if(actor instanceof ForeignGroup || actor instanceof ForeignUser){
-					System.out.println("Shouldn't happen: "+post+" actor for delete is a foreign actor");
+					LOG.error("Shouldn't happen: {} actor for delete is a foreign actor", post.id);
 					return;
 				}
 				delete.actor=new LinkOrObject(actor.activityPubID);
@@ -276,7 +276,7 @@ public class ActivityPubWorker{
 				executor.submit(new SendOneActivityRunnable(remove, inbox, self));
 			}
 		}catch(SQLException x){
-			x.printStackTrace();
+			LOG.error("Exception while sending remove from friends collection activity ({} removed {})", self.activityPubID, exFriend.activityPubID, x);
 		}
 	}
 
@@ -293,7 +293,7 @@ public class ActivityPubWorker{
 				executor.submit(new SendOneActivityRunnable(add, inbox, self));
 			}
 		}catch(SQLException x){
-			x.printStackTrace();
+			LOG.error("Exception while sending add to friends collection activity ({} added {})", self.activityPubID, friend.activityPubID, x);
 		}
 	}
 
@@ -310,7 +310,7 @@ public class ActivityPubWorker{
 				executor.submit(new SendOneActivityRunnable(add, inbox, self));
 			}
 		}catch(SQLException x){
-			x.printStackTrace();
+			LOG.error("Exception while sending add to groups collection activity ({} joined {})", self.activityPubID, group.activityPubID, x);
 		}
 	}
 
@@ -327,7 +327,7 @@ public class ActivityPubWorker{
 				executor.submit(new SendOneActivityRunnable(remove, inbox, self));
 			}
 		}catch(SQLException x){
-			x.printStackTrace();
+			LOG.error("Exception while sending remove from groups collection activity ({} left {})", self.activityPubID, group.activityPubID, x);
 		}
 	}
 
@@ -419,7 +419,7 @@ public class ActivityPubWorker{
 				executor.submit(new SendOneActivityRunnable(update, inbox, user));
 			}
 		}catch(SQLException x){
-			x.printStackTrace();
+			LOG.error("Exception while sending Update{Person} for {}", user.activityPubID, x);
 		}
 	}
 
@@ -436,7 +436,7 @@ public class ActivityPubWorker{
 				executor.submit(new SendOneActivityRunnable(update, inbox, group));
 			}
 		}catch(SQLException x){
-			x.printStackTrace();
+			LOG.error("Exception while sending Update{Group} for {}", group.activityPubID);
 		}
 	}
 
@@ -446,7 +446,7 @@ public class ActivityPubWorker{
 		like.actor=new LinkOrObject(user.activityPubID);
 		like.object=new LinkOrObject(post.activityPubID);
 		List<URI> inboxes=PostStorage.getInboxesForPostInteractionForwarding(post);
-		System.out.println("Inboxes:\n"+inboxes.stream().map(URI::toString).collect(Collectors.joining("\n")));
+		LOG.info("Inboxes: {}", inboxes);
 		for(URI inbox:inboxes){
 			executor.submit(new SendOneActivityRunnable(like, inbox, user));
 		}
@@ -549,7 +549,7 @@ public class ActivityPubWorker{
 			try{
 				ActivityPub.postActivity(destination, activity, actor);
 			}catch(Exception x){
-				x.printStackTrace();
+				LOG.error("Exception while sending activity", x);
 			}
 		}
 	}
@@ -571,7 +571,7 @@ public class ActivityPubWorker{
 				for(Activity activity:activities)
 					ActivityPub.postActivity(destination, activity, user);
 			}catch(Exception x){
-				x.printStackTrace();
+				LOG.error("Exception while sending activity", x);
 			}
 		}
 	}
@@ -592,7 +592,7 @@ public class ActivityPubWorker{
 			try{
 				ActivityPub.postActivity(destination, activity, user);
 			}catch(Exception x){
-				x.printStackTrace();
+				LOG.error("Exception while forwarding activity", x);
 			}
 		}
 	}

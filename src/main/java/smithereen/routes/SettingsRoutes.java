@@ -1,6 +1,9 @@
 package smithereen.routes;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -45,6 +48,8 @@ import spark.Session;
 import spark.utils.StringUtils;
 
 public class SettingsRoutes{
+	private static final Logger LOG=LoggerFactory.getLogger(SettingsRoutes.class);
+
 	public static Object settings(Request req, Response resp, Account self) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings", req);
 		model.with("invitations", UserStorage.getInvites(self.id, true));
@@ -235,7 +240,7 @@ public class SettingsRoutes{
 						LocalImage li=(LocalImage) self.user.icon.get(0);
 						File file=new File(profilePicsDir, li.localID+".webp");
 						if(file.exists()){
-							System.out.println("deleting: "+file.getAbsolutePath());
+							LOG.info("Deleting: {}", file.getAbsolutePath());
 							file.delete();
 						}
 					}
@@ -247,7 +252,7 @@ public class SettingsRoutes{
 						LocalImage li=(LocalImage) group.icon.get(0);
 						File file=new File(profilePicsDir, li.localID+".webp");
 						if(file.exists()){
-							System.out.println("deleting: "+file.getAbsolutePath());
+							LOG.info("Deleting: {}", file.getAbsolutePath());
 							file.delete();
 						}
 					}
@@ -265,7 +270,7 @@ public class SettingsRoutes{
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("avatar_updated"));
 			resp.redirect("/settings/");
 		}catch(IOException|ServletException|NoSuchAlgorithmException|IllegalStateException x){
-			x.printStackTrace();
+			LOG.error("Exception while processing a profile picture upload", x);
 			if(isAjax(req)){
 				Lang l=lang(req);
 				return new WebDeltaResponse(resp).messageBox(l.get("error"), l.get("image_upload_error")+"<br/>"+x.getMessage(), l.get("ok"));
@@ -346,7 +351,7 @@ public class SettingsRoutes{
 			LocalImage li=(LocalImage) icon.get(0);
 			File file=new File(profilePicsDir, li.localID+".webp");
 			if(file.exists()){
-				System.out.println("deleting: "+file.getAbsolutePath());
+				LOG.info("Deleting: {}", file.getAbsolutePath());
 				file.delete();
 			}
 		}

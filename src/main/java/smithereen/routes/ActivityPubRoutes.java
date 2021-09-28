@@ -596,7 +596,7 @@ public class ActivityPubRoutes{
 			}
 		}
 		String body=req.body();
-		System.out.println(body);
+		LOG.info("Incoming activity: {}", body);
 		JsonObject rawActivity=JsonParser.parseString(body).getAsJsonObject();
 		JsonObject obj=JLDProcessor.convertToLocalContext(rawActivity);
 
@@ -636,7 +636,7 @@ public class ActivityPubRoutes{
 			try{
 				actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, true, true, true);
 			}catch(ObjectNotFoundException x){
-				System.out.println("Warning: ["+x+"] while refreshing remote actor");
+				LOG.warn("Exception while refreshing remote actor", x);
 			}
 		}
 
@@ -644,7 +644,7 @@ public class ActivityPubRoutes{
 		try{
 			httpSigOwner=verifyHttpSignature(req, actor);
 		}catch(Exception x){
-			x.printStackTrace();
+			LOG.warn("Exception while verifying HTTP signature", x);
 			throw new BadRequestException(x);
 		}
 
@@ -662,17 +662,17 @@ public class ActivityPubRoutes{
 				if(!LinkedDataSignatures.verify(rawActivity, actor.publicKey)){
 					throw new BadRequestException("LD-signature verification failed");
 				}
-				System.out.println("verified LD signature by "+userID);
+				LOG.info("verified LD signature by {}", userID);
 				hasValidLDSignature=true;
 			}catch(Exception x){
-				x.printStackTrace();
+				LOG.warn("Exception while verifying LD-signature", x);
 				throw new BadRequestException(x);
 			}
 		}else{
 			if(!actor.equals(httpSigOwner)){
 				throw new BadRequestException("In the absence of an LD-signature, HTTP signature must be made by the activity actor");
 			}
-			System.out.println("verified HTTP signature by "+httpSigOwner.activityPubID);
+			LOG.info("verified HTTP signature by {}", httpSigOwner.activityPubID);
 		}
 		// parse again to make sure the actor is set everywhere
 		try{
@@ -692,7 +692,7 @@ public class ActivityPubRoutes{
 					try{
 						aobj=ObjectLinkResolver.resolve(aobj.activityPubID);
 					}catch(ObjectNotFoundException x){
-						System.out.println("Activity object not found for: "+getActivityType(activity));
+						LOG.warn("Activity object not found for {}: {}", getActivityType(activity), aobj.activityPubID);
 						// Fail silently. We didn't have that object anyway, there's nothing to delete.
 						return "";
 					}
@@ -731,17 +731,17 @@ public class ActivityPubRoutes{
 									doublyNestedObject=ObjectLinkResolver.resolve(nestedActivity.object.link);
 
 								if(r.objectClass.isInstance(doublyNestedObject)){
-									System.out.println("Found match: "+r.handler.getClass().getName());
+									LOG.info("Found match: {}", r.handler.getClass().getName());
 									((DoublyNestedActivityTypeHandler)r.handler).handle(context, actor, activity, nestedActivity, doublyNestedActivity, doublyNestedObject);
 									return "";
 								}
 							}else if(r.objectClass.isInstance(nestedObject)){
-								System.out.println("Found match: "+r.handler.getClass().getName());
+								LOG.info("Found match: {}", r.handler.getClass().getName());
 								((NestedActivityTypeHandler)r.handler).handle(context, actor, activity, nestedActivity, nestedObject);
 								return "";
 							}
 						}else if(r.objectClass.isInstance(aobj)){
-							System.out.println("Found match: "+r.handler.getClass().getName());
+							LOG.info("Found match: {}", r.handler.getClass().getName());
 							r.handler.handle(context, actor, activity, aobj);
 							return "";
 						}
@@ -749,7 +749,7 @@ public class ActivityPubRoutes{
 				}
 			}
 		}catch(Exception x){
-			x.printStackTrace();
+			LOG.warn("Exception while processing an incoming activity", x);
 			throw new BadRequestException(x.toString());
 		}
 		throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
@@ -876,8 +876,8 @@ public class ActivityPubRoutes{
 		sig.initVerify(user.publicKey);
 		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
 		if(!sig.verify(signature)){
-			System.out.println("Failed sig: "+sigHeader);
-			System.out.println("Failed sig string: '"+sigStr+"'");
+			LOG.info("Failed signature header: {}", sigHeader);
+			LOG.info("Failed signature string: '{}'", sigStr);
 			throw new BadRequestException("Signature failed to verify");
 		}
 		return user;

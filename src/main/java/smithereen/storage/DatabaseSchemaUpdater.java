@@ -1,5 +1,8 @@
 package smithereen.storage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,6 +13,7 @@ import smithereen.Utils;
 
 public class DatabaseSchemaUpdater{
 	public static final int SCHEMA_VERSION=14;
+	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
 		if(Config.dbSchemaVersion==0){
@@ -32,7 +36,7 @@ public class DatabaseSchemaUpdater{
 	}
 
 	private static void updateFromPrevious(int target) throws SQLException{
-		System.out.println("Updating database schema "+Config.dbSchemaVersion+" -> "+target);
+		LOG.info("Updating database schema {} -> {}", Config.dbSchemaVersion, target);
 		Connection conn=DatabaseConnectionManager.getConnection();
 		if(target==2){
 			conn.createStatement().execute("ALTER TABLE wall_posts ADD (reply_count INTEGER UNSIGNED NOT NULL DEFAULT 0)");

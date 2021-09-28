@@ -1,5 +1,8 @@
 package smithereen;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -75,6 +78,8 @@ public class Config{
 
 	public static PrivateKey serviceActorPrivateKey;
 	public static PublicKey serviceActorPublicKey;
+
+	private static final Logger LOG=LoggerFactory.getLogger(Config.class);
 
 	public static void load(String filePath) throws IOException{
 		FileInputStream in=new FileInputStream(filePath);
@@ -181,8 +186,7 @@ public class Config{
 			stmt.setString(i+1, e.getValue());
 			i+=2;
 		}
-		if(DEBUG)
-			System.out.println(stmt);
+		LOG.debug("{}", stmt);
 		stmt.execute();
 	}
 
