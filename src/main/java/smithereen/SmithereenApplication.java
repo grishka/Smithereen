@@ -64,16 +64,20 @@ import static spark.Spark.*;
 import static smithereen.sparkext.SparkExtension.*;
 
 public class SmithereenApplication{
-	private static final Logger LOG=LoggerFactory.getLogger(SmithereenApplication.class);
+	private static final Logger LOG;
+
+	static{
+		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
+		if(Config.DEBUG)
+			System.setProperty("org.slf4j.simpleLogger.log.smithereen", "trace");
+		LOG=LoggerFactory.getLogger(SmithereenApplication.class);
+	}
 
 	public static void main(String[] args){
 		if(args.length==0){
 			System.err.println("You need to specify the path to the config file as the first argument:\njava -jar smithereen.jar config.properties");
 			System.exit(1);
 		}
-		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
-		if(Config.DEBUG)
-			System.setProperty("org.slf4j.simpleLogger.log.smithereen", "trace");
 
 		System.setProperty("user.timezone", "UTC");
 
