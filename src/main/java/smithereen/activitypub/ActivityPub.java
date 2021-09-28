@@ -37,8 +37,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import smithereen.Config;
-import smithereen.DisallowLocalhostInterceptor;
-import smithereen.LoggingInterceptor;
+import smithereen.util.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
@@ -54,6 +53,7 @@ import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDException;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
+import smithereen.util.UserAgentInterceptor;
 import spark.utils.StringUtils;
 
 public class ActivityPub{
@@ -67,6 +67,7 @@ public class ActivityPub{
 	static{
 		httpClient=new OkHttpClient.Builder()
 				.addNetworkInterceptor(new DisallowLocalhostInterceptor())
+				.addNetworkInterceptor(new UserAgentInterceptor())
 //				.addNetworkInterceptor(new LoggingInterceptor())
 				.build();
 	}

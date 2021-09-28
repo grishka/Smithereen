@@ -30,7 +30,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import smithereen.Config;
-import smithereen.DisallowLocalhostInterceptor;
+import smithereen.util.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
@@ -38,6 +38,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.libvips.VipsImage;
+import smithereen.util.UserAgentInterceptor;
 
 public class MediaCache{
 
@@ -63,6 +64,7 @@ public class MediaCache{
 		asyncUpdater=Executors.newFixedThreadPool(1);
 		httpClient=new OkHttpClient.Builder()
 				.addNetworkInterceptor(new DisallowLocalhostInterceptor())
+				.addNetworkInterceptor(new UserAgentInterceptor())
 				.build();
 		try{
 			updateTotalSize();

@@ -1,4 +1,6 @@
-package smithereen;
+package smithereen.util;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -10,7 +12,7 @@ import okhttp3.Response;
 public class LoggingInterceptor implements Interceptor{
 
 	@Override
-	public Response intercept(Chain chain) throws IOException{
+	public @NotNull Response intercept(Chain chain) throws IOException{
 		Request req=chain.request();
 		System.out.println(req.method()+" "+req.url().encodedPath()+Objects.requireNonNullElse(req.url().encodedQuery(), "")+" "+chain.connection().protocol().toString().toUpperCase());
 		System.out.println(req.headers());
