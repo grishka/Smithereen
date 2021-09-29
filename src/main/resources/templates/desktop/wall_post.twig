@@ -28,6 +28,9 @@
 			{% if post.hasContentWarning %}
 			</div>
 			{% endif %}
+			{% if post.federationState=='REJECTED' %}
+			<div class="red">{{ L('wall_post_rejected') }}</div>
+			{% endif %}
 			<div class="postInfo"><a href="{{post.internalURL}}" class="postLink">{{LD(post.published)}}</a>
 				{%if userPermissions is not null and userPermissions.canDeletePost(post)%} |
 				<a href="{{post.internalURL}}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{post.internalURL}}/delete')">{{L('delete')}}</a>

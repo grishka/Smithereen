@@ -378,5 +378,6 @@
   "birthday_reminder_name": {"str": "%s", "case": "ACCUSATIVE"},
   "birthday_reminder_separator": ", ",
   "birthday_reminder_separator_last": " и ",
-  "expand_text": "Показать полностью..."
+  "expand_text": "Показать полностью...",
+  "wall_post_rejected": "Удалённый сервер не принял эту запись."
 }

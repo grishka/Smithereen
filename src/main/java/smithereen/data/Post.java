@@ -59,6 +59,8 @@ public class Post extends ActivityPubObject{
 	public List<User> mentionedUsers=Collections.EMPTY_LIST;
 	public Poll poll;
 
+	public FederationState federationState;
+
 	private ActivityPubObject activityPubTarget;
 
 	public static Post fromResultSet(ResultSet res) throws SQLException{
@@ -163,6 +165,8 @@ public class Post extends ActivityPubObject{
 		if(!res.wasNull()){
 			poll=PostStorage.getPoll(pollID, activityPubID);
 		}
+
+		federationState=FederationState.values()[res.getInt("federation_state")];
 	}
 
 	public boolean hasContentWarning(){

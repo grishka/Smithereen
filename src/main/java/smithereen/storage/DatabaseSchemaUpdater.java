@@ -12,7 +12,7 @@ import smithereen.Config;
 import smithereen.Utils;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=14;
+	public static final int SCHEMA_VERSION=15;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -273,6 +273,8 @@ public class DatabaseSchemaUpdater{
 					  KEY `last_comment_time` (`last_comment_time`),
 					  CONSTRAINT `newsfeed_comments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+		}else if(target==15){
+			conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `federation_state` int unsigned NOT NULL DEFAULT 0");
 		}
 	}
 }

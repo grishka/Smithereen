@@ -61,6 +61,7 @@ import smithereen.activitypub.handlers.LikeNoteHandler;
 import smithereen.activitypub.handlers.OfferFollowPersonHandler;
 import smithereen.activitypub.handlers.PersonBlockPersonHandler;
 import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
+import smithereen.activitypub.handlers.RejectAddNoteHandler;
 import smithereen.activitypub.handlers.RejectFollowGroupHandler;
 import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
@@ -143,6 +144,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Undo.class, Announce.class, Post.class, new UndoAnnounceNoteHandler());
 		registerActivityHandler(ForeignUser.class, Update.class, Post.class, new UpdateNoteHandler());
 		registerActivityHandler(ForeignUser.class, Delete.class, Post.class, new DeleteNoteHandler());
+		registerActivityHandler(Actor.class, Reject.class, Add.class, Post.class, new RejectAddNoteHandler());
 
 		registerActivityHandler(ForeignUser.class, Follow.class, User.class, new FollowPersonHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Follow.class, User.class, new UndoFollowPersonHandler());

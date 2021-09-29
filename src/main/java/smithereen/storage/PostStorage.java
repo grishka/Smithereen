@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
+import smithereen.data.FederationState;
 import smithereen.data.ListAndTotal;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
@@ -985,6 +986,15 @@ public class PostStorage{
 			}
 			return r;
 		}
+	}
+
+	public static void setPostFederationState(int postID, FederationState state) throws SQLException{
+		new SQLQueryBuilder()
+				.update("wall_posts")
+				.value("federation_state", state)
+				.where("id=?", postID)
+				.createStatement()
+				.execute();
 	}
 
 	private static class DeleteCommentBookmarksRunnable implements Runnable{

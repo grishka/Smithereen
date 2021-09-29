@@ -378,5 +378,6 @@
   "birthday_reminder_name": "%s",
   "birthday_reminder_separator": ", ",
   "birthday_reminder_separator_last": " and ",
-  "expand_text": "Expand text..."
+  "expand_text": "Expand text...",
+  "wall_post_rejected": "Remote server rejected this post."
 }
