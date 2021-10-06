@@ -133,7 +133,7 @@
 							<goal>npm</goal>
 						</goals>
 						<configuration>
-							<arguments>install</arguments>
+							<arguments>install --no-audit --no-fund</arguments>
 						</configuration>
 					</execution>
 

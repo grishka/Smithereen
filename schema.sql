@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2021-09-28 08:49:15 +0000
+# Generation Time: 2021-10-01 10:04:04 +0000
 # ************************************************************
 
 
@@ -499,6 +499,7 @@ CREATE TABLE `wall_posts` (
   `reply_count` int(10) unsigned NOT NULL DEFAULT '0',
   `ap_replies` varchar(300) DEFAULT NULL,
   `poll_id` int(10) unsigned DEFAULT NULL,
+  `federation_state` tinyint(10) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),

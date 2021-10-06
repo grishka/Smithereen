@@ -823,4 +823,42 @@ public class PostRoutes{
 		r.fullURL="/posts/"+postID+"/pollVoters/"+optionID;
 		return gson.toJson(r);
 	}
+
+	public static Object commentsFeed(Request req, Response resp, Account self) throws SQLException{
+		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
+		ListAndTotal<NewsfeedEntry> feed=PostStorage.getCommentsFeed(self.user.id, offset, 25);
+		HashSet<Integer> postIDs=new HashSet<>();
+		for(NewsfeedEntry e:feed.list){
+			if(e instanceof PostNewsfeedEntry){
+				PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
+				if(pe.post!=null){
+					postIDs.add(pe.post.id);
+				}else{
+					System.err.println("No post: "+pe);
+				}
+			}
+		}
+		if(req.attribute("mobile")==null && !postIDs.isEmpty()){
+			Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
+			for(NewsfeedEntry e:feed.list){
+				if(e instanceof PostNewsfeedEntry){
+					PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
+					if(pe.post!=null){
+						ListAndTotal<Post> comments=allComments.get(pe.post.id);
+						if(comments!=null){
+							pe.post.repliesObjects=comments.list;
+							pe.post.totalTopLevelComments=comments.total;
+							pe.post.getAllReplyIDs(postIDs);
+						}
+					}
+				}
+			}
+		}
+		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self.user.id);
+		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
+		jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
+		return new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list).with("postInteractions", interactions)
+				.with("paginationURL", "/feed/comments?offset=").with("total", feed.total).with("offset", offset).with("paginationFirstURL", "/feed/comments").with("tab", "comments")
+				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
+	}
 }

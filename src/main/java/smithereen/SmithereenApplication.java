@@ -151,7 +151,10 @@ public class SmithereenApplication{
 
 		get("/", SmithereenApplication::indexPage);
 
-		getLoggedIn("/feed", PostRoutes::feed);
+		path("/feed", ()->{
+			getLoggedIn("", PostRoutes::feed);
+			getLoggedIn("/comments", PostRoutes::commentsFeed);
+		});
 
 		path("/account", ()->{
 			post("/login", SessionRoutes::login);

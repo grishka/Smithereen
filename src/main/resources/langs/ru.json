@@ -379,5 +379,7 @@
   "birthday_reminder_separator": ", ",
   "birthday_reminder_separator_last": " и ",
   "expand_text": "Показать полностью...",
+  "feed_tab_news": "Новости",
+  "feed_tab_comments": "Комментарии",
   "wall_post_rejected": "Удалённый сервер не принял эту запись."
 }

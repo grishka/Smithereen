@@ -274,7 +274,7 @@ public class DatabaseSchemaUpdater{
 					  CONSTRAINT `newsfeed_comments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 		}else if(target==15){
-			conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `federation_state` int unsigned NOT NULL DEFAULT 0");
+			conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `federation_state` tinyint unsigned NOT NULL DEFAULT 0");
 		}
 	}
 }

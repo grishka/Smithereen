@@ -26,9 +26,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
+import smithereen.activitypub.objects.activities.Like;
 import smithereen.data.FederationState;
 import smithereen.data.ListAndTotal;
 import smithereen.data.Poll;
@@ -995,6 +997,70 @@ public class PostStorage{
 				.where("id=?", postID)
 				.createStatement()
 				.execute();
+	}
+
+	public static ListAndTotal<NewsfeedEntry> getCommentsFeed(int userID, int offset, int count) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		int total;
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("newsfeed_comments")
+				.count()
+				.where("user_id=?", userID)
+				.createStatement();
+
+		try(ResultSet res=stmt.executeQuery()){
+			res.first();
+			total=res.getInt(1);
+		}
+
+		if(total==0)
+			return new ListAndTotal<>(Collections.emptyList(), 0);
+
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("newsfeed_comments")
+				.columns("object_type", "object_id")
+				.where("user_id=?", userID)
+				.orderBy("last_comment_time DESC")
+				.limit(count, offset)
+				.createStatement();
+		List<Integer> needPosts=new ArrayList<>();
+		List<NewsfeedEntry> entries=new ArrayList<>();
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			while(res.next()){
+				Like.ObjectType type=Like.ObjectType.values()[res.getInt(1)];
+				int id=res.getInt(2);
+				switch(type){
+					case POST -> {
+						needPosts.add(id);
+						PostNewsfeedEntry entry=new PostNewsfeedEntry();
+						entry.objectID=id;
+						entry.type=NewsfeedEntry.Type.POST;
+						entries.add(entry);
+					}
+				}
+			}
+		}
+		if(needPosts.isEmpty())
+			return new ListAndTotal<>(entries, total);
+
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("wall_posts")
+				.allColumns()
+				.whereIn("id", needPosts)
+				.createStatement();
+
+		Map<Integer, Post> posts;
+		try(ResultSet res=stmt.executeQuery()){
+			posts=DatabaseUtils.resultSetToObjectStream(res, Post::fromResultSet).collect(Collectors.toMap(post->post.id, Function.identity()));
+		}
+		for(NewsfeedEntry entry : entries){
+			if(entry.type==NewsfeedEntry.Type.POST){
+				((PostNewsfeedEntry) entry).post=posts.get(entry.objectID);
+			}
+		}
+
+		return new ListAndTotal<>(entries, total);
 	}
 
 	private static class DeleteCommentBookmarksRunnable implements Runnable{

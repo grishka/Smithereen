@@ -379,5 +379,7 @@
   "birthday_reminder_separator": ", ",
   "birthday_reminder_separator_last": " and ",
   "expand_text": "Expand text...",
+  "feed_tab_news": "News",
+  "feed_tab_comments": "Comments",
   "wall_post_rejected": "Remote server rejected this post."
 }

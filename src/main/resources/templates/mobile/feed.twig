@@ -1,5 +1,6 @@
 {%extends "page"%}
 {%block content%}
+{% include "feed_tabbar" with {'tab': tab | default('news')} %}
 	<div class="cardsBackdrop">
 		<div class="card">
 		{%include "wall_post_form" with {'id': "feed"}%}
@@ -49,7 +50,7 @@ Unknown entry type {{entry.type}}
 {% else %}
 <div class="emptyState" id="wallEmptyState">{{ L('feed_empty') }}</div>
 {%endfor%}
-	{%include "pagination" with {'perPage': 25, 'offset': offset, 'total': total, 'urlPrefix': paginationURL, 'firstPageURL': "/feed"}%}
+	{%include "pagination" with {'perPage': 25, 'offset': offset, 'total': total, 'urlPrefix': paginationURL, 'firstPageURL': paginationFirstURL | default("/feed") }%}
 </div>
 	</div>
 {%endblock%}
