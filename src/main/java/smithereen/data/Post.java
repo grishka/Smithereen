@@ -239,8 +239,10 @@ public class Post extends ActivityPubObject{
 		if(_content!=null && _content.isJsonArray()){
 			content=_content.getAsJsonArray().get(0).getAsString();
 		}
+		String type=obj.get("type").getAsString();
+		boolean isPoll=type.equals("Question") && (obj.has("oneOf") || obj.has("anyOf"));
 		if(content!=null && !parserContext.isLocal){
-			if(StringUtils.isNotEmpty(name))
+			if(StringUtils.isNotEmpty(name) && !isPoll)
 				content="<p><b>"+name+"</b></p>"+content;
 			content=Utils.sanitizeHTML(content);
 			if(obj.has("sensitive") && obj.get("sensitive").getAsBoolean() && summary!=null){
@@ -288,8 +290,7 @@ public class Post extends ActivityPubObject{
 		}catch(SQLException x){
 			throw new IllegalStateException(x);
 		}
-		String type=obj.get("type").getAsString();
-		if(type.equals("Question") && (obj.has("oneOf") || obj.has("anyOf"))){
+		if(isPoll){
 			poll=new Poll();
 			poll.multipleChoice=obj.has("anyOf");
 			poll.question=obj.has("name") ? obj.get("name").getAsString() : null;
