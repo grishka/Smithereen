@@ -1164,3 +1164,25 @@ textarea{
 .expandableText>label{
 	font-weight: $mediumWeight;
 }
+
+.summaryWrap{
+	padding: 16px 16px 0 16px;
+	.summary{
+		color: $boldHeaders;
+		font-weight: $mediumWeight;
+	}
+	.auxLinks{
+		margin: 0 -8px;
+		a{
+			display: block;
+			line-height: 42px;
+			padding-left: 8px;
+			padding-right: 8px;
+			-webkit-tap-highlight-color: rgba(0,0,0,0);
+		}
+		a:active, a:visited:active{
+			text-decoration: none;
+			background: $blockBackground;
+		}
+	}
+}

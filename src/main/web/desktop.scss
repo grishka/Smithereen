@@ -1533,11 +1533,19 @@ input:checked+.postCWWrap{
 	.summary{
 		font-weight: bold;
 		padding: 3px 0 4px;
+		float: left;
 	}
 
 	.auxLinks{
 		float: right;
 		padding: 3px 0 4px;
+	}
+
+	&:after{
+		content: ' ';
+		clear: both;
+		height: 0;
+		display: block;
 	}
 }
 
