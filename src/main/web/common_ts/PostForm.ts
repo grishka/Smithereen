@@ -292,6 +292,7 @@ class PostForm{
 			this.currentReplyName=name+", ";
 		}
 		this.input.focus();
+		this.input.selectionEnd=this.input.selectionStart=this.input.value.length;
 		if(this.isMobileComment){
 			this.replyBar.show();
 			this.replyName.innerText=postEl.dataset.replyingName;
