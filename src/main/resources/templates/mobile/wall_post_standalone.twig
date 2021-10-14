@@ -10,7 +10,7 @@
 		{{- interactions.likeCount -}}
 	</span>
 	</a>
-	<a href="{{ post.internalURL }}/likes" class="likeAvatars">
+	<a href="{{ post.internalURL }}/likes" class="likeAvatars likeAvatars{{ post.id }}">
 		{% if currentUser is not null %}
 			<span class="currentUserLikeAva" style="{{ interactions.isLiked ? '' : 'display: none' }}">{{ currentUser | pictureForAvatar('s', 34) }}</span>
 		{% endif %}

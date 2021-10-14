@@ -634,7 +634,7 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 	var liked=btn.classList.contains("liked");
 	var counter=ge("likeCounter"+objType.substring(0,1).toUpperCase()+objType.substring(1)+objID);
 	var count=parseInt(counter.innerText);
-	var ownAva=document.querySelector(".likeAvatars .currentUserLikeAva") as HTMLElement;
+	var ownAva=document.querySelector(".likeAvatars"+objID+".likeAvatars .currentUserLikeAva") as HTMLElement;
 	if(btn.customData && btn.customData.popoverTimeout){
 		clearTimeout(btn.customData.popoverTimeout);
 		delete btn.customData.popoverTimeout;
