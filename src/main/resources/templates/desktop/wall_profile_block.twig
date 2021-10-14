@@ -12,6 +12,10 @@
 		{% else %}
 			<div id="wallEmptyState">{{ L('wall_empty') }}</div>
 		{%endfor%}
-		{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (user.profileURL+"?offset=")}%}
+	</td></tr>
+	<tr><td>
+		<div class="bottomSummaryWrap noSidePadding">
+			{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (user.profileURL+"?offset=")}%}
+		</div>
 	</td></tr>
 </table>

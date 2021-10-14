@@ -57,7 +57,7 @@ $iconColor: rgb(156, 168, 80);
 $likeIconColor: rgb(219, 216, 173);
 
 
-$normalLink: $headerGradientBottom;
+/*$normalLink: $headerGradientBottom;*/
 
 
 @svg-load radioOff url('img/radio_off.svg'){
@@ -786,4 +786,27 @@ ul.actualList{
 
 .red{
 	color: #851614;
+}
+
+.toggler{
+	display: none;
+}
+
+.toggled{
+	.hideWhenOff, .showWhenOn{
+		display: none;
+	}
+}
+
+.toggler:checked+.toggled{
+	.hideWhenOff, .showWhenOn{
+		display: block;
+	}
+	.hideWhenOn, .showWhenOff{
+		display: none;
+	}
+}
+
+small{
+	font-size: 10px;
 }

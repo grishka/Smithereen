@@ -27,7 +27,11 @@ public class LangFunction implements Function{
 		}else{
 			String[] formatArgs=new String[args.size()-1];
 			for(int i=0; i<formatArgs.length; i++){
-				formatArgs[i]=HtmlEscape.escapeHtml4Xml((String)args.get((i+1)+""));
+				Object arg=args.get((i+1)+"");
+				if(arg instanceof SafeString)
+					formatArgs[i]=arg.toString();
+				else
+					formatArgs[i]=HtmlEscape.escapeHtml4Xml(args.get((i+1)+"").toString());
 			}
 			return new SafeString(Lang.get(locale).get(key, formatArgs));
 		}

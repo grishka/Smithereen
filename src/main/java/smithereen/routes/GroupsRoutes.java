@@ -158,6 +158,7 @@ public class GroupsRoutes{
 			}
 		}
 		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
+		Lang l=lang(req);
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group", req);
 		model.with("group", group).with("members", members).with("postCount", totalPosts[0]).with("pageOffset", pageOffset).with("wall", wall);
@@ -178,7 +179,6 @@ public class GroupsRoutes{
 						"remove_profile_picture", "confirm_remove_profile_picture", "choose_file_mobile");
 			}
 		}else{
-			Lang l=lang(req);
 			HashMap<String, String> meta=new LinkedHashMap<>();
 			meta.put("og:type", "profile");
 			meta.put("og:site_name", Config.serverDisplayName);
@@ -202,6 +202,7 @@ public class GroupsRoutes{
 			model.with("moreMetaTags", Map.of("description", descr));
 		}
 		model.with("activityPubURL", group.activityPubID);
+		model.addNavBarItem(l.get("open_group"));
 		return model;
 	}
 
@@ -285,9 +286,10 @@ public class GroupsRoutes{
 	public static Object members(Request req, Response resp) throws SQLException{
 		Group group=getGroup(req);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		List<User> users=GroupStorage.getMembers(group.id, offset, 100);
-		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users);
+		ListAndTotal<User> users=GroupStorage.getMembers(group.id, offset, 100);
+		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users.list);
 		model.with("pageOffset", offset).with("total", group.memberCount).with("paginationUrlPrefix", "/groups/"+group.id+"/members?offset=");
+		model.with("summary", lang(req).plural("summary_group_X_members", group.memberCount));
 //		if(isAjax(req)){
 //			if(req.queryParams("fromPagination")==null)
 //				return new WebDeltaResponseBuilder(resp).box(lang(req).get("likes_title"), model, "likesList", 596);
@@ -322,7 +324,7 @@ public class GroupsRoutes{
 		Group.AdminLevel level=GroupStorage.getGroupMemberAdminLevel(group.id, self.user.id);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		List<User> users=GroupStorage.getMembers(group.id, offset, 100);
+		List<User> users=GroupStorage.getMembers(group.id, offset, 100).list;
 		model.with("pageOffset", offset).with("total", group.memberCount).with("paginationUrlPrefix", "/groups/"+group.id+"/editMembers?offset=");
 		model.with("group", group).with("title", group.name);
 		model.with("members", users);

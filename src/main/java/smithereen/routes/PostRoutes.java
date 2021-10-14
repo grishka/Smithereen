@@ -592,9 +592,10 @@ public class PostRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users);
 		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), 0).get(postID);
 		model.with("pageOffset", offset).with("total", interactions.likeCount).with("paginationUrlPrefix", "/posts/"+postID+"/likes?fromPagination&offset=").with("emptyMessage", lang(req).get("likes_empty"));
+		model.with("summary", lang(req).plural("liked_by_X_people", interactions.likeCount));
 		if(isAjax(req)){
 			if(req.queryParams("fromPagination")==null)
-				return new WebDeltaResponse(resp).box(lang(req).get("likes_title"), model.renderToString(), "likesList", 610);
+				return new WebDeltaResponse(resp).box(lang(req).get("likes_title"), model.renderToString(), "likesList", 474);
 			else
 				return new WebDeltaResponse(resp).setContent("likesList", model.renderToString());
 		}

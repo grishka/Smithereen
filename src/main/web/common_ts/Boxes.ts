@@ -395,6 +395,15 @@ class FormBox extends Box{
 		]);
 		this.setContent(content);
 	}
+
+	protected onCreateContentView():HTMLElement{
+		var cont=super.onCreateContentView();
+		var textareas=cont.querySelectorAll("textarea").unfuck();
+		for(var ta of textareas){
+			autoSizeTextArea(ta as HTMLTextAreaElement);
+		}
+		return cont;
+	}
 }
 
 abstract class FileUploadBox extends Box{

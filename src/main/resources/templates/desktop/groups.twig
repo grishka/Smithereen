@@ -2,7 +2,21 @@
 {% block content %}
 {% if currentUser is not null and owner.id==currentUser.id %}
 {% include 'groups_tabbar' %}
+{% else %}
+<div class="tabbar">
+	<a href="/users/{{ owner.id }}/groups" class="selected">{{ LI(key='user_groups', first=owner.firstName, gender=owner.gender) }}</a>
+	<a href="{{ owner.profileURL }}" class="aux">{{ L('back_to_profile') }}</a>
+</div>
 {% endif %}
+<div class="summaryWrap">
+	<div class="summary">
+	{% if currentUser is not null and owner.id==currentUser.id %}
+	{{ L('summary_own_X_groups', LP('member_of_X_groups', groups.size())) }}
+	{% else %}
+	{{ LI(key='summary_user_X_groups', first=owner.firstName, gender=owner.gender, args=[LP('member_of_X_groups', groups.size())]) }}
+	{% endif %}
+	</div>
+</div>
 <div class="singleColumn">
 {% for group in groups %}
 <table width="100%" class="friendsRow noBorderSpacing" id="grow{{group.id}}">

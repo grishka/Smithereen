@@ -25,5 +25,9 @@
 		{% endfor %}
 	</div>
 </div>
+{% if total>100 %}
+<div class="bottomSummaryWrap">
 {%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': paginationUrlPrefix}%}
+</div>
+{% endif %}
 {% endblock %}

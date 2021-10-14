@@ -46,7 +46,7 @@
 			{%endif%}
 			<li class="separator"></li>
 		{%endif%}
-		<li><a href="{{ user.getProfileURL('friends') }}">{{ LP('X_friends', friendCount) }}</a></li>
+		<li><a href="/users/{{ user.id }}/friends">{{ LP('X_friends', friendCount) }}</a></li>
 		<li class="separator"></li>
 		{%if currentUser is not null and currentUser.id!=user.id%}
 		{%if isFriend or following or friendRequestSent or followRequested%}

@@ -1,12 +1,20 @@
 {% extends 'page' %}
 {% block content %}
 {% include 'wall_tabbar' %}
+<div class="summaryWrap">
+	<div class="summary">{{ LP('total_X_posts', postCount) }}</div>
+	{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (paginationUrlPrefix+"?offset=")}%}
+</div>
 <div class="singleColumn">
 {% for post in posts %}
 	<div class="wallRow">{% include 'wall_post' %}</div>
 {% else %}
 	<div class="emptyState">{{ L('wall_empty') }}</div>
 {% endfor %}
-{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (paginationUrlPrefix+"?offset=")}%}
 </div>
+{% if postCount>25 %}
+<div class="bottomSummaryWrap">
+	{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (paginationUrlPrefix+"?offset=")}%}
+</div>
+{% endif %}
 {% endblock %}

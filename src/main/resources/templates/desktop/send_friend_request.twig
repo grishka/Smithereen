@@ -1,0 +1,12 @@
+{# @pebvariable name="targetUser" type="smithereen.data.User" #}
+<div class="sendFriendReqForm">
+	<div>{{ targetUser | pictureForAvatar('m') }}</div>
+	<div>
+		<p>{{LG("sending_friend_req_to_X", targetUser.gender, targetUser.fullName)}}</p>
+		<input type="checkbox" id="friendReqMsgToggler" class="toggler"/>
+		<div class="toggled">
+			<div class="hideWhenOn"><small>[ <label class="pretendLink" for="friendReqMsgToggler" onclick="setTimeout(function(){ge('friendReqMsg').focus();}, 10)">{{ L('add_friend_req_message') }}</label> ]</small></div>
+			<textarea name="message" rows="3" id="friendReqMsg" class="showWhenOn"></textarea>
+		</div>
+	</div>
+</div>

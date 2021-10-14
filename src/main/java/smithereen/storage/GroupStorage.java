@@ -320,14 +320,21 @@ public class GroupStorage{
 		}
 	}
 
-	public static List<User> getMembers(int groupID, int offset, int count) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder()
+	public static ListAndTotal<User> getMembers(int groupID, int offset, int count) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("group_memberships")
+				.count()
+				.where("group_id=? AND accepted=1", groupID)
+				.createStatement();
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		stmt=new SQLQueryBuilder(conn)
 				.selectFrom("group_memberships")
 				.where("group_id=? AND accepted=1", groupID)
 				.limit(count, offset)
 				.createStatement();
 		try(ResultSet res=stmt.executeQuery()){
-			return UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(res));
+			return new ListAndTotal<>(UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(res)), total);
 		}
 	}
 

@@ -31,6 +31,10 @@
 		</tr>
 		{%endfor%}
 	</table>
+</div>
+{% if total>100 %}
+<div class="bottomSummaryWrap">
 	{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': "/settings/admin/users?offset="}%}
 </div>
+{% endif %}
 {%endblock%}

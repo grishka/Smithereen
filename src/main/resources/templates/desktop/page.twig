@@ -98,6 +98,27 @@
 		</td>
 		<td valign="top">
 			<div class="pageContent">
+				{% if navBarItems is not empty %}
+					<div class="navbar">
+					{%- for item in navBarItems -%}
+						{%- if item.href is not empty -%}
+							<a href="{{ item.href }}">
+						{%- else -%}
+							<span class="navItem">
+						{%- endif -%}
+							{{- item.text -}}
+						{%- if item.href is empty -%}
+							</span>
+						{%- else -%}
+							</a>
+						{%- endif -%}
+						{%- if item.auxText is not empty -%}
+							<span class="auxText"> {{ item.auxText }}</span>
+						{%- endif -%}
+						{%- if not loop.last %} &raquo; {% endif -%}
+					{%- endfor -%}
+					</div>
+				{% endif %}
 {%block content%}{%endblock%}
 			</div>
 		</td>

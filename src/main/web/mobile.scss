@@ -671,6 +671,9 @@ select{
 		min-width: 0;
 		min-height: 0;
 	}
+	video{
+		max-width: 100%;
+	}
 }
 
 .postContentWrap .aspectBox{

@@ -2,6 +2,10 @@
 {%block content%}
 {% include "feed_tabbar" with {'tab': tab | default('news')} %}
 {%include "wall_post_form" with {'id': "feed"}%}
+<div class="summaryWrap">
+	<div class="summary">{{ L('summary_feed') }}</div>
+	{%include "pagination" with {'perPage': 25, 'offset': offset, 'total': total, 'urlPrefix': paginationURL, 'firstPageURL': paginationFirstURL | default("/feed") }%}
+</div>
 <div class="singleColumn" id="postList">
 {%for entry in feed%}
 {%if entry.type=="POST"%}
@@ -47,6 +51,10 @@ Unknown entry type {{entry.type}}
 {% else %}
 <div class="emptyState" id="wallEmptyState">{{ L('feed_empty') }}</div>
 {%endfor%}
+</div>
+{% if total>25 %}
+<div class="bottomSummaryWrap">
 	{%include "pagination" with {'perPage': 25, 'offset': offset, 'total': total, 'urlPrefix': paginationURL, 'firstPageURL': paginationFirstURL | default("/feed") }%}
 </div>
+{% endif %}
 {%endblock%}

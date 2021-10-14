@@ -1,8 +1,12 @@
 {%extends "page"%}
 {%block content%}
 {%if notifications.empty%}
-	<center class="notMuchContent">{{L('no_notifications')}}</center>
+	<div class="emptyState">{{L('no_notifications')}}</div>
 {%else%}
+<div class="summaryWrap">
+	<div class="summary">{{ L('summary_notifications') }}</div>
+	{%include "pagination" with {'perPage': 50, 'offset': offset, 'total': total, 'urlPrefix': "/my/notifications?offset="}%}
+</div>
 <div class="singleColumn">
 {%for notification in notifications%}
 {%set actor=users[notification.actorID]%}
@@ -83,7 +87,11 @@
 {% else %}
 <div class="emptyState">{{ L('notifications_empty') }}</div>
 {%endfor%}
+</div>
+{% if total>50 %}
+<div class="bottomSummaryWrap">
 	{%include "pagination" with {'perPage': 50, 'offset': offset, 'total': total, 'urlPrefix': "/my/notifications?offset="}%}
 </div>
+{% endif %}
 {%endif%}
 {%endblock%}

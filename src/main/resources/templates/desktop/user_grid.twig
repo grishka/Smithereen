@@ -1,15 +1,23 @@
 {% if users is not empty %}
+<div class="summaryWrap">
+	<div class="summary">{{ summary }}</div>
+	{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': paginationUrlPrefix, 'ajax': true}%}
+</div>
 <div class="userGrid">
 	{%for user in users%}
 	<div class="userGridItem">
 		<a href="{{user.profileURL}}">
-			{{user | pictureForAvatar('m')}}
+			{{user | pictureForAvatar('s')}}
 			<div class="name">{{user.fullName}}</div>
 		</a>
 	</div>
 	{%endfor%}
+</div>
+{% if total>100 %}
+<div class="bottomSummaryWrap">
 	{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': paginationUrlPrefix, 'ajax': true}%}
 </div>
+{% endif %}
 {% else %}
 <div class="singleColumn">
 	<div class="emptyState">
