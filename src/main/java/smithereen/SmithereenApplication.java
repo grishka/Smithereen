@@ -88,8 +88,7 @@ public class SmithereenApplication{
 			Config.loadFromDatabase();
 			DatabaseSchemaUpdater.maybeUpdate();
 		}catch(IOException|SQLException x){
-			x.printStackTrace();
-			System.exit(1);
+			throw new RuntimeException(x);
 		}
 
 		if(args.length>1){
@@ -378,6 +377,8 @@ public class SmithereenApplication{
 				resp.type("application/json");
 			});
 		});
+
+		get("/healthz", (req, resp)->"");
 
 		path("/:username", ()->{
 			// These also handle groups
