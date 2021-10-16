@@ -27,7 +27,7 @@
 	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 	<div class="feedRowContent">
 		<a href="{{ entry.author.profileURL }}">{{ entry.author.fullName }}</a>
-		{{- L('feed_added_friend_before', entry.author.gender) -}}
+		{{- L('feed_added_friend_before', {'gender': entry.author.gender}) -}}
 		<a href="{{ entry.friend.profileURL }}">{{ L('feed_added_friend_name', {'name': entry.friend.firstLastAndGender}) }}</a>
 		{{- L('feed_added_friend_after', {'gender': entry.author.gender}) -}}
 	</div>

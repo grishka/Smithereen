@@ -41,14 +41,14 @@
 		<td valign="top" class="notificationContentWrap">
 			<a href="{{actorURL}}" class="authorName">{{actorName}}</a>
 			{%if notification.type=="REPLY"%}
-			{{L(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', actorGender)}} <a href="{{relatedObject.internalURL}}">{{relatedObject.shortTitle}}</a>
+			{{L(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', {'gender': actorGender})}} <a href="{{relatedObject.internalURL}}">{{relatedObject.shortTitle}}</a>
 			<div class="postContent">
 				{{object.content | raw}}
 			</div>
 			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments)}}<br/>{%endif%}
 			{%set link=object.internalURL%}
 			{%elseif notification.type=="MENTION"%}
-			{{L(isComment ? 'notification_mentioned_in_comment' : 'notification_mentioned_in_post', actorGender)}}
+			{{L(isComment ? 'notification_mentioned_in_comment' : 'notification_mentioned_in_post', {'gender': actorGender})}}
 			<div class="postContent">
 				{{object.content | raw}}
 			</div>
