@@ -3,7 +3,7 @@
 {%block content%}
 {% include 'friends_tabbar' with {'tab': 'requests'} %}
 <div class="summaryWrap">
-	<div class="summary">{{ LP('summary_X_friend_requests', userNotifications.newFriendRequestCount) }}</div>
+	<div class="summary">{{ L('summary_X_friend_requests', {'numRequests': userNotifications.newFriendRequestCount}) }}</div>
 </div>
 <div class="singleColumn">
 	{% for req in friendRequests %}
@@ -36,9 +36,9 @@
 							{% if req.mutualFriendsCount>0 %}
 							<div class="mutual">
 								<span class="grayText">
-									{{- LI(key='you_and_X_mutual_before', first=req.from.firstName, gender=req.from.gender) -}}
-									<a href="/users/{{ req.from.id }}/friends/mutual">{{ LP('you_and_X_mutual_count', req.mutualFriendsCount) }}</a>
-									{{- L('you_and_X_mutual_after') -}}
+									{{- L('you_and_X_mutual_before', {'name': req.from.firstAndGender}) -}}
+									<a href="/users/{{ req.from.id }}/friends/mutual">{{ L('you_and_X_mutual_count', {'numFriends': req.mutualFriendsCount}) }}</a>
+									{{- L('you_and_X_mutual_after', {'name': req.from.firstAndGender}) -}}
 								</span>
 								<div class="mutualPics">
 									{% for friend in req.mutualFriends %}

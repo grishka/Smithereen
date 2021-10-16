@@ -25,14 +25,10 @@ public class LangFunction implements Function{
 		if(args.size()==1){
 			return new SafeString(Lang.get(locale).get(key));
 		}else{
-			String[] formatArgs=new String[args.size()-1];
-			for(int i=0; i<formatArgs.length; i++){
-				Object arg=args.get((i+1)+"");
-				if(arg instanceof SafeString)
-					formatArgs[i]=arg.toString();
-				else
-					formatArgs[i]=HtmlEscape.escapeHtml4Xml(args.get((i+1)+"").toString());
+			if(!(args.get("1") instanceof Map)){
+				throw new IllegalArgumentException("wrong arg types "+args);
 			}
+			Map<String, Object> formatArgs=(Map<String, Object>) args.get("1");
 			return new SafeString(Lang.get(locale).get(key, formatArgs));
 		}
 	}

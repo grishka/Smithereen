@@ -39,7 +39,7 @@
 				    <a href="{{ post.owner.profileURL }}/wall/with/{{ post.user.fullUsername }}">{{ L('wall_to_wall') }}</a>
 				{% endif %}
 				{% if not post.local %}
-					| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', post.url.host) }}</a>
+					| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': post.url.host}) }}</a>
 				{% endif %}
 				{% if not standalone and currentUser is not null %}
 					<span id="postCommentLinkWrap{{ post.id }}" style="{{ post.repliesObjects is empty ? '' : 'display: none;' }}">| <a href="{{ post.internalURL }}" onclick="return showPostCommentForm({{ post.id }})">{{ L('add_comment') }}</a></span>

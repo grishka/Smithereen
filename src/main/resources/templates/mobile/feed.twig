@@ -15,9 +15,9 @@
 <div class="feedIcon feedIconStatus"></div>
 <div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 <div class="feedRowContent">
-	{{ LG(entry.post.replyLevel==0 ? 'feed_retoot_before' : 'feed_retoot_before_comment', entry.author.gender) -}}
+	{{ L(entry.post.replyLevel==0 ? 'feed_retoot_before' : 'feed_retoot_before_comment', {'gender': entry.author.gender}) -}}
 	<a href="{{entry.author.profileURL}}">{{entry.author.fullName}}</a>
-	{{- LG(entry.post.replyLevel==0 ? 'feed_retoot_after' : 'feed_retoot_after_comment', entry.author.gender) -}}
+	{{- L(entry.post.replyLevel==0 ? 'feed_retoot_after' : 'feed_retoot_after_comment', {'gender': entry.author.gender}) -}}
 </div>
 </div>
 {%include "wall_post" with {'post': entry.post}%}
@@ -27,9 +27,9 @@
 	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 	<div class="feedRowContent">
 		<a href="{{ entry.author.profileURL }}">{{ entry.author.fullName }}</a>
-		{{- LG('feed_added_friend_before', entry.author.gender) -}}
-		<a href="{{ entry.friend.profileURL }}">{{ LI(key='feed_added_friend_name', first=entry.friend.firstName, last=entry.friend.lastName, gender=entry.friend.gender) }}</a>
-		{{- LG('feed_added_friend_after', entry.author.gender) -}}
+		{{- L('feed_added_friend_before', entry.author.gender) -}}
+		<a href="{{ entry.friend.profileURL }}">{{ L('feed_added_friend_name', {'name': entry.friend.firstLastAndGender}) }}</a>
+		{{- L('feed_added_friend_after', {'gender': entry.author.gender}) -}}
 	</div>
 </div>
 {% elseif entry.type=="JOIN_GROUP" %}
@@ -38,9 +38,9 @@
 	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 	<div class="feedRowContent">
 		<a href="{{ entry.author.profileURL }}">{{ entry.author.fullName }}</a>
-		{{- LG('feed_joined_group_before', entry.author.gender) -}}
+		{{- L('feed_joined_group_before', {'gender': entry.author.gender}) -}}
 		<a href="{{ entry.group.profileURL }}">{{ entry.group.name }}</a>
-		{{- LG('feed_joined_group_after', entry.author.gender) -}}
+		{{- L('feed_joined_group_after', {'gender': entry.author.gender}) -}}
 	</div>
 </div>
 {%else%}

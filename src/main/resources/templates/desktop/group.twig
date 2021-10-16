@@ -7,8 +7,8 @@
 {%if group.domain%}
 <div class="marginsAreMessy"></div>
 <div class="settingsMessage">
-	{{L('incomplete_profile')}}<br/>
-	<a href="{{group.url}}" target="_blank">{{L('open_on_server_X', group.domain)}}</a>
+	{{ L('incomplete_profile') }}<br/>
+	<a href="{{ group.url }}" target="_blank">{{ L('open_on_server_X', {'domain': group.domain}) }}</a>
 </div>
 {%endif%}
 <table width="100%" cellpadding="0" cellspacing="0" class="columnLayout rightNarrow">
@@ -78,7 +78,7 @@
 				<div class="rightColumnBorder"></div>
 			<table width="100%" style="table-layout: fixed;" class="profileBlock marginAfter">
 				<tr><th colspan="3" class="blockHeader"><a href="/groups/{{ group.id }}/members">{{ L("members") }}</a></th></tr>
-				<tr><td colspan="3" class="blockSubheader">{{ LP('X_members', group.memberCount) }}</td></tr>
+				<tr><td colspan="3" class="blockSubheader">{{ L('X_members', {'count': group.memberCount}) }}</td></tr>
 				{% for member in members %}
 				{% if(loop.first or loop.index==3) %}<tr valign="top" class="membersRow">{% endif %}
 				<td align="center" width="33%" style="overflow: hidden;">
@@ -97,7 +97,7 @@
 			<table width="100%" style="table-layout: fixed;" class="profileBlock">
 				<colgroup><col width="48"/><col width="*"/></colgroup>
 				<tr><th colspan="2" class="blockHeader"><a href="/groups/{{ group.id }}/admins" data-ajax-box="1">{{ L("group_admins") }}</a></th></tr>
-				<tr><td colspan="2" class="blockSubheader">{{ LP('group_X_admins', admins.size) }}</td></tr>
+				<tr><td colspan="2" class="blockSubheader">{{ L('group_X_admins', {'count': admins.size}) }}</td></tr>
 				{% for admin in admins %}
 					{% if loop.index<5 %}
 						<tr class="oneMemberRow">

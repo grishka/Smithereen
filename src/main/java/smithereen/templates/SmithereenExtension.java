@@ -16,9 +16,6 @@ public class SmithereenExtension extends AbstractExtension{
 		HashMap<String, Function> r=new HashMap<>();
 		r.put("L", new LangFunction());
 		r.put("LD", new LangDateFunction());
-		r.put("LG", new LangGenderedFunction());
-		r.put("LP", new LangPluralFunction());
-		r.put("LI", new LangInflectedFunction());
 		r.put("renderAttachments", new RenderAttachmentsFunction());
 		r.put("json", new JsonFunction());
 		r.put("formatTime", new FormatTimeFunction());

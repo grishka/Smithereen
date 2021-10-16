@@ -1,6 +1,6 @@
 {# @pebvariable name="post" type="smithereen.data.Post" #}
 <a name="comment{{post.id}}"></a>
-<table width="100%" class="post comment" id="post{{post.id}}" data-reply-name="{{post.user.nameForReply}}" data-replying-name="{{ LI(key='in_reply_to_name', first=post.user.firstName, gender=post.user.gender) }}">
+<table width="100%" class="post comment" id="post{{post.id}}" data-reply-name="{{post.user.nameForReply}}" data-replying-name="{{ L('in_reply_to_name', {'name': post.user.firstAndGender}) }}">
 	<tr>
 		{%if post.replyLevel>1%}
 		<td width="{{(post.replyLevel-1)*8}}" class="treeIndent">&nbsp;</td>
@@ -34,7 +34,7 @@
 						    {% set _=options.add({'type': 'confirm', 'label': L('delete').toString(), 'title': 'delete_reply', 'msg': 'delete_reply_confirm', 'url': "#{post.url}/delete"}) %}
 						{% endif %}
 						{% if not post.local %}
-							{% set _=options.add({'type': 'link', 'target': '_blank', 'href': post.url, 'label': L('open_on_server_X', post.url.host).toString()}) %}
+							{% set _=options.add({'type': 'link', 'target': '_blank', 'href': post.url, 'label': L('open_on_server_X', {'domain': post.url.host}).toString()}) %}
 						{% endif %}
 
 						<a href="#" onclick="return showOptions(this)" data-options="{{ json(options) }}">{{ L('more_actions') }}</a>

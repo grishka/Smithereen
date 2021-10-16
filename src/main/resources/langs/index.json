@@ -1,8 +1,50 @@
 [
-  "en",
-  "ru",
-  "tr",
-  "pl",
-  "es",
-  "de"
+  {
+    "locale": "en",
+    "name": "English",
+    "fallback": null,
+    "files": [
+      "en.json"
+    ]
+  },
+  {
+    "locale": "ru",
+    "name": "Russian",
+    "fallback": "en",
+    "files": [
+      "ru.json"
+    ]
+  },
+  {
+    "locale": "tr",
+    "name": "Turkish",
+    "fallback": "en",
+    "files": [
+      "tr.json"
+    ]
+  },
+  {
+    "locale": "pl",
+    "name": "Polish",
+    "fallback": "en",
+    "files": [
+      "pl.json"
+    ]
+  },
+  {
+    "locale": "es",
+    "name": "Spanish",
+    "fallback": "en",
+    "files": [
+      "es.json"
+    ]
+  },
+  {
+    "locale": "de",
+    "name": "German",
+    "fallback": "en",
+    "files": [
+      "de.json"
+    ]
+  }
 ]

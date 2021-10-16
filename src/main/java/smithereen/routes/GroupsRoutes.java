@@ -185,7 +185,7 @@ public class GroupsRoutes{
 			meta.put("og:title", group.name);
 			meta.put("og:url", group.url.toString());
 			meta.put("og:username", group.getFullUsername());
-			String descr=l.plural("X_members", group.memberCount)+", "+l.plural("X_posts", totalPosts[0]);
+			String descr=l.get("X_members", Map.of("count", group.memberCount))+", "+l.get("X_posts", Map.of("count", totalPosts[0]));
 			if(StringUtils.isNotEmpty(group.summary))
 				descr+="\n"+Jsoup.clean(group.summary, Whitelist.none());
 			meta.put("og:description", descr);
@@ -289,7 +289,7 @@ public class GroupsRoutes{
 		ListAndTotal<User> users=GroupStorage.getMembers(group.id, offset, 100);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users.list);
 		model.with("pageOffset", offset).with("total", group.memberCount).with("paginationUrlPrefix", "/groups/"+group.id+"/members?offset=");
-		model.with("summary", lang(req).plural("summary_group_X_members", group.memberCount));
+		model.with("summary", lang(req).get("summary_group_X_members", Map.of("count", group.memberCount)));
 //		if(isAjax(req)){
 //			if(req.queryParams("fromPagination")==null)
 //				return new WebDeltaResponseBuilder(resp).box(lang(req).get("likes_title"), model, "likesList", 596);
@@ -384,7 +384,7 @@ public class GroupsRoutes{
 			throw new ObjectNotFoundException("user_not_found");
 
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", Utils.lang(req).inflected("group_admin_demote_confirm", user.gender, user.firstName, user.lastName, null)).with("formAction", Config.localURI("/groups/"+group.id+"/removeAdmin?_redir="+URLEncoder.encode(back)+"&id="+userID)).with("back", back);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", Utils.lang(req).get("group_admin_demote_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", Config.localURI("/groups/"+group.id+"/removeAdmin?_redir="+URLEncoder.encode(back)+"&id="+userID)).with("back", back);
 	}
 
 	public static Object removeAdmin(Request req, Response resp, Account self) throws SQLException{
@@ -452,7 +452,7 @@ public class GroupsRoutes{
 		String domain=req.queryParams("domain");
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_domain_X", domain)).with("formAction", "/groups/"+group.id+"/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_domain_X", Map.of("domain", domain))).with("formAction", "/groups/"+group.id+"/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object unblockDomain(Request req, Response resp, Account self) throws SQLException{
@@ -481,7 +481,7 @@ public class GroupsRoutes{
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.inflected("confirm_block_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/groups/"+group.id+"/blockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_block_user_X", Map.of("user", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/blockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object confirmUnblockUser(Request req, Response resp, Account self) throws SQLException{
@@ -489,7 +489,7 @@ public class GroupsRoutes{
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.inflected("confirm_unblock_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/groups/"+group.id+"/unblockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_user_X", Map.of("user", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/unblockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object blockUser(Request req, Response resp, Account self) throws SQLException{

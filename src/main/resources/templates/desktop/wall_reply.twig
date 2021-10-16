@@ -29,7 +29,7 @@
 					| <a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}')">{{L('add_reply')}}</a>
 				{%endif%}
 				{% if not post.local %}
-					| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', post.url.host) }}</a>
+					| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': post.url.host}) }}</a>
 				{% endif %}
 				{%if postInteractions is not null%}
 				{%set interactions=postInteractions[post.id]%}
@@ -55,7 +55,7 @@
 <div id="postReplies{{post.id}}" class="replies">
 {% if preview %}
 	{% if post.replyCount>0 %}
-		<a class="loadRepliesLink" onclick="return loadCommentBranch({{ post.id }})" id="loadRepliesLink{{ post.id }}">{{ LP('comments_show_X_replies', post.replyCount) }}</a>
+		<a class="loadRepliesLink" onclick="return loadCommentBranch({{ post.id }})" id="loadRepliesLink{{ post.id }}">{{ L('comments_show_X_replies', {'count': post.replyCount}) }}</a>
 		<div class="loadRepliesLink" id="repliesLoader{{ post.id }}" style="display: none;"><span class="loader"></span></div>
 	{% endif %}
 {% else %}

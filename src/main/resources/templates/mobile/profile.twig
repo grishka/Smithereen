@@ -4,7 +4,7 @@
 <div class="cardsBackdrop">
 <div class="card padded">
 	{{L('incomplete_profile')}}<br/>
-	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', user.domain)}}</a>
+	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', {'domain': user.domain})}}</a>
 </div>
 {%endif%}
 <div class="card singleColumn">
@@ -46,22 +46,22 @@
 			{%endif%}
 			<li class="separator"></li>
 		{%endif%}
-		<li><a href="/users/{{ user.id }}/friends">{{ LP('X_friends', friendCount) }}</a></li>
+		<li><a href="/users/{{ user.id }}/friends">{{ L('X_friends', {'count': friendCount}) }}</a></li>
 		<li class="separator"></li>
 		{%if currentUser is not null and currentUser.id!=user.id%}
 		{%if isFriend or following or friendRequestSent or followRequested%}
-			<li><a href="{{user.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'{{user.getProfileURL('doRemoveFriend')}}')" data-confirm="{{ LI(key=(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), first=user.firstName, last=user.lastName, gender=user.gender) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
+			<li><a href="{{user.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'{{user.getProfileURL('doRemoveFriend')}}')" data-confirm="{{ L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
 		{%endif%}
 		{% if isBlocked %}
-			<li><a href="/users/{{ user.id }}/confirmUnblock" onclick="return ajaxConfirm('unblock', this.dataset.confirm, '/users/{{ user.id }}/unblock')" data-confirm="{{ LI(key='confirm_unblock_user_X', first=user.firstName, last=user.lastName, gender=user.gender) | forceEscape }}">{{ LI(key='unblock_user_X', first=user.firstName, gender=user.gender) }}</a></li>
+			<li><a href="/users/{{ user.id }}/confirmUnblock" onclick="return ajaxConfirm('unblock', this.dataset.confirm, '/users/{{ user.id }}/unblock')" data-confirm="{{ L('confirm_unblock_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('unblock_user_X', {'name': user.firstAndGender}) }}</a></li>
 			{% else %}
-			<li><a href="/users/{{ user.id }}/confirmBlock" onclick="return ajaxConfirm('block', this.dataset.confirm, '/users/{{ user.id }}/block')" data-confirm="{{ LI(key='confirm_block_user_X', first=user.firstName, last=user.lastName, gender=user.gender) | forceEscape }}">{{ LI(key='block_user_X', first=user.firstName, gender=user.gender) }}</a></li>
+			<li><a href="/users/{{ user.id }}/confirmBlock" onclick="return ajaxConfirm('block', this.dataset.confirm, '/users/{{ user.id }}/block')" data-confirm="{{ L('confirm_block_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('block_user_X', {'name': user.firstAndGender}) }}</a></li>
 		{% endif %}
 		{%endif%}
 		<li><a href="{{user.getProfileURL('followers')}}">{{L('followers')}}</a></li>
 		<li><a href="{{user.getProfileURL('following')}}">{{L('following')}}</a></li>
 		{% if groups is not empty %}
-		<li><a href="/users/{{ user.id }}/groups">{{ LP('X_groups', groups.size) }}</a></li>
+		<li><a href="/users/{{ user.id }}/groups">{{ L('X_groups', {'count': groups.size}) }}</a></li>
 		{% endif %}
 	</ul>
 </div>

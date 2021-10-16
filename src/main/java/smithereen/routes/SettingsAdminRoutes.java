@@ -149,7 +149,7 @@ public class SettingsAdminRoutes{
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
 		User user=target.user;
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.inflected("admin_unban_X_confirm", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/settings/admin/users/unban?accountID="+accountID+"&_redir="+URLEncoder.encode(back)).with("back", back);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("admin_unban_X_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/settings/admin/users/unban?accountID="+accountID+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object unbanUser(Request req, Response resp, Account self) throws SQLException{

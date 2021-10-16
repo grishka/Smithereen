@@ -171,7 +171,7 @@ class PostForm{
 
 	private uploadFile(f:File):void{
 		if(f.size>10*1024*1024){
-			new MessageBox(lang("error"), lang(["max_file_size_exceeded", 10]), lang("ok")).show();
+			new MessageBox(lang("error"), lang("max_file_size_exceeded", {size: 10}), lang("ok")).show();
 			return;
 		}
 		if(!this.checkAttachmentCount()){
@@ -409,13 +409,13 @@ class PostForm{
 				lang("create_poll_time_limit")
 			]),
 			this.pollTimeSelect=ce("select", {name: "pollTimeLimitValue"}, [
-				ce("option", {value: "3600", innerText: langPlural("X_hours", 1)}),
-				ce("option", {value: "43200", innerText: langPlural("X_hours", 12)}),
-				ce("option", {value: "86400", innerText: langPlural("X_days", 1), selected: true}),
-				ce("option", {value: "259200", innerText: langPlural("X_days", 3)}),
-				ce("option", {value: "604800", innerText: langPlural("X_days", 7)}),
-				ce("option", {value: "1209600", innerText: langPlural("X_days", 14)}),
-				ce("option", {value: "2592000", innerText: langPlural("X_days", 30)}),
+				ce("option", {value: "3600", innerText: lang("X_hours", {count: 1})}),
+				ce("option", {value: "43200", innerText: lang("X_hours", {count: 12})}),
+				ce("option", {value: "86400", innerText: lang("X_days", {count: 1}), selected: true}),
+				ce("option", {value: "259200", innerText: lang("X_days", {count: 3})}),
+				ce("option", {value: "604800", innerText: lang("X_days", {count: 7})}),
+				ce("option", {value: "1209600", innerText: lang("X_days", {count: 14})}),
+				ce("option", {value: "2592000", innerText: lang("X_days", {count: 30})}),
 			]),
 		]);
 		this.pollTimeSelect.hide();
@@ -523,7 +523,7 @@ class PostForm{
 		if(count<maxCount){
 			return true;
 		}
-		new MessageBox(lang("error"), langPlural("max_attachment_count_exceeded", maxCount), lang("ok")).show();
+		new MessageBox(lang("error"), lang("max_attachment_count_exceeded", {count: maxCount}), lang("ok")).show();
 		return false;
 	}
 }

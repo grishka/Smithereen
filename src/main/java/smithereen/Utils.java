@@ -156,20 +156,28 @@ public class Utils{
 		}
 	}
 
-	public static Object wrapError(Request req, Response resp, String errorKey, Object... formatArgs){
+	public static Object wrapError(Request req, Response resp, String errorKey){
+		return wrapError(req, resp, errorKey, null);
+	}
+
+	public static Object wrapError(Request req, Response resp, String errorKey, Map<String, Object> formatArgs){
 		SessionInfo info=req.session().attribute("info");
 		Lang l=lang(req);
-		String msg=formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok"));
 		}
 		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error"));
 	}
 
-	public static String wrapErrorString(Request req, Response resp, String errorKey, Object... formatArgs){
+	public static String wrapErrorString(Request req, Response resp, String errorKey){
+		return wrapErrorString(req, resp, errorKey, null);
+	}
+
+	public static String wrapErrorString(Request req, Response resp, String errorKey, Map<String, Object> formatArgs){
 		SessionInfo info=req.session().attribute("info");
 		Lang l=lang(req);
-		String msg=formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok")).json();
 		}

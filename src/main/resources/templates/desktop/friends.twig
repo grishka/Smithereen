@@ -7,14 +7,12 @@
 <div class="summaryWrap">
 	<div class="summary">
 	{% if tab=='mutual' %}
-		{{ LI(key='you_and_X_mutual_before', first=owner.firstName, gender=owner.gender) -}}
-		{{- LP('you_and_X_mutual_count', friendList.size()) -}}
-		{{- L('you_and_X_mutual_after') }}
+		{{ L('you_and_X_mutual', {'name': owner.firstAndGender, 'numFriends': friendList.size()}) }}
 	{% else %}
 	{% if currentUser is not null and currentUser.id==owner.id %}
-		{{ L("summary_own_X_friends", LP("have_X_friends", friendList.size())) }}
+		{{ L("summary_own_X_friends", {'numFriends': friendList.size()}) }}
 	{% else %}
-		{{ LI(key="summary_user_X_friends", first=owner.firstName, gender=owner.gender, args=[LP("have_X_friends", friendList.size())]) }}
+		{{ L("summary_user_X_friends", {'name': owner.firstAndGender, 'numFriends': friendList.size()}) }}
 	{% endif %}
 	{% endif %}
 	</div>
@@ -45,11 +43,11 @@
 				<li><a href="/users/{{ friend.id }}/friends">{{L('view_friends_of')}}</a></li>
 				{%if(currentUser is not null and currentUser.id==owner.id and not followers)%}
 					<li>
-						<a href="{{friend.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'{{friend.getProfileURL('doRemoveFriend')}}?from=list')" data-confirm="{{ LI(key=(following ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), first=friend.firstName, last=friend.lastName, gender=friend.gender) | forceEscape }}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
+						<a href="{{friend.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'{{friend.getProfileURL('doRemoveFriend')}}?from=list')" data-confirm="{{ L((following ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), {'name': friend.firstLastAndGender}) | forceEscape }}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
 					</li>
 				{%endif%}
                 {%if friend.domain is not null%}
-					<li><a href="{{ friend.url }}" target="_blank">{{ L('open_on_server_X', friend.domain) }}</a></li>
+					<li><a href="{{ friend.url }}" target="_blank">{{ L('open_on_server_X', {'domain': friend.domain}) }}</a></li>
 				{%endif%}
 			</ul>
 		</td>

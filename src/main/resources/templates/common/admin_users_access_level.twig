@@ -1,4 +1,4 @@
-<p>{{LI(key='choose_access_level_for_X', first=targetAccount.user.firstName, last=targetAccount.user.lastName, gender=targetAccount.user.gender)}}</p>
+<p>{{L('choose_access_level_for_X', {'name': targetAccount.user.firstLastAndGender})}}</p>
 <input type="hidden" name="accountID" value="{{targetAccount.id}}"/>
 <div class="radioButtonWrap">
 	<input type="radio" name="level" value="REGULAR" id="accessLevelRegular"{%if targetAccount.accessLevel=='REGULAR'%} checked{%endif%}/>

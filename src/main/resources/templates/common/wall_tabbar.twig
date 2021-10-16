@@ -5,12 +5,12 @@
 <div class="tabbar">
 	<a href="{{ owner.profileURL }}/wall" class="{%if tab=="all"%}selected{%endif%}">{{ L(isGroup ? 'wall_of_group' : 'wall_all_posts') }}</a>
 	{% if not isGroup %}
-	<a href="{{ owner.profileURL }}/wall/own" class="{%if tab=="own"%}selected{%endif%}">{{ owner==currentUser ? L('wall_my_posts') : LI(key='wall_posts_of_X', first=owner.firstName, gender=owner.gender) }}</a>
+	<a href="{{ owner.profileURL }}/wall/own" class="{%if tab=="own"%}selected{%endif%}">{{ owner==currentUser ? L('wall_my_posts') : L('wall_posts_of_X', {'name': owner.firstAndGender}) }}</a>
 	{% endif %}
 	{% if tab=="single" %}
 	    <a href="#" class="selected">{{ L('wall_post_title') }}</a>
 	{% elseif tab=="wall2wall" %}
-		<a href="#" class="selected">{{ L('wall_X_and_Y', owner.firstName, otherUser.firstName) }}</a>
+		<a href="#" class="selected">{{ L('wall_X_and_Y', {'name1': owner.firstName, 'name2': otherUser.firstName}) }}</a>
 	{% endif %}
 	<a href="{{ owner.profileURL }}" class="aux">
 	{% if isGroup %}

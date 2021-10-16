@@ -1,4 +1,5 @@
 var submittingForm:HTMLFormElement=null;
+var numberFormatter=window.Intl && Intl.NumberFormat ? new Intl.NumberFormat(userConfig.locale) : null;
 
 function ge<E extends HTMLElement>(id:string):E{
 	return document.getElementById(id) as E;
@@ -19,25 +20,8 @@ function ce<K extends keyof HTMLElementTagNameMap>(tag:K, attrs:Partial<HTMLElem
 };
 
 interface String{
-	format(...args:(string|number)[]):string;
 	escapeHTML():string;
 }
-
-function formatString(str:string, args:(string|number)[]){
-	var currentIndex=0;
-	return str.replace(/%(?:(\d+)\$)?([ds%])/gm, function(match:string, g1:string, g2:string){
-		if(g2=="%")
-			return "%";
-		var index=g1 ? (parseInt(g1)-1) : currentIndex;
-		currentIndex++;
-		switch(g2){
-			case "d":
-				return Number(args[index]).toString();
-			case "s":
-				return args[index].toString().escapeHTML();
-		}
-	});
-};
 
 String.prototype.escapeHTML=function(){
 	var el=document.createElement("span");
@@ -324,45 +308,56 @@ function isVisible(el:HTMLElement):boolean{
 	return el.style.display!="none";
 }
 
-function lang(key:string|(string|number)[]):string{
-	if(typeof key==="string")
-		return (langKeys[key] ? langKeys[key] : key) as string;
-	var _key=key[0];
-	if(!langKeys[_key])
-		return key.toString().escapeHTML();
-	return formatString(langKeys[_key] as string, key.slice(1));
+function lang(key:string, args:{[key:string]:(string|number)}={}):string{
+	if(!langKeys[key])
+		return key.replace("_", " ");
+	var v=langKeys[key];
+	if(typeof v==="function")
+		return (v as Function).apply(this, [args]);
+	return v as string;
 }
 
-var langPluralRules:{[key:string]:(quantity:number)=>number}={
+var langPluralRules:{[key:string]:(quantity:number)=>string}={
 	single: function(quantity:number){
-		return 0;
+		return "other";
 	},
 	english: function(quantity:number){
-		return quantity==1 ? 0 : 1;
+		return quantity==1 ? "one" : "other";
 	},
 	slavic: function(quantity:number){
 		if(Math.floor(quantity/10)%10==1)
-			return 2;
+			return "other";
 		var units=quantity%10;
 		if(units==1)
-			return 0;
+			return "one";
 		if(units>1 && units<5)
-			return 1;
-		return 2;
+			return "few";
+		return "other";
 	}
 };
 
-function langPlural(key:string, quantity:number):string{
-	if(!langKeys[key])
-		return quantity+" "+key;
-	return formatString(langKeys[key][langPluralRules[userConfig.langPluralRulesName](quantity)], [quantity]);
+function choosePluralForm(n:number, args:any, values:{[key:string]:Function}):string{
+	if(values[n.toString()])
+		return values[n.toString()](args);
+	var k=langPluralRules[userConfig.langPluralRulesName](n);
+	return (values[k] || values["other"])(args);
+}
+
+function chooseLangOption(v:string, args:any, values:{[key:string]:Function}):string{
+	return (values[v] || values["other"])(args);
+}
+
+function formatNumber(n:number):string{
+	if(numberFormatter)
+		return numberFormatter.format(n);
+	return n.toString();
 }
 
 function setGlobalLoading(loading:boolean):void{
 	document.body.style.cursor=loading ? "progress" : "";
 }
 
-function ajaxConfirm(titleKey:string, msgKey:(string|Array<string>), url:string, params:any={}):boolean{
+function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}):boolean{
 	var box:ConfirmBox;
 	box=new ConfirmBox(lang(titleKey), lang(msgKey), function(){
 		var btn=box.getButton(0);

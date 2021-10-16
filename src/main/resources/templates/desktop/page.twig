@@ -76,7 +76,7 @@
 						{{- L(birthdaysAreToday ? 'reminder_today' : 'reminder_tomorrow') -}}
 						{{- L('birthday_reminder_middle') -}}
 						{%- for user in birthdayUsers -%}
-							<a href="{{ user.profileURL }}">{{ LI(key='birthday_reminder_name', first=user.firstName, last=user.lastName, gender=user.gender) }}</a>
+							<a href="{{ user.profileURL }}">{{ L('birthday_reminder_name', {'name': user.firstLastAndGender}) }}</a>
 							{%- if not loop.last -%}
 								{{- L(loop.revindex>1 ? 'birthday_reminder_separator' : 'birthday_reminder_separator_last') -}}
 							{%- endif -%}

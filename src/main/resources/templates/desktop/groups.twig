@@ -4,16 +4,16 @@
 {% include 'groups_tabbar' %}
 {% else %}
 <div class="tabbar">
-	<a href="/users/{{ owner.id }}/groups" class="selected">{{ LI(key='user_groups', first=owner.firstName, gender=owner.gender) }}</a>
+	<a href="/users/{{ owner.id }}/groups" class="selected">{{ L('user_groups', {'name': owner.firstAndGender}) }}</a>
 	<a href="{{ owner.profileURL }}" class="aux">{{ L('back_to_profile') }}</a>
 </div>
 {% endif %}
 <div class="summaryWrap">
 	<div class="summary">
 	{% if currentUser is not null and owner.id==currentUser.id %}
-	{{ L('summary_own_X_groups', LP('member_of_X_groups', groups.size())) }}
+	{{ L('summary_own_X_groups', {'numGroups': groups.size()}) }}
 	{% else %}
-	{{ LI(key='summary_user_X_groups', first=owner.firstName, gender=owner.gender, args=[LP('member_of_X_groups', groups.size())]) }}
+	{{ L('summary_user_X_groups', {'name': owner.firstAndGender, 'numGroups': groups.size()}) }}
 	{% endif %}
 	</div>
 </div>
@@ -30,7 +30,7 @@
 		<td width="200">
 			<ul class="actionList">
                 {%if group.domain is not null%}
-					<li><a href="{{ group.url }}" target="_blank">{{ L('open_on_server_X', group.domain) }}</a></li>
+					<li><a href="{{ group.url }}" target="_blank">{{ L('open_on_server_X', {'domain': group.domain}) }}</a></li>
 				{%endif%}
 			</ul>
 		</td>

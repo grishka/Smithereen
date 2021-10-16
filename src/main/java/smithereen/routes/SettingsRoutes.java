@@ -13,6 +13,7 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.TimeZone;
 
@@ -401,7 +402,7 @@ public class SettingsRoutes{
 		String domain=req.queryParams("domain");
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_domain_X", domain)).with("formAction", "/settings/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_domain_X", Map.of("domain", domain))).with("formAction", "/settings/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object unblockDomain(Request req, Response resp, Account self) throws SQLException{

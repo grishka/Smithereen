@@ -2,15 +2,15 @@ package smithereen.lang;
 
 public class SlavicPluralRules extends PluralRules{
 	@Override
-	public int getIndexForQuantity(int quantity){
+	public PluralCategory getCategoryForQuantity(int quantity){
 		if((quantity/10)%10==1)
-			return 2;
+			return PluralCategory.MANY;
 		int r=quantity%10;
 		if(r==1) // 1 хрень
-			return 0;
+			return PluralCategory.ONE;
 		if(r>1 && r<5) // 3 хрени
-			return 1;
-		return 2; // 6 хреней
+			return PluralCategory.FEW;
+		return PluralCategory.MANY; // 6 хреней
 	}
 
 	@Override

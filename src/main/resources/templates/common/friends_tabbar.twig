@@ -1,7 +1,7 @@
 <div class="tabbar">
-	<a href="/users/{{ owner.id }}/friends" class="{%if tab=="friends"%}selected{%endif%}">{{ currentUser is not null and currentUser.id==owner.id ? L('friends') : LI(key='user_friends', first=owner.firstName, gender=owner.gender) }}</a>
+	<a href="/users/{{ owner.id }}/friends" class="{%if tab=="friends"%}selected{%endif%}">{{ currentUser is not null and currentUser.id==owner.id ? L('friends') : L('user_friends', {'name': owner.firstAndGender}) }}</a>
 	{% if mutualCount>0 %}
-	<a href="/users/{{ owner.id }}/friends/mutual" class="{%if tab=="mutual"%}selected{%endif%}">{{LP('X_mutual_friends_short', mutualCount)}}</a>
+	<a href="/users/{{ owner.id }}/friends/mutual" class="{%if tab=="mutual"%}selected{%endif%}">{{L('X_mutual_friends_short', {'count': mutualCount})}}</a>
 	{% endif %}
 	<a href="{{owner.getProfileURL('followers')}}" class="{%if tab=="followers"%}selected{%endif%}">{{L('followers')}}</a>
 	<a href="{{owner.getProfileURL('following')}}" class="{%if tab=="following"%}selected{%endif%}">{{L('following')}}</a>

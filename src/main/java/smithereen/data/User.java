@@ -9,6 +9,7 @@ import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Map;
 
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
@@ -255,6 +256,15 @@ public class User extends Actor{
 	@Override
 	public String getTypeAndIdForURL(){
 		return "/users/"+id;
+	}
+
+	// for templates
+	public Map<String, Object> getFirstAndGender(){
+		return Map.of("first", firstName, "gender", gender==null ? Gender.UNKNOWN : gender);
+	}
+
+	public Map<String, Object> getFirstLastAndGender(){
+		return Map.of("first", firstName, "last", lastName==null ? "" : lastName, "gender", gender==null ? Gender.UNKNOWN : gender);
 	}
 
 	public enum Gender{

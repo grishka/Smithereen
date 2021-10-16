@@ -6,7 +6,7 @@
 		{% if isGroup %}
 			{{ L('server_of_group_no_wall') }}
 		{% else %}
-			{{ LI('server_of_user_X_no_wall', first=wallOwner.firstName, gender=wallOwner.gender) }}
+			{{ L('server_of_user_X_no_wall', {'name': wallOwner.firstAndGender}) }}
 		{% endif %}
 		</div>
 	{% else %}
@@ -16,7 +16,7 @@
 	{% elseif isGroup %}
 		{% set fieldPlaceholder=L('write_on_group_wall') %}
 	{% elseif wallOwner.id!=currentUser.id%}
-		{% set fieldPlaceholder=LI(key='write_on_X_wall', first=wallOwner.firstName, gender=wallOwner.gender) %}
+		{% set fieldPlaceholder=L('write_on_X_wall', {'name': wallOwner.firstAndGender}) %}
 	{% else %}
 		{% set fieldPlaceholder=L('write_on_own_wall') %}
 	{% endif %}

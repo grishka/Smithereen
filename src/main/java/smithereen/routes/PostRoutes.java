@@ -576,8 +576,8 @@ public class PostRoutes{
 
 		LikePopoverResponse o=new LikePopoverResponse();
 		o.content=_content;
-		o.title=lang(req).plural("liked_by_X_people", interactions.likeCount);
-		o.altTitle=selfID==0 ? null : lang(req).plural("liked_by_X_people", interactions.likeCount+(interactions.isLiked ? -1 : 1));
+		o.title=lang(req).get("liked_by_X_people", Map.of("count", interactions.likeCount));
+		o.altTitle=selfID==0 ? null : lang(req).get("liked_by_X_people", Map.of("count", interactions.likeCount+(interactions.isLiked ? -1 : 1)));
 		o.actions=b.commands();
 		o.show=interactions.likeCount>0;
 		o.fullURL="/posts/"+postID+"/likes";
@@ -592,7 +592,7 @@ public class PostRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users);
 		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), 0).get(postID);
 		model.with("pageOffset", offset).with("total", interactions.likeCount).with("paginationUrlPrefix", "/posts/"+postID+"/likes?fromPagination&offset=").with("emptyMessage", lang(req).get("likes_empty"));
-		model.with("summary", lang(req).plural("liked_by_X_people", interactions.likeCount));
+		model.with("summary", lang(req).get("liked_by_X_people", Map.of("count", interactions.likeCount)));
 		if(isAjax(req)){
 			if(req.queryParams("fromPagination")==null)
 				return new WebDeltaResponse(resp).box(lang(req).get("likes_title"), model.renderToString(), "likesList", 474);
@@ -658,7 +658,7 @@ public class PostRoutes{
 				.with("tab", ownOnly ? "own" : "all");
 
 		if(user!=null){
-			model.with("title", lang(req).inflected("wall_of_X", user.gender, user.firstName, user.lastName, null));
+			model.with("title", lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
 		}else{
 			model.with("title", lang(req).get("wall_of_group"));
 		}
@@ -705,7 +705,7 @@ public class PostRoutes{
 				.with("pageOffset", offset)
 				.with("paginationUrlPrefix", Config.localURI("/"+username+"/wall/with/"+otherUsername))
 				.with("tab", "wall2wall")
-				.with("title", lang(req).inflected("wall_of_X", user.gender, user.firstName, user.lastName, null));
+				.with("title", lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
 	}
 
 	public static Object ajaxCommentPreview(Request req, Response resp) throws SQLException{
@@ -818,7 +818,7 @@ public class PostRoutes{
 
 		LikePopoverResponse r=new LikePopoverResponse();
 		r.actions=Collections.emptyList();
-		r.title=lang(req).plural("X_people_voted_title", option.getNumVotes());
+		r.title=lang(req).get("X_people_voted_title", Map.of("count", option.getNumVotes()));
 		r.content=_content;
 		r.show=true;
 		r.fullURL="/posts/"+postID+"/pollVoters/"+optionID;

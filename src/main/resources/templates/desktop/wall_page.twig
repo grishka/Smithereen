@@ -2,7 +2,7 @@
 {% block content %}
 {% include 'wall_tabbar' %}
 <div class="summaryWrap">
-	<div class="summary">{{ LP('total_X_posts', postCount) }}</div>
+	<div class="summary">{{ L('total_X_posts', {'count': postCount}) }}</div>
 	{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (paginationUrlPrefix+"?offset=")}%}
 </div>
 <div class="singleColumn">
