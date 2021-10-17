@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import okhttp3.Call;
@@ -21,7 +22,7 @@ import smithereen.activitypub.ActivityPub;
 public class TopLevelDomainList{
 	private static final Logger LOG=LoggerFactory.getLogger(TopLevelDomainList.class);
 
-	private static List<String> list=Collections.emptyList();
+	private static Set<String> list=Collections.emptySet();
 	public static long lastUpdatedTime;
 
 	public static void updateIfNeeded(){
@@ -50,7 +51,7 @@ public class TopLevelDomainList{
 	}
 
 	public static void update(String file){
-		list=Arrays.stream(file.split("\n")).filter(s->!s.startsWith("#")).map(String::trim).collect(Collectors.toList());
+		list=Arrays.stream(file.split("\n")).filter(s->!s.startsWith("#")).map(String::trim).collect(Collectors.toSet());
 	}
 
 	public static boolean contains(String tld){
