@@ -112,8 +112,10 @@ public class SystemRoutes{
 		if("user_ava".equals(type)){
 			itemType=MediaCache.ItemType.AVATAR;
 			mime="image/jpeg";
-			user=UserStorage.getById(Utils.parseIntOrDefault(req.queryParams("user_id"), 0));
+			int userID=Utils.parseIntOrDefault(req.queryParams("user_id"), 0);
+			user=UserStorage.getById(userID);
 			if(user==null || Config.isLocal(user.activityPubID)){
+				LOG.warn("downloading user_ava: user {} not found or is local", userID);
 				return "";
 			}
 			Image im=user.getBestAvatarImage();
@@ -128,8 +130,10 @@ public class SystemRoutes{
 		}else if("group_ava".equals(type)){
 			itemType=MediaCache.ItemType.AVATAR;
 			mime="image/jpeg";
-			group=GroupStorage.getById(Utils.parseIntOrDefault(req.queryParams("group_id"), 0));
+			int groupID=Utils.parseIntOrDefault(req.queryParams("group_id"), 0);
+			group=GroupStorage.getById(groupID);
 			if(group==null || Config.isLocal(group.activityPubID)){
+				LOG.warn("downloading group_ava: group {} not found or is local", groupID);
 				return "";
 			}
 			Image im=group.getBestAvatarImage();
@@ -143,21 +147,31 @@ public class SystemRoutes{
 			}
 		}else if("post_photo".equals(type)){
 			itemType=MediaCache.ItemType.PHOTO;
-			Post post=PostStorage.getPostByID(Utils.parseIntOrDefault(req.queryParams("post_id"), 0), false);
-			if(post==null || Config.isLocal(post.activityPubID))
+			int postID=Utils.parseIntOrDefault(req.queryParams("post_id"), 0);
+			Post post=PostStorage.getPostByID(postID, false);
+			if(post==null || Config.isLocal(post.activityPubID)){
+				LOG.warn("downloading post_photo: post {} not found or is local", postID);
 				return "";
+			}
 			int index=Utils.parseIntOrDefault(req.queryParams("index"), 0);
-			if(index>=post.attachment.size() || index<0)
+			if(index>=post.attachment.size() || index<0){
+				LOG.warn("downloading post_photo: index {} out of bounds {}", index, post.attachment.size());
 				return "";
+			}
 			ActivityPubObject att=post.attachment.get(index);
-			if(!(att instanceof Document))
+			if(!(att instanceof Document)){
+				LOG.warn("downloading post_photo: attachment {} is not a Document", att.getClass().getName());
 				return "";
-			if(att.mediaType==null || !att.mediaType.startsWith("image/"))
+			}
+			if(att.mediaType==null || !att.mediaType.startsWith("image/")){
+				LOG.warn("downloading post_photo: attachment media type {} is invalid", att.mediaType);
 				return "";
+			}
 			Document img=(Document)att;
 			mime=img.mediaType;
 			uri=img.url;
 		}else{
+			LOG.warn("unknown external file type {}", type);
 			return "";
 		}
 
