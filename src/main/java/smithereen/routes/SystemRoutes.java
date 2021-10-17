@@ -163,13 +163,20 @@ public class SystemRoutes{
 				LOG.warn("downloading post_photo: attachment {} is not a Document", att.getClass().getName());
 				return "";
 			}
-			if(att.mediaType==null || !att.mediaType.startsWith("image/")){
+			if(att.mediaType==null){
+				if(att instanceof Image){
+					mime="image/jpeg";
+				}else{
+					LOG.warn("downloading post_photo: media type is null and attachment type {} isn't Image", att.getClass().getName());
+					return "";
+				}
+			}else if(!att.mediaType.startsWith("image/")){
 				LOG.warn("downloading post_photo: attachment media type {} is invalid", att.mediaType);
 				return "";
+			}else{
+				mime=att.mediaType;
 			}
-			Document img=(Document)att;
-			mime=img.mediaType;
-			uri=img.url;
+			uri=att.url;
 		}else{
 			LOG.warn("unknown external file type {}", type);
 			return "";
