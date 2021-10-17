@@ -50,6 +50,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
+import smithereen.util.TopLevelDomainList;
 import spark.Request;
 import spark.Response;
 import spark.Service;
@@ -487,6 +488,7 @@ public class SmithereenApplication{
 				SessionStorage.deleteExpiredEmailCodes();
 			}catch(SQLException ignore){}
 			FloodControl.PASSWORD_RESET.gc();
+			TopLevelDomainList.updateIfNeeded();
 		});
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{

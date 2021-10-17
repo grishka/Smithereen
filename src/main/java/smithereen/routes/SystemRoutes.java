@@ -75,6 +75,7 @@ import static smithereen.Utils.isAjax;
 import static smithereen.Utils.isURL;
 import static smithereen.Utils.isUsernameAndDomain;
 import static smithereen.Utils.lang;
+import static smithereen.Utils.normalizeURLDomain;
 import static smithereen.Utils.parseIntOrDefault;
 import static smithereen.Utils.wrapError;
 
@@ -337,6 +338,7 @@ public class SystemRoutes{
 		if(isURL(query)){
 			if(!query.startsWith("http:") && !query.startsWith("https:"))
 				query="https://"+query;
+			query=normalizeURLDomain(query);
 			URI uri=URI.create(query);
 			try{
 				ActivityPubObject obj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, false, false, false);

@@ -64,7 +64,7 @@ public class ActivityPub{
 	public static final String CONTENT_TYPE="application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"";
 	private static final Logger LOG=LoggerFactory.getLogger(ActivityPub.class);
 
-	private static OkHttpClient httpClient;
+	public static final OkHttpClient httpClient;
 	private static LruCache<String, String> domainRedirects=new LruCache<>(100);
 
 	static{
@@ -236,6 +236,11 @@ public class ActivityPub{
 	}
 
 	public static URI resolveUsername(String username, String domain) throws IOException{
+		try{
+			domain=Utils.convertIdnToAsciiIfNeeded(domain);
+		}catch(IllegalArgumentException x){
+			throw new ObjectNotFoundException("Malformed domain '"+domain+"'", x);
+		}
 		if(domain!=null && domain.equalsIgnoreCase(Config.domain))
 			throw new IllegalArgumentException("Local domain in resolveUsername");
 		String redirect;

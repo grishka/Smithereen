@@ -30,6 +30,7 @@ import java.util.Properties;
 import java.util.stream.Stream;
 
 import smithereen.storage.DatabaseConnectionManager;
+import smithereen.util.TopLevelDomainList;
 import spark.utils.StringUtils;
 
 public class Config{
@@ -166,6 +167,11 @@ public class Config{
 					serviceActorPublicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
 				}
 			}catch(NoSuchAlgorithmException|InvalidKeySpecException ignore){}
+
+			TopLevelDomainList.lastUpdatedTime=Long.parseLong(dbValues.getOrDefault("TLDList_LastUpdated", "0"));
+			if(TopLevelDomainList.lastUpdatedTime>0){
+				TopLevelDomainList.update(dbValues.get("TLDList_Data"));
+			}
 		}
 	}
 
