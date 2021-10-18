@@ -463,6 +463,7 @@ public class SmithereenApplication{
 			}
 		});
 
+		awaitInitialization();
 		setupCustomSerializer();
 
 		responseTypeSerializer(ActivityPubObject.class, (out, obj) -> {
