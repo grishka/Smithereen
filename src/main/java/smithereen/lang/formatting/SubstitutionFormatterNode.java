@@ -3,6 +3,7 @@ package smithereen.lang.formatting;
 import org.unbescape.html.HtmlEscape;
 
 import java.util.Map;
+import java.util.Objects;
 
 import smithereen.lang.Lang;
 
@@ -44,6 +45,6 @@ public class SubstitutionFormatterNode extends FormatterNode{
 				return map.get("first").toString();
 			}
 		}
-		return arg.toString();
+		return Objects.toString(arg);
 	}
 }

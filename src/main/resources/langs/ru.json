@@ -438,5 +438,6 @@
   "sending_friend_req_to_X": "{name} получит уведомление, а Вы сможете видеть в новостях обновления {gender, select, female {её} other {его}} страницы.",
   "send_friend_req_title": "Добавление в друзья",
   "summary_group_X_members": "В группе {count, plural, =0 {нет участников} one {# участник} few {# участника} other {# участников}}",
-  "add_friend_req_message": "Добавить личное сообщение"
+  "add_friend_req_message": "Добавить личное сообщение",
+  "summary_X_managed_groups": "Вы управляете {numGroups, plural, one {# группой} other {# группами}}"
 }

@@ -11,7 +11,7 @@
 <div class="summaryWrap">
 	<div class="summary">
 	{% if currentUser is not null and owner.id==currentUser.id %}
-	{{ L('summary_own_X_groups', {'numGroups': groups.size()}) }}
+	{{ L(tab=='managed' ? 'summary_X_managed_groups' : 'summary_own_X_groups', {'numGroups': groups.size()}) }}
 	{% else %}
 	{{ L('summary_user_X_groups', {'name': owner.firstAndGender, 'numGroups': groups.size()}) }}
 	{% endif %}

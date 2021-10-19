@@ -91,7 +91,7 @@ public class GroupsRoutes{
 	public static Object myManagedGroups(Request req, Response resp, Account self) throws SQLException{
 		jsLangKey(req, "cancel", "create");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("tab", "managed").with("title", lang(req).get("groups"));
-		model.with("groups", GroupStorage.getUserManagedGroups(self.user.id));
+		model.with("groups", GroupStorage.getUserManagedGroups(self.user.id)).with("owner", self.user);
 		return model;
 	}
 
