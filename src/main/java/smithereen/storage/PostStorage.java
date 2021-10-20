@@ -55,45 +55,47 @@ import spark.utils.StringUtils;
 public class PostStorage{
 	private static final Logger LOG=LoggerFactory.getLogger(PostStorage.class);
 
-	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, int[] replyKey, List<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
+	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, int[] replyKey, List<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO wall_posts (author_id, owner_user_id, owner_group_id, `text`, reply_key, mentions, attachments, content_warning, poll_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
-		stmt.setInt(1, userID);
-		if(ownerUserID>0){
-			stmt.setInt(2, ownerUserID);
-			stmt.setNull(3, Types.INTEGER);
-		}else if(ownerGroupID>0){
-			stmt.setNull(2, Types.INTEGER);
-			stmt.setInt(3, ownerGroupID);
-		}else{
+		if(ownerUserID<=0 && ownerGroupID<=0)
 			throw new IllegalArgumentException("Need either ownerUserID or ownerGroupID");
-		}
-		stmt.setString(4, text);
-		stmt.setBytes(5, Utils.serializeIntArray(replyKey));
-		byte[] mentions=null;
-		if(!mentionedUsers.isEmpty()){
-			mentions=Utils.serializeIntArray(mentionedUsers.stream().mapToInt(u->u.id).toArray());
-		}
-		stmt.setBytes(6, mentions);
-		stmt.setString(7, attachments);
-		stmt.setString(8, contentWarning);
-		if(pollID>0)
-			stmt.setInt(9, pollID);
-		else
-			stmt.setNull(9, Types.INTEGER);
+
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.insertInto("wall_posts")
+				.value("author_id", userID)
+				.value("owner_user_id", ownerUserID>0 ? ownerUserID : null)
+				.value("owner_group_id", ownerGroupID>0 ? ownerGroupID : null)
+				.value("text", text)
+				.value("reply_key", Utils.serializeIntArray(replyKey))
+				.value("mentions", mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(mentionedUsers.stream().mapToInt(u->u.id).toArray()))
+				.value("attachments", attachments)
+				.value("content_warning", contentWarning)
+				.value("poll_id", pollID>0 ? pollID : null)
+				.value("source", textSource)
+				.value("source_format", 0)
+				.createStatement(Statement.RETURN_GENERATED_KEYS);
+
 		stmt.execute();
 		try(ResultSet keys=stmt.getGeneratedKeys()){
 			keys.first();
 			int id=keys.getInt(1);
 			if(userID==ownerUserID && replyKey==null){
-				stmt=conn.prepareStatement("INSERT INTO `newsfeed` (`type`, `author_id`, `object_id`) VALUES (?, ?, ?)");
-				stmt.setInt(1, NewsfeedEntry.Type.POST.ordinal());
-				stmt.setInt(2, userID);
-				stmt.setInt(3, id);
-				stmt.execute();
+				new SQLQueryBuilder(conn)
+						.insertInto("newsfeed")
+						.value("type", NewsfeedEntry.Type.POST)
+						.value("author_id", userID)
+						.value("object_id", id)
+						.createStatement()
+						.execute();
 			}
 			if(replyKey!=null && replyKey.length>0){
-				conn.createStatement().execute("UPDATE wall_posts SET reply_count=reply_count+1 WHERE id IN ("+Arrays.stream(replyKey).mapToObj(String::valueOf).collect(Collectors.joining(","))+")");
+				new SQLQueryBuilder(conn)
+						.update("wall_posts")
+						.valueExpr("reply_count", "reply_count+1")
+						.whereIn("id", Arrays.stream(replyKey).boxed().collect(Collectors.toList()))
+						.createStatement()
+						.execute();
+
 				SQLQueryBuilder.prepareStatement(conn, "INSERT INTO newsfeed_comments (user_id, object_type, object_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE object_id=object_id", userID, 0, replyKey[0]).execute();
 				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(replyKey[0]));
 			}

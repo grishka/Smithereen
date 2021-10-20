@@ -3,6 +3,7 @@ package smithereen;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Comment;
@@ -754,6 +755,14 @@ public class Utils{
 		if(NON_ASCII_PATTERN.matcher(domain).find())
 			return IDN.toASCII(domain);
 		return domain;
+	}
+
+	@NotNull
+	public static ApplicationContext context(Request req){
+		ApplicationContext context=req.attribute("context");
+		if(context==null)
+			throw new IllegalStateException("context==null");
+		return context;
 	}
 
 	public interface MentionCallback{

@@ -248,7 +248,7 @@ public class MediaCache{
 		return stmt.executeUpdate()==1;
 	}
 
-	public static ActivityPubObject getAndDeleteDraftAttachment(@NotNull String id, int ownerID) throws Exception{
+	public static ActivityPubObject getAndDeleteDraftAttachment(@NotNull String id, int ownerID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		ActivityPubObject result;
 

@@ -67,6 +67,7 @@ import static smithereen.sparkext.SparkExtension.*;
 
 public class SmithereenApplication{
 	private static final Logger LOG;
+	private static final ApplicationContext context;
 
 	static{
 		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
@@ -74,6 +75,8 @@ public class SmithereenApplication{
 		if(Config.DEBUG)
 			System.setProperty("org.slf4j.simpleLogger.log.smithereen", "trace");
 		LOG=LoggerFactory.getLogger(SmithereenApplication.class);
+
+		context=new ApplicationContext();
 	}
 
 	public static void main(String[] args){
@@ -112,6 +115,8 @@ public class SmithereenApplication{
 			staticFileLocation("/public");
 		staticFiles.expireTime(7*24*60*60);
 		before((request, response) -> {
+			request.attribute("context", context);
+
 			if(request.pathInfo().startsWith("/api/"))
 				return;
 			request.attribute("start_time", System.currentTimeMillis());

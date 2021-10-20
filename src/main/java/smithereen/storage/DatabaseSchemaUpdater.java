@@ -12,7 +12,7 @@ import smithereen.Config;
 import smithereen.Utils;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=15;
+	public static final int SCHEMA_VERSION=16;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -279,6 +279,8 @@ public class DatabaseSchemaUpdater{
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 		}else if(target==15){
 			conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `federation_state` tinyint unsigned NOT NULL DEFAULT 0");
+		}else if(target==16){
+			conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `source` text DEFAULT NULL, ADD `source_format` tinyint unsigned DEFAULT NULL");
 		}
 	}
 }

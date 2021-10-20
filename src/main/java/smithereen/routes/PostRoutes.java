@@ -34,6 +34,7 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.ListAndTotal;
+import smithereen.data.Poll;
 import smithereen.data.PollOption;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
@@ -67,7 +68,7 @@ import static smithereen.Utils.*;
 public class PostRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(PostRoutes.class);
 
-	public static Object createUserWallPost(Request req, Response resp, Account self) throws Exception{
+	public static Object createUserWallPost(Request req, Response resp, Account self) throws SQLException{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 		User user=UserStorage.getById(id);
 		if(user==null)
@@ -76,7 +77,7 @@ public class PostRoutes{
 		return createWallPost(req, resp, self, user);
 	}
 
-	public static Object createGroupWallPost(Request req, Response resp, Account self) throws Exception{
+	public static Object createGroupWallPost(Request req, Response resp, Account self) throws SQLException{
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
 		Group group=GroupStorage.getById(id);
 		if(group==null)
@@ -84,182 +85,43 @@ public class PostRoutes{
 		return createWallPost(req, resp, self, group);
 	}
 
-	public static Object createWallPost(Request req, Response resp, Account self, @NotNull Actor owner) throws Exception{
+	public static Object createWallPost(Request req, Response resp, Account self, @NotNull Actor owner){
 		String text=req.queryParams("text");
+		Poll poll;
 		String pollQuestion=req.queryParams("pollQuestion");
-		String[] pollOptions=req.queryParams("pollOption")!=null ? req.queryMap("pollOption").values() : new String[0];
-		if(text.length()==0 && StringUtils.isEmpty(req.queryParams("attachments")) && (StringUtils.isEmpty(pollQuestion) || pollOptions.length<2))
-			throw new BadRequestException("Empty post");
-
-		if(!owner.hasWall())
-			throw new BadRequestException("This actor doesn't support wall posts");
-
-		final ArrayList<User> mentionedUsers=new ArrayList<>();
-		text=preprocessPostHTML(text, new MentionCallback(){
-			@Override
-			public User resolveMention(String username, String domain){
-				try{
-					if(domain==null){
-						User user=UserStorage.getByUsername(username);
-						if(user!=null && !mentionedUsers.contains(user))
-							mentionedUsers.add(user);
-						return user;
-					}
-					User user=UserStorage.getByUsername(username+"@"+domain);
-					if(user!=null){
-						if(!mentionedUsers.contains(user))
-							mentionedUsers.add(user);
-						return user;
-					}
-					URI uri=ActivityPub.resolveUsername(username, domain);
-					ActivityPubObject obj=ActivityPub.fetchRemoteObject(uri);
-					if(obj instanceof ForeignUser){
-						ForeignUser _user=(ForeignUser)obj;
-						UserStorage.putOrUpdateForeignUser(_user);
-						if(!mentionedUsers.contains(_user))
-							mentionedUsers.add(_user);
-						return _user;
-					}
-				}catch(Exception x){
-					LOG.warn("Can't resolve {}@{}", username, domain, x);
-				}
-				return null;
-			}
-
-			@Override
-			public User resolveMention(String uri){
-				try{
-					URI u=new URI(uri);
-					if("acct".equalsIgnoreCase(u.getScheme())){
-						if(u.getSchemeSpecificPart().contains("@")){
-							String[] parts=u.getSchemeSpecificPart().split("@");
-							return resolveMention(parts[0], parts[1]);
-						}
-						return resolveMention(u.getSchemeSpecificPart(), null);
-					}
-					User user=UserStorage.getUserByActivityPubID(u);
-					if(user!=null){
-						if(!mentionedUsers.contains(user))
-							mentionedUsers.add(user);
-						return user;
-					}
-				}catch(Exception x){
-					LOG.warn("Can't resolve {}", uri, x);
-				}
-				return null;
-			}
-		});
-		int userID=self.user.id;
-		int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
-		int postID;
-		int pollID=0;
-
-		if(StringUtils.isNotEmpty(pollQuestion) && pollOptions.length>=2){
-			List<String> opts=Arrays.stream(pollOptions).map(String::trim).filter(StringUtils::isNotEmpty).collect(Collectors.toList());
-			if(opts.size()>=2){
-				boolean anonymous="on".equals(req.queryParams("pollAnonymous"));
-				boolean multiChoice="on".equals(req.queryParams("pollMultiChoice"));
+		if(StringUtils.isNotEmpty(pollQuestion)){
+			List<String> pollOptions=Arrays.stream(req.queryParams("pollOption")!=null ? req.queryMap("pollOption").values() : new String[0]).map(String::trim).filter(StringUtils::isNotEmpty).collect(Collectors.toList());
+			if(pollOptions.size()>=2){
+				poll=new Poll();
+				poll.question=pollQuestion;
+				poll.anonymous="on".equals(req.queryParams("pollAnonymous"));
+				poll.multipleChoice="on".equals(req.queryParams("pollMultiChoice"));
 				boolean timeLimit="on".equals(req.queryParams("pollTimeLimit"));
-				Date endTime=null;
 				if(timeLimit){
 					int seconds=parseIntOrDefault(req.queryParams("pollTimeLimitValue"), 0);
 					if(seconds>60)
-						endTime=new Date(System.currentTimeMillis()+(seconds*1000L));
+						poll.endTime=new Date(System.currentTimeMillis()+(seconds*1000L));
 				}
-				pollID=PostStorage.createPoll(self.user.id, pollQuestion, opts, anonymous, multiChoice, endTime);
-			}
-		}
-
-		int maxAttachments=replyTo!=0 ? 2 : 10;
-		int attachmentCount=pollID!=0 ? 1 : 0;
-		String attachments=null;
-		if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
-			ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
-			String[] aids=req.queryParams("attachments").split(",");
-			for(String id:aids){
-				if(!id.matches("^[a-fA-F0-9]{32}$"))
-					continue;
-				ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(id, self.id);
-				if(obj!=null){
-					attachObjects.add(obj);
-					attachmentCount++;
-				}
-				if(attachmentCount==maxAttachments)
-					break;
-			}
-			if(!attachObjects.isEmpty()){
-				if(attachObjects.size()==1){
-					attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
-				}else{
-					JsonArray ar=new JsonArray();
-					for(ActivityPubObject o:attachObjects){
-						ar.add(MediaStorageUtils.serializeAttachment(o));
-					}
-					attachments=ar.toString();
-				}
-			}
-		}
-
-		String contentWarning=req.queryParams("contentWarning");
-		if(contentWarning!=null){
-			contentWarning=contentWarning.trim();
-			if(contentWarning.length()==0)
-				contentWarning=null;
-		}
-
-
-		if(text.length()==0 && StringUtils.isEmpty(attachments) && pollID==0)
-			throw new BadRequestException("Empty post");
-
-		Post parent=null;
-		int ownerUserID=owner instanceof User ? ((User) owner).id : 0;
-		int ownerGroupID=owner instanceof Group ? ((Group) owner).id : 0;
-		if(replyTo!=0){
-			parent=PostStorage.getPostByID(replyTo, false);
-			if(parent==null)
-				throw new ObjectNotFoundException("err_post_not_found");
-			int[] replyKey=new int[parent.replyKey.length+1];
-			System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
-			replyKey[replyKey.length-1]=parent.id;
-			// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
-			if(parent.replyKey.length>0 && text.startsWith("<p>"+escapeHTML(parent.user.getNameForReply())+", ")){
-				text="<p><a href=\""+escapeHTML(parent.user.url.toString())+"\" class=\"mention\">"+escapeHTML(parent.user.getNameForReply())+"</a>"+text.substring(parent.user.getNameForReply().length()+3);
-			}
-			if(!mentionedUsers.contains(parent.user))
-				mentionedUsers.add(parent.user);
-			Post topLevel;
-			if(parent.replyKey.length>1){
-				topLevel=PostStorage.getPostByID(parent.replyKey[0], false);
-				if(topLevel!=null && !mentionedUsers.contains(topLevel.user))
-					mentionedUsers.add(topLevel.user);
+				poll.options=pollOptions.stream().map(o->{
+					PollOption opt=new PollOption();
+					opt.name=o;
+					return opt;
+				}).collect(Collectors.toList());
 			}else{
-				topLevel=parent;
+				poll=null;
 			}
-			if(topLevel!=null){
-				if(topLevel.isGroupOwner()){
-					ownerGroupID=((Group) topLevel.owner).id;
-					ownerUserID=0;
-					ensureUserNotBlocked(self.user, (Group) topLevel.owner);
-				}else{
-					ownerGroupID=0;
-					ownerUserID=((User) topLevel.owner).id;
-					ensureUserNotBlocked(self.user, (User)topLevel.owner);
-				}
-			}
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, replyKey, mentionedUsers, attachments, contentWarning, pollID);
 		}else{
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, null, mentionedUsers, attachments, contentWarning, pollID);
+			poll=null;
 		}
+		int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
+		String contentWarning=req.queryParams("contentWarning");
+		List<String> attachments;
+		if(StringUtils.isNotEmpty(req.queryParams("attachments")))
+			attachments=Arrays.stream(req.queryParams("attachments").split(",")).collect(Collectors.toList());
+		else
+			attachments=Collections.emptyList();
 
-		Post post=PostStorage.getPostByID(postID, false);
-		if(post==null)
-			throw new IllegalStateException("?!");
-		if(replyTo==0 && (ownerGroupID!=0 || ownerUserID!=userID) && !(owner instanceof ForeignActor)){
-			ActivityPubWorker.getInstance().sendAddPostToWallActivity(post);
-		}else{
-			ActivityPubWorker.getInstance().sendCreatePostActivity(post);
-		}
-		NotificationUtils.putNotificationsForPost(post, parent);
+		Post post=context(req).getWallController().createWallPost(self.user, owner, replyTo, text, contentWarning, attachments, poll);
 
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();
