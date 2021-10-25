@@ -118,6 +118,43 @@ public class PostStorage{
 				.execute();
 	}
 
+	private static int putForeignPoll(Connection conn, int ownerID, URI activityPubID, Poll poll) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.insertInto("polls")
+				.value("ap_id", activityPubID.toString())
+				.value("owner_id", ownerID)
+				.value("question", poll.question)
+				.value("is_anonymous", poll.anonymous)
+				.value("end_time", poll.endTime!=null ? new Timestamp(poll.endTime.getTime()) : null)
+				.value("is_multi_choice", poll.multipleChoice)
+				.value("num_voted_users",poll.numVoters)
+				.createStatement(Statement.RETURN_GENERATED_KEYS);
+		int pollID=DatabaseUtils.insertAndGetID(stmt);
+		stmt=new SQLQueryBuilder(conn)
+				.insertInto("poll_options")
+				.value("poll_id", pollID)
+				.value("ap_id", null)
+				.value("text", null)
+				.value("num_votes", 0)
+				.createStatement(Statement.RETURN_GENERATED_KEYS);
+		boolean hasIDs=false;
+		for(PollOption opt:poll.options){
+			if(opt.activityPubID!=null)
+				hasIDs=true;
+			else if(hasIDs)
+				throw new IllegalStateException("all options must either have or not have IDs");
+			stmt.setString(2, Objects.toString(opt.activityPubID, null));
+			stmt.setString(3, opt.name);
+			stmt.setInt(4, opt.getNumVotes());
+			stmt.execute();
+			try(ResultSet res=stmt.getGeneratedKeys()){
+				res.first();
+				opt.id=res.getInt(1);
+			}
+		}
+		return pollID;
+	}
+
 	public static void putForeignWallPost(Post post) throws SQLException{
 		Post existing=getPostByID(post.activityPubID);
 		Connection conn=DatabaseConnectionManager.getConnection();
@@ -125,43 +162,7 @@ public class PostStorage{
 		PreparedStatement stmt;
 		if(existing==null){
 			if(post.poll!=null){
-				stmt=new SQLQueryBuilder(conn)
-						.insertInto("polls")
-						.value("ap_id", post.activityPubID.toString())
-						.value("owner_id", post.user.id)
-						.value("question", post.poll.question)
-						.value("is_anonymous", post.poll.anonymous)
-						.value("end_time", post.poll.endTime!=null ? new Timestamp(post.poll.endTime.getTime()) : null)
-						.value("is_multi_choice", post.poll.multipleChoice)
-						.value("num_voted_users", post.poll.numVoters)
-						.createStatement(Statement.RETURN_GENERATED_KEYS);
-				stmt.execute();
-				try(ResultSet res=stmt.getGeneratedKeys()){
-					res.first();
-					post.poll.id=res.getInt(1);
-				}
-				stmt=new SQLQueryBuilder(conn)
-						.insertInto("poll_options")
-						.value("poll_id", post.poll.id)
-						.value("ap_id", null)
-						.value("text", null)
-						.value("num_votes", 0)
-						.createStatement(Statement.RETURN_GENERATED_KEYS);
-				boolean hasIDs=false;
-				for(PollOption opt:post.poll.options){
-					if(opt.activityPubID!=null)
-						hasIDs=true;
-					else if(hasIDs)
-						throw new IllegalStateException("all options must either have or not have IDs");
-					stmt.setString(2, Objects.toString(opt.activityPubID, null));
-					stmt.setString(3, opt.name);
-					stmt.setInt(4, opt.getNumVotes());
-					stmt.execute();
-					try(ResultSet res=stmt.getGeneratedKeys()){
-						res.first();
-						opt.id=res.getInt(1);
-					}
-				}
+				post.poll.id=putForeignPoll(conn, post.user.id, post.activityPubID, post.poll);
 			}
 
 			stmt=new SQLQueryBuilder(conn)
@@ -181,7 +182,7 @@ public class PostStorage{
 					.value("poll_id", post.poll!=null ? post.poll.id : null)
 					.createStatement(Statement.RETURN_GENERATED_KEYS);
 		}else{
-			if(existing.poll!=null && post.poll!=null){
+			if(Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts
 				stmt=new SQLQueryBuilder(conn)
 						.update("polls")
 						.value("num_voted_users", post.poll.numVoters)
@@ -219,6 +220,22 @@ public class PostStorage{
 						}
 					}
 				}
+			}else if(post.poll!=null && existing.poll!=null){ // poll changed, delete it and recreate again
+				// deletes votes and options because of ON DELETE CASCADE
+				new SQLQueryBuilder(conn)
+						.deleteFrom("polls")
+						.where("id=?", existing.poll.id)
+						.createStatement()
+						.execute();
+				post.poll.id=putForeignPoll(conn, post.user.id, post.activityPubID, post.poll);
+			}else if(post.poll!=null){ // poll was added
+				post.poll.id=putForeignPoll(conn, post.user.id, post.activityPubID, post.poll);
+			}else{ // poll was removed
+				new SQLQueryBuilder(conn)
+						.deleteFrom("polls")
+						.where("id=?", existing.poll.id)
+						.createStatement()
+						.execute();
 			}
 			stmt=new SQLQueryBuilder(conn)
 					.update("wall_posts")
@@ -227,14 +244,12 @@ public class PostStorage{
 					.value("attachments", post.serializeAttachments())
 					.value("content_warning", post.hasContentWarning() ? post.summary : null)
 					.value("mentions", post.mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(post.mentionedUsers.stream().mapToInt(u->u.id).toArray()))
+					.value("poll_id", post.poll!=null ? post.poll.id : null)
 					.createStatement();
 		}
 		stmt.execute();
 		if(existing==null){
-			try(ResultSet res=stmt.getGeneratedKeys()){
-				res.first();
-				post.id=res.getInt(1);
-			}
+			post.id=DatabaseUtils.insertAndGetID(stmt);
 			if(post.owner.equals(post.user) && post.getReplyLevel()==0){
 				new SQLQueryBuilder(conn)
 						.insertInto("newsfeed")
