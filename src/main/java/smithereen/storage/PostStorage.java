@@ -247,7 +247,6 @@ public class PostStorage{
 					.value("poll_id", post.poll!=null ? post.poll.id : null)
 					.createStatement();
 		}
-		stmt.execute();
 		if(existing==null){
 			post.id=DatabaseUtils.insertAndGetID(stmt);
 			if(post.owner.equals(post.user) && post.getReplyLevel()==0){
@@ -270,6 +269,7 @@ public class PostStorage{
 				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey[0]));
 			}
 		}else{
+			stmt.execute();
 			post.id=existing.id;
 		}
 	}
