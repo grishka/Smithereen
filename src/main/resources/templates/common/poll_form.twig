@@ -1,0 +1,35 @@
+{# @pebvariable name="poll" type="smithereen.data.Poll" #}
+<div class="postFormPoll postFormNonThumb">
+	<a class="attachDelete flR" title="{{ L('remove_attachment') }}"></a>
+	<h4>{{ L('create_poll_question') }}</h4>
+	<input type="text" name="pollQuestion" required autocomplete="off" value="{{ poll.question }}"/>
+	<h4>{{ L('create_poll_options') }}</h4>
+	<div>
+		{% for option in poll.options %}
+		<div class="pollOptionW">
+			<input type="text" name="pollOption" autocomplete="off" value="{{ option.name }}"/>
+			<a class="attachDelete" title="{{ L('create_poll_delete_option') }}"></a>
+		</div>
+		{% endfor %}
+	</div>
+	<label class="radioButtonWrap pollSetting">
+		<input type="checkbox" name="pollAnonymous"{{ poll.anonymous ? ' checked' : '' }}/>{{ L('create_poll_anonymous') }}
+	</label>
+	<label class="radioButtonWrap pollSetting">
+		<input type="checkbox" name="pollMultiChoice"{{ poll.multipleChoice ? ' checked' : '' }}/>{{ L('create_poll_multi_choice') }}
+	</label>
+	<label class="radioButtonWrap pollSetting">
+		<input type="checkbox" name="pollTimeLimit"{{ poll.endTime is not null ? ' checked' : '' }}/>{{ L('create_poll_time_limit') }}
+	</label>
+	<select name="pollTimeLimitValue"{{ poll.endTime is null ? ' style="display: none"' : '' }}>
+		{% if poll.endTime is not null %}<option value="-1" selected>{{ LD(poll.endTime) }}</option>{% endif %}
+		<option value="3600">{{ L("X_hours", {'count': 1})}}</option>
+		<option value="43200">{{ L("X_hours", {'count': 12})}}</option>
+		<option value="86400"{{ poll.endTime is null ? ' selected' : '' }}>{{ L("X_days", {'count': 1})}}</option>
+		<option value="259200">{{ L("X_days", {'count': 3})}}</option>
+		<option value="604800">{{ L("X_days", {'count': 7})}}</option>
+		<option value="1209600">{{ L("X_days", {'count': 14})}}</option>
+		<option value="2592000">{{ L("X_days", {'count': 30})}}</option>
+	</select>
+	<div class="grayText">{{ L('edit_poll_warning') }}</div>
+</div>

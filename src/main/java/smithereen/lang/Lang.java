@@ -6,6 +6,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -19,12 +22,20 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import smithereen.data.User;
+import smithereen.lang.formatting.ICUMessageParser;
+import smithereen.lang.formatting.ICUMessageSyntaxException;
+import smithereen.lang.formatting.StringTemplate;
 import spark.utils.StringUtils;
 
 public class Lang{
+	private static final Logger LOG=LoggerFactory.getLogger(Lang.class);
+
 	private static HashMap<String, Lang> langsByLocale=new HashMap<>();
 	public static List<Lang> list;
 
@@ -39,34 +50,27 @@ public class Lang{
 	}
 
 	static{
-		ArrayList<String> files=new ArrayList<>();
 		list=new ArrayList<>();
 		try(InputStream in=Lang.class.getClassLoader().getResourceAsStream("langs/index.json")){
 			JsonArray arr=JsonParser.parseReader(new InputStreamReader(in)).getAsJsonArray();
-			for(JsonElement el:arr)
-				files.add(el.getAsString());
-		}catch(IOException x){
-			System.err.println("Error reading langs/index.json");
-			x.printStackTrace();
-		}catch(JsonParseException x){
-			System.err.println("Error parsing langs/index.json");
-			x.printStackTrace();
-		}
-		if(files.isEmpty())
-			throw new IllegalArgumentException("No language files to load; check langs/index.json");
-		for(String langFileName:files){
-			try{
-				Lang l=new Lang(langFileName);
-				langsByLocale.put(langFileName, l);
-				list.add(l);
-			}catch(IOException x){
-				System.err.println("Error reading langs/"+langFileName+".json");
-				x.printStackTrace();
-			}catch(JsonParseException x){
-				System.err.println("Error parsing langs/"+langFileName+".json");
-				x.printStackTrace();
+			for(JsonElement el:arr){
+				JsonObject o=el.getAsJsonObject();
+				String localeID=o.get("locale").getAsString();
+				LOG.debug("Loading language {}", localeID);
+				List<String> files=StreamSupport.stream(o.getAsJsonArray("files").spliterator(), false).map(JsonElement::getAsString).collect(Collectors.toList());
+				try{
+					Lang l=new Lang(localeID, o.get("name").getAsString(), o.get("fallback").isJsonNull() ? null : o.get("fallback").getAsString(), files);
+					list.add(l);
+					langsByLocale.put(localeID, l);
+				}catch(Exception x){
+					LOG.error("Error loading language {}", localeID, x);
+				}
 			}
+		}catch(IOException|JsonParseException x){
+			LOG.error("Error reading langs/index.json", x);
 		}
+		if(list.isEmpty())
+			throw new IllegalArgumentException("No languages loaded; check langs/index.json");
 
 		list.sort(new Comparator<Lang>(){
 			@Override
@@ -81,20 +85,17 @@ public class Lang{
 		}
 	}
 
-	private final JsonObject data;
+	private final HashMap<String, Object> data=new HashMap<>();
 	private final Locale locale;
 	private final PluralRules pluralRules;
 	private final Inflector inflector;
 	private Lang fallback;
-	public final String name;
+	public String name;
+	public final String englishName;
 	private final Locale fallbackLocale;
 
-	private Lang(String localeID) throws IOException{
-		try(InputStream in=Lang.class.getClassLoader().getResourceAsStream("langs/"+localeID+".json")){
-			data=JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
-		}
+	private Lang(String localeID, String englishName, String fallbackLocaleID, List<String> files) throws IOException{
 		locale=Locale.forLanguageTag(localeID);
-		String fallbackLocaleID=data.has("_fallback") && data.get("_fallback").isJsonPrimitive() ? data.get("_fallback").getAsString() : null;
 		if(StringUtils.isNotEmpty(fallbackLocaleID)){
 			fallbackLocale=Locale.forLanguageTag(fallbackLocaleID);
 			if(fallbackLocale.equals(locale))
@@ -103,119 +104,73 @@ public class Lang{
 			fallbackLocale=null;
 		}
 		switch(localeID){
-			case "ru":
+			case "ru" -> {
 				pluralRules=new SlavicPluralRules();
 				inflector=new RussianInflector();
-				break;
-			case "pl":
+			}
+			case "pl" -> {
 				pluralRules=new SlavicPluralRules();
 				inflector=null;
-				break;
-			case "tr":
+			}
+			case "tr" -> {
 				pluralRules=new SingleFormPluralRules();
 				inflector=null;
-				break;
-			case "es": //Spanish plural rules are the same as english
-			case "en":
-			default:
+			}
+			default -> { // also for "en", "es"
 				pluralRules=new EnglishPluralRules();
 				inflector=null;
-				break;
+			}
 		}
-		name=data.get("_name").getAsString();
+		this.englishName=englishName;
+		for(String file:files){
+			try(InputStream in=Lang.class.getClassLoader().getResourceAsStream("langs/"+file)){
+				JsonObject jobj=JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
+				for(String key : jobj.keySet()){
+					try{
+						JsonElement el=jobj.get(key);
+						if(el.isJsonPrimitive())
+							data.put(key, ICUMessageParser.parse(el.getAsString()));
+						else
+							LOG.warn("lang {} key '{}' is not a string", locale, key);
+					}catch(ICUMessageSyntaxException x){
+						throw new RuntimeException("Error while parsing key "+key+" for locale "+localeID, x);
+					}
+				}
+			}
+		}
+		name=data.get("lang_name").toString();
 	}
 
 	public String get(String key){
-		JsonElement el=data.get(key);
-		if(el!=null && el.isJsonPrimitive())
-			return el.getAsString();
-		return fallback!=null ? fallback.get(key) : key;
-	}
-
-	public String get(String key, Object... formatArgs){
-		JsonElement el=data.get(key);
-		if(el!=null && el.isJsonPrimitive())
-			return String.format(locale, el.getAsString(), formatArgs);
-		return fallback!=null ? fallback.get(key, formatArgs) : key+" "+Arrays.toString(formatArgs);
-	}
-
-	public String plural(String key, int quantity, Object... formatArgs){
-		JsonElement el=data.get(key);
-		if(el!=null && el.isJsonArray()){
-			if(formatArgs.length>0){
-				Object[] args=new Object[formatArgs.length+1];
-				args[0]=quantity;
-				System.arraycopy(formatArgs, 0, args, 1, formatArgs.length);
-				return String.format(locale, el.getAsJsonArray().get(pluralRules.getIndexForQuantity(quantity)).getAsString(), args);
-			}else{
-				return String.format(locale, el.getAsJsonArray().get(pluralRules.getIndexForQuantity(quantity)).getAsString(), quantity);
-			}
+		if(data.containsKey(key)){
+			return data.get(key).toString();
 		}
-		return fallback!=null ? fallback.plural(key, quantity, formatArgs) : quantity+" "+key+" "+Arrays.toString(formatArgs);
+		return fallback!=null ? fallback.get(key) : key.replace('_', ' ');
 	}
 
-	public String gendered(String key, User.Gender gender, Object... formatArgs){
-		JsonElement el=data.get(key);
-		if(el!=null){
-			if(el.isJsonArray()){
-				JsonArray ar=el.getAsJsonArray();
-				String s=switch(gender){
-					case MALE -> ar.get(0).getAsString();
-					case FEMALE -> ar.get(1).getAsString();
-					case UNKNOWN -> ar.get(ar.size()>2 ? 3 : 0).getAsString();
-				};
-				return formatArgs.length>0 ? String.format(locale, s, formatArgs) : s;
-			}else if(el.isJsonPrimitive()){
-				return get(key, formatArgs);
-			}
+	public String get(String key, Map<String, Object> formatArgs){
+		if(data.containsKey(key)){
+			Object v=data.get(key);
+			if(v instanceof StringTemplate)
+				return ((StringTemplate) v).format(formatArgs, this);
+			return v.toString();
 		}
-		return fallback!=null ? fallback.gendered(key, gender, formatArgs) : key+" "+Arrays.toString(formatArgs);
+		return fallback!=null ? fallback.get(key, formatArgs) : key.replace('_', ' ');
 	}
 
-	public String inflected(String key, User.Gender gender, String first, String last, String middle, Object... formatArgs){
-		JsonElement el=data.get(key);
-		if(el==null){
-			return fallback!=null ? fallback.inflected(key, gender, first, last, middle, formatArgs) : key+" "+first+" "+last+" "+middle+" "+Arrays.toString(formatArgs);
-		}else if(!el.isJsonObject()){
-			String name="";
-			if(first!=null)
-				name+=first;
-			if(middle!=null)
-				name+=" "+middle;
-			if(last!=null)
-				name+=" "+last;
-			Object[] args=new Object[formatArgs.length+1];
-			args[0]=name;
-			System.arraycopy(formatArgs, 0, args, 1, formatArgs.length);
-			return get(key, args);
-		}
-		JsonObject o=el.getAsJsonObject();
-		String str=o.get("str").getAsString();
-		Inflector.Case c=Inflector.Case.valueOf(o.get("case").getAsString());
-		String name="";
+	public void inflected(StringBuilder out, User.Gender gender, String first, String last, Inflector.Case _case){
 		if(gender==null || gender==User.Gender.UNKNOWN){
-			gender=inflector.detectGender(first, last, middle);
+			gender=inflector.detectGender(first, last, null);
 		}
 		if(gender==User.Gender.UNKNOWN){
-			if(first!=null)
-				name+=first;
-			if(middle!=null)
-				name+=" "+middle;
-			if(last!=null)
-				name+=" "+last;
+			out.append(first);
+			if(StringUtils.isNotEmpty(last))
+				out.append(' ').append(last);
 		}else{
-			if(first!=null)
-				name+=inflector.isInflectable(first) ? inflector.inflectNamePart(first, Inflector.NamePart.FIRST, gender, c) : first;
-			if(middle!=null)
-				name+=" "+(inflector.isInflectable(middle) ? inflector.inflectNamePart(middle, Inflector.NamePart.MIDDLE, gender, c) : middle);
-			if(last!=null)
-				name+=" "+(inflector.isInflectable(last) ? inflector.inflectNamePart(last, Inflector.NamePart.LAST, gender, c) : last);
+			out.append(inflector.isInflectable(first) ? inflector.inflectNamePart(first, Inflector.NamePart.FIRST, gender, _case) : first);
+			if(StringUtils.isNotEmpty(last))
+				out.append(' ').append(inflector.isInflectable(last) ? inflector.inflectNamePart(last, Inflector.NamePart.LAST, gender, _case) : first);
 		}
-
-		Object[] args=new Object[formatArgs.length+1];
-		args[0]=name;
-		System.arraycopy(formatArgs, 0, args, 1, formatArgs.length);
-		return String.format(locale, str, args);
 	}
 
 	public User.Gender detectGenderForName(String first, String last, String middle){
@@ -225,8 +180,7 @@ public class Lang{
 	}
 
 	public String formatDay(LocalDate date){
-		JsonArray months=data.getAsJsonArray("months_full");
-		return get("date_format_other_year", date.getDayOfMonth(), months.get(date.getMonthValue()-1).getAsString(), date.getYear());
+		return get("date_format_other_year", Map.of("day", date.getDayOfMonth(), "month", get("month"+date.getMonthValue()+"_full"), "year", date.getYear()));
 	}
 
 	public String formatDate(Date date, TimeZone timeZone, boolean forceAbsolute){
@@ -238,9 +192,9 @@ public class Lang{
 			if(diff>=0 && diff<60_000){
 				return get("time_just_now");
 			}else if(diff>=60_000 && diff<3600_000){
-				return plural("time_X_minutes_ago", (int) (diff/60_000));
+				return get("time_X_minutes_ago", Map.of("count", (int) (diff/60_000)));
 			}else if(diff<0 && diff>-3600_000){
-				return plural("time_in_X_minutes", -(int) (diff/60_000));
+				return get("time_in_X_minutes", Map.of("count", -(int) (diff/60_000)));
 			}
 		}
 
@@ -262,19 +216,25 @@ public class Lang{
 		}
 		if(day==null){
 			if(now.getYear()==dt.getYear()){
-				JsonArray months=data.getAsJsonArray("months_full");
-				day=get("date_format_current_year", dt.getDayOfMonth(), months.get(dt.getMonthValue()-1).getAsString());
+				day=get("date_format_current_year", Map.of("day", dt.getDayOfMonth(), "month", get("month"+dt.getMonthValue()+"_full")));
 			}else{
-				JsonArray months=data.getAsJsonArray("months_short");
-				day=get("date_format_other_year", dt.getDayOfMonth(), months.get(dt.getMonthValue()-1).getAsString(), dt.getYear());
+				day=get("date_format_other_year", Map.of("day", dt.getDayOfMonth(), "month", get("month"+dt.getMonthValue()+"_short"), "year", dt.getYear()));
 			}
 		}
 
-		return get("date_time_format", day, String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute()));
+		return get("date_time_format", Map.of("date", day, "time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())));
 	}
 
-	public JsonElement raw(String key){
-		return data.get(key);
+	public String getAsJS(String key){
+		if(!data.containsKey(key)){
+			if(fallback!=null)
+				return fallback.getAsJS(key);
+			return '"'+key.replace('_', ' ')+'"';
+		}
+		Object o=data.get(key);
+		if(o instanceof String)
+			return '"'+((String) o).replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\\n")+'"';
+		return ((StringTemplate)o).getAsJS();
 	}
 
 	public Locale getLocale(){
@@ -283,5 +243,9 @@ public class Lang{
 
 	public String getPluralRulesName(){
 		return pluralRules.getName();
+	}
+
+	public PluralCategory getPluralCategory(int quantity){
+		return pluralRules.getCategoryForQuantity(quantity);
 	}
 }

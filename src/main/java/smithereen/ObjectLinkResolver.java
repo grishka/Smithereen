@@ -1,6 +1,8 @@
 package smithereen;
 
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,6 +31,8 @@ public class ObjectLinkResolver{
 	private static final Pattern POSTS=Pattern.compile("^/posts/(\\d+)$");
 	private static final Pattern USERS=Pattern.compile("^/users/(\\d+)$");
 	private static final Pattern GROUPS=Pattern.compile("^/groups/(\\d+)$");
+
+	private static final Logger LOG=LoggerFactory.getLogger(ObjectLinkResolver.class);
 
 	private static Post getPost(String _id) throws SQLException{
 		int id=parseIntOrDefault(_id, 0);
@@ -66,8 +70,7 @@ public class ObjectLinkResolver{
 
 	@NotNull
 	public static <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch) throws SQLException{
-		if(Config.DEBUG)
-			System.out.println("Resolving ActivityPub link: "+_link+", expected type: "+expectedType.getName());
+		LOG.debug("Resolving ActivityPub link: {}, expected type: {}", _link, expectedType.getName());
 		URI link;
 		if("bear".equals(_link.getScheme())){
 			link=URI.create(UriBuilder.parseQueryString(_link.getRawQuery()).get("u"));

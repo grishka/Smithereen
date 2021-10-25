@@ -28,7 +28,7 @@ public class AddPersonHandler extends ActivityTypeHandler<ForeignUser, Add, User
 
 			NewsfeedStorage.putEntry(actor.id, object.id, NewsfeedEntry.Type.ADD_FRIEND, null);
 		}else{
-			System.out.println("Unknown Add{Person} target "+target);
+			LOG.warn("Unknown Add{Person} target {}", target);
 		}
 	}
 }

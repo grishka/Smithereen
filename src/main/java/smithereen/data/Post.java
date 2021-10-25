@@ -58,6 +58,9 @@ public class Post extends ActivityPubObject{
 	public boolean local;
 	public List<User> mentionedUsers=Collections.EMPTY_LIST;
 	public Poll poll;
+	public String source;
+
+	public FederationState federationState;
 
 	private ActivityPubObject activityPubTarget;
 
@@ -108,6 +111,7 @@ public class Post extends ActivityPubObject{
 
 		content=res.getString("text");
 		published=res.getTimestamp("created_at");
+		updated=res.getTimestamp("updated_at");
 		summary=res.getString("content_warning");
 		attributedTo=user.activityPubID;
 
@@ -163,6 +167,9 @@ public class Post extends ActivityPubObject{
 		if(!res.wasNull()){
 			poll=PostStorage.getPoll(pollID, activityPubID);
 		}
+
+		federationState=FederationState.values()[res.getInt("federation_state")];
+		source=res.getString("source");
 	}
 
 	public boolean hasContentWarning(){
@@ -235,8 +242,10 @@ public class Post extends ActivityPubObject{
 		if(_content!=null && _content.isJsonArray()){
 			content=_content.getAsJsonArray().get(0).getAsString();
 		}
+		String type=obj.get("type").getAsString();
+		boolean isPoll=type.equals("Question") && (obj.has("oneOf") || obj.has("anyOf"));
 		if(content!=null && !parserContext.isLocal){
-			if(StringUtils.isNotEmpty(name))
+			if(StringUtils.isNotEmpty(name) && !isPoll)
 				content="<p><b>"+name+"</b></p>"+content;
 			content=Utils.sanitizeHTML(content);
 			if(obj.has("sensitive") && obj.get("sensitive").getAsBoolean() && summary!=null){
@@ -284,8 +293,7 @@ public class Post extends ActivityPubObject{
 		}catch(SQLException x){
 			throw new IllegalStateException(x);
 		}
-		String type=obj.get("type").getAsString();
-		if(type.equals("Question") && (obj.has("oneOf") || obj.has("anyOf"))){
+		if(isPoll){
 			poll=new Poll();
 			poll.multipleChoice=obj.has("anyOf");
 			poll.question=obj.has("name") ? obj.get("name").getAsString() : null;

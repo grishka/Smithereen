@@ -60,9 +60,9 @@
 			{% endif %}
 		{% endfor %}
 	{% endif %}
-	{{ LP('X_people_voted', poll.numVoters) }}
+	{{ L('X_people_voted', {'count': poll.numVoters}) }}
 	{% if poll.endTime is not null %}
-		<br/>{{ L(poll.expired ? 'poll_expired' : 'poll_voting_until', LD(poll.endTime)) }}
+		<br/>{{ L(poll.expired ? 'poll_expired' : 'poll_voting_until', {'date': LD(poll.endTime)}) }}
 	{% endif %}
 {% endblock %}
 </div>

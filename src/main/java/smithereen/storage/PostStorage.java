@@ -2,6 +2,8 @@ package smithereen.storage;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -24,9 +26,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
+import smithereen.activitypub.objects.activities.Like;
+import smithereen.data.FederationState;
 import smithereen.data.ListAndTotal;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
@@ -44,51 +49,110 @@ import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.Post;
 import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.feed.RetootNewsfeedEntry;
+import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
 
 public class PostStorage{
-	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, int[] replyKey, List<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
+	private static final Logger LOG=LoggerFactory.getLogger(PostStorage.class);
+
+	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, int[] replyKey, List<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO wall_posts (author_id, owner_user_id, owner_group_id, `text`, reply_key, mentions, attachments, content_warning, poll_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
-		stmt.setInt(1, userID);
-		if(ownerUserID>0){
-			stmt.setInt(2, ownerUserID);
-			stmt.setNull(3, Types.INTEGER);
-		}else if(ownerGroupID>0){
-			stmt.setNull(2, Types.INTEGER);
-			stmt.setInt(3, ownerGroupID);
-		}else{
+		if(ownerUserID<=0 && ownerGroupID<=0)
 			throw new IllegalArgumentException("Need either ownerUserID or ownerGroupID");
-		}
-		stmt.setString(4, text);
-		stmt.setBytes(5, Utils.serializeIntArray(replyKey));
-		byte[] mentions=null;
-		if(!mentionedUsers.isEmpty()){
-			mentions=Utils.serializeIntArray(mentionedUsers.stream().mapToInt(u->u.id).toArray());
-		}
-		stmt.setBytes(6, mentions);
-		stmt.setString(7, attachments);
-		stmt.setString(8, contentWarning);
-		if(pollID>0)
-			stmt.setInt(9, pollID);
-		else
-			stmt.setNull(9, Types.INTEGER);
+
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.insertInto("wall_posts")
+				.value("author_id", userID)
+				.value("owner_user_id", ownerUserID>0 ? ownerUserID : null)
+				.value("owner_group_id", ownerGroupID>0 ? ownerGroupID : null)
+				.value("text", text)
+				.value("reply_key", Utils.serializeIntArray(replyKey))
+				.value("mentions", mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(mentionedUsers.stream().mapToInt(u->u.id).toArray()))
+				.value("attachments", attachments)
+				.value("content_warning", contentWarning)
+				.value("poll_id", pollID>0 ? pollID : null)
+				.value("source", textSource)
+				.value("source_format", 0)
+				.createStatement(Statement.RETURN_GENERATED_KEYS);
+
 		stmt.execute();
 		try(ResultSet keys=stmt.getGeneratedKeys()){
 			keys.first();
 			int id=keys.getInt(1);
 			if(userID==ownerUserID && replyKey==null){
-				stmt=conn.prepareStatement("INSERT INTO `newsfeed` (`type`, `author_id`, `object_id`) VALUES (?, ?, ?)");
-				stmt.setInt(1, NewsfeedEntry.Type.POST.ordinal());
-				stmt.setInt(2, userID);
-				stmt.setInt(3, id);
-				stmt.execute();
+				new SQLQueryBuilder(conn)
+						.insertInto("newsfeed")
+						.value("type", NewsfeedEntry.Type.POST)
+						.value("author_id", userID)
+						.value("object_id", id)
+						.createStatement()
+						.execute();
 			}
 			if(replyKey!=null && replyKey.length>0){
-				conn.createStatement().execute("UPDATE wall_posts SET reply_count=reply_count+1 WHERE id IN ("+Arrays.stream(replyKey).mapToObj(String::valueOf).collect(Collectors.joining(","))+")");
+				new SQLQueryBuilder(conn)
+						.update("wall_posts")
+						.valueExpr("reply_count", "reply_count+1")
+						.whereIn("id", Arrays.stream(replyKey).boxed().collect(Collectors.toList()))
+						.createStatement()
+						.execute();
+
+				SQLQueryBuilder.prepareStatement(conn, "INSERT INTO newsfeed_comments (user_id, object_type, object_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE object_id=object_id", userID, 0, replyKey[0]).execute();
+				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(replyKey[0]));
 			}
 			return id;
 		}
+	}
+
+	public static void updateWallPost(int id, String text, String textSource, List<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
+		new SQLQueryBuilder()
+				.update("wall_posts")
+				.value("text", text)
+				.value("source", textSource)
+				.value("mentions", mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(mentionedUsers.stream().mapToInt(u->u.id).toArray()))
+				.value("attachments", attachments)
+				.value("content_warning", contentWarning)
+				.value("poll_id", pollID>0 ? pollID : null)
+				.valueExpr("updated_at", "CURRENT_TIMESTAMP()")
+				.where("id=?", id)
+				.createStatement()
+				.execute();
+	}
+
+	private static int putForeignPoll(Connection conn, int ownerID, URI activityPubID, Poll poll) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.insertInto("polls")
+				.value("ap_id", activityPubID.toString())
+				.value("owner_id", ownerID)
+				.value("question", poll.question)
+				.value("is_anonymous", poll.anonymous)
+				.value("end_time", poll.endTime!=null ? new Timestamp(poll.endTime.getTime()) : null)
+				.value("is_multi_choice", poll.multipleChoice)
+				.value("num_voted_users",poll.numVoters)
+				.createStatement(Statement.RETURN_GENERATED_KEYS);
+		int pollID=DatabaseUtils.insertAndGetID(stmt);
+		stmt=new SQLQueryBuilder(conn)
+				.insertInto("poll_options")
+				.value("poll_id", pollID)
+				.value("ap_id", null)
+				.value("text", null)
+				.value("num_votes", 0)
+				.createStatement(Statement.RETURN_GENERATED_KEYS);
+		boolean hasIDs=false;
+		for(PollOption opt:poll.options){
+			if(opt.activityPubID!=null)
+				hasIDs=true;
+			else if(hasIDs)
+				throw new IllegalStateException("all options must either have or not have IDs");
+			stmt.setString(2, Objects.toString(opt.activityPubID, null));
+			stmt.setString(3, opt.name);
+			stmt.setInt(4, opt.getNumVotes());
+			stmt.execute();
+			try(ResultSet res=stmt.getGeneratedKeys()){
+				res.first();
+				opt.id=res.getInt(1);
+			}
+		}
+		return pollID;
 	}
 
 	public static void putForeignWallPost(Post post) throws SQLException{
@@ -98,43 +162,7 @@ public class PostStorage{
 		PreparedStatement stmt;
 		if(existing==null){
 			if(post.poll!=null){
-				stmt=new SQLQueryBuilder(conn)
-						.insertInto("polls")
-						.value("ap_id", post.activityPubID.toString())
-						.value("owner_id", post.user.id)
-						.value("question", post.poll.question)
-						.value("is_anonymous", post.poll.anonymous)
-						.value("end_time", post.poll.endTime!=null ? new Timestamp(post.poll.endTime.getTime()) : null)
-						.value("is_multi_choice", post.poll.multipleChoice)
-						.value("num_voted_users", post.poll.numVoters)
-						.createStatement(Statement.RETURN_GENERATED_KEYS);
-				stmt.execute();
-				try(ResultSet res=stmt.getGeneratedKeys()){
-					res.first();
-					post.poll.id=res.getInt(1);
-				}
-				stmt=new SQLQueryBuilder(conn)
-						.insertInto("poll_options")
-						.value("poll_id", post.poll.id)
-						.value("ap_id", null)
-						.value("text", null)
-						.value("num_votes", 0)
-						.createStatement(Statement.RETURN_GENERATED_KEYS);
-				boolean hasIDs=false;
-				for(PollOption opt:post.poll.options){
-					if(opt.activityPubID!=null)
-						hasIDs=true;
-					else if(hasIDs)
-						throw new IllegalStateException("all options must either have or not have IDs");
-					stmt.setString(2, Objects.toString(opt.activityPubID, null));
-					stmt.setString(3, opt.name);
-					stmt.setInt(4, opt.getNumVotes());
-					stmt.execute();
-					try(ResultSet res=stmt.getGeneratedKeys()){
-						res.first();
-						opt.id=res.getInt(1);
-					}
-				}
+				post.poll.id=putForeignPoll(conn, post.user.id, post.activityPubID, post.poll);
 			}
 
 			stmt=new SQLQueryBuilder(conn)
@@ -154,7 +182,7 @@ public class PostStorage{
 					.value("poll_id", post.poll!=null ? post.poll.id : null)
 					.createStatement(Statement.RETURN_GENERATED_KEYS);
 		}else{
-			if(existing.poll!=null && post.poll!=null){
+			if(Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts
 				stmt=new SQLQueryBuilder(conn)
 						.update("polls")
 						.value("num_voted_users", post.poll.numVoters)
@@ -192,6 +220,22 @@ public class PostStorage{
 						}
 					}
 				}
+			}else if(post.poll!=null && existing.poll!=null){ // poll changed, delete it and recreate again
+				// deletes votes and options because of ON DELETE CASCADE
+				new SQLQueryBuilder(conn)
+						.deleteFrom("polls")
+						.where("id=?", existing.poll.id)
+						.createStatement()
+						.execute();
+				post.poll.id=putForeignPoll(conn, post.user.id, post.activityPubID, post.poll);
+			}else if(post.poll!=null){ // poll was added
+				post.poll.id=putForeignPoll(conn, post.user.id, post.activityPubID, post.poll);
+			}else{ // poll was removed
+				new SQLQueryBuilder(conn)
+						.deleteFrom("polls")
+						.where("id=?", existing.poll.id)
+						.createStatement()
+						.execute();
 			}
 			stmt=new SQLQueryBuilder(conn)
 					.update("wall_posts")
@@ -200,14 +244,11 @@ public class PostStorage{
 					.value("attachments", post.serializeAttachments())
 					.value("content_warning", post.hasContentWarning() ? post.summary : null)
 					.value("mentions", post.mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(post.mentionedUsers.stream().mapToInt(u->u.id).toArray()))
+					.value("poll_id", post.poll!=null ? post.poll.id : null)
 					.createStatement();
 		}
-		stmt.execute();
 		if(existing==null){
-			try(ResultSet res=stmt.getGeneratedKeys()){
-				res.first();
-				post.id=res.getInt(1);
-			}
+			post.id=DatabaseUtils.insertAndGetID(stmt);
 			if(post.owner.equals(post.user) && post.getReplyLevel()==0){
 				new SQLQueryBuilder(conn)
 						.insertInto("newsfeed")
@@ -225,8 +266,10 @@ public class PostStorage{
 						.whereIn("id", Arrays.stream(post.replyKey).boxed().collect(Collectors.toList()))
 						.createStatement()
 						.execute();
+				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey[0]));
 			}
 		}else{
+			stmt.execute();
 			post.id=existing.id;
 		}
 	}
@@ -504,6 +547,9 @@ public class PostStorage{
 
 		if(post.getReplyLevel()>0){
 			conn.createStatement().execute("UPDATE wall_posts SET reply_count=GREATEST(1, reply_count)-1 WHERE id IN ("+Arrays.stream(post.replyKey).mapToObj(String::valueOf).collect(Collectors.joining(","))+")");
+			BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey[0]));
+		}else{
+			BackgroundTaskRunner.getInstance().submit(new DeleteCommentBookmarksRunnable(id));
 		}
 	}
 
@@ -517,8 +563,7 @@ public class PostStorage{
 			stmt.setBytes(i+1, Utils.serializeIntArray(new int[]{id}));
 			i++;
 		}
-		if(Config.DEBUG)
-			System.out.println(stmt);
+		LOG.debug("{}", stmt);
 		HashMap<Integer, ListAndTotal<Post>> map=new HashMap<>();
 		try(ResultSet res=stmt.executeQuery()){
 			res.afterLast();
@@ -952,6 +997,14 @@ public class PostStorage{
 		return pollID;
 	}
 
+	public static void deletePoll(int pollID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("polls")
+				.where("id=?", pollID)
+				.createStatement()
+				.execute();
+	}
+
 	public static List<Integer> getPollOptionVoters(int optionID, int offset, int count) throws SQLException{
 		PreparedStatement stmt=new SQLQueryBuilder()
 				.selectFrom("poll_votes")
@@ -974,6 +1027,137 @@ public class PostStorage{
 				r.add(apID!=null ? URI.create(apID) : Config.localURI("/users/"+res.getInt(1)));
 			}
 			return r;
+		}
+	}
+
+	public static void setPostFederationState(int postID, FederationState state) throws SQLException{
+		new SQLQueryBuilder()
+				.update("wall_posts")
+				.value("federation_state", state)
+				.where("id=?", postID)
+				.createStatement()
+				.execute();
+	}
+
+	public static ListAndTotal<NewsfeedEntry> getCommentsFeed(int userID, int offset, int count) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		int total;
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("newsfeed_comments")
+				.count()
+				.where("user_id=?", userID)
+				.createStatement();
+
+		try(ResultSet res=stmt.executeQuery()){
+			res.first();
+			total=res.getInt(1);
+		}
+
+		if(total==0)
+			return new ListAndTotal<>(Collections.emptyList(), 0);
+
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("newsfeed_comments")
+				.columns("object_type", "object_id")
+				.where("user_id=?", userID)
+				.orderBy("last_comment_time DESC")
+				.limit(count, offset)
+				.createStatement();
+		List<Integer> needPosts=new ArrayList<>();
+		List<NewsfeedEntry> entries=new ArrayList<>();
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			while(res.next()){
+				Like.ObjectType type=Like.ObjectType.values()[res.getInt(1)];
+				int id=res.getInt(2);
+				switch(type){
+					case POST -> {
+						needPosts.add(id);
+						PostNewsfeedEntry entry=new PostNewsfeedEntry();
+						entry.objectID=id;
+						entry.type=NewsfeedEntry.Type.POST;
+						entries.add(entry);
+					}
+				}
+			}
+		}
+		if(needPosts.isEmpty())
+			return new ListAndTotal<>(entries, total);
+
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("wall_posts")
+				.allColumns()
+				.whereIn("id", needPosts)
+				.createStatement();
+
+		Map<Integer, Post> posts;
+		try(ResultSet res=stmt.executeQuery()){
+			posts=DatabaseUtils.resultSetToObjectStream(res, Post::fromResultSet).collect(Collectors.toMap(post->post.id, Function.identity()));
+		}
+		for(NewsfeedEntry entry : entries){
+			if(entry.type==NewsfeedEntry.Type.POST){
+				((PostNewsfeedEntry) entry).post=posts.get(entry.objectID);
+			}
+		}
+
+		return new ListAndTotal<>(entries, total);
+	}
+
+	private static class DeleteCommentBookmarksRunnable implements Runnable{
+		private final int postID;
+
+		public DeleteCommentBookmarksRunnable(int postID){
+			this.postID=postID;
+		}
+
+		@Override
+		public void run(){
+			try{
+				new SQLQueryBuilder()
+						.deleteFrom("newsfeed_comments")
+						.where("object_type=? AND object_id=?", 0, postID)
+						.createStatement()
+						.execute();
+			}catch(SQLException x){
+				LOG.warn("Error deleting comment bookmarks for post {}", postID, x);
+			}
+		}
+	}
+
+	private static class UpdateCommentBookmarksRunnable implements Runnable{
+		private final int postID;
+
+		public UpdateCommentBookmarksRunnable(int postID){
+			this.postID=postID;
+		}
+
+		@Override
+		public void run(){
+			try{
+				Connection conn=DatabaseConnectionManager.getConnection();
+				PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT MAX(created_at) FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)", (Object) Utils.serializeIntArray(new int[]{postID}));
+				Timestamp ts;
+				try(ResultSet res=stmt.executeQuery()){
+					res.first();
+					ts=res.getTimestamp(1);
+				}
+				if(ts==null){
+					new SQLQueryBuilder(conn)
+							.deleteFrom("newsfeed_comments")
+							.where("object_type=? AND object_id=?", 0, postID)
+							.createStatement()
+							.execute();
+				}else{
+					new SQLQueryBuilder(conn)
+							.update("newsfeed_comments")
+							.value("last_comment_time", ts)
+							.where("object_type=? AND object_id=?", 0, postID)
+							.createStatement()
+							.execute();
+				}
+			}catch(SQLException x){
+				LOG.warn("Error updating comment bookmarks for post {}", postID, x);
+			}
 		}
 	}
 }

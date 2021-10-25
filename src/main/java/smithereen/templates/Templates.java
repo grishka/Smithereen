@@ -79,25 +79,26 @@ public class Templates{
 			}
 		}
 		jsConfig.addProperty("timeZone", tz!=null ? tz.getID() : null);
-		JsonObject jsLang=new JsonObject();
+		ArrayList<String> jsLang=new ArrayList<>();
 		ArrayList<String> k=req.attribute("jsLang");
 		Lang lang=Utils.lang(req);
+		jsConfig.addProperty("locale", lang.getLocale().toLanguageTag());
 		jsConfig.addProperty("langPluralRulesName", lang.getPluralRulesName());
 		if(k!=null){
 			for(String key:k){
-				jsLang.add(key, lang.raw(key));
+				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
 		}
 		for(String key: List.of("error", "ok", "network_error", "close")){
-			jsLang.add(key, lang.raw(key));
+			jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 		}
 		if(req.attribute("mobile")!=null){
 			for(String key: List.of("search", "qsearch_hint")){
-				jsLang.add(key, lang.raw(key));
+				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
 		}
 		model.with("locale", Utils.localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString())
-				.with("jsLangKeys", jsLang)
+				.with("jsLangKeys", "{"+String.join(",", jsLang)+"}")
 				.with("staticHash", Utils.staticFileHash)
 				.with("serverName", Config.getServerDisplayName())
 				.with("serverDomain", Config.domain)

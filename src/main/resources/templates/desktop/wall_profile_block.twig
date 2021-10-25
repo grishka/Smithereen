@@ -1,6 +1,6 @@
 <table width="100%" class="profileBlock">
 	<tr><th class="blockHeader"><a href="{{ fullWallURL }}">{{L('wall')}}</a></th></tr>
-	<tr><td class="blockSubheader">{{LP('X_posts', postCount)}}</td></tr>
+	<tr><td class="blockSubheader">{{L('X_posts', {'count': postCount})}}</td></tr>
 	{% if currentUser is not null and not isSelfBlocked %}
 		<tr><td>
 			<div class="marginBefore">{% include "wall_post_form" %}</div>
@@ -12,6 +12,10 @@
 		{% else %}
 			<div id="wallEmptyState">{{ L('wall_empty') }}</div>
 		{%endfor%}
-		{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (user.profileURL+"?offset=")}%}
+	</td></tr>
+	<tr><td>
+		<div class="bottomSummaryWrap noSidePadding">
+			{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (user.profileURL+"?offset=")}%}
+		</div>
 	</td></tr>
 </table>

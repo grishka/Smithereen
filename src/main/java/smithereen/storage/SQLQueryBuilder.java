@@ -1,5 +1,8 @@
 package smithereen.storage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -10,6 +13,7 @@ import java.util.List;
 import smithereen.Config;
 
 public class SQLQueryBuilder{
+	private static final Logger LOG=LoggerFactory.getLogger(SQLQueryBuilder.class);
 	private Connection conn;
 
 	private Action action;
@@ -319,8 +323,7 @@ public class SQLQueryBuilder{
 			}
 		}
 
-		if(Config.DEBUG)
-			System.out.println(stmt);
+		LOG.debug("{}", stmt);
 
 		return stmt;
 	}
@@ -335,8 +338,7 @@ public class SQLQueryBuilder{
 				stmt.setObject(i, arg);
 			i++;
 		}
-		if(Config.DEBUG)
-			System.out.println(stmt);
+		LOG.debug("{}", stmt);
 		return stmt;
 	}
 

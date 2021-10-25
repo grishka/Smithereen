@@ -5,6 +5,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -42,6 +44,7 @@ import spark.QueryParamsMap;
 import spark.utils.StringUtils;
 
 public abstract class ActivityPubObject{
+	private static final Logger LOG=LoggerFactory.getLogger(ActivityPubObject.class);
 
 	/*attachment | attributedTo | audience | content | context | name | endTime | generator | icon | image | inReplyTo | location | preview | published | replies | startTime | summary | tag | updated | url | to | bto | cc | bcc | mediaType | duration*/
 
@@ -253,7 +256,7 @@ public abstract class ActivityPubObject{
 			int minutes=Utils.parseIntOrDefault(matcher.group(6), 0);
 			int seconds=Utils.parseIntOrDefault(matcher.group(7), 0);
 			if(years>0 || months>0){
-				System.out.println("W: trying to parse duration "+duration+" with years and/or months");
+				LOG.warn("Trying to parse duration {} with years and/or months", duration);
 				return 0;
 			}
 			result=seconds*1000L
@@ -570,7 +573,7 @@ public abstract class ActivityPubObject{
 			case "Block" -> new Block();
 
 			default -> {
-				System.out.println("Unknown object type "+type);
+				LOG.info("Unknown object type {}", type);
 				yield null;
 			}
 		};

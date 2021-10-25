@@ -2,6 +2,9 @@ package smithereen.jsonld;
 
 import com.google.gson.JsonObject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -16,6 +19,8 @@ import java.util.Date;
 import smithereen.Utils;
 
 public class LinkedDataSignatures{
+	private static final Logger LOG=LoggerFactory.getLogger(LinkedDataSignatures.class);
+
 	public static void sign(JsonObject toSign, PrivateKey pkey, String keyID){
 		JsonObject options=new JsonObject();
 		options.addProperty("creator", keyID);
@@ -41,7 +46,7 @@ public class LinkedDataSignatures{
 			options.remove("@context");
 			toSign.add("signature", options);
 		}catch(NoSuchAlgorithmException|InvalidKeyException|SignatureException x){
-			x.printStackTrace();
+			LOG.error("Exception while creating LD-signature with key {}", keyID, x);
 		}
 	}
 

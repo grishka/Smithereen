@@ -9,6 +9,7 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
 
+@SuppressWarnings("deprecation")
 public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 
 	private static final List<String> ALLOWED_CLASSES=Arrays.asList(

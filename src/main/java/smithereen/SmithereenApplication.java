@@ -47,8 +47,10 @@ import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
+import smithereen.util.TopLevelDomainList;
 import spark.Request;
 import spark.Response;
 import spark.Service;
@@ -64,16 +66,24 @@ import static spark.Spark.*;
 import static smithereen.sparkext.SparkExtension.*;
 
 public class SmithereenApplication{
-	private static final Logger LOG=LoggerFactory.getLogger(SmithereenApplication.class);
+	private static final Logger LOG;
+	private static final ApplicationContext context;
+
+	static{
+		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
+		System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
+		if(Config.DEBUG)
+			System.setProperty("org.slf4j.simpleLogger.log.smithereen", "trace");
+		LOG=LoggerFactory.getLogger(SmithereenApplication.class);
+
+		context=new ApplicationContext();
+	}
 
 	public static void main(String[] args){
 		if(args.length==0){
 			System.err.println("You need to specify the path to the config file as the first argument:\njava -jar smithereen.jar config.properties");
 			System.exit(1);
 		}
-		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
-		if(Config.DEBUG)
-			System.setProperty("org.slf4j.simpleLogger.log.smithereen", "trace");
 
 		System.setProperty("user.timezone", "UTC");
 
@@ -82,8 +92,7 @@ public class SmithereenApplication{
 			Config.loadFromDatabase();
 			DatabaseSchemaUpdater.maybeUpdate();
 		}catch(IOException|SQLException x){
-			x.printStackTrace();
-			System.exit(1);
+			throw new RuntimeException(x);
 		}
 
 		if(args.length>1){
@@ -106,6 +115,8 @@ public class SmithereenApplication{
 			staticFileLocation("/public");
 		staticFiles.expireTime(7*24*60*60);
 		before((request, response) -> {
+			request.attribute("context", context);
+
 			if(request.pathInfo().startsWith("/api/"))
 				return;
 			request.attribute("start_time", System.currentTimeMillis());
@@ -145,7 +156,10 @@ public class SmithereenApplication{
 
 		get("/", SmithereenApplication::indexPage);
 
-		getLoggedIn("/feed", PostRoutes::feed);
+		path("/feed", ()->{
+			getLoggedIn("", PostRoutes::feed);
+			getLoggedIn("/comments", PostRoutes::commentsFeed);
+		});
 
 		path("/account", ()->{
 			post("/login", SessionRoutes::login);
@@ -265,6 +279,10 @@ public class SmithereenApplication{
 			postWithCSRF("/unblock", ProfileRoutes::unblockUser);
 
 			get("/groups", GroupsRoutes::userGroups);
+			path("/friends", ()->{
+				get("", ProfileRoutes::friends);
+				getLoggedIn("/mutual", ProfileRoutes::mutualFriends);
+			});
 		});
 
 		path("/groups/:id", ()->{
@@ -336,6 +354,8 @@ public class SmithereenApplication{
 
 			get("/pollVoters/:optionID", PostRoutes::pollOptionVoters);
 			get("/pollVoters/:optionID/popover", PostRoutes::pollOptionVotersPopover);
+			getLoggedIn("/edit", PostRoutes::editPostForm);
+			postWithCSRF("/edit", PostRoutes::editPost);
 		});
 
 		get("/robots.txt", (req, resp)->{
@@ -345,7 +365,7 @@ public class SmithereenApplication{
 
 		path("/my", ()->{
 			getLoggedIn("/incomingFriendRequests", ProfileRoutes::incomingFriendRequests);
-			get("/friends", ProfileRoutes::friends);
+			getLoggedIn("/friends", ProfileRoutes::ownFriends);
 			get("/followers", ProfileRoutes::followers);
 			get("/following", ProfileRoutes::following);
 			getLoggedIn("/notifications", NotificationsRoutes::notifications);
@@ -366,6 +386,8 @@ public class SmithereenApplication{
 			});
 		});
 
+		get("/healthz", (req, resp)->"");
+
 		path("/:username", ()->{
 			// These also handle groups
 			getActivityPub("", ActivityPubRoutes::userActor);
@@ -380,10 +402,6 @@ public class SmithereenApplication{
 			getWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
 			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
 			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
-			path("/friends", ()->{
-				get("", ProfileRoutes::friends);
-				getLoggedIn("/mutual", ProfileRoutes::mutualFriends);
-			});
 			get("/followers", ProfileRoutes::followers);
 			get("/following", ProfileRoutes::following);
 			path("/wall", ()->{
@@ -415,8 +433,7 @@ public class SmithereenApplication{
 			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
 		});
 		exception(Exception.class, (exception, req, res) -> {
-			System.out.println("Exception while processing "+req.requestMethod()+" "+req.raw().getPathInfo());
-			exception.printStackTrace();
+			LOG.warn("Exception while processing {} {}", req.requestMethod(), req.raw().getPathInfo(), exception);
 			res.status(500);
 			StringWriter sw=new StringWriter();
 			exception.printStackTrace(new PrintWriter(sw));
@@ -453,6 +470,7 @@ public class SmithereenApplication{
 			}
 		});
 
+		awaitInitialization();
 		setupCustomSerializer();
 
 		responseTypeSerializer(ActivityPubObject.class, (out, obj) -> {
@@ -478,6 +496,7 @@ public class SmithereenApplication{
 				SessionStorage.deleteExpiredEmailCodes();
 			}catch(SQLException ignore){}
 			FloodControl.PASSWORD_RESET.gc();
+			TopLevelDomainList.updateIfNeeded();
 		});
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
@@ -493,7 +512,7 @@ public class SmithereenApplication{
 				MaintenanceScheduler.shutDown();
 			}catch(NoClassDefFoundError ignore){}
 			try{
-				Mailer.shutDown();
+				BackgroundTaskRunner.shutDown();
 			}catch(NoClassDefFoundError ignore){}
 			// Set the exit code to 0 so systemd doesn't say "Failed with result 'exit-code'".
 			Runtime.getRuntime().halt(0);
@@ -541,7 +560,7 @@ public class SmithereenApplication{
 			mySerializer.setNext(serializer);
 			rootFld.set(chain, mySerializer);
 		}catch(Exception x){
-			x.printStackTrace();
+			LOG.error("Exception while setting up custom serializer", x);
 		}
 	}
 }

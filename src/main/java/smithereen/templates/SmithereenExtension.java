@@ -13,27 +13,25 @@ import java.util.Map;
 public class SmithereenExtension extends AbstractExtension{
 	@Override
 	public Map<String, Function> getFunctions(){
-		HashMap<String, Function> r=new HashMap<>();
-		r.put("L", new LangFunction());
-		r.put("LD", new LangDateFunction());
-		r.put("LG", new LangGenderedFunction());
-		r.put("LP", new LangPluralFunction());
-		r.put("LI", new LangInflectedFunction());
-		r.put("renderAttachments", new RenderAttachmentsFunction());
-		r.put("json", new JsonFunction());
-		r.put("formatTime", new FormatTimeFunction());
-		return r;
+		return Map.of(
+			"L", new LangFunction(),
+			"LD", new LangDateFunction(),
+			"renderAttachments", new RenderAttachmentsFunction(),
+			"json", new JsonFunction(),
+			"formatTime", new FormatTimeFunction()
+		);
 	}
 
 	@Override
 	public Map<String, Filter> getFilters(){
-		HashMap<String, Filter> r=new HashMap<>();
-		r.put("pictureForAvatar", new PictureForAvatarFilter());
-		r.put("postprocessHTML", new PostprocessHTMLFilter());
-		r.put("forceEscape", new ForceEscapeFilter());
-		r.put("nl2br", new Nl2brFilter());
-		r.put("truncateText", new TruncateTextFilter());
-		return r;
+		return Map.of(
+			"pictureForAvatar", new PictureForAvatarFilter(),
+			"pictureForPhoto", new PictureForPhotoFilter(),
+			"postprocessHTML", new PostprocessHTMLFilter(),
+			"forceEscape", new ForceEscapeFilter(),
+			"nl2br", new Nl2brFilter(),
+			"truncateText", new TruncateTextFilter()
+		);
 	}
 
 	@Override

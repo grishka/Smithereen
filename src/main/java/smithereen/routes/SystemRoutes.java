@@ -1,5 +1,8 @@
 package smithereen.routes;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -72,10 +75,13 @@ import static smithereen.Utils.isAjax;
 import static smithereen.Utils.isURL;
 import static smithereen.Utils.isUsernameAndDomain;
 import static smithereen.Utils.lang;
+import static smithereen.Utils.normalizeURLDomain;
 import static smithereen.Utils.parseIntOrDefault;
 import static smithereen.Utils.wrapError;
 
 public class SystemRoutes{
+	private static final Logger LOG=LoggerFactory.getLogger(SystemRoutes.class);
+
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
 		MediaCache cache=MediaCache.getInstance();
 		String type=req.queryParams("type");
@@ -107,8 +113,10 @@ public class SystemRoutes{
 		if("user_ava".equals(type)){
 			itemType=MediaCache.ItemType.AVATAR;
 			mime="image/jpeg";
-			user=UserStorage.getById(Utils.parseIntOrDefault(req.queryParams("user_id"), 0));
+			int userID=Utils.parseIntOrDefault(req.queryParams("user_id"), 0);
+			user=UserStorage.getById(userID);
 			if(user==null || Config.isLocal(user.activityPubID)){
+				LOG.warn("downloading user_ava: user {} not found or is local", userID);
 				return "";
 			}
 			Image im=user.getBestAvatarImage();
@@ -123,8 +131,10 @@ public class SystemRoutes{
 		}else if("group_ava".equals(type)){
 			itemType=MediaCache.ItemType.AVATAR;
 			mime="image/jpeg";
-			group=GroupStorage.getById(Utils.parseIntOrDefault(req.queryParams("group_id"), 0));
+			int groupID=Utils.parseIntOrDefault(req.queryParams("group_id"), 0);
+			group=GroupStorage.getById(groupID);
 			if(group==null || Config.isLocal(group.activityPubID)){
+				LOG.warn("downloading group_ava: group {} not found or is local", groupID);
 				return "";
 			}
 			Image im=group.getBestAvatarImage();
@@ -138,21 +148,38 @@ public class SystemRoutes{
 			}
 		}else if("post_photo".equals(type)){
 			itemType=MediaCache.ItemType.PHOTO;
-			Post post=PostStorage.getPostByID(Utils.parseIntOrDefault(req.queryParams("post_id"), 0), false);
-			if(post==null || Config.isLocal(post.activityPubID))
+			int postID=Utils.parseIntOrDefault(req.queryParams("post_id"), 0);
+			Post post=PostStorage.getPostByID(postID, false);
+			if(post==null || Config.isLocal(post.activityPubID)){
+				LOG.warn("downloading post_photo: post {} not found or is local", postID);
 				return "";
+			}
 			int index=Utils.parseIntOrDefault(req.queryParams("index"), 0);
-			if(index>=post.attachment.size() || index<0)
+			if(index>=post.attachment.size() || index<0){
+				LOG.warn("downloading post_photo: index {} out of bounds {}", index, post.attachment.size());
 				return "";
+			}
 			ActivityPubObject att=post.attachment.get(index);
-			if(!(att instanceof Document))
+			if(!(att instanceof Document)){
+				LOG.warn("downloading post_photo: attachment {} is not a Document", att.getClass().getName());
 				return "";
-			if(att.mediaType==null || !att.mediaType.startsWith("image/"))
+			}
+			if(att.mediaType==null){
+				if(att instanceof Image){
+					mime="image/jpeg";
+				}else{
+					LOG.warn("downloading post_photo: media type is null and attachment type {} isn't Image", att.getClass().getName());
+					return "";
+				}
+			}else if(!att.mediaType.startsWith("image/")){
+				LOG.warn("downloading post_photo: attachment media type {} is invalid", att.mediaType);
 				return "";
-			Document img=(Document)att;
-			mime=img.mediaType;
-			uri=img.url;
+			}else{
+				mime=att.mediaType;
+			}
+			uri=att.url;
 		}else{
+			LOG.warn("unknown external file type {}", type);
 			return "";
 		}
 
@@ -189,7 +216,7 @@ public class SystemRoutes{
 					}
 					return "";
 				}catch(IOException x){
-					x.printStackTrace();
+					LOG.warn("Exception while downloading external media file from {}", uri, x);
 				}
 				resp.redirect(uri.toString());
 			}
@@ -224,9 +251,8 @@ public class SystemRoutes{
 			LocalImage photo=new LocalImage();
 			File postMediaDir=new File(Config.uploadPath, "post_media");
 			postMediaDir.mkdirs();
+			int width, height;
 			try{
-//				MediaStorageUtils.writeResizedImages(img, new int[]{200, 400, 800, 1280, 2560}, new PhotoSize.Type[]{PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
-//						93, 87, keyHex, postMediaDir, Config.uploadURLPath+"/post_media", photo.sizes);
 				int[] outSize={0,0};
 				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, keyHex, postMediaDir, outSize);
 
@@ -234,8 +260,8 @@ public class SystemRoutes{
 				photo.localID=keyHex;
 				photo.mediaType="image/jpeg";
 				photo.path="post_media";
-				photo.width=outSize[0];
-				photo.height=outSize[1];
+				photo.width=width=outSize[0];
+				photo.height=height=outSize[1];
 				photo.blurHash=BlurHash.encode(img, 4, 4);
 				if(req.queryParams("draft")!=null)
 					sess.postDraftAttachments.add(photo);
@@ -250,6 +276,8 @@ public class SystemRoutes{
 				resp.type("application/json");
 				return new JsonObjectBuilder()
 						.add("id", keyHex)
+						.add("width", width)
+						.add("height", height)
 						.add("thumbs", new JsonObjectBuilder()
 								.add("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.JPEG).toString())
 								.add("webp", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.WEBP).toString())
@@ -257,7 +285,7 @@ public class SystemRoutes{
 			}
 			resp.redirect(Utils.back(req));
 		}catch(IOException|ServletException|NoSuchAlgorithmException x){
-			x.printStackTrace();
+			LOG.warn("Exception while processing a post photo upload", x);
 		}
 		return "";
 	}
@@ -311,6 +339,7 @@ public class SystemRoutes{
 		if(isURL(query)){
 			if(!query.startsWith("http:") && !query.startsWith("https:"))
 				query="https://"+query;
+			query=normalizeURLDomain(query);
 			URI uri=URI.create(query);
 			try{
 				ActivityPubObject obj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, false, false, false);
@@ -398,12 +427,10 @@ public class SystemRoutes{
 		try{
 			obj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, true, false, false);
 		}catch(UnsupportedRemoteObjectTypeException x){
-			if(Config.DEBUG)
-				x.printStackTrace();
+			LOG.debug("Unsupported remote object", x);
 			return new JsonObjectBuilder().add("error", lang(req).get("unsupported_remote_object_type")).build();
 		}catch(ObjectNotFoundException x){
-			if(Config.DEBUG)
-				x.printStackTrace();
+			LOG.debug("Remote object not found", x);
 			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_not_found")).build();
 		}
 		if(obj instanceof ForeignUser){

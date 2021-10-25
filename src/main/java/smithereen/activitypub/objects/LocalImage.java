@@ -49,8 +49,11 @@ public class LocalImage extends Image implements SizedImage{
 			im.url=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalUploads+"/"+path+"/"+localID+".webp")
 					.format(SizedImage.Format.JPEG)
 					.build();
+			im.mediaType="image/jpeg";
 			obj.add("image", im.asActivityPubObject(null, contextCollector));
 		}
+		if(mediaType==null)
+			obj.addProperty("mediaType", "image/jpeg");
 		return obj;
 	}
 

@@ -1,23 +1,22 @@
 # ************************************************************
-# Sequel Pro SQL dump
-# Version 5446
+# Sequel Ace SQL dump
+# Version 3041
 #
-# https://www.sequelpro.com/
-# https://github.com/sequelpro/sequelpro
+# https://sequel-ace.com/
+# https://github.com/Sequel-Ace/Sequel-Ace
 #
-# Host: localhost (MySQL 5.7.9)
+# Host: 127.0.0.1 (MySQL 5.7.9)
 # Database: smithereen
-# Generation Time: 2021-08-19 23:02:03 +0000
+# Generation Time: 2021-10-20 17:22:10 +0000
 # ************************************************************
 
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8 */;
 SET NAMES utf8mb4;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40101 SET @OLD_SQL_MODE='NO_AUTO_VALUE_ON_ZERO', SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 
@@ -288,6 +287,22 @@ CREATE TABLE `newsfeed` (
 
 
 
+# Dump of table newsfeed_comments
+# ------------------------------------------------------------
+
+CREATE TABLE `newsfeed_comments` (
+  `user_id` int(10) unsigned NOT NULL,
+  `object_type` int(10) unsigned NOT NULL,
+  `object_id` int(10) unsigned NOT NULL,
+  `last_comment_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`object_type`,`object_id`,`user_id`),
+  KEY `user_id` (`user_id`),
+  KEY `last_comment_time` (`last_comment_time`),
+  CONSTRAINT `newsfeed_comments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
 # Dump of table notifications
 # ------------------------------------------------------------
 
@@ -483,6 +498,9 @@ CREATE TABLE `wall_posts` (
   `reply_count` int(10) unsigned NOT NULL DEFAULT '0',
   `ap_replies` varchar(300) DEFAULT NULL,
   `poll_id` int(10) unsigned DEFAULT NULL,
+  `federation_state` tinyint(10) unsigned NOT NULL DEFAULT '0',
+  `source` text,
+  `source_format` tinyint(3) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -504,17 +522,6 @@ CREATE TABLE `wall_posts` (
 --
 DELIMITER ;;
 
-# Dump of FUNCTION bin_prefix
-# ------------------------------------------------------------
-
-/*!50003 SET SESSION SQL_MODE="ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"*/;;
-/*!50003 CREATE*/ /*!50020 DEFINER=`root`@`localhost`*/ /*!50003 FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048)
-    DETERMINISTIC
-BEGIN
-RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, BINARY(0xFF), BINARY(0xFFFF)), '%', BINARY(0xFF25)), '_', BINARY(0xFF5F)), '%');
-END */;;
-
-/*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;;
 DELIMITER ;
 
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;

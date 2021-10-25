@@ -24,13 +24,17 @@
 					{% if acc.banInfo is null %}
 						| <a href="/settings/admin/users/banForm?accountID={{ acc.id }}" data-ajax-box="1">{{ L('admin_ban') }}</a>
 					{% else %}
-						| <a href="/settings/admin/users/confirmUnban?accountID={{ acc.id }}" data-confirm-action="/settings/admin/users/unban?accountID={{ acc.id }}" data-confirm-title="{{ L('admin_unban') }}" data-confirm-message="{{ LI(key="admin_unban_X_confirm", first=acc.user.firstName, last=acc.user.lastName, gender=acc.user.gender) | forceEscape }}">{{ L('admin_unban') }}</a>
+						| <a href="/settings/admin/users/confirmUnban?accountID={{ acc.id }}" data-confirm-action="/settings/admin/users/unban?accountID={{ acc.id }}" data-confirm-title="{{ L('admin_unban') }}" data-confirm-message="{{ L("admin_unban_X_confirm", {'name': acc.user.firstLastAndGender}) | forceEscape }}">{{ L('admin_unban') }}</a>
 					{% endif %}
 				{% endif %}
 			</td>
 		</tr>
 		{%endfor%}
 	</table>
+</div>
+{% if total>100 %}
+<div class="bottomSummaryWrap">
 	{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': "/settings/admin/users?offset="}%}
 </div>
+{% endif %}
 {%endblock%}

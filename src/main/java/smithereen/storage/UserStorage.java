@@ -3,6 +3,8 @@ package smithereen.storage;
 import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -42,6 +44,8 @@ import smithereen.data.UserNotifications;
 import spark.utils.StringUtils;
 
 public class UserStorage{
+	private static final Logger LOG=LoggerFactory.getLogger(UserStorage.class);
+
 	private static LruCache<Integer, User> cache=new LruCache<>(500);
 	private static LruCache<String, User> cacheByUsername=new LruCache<>(500);
 	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
@@ -293,10 +297,7 @@ public class UserStorage{
 		PreparedStatement stmt=conn.prepareStatement("SELECT COUNT(*) FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1");
 		stmt.setInt(1, userID);
 		stmt.setInt(2, otherUserID);
-		try(ResultSet res=stmt.executeQuery()){
-			res.first();
-			return res.getInt(1);
-		}
+		return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 	}
 
 	public static List<User> getRandomMutualFriendsForProfile(int userID, int otherUserID) throws SQLException{
@@ -309,14 +310,18 @@ public class UserStorage{
 		}
 	}
 
-	public static List<User> getMutualFriendListForUser(int userID, int otherUserID) throws SQLException{
+	public static List<Integer> getMutualFriendIDsForUser(int userID, int otherUserID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT friends1.followee_id FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1");
+		PreparedStatement stmt=conn.prepareStatement("SELECT friends1.followee_id FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1 LIMIT ? OFFSET ?");
 		stmt.setInt(1, userID);
 		stmt.setInt(2, otherUserID);
-		try(ResultSet res=stmt.executeQuery()){
-			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
-		}
+		stmt.setInt(3, count);
+		stmt.setInt(4, offset);
+		return DatabaseUtils.intResultSetToList(stmt.executeQuery());
+	}
+
+	public static List<User> getMutualFriendListForUser(int userID, int otherUserID) throws SQLException{
+		return getByIdAsList(getMutualFriendIDsForUser(userID, otherUserID, 0, 100));
 	}
 
 	public static List<User> getNonMutualFollowers(int userID, boolean followers, boolean accepted) throws SQLException{
@@ -337,14 +342,33 @@ public class UserStorage{
 		stmt.setInt(1, userID);
 		stmt.setInt(2, offset);
 		stmt.setInt(3, count);
-		ArrayList<FriendRequest> reqs=new ArrayList<>();
+		List<FriendRequest> reqs;
+		// 1. collect the IDs of mutual friends for each friend request
+		Map<Integer, List<Integer>> mutualFriendIDs=new HashMap<>();
 		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				do{
-					FriendRequest req=FriendRequest.fromResultSet(res);
-					reqs.add(req);
-				}while(res.next());
-			}
+			reqs=DatabaseUtils.resultSetToObjectStream(res, FriendRequest::fromResultSet).peek(req->{
+				try{
+					req.mutualFriendsCount=getMutualFriendsCount(userID, req.from.id);
+					if(req.mutualFriendsCount>0){
+						mutualFriendIDs.put(req.from.id, getMutualFriendIDsForUser(userID, req.from.id, 0, 4));
+					}
+				}catch(SQLException x){
+					LOG.warn("Exception while getting mutual friends for {} and {}", userID, req.from.id, x);
+				}
+			}).collect(Collectors.toList());
+		}
+		if(mutualFriendIDs.isEmpty())
+			return reqs;
+		// 2. make a list of distinct users we need
+		List<Integer> needUsers=mutualFriendIDs.values().stream().flatMap(Collection::stream).distinct().collect(Collectors.toList());
+		// 3. get them all in one go
+		Map<Integer, User> mutualFriends=getById(needUsers);
+		// 4. finally, put them into friend requests
+		for(FriendRequest req:reqs){
+			List<Integer> ids=mutualFriendIDs.get(req.from.id);
+			if(ids==null)
+				continue;
+			req.mutualFriends=ids.stream().map(mutualFriends::get).collect(Collectors.toList());
 		}
 		return reqs;
 	}
@@ -357,7 +381,6 @@ public class UserStorage{
 			stmt.setInt(1, targetUserID);
 			stmt.setInt(2, userID);
 			if(stmt.executeUpdate()!=1){
-				System.out.println("fail 1");
 				conn.createStatement().execute("ROLLBACK");
 				return;
 			}
@@ -370,7 +393,6 @@ public class UserStorage{
 			stmt.setInt(1, targetUserID);
 			stmt.setInt(2, userID);
 			if(stmt.executeUpdate()!=1){
-				System.out.println("fail 2");
 				conn.createStatement().execute("ROLLBACK");
 				return;
 			}

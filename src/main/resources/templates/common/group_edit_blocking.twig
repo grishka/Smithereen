@@ -12,7 +12,7 @@
 			<tr>
 				<td><a href="{{ user.profileURL }}"><span class="tinyInlineAva">{{user | pictureForAvatar('s', 32)}}</span>{{ user.fullName }}</a></td>
 				<td align="right">
-					<a href="/groups/{{ group.id }}/confirmUnblockUser?id={{ user.id }}" data-confirm-action="/groups/{{ group.id }}/unblockUser?id={{ user.od }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ LI(key='confirm_unblock_user_X', first=user.firstName, last=user.lastName, gender=user.gender) | forceEscape }}">{{ L('unblock') }}</a>
+					<a href="/groups/{{ group.id }}/confirmUnblockUser?id={{ user.id }}" data-confirm-action="/groups/{{ group.id }}/unblockUser?id={{ user.id }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ L(key='confirm_unblock_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('unblock') }}</a>
 				</td>
 			</tr>
 		{% else %}
@@ -24,10 +24,10 @@
 </div>
 
 <div class="summaryWrap">
+	<div class="summary">{{ L('settings_blocked_domains') }}</div>
 	<div class="auxLinks">
 		<a href="/groups/{{ group.id }}/blockDomainForm" data-ajax-box="1">{{ L('block_a_domain') }}</a>
 	</div>
-	<div class="summary">{{ L('settings_blocked_domains') }}</div>
 </div>
 <div class="singleColumn">
 	<table width="100%" class="dataTable noOuterBorders">
@@ -36,7 +36,7 @@
 			<tr>
 				<td>{{ domain }}</td>
 				<td align="right">
-					<a href="/groups/{{ group.id }}/confirmUnblockDomain?domain={{ domain }}" data-confirm-action="/groups/{{ group.id }}/unblockDomain?domain={{ domain }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ L('confirm_unblock_domain_X', domain) | forceEscape }}">{{ L('unblock') }}</a>
+					<a href="/groups/{{ group.id }}/confirmUnblockDomain?domain={{ domain }}" data-confirm-action="/groups/{{ group.id }}/unblockDomain?domain={{ domain }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ L('confirm_unblock_domain_X', {'domain': domain}) | forceEscape }}">{{ L('unblock') }}</a>
 				</td>
 			</tr>
 			{% else %}

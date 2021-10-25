@@ -31,6 +31,7 @@ import smithereen.data.Account;
 import smithereen.data.UriBuilder;
 import smithereen.lang.Lang;
 import smithereen.templates.Templates;
+import smithereen.util.BackgroundTaskRunner;
 import spark.Request;
 import spark.utils.StringUtils;
 
@@ -40,7 +41,6 @@ public class Mailer{
 
 	private Session session;
 	private PebbleEngine templateEngine;
-	private ExecutorService executor;
 
 	public static Mailer getInstance(){
 		if(instance==null){
@@ -50,17 +50,8 @@ public class Mailer{
 	}
 
 	private Mailer(){
-		executor=Executors.newSingleThreadExecutor();
 		updateSession();
 		templateEngine=Templates.makeEngineInstance("email");
-	}
-
-	public static void shutDown(){
-		if(instance==null)
-			return;
-		LOG.info("Stopping thread pool");
-		Utils.stopExecutorBlocking(instance.executor, LOG);
-		LOG.info("Stopped");
 	}
 
 	public void updateSession(){
@@ -86,8 +77,8 @@ public class Mailer{
 	public void sendPasswordReset(Request req, Account account, String code){
 		Lang l=Utils.lang(req);
 		String link=UriBuilder.local().appendPath("account").appendPath("actuallyResetPassword").queryParam("code", code).build().toString();
-		String plaintext=l.get("email_password_reset_plain_before", account.user.firstName, Config.domain)+"\n\n"+link+"\n\n"+l.get("email_password_reset_after");
-		send(account.email, l.get("email_password_reset_subject", Config.domain), plaintext, "reset_password", Map.of(
+		String plaintext=l.get("email_password_reset_plain_before", Map.of("name", account.user.firstName, "serverName", Config.domain))+"\n\n"+link+"\n\n"+l.get("email_password_reset_after");
+		send(account.email, l.get("email_password_reset_subject", Map.of("serverName", Config.domain)), plaintext, "reset_password", Map.of(
 				"domain", Config.domain,
 				"serverName", Config.serverDisplayName,
 				"name", account.user.firstName,
@@ -127,9 +118,9 @@ public class Mailer{
 
 			msg.setContent(multipart);
 
-			executor.submit(new SendRunnable(msg));
+			BackgroundTaskRunner.getInstance().submit(new SendRunnable(msg));
 		}catch(MessagingException|IOException x){
-			x.printStackTrace();
+			LOG.error("Exception while creating an email", x);
 		}
 	}
 
@@ -146,7 +137,7 @@ public class Mailer{
 			try{
 				Transport.send(msg);
 			}catch(MessagingException x){
-				x.printStackTrace();
+				LOG.error("Exception while sending an email", x);
 			}
 		}
 	}

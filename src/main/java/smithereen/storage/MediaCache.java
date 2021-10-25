@@ -3,6 +3,8 @@ package smithereen.storage;
 import com.google.gson.JsonParser;
 
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -30,7 +32,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import smithereen.Config;
-import smithereen.DisallowLocalhostInterceptor;
+import smithereen.util.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
@@ -38,9 +40,10 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.libvips.VipsImage;
+import smithereen.util.UserAgentInterceptor;
 
 public class MediaCache{
-
+	private static final Logger LOG=LoggerFactory.getLogger(MediaCache.class);
 	private static MediaCache instance=new MediaCache();
 
 	private LruCache<String, Item> metaCache=new LruCache<>(500);
@@ -63,11 +66,12 @@ public class MediaCache{
 		asyncUpdater=Executors.newFixedThreadPool(1);
 		httpClient=new OkHttpClient.Builder()
 				.addNetworkInterceptor(new DisallowLocalhostInterceptor())
+				.addNetworkInterceptor(new UserAgentInterceptor())
 				.build();
 		try{
 			updateTotalSize();
 		}catch(SQLException x){
-			x.printStackTrace();
+			LOG.warn("Exception while updating total size", x);
 		}
 	}
 
@@ -140,7 +144,6 @@ public class MediaCache{
 		}
 		Item result=null;
 		try(ResponseBody body=resp.body()){
-			System.out.println(uri+" length: "+body.contentLength());
 			if(body.contentLength()>Config.mediaCacheFileSizeLimit){
 				throw new IOException("File too large");
 			}
@@ -245,7 +248,7 @@ public class MediaCache{
 		return stmt.executeUpdate()==1;
 	}
 
-	public static ActivityPubObject getAndDeleteDraftAttachment(@NotNull String id, int ownerID) throws Exception{
+	public static ActivityPubObject getAndDeleteDraftAttachment(@NotNull String id, int ownerID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		ActivityPubObject result;
 
@@ -308,7 +311,7 @@ public class MediaCache{
 		protected void deleteFiles(){
 			File file=new File(Config.mediaCachePath, key+".webp");
 			if(!file.delete()){
-				System.out.println("Failed to delete "+file.getAbsolutePath());
+				LOG.warn("Failed to delete {}", file.getAbsolutePath());
 			}
 		}
 	}
@@ -328,7 +331,7 @@ public class MediaCache{
 				stmt.setBytes(1, key);
 				stmt.execute();
 			}catch(SQLException x){
-				x.printStackTrace();
+				LOG.warn("Exception while updating last access time", x);
 			}
 		}
 	}
@@ -360,13 +363,13 @@ public class MediaCache{
 							}while(res.next());
 						}
 					}
-					System.out.println("Deleting from media cache: "+deletedKeys);
+					LOG.info("Deleting from media cache: {}", deletedKeys);
 					if(!deletedKeys.isEmpty()){
 						conn.createStatement().execute("DELETE FROM `media_cache` WHERE `url_hash` IN ("+String.join(",", deletedKeys)+")");
 					}
 				}
 			}catch(SQLException x){
-				x.printStackTrace();
+				LOG.warn("Exception while deleting from media cache", x);
 			}
 		}
 	}

@@ -7,6 +7,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -20,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 
 public class JLDProcessor{
+	private static final Logger LOG=LoggerFactory.getLogger(JLDProcessor.class);
 
 	private static HashMap<String, JsonObject> schemaCache=new HashMap<>();
 	private static final JsonObject inverseLocalContext;
@@ -168,7 +172,7 @@ public class JLDProcessor{
 				file=readResourceFile("litepub-0.1");
 				break;
 			default:
-				System.out.println("Warning: can't dereference remote context '"+iri+"'");
+				LOG.warn("Can't dereference remote context '{}'", iri);
 				//throw new JLDException("loading remote context failed");
 		}
 		if(file!=null){

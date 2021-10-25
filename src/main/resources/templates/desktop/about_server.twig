@@ -8,9 +8,9 @@
 			<div class="marginBefore">
 				{{ L('about_on_this_server') }}:
 				<ul class="actualList">
-					<li><span>{{ LP('about_X_users', totalUsers) }}</span></li>
-					<li><span>{{ LP('about_X_groups', totalGroups) }}</span></li>
-					<li><span>{{ LP('about_X_posts', totalPosts) }}</span></li>
+					<li><span>{{ L('about_X_users', {'count': totalUsers}) }}</span></li>
+					<li><span>{{ L('about_X_groups', {'count': totalGroups}) }}</span></li>
+					<li><span>{{ L('about_X_posts', {'count': totalPosts}) }}</span></li>
 				</ul>
 			</div>
 		</td>

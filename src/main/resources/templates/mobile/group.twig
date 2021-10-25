@@ -42,8 +42,8 @@
 			{% endif %}
 			<li class="separator"></li>
 		{%endif%}
-		<li><a href="/groups/{{ group.id }}/members">{{ LP('X_members', group.memberCount) }}</a></li>
-		<li><a href="/groups/{{ group.id }}/admins" data-ajax-box="1">{{ LP('group_X_admins', admins.size) }}</a></li>
+		<li><a href="/groups/{{ group.id }}/members">{{ L('X_members', {'count': group.memberCount}) }}</a></li>
+		<li><a href="/groups/{{ group.id }}/admins" data-ajax-box="1">{{ L('group_X_admins', {'count': admins.size}) }}</a></li>
 		<li class="separator"></li>
 		{% if currentUser is not null %}
 			{% if membershipState=="MEMBER" %}

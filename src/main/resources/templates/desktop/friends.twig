@@ -1,6 +1,22 @@
+{# @pebvariable name="friendList" type="java.util.List<smithereen.data.User>" #}
+{# @pebvariable name="owner" type="smithereen.data.User" #}
+{# @pebvariable name="tab" type="String" #}
 {%extends "page"%}
 {%block content%}
 {% include 'friends_tabbar' %}
+<div class="summaryWrap">
+	<div class="summary">
+	{% if tab=='mutual' %}
+		{{ L('you_and_X_mutual', {'name': owner.firstAndGender, 'numFriends': friendList.size()}) }}
+	{% else %}
+	{% if currentUser is not null and currentUser.id==owner.id %}
+		{{ L("summary_own_X_friends", {'numFriends': friendList.size()}) }}
+	{% else %}
+		{{ L("summary_user_X_friends", {'name': owner.firstAndGender, 'numFriends': friendList.size()}) }}
+	{% endif %}
+	{% endif %}
+	</div>
+</div>
 <div class="singleColumn">
 {%for friend in friendList%}
 <table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
@@ -9,18 +25,29 @@
 			<a href="{{friend.profileURL}}">{{friend | pictureForAvatar('m')}}</a>
 		</td>
 		<td class="info">
-			<b><a href="{{friend.profileURL}}">{{friend.fullName}}</a></b>
+			<table width="100%" class="noBorderSpacing">
+				<tr>
+					<td width="70" class="grayText">{{ L('name') }}:</td>
+					<td><a href="{{ friend.profileURL }}">{{ friend.completeName }}</a></td>
+				</tr>
+				{% if friend.domain is not empty %}
+					<tr>
+						<td class="grayText">{{ L('server') }}:</td>
+						<td>{{ friend.domain }}</td>
+					</tr>
+				{% endif %}
+			</table>
 		</td>
-		<td width="200">
+		<td width="130">
 			<ul class="actionList">
-				<li><a href="{{friend.getProfileURL('friends')}}">{{L('view_friends_of')}}</a></li>
+				<li><a href="/users/{{ friend.id }}/friends">{{L('view_friends_of')}}</a></li>
 				{%if(currentUser is not null and currentUser.id==owner.id and not followers)%}
 					<li>
-						<a href="{{friend.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'{{friend.getProfileURL('doRemoveFriend')}}?from=list')" data-confirm="{{ LI(key=(following ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), first=friend.firstName, last=friend.lastName, gender=friend.gender) | forceEscape }}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
+						<a href="{{friend.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'{{friend.getProfileURL('doRemoveFriend')}}?from=list')" data-confirm="{{ L((following ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), {'name': friend.firstLastAndGender}) | forceEscape }}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
 					</li>
 				{%endif%}
                 {%if friend.domain is not null%}
-					<li><a href="{{ friend.url }}" target="_blank">{{ L('open_on_server_X', friend.domain) }}</a></li>
+					<li><a href="{{ friend.url }}" target="_blank">{{ L('open_on_server_X', {'domain': friend.domain}) }}</a></li>
 				{%endif%}
 			</ul>
 		</td>

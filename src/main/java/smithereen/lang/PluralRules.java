@@ -1,7 +1,7 @@
 package smithereen.lang;
 
 public abstract class PluralRules{
-	public abstract int getIndexForQuantity(int quantity);
+	public abstract PluralCategory getCategoryForQuantity(int quantity);
 
 	/**
 	 * Must match a key in langPluralRules in JS (Helpers.ts)

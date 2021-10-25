@@ -6,22 +6,15 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<maven.compiler.source>15</maven.compiler.source>
+		<maven.compiler.target>15</maven.compiler.target>
 	</properties>
 
 	<groupId>me.grishka.smithereen</groupId>
 	<artifactId>server</artifactId>
-	<version>0.2</version>
+	<version>0.3.0</version>
 	<build>
 		<plugins>
-
-			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version>
-				<configuration>
-					<source>15</source>
-					<target>15</target>
-				</configuration>
-			</plugin>
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -140,7 +133,7 @@
 							<goal>npm</goal>
 						</goals>
 						<configuration>
-							<arguments>install</arguments>
+							<arguments>install --no-audit --no-fund</arguments>
 						</configuration>
 					</execution>
 
@@ -185,6 +178,22 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>me.ccampo</groupId>
+				<artifactId>git-version-maven-plugin</artifactId>
+				<version>0.1.0</version> <!-- Use the latest stable version if possible -->
+				<extensions>true</extensions>
+				<configuration>
+					<strategy hint="git">
+						<!-- Strategy specific configuration goes here -->
+						<nonQualifierBranches>master</nonQualifierBranches>
+						<preReleaseStage>dev</preReleaseStage>
+						<dirtyQualifier>dirty</dirtyQualifier>
+						<snapshot>false</snapshot>
+					</strategy>
+					<deleteTemporaryFile>true</deleteTemporaryFile>
+				</configuration>
 			</plugin>
 
 		</plugins>

@@ -1,5 +1,8 @@
 package smithereen.storage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -9,11 +12,16 @@ import smithereen.Config;
 import smithereen.Utils;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=13;
+	public static final int SCHEMA_VERSION=16;
+	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
 		if(Config.dbSchemaVersion==0){
 			Config.updateInDatabase("SchemaVersion", SCHEMA_VERSION+"");
+			Connection conn=DatabaseConnectionManager.getConnection();
+			conn.createStatement().execute("""
+					CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
+					RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, BINARY(0xFF), BINARY(0xFFFF)), '%', BINARY(0xFF25)), '_', BINARY(0xFF5F)), '%');""");
 		}else{
 			for(int i=Config.dbSchemaVersion+1;i<=SCHEMA_VERSION;i++){
 				Connection conn=DatabaseConnectionManager.getConnection();
@@ -32,7 +40,7 @@ public class DatabaseSchemaUpdater{
 	}
 
 	private static void updateFromPrevious(int target) throws SQLException{
-		System.out.println("Updating database schema "+Config.dbSchemaVersion+" -> "+target);
+		LOG.info("Updating database schema {} -> {}", Config.dbSchemaVersion, target);
 		Connection conn=DatabaseConnectionManager.getConnection();
 		if(target==2){
 			conn.createStatement().execute("ALTER TABLE wall_posts ADD (reply_count INTEGER UNSIGNED NOT NULL DEFAULT 0)");
@@ -257,6 +265,22 @@ public class DatabaseSchemaUpdater{
 					  CONSTRAINT `poll_votes_ibfk_3` FOREIGN KEY (`option_id`) REFERENCES `poll_options` (`id`) ON DELETE CASCADE
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			conn.createStatement().execute("ALTER TABLE wall_posts ADD `poll_id` int(10) unsigned DEFAULT NULL");
+		}else if(target==14){
+			conn.createStatement().execute("""
+					CREATE TABLE `newsfeed_comments` (
+					  `user_id` int(10) unsigned NOT NULL,
+					  `object_type` int(10) unsigned NOT NULL,
+					  `object_id` int(10) unsigned NOT NULL,
+					  `last_comment_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					  PRIMARY KEY (`object_type`,`object_id`,`user_id`),
+					  KEY `user_id` (`user_id`),
+					  KEY `last_comment_time` (`last_comment_time`),
+					  CONSTRAINT `newsfeed_comments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+		}else if(target==15){
+			conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `federation_state` tinyint unsigned NOT NULL DEFAULT 0");
+		}else if(target==16){
+			conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `source` text DEFAULT NULL, ADD `source_format` tinyint unsigned DEFAULT NULL");
 		}
 	}
 }

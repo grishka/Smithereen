@@ -1,8 +1,12 @@
 {%extends "page"%}
 {%block content%}
 {%if notifications.empty%}
-	<center class="notMuchContent">{{L('no_notifications')}}</center>
+	<div class="emptyState">{{L('no_notifications')}}</div>
 {%else%}
+<div class="summaryWrap">
+	<div class="summary">{{ L('summary_notifications') }}</div>
+	{%include "pagination" with {'perPage': 50, 'offset': offset, 'total': total, 'urlPrefix': "/my/notifications?offset="}%}
+</div>
 <div class="singleColumn">
 {%for notification in notifications%}
 {%set actor=users[notification.actorID]%}
@@ -41,36 +45,36 @@
 		<td valign="top" class="postContentWrap">
 			<a href="{{actorURL}}" class="authorName">{{actorName}}</a>
 			{%if notification.type=="REPLY"%}
-			{{LG(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', actorGender)}} <a href="{{relatedObject.internalURL}}">{{relatedObject.shortTitle}}</a>
+			{{L(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', {'gender': actorGender})}} <a href="{{relatedObject.internalURL}}">{{relatedObject.shortTitle}}</a>
 			<div class="postContent">
 				{{object.content | raw}}
 			</div>
 			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments)}}<br/>{%endif%}
 			{%set link=object.internalURL%}
 			{%elseif notification.type=="MENTION"%}
-			{{LG(isComment ? 'notification_mentioned_in_comment' : 'notification_mentioned_in_post', actorGender)}}
+			{{L(isComment ? 'notification_mentioned_in_comment' : 'notification_mentioned_in_post', {'gender': actorGender})}}
 			<div class="postContent">
 				{{object.content | raw}}
 			</div>
 			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments)}}<br/>{%endif%}
 			{%set link=object.internalURL%}
 			{%elseif notification.type=="LIKE"%}
-			{{LG(isComment ? 'notification_liked_comment' : 'notification_liked_post', actorGender)}} <a href="{{object.internalURL}}">{{object.shortTitle}}</a>
+			{{L(isComment ? 'notification_liked_comment' : 'notification_liked_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle}}</a>
 			{%elseif notification.type=="RETOOT"%}
-			{{LG(isComment ? 'notification_reposted_comment' : 'notification_reposted_post', actorGender)}} <a href="{{object.internalURL}}">{{object.shortTitle}}</a>
+			{{L(isComment ? 'notification_reposted_comment' : 'notification_reposted_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle}}</a>
 			{%elseif notification.type=="POST_OWN_WALL"%}
-			{{LG('notification_posted_on_wall', actorGender)}}
+			{{L('notification_posted_on_wall', {'gender': actorGender})}}
 			<div class="postContent">
 				{{object.content | raw}}
 			</div>
 			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments)}}<br/>{%endif%}
 			{%set link=object.internalURL%}
 			{%elseif notification.type=="INVITE_SIGNUP"%}
-			{{LG('notification_invite_signup', actorGender)}}
+			{{L('notification_invite_signup', {'gender': actorGender})}}
 			{%elseif notification.type=="FOLLOW"%}
-			{{LG('notification_follow', actorGender)}}
+			{{L('notification_follow', {'gender': actorGender})}}
 			{%elseif notification.type=="FRIEND_REQ_ACCEPT"%}
-			{{LG('notification_friend_req_accept', actorGender)}}
+			{{L('notification_friend_req_accept', {'gender': actorGender})}}
 			{%else%}
 			<div class="postContent">
 				{{notification}}
@@ -83,7 +87,11 @@
 {% else %}
 <div class="emptyState">{{ L('notifications_empty') }}</div>
 {%endfor%}
+</div>
+{% if total>50 %}
+<div class="bottomSummaryWrap">
 	{%include "pagination" with {'perPage': 50, 'offset': offset, 'total': total, 'urlPrefix': "/my/notifications?offset="}%}
 </div>
+{% endif %}
 {%endif%}
 {%endblock%}

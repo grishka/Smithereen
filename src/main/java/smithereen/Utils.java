@@ -3,6 +3,7 @@ package smithereen;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Comment;
@@ -20,17 +21,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.IDN;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
-import java.time.temporal.TemporalField;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -68,6 +68,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.InstantMillisJsonAdapter;
 import smithereen.util.LocaleJsonAdapter;
 import smithereen.util.TimeZoneJsonAdapter;
+import smithereen.util.TopLevelDomainList;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -75,17 +76,22 @@ import spark.utils.StringUtils;
 
 public class Utils{
 
-	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor");
+	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor", "healthz");
 	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
 	private static final ThreadLocal<SimpleDateFormat> ISO_DATE_FORMAT=new ThreadLocal<>();
 	public static final String staticFileHash;
 	private static Unidecode unidecode=Unidecode.toAscii();
 	private static Random rand=new Random();
 
-	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?([a-z0-9_.-]+\\.([a-z0-9_-]+))(?:\\:\\d+)?((?:\\/(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
-	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+))?");
-	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@([a-zA-Z0-9._-]+[a-zA-Z0-9-]+)");
+	// https://unicode.org/faq/idn.html#33, mostly
+	private static final String IDN_VALID_CHAR_REGEX="[[\\u00B7\\u0375\\u05F3\\u05F4\\u30FB\\u002D\\u06FD\\u06FE\\u0F0B\\u3007\\u00DF\\u03C2\\u200C\\u200D][^\\p{IsControl}\\p{IsWhite_Space}\\p{gc=S}\\p{IsPunctuation}\\p{gc=Nl}\\p{gc=No}\\p{gc=Me}\\p{blk=Combining_Diacritical_Marks}\\p{blk=Musical_Symbols}\\p{block=Ancient_Greek_Musical_Notation}\\u0640\\u07FA\\u302E\\u302F\\u3031-\\u3035\\u303B]]";
+	// A domain must be at least 2 (possibly IDN) labels
+	private static final String IDN_DOMAIN_REGEX=IDN_VALID_CHAR_REGEX+"+(?:\\."+IDN_VALID_CHAR_REGEX+"+)+";
+	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
+	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@("+IDN_DOMAIN_REGEX+"))?");
+	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@("+IDN_DOMAIN_REGEX+")");
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([a-zA-Z0-9]+)=\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\"\\s*([,;])?\\s*");
+	private static final Pattern NON_ASCII_PATTERN=Pattern.compile("\\P{ASCII}");
 
 	public static final Gson gson=new GsonBuilder()
 			.disableHtmlEscaping()
@@ -156,20 +162,28 @@ public class Utils{
 		}
 	}
 
-	public static Object wrapError(Request req, Response resp, String errorKey, Object... formatArgs){
+	public static Object wrapError(Request req, Response resp, String errorKey){
+		return wrapError(req, resp, errorKey, null);
+	}
+
+	public static Object wrapError(Request req, Response resp, String errorKey, Map<String, Object> formatArgs){
 		SessionInfo info=req.session().attribute("info");
 		Lang l=lang(req);
-		String msg=formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok"));
 		}
 		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error"));
 	}
 
-	public static String wrapErrorString(Request req, Response resp, String errorKey, Object... formatArgs){
+	public static String wrapErrorString(Request req, Response resp, String errorKey){
+		return wrapErrorString(req, resp, errorKey, null);
+	}
+
+	public static String wrapErrorString(Request req, Response resp, String errorKey, Map<String, Object> formatArgs){
 		SessionInfo info=req.session().attribute("info");
 		Lang l=lang(req);
-		String msg=formatArgs.length>0 ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok")).json();
 		}
@@ -434,8 +448,11 @@ public class Utils{
 				if(matcher.start()>0 && text.text().charAt(matcher.start()-1)=='@')
 					continue;
 
+				String scheme=matcher.group(1);
+				String host=matcher.group(2);
+
 				// Additionally validate IPv4 addresses
-				if(url.matches("^[\\d.]+")){
+				if(host.matches("^[\\d.]+")){
 					Matcher matcher2=Pattern.compile("(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})").matcher(url);
 					if(!matcher2.find())
 						continue;
@@ -446,12 +463,21 @@ public class Utils{
 					}
 				}
 
+				// If there's no scheme, check the domain against the list of actually existing TLDs
+				// Because some people are weird.They write like this.
+				if(StringUtils.isEmpty(scheme)){
+					String tld=host.substring(host.lastIndexOf('.')+1);
+					System.out.println("TLD="+tld);
+					if(!TopLevelDomainList.contains(tld))
+						continue;
+				}
+
 				TextNode inner=matcher.start()==0 ? text : text.splitText(matcher.start());
 				int len=matcher.end()-matcher.start();
 				if(len<inner.text().length())
 					inner.splitText(len);
 				String realURL=url;
-				if(StringUtils.isEmpty(matcher.group(1))){
+				if(StringUtils.isEmpty(scheme)){
 					realURL="http://"+url;
 				}
 				inner.wrap("<a href=\""+escapeHTML(realURL)+"\">");
@@ -686,6 +712,18 @@ public class Utils{
 		return matcher.find() && matcher.start()==0 && matcher.end()==in.length();
 	}
 
+	public static String normalizeURLDomain(String in){
+		Matcher matcher=URL_PATTERN.matcher(in);
+		if(!matcher.find())
+			throw new IllegalStateException("use isURL() first");
+		String host=matcher.group(2);
+		if(NON_ASCII_PATTERN.matcher(host).find()){
+			return in.substring(0, matcher.start(2))+convertIdnToAsciiIfNeeded(host)+in.substring(matcher.end(2));
+		}else{
+			return in;
+		}
+	}
+
 	public static boolean isUsernameAndDomain(String in){
 		if(in==null)
 			return false;
@@ -709,6 +747,22 @@ public class Utils{
 			chars[i]=alphabet.charAt(rand.nextInt(alphabet.length()));
 		}
 		return new String(chars);
+	}
+
+	public static String convertIdnToAsciiIfNeeded(String domain) throws IllegalArgumentException{
+		if(domain==null)
+			return null;
+		if(NON_ASCII_PATTERN.matcher(domain).find())
+			return IDN.toASCII(domain);
+		return domain;
+	}
+
+	@NotNull
+	public static ApplicationContext context(Request req){
+		ApplicationContext context=req.attribute("context");
+		if(context==null)
+			throw new IllegalStateException("context==null");
+		return context;
 	}
 
 	public interface MentionCallback{

@@ -277,9 +277,7 @@ small{
 	padding: 0;
 	a{
 		display: block;
-		line-height: 21px;
-		padding-left: 6px;
-		padding-right: 6px;
+		padding: 4px 6px;
 	}
 	a:hover, a:visited:hover{
 		text-decoration: none;
@@ -331,6 +329,9 @@ small{
 	padding-bottom: 5px;
 	&.feedPostRow{
 		padding-bottom: 10px;
+		&:last-child{
+			padding-bottom: 0;
+		}
 	}
 	>.post{
 		border: none;
@@ -343,6 +344,7 @@ small{
 	.feedRowContent{
 		padding-left: 30px;
 		padding-top: 2px;
+		line-height: 13px;
 		&+.post{
 			padding-top: 7px;
 		}
@@ -363,10 +365,16 @@ small{
 		margin: 0;
 		padding: 0;
 	}
+	&:last-child{
+		padding-bottom: 0;
+	}
 }
 
 .feedRow, .wallRow{
 	border-bottom: solid 1px $wallPostSeparator;
+	&:last-child{
+		border-bottom: none;
+	}
 }
 
 
@@ -452,6 +460,82 @@ small{
 	background: $bgGrey;
 	border-top: solid 1px $wallPostSeparator;
 	border-bottom: solid 1px $wallPostSeparator;
+	&.editing{
+		border: none;
+		background: none;
+		padding: 8px 0 0 0;
+	}
+	.attachment{
+		position: relative;
+		float: left;
+		margin: 8px 10px 8px 0;
+		.scrim{
+			display: none;
+		}
+		.deleteBtn{
+			position: absolute;
+			top: 0;
+			right: 0;
+			padding: 3px;
+			border-radius: 3px;
+			background: rgba(0,0,0,0.5);
+			&:after{
+				content: '';
+				width: 7px;
+				height: 7px;
+				display: block;
+				background-image: svg-load("img/notifier_close.svg", fill: #fff);
+				background-position: center;
+				background-repeat: no-repeat;
+				opacity: 0.6;
+				transition: opacity .1s ease;
+			}
+			&:hover:after{
+				opacity: 0.8;
+			}
+		}
+		img{
+			width: auto;
+			height: auto;
+			max-width: 75px;
+			max-height: 57px;
+			object-fit: cover;
+			display: block;
+		}
+		.fileName, .progressBar{
+			display: none;
+		}
+		&.uploading{
+			float: none;
+			clear: both;
+			img{
+				display: none;
+			}
+			.progressBar{
+				display: inline-block;
+			}
+			.fileName{
+				color: $auxiliaryGrey;
+				display: inline-block;
+				margin-left: 6px;
+				max-width: 300px;
+				overflow: hidden;
+				white-space: nowrap;
+				text-overflow: ellipsis;
+			}
+			.deleteBtn{
+				position: static;
+				display: inline-block;
+				margin: 0 5px;
+				padding-top: 4px;
+				padding-bottom: 2px;
+				background: none;
+				&:after{
+					background-image: svg-load('img/notifier_close.svg', fill: $boldHeaders);
+				}
+			}
+		}
+	}
 }
 
 .profileBlock{
@@ -463,7 +547,7 @@ small{
 		padding: 0 8px;
 		background: $blockBackground;
 		a{
-			color: $normalLink;
+			color: $boldHeaders;
 		}
 	}
 	.blockSubheader{
@@ -751,6 +835,16 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 			box-shadow: none;
 		}
 	}
+	&.tertiary{
+		background: transparent;
+		text-shadow: none;
+		color: $normalLink;
+		box-shadow: none;
+		border: none;
+		&:hover{
+			background: $blockBackground;
+		}
+	}
 }
 
 select{
@@ -793,20 +887,31 @@ select{
 }
 
 .friendsRow{
-	padding-bottom: 8px;
+	padding-bottom: 10px;
 	border-bottom: solid 1px $wallPostSeparator;
-	margin-bottom: 8px;
+	margin-bottom: 10px;
 	border-spacing: 0;
 	.info{
-		padding: 16px;
-	}
-	blockquote{
-		margin: 8px 0;
-		padding: 8px;
-		border-left: solid 2px $auxiliaryGrey;
+		padding: 1px 0 0 10px;
+		td{
+			padding-top: 3px;
+		}
 	}
 	.buttons{
 		margin-top: 8px;
+		padding-bottom: 2px;
+	}
+	.mutual{
+		padding-top: 5px;
+	}
+	.mutualPics{
+		margin-top: 6px;
+		height: 32px;
+		a{
+			display: block;
+			float: left;
+			margin-right: 4px;
+		}
 	}
 }
 
@@ -961,29 +1066,41 @@ select{
 }
 
 .pagination{
-	padding: 8px;
-	text-align: center;
+	float: right;
 	a, span{
-		padding: 8px;
+		display: inline-block;
+		color: $boldHeaders;
+	}
+	.curPage{
+		font-weight: bold;
+	}
+}
+
+.summaryWrap .pagination{
+	margin-bottom: -1px;
+	a, span{
+		padding: 2px 5px 6px;
 	}
 	a:hover, a:visited:hover{
 		text-decoration: none;
+		box-shadow: 0 -4px 0 $wallPostSeparator inset;
 	}
 	.curPage{
-		background: $simpleButton;
-		color: $textOnAccent;
+		box-shadow: 0 -1px 0 $normalLink inset, 0 -4px 0 $tabBackground inset;
 	}
-	.page{
-		border-bottom: solid 1px color($simpleButton alpha(30%));
-		padding-bottom: 7px;
-		transition-property: border-bottom-color, border-bottom-width, padding-bottom;
-		transition-duration: 0.2s;
-		transition-timing-function: ease-in-out;
-		&:hover, &:visited:hover{
-			border-bottom-color: color($simpleButton alpha(70%));
-			border-bottom-width: 3px;
-			padding-bottom: 5px;
-		}
+}
+
+.bottomSummaryWrap .pagination{
+	margin-top: -1px;
+	a, span{
+		padding: 6px 5px 2px;
+	}
+	a:hover, a:visited:hover{
+		text-decoration: none;
+		box-shadow: 0 4px 0 $wallPostSeparator inset;
+	}
+	.curPage{
+		box-shadow: 0 1px 0 $normalLink inset, 0 4px 0 $tabBackground inset;
 	}
 }
 
@@ -1210,18 +1327,18 @@ select{
 }
 
 .userGrid{
-	padding: 8px 8px;
+	padding: 9px;
+	display: grid;
+	grid-template-columns: repeat(8, 1fr);
+	grid-gap: 9px 8px;
 }
 
 .userGridItem{
-	display: inline-block;
-	width: 116px;
-	padding: 8px;
-	vertical-align: top;
-	box-sizing: border-box;
+	overflow-x: hidden;
+	text-align: center;
 	.name{
-		text-align: center;
-		padding-top: 8px;
+		padding-top: 10px;
+		line-height: 13px;
 	}
 }
 
@@ -1279,10 +1396,14 @@ select{
 		min-width: 0;
 		min-height: 0;
 	}
+	video{
+		max-width: 100%;
+	}
 }
 
 .postFormNonThumb{
 	margin-top: 10px;
+	clear: both;
 	h3{
 		margin: 0 0 10px 0;
 		font-size: 11px;
@@ -1321,6 +1442,7 @@ select{
 
 .narrowWall .postAttachments .aspectWrapper .pseudoImage, .comment .postAttachments .aspectWrapper .pseudoImage{
 	max-width: 330px;
+	max-width: min(330px, 100%);
 }
 
 .narrowWall{
@@ -1507,7 +1629,7 @@ select{
 	padding-top: 4px;
 	.postCWButton{
 		display: block;
-		color: $normalLink;
+		color: $boldHeaders;
 		font-weight: bold;
 		cursor: pointer;
 		height: 24px;
@@ -1530,19 +1652,43 @@ input:checked+.postCWWrap{
 }
 
 .summaryWrap{
-	color: $normalLink;
-	padding: 13px 15px 0;
+	color: $boldHeaders;
+	padding: 13px 10px 0;
 	border-bottom: solid 1px $wallPostSeparator;
 
 	.summary{
 		font-weight: bold;
 		padding: 3px 0 4px;
+		float: left;
 	}
-
 	.auxLinks{
 		float: right;
 		padding: 3px 0 4px;
 	}
+}
+
+.bottomSummaryWrap{
+	padding: 0 10px 13px;
+	border-top: solid 1px $wallPostSeparator;
+}
+
+.summaryWrap, .bottomSummaryWrap{
+	&:after{
+		content: ' ';
+		clear: both;
+		height: 0;
+		display: block;
+	}
+	&.noSidePadding{
+		padding-left: 0;
+		padding-right: 0;
+	}
+}
+
+.boxLayer .summaryWrap, .boxLayer .bottomSummaryWrap{
+	padding-left: 0;
+	padding-right: 0;
+	margin: 0 10px;
 }
 
 textarea{
@@ -1699,5 +1845,96 @@ textarea{
 	transition: opacity .15s ease;
 	&:hover{
 		opacity: 1;
+	}
+}
+
+.navbar{
+	padding: 7px 10px;
+	line-height: 140%;
+	background: $blockBackground;
+	font-weight: bold;
+	color: $boldHeaders;
+
+	.auxText{
+		color: $auxiliaryBlockHeader;
+	}
+}
+
+.sendFriendReqForm{
+	display: grid;
+	grid-template-columns: 100px auto;
+	grid-gap: 23px;
+	textarea{
+		width: 100%;
+	}
+}
+
+label.pretendLink{
+	color: $normalLink;
+	cursor: pointer;
+	&:hover{
+		text-decoration: underline;
+	}
+}
+
+@keyframes progressAnim{
+	from{
+		background-position: 0 0;
+	}
+	to{
+		background-position: -10px 0;
+	}
+}
+
+/* disclaimer: this abuses CSS way too much */
+/* I'm so going to hell for this */
+.progressBar{
+	width: 252px;
+	background: $bg;
+	overflow-x: hidden; /* clip part of the outline of .progress protruding to the left */
+	>.inner{
+		border: solid 1px #ccc;
+		border-left-color: $headerBorderTop; /* needed because that part of the border ends up translated and clipped */
+		>.progress{ /* this translates to the left to clip the progress bar itself, also provides top-right-bottom border */
+			transform-origin: top left;
+			transition: transform .2s ease-in-out;
+			outline: solid 1px $headerBorderTop;
+			overflow-x: hidden;
+			transform: translateX(-100%);
+			>.progressInner{ /* this translates to the right to compensate for the translation of the parent element so background stays steady */
+				transform-origin: top left;
+				transition: transform .2s ease-in-out;
+				height: 18px;
+				background: linear-gradient(to top, $buttonGradientBottom, $buttonGradientTop) repeat-x top;
+				background-size: 1px 42px;
+				background-position: 0 -16px;
+				box-shadow: 0 1px 0 $buttonBorderTop inset;
+				position: relative;
+				transform: translateX(100%);
+				&:after{
+					content: '';
+					position: absolute;
+					top: 0;
+					left: 0;
+					right: 0;
+					bottom: 0;
+					background: linear-gradient(to right, transparent 50%, rgba(255, 255, 255, .1) 50%) repeat-x;
+					background-size: 10px 42px;
+					animation: progressAnim 1s linear infinite;
+				}
+			}
+		}
+	}
+	&.small{
+		width: 112px;
+		>.inner>.progress>.progressInner{
+			height: 8px;
+		}
+	}
+	&.empty>.inner{
+		border-left-color: #ccc;
+		>.progress{
+			opacity: 0;
+		}
 	}
 }

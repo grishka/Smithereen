@@ -1,5 +1,8 @@
 package smithereen;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -27,6 +30,7 @@ import java.util.Properties;
 import java.util.stream.Stream;
 
 import smithereen.storage.DatabaseConnectionManager;
+import smithereen.util.TopLevelDomainList;
 import spark.utils.StringUtils;
 
 public class Config{
@@ -75,6 +79,8 @@ public class Config{
 
 	public static PrivateKey serviceActorPrivateKey;
 	public static PublicKey serviceActorPublicKey;
+
+	private static final Logger LOG=LoggerFactory.getLogger(Config.class);
 
 	public static void load(String filePath) throws IOException{
 		FileInputStream in=new FileInputStream(filePath);
@@ -161,6 +167,11 @@ public class Config{
 					serviceActorPublicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
 				}
 			}catch(NoSuchAlgorithmException|InvalidKeySpecException ignore){}
+
+			TopLevelDomainList.lastUpdatedTime=Long.parseLong(dbValues.getOrDefault("TLDList_LastUpdated", "0"));
+			if(TopLevelDomainList.lastUpdatedTime>0){
+				TopLevelDomainList.update(dbValues.get("TLDList_Data"));
+			}
 		}
 	}
 
@@ -181,8 +192,7 @@ public class Config{
 			stmt.setString(i+1, e.getValue());
 			i+=2;
 		}
-		if(DEBUG)
-			System.out.println(stmt);
+		LOG.debug("{}", stmt);
 		stmt.execute();
 	}
 

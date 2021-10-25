@@ -55,6 +55,7 @@ public class ProfileRoutes{
 		User user=UserStorage.getByUsername(username);
 		Lang l=lang(req);
 		if(user!=null){
+			boolean isSelf=self!=null && self.user.id==user.id;
 			int[] postCount={0};
 			int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
 			List<Post> wall=PostStorage.getWallPosts(user.id, false, 0, 0, offset, postCount, false);
@@ -112,22 +113,22 @@ public class ProfileRoutes{
 					FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 					if(status==FriendshipStatus.FRIENDS){
 						model.with("isFriend", true);
-						model.with("friendshipStatusText", Utils.lang(req).get("X_is_your_friend", user.firstName));
+						model.with("friendshipStatusText", Utils.lang(req).get("X_is_your_friend", Map.of("name", user.firstName)));
 					}else if(status==FriendshipStatus.REQUEST_SENT){
 						model.with("friendRequestSent", true);
-						model.with("friendshipStatusText", Utils.lang(req).inflected("you_sent_friend_req_to_X", user.gender, user.firstName, null, null));
+						model.with("friendshipStatusText", Utils.lang(req).get("you_sent_friend_req_to_X", Map.of("name", user.getFirstAndGender())));
 					}else if(status==FriendshipStatus.REQUEST_RECVD){
 						model.with("friendRequestRecvd", true);
-						model.with("friendshipStatusText", Utils.lang(req).gendered("X_sent_you_friend_req", user.gender, user.firstName));
+						model.with("friendshipStatusText", Utils.lang(req).get("X_sent_you_friend_req", Map.of("gender", user.gender, "name", user.firstName)));
 					}else if(status==FriendshipStatus.FOLLOWING){
 						model.with("following", true);
-						model.with("friendshipStatusText", Utils.lang(req).inflected("you_are_following_X", user.gender, user.firstName, null, null));
+						model.with("friendshipStatusText", Utils.lang(req).get("you_are_following_X", Map.of("name", user.getFirstAndGender())));
 					}else if(status==FriendshipStatus.FOLLOWED_BY){
 						model.with("followedBy", true);
-						model.with("friendshipStatusText", Utils.lang(req).gendered("X_is_following_you", user.gender, user.firstName));
+						model.with("friendshipStatusText", Utils.lang(req).get("X_is_following_you", Map.of("gender", user.gender, "name", user.firstName)));
 					}else if(status==FriendshipStatus.FOLLOW_REQUESTED){
 						model.with("followRequested", true);
-						model.with("friendshipStatusText", Utils.lang(req).get("waiting_for_X_to_accept_follow_req", user.firstName));
+						model.with("friendshipStatusText", Utils.lang(req).get("waiting_for_X_to_accept_follow_req", Map.of("gender", user.gender, "name", user.firstName)));
 					}
 					model.with("isBlocked", UserStorage.isUserBlocked(self.user.id, user.id));
 					model.with("isSelfBlocked", UserStorage.isUserBlocked(user.id, self.user.id));
@@ -144,7 +145,7 @@ public class ProfileRoutes{
 					meta.put("og:first_name", user.firstName);
 				if(StringUtils.isNotEmpty(user.lastName))
 					meta.put("og:last_name", user.lastName);
-				String descr=l.plural("X_friends", friendCount[0])+", "+l.plural("X_posts", postCount[0]);
+				String descr=l.get("X_friends", Map.of("count", friendCount[0]))+", "+l.get("X_posts", Map.of("count", postCount[0]));
 				if(StringUtils.isNotEmpty(user.summary))
 					descr+="\n"+Jsoup.clean(user.summary, Whitelist.none());
 				meta.put("og:description", descr);
@@ -168,6 +169,8 @@ public class ProfileRoutes{
 			if(user instanceof ForeignUser)
 				model.with("noindex", true);
 			model.with("activityPubURL", user.activityPubID);
+
+			model.addNavBarItem(user.getFullName(), null, isSelf ? l.get("this_is_you") : null);
 
 			model.with("groups", GroupStorage.getUserGroups(user.id));
 			jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
@@ -203,14 +206,14 @@ public class ProfileRoutes{
 				}else{
 					RenderedTemplateResponse model=new RenderedTemplateResponse("form_page", req);
 					model.with("targetUser", user);
-					model.with("contentTemplate", "send_friend_request").with("formAction", user.getProfileURL("doSendFriendRequest")).with("submitButton", l.get("send"));
+					model.with("contentTemplate", "send_friend_request").with("formAction", user.getProfileURL("doSendFriendRequest")).with("submitButton", l.get("add_friend"));
 					return model;
 				}
 			}else if(status==FriendshipStatus.NONE){
 				if(user.supportsFriendRequests()){
 					RenderedTemplateResponse model=new RenderedTemplateResponse("send_friend_request", req);
 					model.with("targetUser", user);
-					return wrapForm(req, resp, "send_friend_request", user.getProfileURL("doSendFriendRequest"), l.get("add_friend"), "send", model);
+					return wrapForm(req, resp, "send_friend_request", user.getProfileURL("doSendFriendRequest"), l.get("send_friend_req_title"), "add_friend", model);
 				}else{
 					return doSendFriendRequest(req, resp, self);
 				}
@@ -275,7 +278,7 @@ public class ProfileRoutes{
 			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING || status==FriendshipStatus.FOLLOW_REQUESTED){
 				Lang l=Utils.lang(req);
 				String back=Utils.back(req);
-				return new RenderedTemplateResponse("generic_confirm", req).with("message", l.inflected("confirm_unfriend_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", user.getProfileURL("doRemoveFriend")+"?_redir="+URLEncoder.encode(back)).with("back", back);
+				return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unfriend_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", user.getProfileURL("doRemoveFriend")+"?_redir="+URLEncoder.encode(back)).with("back", back);
 			}else{
 				return Utils.wrapError(req, resp, "err_not_friends");
 			}
@@ -284,49 +287,42 @@ public class ProfileRoutes{
 		}
 	}
 
+	private static Object friends(Request req, Response resp, User user, Account self) throws SQLException{
+		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
+		model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
+		model.with("title", lang(req).get("friends"));
+		if(self!=null && user.id!=self.user.id){
+			int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
+			model.with("mutualCount", mutualCount);
+		}
+		model.with("tab", "friends");
+		jsLangKey(req, "remove_friend", "yes", "no");
+		return model;
+	}
+
 	public static Object friends(Request req, Response resp) throws SQLException{
+		User user=getUserOrThrow(req);
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
-		String username=req.params(":username");
-		User user;
-		if(username==null){
-			if(requireAccount(req, resp)){
-				user=self.user;
-			}else{
-				return "";
-			}
-		}else{
-			user=UserStorage.getByUsername(username);
-		}
-		if(user!=null){
-			RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
-			model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
-			model.with("title", lang(req).get("friends"));
-			if(self!=null && user.id!=self.user.id){
-				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
-				model.with("mutualCount", mutualCount);
-			}
-			model.with("tab", "friends");
-			jsLangKey(req, "remove_friend", "yes", "no");
-			return model;
-		}
-		throw new ObjectNotFoundException("err_user_not_found");
+		return friends(req, resp, user, self);
+	}
+
+	public static Object ownFriends(Request req, Response resp, Account self) throws SQLException{
+		return friends(req, resp, self.user, self);
 	}
 
 	public static Object mutualFriends(Request req, Response resp, Account self) throws SQLException{
-		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
-		if(user!=null && user.id!=self.user.id){
-			RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
-			model.with("friendList", UserStorage.getMutualFriendListForUser(user.id, self.user.id)).with("owner", user).with("tab", 0);
-			model.with("title", lang(req).get("friends"));
-			model.with("tab", "mutual");
-			int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
-			model.with("mutualCount", mutualCount);
-			jsLangKey(req, "remove_friend", "yes", "no");
-			return model;
-		}
-		throw new ObjectNotFoundException("err_user_not_found");
+		User user=getUserOrThrow(req);
+		if(user.id==self.user.id)
+			throw new ObjectNotFoundException("err_user_not_found");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
+		model.with("friendList", UserStorage.getMutualFriendListForUser(user.id, self.user.id)).with("owner", user).with("tab", 0);
+		model.with("title", lang(req).get("friends"));
+		model.with("tab", "mutual");
+		int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
+		model.with("mutualCount", mutualCount);
+		jsLangKey(req, "remove_friend", "yes", "no");
+		return model;
 	}
 
 	public static Object followers(Request req, Response resp) throws SQLException{
@@ -463,14 +459,14 @@ public class ProfileRoutes{
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.inflected("confirm_block_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/users/"+user.id+"/block?_redir="+URLEncoder.encode(back)).with("back", back);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_block_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/users/"+user.id+"/block?_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object confirmUnblockUser(Request req, Response resp, Account self) throws SQLException{
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.inflected("confirm_unblock_user_X", user.gender, escapeHTML(user.firstName), escapeHTML(user.lastName), null)).with("formAction", "/users/"+user.id+"/unblock?_redir="+URLEncoder.encode(back)).with("back", back);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/users/"+user.id+"/unblock?_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object blockUser(Request req, Response resp, Account self) throws SQLException{
