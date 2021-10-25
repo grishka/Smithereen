@@ -439,5 +439,8 @@
   "send_friend_req_title": "Добавление в друзья",
   "summary_group_X_members": "В группе {count, plural, =0 {нет участников} one {# участник} few {# участника} other {# участников}}",
   "add_friend_req_message": "Добавить личное сообщение",
-  "summary_X_managed_groups": "Вы управляете {numGroups, plural, one {# группой} other {# группами}}"
+  "summary_X_managed_groups": "Вы управляете {numGroups, plural, one {# группой} other {# группами}}",
+  "editing_post": "Редактирование записи",
+  "editing_comment": "Редактирование комментария",
+  "edit_poll_warning": "Если Вы измените опрос, все существующие голоса будут удалены."
 }

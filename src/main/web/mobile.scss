@@ -410,6 +410,61 @@ select{
 	textarea{
 		border: none;
 	}
+	.attachment{
+		margin: 8px 4px;
+		width: 96px;
+		height: 72px;
+		border-radius: 4px;
+		overflow: hidden;
+		position: relative;
+		display: inline-block;
+		.scrim, .progressBarFrame{
+			display: none;
+		}
+		.deleteBtn{
+			position: absolute;
+			top: 0;
+			right: 0;
+			width: 32px;
+			height: 32px;
+			background-image: svg-load("img/attach_delete.svg"), radial-gradient(closest-side, rgba(0,0,0,.1), transparent);
+			background-position: center;
+			background-repeat: no-repeat;
+		}
+		img{
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+		.fileName{
+			display: none;
+		}
+		&.uploading{
+			.scrim{
+				display: block;
+				background: rgba(0,0,0,.5);
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+			}
+			.progressBar{
+				display: block;
+				position: absolute;
+				bottom: 0;
+				left: 0;
+				right: 0;
+				height: 4px;
+				overflow: hidden;
+				margin: 8px;
+				background: rgba(0,0,0,.7);
+				>.inner>.progress>.progressInner{
+					background: #FFF;
+				}
+			}
+		}
+	}
 }
 
 .profileName{
@@ -1186,6 +1241,31 @@ textarea{
 		a:active, a:visited:active{
 			text-decoration: none;
 			background: $blockBackground;
+		}
+	}
+}
+
+.progressBar{
+	background: $bgGrey;
+	overflow-x: hidden; /* clip part of the outline of .progress protruding to the left */
+	>.inner{
+		>.progress{ /* this translates to the left to clip the progress bar itself, also provides top-right-bottom border */
+			transform-origin: top left;
+			transition: transform .2s ease-in-out;
+			overflow-x: hidden;
+			transform: translateX(-100%);
+			>.progressInner{ /* this translates to the right to compensate for the translation of the parent element so background stays steady */
+				transform-origin: top left;
+				transition: transform .2s ease-in-out;
+				height: 5px;
+				background: $simpleButton;
+				transform: translateX(100%);
+			}
+		}
+	}
+	&.empty>.inner{
+		>.progress{
+			opacity: 0;
 		}
 	}
 }

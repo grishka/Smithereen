@@ -119,36 +119,25 @@ public class RenderAttachmentsFunction implements Function{
 	}
 
 	private void renderPhotoAttachment(PhotoAttachment photo, List<String> lines, int size){
-		SizedImage.Type type, type2x;
+		SizedImage.Type type;
 		if(size<=128){
 			type=SizedImage.Type.XSMALL;
-			type2x=SizedImage.Type.SMALL;
 		}else if(size<=256){
 			type=SizedImage.Type.SMALL;
-			type2x=SizedImage.Type.MEDIUM;
 		}else{
 			type=SizedImage.Type.MEDIUM;
-			type2x=SizedImage.Type.LARGE;
 		}
-		URI jpeg1x=photo.image.getUriForSizeAndFormat(type, SizedImage.Format.JPEG);
-		URI jpeg2x=photo.image.getUriForSizeAndFormat(type2x, SizedImage.Format.JPEG);
-		URI webp1x=photo.image.getUriForSizeAndFormat(type, SizedImage.Format.WEBP);
-		URI webp2x=photo.image.getUriForSizeAndFormat(type2x, SizedImage.Format.WEBP);
 
 		URI jpegFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.JPEG);
 		URI webpFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.WEBP);
 
-		String styleAttr="";
+		String styleAttr=null;
 		if(StringUtils.isNotEmpty(photo.blurHash)){
-			styleAttr=String.format(Locale.US, " style=\"background-color: #%06X\"", BlurHash.decodeToSingleColor(photo.blurHash));
+			styleAttr=String.format(Locale.US, "background-color: #%06X", BlurHash.decodeToSingleColor(photo.blurHash));
 		}
 
 		lines.add("<a class=\"photo\" href=\""+jpegFull+"\" data-full-jpeg=\""+jpegFull+"\" data-full-webp=\""+webpFull+"\" data-size=\""+photo.getWidth()+" "+photo.getHeight()+"\" onclick=\"return openPhotoViewer(this)\">"+
-				"<picture>"+
-				"<source srcset=\""+webp1x+", "+webp2x+" 2x\" type=\"image/webp\"/>"+
-				"<source srcset=\""+jpeg1x+", "+jpeg2x+" 2x\" type=\"image/jpeg\"/>"+
-				"<img src=\""+jpeg1x+"\""+styleAttr+"/>"+
-				"</picture></a>");
+				photo.image.generateHTML(type, null, styleAttr, 0, 0)+"</a>");
 	}
 
 	@NotNull

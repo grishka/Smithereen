@@ -1,5 +1,4 @@
 {# @pebvariable name="post" type="smithereen.data.Post" #}
-	main':
 {%extends "page"%}
 {%block content%}
 {%include "wall_post" with {'postInteractions': null} %}
@@ -23,6 +22,9 @@
 <ul class="actionList">
 			{%if currentUser is not null and userPermissions is not null and userPermissions.canDeletePost(post)%}
 				<li><a href="{{ post.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{post.internalURL}}/delete')">{{ L('delete') }}</a></li>
+			{%endif%}
+			{%if currentUser is not null and userPermissions is not null and userPermissions.canEditPost(post)%}
+				<li><a href="{{ post.internalURL }}/edit">{{ L('edit') }}</a></li>
 			{%endif%}
 			{%if not(post.local)%}
 				<li><a href="{{ post.url }}" target="_blank">{{ L('open_on_server_X', {'domain': post.url.host}) }}</a></li>

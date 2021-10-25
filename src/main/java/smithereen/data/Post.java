@@ -58,6 +58,7 @@ public class Post extends ActivityPubObject{
 	public boolean local;
 	public List<User> mentionedUsers=Collections.EMPTY_LIST;
 	public Poll poll;
+	public String source;
 
 	public FederationState federationState;
 
@@ -110,6 +111,7 @@ public class Post extends ActivityPubObject{
 
 		content=res.getString("text");
 		published=res.getTimestamp("created_at");
+		updated=res.getTimestamp("updated_at");
 		summary=res.getString("content_warning");
 		attributedTo=user.activityPubID;
 
@@ -167,6 +169,7 @@ public class Post extends ActivityPubObject{
 		}
 
 		federationState=FederationState.values()[res.getInt("federation_state")];
+		source=res.getString("source");
 	}
 
 	public boolean hasContentWarning(){

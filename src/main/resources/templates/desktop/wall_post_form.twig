@@ -1,6 +1,6 @@
 {# @pebvariable name="wallOwner" type="smithereen.activitypub.objects.Actor" #}
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
-<div class="wallPostForm collapsed" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}">
+<div class="wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing="1"' : '' }}>
 	{% if not wallOwner.hasWall and replyTo is null %}
 		<div class="wallPostFormError">
 		{% if isGroup %}
@@ -10,7 +10,7 @@
 		{% endif %}
 		</div>
 	{% else %}
-	<form action="{{wallOwner.typeAndIdForURL}}/createWallPost" method="post">
+	<form action="{{ isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost" }}" method="post">
 	{% if replyTo is not null %}
 		{% set fieldPlaceholder=L('comment_placeholder') %}
 	{% elseif isGroup %}
@@ -30,18 +30,36 @@
 			{%set attachIDs=""%}
 			{%for attachment in draftAttachments%}
 			<div class="attachment" id="attachment_{{attachment.localID}}" data-id="{{attachment.localID}}">
-				{{attachment.sizes | photoPicture('xs')}}
-				<a href="/system/deleteDraftAttachment?id={{attachment.localID}}&csrf={{csrf}}" class="deleteBtn" title="{{L('delete')}}"></a>
+				{{ attachment | pictureForPhoto('xs') }}
+				{% if isEditing %}
+				<a href="#" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
+				{% else %}
+				<a href="/system/deleteDraftAttachment?id={{attachment.localID}}&csrf={{csrf}}" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
+				{% endif %}
 				{%set attachIDs=attachIDs+attachment.localID%}
 				{%if not loop.last%}{%set attachIDs=attachIDs+","%}{%endif%}
 			</div>
 			{%endfor%}
 		</div>
-		<div id="postFormAttachments2_{{ id }}"></div>
+		<div id="postFormAttachments2_{{ id }}">
+			{% if contentWarning is not empty %}
+			<div class="postFormCW postFormNonThumb">
+				<a class="attachDelete flR" title="{{ L('remove_attachment') }}"></a>
+				<h4>{{ L('post_form_cw') }}</h4>
+				<input type="text" name="contentWarning" placeholder="{{ L('post_form_cw_placeholder') }}" required autocomplete="off" value="{{ contentWarning }}"/>
+			</div>
+			{% endif %}
+			{% if poll is not null %}{% include 'poll_form' with {'poll': poll} %}{% endif %}
+		</div>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
 		<table width="100%" cellpadding="0" cellspacing="0" class="bottomBar">
 			<tr><td width="50%" class="left">
+				{% if isEditing %}
+				<button>{{ L('save') }}</button>
+				<button class="tertiary jsRequired" type="button" onclick="cancelEditingPost({{ editingPostID }})">{{ L('cancel') }}</button>
+				{% else %}
 				<button>{{ L('send') }}</button>
+				{% endif %}
 			</td><td align="right" class="right">
 				<div class="popupMenuW">
 					<span class="opener">{{ L('attach') }}</span>

@@ -9,7 +9,7 @@
 <div class="singleColumn" id="postList">
 {%for entry in feed%}
 {%if entry.type=="POST"%}
-<div class="feedRow feedPostRow">
+<div class="feedRow feedPostRow" id="postWrap{{ entry.post.id }}">
 {%include "wall_post" with {'post': entry.post}%}
 </div>
 {%elseif entry.type=="RETOOT"%}

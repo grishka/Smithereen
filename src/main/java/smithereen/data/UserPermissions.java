@@ -32,6 +32,10 @@ public class UserPermissions{
 		return post.owner instanceof User && ((User)post.owner).id==userID;
 	}
 
+	public boolean canEditPost(Post post){
+		return post.user.id==userID && System.currentTimeMillis()-post.published.getTime()<24*3600_000L;
+	}
+
 	public boolean canEditGroup(Group group){
 		return managedGroups.getOrDefault(group.id, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.ADMIN);
 	}

@@ -437,5 +437,8 @@
   "send_friend_req_title": "Send a friend request",
   "summary_group_X_members": "{count, plural, =0 {No group members} one {# group member} other {# group members}}",
   "add_friend_req_message": "Add a private message",
-  "summary_X_managed_groups": "You manage {numGroups, plural, one {# group} other {# groups}}"
+  "summary_X_managed_groups": "You manage {numGroups, plural, one {# group} other {# groups}}",
+  "editing_post": "Editing post",
+  "editing_comment": "Editing comment",
+  "edit_poll_warning": "If you change anything in the poll, all votes will be reset."
 }

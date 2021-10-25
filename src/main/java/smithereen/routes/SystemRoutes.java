@@ -251,9 +251,8 @@ public class SystemRoutes{
 			LocalImage photo=new LocalImage();
 			File postMediaDir=new File(Config.uploadPath, "post_media");
 			postMediaDir.mkdirs();
+			int width, height;
 			try{
-//				MediaStorageUtils.writeResizedImages(img, new int[]{200, 400, 800, 1280, 2560}, new PhotoSize.Type[]{PhotoSize.Type.XSMALL, PhotoSize.Type.SMALL, PhotoSize.Type.MEDIUM, PhotoSize.Type.LARGE, PhotoSize.Type.XLARGE},
-//						93, 87, keyHex, postMediaDir, Config.uploadURLPath+"/post_media", photo.sizes);
 				int[] outSize={0,0};
 				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, keyHex, postMediaDir, outSize);
 
@@ -261,8 +260,8 @@ public class SystemRoutes{
 				photo.localID=keyHex;
 				photo.mediaType="image/jpeg";
 				photo.path="post_media";
-				photo.width=outSize[0];
-				photo.height=outSize[1];
+				photo.width=width=outSize[0];
+				photo.height=height=outSize[1];
 				photo.blurHash=BlurHash.encode(img, 4, 4);
 				if(req.queryParams("draft")!=null)
 					sess.postDraftAttachments.add(photo);
@@ -277,6 +276,8 @@ public class SystemRoutes{
 				resp.type("application/json");
 				return new JsonObjectBuilder()
 						.add("id", keyHex)
+						.add("width", width)
+						.add("height", height)
 						.add("thumbs", new JsonObjectBuilder()
 								.add("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.JPEG).toString())
 								.add("webp", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.WEBP).toString())

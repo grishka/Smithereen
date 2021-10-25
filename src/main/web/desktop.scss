@@ -460,6 +460,82 @@ small{
 	background: $bgGrey;
 	border-top: solid 1px $wallPostSeparator;
 	border-bottom: solid 1px $wallPostSeparator;
+	&.editing{
+		border: none;
+		background: none;
+		padding: 8px 0 0 0;
+	}
+	.attachment{
+		position: relative;
+		float: left;
+		margin: 8px 10px 8px 0;
+		.scrim{
+			display: none;
+		}
+		.deleteBtn{
+			position: absolute;
+			top: 0;
+			right: 0;
+			padding: 3px;
+			border-radius: 3px;
+			background: rgba(0,0,0,0.5);
+			&:after{
+				content: '';
+				width: 7px;
+				height: 7px;
+				display: block;
+				background-image: svg-load("img/notifier_close.svg", fill: #fff);
+				background-position: center;
+				background-repeat: no-repeat;
+				opacity: 0.6;
+				transition: opacity .1s ease;
+			}
+			&:hover:after{
+				opacity: 0.8;
+			}
+		}
+		img{
+			width: auto;
+			height: auto;
+			max-width: 75px;
+			max-height: 57px;
+			object-fit: cover;
+			display: block;
+		}
+		.fileName, .progressBar{
+			display: none;
+		}
+		&.uploading{
+			float: none;
+			clear: both;
+			img{
+				display: none;
+			}
+			.progressBar{
+				display: inline-block;
+			}
+			.fileName{
+				color: $auxiliaryGrey;
+				display: inline-block;
+				margin-left: 6px;
+				max-width: 300px;
+				overflow: hidden;
+				white-space: nowrap;
+				text-overflow: ellipsis;
+			}
+			.deleteBtn{
+				position: static;
+				display: inline-block;
+				margin: 0 5px;
+				padding-top: 4px;
+				padding-bottom: 2px;
+				background: none;
+				&:after{
+					background-image: svg-load('img/notifier_close.svg', fill: $boldHeaders);
+				}
+			}
+		}
+	}
 }
 
 .profileBlock{
@@ -1327,6 +1403,7 @@ select{
 
 .postFormNonThumb{
 	margin-top: 10px;
+	clear: both;
 	h3{
 		margin: 0 0 10px 0;
 		font-size: 11px;
@@ -1797,5 +1874,67 @@ label.pretendLink{
 	cursor: pointer;
 	&:hover{
 		text-decoration: underline;
+	}
+}
+
+@keyframes progressAnim{
+	from{
+		background-position: 0 0;
+	}
+	to{
+		background-position: -10px 0;
+	}
+}
+
+/* disclaimer: this abuses CSS way too much */
+/* I'm so going to hell for this */
+.progressBar{
+	width: 252px;
+	background: $bg;
+	overflow-x: hidden; /* clip part of the outline of .progress protruding to the left */
+	>.inner{
+		border: solid 1px #ccc;
+		border-left-color: $headerBorderTop; /* needed because that part of the border ends up translated and clipped */
+		>.progress{ /* this translates to the left to clip the progress bar itself, also provides top-right-bottom border */
+			transform-origin: top left;
+			transition: transform .2s ease-in-out;
+			outline: solid 1px $headerBorderTop;
+			overflow-x: hidden;
+			transform: translateX(-100%);
+			>.progressInner{ /* this translates to the right to compensate for the translation of the parent element so background stays steady */
+				transform-origin: top left;
+				transition: transform .2s ease-in-out;
+				height: 18px;
+				background: linear-gradient(to top, $buttonGradientBottom, $buttonGradientTop) repeat-x top;
+				background-size: 1px 42px;
+				background-position: 0 -16px;
+				box-shadow: 0 1px 0 $buttonBorderTop inset;
+				position: relative;
+				transform: translateX(100%);
+				&:after{
+					content: '';
+					position: absolute;
+					top: 0;
+					left: 0;
+					right: 0;
+					bottom: 0;
+					background: linear-gradient(to right, transparent 50%, rgba(255, 255, 255, .1) 50%) repeat-x;
+					background-size: 10px 42px;
+					animation: progressAnim 1s linear infinite;
+				}
+			}
+		}
+	}
+	&.small{
+		width: 112px;
+		>.inner>.progress>.progressInner{
+			height: 8px;
+		}
+	}
+	&.empty>.inner{
+		border-left-color: #ccc;
+		>.progress{
+			opacity: 0;
+		}
 	}
 }

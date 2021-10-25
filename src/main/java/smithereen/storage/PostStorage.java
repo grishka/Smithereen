@@ -103,6 +103,21 @@ public class PostStorage{
 		}
 	}
 
+	public static void updateWallPost(int id, String text, String textSource, List<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
+		new SQLQueryBuilder()
+				.update("wall_posts")
+				.value("text", text)
+				.value("source", textSource)
+				.value("mentions", mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(mentionedUsers.stream().mapToInt(u->u.id).toArray()))
+				.value("attachments", attachments)
+				.value("content_warning", contentWarning)
+				.value("poll_id", pollID>0 ? pollID : null)
+				.valueExpr("updated_at", "CURRENT_TIMESTAMP()")
+				.where("id=?", id)
+				.createStatement()
+				.execute();
+	}
+
 	public static void putForeignWallPost(Post post) throws SQLException{
 		Post existing=getPostByID(post.activityPubID);
 		Connection conn=DatabaseConnectionManager.getConnection();
@@ -965,6 +980,14 @@ public class PostStorage{
 		}
 
 		return pollID;
+	}
+
+	public static void deletePoll(int pollID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("polls")
+				.where("id=?", pollID)
+				.createStatement()
+				.execute();
 	}
 
 	public static List<Integer> getPollOptionVoters(int optionID, int offset, int count) throws SQLException{

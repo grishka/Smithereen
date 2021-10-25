@@ -1,7 +1,14 @@
 ///<reference path="./PopupMenu.ts"/>
 
-class PostForm{
+interface UploadingAttachment{
+	el:HTMLElement;
+	cancelBtn:HTMLAnchorElement;
+	image:HTMLElement;
+	pbar:ProgressBar;
+	file:File;
+}
 
+class PostForm{
 	private id:string;
 	private root:HTMLElement;
 	private input:HTMLTextAreaElement;
@@ -14,7 +21,6 @@ class PostForm{
 	private attachField:HTMLInputElement;
 	private replyToField:HTMLInputElement;
 	private attachmentIDs:string[]=[];
-	private uploadingAttachmentCount:number=0;
 	private currentReplyName:string="";
 	private attachPopupMenu:PopupMenu;
 	private cwLayout:HTMLElement;
@@ -33,9 +39,15 @@ class PostForm{
 	private pollTimeSelect:HTMLSelectElement;
 
 	private origReplyID:string;
+	private editing:boolean;
+
+	private uploadQueue:UploadingAttachment[]=[];
+	private currentUploadingAttachment:UploadingAttachment;
+	private showingAttachCountWarning:boolean=false;
 
 	public constructor(el:HTMLElement){
-		this.id=el.getAttribute("data-unique-id");
+		this.id=el.dataset.uniqueId;
+		this.editing=!!el.dataset.editing;
 		this.root=el;
 		this.input=ge("postFormText_"+this.id) as HTMLTextAreaElement;
 		this.form=el.getElementsByTagName("form")[0];
@@ -87,20 +99,25 @@ class PostForm{
 				var attach:HTMLElement=this.attachContainer.children[i] as HTMLElement;
 				var aid:string=attach.dataset.id;
 				this.attachmentIDs.push(aid);
-				(attach.querySelector(".deleteBtn") as HTMLElement).onclick=(ev:MouseEvent)=>{
+				var delBtn=(attach.querySelector(".deleteBtn") as HTMLElement);
+				delBtn.customData={aid: aid};
+				delBtn.onclick=(ev:MouseEvent)=>{
+					var el=ev.target as HTMLElement;
 					ev.preventDefault();
-					this.deleteAttachment(aid);
+					this.deleteAttachment(el.customData.aid);
 				};
 			}
 		}
 
-		window.addEventListener("beforeunload", (ev:BeforeUnloadEvent)=>{
-			if(this.isDirty()){
-				var msg:string=lang("confirm_discard_post_draft");
-				(ev || window.event).returnValue=msg;
-				return msg;
-			}
-		});
+		if(!this.editing){
+			window.addEventListener("beforeunload", (ev:BeforeUnloadEvent)=>{
+				if(this.isDirty()){
+					var msg:string=lang("confirm_discard_post_draft");
+					(ev || window.event).returnValue=msg;
+					return msg;
+				}
+			});
+		}
 
 		if(mobile){
 			ge("postFormAttachBtn_"+this.id).onclick=this.showMobileAttachMenu.bind(this);
@@ -119,6 +136,28 @@ class PostForm{
 			};
 		}
 		this.pollOptionFields=[];
+
+		this.cwLayout=this.root.qs(".postFormCW");
+		if(this.cwLayout){
+			this.cwLayout.qs(".attachDelete").onclick=this.hideCWLayout.bind(this);
+		}
+
+		this.pollLayout=this.root.qs(".postFormPoll");
+		if(this.pollLayout){
+			this.pollLayout.qs(".attachDelete").onclick=this.hidePollLayout.bind(this);
+			this.pollQuestionField=this.pollLayout.qs("input[name=pollQuestion]");
+			var optionWraps=this.pollLayout.querySelectorAll(".pollOptionW").unfuck();
+			this.pollOptionsWrap=optionWraps[0].parentElement;
+			for(var optWrap of optionWraps){
+				this.pollOptionFields.push((optWrap as HTMLElement).qs("input"));
+			}
+			if(this.pollOptionFields.length<10){
+				var addLayout=this.makeAddPollOptionLayout();
+				this.pollOptionsWrap.appendChild(addLayout);
+			}
+			this.pollTimeSelect=this.pollLayout.qs("select[name=pollTimeLimitValue]");
+			this.pollLayout.qs("input[name=pollTimeLimit]").onchange=this.pollTimeLimitOnChange.bind(this);
+		}
 	}
 
 	private onFormSubmit(ev:Event):void{
@@ -180,53 +219,76 @@ class PostForm{
 		var objURL=URL.createObjectURL(f);
 
 		var img:HTMLElement;
-		var pbarInner:HTMLElement;
+		var pbarEl:HTMLElement;
 		var del:HTMLAnchorElement;
 		var cont=ce("div", {className: "attachment uploading"}, [
 			img=ce("img", {src: objURL}),
 			ce("div", {className: "scrim"}),
-			ce("div", {className: "progressBarFrame"}, [
-				pbarInner=ce("div", {className: "progressBar"})
-			]),
-			del=ce("a", {className: "deleteBtn", title: lang("delete")})
+			pbarEl=ce("div", {className: "progressBar small"}),
+			ce("div", {className: "fileName", innerText: f.name}),
+			del=ce("a", {className: "deleteBtn", title: lang("remove_attachment")}),
 		]);
 
-		pbarInner.style.transform="scaleX(0)";
-
 		this.attachContainer.appendChild(cont);
-		this.uploadingAttachmentCount++;
 
+		var pbar=new ProgressBar(pbarEl);
+		var att:UploadingAttachment={el: cont, cancelBtn: del, image: img, pbar: pbar, file: f};
+		del.onclick=()=>{
+			this.uploadQueue.remove(att);
+			cont.parentNode.removeChild(cont);
+		};
+		if(this.currentUploadingAttachment){
+			this.uploadQueue.push(att);
+		}else{
+			this.actuallyUploadFile(att);
+		}
+	}
+
+	private actuallyUploadFile(f:UploadingAttachment){
+		if(this.currentUploadingAttachment){
+			throw new Error("actuallyUploadFile called during active upload");
+		}
+		this.currentUploadingAttachment=f;
 		var formData=new FormData();
-		formData.append("file", f);
+		formData.append("file", f.file);
 		var xhr=new XMLHttpRequest();
 		xhr.open("POST", "/system/upload/postPhoto?_ajax=1&csrf="+userConfig.csrf);
 		xhr.onload=()=>{
-			cont.classList.remove("uploading");
+			f.el.classList.remove("uploading");
 			var resp=xhr.response;
-			del.href="/system/deleteDraftAttachment?id="+resp.id+"&csrf="+userConfig.csrf;
-			img.outerHTML='<picture><source srcset="'+resp.thumbs.webp+'" type="image/webp"/><source srcset="'+resp.thumbs.jpeg+'" type="image/jpeg"/><img src="'+resp.thumbs.jpeg+'"/></picture>';
-			del.onclick=(ev:Event)=>{
+			f.cancelBtn.href="/system/deleteDraftAttachment?id="+resp.id+"&csrf="+userConfig.csrf;
+			f.image.outerHTML='<picture><source srcset="'+resp.thumbs.webp+'" type="image/webp"/><source srcset="'+resp.thumbs.jpeg+'" type="image/jpeg"/><img src="'+resp.thumbs.jpeg+'" width="'+resp.width+'" height="'+resp.height+'"/></picture>';
+			f.cancelBtn.onclick=(ev:Event)=>{
 				ev.preventDefault();
 				this.deleteAttachment(resp.id);
 			};
-			cont.id="attachment_"+resp.id;
+			f.el.id="attachment_"+resp.id;
 			this.attachmentIDs.push(resp.id);
 			this.attachField.value=this.attachmentIDs.join(",");
-			this.uploadingAttachmentCount--;
+			this.maybeUploadNextAttachment();
 		};
 		xhr.onerror=(ev:ProgressEvent)=>{
 			console.log(ev);
+			new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+			this.maybeUploadNextAttachment();
 		};
 		xhr.upload.onprogress=(ev:ProgressEvent)=>{
-			pbarInner.style.transform="scaleX("+(ev.loaded/ev.total)+")";
+			f.pbar.setProgress(ev.loaded/ev.total);
 		};
 		xhr.responseType="json";
 		xhr.send(formData);
-		del.onclick=()=>{
+		f.cancelBtn.onclick=()=>{
 			xhr.abort();
-			cont.parentNode.removeChild(cont);
-			this.uploadingAttachmentCount--;
+			f.el.parentNode.removeChild(f.el);
+			this.maybeUploadNextAttachment();
 		};
+	}
+
+	private maybeUploadNextAttachment(){
+		this.currentUploadingAttachment=null;
+		if(this.uploadQueue.length){
+			this.actuallyUploadFile(this.uploadQueue.shift());
+		}
 	}
 
 	private deleteAttachment(id:string):void{
@@ -349,7 +411,7 @@ class PostForm{
 		}else{
 			this.cwLayout=ce("div", {className: "postFormCW postFormNonThumb"}, [
 				ce("a", {className: "attachDelete flR", onclick: this.hideCWLayout.bind(this), title: lang("remove_attachment")}),
-				ce("h3", {innerText: lang("post_form_cw")}),
+				ce("h4", {innerText: lang("post_form_cw")}),
 				ce("input", {type: "text", name: "contentWarning", placeholder: lang("post_form_cw_placeholder"), required: true, autocomplete: "off"})
 			]);
 			this.attachContainer2.appendChild(this.cwLayout);
@@ -399,13 +461,7 @@ class PostForm{
 				lang("create_poll_multi_choice")
 			]),
 			ce("label", {className: "radioButtonWrap pollSetting"}, [
-				ce("input", {type: "checkbox", name: "pollTimeLimit", onchange: (ev)=>{
-					if((ev.target as HTMLInputElement).checked){
-						this.pollTimeSelect.show();
-					}else{
-						this.pollTimeSelect.hide();
-					}
-				}}),
+				ce("input", {type: "checkbox", name: "pollTimeLimit", onchange: this.pollTimeLimitOnChange.bind(this)}),
 				lang("create_poll_time_limit")
 			]),
 			this.pollTimeSelect=ce("select", {name: "pollTimeLimitValue"}, [
@@ -422,6 +478,14 @@ class PostForm{
 		this.attachContainer2.appendChild(this.pollLayout);
 
 		this.pollOptionFields.push(optionField1, optionField2);
+	}
+
+	private pollTimeLimitOnChange(ev:Event){
+		if((ev.target as HTMLInputElement).checked){
+			this.pollTimeSelect.show();
+		}else{
+			this.pollTimeSelect.hide();
+		}
 	}
 
 	private deletePollOption(ev:MouseEvent){
@@ -487,7 +551,7 @@ class PostForm{
 		opts.push({label: lang("attach_menu_photo"), onclick: ()=>{
 			this.fileField.click();
 		}});
-		if(!this.pollLayout){
+		if(!this.pollLayout && !this.isMobileComment){
 			opts.push({label: lang("attach_menu_poll"), onclick: this.showPollLayout.bind(this)});
 		}
 		if(!this.cwLayout){
@@ -516,14 +580,23 @@ class PostForm{
 	}
 
 	private checkAttachmentCount():boolean{
-		var count=this.attachmentIDs.length+this.uploadingAttachmentCount;
+		var count=this.attachmentIDs.length+this.uploadQueue.length;
+		if(this.currentUploadingAttachment)
+			count++;
 		if(this.pollLayout)
 			count++;
 		var maxCount=this.replyToField ? 2 : 10;
 		if(count<maxCount){
 			return true;
 		}
-		new MessageBox(lang("error"), lang("max_attachment_count_exceeded", {count: maxCount}), lang("ok")).show();
+		if(!this.showingAttachCountWarning){
+			this.showingAttachCountWarning=true;
+			var box=new MessageBox(lang("error"), lang("max_attachment_count_exceeded", {count: maxCount}), lang("ok"));
+			box.setOnDismissListener(()=>{
+				this.showingAttachCountWarning=false;
+			});
+			box.show();
+		}
 		return false;
 	}
 }

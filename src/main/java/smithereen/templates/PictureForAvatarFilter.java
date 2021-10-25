@@ -7,6 +7,7 @@ import com.mitchellbosecke.pebble.template.EvaluationContext;
 import com.mitchellbosecke.pebble.template.PebbleTemplate;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -32,55 +33,24 @@ public class PictureForAvatarFilter implements Filter{
 			return "";
 		}
 
-		String _type=(String) args.get("type");
-		SizedImage.Type type, type2x;
-		int size;
-		boolean isRect=false;
-		switch(_type){
-			case "s":
-				type=SizedImage.Type.SQUARE_SMALL;
-				type2x=SizedImage.Type.SQUARE_MEDIUM;
-				size=50;
-				break;
-			case "m":
-				type=SizedImage.Type.SQUARE_MEDIUM;
-				type2x=SizedImage.Type.SQUARE_LARGE;
-				size=100;
-				break;
-			case "l":
-				type=SizedImage.Type.SQUARE_LARGE;
-				type2x=SizedImage.Type.SQUARE_XLARGE;
-				size=200;
-				break;
-			case "xl":
-				type2x=type=SizedImage.Type.SQUARE_XLARGE;
-				size=400;
-				break;
-			case "rl":
-				type=SizedImage.Type.RECT_LARGE;
-				type2x=SizedImage.Type.RECT_XLARGE;
-				size=200;
-				_type="l";
-				isRect=true;
-				break;
-			case "rxl":
-				type=type2x=SizedImage.Type.RECT_XLARGE;
-				size=400;
-				_type="xl";
-				isRect=true;
-				break;
-			default:
-				throw new IllegalArgumentException("Wrong size type "+_type);
-		}
+		String typeStr=(String) args.get("type");
+		SizedImage.Type type=SizedImage.Type.fromSuffix(
+					switch(typeStr){
+						case "s" -> "sqs";
+						case "m" -> "sqm";
+						case "l" -> "sql";
+						case "xl" -> "sqxl";
+						default -> typeStr;
+					}
+				);
+		int size=type.getMaxWidth();
+		boolean isRect=type.isRect();
+		if(isRect)
+			typeStr=typeStr.substring(1);
 		if(args.containsKey("size"))
 			size=Templates.asInt(args.get("size"));
 		if(image==null)
-			return new SafeString("<span class=\"ava avaPlaceholder size"+_type.toUpperCase()+additionalClasses+"\" style=\"width: "+size+"px;height: "+size+"px\"></span>");
-
-		URI jpeg1x=image.getUriForSizeAndFormat(type, SizedImage.Format.JPEG),
-				jpeg2x=image.getUriForSizeAndFormat(type2x, SizedImage.Format.JPEG),
-				webp1x=image.getUriForSizeAndFormat(type, SizedImage.Format.WEBP),
-				webp2x=image.getUriForSizeAndFormat(type2x, SizedImage.Format.WEBP);
+			return new SafeString("<span class=\"ava avaPlaceholder size"+typeStr.toUpperCase()+additionalClasses+"\" style=\"width: "+size+"px;height: "+size+"px\"></span>");
 
 		int width, height;
 		if(isRect){
@@ -91,16 +61,12 @@ public class PictureForAvatarFilter implements Filter{
 			width=height=size;
 		}
 
-		String classes="avaImage";
+		List<String> classes=new ArrayList<>();
+		classes.add("avaImage");
 		if(args.containsKey("classes")){
-			classes+=" "+args.get("classes");
+			classes.add(args.get("classes").toString());
 		}
-
-		return new SafeString("<span class=\"ava avaHasImage size"+_type.toUpperCase()+"\"><picture>" +
-				"<source srcset=\""+webp1x+", "+webp2x+" 2x\" type=\"image/webp\"/>" +
-				"<source srcset=\""+jpeg1x+", "+jpeg2x+" 2x\" type=\"image/jpeg\"/>" +
-				"<img src=\""+jpeg1x+"\" width=\""+width+"\" height=\""+height+"\" class=\""+classes+"\"/>" +
-				"</picture></span>");
+		return new SafeString("<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+"\">"+image.generateHTML(type, classes, null, width, height)+"</span>");
 	}
 
 	@Override

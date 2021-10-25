@@ -177,6 +177,7 @@ class Box extends BaseLayer{
 	protected closeable:boolean=true;
 	protected boxLayer:HTMLElement;
 	protected noPrimaryButton:boolean=false;
+	protected onDismissListener:{():void;};
 
 	public constructor(title:string, buttonTitles:string[]=[], onButtonClick:{(index:number):void;}=null){
 		super();
@@ -281,6 +282,16 @@ class Box extends BaseLayer{
 		}else{
 			this.buttonBar.hide();
 		}
+	}
+
+	public dismiss(){
+		super.dismiss();
+		if(this.onDismissListener)
+			this.onDismissListener();
+	}
+
+	public setOnDismissListener(listener:{():void}){
+		this.onDismissListener=listener;
 	}
 }
 

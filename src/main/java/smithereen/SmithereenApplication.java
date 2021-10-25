@@ -354,6 +354,8 @@ public class SmithereenApplication{
 
 			get("/pollVoters/:optionID", PostRoutes::pollOptionVoters);
 			get("/pollVoters/:optionID/popover", PostRoutes::pollOptionVotersPopover);
+			getLoggedIn("/edit", PostRoutes::editPostForm);
+			postWithCSRF("/edit", PostRoutes::editPost);
 		});
 
 		get("/robots.txt", (req, resp)->{

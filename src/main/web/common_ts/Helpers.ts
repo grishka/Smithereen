@@ -813,3 +813,15 @@ function onPollInputChange(el:HTMLInputElement){
 		(el.form.qs("input[type=submit]") as HTMLInputElement).disabled=!anyChecked;
 	}
 }
+
+function doneEditingPost(id:number){
+	var fid="wallPostForm_edit"+id;
+	ge(fid).remove();
+	delete postForms[fid];
+	ge("postEditingLabel"+id).remove();
+}
+
+function cancelEditingPost(id:number){
+	doneEditingPost(id);
+	ge("postInner"+id).show();
+}

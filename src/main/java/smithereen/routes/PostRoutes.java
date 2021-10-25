@@ -30,6 +30,7 @@ import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.controllers.WallController;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
@@ -151,6 +152,90 @@ public class PostRoutes{
 			return rb.setInputValue("postFormText_"+formID, "").setContent("postFormAttachments_"+formID, "");
 		}
 		resp.redirect(Utils.back(req));
+		return "";
+	}
+
+	public static Object editPostForm(Request req, Response resp, Account self) throws SQLException{
+		int id=parseIntOrDefault(req.params(":postID"), 0);
+		Post post=context(req).getWallController().getPostOrThrow(id);
+		if(!sessionInfo(req).permissions.canEditPost(post))
+			throw new UserActionNotAllowedException();
+		RenderedTemplateResponse model;
+		if(isAjax(req)){
+			model=new RenderedTemplateResponse("wall_post_form", req);
+		}else{
+			model=new RenderedTemplateResponse("content_wrap", req).with("contentTemplate", "wall_post_form");
+		}
+		model.with("addClasses", "editing").with("isEditing", true).with("id", "edit"+id).with("editingPostID", id);
+		model.with("prefilledPostText", post.source);
+		if(post.hasContentWarning())
+			model.with("contentWarning", post.summary);
+		if(post.poll!=null)
+			model.with("poll", post.poll);
+		if(post.attachment!=null && !post.attachment.isEmpty()){
+			model.with("draftAttachments", post.attachment);
+		}
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.hide("postInner"+id)
+					.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, "postInner"+id, model.renderToString())
+					.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, "postAuthor"+id, "<span class=\"grayText lowercase\" id=\"postEditingLabel"+id+"\">&nbsp;-&nbsp;"+lang(req).get(post.getReplyLevel()==0 ? "editing_post" : "editing_comment")+"</span>")
+					.runScript("updatePostForms();");
+		}
+		return model.pageTitle(lang(req).get(post.getReplyLevel()>0 ? "editing_comment" : "editing_post"));
+	}
+
+	public static Object editPost(Request req, Response resp, Account self) throws SQLException{
+		int id=parseIntOrDefault(req.params(":postID"), 0);
+		String text=req.queryParams("text");
+		Poll poll;
+		String pollQuestion=req.queryParams("pollQuestion");
+		if(StringUtils.isNotEmpty(pollQuestion)){
+			Post post=context(req).getWallController().getPostOrThrow(id);
+			List<String> pollOptions=Arrays.stream(req.queryParams("pollOption")!=null ? req.queryMap("pollOption").values() : new String[0]).map(String::trim).filter(StringUtils::isNotEmpty).collect(Collectors.toList());
+			if(pollOptions.size()>=2){
+				poll=new Poll();
+				poll.question=pollQuestion;
+				poll.anonymous="on".equals(req.queryParams("pollAnonymous"));
+				poll.multipleChoice="on".equals(req.queryParams("pollMultiChoice"));
+				boolean timeLimit="on".equals(req.queryParams("pollTimeLimit"));
+				if(timeLimit){
+					int seconds=parseIntOrDefault(req.queryParams("pollTimeLimitValue"), 0);
+					if(seconds>60)
+						poll.endTime=new Date(System.currentTimeMillis()+(seconds*1000L));
+					else if(seconds==-1 && post.poll!=null)
+						poll.endTime=post.poll.endTime;
+				}
+				poll.options=pollOptions.stream().map(o->{
+					PollOption opt=new PollOption();
+					opt.name=o;
+					return opt;
+				}).collect(Collectors.toList());
+			}else{
+				poll=null;
+			}
+		}else{
+			poll=null;
+		}
+		String contentWarning=req.queryParams("contentWarning");
+		List<String> attachments;
+		if(StringUtils.isNotEmpty(req.queryParams("attachments")))
+			attachments=Arrays.stream(req.queryParams("attachments").split(",")).collect(Collectors.toList());
+		else
+			attachments=Collections.emptyList();
+
+		Post post=context(req).getWallController().editPost(sessionInfo(req).permissions, id, text, contentWarning, attachments, poll);
+		if(isAjax(req)){
+			if(req.attribute("mobile")!=null)
+				return new WebDeltaResponse(resp).replaceLocation(post.getInternalURL().toString());
+
+			RenderedTemplateResponse model=new RenderedTemplateResponse(post.getReplyLevel()>0 ? "wall_reply" : "wall_post", req).with("post", post).with("postInteractions", PostStorage.getPostInteractions(List.of(post.id), self.user.id));
+			return new WebDeltaResponse(resp).setContent("postInner"+post.id, model.renderBlock("postInner"))
+					.show("postInner"+post.id)
+					.remove("wallPostForm_edit"+post.id, "postEditingLabel"+post.id)
+					.runScript("delete postForms['wallPostForm_edit"+post.id+"'];");
+		}
+		resp.redirect(post.getInternalURL().toString());
 		return "";
 	}
 

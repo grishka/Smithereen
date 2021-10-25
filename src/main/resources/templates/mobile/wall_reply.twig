@@ -33,6 +33,9 @@
 						{% if userPermissions is not null and userPermissions.canDeletePost(post) %}
 						    {% set _=options.add({'type': 'confirm', 'label': L('delete').toString(), 'title': 'delete_reply', 'msg': 'delete_reply_confirm', 'url': "#{post.url}/delete"}) %}
 						{% endif %}
+						{% if userPermissions is not null and userPermissions.canEditPost(post) %}
+							{% set _=options.add({'type': 'link', 'label': L('edit').toString(), 'href': "#{post.url}/edit"}) %}
+						{% endif %}
 						{% if not post.local %}
 							{% set _=options.add({'type': 'link', 'target': '_blank', 'href': post.url, 'label': L('open_on_server_X', {'domain': post.url.host}).toString()}) %}
 						{% endif %}

@@ -168,6 +168,22 @@ public class ActivityPubWorker{
 		});
 	}
 
+	public void sendUpdatePostActivity(final Post post){
+		executor.submit(new Runnable(){
+			@Override
+			public void run(){
+				Update update=new Update();
+				update.object=new LinkOrObject(post);
+				update.actor=new LinkOrObject(post.user.activityPubID);
+				update.to=post.to;
+				update.cc=post.cc;
+				update.published=post.updated;
+				update.activityPubID=Config.localURI(post.activityPubID.getPath()+"#update_"+rand());
+				sendActivityForPost(post, update, post.user);
+			}
+		});
+	}
+
 	public void sendAddPostToWallActivity(final Post post){
 		executor.submit(new Runnable(){
 			@Override
