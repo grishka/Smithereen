@@ -182,7 +182,7 @@ public class PostStorage{
 					.value("poll_id", post.poll!=null ? post.poll.id : null)
 					.createStatement(Statement.RETURN_GENERATED_KEYS);
 		}else{
-			if(Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts
+			if(post.poll!=null && Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts
 				stmt=new SQLQueryBuilder(conn)
 						.update("polls")
 						.value("num_voted_users", post.poll.numVoters)
@@ -230,7 +230,7 @@ public class PostStorage{
 				post.poll.id=putForeignPoll(conn, post.user.id, post.activityPubID, post.poll);
 			}else if(post.poll!=null){ // poll was added
 				post.poll.id=putForeignPoll(conn, post.user.id, post.activityPubID, post.poll);
-			}else{ // poll was removed
+			}else if(existing.poll!=null){ // poll was removed
 				new SQLQueryBuilder(conn)
 						.deleteFrom("polls")
 						.where("id=?", existing.poll.id)
