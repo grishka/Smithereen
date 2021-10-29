@@ -251,7 +251,7 @@ public class UserStorage{
 
 	public static List<URI> getActivityPubFriendList(int userID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT followee_id, ap_id FROM followings JOIN users ON followee_id=users.id WHERE follower_id=? AND mutual=1 ORDER BY followee_id ASC LIMIT ? OFFSET ?");
+		PreparedStatement stmt=conn.prepareStatement("SELECT followee_id, ap_id FROM followings JOIN `users` ON followee_id=users.id WHERE follower_id=? AND mutual=1 ORDER BY followee_id ASC LIMIT ? OFFSET ?");
 		stmt.setInt(1, userID);
 		stmt.setInt(2, count);
 		stmt.setInt(3, offset);
@@ -975,9 +975,9 @@ public class UserStorage{
 		}
 		LocalDate nextDay=date.plusDays(1);
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT users.id, users.bdate FROM users RIGHT JOIN followings ON followings.followee_id=users.id" +
-				" WHERE followings.follower_id=? AND followings.mutual=1 AND users.bdate IS NOT NULL" +
-				" AND ((DAY(users.bdate)=? AND MONTH(users.bdate)=?) OR (DAY(users.bdate)=? AND MONTH(users.bdate)=?))",
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT `users`.id, `users`.bdate FROM `users` RIGHT JOIN followings ON followings.followee_id=`users`.id" +
+				" WHERE followings.follower_id=? AND followings.mutual=1 AND `users`.bdate IS NOT NULL" +
+				" AND ((DAY(`users`.bdate)=? AND MONTH(`users`.bdate)=?) OR (DAY(`users`.bdate)=? AND MONTH(`users`.bdate)=?))",
 				userID, date.getDayOfMonth(), date.getMonthValue(), nextDay.getDayOfMonth(), nextDay.getMonthValue());
 
 		List<Integer> today=new ArrayList<>(), tomorrow=new ArrayList<>();

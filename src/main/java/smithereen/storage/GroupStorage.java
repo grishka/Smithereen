@@ -355,17 +355,22 @@ public class GroupStorage{
 		conn.createStatement().execute("START TRANSACTION");
 		boolean success=false;
 		try{
-			PreparedStatement stmt=conn.prepareStatement("INSERT INTO group_memberships (user_id, group_id, tentative, accepted) VALUES (?, ?, ?, ?)");
-			stmt.setInt(1, userID);
-			stmt.setInt(2, group.id);
-			stmt.setBoolean(3, tentative);
-			stmt.setBoolean(4, accepted);
-			stmt.execute();
+			new SQLQueryBuilder(conn)
+					.insertInto("group_memberships")
+					.value("user_id", userID)
+					.value("group_id", group.id)
+					.value("tentative", tentative)
+					.value("accepted", accepted)
+					.createStatement()
+					.execute();
 
 			String memberCountField=tentative ? "tentative_member_count" : "member_count";
-			stmt=conn.prepareStatement("UPDATE groups SET "+memberCountField+"="+memberCountField+"+1 WHERE id=?");
-			stmt.setInt(1, group.id);
-			stmt.execute();
+			new SQLQueryBuilder(conn)
+					.update("groups")
+					.valueExpr(memberCountField, memberCountField+"+1")
+					.where("id=?", group.id)
+					.createStatement()
+					.execute();
 
 			removeFromCache(group);
 
@@ -380,15 +385,19 @@ public class GroupStorage{
 		conn.createStatement().execute("START TRANSACTION");
 		boolean success=false;
 		try{
-			PreparedStatement stmt=conn.prepareStatement("DELETE FROM group_memberships WHERE user_id=? AND group_id=?");
-			stmt.setInt(1, userID);
-			stmt.setInt(2, group.id);
-			stmt.execute();
+			new SQLQueryBuilder(conn)
+					.deleteFrom("group_memberships")
+					.where("user_id=? AND group_id=?", userID, group.id)
+					.createStatement()
+					.execute();
 
 			String memberCountField=tentative ? "tentative_member_count" : "member_count";
-			stmt=conn.prepareStatement("UPDATE groups SET "+memberCountField+"="+memberCountField+"-1 WHERE id=?");
-			stmt.setInt(1, group.id);
-			stmt.execute();
+			new SQLQueryBuilder(conn)
+					.update("groups")
+					.valueExpr(memberCountField, memberCountField+"-1")
+					.where("id=?", group.id)
+					.createStatement()
+					.execute();
 
 			removeFromCache(group);
 
@@ -471,7 +480,7 @@ public class GroupStorage{
 
 	public static List<URI> getGroupMemberInboxes(int groupID) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT IFNULL(ap_shared_inbox, ap_inbox) FROM users WHERE id IN (SELECT user_id FROM group_memberships WHERE group_id=? AND accepted=1) AND ap_inbox IS NOT NULL");
+		PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT IFNULL(ap_shared_inbox, ap_inbox) FROM `users` WHERE id IN (SELECT user_id FROM group_memberships WHERE group_id=? AND accepted=1) AND ap_inbox IS NOT NULL");
 		stmt.setInt(1, groupID);
 		ArrayList<URI> inboxes=new ArrayList<>();
 		try(ResultSet res=stmt.executeQuery()){
