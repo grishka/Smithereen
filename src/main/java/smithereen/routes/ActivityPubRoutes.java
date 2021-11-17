@@ -818,13 +818,13 @@ public class ActivityPubRoutes{
 			throw new BadRequestException("Signature header has invalid format");
 		Map<String, String> supportedSig=null;
 		for(Map<String, String> sig:values){
-			if("rsa-sha256".equalsIgnoreCase(sig.get("algorithm"))){
+			if("rsa-sha256".equalsIgnoreCase(sig.get("algorithm")) || "hs2019".equalsIgnoreCase(sig.get("algorithm"))){
 				supportedSig=sig;
 				break;
 			}
 		}
 		if(supportedSig==null)
-			throw new BadRequestException("Unsupported signature algorithm \""+values.get(0).get("algorithm")+"\", expected \"rsa-sha256\"");
+			throw new BadRequestException("Unsupported signature algorithm \""+values.get(0).get("algorithm")+"\", expected \"rsa-sha256\" or \"hs2019\"");
 
 		if(!supportedSig.containsKey("keyId"))
 			throw new BadRequestException("Signature header is missing keyId field");

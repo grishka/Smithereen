@@ -128,7 +128,7 @@ public abstract class ActivityPubObject{
 		if(summary!=null)
 			obj.addProperty("summary", summary);
 		if(tag!=null && !tag.isEmpty())
-			obj.add("tag", serializeObjectArrayCompact(tag, contextCollector));
+			obj.add("tag", serializeObjectArray(tag, contextCollector));
 		if(updated!=null)
 			obj.addProperty("updated", Utils.formatDateAsISO(updated));
 		if(url!=null)
