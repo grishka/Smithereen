@@ -1099,7 +1099,7 @@ public class PostStorage{
 			}
 		}
 
-		return new PaginatedList<>(entries, total);
+		return new PaginatedList<>(entries.stream().filter(e->!(e instanceof PostNewsfeedEntry) || (e instanceof PostNewsfeedEntry pe && pe.post!=null)).collect(Collectors.toList()), total, offset, count);
 	}
 
 	private static class DeleteCommentBookmarksRunnable implements Runnable{
