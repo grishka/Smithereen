@@ -4,7 +4,7 @@
 {% include 'groups_tabbar' %}
 {% endif %}
 <div class="singleColumn">
-{% for group in groups %}
+{% for group in items %}
 <table width="100%" class="friendsRow noBorderSpacing" id="grow{{group.id}}">
 	<tr valign="top">
 		<td width="50">
@@ -18,5 +18,6 @@
 {%else%}
 <div class="emptyState">{{ L('no_groups') }}</div>
 {%endfor%}
+{% include "pagination" %}
 </div>
 {%endblock%}

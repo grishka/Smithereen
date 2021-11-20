@@ -11,14 +11,15 @@
 <div class="summaryWrap">
 	<div class="summary">
 	{% if currentUser is not null and owner.id==currentUser.id %}
-	{{ L(tab=='managed' ? 'summary_X_managed_groups' : 'summary_own_X_groups', {'numGroups': groups.size()}) }}
+	{{ L(tab=='managed' ? 'summary_X_managed_groups' : 'summary_own_X_groups', {'numGroups': totalItems}) }}
 	{% else %}
-	{{ L('summary_user_X_groups', {'name': owner.firstAndGender, 'numGroups': groups.size()}) }}
+	{{ L('summary_user_X_groups', {'name': owner.firstAndGender, 'numGroups': totalItems}) }}
 	{% endif %}
 	</div>
+	{% include "pagination" %}
 </div>
 <div class="singleColumn">
-{% for group in groups %}
+{% for group in items %}
 <table width="100%" class="friendsRow noBorderSpacing" id="grow{{group.id}}">
 	<tr valign="top">
 		<td width="100">
@@ -40,4 +41,5 @@
 <div class="emptyState">{{L('no_groups')}}</div>
 {% endfor %}
 </div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
 {% endblock %}

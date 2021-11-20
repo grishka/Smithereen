@@ -13,6 +13,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 
@@ -24,7 +25,7 @@ public class LinkedDataSignatures{
 	public static void sign(JsonObject toSign, PrivateKey pkey, String keyID){
 		JsonObject options=new JsonObject();
 		options.addProperty("creator", keyID);
-		options.addProperty("created", Utils.formatDateAsISO(new Date()));
+		options.addProperty("created", Utils.formatDateAsISO(Instant.now()));
 		options.addProperty("@context", JLD.W3_IDENTITY);
 
 		String cOptions=URDNA2015.canonicalize(options, null);

@@ -3,10 +3,13 @@ package smithereen.routes;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import smithereen.Utils;
 import smithereen.data.Account;
+import smithereen.data.PaginatedList;
 import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.data.notifications.Notification;
@@ -22,12 +25,12 @@ import static smithereen.Utils.*;
 
 public class NotificationsRoutes{
 	public static Object notifications(Request req, Response resp, Account self) throws SQLException{
-		int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
+		int offset=offset(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("notifications", req);
 		int[] total={0};
-		List<Notification> notifications=NotificationsStorage.getNotifications(self.user.id, offset, total);
-		model.with("title", lang(req).get("notifications")).with("notifications", notifications).with("offset", offset).with("total", total[0]);
-		ArrayList<Integer> needUsers=new ArrayList<>(), needPosts=new ArrayList<>();
+		List<Notification> notifications=NotificationsStorage.getNotifications(self.user.id, offset, 50, total);
+		model.pageTitle(lang(req).get("notifications")).paginate(new PaginatedList<Notification>(notifications, total[0], offset, 50));
+		HashSet<Integer> needUsers=new HashSet<>(), needPosts=new HashSet<>();
 
 		for(Notification n:notifications){
 			needUsers.add(n.actorID);
@@ -39,17 +42,9 @@ public class NotificationsRoutes{
 			}
 		}
 
-		HashMap<Integer, User> users=new HashMap<>();
-		HashMap<Integer, Post> posts=new HashMap<>();
-		// TODO get all users & posts in one database query
-		for(Integer uid:needUsers){
-			if(users.containsKey(uid))
-				continue;
-			users.put(uid, UserStorage.getById(uid));
-		}
+		Map<Integer, User> users=UserStorage.getById(needUsers);
+		Map<Integer, Post> posts=new HashMap<>();
 		for(Integer pid:needPosts){
-			if(posts.containsKey(pid))
-				continue;
 			posts.put(pid, PostStorage.getPostByID(pid, false));
 		}
 

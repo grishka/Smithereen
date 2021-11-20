@@ -1,7 +1,5 @@
 package smithereen.routes;
 
-import com.google.gson.JsonArray;
-
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -10,10 +8,10 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -25,16 +23,12 @@ import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
-import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
-import smithereen.activitypub.objects.ForeignActor;
-import smithereen.controllers.WallController;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
-import smithereen.data.ListAndTotal;
+import smithereen.data.PaginatedList;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
 import smithereen.data.Post;
@@ -48,13 +42,11 @@ import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.feed.PostNewsfeedEntry;
 import smithereen.data.notifications.Notification;
-import smithereen.data.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
-import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
@@ -101,7 +93,7 @@ public class PostRoutes{
 				if(timeLimit){
 					int seconds=parseIntOrDefault(req.queryParams("pollTimeLimitValue"), 0);
 					if(seconds>60)
-						poll.endTime=new Date(System.currentTimeMillis()+(seconds*1000L));
+						poll.endTime=Instant.now().plusSeconds(seconds);
 				}
 				poll.options=pollOptions.stream().map(o->{
 					PollOption opt=new PollOption();
@@ -202,7 +194,7 @@ public class PostRoutes{
 				if(timeLimit){
 					int seconds=parseIntOrDefault(req.queryParams("pollTimeLimitValue"), 0);
 					if(seconds>60)
-						poll.endTime=new Date(System.currentTimeMillis()+(seconds*1000L));
+						poll.endTime=Instant.now().plusSeconds(seconds);
 					else if(seconds==-1 && post.poll!=null)
 						poll.endTime=post.poll.endTime;
 				}
@@ -245,40 +237,17 @@ public class PostRoutes{
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
 		int[] total={0};
 		List<NewsfeedEntry> feed=PostStorage.getFeed(userID, startFromID, offset, total);
-		HashSet<Integer> postIDs=new HashSet<>();
-		for(NewsfeedEntry e:feed){
-			if(e instanceof PostNewsfeedEntry){
-				PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
-				if(pe.post!=null){
-					postIDs.add(pe.post.id);
-				}else{
-					System.err.println("No post: "+pe);
-				}
-			}
+		List<Post> feedPosts=feed.stream().filter(e->e instanceof PostNewsfeedEntry pe && pe.post!=null).map(e->((PostNewsfeedEntry)e).post).collect(Collectors.toList());
+		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
+			context(req).getWallController().populateCommentPreviews(feedPosts);
 		}
-		if(req.attribute("mobile")==null && !postIDs.isEmpty()){
-			Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
-			for(NewsfeedEntry e:feed){
-				if(e instanceof PostNewsfeedEntry){
-					PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
-					if(pe.post!=null){
-						ListAndTotal<Post> comments=allComments.get(pe.post.id);
-						if(comments!=null){
-							pe.post.repliesObjects=comments.list;
-							pe.post.totalTopLevelComments=comments.total;
-							pe.post.getAllReplyIDs(postIDs);
-						}
-					}
-				}
-			}
-		}
-		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self.user.id);
+		Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(feedPosts, self.user);
 		if(!feed.isEmpty() && startFromID==0)
 			startFromID=feed.get(0).id;
 		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
 		jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
 		return new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed).with("postInteractions", interactions)
-				.with("paginationURL", "/feed?startFrom="+startFromID+"&offset=").with("total", total[0]).with("offset", offset)
+				.with("paginationUrlPrefix", "/feed?startFrom="+startFromID+"&offset=").with("totalItems", total[0]).with("paginationOffset", offset).with("paginationPerPage", 25).with("paginationFirstPageUrl", "/feed")
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
 	}
 
@@ -531,15 +500,17 @@ public class PostRoutes{
 		return gson.toJson(o);
 	}
 
-	public static Object likeList(Request req, Response resp) throws SQLException{
+	public static Object likeList(Request req, Response resp){
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		Post post=getPostOrThrow(postID);
-		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		List<User> users=UserStorage.getByIdAsList(LikeStorage.getPostLikes(postID, 0, offset, 100));
-		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users);
-		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), 0).get(postID);
-		model.with("pageOffset", offset).with("total", interactions.likeCount).with("paginationUrlPrefix", "/posts/"+postID+"/likes?fromPagination&offset=").with("emptyMessage", lang(req).get("likes_empty"));
-		model.with("summary", lang(req).get("liked_by_X_people", Map.of("count", interactions.likeCount)));
+		Post post=context(req).getWallController().getPostOrThrow(postID);
+		int offset=offset(req);
+		PaginatedList<User> likes=context(req).getUserInteractionsController().getLikesForObject(post, self!=null ? self.user : null, offset, 100);
+		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req)
+				.paginate(likes, "/posts/"+postID+"/likes?fromPagination&offset=", null)
+				.with("emptyMessage", lang(req).get("likes_empty"))
+				.with("summary", lang(req).get("liked_by_X_people", Map.of("count", likes.total)));
 		if(isAjax(req)){
 			if(req.queryParams("fromPagination")==null)
 				return new WebDeltaResponse(resp).box(lang(req).get("likes_title"), model.renderToString(), "likesList", 474);
@@ -550,109 +521,69 @@ public class PostRoutes{
 		return model;
 	}
 
-	public static Object wallAll(Request req, Response resp) throws SQLException{
-		return wall(req, resp, false);
+	public static Object userWallAll(Request req, Response resp){
+		User user=context(req).getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		return wall(req, resp, user, false);
 	}
 
-	public static Object wallOwn(Request req, Response resp) throws SQLException{
-		return wall(req, resp, true);
+	public static Object userWallOwn(Request req, Response resp){
+		User user=context(req).getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		return wall(req, resp, user, true);
 	}
 
-	private static Object wall(Request req, Response resp, boolean ownOnly) throws SQLException{
-		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
-		Group group=null;
-		if(user==null){
-			group=GroupStorage.getByUsername(username);
-			if(group==null){
-				throw new ObjectNotFoundException("err_user_not_found");
-			}else if(ownOnly){
-				resp.redirect(Config.localURI("/"+username+"/wall").toString());
-				return "";
-			}
-		}
+	public static Object groupWall(Request req, Response resp){
+		Group group=context(req).getGroupsController().getGroupOrThrow(safeParseInt(req.params(":id")));
+		return wall(req, resp, group, false);
+	}
+
+	private static Object wall(Request req, Response resp, Actor owner, boolean ownOnly){
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 
-
-		int[] postCount={0};
-		int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
-		List<Post> wall=PostStorage.getWallPosts(user==null ? group.id : user.id, group!=null, 0, 0, offset, postCount, ownOnly);
-		Set<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toSet());
-
+		int offset=offset(req);
+		PaginatedList<Post> wall=context(req).getWallController().getWallPosts(owner, ownOnly, offset, 20);
 		if(req.attribute("mobile")==null){
-			Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
-			for(Post post:wall){
-				ListAndTotal<Post> comments=allComments.get(post.id);
-				if(comments!=null){
-					post.repliesObjects=comments.list;
-					post.totalTopLevelComments=comments.total;
-					post.getAllReplyIDs(postIDs);
-				}
-			}
+			context(req).getWallController().populateCommentPreviews(wall.list);
 		}
+		Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 
-		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_page", req)
-				.with("posts", wall)
+				.paginate(wall)
 				.with("postInteractions", interactions)
-				.with("owner", user!=null ? user : group)
-				.with("isGroup", group!=null)
-				.with("postCount", postCount[0])
-				.with("pageOffset", offset)
+				.with("owner", owner)
+				.with("isGroup", owner instanceof Group)
 				.with("ownOnly", ownOnly)
-				.with("paginationUrlPrefix", Config.localURI("/"+username+"/wall"+(ownOnly ? "/own" : "")))
 				.with("tab", ownOnly ? "own" : "all");
 
-		if(user!=null){
-			model.with("title", lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
+		if(owner instanceof User user){
+			model.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
 		}else{
-			model.with("title", lang(req).get("wall_of_group"));
+			model.pageTitle(lang(req).get("wall_of_group"));
 		}
 
 		return model;
 	}
 
-	public static Object wallToWall(Request req, Response resp) throws SQLException{
-		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
-		if(user==null)
-			throw new ObjectNotFoundException("err_user_not_found");
-		String otherUsername=req.params(":other_username");
-		User otherUser=UserStorage.getByUsername(otherUsername);
-		if(otherUser==null)
-			throw new ObjectNotFoundException("err_user_not_found");
+	public static Object wallToWall(Request req, Response resp){
+		User user=context(req).getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		User otherUser=context(req).getUsersController().getUserOrThrow(safeParseInt(req.params(":otherUserID")));
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 
-		int[] postCount={0};
-		int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
-		List<Post> wall=PostStorage.getWallToWall(user.id, otherUser.id, offset, postCount);
-		Set<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toSet());
-
+		int offset=offset(req);
+		PaginatedList<Post> wall=context(req).getWallController().getWallToWallPosts(user, otherUser, offset, 20);
 		if(req.attribute("mobile")==null){
-			Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
-			for(Post post:wall){
-				ListAndTotal<Post> comments=allComments.get(post.id);
-				if(comments!=null){
-					post.repliesObjects=comments.list;
-					post.totalTopLevelComments=comments.total;
-					post.getAllReplyIDs(postIDs);
-				}
-			}
+			context(req).getWallController().populateCommentPreviews(wall.list);
 		}
+		Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 
-		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
 		return new RenderedTemplateResponse("wall_page", req)
-				.with("posts", wall)
+				.paginate(wall)
 				.with("postInteractions", interactions)
 				.with("owner", user)
 				.with("otherUser", otherUser)
-				.with("postCount", postCount[0])
-				.with("pageOffset", offset)
-				.with("paginationUrlPrefix", Config.localURI("/"+username+"/wall/with/"+otherUsername))
 				.with("tab", "wall2wall")
-				.with("title", lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
+				.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
 	}
 
 	public static Object ajaxCommentPreview(Request req, Response resp) throws SQLException{
@@ -774,39 +705,16 @@ public class PostRoutes{
 
 	public static Object commentsFeed(Request req, Response resp, Account self) throws SQLException{
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		ListAndTotal<NewsfeedEntry> feed=PostStorage.getCommentsFeed(self.user.id, offset, 25);
-		HashSet<Integer> postIDs=new HashSet<>();
-		for(NewsfeedEntry e:feed.list){
-			if(e instanceof PostNewsfeedEntry){
-				PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
-				if(pe.post!=null){
-					postIDs.add(pe.post.id);
-				}else{
-					System.err.println("No post: "+pe);
-				}
-			}
+		PaginatedList<NewsfeedEntry> feed=PostStorage.getCommentsFeed(self.user.id, offset, 25);
+		List<Post> feedPosts=feed.list.stream().filter(e->e instanceof PostNewsfeedEntry pe && pe.post!=null).map(e->((PostNewsfeedEntry)e).post).collect(Collectors.toList());
+		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
+			context(req).getWallController().populateCommentPreviews(feedPosts);
 		}
-		if(req.attribute("mobile")==null && !postIDs.isEmpty()){
-			Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
-			for(NewsfeedEntry e:feed.list){
-				if(e instanceof PostNewsfeedEntry){
-					PostNewsfeedEntry pe=(PostNewsfeedEntry) e;
-					if(pe.post!=null){
-						ListAndTotal<Post> comments=allComments.get(pe.post.id);
-						if(comments!=null){
-							pe.post.repliesObjects=comments.list;
-							pe.post.totalTopLevelComments=comments.total;
-							pe.post.getAllReplyIDs(postIDs);
-						}
-					}
-				}
-			}
-		}
-		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self.user.id);
+		Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(feedPosts, self.user);
 		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
 		jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
 		return new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list).with("postInteractions", interactions)
-				.with("paginationURL", "/feed/comments?offset=").with("total", feed.total).with("offset", offset).with("paginationFirstURL", "/feed/comments").with("tab", "comments")
+				.with("paginationUrlPrefix", "/feed/comments?offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationFirstPageUrl", "/feed/comments").with("tab", "comments").with("paginationPerPage", 25)
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
 	}
 }

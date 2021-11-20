@@ -1,13 +1,13 @@
 # ************************************************************
 # Sequel Ace SQL dump
-# Version 3041
+# Версия 3043
 #
 # https://sequel-ace.com/
 # https://github.com/Sequel-Ace/Sequel-Ace
 #
-# Host: 127.0.0.1 (MySQL 5.7.9)
-# Database: smithereen
-# Generation Time: 2021-10-20 17:22:10 +0000
+# Хост: 127.0.0.1 (MySQL 5.7.9)
+# База данных: smithereen
+# Generation Time: 2021-11-20 11:18:32 +0000
 # ************************************************************
 
 
@@ -159,9 +159,11 @@ CREATE TABLE `followings` (
 # ------------------------------------------------------------
 
 CREATE TABLE `friend_requests` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `from_user_id` int(11) unsigned NOT NULL,
   `to_user_id` int(11) unsigned NOT NULL,
   `message` text,
+  PRIMARY KEY (`id`),
   UNIQUE KEY `from_user_id` (`from_user_id`,`to_user_id`),
   KEY `to_user_id` (`to_user_id`),
   CONSTRAINT `friend_requests_ibfk_1` FOREIGN KEY (`from_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
@@ -221,6 +223,7 @@ CREATE TABLE `groups` (
   `private_key` blob,
   `avatar` text,
   `about` text,
+  `about_source` text,
   `profile_fields` text,
   `event_start_time` timestamp NULL DEFAULT NULL,
   `event_end_time` timestamp NULL DEFAULT NULL,
@@ -458,6 +461,7 @@ CREATE TABLE `users` (
   `ap_outbox` varchar(300) DEFAULT NULL,
   `ap_shared_inbox` varchar(300) DEFAULT NULL,
   `about` text,
+  `about_source` text,
   `gender` tinyint(4) unsigned NOT NULL DEFAULT '0',
   `profile_fields` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
   `avatar` text,

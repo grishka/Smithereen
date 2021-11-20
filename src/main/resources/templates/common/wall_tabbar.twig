@@ -3,9 +3,9 @@
 {# @pebvariable name="isGroup" type="boolean" #}
 {# @pebvariable name="tab" type="String" #}
 <div class="tabbar">
-	<a href="{{ owner.profileURL }}/wall" class="{%if tab=="all"%}selected{%endif%}">{{ L(isGroup ? 'wall_of_group' : 'wall_all_posts') }}</a>
+	<a href="{{ owner.typeAndIdForURL }}/wall" class="{%if tab=="all"%}selected{%endif%}">{{ L(isGroup ? 'wall_of_group' : 'wall_all_posts') }}</a>
 	{% if not isGroup %}
-	<a href="{{ owner.profileURL }}/wall/own" class="{%if tab=="own"%}selected{%endif%}">{{ owner==currentUser ? L('wall_my_posts') : L('wall_posts_of_X', {'name': owner.firstAndGender}) }}</a>
+	<a href="{{ owner.typeAndIdForURL }}/wall/own" class="{%if tab=="own"%}selected{%endif%}">{{ owner==currentUser ? L('wall_my_posts') : L('wall_posts_of_X', {'name': owner.firstAndGender}) }}</a>
 	{% endif %}
 	{% if tab=="single" %}
 	    <a href="#" class="selected">{{ L('wall_post_title') }}</a>

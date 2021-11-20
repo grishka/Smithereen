@@ -6,6 +6,9 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -357,8 +360,12 @@ public class SQLQueryBuilder{
 
 		public Value(String key, Object value){
 			this.key=key;
-			if(value instanceof Enum)
-				this.value=((Enum<?>)value).ordinal();
+			if(value instanceof Enum e)
+				this.value=e.ordinal();
+			else if(value instanceof Instant instant)
+				this.value=Timestamp.from(instant);
+			else if(value instanceof LocalDate localDate)
+				this.value=java.sql.Date.valueOf(localDate);
 			else
 				this.value=value;
 		}

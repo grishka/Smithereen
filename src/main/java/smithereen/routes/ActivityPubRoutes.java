@@ -104,7 +104,7 @@ import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Group;
-import smithereen.data.ListAndTotal;
+import smithereen.data.PaginatedList;
 import smithereen.data.NodeInfo;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
@@ -259,7 +259,7 @@ public class ActivityPubRoutes{
 
 	public static ActivityPubCollectionPageResponse postLikes(Request req, Response resp, int offset, int count) throws SQLException{
 		Post post=PostStorage.getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
-		ListAndTotal<Like> likes=LikeStorage.getLikes(post.id, post.activityPubID, Like.ObjectType.POST, offset, count);
+		PaginatedList<Like> likes=LikeStorage.getLikes(post.id, post.activityPubID, Like.ObjectType.POST, offset, count);
 		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
 	}
 
@@ -324,7 +324,7 @@ public class ActivityPubRoutes{
 		int minID=Math.max(0, _minID);
 		int maxID=Math.max(0, _maxID);
 		int[] _total={0};
-		List<Post> posts=PostStorage.getWallPosts(user.id, false, minID, maxID, 0, _total, true);
+		List<Post> posts=PostStorage.getWallPosts(user.id, false, minID, maxID, 0, 25, _total, true);
 		int total=_total[0];
 		CollectionPage page=new CollectionPage(true);
 		page.totalItems=total;

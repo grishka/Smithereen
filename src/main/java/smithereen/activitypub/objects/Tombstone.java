@@ -2,6 +2,7 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 
+import java.time.Instant;
 import java.util.Date;
 
 import smithereen.Utils;
@@ -11,7 +12,7 @@ import smithereen.activitypub.ParserContext;
 public class Tombstone extends ActivityPubObject{
 
 	public String formerType;
-	public Date deleted;
+	public Instant deleted;
 
 	@Override
 	public String getType(){

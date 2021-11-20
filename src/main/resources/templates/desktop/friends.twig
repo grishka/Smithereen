@@ -6,19 +6,33 @@
 {% include 'friends_tabbar' %}
 <div class="summaryWrap">
 	<div class="summary">
+	{% set isSelf=currentUser is not null and currentUser.id==owner.id %}
 	{% if tab=='mutual' %}
-		{{ L('you_and_X_mutual', {'name': owner.firstAndGender, 'numFriends': friendList.size()}) }}
+		{{ L('you_and_X_mutual', {'name': owner.firstAndGender, 'numFriends': totalItems}) }}
+	{% elseif tab=='followers' %}
+		{% if isSelf %}
+			{{ L("summary_own_X_followers", {'count': totalItems}) }}
+		{% else %}
+			{{ L("summary_user_X_followers", {'name': owner.firstAndGender, 'count': totalItems}) }}
+		{% endif %}
+	{% elseif tab=='following' %}
+		{% if isSelf %}
+			{{ L("summary_own_X_follows", {'count': totalItems}) }}
+		{% else %}
+			{{ L("summary_user_X_follows", {'name': owner.firstAndGender, 'count': totalItems}) }}
+		{% endif %}
 	{% else %}
-	{% if currentUser is not null and currentUser.id==owner.id %}
-		{{ L("summary_own_X_friends", {'numFriends': friendList.size()}) }}
-	{% else %}
-		{{ L("summary_user_X_friends", {'name': owner.firstAndGender, 'numFriends': friendList.size()}) }}
-	{% endif %}
+		{% if isSelf %}
+			{{ L("summary_own_X_friends", {'numFriends': totalItems}) }}
+		{% else %}
+			{{ L("summary_user_X_friends", {'name': owner.firstAndGender, 'numFriends': totalItems}) }}
+		{% endif %}
 	{% endif %}
 	</div>
+	{% include "pagination" %}
 </div>
 <div class="singleColumn">
-{%for friend in friendList%}
+{% for friend in items %}
 <table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
 	<tr valign="top">
 		<td width="100">
@@ -53,8 +67,17 @@
 		</td>
 	</tr>
 </table>
-{%else%}
-<div class="emptyState">{{ L('no_friends') }}</div>
-{%endfor%}
+{% else %}
+<div class="emptyState">
+	{% if tab=='followers' %}
+	{{ L('no_followers') }}
+	{% elseif tab=='following' %}
+	{{ L('no_follows') }}
+	{% else %}
+	{{ L('no_friends') }}
+	{% endif %}
 </div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
 {%endblock%}

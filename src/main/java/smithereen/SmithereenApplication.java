@@ -283,6 +283,13 @@ public class SmithereenApplication{
 				get("", ProfileRoutes::friends);
 				getLoggedIn("/mutual", ProfileRoutes::mutualFriends);
 			});
+			path("/wall", ()->{
+				get("", PostRoutes::userWallAll);
+				get("/own", PostRoutes::userWallOwn);
+				get("/with/:otherUserID", PostRoutes::wallToWall);
+			});
+			get("/followers", ProfileRoutes::followers);
+			get("/following", ProfileRoutes::following);
 		});
 
 		path("/groups/:id", ()->{
@@ -333,6 +340,9 @@ public class SmithereenApplication{
 
 			get("/members", GroupsRoutes::members);
 			get("/admins", GroupsRoutes::admins);
+			path("/wall", ()->{
+				get("", PostRoutes::groupWall);
+			});
 		});
 
 		path("/posts/:postID", ()->{
@@ -402,13 +412,6 @@ public class SmithereenApplication{
 			getWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
 			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
 			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
-			get("/followers", ProfileRoutes::followers);
-			get("/following", ProfileRoutes::following);
-			path("/wall", ()->{
-				get("", PostRoutes::wallAll);
-				get("/own", PostRoutes::wallOwn);
-				get("/with/:other_username", PostRoutes::wallToWall);
-			});
 		});
 
 

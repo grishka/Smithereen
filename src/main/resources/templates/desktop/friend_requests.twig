@@ -1,12 +1,13 @@
-{# @pebvariable name="friendRequests" type="java.util.List<smithereen.data.FriendRequest>" #}
+{# @pebvariable name="items" type="java.util.List<smithereen.data.FriendRequest>" #}
 {%extends "page"%}
 {%block content%}
 {% include 'friends_tabbar' with {'tab': 'requests'} %}
 <div class="summaryWrap">
-	<div class="summary">{{ L('summary_X_friend_requests', {'numRequests': userNotifications.newFriendRequestCount}) }}</div>
+	<div class="summary">{{ L('summary_X_friend_requests', {'numRequests': totalItems}) }}</div>
+	{% include "pagination" %}
 </div>
 <div class="singleColumn">
-	{% for req in friendRequests %}
+	{% for req in items %}
 	<table width="100%" class="friendsRow noBorderSpacing">
 		<tr>
 			<td width="100" valign="top">
@@ -64,4 +65,5 @@
 	<div class="emptyState">{{L('no_incoming_friend_requests')}}</div>
 	{% endfor %}
 </div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
 {%endblock%}

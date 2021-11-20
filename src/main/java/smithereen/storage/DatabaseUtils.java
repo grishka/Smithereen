@@ -1,9 +1,13 @@
 package smithereen.storage;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Spliterator;
@@ -136,6 +140,16 @@ public class DatabaseUtils{
 		}catch(UncheckedSQLException x){
 			throw x.getCause();
 		}
+	}
+
+	public static Instant getInstant(ResultSet res, String name) throws SQLException{
+		Timestamp ts=res.getTimestamp(name);
+		return ts==null ? null : ts.toInstant();
+	}
+
+	public static LocalDate getLocalDate(ResultSet res, String name) throws SQLException{
+		Date date=res.getDate(name);
+		return date==null ? null : date.toLocalDate();
 	}
 
 	private static class UncheckedSQLException extends RuntimeException{

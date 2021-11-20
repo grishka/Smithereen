@@ -7,7 +7,7 @@
 {% include "group_admin_tabbar" with {'tab': 'members'} %}
 <div class="singleColumn gray">
 	<div class="groupEditMemberList">
-		{% for member in members %}
+		{% for member in items %}
 			<div class="groupEditMember">
 				{{ member | pictureForAvatar('s', 30) }}
 				<div class="ellipsize">
@@ -25,9 +25,5 @@
 		{% endfor %}
 	</div>
 </div>
-{% if total>100 %}
-<div class="bottomSummaryWrap">
-{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': paginationUrlPrefix}%}
-</div>
-{% endif %}
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
 {% endblock %}

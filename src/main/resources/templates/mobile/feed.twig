@@ -50,7 +50,7 @@ Unknown entry type {{entry.type}}
 {% else %}
 <div class="emptyState" id="wallEmptyState">{{ L('feed_empty') }}</div>
 {%endfor%}
-	{%include "pagination" with {'perPage': 25, 'offset': offset, 'total': total, 'urlPrefix': paginationURL, 'firstPageURL': paginationFirstURL | default("/feed") }%}
+	{% include "pagination" %}
 </div>
 	</div>
 {%endblock%}

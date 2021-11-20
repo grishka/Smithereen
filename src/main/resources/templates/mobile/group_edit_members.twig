@@ -6,7 +6,7 @@
 {% block content %}
 {% include "group_admin_tabbar" with {'tab': 'members'} %}
 	<div class="groupEditMemberList">
-		{% for member in members %}
+		{% for member in items %}
 			<div class="groupEditMember nonReorderable">
 				{{ member | pictureForAvatar('s') }}
 				{% if not (adminIDs contains member.id) %}
@@ -24,5 +24,5 @@
 			</div>
 			{% endfor %}
 	</div>
-{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': paginationUrlPrefix}%}
+{% include "pagination" %}
 {% endblock %}

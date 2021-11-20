@@ -4,11 +4,11 @@
 {% set canEditGroup=userPermissions is not null and userPermissions.canEditGroup(group) %}
 {% set canManageGroup=userPermissions is not null and userPermissions.canManageGroup(group) %}
 {%block content%}
-{%if user.domain is not null%}
 <div class="cardsBackdrop">
+{%if group.domain is not null%}
 <div class="card padded">
 	{{L('incomplete_profile')}}<br/>
-	<a href="{{group.url}}" target="_blank">{{L('open_on_server_X', user.domain)}}</a>
+	<a href="{{group.url}}" target="_blank">{{L('open_on_server_X', group.domain)}}</a>
 </div>
 {%endif%}
 <div class="card singleColumn">

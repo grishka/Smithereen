@@ -58,8 +58,8 @@
 			<li><a href="/users/{{ user.id }}/confirmBlock" onclick="return ajaxConfirm('block', this.dataset.confirm, '/users/{{ user.id }}/block')" data-confirm="{{ L('confirm_block_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('block_user_X', {'name': user.firstAndGender}) }}</a></li>
 		{% endif %}
 		{%endif%}
-		<li><a href="{{user.getProfileURL('followers')}}">{{L('followers')}}</a></li>
-		<li><a href="{{user.getProfileURL('following')}}">{{L('following')}}</a></li>
+		<li><a href="/users/{{ user.id }}/followers">{{L('followers')}}</a></li>
+		<li><a href="/users/{{ user.id }}/following">{{L('following')}}</a></li>
 		{% if groups is not empty %}
 		<li><a href="/users/{{ user.id }}/groups">{{ L('X_groups', {'count': groups.size}) }}</a></li>
 		{% endif %}

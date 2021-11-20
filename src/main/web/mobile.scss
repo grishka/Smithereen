@@ -89,7 +89,7 @@ h2{
 	font-size: 20px;
 	margin: 0 -$contentPadding;
 	padding: 0 8px 2px 8px;
-	border-bottom: solid 1px color($accent lightness(+30%));
+	border-bottom: solid 1px $mainHeaderSeparator;
 }
 
 h3{
@@ -97,7 +97,7 @@ h3{
 	font-weight: bold;
 	margin: 0 -$contentPadding;
 	padding: 0 8px 2px 8px;
-	border-bottom: solid 1px color($accent lightness(+30%));
+	border-bottom: solid 1px $mainHeaderSeparator;
 }
 
 h4{
@@ -333,20 +333,12 @@ select{
 		text-decoration: none;
 	}
 	.curPage{
-		background: $accent;
-		color: $textOnAccent;
+		box-shadow: 0 1px 0 $normalLink inset, 0 4px 0 $tabBackground inset;
+		color: $normalLink;
+		font-weight: bold;
 	}
 	.page{
-		border-bottom: solid 1px color($accent alpha(30%));
-		padding-bottom: 7px;
-		transition-property: border-bottom-color, border-bottom-width, padding-bottom;
-		transition-duration: 0.2s;
-		transition-timing-function: ease-in-out;
-		&:hover, &:visited:hover{
-			border-bottom-color: color($accent alpha(70%));
-			border-bottom-width: 3px;
-			padding-bottom: 5px;
-		}
+		box-shadow: 0 1px 0 $wallPostSeparator inset;
 	}
 }
 
@@ -376,7 +368,7 @@ select{
 		}
 		&.selected{
 			padding-bottom: 0;
-			border-bottom: solid 4px $accent;
+			border-bottom: solid 4px $tabBackground;
 		}
 	}
 }

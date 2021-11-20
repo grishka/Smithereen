@@ -23,7 +23,7 @@
 				{% endif %}
 			</table>
 			</div>
-			{% include 'wall_profile_block' with {'wallOwner': group, 'isGroup': true, 'fullWallURL': "#{group.profileURL}/wall"} %}
+			{% include 'wall_profile_block' with {'wallOwner': group, 'isGroup': true, 'fullWallURL': "/groups/#{group.id}/wall"} %}
 		</td>
 
 		<!-- right column -->

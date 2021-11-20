@@ -14,7 +14,7 @@ import smithereen.Config;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.data.ForeignUser;
-import smithereen.data.ListAndTotal;
+import smithereen.data.PaginatedList;
 import smithereen.data.User;
 
 public class LikeStorage{
@@ -59,7 +59,7 @@ public class LikeStorage{
 		}
 	}
 
-	public static ListAndTotal<Like> getLikes(int objectID, URI objectApID, Like.ObjectType type, int offset, int count) throws SQLException{
+	public static PaginatedList<Like> getLikes(int objectID, URI objectApID, Like.ObjectType type, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT likes.id AS like_id, user_id, likes.ap_id AS like_ap_id, users.ap_id AS user_ap_id FROM likes JOIN users ON users.id=likes.user_id WHERE object_id=? AND object_type=? ORDER BY likes.id ASC LIMIT ?,?",
 				objectID, type, offset, count);
@@ -86,7 +86,7 @@ public class LikeStorage{
 				.count()
 				.where("object_id=? AND object_type=?", objectID, type.ordinal())
 				.createStatement();
-		return new ListAndTotal<>(likes, DatabaseUtils.oneFieldToInt(stmt.executeQuery()));
+		return new PaginatedList<>(likes, DatabaseUtils.oneFieldToInt(stmt.executeQuery()));
 	}
 
 	public static List<Integer> getPostLikes(int objectID, int selfID, int offset, int count) throws SQLException{

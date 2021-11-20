@@ -8,6 +8,7 @@ import com.google.gson.JsonParser;
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,6 +35,7 @@ import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.VideoAttachment;
 import smithereen.jsonld.JLD;
+import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.PostStorage;
@@ -110,8 +112,8 @@ public class Post extends ActivityPubObject{
 		}
 
 		content=res.getString("text");
-		published=res.getTimestamp("created_at");
-		updated=res.getTimestamp("updated_at");
+		published=DatabaseUtils.getInstant(res, "created_at");
+		updated=DatabaseUtils.getInstant(res, "updated_at");
 		summary=res.getString("content_warning");
 		attributedTo=user.activityPubID;
 
@@ -222,7 +224,7 @@ public class Post extends ActivityPubObject{
 			}
 			root.add(poll.multipleChoice ? "anyOf" : "oneOf", opts);
 			if(poll.endTime!=null){
-				root.addProperty(poll.endTime.getTime()<System.currentTimeMillis() ? "closed" : "endTime", Utils.formatDateAsISO(poll.endTime));
+				root.addProperty(poll.endTime.toEpochMilli()<System.currentTimeMillis() ? "closed" : "endTime", Utils.formatDateAsISO(poll.endTime));
 			}
 			root.addProperty("votersCount", poll.numVoters);
 			root.addProperty("nonAnonymous", !poll.anonymous);
@@ -259,7 +261,7 @@ public class Post extends ActivityPubObject{
 			if(url==null)
 				url=activityPubID;
 			if(published==null)
-				published=new Date();
+				published=Instant.now();
 
 			ActivityPubObject target=parse(optObject(obj, "target"), parserContext);
 			if(target instanceof ActivityPubCollection && target.attributedTo!=null && target.activityPubID!=null && inReplyTo==null){

@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -54,19 +55,19 @@ public abstract class ActivityPubObject{
 	public String content;
 	public URI context;
 	public String name;
-	public Date endTime;
+	public Instant endTime;
 	public LinkOrObject generator;
 	public List<Image> image;
 	public List<Image> icon;
 	public URI inReplyTo;
 	public LinkOrObject location;
 	public LinkOrObject preview;
-	public Date published;
+	public Instant published;
 	public LinkOrObject replies;
-	public Date startTime;
+	public Instant startTime;
 	public String summary;
 	public List<ActivityPubObject> tag;
-	public Date updated;
+	public Instant updated;
 	public URI url;
 	public List<LinkOrObject> to;
 	public List<LinkOrObject> bto;
@@ -204,7 +205,7 @@ public abstract class ActivityPubObject{
 		}
 	}
 
-	protected Date tryParseDate(String date){
+	protected Instant tryParseDate(String date){
 		if(date==null)
 			return null;
 		return Utils.parseISODate(date);

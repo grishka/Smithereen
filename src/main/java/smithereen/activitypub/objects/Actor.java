@@ -173,7 +173,7 @@ public abstract class Actor extends ActivityPubObject{
 		if(!keyOwner.equals(activityPubID))
 			throw new IllegalArgumentException("Key owner ("+keyOwner+") is not equal to user ID ("+activityPubID+")");
 		String pkeyEncoded=pkey.get("publicKeyPem").getAsString();
-		pkeyEncoded=pkeyEncoded.replaceAll("-----(BEGIN|END) (RSA )?PUBLIC KEY-----", "").replace("\n", "").trim();
+		pkeyEncoded=pkeyEncoded.replaceAll("-----(BEGIN|END) (RSA )?PUBLIC KEY-----", "").replaceAll("[^A-Za-z0-9+/=]", "").trim();
 		byte[] key=Base64.getDecoder().decode(pkeyEncoded);
 		try{
 			X509EncodedKeySpec spec=new X509EncodedKeySpec(key);

@@ -13,8 +13,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
@@ -27,10 +30,12 @@ import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.PaginatedList;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
 import smithereen.data.Post;
 import smithereen.data.User;
+import smithereen.data.UserInteractions;
 import smithereen.data.UserPermissions;
 import smithereen.data.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
@@ -51,7 +56,7 @@ import static smithereen.Utils.preprocessPostHTML;
 public class WallController{
 	private static final Logger LOG=LoggerFactory.getLogger(WallController.class);
 
-	private ApplicationContext context;
+	private final ApplicationContext context;
 
 	public WallController(ApplicationContext context){
 		this.context=context;
@@ -137,8 +142,8 @@ public class WallController{
 			if(text.length()==0 && StringUtils.isEmpty(attachments) && pollID==0)
 				throw new BadRequestException("Empty post");
 
-			int ownerUserID=wallOwner instanceof User ? ((User) wallOwner).id : 0;
-			int ownerGroupID=wallOwner instanceof Group ? ((Group) wallOwner).id : 0;
+			int ownerUserID=wallOwner instanceof User u ? u.id : 0;
+			int ownerGroupID=wallOwner instanceof Group g ? g.id : 0;
 			int[] replyKey;
 			if(parent!=null){
 				replyKey=new int[parent.replyKey.length+1];
@@ -203,8 +208,7 @@ public class WallController{
 					}
 					URI uri=ActivityPub.resolveUsername(username, domain);
 					ActivityPubObject obj=ActivityPub.fetchRemoteObject(uri);
-					if(obj instanceof ForeignUser){
-						ForeignUser _user=(ForeignUser)obj;
+					if(obj instanceof ForeignUser _user){
 						UserStorage.putOrUpdateForeignUser(_user);
 						if(!mentionedUsers.contains(_user))
 							mentionedUsers.add(_user);
@@ -314,8 +318,7 @@ public class WallController{
 				ArrayList<String> remainingAttachments=new ArrayList<>(attachmentIDs);
 				if(post.attachment!=null){
 					for(ActivityPubObject att:post.attachment){
-						if(att instanceof LocalImage){
-							LocalImage li=(LocalImage) att;
+						if(att instanceof LocalImage li){
 							if(!remainingAttachments.remove(li.localID)){
 								LOG.debug("Deleting attachment: {}", li.localID);
 								MediaStorageUtils.deleteAttachmentFiles(li);
@@ -359,6 +362,80 @@ public class WallController{
 			post=getPostOrThrow(id);
 			ActivityPubWorker.getInstance().sendUpdatePostActivity(post);
 			return post;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	/**
+	 * Get posts from a wall.
+	 * @param owner Wall owner, either a user or a group
+	 * @param ownOnly Whether to return only user's own posts or include other's posts
+	 * @param offset Pagination offset
+	 * @param count Maximum number of posts to return
+	 * @return A reverse-chronologically sorted paginated list of wall posts
+	 */
+	public PaginatedList<Post> getWallPosts(@NotNull Actor owner, boolean ownOnly, int offset, int count){
+		try{
+			int[] postCount={0};
+			List<Post> wall=PostStorage.getWallPosts(owner.getLocalID(), owner instanceof Group, 0, 0, offset, count, postCount, ownOnly);
+			return new PaginatedList<>(wall, postCount[0], offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	/**
+	 * Get posts that two users posted on each other's walls.
+	 * @param user The first user
+	 * @param otherUser The second user
+	 * @param offset Pagination offset
+	 * @param count Maximum number of posts to return
+	 * @return A reverse-chronologically sorted paginated list of wall posts
+	 */
+	public PaginatedList<Post> getWallToWallPosts(@NotNull User user, @NotNull User otherUser, int offset, int count){
+		try{
+			int[] postCount={0};
+			List<Post> wall=PostStorage.getWallToWall(user.id, otherUser.id, offset, count, postCount);
+			return new PaginatedList<>(wall, postCount[0], offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	/**
+	 * Add top-level comments to each post.
+	 * @param posts List of posts to add comments to
+	 */
+	public void populateCommentPreviews(@NotNull List<Post> posts){
+		try{
+			Set<Integer> postIDs=posts.stream().map((Post p)->p.id).collect(Collectors.toSet());
+			Map<Integer, PaginatedList<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
+			for(Post post:posts){
+				PaginatedList<Post> comments=allComments.get(post.id);
+				if(comments!=null){
+					post.repliesObjects=comments.list;
+					post.totalTopLevelComments=comments.total;
+				}
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	/**
+	 * Get {@link UserInteractions} for posts.
+	 * @param posts List of posts to get user interactions for
+	 * @param self Current user to check whether posts are liked
+	 * @return A map from a post ID to a {@link UserInteractions} object for each post
+	 */
+	public Map<Integer, UserInteractions> getUserInteractions(@NotNull List<Post> posts, @Nullable User self){
+		try{
+			Set<Integer> postIDs=posts.stream().map((Post p)->p.id).collect(Collectors.toSet());
+			for(Post p:posts){
+				p.getAllReplyIDs(postIDs);
+			}
+			return PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

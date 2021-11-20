@@ -2,7 +2,7 @@
 {%block content%}
 {% include 'friends_tabbar' %}
 <div class="singleColumn">
-{%for friend in friendList%}
+{% for friend in items %}
 <table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
 	<tr valign="top">
 		<td width="50">
@@ -13,8 +13,17 @@
 		</td>
 	</tr>
 </table>
-{%else%}
-<div class="emptyState">{{L('no_friends')}}</div>
-{%endfor%}
+{% else %}
+<div class="emptyState">
+	{% if tab=='followers' %}
+	{{ L('no_followers') }}
+	{% elseif tab=='following' %}
+	{{ L('no_follows') }}
+	{% else %}
+	{{ L('no_friends') }}
+	{% endif %}
 </div>
+{% endfor %}
+</div>
+{% include "pagination" %}
 {%endblock%}

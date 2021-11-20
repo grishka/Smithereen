@@ -62,8 +62,8 @@
 				<li><a href="/users/{{ user.id }}/confirmBlock" onclick="return ajaxConfirm('block', this.dataset.confirm, '/users/{{ user.id }}/block')" data-confirm="{{ L('confirm_block_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('block_user_X', {'name': user.firstAndGender}) }}</a></li>
 				{% endif %}
 			{%endif%}
-				<li><a href="{{user.getProfileURL('followers')}}">{{L('followers')}}</a></li>
-				<li><a href="{{user.getProfileURL('following')}}">{{L('following')}}</a></li>
+				<li><a href="/users/{{ user.id }}/followers">{{L('followers')}}</a></li>
+				<li><a href="/users/{{ user.id }}/following">{{L('following')}}</a></li>
 			</ul>
 
 
@@ -134,7 +134,7 @@
 					{% endfor %}
 				</table>
 			</div>
-			{% include "wall_profile_block" with {'wallOwner': user, 'fullWallURL': "#{user.profileURL}/wall"} %}
+			{% include "wall_profile_block" with {'wallOwner': user, 'fullWallURL': "/users/#{user.id}/wall"} %}
 		</td>
 	</tr>
 </table>

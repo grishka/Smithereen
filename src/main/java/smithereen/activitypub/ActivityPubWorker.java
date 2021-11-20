@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -256,7 +257,7 @@ public class ActivityPubWorker{
 				delete.actor=new LinkOrObject(actor.activityPubID);
 				delete.to=post.to;
 				delete.cc=post.cc;
-				delete.published=new Date();
+				delete.published=Instant.now();
 				delete.activityPubID=new UriBuilder(post.activityPubID).appendPath("delete").build();
 				sendActivityForPost(post, delete, actor);
 			}
@@ -530,7 +531,7 @@ public class ActivityPubWorker{
 			create.cc=vote.cc;
 			create.actor=new LinkOrObject(self.activityPubID);
 			create.object=new LinkOrObject(vote);
-			create.published=new Date();
+			create.published=Instant.now();
 
 			executor.submit(new SendOneActivityRunnable(create, pollOwner.inbox, self));
 		}

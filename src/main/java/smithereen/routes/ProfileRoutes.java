@@ -26,7 +26,7 @@ import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Group;
-import smithereen.data.ListAndTotal;
+import smithereen.data.PaginatedList;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
@@ -56,27 +56,20 @@ public class ProfileRoutes{
 		Lang l=lang(req);
 		if(user!=null){
 			boolean isSelf=self!=null && self.user.id==user.id;
-			int[] postCount={0};
-			int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
-			List<Post> wall=PostStorage.getWallPosts(user.id, false, 0, 0, offset, postCount, false);
-			RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req).with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
-			model.with("pageOffset", offset);
-
-			Set<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toSet());
+			int offset=offset(req);
+			PaginatedList<Post> wall=context(req).getWallController().getWallPosts(user, false, offset, 20);
+			RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req)
+					.pageTitle(user.getFullName())
+					.with("user", user)
+					.with("own", self!=null && self.user.id==user.id)
+					.with("postCount", wall.total)
+					.paginate(wall);
 
 			if(req.attribute("mobile")==null){
-				Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
-				for(Post post:wall){
-					ListAndTotal<Post> comments=allComments.get(post.id);
-					if(comments!=null){
-						post.repliesObjects=comments.list;
-						post.totalTopLevelComments=comments.total;
-						post.getAllReplyIDs(postIDs);
-					}
-				}
+				context(req).getWallController().populateCommentPreviews(wall.list);
 			}
 
-			HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
+			Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 			model.with("postInteractions", interactions);
 
 			int[] friendCount={0};
@@ -145,7 +138,7 @@ public class ProfileRoutes{
 					meta.put("og:first_name", user.firstName);
 				if(StringUtils.isNotEmpty(user.lastName))
 					meta.put("og:last_name", user.lastName);
-				String descr=l.get("X_friends", Map.of("count", friendCount[0]))+", "+l.get("X_posts", Map.of("count", postCount[0]));
+				String descr=l.get("X_friends", Map.of("count", friendCount[0]))+", "+l.get("X_posts", Map.of("count", wall.total));
 				if(StringUtils.isNotEmpty(user.summary))
 					descr+="\n"+Jsoup.clean(user.summary, Whitelist.none());
 				meta.put("og:description", descr);
@@ -172,7 +165,7 @@ public class ProfileRoutes{
 
 			model.addNavBarItem(user.getFullName(), null, isSelf ? l.get("this_is_you") : null);
 
-			model.with("groups", GroupStorage.getUserGroups(user.id));
+			model.with("groups", context(req).getGroupsController().getUserGroups(user, 0, 100).list);
 			jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
 			jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
 			return model;
@@ -196,33 +189,34 @@ public class ProfileRoutes{
 			ensureUserNotBlocked(self.user, user);
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 			Lang l=lang(req);
-			if(status==FriendshipStatus.FOLLOWED_BY){
-				if(isAjax(req) && verifyCSRF(req, resp)){
-					UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
-					if(user instanceof ForeignUser){
-						ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser)user);
+			switch(status){
+				case FOLLOWED_BY:
+					if(isAjax(req) && verifyCSRF(req, resp)){
+						UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
+						if(user instanceof ForeignUser){
+							ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser) user);
+						}
+						return new WebDeltaResponse(resp).refresh();
+					}else{
+						RenderedTemplateResponse model=new RenderedTemplateResponse("form_page", req);
+						model.with("targetUser", user);
+						model.with("contentTemplate", "send_friend_request").with("formAction", user.getProfileURL("doSendFriendRequest")).with("submitButton", l.get("add_friend"));
+						return model;
 					}
-					return new WebDeltaResponse(resp).refresh();
-				}else{
-					RenderedTemplateResponse model=new RenderedTemplateResponse("form_page", req);
-					model.with("targetUser", user);
-					model.with("contentTemplate", "send_friend_request").with("formAction", user.getProfileURL("doSendFriendRequest")).with("submitButton", l.get("add_friend"));
-					return model;
-				}
-			}else if(status==FriendshipStatus.NONE){
-				if(user.supportsFriendRequests()){
-					RenderedTemplateResponse model=new RenderedTemplateResponse("send_friend_request", req);
-					model.with("targetUser", user);
-					return wrapForm(req, resp, "send_friend_request", user.getProfileURL("doSendFriendRequest"), l.get("send_friend_req_title"), "add_friend", model);
-				}else{
-					return doSendFriendRequest(req, resp, self);
-				}
-			}else if(status==FriendshipStatus.FRIENDS){
-				return wrapError(req, resp, "err_already_friends");
-			}else if(status==FriendshipStatus.REQUEST_RECVD){
-				return wrapError(req, resp, "err_have_incoming_friend_req");
-			}else{ // REQ_SENT
-				return wrapError(req, resp, "err_friend_req_already_sent");
+				case NONE:
+					if(user.supportsFriendRequests()){
+						RenderedTemplateResponse model=new RenderedTemplateResponse("send_friend_request", req);
+						model.with("targetUser", user);
+						return wrapForm(req, resp, "send_friend_request", user.getProfileURL("doSendFriendRequest"), l.get("send_friend_req_title"), "add_friend", model);
+					}else{
+						return doSendFriendRequest(req, resp, self);
+					}
+				case FRIENDS:
+					return wrapError(req, resp, "err_already_friends");
+				case REQUEST_RECVD:
+					return wrapError(req, resp, "err_have_incoming_friend_req");
+				default:  // REQ_SENT
+					return wrapError(req, resp, "err_friend_req_already_sent");
 			}
 		}else{
 			throw new ObjectNotFoundException("err_user_not_found");
@@ -289,8 +283,9 @@ public class ProfileRoutes{
 
 	private static Object friends(Request req, Response resp, User user, Account self) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
-		model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
-		model.with("title", lang(req).get("friends"));
+		model.with("owner", user);
+		model.pageTitle(lang(req).get("friends"));
+		model.paginate(context(req).getFriendsController().getFriends(user, offset(req), 100));
 		if(self!=null && user.id!=self.user.id){
 			int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
 			model.with("mutualCount", mutualCount);
@@ -316,8 +311,9 @@ public class ProfileRoutes{
 		if(user.id==self.user.id)
 			throw new ObjectNotFoundException("err_user_not_found");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
-		model.with("friendList", UserStorage.getMutualFriendListForUser(user.id, self.user.id)).with("owner", user).with("tab", 0);
-		model.with("title", lang(req).get("friends"));
+		model.paginate(context(req).getFriendsController().getMutualFriends(user, self.user, offset(req), 100));
+		model.with("owner", user);
+		model.pageTitle(lang(req).get("friends"));
 		model.with("tab", "mutual");
 		int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
 		model.with("mutualCount", mutualCount);
@@ -328,62 +324,57 @@ public class ProfileRoutes{
 	public static Object followers(Request req, Response resp) throws SQLException{
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
-		String username=req.params(":username");
+		String _id=req.params(":id");
 		User user;
-		if(username==null){
+		if(_id==null){
 			if(requireAccount(req, resp)){
-				user=sessionInfo(req).account.user;
+				user=self.user;
 			}else{
 				return "";
 			}
 		}else{
-			user=UserStorage.getByUsername(username);
+			user=context(req).getUsersController().getUserOrThrow(safeParseInt(_id));
 		}
-		if(user!=null){
-			RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
-			model.with("title", lang(req).get("followers")).with("toolbarTitle", lang(req).get("friends"));
-			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true).with("tab", "followers");
-			if(self!=null && user.id!=self.user.id){
-				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
-				model.with("mutualCount", mutualCount);
-			}
-			return model;
+		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
+		model.with("title", lang(req).get("followers")).with("toolbarTitle", lang(req).get("friends"));
+		model.paginate(context(req).getFriendsController().getFollowers(user, offset(req), 100));
+		model.with("owner", user).with("followers", true).with("tab", "followers");
+		if(self!=null && user.id!=self.user.id){
+			int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
+			model.with("mutualCount", mutualCount);
 		}
-		throw new ObjectNotFoundException("err_user_not_found");
+		return model;
 	}
 
 	public static Object following(Request req, Response resp) throws SQLException{
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
-		String username=req.params(":username");
+		String _id=req.params(":id");
 		User user;
-		if(username==null){
+		if(_id==null){
 			if(requireAccount(req, resp)){
-				user=sessionInfo(req).account.user;
+				user=self.user;
 			}else{
 				return "";
 			}
 		}else{
-			user=UserStorage.getByUsername(username);
+			user=context(req).getUsersController().getUserOrThrow(safeParseInt(_id));
 		}
-		if(user!=null){
-			RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
-			model.with("title", lang(req).get("following")).with("toolbarTitle", lang(req).get("friends"));
-			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true).with("tab", "following");
-			if(self!=null && user.id!=self.user.id){
-				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
-				model.with("mutualCount", mutualCount);
-			}
-			jsLangKey(req, "unfollow", "yes", "no");
-			return model;
+		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
+		model.with("title", lang(req).get("following")).with("toolbarTitle", lang(req).get("friends"));
+		model.paginate(context(req).getFriendsController().getFollows(user, offset(req), 100));
+		model.with("owner", user).with("following", true).with("tab", "following");
+		if(self!=null && user.id!=self.user.id){
+			int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
+			model.with("mutualCount", mutualCount);
 		}
-		throw new ObjectNotFoundException("err_user_not_found");
+		jsLangKey(req, "unfollow", "yes", "no");
+		return model;
 	}
 
 	public static Object incomingFriendRequests(Request req, Response resp, Account self) throws SQLException{
-		List<FriendRequest> requests=UserStorage.getIncomingFriendRequestsForUser(self.user.id, 0, 100);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friend_requests", req);
-		model.with("friendRequests", requests);
+		model.paginate(context(req).getFriendsController().getIncomingFriendRequests(self.user, offset(req), 20));
 		model.with("title", lang(req).get("friend_requests")).with("toolbarTitle", lang(req).get("friends")).with("owner", self.user);
 		return model;
 	}

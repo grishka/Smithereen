@@ -31,7 +31,7 @@ import smithereen.activitypub.ContextCollector;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
 import smithereen.data.GroupAdmin;
-import smithereen.data.ListAndTotal;
+import smithereen.data.PaginatedList;
 import smithereen.data.User;
 import spark.utils.StringUtils;
 
@@ -43,7 +43,7 @@ public class GroupStorage{
 
 	private static final Object adminUpdateLock=new Object();
 
-	public static int createGroup(String name, String username, int userID) throws SQLException{
+	public static int createGroup(String name, String description, String descriptionSrc, int userID, boolean isEvent) throws SQLException{
 		int id;
 		Connection conn=DatabaseConnectionManager.getConnection();
 		try{
@@ -53,15 +53,31 @@ public class GroupStorage{
 			kpg.initialize(2048);
 			KeyPair pair=kpg.generateKeyPair();
 
-			PreparedStatement stmt=new SQLQueryBuilder(conn)
-					.insertInto("groups")
-					.value("name", name)
-					.value("username", username)
-					.value("public_key", pair.getPublic().getEncoded())
-					.value("private_key", pair.getPrivate().getEncoded())
-					.value("member_count", 1)
-					.createStatement(Statement.RETURN_GENERATED_KEYS);
-			id=DatabaseUtils.insertAndGetID(stmt);
+			PreparedStatement stmt;
+			String username;
+			synchronized(GroupStorage.class){
+				SQLQueryBuilder bldr=new SQLQueryBuilder(conn)
+						.insertInto("groups")
+						.value("name", name)
+						.value("username", "__tmp"+System.currentTimeMillis())
+						.value("public_key", pair.getPublic().getEncoded())
+						.value("private_key", pair.getPrivate().getEncoded())
+						.value("member_count", 1)
+						.value("about", description)
+						.value("about_source", descriptionSrc)
+						.value("type", isEvent ? Group.Type.EVENT : Group.Type.GROUP);
+
+				stmt=bldr.createStatement(Statement.RETURN_GENERATED_KEYS);
+				id=DatabaseUtils.insertAndGetID(stmt);
+				username=(isEvent ? "event" : "club")+id;
+
+				new SQLQueryBuilder(conn)
+						.update("groups")
+						.value("username", username)
+						.where("id=?", id)
+						.createStatement()
+						.execute();
+			}
 
 			new SQLQueryBuilder(conn)
 					.insertInto("group_memberships")
@@ -320,7 +336,7 @@ public class GroupStorage{
 		}
 	}
 
-	public static ListAndTotal<User> getMembers(int groupID, int offset, int count) throws SQLException{
+	public static PaginatedList<User> getMembers(int groupID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=new SQLQueryBuilder(conn)
 				.selectFrom("group_memberships")
@@ -328,13 +344,15 @@ public class GroupStorage{
 				.where("group_id=? AND accepted=1", groupID)
 				.createStatement();
 		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(total==0)
+			return PaginatedList.emptyList(count);
 		stmt=new SQLQueryBuilder(conn)
 				.selectFrom("group_memberships")
 				.where("group_id=? AND accepted=1", groupID)
 				.limit(count, offset)
 				.createStatement();
 		try(ResultSet res=stmt.executeQuery()){
-			return new ListAndTotal<>(UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(res)), total);
+			return new PaginatedList<>(UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
 		}
 	}
 
@@ -407,20 +425,35 @@ public class GroupStorage{
 		}
 	}
 
-	public static List<Group> getUserGroups(int userID) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("group_memberships").columns("group_id").where("user_id=? AND accepted=1", userID).createStatement();
+	public static PaginatedList<Group> getUserGroups(int userID, int offset, int count) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("group_memberships")
+				.count()
+				.where("user_id=? AND accepted=1", userID)
+				.createStatement();
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(total==0)
+			return new PaginatedList<>(Collections.emptyList(), 0, 0, count);
+		stmt=new SQLQueryBuilder()
+				.selectFrom("group_memberships")
+				.columns("group_id")
+				.where("user_id=? AND accepted=1", userID)
+				.orderBy("group_id ASC")
+				.limit(count, offset)
+				.createStatement();
 		try(ResultSet res=stmt.executeQuery()){
-			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
+			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
 		}
 	}
 
-	public static ListAndTotal<URI> getUserGroupIDs(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<URI> getUserGroupIDs(int userID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=conn.prepareStatement("SELECT count(*) FROM group_memberships WHERE user_id=? AND accepted=1");
 		stmt.setInt(1, userID);
 		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 		if(total==0)
-			return new ListAndTotal<>(Collections.emptyList(), 0);
+			return new PaginatedList<>(Collections.emptyList(), 0);
 
 		stmt=conn.prepareStatement("SELECT group_id, ap_id FROM group_memberships JOIN groups ON group_id=id WHERE user_id=? AND accepted=1 LIMIT ? OFFSET ?");
 		stmt.setInt(1, userID);
@@ -433,14 +466,23 @@ public class GroupStorage{
 				String apID=res.getString(2);
 				list.add(apID!=null ? URI.create(apID) : Config.localURI("/groups/"+res.getInt(1)));
 			}
-			return new ListAndTotal<>(list, total);
+			return new PaginatedList<>(list, total);
 		}
 	}
 
-	public static List<Group> getUserManagedGroups(int userID) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("group_admins").columns("group_id").where("user_id=?", userID).createStatement();
+	public static PaginatedList<Group> getUserManagedGroups(int userID, int offset, int count) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("group_admins")
+				.count()
+				.where("user_id=?", userID)
+				.createStatement();
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(total==0)
+			return PaginatedList.emptyList(count);
+		stmt=new SQLQueryBuilder(conn).selectFrom("group_admins").columns("group_id").where("user_id=?", userID).createStatement();
 		try(ResultSet res=stmt.executeQuery()){
-			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
+			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
 		}
 	}
 

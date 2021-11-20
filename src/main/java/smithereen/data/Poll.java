@@ -4,10 +4,13 @@ import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+
+import smithereen.storage.DatabaseUtils;
 
 public class Poll{
 	public int id;
@@ -16,7 +19,7 @@ public class Poll{
 	public boolean multipleChoice;
 	public boolean anonymous;
 	public List<PollOption> options;
-	public Date endTime;
+	public Instant endTime;
 	public int numVoters;
 	public URI activityPubID;
 
@@ -27,9 +30,7 @@ public class Poll{
 		p.question=res.getString("question");
 		p.multipleChoice=res.getBoolean("is_multi_choice");
 		p.anonymous=res.getBoolean("is_anonymous");
-		Timestamp end=res.getTimestamp("end_time");
-		if(end!=null)
-			p.endTime=new Date(end.getTime());
+		p.endTime=DatabaseUtils.getInstant(res, "end_time");
 		p.numVoters=res.getInt("num_voted_users");
 		p.options=new ArrayList<>();
 		String apID=res.getString("ap_id");
@@ -69,7 +70,7 @@ public class Poll{
 	}
 
 	public boolean isExpired(){
-		return endTime!=null && endTime.getTime()<System.currentTimeMillis();
+		return endTime!=null && endTime.toEpochMilli()<System.currentTimeMillis();
 	}
 
 	@Override

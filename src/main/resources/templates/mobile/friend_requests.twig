@@ -1,9 +1,9 @@
-{# @pebvariable name="friendRequests" type="java.util.List<smithereen.data.FriendRequest>" #}
+{# @pebvariable name="items" type="java.util.List<smithereen.data.FriendRequest>" #}
 {%extends "page"%}
 {%block content%}
 {% include 'friends_tabbar' with {'tab': 'requests'} %}
 <div class="singleColumn">
-	{% for req in friendRequests %}
+	{% for req in items %}
 	<table width="100%" class="friendsRow noBorderSpacing">
 		<tr>
 			<td width="100" valign="top">
@@ -28,4 +28,5 @@
 	<center class="notMuchContent">{{L('no_incoming_friend_requests')}}</center>
 	{% endfor %}
 </div>
+{% include "pagination" %}
 {%endblock%}

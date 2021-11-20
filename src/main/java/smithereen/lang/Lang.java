@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -183,8 +184,8 @@ public class Lang{
 		return get("date_format_other_year", Map.of("day", date.getDayOfMonth(), "month", get("month"+date.getMonthValue()+"_full"), "year", date.getYear()));
 	}
 
-	public String formatDate(Date date, TimeZone timeZone, boolean forceAbsolute){
-		long ts=date.getTime();
+	public String formatDate(Instant date, TimeZone timeZone, boolean forceAbsolute){
+		long ts=date.toEpochMilli();
 		long tsNow=System.currentTimeMillis();
 		long diff=tsNow-ts;
 
@@ -199,7 +200,7 @@ public class Lang{
 		}
 
 		ZonedDateTime now=ZonedDateTime.now(timeZone.toZoneId());
-		ZonedDateTime dt=date.toInstant().atZone(timeZone.toZoneId());
+		ZonedDateTime dt=date.atZone(timeZone.toZoneId());
 		String day=null;
 		if(Math.abs(diff)<=2*24*60*60*1000){
 			if(now.getYear()==dt.getYear() && now.getDayOfYear()==dt.getDayOfYear()){

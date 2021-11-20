@@ -78,7 +78,6 @@ public class Utils{
 
 	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor", "healthz");
 	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
-	private static final ThreadLocal<SimpleDateFormat> ISO_DATE_FORMAT=new ThreadLocal<>();
 	public static final String staticFileHash;
 	private static Unidecode unidecode=Unidecode.toAscii();
 	private static Random rand=new Random();
@@ -162,6 +161,15 @@ public class Utils{
 		}
 	}
 
+	/**
+	 * Parse a decimal integer from string without throwing any exceptions.
+	 * @param s The string to parse.
+	 * @return The parsed integer if successful, 0 on failure or if s was null.
+	 */
+	public static int safeParseInt(String s){
+		return parseIntOrDefault(s, 0);
+	}
+
 	public static Object wrapError(Request req, Response resp, String errorKey){
 		return wrapError(req, resp, errorKey, null);
 	}
@@ -234,7 +242,7 @@ public class Utils{
 	}
 
 	public static boolean isReservedUsername(String username){
-		return RESERVED_USERNAMES.contains(username.toLowerCase());
+		return RESERVED_USERNAMES.contains(username.toLowerCase()) || username.toLowerCase().matches("^(id|club|event)\\d+$");
 	}
 
 	public static boolean isValidEmail(String email){
@@ -269,23 +277,13 @@ public class Utils{
 		return Jsoup.clean(src, documentLocation.toString(), HTML_SANITIZER);
 	}
 
-	private static SimpleDateFormat isoDateFormat(){
-		SimpleDateFormat format=ISO_DATE_FORMAT.get();
-		if(format!=null)
-			return format;
-		format=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
-		format.setTimeZone(TimeZone.getTimeZone("GMT"));
-		ISO_DATE_FORMAT.set(format);
-		return format;
+	public static String formatDateAsISO(Instant date){
+		return DateTimeFormatter.ISO_INSTANT.format(date);
 	}
 
-	public static String formatDateAsISO(Date date){
-		return isoDateFormat().format(date);
-	}
-
-	public static Date parseISODate(String date){
+	public static Instant parseISODate(String date){
 		try{
-			return new Date(DateTimeFormatter.ISO_INSTANT.parse(date).getLong(ChronoField.INSTANT_SECONDS)*1000L);
+			return DateTimeFormatter.ISO_INSTANT.parse(date, Instant::from);
 		}catch(DateTimeParseException x){
 			return null;
 		}
@@ -755,6 +753,13 @@ public class Utils{
 		if(NON_ASCII_PATTERN.matcher(domain).find())
 			return IDN.toASCII(domain);
 		return domain;
+	}
+
+	public static int offset(Request req){
+		String offset=req.queryParams("offset");
+		if(StringUtils.isEmpty(offset))
+			return 0;
+		return parseIntOrDefault(offset, 0);
 	}
 
 	@NotNull

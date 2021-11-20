@@ -38,6 +38,7 @@ import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Invitation;
+import smithereen.data.PaginatedList;
 import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.data.UserNotifications;
@@ -238,8 +239,26 @@ public class UserStorage{
 		}
 	}
 
-	public static List<User> getFriendListForUser(int userID) throws SQLException{
-		return getByIdAsList(getFriendIDsForUser(userID));
+	public static PaginatedList<User> getFriendListForUser(int userID, int offset, int count) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("followings")
+				.count()
+				.where("followee_id=? AND mutual=1", userID)
+				.createStatement();
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(total==0)
+			return PaginatedList.emptyList(count);
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("followings")
+				.columns("followee_id")
+				.where("follower_id=? AND mutual=1", userID)
+				.orderBy("followee_id ASC")
+				.limit(count, offset)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
+		}
 	}
 
 	public static List<Integer> getFriendIDsForUser(int userID) throws SQLException{
@@ -320,28 +339,51 @@ public class UserStorage{
 		return DatabaseUtils.intResultSetToList(stmt.executeQuery());
 	}
 
-	public static List<User> getMutualFriendListForUser(int userID, int otherUserID) throws SQLException{
-		return getByIdAsList(getMutualFriendIDsForUser(userID, otherUserID, 0, 100));
+	public static PaginatedList<User> getMutualFriendListForUser(int userID, int otherUserID, int offset, int count) throws SQLException{
+		return new PaginatedList<>(getByIdAsList(getMutualFriendIDsForUser(userID, otherUserID, offset, count)), getMutualFriendsCount(userID, otherUserID), offset, count);
 	}
 
-	public static List<User> getNonMutualFollowers(int userID, boolean followers, boolean accepted) throws SQLException{
+	public static PaginatedList<User> getNonMutualFollowers(int userID, boolean followers, boolean accepted, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		String fld1=followers ? "follower_id" : "followee_id";
 		String fld2=followers ? "followee_id" : "follower_id";
-		PreparedStatement stmt=conn.prepareStatement("SELECT `"+fld1+"` FROM followings WHERE `"+fld2+"`=? AND `mutual`=0 AND `accepted`=?");
-		stmt.setInt(1, userID);
-		stmt.setBoolean(2, accepted);
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("followings")
+				.count()
+				.where(fld2+"=? AND accepted=? AND mutual=0", userID, accepted)
+				.createStatement();
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(total==0)
+			return PaginatedList.emptyList(count);
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("followings")
+				.columns(fld1)
+				.where(fld2+"=? AND accepted=? AND mutual=0", userID, accepted)
+				.orderBy(fld1+" ASC")
+				.limit(count, offset)
+				.createStatement();
 		try(ResultSet res=stmt.executeQuery()){
-			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
+			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
 		}
 	}
 
-	public static List<FriendRequest> getIncomingFriendRequestsForUser(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<FriendRequest> getIncomingFriendRequestsForUser(int userID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT message, from_user_id FROM `friend_requests` WHERE `to_user_id`=? LIMIT ?,?");
-		stmt.setInt(1, userID);
-		stmt.setInt(2, offset);
-		stmt.setInt(3, count);
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("friend_requests")
+				.count()
+				.where("to_user_id=?", userID)
+				.createStatement();
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(total==0)
+			return PaginatedList.emptyList(count);
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("friend_requests")
+				.columns("message", "from_user_id")
+				.where("to_user_id=?", userID)
+				.orderBy("id DESC")
+				.limit(count, offset)
+				.createStatement();
 		List<FriendRequest> reqs;
 		// 1. collect the IDs of mutual friends for each friend request
 		Map<Integer, List<Integer>> mutualFriendIDs=new HashMap<>();
@@ -358,9 +400,9 @@ public class UserStorage{
 			}).collect(Collectors.toList());
 		}
 		if(mutualFriendIDs.isEmpty())
-			return reqs;
+			return new PaginatedList<>(reqs, total, offset, count);
 		// 2. make a list of distinct users we need
-		List<Integer> needUsers=mutualFriendIDs.values().stream().flatMap(Collection::stream).distinct().collect(Collectors.toList());
+		Set<Integer> needUsers=mutualFriendIDs.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
 		// 3. get them all in one go
 		Map<Integer, User> mutualFriends=getById(needUsers);
 		// 4. finally, put them into friend requests
@@ -370,7 +412,7 @@ public class UserStorage{
 				continue;
 			req.mutualFriends=ids.stream().map(mutualFriends::get).collect(Collectors.toList());
 		}
-		return reqs;
+		return new PaginatedList<>(reqs, total, offset, count);
 	}
 
 	public static void acceptFriendRequest(int userID, int targetUserID, boolean followAccepted) throws SQLException{

@@ -1090,6 +1090,10 @@ select{
 	}
 }
 
+.bottomSummaryWrap:empty{
+	display: none;
+}
+
 .bottomSummaryWrap .pagination{
 	margin-top: -1px;
 	a, span{

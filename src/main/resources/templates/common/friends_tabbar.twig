@@ -3,8 +3,8 @@
 	{% if mutualCount>0 %}
 	<a href="/users/{{ owner.id }}/friends/mutual" class="{%if tab=="mutual"%}selected{%endif%}">{{L('X_mutual_friends_short', {'count': mutualCount})}}</a>
 	{% endif %}
-	<a href="{{owner.getProfileURL('followers')}}" class="{%if tab=="followers"%}selected{%endif%}">{{L('followers')}}</a>
-	<a href="{{owner.getProfileURL('following')}}" class="{%if tab=="following"%}selected{%endif%}">{{L('following')}}</a>
+	<a href="/users/{{ owner.id }}/followers" class="{%if tab=="followers"%}selected{%endif%}">{{L('followers')}}</a>
+	<a href="/users/{{ owner.id }}/following" class="{%if tab=="following"%}selected{%endif%}">{{L('following')}}</a>
 	{%if currentUser is not null and currentUser.id==owner.id%}
 	{%if userNotifications.newFriendRequestCount>0%}
 	<a href="/my/incomingFriendRequests" class="{%if tab=="requests"%}selected{%endif%}">{{ L('friend_requests')}} ({{ userNotifications.newFriendRequestCount }})</a>

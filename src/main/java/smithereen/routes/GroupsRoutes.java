@@ -15,7 +15,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.data.ForeignUser;
-import smithereen.data.ListAndTotal;
+import smithereen.data.PaginatedList;
 import smithereen.data.SizedImage;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.exceptions.BadRequestException;
@@ -34,7 +34,6 @@ import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
-import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.PostStorage;
@@ -49,13 +48,9 @@ import static smithereen.Utils.*;
 
 public class GroupsRoutes{
 
-	private static Group getGroup(Request req) throws SQLException{
+	private static Group getGroup(Request req){
 		int id=parseIntOrDefault(req.params(":id"), 0);
-		Group group=GroupStorage.getById(id);
-		if(group==null){
-			throw new ObjectNotFoundException("err_group_not_found");
-		}
-		return group;
+		return context(req).getGroupsController().getGroupOrThrow(id);
 	}
 
 	private static Group getGroupAndRequireLevel(Request req, Account self, Group.AdminLevel level) throws SQLException{
@@ -66,38 +61,34 @@ public class GroupsRoutes{
 		return group;
 	}
 
-	public static Object myGroups(Request req, Response resp, Account self) throws SQLException{
-		jsLangKey(req, "cancel", "create");
-		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("tab", "groups").with("title", lang(req).get("groups"));
-		model.with("groups", GroupStorage.getUserGroups(self.user.id));
-		model.with("owner", self.user);
-		return model;
+	public static Object myGroups(Request req, Response resp, Account self){
+		return userGroups(req, resp, self.user);
 	}
 
-	public static Object userGroups(Request req, Response resp) throws SQLException{
+	public static Object userGroups(Request req, Response resp){
 		int uid=parseIntOrDefault(req.params(":id"), 0);
-		if(uid==0)
-			throw new ObjectNotFoundException("err_user_not_found");
-		User user=UserStorage.getById(uid);
-		if(user==null)
-			throw new ObjectNotFoundException("err_user_not_found");
+		User user=context(req).getUsersController().getUserOrThrow(uid);
+		return userGroups(req, resp, user);
+	}
+
+	public static Object userGroups(Request req, Response resp, User user){
 		jsLangKey(req, "cancel", "create");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("tab", "groups").with("title", lang(req).get("groups"));
-		model.with("groups", GroupStorage.getUserGroups(user.id));
+		model.paginate(context(req).getGroupsController().getUserGroups(user, offset(req), 100));
 		model.with("owner", user);
 		return model;
 	}
 
-	public static Object myManagedGroups(Request req, Response resp, Account self) throws SQLException{
+	public static Object myManagedGroups(Request req, Response resp, Account self){
 		jsLangKey(req, "cancel", "create");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("tab", "managed").with("title", lang(req).get("groups"));
-		model.with("groups", GroupStorage.getUserManagedGroups(self.user.id)).with("owner", self.user);
+		model.paginate(context(req).getGroupsController().getUserManagedGroups(self.user, offset(req), 100)).with("owner", self.user);
 		return model;
 	}
 
-	public static Object createGroup(Request req, Response resp, Account self) throws SQLException{
+	public static Object createGroup(Request req, Response resp, Account self){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("create_group", req);
-		return wrapForm(req, resp, "create_group", "/my/groups/create", lang(req).get("create_group"), "create", model);
+		return wrapForm(req, resp, "create_group", "/my/groups/create", lang(req).get("create_group_title"), "create", model);
 	}
 
 	private static Object groupCreateError(Request req, Response resp, String errKey){
@@ -106,62 +97,56 @@ public class GroupsRoutes{
 		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse("create_group", req);
 		model.with("groupName", req.queryParams("name")).with("groupUsername", req.queryParams("username"));
-		return wrapForm(req, resp, "create_group", "/my/groups/create", lang(req).get("create_group"), "create", model);
+		return wrapForm(req, resp, "create_group", "/my/groups/create", lang(req).get("create_group_title"), "create", model);
 	}
 
-	public static Object doCreateGroup(Request req, Response resp, Account self) throws SQLException{
-		String username=req.queryParams("username");
+	public static Object doCreateGroup(Request req, Response resp, Account self){
 		String name=req.queryParams("name");
-
-		if(!isValidUsername(username))
-			return groupCreateError(req, resp, "err_group_invalid_username");
-		if(isReservedUsername(username))
-			return groupCreateError(req, resp, "err_group_reserved_username");
-
-		final int[] id={0};
-		boolean r=DatabaseUtils.runWithUniqueUsername(username, ()->{
-			id[0]=GroupStorage.createGroup(name, username, self.user.id);
-		});
-
-		if(r){
-			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(self.user, GroupStorage.getById(id[0]));
-			if(isAjax(req)){
-				return new WebDeltaResponse(resp).replaceLocation("/"+username);
-			}else{
-				resp.redirect(Config.localURI("/"+username).toString());
-				return "";
-			}
+		String description=req.queryParams("description");
+		String eventTime=req.queryParams("event_start_time");
+		String eventDate=req.queryParams("event_start_date");
+//
+//		if(!isValidUsername(username))
+//			return groupCreateError(req, resp, "err_group_invalid_username");
+//		if(isReservedUsername(username))
+//			return groupCreateError(req, resp, "err_group_reserved_username");
+//
+//		final int[] id={0};
+//		boolean r=DatabaseUtils.runWithUniqueUsername(username, ()->{
+//			id[0]=GroupStorage.createGroup(name, username, self.user.id);
+//		});
+//
+//		if(r){
+//			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(self.user, GroupStorage.getById(id[0]));
+//		}else{
+//			return groupCreateError(req, resp, "err_group_username_taken");
+//		}
+		Group group=context(req).getGroupsController().createGroup(self.user, name, description);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).replaceLocation("/"+group.username);
 		}else{
-			return groupCreateError(req, resp, "err_group_username_taken");
+			resp.redirect(Config.localURI("/"+group.username).toString());
+			return "";
 		}
 	}
 
 	public static Object groupProfile(Request req, Response resp, Group group) throws SQLException{
-		int pageOffset=parseIntOrDefault(req.queryParams("offset"), 0);
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 
 		List<User> members=GroupStorage.getRandomMembersForProfile(group.id);
-		int[] totalPosts={0};
-		List<Post> wall=PostStorage.getWallPosts(group.id, true, 0, 0, pageOffset, totalPosts, false);
-		Set<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toSet());
+		int offset=offset(req);
+		PaginatedList<Post> wall=context(req).getWallController().getWallPosts(group, false, offset, 20);
 
 		if(req.attribute("mobile")==null){
-			Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
-			for(Post post:wall){
-				ListAndTotal<Post> comments=allComments.get(post.id);
-				if(comments!=null){
-					post.repliesObjects=comments.list;
-					post.totalTopLevelComments=comments.total;
-					post.getAllReplyIDs(postIDs);
-				}
-			}
+			context(req).getWallController().populateCommentPreviews(wall.list);
 		}
-		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
+
+		Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 		Lang l=lang(req);
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group", req);
-		model.with("group", group).with("members", members).with("postCount", totalPosts[0]).with("pageOffset", pageOffset).with("wall", wall);
+		model.with("group", group).with("members", members).with("postCount", wall.total).paginate(wall);
 		model.with("postInteractions", interactions);
 		model.with("title", group.name);
 		model.with("admins", GroupStorage.getGroupAdmins(group.id));
@@ -185,7 +170,7 @@ public class GroupsRoutes{
 			meta.put("og:title", group.name);
 			meta.put("og:url", group.url.toString());
 			meta.put("og:username", group.getFullUsername());
-			String descr=l.get("X_members", Map.of("count", group.memberCount))+", "+l.get("X_posts", Map.of("count", totalPosts[0]));
+			String descr=l.get("X_members", Map.of("count", group.memberCount))+", "+l.get("X_posts", Map.of("count", wall.total));
 			if(StringUtils.isNotEmpty(group.summary))
 				descr+="\n"+Jsoup.clean(group.summary, Whitelist.none());
 			meta.put("og:description", descr);
@@ -283,12 +268,10 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object members(Request req, Response resp) throws SQLException{
+	public static Object members(Request req, Response resp){
 		Group group=getGroup(req);
-		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		ListAndTotal<User> users=GroupStorage.getMembers(group.id, offset, 100);
-		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users.list);
-		model.with("pageOffset", offset).with("total", group.memberCount).with("paginationUrlPrefix", "/groups/"+group.id+"/members?offset=");
+		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
+		model.paginate(context(req).getGroupsController().getMembers(group, offset(req), 100));
 		model.with("summary", lang(req).get("summary_group_X_members", Map.of("count", group.memberCount)));
 //		if(isAjax(req)){
 //			if(req.queryParams("fromPagination")==null)
@@ -323,11 +306,8 @@ public class GroupsRoutes{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		Group.AdminLevel level=GroupStorage.getGroupMemberAdminLevel(group.id, self.user.id);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
-		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		List<User> users=GroupStorage.getMembers(group.id, offset, 100).list;
-		model.with("pageOffset", offset).with("total", group.memberCount).with("paginationUrlPrefix", "/groups/"+group.id+"/editMembers?offset=");
+		model.paginate(context(req).getGroupsController().getMembers(group, offset(req), 100));
 		model.with("group", group).with("title", group.name);
-		model.with("members", users);
 		model.with("adminIDs", GroupStorage.getGroupAdmins(group.id).stream().map(adm->adm.user.id).collect(Collectors.toList()));
 		model.with("canAddAdmins", level.isAtLeast(Group.AdminLevel.ADMIN));
 		model.with("adminLevel", level);

@@ -1,8 +1,13 @@
 package smithereen.templates;
 
+import com.mitchellbosecke.pebble.error.PebbleException;
 import com.mitchellbosecke.pebble.template.PebbleTemplate;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
@@ -11,10 +16,14 @@ import java.util.List;
 import java.util.Locale;
 
 import smithereen.Utils;
+import smithereen.data.PaginatedList;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 
 public class RenderedTemplateResponse{
+	private static final Logger LOG=LoggerFactory.getLogger(RenderedTemplateResponse.class);
+
 	String templateName;
 	final HashMap<String, Object> model=new HashMap<>();
 	private PebbleTemplate template;
@@ -54,13 +63,35 @@ public class RenderedTemplateResponse{
 		return addNavBarItem(title, null, null);
 	}
 
+	public RenderedTemplateResponse paginate(PaginatedList<?> list, String urlPrefix, String firstPageURL){
+		model.put("items", list.list);
+		model.put("paginationOffset", list.offset);
+		model.put("paginationPerPage", list.perPage);
+		model.put("totalItems", list.total);
+		model.put("paginationUrlPrefix", urlPrefix);
+		if(StringUtils.isNotEmpty(firstPageURL))
+			model.put("paginationFirstPageUrl", firstPageURL);
+		return this;
+	}
+
+	public RenderedTemplateResponse paginate(PaginatedList<?> list){
+		return paginate(list, req.pathInfo()+"?offset=", req.pathInfo());
+	}
+
 	public void setName(String name){
 		templateName=name;
 	}
 
 	public void renderToWriter(Writer writer) throws IOException{
-		template=getAndPrepareTemplate(req);
-		template.evaluate(writer, model, locale);
+		try{
+			template=getAndPrepareTemplate(req);
+			template.evaluate(writer, model, locale);
+		}catch(PebbleException x){
+			writer.write("<pre>");
+			x.printStackTrace(new PrintWriter(writer));
+			writer.write("</pre>");
+			LOG.error("Error rendering template {}", templateName, x);
+		}
 	}
 
 	public String renderToString(){

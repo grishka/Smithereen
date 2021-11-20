@@ -69,7 +69,7 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 	}
 
 	private void doHandle(Post post) throws SQLException{
-		long time=activity.published==null ? System.currentTimeMillis() : activity.published.getTime();
+		long time=activity.published==null ? System.currentTimeMillis() : activity.published.toEpochMilli();
 		NewsfeedStorage.putEntry(actor.id, post.id, NewsfeedEntry.Type.RETOOT, new Timestamp(time));
 
 		if(!(post.user instanceof ForeignUser)){

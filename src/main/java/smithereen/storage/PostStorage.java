@@ -15,12 +15,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.sql.Types;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +31,7 @@ import java.util.stream.Collectors;
 import smithereen.Config;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.data.FederationState;
-import smithereen.data.ListAndTotal;
+import smithereen.data.PaginatedList;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
 import smithereen.data.UriBuilder;
@@ -125,7 +124,7 @@ public class PostStorage{
 				.value("owner_id", ownerID)
 				.value("question", poll.question)
 				.value("is_anonymous", poll.anonymous)
-				.value("end_time", poll.endTime!=null ? new Timestamp(poll.endTime.getTime()) : null)
+				.value("end_time", poll.endTime)
 				.value("is_multi_choice", poll.multipleChoice)
 				.value("num_voted_users",poll.numVoters)
 				.createStatement(Statement.RETURN_GENERATED_KEYS);
@@ -176,7 +175,7 @@ public class PostStorage{
 					.value("ap_url", post.url.toString())
 					.value("ap_id", post.activityPubID.toString())
 					.value("reply_key", Utils.serializeIntArray(post.replyKey))
-					.value("created_at", new Timestamp(post.published.getTime()))
+					.value("created_at", post.published)
 					.value("mentions", post.mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(post.mentionedUsers.stream().mapToInt(u->u.id).toArray()))
 					.value("ap_replies", Objects.toString(post.getRepliesURL(), null))
 					.value("poll_id", post.poll!=null ? post.poll.id : null)
@@ -255,7 +254,7 @@ public class PostStorage{
 						.value("type", NewsfeedEntry.Type.POST)
 						.value("author_id", post.user.id)
 						.value("object_id", post.id)
-						.value("time", new Timestamp(post.published.getTime()))
+						.value("time", post.published)
 						.createStatement()
 						.execute();
 			}
@@ -367,7 +366,7 @@ public class PostStorage{
 		return posts;
 	}
 
-	public static List<Post> getWallPosts(int ownerID, boolean isGroup, int minID, int maxID, int offset, int[] total, boolean ownOnly) throws SQLException{
+	public static List<Post> getWallPosts(int ownerID, boolean isGroup, int minID, int maxID, int offset, int count, int[] total, boolean ownOnly) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt;
 		String ownCondition=ownOnly ? " AND owner_user_id=author_id" : "";
@@ -381,13 +380,13 @@ public class PostStorage{
 			}
 		}
 		if(minID>0){
-			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`>? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT 25");
+			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`>? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+count);
 			stmt.setInt(2, minID);
 		}else if(maxID>0){
-			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`=<? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+",25");
+			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`=<? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
 			stmt.setInt(2, maxID);
 		}else{
-			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+",25");
+			stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
 		}
 		stmt.setInt(1, ownerID);
 		ArrayList<Post> posts=new ArrayList<>();
@@ -435,7 +434,7 @@ public class PostStorage{
 		}
 	}
 
-	public static List<Post> getWallToWall(int userID, int otherUserID, int offset, int[] total) throws SQLException{
+	public static List<Post> getWallToWall(int userID, int otherUserID, int offset, int count, int[] total) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt;
 		if(total!=null){
@@ -449,7 +448,7 @@ public class PostStorage{
 				total[0]=res.getInt(1);
 			}
 		}
-		stmt=conn.prepareStatement("SELECT * FROM wall_posts WHERE ((owner_user_id=? AND author_id=?) OR (owner_user_id=? AND author_id=?)) AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT "+offset+",25");
+		stmt=conn.prepareStatement("SELECT * FROM wall_posts WHERE ((owner_user_id=? AND author_id=?) OR (owner_user_id=? AND author_id=?)) AND `reply_key` IS NULL ORDER BY created_at DESC LIMIT "+offset+","+count);
 		stmt.setInt(1, userID);
 		stmt.setInt(2, otherUserID);
 		stmt.setInt(3, otherUserID);
@@ -553,7 +552,7 @@ public class PostStorage{
 		}
 	}
 
-	public static Map<Integer, ListAndTotal<Post>> getRepliesForFeed(Set<Integer> postIDs) throws SQLException{
+	public static Map<Integer, PaginatedList<Post>> getRepliesForFeed(Set<Integer> postIDs) throws SQLException{
 		if(postIDs.isEmpty())
 			return Collections.emptyMap();
 		Connection conn=DatabaseConnectionManager.getConnection();
@@ -564,12 +563,12 @@ public class PostStorage{
 			i++;
 		}
 		LOG.debug("{}", stmt);
-		HashMap<Integer, ListAndTotal<Post>> map=new HashMap<>();
+		HashMap<Integer, PaginatedList<Post>> map=new HashMap<>();
 		try(ResultSet res=stmt.executeQuery()){
 			res.afterLast();
 			while(res.previous()){
 				Post post=Post.fromResultSet(res);
-				List<Post> posts=map.computeIfAbsent(post.getReplyChainElement(0), (k)->new ListAndTotal<>(new ArrayList<>(), 0)).list;
+				List<Post> posts=map.computeIfAbsent(post.getReplyChainElement(0), (k)->new PaginatedList<>(new ArrayList<>(), 0)).list;
 				posts.add(post);
 			}
 		}
@@ -967,7 +966,7 @@ public class PostStorage{
 		return rVoteID;
 	}
 
-	public static int createPoll(int ownerID, @NotNull String question, @NotNull List<String> options, boolean anonymous, boolean multiChoice, @Nullable Date endTime) throws SQLException{
+	public static int createPoll(int ownerID, @NotNull String question, @NotNull List<String> options, boolean anonymous, boolean multiChoice, @Nullable Instant endTime) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=new SQLQueryBuilder(conn)
 				.insertInto("polls")
@@ -975,7 +974,7 @@ public class PostStorage{
 				.value("question", question)
 				.value("is_anonymous", anonymous)
 				.value("is_multi_choice", multiChoice)
-				.value("end_time", endTime!=null ? new Timestamp(endTime.getTime()) : null)
+				.value("end_time", endTime)
 				.createStatement(Statement.RETURN_GENERATED_KEYS);
 		stmt.execute();
 		int pollID;
@@ -1039,7 +1038,7 @@ public class PostStorage{
 				.execute();
 	}
 
-	public static ListAndTotal<NewsfeedEntry> getCommentsFeed(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<NewsfeedEntry> getCommentsFeed(int userID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		int total;
 		PreparedStatement stmt=new SQLQueryBuilder(conn)
@@ -1054,7 +1053,7 @@ public class PostStorage{
 		}
 
 		if(total==0)
-			return new ListAndTotal<>(Collections.emptyList(), 0);
+			return new PaginatedList<>(Collections.emptyList(), 0);
 
 		stmt=new SQLQueryBuilder(conn)
 				.selectFrom("newsfeed_comments")
@@ -1082,7 +1081,7 @@ public class PostStorage{
 			}
 		}
 		if(needPosts.isEmpty())
-			return new ListAndTotal<>(entries, total);
+			return new PaginatedList<>(entries, total);
 
 		stmt=new SQLQueryBuilder(conn)
 				.selectFrom("wall_posts")
@@ -1100,7 +1099,7 @@ public class PostStorage{
 			}
 		}
 
-		return new ListAndTotal<>(entries, total);
+		return new PaginatedList<>(entries, total);
 	}
 
 	private static class DeleteCommentBookmarksRunnable implements Runnable{

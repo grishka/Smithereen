@@ -128,12 +128,12 @@ public class ObjectLinkResolver{
 
 	public static void storeOrUpdateRemoteObject(ActivityPubObject o) throws SQLException{
 		o.storeDependencies();
-		if(o instanceof ForeignUser)
-			UserStorage.putOrUpdateForeignUser((ForeignUser) o);
-		else if(o instanceof ForeignGroup)
-			GroupStorage.putOrUpdateForeignGroup((ForeignGroup) o);
-		else if(o instanceof Post)
-			PostStorage.putForeignWallPost((Post) o);
+		if(o instanceof ForeignUser fu)
+			UserStorage.putOrUpdateForeignUser(fu);
+		else if(o instanceof ForeignGroup fg)
+			GroupStorage.putOrUpdateForeignGroup(fg);
+		else if(o instanceof Post p)
+			PostStorage.putForeignWallPost(p);
 	}
 
 	private static <T extends ActivityPubObject> T ensureTypeAndCast(ActivityPubObject obj, Class<T> type){
