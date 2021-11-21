@@ -50,7 +50,7 @@ public class Config{
 	public static long mediaCacheFileSizeLimit;
 	public static boolean useHTTP;
 	public static String staticFilesPath;
-	public static final boolean DEBUG=System.getProperty("smithereen.debug")!=null;
+	public static final boolean DEBUG=System.getProperty("smithereen.debug")!=null || System.getenv("SMITHEREEN_DEBUG")!=null;
 
 	public static String imgproxyLocalUploads;
 	public static String imgproxyLocalMediaCache;

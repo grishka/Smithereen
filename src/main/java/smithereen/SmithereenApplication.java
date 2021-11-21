@@ -9,6 +9,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -74,6 +75,13 @@ public class SmithereenApplication{
 		System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
 		if(Config.DEBUG)
 			System.setProperty("org.slf4j.simpleLogger.log.smithereen", "trace");
+		String addProperties=System.getenv("SMITHEREEN_SET_PROPS");
+		if(addProperties!=null){
+			Arrays.stream(addProperties.split("&")).forEach(s->{
+				String[] kv=s.split("=", 2);
+				System.setProperty(kv[0], URLDecoder.decode(kv[1], StandardCharsets.UTF_8));
+			});
+		}
 		LOG=LoggerFactory.getLogger(SmithereenApplication.class);
 
 		context=new ApplicationContext();
