@@ -540,14 +540,20 @@ small{
 
 .profileBlock{
 	border-collapse: collapse;
+	overflow-x: hidden;
 	.blockHeader{
 		text-align: left;
 		height: 20px;
 		border-top: solid 1px $blockBorderTop;
-		padding: 0 8px;
+		padding: 3px 8px;
 		background: $blockBackground;
+		font-weight: bold;
 		a{
 			color: $boldHeaders;
+		}
+		.addHeader{
+			color: $auxiliaryBlockHeader;
+			text-transform: lowercase;
 		}
 	}
 	.blockSubheader{
@@ -555,7 +561,7 @@ small{
 		background: $wallCommentSeparator;
 		border-top: solid 1px $blockBorderBottom;
 		color: $auxiliaryGrey;
-		padding: 0 8px;
+		padding: 3px 8px;
 	}
 }
 
@@ -1941,4 +1947,8 @@ label.pretendLink{
 			opacity: 0;
 		}
 	}
+}
+
+.fixLineHeight{
+	line-height: 13px;
 }

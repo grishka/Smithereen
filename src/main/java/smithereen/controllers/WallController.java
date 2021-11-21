@@ -85,7 +85,7 @@ public class WallController{
 			if(textSource.length()==0 && attachmentIDs.isEmpty() && poll==null)
 				throw new BadRequestException("Empty post");
 
-			if(!wallOwner.hasWall())
+			if(!wallOwner.hasWall() && inReplyToID==0)
 				throw new BadRequestException("This actor doesn't support wall posts");
 
 			Post parent=inReplyToID!=0 ? getPostOrThrow(inReplyToID) : null;

@@ -53,11 +53,9 @@ public class GroupsRoutes{
 		return context(req).getGroupsController().getGroupOrThrow(id);
 	}
 
-	private static Group getGroupAndRequireLevel(Request req, Account self, Group.AdminLevel level) throws SQLException{
+	private static Group getGroupAndRequireLevel(Request req, Account self, Group.AdminLevel level){
 		Group group=getGroup(req);
-		if(!GroupStorage.getGroupMemberAdminLevel(group.id, self.user.id).isAtLeast(level)){
-			throw new UserActionNotAllowedException();
-		}
+		context(req).getGroupsController().enforceUserAdminLevel(group, self.user, level);
 		return group;
 	}
 
@@ -130,11 +128,11 @@ public class GroupsRoutes{
 		}
 	}
 
-	public static Object groupProfile(Request req, Response resp, Group group) throws SQLException{
+	public static Object groupProfile(Request req, Response resp, Group group){
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 
-		List<User> members=GroupStorage.getRandomMembersForProfile(group.id);
+		List<User> members=context(req).getGroupsController().getRandomMembersForProfile(group);
 		int offset=offset(req);
 		PaginatedList<Post> wall=context(req).getWallController().getWallPosts(group, false, offset, 20);
 
@@ -149,14 +147,14 @@ public class GroupsRoutes{
 		model.with("group", group).with("members", members).with("postCount", wall.total).paginate(wall);
 		model.with("postInteractions", interactions);
 		model.with("title", group.name);
-		model.with("admins", GroupStorage.getGroupAdmins(group.id));
+		model.with("admins", context(req).getGroupsController().getAdmins(group));
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
 		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
 		jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
 		if(self!=null){
-			Group.AdminLevel level=GroupStorage.getGroupMemberAdminLevel(group.id, self.user.id);
-			model.with("membershipState", GroupStorage.getUserMembershipState(group.id, self.user.id));
+			Group.AdminLevel level=context(req).getGroupsController().getMemberAdminLevel(group, self.user);
+			model.with("membershipState", context(req).getGroupsController().getUserMembershipState(group, self.user));
 			model.with("groupAdminLevel", level);
 			if(level.isAtLeast(Group.AdminLevel.ADMIN)){
 				jsLangKey(req, "update_profile_picture", "save", "profile_pic_select_square_version", "drag_or_choose_file", "choose_file",
@@ -232,7 +230,7 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object editGeneral(Request req, Response resp, Account self) throws SQLException{
+	public static Object editGeneral(Request req, Response resp, Account self){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_general", req);
 		model.with("group", group).with("title", group.name);
@@ -283,32 +281,32 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object admins(Request req, Response resp) throws SQLException{
+	public static Object admins(Request req, Response resp){
 		Group group=getGroup(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_admins", req);
-		model.with("admins", GroupStorage.getGroupAdmins(group.id));
+		model.with("admins", context(req).getGroupsController().getAdmins(group));
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).box(lang(req).get("group_admins"), model.renderContentBlock(), null, true);
 		}
 		return model;
 	}
 
-	public static Object editAdmins(Request req, Response resp, Account self) throws SQLException{
+	public static Object editAdmins(Request req, Response resp, Account self){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_admins", req);
 		model.with("group", group).with("title", group.name);
-		model.with("admins", GroupStorage.getGroupAdmins(group.id));
+		model.with("admins", context(req).getGroupsController().getAdmins(group));
 		jsLangKey(req, "cancel", "group_admin_demote", "yes", "no");
 		return model;
 	}
 
-	public static Object editMembers(Request req, Response resp, Account self) throws SQLException{
+	public static Object editMembers(Request req, Response resp, Account self){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
-		Group.AdminLevel level=GroupStorage.getGroupMemberAdminLevel(group.id, self.user.id);
+		Group.AdminLevel level=context(req).getGroupsController().getMemberAdminLevel(group, self.user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
 		model.paginate(context(req).getGroupsController().getMembers(group, offset(req), 100));
 		model.with("group", group).with("title", group.name);
-		model.with("adminIDs", GroupStorage.getGroupAdmins(group.id).stream().map(adm->adm.user.id).collect(Collectors.toList()));
+		model.with("adminIDs", context(req).getGroupsController().getAdmins(group).stream().map(adm->adm.user.id).collect(Collectors.toList()));
 		model.with("canAddAdmins", level.isAtLeast(Group.AdminLevel.ADMIN));
 		model.with("adminLevel", level);
 		jsLangKey(req, "cancel", "yes", "no");
@@ -356,23 +354,18 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object confirmDemoteAdmin(Request req, Response resp, Account self) throws SQLException{
+	public static Object confirmDemoteAdmin(Request req, Response resp, Account self){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
-		int userID=parseIntOrDefault(req.queryParams("id"), 0);
-		User user=UserStorage.getById(userID);
-		if(user==null)
-			throw new ObjectNotFoundException("user_not_found");
-
+		int userID=safeParseInt(req.queryParams("id"));
+		User user=context(req).getUsersController().getUserOrThrow(userID);
 		String back=Utils.back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", Utils.lang(req).get("group_admin_demote_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", Config.localURI("/groups/"+group.id+"/removeAdmin?_redir="+URLEncoder.encode(back)+"&id="+userID)).with("back", back);
 	}
 
 	public static Object removeAdmin(Request req, Response resp, Account self) throws SQLException{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
-		int userID=parseIntOrDefault(req.queryParams("id"), 0);
-		User user=UserStorage.getById(userID);
-		if(user==null)
-			throw new ObjectNotFoundException("user_not_found");
+		int userID=safeParseInt(req.queryParams("id"));
+		User user=context(req).getUsersController().getUserOrThrow(userID);
 
 		GroupStorage.removeGroupAdmin(group.id, userID);
 
@@ -407,7 +400,7 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object blockDomainForm(Request req, Response resp, Account self) throws SQLException{
+	public static Object blockDomainForm(Request req, Response resp, Account self){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("block_domain", req);
 		return wrapForm(req, resp, "block_domain", "/groups/"+group.id+"/blockDomain", lang(req).get("block_a_domain"), "block", model);
@@ -427,7 +420,7 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object confirmUnblockDomain(Request req, Response resp, Account self) throws SQLException{
+	public static Object confirmUnblockDomain(Request req, Response resp, Account self){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		String domain=req.queryParams("domain");
 		Lang l=Utils.lang(req);
@@ -446,17 +439,12 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	private static User getUserOrThrow(Request req) throws SQLException{
+	private static User getUserOrThrow(Request req){
 		int id=parseIntOrDefault(req.queryParams("id"), 0);
-		if(id==0)
-			throw new ObjectNotFoundException("err_user_not_found");
-		User user=UserStorage.getById(id);
-		if(user==null)
-			throw new ObjectNotFoundException("err_user_not_found");
-		return user;
+		return context(req).getUsersController().getUserOrThrow(id);
 	}
 
-	public static Object confirmBlockUser(Request req, Response resp, Account self) throws SQLException{
+	public static Object confirmBlockUser(Request req, Response resp, Account self){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
@@ -464,7 +452,7 @@ public class GroupsRoutes{
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_block_user_X", Map.of("user", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/blockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
-	public static Object confirmUnblockUser(Request req, Response resp, Account self) throws SQLException{
+	public static Object confirmUnblockUser(Request req, Response resp, Account self){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);

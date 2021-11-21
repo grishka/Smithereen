@@ -1,0 +1,17 @@
+<div class="profileBlock marginAfter">
+	<div class="blockHeader">
+		<a href="{{ headerHref }}"{% if headerAjaxBox %} data-ajax-box{% endif %}>{{ headerTitle }}</a>
+		{%- if additionalHeader is not empty %}
+			{%- if additionalHeaderHref is not empty %}
+				<a class="addHeader" href="{{ additionalHeaderHref }}">{{ additionalHeader }}</a>
+			{%- else %}
+				<span class="addHeader">{{ additionalHeader }}</span>
+			{%- endif -%}
+		{%- endif -%}
+	</div>
+	{% if subheaderTitle is not empty %}
+	<div class="blockSubheader">{{ subheaderTitle }}</div>
+	{% endif %}
+	{% block moduleContent %}
+	{% endblock %}
+</div>

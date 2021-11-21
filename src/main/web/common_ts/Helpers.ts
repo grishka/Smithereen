@@ -440,11 +440,11 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):bo
 }
 
 function ajaxFollowLink(link:HTMLAnchorElement):boolean{
-	if(link.dataset.ajax){
+	if(link.dataset.ajax!=undefined){
 		ajaxGetAndApplyActions(link.href);
 		return true;
 	}
-	if(link.dataset.ajaxBox){
+	if(link.dataset.ajaxBox!=undefined){
 		LayerManager.getInstance().showBoxLoader();
 		ajaxGetAndApplyActions(link.href);
 		return true;

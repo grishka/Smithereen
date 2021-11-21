@@ -15,10 +15,12 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
+import smithereen.data.GroupAdmin;
 import smithereen.data.PaginatedList;
 import smithereen.data.User;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.GroupStorage;
 import spark.utils.StringUtils;
 
@@ -89,11 +91,50 @@ public class GroupsController{
 		return group;
 	}
 
-	public PaginatedList<User> getMembers(Group group, int offset, int count){
+	public PaginatedList<User> getMembers(@NotNull Group group, int offset, int count){
 		try{
 			return GroupStorage.getMembers(group.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public List<GroupAdmin> getAdmins(@NotNull Group group){
+		try{
+			return GroupStorage.getGroupAdmins(group.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<User> getRandomMembersForProfile(@NotNull Group group){
+		try{
+			return GroupStorage.getRandomMembersForProfile(group.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	@NotNull
+	public Group.AdminLevel getMemberAdminLevel(@NotNull Group group, @NotNull User user){
+		try{
+			return GroupStorage.getGroupMemberAdminLevel(group.id, user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	@NotNull
+	public Group.MembershipState getUserMembershipState(@NotNull Group group, @NotNull User user){
+		try{
+			return GroupStorage.getUserMembershipState(group.id, user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void enforceUserAdminLevel(@NotNull Group group, @NotNull User user, @NotNull Group.AdminLevel atLeastLevel){
+		if(!getMemberAdminLevel(group, user).isAtLeast(atLeastLevel))
+			throw new UserActionNotAllowedException();
 	}
 }
