@@ -240,6 +240,8 @@ public class Post extends ActivityPubObject{
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
+		// fix for Lemmy (and possibly something else)
+		boolean hasBogusURL=url!=null && !url.getHost().equalsIgnoreCase(activityPubID.getHost());
 		JsonElement _content=obj.get("content");
 		if(_content!=null && _content.isJsonArray()){
 			content=_content.getAsJsonArray().get(0).getAsString();
@@ -249,6 +251,8 @@ public class Post extends ActivityPubObject{
 		if(content!=null && !parserContext.isLocal){
 			if(StringUtils.isNotEmpty(name) && !isPoll)
 				content="<p><b>"+name+"</b></p>"+content;
+			if(hasBogusURL)
+				content=content+"<p><a href=\""+url+"\">"+url+"</a></p>";
 			content=Utils.sanitizeHTML(content);
 			if(obj.has("sensitive") && obj.get("sensitive").getAsBoolean() && summary!=null){
 				summary=Utils.sanitizeHTML(summary);
@@ -256,6 +260,8 @@ public class Post extends ActivityPubObject{
 				summary=null;
 			}
 		}
+		if(hasBogusURL)
+			url=activityPubID;
 		try{
 			user=UserStorage.getUserByActivityPubID(attributedTo);
 			if(url==null)
