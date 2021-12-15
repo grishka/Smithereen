@@ -36,6 +36,7 @@ import smithereen.data.Poll;
 import smithereen.data.PollOption;
 import smithereen.data.UriBuilder;
 import smithereen.data.feed.AddFriendNewsfeedEntry;
+import smithereen.data.feed.JoinEventNewsfeedEntry;
 import smithereen.data.feed.JoinGroupNewsfeedEntry;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.Utils;
@@ -319,10 +320,17 @@ public class PostStorage{
 							_entry.author=UserStorage.getById(res.getInt(3));
 							yield _entry;
 						}
-						case JOIN_GROUP -> {
+						case JOIN_GROUP, CREATE_GROUP -> {
 							JoinGroupNewsfeedEntry _entry=new JoinGroupNewsfeedEntry();
 							_entry.objectID=res.getInt(2);
 							_entry.group=GroupStorage.getById(_entry.objectID);
+							_entry.author=UserStorage.getById(res.getInt(3));
+							yield _entry;
+						}
+						case JOIN_EVENT, CREATE_EVENT -> {
+							JoinEventNewsfeedEntry _entry=new JoinEventNewsfeedEntry();
+							_entry.objectID=res.getInt(2);
+							_entry.event=GroupStorage.getById(_entry.objectID);
 							_entry.author=UserStorage.getById(res.getInt(3));
 							yield _entry;
 						}

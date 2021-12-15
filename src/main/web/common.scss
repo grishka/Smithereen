@@ -712,6 +712,9 @@ ul.actualList{
 	&.feedIconStatus{
 		background: svg-load('img/statuses_s.svg');
 	}
+	&.feedIconEvent{
+		background: svg-load('img/events_s.svg');
+	}
 }
 
 .undecoratedLink{

@@ -18,10 +18,12 @@ import smithereen.data.Group;
 import smithereen.data.GroupAdmin;
 import smithereen.data.PaginatedList;
 import smithereen.data.User;
+import smithereen.data.feed.NewsfeedEntry;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.NewsfeedStorage;
 import spark.utils.StringUtils;
 
 public class GroupsController{
@@ -51,6 +53,7 @@ public class GroupsController{
 			int id=GroupStorage.createGroup(name, Utils.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
 			Group group=Objects.requireNonNull(GroupStorage.getById(id));
 			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(admin, group);
+			NewsfeedStorage.putEntry(admin.id, group.id, isEvent ? NewsfeedEntry.Type.CREATE_EVENT : NewsfeedEntry.Type.CREATE_GROUP, null);
 			return group;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

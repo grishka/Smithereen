@@ -241,7 +241,7 @@ public class GroupsRoutes{
 		}else{
 			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(self.user, group);
 		}
-		NewsfeedStorage.putEntry(self.user.id, group.id, NewsfeedEntry.Type.JOIN_GROUP, null);
+		NewsfeedStorage.putEntry(self.user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
@@ -261,7 +261,7 @@ public class GroupsRoutes{
 		}else{
 			ActivityPubWorker.getInstance().sendRemoveFromGroupsCollectionActivity(self.user, group);
 		}
-		NewsfeedStorage.deleteEntry(self.user.id, group.id, NewsfeedEntry.Type.JOIN_GROUP);
+		NewsfeedStorage.deleteEntry(self.user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}

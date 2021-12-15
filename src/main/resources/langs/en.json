@@ -352,7 +352,7 @@
   "feed_added_friend_before": " added ",
   "feed_added_friend_name": "{name}",
   "feed_added_friend_after": " as a friend.",
-  "feed_joined_group_before": " joined group ",
+  "feed_joined_group_before": " joined the group ",
   "feed_joined_group_after": ".",
   "search": "Search",
   "qsearch_hint": "Start typing a name or paste a link",
@@ -469,5 +469,11 @@
   "leave_event": "Leave event",
   "event_organizers": "Organizers",
   "event_X_organizers": "{count, plural, one {# organizer} other {# organizers}}",
-  "err_event_end_time_before_start": "Event end time must be after the start time."
+  "err_event_end_time_before_start": "Event end time must be after the start time.",
+  "feed_joined_event_before": " is attending the event ",
+  "feed_joined_event_after": ".",
+  "feed_created_group_before": " created the group ",
+  "feed_created_group_after": ".",
+  "feed_created_event_before": " created the event ",
+  "feed_created_event_after": "."
 }

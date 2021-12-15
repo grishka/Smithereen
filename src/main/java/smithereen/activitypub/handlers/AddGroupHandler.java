@@ -29,7 +29,7 @@ public class AddGroupHandler extends ActivityTypeHandler<ForeignUser, Add, Group
 			// TODO verify that this user is actually a member of this group and store the membership
 			// https://socialhub.activitypub.rocks/t/querying-activitypub-collections/1866
 
-			NewsfeedStorage.putEntry(actor.id, object.id, NewsfeedEntry.Type.JOIN_GROUP, null);
+			NewsfeedStorage.putEntry(actor.id, object.id, object.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
 		}else{
 			LOG.warn("Unknown Add{Group} target {}", target);
 		}

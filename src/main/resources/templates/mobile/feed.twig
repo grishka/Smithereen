@@ -8,44 +8,7 @@
 <div id="postList">
 {%for entry in feed%}
 <div class="card">
-{%if entry.type=="POST"%}
-{%include "wall_post" with {'post': entry.post}%}
-{%elseif entry.type=="RETOOT"%}
-<div class="feedRow">
-<div class="feedIcon feedIconStatus"></div>
-<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
-<div class="feedRowContent">
-	{{ L(entry.post.replyLevel==0 ? 'feed_retoot_before' : 'feed_retoot_before_comment', {'gender': entry.author.gender}) -}}
-	<a href="{{entry.author.profileURL}}">{{entry.author.fullName}}</a>
-	{{- L(entry.post.replyLevel==0 ? 'feed_retoot_after' : 'feed_retoot_after_comment', {'gender': entry.author.gender}) -}}
-</div>
-</div>
-{%include "wall_post" with {'post': entry.post}%}
-{% elseif entry.type=="ADD_FRIEND" %}
-<div class="feedRow">
-	<div class="feedIcon feedIconAdd"></div>
-	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
-	<div class="feedRowContent">
-		<a href="{{ entry.author.profileURL }}">{{ entry.author.fullName }}</a>
-		{{- L('feed_added_friend_before', {'gender': entry.author.gender}) -}}
-		<a href="{{ entry.friend.profileURL }}">{{ L('feed_added_friend_name', {'name': entry.friend.firstLastAndGender}) }}</a>
-		{{- L('feed_added_friend_after', {'gender': entry.author.gender}) -}}
-	</div>
-</div>
-{% elseif entry.type=="JOIN_GROUP" %}
-<div class="feedRow">
-	<div class="feedIcon feedIconGroup"></div>
-	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
-	<div class="feedRowContent">
-		<a href="{{ entry.author.profileURL }}">{{ entry.author.fullName }}</a>
-		{{- L('feed_joined_group_before', {'gender': entry.author.gender}) -}}
-		<a href="{{ entry.group.profileURL }}">{{ entry.group.name }}</a>
-		{{- L('feed_joined_group_after', {'gender': entry.author.gender}) -}}
-	</div>
-</div>
-{%else%}
-Unknown entry type {{entry.type}}
-{%endif%}
+	{% include "feed_row" with {'entry': entry} %}
 </div>
 {% else %}
 <div class="emptyState" id="wallEmptyState">{{ L('feed_empty') }}</div>

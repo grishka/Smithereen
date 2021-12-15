@@ -471,5 +471,11 @@
   "leave_event": "Покинуть встречу",
   "event_organizers": "Организаторы",
   "event_X_organizers": "{count, plural, one {# организатор} few {# организатора} other {# организаторов}}",
-  "err_event_end_time_before_start": "Время окончания встречи должно быть после времени начала."
+  "err_event_end_time_before_start": "Время окончания встречи должно быть после времени начала.",
+  "feed_joined_event_before": " примет участие во встрече ",
+  "feed_joined_event_after": ".",
+  "feed_created_group_before": " {gender, select, female {создала} other {создал}} группу ",
+  "feed_created_group_after": ".",
+  "feed_created_event_before": " {gender, select, female {создала} other {создал}} встречу ",
+  "feed_created_event_after": "."
 }
