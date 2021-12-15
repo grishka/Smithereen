@@ -590,7 +590,7 @@ public class PostStorage{
 
 	public static List<Post> getReplies(int[] prefix) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `reply_key` LIKE BINARY bin_prefix(?) ESCAPE CHAR(255) ORDER BY `reply_key` ASC, `id` ASC LIMIT 100");
+		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `reply_key` LIKE BINARY bin_prefix(?) ESCAPE CHAR(255) ORDER BY `reply_key` ASC, `created_at` ASC LIMIT 100");
 		byte[] replyKey;
 		ByteArrayOutputStream b=new ByteArrayOutputStream(prefix.length*4);
 		try{
@@ -639,7 +639,7 @@ public class PostStorage{
 				.allColumns()
 				.where("reply_key=? AND id<?", Utils.serializeIntArray(replyKey), maxID)
 				.limit(limit, 0)
-				.orderBy("id ASC")
+				.orderBy("created_at ASC")
 				.createStatement();
 		try(ResultSet res=stmt.executeQuery()){
 			ArrayList<Post> posts=new ArrayList<>();

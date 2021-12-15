@@ -13,6 +13,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Objects;
@@ -143,10 +144,9 @@ public class SmithereenApplication{
 				info.account=UserStorage.getAccount(info.account.id);
 				info.permissions=SessionStorage.getUserPermissions(info.account);
 
-				if(System.currentTimeMillis()-info.account.lastActive.getTime()>=10*60*1000){
-					Timestamp now=new Timestamp(System.currentTimeMillis());
-					info.account.lastActive=now;
-					SessionStorage.setLastActive(info.account.id, request.cookie("psid"), now);
+				if(System.currentTimeMillis()-info.account.lastActive.toEpochMilli()>=10*60*1000){
+					info.account.lastActive=Instant.now();
+					SessionStorage.setLastActive(info.account.id, request.cookie("psid"), info.account.lastActive);
 				}
 			}
 //			String hs="";
@@ -392,6 +392,11 @@ public class SmithereenApplication{
 				getLoggedIn("/managed", GroupsRoutes::myManagedGroups);
 				getLoggedIn("/create", GroupsRoutes::createGroup);
 				postWithCSRF("/create", GroupsRoutes::doCreateGroup);
+			});
+			path("/events", ()->{
+				getLoggedIn("", GroupsRoutes::myEvents);
+				getLoggedIn("/past", GroupsRoutes::myPastEvents);
+				getLoggedIn("/create", GroupsRoutes::createEvent);
 			});
 		});
 

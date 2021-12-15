@@ -1,7 +1,7 @@
 {% extends "page" %}
 {% block content %}
 {% if currentUser is not null and owner.id==currentUser.id %}
-{% include 'groups_tabbar' %}
+{% include (events ? 'events_tabbar' : 'groups_tabbar') %}
 {% else %}
 <div class="tabbar">
 	<a href="/users/{{ owner.id }}/groups" class="selected">{{ L('user_groups', {'name': owner.firstAndGender}) }}</a>
@@ -10,7 +10,9 @@
 {% endif %}
 <div class="summaryWrap">
 	<div class="summary">
-	{% if currentUser is not null and owner.id==currentUser.id %}
+	{% if events %}
+	{{ L(tab=='past' ? 'summary_X_past_events' : 'summary_X_upcoming_events', {'count': totalItems}) }}
+	{% elseif currentUser is not null and owner.id==currentUser.id %}
 	{{ L(tab=='managed' ? 'summary_X_managed_groups' : 'summary_own_X_groups', {'numGroups': totalItems}) }}
 	{% else %}
 	{{ L('summary_user_X_groups', {'name': owner.firstAndGender, 'numGroups': totalItems}) }}
@@ -38,7 +40,7 @@
 	</tr>
 </table>
 {% else %}
-<div class="emptyState">{{L('no_groups')}}</div>
+<div class="emptyState">{{ L(events ? 'no_events' : 'no_groups') }}</div>
 {% endfor %}
 </div>
 <div class="bottomSummaryWrap">{% include "pagination" %}</div>

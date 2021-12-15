@@ -10,7 +10,7 @@
 			<th width="150">{{L('signup_date')}}</th>
 			<th width="150">{{L('actions')}}</th>
 		</tr>
-		{%for acc in accounts%}
+		{% for acc in items %}
 		<tr>
 			<td>{{acc.id}} ({{acc.user.id}})</td>
 			<td class="ellipsize"><a href="{{acc.user.url}}"><span class="tinyInlineAva">{{acc.user | pictureForAvatar('s', 32)}}</span>{{acc.user.fullName}}</a></td>
@@ -29,12 +29,10 @@
 				{% endif %}
 			</td>
 		</tr>
-		{%endfor%}
+		{% endfor %}
 	</table>
 </div>
-{% if total>100 %}
 <div class="bottomSummaryWrap">
-	{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': "/settings/admin/users?offset="}%}
+	{% include "pagination" %}
 </div>
-{% endif %}
 {%endblock%}

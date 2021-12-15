@@ -458,5 +458,16 @@
   "summary_own_X_follows": "You {count, plural, =0 {don''t follow anyone} one {follow # person} other {follow # people}}",
   "summary_user_X_follows": "{name} {count, plural, =0 {doesn''t follow anyone} one {follows # person} other {follows # people}}",
   "no_followers": "There are no followers",
-  "no_follows": "There are no follows"
+  "no_follows": "There are no follows",
+  "no_groups": "There are no groups",
+  "no_events": "There are no events",
+  "events": "Events",
+  "summary_X_upcoming_events": "You {count, select, 0 {don''t have any upcoming events} other {are going to attend {count, plural, one {# event} other {# events}}}}",
+  "summary_X_past_events": "You have {count, plural, =0 {no past events} one {# past event} other {# past events}}",
+  "date_time_separator": "at",
+  "write_on_event_wall": "Write on event wall...",
+  "leave_event": "Leave event",
+  "event_organizers": "Organizers",
+  "event_X_organizers": "{count, plural, one {# organizer} other {# organizers}}",
+  "err_event_end_time_before_start": "Event end time must be after the start time."
 }

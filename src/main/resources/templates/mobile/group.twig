@@ -47,22 +47,22 @@
 		<li class="separator"></li>
 		{% if currentUser is not null %}
 			{% if membershipState=="MEMBER" %}
-			<li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}">{{ L('leave_group') }}</a></li>
+			<li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}">{{ L(group.event ? 'leave_event' : 'leave_group') }}</a></li>
 			{% endif %}
 		{% endif %}
 		{% if canEditGroup %}
-			<li><a href="/groups/{{ group.id }}/edit">{{ L('edit_group') }}</a></li>
+			<li><a href="/groups/{{ group.id }}/edit">{{ L(group.event ? 'edit_event' : 'edit_group') }}</a></li>
 		{% elseif canManageGroup %}
-			<li><a href="/groups/{{ group.id }}/editMembers">{{ L('manage_group') }}</a></li>
+			<li><a href="/groups/{{ group.id }}/editMembers">{{ L(group.event ? 'manage_event' : 'manage_group') }}</a></li>
 		{% endif %}
 	</ul>
 </div>
 
 <div class="card profileFields">
-{% if group.summary is not empty %}
-	<div class="profileFieldName">{{L('about_group')}}</div>
-	<div class="profileFieldValue">{{ group.summary | postprocessHTML }}</div>
-{% endif %}
+{% for fld in profileFields %}
+	<div class="profileFieldName">{{ fld.name }}</div>
+	<div class="profileFieldValue">{{ fld.value | postprocessHTML }}</div>
+{% endfor %}
 </div>
 
 {% include "wall_profile_block" with {'wallOwner': group, 'isGroup': true} %}

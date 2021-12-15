@@ -1,7 +1,7 @@
 {%extends "page"%}
 {%block content%}
 {% if currentUser is not null and owner.id==currentUser.id %}
-{% include 'groups_tabbar' %}
+{% include (events ? 'events_tabbar' : 'groups_tabbar') %}
 {% endif %}
 <div class="singleColumn">
 {% for group in items %}
@@ -16,7 +16,7 @@
 	</tr>
 </table>
 {%else%}
-<div class="emptyState">{{ L('no_groups') }}</div>
+<div class="emptyState">{{ L(events ? 'no_events' : 'no_groups') }}</div>
 {%endfor%}
 {% include "pagination" %}
 </div>

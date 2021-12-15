@@ -551,6 +551,7 @@ public abstract class ActivityPubObject{
 			case "Mention" -> new Mention();
 			case "Relationship" -> new Relationship();
 			case "PropertyValue" -> new PropertyValue();
+			case "Event" -> new Event();
 
 			// Collections
 			case "Collection" -> new ActivityPubCollection(false);

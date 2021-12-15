@@ -8,6 +8,8 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
+		<maven.install.skip>true</maven.install.skip>
+<!--		<skipTests>true</skipTests>-->
 	</properties>
 
 	<groupId>me.grishka.smithereen</groupId>
@@ -54,9 +56,6 @@
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.0.0-M4</version>
-				<configuration>
-					<skipTests>true</skipTests>
-				</configuration>
 			</plugin>
 
 			<!-- I don't care about this fancy repository stuff, I just want the jar copied to the server -->

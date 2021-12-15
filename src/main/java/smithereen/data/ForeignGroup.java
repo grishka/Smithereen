@@ -14,6 +14,7 @@ import smithereen.ObjectLinkResolver;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Event;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.exceptions.BadRequestException;
 import spark.utils.StringUtils;
@@ -60,6 +61,16 @@ public class ForeignGroup extends Group implements ForeignActor{
 			}
 		}
 		wall=tryParseURL(optString(obj, "wall"));
+
+		if(attachment!=null && !attachment.isEmpty()){
+			for(ActivityPubObject att:attachment){
+				if(att instanceof Event ev){
+					type=Type.EVENT;
+					eventStartTime=ev.startTime;
+					eventEndTime=ev.endTime;
+				}
+			}
+		}
 
 		return this;
 	}

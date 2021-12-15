@@ -2,7 +2,7 @@ FROM maven:3.8.3-eclipse-temurin-17 as builder
 
 WORKDIR /usr/src/app
 COPY . .
-RUN mvn package
+RUN mvn package -DskipTests=true
 RUN java LibVipsDownloader.java
 
 FROM eclipse-temurin:17-jdk

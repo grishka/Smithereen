@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="16px" height="16px" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g id="Layer1">
+        <rect x="0" y="15" width="15" height="1" style="fill-opacity:0.35;"/>
+        <rect x="1" y="2" width="13" height="12" fill="#fff"/>
+        <rect x="1" y="2" width="13" height="4" fill="red"/>
+        <path d="M5,1L5,0L3,0L3,1L-0,1L0,15L15,15L15,1L12,1L12,0L10,0L10,1L5,1ZM12,2L12,3L10,3L10,2L5,2L5,3L3,3L3,2L1,2L1,14L14,14L14,2L12,2Z" fill-rule="evenodd"/>
+    </g>
+</svg>

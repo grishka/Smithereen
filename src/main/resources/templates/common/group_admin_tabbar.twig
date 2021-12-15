@@ -7,5 +7,5 @@
 	{% endif %}
 	<a href="/groups/{{ group.id }}/editMembers" class="{{ tab=='members' ? 'selected' : '' }}">{{ L('members') }}</a>
 	<a href="/groups/{{ group.id }}/editBlocking" class="{{ tab=='blocking' ? "selected" : "" }}" >{{ L('settings_blocking') }}</a>
-	<a href="{{ group.profileURL }}" class="aux">{{ L('back_to_group') }}</a>
+	<a href="{{ group.profileURL }}" class="aux">{{ L(group.event ? 'back_to_event' : 'back_to_group') }}</a>
 </div>

@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 public class JLDProcessor{
 	private static final Logger LOG=LoggerFactory.getLogger(JLDProcessor.class);
@@ -141,11 +142,7 @@ public class JLDProcessor{
 
 	private static String readResourceFile(String name){
 		try{
-			InputStream in=JLDProcessor.class.getResourceAsStream("/jsonld-schemas/"+name+".jsonld");
-			byte[] buf=new byte[in.available()];
-			in.read(buf);
-			in.close();
-			return new String(buf, StandardCharsets.UTF_8);
+			return new String(Objects.requireNonNull(JLDProcessor.class.getResourceAsStream("/jsonld-schemas/"+name+".jsonld")).readAllBytes(), StandardCharsets.UTF_8);
 		}catch(IOException x){
 			return null;
 		}
@@ -157,24 +154,18 @@ public class JLDProcessor{
 		}
 		if(schemaCache.containsKey(iri))
 			return schemaCache.get(iri);
-		String file=null;
-		switch(iri){
-			case "https://www.w3.org/ns/activitystreams":
-				file=readResourceFile("activitystreams");
-				break;
-			case "https://w3id.org/security/v1":
-				file=readResourceFile("w3-security");
-				break;
-			case "https://w3id.org/identity/v1":
-				file=readResourceFile("w3-identity");
-				break;
-			case "https://example.com/schemas/litepub-0.1.jsonld":
-				file=readResourceFile("litepub-0.1");
-				break;
-			default:
+		String file=switch(iri){
+			case "https://www.w3.org/ns/activitystreams" -> readResourceFile("activitystreams");
+			case "https://w3id.org/security/v1" -> readResourceFile("w3-security");
+			case "https://w3id.org/identity/v1" -> readResourceFile("w3-identity");
+			case "https://example.com/schemas/litepub-0.1.jsonld" -> readResourceFile("litepub-0.1");
+			default -> {
 				LOG.warn("Can't dereference remote context '{}'", iri);
-				//throw new JLDException("loading remote context failed");
-		}
+				yield null;
+			}
+
+			//throw new JLDException("loading remote context failed");
+		};
 		if(file!=null){
 			JsonObject obj=JsonParser.parseString(file).getAsJsonObject();
 			schemaCache.put(iri, obj);

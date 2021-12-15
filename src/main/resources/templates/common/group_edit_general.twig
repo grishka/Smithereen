@@ -7,7 +7,11 @@
 	<form action="/groups/{{ group.id }}/saveGeneral" method="post" onsubmit="return ajaxSubmitForm(this)">
 		{{ form.start('groupEdit', groupEditMessage) }}
 			{{ form.textInput('name', L('group_name'), group.name, {'maxlength': 200, 'required': true}) }}
-			{{ form.textArea('about', L('about_group'), group.summary) }}
+			{{ form.textArea('about', L(group.event ? 'about_event' : 'about_group'), group.summary) }}
+		{% if group.event %}
+			{{ form.dateTimeInput('event_start', L('event_start_time'), group.eventStartTime) }}
+			{{ form.dateTimeInput('event_end', L('event_end_time'), group.eventEndTime) }}
+		{% endif %}
 			{{ form.footer(L('save')) }}
 		{{ form.end() }}
 		<input type="hidden" name="csrf" value="{{csrf}}"/>

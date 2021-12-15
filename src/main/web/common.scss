@@ -108,6 +108,18 @@ $likeIconColor: rgb(219, 216, 173);
 		fill: $blockBackground;
 	}
 }
+@svg-load dateInputIcon url('img/calendar_input.svg') {
+	fill: $textAreaBorder;
+	*[fill=red]{
+		fill: $blockBackground;
+	}
+}
+@svg-load timeInputIcon url('img/time_input.svg') {
+	fill: $textAreaBorder;
+	*[fill=red]{
+		fill: $blockBackground;
+	}
+}
 
 
 *{
@@ -293,7 +305,7 @@ a, a:link, a:visited, .link{
 	}*/
 }
 
-input[type=text], input[type=password], input[type=email], input[type=date], input[type=number], textarea, select, .prefixedInput{
+input[type=text], input[type=password], input[type=email], input[type=date], input[type=time], input[type=number], textarea, select, .prefixedInput{
 	border: solid 1px $textAreaBorder;
 	padding: 3px;
 	appearance: none;
@@ -764,4 +776,18 @@ small{
 
 .uppercase{
 	text-transform: uppercase;
+}
+
+.dateTimeInput{
+	display: flex;
+	align-content: center;
+	input[type=date]{
+		flex-grow: 2;
+	}
+	input[type=time]{
+		flex-grow: 1;
+	}
+	input{
+		width: unset !important;
+	}
 }

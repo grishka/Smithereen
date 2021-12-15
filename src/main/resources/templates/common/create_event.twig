@@ -1,0 +1,6 @@
+{% import "forms" as form %}
+{{ form.start('createGroup', createGroupMessage) }}
+	{{ form.textInput('name', L('group_name'), groupName, {'maxlength': '200', 'required': true, 'autocomplete': false}) }}
+	{{ form.textArea('description', L('event_description'), groupDescription) }}
+	{{ form.dateTimeInput('event_start', L('event_start_time'), eventStartTime, {'required': true}) }}
+{{ form.end() }}

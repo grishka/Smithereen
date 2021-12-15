@@ -181,7 +181,7 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	}
 }
 
-input[type=text], input[type=password], input[type=email], input[type=date], textarea, select{
+input[type=text], input[type=password], input[type=email], input[type=date], input[type=time], textarea, select{
 	border-radius: 4px;
 	padding: 8px;
 }
@@ -1260,4 +1260,19 @@ textarea{
 			opacity: 0;
 		}
 	}
+}
+
+.dateTimeInput{
+	.separator{
+		line-height: 40px;
+		padding: 0 10px;
+	}
+}
+
+input[type=date]::-webkit-calendar-picker-indicator{
+	background: svg-inline(dateInputIcon) no-repeat center;
+}
+
+input[type=time]::-webkit-calendar-picker-indicator{
+	background: svg-inline(timeInputIcon) no-repeat center;
 }

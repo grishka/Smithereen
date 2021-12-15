@@ -7,13 +7,23 @@ import org.jsoup.safety.Whitelist;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.stream.Collectors;
 
+import smithereen.activitypub.objects.PropertyValue;
+import smithereen.controllers.GroupsController;
 import smithereen.data.ForeignUser;
 import smithereen.data.PaginatedList;
 import smithereen.data.SizedImage;
@@ -84,9 +94,29 @@ public class GroupsRoutes{
 		return model;
 	}
 
+	public static Object myEvents(Request req, Response resp, Account self){
+		return myEvents(req, resp, self, GroupsController.EventsType.FUTURE);
+	}
+
+	public static Object myPastEvents(Request req, Response resp, Account self){
+		return myEvents(req, resp, self, GroupsController.EventsType.PAST);
+	}
+
+	public static Object myEvents(Request req, Response resp, Account self, GroupsController.EventsType type){
+		jsLangKey(req, "cancel", "create");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("events", true).with("tab", type==GroupsController.EventsType.PAST ? "past" : "events").with("owner", self.user).pageTitle(lang(req).get("events"));
+		model.paginate(context(req).getGroupsController().getUserEvents(self.user, type, offset(req), 100));
+		return model;
+	}
+
 	public static Object createGroup(Request req, Response resp, Account self){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("create_group", req);
 		return wrapForm(req, resp, "create_group", "/my/groups/create", lang(req).get("create_group_title"), "create", model);
+	}
+
+	public static Object createEvent(Request req, Response resp, Account self){
+		RenderedTemplateResponse model=new RenderedTemplateResponse("create_event", req);
+		return wrapForm(req, resp, "create_event", "/my/groups/create?type=event", lang(req).get("create_event_title"), "create", model);
 	}
 
 	private static Object groupCreateError(Request req, Response resp, String errKey){
@@ -101,25 +131,22 @@ public class GroupsRoutes{
 	public static Object doCreateGroup(Request req, Response resp, Account self){
 		String name=req.queryParams("name");
 		String description=req.queryParams("description");
-		String eventTime=req.queryParams("event_start_time");
-		String eventDate=req.queryParams("event_start_date");
-//
-//		if(!isValidUsername(username))
-//			return groupCreateError(req, resp, "err_group_invalid_username");
-//		if(isReservedUsername(username))
-//			return groupCreateError(req, resp, "err_group_reserved_username");
-//
-//		final int[] id={0};
-//		boolean r=DatabaseUtils.runWithUniqueUsername(username, ()->{
-//			id[0]=GroupStorage.createGroup(name, username, self.user.id);
-//		});
-//
-//		if(r){
-//			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(self.user, GroupStorage.getById(id[0]));
-//		}else{
-//			return groupCreateError(req, resp, "err_group_username_taken");
-//		}
-		Group group=context(req).getGroupsController().createGroup(self.user, name, description);
+		Group group;
+		if("event".equals(req.queryParams("type"))){
+			String eventTime=req.queryParams("event_start_time");
+			String eventDate=req.queryParams("event_start_date");
+			if(StringUtils.isEmpty(eventDate) || StringUtils.isEmpty(eventTime))
+				throw new BadRequestException("date/time empty");
+
+			try{
+				Instant eventStart=instantFromDateAndTime(req, eventDate, eventTime);
+				group=context(req).getGroupsController().createEvent(self.user, name, description, eventStart, null);
+			}catch(DateTimeParseException x){
+				throw new BadRequestException(x);
+			}
+		}else{
+			group=context(req).getGroupsController().createGroup(self.user, name, description);
+		}
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).replaceLocation("/"+group.username);
 		}else{
@@ -185,7 +212,19 @@ public class GroupsRoutes{
 			model.with("moreMetaTags", Map.of("description", descr));
 		}
 		model.with("activityPubURL", group.activityPubID);
-		model.addNavBarItem(l.get("open_group"));
+		model.addNavBarItem(l.get(switch(group.type){
+			case GROUP -> "open_group";
+			case EVENT -> "open_event";
+		}));
+		ArrayList<PropertyValue> profileFields=new ArrayList<>();
+		if(StringUtils.isNotEmpty(group.summary))
+			profileFields.add(new PropertyValue(l.get(group.type==Group.Type.EVENT ? "about_event" : "about_group"), group.summary));
+		if(group.type==Group.Type.EVENT){
+			profileFields.add(new PropertyValue(l.get("event_start_time"), l.formatDate(group.eventStartTime, timeZoneForRequest(req), false)));
+			if(group.eventEndTime!=null)
+				profileFields.add(new PropertyValue(l.get("event_end_time"), l.formatDate(group.eventEndTime, timeZoneForRequest(req), false)));
+		}
+		model.with("profileFields", profileFields);
 		return model;
 	}
 
@@ -242,22 +281,40 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object saveGeneral(Request req, Response resp, Account self) throws SQLException{
-		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+	public static Object saveGeneral(Request req, Response resp, Account self){
+		Group group=getGroup(req);
 		String name=req.queryParams("name"), about=req.queryParams("about");
 		String message;
-		if(StringUtils.isEmpty(name) || name.length()<1){
-			message=lang(req).get("group_name_too_short");
-		}else{
+		try{
+			if(StringUtils.isEmpty(name) || name.length()<1)
+				throw new BadRequestException(lang(req).get("group_name_too_short"));
+
+			Instant eventStart=null, eventEnd=null;
+			if(group.isEvent()){
+				String startTime=req.queryParams("event_start_time"), startDate=req.queryParams("event_start_date");
+				String endTime=req.queryParams("event_end_time"), endDate=req.queryParams("event_end_date");
+				if(StringUtils.isEmpty(startTime) || StringUtils.isEmpty(startDate))
+					throw new BadRequestException("start date/time empty");
+				try{
+					eventStart=instantFromDateAndTime(req, startDate, startTime);
+					if(StringUtils.isNotEmpty(endDate) && StringUtils.isNotEmpty(endTime))
+						eventEnd=instantFromDateAndTime(req, endDate, endTime);
+				}catch(DateTimeParseException x){
+					throw new BadRequestException(x);
+				}
+				if(eventEnd!=null && eventStart.isAfter(eventEnd))
+					throw new BadRequestException(lang(req).get("err_event_end_time_before_start"));
+			}
+
 			if(StringUtils.isEmpty(about))
 				about=null;
-			else
-				about=preprocessPostHTML(about, null);
-			GroupStorage.updateGroupGeneralInfo(group, name, about);
-			message=lang(req).get("group_info_updated");
+
+			context(req).getGroupsController().updateGroupInfo(group, self.user, name, about, eventStart, eventEnd);
+
+			message=lang(req).get(group.isEvent() ? "event_info_updated" : "group_info_updated");
+		}catch(BadRequestException x){
+			message=x.getMessage();
 		}
-		group=GroupStorage.getById(group.id);
-		ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).show("formMessage_groupEdit").setContent("formMessage_groupEdit", message);
 		}
@@ -286,7 +343,7 @@ public class GroupsRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_admins", req);
 		model.with("admins", context(req).getGroupsController().getAdmins(group));
 		if(isAjax(req)){
-			return new WebDeltaResponse(resp).box(lang(req).get("group_admins"), model.renderContentBlock(), null, true);
+			return new WebDeltaResponse(resp).box(lang(req).get(group.isEvent() ? "event_organizers" : "group_admins"), model.renderContentBlock(), null, true);
 		}
 		return model;
 	}

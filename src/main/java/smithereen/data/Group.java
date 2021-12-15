@@ -6,18 +6,23 @@ import com.google.gson.JsonObject;
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.List;
 
 import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.Event;
 import smithereen.jsonld.JLD;
+import smithereen.storage.DatabaseUtils;
 import spark.utils.StringUtils;
 
 public class Group extends Actor{
 
 	public int id;
 	public int memberCount;
+	public Type type=Type.GROUP;
+	public Instant eventStartTime, eventEndTime;
 
 	public List<GroupAdmin> adminsForActivityPub;
 
@@ -65,6 +70,16 @@ public class Group extends Actor{
 		url=Config.localURI(username);
 		memberCount=res.getInt("member_count");
 		summary=res.getString("about");
+		eventStartTime=DatabaseUtils.getInstant(res, "event_start_time");
+		eventEndTime=DatabaseUtils.getInstant(res, "event_end_time");
+		type=Type.values()[res.getInt("type")];
+
+		if(type==Type.EVENT){
+			Event event=new Event();
+			event.startTime=eventStartTime;
+			event.endTime=eventEndTime;
+			attachment=List.of(event);
+		}
 	}
 
 	@Override
@@ -94,6 +109,10 @@ public class Group extends Actor{
 		contextCollector.addAlias("litepub", JLD.LITEPUB);
 
 		return obj;
+	}
+
+	public boolean isEvent(){
+		return type==Type.EVENT;
 	}
 
 	public enum AdminLevel{

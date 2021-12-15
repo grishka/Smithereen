@@ -2,15 +2,15 @@
 	"dependencies": {
 		"autoprefixer": "latest",
 		"cssnano": "latest",
+		"postcss": "^8.4.4",
 		"postcss-advanced-variables": "latest",
+		"postcss-cli": "latest",
 		"postcss-color-function": "latest",
 		"postcss-import": "latest",
 		"postcss-inline-svg": "latest",
 		"postcss-nested": "latest",
 		"postcss-rgba-hex": "latest",
-		"postcss-cli": "latest",
-		"postcss": "latest",
-		"typescript": "latest",
+		"typescript": "^4.5.3",
 		"uglify-js": "latest"
 	}
 }

@@ -54,6 +54,25 @@ autoSizeTextArea(ge("{{ name }}"));
 {% endscript %}
 {%endmacro%}
 
+{% macro dateTimeInput(name, label, value, options) %}
+	{%if options is null%}{%set options={}%}{%endif%}
+	<div class="row">
+		<div class="label">
+			<label for="{{ name }}_date">{{ label }}</label>:
+		</div>
+		<div class="dateTimeInput">
+			<input type="date" name="{{ name }}_date" id="{{ name }}_date" value="{{ getDate(value) }}"
+				{%- if options.required %} required{% endif -%}
+			/>
+			<span class="separator">{{ L('date_time_separator') }}</span>
+			<input type="time" name="{{ name }}_time" id="{{ name }}_time" value="{{ getTime(value) }}"
+				{%- if options.required %} required{% endif -%}
+			/>
+		</div>
+	</div>
+{% endmacro %}
+
+
 {%macro select(name, label, selectOptions, options)%}
 	{%if options is null%}{%set options={}%}{%endif%}
 	<div class="row">

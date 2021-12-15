@@ -4,7 +4,10 @@ import com.google.gson.JsonObject;
 import com.mitchellbosecke.pebble.PebbleEngine;
 import com.mitchellbosecke.pebble.loader.ClasspathLoader;
 import com.mitchellbosecke.pebble.loader.DelegatingLoader;
+import com.mitchellbosecke.pebble.template.EvaluationContext;
+import com.mitchellbosecke.pebble.template.EvaluationContextImpl;
 import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import com.mitchellbosecke.pebble.template.Scope;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -120,5 +123,20 @@ public class Templates{
 		if(o instanceof Long)
 			return (int)(long)(Long)o;
 		throw new IllegalArgumentException("Can't cast "+o+" to int");
+	}
+
+	/*package*/ static <T> T getVariableRegardless(EvaluationContext context, String key){
+		Object result=context.getVariable(key);
+		if(result!=null)
+			return (T)result;
+		if(context instanceof EvaluationContextImpl contextImpl){
+			List<Scope> scopes=contextImpl.getScopeChain().getGlobalScopes();
+			for(Scope scope:scopes){
+				result=scope.get(key);
+				if(result!=null)
+					return (T)result;
+			}
+		}
+		return null;
 	}
 }

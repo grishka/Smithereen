@@ -775,8 +775,24 @@ small{
 	}
 }
 
-input[type=date], select{
+input[type=date], input[type=time], select{
 	height: 21px;
+}
+
+input[type=date]::-webkit-calendar-picker-indicator{
+	background: svg-inline(dateInputIcon) no-repeat center right 2px;
+	width: 19px;
+	height: 19px;
+}
+
+input[type=time]::-webkit-calendar-picker-indicator{
+	background: svg-inline(timeInputIcon) no-repeat center right 2px;
+	width: 19px;
+	height: 19px;
+}
+
+input[type=date], input[type=time]{
+	padding-right: 0;
 }
 
 *:focus{
@@ -1951,4 +1967,11 @@ label.pretendLink{
 
 .fixLineHeight{
 	line-height: 13px;
+}
+
+.dateTimeInput{
+	.separator{
+		line-height: 21px;
+		padding: 0 5px;
+	}
 }

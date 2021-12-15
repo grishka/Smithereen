@@ -28,6 +28,9 @@ import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
@@ -768,6 +771,13 @@ public class Utils{
 		if(context==null)
 			throw new IllegalStateException("context==null");
 		return context;
+	}
+
+	@NotNull
+	public static Instant instantFromDateAndTime(Request req, String dateStr, String timeStr){
+		LocalDate date=DateTimeFormatter.ISO_LOCAL_DATE.parse(dateStr, LocalDate::from);
+		LocalTime time=DateTimeFormatter.ISO_LOCAL_TIME.parse(timeStr, LocalTime::from);
+		return LocalDateTime.of(date, time).atZone(timeZoneForRequest(req).toZoneId()).toInstant();
 	}
 
 	public interface MentionCallback{

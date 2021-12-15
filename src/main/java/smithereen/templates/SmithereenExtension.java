@@ -18,7 +18,9 @@ public class SmithereenExtension extends AbstractExtension{
 			"LD", new LangDateFunction(),
 			"renderAttachments", new RenderAttachmentsFunction(),
 			"json", new JsonFunction(),
-			"formatTime", new FormatTimeFunction()
+			"formatTime", new FormatTimeFunction(),
+			"getTime", new InstantToTimeFunction(),
+			"getDate", new InstantToDateFunction()
 		);
 	}
 

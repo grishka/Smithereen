@@ -160,6 +160,12 @@ public class Lang{
 	}
 
 	public void inflected(StringBuilder out, User.Gender gender, String first, String last, Inflector.Case _case){
+		if(inflector==null){
+			out.append(first);
+			if(StringUtils.isNotEmpty(last))
+				out.append(' ').append(last);
+			return;
+		}
 		if(gender==null || gender==User.Gender.UNKNOWN){
 			gender=inflector.detectGender(first, last, null);
 		}
@@ -170,7 +176,7 @@ public class Lang{
 		}else{
 			out.append(inflector.isInflectable(first) ? inflector.inflectNamePart(first, Inflector.NamePart.FIRST, gender, _case) : first);
 			if(StringUtils.isNotEmpty(last))
-				out.append(' ').append(inflector.isInflectable(last) ? inflector.inflectNamePart(last, Inflector.NamePart.LAST, gender, _case) : first);
+				out.append(' ').append(inflector.isInflectable(last) ? inflector.inflectNamePart(last, Inflector.NamePart.LAST, gender, _case) : last);
 		}
 	}
 

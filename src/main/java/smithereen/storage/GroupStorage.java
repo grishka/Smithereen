@@ -12,6 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -19,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -28,6 +30,7 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
+import smithereen.controllers.GroupsController;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
 import smithereen.data.GroupAdmin;
@@ -43,7 +46,7 @@ public class GroupStorage{
 
 	private static final Object adminUpdateLock=new Object();
 
-	public static int createGroup(String name, String description, String descriptionSrc, int userID, boolean isEvent) throws SQLException{
+	public static int createGroup(String name, String description, String descriptionSrc, int userID, boolean isEvent, Instant eventStart, Instant eventEnd) throws SQLException{
 		int id;
 		Connection conn=DatabaseConnectionManager.getConnection();
 		try{
@@ -65,6 +68,8 @@ public class GroupStorage{
 						.value("member_count", 1)
 						.value("about", description)
 						.value("about_source", descriptionSrc)
+						.value("event_start_time", eventStart)
+						.value("event_end_time", eventEnd)
 						.value("type", isEvent ? Group.Type.EVENT : Group.Type.GROUP);
 
 				stmt=bldr.createStatement(Statement.RETURN_GENERATED_KEYS);
@@ -427,21 +432,32 @@ public class GroupStorage{
 
 	public static PaginatedList<Group> getUserGroups(int userID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=new SQLQueryBuilder(conn)
-				.selectFrom("group_memberships")
-				.count()
-				.where("user_id=? AND accepted=1", userID)
-				.createStatement();
+		String query="SELECT %s FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0";
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "COUNT(*)"), userID);
 		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 		if(total==0)
 			return new PaginatedList<>(Collections.emptyList(), 0, 0, count);
-		stmt=new SQLQueryBuilder()
-				.selectFrom("group_memberships")
-				.columns("group_id")
-				.where("user_id=? AND accepted=1", userID)
-				.orderBy("group_id ASC")
-				.limit(count, offset)
-				.createStatement();
+		query+=" ORDER BY group_id ASC LIMIT ? OFFSET ?";
+		stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "group_id"), userID, count, offset);
+		try(ResultSet res=stmt.executeQuery()){
+			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
+		}
+	}
+
+	public static PaginatedList<Group> getUserEvents(int userID, GroupsController.EventsType type, int offset, int count) throws SQLException{
+		String query="SELECT %s FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=1";
+		query+=switch(type){
+			case PAST -> " AND event_start_time<=CURRENT_TIMESTAMP()";
+			case FUTURE -> " AND event_start_time>CURRENT_TIMESTAMP()";
+			case ALL -> "";
+		};
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "COUNT(*)"), userID);
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(total==0)
+			return PaginatedList.emptyList(count);
+		query+=" ORDER BY event_start_time "+(type==GroupsController.EventsType.PAST ? "DESC" : "ASC")+" LIMIT ? OFFSET ?";
+		stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "group_id"), userID, count, offset);
 		try(ResultSet res=stmt.executeQuery()){
 			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
 		}
@@ -702,11 +718,14 @@ public class GroupStorage{
 		}
 	}
 
-	public static void updateGroupGeneralInfo(Group group, String name, String about) throws SQLException{
+	public static void updateGroupGeneralInfo(Group group, String name, String aboutSrc, String about, Instant eventStart, Instant eventEnd) throws SQLException{
 		new SQLQueryBuilder()
 				.update("groups")
 				.value("name", name)
+				.value("about_source", aboutSrc)
 				.value("about", about)
+				.value("event_start_time", eventStart)
+				.value("event_end_time", eventEnd)
 				.where("id=?", group.id)
 				.createStatement()
 				.execute();

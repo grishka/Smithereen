@@ -46,7 +46,9 @@ public class GroupsController{
 		try{
 			if(StringUtils.isEmpty(name))
 				throw new IllegalArgumentException("name is empty");
-			int id=GroupStorage.createGroup(name, Utils.preprocessPostHTML(description, null), description, admin.id, false);
+			if(isEvent && startTime==null)
+				throw new IllegalArgumentException("start time is required for event");
+			int id=GroupStorage.createGroup(name, Utils.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
 			Group group=Objects.requireNonNull(GroupStorage.getById(id));
 			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(admin, group);
 			return group;
@@ -66,6 +68,14 @@ public class GroupsController{
 	public PaginatedList<Group> getUserManagedGroups(@NotNull User user, int offset, int count){
 		try{
 			return GroupStorage.getUserManagedGroups(user.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Group> getUserEvents(@NotNull User user, EventsType type, int offset, int count){
+		try{
+			return GroupStorage.getUserEvents(user.id, type, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -136,5 +146,22 @@ public class GroupsController{
 	public void enforceUserAdminLevel(@NotNull Group group, @NotNull User user, @NotNull Group.AdminLevel atLeastLevel){
 		if(!getMemberAdminLevel(group, user).isAtLeast(atLeastLevel))
 			throw new UserActionNotAllowedException();
+	}
+
+	public void updateGroupInfo(@NotNull Group group, @NotNull User admin, String name, String aboutSrc, Instant eventStart, Instant eventEnd){
+		try{
+			enforceUserAdminLevel(group, admin, Group.AdminLevel.ADMIN);
+			String about=Utils.preprocessPostHTML(aboutSrc, null);
+			GroupStorage.updateGroupGeneralInfo(group, name, aboutSrc, about, eventStart, eventEnd);
+			ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public enum EventsType{
+		FUTURE,
+		PAST,
+		ALL
 	}
 }
