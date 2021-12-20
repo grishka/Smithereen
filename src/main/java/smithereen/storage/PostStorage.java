@@ -564,7 +564,7 @@ public class PostStorage{
 		if(postIDs.isEmpty())
 			return Collections.emptyMap();
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postIDs.size(), "(SELECT * FROM wall_posts WHERE reply_key=? ORDER BY id DESC LIMIT 3)")));
+		PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postIDs.size(), "(SELECT * FROM wall_posts WHERE reply_key=? ORDER BY created_at DESC LIMIT 3)")));
 		int i=0;
 		for(int id:postIDs){
 			stmt.setBytes(i+1, Utils.serializeIntArray(new int[]{id}));

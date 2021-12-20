@@ -33,7 +33,7 @@ public class WellKnownRoutes{
 					wfr.subject="acct:"+username+"@"+Config.domain;
 					WebfingerResponse.Link selfLink=new WebfingerResponse.Link();
 					selfLink.rel="self";
-					selfLink.type="application/activitypub+json";
+					selfLink.type="application/activity+json";
 					selfLink.href=Config.localURI("/activitypub/serviceActor");
 					wfr.links=List.of(selfLink);
 					return Utils.gson.toJson(wfr);
@@ -46,7 +46,7 @@ public class WellKnownRoutes{
 					wfr.subject="acct:"+user.username+"@"+Config.domain;
 					WebfingerResponse.Link selfLink=new WebfingerResponse.Link();
 					selfLink.rel="self";
-					selfLink.type="application/activitypub+json";
+					selfLink.type="application/activity+json";
 					selfLink.href=user.activityPubID;
 					WebfingerResponse.Link authLink=new WebfingerResponse.Link();
 					authLink.rel="http://ostatus.org/schema/1.0/subscribe";
@@ -62,7 +62,7 @@ public class WellKnownRoutes{
 						wfr.subject="acct:"+group.username+"@"+Config.domain;
 						WebfingerResponse.Link selfLink=new WebfingerResponse.Link();
 						selfLink.rel="self";
-						selfLink.type="application/activitypub+json";
+						selfLink.type="application/activity+json";
 						selfLink.href=group.activityPubID;
 						wfr.links=List.of(selfLink);
 						return Utils.gson.toJson(wfr);
