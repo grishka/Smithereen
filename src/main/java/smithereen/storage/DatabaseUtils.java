@@ -152,6 +152,17 @@ public class DatabaseUtils{
 		return date==null ? null : date.toLocalDate();
 	}
 
+	public static void doWithTransaction(Connection conn, SQLRunnable r) throws SQLException{
+		boolean success=false;
+		try{
+			conn.createStatement().execute("START TRANSACTION");
+			r.run();
+			success=true;
+		}finally{
+			conn.createStatement().execute(success ? "COMMIT" : "ROLLBACK");
+		}
+	}
+
 	private static class UncheckedSQLException extends RuntimeException{
 		public UncheckedSQLException(SQLException cause){
 			super(cause);
@@ -161,5 +172,10 @@ public class DatabaseUtils{
 		public synchronized SQLException getCause(){
 			return (SQLException) super.getCause();
 		}
+	}
+
+	@FunctionalInterface
+	public interface SQLRunnable{
+		void run() throws SQLException;
 	}
 }

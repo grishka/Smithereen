@@ -123,7 +123,7 @@ public abstract class Actor extends ActivityPubObject{
 		obj.addProperty("inbox", userURL+"/inbox");
 		obj.addProperty("outbox", userURL+"/outbox");
 		if(canBeFollowed())
-			obj.addProperty("followers", userURL+"/followers");
+			obj.addProperty("followers", getFollowersURL().toString());
 		if(canFollowOtherActors())
 			obj.addProperty("following", userURL+"/following");
 

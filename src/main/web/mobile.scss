@@ -651,8 +651,10 @@ select{
 	text-align: center;
 	padding: 16px;
 	.withText{
-		width: 100%;
 		margin-top: 16px;
+	}
+	.button{
+		width: 100%;
 	}
 }
 

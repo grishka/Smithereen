@@ -464,7 +464,7 @@
   "no_groups": "Нет ни одной группы",
   "no_events": "Нет ни одной встречи",
   "events": "Встречи",
-  "summary_X_upcoming_events": "{count, select, 0 {У Вас нет предстоящих встреч} other {Вы пойдёте на {count, plural, one {# встречу} other {# встреч}}}}",
+  "summary_X_upcoming_events": "{count, select, 0 {У Вас нет предстоящих встреч} other {Вы пойдёте на {count, plural, one {# встречу} few {# встречи} other {# встреч}}}}",
   "summary_X_past_events": "У Вас {count, plural, =0 {нет прошедших встреч} one {# прошедшая встреча} few {# прошедшие встречи} other {# прошедших встреч}}",
   "date_time_separator": "в",
   "write_on_event_wall": "Написать на стене встречи...",
@@ -477,5 +477,14 @@
   "feed_created_group_before": " {gender, select, female {создала} other {создал}} группу ",
   "feed_created_group_after": ".",
   "feed_created_event_before": " {gender, select, female {создала} other {создал}} встречу ",
-  "feed_created_event_after": "."
+  "feed_created_event_after": ".",
+  "join_event_certain": "Точно пойду",
+  "join_event_tentative": "Возможно пойду",
+  "event_joined_certain": "Вы пойдёте.",
+  "event_joined_tentative": "Вы не уверены, что пойдёте.",
+  "X_people": "{count, plural, one {# человек} few {# человека} other {# человек}}",
+  "tentative_members": "Возможные участники",
+  "X_tentative_members": "{count, plural, one {# не уверен} other {# не уверены}}",
+  "summary_event_X_members": "{count, plural, one {# человек пойдёт} few {# человека пойдут} other {# человек пойдут}} на встречу",
+  "summary_event_X_tentative_members": "{count, plural, one {# человек не уверен, что придёт} few {# человека не уверены, что придут} other {# человек не уверены, что придут}}"
 }

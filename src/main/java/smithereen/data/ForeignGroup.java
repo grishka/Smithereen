@@ -8,6 +8,7 @@ import java.net.URISyntaxException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.Objects;
 
 import smithereen.ObjectLinkResolver;
@@ -22,6 +23,7 @@ import spark.utils.StringUtils;
 public class ForeignGroup extends Group implements ForeignActor{
 
 	private URI wall;
+	public EnumSet<Capability> capabilities=EnumSet.noneOf(ForeignGroup.Capability.class);
 
 	public static ForeignGroup fromResultSet(ResultSet res) throws SQLException{
 		ForeignGroup g=new ForeignGroup();
@@ -41,6 +43,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 		followers=tryParseURL(res.getString("ap_followers"));
 		lastUpdated=res.getTimestamp("last_updated");
 		wall=tryParseURL(res.getString("ap_wall"));
+		Utils.deserializeEnumSet(capabilities, ForeignGroup.Capability.class, res.getLong("flags"));
 	}
 
 	@Override
@@ -61,6 +64,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 			}
 		}
 		wall=tryParseURL(optString(obj, "wall"));
+		ensureHostMatchesID(wall, "wall");
 
 		if(attachment!=null && !attachment.isEmpty()){
 			for(ActivityPubObject att:attachment){
@@ -70,6 +74,14 @@ public class ForeignGroup extends Group implements ForeignActor{
 					eventEndTime=ev.endTime;
 				}
 			}
+		}
+
+		if(obj.has("capabilities")){
+			JsonObject caps=obj.getAsJsonObject("capabilities");
+			if(optBoolean(caps, "acceptsJoins"))
+				capabilities.add(Capability.JOIN_LEAVE_ACTIVITIES);
+			if(optBoolean(caps, "tentativeMembership"))
+				capabilities.add(Capability.TENTATIVE_MEMBERSHIP);
 		}
 
 		return this;
@@ -134,5 +146,25 @@ public class ForeignGroup extends Group implements ForeignActor{
 	@Override
 	public boolean needUpdate(){
 		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.getTime()>24L*60*60*1000;
+	}
+
+	public boolean hasCapability(Capability cap){
+		return capabilities.contains(cap);
+	}
+
+	// for use from templates
+	public boolean hasCapability(String cap){
+		return hasCapability(Capability.valueOf(cap));
+	}
+
+	public enum Capability{
+		/**
+		 * Supports Join{Group} and Leave{Group} instead of Follow{Group}/Undo{Follow{Group}}
+		 */
+		JOIN_LEAVE_ACTIVITIES,
+		/**
+		 * Supports tentative memberships (sm:TentativeJoin for joining and TentativeAccept for accepting invites)
+		 */
+		TENTATIVE_MEMBERSHIP
 	}
 }

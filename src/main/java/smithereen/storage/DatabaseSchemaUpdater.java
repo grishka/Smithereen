@@ -12,7 +12,7 @@ import smithereen.Config;
 import smithereen.Utils;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=17;
+	public static final int SCHEMA_VERSION=18;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -285,6 +285,8 @@ public class DatabaseSchemaUpdater{
 			conn.createStatement().execute("ALTER TABLE `users` ADD `about_source` TEXT NULL AFTER `about`");
 			conn.createStatement().execute("ALTER TABLE `groups` ADD `about_source` TEXT NULL AFTER `about`");
 			conn.createStatement().execute("ALTER TABLE `friend_requests` ADD `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST");
+		}else if(target==18){
+			conn.createStatement().execute("ALTER TABLE `groups` ADD `flags` BIGINT UNSIGNED NOT NULL DEFAULT 0");
 		}
 	}
 }

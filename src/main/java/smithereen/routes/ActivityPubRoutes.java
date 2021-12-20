@@ -126,9 +126,11 @@ import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
 
+import static smithereen.Utils.context;
 import static smithereen.Utils.gson;
 import static smithereen.Utils.parseIntOrDefault;
 import static smithereen.Utils.parseSignatureHeader;
+import static smithereen.Utils.safeParseInt;
 
 public class ActivityPubRoutes{
 
@@ -791,15 +793,19 @@ public class ActivityPubRoutes{
 		return followersOrFollowing(req, resp, false, offset, count);
 	}
 
-	public static ActivityPubCollectionPageResponse groupFollowers(Request req, Response resp, int offset, int count) throws SQLException{
-		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
-		Group group=GroupStorage.getById(id);
-		if(group==null || group instanceof ForeignGroup){
-			throw new ObjectNotFoundException();
-		}
-		int[] _total={0};
-		List<URI> followers=GroupStorage.getGroupMemberURIs(group.id, false, offset, count, _total);
-		return ActivityPubCollectionPageResponse.forLinks(followers, _total[0]);
+	private static ActivityPubCollectionPageResponse groupMembers(Request req, Response resp, int offset, int count, boolean tentative) throws SQLException{
+		int id=safeParseInt(req.params(":id"));
+		Group group=context(req).getGroupsController().getLocalGroupOrThrow(id);
+		PaginatedList<URI> followers=GroupStorage.getGroupMemberURIs(group.id, tentative, offset, count);
+		return ActivityPubCollectionPageResponse.forLinks(followers);
+	}
+
+	public static ActivityPubCollectionPageResponse groupMembers(Request req, Response resp, int offset, int count) throws SQLException{
+		return groupMembers(req, resp, offset, count, false);
+	}
+
+	public static ActivityPubCollectionPageResponse groupTentativeMembers(Request req, Response resp, int offset, int count) throws SQLException{
+		return groupMembers(req, resp, offset, count, true);
 	}
 
 	public static Object serviceActor(Request req, Response resp) throws SQLException{

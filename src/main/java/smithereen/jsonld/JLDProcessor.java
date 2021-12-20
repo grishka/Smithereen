@@ -68,6 +68,13 @@ public class JLDProcessor{
 		lc.add("friends", idAndTypeObject("sm:friends", "@id"));
 		lc.add("groups", idAndTypeObject("sm:groups", "@id"));
 		lc.addProperty("nonAnonymous", "sm:nonAnonymous");
+		lc.addProperty("tentativeMembership", "sm:tentativeMembership");
+		lc.add("tentativeMembers", idAndTypeObject("sm:tentativeMembers", "@id"));
+		lc.addProperty("TentativeJoin", "sm:TentativeJoin");
+
+		// litepub aliases
+		lc.addProperty("capabilities", "litepub:capabilities");
+		lc.addProperty("acceptsJoins", "litepub:acceptsJoins");
 
 		localContext=updateContext(new JLDContext(), makeArray(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);

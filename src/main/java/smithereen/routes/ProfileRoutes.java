@@ -12,8 +12,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import static smithereen.Utils.*;
 
@@ -23,7 +21,6 @@ import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
-import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Group;
 import smithereen.data.PaginatedList;
@@ -40,7 +37,6 @@ import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.NotificationsStorage;
-import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
@@ -194,7 +190,7 @@ public class ProfileRoutes{
 					if(isAjax(req) && verifyCSRF(req, resp)){
 						UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
 						if(user instanceof ForeignUser){
-							ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser) user);
+							ActivityPubWorker.getInstance().sendFollowUserActivity(self.user, (ForeignUser) user);
 						}
 						return new WebDeltaResponse(resp).refresh();
 					}else{
@@ -241,7 +237,7 @@ public class ProfileRoutes{
 				}else{
 					UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
 					if(user instanceof ForeignUser){
-						ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser)user);
+						ActivityPubWorker.getInstance().sendFollowUserActivity(self.user, (ForeignUser)user);
 					}else{
 						ActivityPubWorker.getInstance().sendAddToFriendsCollectionActivity(self.user, user);
 					}
@@ -386,7 +382,7 @@ public class ProfileRoutes{
 			if(req.queryParams("accept")!=null){
 				if(user instanceof ForeignUser){
 					UserStorage.acceptFriendRequest(self.user.id, user.id, false);
-					ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser) user);
+					ActivityPubWorker.getInstance().sendFollowUserActivity(self.user, (ForeignUser) user);
 				}else{
 					UserStorage.acceptFriendRequest(self.user.id, user.id, true);
 					Notification n=new Notification();

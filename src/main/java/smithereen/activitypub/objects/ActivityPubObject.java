@@ -566,7 +566,8 @@ public abstract class ActivityPubObject{
 			case "Create" -> new Create();
 			case "Delete" -> new Delete();
 			case "Follow" -> new Follow();
-			case "Join" -> new Join();
+			case "Join" -> new Join(false);
+			case "TentativeJoin" -> new Join(true);
 			case "Like" -> new Like();
 			case "Undo" -> new Undo();
 			case "Update" -> new Update();

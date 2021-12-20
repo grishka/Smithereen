@@ -12,7 +12,6 @@ import java.lang.reflect.Method;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,6 +30,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
 import smithereen.routes.GroupsRoutes;
@@ -323,7 +323,8 @@ public class SmithereenApplication{
 			get("/inbox", SmithereenApplication::methodNotAllowed);
 			getActivityPubCollection("/outbox", 50, ActivityPubRoutes::groupOutbox);
 			post("/outbox", SmithereenApplication::methodNotAllowed);
-			getActivityPubCollection("/followers", 50, ActivityPubRoutes::groupFollowers);
+			getActivityPubCollection("/members", 50, ActivityPubRoutes::groupMembers);
+			getActivityPubCollection("/tentativeMembers", 50, ActivityPubRoutes::groupTentativeMembers);
 			getActivityPubCollection("/wall", 50, ActivityPubRoutes::groupWall);
 
 			getLoggedIn("/edit", GroupsRoutes::editGeneral);
@@ -347,6 +348,7 @@ public class SmithereenApplication{
 			postWithCSRF("/unblockDomain", GroupsRoutes::unblockDomain);
 
 			get("/members", GroupsRoutes::members);
+			get("/tentativeMembers", GroupsRoutes::tentativeMembers);
 			get("/admins", GroupsRoutes::admins);
 			path("/wall", ()->{
 				get("", PostRoutes::groupWall);
@@ -447,6 +449,9 @@ public class SmithereenApplication{
 		exception(FloodControlViolationException.class, (x, req, resp)->{
 			resp.status(429);
 			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
+		});
+		exception(UserErrorException.class, (x, req, resp)->{
+			resp.body(Utils.wrapErrorString(req, resp, x.getMessage()));
 		});
 		exception(Exception.class, (exception, req, res) -> {
 			LOG.warn("Exception while processing {} {}", req.requestMethod(), req.raw().getPathInfo(), exception);

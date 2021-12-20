@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -778,6 +779,28 @@ public class Utils{
 		LocalDate date=DateTimeFormatter.ISO_LOCAL_DATE.parse(dateStr, LocalDate::from);
 		LocalTime time=DateTimeFormatter.ISO_LOCAL_TIME.parse(timeStr, LocalTime::from);
 		return LocalDateTime.of(date, time).atZone(timeZoneForRequest(req).toZoneId()).toInstant();
+	}
+
+	public static <E extends Enum<E>> long serializeEnumSet(EnumSet<E> set, Class<E> cls){
+		if(cls.getEnumConstants().length>64)
+			throw new IllegalArgumentException("this enum has more than 64 constants");
+		long result=0;
+		for(E value:set){
+			result|=1L << value.ordinal();
+		}
+		return result;
+	}
+
+	public static <E extends Enum<E>> void deserializeEnumSet(EnumSet<E> set, Class<E> cls, long l){
+		set.clear();
+		E[] consts=cls.getEnumConstants();
+		if(consts.length>64)
+			throw new IllegalArgumentException("this enum has more than 64 constants");
+		for(E e:consts){
+			if((l&1)==1)
+				set.add(e);
+			l >>= 1;
+		}
 	}
 
 	public interface MentionCallback{

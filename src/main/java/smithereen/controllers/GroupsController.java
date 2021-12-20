@@ -19,12 +19,16 @@ import smithereen.data.GroupAdmin;
 import smithereen.data.PaginatedList;
 import smithereen.data.User;
 import smithereen.data.feed.NewsfeedEntry;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NewsfeedStorage;
 import spark.utils.StringUtils;
+
+import static smithereen.Utils.wrapError;
 
 public class GroupsController{
 	private static final Logger LOG=LoggerFactory.getLogger(GroupsController.class);
@@ -104,9 +108,17 @@ public class GroupsController{
 		return group;
 	}
 
-	public PaginatedList<User> getMembers(@NotNull Group group, int offset, int count){
+	public PaginatedList<User> getMembers(@NotNull Group group, int offset, int count, boolean tentative){
 		try{
-			return GroupStorage.getMembers(group.id, offset, count);
+			return GroupStorage.getMembers(group.id, offset, count, tentative);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<User> getAllMembers(@NotNull Group group, int offset, int count){
+		try{
+			return GroupStorage.getMembers(group.id, offset, count, null);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -120,9 +132,9 @@ public class GroupsController{
 		}
 	}
 
-	public List<User> getRandomMembersForProfile(@NotNull Group group){
+	public List<User> getRandomMembersForProfile(@NotNull Group group, boolean tentative){
 		try{
-			return GroupStorage.getRandomMembersForProfile(group.id);
+			return GroupStorage.getRandomMembersForProfile(group.id, tentative);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -157,6 +169,60 @@ public class GroupsController{
 			String about=Utils.preprocessPostHTML(aboutSrc, null);
 			GroupStorage.updateGroupGeneralInfo(group, name, aboutSrc, about, eventStart, eventEnd);
 			ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void joinGroup(@NotNull Group group, @NotNull User user, boolean tentative){
+		try{
+			Utils.ensureUserNotBlocked(user, group);
+
+			Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, user.id);
+			if(group.isEvent()){
+				if((state==Group.MembershipState.MEMBER && !tentative) || (state==Group.MembershipState.TENTATIVE_MEMBER && tentative))
+					throw new UserErrorException("err_group_already_member");
+			}else{
+				if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER)
+					throw new UserErrorException("err_group_already_member");
+			}
+
+			if(tentative && (!group.isEvent() || (group instanceof ForeignGroup fg && !fg.hasCapability(ForeignGroup.Capability.TENTATIVE_MEMBERSHIP))))
+				throw new BadRequestException();
+
+			// change certain <-> tentative
+			if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER){
+				GroupStorage.updateUserEventDecision(group, user.id, tentative);
+				if(group instanceof ForeignGroup fg)
+					ActivityPubWorker.getInstance().sendJoinGroupActivity(user, fg, tentative);
+				return;
+			}
+
+			GroupStorage.joinGroup(group, user.id, tentative, !(group instanceof ForeignGroup));
+			if(group instanceof ForeignGroup fg){
+				// Add{Group} will be sent upon receiving Accept{Follow}
+				ActivityPubWorker.getInstance().sendJoinGroupActivity(user, fg, tentative);
+			}else{
+				ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(user, group);
+			}
+			NewsfeedStorage.putEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void leaveGroup(@NotNull Group group, @NotNull User user){
+		try{
+			Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, user.id);
+			if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER){
+				throw new UserErrorException("err_group_not_member");
+			}
+			GroupStorage.leaveGroup(group, user.id, state==Group.MembershipState.TENTATIVE_MEMBER);
+			if(group instanceof ForeignGroup fg){
+				ActivityPubWorker.getInstance().sendLeaveGroupActivity(user, fg);
+			}
+			ActivityPubWorker.getInstance().sendRemoveFromGroupsCollectionActivity(user, group);
+			NewsfeedStorage.deleteEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

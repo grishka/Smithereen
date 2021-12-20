@@ -475,5 +475,14 @@
   "feed_created_group_before": " created the group ",
   "feed_created_group_after": ".",
   "feed_created_event_before": " created the event ",
-  "feed_created_event_after": "."
+  "feed_created_event_after": ".",
+  "join_event_certain": "I'll be there",
+  "join_event_tentative": "I might go",
+  "event_joined_certain": "You'll be there.",
+  "event_joined_tentative": "You aren't sure.",
+  "X_people": "{count, plural, one {One person} other {# people}}",
+  "tentative_members": "Not sure",
+  "X_tentative_members": "{count} not sure",
+  "summary_event_X_members": "{count, plural, one {One person is} other {# people are}} attending",
+  "summary_event_X_tentative_members": "{count, plural, one {One person is} other {# people are}} not sure"
 }

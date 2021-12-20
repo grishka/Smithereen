@@ -27,8 +27,17 @@
 	{% if currentUser is not null and (membershipStateText is not empty or membershipState=="NONE") %}
 	<div class="profileBelowAva">
 		{{ membershipStateText }}
+		{% if group.event %}
+		{% if membershipState=="NONE" %}
+			<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button{{ membershipStateText is empty ? '' : ' withText' }}">{{ L('join_event_certain') }}</a>
+			{% if group.domain is empty or group.hasCapability("TENTATIVE_MEMBERSHIP") %}
+				<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}&tentative=1" class="button withText">{{ L('join_event_tentative') }}</a>
+			{% endif %}
+		{% endif %}
+		{% else %}
 		{% if membershipState=="NONE" %}
 			<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button{{ membershipStateText is empty ? '' : ' withText' }}">{{ L('join_group') }}</a>
+		{% endif %}
 		{% endif %}
 	</div>
 	{% endif %}
@@ -43,10 +52,20 @@
 			<li class="separator"></li>
 		{%endif%}
 		<li><a href="/groups/{{ group.id }}/members">{{ L('X_members', {'count': group.memberCount}) }}</a></li>
-		<li><a href="/groups/{{ group.id }}/admins" data-ajax-box="1">{{ L('group_X_admins', {'count': admins.size}) }}</a></li>
+		{% if group.tentativeMemberCount>0 %}
+		<li><a href="/groups/{{ group.id }}/tentativeMembers">{{ L('X_tentative_members', {'count': group.tentativeMemberCount}) }}</a></li>
+		{% endif %}
+		<li><a href="/groups/{{ group.id }}/admins" data-ajax-box="1">{{ L(group.event ? 'event_X_organizers' : 'group_X_admins', {'count': admins.size}) }}</a></li>
 		<li class="separator"></li>
 		{% if currentUser is not null %}
+			{% if membershipState=="MEMBER" or membershipState=="TENTATIVE_MEMBER" %}
+			{% if group.event and (group.domain is empty or group.hasCapability("TENTATIVE_MEMBERSHIP")) %}
 			{% if membershipState=="MEMBER" %}
+			<li><a href="/groups/{{ group.id }}/join?csrf={{ csrf }}&tentative=1">{{ L('join_event_tentative') }}</a></li>
+			{% else %}
+			<li><a href="/groups/{{ group.id }}/join?csrf={{ csrf }}">{{ L('join_event_certain') }}</a></li>
+			{% endif %}
+			{% endif %}
 			<li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}">{{ L(group.event ? 'leave_event' : 'leave_group') }}</a></li>
 			{% endif %}
 		{% endif %}

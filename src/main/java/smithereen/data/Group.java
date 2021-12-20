@@ -7,9 +7,11 @@ import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 
 import smithereen.Config;
+import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Event;
@@ -20,7 +22,7 @@ import spark.utils.StringUtils;
 public class Group extends Actor{
 
 	public int id;
-	public int memberCount;
+	public int memberCount, tentativeMemberCount;
 	public Type type=Type.GROUP;
 	public Instant eventStartTime, eventEndTime;
 
@@ -69,6 +71,7 @@ public class Group extends Actor{
 		activityPubID=Config.localURI("/groups/"+id);
 		url=Config.localURI(username);
 		memberCount=res.getInt("member_count");
+		tentativeMemberCount=res.getInt("tentative_member_count");
 		summary=res.getString("about");
 		eventStartTime=DatabaseUtils.getInstant(res, "event_start_time");
 		eventEndTime=DatabaseUtils.getInstant(res, "event_end_time");
@@ -98,10 +101,17 @@ public class Group extends Actor{
 		}
 		obj.add("attributedTo", ar);
 
-		obj.addProperty("members", userURL+"/followers");
+		obj.addProperty("members", userURL+"/members");
 		contextCollector.addType("members", "sm:members", "@id");
-
 		JsonObject capabilities=new JsonObject();
+
+		if(type==Type.EVENT){
+			obj.addProperty("tentativeMembers", userURL+"/tentativeMembers");
+			contextCollector.addType("tentativeMembers", "sm:tentativeMembers", "@id");
+			capabilities.addProperty("tentativeMembership", true);
+			contextCollector.addAlias("tentativeMembership", "sm:tentativeMembership");
+		}
+
 		capabilities.addProperty("acceptsJoins", true);
 		obj.add("capabilities", capabilities);
 		contextCollector.addAlias("capabilities", "litepub:capabilities");
@@ -113,6 +123,12 @@ public class Group extends Actor{
 
 	public boolean isEvent(){
 		return type==Type.EVENT;
+	}
+
+	@Override
+	public URI getFollowersURL(){
+		String userURL=activityPubID.toString();
+		return URI.create(userURL+"/members");
 	}
 
 	public enum AdminLevel{
@@ -141,4 +157,5 @@ public class Group extends Actor{
 		GROUP,
 		EVENT
 	}
+
 }

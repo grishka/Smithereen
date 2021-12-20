@@ -159,7 +159,7 @@ public class GroupsRoutes{
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 
-		List<User> members=context(req).getGroupsController().getRandomMembersForProfile(group);
+		List<User> members=context(req).getGroupsController().getRandomMembersForProfile(group, false);
 		int offset=offset(req);
 		PaginatedList<Post> wall=context(req).getWallController().getWallPosts(group, false, offset, 20);
 
@@ -172,6 +172,8 @@ public class GroupsRoutes{
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group", req);
 		model.with("group", group).with("members", members).with("postCount", wall.total).paginate(wall);
+		if(group.isEvent())
+			model.with("tentativeMembers", context(req).getGroupsController().getRandomMembersForProfile(group, true));
 		model.with("postInteractions", interactions);
 		model.with("title", group.name);
 		model.with("admins", context(req).getGroupsController().getAdmins(group));
@@ -181,12 +183,19 @@ public class GroupsRoutes{
 		jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
 		if(self!=null){
 			Group.AdminLevel level=context(req).getGroupsController().getMemberAdminLevel(group, self.user);
-			model.with("membershipState", context(req).getGroupsController().getUserMembershipState(group, self.user));
+			Group.MembershipState membershipState=context(req).getGroupsController().getUserMembershipState(group, self.user);
+			model.with("membershipState", membershipState);
 			model.with("groupAdminLevel", level);
 			if(level.isAtLeast(Group.AdminLevel.ADMIN)){
 				jsLangKey(req, "update_profile_picture", "save", "profile_pic_select_square_version", "drag_or_choose_file", "choose_file",
 						"drop_files_here", "picture_too_wide", "picture_too_narrow", "ok", "error", "error_loading_picture",
 						"remove_profile_picture", "confirm_remove_profile_picture", "choose_file_mobile");
+			}
+			if(group.isEvent()){
+				if(membershipState==Group.MembershipState.MEMBER)
+					model.with("membershipStateText", l.get("event_joined_certain"));
+				else if(membershipState==Group.MembershipState.TENTATIVE_MEMBER)
+					model.with("membershipStateText", l.get("event_joined_tentative"));
 			}
 		}else{
 			HashMap<String, String> meta=new LinkedHashMap<>();
@@ -228,20 +237,9 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object join(Request req, Response resp, Account self) throws SQLException{
+	public static Object join(Request req, Response resp, Account self){
 		Group group=getGroup(req);
-		ensureUserNotBlocked(self.user, group);
-		Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, self.user.id);
-		if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER){
-			return wrapError(req, resp, "err_group_already_member");
-		}
-		GroupStorage.joinGroup(group, self.user.id, false, !(group instanceof ForeignGroup));
-		if(group instanceof ForeignGroup){
-			ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignGroup) group);
-		}else{
-			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(self.user, group);
-		}
-		NewsfeedStorage.putEntry(self.user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
+		context(req).getGroupsController().joinGroup(group, self.user, "1".equals(req.queryParams("tentative")));
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
@@ -251,17 +249,7 @@ public class GroupsRoutes{
 
 	public static Object leave(Request req, Response resp, Account self) throws SQLException{
 		Group group=getGroup(req);
-		Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, self.user.id);
-		if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER){
-			return wrapError(req, resp, "err_group_not_member");
-		}
-		GroupStorage.leaveGroup(group, self.user.id, state==Group.MembershipState.TENTATIVE_MEMBER);
-		if(group instanceof ForeignGroup){
-			ActivityPubWorker.getInstance().sendUnfollowActivity(self.user, (ForeignGroup) group);
-		}else{
-			ActivityPubWorker.getInstance().sendRemoveFromGroupsCollectionActivity(self.user, group);
-		}
-		NewsfeedStorage.deleteEntry(self.user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
+		context(req).getGroupsController().leaveGroup(group, self.user);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
@@ -324,16 +312,20 @@ public class GroupsRoutes{
 	}
 
 	public static Object members(Request req, Response resp){
+		return members(req, resp, false);
+	}
+
+	public static Object tentativeMembers(Request req, Response resp){
+		return members(req, resp, true);
+	}
+
+	private static Object members(Request req, Response resp, boolean tentative){
 		Group group=getGroup(req);
+		if(tentative && !group.isEvent())
+			throw new BadRequestException();
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
-		model.paginate(context(req).getGroupsController().getMembers(group, offset(req), 100));
-		model.with("summary", lang(req).get("summary_group_X_members", Map.of("count", group.memberCount)));
-//		if(isAjax(req)){
-//			if(req.queryParams("fromPagination")==null)
-//				return new WebDeltaResponseBuilder(resp).box(lang(req).get("likes_title"), model, "likesList", 596);
-//			else
-//				return new WebDeltaResponseBuilder(resp).setContent("likesList", model);
-//		}
+		model.paginate(context(req).getGroupsController().getMembers(group, offset(req), 100, tentative));
+		model.with("summary", lang(req).get(tentative ? "summary_event_X_tentative_members" : (group.isEvent() ? "summary_event_X_members" : "summary_group_X_members"), Map.of("count", tentative ? group.tentativeMemberCount : group.memberCount)));
 		model.with("contentTemplate", "user_grid").with("title", group.name);
 		return model;
 	}
@@ -361,7 +353,7 @@ public class GroupsRoutes{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		Group.AdminLevel level=context(req).getGroupsController().getMemberAdminLevel(group, self.user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
-		model.paginate(context(req).getGroupsController().getMembers(group, offset(req), 100));
+		model.paginate(context(req).getGroupsController().getAllMembers(group, offset(req), 100));
 		model.with("group", group).with("title", group.name);
 		model.with("adminIDs", context(req).getGroupsController().getAdmins(group).stream().map(adm->adm.user.id).collect(Collectors.toList()));
 		model.with("canAddAdmins", level.isAtLeast(Group.AdminLevel.ADMIN));

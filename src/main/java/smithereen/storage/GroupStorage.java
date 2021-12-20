@@ -145,6 +145,10 @@ public class GroupStorage{
 				.value("avatar", group.hasAvatar() ? group.icon.get(0).asActivityPubObject(new JsonObject(), new ContextCollector()).toString() : null)
 				.value("ap_followers", Objects.toString(group.followers, null))
 				.value("ap_wall", Objects.toString(group.getWallURL(), null))
+				.value("event_start_time", group.eventStartTime)
+				.value("event_end_time", group.eventEndTime)
+				.value("type", group.type)
+				.value("flags", Utils.serializeEnumSet(group.capabilities, ForeignGroup.Capability.class))
 				.valueExpr("last_updated", "CURRENT_TIMESTAMP()");
 
 		stmt=builder.createStatement(Statement.RETURN_GENERATED_KEYS);
@@ -332,28 +336,28 @@ public class GroupStorage{
 		}
 	}
 
-	public static List<User> getRandomMembersForProfile(int groupID) throws SQLException{
+	public static List<User> getRandomMembersForProfile(int groupID, boolean tentative) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT user_id FROM group_memberships WHERE group_id=? ORDER BY RAND() LIMIT 6");
-		stmt.setInt(1, groupID);
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM group_memberships WHERE group_id=? AND tentative=? ORDER BY RAND() LIMIT 6", groupID, tentative);
 		try(ResultSet res=stmt.executeQuery()){
 			return UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(res));
 		}
 	}
 
-	public static PaginatedList<User> getMembers(int groupID, int offset, int count) throws SQLException{
+	public static PaginatedList<User> getMembers(int groupID, int offset, int count, @Nullable Boolean tentative) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
+		String _tentative=tentative==null ? "" : (" AND tentative="+(tentative ? '1' : '0'));
 		PreparedStatement stmt=new SQLQueryBuilder(conn)
 				.selectFrom("group_memberships")
 				.count()
-				.where("group_id=? AND accepted=1", groupID)
+				.where("group_id=? AND accepted=1"+_tentative, groupID)
 				.createStatement();
 		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 		if(total==0)
 			return PaginatedList.emptyList(count);
 		stmt=new SQLQueryBuilder(conn)
 				.selectFrom("group_memberships")
-				.where("group_id=? AND accepted=1", groupID)
+				.where("group_id=? AND accepted=1"+_tentative, groupID)
 				.limit(count, offset)
 				.createStatement();
 		try(ResultSet res=stmt.executeQuery()){
@@ -369,7 +373,7 @@ public class GroupStorage{
 		try(ResultSet res=stmt.executeQuery()){
 			if(!res.first())
 				return Group.MembershipState.NONE;
-			return Group.MembershipState.MEMBER;
+			return res.getBoolean("tentative") ? Group.MembershipState.TENTATIVE_MEMBER : Group.MembershipState.MEMBER;
 		}
 	}
 
@@ -401,6 +405,29 @@ public class GroupStorage{
 		}finally{
 			conn.createStatement().execute(success ? "COMMIT" : "ROLLBACK");
 		}
+	}
+
+	public static void updateUserEventDecision(Group group, int userID, boolean tentative) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		DatabaseUtils.doWithTransaction(conn, ()->{
+			new SQLQueryBuilder(conn)
+					.update("group_memberships")
+					.where("user_id=? AND group_id=?", userID, group.id)
+					.value("tentative", tentative)
+					.createStatement()
+					.execute();
+
+			String memberCountFieldOld=tentative ? "member_count" : "tentative_member_count";
+			String memberCountFieldNew=tentative ? "tentative_member_count" : "member_count";
+			new SQLQueryBuilder(conn)
+					.update("groups")
+					.valueExpr(memberCountFieldOld, memberCountFieldOld+"-1")
+					.valueExpr(memberCountFieldNew, memberCountFieldNew+"+1")
+					.where("id=?", group.id)
+					.createStatement()
+					.execute();
+			removeFromCache(group);
+		});
 	}
 
 	public static void leaveGroup(Group group, int userID, boolean tentative) throws SQLException{
@@ -502,16 +529,11 @@ public class GroupStorage{
 		}
 	}
 
-	public static List<URI> getGroupMemberURIs(int groupID, boolean tentative, int offset, int count, int[] total) throws SQLException{
+	public static PaginatedList<URI> getGroupMemberURIs(int groupID, boolean tentative, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt;
-		if(total!=null){
-			stmt=new SQLQueryBuilder(conn).selectFrom("group_memberships").count().where("group_id=? AND accepted=1 AND tentative=?", groupID, tentative).createStatement();
-			try(ResultSet res=stmt.executeQuery()){
-				res.first();
-				total[0]=res.getInt(1);
-			}
-		}
+		stmt=new SQLQueryBuilder(conn).selectFrom("group_memberships").count().where("group_id=? AND accepted=1 AND tentative=?", groupID, tentative).createStatement();
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 		if(count>0){
 			stmt=conn.prepareStatement("SELECT `ap_id`,`id` FROM `group_memberships` INNER JOIN `users` ON `users`.`id`=`user_id` WHERE `group_id`=? AND `accepted`=1 AND tentative=? LIMIT ? OFFSET ?");
 			stmt.setInt(1, groupID);
@@ -531,9 +553,9 @@ public class GroupStorage{
 					}while(res.next());
 				}
 			}
-			return list;
+			return new PaginatedList<>(list, total, offset, count);
 		}
-		return Collections.emptyList();
+		return new PaginatedList<>(Collections.emptyList(), total, offset, count);
 	}
 
 	public static List<URI> getGroupMemberInboxes(int groupID) throws SQLException{

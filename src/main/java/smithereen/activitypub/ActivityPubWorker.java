@@ -9,29 +9,22 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.RecursiveTask;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.ObjectLinkResolver;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubCollection;
-import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
@@ -41,6 +34,8 @@ import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
+import smithereen.activitypub.objects.activities.Join;
+import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
@@ -348,7 +343,7 @@ public class ActivityPubWorker{
 		}
 	}
 
-	public void sendFollowActivity(User self, ForeignUser target){
+	public void sendFollowUserActivity(User self, ForeignUser target){
 		Follow follow=new Follow();
 		follow.actor=new LinkOrObject(self.activityPubID);
 		follow.object=new LinkOrObject(target.activityPubID);
@@ -356,24 +351,33 @@ public class ActivityPubWorker{
 		executor.submit(new SendOneActivityRunnable(follow, target.inbox, self));
 	}
 
-	public void sendFollowActivity(User self, ForeignGroup target){
-		Follow follow=new Follow();
+	public void sendJoinGroupActivity(User self, ForeignGroup target, boolean tentative){
+		Activity follow;
+		if(target.hasCapability(ForeignGroup.Capability.JOIN_LEAVE_ACTIVITIES))
+			follow=new Join(tentative);
+		else
+			follow=new Follow();
 		follow.actor=new LinkOrObject(self.activityPubID);
 		follow.object=new LinkOrObject(target.activityPubID);
 		follow.activityPubID=new UriBuilder(self.activityPubID).fragment("joinGroup"+target.id+"_"+rand()).build();
 		executor.submit(new SendOneActivityRunnable(follow, target.inbox, self));
 	}
 
-	public void sendUnfollowActivity(User self, ForeignGroup target){
-		Undo undo=new Undo();
+	public void sendLeaveGroupActivity(User self, ForeignGroup target){
+		Activity undo;
+		if(target.hasCapability(ForeignGroup.Capability.JOIN_LEAVE_ACTIVITIES)){
+			undo=new Leave();
+			undo.object=new LinkOrObject(target.activityPubID);
+		}else{
+			undo=new Undo();
+			Follow follow=new Follow();
+			follow.actor=new LinkOrObject(self.activityPubID);
+			follow.object=new LinkOrObject(target.activityPubID);
+			follow.activityPubID=new UriBuilder(self.activityPubID).fragment("joinGroup"+target.id+"_"+rand()).build();
+			undo.object=new LinkOrObject(follow);
+		}
 		undo.activityPubID=new UriBuilder(self.activityPubID).fragment("leaveGroup"+target.id+"_"+rand()).build();
 		undo.actor=new LinkOrObject(self.activityPubID);
-
-		Follow follow=new Follow();
-		follow.actor=new LinkOrObject(self.activityPubID);
-		follow.object=new LinkOrObject(target.activityPubID);
-		follow.activityPubID=new UriBuilder(self.activityPubID).fragment("joinGroup"+target.id+"_"+rand()).build();
-		undo.object=new LinkOrObject(follow);
 
 		executor.submit(new SendOneActivityRunnable(undo, target.inbox, self));
 	}
