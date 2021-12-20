@@ -114,7 +114,7 @@ public class PostRoutes{
 		else
 			attachments=Collections.emptyList();
 
-		Post post=context(req).getWallController().createWallPost(self.user, owner, replyTo, text, contentWarning, attachments, poll);
+		Post post=context(req).getWallController().createWallPost(self.user, self.id, owner, replyTo, text, contentWarning, attachments, poll);
 
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();

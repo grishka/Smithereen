@@ -73,7 +73,7 @@ public class WallController{
 	 * @param poll Poll to attach.
 	 * @return The newly created post.
 	 */
-	public Post createWallPost(@NotNull User author, @NotNull Actor wallOwner, int inReplyToID,
+	public Post createWallPost(@NotNull User author, int authorAccountID, @NotNull Actor wallOwner, int inReplyToID,
 							   @NotNull String textSource, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
 							   @Nullable Poll poll){
 		try{
@@ -111,7 +111,7 @@ public class WallController{
 				for(String id:attachmentIDs){
 					if(!id.matches("^[a-fA-F0-9]{32}$"))
 						continue;
-					ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(id, author.id);
+					ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(id, authorAccountID);
 					if(obj!=null){
 						attachObjects.add(obj);
 						attachmentCount++;
