@@ -93,7 +93,7 @@ public class Utils{
 	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
 	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@("+IDN_DOMAIN_REGEX+"))?");
 	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@("+IDN_DOMAIN_REGEX+")");
-	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([a-zA-Z0-9]+)=\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\"\\s*([,;])?\\s*");
+	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([!#$%^'*+\\-.^_`|~0-9A-Za-z]+)=(?:(?:\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\")|([!#$%^'*+\\-.^_`|~0-9A-Za-z]+))\\s*([,;])?\\s*");
 	private static final Pattern NON_ASCII_PATTERN=Pattern.compile("\\P{ASCII}");
 
 	public static final Gson gson=new GsonBuilder()
@@ -683,8 +683,14 @@ public class Utils{
 		HashMap<String, String> curMap=new HashMap<>();
 		while(matcher.find()){
 			String key=matcher.group(1);
-			String value=matcher.group(2).replace("\\\"", "\"").replace("\\\\", "\\");
-			String separator=matcher.group(3);
+
+			String value=matcher.group(2);
+			if(value == null) {
+				value = matcher.group(3);
+			}
+			value = value.replace("\\\"", "\"").replace("\\\\", "\\");
+
+			String separator=matcher.group(4);
 			curMap.put(key, value);
 			if(separator==null || ";".equals(separator)){
 				res.add(curMap);
