@@ -205,7 +205,7 @@ public class ActivityPub{
 		String resource="acct:"+username+"@"+domain;
 		String url;
 		if(StringUtils.isEmpty(uriTemplate)){
-			url="https://"+domain+"/.well-known/webfinger?resource="+resource;
+			url=(Config.useHTTP ? "http" : "https")+"://"+domain+"/.well-known/webfinger?resource="+resource;
 		}else{
 			url=uriTemplate.replace("{uri}", resource);
 		}
@@ -260,7 +260,7 @@ public class ActivityPub{
 		}catch(ObjectNotFoundException x){
 			if(redirect==null){
 				Request req=new Request.Builder()
-						.url("https://"+domain+"/.well-known/host-meta")
+						.url((Config.useHTTP ? "http" : "https")+"://"+domain+"/.well-known/host-meta")
 						.header("Accept", "application/xrd+xml")
 						.build();
 				Response resp=httpClient.newCall(req).execute();
@@ -284,7 +284,7 @@ public class ActivityPub{
 									if("lrdd".equals(rel) && "application/xrd+xml".equals(type)){
 										if((template.startsWith("https://") || (Config.useHTTP && template.startsWith("http://"))) && template.contains("{uri}")){
 											synchronized(ActivityPub.class){
-												if(("https://"+domain+"/.well-known/webfinger?resource={uri}").equals(template)){
+												if(template.endsWith("://"+domain+"/.well-known/webfinger?resource={uri}")){
 													// this isn't a real redirect
 													domainRedirects.put(domain, "");
 													// don't repeat the request, we already know that username doesn't exist (but the webfinger endpoint does)
