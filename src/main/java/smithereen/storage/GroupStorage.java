@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import smithereen.Config;
 import smithereen.LruCache;
@@ -880,5 +881,20 @@ public class GroupStorage{
 		if(group.domain!=null)
 			s+=" "+group.domain;
 		return s;
+	}
+
+	public static List<Group> getUpcomingEvents(int userID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT group_id, event_start_time FROM group_memberships JOIN `groups` ON `groups`.id=group_memberships.group_id WHERE user_id=? AND accepted=1 AND `groups`.type=1 AND event_start_time>NOW() AND event_start_time<DATE_ADD(NOW(), INTERVAL 2 DAY)", userID);
+		return getByIdAsList(DatabaseUtils.intResultSetToList(stmt.executeQuery()));
+	}
+
+	public static IntStream getAllMembersAsStream(int groupID) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("group_memberships")
+				.columns("user_id")
+				.where("accepted=1 AND group_id=?", groupID)
+				.createStatement();
+		return DatabaseUtils.intResultSetToStream(stmt.executeQuery());
 	}
 }

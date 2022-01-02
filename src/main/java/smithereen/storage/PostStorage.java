@@ -542,15 +542,15 @@ public class PostStorage{
 			stmt=conn.prepareStatement("DELETE FROM `wall_posts` WHERE `id`=?");
 			stmt.setInt(1, id);
 			stmt.execute();
-			stmt=conn.prepareStatement("DELETE FROM `newsfeed` WHERE (`type`=0 OR `type`=1) AND `object_id`=?");
-			stmt.setInt(1, id);
-			stmt.execute();
 		}else{
 			// (comments don't exist in the feed anyway)
 			stmt=conn.prepareStatement("UPDATE wall_posts SET author_id=NULL, owner_user_id=NULL, owner_group_id=NULL, text=NULL, attachments=NULL, content_warning=NULL, updated_at=NULL, mentions=NULL WHERE id=?");
 			stmt.setInt(1, id);
 			stmt.execute();
 		}
+		stmt=conn.prepareStatement("DELETE FROM `newsfeed` WHERE (`type`=0 OR `type`=1) AND `object_id`=?");
+		stmt.setInt(1, id);
+		stmt.execute();
 
 		if(post.getReplyLevel()>0){
 			conn.createStatement().execute("UPDATE wall_posts SET reply_count=GREATEST(1, reply_count)-1 WHERE id IN ("+Arrays.stream(post.replyKey).mapToObj(String::valueOf).collect(Collectors.joining(","))+")");

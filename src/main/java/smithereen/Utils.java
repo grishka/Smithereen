@@ -566,6 +566,8 @@ public class Utils{
 	}
 
 	public static String postprocessPostHTMLForDisplay(String text){
+		if(text==null)
+			return "";
 		Document doc=Jsoup.parseBodyFragment(text);
 
 		for(Element el:doc.getElementsByTag("a")){

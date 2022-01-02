@@ -19,15 +19,32 @@
 {% if birthdayUsers is not empty %}
 <div class="leftReminder">
 	<h3>{{ L('reminder') }}</h3>
-	{{ L('birthday_reminder_before') -}}
-	{{- L(birthdaysAreToday ? 'reminder_today' : 'reminder_tomorrow') -}}
-	{{- L('birthday_reminder_middle') -}}
+	{{ L('birthday_reminder_before', {'count': birthdayUsers | length}) -}}
+	{%- if L('birthday_reminder_day_pos').toString()!="end" %}{{ L(birthdaysAreToday ? 'birthday_reminder_today' : 'birthday_reminder_tomorrow') }}{% endif -%}
+	{{- L('birthday_reminder_middle', {'count': birthdayUsers | length}) -}}
 	{%- for user in birthdayUsers -%}
 		<a href="{{ user.profileURL }}">{{ L('birthday_reminder_name', {'name': user.firstLastAndGender}) }}</a>
 		{%- if not loop.last -%}
 		{{- L(loop.revindex>1 ? 'birthday_reminder_separator' : 'birthday_reminder_separator_last') -}}
 		{%- endif -%}
 	{%- endfor -%}
-	{{- L('birthday_reminder_after') -}}
+	{%- if L('birthday_reminder_day_pos').toString()=="end" %}{{ L('birthday_reminder_before_day', {'count': birthdayUsers | length}) }}{{ L(birthdaysAreToday ? 'birthday_reminder_today' : 'birthday_reminder_tomorrow') }}{% endif -%}
+	{{- L('birthday_reminder_after', {'count': birthdayUsers | length}) -}}
+</div>
+{% endif %}
+{% if eventReminderEvents is not empty %}
+<div class="leftReminder">
+	<h3>{{ L('reminder') }}</h3>
+	{{ L('event_reminder_before', {'count': eventReminderEvents | length}) -}}
+	{%- if L('event_reminder_day_pos').toString()!="end" %}{{ L(eventsAreToday ? 'event_reminder_today' : 'event_reminder_tomorrow') }}{% endif -%}
+	{{- L('event_reminder_middle', {'count': eventReminderEvents | length}) -}}
+	{%- for event in eventReminderEvents -%}
+		<a href="{{ event.profileURL }}">{{ event.name }}</a>
+		{%- if not loop.last -%}
+		{{- L(loop.revindex>1 ? 'event_reminder_separator' : 'event_reminder_separator_last') -}}
+		{%- endif -%}
+	{%- endfor -%}
+	{%- if L('event_reminder_day_pos').toString()=="end" %}{{ L('event_reminder_before_day', {'count': eventReminderEvents | length}) }}{{ L(eventsAreToday ? 'event_reminder_today' : 'event_reminder_tomorrow') }}{% endif -%}
+	{{- L('event_reminder_after', {'count': eventReminderEvents | length}) -}}
 </div>
 {% endif %}

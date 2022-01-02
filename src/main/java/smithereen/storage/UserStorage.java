@@ -34,6 +34,7 @@ import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.data.Account;
 import smithereen.data.BirthdayReminder;
+import smithereen.data.EventReminder;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
@@ -52,6 +53,7 @@ public class UserStorage{
 	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
 	private static LruCache<Integer, Account> accountCache=new LruCache<>(500);
 	private static final LruCache<Integer, BirthdayReminder> birthdayReminderCache=new LruCache<>(500);
+	private static final LruCache<Integer, EventReminder> eventReminderCache=new LruCache<>(500);
 
 	public static synchronized User getById(int id) throws SQLException{
 		User user=cache.get(id);

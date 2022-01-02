@@ -7,12 +7,24 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import smithereen.ApplicationContext;
+import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.data.EventReminder;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
 import smithereen.data.GroupAdmin;
@@ -26,6 +38,7 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NewsfeedStorage;
+import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.wrapError;
@@ -34,6 +47,7 @@ public class GroupsController{
 	private static final Logger LOG=LoggerFactory.getLogger(GroupsController.class);
 
 	private final ApplicationContext context;
+	private final LruCache<Integer, EventReminder> eventRemindersCache=new LruCache<>(500);
 
 	public GroupsController(ApplicationContext context){
 		this.context=context;
@@ -108,6 +122,22 @@ public class GroupsController{
 		return group;
 	}
 
+	public List<Group> getGroupsByIdAsList(Collection<Integer> ids){
+		try{
+			return GroupStorage.getByIdAsList(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, Group> getGroupsByIdAsMap(Collection<Integer> ids){
+		try{
+			return GroupStorage.getById(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public PaginatedList<User> getMembers(@NotNull Group group, int offset, int count, boolean tentative){
 		try{
 			return GroupStorage.getMembers(group.id, offset, count, tentative);
@@ -166,9 +196,20 @@ public class GroupsController{
 	public void updateGroupInfo(@NotNull Group group, @NotNull User admin, String name, String aboutSrc, Instant eventStart, Instant eventEnd){
 		try{
 			enforceUserAdminLevel(group, admin, Group.AdminLevel.ADMIN);
-			String about=Utils.preprocessPostHTML(aboutSrc, null);
+			String about=StringUtils.isNotEmpty(aboutSrc) ? Utils.preprocessPostHTML(aboutSrc, null) : null;
 			GroupStorage.updateGroupGeneralInfo(group, name, aboutSrc, about, eventStart, eventEnd);
 			ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
+			if(group.isEvent()){
+				BackgroundTaskRunner.getInstance().submit(()->{
+					try{
+						synchronized(eventRemindersCache){
+							GroupStorage.getAllMembersAsStream(group.id).boxed().forEach(eventRemindersCache::remove);
+						}
+					}catch(SQLException x){
+						LOG.warn("error getting group members", x);
+					}
+				});
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -206,6 +247,11 @@ public class GroupsController{
 				ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(user, group);
 			}
 			NewsfeedStorage.putEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
+			if(group.isEvent()){
+				synchronized(eventRemindersCache){
+					eventRemindersCache.remove(user.id);
+				}
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -223,6 +269,64 @@ public class GroupsController{
 			}
 			ActivityPubWorker.getInstance().sendRemoveFromGroupsCollectionActivity(user, group);
 			NewsfeedStorage.deleteEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
+			if(group.isEvent()){
+				synchronized(eventRemindersCache){
+					eventRemindersCache.remove(user.id);
+				}
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public EventReminder getUserEventReminder(@NotNull User user, @NotNull ZoneId timeZone){
+		synchronized(eventRemindersCache){
+			EventReminder reminder=eventRemindersCache.get(user.id);
+			if(reminder!=null){
+				if(System.currentTimeMillis()-reminder.createdAt.toEpochMilli()<3600_000L && LocalDate.ofInstant(reminder.createdAt, timeZone).equals(LocalDate.now(timeZone)))
+					return reminder;
+				else
+					eventRemindersCache.remove(user.id);
+			}
+		}
+		try{
+			List<Group> events=GroupStorage.getUpcomingEvents(user.id);
+			EventReminder reminder=new EventReminder();
+			reminder.createdAt=Instant.now();
+			if(events.isEmpty()){
+				reminder.groupIDs=Collections.emptyList();
+				synchronized(eventRemindersCache){
+					eventRemindersCache.put(user.id, reminder);
+					return reminder;
+				}
+			}
+
+			ZonedDateTime now=ZonedDateTime.now(timeZone);
+			Instant todayEnd=now.toInstant().plusNanos(now.until(ZonedDateTime.of(now.getYear(), now.getMonthValue(), now.getDayOfMonth()+1, 0, 0, 0, 0, timeZone), ChronoUnit.NANOS));
+			Instant tomorrowEnd=todayEnd.plus(1, ChronoUnit.DAYS);
+			List<Integer> eventsToday=new ArrayList<>(), eventsTomorrow=new ArrayList<>();
+			for(Group g:events){
+				if(g.eventStartTime.isBefore(todayEnd)){
+					eventsToday.add(g.id);
+				}else if(g.eventStartTime.isBefore(tomorrowEnd)){
+					eventsTomorrow.add(g.id);
+				}
+			}
+
+			if(!eventsToday.isEmpty()){
+				reminder.groupIDs=eventsToday;
+				reminder.day=LocalDate.now(timeZone);
+			}else if(!eventsTomorrow.isEmpty()){
+				reminder.groupIDs=eventsTomorrow;
+				reminder.day=LocalDate.now(timeZone).plusDays(1);
+			}else{
+				reminder.groupIDs=Collections.emptyList();
+			}
+
+			synchronized(eventRemindersCache){
+				eventRemindersCache.put(user.id, reminder);
+				return reminder;
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

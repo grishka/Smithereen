@@ -87,6 +87,7 @@ public class DatabaseUtils{
 							action.accept(res.getInt(1));
 							return true;
 						}
+						res.close();
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
 					}
@@ -99,6 +100,7 @@ public class DatabaseUtils{
 						while(res.next()){
 							action.accept(res.getInt(1));
 						}
+						res.close();
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
 					}

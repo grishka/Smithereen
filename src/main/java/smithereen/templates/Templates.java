@@ -22,8 +22,10 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.data.Account;
 import smithereen.data.BirthdayReminder;
+import smithereen.data.EventReminder;
 import smithereen.data.SessionInfo;
 import smithereen.data.UserNotifications;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.lang.Lang;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
@@ -76,8 +78,13 @@ public class Templates{
 						model.with("birthdayUsers", UserStorage.getByIdAsList(reminder.userIDs));
 						model.with("birthdaysAreToday", reminder.day.equals(today));
 					}
+					EventReminder eventReminder=Utils.context(req).getGroupsController().getUserEventReminder(account.user, tz.toZoneId());
+					if(!eventReminder.groupIDs.isEmpty()){
+						model.with("eventReminderEvents", Utils.context(req).getGroupsController().getGroupsByIdAsList(eventReminder.groupIDs));
+						model.with("eventsAreToday", eventReminder.day.equals(today));
+					}
 				}catch(SQLException x){
-					throw new RuntimeException(x);
+					throw new InternalServerErrorException(x);
 				}
 			}
 		}

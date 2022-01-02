@@ -401,8 +401,8 @@
   "notifications_empty": "Ваши уведомления появятся здесь.",
   "wall_empty": "Здесь никто ничего не написал... Пока.",
   "reminder": "Напоминание",
-  "reminder_today": "Сегодня",
-  "reminder_tomorrow": "Завтра",
+  "birthday_reminder_today": "Сегодня",
+  "birthday_reminder_tomorrow": "Завтра",
   "birthday_reminder_before": "",
   "birthday_reminder_middle": " день рождения ",
   "birthday_reminder_after": ".",
@@ -486,5 +486,16 @@
   "tentative_members": "Возможные участники",
   "X_tentative_members": "{count, plural, one {# не уверен} other {# не уверены}}",
   "summary_event_X_members": "{count, plural, one {# человек пойдёт} few {# человека пойдут} other {# человек пойдут}} на встречу",
-  "summary_event_X_tentative_members": "{count, plural, one {# человек не уверен, что придёт} few {# человека не уверены, что придут} other {# человек не уверены, что придут}}"
+  "summary_event_X_tentative_members": "{count, plural, one {# человек не уверен, что придёт} few {# человека не уверены, что придут} other {# человек не уверены, что придут}}",
+  "event_reminder_before": "",
+  "event_reminder_middle": " {count, select, 1 {состоится встреча} other {состоятся встречи}} ",
+  "event_reminder_after": ".",
+  "event_reminder_separator": ", ",
+  "event_reminder_separator_last": " и ",
+  "event_reminder_before_day": "",
+  "birthday_reminder_before_day": "",
+  "event_reminder_day_pos": "start",
+  "birthday_reminder_day_pos": "start",
+  "event_reminder_today": "Сегодня",
+  "event_reminder_tomorrow": "Завтра"
 }
