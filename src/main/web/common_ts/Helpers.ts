@@ -441,6 +441,10 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):bo
 
 function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	if(link.dataset.ajax!=undefined){
+		if(link.dataset.ajaxHide!=undefined)
+			ge(link.dataset.ajaxHide).hide();
+		if(link.dataset.ajaxShow!=undefined)
+			ge(link.dataset.ajaxShow).show();
 		ajaxGetAndApplyActions(link.href);
 		return true;
 	}

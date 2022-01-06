@@ -82,7 +82,7 @@ public class ProfileRoutes{
 
 			ArrayList<PropertyValue> profileFields=new ArrayList<>();
 			if(user.birthDate!=null)
-				profileFields.add(new PropertyValue(l.get("birth_date"), l.formatDay(user.birthDate.toLocalDate())));
+				profileFields.add(new PropertyValue(l.get("birth_date"), l.formatDay(user.birthDate)));
 			if(StringUtils.isNotEmpty(user.summary))
 				profileFields.add(new PropertyValue(l.get("profile_about"), user.summary));
 			if(user.attachment!=null)

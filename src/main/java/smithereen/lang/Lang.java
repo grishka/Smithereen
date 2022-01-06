@@ -15,6 +15,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -187,7 +188,7 @@ public class Lang{
 	}
 
 	public String formatDay(LocalDate date){
-		return get("date_format_other_year", Map.of("day", date.getDayOfMonth(), "month", get("month"+date.getMonthValue()+"_full"), "year", date.getYear()));
+		return get("date_format_other_year", Map.of("day", date.getDayOfMonth(), "month", get("month_full", Map.of("month", date.getMonthValue())), "year", date.getYear()));
 	}
 
 	public String formatDate(Instant date, TimeZone timeZone, boolean forceAbsolute){
@@ -223,13 +224,18 @@ public class Lang{
 		}
 		if(day==null){
 			if(now.getYear()==dt.getYear()){
-				day=get("date_format_current_year", Map.of("day", dt.getDayOfMonth(), "month", get("month"+dt.getMonthValue()+"_full")));
+				day=get("date_format_current_year", Map.of("day", dt.getDayOfMonth(), "month", get("month_full", Map.of("month", dt.getMonthValue()))));
 			}else{
-				day=get("date_format_other_year", Map.of("day", dt.getDayOfMonth(), "month", get("month"+dt.getMonthValue()+"_short"), "year", dt.getYear()));
+				day=get("date_format_other_year", Map.of("day", dt.getDayOfMonth(), "month", get("month_short", Map.of("month", dt.getMonthValue())), "year", dt.getYear()));
 			}
 		}
 
 		return get("date_time_format", Map.of("date", day, "time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())));
+	}
+
+	public String formatTime(Instant time, ZoneId timeZone){
+		ZonedDateTime dt=time.atZone(timeZone);
+		return String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute());
 	}
 
 	public String getAsJS(String key){

@@ -399,6 +399,8 @@ public class SmithereenApplication{
 				getLoggedIn("", GroupsRoutes::myEvents);
 				getLoggedIn("/past", GroupsRoutes::myPastEvents);
 				getLoggedIn("/create", GroupsRoutes::createEvent);
+				getLoggedIn("/calendar", GroupsRoutes::eventCalendar);
+				getLoggedIn("/dayEventsPopup", GroupsRoutes::eventCalendarDayPopup);
 			});
 		});
 

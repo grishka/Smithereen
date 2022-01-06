@@ -335,8 +335,12 @@ public class SQLQueryBuilder{
 		PreparedStatement stmt=conn.prepareStatement(sql);
 		int i=1;
 		for(Object arg:args){
-			if(arg instanceof Enum)
-				stmt.setInt(i, ((Enum<?>)arg).ordinal());
+			if(arg instanceof Enum e)
+				stmt.setInt(i, e.ordinal());
+			else if(arg instanceof Instant instant)
+				stmt.setTimestamp(i, Timestamp.from(instant));
+			else if(arg instanceof LocalDate ld)
+				stmt.setDate(i, java.sql.Date.valueOf(ld));
 			else
 				stmt.setObject(i, arg);
 			i++;

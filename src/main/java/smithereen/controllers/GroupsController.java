@@ -8,11 +8,9 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -290,7 +288,7 @@ public class GroupsController{
 			}
 		}
 		try{
-			List<Group> events=GroupStorage.getUpcomingEvents(user.id);
+			List<Group> events=GroupStorage.getUserEventsInTimeRange(user.id, Instant.now(), Instant.now().plus(2, ChronoUnit.DAYS));
 			EventReminder reminder=new EventReminder();
 			reminder.createdAt=Instant.now();
 			if(events.isEmpty()){
@@ -327,6 +325,26 @@ public class GroupsController{
 				eventRemindersCache.put(user.id, reminder);
 				return reminder;
 			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<Group> getUserEventsInMonth(@NotNull User user, int year, int month, @NotNull ZoneId timeZone){
+		try{
+			ZonedDateTime start=ZonedDateTime.of(year, month, 1, 0, 0, 0, 0, timeZone);
+			int numDays=LocalDate.of(year, month, 1).lengthOfMonth();
+			ZonedDateTime end=ZonedDateTime.of(year, month, numDays, 23, 59, 59, 0, timeZone);
+			return GroupStorage.getUserEventsInTimeRange(user.id, start.toInstant(), end.toInstant());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<Group> getUserEventsOnDay(@NotNull User user, @NotNull LocalDate day, @NotNull ZoneId timeZone){
+		try{
+			Instant start=day.atStartOfDay(timeZone).toInstant();
+			return GroupStorage.getUserEventsInTimeRange(user.id, start, start.plusMillis(24*3600_000));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -39,18 +39,14 @@
 			<a href="{{friend.profileURL}}">{{friend | pictureForAvatar('m')}}</a>
 		</td>
 		<td class="info">
-			<table width="100%" class="noBorderSpacing">
-				<tr>
-					<td width="70" class="grayText">{{ L('name') }}:</td>
-					<td><a href="{{ friend.profileURL }}">{{ friend.completeName }}</a></td>
-				</tr>
+			<div class="infoInner">
+				<div class="grayText">{{ L('name') }}:</div>
+				<div><a href="{{ friend.profileURL }}">{{ friend.completeName }}</a></div>
 				{% if friend.domain is not empty %}
-					<tr>
-						<td class="grayText">{{ L('server') }}:</td>
-						<td>{{ friend.domain }}</td>
-					</tr>
+				<div class="grayText">{{ L('server') }}:</div>
+				<div>{{ friend.domain }}</div>
 				{% endif %}
-			</table>
+			</div>
 		</td>
 		<td width="130">
 			<ul class="actionList">

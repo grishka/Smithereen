@@ -6,6 +6,7 @@ import java.net.URI;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
@@ -105,7 +106,7 @@ public class ForeignUser extends User implements ForeignActor{
 			firstName=StringUtils.isNotEmpty(name) ? name : username;
 		}
 		if(obj.has("vcard:bday")){
-			birthDate=Date.valueOf(obj.get("vcard:bday").getAsString());
+			birthDate=LocalDate.parse(obj.get("vcard:bday").getAsString());
 		}
 		if(obj.has("gender")){
 			gender=switch(obj.get("gender").getAsString()){

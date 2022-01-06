@@ -1,0 +1,57 @@
+{% extends "page" %}
+{% block content %}
+{% include "events_tabbar" with {'tab': 'calendar'} %}
+<div class="summaryWrap"><div class="summary">{{ L('events_calendar_summary') }}</div></div>
+<div class="singleColumn">
+{% for friend in birthdays %}
+<table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
+	<tr valign="top">
+		<td width="100">
+			<a href="{{friend.profileURL}}">{{friend | pictureForAvatar('m')}}</a>
+		</td>
+		<td class="info">
+			<div class="infoInner">
+				<div class="grayText">{{ L('name') }}:</div>
+				<div><a href="{{ friend.profileURL }}">{{ friend.completeName }}</a></div>
+				<div class="grayText">{{ L('birthday') }}:</div>
+				<div>{{ userDays[friend.id] }}</div>
+				<div class="grayText">{{ L('birthday_turns') }}:</div>
+				<div>{{ userAges[friend.id] }}</div>
+			</div>
+		</td>
+		<td width="130">
+			<ul class="actionList">
+			</ul>
+		</td>
+	</tr>
+</table>
+{% endfor %}
+{% for group in events %}
+<table width="100%" class="friendsRow noBorderSpacing" id="grow{{group.id}}">
+	<tr valign="top">
+		<td width="100">
+			<a href="{{group.profileURL}}">{{group | pictureForAvatar('m')}}</a>
+		</td>
+		<td class="info">
+			<div class="infoInner">
+				<div class="grayText">{{ L('group_name') }}:</div>
+				<div><a href="{{ group.profileURL }}">{{ group.name }}</a></div>
+				<div class="grayText">{{ L('group_size') }}:</div>
+				<div>{{ L('X_members', {'count': group.memberCount}) }}</div>
+				<div class="grayText">{{ L('event_start_time') }}:</div>
+				<div>{{ LD(group.eventStartTime) }}	</div>
+			</div>
+		</td>
+		<td width="130">
+			<ul class="actionList">
+			</ul>
+		</td>
+	</tr>
+</table>
+{% endfor %}
+	<div id="eventsCalendarW">
+		{% include "events_actual_calendar" %}
+	</div>
+</div>
+{% endblock %}
+

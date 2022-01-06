@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -123,18 +125,12 @@ public class SettingsRoutes{
 		if(_gender<0 || _gender>2)
 			_gender=0;
 		User.Gender gender=User.Gender.valueOf(_gender);
-		java.sql.Date bdate=self.user.birthDate;
+		LocalDate bdate=self.user.birthDate;
 		String _bdate=req.queryParams("bdate");
 		if(_bdate!=null){
-			String[] dateParts=_bdate.split("-");
-			if(dateParts.length==3){
-				int year=parseIntOrDefault(dateParts[0], 0);
-				int month=parseIntOrDefault(dateParts[1], 0);
-				int day=parseIntOrDefault(dateParts[2], 0);
-				if(year>=1900 && year<9999 && month>0 && month<=12 && day>0 && day<=31){
-					bdate=new java.sql.Date(year-1900, month-1, day);
-				}
-			}
+			try{
+				bdate=LocalDate.parse(_bdate);
+			}catch(DateTimeParseException ignore){}
 		}
 		String message;
 		if(first.length()<2){

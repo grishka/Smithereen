@@ -552,7 +552,7 @@ public class UserStorage{
 		stmt.execute();
 	}
 
-	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, java.sql.Date bdate, String about) throws SQLException{
+	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate bdate, String about) throws SQLException{
 		new SQLQueryBuilder()
 				.update("users")
 				.where("id=?", user.id)
@@ -1011,6 +1011,29 @@ public class UserStorage{
 		}
 	}
 
+	public static void getFriendIdsWithBirthdaysTodayAndTomorrow(int userID, LocalDate date, List<Integer> today, List<Integer> tomorrow) throws SQLException{
+		LocalDate nextDay=date.plusDays(1);
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT `users`.id, `users`.bdate FROM `users` RIGHT JOIN followings ON followings.followee_id=`users`.id" +
+						" WHERE followings.follower_id=? AND followings.mutual=1 AND `users`.bdate IS NOT NULL" +
+						" AND ((DAY(`users`.bdate)=? AND MONTH(`users`.bdate)=?) OR (DAY(`users`.bdate)=? AND MONTH(`users`.bdate)=?))",
+				userID, date.getDayOfMonth(), date.getMonthValue(), nextDay.getDayOfMonth(), nextDay.getMonthValue());
+
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			while(res.next()){
+				int id=res.getInt(1);
+				LocalDate bdate=DatabaseUtils.getLocalDate(res, 2);
+				Objects.requireNonNull(bdate);
+				if(bdate.getDayOfMonth()==date.getDayOfMonth()){
+					today.add(id);
+				}else{
+					tomorrow.add(id);
+				}
+			}
+		}
+	}
+
 	public static BirthdayReminder getBirthdayReminderForUser(int userID, LocalDate date) throws SQLException{
 		synchronized(birthdayReminderCache){
 			BirthdayReminder r=birthdayReminderCache.get(userID);
@@ -1018,25 +1041,8 @@ public class UserStorage{
 				return r;
 		}
 		LocalDate nextDay=date.plusDays(1);
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT `users`.id, `users`.bdate FROM `users` RIGHT JOIN followings ON followings.followee_id=`users`.id" +
-				" WHERE followings.follower_id=? AND followings.mutual=1 AND `users`.bdate IS NOT NULL" +
-				" AND ((DAY(`users`.bdate)=? AND MONTH(`users`.bdate)=?) OR (DAY(`users`.bdate)=? AND MONTH(`users`.bdate)=?))",
-				userID, date.getDayOfMonth(), date.getMonthValue(), nextDay.getDayOfMonth(), nextDay.getMonthValue());
-
-		List<Integer> today=new ArrayList<>(), tomorrow=new ArrayList<>();
-		try(ResultSet res=stmt.executeQuery()){
-			res.beforeFirst();
-			while(res.next()){
-				int id=res.getInt(1);
-				Date bdate=res.getDate(2);
-				if(bdate.getDate()==date.getDayOfMonth()){
-					today.add(id);
-				}else{
-					tomorrow.add(id);
-				}
-			}
-		}
+		ArrayList<Integer> today=new ArrayList<>(), tomorrow=new ArrayList<>();
+		getFriendIdsWithBirthdaysTodayAndTomorrow(userID, date, today, tomorrow);
 		BirthdayReminder r=new BirthdayReminder();
 		r.forDay=date;
 		if(!today.isEmpty()){
@@ -1052,5 +1058,19 @@ public class UserStorage{
 			birthdayReminderCache.put(userID, r);
 			return r;
 		}
+	}
+
+	public static List<Integer> getFriendsWithBirthdaysInMonth(int userID, int month) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT `users`.id FROM `users` RIGHT JOIN followings ON followings.followee_id=`users`.id" +
+				" WHERE followings.follower_id=? AND followings.mutual=1 AND `users`.bdate IS NOT NULL AND MONTH(`users`.bdate)=?", userID, month);
+		return DatabaseUtils.intResultSetToList(stmt.executeQuery());
+	}
+
+	public static List<Integer> getFriendsWithBirthdaysOnDay(int userID, int month, int day) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT `users`.id FROM `users` RIGHT JOIN followings ON followings.followee_id=`users`.id" +
+				" WHERE followings.follower_id=? AND followings.mutual=1 AND `users`.bdate IS NOT NULL AND MONTH(`users`.bdate)=? AND DAY(`users`.bdate)=?", userID, month, day);
+		return DatabaseUtils.intResultSetToList(stmt.executeQuery());
 	}
 }

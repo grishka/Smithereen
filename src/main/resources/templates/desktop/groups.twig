@@ -28,9 +28,22 @@
 			<a href="{{group.profileURL}}">{{group | pictureForAvatar('m')}}</a>
 		</td>
 		<td class="info">
-			<b><a href="{{group.profileURL}}">{{group.name}}</a></b>
+			<div class="infoInner">
+				<div class="grayText">{{ L('group_name') }}:</div>
+				<div><a href="{{ group.profileURL }}">{{ group.name }}</a></div>
+				<div class="grayText">{{ L('group_size') }}:</div>
+				<div>{{ L('X_members', {'count': group.memberCount}) }}</div>
+				{% if group.event %}
+				<div class="grayText">{{ L('event_start_time') }}:</div>
+				<div>{{ LD(group.eventStartTime) }}	</div>
+				{% endif %}
+				{% if group.domain is not empty %}
+				<div class="grayText">{{ L('server') }}:</div>
+				<div>{{ group.domain }}</div>
+				{% endif %}
+			</div>
 		</td>
-		<td width="200">
+		<td width="130">
 			<ul class="actionList">
                 {%if group.domain is not null%}
 					<li><a href="{{ group.url }}" target="_blank">{{ L('open_on_server_X', {'domain': group.domain}) }}</a></li>

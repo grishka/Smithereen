@@ -9,25 +9,23 @@ import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TimeZone;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
+import smithereen.data.ActorWithDescription;
 import smithereen.data.ForeignUser;
 import smithereen.data.PaginatedList;
 import smithereen.data.SizedImage;
-import smithereen.data.feed.NewsfeedEntry;
 import smithereen.exceptions.BadRequestException;
 import smithereen.Config;
 import smithereen.data.GroupAdmin;
@@ -42,11 +40,8 @@ import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponse;
-import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
-import smithereen.storage.NewsfeedStorage;
-import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
@@ -332,8 +327,8 @@ public class GroupsRoutes{
 
 	public static Object admins(Request req, Response resp){
 		Group group=getGroup(req);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("group_admins", req);
-		model.with("admins", context(req).getGroupsController().getAdmins(group));
+		RenderedTemplateResponse model=new RenderedTemplateResponse("actor_list", req);
+		model.with("actors", context(req).getGroupsController().getAdmins(group).stream().map(a->new ActorWithDescription(a.user, a.title)).collect(Collectors.toList()));
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).box(lang(req).get(group.isEvent() ? "event_organizers" : "group_admins"), model.renderContentBlock(), null, true);
 		}
@@ -533,5 +528,200 @@ public class GroupsRoutes{
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
+	}
+
+//	public static Object eventCalendar(Request req, Response resp, Account self){
+//		if(isMobile(req))
+//			return eventCalendarMobile(req, resp, self);
+//		else
+//			return eventCalendarDesktop(req, resp, self);
+//	}
+
+	public static Object eventCalendar(Request req, Response resp, Account self){
+		ZoneId timeZone=timeZoneForRequest(req).toZoneId();
+		LocalDate today=LocalDate.now(timeZone);
+		LocalDate tomorrow=today.plusDays(1);
+		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "events_actual_calendar" : "events_calendar", req);
+
+		if(!isAjax(req) && !isMobile(req)){
+			List<User> birthdays=context(req).getUsersController().getFriendsWithBirthdaysWithinTwoDays(self.user, today);
+			model.with("birthdays", birthdays);
+			if(!birthdays.isEmpty()){
+				HashMap<Integer, String> days=new HashMap<>(birthdays.size()), ages=new HashMap<>(birthdays.size());
+				for(User user : birthdays){
+					days.put(user.id, lang(req).get(today.getDayOfMonth()==user.birthDate.getDayOfMonth() && today.getMonthValue()==user.birthDate.getMonthValue() ? "date_today" : "date_tomorrow"));
+					LocalDate birthday=user.birthDate.withYear(today.getYear());
+					if(birthday.isBefore(today))
+						birthday=birthday.plusYears(1);
+					ages.put(user.id, lang(req).get("X_years", Map.of("count", birthday.getYear()-user.birthDate.getYear())));
+				}
+				model.with("userDays", days).with("userAges", ages);
+			}
+			PaginatedList<Group> events=context(req).getGroupsController().getUserEvents(self.user, GroupsController.EventsType.FUTURE, 0, 10);
+			Instant eventMaxTime=tomorrow.atTime(23, 59, 59).atZone(timeZone).toInstant();
+			List<Group> eventsWithinTwoDays=events.list.stream().filter(e->e.eventStartTime.isBefore(eventMaxTime)).toList();
+			model.with("events", eventsWithinTwoDays);
+		}
+
+		int month=safeParseInt(req.queryParams("month"));
+		int year=safeParseInt(req.queryParams("year"));
+		LocalDate monthStart;
+		if(month<1 || month>12 || year==0){
+			monthStart=LocalDate.now(timeZone).withDayOfMonth(1);
+			month=monthStart.getMonthValue();
+			year=monthStart.getYear();
+		}else{
+			monthStart=LocalDate.of(year, month, 1);
+		}
+		model.with("year", year).with("month", month).with("monthLength", monthStart.lengthOfMonth()).with("monthStartWeekday", monthStart.getDayOfWeek().getValue());
+		model.with("todayDay", today.getDayOfMonth()).with("todayMonth", today.getMonthValue()).with("todayYear", today.getYear());
+		Lang l=lang(req);
+		Instant now=Instant.now();
+
+		ArrayList<Actor> eventsInMonth=new ArrayList<>();
+		eventsInMonth.addAll(context(req).getUsersController().getFriendsWithBirthdaysInMonth(self.user, month));
+		eventsInMonth.addAll(context(req).getGroupsController().getUserEventsInMonth(self.user, year, month, timeZone));
+		if(isMobile(req)){
+			Map<Integer, List<ActorWithDescription>> eventsByDay=eventsInMonth.stream()
+					.map(a->new ActorWithDescription(a, getActorCalendarDescription(a, l, today, monthStart, now, timeZone)))
+					.collect(Collectors.groupingBy(a->{
+						if(a.actor() instanceof User u)
+							return u.birthDate.getDayOfMonth();
+						else if(a.actor() instanceof Group g)
+							return g.eventStartTime.atZone(timeZone).getDayOfMonth();
+						else
+							throw new IllegalStateException();
+					}));
+			model.with("calendarEvents", eventsByDay);
+		}else{
+			Map<Integer, List<Actor>> eventsByDay=eventsInMonth.stream().collect(Collectors.groupingBy(a->{
+				if(a instanceof User u)
+					return u.birthDate.getDayOfMonth();
+				else if(a instanceof Group g)
+					return g.eventStartTime.atZone(timeZone).getDayOfMonth();
+				else
+					throw new IllegalStateException();
+			}));
+			model.with("calendarEvents", eventsByDay);
+		}
+		model.pageTitle(lang(req).get("events_calendar_title"));
+
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).setContent("eventsCalendarW", model.renderToString());
+		}
+
+		return model;
+	}
+
+	public static Object eventCalendarMobile(Request req, Response resp, Account self){
+		RenderedTemplateResponse model=new RenderedTemplateResponse("events_calendar", req);
+		Lang l=lang(req);
+		Instant now=Instant.now();
+		ZoneId timeZone=timeZoneForRequest(req).toZoneId();
+		LocalDate today=LocalDate.now(timeZone);
+		int month=safeParseInt(req.queryParams("month"));
+		int year=safeParseInt(req.queryParams("year"));
+		LocalDate monthStart;
+		if(month<1 || month>12 || year==0){
+			monthStart=LocalDate.now(timeZone).withDayOfMonth(1);
+			month=monthStart.getMonthValue();
+			year=monthStart.getYear();
+		}else{
+			monthStart=LocalDate.of(year, month, 1);
+		}
+		model.with("month", month).with("year", year);
+		ArrayList<Actor> eventsInMonth=new ArrayList<>();
+		eventsInMonth.addAll(context(req).getUsersController().getFriendsWithBirthdaysInMonth(self.user, month));
+		eventsInMonth.addAll(context(req).getGroupsController().getUserEventsInMonth(self.user, year, month, timeZone));
+		List<ActorWithDescription> actors=eventsInMonth.stream().sorted((a1, a2)->{
+			LocalDate date1, date2;
+			if(a1 instanceof User u)
+				date1=u.birthDate;
+			else if(a1 instanceof Group g)
+				date1=g.eventStartTime.atZone(timeZone).toLocalDate();
+			else
+				throw new IllegalStateException();
+			if(a2 instanceof User u)
+				date2=u.birthDate;
+			else if(a2 instanceof Group g)
+				date2=g.eventStartTime.atZone(timeZone).toLocalDate();
+			else
+				throw new IllegalStateException();
+			if(date1.equals(date2)){
+				if(a1 instanceof User && a2 instanceof Group){
+					return -1;
+				}else if(a1 instanceof Group && a2 instanceof User){
+					return 1;
+				}else if(a1 instanceof User u1 && a2 instanceof User u2){
+					return Integer.compare(u1.id, u2.id);
+				}else if(a1 instanceof Group g1 && a2 instanceof Group g2){
+					return g1.eventStartTime.compareTo(g2.eventStartTime);
+				}else{
+					throw new IllegalStateException();
+				}
+			}else{
+				return date1.compareTo(date2);
+			}
+		}).map(a->new ActorWithDescription(a, getActorCalendarDescription(a, l, today, monthStart, now, timeZone))).toList();
+		model.with("actors", actors);
+		model.pageTitle(lang(req).get("events_calendar_title"));
+
+		return model;
+	}
+
+	public static Object eventCalendarDayPopup(Request req, Response resp, Account self){
+		LocalDate date;
+		try{
+			date=LocalDate.parse(Objects.requireNonNullElse(req.queryParams("date"), ""));
+		}catch(DateTimeParseException x){
+			throw new BadRequestException(x);
+		}
+
+		Lang l=lang(req);
+		ZoneId timeZone=timeZoneForRequest(req).toZoneId();
+		Instant now=Instant.now();
+		LocalDate today=LocalDate.now(timeZone);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("actor_list", req);
+		ArrayList<Actor> actors=new ArrayList<>();
+		actors.addAll(context(req).getUsersController().getFriendsWithBirthdaysOnDay(self.user, date.getMonthValue(), date.getDayOfMonth()));
+		actors.addAll(context(req).getGroupsController().getUserEventsOnDay(self.user, date, timeZone));
+		List<ActorWithDescription> actorsDescr=actors.stream().sorted((a1, a2)->{
+			if(a1 instanceof User && a2 instanceof Group){
+				return -1;
+			}else if(a1 instanceof Group && a2 instanceof User){
+				return 1;
+			}else if(a1 instanceof User u1 && a2 instanceof User u2){
+				return Integer.compare(u1.id, u2.id);
+			}else if(a1 instanceof Group g1 && a2 instanceof Group g2){
+				return g1.eventStartTime.compareTo(g2.eventStartTime);
+			}
+			return 0;
+		}).map(a->new ActorWithDescription(a, getActorCalendarDescription(a, l, today, date, now, timeZone))).toList();
+		model.with("actors", actorsDescr);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).box(l.get("events_for_date", Map.of("date", l.formatDay(date))), model.renderContentBlock(), null, true);
+		}
+		return model;
+	}
+
+	private static String getActorCalendarDescription(Actor a, Lang l, LocalDate today, LocalDate targetDate, Instant now, ZoneId timeZone){
+		if(a instanceof User u){
+			LocalDate birthday=u.birthDate.withYear(targetDate.getYear());
+			if(birthday.isBefore(targetDate))
+				birthday=birthday.plusYears(1);
+			int age=birthday.getYear()-u.birthDate.getYear();
+			String key;
+			if(targetDate.isBefore(today))
+				key="birthday_descr_past";
+			else if(targetDate.isAfter(today))
+				key="birthday_descr_future";
+			else
+				key="birthday_descr_today";
+			return l.get(key, Map.of("age", age));
+		}else if(a instanceof Group g){
+			return l.get(g.eventStartTime.isBefore(now) ? "event_descr_past" : "event_descr_future", Map.of("time", l.formatTime(g.eventStartTime, timeZone)));
+		}else{
+			throw new IllegalStateException();
+		}
 	}
 }

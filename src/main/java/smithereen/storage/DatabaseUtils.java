@@ -154,6 +154,11 @@ public class DatabaseUtils{
 		return date==null ? null : date.toLocalDate();
 	}
 
+	public static LocalDate getLocalDate(ResultSet res, int index) throws SQLException{
+		Date date=res.getDate(index);
+		return date==null ? null : date.toLocalDate();
+	}
+
 	public static void doWithTransaction(Connection conn, SQLRunnable r) throws SQLException{
 		boolean success=false;
 		try{

@@ -8,6 +8,7 @@ import com.google.gson.JsonParser;
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -17,6 +18,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.jsonld.JLD;
+import smithereen.storage.DatabaseUtils;
 import spark.utils.StringUtils;
 
 public class User extends Actor{
@@ -28,7 +30,7 @@ public class User extends Actor{
 	public String lastName;
 	public String middleName;
 	public String maidenName;
-	public java.sql.Date birthDate;
+	public LocalDate birthDate;
 	public Gender gender;
 	public long flags;
 
@@ -117,7 +119,7 @@ public class User extends Actor{
 		lastName=res.getString("lname");
 		middleName=res.getString("middle_name");
 		maidenName=res.getString("maiden_name");
-		birthDate=res.getDate("bdate");
+		birthDate=DatabaseUtils.getLocalDate(res, "bdate");
 		gender=Gender.valueOf(res.getInt("gender"));
 		summary=res.getString("about");
 		flags=res.getLong("flags");

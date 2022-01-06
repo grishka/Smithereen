@@ -693,6 +693,9 @@ ul.actualList{
 	background-size: 32px 8px;
 	min-width: 32px;
 	min-height: 8px;
+	&.white{
+		background: svg-load('img/loading_anim.svg', fill: $textOnAccent) no-repeat center;
+	}
 }
 
 .inlineLoader{

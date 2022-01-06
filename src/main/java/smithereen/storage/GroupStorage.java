@@ -883,9 +883,9 @@ public class GroupStorage{
 		return s;
 	}
 
-	public static List<Group> getUpcomingEvents(int userID) throws SQLException{
+	public static List<Group> getUserEventsInTimeRange(int userID, Instant from, Instant to) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT group_id, event_start_time FROM group_memberships JOIN `groups` ON `groups`.id=group_memberships.group_id WHERE user_id=? AND accepted=1 AND `groups`.type=1 AND event_start_time>NOW() AND event_start_time<DATE_ADD(NOW(), INTERVAL 2 DAY)", userID);
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT group_id, event_start_time FROM group_memberships JOIN `groups` ON `groups`.id=group_memberships.group_id WHERE user_id=? AND accepted=1 AND `groups`.type=1 AND event_start_time>=? AND event_start_time<?", userID, from, to);
 		return getByIdAsList(DatabaseUtils.intResultSetToList(stmt.executeQuery()));
 	}
 

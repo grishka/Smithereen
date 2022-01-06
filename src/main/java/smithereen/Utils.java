@@ -395,6 +395,10 @@ public class Utils{
 		return req.queryParams("_ajax")!=null;
 	}
 
+	public static boolean isMobile(Request req){
+		return req.attribute("mobile")!=null;
+	}
+
 	public static String escapeHTML(String s){
 		return HtmlEscape.escapeHtml4Xml(s);
 	}

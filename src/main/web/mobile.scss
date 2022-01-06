@@ -759,6 +759,9 @@ select{
 
 .userList{
 	padding: 0 16px;
+	&.noPadding{
+		padding: 0;
+	}
 	td{
 		padding-bottom: 8px;
 	}
