@@ -1,24 +1,16 @@
 package smithereen.activitypub.handlers;
 
-import java.io.IOException;
-import java.net.URI;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.util.Objects;
 
-import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
-import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityTypeHandler;
-import smithereen.activitypub.objects.ActivityPubObject;
-import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
-import smithereen.data.User;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.PostStorage;
-import smithereen.storage.UserStorage;
-import spark.utils.StringUtils;
 
 public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, Post>{
 	@Override
@@ -31,8 +23,11 @@ public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, 
 			if(post.user.id!=existing.user.id){
 				throw new IllegalArgumentException("Post author doesn't match existing");
 			}
-			if(!post.owner.activityPubID.equals(existing.owner.activityPubID)){
+			if(post.inReplyTo==null && !post.owner.activityPubID.equals(existing.owner.activityPubID)){
 				throw new IllegalArgumentException("Post owner doesn't match existing");
+			}
+			if(!Objects.equals(post.inReplyTo, existing.inReplyTo)){
+				throw new IllegalArgumentException("inReplyTo doesn't match existing");
 			}
 			Utils.loadAndPreprocessRemotePostMentions(post);
 			PostStorage.putForeignWallPost(post);
