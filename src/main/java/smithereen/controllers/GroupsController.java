@@ -381,7 +381,7 @@ public class GroupsController{
 				switch(GroupStorage.getUserMembershipState(group.id, who.id)){
 					case NONE -> {} // allow
 					case MEMBER, TENTATIVE_MEMBER -> throw new BadRequestException(group.isEvent() ? "invite_already_in_event" : "invite_already_in_group");
-					case INVITED -> throw new BadRequestException(group.isEvent() ? "invite_already_member_event" : "invite_already_member_group");
+					case INVITED -> throw new BadRequestException(group.isEvent() ? "invite_already_invited_event" : "invite_already_invited_group");
 				}
 				inviteID=GroupStorage.putInvitation(group.id, self.id, who.id, group.isEvent(), null);
 			}
