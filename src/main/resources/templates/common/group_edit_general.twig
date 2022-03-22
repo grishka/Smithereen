@@ -4,7 +4,7 @@
 {% block content %}
 {% include "group_admin_tabbar" with {'tab': 'general'} %}
 <div class="singleColumn gray wideForms">
-	<form action="/groups/{{ group.id }}/saveGeneral" method="post" onsubmit="return ajaxSubmitForm(this)">
+	<form action="/groups/{{ group.id }}/saveGeneral" method="post" data-ajax>
 		{{ form.start('groupEdit', groupEditMessage) }}
 			{{ form.textInput('name', L('group_name'), group.name, {'maxlength': 200, 'required': true}) }}
 			{{ form.textArea('about', L(group.event ? 'about_event' : 'about_group'), group.summary) }}

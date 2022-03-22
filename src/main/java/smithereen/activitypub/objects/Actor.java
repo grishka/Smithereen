@@ -284,12 +284,12 @@ public abstract class Actor extends ActivityPubObject{
 
 	public void ensureLocal(){
 		if(StringUtils.isNotEmpty(domain))
-			throw new IllegalArgumentException("Local actor is required here");
+			throw new IllegalArgumentException("Local actor is required here (got "+activityPubID+")");
 	}
 
 	public void ensureRemote(){
 		if(StringUtils.isEmpty(domain))
-			throw new IllegalArgumentException("Remote actor is required here");
+			throw new IllegalArgumentException("Remote actor is required here (got "+activityPubID+")");
 	}
 
 	protected boolean canFollowOtherActors(){

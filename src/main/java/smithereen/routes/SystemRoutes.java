@@ -200,6 +200,7 @@ public class SystemRoutes{
 									ForeignUser updatedUser=(ForeignUser) obj;
 									UserStorage.putOrUpdateForeignUser(updatedUser);
 									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+									return "";
 								}
 							}else if(group!=null){
 								ActivityPubObject obj=ActivityPub.fetchRemoteObject(group.activityPubID);
@@ -207,6 +208,7 @@ public class SystemRoutes{
 									ForeignGroup updatedGroup=(ForeignGroup) obj;
 									GroupStorage.putOrUpdateForeignGroup(updatedGroup);
 									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+									return "";
 								}
 							}
 						}

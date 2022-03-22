@@ -2,7 +2,7 @@
 {%extends "page"%}
 {%block content%}
 <div class="singleColumn gray wideForms">
-	<form action="/settings/updateProfileGeneral" method="post" onsubmit="return ajaxSubmitForm(this)">
+	<form action="/settings/updateProfileGeneral" method="post" data-ajax>
 		{{ form.start('profileEdit', profileEditMessage) }}
 			{{ form.textInput('first_name', L('first_name'), currentUser.firstName, {'maxlength': 100, 'required': true}) }}
 			{{ form.textInput('middle_name', L('middle_name_or_nickname'), currentUser.middleName, {'maxlength': 100}) }}

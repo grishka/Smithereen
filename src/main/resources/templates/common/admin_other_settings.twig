@@ -3,7 +3,7 @@
 {% import "forms" as form %}
 {% include "admin_tabbar" with {'tab': 'other'} %}
 <div class="singleColumn gray narrowForms">
-	<form action="/settings/admin/updateEmailSettings" method="post" onsubmit="return ajaxSubmitForm(this)">
+	<form action="/settings/admin/updateEmailSettings" method="post" data-ajax>
 		<h2>{{ L('admin_email_settings') }}</h2>
 		{{ form.start('adminEmailSettings', adminEmailSettingsMessage) }}
 			{{ form.textInput('from', L('admin_email_from'), from, {'type': 'email', 'maxlength': 100}) }}
@@ -20,7 +20,7 @@
 			{{ form.footer(L('save')) }}
 		{{ form.end() }}
 	</form>
-	<form action="/settings/admin/sendTestEmail" method="post" onsubmit="return ajaxSubmitForm(this)">
+	<form action="/settings/admin/sendTestEmail" method="post" data-ajax>
 		{{ form.start('adminEmailTest', adminEmailTestMessage) }}
 			{{ form.textInput('email', L('admin_email_test_address'), '', {'type': 'email', 'maxlength': 100, 'required': true}) }}
 			{{ form.footer(L('admin_email_send_test')) }}

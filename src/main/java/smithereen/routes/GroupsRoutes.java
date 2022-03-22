@@ -24,6 +24,7 @@ import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
 import smithereen.data.ActorWithDescription;
 import smithereen.data.ForeignUser;
+import smithereen.data.FriendshipStatus;
 import smithereen.data.PaginatedList;
 import smithereen.data.SizedImage;
 import smithereen.exceptions.BadRequestException;
@@ -40,6 +41,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponse;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
@@ -723,5 +725,69 @@ public class GroupsRoutes{
 		}else{
 			throw new IllegalStateException();
 		}
+	}
+
+	public static Object inviteFriend(Request req, Response resp, Account self){
+		Group group=getGroup(req);
+		User user=context(req).getUsersController().getUserOrThrow(safeParseInt(req.queryParams("user")));
+		String msg=null;
+		try{
+			context(req).getGroupsController().inviteUserToGroup(self.user, user, group);
+		}catch(BadRequestException x){
+			msg=lang(req).get(x.getMessage());
+		}
+		if(msg==null)
+			msg=lang(req).get("invitation_sent");
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).setContent("frowActions"+user.id, "<div class=\"settingsMessage\">"+escapeHTML(msg)+"</div>");
+		}
+		return "";
+	}
+
+	public static Object groupInvitations(Request req, Response resp, Account self){
+		return invitations(req, resp, self, false);
+	}
+
+	public static Object eventInvitations(Request req, Response resp, Account self){
+		return invitations(req, resp, self, true);
+	}
+
+	private static Object invitations(Request req, Response resp, Account self, boolean events){
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_invites", req);
+		model.paginate(context(req).getGroupsController().getUserInvitations(self, events, offset(req), 25));
+		model.pageTitle(lang(req).get("group_invitations"));
+		model.with("events", events);
+		return model;
+	}
+
+	public static Object respondToInvite(Request req, Response resp, Account self){
+		Group group=getGroup(req);
+
+		boolean accept, tentative;
+		if(req.queryParams("accept")!=null){
+			accept=true;
+			tentative=false;
+		}else if(req.queryParams("tentativeAccept")!=null){
+			accept=true;
+			tentative=true;
+		}else if(req.queryParams("decline")!=null){
+			accept=false;
+			tentative=false;
+		}else{
+			throw new BadRequestException();
+		}
+
+		if(accept){
+			context(req).getGroupsController().joinGroup(group, self.user, tentative);
+		}else{
+			context(req).getGroupsController().declineInvitation(self.user, group);
+		}
+
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).setContent("groupInviteBtns"+group.id,
+					"<div class=\"settingsMessage\">"+lang(req).get(accept ? "group_invite_accepted" : "group_invite_declined")+"</div>");
+		}
+		resp.redirect(back(req));
+		return "";
 	}
 }

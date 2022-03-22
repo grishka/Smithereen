@@ -140,6 +140,15 @@ public class NotificationsStorage{
 			r.first();
 			res.incNewNotificationsCount(r.getInt(1));
 		}
+		stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*), is_event FROM group_invites WHERE invitee_id=? GROUP BY is_event", userID);
+		try(ResultSet r=stmt.executeQuery()){
+			while(r.next()){
+				if(r.getBoolean(2)) // event
+					res.incNewEventInvitationsCount(r.getInt(1));
+				else
+					res.incNewGroupInvitationsCount(r.getInt(1));
+			}
+		}
 		userNotificationsCache.put(userID, res);
 		return res;
 	}

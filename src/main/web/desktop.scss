@@ -817,16 +817,9 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	&.loading{
 		color: transparent;
 		text-shadow: none;
-		position: relative;
-		&:after{
-			content: ' ';
-			position: absolute;
-			top: 0;
-			left: 0;
-			right: 0;
-			bottom: 0;
-			background: svg-load('img/loading_anim.svg', fill: $textOnAccent) no-repeat center;
-		}
+		background: svg-load('img/loading_anim.svg', fill: $textOnAccent) no-repeat, linear-gradient(to top, $buttonGradientBottom, $buttonGradientTop) repeat-x;
+		background-size: auto, 1px 42px;
+		background-position: center, 0 -16px;
 	}
 	&:disabled{
 		opacity: .5;
@@ -835,6 +828,9 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	&:hover, &:visited:hover{
 		text-decoration: none;
 		background-position: 0 -8px;
+		&.loading{
+			background-position: center, 0 -8px;
+		}
 	}
 	&:active{
 		text-decoration: none;
@@ -863,8 +859,12 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 		color: $normalLink;
 		box-shadow: none;
 		border: none;
-		&:hover{
+		&:hover:not(.loading){
 			background: $blockBackground;
+		}
+		&.loading{
+			background: svg-load('img/loading_anim.svg', fill: $normalLink) no-repeat center;
+			color: transparent;
 		}
 	}
 }
@@ -930,6 +930,9 @@ select{
 	.buttons{
 		margin-top: 8px;
 		padding-bottom: 2px;
+		.settingsMessage{
+			margin-left: 0;
+		}
 	}
 	.mutual{
 		padding-top: 5px;
@@ -1078,6 +1081,7 @@ select{
 	padding: 8px 11px;;
 	border: solid 1px $alertBorder;
 	background: $alertBackground;
+	color: $text;
 }
 
 .profileBelowAva{

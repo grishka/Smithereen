@@ -35,8 +35,10 @@ import smithereen.controllers.GroupsController;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
 import smithereen.data.GroupAdmin;
+import smithereen.data.GroupInvitation;
 import smithereen.data.PaginatedList;
 import smithereen.data.User;
+import smithereen.data.UserNotifications;
 import spark.utils.StringUtils;
 
 public class GroupStorage{
@@ -372,8 +374,10 @@ public class GroupStorage{
 		stmt.setInt(1, groupID);
 		stmt.setInt(2, userID);
 		try(ResultSet res=stmt.executeQuery()){
-			if(!res.first())
-				return Group.MembershipState.NONE;
+			if(!res.first()){
+				stmt=new SQLQueryBuilder(conn).selectFrom("group_invites").count().where("group_id=? AND invitee_id=?", groupID, userID).createStatement();
+				return DatabaseUtils.oneFieldToInt(stmt.executeQuery())==0 ? Group.MembershipState.NONE : Group.MembershipState.INVITED;
+			}
 			return res.getBoolean("tentative") ? Group.MembershipState.TENTATIVE_MEMBER : Group.MembershipState.MEMBER;
 		}
 	}
@@ -399,6 +403,8 @@ public class GroupStorage{
 					.where("id=?", group.id)
 					.createStatement()
 					.execute();
+
+			deleteInvitation(userID, group.id, group.isEvent());
 
 			removeFromCache(group);
 
@@ -896,5 +902,75 @@ public class GroupStorage{
 				.where("accepted=1 AND group_id=?", groupID)
 				.createStatement();
 		return DatabaseUtils.intResultSetToStream(stmt.executeQuery());
+	}
+
+	public static int putInvitation(int groupID, int inviterID, int inviteeID, boolean isEvent, String apID) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.insertInto("group_invites")
+				.value("group_id", groupID)
+				.value("inviter_id", inviterID)
+				.value("invitee_id", inviteeID)
+				.value("is_event", isEvent)
+				.value("ap_id", apID)
+				.createStatement(Statement.RETURN_GENERATED_KEYS);
+		stmt.execute();
+		return DatabaseUtils.oneFieldToInt(stmt.getGeneratedKeys());
+	}
+
+	public static List<GroupInvitation> getUserInvitations(int userID, boolean isEvent, int offset, int count) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("group_invites")
+				.columns("group_id", "inviter_id")
+				.where("invitee_id=? AND is_event=?", userID, isEvent)
+				.limit(count, offset)
+				.createStatement();
+		ArrayList<IdPair> ids=new ArrayList<>();
+		try(ResultSet res=stmt.executeQuery()){
+			while(res.next()){
+				ids.add(new IdPair(res.getInt(1), res.getInt(2)));
+			}
+		}
+		Set<Integer> needGroups=ids.stream().map(IdPair::first).collect(Collectors.toSet());
+		Set<Integer> needUsers=ids.stream().map(IdPair::second).collect(Collectors.toSet());
+		Map<Integer, Group> groups=getById(needGroups);
+		Map<Integer, User> users=UserStorage.getById(needUsers);
+		// All groups and users must exist, this is taken care of by schema constraints
+		return ids.stream().map(i->new GroupInvitation(groups.get(i.first()), users.get(i.second()))).collect(Collectors.toList());
+	}
+
+	public static URI getInvitationApID(int userID, int groupID) throws SQLException{
+		PreparedStatement stmt=new SQLQueryBuilder()
+				.selectFrom("group_invites")
+				.columns("ap_id")
+				.where("invitee_id=? AND group_id=?", userID, groupID)
+				.createStatement();
+		return DatabaseUtils.oneFieldToObject(stmt.executeQuery(), String.class, URI::create);
+	}
+
+	public static int deleteInvitation(int userID, int groupID, boolean isEvent) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("group_invites")
+				.columns("id")
+				.where("invitee_id=? AND group_id=?", userID, groupID)
+				.createStatement();
+		int id=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(id<1)
+			return id;
+		stmt=new SQLQueryBuilder(conn)
+				.deleteFrom("group_invites")
+				.where("id=?", id)
+				.createStatement();
+		int count=stmt.executeUpdate();
+		if(count>0){
+			UserNotifications notifications=NotificationsStorage.getNotificationsFromCache(userID);
+			if(notifications!=null){
+				if(isEvent)
+					notifications.incNewEventInvitationsCount(-count);
+				else
+					notifications.incNewGroupInvitationsCount(-count);
+			}
+		}
+		return id;
 	}
 }

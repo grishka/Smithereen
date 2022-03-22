@@ -56,18 +56,18 @@
 			<span class="ava avaPlaceholder inProfile group"></span>
 			{%endif%}
 			{%endif%}
-			{% if currentUser is not null and (membershipStateText is not empty or membershipState=="NONE") %}
+			{% if currentUser is not null and (membershipStateText is not empty or membershipState=="NONE" or membershipState=="INVITED") %}
 			<div class="profileBelowAva">
 				{{ membershipStateText }}
 				{% if group.event %}
-				{% if membershipState=="NONE" %}
+				{% if membershipState=="NONE" or membershipState=="INVITED" %}
 					<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button{{ membershipStateText is empty ? '' : ' withText' }}">{{ L('join_event_certain') }}</a>
 					{% if group.domain is empty or group.hasCapability("TENTATIVE_MEMBERSHIP") %}
 					<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}&tentative=1" class="button withText">{{ L('join_event_tentative') }}</a>
 					{% endif %}
 				{% endif %}
 				{% else %}
-				{% if membershipState=="NONE" %}
+				{% if membershipState=="NONE" or membershipState=="INVITED" %}
 					<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button{{ membershipStateText is empty ? '' : ' withText' }}">{{ L('join_group') }}</a>
 				{% endif %}
 				{% endif %}
@@ -84,6 +84,7 @@
 				{% endif %}
 				{% endif %}
 			    <li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}">{{ L(group.event ? 'leave_event' : 'leave_group') }}</a></li>
+				<li><a href="/my/friends?act=groupInvite&group={{ group.id }}">{{ L('invite_friends') }}</a></li>
 			    {% endif %}
 			{% endif %}
 			{% if canEditGroup %}

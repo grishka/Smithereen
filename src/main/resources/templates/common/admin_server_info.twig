@@ -3,7 +3,7 @@
 {%import "forms" as form%}
 {%include "admin_tabbar" with {'tab': 'general'}%}
 <div class="singleColumn gray">
-	<form action="/settings/admin/updateServerInfo" method="post" onsubmit="return ajaxSubmitForm(this)">
+	<form action="/settings/admin/updateServerInfo" method="post" data-ajax>
 		<h2>{{L('admin_server_info')}}</h2>
 		{{form.start('adminServerInfo', adminServerInfoMessage)}}
 			{{form.textInput('server_name', L('admin_server_name'), serverName, {'maxlength': 100, 'required': true})}}

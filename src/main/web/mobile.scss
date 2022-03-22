@@ -186,6 +186,15 @@ input[type=text], input[type=password], input[type=email], input[type=date], inp
 	padding: 8px;
 }
 
+/*input[type=text], input[type=password], input[type=email], input[type=date], input[type=time], input[type=number], textarea, select, .prefixedInput{
+	appearance: none;
+	box-shadow: 0 1px 2px rgb(0 0 0 / 20%) inset, 0 -1px 0 rgb(0 0 0 / 5%) inset;
+	background: linear-gradient(to bottom, #f7f7f8 0%,#ffffff 100%);
+	border: none;
+	border-radius: 4px;
+	padding: 8px;
+}*/
+
 .prefixedInput{
 	padding: 0 0 0 8px;
 	border-radius: 4px;
@@ -584,7 +593,10 @@ select{
 		border-left: solid 2px $auxiliaryGrey;
 	}
 	.buttons{
-		margin-top: 8px;
+		input{
+			float: left;
+			margin: 8px 8px 0 0;
+		}
 	}
 }
 

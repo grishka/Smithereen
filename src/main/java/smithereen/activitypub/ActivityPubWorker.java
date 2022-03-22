@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -34,6 +35,7 @@ import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
+import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Join;
 import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
@@ -45,6 +47,7 @@ import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.GroupInvitation;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
 import smithereen.data.PollVote;
@@ -489,7 +492,7 @@ public class ActivityPubWorker{
 		}
 	}
 
-	public void sendBlockActivity(Actor self, ForeignUser target) throws SQLException{
+	public void sendBlockActivity(Actor self, ForeignUser target){
 		Block block=new Block();
 		block.activityPubID=new UriBuilder(self.activityPubID).fragment("blockUser"+target.id+"_"+System.currentTimeMillis()).build();
 		block.actor=new LinkOrObject(self.activityPubID);
@@ -497,7 +500,7 @@ public class ActivityPubWorker{
 		executor.submit(new SendOneActivityRunnable(block, target.inbox, self));
 	}
 
-	public void sendUndoBlockActivity(Actor self, ForeignUser target) throws SQLException{
+	public void sendUndoBlockActivity(Actor self, ForeignUser target){
 		Block block=new Block();
 		block.activityPubID=new UriBuilder(self.activityPubID).fragment("blockUser"+target.id+"_"+System.currentTimeMillis()).build();
 		block.actor=new LinkOrObject(self.activityPubID);
@@ -539,6 +542,43 @@ public class ActivityPubWorker{
 
 			executor.submit(new SendOneActivityRunnable(create, pollOwner.inbox, self));
 		}
+	}
+
+	public void sendGroupInvite(int inviteID, User self, Group group, User target){
+		if(Config.isLocal(group.activityPubID) && Config.isLocal(target.activityPubID))
+			return;
+
+		Invite invite=new Invite();
+		invite.activityPubID=Config.localURI("/activitypub/objects/groupInvites/"+inviteID);
+		invite.to=List.of(new LinkOrObject(target.activityPubID));
+		invite.cc=List.of(new LinkOrObject(group.activityPubID));
+		invite.actor=new LinkOrObject(self.activityPubID);
+		invite.object=new LinkOrObject(group.activityPubID);
+
+		if(!Objects.equals(group.sharedInbox, target.sharedInbox)){
+			if(group instanceof ForeignGroup fg)
+				executor.submit(new SendOneActivityRunnable(invite, actorInbox(fg), self));
+			if(target instanceof ForeignUser fu)
+				executor.submit(new SendOneActivityRunnable(invite, actorInbox(fu), self));
+		}else{
+			executor.submit(new SendOneActivityRunnable(invite, target.sharedInbox, self));
+		}
+	}
+
+	public void sendRejectGroupInvite(User self, ForeignGroup group, int invitationLocalID, URI invitationID){
+		Invite invite=new Invite();
+		invite.activityPubID=invitationID;
+		invite.to=List.of(new LinkOrObject(self.activityPubID));
+		invite.cc=List.of(new LinkOrObject(group.activityPubID));
+		invite.object=new LinkOrObject(group.activityPubID);
+
+		Reject reject=new Reject();
+		reject.activityPubID=new UriBuilder(self.activityPubID).fragment("rejectGroupInvite"+invitationLocalID).build();
+		reject.to=List.of(new LinkOrObject(group.activityPubID));
+		reject.actor=new LinkOrObject(self.activityPubID);
+		reject.object=new LinkOrObject(invite);
+
+		executor.submit(new SendOneActivityRunnable(reject, actorInbox(group), self));
 	}
 
 	public synchronized Future<List<Post>> fetchReplyThread(Post post){

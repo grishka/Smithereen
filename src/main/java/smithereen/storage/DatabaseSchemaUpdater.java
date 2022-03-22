@@ -12,7 +12,7 @@ import smithereen.Config;
 import smithereen.Utils;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=18;
+	public static final int SCHEMA_VERSION=19;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -235,7 +235,7 @@ public class DatabaseSchemaUpdater{
 					  `num_voted_users` int(10) unsigned NOT NULL DEFAULT '0',
 					  PRIMARY KEY (`id`),
 					  UNIQUE KEY `ap_id` (`ap_id`)
-					) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4;""");
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			conn.createStatement().execute("""
 					CREATE TABLE `poll_options` (
 					  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -247,7 +247,7 @@ public class DatabaseSchemaUpdater{
 					  UNIQUE KEY `ap_id` (`ap_id`),
 					  KEY `poll_id` (`poll_id`),
 					  CONSTRAINT `poll_options_ibfk_1` FOREIGN KEY (`poll_id`) REFERENCES `polls` (`id`) ON DELETE CASCADE
-					) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4;""");
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			conn.createStatement().execute("""
 					CREATE TABLE `poll_votes` (
 					  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -287,6 +287,26 @@ public class DatabaseSchemaUpdater{
 			conn.createStatement().execute("ALTER TABLE `friend_requests` ADD `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST");
 		}else if(target==18){
 			conn.createStatement().execute("ALTER TABLE `groups` ADD `flags` BIGINT UNSIGNED NOT NULL DEFAULT 0");
+		}else if(target==19){
+			conn.createStatement().execute("""
+					CREATE TABLE `group_invites` (
+					`id` int unsigned NOT NULL AUTO_INCREMENT,
+							`inviter_id` int unsigned NOT NULL,
+							`invitee_id` int unsigned NOT NULL,
+							`group_id` int unsigned NOT NULL,
+							`time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+							`is_event` tinyint(1) NOT NULL,
+							`ap_id` varchar(300) CHARACTER SET ascii DEFAULT NULL,
+							PRIMARY KEY (`id`),
+							UNIQUE KEY `ap_id` (`ap_id`),
+							KEY `inviter_id` (`inviter_id`),
+							KEY `invitee_id` (`invitee_id`),
+							KEY `group_id` (`group_id`),
+							KEY `is_event` (`is_event`),
+							CONSTRAINT `group_invites_ibfk_1` FOREIGN KEY (`inviter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+							CONSTRAINT `group_invites_ibfk_2` FOREIGN KEY (`invitee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+							CONSTRAINT `group_invites_ibfk_3` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 		}
 	}
 }

@@ -56,6 +56,7 @@ import smithereen.activitypub.handlers.FollowGroupHandler;
 import smithereen.activitypub.handlers.FollowPersonHandler;
 import smithereen.activitypub.handlers.GroupBlockPersonHandler;
 import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
+import smithereen.activitypub.handlers.InviteGroupHandler;
 import smithereen.activitypub.handlers.LeaveGroupHandler;
 import smithereen.activitypub.handlers.LikeNoteHandler;
 import smithereen.activitypub.handlers.OfferFollowPersonHandler;
@@ -64,6 +65,7 @@ import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.RejectAddNoteHandler;
 import smithereen.activitypub.handlers.RejectFollowGroupHandler;
 import smithereen.activitypub.handlers.RejectFollowPersonHandler;
+import smithereen.activitypub.handlers.RejectInviteGroupHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
 import smithereen.activitypub.handlers.RemovePersonHandler;
@@ -72,6 +74,7 @@ import smithereen.activitypub.handlers.UndoAcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
 import smithereen.activitypub.handlers.UndoFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoFollowPersonHandler;
+import smithereen.activitypub.handlers.UndoInviteGroupHandler;
 import smithereen.activitypub.handlers.UndoLikeNoteHandler;
 import smithereen.activitypub.handlers.UpdateGroupHandler;
 import smithereen.activitypub.handlers.UpdateNoteHandler;
@@ -92,6 +95,7 @@ import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
+import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Offer;
@@ -173,6 +177,9 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignGroup.class, Reject.class, Follow.class, ForeignGroup.class, new RejectFollowGroupHandler());
 		registerActivityHandler(ForeignGroup.class, Block.class, User.class, new GroupBlockPersonHandler());
 		registerActivityHandler(ForeignGroup.class, Undo.class, Block.class, User.class, new GroupUndoBlockPersonHandler());
+		registerActivityHandler(ForeignUser.class, Invite.class, Group.class, new InviteGroupHandler());
+		registerActivityHandler(ForeignUser.class, Reject.class, Invite.class, Group.class, new RejectInviteGroupHandler());
+		registerActivityHandler(ForeignGroup.class, Undo.class, Invite.class, ForeignGroup.class, new UndoInviteGroupHandler());
 
 		registerActivityHandler(Actor.class, Add.class, Post.class, new AddNoteHandler());
 	}
@@ -685,7 +692,7 @@ public class ActivityPubRoutes{
 				activity=(Activity) _o;
 		}catch(Exception ignore){}
 
-		ActivityHandlerContext context=new ActivityHandlerContext(body, hasValidLDSignature ? actor : null, httpSigOwner);
+		ActivityHandlerContext context=new ActivityHandlerContext(context(req), body, hasValidLDSignature ? actor : null, httpSigOwner);
 
 		try{
 			ActivityPubObject aobj;
@@ -711,8 +718,8 @@ public class ActivityPubRoutes{
 						return "";
 					}
 				}else{
-					// special case: fetch the object of Announce{Note} or Add{...}
-					aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add, false, false);
+					// special case: fetch the object of Announce{Note}, Add{...}, or Invite{Group}
+					aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add || activity instanceof Invite, false, false);
 				}
 			}
 			for(ActivityTypeHandlerRecord r : typeHandlers){

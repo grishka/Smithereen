@@ -4,6 +4,7 @@ import java.sql.SQLException;
 
 import smithereen.ApplicationContext;
 import smithereen.data.FriendRequest;
+import smithereen.data.FriendshipStatus;
 import smithereen.data.PaginatedList;
 import smithereen.data.User;
 import smithereen.exceptions.InternalServerErrorException;
@@ -55,6 +56,14 @@ public class FriendsController{
 			return UserStorage.getMutualFriendListForUser(user.id, otherUser.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public FriendshipStatus getFriendshipStatus(User self, User other){
+		try{
+			return UserStorage.getFriendshipStatus(self.id, other.id);
+		}catch(SQLException x){
+			throw new IllegalStateException(x);
 		}
 	}
 }

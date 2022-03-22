@@ -287,6 +287,22 @@ public class ProfileRoutes{
 			model.with("mutualCount", mutualCount);
 		}
 		model.with("tab", "friends");
+		@Nullable
+		String act=req.queryParams("act");
+		if("groupInvite".equals(act)){
+			int groupID=safeParseInt(req.queryParams("group"));
+			Group group=context(req).getGroupsController().getGroupOrThrow(groupID);
+			model.with("selectionMode", true);
+			model.with("customActions", List.of(
+					Map.of(
+							"href", "/groups/"+groupID+"/invite?csrf="+sessionInfo(req).csrfToken+"&user=",
+							"title", lang(req).get("send_invitation"),
+							"ajax", true
+					)
+			));
+			model.addNavBarItem(group.name, group.getProfileURL()).addNavBarItem(lang(req).get("invite_friends_title"));
+			model.pageTitle(lang(req).get("invite_friends_title"));
+		}
 		jsLangKey(req, "remove_friend", "yes", "no");
 		return model;
 	}

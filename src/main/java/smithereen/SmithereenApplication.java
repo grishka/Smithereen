@@ -353,6 +353,8 @@ public class SmithereenApplication{
 			path("/wall", ()->{
 				get("", PostRoutes::groupWall);
 			});
+			getWithCSRF("/invite", GroupsRoutes::inviteFriend);
+			postWithCSRF("/respondToInvite", GroupsRoutes::respondToInvite);
 		});
 
 		path("/posts/:postID", ()->{
@@ -394,6 +396,7 @@ public class SmithereenApplication{
 				getLoggedIn("/managed", GroupsRoutes::myManagedGroups);
 				getLoggedIn("/create", GroupsRoutes::createGroup);
 				postWithCSRF("/create", GroupsRoutes::doCreateGroup);
+				getLoggedIn("/invites", GroupsRoutes::groupInvitations);
 			});
 			path("/events", ()->{
 				getLoggedIn("", GroupsRoutes::myEvents);
@@ -401,6 +404,7 @@ public class SmithereenApplication{
 				getLoggedIn("/create", GroupsRoutes::createEvent);
 				getLoggedIn("/calendar", GroupsRoutes::eventCalendar);
 				getLoggedIn("/dayEventsPopup", GroupsRoutes::eventCalendarDayPopup);
+				getLoggedIn("/invites", GroupsRoutes::eventInvitations);
 			});
 		});
 

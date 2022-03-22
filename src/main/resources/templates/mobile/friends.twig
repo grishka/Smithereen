@@ -8,8 +8,17 @@
 		<td width="50">
 			<a href="{{friend.profileURL}}">{{friend | pictureForAvatar('s')}}</a>
 		</td>
-		<td class="info" valign="middle">
+		<td class="info"{% if cursomActions is empty %} valign="middle"{% endif %}>
 			<b><a href="{{friend.profileURL}}">{{friend.fullName}}</a></b>
+			{% if customActions is not empty %}
+			<div id="frowActions{{ friend.id }}">
+				<ul class="actionList">
+					{% for action in customActions %}
+					<li><a href="{{ action.href }}{{ friend.id }}"{{ action.ajax ? ' data-ajax' : '' }}>{{ action.title }}</a></li>
+					{% endfor %}
+				</ul>
+			</div>
+			{% endif %}
 		</td>
 	</tr>
 </table>

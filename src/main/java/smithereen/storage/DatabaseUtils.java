@@ -42,6 +42,17 @@ public class DatabaseUtils{
 		}
 	}
 
+	public static <T> T oneFieldToObject(final ResultSet res, Class<T> type) throws SQLException{
+		try(res){
+			return res.first() ? res.getObject(1, type) : null;
+		}
+	}
+
+	public static <T, F> F oneFieldToObject(ResultSet res, Class<T> initialType, Function<T, F> converter) throws SQLException{
+		T obj=oneFieldToObject(res, initialType);
+		return obj==null ? null : converter.apply(obj);
+	}
+
 	public static boolean runWithUniqueUsername(String username, DatabaseRunnable action) throws SQLException{
 		if(!Utils.isValidUsername(username))
 			return false;

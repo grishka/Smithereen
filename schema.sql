@@ -3,6 +3,7 @@
 -- Host: localhost    Database: smithereen
 -- ------------------------------------------------------
 -- Server version	8.0.27
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 
 --
 -- Table structure for table `accounts`
@@ -163,6 +164,29 @@ CREATE TABLE `group_admins` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `group_invites`
+--
+
+CREATE TABLE `group_invites` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `inviter_id` int unsigned NOT NULL,
+  `invitee_id` int unsigned NOT NULL,
+  `group_id` int unsigned NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `is_event` tinyint(1) NOT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `inviter_id` (`inviter_id`),
+  KEY `invitee_id` (`invitee_id`),
+  KEY `group_id` (`group_id`),
+  KEY `is_event` (`is_event`),
+  CONSTRAINT `group_invites_ibfk_1` FOREIGN KEY (`inviter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `group_invites_ibfk_2` FOREIGN KEY (`invitee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `group_invites_ibfk_3` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `group_memberships`
 --
 
@@ -222,7 +246,7 @@ CREATE TABLE `likes` (
   `user_id` int unsigned NOT NULL,
   `object_id` int unsigned NOT NULL,
   `object_type` int unsigned NOT NULL,
-  `ap_id` varchar(300) DEFAULT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   UNIQUE KEY `user_id` (`user_id`,`object_id`,`object_type`),
   UNIQUE KEY `id` (`id`),
   KEY `object_type` (`object_type`,`object_id`),
@@ -478,5 +502,6 @@ CREATE TABLE `wall_posts` (
   CONSTRAINT `wall_posts_ibfk_4` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2021-12-15 21:51:09
+-- Dump completed on 2022-03-21  6:57:45
