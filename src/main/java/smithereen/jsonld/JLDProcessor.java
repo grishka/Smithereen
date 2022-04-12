@@ -71,6 +71,8 @@ public class JLDProcessor{
 		lc.addProperty("tentativeMembership", "sm:tentativeMembership");
 		lc.add("tentativeMembers", idAndTypeObject("sm:tentativeMembers", "@id"));
 		lc.addProperty("TentativeJoin", "sm:TentativeJoin");
+		lc.addProperty("accessType", "sm:accessType");
+		lc.addProperty("actorToken", "sm:actorToken");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");
@@ -94,8 +96,7 @@ public class JLDProcessor{
 			return (JsonArray) result;
 		if(result==null)
 			return new JsonArray();
-		if(result instanceof JsonObject){
-			JsonObject _r=(JsonObject) result;
+		if(result instanceof JsonObject _r){
 			if(_r.size()==1 && _r.has("@graph"))
 				return _r.get("@graph").getAsJsonArray();
 		}
@@ -472,14 +473,14 @@ public class JLDProcessor{
 	private static JsonArray makeArray(Object... items){
 		JsonArray arr=new JsonArray(items.length);
 		for(Object item:items){
-			if(item instanceof JsonElement)
-				arr.add((JsonElement) item);
-			else if(item instanceof String)
-				arr.add((String)item);
-			else if(item instanceof Number)
-				arr.add((Number)item);
-			else if(item instanceof Boolean)
-				arr.add((Boolean)item);
+			if(item instanceof JsonElement jsonElement)
+				arr.add(jsonElement);
+			else if(item instanceof String str)
+				arr.add(str);
+			else if(item instanceof Number num)
+				arr.add(num);
+			else if(item instanceof Boolean b)
+				arr.add(b);
 			else
 				throw new IllegalArgumentException("Unsupported type "+item.getClass().getName());
 		}
@@ -1761,10 +1762,7 @@ public class JLDProcessor{
 		nodeMap.add("@default", new JsonObject());
 		BlankNodeIdentifierGenerator idGen=new BlankNodeIdentifierGenerator();
 		JsonArray expanded=expandToArray(element, baseURI);
-		//System.out.println(expanded.toString(4));
 		generateNodeMap(expanded, nodeMap, "@default", null, null, null, idGen);
-		//generateNodeMap(element, nodeMap, "@default", null, null, null, idGen);
-		//System.out.println(nodeMap.toString(4));
 		JsonObject defaultGraph=nodeMap.getAsJsonObject("@default");
 		for(String graphName:nodeMap.keySet()){
 			if("@default".equals(graphName))
@@ -1790,7 +1788,6 @@ public class JLDProcessor{
 			if(!(node.has("@id") && node.size()==1))
 				flattened.add(node);
 		}
-//		System.out.println(flattened.toString(4));
 		return flattened;
 	}
 }

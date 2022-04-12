@@ -23,6 +23,6 @@ public class ActivityHandlerContext{
 	public void forwardActivity(List<URI> inboxes, User signer){
 		if(ldSignatureOwner==null)
 			throw new IllegalStateException("Can't forward an activity without LD-signature");
-		ActivityPubWorker.getInstance().forwardActivity(origRequestBody, signer, inboxes, ldSignatureOwner.activityPubID.getHost());
+		appContext.getActivityPubWorker().forwardActivity(origRequestBody, signer, inboxes, ldSignatureOwner.activityPubID.getHost());
 	}
 }

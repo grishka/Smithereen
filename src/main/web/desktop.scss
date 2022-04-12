@@ -974,7 +974,6 @@ select{
 }
 
 .formExplanation{
-	font-size: 10px;
 	color: $auxiliaryGrey;
 }
 
@@ -1384,9 +1383,16 @@ select{
 	line-height: 16px;
 	input{
 		vertical-align: top;
-		margin-right: 4px;
+		margin-right: 8px;
+	}
+	input, label{
+		cursor: pointer;
 	}
 	margin: 8px 0;
+}
+
+.form .radioButtonWrap:first-child{
+	margin-top: 3px;
 }
 
 .postAttachments{
@@ -1547,23 +1553,26 @@ select{
 .groupEditMemberList .groupEditMember{
 	background-color: $bg;
 	border: solid 1px $textAreaBorder;
-	padding: 10px;
-	margin-bottom: 10px;
+	padding: 8px;
+	margin-bottom: 3px;
 	.ava{
 		float: left;
 		margin-right: 10px;
 	}
 	.name{
-		font-weight: bold;
+		line-height: 13px;
 	}
 	.ellipsize{
-		margin-bottom: 4px;
+	}
+	.actions{
+		font-size: 9px;
+		padding-top: 1px;
 	}
 }
 
 .groupEditMemberList{
 	.reorderableItemWrap{
-		margin-bottom: 10px;
+		margin-bottom: 3px;
 		.groupEditMember{
 			margin-bottom: 0;
 		}
@@ -2128,5 +2137,36 @@ label.pretendLink{
 			text-align: center;
 			font-size: 9px;
 		}
+	}
+}
+
+.rightNavigationWrap{
+	display: flex;
+	.rightNavigationContent{
+		flex-grow: 1;
+		min-width: 0;
+	}
+	.rightNavigation{
+		margin: 10px;
+		width: 150px;
+		flex-shrink: 0;
+		.navItem{
+			display: block;
+			line-height: 13px;
+			padding: 5px 8px;
+			&:hover{
+				text-decoration: none;
+				background-color: $blockBackground;
+			}
+			&.selected{
+				background: $headerBorderBottomLight;
+				color: $bg;
+				padding: 4px 7px;
+				border: solid 1px $tabBackground;
+			}
+		}
+	}
+	&.gray .rightNavigation{
+		margin-left: 0;
 	}
 }

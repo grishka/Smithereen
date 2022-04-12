@@ -1,7 +1,9 @@
 package smithereen;
 
+import smithereen.activitypub.ActivityPubWorker;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.GroupsController;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.controllers.UserInteractionsController;
 import smithereen.controllers.UsersController;
 import smithereen.controllers.WallController;
@@ -12,6 +14,8 @@ public class ApplicationContext{
 	private final UsersController usersController;
 	private final UserInteractionsController userInteractionsController;
 	private final FriendsController friendsController;
+	private final ObjectLinkResolver objectLinkResolver;
+	private final ActivityPubWorker activityPubWorker;
 
 	public ApplicationContext(){
 		wallController=new WallController(this);
@@ -19,6 +23,8 @@ public class ApplicationContext{
 		usersController=new UsersController(this);
 		userInteractionsController=new UserInteractionsController(this);
 		friendsController=new FriendsController(this);
+		objectLinkResolver=new ObjectLinkResolver(this);
+		activityPubWorker=new ActivityPubWorker(this);
 	}
 
 	public WallController getWallController(){
@@ -39,5 +45,13 @@ public class ApplicationContext{
 
 	public FriendsController getFriendsController(){
 		return friendsController;
+	}
+
+	public ObjectLinkResolver getObjectLinkResolver(){
+		return objectLinkResolver;
+	}
+
+	public ActivityPubWorker getActivityPubWorker(){
+		return activityPubWorker;
 	}
 }

@@ -2,16 +2,15 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
-import smithereen.activitypub.ActivityPubWorker;
-import smithereen.data.FriendshipStatus;
-import smithereen.data.feed.NewsfeedEntry;
-import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.data.ForeignUser;
+import smithereen.data.FriendshipStatus;
 import smithereen.data.User;
+import smithereen.data.feed.NewsfeedEntry;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.UserStorage;
 
@@ -25,7 +24,7 @@ public class AcceptFollowPersonHandler extends NestedActivityTypeHandler<Foreign
 		UserStorage.setFollowAccepted(follower.id, actor.id, true);
 		FriendshipStatus status=UserStorage.getFriendshipStatus(follower.id, actor.id);
 		if(status==FriendshipStatus.FRIENDS){
-			ActivityPubWorker.getInstance().sendAddToFriendsCollectionActivity(follower, actor);
+			context.appContext.getActivityPubWorker().sendAddToFriendsCollectionActivity(follower, actor);
 			NewsfeedStorage.putEntry(follower.id, actor.id, NewsfeedEntry.Type.ADD_FRIEND, null);
 		}
 	}

@@ -1293,3 +1293,19 @@ input[type=date]::-webkit-calendar-picker-indicator{
 input[type=time]::-webkit-calendar-picker-indicator{
 	background: svg-inline(timeInputIcon) no-repeat center;
 }
+
+.rightNavigation{
+	background: $bgGrey;
+	border-bottom: solid 1px $wallPostSeparator;
+	padding: 8px 0 0 8px;
+	.navItem{
+		display: inline-block;
+		padding: 8px;
+		margin: 0 8px 8px 0;
+		border-radius: 8px;
+		&.selected{
+			background: $normalLink;
+			color: $textOnAccent;
+		}
+	}
+}

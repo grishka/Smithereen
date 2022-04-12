@@ -20,9 +20,12 @@ import java.util.Map;
 import java.util.Objects;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.activities.Join;
 import smithereen.data.Account;
 import smithereen.data.EventReminder;
 import smithereen.data.ForeignGroup;
@@ -40,6 +43,7 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.NotificationsStorage;
@@ -77,7 +81,7 @@ public class GroupsController{
 				throw new IllegalArgumentException("start time is required for event");
 			int id=GroupStorage.createGroup(name, Utils.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
 			Group group=Objects.requireNonNull(GroupStorage.getById(id));
-			ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(admin, group);
+			context.getActivityPubWorker().sendAddToGroupsCollectionActivity(admin, group);
 			NewsfeedStorage.putEntry(admin.id, group.id, isEvent ? NewsfeedEntry.Type.CREATE_EVENT : NewsfeedEntry.Type.CREATE_GROUP, null);
 			return group;
 		}catch(SQLException x){
@@ -200,12 +204,24 @@ public class GroupsController{
 			throw new UserActionNotAllowedException();
 	}
 
-	public void updateGroupInfo(@NotNull Group group, @NotNull User admin, String name, String aboutSrc, Instant eventStart, Instant eventEnd){
+	public void updateGroupInfo(@NotNull Group group, @NotNull User admin, String name, String aboutSrc, Instant eventStart, Instant eventEnd, String username, Group.AccessType accessType){
 		try{
 			enforceUserAdminLevel(group, admin, Group.AdminLevel.ADMIN);
 			String about=StringUtils.isNotEmpty(aboutSrc) ? Utils.preprocessPostHTML(aboutSrc, null) : null;
-			GroupStorage.updateGroupGeneralInfo(group, name, aboutSrc, about, eventStart, eventEnd);
-			ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
+			if(!group.username.equals(username)){
+				if(!Utils.isValidUsername(username))
+					throw new BadRequestException("err_group_invalid_username");
+				if(Utils.isReservedUsername(username))
+					throw new BadRequestException("err_group_reserved_username");
+				boolean result=DatabaseUtils.runWithUniqueUsername(username, ()->{
+					GroupStorage.updateGroupGeneralInfo(group, name, username, aboutSrc, about, eventStart, eventEnd, accessType);
+				});
+				if(!result)
+					throw new BadRequestException("err_group_username_taken");
+			}else{
+				GroupStorage.updateGroupGeneralInfo(group, name, username, aboutSrc, about, eventStart, eventEnd, accessType);
+			}
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 			if(group.isEvent()){
 				BackgroundTaskRunner.getInstance().submit(()->{
 					try{
@@ -225,14 +241,24 @@ public class GroupsController{
 	public void joinGroup(@NotNull Group group, @NotNull User user, boolean tentative){
 		try{
 			Utils.ensureUserNotBlocked(user, group);
+			boolean autoAccepted=true;
 
 			synchronized(groupMembershipLock){
 				Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, user.id);
+				if(!getMemberAdminLevel(group, user).isAtLeast(Group.AdminLevel.ADMIN)){
+					if(group.accessType==Group.AccessType.PRIVATE){
+						if(state!=Group.MembershipState.INVITED)
+							throw new UserActionNotAllowedException();
+					}else if(group.accessType==Group.AccessType.CLOSED){
+						autoAccepted=state==Group.MembershipState.INVITED;
+					}
+				}
+
 				if(group.isEvent()){
-					if((state==Group.MembershipState.MEMBER && !tentative) || (state==Group.MembershipState.TENTATIVE_MEMBER && tentative))
+					if((state==Group.MembershipState.MEMBER && !tentative) || (state==Group.MembershipState.TENTATIVE_MEMBER && tentative) || state==Group.MembershipState.REQUESTED)
 						throw new UserErrorException("err_group_already_member");
 				}else{
-					if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER)
+					if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER || state==Group.MembershipState.REQUESTED)
 						throw new UserErrorException("err_group_already_member");
 				}
 
@@ -243,20 +269,22 @@ public class GroupsController{
 				if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER){
 					GroupStorage.updateUserEventDecision(group, user.id, tentative);
 					if(group instanceof ForeignGroup fg)
-						ActivityPubWorker.getInstance().sendJoinGroupActivity(user, fg, tentative);
+						context.getActivityPubWorker().sendJoinGroupActivity(user, fg, tentative);
 					return;
 				}
 
-				GroupStorage.joinGroup(group, user.id, tentative, !(group instanceof ForeignGroup));
+				GroupStorage.joinGroup(group, user.id, tentative, !(group instanceof ForeignGroup) && autoAccepted);
 			}
 
 			if(group instanceof ForeignGroup fg){
 				// Add{Group} will be sent upon receiving Accept{Follow}
-				ActivityPubWorker.getInstance().sendJoinGroupActivity(user, fg, tentative);
+				context.getActivityPubWorker().sendJoinGroupActivity(user, fg, tentative);
 			}else{
-				ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(user, group);
+				if(group.accessType!=Group.AccessType.PRIVATE && autoAccepted){
+					context.getActivityPubWorker().sendAddToGroupsCollectionActivity(user, group);
+					NewsfeedStorage.putEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
+				}
 			}
-			NewsfeedStorage.putEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
 			if(group.isEvent()){
 				synchronized(eventRemindersCache){
 					eventRemindersCache.remove(user.id);
@@ -269,17 +297,18 @@ public class GroupsController{
 
 	public void leaveGroup(@NotNull Group group, @NotNull User user){
 		try{
-			Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, user.id);
-			if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER){
-				throw new UserErrorException("err_group_not_member");
-			}
 			synchronized(groupMembershipLock){
-				GroupStorage.leaveGroup(group, user.id, state==Group.MembershipState.TENTATIVE_MEMBER);
+				Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, user.id);
+				if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER && state!=Group.MembershipState.REQUESTED){
+					throw new UserErrorException("err_group_not_member");
+				}
+				GroupStorage.leaveGroup(group, user.id, state==Group.MembershipState.TENTATIVE_MEMBER, state!=Group.MembershipState.REQUESTED);
 			}
 			if(group instanceof ForeignGroup fg){
-				ActivityPubWorker.getInstance().sendLeaveGroupActivity(user, fg);
+				context.getActivityPubWorker().sendLeaveGroupActivity(user, fg);
 			}
-			ActivityPubWorker.getInstance().sendRemoveFromGroupsCollectionActivity(user, group);
+			if(group.accessType!=Group.AccessType.PRIVATE)
+				context.getActivityPubWorker().sendRemoveFromGroupsCollectionActivity(user, group);
 			NewsfeedStorage.deleteEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
 			if(group.isEvent()){
 				synchronized(eventRemindersCache){
@@ -395,7 +424,7 @@ public class GroupsController{
 				}
 			}
 			if(group instanceof ForeignGroup || who instanceof ForeignUser){
-				ActivityPubWorker.getInstance().sendGroupInvite(inviteID, self, group, who);
+				context.getActivityPubWorker().sendGroupInvite(inviteID, self, group, who);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -417,7 +446,7 @@ public class GroupsController{
 			URI apID=GroupStorage.getInvitationApID(self.id, group.id);
 			int localID=GroupStorage.deleteInvitation(self.id, group.id, group.isEvent());
 			if(localID>0 && group instanceof ForeignGroup fg){
-				ActivityPubWorker.getInstance().sendRejectGroupInvite(self, fg, localID, apID);
+				context.getActivityPubWorker().sendRejectGroupInvite(self, fg, localID, apID);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -427,6 +456,94 @@ public class GroupsController{
 	public void runLocked(@NotNull Runnable action){
 		synchronized(groupMembershipLock){
 			action.run();
+		}
+	}
+
+	public void removeUser(@NotNull User self, @NotNull Group group, @NotNull User user){
+		try{
+			enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+			if(GroupStorage.getGroupMemberAdminLevel(group.id, user.id).isAtLeast(Group.AdminLevel.MODERATOR))
+				throw new BadRequestException("Can't remove a group manager");
+
+			Group.MembershipState state;
+			synchronized(groupMembershipLock){
+				state=GroupStorage.getUserMembershipState(group.id, user.id);
+				if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER && state!=Group.MembershipState.REQUESTED){
+					throw new UserErrorException("err_group_not_member");
+				}
+				GroupStorage.leaveGroup(group, user.id, state==Group.MembershipState.TENTATIVE_MEMBER, state!=Group.MembershipState.REQUESTED);
+			}
+			if(user instanceof ForeignUser fu){
+				context.getActivityPubWorker().sendRejectFollowGroup(fu, group, state==Group.MembershipState.TENTATIVE_MEMBER);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<User> getJoinRequests(@NotNull User self, @NotNull Group group, int offset, int count){
+		enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+		try{
+			return GroupStorage.getGroupJoinRequests(group.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getJoinRequestCount(@NotNull User self, @NotNull Group group){
+		enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+		try{
+			return GroupStorage.getJoinRequestCount(group.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void acceptJoinRequest(@NotNull User self, @NotNull Group group, @NotNull User user){
+		enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+		try{
+			synchronized(groupMembershipLock){
+				Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, user.id);
+				if(state!=Group.MembershipState.REQUESTED)
+					throw new BadRequestException("No join request from this user");
+				GroupStorage.setMemberAccepted(group.id, user.id, true);
+			}
+			if(user instanceof ForeignUser fu){
+				Join join=new Join(false);
+				join.object=new LinkOrObject(group.activityPubID);
+				join.actor=new LinkOrObject(user.activityPubID);
+				join.to=List.of(new LinkOrObject(group.activityPubID));
+				context.getActivityPubWorker().sendAcceptFollowActivity(fu, group, join);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<User> getGroupInvites(@NotNull User self, @NotNull Group group, int offset, int count){
+		enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+		try{
+			return GroupStorage.getGroupInvitations(group.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void cancelInvitation(@NotNull User self, @NotNull Group group, @NotNull User user){
+		enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+		try{
+			URI apID=GroupStorage.getInvitationApID(user.id, group.id);
+			int id=GroupStorage.deleteInvitation(user.id, group.id, group.isEvent());
+			if(id<0)
+				throw new BadRequestException("This user was not invited to this group");
+			if(user instanceof ForeignUser fu){
+				if(apID==null){
+					apID=Config.localURI("/activitypub/objects/groupInvites/"+id);
+				}
+				context.getActivityPubWorker().sendUndoGroupInvite(fu, group, id, apID);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 

@@ -3,10 +3,10 @@ package smithereen.activitypub.handlers;
 import java.sql.SQLException;
 import java.util.Objects;
 
-import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Update;
+import smithereen.controllers.WallController;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -29,7 +29,7 @@ public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, 
 			if(!Objects.equals(post.inReplyTo, existing.inReplyTo)){
 				throw new IllegalArgumentException("inReplyTo doesn't match existing");
 			}
-			Utils.loadAndPreprocessRemotePostMentions(post);
+			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(post);
 			PostStorage.putForeignWallPost(post);
 		}else{
 			throw new IllegalArgumentException("No access to update this post");

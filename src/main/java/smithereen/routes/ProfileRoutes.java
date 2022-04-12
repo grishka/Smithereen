@@ -190,7 +190,7 @@ public class ProfileRoutes{
 					if(isAjax(req) && verifyCSRF(req, resp)){
 						UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
 						if(user instanceof ForeignUser){
-							ActivityPubWorker.getInstance().sendFollowUserActivity(self.user, (ForeignUser) user);
+							context(req).getActivityPubWorker().sendFollowUserActivity(self.user, (ForeignUser) user);
 						}
 						return new WebDeltaResponse(resp).refresh();
 					}else{
@@ -232,14 +232,14 @@ public class ProfileRoutes{
 				if(status==FriendshipStatus.NONE && user.supportsFriendRequests()){
 					UserStorage.putFriendRequest(self.user.id, user.id, req.queryParams("message"), !(user instanceof ForeignUser));
 					if(user instanceof ForeignUser){
-						ActivityPubWorker.getInstance().sendFriendRequestActivity(self.user, (ForeignUser)user, req.queryParams("message"));
+						context(req).getActivityPubWorker().sendFriendRequestActivity(self.user, (ForeignUser)user, req.queryParams("message"));
 					}
 				}else{
 					UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
 					if(user instanceof ForeignUser){
-						ActivityPubWorker.getInstance().sendFollowUserActivity(self.user, (ForeignUser)user);
+						context(req).getActivityPubWorker().sendFollowUserActivity(self.user, (ForeignUser)user);
 					}else{
-						ActivityPubWorker.getInstance().sendAddToFriendsCollectionActivity(self.user, user);
+						context(req).getActivityPubWorker().sendAddToFriendsCollectionActivity(self.user, user);
 					}
 				}
 				if(isAjax(req)){
@@ -398,21 +398,21 @@ public class ProfileRoutes{
 			if(req.queryParams("accept")!=null){
 				if(user instanceof ForeignUser){
 					UserStorage.acceptFriendRequest(self.user.id, user.id, false);
-					ActivityPubWorker.getInstance().sendFollowUserActivity(self.user, (ForeignUser) user);
+					context(req).getActivityPubWorker().sendFollowUserActivity(self.user, (ForeignUser) user);
 				}else{
 					UserStorage.acceptFriendRequest(self.user.id, user.id, true);
 					Notification n=new Notification();
 					n.type=Notification.Type.FRIEND_REQ_ACCEPT;
 					n.actorID=self.user.id;
 					NotificationsStorage.putNotification(user.id, n);
-					ActivityPubWorker.getInstance().sendAddToFriendsCollectionActivity(self.user, user);
+					context(req).getActivityPubWorker().sendAddToFriendsCollectionActivity(self.user, user);
 					NewsfeedStorage.putEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
 				}
 				NewsfeedStorage.putEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
 			}else if(req.queryParams("decline")!=null){
 				UserStorage.deleteFriendRequest(self.user.id, user.id);
 				if(user instanceof ForeignUser){
-					ActivityPubWorker.getInstance().sendRejectFriendRequestActivity(self.user, (ForeignUser) user);
+					context(req).getActivityPubWorker().sendRejectFriendRequestActivity(self.user, (ForeignUser) user);
 				}
 			}
 			if(isAjax(req))
@@ -432,10 +432,10 @@ public class ProfileRoutes{
 			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING || status==FriendshipStatus.FOLLOW_REQUESTED){
 				UserStorage.unfriendUser(self.user.id, user.id);
 				if(user instanceof ForeignUser){
-					ActivityPubWorker.getInstance().sendUnfriendActivity(self.user, user);
+					context(req).getActivityPubWorker().sendUnfriendActivity(self.user, user);
 				}
 				if(status==FriendshipStatus.FRIENDS){
-					ActivityPubWorker.getInstance().sendRemoveFromFriendsCollectionActivity(self.user, user);
+					context(req).getActivityPubWorker().sendRemoveFromFriendsCollectionActivity(self.user, user);
 					NewsfeedStorage.deleteEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND);
 					if(!(user instanceof ForeignUser)){
 						NewsfeedStorage.deleteEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND);
@@ -477,9 +477,9 @@ public class ProfileRoutes{
 		FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 		UserStorage.blockUser(self.user.id, user.id);
 		if(user instanceof ForeignUser)
-			ActivityPubWorker.getInstance().sendBlockActivity(self.user, (ForeignUser) user);
+			context(req).getActivityPubWorker().sendBlockActivity(self.user, (ForeignUser) user);
 		if(status==FriendshipStatus.FRIENDS){
-			ActivityPubWorker.getInstance().sendRemoveFromFriendsCollectionActivity(self.user, user);
+			context(req).getActivityPubWorker().sendRemoveFromFriendsCollectionActivity(self.user, user);
 			NewsfeedStorage.deleteEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND);
 			if(!(user instanceof ForeignUser)){
 				NewsfeedStorage.deleteEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND);
@@ -495,7 +495,7 @@ public class ProfileRoutes{
 		User user=getUserOrThrow(req);
 		UserStorage.unblockUser(self.user.id, user.id);
 		if(user instanceof ForeignUser)
-			ActivityPubWorker.getInstance().sendUndoBlockActivity(self.user, (ForeignUser) user);
+			context(req).getActivityPubWorker().sendUndoBlockActivity(self.user, (ForeignUser) user);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));

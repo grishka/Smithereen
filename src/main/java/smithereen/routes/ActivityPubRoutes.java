@@ -12,34 +12,23 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.Signature;
-import java.security.SignatureException;
 import java.sql.SQLException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import smithereen.BuildInfo;
 import smithereen.Config;
-import smithereen.ObjectLinkResolver;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubCache;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.DoublyNestedActivityTypeHandler;
 import smithereen.activitypub.NestedActivityTypeHandler;
@@ -103,6 +92,7 @@ import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
+import smithereen.controllers.WallController;
 import smithereen.data.Account;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
@@ -131,9 +121,9 @@ import spark.Response;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.context;
+import static smithereen.Utils.escapeHTML;
 import static smithereen.Utils.gson;
 import static smithereen.Utils.parseIntOrDefault;
-import static smithereen.Utils.parseSignatureHeader;
 import static smithereen.Utils.safeParseInt;
 
 public class ActivityPubRoutes{
@@ -220,16 +210,12 @@ public class ActivityPubRoutes{
 		if(username!=null){
 			actor=UserStorage.getByUsername(username);
 			if(actor==null){
-				actor=GroupStorage.getByUsername(username);
+				return groupActor(req, resp);
 			}
 		}else{
 			actor=UserStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
 		}
-		if(actor!=null && !(actor instanceof ForeignUser) && !(actor instanceof ForeignGroup)){
-			if(actor instanceof Group){
-				Group group=(Group) actor;
-				group.adminsForActivityPub=GroupStorage.getGroupAdmins(group.id);
-			}
+		if(actor!=null && !(actor instanceof ForeignUser)){
 			resp.type(ActivityPub.CONTENT_TYPE);
 			return actor;
 		}
@@ -244,6 +230,19 @@ public class ActivityPubRoutes{
 		else
 			group=GroupStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
 		if(group!=null && !(group instanceof ForeignGroup)){
+			if(group.accessType==Group.AccessType.PRIVATE){
+				Actor requester;
+				try{
+					requester=ActivityPub.verifyHttpSignature(req, null);
+				}catch(Exception x){
+					throw new UserActionNotAllowedException("This is a private group. Valid HTTP signature of a group member or invitee is required.", x);
+				}
+				if(!(requester instanceof ForeignUser user))
+					throw new UserActionNotAllowedException("Request must be signed by a user, instead found a "+requester.getType());
+				Group.MembershipState state=context(req).getGroupsController().getUserMembershipState(group, user);
+				if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER && state!=Group.MembershipState.INVITED)
+					throw new UserActionNotAllowedException("User '"+escapeHTML(user.activityPubID.toString())+"' does not have access to private group '"+group.activityPubID+"' (not a member and not invited)");
+			}
 			group.adminsForActivityPub=GroupStorage.getGroupAdmins(group.id);
 			resp.type(ActivityPub.CONTENT_TYPE);
 			return group;
@@ -261,6 +260,8 @@ public class ActivityPubRoutes{
 	public static ActivityPubCollectionPageResponse postReplies(Request req, Response resp, int offset, int count) throws SQLException{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		Post post=PostStorage.getPostOrThrow(postID, true);
+		if(post.owner instanceof Group g)
+			ActivityPub.enforceGroupContentAccess(req, g);
 		int[] _total={0};
 		List<URI> ids=PostStorage.getImmediateReplyActivityPubIDs(post.getReplyKeyForReplies(), offset, count, _total);
 		return ActivityPubCollectionPageResponse.forLinks(ids, _total[0]);
@@ -268,6 +269,8 @@ public class ActivityPubRoutes{
 
 	public static ActivityPubCollectionPageResponse postLikes(Request req, Response resp, int offset, int count) throws SQLException{
 		Post post=PostStorage.getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
+		if(post.owner instanceof Group g)
+			ActivityPub.enforceGroupContentAccess(req, g);
 		PaginatedList<Like> likes=LikeStorage.getLikes(post.id, post.activityPubID, Like.ObjectType.POST, offset, count);
 		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
 	}
@@ -388,6 +391,7 @@ public class ActivityPubRoutes{
 		Group group=GroupStorage.getById(id);
 		if(group==null || group instanceof ForeignGroup)
 			throw new ObjectNotFoundException();
+		ActivityPub.enforceGroupContentAccess(req, group);
 		return actorWall(req, resp, offset, count, group);
 	}
 
@@ -435,20 +439,15 @@ public class ActivityPubRoutes{
 					return "Invalid remote object URI";
 				}
 			}
-			remoteObj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, true, false, true);
-			if(remoteObj==null){
-				return "Error fetching remote object";
-			}
+			remoteObj=context(req).getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, true);
 			if(remoteObj.activityPubID.getHost()==null || uri.getHost()==null || !remoteObj.activityPubID.getHost().equals(uri.getHost())){
 				return "Object ID host doesn't match URI host";
 			}
 		}catch(IOException|JsonParseException|URISyntaxException x){
 			return x.getMessage();
 		}
-		if(remoteObj instanceof ForeignUser){
+		if(remoteObj instanceof ForeignUser foreignUser){
 			try{
-				ForeignUser foreignUser=(ForeignUser) remoteObj;
-//					System.out.println(foreignUser);
 				UserStorage.putOrUpdateForeignUser(foreignUser);
 				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, foreignUser.id);
 				if(status==FriendshipStatus.REQUEST_SENT){
@@ -463,24 +462,22 @@ public class ActivityPubRoutes{
 				x.printStackTrace();
 				return x.toString();
 			}
-		}else if(remoteObj instanceof ForeignGroup){
-			ForeignGroup group=(ForeignGroup) remoteObj;
+		}else if(remoteObj instanceof ForeignGroup group){
 			GroupStorage.putOrUpdateForeignGroup(group);
 			resp.redirect(Config.localURI("/"+group.getFullUsername()).toString());
 			return "";
-		}else if(remoteObj instanceof Post){
+		}else if(remoteObj instanceof Post post){
 			try{
-				Post post=(Post) remoteObj;
 				Post topLevelPost;
-				Utils.loadAndPreprocessRemotePostMentions(post);
+				context(req).getWallController().loadAndPreprocessRemotePostMentions(post);
 				if(post.inReplyTo!=null){
 					Post parent=PostStorage.getPostByID(post.inReplyTo);
 					if(parent==null){
-						List<Post> thread=ActivityPubWorker.getInstance().fetchReplyThread(post).get(30, TimeUnit.SECONDS);
+						List<Post> thread=context(req).getActivityPubWorker().fetchReplyThread(post).get(30, TimeUnit.SECONDS);
 						topLevelPost=thread.get(0);
 					}else{
 						post.setParent(parent);
-						post.storeDependencies();
+						post.storeDependencies(context(req));
 						PostStorage.putForeignWallPost(post);
 						topLevelPost=PostStorage.getPostByID(parent.getReplyChainElement(0), false);
 						if(topLevelPost==null)
@@ -488,10 +485,10 @@ public class ActivityPubRoutes{
 					}
 				}else{
 					topLevelPost=post;
-					post.storeDependencies();
+					post.storeDependencies(context(req));
 					PostStorage.putForeignWallPost(post);
 				}
-				ActivityPubWorker.getInstance().fetchAllReplies(topLevelPost);
+				context(req).getActivityPubWorker().fetchAllReplies(topLevelPost);
 				resp.redirect("/posts/"+topLevelPost.id);
 				return "";
 			}catch(Exception x){
@@ -505,7 +502,6 @@ public class ActivityPubRoutes{
 	public static Object remoteFollow(Request req, Response resp, Account self) throws SQLException{
 		String username=req.params(":username");
 		User _user=UserStorage.getByUsername(username);
-//		System.out.println(_user);
 		if(!(_user instanceof ForeignUser)){
 			return Utils.wrapError(req, resp, "err_user_not_found");
 		}
@@ -616,10 +612,10 @@ public class ActivityPubRoutes{
 		try{
 			o=ActivityPubObject.parse(obj);
 		}catch(Exception e){
-			throw new BadRequestException("Failed to parse object: "+e.toString(), e);
+			throw new BadRequestException("Failed to parse object: "+e, e);
 		}
-		if(o instanceof Activity)
-			activity=(Activity)o;
+		if(o instanceof Activity act)
+			activity=act;
 		else if(o!=null)
 			throw new BadRequestException("Unsupported object type '"+o.getType()+"'");
 		else
@@ -633,19 +629,19 @@ public class ActivityPubRoutes{
 		// special case: when users delete themselves but are not in local database, ignore that
 		if(activity instanceof Delete && activity.actor.link.equals(activity.object.link)){
 			try{
-				actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, false, false, false);
+				actor=context(req).getObjectLinkResolver().resolve(activity.actor.link, Actor.class, false, false, false);
 			}catch(ObjectNotFoundException x){
 				return "";
 			}
 			canUpdate=false;
 		}else{
-			actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, true, true, false);
+			actor=context(req).getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, false);
 		}
-		if(!(actor instanceof ForeignActor))
+		if(!(actor instanceof ForeignActor fa))
 			throw new BadRequestException("Actor is local");
-		if(((ForeignActor) actor).needUpdate() && canUpdate){
+		if(fa.needUpdate() && canUpdate){
 			try{
-				actor=ObjectLinkResolver.resolve(activity.actor.link, Actor.class, true, true, true);
+				actor=context(req).getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, true);
 			}catch(ObjectNotFoundException x){
 				LOG.warn("Exception while refreshing remote actor", x);
 			}
@@ -653,10 +649,10 @@ public class ActivityPubRoutes{
 
 		Actor httpSigOwner;
 		try{
-			httpSigOwner=verifyHttpSignature(req, actor);
+			httpSigOwner=ActivityPub.verifyHttpSignature(req, actor);
 		}catch(Exception x){
 			LOG.warn("Exception while verifying HTTP signature", x);
-			throw new BadRequestException(x);
+			throw new UserActionNotAllowedException(x);
 		}
 
 		// if the activity has an LD-signature, verify that and allow any (cached) user to sign the HTTP signature
@@ -688,8 +684,8 @@ public class ActivityPubRoutes{
 		// parse again to make sure the actor is set everywhere
 		try{
 			ActivityPubObject _o=ActivityPubObject.parse(obj);
-			if(_o instanceof Activity)
-				activity=(Activity) _o;
+			if(_o instanceof Activity act1)
+				activity=act1;
 		}catch(Exception ignore){}
 
 		ActivityHandlerContext context=new ActivityHandlerContext(context(req), body, hasValidLDSignature ? actor : null, httpSigOwner);
@@ -701,7 +697,7 @@ public class ActivityPubRoutes{
 				// special case: Mastodon sends Delete{Tombstone} for post deletions
 				if(aobj instanceof Tombstone){
 					try{
-						aobj=ObjectLinkResolver.resolve(aobj.activityPubID);
+						aobj=context(req).getObjectLinkResolver().resolve(aobj.activityPubID);
 					}catch(ObjectNotFoundException x){
 						LOG.warn("Activity object not found for {}: {}", getActivityType(activity), aobj.activityPubID);
 						// Fail silently. We didn't have that object anyway, there's nothing to delete.
@@ -711,7 +707,7 @@ public class ActivityPubRoutes{
 			}else{
 				if(activity instanceof Like || activity instanceof Delete){
 					try{
-						aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, false, false, false);
+						aobj=context(req).getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, false, false, false);
 					}catch(ObjectNotFoundException x){
 						// Fail silently. Pleroma sends all likes to followers, including for objects they may not have.
 						LOG.info("Activity object not known for {}: {}", activity.getType(), activity.object.link);
@@ -719,27 +715,25 @@ public class ActivityPubRoutes{
 					}
 				}else{
 					// special case: fetch the object of Announce{Note}, Add{...}, or Invite{Group}
-					aobj=ObjectLinkResolver.resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add || activity instanceof Invite, false, false);
+					aobj=context(req).getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add || activity instanceof Invite, false, false);
 				}
 			}
 			for(ActivityTypeHandlerRecord r : typeHandlers){
 				if(r.actorClass.isInstance(actor)){
 					if(r.activityClass.isInstance(activity)){
-						if(r.nestedActivityClass!=null && aobj instanceof Activity && r.nestedActivityClass.isInstance(aobj)){
-							Activity nestedActivity=(Activity)aobj;
+						if(r.nestedActivityClass!=null && aobj instanceof Activity nestedActivity && r.nestedActivityClass.isInstance(aobj)){
 							ActivityPubObject nestedObject;
 							if(nestedActivity.object.object!=null)
 								nestedObject=nestedActivity.object.object;
 							else
-								nestedObject=ObjectLinkResolver.resolve(nestedActivity.object.link);
+								nestedObject=context(req).getObjectLinkResolver().resolve(nestedActivity.object.link);
 
-							if(r.doublyNestedActivityClass!=null && nestedObject instanceof Activity && r.doublyNestedActivityClass.isInstance(nestedObject)){
-								Activity doublyNestedActivity=(Activity)nestedObject;
+							if(r.doublyNestedActivityClass!=null && nestedObject instanceof Activity doublyNestedActivity && r.doublyNestedActivityClass.isInstance(nestedObject)){
 								ActivityPubObject doublyNestedObject;
 								if(doublyNestedActivity.object.object!=null)
 									doublyNestedObject=nestedActivity.object.object;
 								else
-									doublyNestedObject=ObjectLinkResolver.resolve(nestedActivity.object.link);
+									doublyNestedObject=context(req).getObjectLinkResolver().resolve(nestedActivity.object.link);
 
 								if(r.objectClass.isInstance(doublyNestedObject)){
 									LOG.info("Found match: {}", r.handler.getClass().getName());
@@ -768,8 +762,7 @@ public class ActivityPubRoutes{
 
 	private static String getActivityType(ActivityPubObject obj){
 		String r=obj.getType();
-		if(obj instanceof Activity){
-			Activity a=(Activity)obj;
+		if(obj instanceof Activity a){
 			r+="{";
 			if(a.object.object!=null){
 				r+=getActivityType(a.object.object);
@@ -803,6 +796,7 @@ public class ActivityPubRoutes{
 	private static ActivityPubCollectionPageResponse groupMembers(Request req, Response resp, int offset, int count, boolean tentative) throws SQLException{
 		int id=safeParseInt(req.params(":id"));
 		Group group=context(req).getGroupsController().getLocalGroupOrThrow(id);
+		ActivityPub.enforceGroupContentAccess(req, group);
 		PaginatedList<URI> followers=GroupStorage.getGroupMemberURIs(group.id, tentative, offset, count);
 		return ActivityPubCollectionPageResponse.forLinks(followers);
 	}
@@ -815,87 +809,25 @@ public class ActivityPubRoutes{
 		return groupMembers(req, resp, offset, count, true);
 	}
 
-	public static Object serviceActor(Request req, Response resp) throws SQLException{
+	public static Object serviceActor(Request req, Response resp){
 		resp.type(ActivityPub.CONTENT_TYPE);
 		return ServiceActor.getInstance().asRootActivityPubObject();
 	}
 
-
-
-	private static Actor verifyHttpSignature(Request req, Actor userHint) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, SQLException{
-		String sigHeader=req.headers("Signature");
-		if(sigHeader==null)
-			throw new BadRequestException("Request is missing Signature header");
-		List<Map<String, String>> values=parseSignatureHeader(sigHeader);
-		if(values.isEmpty())
-			throw new BadRequestException("Signature header has invalid format");
-		Map<String, String> supportedSig=null;
-		for(Map<String, String> sig:values){
-			if("rsa-sha256".equalsIgnoreCase(sig.get("algorithm")) || "hs2019".equalsIgnoreCase(sig.get("algorithm"))){
-				supportedSig=sig;
-				break;
-			}
+	public static Object groupActorToken(Request req, Response resp){
+		Group group=context(req).getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
+		if(group.accessType==Group.AccessType.OPEN)
+			throw new ObjectNotFoundException();
+		Actor signer;
+		try{
+			signer=ActivityPub.verifyHttpSignature(req, null);
+		}catch(Exception x){
+			throw new UserActionNotAllowedException("Valid member HTTP signature is required.");
 		}
-		if(supportedSig==null)
-			throw new BadRequestException("Unsupported signature algorithm \""+values.get(0).get("algorithm")+"\", expected \"rsa-sha256\" or \"hs2019\"");
-
-		if(!supportedSig.containsKey("keyId"))
-			throw new BadRequestException("Signature header is missing keyId field");
-		if(!supportedSig.containsKey("signature"))
-			throw new BadRequestException("Signature header is missing signature field");
-		if(!supportedSig.containsKey("headers"))
-			throw new BadRequestException("Signature header is missing headers field");
-
-		String keyId=supportedSig.get("keyId");
-		byte[] signature=Base64.getDecoder().decode(supportedSig.get("signature"));
-		List<String> headers=Arrays.asList(supportedSig.get("headers").split(" "));
-
-		if(!headers.contains("(request-target)"))
-			throw new BadRequestException("(request-target) is not in signed headers");
-		if(!headers.contains("date"))
-			throw new BadRequestException("date is not in signed headers");
-		if(!headers.contains("host"))
-			throw new BadRequestException("host is not in signed headers");
-
-		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-		long unixtime=dateFormat.parse(req.headers("date")).getTime();
-		long now=System.currentTimeMillis();
-		long diff=now-unixtime;
-		if(diff>30000L)
-			throw new BadRequestException("Date is too far in the future (difference: "+diff+"ms)");
-		if(diff<-30000L)
-			throw new BadRequestException("Date is too far in the past (difference: "+diff+"ms)");
-
-		URI userID=Utils.userIdFromKeyId(URI.create(keyId));
-		Actor user;
-		if(userHint.activityPubID.equals(userID))
-			user=userHint;
-		else
-			user=ObjectLinkResolver.resolve(userID, Actor.class, false, true, false);
-		if(user==null)
-			throw new BadRequestException("Request signed by unknown user: "+userID);
-
-		ArrayList<String> sigParts=new ArrayList<>();
-		for(String header:headers){
-			String value;
-			if(header.equals("(request-target)")){
-				value=req.requestMethod().toLowerCase()+" "+req.pathInfo();
-			}else{
-				value=req.headers(header);
-			}
-			sigParts.add(header+": "+value);
-		}
-		String sigStr=String.join("\n", sigParts);
-		Signature sig=Signature.getInstance("SHA256withRSA");
-		sig.initVerify(user.publicKey);
-		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
-		if(!sig.verify(signature)){
-			LOG.info("Failed signature header: {}", sigHeader);
-			LOG.info("Failed signature string: '{}'", sigStr);
-			throw new BadRequestException("Signature failed to verify");
-		}
-		return user;
+		if(!(signer instanceof ForeignUser user))
+			throw new UserActionNotAllowedException("HTTP signature is valid but actor has wrong type: "+signer.getType());
+		resp.type("application/json");
+		return ActivityPub.generateActorToken(context(req), user, group);
 	}
 
 	private static boolean verifyHttpDigest(String digestHeader, byte[] bodyData){

@@ -114,8 +114,7 @@ autoSizeTextArea(ge("{{ name }}"));
 		<td>
 			{% for opt in selectOptions %}
 				<div class="radioButtonWrap">
-					<input type="radio" name="{{ name }}" value="{{ opt.value }}" id="{{ name }}{{ loop.index }}" {{ opt.selected ? 'checked' : '' }}/>
-					<label for="{{ name }}{{ loop.index }}">{{ opt.label }}</label>
+					<label><input type="radio" name="{{ name }}" value="{{ opt.value }}" id="{{ name }}{{ loop.index }}" {{ opt.selected ? 'checked' : '' }}/>{{ opt.label }}</label>
 				</div>
 				{% if opt.explanation is not empty %}
 					<span class="formExplanation">{{ opt.explanation }}</span>

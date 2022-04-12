@@ -142,7 +142,7 @@ public class SettingsRoutes{
 		self.user=UserStorage.getById(self.user.id);
 		if(self.user==null)
 			throw new IllegalStateException("?!");
-		ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
+		context(req).getActivityPubWorker().sendUpdateUserActivity(self.user);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).show("formMessage_profileEdit").setContent("formMessage_profileEdit", message);
 		}
@@ -243,7 +243,7 @@ public class SettingsRoutes{
 					}
 					UserStorage.updateProfilePicture(self.user, MediaStorageUtils.serializeAttachment(ava).toString());
 					self.user=UserStorage.getById(self.user.id);
-					ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
+					context(req).getActivityPubWorker().sendUpdateUserActivity(self.user);
 				}else{
 					if(group.icon!=null && !(group instanceof ForeignGroup)){
 						LocalImage li=(LocalImage) group.icon.get(0);
@@ -255,7 +255,7 @@ public class SettingsRoutes{
 					}
 					GroupStorage.updateProfilePicture(group, MediaStorageUtils.serializeAttachment(ava).toString());
 					group=GroupStorage.getById(group.id);
-					ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
+					context(req).getActivityPubWorker().sendUpdateGroupActivity(group);
 				}
 				temp.delete();
 			}finally{
@@ -356,11 +356,11 @@ public class SettingsRoutes{
 		if(group!=null){
 			GroupStorage.updateProfilePicture(group, null);
 			group=GroupStorage.getById(groupID);
-			ActivityPubWorker.getInstance().sendUpdateGroupActivity(group);
+			context(req).getActivityPubWorker().sendUpdateGroupActivity(group);
 		}else{
 			UserStorage.updateProfilePicture(self.user, null);
 			self.user=UserStorage.getById(self.user.id);
-			ActivityPubWorker.getInstance().sendUpdateUserActivity(self.user);
+			context(req).getActivityPubWorker().sendUpdateUserActivity(self.user);
 		}
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();

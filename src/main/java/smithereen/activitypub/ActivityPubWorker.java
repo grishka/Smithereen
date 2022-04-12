@@ -21,8 +21,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RecursiveTask;
 import java.util.function.Consumer;
 
+import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.ObjectLinkResolver;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubCollection;
@@ -44,10 +44,10 @@ import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
+import smithereen.controllers.WallController;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
-import smithereen.data.GroupInvitation;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
 import smithereen.data.PollVote;
@@ -61,7 +61,6 @@ import smithereen.storage.UserStorage;
 import spark.utils.StringUtils;
 
 public class ActivityPubWorker{
-	private static ActivityPubWorker instance;
 	private static final Logger LOG=LoggerFactory.getLogger(ActivityPubWorker.class);
 	private static final int MAX_COMMENTS=1000;
 
@@ -70,22 +69,16 @@ public class ActivityPubWorker{
 	private HashMap<URI, Future<List<Post>>> fetchingReplyThreads=new HashMap<>();
 	private HashMap<URI, List<Consumer<List<Post>>>> afterFetchReplyThreadActions=new HashMap<>();
 	private HashMap<URI, Future<Post>> fetchingAllReplies=new HashMap<>();
+	private final ApplicationContext context;
 
-	public static ActivityPubWorker getInstance(){
-		if(instance==null)
-			instance=new ActivityPubWorker();
-		return instance;
-	}
-
-	private ActivityPubWorker(){
+	public ActivityPubWorker(ApplicationContext context){
+		this.context=context;
 		executor=new ForkJoinPool(Runtime.getRuntime().availableProcessors()*2);
 	}
 
-	public static void shutDown(){
-		if(instance==null)
-			return;
+	public void shutDown(){
 		LOG.info("Stopping thread pool");
-		Utils.stopExecutorBlocking(instance.executor, LOG);
+		Utils.stopExecutorBlocking(executor, LOG);
 		LOG.info("Stopped");
 	}
 
@@ -152,113 +145,101 @@ public class ActivityPubWorker{
 	}
 
 	public void sendCreatePostActivity(final Post post){
-		executor.submit(new Runnable(){
-			@Override
-			public void run(){
-				Create create=new Create();
-				create.object=new LinkOrObject(post);
-				create.actor=new LinkOrObject(post.user.activityPubID);
-				create.to=post.to;
-				create.cc=post.cc;
-				create.published=post.published;
-				create.activityPubID=Config.localURI(post.activityPubID.getPath()+"/activityCreate");
-				sendActivityForPost(post, create, post.user);
-			}
+		executor.submit(()->{
+			Create create=new Create();
+			create.object=new LinkOrObject(post);
+			create.actor=new LinkOrObject(post.user.activityPubID);
+			create.to=post.to;
+			create.cc=post.cc;
+			create.published=post.published;
+			create.activityPubID=Config.localURI(post.activityPubID.getPath()+"/activityCreate");
+			sendActivityForPost(post, create, post.user);
 		});
 	}
 
 	public void sendUpdatePostActivity(final Post post){
-		executor.submit(new Runnable(){
-			@Override
-			public void run(){
-				Update update=new Update();
-				update.object=new LinkOrObject(post);
-				update.actor=new LinkOrObject(post.user.activityPubID);
-				update.to=post.to;
-				update.cc=post.cc;
-				update.published=post.updated;
-				update.activityPubID=Config.localURI(post.activityPubID.getPath()+"#update_"+rand());
-				sendActivityForPost(post, update, post.user);
-			}
+		executor.submit(()->{
+			Update update=new Update();
+			update.object=new LinkOrObject(post);
+			update.actor=new LinkOrObject(post.user.activityPubID);
+			update.to=post.to;
+			update.cc=post.cc;
+			update.published=post.updated;
+			update.activityPubID=Config.localURI(post.activityPubID.getPath()+"#update_"+rand());
+			sendActivityForPost(post, update, post.user);
 		});
 	}
 
 	public void sendAddPostToWallActivity(final Post post){
-		executor.submit(new Runnable(){
-			@Override
-			public void run(){
-				try{
-					Add add=new Add();
-					add.activityPubID=UriBuilder.local().path("posts", post.id+"", "activityAdd").build();
-					add.object=new LinkOrObject(post.activityPubID);
-					add.actor=new LinkOrObject(post.owner.activityPubID);
-					add.to=List.of(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(post.owner.getFollowersURL()), new LinkOrObject(post.user.activityPubID));
-					if(!post.mentionedUsers.isEmpty()){
-						ArrayList<LinkOrObject> cc=new ArrayList<>();
-						for(User user : post.mentionedUsers){
-							cc.add(new LinkOrObject(user.activityPubID));
-						}
-						add.cc=cc;
+		executor.submit(()->{
+			try{
+				Add add=new Add();
+				add.activityPubID=UriBuilder.local().path("posts", post.id+"", "activityAdd").build();
+				add.object=new LinkOrObject(post.activityPubID);
+				add.actor=new LinkOrObject(post.owner.activityPubID);
+				add.to=List.of(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(post.owner.getFollowersURL()), new LinkOrObject(post.user.activityPubID));
+				if(!post.mentionedUsers.isEmpty()){
+					ArrayList<LinkOrObject> cc=new ArrayList<>();
+					for(User user : post.mentionedUsers){
+						cc.add(new LinkOrObject(user.activityPubID));
 					}
-					add.target=new LinkOrObject(post.owner.getWallURL());
+					add.cc=cc;
+				}
+				add.target=new LinkOrObject(post.owner.getWallURL());
 
-					ArrayList<URI> inboxes=new ArrayList<>();
-					if(post.owner instanceof User)
-						inboxes.addAll(UserStorage.getFollowerInboxes(((User) post.owner).id));
-					else
-						inboxes.addAll(GroupStorage.getGroupMemberInboxes(((Group) post.owner).id));
+				ArrayList<URI> inboxes=new ArrayList<>();
+				if(post.owner instanceof User)
+					inboxes.addAll(UserStorage.getFollowerInboxes(((User) post.owner).id));
+				else
+					inboxes.addAll(GroupStorage.getGroupMemberInboxes(((Group) post.owner).id));
 
-					for(User user:post.mentionedUsers){
-						if(user instanceof ForeignUser){
-							URI inbox=actorInbox((ForeignUser) user);
-							if(!inboxes.contains(inbox))
-								inboxes.add(inbox);
-						}
-					}
-					if(post.user instanceof ForeignUser){
-						URI inbox=actorInbox((ForeignUser) post.user);
+				for(User user:post.mentionedUsers){
+					if(user instanceof ForeignUser){
+						URI inbox=actorInbox((ForeignUser) user);
 						if(!inboxes.contains(inbox))
 							inboxes.add(inbox);
 					}
-
-					for(URI inbox:inboxes){
-						executor.submit(new SendOneActivityRunnable(add, inbox, post.owner));
-					}
-				}catch(SQLException x){
-					LOG.error("Exception while sending wall post {}", post.activityPubID, x);
 				}
+				if(post.user instanceof ForeignUser){
+					URI inbox=actorInbox((ForeignUser) post.user);
+					if(!inboxes.contains(inbox))
+						inboxes.add(inbox);
+				}
+
+				for(URI inbox:inboxes){
+					executor.submit(new SendOneActivityRunnable(add, inbox, post.owner));
+				}
+			}catch(SQLException x){
+				LOG.error("Exception while sending wall post {}", post.activityPubID, x);
 			}
 		});
 	}
 
 	public void sendDeletePostActivity(final Post post, final User actualActor){
-		executor.submit(new Runnable(){
-			@Override
-			public void run(){
-				Actor actor;
-				Delete delete=new Delete();
-				delete.object=new LinkOrObject(post.activityPubID);
-				if(post.user.id==actualActor.id)
-					actor=actualActor;
-				else if(!post.isGroupOwner() && ((User)post.owner).id==actualActor.id)
-					actor=actualActor;
-				else if(post.isGroupOwner())
-					actor=post.owner;
-				else{
-					LOG.error("Shouldn't happen: post {} actor for delete can't be chosen", post.id);
-					return;
-				}
-				if(actor instanceof ForeignGroup || actor instanceof ForeignUser){
-					LOG.error("Shouldn't happen: {} actor for delete is a foreign actor", post.id);
-					return;
-				}
-				delete.actor=new LinkOrObject(actor.activityPubID);
-				delete.to=post.to;
-				delete.cc=post.cc;
-				delete.published=Instant.now();
-				delete.activityPubID=new UriBuilder(post.activityPubID).appendPath("delete").build();
-				sendActivityForPost(post, delete, actor);
+		executor.submit(()->{
+			Actor actor;
+			Delete delete=new Delete();
+			delete.object=new LinkOrObject(post.activityPubID);
+			if(post.user.id==actualActor.id)
+				actor=actualActor;
+			else if(!post.isGroupOwner() && ((User)post.owner).id==actualActor.id)
+				actor=actualActor;
+			else if(post.isGroupOwner())
+				actor=post.owner;
+			else{
+				LOG.error("Shouldn't happen: post {} actor for delete can't be chosen", post.id);
+				return;
 			}
+			if(actor instanceof ForeignGroup || actor instanceof ForeignUser){
+				LOG.error("Shouldn't happen: {} actor for delete is a foreign actor", post.id);
+				return;
+			}
+			delete.actor=new LinkOrObject(actor.activityPubID);
+			delete.to=post.to;
+			delete.cc=post.cc;
+			delete.published=Instant.now();
+			delete.activityPubID=new UriBuilder(post.activityPubID).appendPath("delete").build();
+			sendActivityForPost(post, delete, actor);
 		});
 	}
 
@@ -581,6 +562,36 @@ public class ActivityPubWorker{
 		executor.submit(new SendOneActivityRunnable(reject, actorInbox(group), self));
 	}
 
+	public void sendRejectFollowGroup(ForeignUser user, Group group, boolean tentative){
+		Join join=new Join(tentative);
+		join.actor=new LinkOrObject(user.activityPubID);
+		join.object=new LinkOrObject(group.activityPubID);
+
+		Reject reject=new Reject();
+		reject.activityPubID=new UriBuilder(group.activityPubID).fragment("rejectJoin"+user.id+"_"+rand()).build();
+		reject.to=List.of(new LinkOrObject(user.activityPubID));
+		reject.actor=new LinkOrObject(group.activityPubID);
+		reject.object=new LinkOrObject(join);
+
+		executor.submit(new SendOneActivityRunnable(reject, actorInbox(user), group));
+	}
+
+	public void sendUndoGroupInvite(ForeignUser user, Group group, int invitationLocalID, URI invitationID){
+		Invite invite=new Invite();
+		invite.activityPubID=invitationID;
+		invite.to=List.of(new LinkOrObject(user.activityPubID));
+		invite.cc=List.of(new LinkOrObject(group.activityPubID));
+		invite.object=new LinkOrObject(group.activityPubID);
+
+		Undo undo=new Undo();
+		undo.activityPubID=new UriBuilder(group.activityPubID).fragment("undoGroupInvite"+invitationLocalID).build();
+		undo.to=List.of(new LinkOrObject(user.activityPubID));
+		undo.actor=new LinkOrObject(group.activityPubID);
+		undo.object=new LinkOrObject(invite);
+
+		executor.submit(new SendOneActivityRunnable(undo, actorInbox(user), group));
+	}
+
 	public synchronized Future<List<Post>> fetchReplyThread(Post post){
 		return fetchingReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchReplyThreadRunnable(post)));
 	}
@@ -658,7 +669,7 @@ public class ActivityPubWorker{
 		}
 	}
 
-	private static class FetchReplyThreadRunnable implements Callable<List<Post>>{
+	private class FetchReplyThreadRunnable implements Callable<List<Post>>{
 		private ArrayList<Post> thread=new ArrayList<>();
 		private Set<URI> seenPosts=new HashSet<>();
 		private Post initialPost;
@@ -673,7 +684,7 @@ public class ActivityPubWorker{
 			LOG.debug("Started fetching parent thread for post {}", initialPost.activityPubID);
 			seenPosts.add(initialPost.activityPubID);
 			while(thread.get(0).inReplyTo!=null){
-				Post post=ObjectLinkResolver.resolve(thread.get(0).inReplyTo, Post.class, true, false, false);
+				Post post=context.getObjectLinkResolver().resolve(thread.get(0).inReplyTo, Post.class, true, false, false);
 				if(seenPosts.contains(post.activityPubID)){
 					LOG.warn("Already seen post {} while fetching parent thread for {}", post.activityPubID, initialPost.activityPubID);
 					throw new IllegalStateException("Reply thread contains a loop of links");
@@ -686,7 +697,7 @@ public class ActivityPubWorker{
 				Post p=thread.get(i);
 				if(p.id!=0)
 					continue;
-				p.storeDependencies();
+				p.storeDependencies(context);
 				Post prev=null;
 				if(i>0){
 					prev=thread.get(i-1);
@@ -696,17 +707,17 @@ public class ActivityPubWorker{
 					p.content=Utils.sanitizeHTML(p.content);
 				if(StringUtils.isNotEmpty(p.summary))
 					p.summary=Utils.sanitizeHTML(p.summary);
-				Utils.loadAndPreprocessRemotePostMentions(p);
+				context.getWallController().loadAndPreprocessRemotePostMentions(p);
 				PostStorage.putForeignWallPost(p);
 				NotificationUtils.putNotificationsForPost(p, prev);
 			}
 			LOG.info("Done fetching parent thread for post {}", topLevel.activityPubID);
-			synchronized(instance){
-				instance.fetchingReplyThreads.remove(initialPost.activityPubID);
-				List<Consumer<List<Post>>> actions=instance.afterFetchReplyThreadActions.remove(initialPost.activityPubID);
+			synchronized(ActivityPubWorker.this){
+				fetchingReplyThreads.remove(initialPost.activityPubID);
+				List<Consumer<List<Post>>> actions=afterFetchReplyThreadActions.remove(initialPost.activityPubID);
 				if(actions!=null){
 					for(Consumer<List<Post>> action:actions){
-						instance.executor.submit(()->action.accept(thread));
+						executor.submit(()->action.accept(thread));
 					}
 				}
 				return thread;
@@ -714,7 +725,7 @@ public class ActivityPubWorker{
 		}
 	}
 
-	private static class FetchAllRepliesTask extends RecursiveTask<Post>{
+	private class FetchAllRepliesTask extends RecursiveTask<Post>{
 		protected Post post;
 		/**
 		 * This keeps track of all the posts we've seen in this comment thread, to prevent a DoS via infinite recursion.
@@ -746,7 +757,7 @@ public class ActivityPubWorker{
 				}else{
 					ActivityPubCollection collection;
 					if(post.replies.link!=null){
-						collection=ObjectLinkResolver.resolve(post.replies.link, ActivityPubCollection.class, true, false, false);
+						collection=context.getObjectLinkResolver().resolve(post.replies.link, ActivityPubCollection.class, true, false, false);
 						collection.validate(post.activityPubID, "replies");
 					}else if(post.replies.object instanceof ActivityPubCollection){
 						collection=(ActivityPubCollection) post.replies.object;
@@ -761,7 +772,7 @@ public class ActivityPubWorker{
 					}
 					CollectionPage page;
 					if(collection.first.link!=null){
-						page=ObjectLinkResolver.resolve(collection.first.link, CollectionPage.class, true, false, false);
+						page=context.getObjectLinkResolver().resolve(collection.first.link, CollectionPage.class, true, false, false);
 						page.validate(post.activityPubID, "replies.first");
 					}else if(collection.first.object instanceof CollectionPage){
 						page=(CollectionPage) collection.first.object;
@@ -775,7 +786,7 @@ public class ActivityPubWorker{
 					}
 					while(page.next!=null){
 						LOG.trace("getting next page: {}", page.next);
-						page=ObjectLinkResolver.resolve(page.next, CollectionPage.class, true, false, false);
+						page=context.getObjectLinkResolver().resolve(page.next, CollectionPage.class, true, false, false);
 						if(page.items==null){ // you're supposed to not return the "next" field when there are no more pages, but mastodon still does...
 							LOG.debug("done fetching replies because page.items is empty");
 							break;
@@ -787,8 +798,8 @@ public class ActivityPubWorker{
 				completeExceptionally(x);
 			}
 			if(post.getReplyLevel()==0){
-				synchronized(instance){
-					instance.fetchingAllReplies.remove(post.activityPubID);
+				synchronized(ActivityPubWorker.this){
+					fetchingAllReplies.remove(post.activityPubID);
 					return post;
 				}
 			}
@@ -828,7 +839,7 @@ public class ActivityPubWorker{
 					}
 					post=(Post) item.object;
 					post.setParent(this.post);
-					post.resolveDependencies(true, true);
+					post.resolveDependencies(context, true, true);
 					PostStorage.putForeignWallPost(post);
 					LOG.trace("got post: {}", post);
 					FetchAllRepliesTask subtask=new FetchAllRepliesTask(post, seenPosts);
@@ -850,7 +861,7 @@ public class ActivityPubWorker{
 		}
 	}
 
-	private static class FetchPostAndRepliesTask extends FetchAllRepliesTask{
+	private class FetchPostAndRepliesTask extends FetchAllRepliesTask{
 		private URI postID;
 		private Post parentPost;
 
@@ -864,9 +875,9 @@ public class ActivityPubWorker{
 		protected Post compute(){
 			try{
 				LOG.trace("Fetching remote reply from {}", postID);
-				post=ObjectLinkResolver.resolve(postID, Post.class, true, false, false);
+				post=context.getObjectLinkResolver().resolve(postID, Post.class, true, false, false);
 				post.setParent(parentPost);
-				post.storeDependencies();
+				post.storeDependencies(context);
 				PostStorage.putForeignWallPost(post);
 			}catch(Exception x){
 				completeExceptionally(x);

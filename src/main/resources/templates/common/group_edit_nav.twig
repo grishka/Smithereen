@@ -1,0 +1,10 @@
+<div class="rightNavigation">
+	<a class="navItem{{ subtab=='all' ? ' selected' : '' }}" href="/groups/{{ group.id }}/editMembers">{{ L('all_group_members') }}</a>
+	{% if adminLevel is null or adminLevel.isAtLeast('ADMIN') %}
+	<a class="navItem{{ subtab=='admins' ? ' selected' : '' }}" href="/groups/{{ group.id }}/editAdmins">{{ L('group_admins') }}</a>
+	{% endif %}
+	{% if subtab=='requests' or joinRequestCount>0 %}
+	<a class="navItem{{ subtab=='requests' ? ' selected' : '' }}" href="/groups/{{ group.id }}/editJoinRequests">{{ L('group_join_requests') }}{% if joinRequestCount>0 %} (<b>{{ joinRequestCount | numberformat }}</b>){% endif %}</a>
+	{% endif %}
+	<a class="navItem{{ subtab=='invites' ? ' selected' : '' }}" href="/groups/{{ group.id }}/editInvitations">{{ L('group_invitations') }}</a>
+</div>

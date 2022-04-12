@@ -5,25 +5,44 @@
 {% extends "page" %}
 {% block content %}
 {% include "group_admin_tabbar" with {'tab': 'members'} %}
-<div class="singleColumn gray">
-	<div class="groupEditMemberList">
-		{% for member in items %}
-			<div class="groupEditMember">
-				{{ member | pictureForAvatar('s', 30) }}
-				<div class="ellipsize">
-					<a href="{{ member.profileURL }}" class="name">{{ member.fullName }}</a>
-				</div>
-				{% if not (adminIDs contains member.id) %}
-					{% if canAddAdmins %}
-						<a href="/groups/{{ group.id }}/editAdminForm?id={{ member.id }}" data-ajax-box="1">{{ L('group_admin_promote') }}</a>
-						|
-					{% endif %}
-					<a href="/groups/{{ group.id }}/confirmBlockUser?id={{ member.id }}" data-confirm-action="/groups/{{ group.id }}/blockUser?id={{ member.id }}" data-confirm-title="{{ L('block') }}" data-confirm-message="{{ L('confirm_block_user_X', {'name': member.firtLastAndGender}) | forceEscape }}">{{ L('block') }}</a>
-				{% endif %}
-				<div class="clear"></div>
-			</div>
-		{% endfor %}
+<div class="summaryWrap">
+	<div class="summary">
+		{{ L(summaryKey, {'count': totalItems}) }}
 	</div>
+	{% include "pagination" %}
+</div>
+<div class="rightNavigationWrap gray">
+	<div class="singleColumn rightNavigationContent">
+		<div class="groupEditMemberList">
+			{% for member in items %}
+				<div class="groupEditMember">
+					{{ member | pictureForAvatar('s', 25) }}
+					<div class="ellipsize">
+						<a href="{{ member.profileURL }}" class="name">{{ member.fullName }}</a>
+					</div>
+					<div class="actions" id="groupMemberActions{{ member.id }}">
+						{% if memberActions is not empty %}
+							{% for action in memberActions %}
+							<a href="{{ action.href }}{{ member.id }}" data-ajax data-ajax-hide="groupMemberActions{{ member.id }}" data-ajax-show="groupMemberProgress{{ member.id }}">{{ action.title }}</a>{% if not loop.last %} |{% endif %}
+							{% endfor %}
+						{% else %}
+						{% if not (adminIDs contains member.id) %}
+							<a href="/groups/{{ group.id }}/confirmRemoveUser?id={{ member.id }}" data-confirm-action="/groups/{{ group.id }}/removeUser?id={{ member.id }}" data-confirm-title="{{ L('remove') }}" data-confirm-message="{{ L('confirm_remove_user_X', {'name': member.firstLastAndGender}) | forceEscape }}">{{ L('remove') }}</a> |
+							{% if canAddAdmins %}
+								<a href="/groups/{{ group.id }}/editAdminForm?id={{ member.id }}" data-ajax-box>{{ L('group_admin_promote') }}</a>
+								|
+							{% endif %}
+							<a href="/groups/{{ group.id }}/confirmBlockUser?id={{ member.id }}" data-confirm-action="/groups/{{ group.id }}/blockUser?id={{ member.id }}" data-confirm-title="{{ L('block') }}" data-confirm-message="{{ L('confirm_block_user_X', {'name': member.firstLastAndGender}) | forceEscape }}">{{ L('block') }}</a>
+						{% endif %}
+						{% endif %}
+					</div>
+					<div class="actions" id="groupMemberProgress{{ member.id }}" style="display: none"><span class="inlineLoader"></span></div>
+					<div class="clear"></div>
+				</div>
+			{% endfor %}
+		</div>
+	</div>
+	{% include "group_edit_nav" %}
 </div>
 <div class="bottomSummaryWrap">{% include "pagination" %}</div>
 {% endblock %}

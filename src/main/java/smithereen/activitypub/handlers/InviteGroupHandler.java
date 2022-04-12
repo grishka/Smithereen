@@ -3,7 +3,6 @@ package smithereen.activitypub.handlers;
 import java.sql.SQLException;
 import java.util.Objects;
 
-import smithereen.ObjectLinkResolver;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
@@ -29,7 +28,7 @@ public class InviteGroupHandler extends ActivityTypeHandler<ForeignUser, Invite,
 		}
 		if(invite.to==null || invite.to.size()!=1 || invite.to.get(0).link==null)
 			throw new BadRequestException("Invite.to must have exactly 1 element and it must be a user ID");
-		User user=ObjectLinkResolver.resolve(invite.to.get(0).link, User.class, true, true, false);
+		User user=context.appContext.getObjectLinkResolver().resolve(invite.to.get(0).link, User.class, true, true, false);
 		Utils.ensureUserNotBlocked(actor, user);
 		context.appContext.getGroupsController().runLocked(()->{
 			Group.MembershipState state=context.appContext.getGroupsController().getUserMembershipState(object, user);

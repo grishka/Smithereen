@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
@@ -382,11 +383,11 @@ public abstract class ActivityPubObject{
 
 	//abstract String getType();
 
-	public void resolveDependencies(boolean allowFetching, boolean allowStorage) throws SQLException{
+	public void resolveDependencies(ApplicationContext context, boolean allowFetching, boolean allowStorage){
 
 	}
 
-	public void storeDependencies() throws SQLException{
+	public void storeDependencies(ApplicationContext context){
 
 	}
 

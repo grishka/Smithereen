@@ -156,31 +156,55 @@ public class GroupsRoutes{
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 
-		List<User> members=context(req).getGroupsController().getRandomMembersForProfile(group, false);
-		int offset=offset(req);
-		PaginatedList<Post> wall=context(req).getWallController().getWallPosts(group, false, offset, 20);
-
-		if(req.attribute("mobile")==null){
-			context(req).getWallController().populateCommentPreviews(wall.list);
+		Group.MembershipState membershipState;
+		if(self==null){
+			membershipState=Group.MembershipState.NONE;
+		}else{
+			membershipState=context(req).getGroupsController().getUserMembershipState(group, self.user);
 		}
 
-		Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
-		Lang l=lang(req);
+		boolean canAccessContent=true;
+		if(membershipState!=Group.MembershipState.MEMBER && membershipState!=Group.MembershipState.TENTATIVE_MEMBER){
+			if(group.accessType==Group.AccessType.CLOSED){
+				canAccessContent=false;
+			}else if(group.accessType==Group.AccessType.PRIVATE){
+				return wrapError(req, resp, group.isEvent() ? "event_private_no_access" : "group_private_no_access");
+			}
+		}
 
+		Lang l=lang(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group", req);
-		model.with("group", group).with("members", members).with("postCount", wall.total).paginate(wall);
+
+		// Public info: still visible for non-members in public groups
+		List<User> members=context(req).getGroupsController().getRandomMembersForProfile(group, false);
+		model.with("group", group).with("members", members);
 		if(group.isEvent())
 			model.with("tentativeMembers", context(req).getGroupsController().getRandomMembersForProfile(group, true));
-		model.with("postInteractions", interactions);
 		model.with("title", group.name);
 		model.with("admins", context(req).getGroupsController().getAdmins(group));
+		model.with("canAccessContent", canAccessContent);
+
+		// Wall posts
+		int wallPostsCount=0;
+		if(canAccessContent){
+			int offset=offset(req);
+			PaginatedList<Post> wall=context(req).getWallController().getWallPosts(group, false, offset, 20);
+			wallPostsCount=wall.total;
+			if(req.attribute("mobile")==null){
+				context(req).getWallController().populateCommentPreviews(wall.list);
+			}
+			Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
+			model.with("postCount", wall.total).paginate(wall);
+			model.with("postInteractions", interactions);
+		}
+
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
+
 		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
 		jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
 		if(self!=null){
 			Group.AdminLevel level=context(req).getGroupsController().getMemberAdminLevel(group, self.user);
-			Group.MembershipState membershipState=context(req).getGroupsController().getUserMembershipState(group, self.user);
 			model.with("membershipState", membershipState);
 			model.with("groupAdminLevel", level);
 			if(level.isAtLeast(Group.AdminLevel.ADMIN)){
@@ -194,6 +218,8 @@ public class GroupsRoutes{
 				else if(membershipState==Group.MembershipState.TENTATIVE_MEMBER)
 					model.with("membershipStateText", l.get("event_joined_tentative"));
 			}
+			if(membershipState==Group.MembershipState.REQUESTED)
+				model.with("membershipStateText", l.get("requested_to_join"));
 		}else{
 			HashMap<String, String> meta=new LinkedHashMap<>();
 			meta.put("og:type", "profile");
@@ -201,7 +227,9 @@ public class GroupsRoutes{
 			meta.put("og:title", group.name);
 			meta.put("og:url", group.url.toString());
 			meta.put("og:username", group.getFullUsername());
-			String descr=l.get("X_members", Map.of("count", group.memberCount))+", "+l.get("X_posts", Map.of("count", wall.total));
+			String descr=l.get("X_members", Map.of("count", group.memberCount));
+			if(wallPostsCount>0)
+				descr+=", "+l.get("X_posts", Map.of("count", wallPostsCount));
 			if(StringUtils.isNotEmpty(group.summary))
 				descr+="\n"+Jsoup.clean(group.summary, Whitelist.none());
 			meta.put("og:description", descr);
@@ -219,8 +247,12 @@ public class GroupsRoutes{
 		}
 		model.with("activityPubURL", group.activityPubID);
 		model.addNavBarItem(l.get(switch(group.type){
-			case GROUP -> "open_group";
-			case EVENT -> "open_event";
+			case GROUP -> switch(group.accessType){
+				case OPEN -> "open_group";
+				case CLOSED -> "closed_group";
+				case PRIVATE -> "private_group";
+			};
+			case EVENT -> group.accessType==Group.AccessType.OPEN ? "open_event" : "private_event";
 		}));
 		ArrayList<PropertyValue> profileFields=new ArrayList<>();
 		if(StringUtils.isNotEmpty(group.summary))
@@ -268,7 +300,8 @@ public class GroupsRoutes{
 
 	public static Object saveGeneral(Request req, Response resp, Account self){
 		Group group=getGroup(req);
-		String name=req.queryParams("name"), about=req.queryParams("about");
+		String name=req.queryParams("name"), about=req.queryParams("about"), username=req.queryParams("username");
+		Group.AccessType accessType=enumValue(req.queryParams("access"), Group.AccessType.class);
 		String message;
 		try{
 			if(StringUtils.isEmpty(name) || name.length()<1)
@@ -294,7 +327,7 @@ public class GroupsRoutes{
 			if(StringUtils.isEmpty(about))
 				about=null;
 
-			context(req).getGroupsController().updateGroupInfo(group, self.user, name, about, eventStart, eventEnd);
+			context(req).getGroupsController().updateGroupInfo(group, self.user, name, about, eventStart, eventEnd, username, accessType);
 
 			message=lang(req).get(group.isEvent() ? "event_info_updated" : "group_info_updated");
 		}catch(BadRequestException x){
@@ -342,6 +375,8 @@ public class GroupsRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_admins", req);
 		model.with("group", group).with("title", group.name);
 		model.with("admins", context(req).getGroupsController().getAdmins(group));
+		model.with("subtab", "admins");
+		model.with("joinRequestCount", context(req).getGroupsController().getJoinRequestCount(self.user, group));
 		jsLangKey(req, "cancel", "group_admin_demote", "yes", "no");
 		return model;
 	}
@@ -355,6 +390,9 @@ public class GroupsRoutes{
 		model.with("adminIDs", context(req).getGroupsController().getAdmins(group).stream().map(adm->adm.user.id).collect(Collectors.toList()));
 		model.with("canAddAdmins", level.isAtLeast(Group.AdminLevel.ADMIN));
 		model.with("adminLevel", level);
+		model.with("subtab", "all");
+		model.with("summaryKey", group.isEvent() ? "summary_event_X_members" : "summary_group_X_members");
+		model.with("joinRequestCount", context(req).getGroupsController().getJoinRequestCount(self.user, group));
 		jsLangKey(req, "cancel", "yes", "no");
 		return model;
 	}
@@ -495,7 +533,7 @@ public class GroupsRoutes{
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_block_user_X", Map.of("user", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/blockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_block_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/blockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object confirmUnblockUser(Request req, Response resp, Account self){
@@ -503,7 +541,7 @@ public class GroupsRoutes{
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_user_X", Map.of("user", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/unblockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/unblockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object blockUser(Request req, Response resp, Account self) throws SQLException{
@@ -513,7 +551,7 @@ public class GroupsRoutes{
 			throw new BadRequestException("Can't block a group manager");
 		GroupStorage.blockUser(group.id, user.id);
 		if(user instanceof ForeignUser)
-			ActivityPubWorker.getInstance().sendBlockActivity(group, (ForeignUser) user);
+			context(req).getActivityPubWorker().sendBlockActivity(group, (ForeignUser) user);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
@@ -525,19 +563,12 @@ public class GroupsRoutes{
 		User user=getUserOrThrow(req);
 		GroupStorage.unblockUser(group.id, user.id);
 		if(user instanceof ForeignUser)
-			ActivityPubWorker.getInstance().sendUndoBlockActivity(group, (ForeignUser) user);
+			context(req).getActivityPubWorker().sendUndoBlockActivity(group, (ForeignUser) user);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}
-
-//	public static Object eventCalendar(Request req, Response resp, Account self){
-//		if(isMobile(req))
-//			return eventCalendarMobile(req, resp, self);
-//		else
-//			return eventCalendarDesktop(req, resp, self);
-//	}
 
 	public static Object eventCalendar(Request req, Response resp, Account self){
 		ZoneId timeZone=timeZoneForRequest(req).toZoneId();
@@ -786,6 +817,102 @@ public class GroupsRoutes{
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).setContent("groupInviteBtns"+group.id,
 					"<div class=\"settingsMessage\">"+lang(req).get(accept ? "group_invite_accepted" : "group_invite_declined")+"</div>");
+		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object confirmRemoveUser(Request req, Response resp, Account self){
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		User user=getUserOrThrow(req);
+		Lang l=Utils.lang(req);
+		String back=Utils.back(req);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_remove_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/removeUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
+	}
+
+	public static Object removeUser(Request req, Response resp, Account self) throws SQLException{
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		User user=getUserOrThrow(req);
+		context(req).getGroupsController().removeUser(self.user, group, user);
+		if(isAjax(req)){
+			if(isMobile(req))
+				return new WebDeltaResponse(resp).refresh();
+			return new WebDeltaResponse(resp).setContent("groupMemberActions"+user.id, "<b>"+lang(req).get("group_member_removed")+"</b>");
+		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object editJoinRequests(Request req, Response resp, Account self){
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
+		model.with("summaryKey", "summary_group_X_join_requests").with("group", group).with("subtab", "requests");
+		PaginatedList<User> list=context(req).getGroupsController().getJoinRequests(self.user, group, offset(req), 50);
+		model.paginate(list);
+		model.with("joinRequestCount", list.total);
+		String csrf=sessionInfo(req).csrfToken;
+		model.with("memberActions", List.of(
+				Map.of("href", "/groups/"+group.id+"/acceptJoinRequest?csrf="+csrf+"&id=", "title", lang(req).get("group_accept_join_request")),
+				Map.of("href", "/groups/"+group.id+"/rejectJoinRequest?csrf="+csrf+"&id=", "title", lang(req).get("group_reject_join_request"))
+		));
+		model.pageTitle(group.name);
+		return model;
+	}
+
+	public static Object acceptJoinRequest(Request req, Response resp, Account self){
+		return respondToJoinRequest(req, resp, self, true);
+	}
+
+	public static Object rejectJoinRequest(Request req, Response resp, Account self){
+		return respondToJoinRequest(req, resp, self, false);
+	}
+
+	private static Object respondToJoinRequest(Request req, Response resp, Account self, boolean accept){
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		User user=getUserOrThrow(req);
+		if(accept)
+			context(req).getGroupsController().acceptJoinRequest(self.user, group, user);
+		else
+			context(req).getGroupsController().removeUser(self.user, group, user);
+		if(isAjax(req)){
+			if(isMobile(req))
+				return new WebDeltaResponse(resp).refresh();
+			return new WebDeltaResponse(resp)
+					.show("groupMemberActions"+user.id)
+					.hide("groupMemberProgress"+user.id)
+					.setContent("groupMemberActions"+user.id, "<b>"+lang(req).get(accept ? "group_join_request_accepted" : "group_join_request_rejected")+"</b>");
+		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object editInvitations(Request req, Response resp, Account self){
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
+		model.with("summaryKey", group.isEvent() ? "summary_event_X_invites" : "summary_group_X_invites").with("group", group).with("subtab", "invites");
+		PaginatedList<User> list=context(req).getGroupsController().getGroupInvites(self.user, group, offset(req), 50);
+		model.paginate(list);
+		model.with("joinRequestCount", context(req).getGroupsController().getJoinRequestCount(self.user, group));
+		String csrf=sessionInfo(req).csrfToken;
+		model.with("memberActions", List.of(
+				Map.of("href", "/groups/"+group.id+"/cancelInvite?csrf="+csrf+"&id=", "title", lang(req).get("cancel_invitation"))
+		));
+		model.pageTitle(group.name);
+		jsLangKey(req, "cancel");
+		return model;
+	}
+
+	public static Object editCancelInvitation(Request req, Response resp, Account self){
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
+		User user=getUserOrThrow(req);
+		context(req).getGroupsController().cancelInvitation(self.user, group, user);
+		if(isAjax(req)){
+			if(isMobile(req))
+				return new WebDeltaResponse(resp).refresh();
+			return new WebDeltaResponse(resp)
+					.show("groupMemberActions"+user.id)
+					.hide("groupMemberProgress"+user.id)
+					.setContent("groupMemberActions"+user.id, "<b>"+lang(req).get("invitation_canceled")+"</b>");
 		}
 		resp.redirect(back(req));
 		return "";

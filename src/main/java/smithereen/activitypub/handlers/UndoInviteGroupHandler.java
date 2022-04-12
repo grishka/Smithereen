@@ -3,7 +3,6 @@ package smithereen.activitypub.handlers;
 import java.sql.SQLException;
 import java.util.Objects;
 
-import smithereen.ObjectLinkResolver;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Invite;
@@ -21,7 +20,7 @@ public class UndoInviteGroupHandler extends NestedActivityTypeHandler<ForeignGro
 
 		if(invite.to==null || invite.to.size()!=1 || invite.to.get(0).link==null)
 			throw new BadRequestException("Invite.to must have exactly 1 element and it must be a user ID");
-		User user=ObjectLinkResolver.resolve(invite.to.get(0).link, User.class, false, false, false);
+		User user=context.appContext.getObjectLinkResolver().resolve(invite.to.get(0).link, User.class, false, false, false);
 		user.ensureLocal();
 
 		GroupStorage.deleteInvitation(user.id, group.id, group.isEvent());

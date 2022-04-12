@@ -2,6 +2,7 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.annotations.SerializedName;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -45,6 +46,8 @@ public abstract class Actor extends ActivityPubObject{
 	public URI followers;
 	public URI following;
 	public Timestamp lastUpdated;
+
+	public String aboutSource;
 
 	public String getProfileURL(String action){
 		return "/"+getFullUsername()+"/"+action;
@@ -203,8 +206,6 @@ public abstract class Actor extends ActivityPubObject{
 			sharedInbox=tryParseURL(optString(endpoints, "sharedInbox"));
 			ensureHostMatchesID(sharedInbox, "sharedInbox");
 		}
-		if(sharedInbox==null)
-			sharedInbox=inbox;
 
 		if(summary!=null)
 			summary=Utils.sanitizeHTML(summary);
@@ -249,7 +250,7 @@ public abstract class Actor extends ActivityPubObject{
 				length|=in.read() & 0xFF;
 			}
 		}
-		return length;
+		return Math.min(length, in.available());
 	}
 
 	protected void fillFromResultSet(ResultSet res) throws SQLException{
@@ -276,6 +277,7 @@ public abstract class Actor extends ActivityPubObject{
 		}
 
 		username=res.getString("username");
+		aboutSource=res.getString("about_source");
 	}
 
 	public boolean hasWall(){
@@ -298,5 +300,47 @@ public abstract class Actor extends ActivityPubObject{
 
 	protected boolean canBeFollowed(){
 		return true;
+	}
+
+	public String getAboutSource(){
+		return StringUtils.isNotEmpty(aboutSource) ? aboutSource : summary;
+	}
+
+	public EndpointsStorageWrapper getEndpointsForStorage(){
+		if(StringUtils.isEmpty(domain))
+			return null;
+		EndpointsStorageWrapper ep=new EndpointsStorageWrapper();
+		if(followers!=null)
+			ep.followers=followers.toString();
+		if(following!=null)
+			ep.following=following.toString();
+		if(outbox!=null)
+			ep.outbox=outbox.toString();
+		URI wall=getWallURL();
+		if(wall!=null)
+			ep.wall=wall.toString();
+		return ep;
+	}
+
+	public String serializeEndpoints(){
+		EndpointsStorageWrapper endpoints=getEndpointsForStorage();
+		return endpoints!=null ? Utils.gson.toJson(endpoints) : null;
+	}
+
+	public static class EndpointsStorageWrapper{
+		@SerializedName("fs")
+		public String followers;
+		@SerializedName("fg")
+		public String following;
+		@SerializedName("ob")
+		public String outbox;
+		@SerializedName("wl")
+		public String wall;
+		@SerializedName("fr")
+		public String friends;
+		@SerializedName("gr")
+		public String groups;
+		@SerializedName("at")
+		public String actorToken;
 	}
 }

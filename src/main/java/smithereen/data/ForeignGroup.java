@@ -11,7 +11,8 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Objects;
 
-import smithereen.ObjectLinkResolver;
+import smithereen.ApplicationContext;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -23,6 +24,7 @@ import spark.utils.StringUtils;
 public class ForeignGroup extends Group implements ForeignActor{
 
 	private URI wall;
+	public URI actorTokenEndpoint;
 	public EnumSet<Capability> capabilities=EnumSet.noneOf(ForeignGroup.Capability.class);
 
 	public static ForeignGroup fromResultSet(ResultSet res) throws SQLException{
@@ -38,12 +40,15 @@ public class ForeignGroup extends Group implements ForeignActor{
 		activityPubID=tryParseURL(res.getString("ap_id"));
 		url=tryParseURL(res.getString("ap_url"));
 		inbox=tryParseURL(res.getString("ap_inbox"));
-		outbox=tryParseURL(res.getString("ap_outbox"));
 		sharedInbox=tryParseURL(res.getString("ap_shared_inbox"));
-		followers=tryParseURL(res.getString("ap_followers"));
 		lastUpdated=res.getTimestamp("last_updated");
-		wall=tryParseURL(res.getString("ap_wall"));
 		Utils.deserializeEnumSet(capabilities, ForeignGroup.Capability.class, res.getLong("flags"));
+
+		EndpointsStorageWrapper ep=Utils.gson.fromJson(res.getString("endpoints"), EndpointsStorageWrapper.class);
+		outbox=tryParseURL(ep.outbox);
+		followers=tryParseURL(ep.followers);
+		wall=tryParseURL(ep.wall);
+		actorTokenEndpoint=tryParseURL(ep.actorToken);
 	}
 
 	@Override
@@ -83,6 +88,19 @@ public class ForeignGroup extends Group implements ForeignActor{
 			if(optBoolean(caps, "tentativeMembership"))
 				capabilities.add(Capability.TENTATIVE_MEMBERSHIP);
 		}
+
+		String access=optString(obj, "accessType");
+		if(access!=null){
+			try{
+				accessType=AccessType.valueOf(access.toUpperCase());
+			}catch(IllegalArgumentException ignore){}
+		}
+		if(accessType==null){
+			accessType=optBoolean(obj, "manuallyApprovesFollowers") ? AccessType.CLOSED : AccessType.OPEN;
+		}
+		JsonObject endpoints=obj.getAsJsonObject("endpoints");
+		actorTokenEndpoint=tryParseURL(optString(endpoints, "actorToken"));
+		ensureHostMatchesID(actorTokenEndpoint, "endpoints.actorToken");
 
 		return this;
 	}
@@ -128,17 +146,17 @@ public class ForeignGroup extends Group implements ForeignActor{
 	}
 
 	@Override
-	public void resolveDependencies(boolean allowFetching, boolean allowStorage) throws SQLException{
+	public void resolveDependencies(ApplicationContext context, boolean allowFetching, boolean allowStorage){
 		for(GroupAdmin adm:adminsForActivityPub){
-			adm.user=ObjectLinkResolver.resolve(adm.activityPubUserID, User.class, allowFetching, allowStorage, false);
+			adm.user=context.getObjectLinkResolver().resolve(adm.activityPubUserID, User.class, allowFetching, allowStorage, false);
 		}
 	}
 
 	@Override
-	public void storeDependencies() throws SQLException{
+	public void storeDependencies(ApplicationContext context){
 		for(GroupAdmin adm:adminsForActivityPub){
 			if(adm.user instanceof ForeignUser && adm.user.id==0){
-				ObjectLinkResolver.storeOrUpdateRemoteObject(adm.user);
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(adm.user);
 			}
 		}
 	}
@@ -146,6 +164,14 @@ public class ForeignGroup extends Group implements ForeignActor{
 	@Override
 	public boolean needUpdate(){
 		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.getTime()>24L*60*60*1000;
+	}
+
+	@Override
+	public EndpointsStorageWrapper getEndpointsForStorage(){
+		EndpointsStorageWrapper ep=super.getEndpointsForStorage();
+		if(actorTokenEndpoint!=null)
+			ep.actorToken=actorTokenEndpoint.toString();
+		return ep;
 	}
 
 	public boolean hasCapability(Capability cap){

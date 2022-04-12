@@ -25,6 +25,7 @@ public class Group extends Actor{
 	public int memberCount, tentativeMemberCount;
 	public Type type=Type.GROUP;
 	public Instant eventStartTime, eventEndTime;
+	public AccessType accessType;
 
 	public List<GroupAdmin> adminsForActivityPub;
 
@@ -76,6 +77,7 @@ public class Group extends Actor{
 		eventStartTime=DatabaseUtils.getInstant(res, "event_start_time");
 		eventEndTime=DatabaseUtils.getInstant(res, "event_end_time");
 		type=Type.values()[res.getInt("type")];
+		accessType=AccessType.values()[res.getInt("access_type")];
 
 		if(type==Type.EVENT){
 			Event event=new Event();
@@ -112,11 +114,21 @@ public class Group extends Actor{
 			contextCollector.addAlias("tentativeMembership", "sm:tentativeMembership");
 		}
 
+		contextCollector.addAlias("accessType", "sm:accessType");
+		obj.addProperty("accessType", accessType.toString().toLowerCase());
+		obj.addProperty("manuallyApprovesFollowers", accessType!=AccessType.OPEN);
+
 		capabilities.addProperty("acceptsJoins", true);
 		obj.add("capabilities", capabilities);
 		contextCollector.addAlias("capabilities", "litepub:capabilities");
 		contextCollector.addAlias("acceptsJoins", "litepub:acceptsJoins");
 		contextCollector.addAlias("litepub", JLD.LITEPUB);
+
+		JsonObject endpoints=obj.getAsJsonObject("endpoints");
+		if(accessType!=AccessType.OPEN){
+			endpoints.addProperty("actorToken", userURL+"/actorToken");
+			contextCollector.addAlias("actorToken", "sm:actorToken");
+		}
 
 		return obj;
 	}
@@ -151,6 +163,7 @@ public class Group extends Actor{
 		MEMBER,
 		TENTATIVE_MEMBER,
 		INVITED,
+		REQUESTED,
 	}
 
 	public enum Type{
@@ -158,4 +171,18 @@ public class Group extends Actor{
 		EVENT
 	}
 
+	public enum AccessType{
+		/**
+		 * Fully public
+		 */
+		OPEN,
+		/**
+		 * Public profile, private content, admins accept new joins
+		 */
+		CLOSED,
+		/**
+		 * Doesn't acknowledge its existence unless you're a member, invite-only
+		 */
+		PRIVATE
+	}
 }

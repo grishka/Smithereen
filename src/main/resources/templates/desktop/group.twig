@@ -1,5 +1,6 @@
 {# @pebvariable name="group" type="smithereen.data.Group" #}
 {# @pebvariable name="canEditGroup" type="boolean" #}
+{# @pebvariable name="canAccessContent" type="boolean" #}
 {%extends "page"%}
 {% set canEditGroup=userPermissions is not null and userPermissions.canEditGroup(group) %}
 {% set canManageGroup=userPermissions is not null and userPermissions.canManageGroup(group) %}
@@ -26,7 +27,9 @@
 				{% endfor %}
 			</table>
 			</div>
+			{% if canAccessContent %}
 			{% include "profile_module_wall" with {'wallOwner': group, 'isGroup': true, 'headerTitle': L('wall'), 'headerHref': "/groups/#{group.id}/wall", 'additionalHeader': L('X_posts', {'count': totalItems})} %}
+			{% endif %}
 		</td>
 
 		<!-- right column -->
@@ -68,7 +71,7 @@
 				{% endif %}
 				{% else %}
 				{% if membershipState=="NONE" or membershipState=="INVITED" %}
-					<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button{{ membershipStateText is empty ? '' : ' withText' }}">{{ L('join_group') }}</a>
+					<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button{{ membershipStateText is empty ? '' : ' withText' }}">{{ L(group.accessType=='CLOSED' ? 'apply_to_join_group' : 'join_group') }}</a>
 				{% endif %}
 				{% endif %}
 			</div>
@@ -84,8 +87,13 @@
 				{% endif %}
 				{% endif %}
 			    <li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}">{{ L(group.event ? 'leave_event' : 'leave_group') }}</a></li>
+				{% if group.accessType!='PRIVATE' or canManageGroup %}
 				<li><a href="/my/friends?act=groupInvite&group={{ group.id }}">{{ L('invite_friends') }}</a></li>
+				{% endif %}
 			    {% endif %}
+				{% if membershipState=='REQUESTED' %}
+				<li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}">{{ L(group.event ? 'leave_event' : 'leave_group') }}</a></li>
+				{% endif %}
 			{% endif %}
 			{% if canEditGroup %}
 				<li><a href="/groups/{{ group.id }}/edit">{{ L(group.event ? 'edit_event' : 'edit_group') }}</a></li>

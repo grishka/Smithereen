@@ -5,17 +5,27 @@
 {% extends "page" %}
 {% block content %}
 {% include "group_admin_tabbar" with {'tab': 'members'} %}
+{% include "group_edit_nav" %}
 	<div class="groupEditMemberList">
 		{% for member in items %}
 			<div class="groupEditMember nonReorderable">
 				{{ member | pictureForAvatar('s') }}
+				{% set options=[] %}
+				{% if memberActions is not empty %}
+					{% for action in memberActions %}
+						{% set _=options.add({'type': 'link', 'href': "#{action.href}#{member.id}", 'label': action.title, 'ajax': '1'}) %}
+					{% endfor %}
+				{% else %}
 				{% if not (adminIDs contains member.id) %}
-					{% set options=[] %}
+					{% set _=options.add({'type': 'confirm', 'label': L('remove').toString(), 'url': "/groups/#{group.id}/removeUser?id=#{member.id}", 'title': L('remove').toString(), 'msg': L('confirm_remove_user_X', {'name': member.firstLastAndGender}).toString() }) %}
 					{% if canAddAdmins %}
 						{% set _=options.add({'type': 'link', 'href': "/groups/#{group.id}/editAdminForm?id=#{admin.user.id}", 'label': L('group_admin_promote').toString(), 'ajax': 'box'}) %}
 					{% endif %}
 					{% set _=options.add({'type': 'confirm', 'label': L('block').toString(), 'url': "/groups/#{group.id}/blockUser?id=#{member.id}", 'title': L('block').toString(), 'msg': L('confirm_block_user_X', {'name': member.firstLastAndGender}).toString() }) %}
-					<a class="moreButton" onclick="return showOptions(this)" data-options="{{ json(options) }}"></a>
+				{% endif %}
+				{% endif %}
+				{% if options is not empty %}
+				<a class="moreButton" onclick="return showOptions(this)" data-options="{{ json(options) }}"></a>
 				{% endif %}
 				<div class="ellipsize nameWrap">
 					<a href="{{ member.profileURL }}" class="name">{{ member.fullName }}</a>

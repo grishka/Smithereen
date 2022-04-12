@@ -26,24 +26,22 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -53,17 +51,13 @@ import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
 import cz.jirutka.unidecode.Unidecode;
-import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.objects.ActivityPubObject;
-import smithereen.activitypub.objects.Mention;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
-import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
-import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
@@ -76,7 +70,10 @@ import smithereen.util.TopLevelDomainList;
 import spark.Request;
 import spark.Response;
 import spark.Session;
+import spark.utils.MimeParse;
 import spark.utils.StringUtils;
+
+import static spark.Spark.get;
 
 public class Utils{
 
@@ -179,13 +176,12 @@ public class Utils{
 	}
 
 	public static Object wrapError(Request req, Response resp, String errorKey, Map<String, Object> formatArgs){
-		SessionInfo info=req.session().attribute("info");
 		Lang l=lang(req);
 		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok"));
 		}
-		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error"));
+		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", back(req)).with("title", l.get("error"));
 	}
 
 	public static String wrapErrorString(Request req, Response resp, String errorKey){
@@ -193,13 +189,14 @@ public class Utils{
 	}
 
 	public static String wrapErrorString(Request req, Response resp, String errorKey, Map<String, Object> formatArgs){
-		SessionInfo info=req.session().attribute("info");
 		Lang l=lang(req);
 		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok")).json();
+		}else if(isActivityPub(req)){
+			return msg;
 		}
-		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error")).renderToString();
+		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", back(req)).with("title", l.get("error")).renderToString();
 	}
 
 	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, RenderedTemplateResponse templateModel){
@@ -380,7 +377,8 @@ public class Utils{
 		String ref=req.headers("referer");
 		if(ref!=null)
 			return ref;
-		return sessionInfo(req).history.last();
+		SessionInfo sessionInfo=sessionInfo(req);
+		return sessionInfo!=null ? sessionInfo.history.last() : "/";
 	}
 
 	public static String truncateOnWordBoundary(String s, int maxLen){
@@ -397,6 +395,14 @@ public class Utils{
 
 	public static boolean isMobile(Request req){
 		return req.attribute("mobile")!=null;
+	}
+
+	public static boolean isActivityPub(Request req){
+		String accept=req.headers("accept");
+		if(StringUtils.isEmpty(accept))
+			return false;
+		String matched=MimeParse.bestMatch(Set.of("application/activity+json", "application/ld+json"), accept);
+		return StringUtils.isNotEmpty(matched);
 	}
 
 	public static String escapeHTML(String s){
@@ -615,7 +621,7 @@ public class Utils{
 		return doc.body().html();
 	}
 
-	public static String preprocessRemotePostMentions(String text, List<User> users){
+	public static String preprocessRemotePostMentions(String text, Set<User> users){
 		Document doc=Jsoup.parseBodyFragment(text);
 
 		for(Element link:doc.select("a.mention")){
@@ -637,36 +643,6 @@ public class Utils{
 		}
 
 		return doc.body().html();
-	}
-
-	public static void loadAndPreprocessRemotePostMentions(Post post) throws SQLException{
-		if(post.tag!=null){
-			for(ActivityPubObject tag:post.tag){
-				if(tag instanceof Mention){
-					URI uri=((Mention) tag).href;
-					User mentionedUser=UserStorage.getUserByActivityPubID(uri);
-					if(mentionedUser==null){
-						try{
-							ActivityPubObject _user=ActivityPub.fetchRemoteObject(uri);
-							if(_user instanceof ForeignUser){
-								ForeignUser u=(ForeignUser) _user;
-								UserStorage.putOrUpdateForeignUser(u);
-								mentionedUser=u;
-							}
-						}catch(IOException|ObjectNotFoundException ignore){}
-					}
-					if(mentionedUser!=null){
-						if(post.mentionedUsers.isEmpty())
-							post.mentionedUsers=new ArrayList<>();
-						if(!post.mentionedUsers.contains(mentionedUser))
-							post.mentionedUsers.add(mentionedUser);
-					}
-				}
-			}
-			if(!post.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.content)){
-				post.content=Utils.preprocessRemotePostMentions(post.content, post.mentionedUsers);
-			}
-		}
 	}
 
 	public static void ensureUserNotBlocked(User self, User target) throws SQLException{
@@ -812,6 +788,36 @@ public class Utils{
 			if((l&1)==1)
 				set.add(e);
 			l >>= 1;
+		}
+	}
+
+	/**
+	 * Convert a string to an enum value
+	 * @param val
+	 * @param cls
+	 * @param <E>
+	 * @return
+	 */
+	public static <E extends Enum<E>> E enumValue(String val, Class<E> cls){
+		if(val==null)
+			throw new BadRequestException("null value");
+		try{
+			return Enum.valueOf(cls, val);
+		}catch(IllegalArgumentException x){
+			throw new BadRequestException("'"+val+"' is not a valid value for "+cls.getSimpleName());
+		}
+	}
+
+	/**
+	 * Ensure that the request has required query parameters to avoid any surprise NPEs.
+	 * @param req The request
+	 * @param params The parameter names
+	 * @throws BadRequestException if any of the parameters doesn't present
+	 */
+	public static void requireQueryParams(Request req, String... params){
+		for(String param:params){
+			if(StringUtils.isEmpty(req.queryParams(param)))
+				throw new BadRequestException("Required parameter '"+param+"' not present");
 		}
 	}
 

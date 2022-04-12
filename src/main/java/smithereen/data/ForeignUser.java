@@ -32,14 +32,16 @@ public class ForeignUser extends User implements ForeignActor{
 		activityPubID=tryParseURL(res.getString("ap_id"));
 		url=tryParseURL(res.getString("ap_url"));
 		inbox=tryParseURL(res.getString("ap_inbox"));
-		outbox=tryParseURL(res.getString("ap_outbox"));
 		sharedInbox=tryParseURL(res.getString("ap_shared_inbox"));
-		followers=tryParseURL(res.getString("ap_followers"));
-		following=tryParseURL(res.getString("ap_following"));
 		lastUpdated=res.getTimestamp("last_updated");
-		wall=tryParseURL(res.getString("ap_wall"));
-		friends=tryParseURL(res.getString("ap_friends"));
-		groups=tryParseURL(res.getString("ap_groups"));
+
+		EndpointsStorageWrapper ep=Utils.gson.fromJson(res.getString("endpoints"), EndpointsStorageWrapper.class);
+		outbox=tryParseURL(ep.outbox);
+		followers=tryParseURL(ep.followers);
+		following=tryParseURL(ep.following);
+		wall=tryParseURL(ep.wall);
+		friends=tryParseURL(ep.friends);
+		groups=tryParseURL(ep.groups);
 	}
 
 	@Override
@@ -170,5 +172,15 @@ public class ForeignUser extends User implements ForeignActor{
 	@Override
 	public boolean needUpdate(){
 		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.getTime()>24L*60*60*1000;
+	}
+
+	@Override
+	public EndpointsStorageWrapper getEndpointsForStorage(){
+		EndpointsStorageWrapper ep=super.getEndpointsForStorage();
+		if(friends!=null)
+			ep.friends=friends.toString();
+		if(groups!=null)
+			ep.groups=groups.toString();
+		return ep;
 	}
 }

@@ -3,12 +3,11 @@ package smithereen.activitypub.handlers;
 import java.sql.SQLException;
 import java.util.Objects;
 
-import smithereen.ObjectLinkResolver;
-import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.activities.Add;
+import smithereen.controllers.WallController;
 import smithereen.data.Post;
 import smithereen.data.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
@@ -23,8 +22,8 @@ public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, Post>{
 		if(post.inReplyTo!=null)
 			throw new BadRequestException("Post can't be a reply");
 
-		Utils.loadAndPreprocessRemotePostMentions(post);
-		ObjectLinkResolver.storeOrUpdateRemoteObject(post);
+		context.appContext.getWallController().loadAndPreprocessRemotePostMentions(post);
+		context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
 		NotificationUtils.putNotificationsForPost(post, null);
 	}
 }

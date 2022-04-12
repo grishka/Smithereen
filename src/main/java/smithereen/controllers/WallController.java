@@ -10,10 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -28,11 +25,10 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.data.ForeignUser;
+import smithereen.activitypub.objects.Mention;
 import smithereen.data.Group;
 import smithereen.data.PaginatedList;
 import smithereen.data.Poll;
-import smithereen.data.PollOption;
 import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
@@ -50,7 +46,6 @@ import spark.utils.StringUtils;
 
 import static smithereen.Utils.ensureUserNotBlocked;
 import static smithereen.Utils.escapeHTML;
-import static smithereen.Utils.parseIntOrDefault;
 import static smithereen.Utils.preprocessPostHTML;
 
 public class WallController{
@@ -60,6 +55,23 @@ public class WallController{
 
 	public WallController(ApplicationContext context){
 		this.context=context;
+	}
+
+	public void loadAndPreprocessRemotePostMentions(Post post){
+		if(post.tag!=null){
+			for(ActivityPubObject tag:post.tag){
+				if(tag instanceof Mention){
+					URI uri=((Mention) tag).href;
+					User mentionedUser=context.getObjectLinkResolver().resolve(uri, User.class, true, true, false);
+					if(post.mentionedUsers.isEmpty())
+						post.mentionedUsers=new HashSet<>();
+					post.mentionedUsers.add(mentionedUser);
+				}
+			}
+			if(!post.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.content)){
+				post.content=Utils.preprocessRemotePostMentions(post.content, post.mentionedUsers);
+			}
+		}
 	}
 
 	/**
@@ -177,9 +189,9 @@ public class WallController{
 			if(post==null)
 				throw new IllegalStateException("?!");
 			if(inReplyToID==0 && (ownerGroupID!=0 || ownerUserID!=userID) && !(wallOwner instanceof ForeignActor)){
-				ActivityPubWorker.getInstance().sendAddPostToWallActivity(post);
+				context.getActivityPubWorker().sendAddPostToWallActivity(post);
 			}else{
-				ActivityPubWorker.getInstance().sendCreatePostActivity(post);
+				context.getActivityPubWorker().sendCreatePostActivity(post);
 			}
 			NotificationUtils.putNotificationsForPost(post, parent);
 
@@ -207,13 +219,7 @@ public class WallController{
 						return user;
 					}
 					URI uri=ActivityPub.resolveUsername(username, domain);
-					ActivityPubObject obj=ActivityPub.fetchRemoteObject(uri);
-					if(obj instanceof ForeignUser _user){
-						UserStorage.putOrUpdateForeignUser(_user);
-						if(!mentionedUsers.contains(_user))
-							mentionedUsers.add(_user);
-						return _user;
-					}
+					return context.getObjectLinkResolver().resolve(uri, User.class, true, true, false);
 				}catch(Exception x){
 					LOG.warn("Can't resolve {}@{}", username, domain, x);
 				}
@@ -360,7 +366,7 @@ public class WallController{
 			PostStorage.updateWallPost(id, text, textSource, mentionedUsers, attachments, contentWarning, pollID);
 
 			post=getPostOrThrow(id);
-			ActivityPubWorker.getInstance().sendUpdatePostActivity(post);
+			context.getActivityPubWorker().sendUpdatePostActivity(post);
 			return post;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

@@ -10,9 +10,10 @@ import java.sql.SQLException;
 
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.objects.Actor;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=19;
+	public static final int SCHEMA_VERSION=21;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -307,6 +308,49 @@ public class DatabaseSchemaUpdater{
 							CONSTRAINT `group_invites_ibfk_2` FOREIGN KEY (`invitee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
 							CONSTRAINT `group_invites_ibfk_3` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+		}else if(target==20){
+			// Make room for a new column
+			conn.createStatement().execute("ALTER TABLE `users` CHANGE `ap_outbox` `ap_outbox` TEXT");
+			conn.createStatement().execute("ALTER TABLE `groups` CHANGE `ap_outbox` `ap_outbox` TEXT");
+			// Then add the new column
+			conn.createStatement().execute("ALTER TABLE `users` ADD `endpoints` json DEFAULT NULL");
+			conn.createStatement().execute("ALTER TABLE `groups` ADD `endpoints` json DEFAULT NULL");
+			PreparedStatement stmt=conn.prepareStatement("UPDATE `users` SET `endpoints`=? WHERE `id`=?");
+			try(ResultSet res=conn.createStatement().executeQuery("SELECT `id`,`ap_outbox`,`ap_followers`,`ap_following`,`ap_wall`,`ap_friends`,`ap_groups` FROM `users` WHERE `ap_id` IS NOT NULL")){
+				res.beforeFirst();
+				while(res.next()){
+					int id=res.getInt(1);
+					Actor.EndpointsStorageWrapper ep=new Actor.EndpointsStorageWrapper();
+					ep.outbox=res.getString(2);
+					ep.followers=res.getString(3);
+					ep.following=res.getString(4);
+					ep.wall=res.getString(5);
+					ep.friends=res.getString(6);
+					ep.groups=res.getString(7);
+					stmt.setString(1, Utils.gson.toJson(ep));
+					stmt.setInt(2, id);
+					stmt.execute();
+				}
+			}
+			stmt=conn.prepareStatement("UPDATE `groups` SET `endpoints`=? WHERE `id`=?");
+			try(ResultSet res=conn.createStatement().executeQuery("SELECT `id`,`ap_outbox`,`ap_followers`,`ap_wall` FROM `groups` WHERE `ap_id` IS NOT NULL")){
+				res.beforeFirst();
+				while(res.next()){
+					int id=res.getInt(1);
+					Actor.EndpointsStorageWrapper ep=new Actor.EndpointsStorageWrapper();
+					ep.outbox=res.getString(2);
+					ep.followers=res.getString(3);
+					ep.wall=res.getString(4);
+					stmt.setString(1, Utils.gson.toJson(ep));
+					stmt.setInt(2, id);
+					stmt.execute();
+				}
+			}
+			conn.createStatement().execute("ALTER TABLE `users` DROP `ap_outbox`, DROP `ap_followers`, DROP `ap_following`, DROP `ap_wall`, DROP `ap_friends`, DROP `ap_groups`");
+			conn.createStatement().execute("ALTER TABLE `groups` DROP `ap_outbox`, DROP `ap_followers`, DROP `ap_wall`");
+			conn.createStatement().execute("ALTER TABLE `groups` ADD `access_type` tinyint NOT NULL DEFAULT '0'");
+		}else if(target==21){
+			conn.createStatement().execute("ALTER TABLE `group_memberships` ADD `time` timestamp DEFAULT CURRENT_TIMESTAMP()");
 		}
 	}
 }

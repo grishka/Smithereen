@@ -380,7 +380,7 @@ public class PostRoutes{
 		if(self.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal() && post.user.id!=self.id && !post.isGroupOwner() && post.owner.getLocalID()!=self.id && !(post.user instanceof ForeignUser)){
 			deleteActor=post.user;
 		}
-		ActivityPubWorker.getInstance().sendDeletePostActivity(post, deleteActor);
+		context(req).getActivityPubWorker().sendDeletePostActivity(post, deleteActor);
 		if(isAjax(req)){
 			resp.type("application/json");
 			return new WebDeltaResponse().remove("post"+postID);
@@ -414,7 +414,7 @@ public class PostRoutes{
 			n.objectType=Notification.ObjectType.POST;
 			NotificationsStorage.putNotification(post.user.id, n);
 		}
-		ActivityPubWorker.getInstance().sendLikeActivity(post, self.user, id);
+		context(req).getActivityPubWorker().sendLikeActivity(post, self.user, id);
 		if(isAjax(req)){
 			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
 			return new WebDeltaResponse(resp)
@@ -441,7 +441,7 @@ public class PostRoutes{
 		if(!(post.user instanceof ForeignUser) && post.user.id!=self.user.id){
 			NotificationsStorage.deleteNotification(Notification.ObjectType.POST, postID, Notification.Type.LIKE, self.user.id);
 		}
-		ActivityPubWorker.getInstance().sendUndoLikeActivity(post, self.user, id);
+		context(req).getActivityPubWorker().sendUndoLikeActivity(post, self.user, id);
 		if(isAjax(req)){
 			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
 			WebDeltaResponse b=new WebDeltaResponse(resp)

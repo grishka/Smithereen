@@ -326,6 +326,7 @@ public class SmithereenApplication{
 			getActivityPubCollection("/members", 50, ActivityPubRoutes::groupMembers);
 			getActivityPubCollection("/tentativeMembers", 50, ActivityPubRoutes::groupTentativeMembers);
 			getActivityPubCollection("/wall", 50, ActivityPubRoutes::groupWall);
+			get("/actorToken", ActivityPubRoutes::groupActorToken);
 
 			getLoggedIn("/edit", GroupsRoutes::editGeneral);
 			postWithCSRF("/saveGeneral", GroupsRoutes::saveGeneral);
@@ -346,6 +347,13 @@ public class SmithereenApplication{
 			postWithCSRF("/unblockUser", GroupsRoutes::unblockUser);
 			postWithCSRF("/blockDomain", GroupsRoutes::blockDomain);
 			postWithCSRF("/unblockDomain", GroupsRoutes::unblockDomain);
+			getLoggedIn("/confirmRemoveUser", GroupsRoutes::confirmRemoveUser);
+			postWithCSRF("/removeUser", GroupsRoutes::removeUser);
+			getLoggedIn("/editJoinRequests", GroupsRoutes::editJoinRequests);
+			getWithCSRF("/acceptJoinRequest", GroupsRoutes::acceptJoinRequest);
+			getWithCSRF("/rejectJoinRequest", GroupsRoutes::rejectJoinRequest);
+			getLoggedIn("/editInvitations", GroupsRoutes::editInvitations);
+			getWithCSRF("/cancelInvite", GroupsRoutes::editCancelInvitation);
 
 			get("/members", GroupsRoutes::members);
 			get("/tentativeMembers", GroupsRoutes::tentativeMembers);
@@ -423,7 +431,6 @@ public class SmithereenApplication{
 			// These also handle groups
 			getActivityPub("", ActivityPubRoutes::userActor);
 			get("", ProfileRoutes::profile);
-
 
 			postWithCSRF("/remoteFollow", ActivityPubRoutes::remoteFollow);
 
@@ -533,7 +540,7 @@ public class SmithereenApplication{
 			// These try-catch blocks are needed because these classes might not have been loaded by the time the process is shut down,
 			// and the JVM refuses to load any new classes from within a shutdown hook.
 			try{
-				ActivityPubWorker.shutDown();
+				context.getActivityPubWorker().shutDown();
 			}catch(NoClassDefFoundError ignore){}
 			try{
 				MaintenanceScheduler.shutDown();

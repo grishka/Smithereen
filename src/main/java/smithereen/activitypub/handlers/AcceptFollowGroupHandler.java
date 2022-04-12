@@ -2,15 +2,14 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
-import smithereen.activitypub.ActivityPubWorker;
-import smithereen.activitypub.objects.Actor;
-import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.data.ForeignGroup;
+import smithereen.data.Group;
 import smithereen.data.User;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 
@@ -22,6 +21,8 @@ public class AcceptFollowGroupHandler extends NestedActivityTypeHandler<ForeignG
 			throw new ObjectNotFoundException("Follower not found");
 		follower.ensureLocal();
 		GroupStorage.setMemberAccepted(actor.id, follower.id, true);
-		ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(follower, actor);
+		if(object.accessType!=Group.AccessType.PRIVATE){
+			context.appContext.getActivityPubWorker().sendAddToGroupsCollectionActivity(follower, actor);
+		}
 	}
 }

@@ -625,11 +625,8 @@ public class UserStorage{
 				.value("public_key", user.publicKey.getEncoded())
 				.value("ap_url", Objects.toString(user.url, null))
 				.value("ap_inbox", Objects.toString(user.inbox, null))
-				.value("ap_outbox", Objects.toString(user.outbox, null))
 				.value("ap_shared_inbox", Objects.toString(user.sharedInbox, null))
 				.value("ap_id", user.activityPubID.toString())
-				.value("ap_followers", Objects.toString(user.followers, null))
-				.value("ap_following", Objects.toString(user.following, null))
 				.value("about", user.summary)
 				.value("gender", user.gender)
 				.value("avatar", user.icon!=null ? user.icon.get(0).asActivityPubObject(new JsonObject(), new ContextCollector()).toString() : null)
@@ -637,9 +634,7 @@ public class UserStorage{
 				.value("flags", user.flags)
 				.value("middle_name", user.middleName)
 				.value("maiden_name", user.maidenName)
-				.value("ap_wall", Objects.toString(user.getWallURL(), null))
-				.value("ap_friends", Objects.toString(user.getFriendsURL(), null))
-				.value("ap_groups", Objects.toString(user.getGroupsURL(), null));
+				.value("endpoints", user.serializeEndpoints());
 		stmt=existingUserID!=0 ? bldr.createStatement() : bldr.createStatement(PreparedStatement.RETURN_GENERATED_KEYS);
 
 		stmt.executeUpdate();

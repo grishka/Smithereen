@@ -13,13 +13,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.ObjectLinkResolver;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.Utils;
-import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubCollection;
@@ -40,8 +41,6 @@ import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
-import smithereen.util.JsonArrayBuilder;
-import smithereen.util.JsonObjectBuilder;
 import spark.utils.StringUtils;
 
 public class Post extends ActivityPubObject{
@@ -58,7 +57,7 @@ public class Post extends ActivityPubObject{
 	public int totalTopLevelComments;
 	public int replyCount;
 	public boolean local;
-	public List<User> mentionedUsers=Collections.EMPTY_LIST;
+	public Set<User> mentionedUsers=Collections.emptySet();
 	public Poll poll;
 	public String source;
 
@@ -147,7 +146,7 @@ public class Post extends ActivityPubObject{
 
 		int[] mentions=Utils.deserializeIntArray(res.getBytes("mentions"));
 		if(mentions!=null && mentions.length>0){
-			mentionedUsers=new ArrayList<>();
+			mentionedUsers=new HashSet<>();
 			if(tag==null)
 				tag=new ArrayList<>();
 			for(int id:mentions){
@@ -366,7 +365,7 @@ public class Post extends ActivityPubObject{
 		mention.href=parent.user.activityPubID;
 		tag.add(mention);
 		if(mentionedUsers.isEmpty())
-			mentionedUsers=new ArrayList<>();
+			mentionedUsers=new HashSet<>();
 		mentionedUsers.add(parent.user);
 		owner=parent.owner;
 	}
@@ -469,12 +468,12 @@ public class Post extends ActivityPubObject{
 	}
 
 	@Override
-	public void resolveDependencies(boolean allowFetching, boolean allowStorage) throws SQLException{
+	public void resolveDependencies(ApplicationContext context, boolean allowFetching, boolean allowStorage){
 		if(user==null){
-			user=ObjectLinkResolver.resolve(attributedTo, ForeignUser.class, allowFetching, allowStorage, false);
+			user=context.getObjectLinkResolver().resolve(attributedTo, ForeignUser.class, allowFetching, allowStorage, false);
 		}
 		if(owner==null && activityPubTarget!=null){
-			owner=ObjectLinkResolver.resolve(activityPubTarget.attributedTo, Actor.class, allowFetching, allowStorage, false);
+			owner=context.getObjectLinkResolver().resolve(activityPubTarget.attributedTo, Actor.class, allowFetching, allowStorage, false);
 			if(!activityPubTarget.activityPubID.equals(owner.getWallURL()))
 				owner=null;
 		}
@@ -483,11 +482,11 @@ public class Post extends ActivityPubObject{
 	}
 
 	@Override
-	public void storeDependencies() throws SQLException{
+	public void storeDependencies(ApplicationContext context){
 		if(user instanceof ForeignUser && user.id==0)
-			ObjectLinkResolver.storeOrUpdateRemoteObject(user);
+			context.getObjectLinkResolver().storeOrUpdateRemoteObject(user);
 		if(owner!=user && ((owner instanceof ForeignUser && ((ForeignUser) owner).id==0) || (owner instanceof ForeignGroup && ((ForeignGroup) owner).id==0)))
-			ObjectLinkResolver.storeOrUpdateRemoteObject(owner);
+			context.getObjectLinkResolver().storeOrUpdateRemoteObject(owner);
 	}
 
 	public URI getRepliesURL(){
