@@ -483,6 +483,7 @@
   "group_invite_accepted": "Приглашение принято",
   "group_invite_declined": "Приглашение отклонено",
   "group_access_type": "Тип группы",
+  "event_access_type": "Тип встречи",
   "group_access_open": "Открытая",
   "group_access_closed": "Закрытая",
   "group_access_private": "Частная",

@@ -497,6 +497,7 @@
   "group_invite_accepted": "Invitation accepted",
   "group_invite_declined": "Invitation declined",
   "group_access_type": "Access",
+  "event_access_type": "Access",
   "group_access_open": "Open",
   "group_access_closed": "Closed",
   "group_access_private": "Private",
