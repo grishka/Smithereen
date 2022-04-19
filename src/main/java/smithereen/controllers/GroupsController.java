@@ -89,9 +89,9 @@ public class GroupsController{
 		}
 	}
 
-	public PaginatedList<Group> getUserGroups(@NotNull User user, int offset, int count){
+	public PaginatedList<Group> getUserGroups(@NotNull User user, @Nullable User self, int offset, int count){
 		try{
-			return GroupStorage.getUserGroups(user.id, offset, count);
+			return GroupStorage.getUserGroups(user.id, offset, count, self!=null && self.id==user.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -469,9 +469,12 @@ public class GroupStorage{
 		}
 	}
 
-	public static PaginatedList<Group> getUserGroups(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<Group> getUserGroups(int userID, int offset, int count, boolean includePrivate) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		String query="SELECT %s FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0";
+		if(!includePrivate){
+			query+=" AND `groups`.`access_type`<>2";
+		}
 		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "COUNT(*)"), userID);
 		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 		if(total==0)
@@ -504,13 +507,13 @@ public class GroupStorage{
 
 	public static PaginatedList<URI> getUserGroupIDs(int userID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT count(*) FROM group_memberships WHERE user_id=? AND accepted=1");
+		PreparedStatement stmt=conn.prepareStatement("SELECT count(*) FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups.`access_type`<>2");
 		stmt.setInt(1, userID);
 		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 		if(total==0)
 			return new PaginatedList<>(Collections.emptyList(), 0);
 
-		stmt=conn.prepareStatement("SELECT group_id, ap_id FROM group_memberships JOIN groups ON group_id=id WHERE user_id=? AND accepted=1 LIMIT ? OFFSET ?");
+		stmt=conn.prepareStatement("SELECT group_id, ap_id FROM group_memberships JOIN groups ON group_id=id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups`.`access_type`<>2 LIMIT ? OFFSET ?");
 		stmt.setInt(1, userID);
 		stmt.setInt(2, count);
 		stmt.setInt(3, offset);
