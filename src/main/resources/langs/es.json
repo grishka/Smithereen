@@ -1,6 +1,5 @@
 {
   "lang_name": "Español",
-
   "log_in": "Iniciar sesión",
   "log_out": "Cerrar sesión",
   "email_or_username": "Correo electrónico o usuario",
@@ -14,9 +13,6 @@
   "write_on_own_wall": "¿Qué hay de nuevo?",
   "write_on_X_wall": "Escribe en el muro de {name}...",
   "birth_date": "Fecha de nacimiento",
-  "sending_friend_req_to_X": "Estás enviando una solicitud de amistad a <b>{name}</b>.",
-  "add_optional_message": "Añadir un mensaje opcional",
-
   "err_user_not_found": "Usuario no encontrado.",
   "err_already_friends": "Este usuario ya está en tu lista de amigos.",
   "err_have_incoming_friend_req": "Ya tienes una solicitud de amistad de este usuario.",
@@ -26,7 +22,6 @@
   "go_back": "Regresar",
   "friends": "Amigos",
   "no_friends": "La lista de amigos está vacía",
-  "X_friend_requests": "{count, plural, one {# solicitud} other {# solicitudes}} de amistad",
   "friend_requests": "Solicitudes de amistad",
   "accept": "Aceptar",
   "decline": "Eliminar",
@@ -125,7 +120,7 @@
   "attach_photo": "Adjuntar una foto",
   "drop_files_here": "Arrastre los archivos aquí",
   "menu_edit": "editar",
-  "edit_profile":"Editar perfil",
+  "edit_profile": "Editar perfil",
   "profile_edit_basic": "Información básica",
   "gender": "Género",
   "gender_male": "masculino",
@@ -178,9 +173,7 @@
   "choose_file_mobile": "Elije un archivo de tu dispositivo",
   "middle_name_or_nickname": "Segundo nombre o apodo",
   "maiden_name": "Segundo nombre",
-  "feed_retoot_before": "",
   "feed_retoot_after": " compartió un post:",
-  "feed_retoot_before_comment": "",
   "feed_retoot_after_comment": " compartió un comentario:",
   "wall_to_wall": "Muro a muro",
   "wall_all_posts": "Todas las publicaciones",
@@ -280,7 +273,6 @@
   "admin_email_test_address": "Dirección",
   "email_test_subject": "Correo de prueba",
   "email_test": "Si está leyendo esto, probablemente haya configurado su servidor correctamente.",
-
   "date_today": "hoy",
   "date_yesterday": "ayer",
   "date_tomorrow": "mañana",
@@ -293,7 +285,7 @@
   "time_X_minutes_ago": "hace {count, plural, one {# minuto} other {# minutos}}",
   "time_in_X_minutes": "en {count, plural, one {# minuto} other {# minutos}}",
   "time_just_now": "ahora mismo",
-
   "go_up": "Subir",
-  "X_groups": "{count, plural, one {# grupo} other {# grupos}}"
+  "X_groups": "{count, plural, one {# grupo} other {# grupos}}",
+  "sending_friend_req_to_X": "Estás enviando una solicitud de amistad a <b>{name}</b>."
 }

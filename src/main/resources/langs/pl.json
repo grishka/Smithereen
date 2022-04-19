@@ -1,6 +1,5 @@
 {
   "lang_name": "Polski",
-
   "log_in": "Zaloguj się",
   "log_out": "Wyloguj się",
   "email_or_username": "Adres e-mail lub nazwa użytkownika",
@@ -14,9 +13,6 @@
   "write_on_own_wall": "Co nowego?",
   "write_on_X_wall": "Napisz na tablicy {name}…",
   "birth_date": "Data urodzenia",
-  "sending_friend_req_to_X": "Wysłano zaproszenie do znajomych do <b>{name}</b>.",
-  "add_optional_message": "Dodaj opcjonalną wiadomość",
-
   "err_user_not_found": "Nie znaleziono użytkownika.",
   "err_already_friends": "Już masz tego użytkownika w znajomych.",
   "err_have_incoming_friend_req": "Już masz oczekujące zaproszenie do znajomych od tego użytkownika.",
@@ -26,7 +22,6 @@
   "go_back": "Wróć",
   "friends": "Znajomi",
   "no_friends": "Lista znajomych jest pusta",
-  "X_friend_requests": "{count, plural, one {# zaproszenie} few {# zaproszenia} other {# zaproszeń}} do znajomych",
   "friend_requests": "Zaproszenia do znajomych",
   "accept": "Akceptuj",
   "decline": "Odrzuć",
@@ -125,7 +120,7 @@
   "attach_photo": "Załącz zdjęcie",
   "drop_files_here": "Przeciągnij pliki tutaj",
   "menu_edit": "edytuj",
-  "edit_profile":"Edytuj profil",
+  "edit_profile": "Edytuj profil",
   "profile_edit_basic": "Podstawowe informacje",
   "gender": "Płeć",
   "gender_male": "mężczyzna",
@@ -178,9 +173,7 @@
   "choose_file_mobile": "Wybierz plik z urządzenia",
   "middle_name_or_nickname": "Drugie imię lub pseudonim",
   "maiden_name": "Nazwisko panieńskie",
-  "feed_retoot_before": "",
   "feed_retoot_after": " {gender, select, female {udostępniła} other {udostępnił}} wpis:",
-  "feed_retoot_before_comment": "",
   "feed_retoot_after_comment": " {gender, select, female {udostępniłas} other {udostępnił}} komentarz:",
   "wall_to_wall": "Wall-to-wall",
   "wall_all_posts": "Wszystkie wpisy",
@@ -280,7 +273,6 @@
   "admin_email_test_address": "Adres",
   "email_test_subject": "E-mail testowy",
   "email_test": "Jeżeli to czytasz, prawdopodobnie {gender, select, female {skonfigurowałaś} other {skonfigurowałeś}} swój serwer prawidłowo.",
-
   "date_today": "dzisiaj",
   "date_yesterday": "wczoraj",
   "date_tomorrow": "jutro",
@@ -293,7 +285,6 @@
   "time_X_minutes_ago": "{count, plural, one {# minutę} few {# minuty} other {# minut}} temu",
   "time_in_X_minutes": "za {count, plural, one {# minutę} few {# minuty} other {# minut}}",
   "time_just_now": "właśnie teraz",
-
   "go_up": "Idź do góry",
   "X_groups": "{count, plural, one {# grupa} few {# grupy} other {# grup}}",
   "add_comment": "Skomentuj",
@@ -318,5 +309,6 @@
   "ban_reason": "Powód zbanowania",
   "your_account_is_banned": "Twoje konto zostało zbanowane przez administratorów tego serwera.",
   "show_previous_comments": "Pokaż poprzednie komentarze",
-  "comments_show_X_replies": "Pokaż {count, plural, one {# odpowiedź} few {# odpowiedzi} other {# odpowiedzi}}"
+  "comments_show_X_replies": "Pokaż {count, plural, one {# odpowiedź} few {# odpowiedzi} other {# odpowiedzi}}",
+  "sending_friend_req_to_X": "Wysłano zaproszenie do znajomych do <b>{name}</b>."
 }
