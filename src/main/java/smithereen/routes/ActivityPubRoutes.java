@@ -92,6 +92,7 @@ import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.controllers.WallController;
 import smithereen.data.Account;
 import smithereen.data.ForeignGroup;
@@ -237,11 +238,8 @@ public class ActivityPubRoutes{
 				}catch(Exception x){
 					throw new UserActionNotAllowedException("This is a private group. Valid HTTP signature of a group member or invitee is required.", x);
 				}
-				if(!(requester instanceof ForeignUser user))
-					throw new UserActionNotAllowedException("Request must be signed by a user, instead found a "+requester.getType());
-				Group.MembershipState state=context(req).getGroupsController().getUserMembershipState(group, user);
-				if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER && state!=Group.MembershipState.INVITED)
-					throw new UserActionNotAllowedException("User '"+escapeHTML(user.activityPubID.toString())+"' does not have access to private group '"+group.activityPubID+"' (not a member and not invited)");
+				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, requester.domain) && !GroupStorage.areThereGroupInvitationsWithDomain(group.id, requester.domain))
+					throw new UserActionNotAllowedException("This is a private group and there are no "+requester.domain+" members or invitees in it.");
 			}
 			group.adminsForActivityPub=GroupStorage.getGroupAdmins(group.id);
 			resp.type(ActivityPub.CONTENT_TYPE);
@@ -253,6 +251,8 @@ public class ActivityPubRoutes{
 	public static Object post(Request req, Response resp) throws SQLException{
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		Post post=PostStorage.getPostOrThrow(postID, true);
+		if(post.owner instanceof Group g)
+			ActivityPub.enforceGroupContentAccess(req, g);
 		resp.type(ActivityPub.CONTENT_TYPE);
 		return post;
 	}
@@ -285,6 +285,10 @@ public class ActivityPubRoutes{
 			throw new ObjectNotFoundException();
 		if(poll.anonymous)
 			throw new UserActionNotAllowedException();
+		if(poll.ownerID<0){
+			Group owner=context(req).getGroupsController().getGroupOrThrow(-poll.ownerID);
+			ActivityPub.enforceGroupContentAccess(req, owner);
+		}
 
 		PollOption option=null;
 		for(PollOption opt:poll.options){
@@ -582,6 +586,11 @@ public class ActivityPubRoutes{
 		Like l=LikeStorage.getByID(id);
 		if(l==null)
 			throw new ObjectNotFoundException();
+		ActivityPubObject likedObject=context(req).getObjectLinkResolver().resolve(l.object.link, ActivityPubObject.class, false, false, false);
+		if(likedObject instanceof Post post){
+			if(post.owner instanceof Group group)
+				ActivityPub.enforceGroupContentAccess(req, group);
+		}
 		resp.type(ActivityPub.CONTENT_TYPE);
 		return l;
 	}
@@ -593,6 +602,11 @@ public class ActivityPubRoutes{
 		Undo undo=ActivityPubCache.getUndoneLike(id);
 		if(undo==null)
 			throw new ObjectNotFoundException();
+		ActivityPubObject likedObject=context(req).getObjectLinkResolver().resolve(((Like)undo.object.object).object.link, ActivityPubObject.class, false, false, false);
+		if(likedObject instanceof Post post){
+			if(post.owner instanceof Group group)
+				ActivityPub.enforceGroupContentAccess(req, group);
+		}
 		return undo;
 	}
 

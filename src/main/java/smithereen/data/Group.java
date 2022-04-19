@@ -50,6 +50,11 @@ public class Group extends Actor{
 	}
 
 	@Override
+	public int getOwnerID(){
+		return -id;
+	}
+
+	@Override
 	public URI getWallURL(){
 		return Config.localURI("/groups/"+id+"/wall");
 	}

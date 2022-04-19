@@ -196,6 +196,7 @@ CREATE TABLE `group_memberships` (
   `post_feed_visibility` tinyint unsigned NOT NULL DEFAULT '0',
   `tentative` tinyint(1) NOT NULL DEFAULT '0',
   `accepted` tinyint(1) NOT NULL DEFAULT '1',
+  `time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY `user_id` (`user_id`,`group_id`),
   KEY `group_id` (`group_id`),
   CONSTRAINT `group_memberships_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
@@ -215,22 +216,21 @@ CREATE TABLE `groups` (
   `ap_url` varchar(300) DEFAULT NULL,
   `ap_inbox` varchar(300) DEFAULT NULL,
   `ap_shared_inbox` varchar(300) DEFAULT NULL,
-  `ap_outbox` varchar(300) DEFAULT NULL,
   `public_key` blob NOT NULL,
   `private_key` blob,
-  `avatar` text,
+  `avatar` json DEFAULT NULL,
   `about` text,
   `about_source` text,
-  `profile_fields` text,
+  `profile_fields` json DEFAULT NULL,
   `event_start_time` timestamp NULL DEFAULT NULL,
   `event_end_time` timestamp NULL DEFAULT NULL,
   `type` tinyint unsigned NOT NULL DEFAULT '0',
   `member_count` int unsigned NOT NULL DEFAULT '0',
   `tentative_member_count` int unsigned NOT NULL DEFAULT '0',
-  `ap_followers` varchar(300) DEFAULT NULL,
-  `ap_wall` varchar(300) DEFAULT NULL,
   `last_updated` timestamp NULL DEFAULT NULL,
   `flags` bigint unsigned NOT NULL DEFAULT '0',
+  `endpoints` json DEFAULT NULL,
+  `access_type` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
   UNIQUE KEY `ap_id` (`ap_id`),
@@ -359,7 +359,7 @@ CREATE TABLE `poll_votes` (
 
 CREATE TABLE `polls` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `owner_id` int unsigned NOT NULL,
+  `owner_id` int NOT NULL,
   `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   `question` text,
   `is_anonymous` tinyint(1) NOT NULL DEFAULT '0',
@@ -443,25 +443,19 @@ CREATE TABLE `users` (
   `private_key` blob,
   `ap_url` varchar(300) DEFAULT NULL,
   `ap_inbox` varchar(300) DEFAULT NULL,
-  `ap_outbox` varchar(300) DEFAULT NULL,
   `ap_shared_inbox` varchar(300) DEFAULT NULL,
   `about` text,
   `about_source` text,
   `gender` tinyint unsigned NOT NULL DEFAULT '0',
-  `profile_fields` text,
-  `avatar` text,
+  `profile_fields` json DEFAULT NULL,
+  `avatar` json DEFAULT NULL,
   `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
-  `ap_followers` varchar(300) DEFAULT NULL,
-  `ap_following` varchar(300) DEFAULT NULL,
   `last_updated` timestamp NULL DEFAULT NULL,
   `flags` bigint unsigned NOT NULL,
-  `ap_wall` varchar(300) DEFAULT NULL,
-  `ap_friends` varchar(300) DEFAULT NULL,
-  `ap_groups` varchar(300) DEFAULT NULL,
+  `endpoints` json DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
-  UNIQUE KEY `ap_id` (`ap_id`),
-  KEY `ap_outbox` (`ap_outbox`)
+  UNIQUE KEY `ap_id` (`ap_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -504,4 +498,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2022-03-21  6:57:45
+-- Dump completed on 2022-04-18 12:55:04

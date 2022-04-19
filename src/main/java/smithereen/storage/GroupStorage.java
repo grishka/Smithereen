@@ -455,7 +455,7 @@ public class GroupStorage{
 				String memberCountField=tentative ? "tentative_member_count" : "member_count";
 				new SQLQueryBuilder(conn)
 						.update("groups")
-						.valueExpr(memberCountField, memberCountField+"-1")
+						.valueExpr(memberCountField, "GREATEST(0, CAST("+memberCountField+" AS SIGNED)-1)")
 						.where("id=?", group.id)
 						.createStatement()
 						.execute();
@@ -595,13 +595,36 @@ public class GroupStorage{
 		}
 	}
 
-	public static void setMemberAccepted(int groupID, int userID, boolean accepted) throws SQLException{
-		new SQLQueryBuilder()
+	public static void setMemberAccepted(Group group, int userID, boolean accepted) throws SQLException{
+		int groupID=group.id;
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("group_memberships")
+				.columns("tentative")
+				.where("group_id=? AND user_id=? AND accepted=?", groupID, userID, !accepted)
+				.createStatement();
+		boolean tentative;
+		try(ResultSet res=stmt.executeQuery()){
+			if(!res.first())
+				return;
+			tentative=res.getBoolean(1);
+		}
+
+		new SQLQueryBuilder(conn)
 				.update("group_memberships")
 				.value("accepted", accepted)
 				.where("group_id=? AND user_id=?", groupID, userID)
 				.createStatement()
 				.execute();
+
+		String memberCountField=tentative ? "tentative_member_count" : "member_count";
+		new SQLQueryBuilder(conn)
+				  .update("groups")
+				  .valueExpr(memberCountField, "GREATEST(0, CAST("+memberCountField+" AS SIGNED)"+(accepted ? "+1" : "-1")+")")
+				  .where("id=?", groupID)
+				  .createStatement()
+				  .execute();
+		removeFromCache(group);
 	}
 
 	public static List<GroupAdmin> getGroupAdmins(int groupID) throws SQLException{
@@ -1022,5 +1045,17 @@ public class GroupStorage{
 				.limit(count, offset)
 				.createStatement();
 		return new PaginatedList<>(UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(stmt.executeQuery())), total, offset, count);
+	}
+
+	public static boolean areThereGroupMembersWithDomain(int groupID, String domain) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_memberships` JOIN `users` ON user_id=`users`.id WHERE group_id=? AND accepted=1 AND `users`.`domain`=?", groupID, domain);
+		return DatabaseUtils.oneFieldToInt(stmt.executeQuery())>0;
+	}
+
+	public static boolean areThereGroupInvitationsWithDomain(int groupID, String domain) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_invites` JOIN `users` ON invitee_id=`users`.id WHERE group_id=? AND `users`.`domain`=?", groupID, domain);
+		return DatabaseUtils.oneFieldToInt(stmt.executeQuery())>0;
 	}
 }

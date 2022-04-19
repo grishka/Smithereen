@@ -152,6 +152,7 @@ public class PostRoutes{
 		Post post=context(req).getWallController().getPostOrThrow(id);
 		if(!sessionInfo(req).permissions.canEditPost(post))
 			throw new UserActionNotAllowedException();
+		context(req).getPrivacyController().enforceObjectPrivacy(self.user, post);
 		RenderedTemplateResponse model;
 		if(isAjax(req)){
 			model=new RenderedTemplateResponse("wall_post_form", req);
@@ -216,7 +217,7 @@ public class PostRoutes{
 		else
 			attachments=Collections.emptyList();
 
-		Post post=context(req).getWallController().editPost(sessionInfo(req).permissions, id, text, contentWarning, attachments, poll);
+		Post post=context(req).getWallController().editPost(self.user, sessionInfo(req).permissions, id, text, contentWarning, attachments, poll);
 		if(isAjax(req)){
 			if(req.attribute("mobile")!=null)
 				return new WebDeltaResponse(resp).replaceLocation(post.getInternalURL().toString());
@@ -273,12 +274,15 @@ public class PostRoutes{
 		model.with("post", post);
 		model.with("isGroup", post.owner instanceof Group);
 		SessionInfo info=Utils.sessionInfo(req);
+		User self=null;
 		if(info!=null && info.account!=null){
 			model.with("draftAttachments", info.postDraftAttachments);
 			if(post.isGroupOwner() && post.getReplyLevel()==0){
 				model.with("groupAdminLevel", GroupStorage.getGroupMemberAdminLevel(((Group) post.owner).id, info.account.user.id));
 			}
+			self=info.account.user;
 		}
+		context(req).getPrivacyController().enforceObjectPrivacy(self, post);
 		if(post.replyKey.length>0){
 			model.with("prefilledPostText", post.user.getNameForReply()+", ");
 		}
@@ -359,14 +363,8 @@ public class PostRoutes{
 	}
 
 	public static Object delete(Request req, Response resp, Account self) throws SQLException{
-		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		if(postID==0){
-			throw new ObjectNotFoundException("err_post_not_found");
-		}
-		Post post=PostStorage.getPostByID(postID, false);
-		if(post==null){
-			throw new ObjectNotFoundException("err_post_not_found");
-		}
+		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
+		context(req).getPrivacyController().enforceObjectPrivacy(self.user, post);
 		if(!sessionInfo(req).permissions.canDeletePost(post)){
 			throw new UserActionNotAllowedException();
 		}
@@ -383,7 +381,7 @@ public class PostRoutes{
 		context(req).getActivityPubWorker().sendDeletePostActivity(post, deleteActor);
 		if(isAjax(req)){
 			resp.type("application/json");
-			return new WebDeltaResponse().remove("post"+postID);
+			return new WebDeltaResponse().remove("post"+post.id);
 		}
 		resp.redirect(Utils.back(req));
 		return "";
@@ -391,19 +389,15 @@ public class PostRoutes{
 
 	public static Object like(Request req, Response resp, Account self) throws SQLException{
 		req.attribute("noHistory", true);
-		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		if(postID==0)
-			throw new ObjectNotFoundException("err_post_not_found");
-		Post post=PostStorage.getPostByID(postID, false);
-		if(post==null)
-			throw new ObjectNotFoundException("err_post_not_found");
+		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
+		context(req).getPrivacyController().enforceObjectPrivacy(self.user, post);
 		if(post.owner instanceof User)
 			ensureUserNotBlocked(self.user, (User) post.owner);
 		else
 			ensureUserNotBlocked(self.user, (Group) post.owner);
 		String back=Utils.back(req);
 
-		int id=LikeStorage.setPostLiked(self.user.id, postID, true);
+		int id=LikeStorage.setPostLiked(self.user.id, post.id, true);
 		if(id==0) // Already liked
 			return "";
 		if(!(post.user instanceof ForeignUser) && post.user.id!=self.user.id){
@@ -418,8 +412,8 @@ public class PostRoutes{
 		if(isAjax(req)){
 			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
 			return new WebDeltaResponse(resp)
-					.setContent("likeCounterPost"+postID, interactions.likeCount+"")
-					.setAttribute("likeButtonPost"+postID, "href", post.getInternalURL()+"/unlike?csrf="+sessionInfo(req).csrfToken);
+					.setContent("likeCounterPost"+post.id, interactions.likeCount+"")
+					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/unlike?csrf="+sessionInfo(req).csrfToken);
 		}
 		resp.redirect(back);
 		return "";
@@ -427,28 +421,24 @@ public class PostRoutes{
 
 	public static Object unlike(Request req, Response resp, Account self) throws SQLException{
 		req.attribute("noHistory", true);
-		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		if(postID==0)
-			throw new ObjectNotFoundException("err_post_not_found");
-		Post post=PostStorage.getPostByID(postID, false);
-		if(post==null)
-			throw new ObjectNotFoundException("err_post_not_found");
+		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
+		context(req).getPrivacyController().enforceObjectPrivacy(self.user, post);
 		String back=Utils.back(req);
 
-		int id=LikeStorage.setPostLiked(self.user.id, postID, false);
+		int id=LikeStorage.setPostLiked(self.user.id, post.id, false);
 		if(id==0)
 			return "";
 		if(!(post.user instanceof ForeignUser) && post.user.id!=self.user.id){
-			NotificationsStorage.deleteNotification(Notification.ObjectType.POST, postID, Notification.Type.LIKE, self.user.id);
+			NotificationsStorage.deleteNotification(Notification.ObjectType.POST, post.id, Notification.Type.LIKE, self.user.id);
 		}
 		context(req).getActivityPubWorker().sendUndoLikeActivity(post, self.user, id);
 		if(isAjax(req)){
 			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
 			WebDeltaResponse b=new WebDeltaResponse(resp)
-					.setContent("likeCounterPost"+postID, interactions.likeCount+"")
-					.setAttribute("likeButtonPost"+postID, "href", post.getInternalURL()+"/like?csrf="+sessionInfo(req).csrfToken);
+					.setContent("likeCounterPost"+post.id, interactions.likeCount+"")
+					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/like?csrf="+sessionInfo(req).csrfToken);
 			if(interactions.likeCount==0)
-				b.hide("likeCounterPost"+postID);
+				b.hide("likeCounterPost"+post.id);
 			return b;
 		}
 		resp.redirect(back);
@@ -466,29 +456,26 @@ public class PostRoutes{
 
 	public static Object likePopover(Request req, Response resp) throws SQLException{
 		req.attribute("noHistory", true);
-		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		if(postID==0)
-			throw new ObjectNotFoundException("err_post_not_found");
-		Post post=PostStorage.getPostByID(postID, false);
-		if(post==null)
-			throw new ObjectNotFoundException("err_post_not_found");
+		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
 		SessionInfo info=sessionInfo(req);
-		int selfID=info!=null && info.account!=null ? info.account.user.id : 0;
-		List<Integer> ids=LikeStorage.getPostLikes(postID, selfID, 0, 6);
+		User self=info!=null && info.account!=null ? info.account.user : null;
+		int selfID=self!=null ? self.id : 0;
+		context(req).getPrivacyController().enforceObjectPrivacy(self, post);
+		List<Integer> ids=LikeStorage.getPostLikes(post.id, selfID, 0, 6);
 		ArrayList<User> users=new ArrayList<>();
 		for(int id:ids)
 			users.add(UserStorage.getById(id));
 		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
-		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(postID), selfID).get(postID);
+		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), selfID).get(post.id);
 		WebDeltaResponse b=new WebDeltaResponse(resp)
-				.setContent("likeCounterPost"+postID, interactions.likeCount+"");
+				.setContent("likeCounterPost"+post.id, interactions.likeCount+"");
 		if(info!=null && info.account!=null){
-			b.setAttribute("likeButtonPost"+postID, "href", post.getInternalURL()+"/"+(interactions.isLiked ? "un" : "")+"like?csrf="+sessionInfo(req).csrfToken);
+			b.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/"+(interactions.isLiked ? "un" : "")+"like?csrf="+sessionInfo(req).csrfToken);
 		}
 		if(interactions.likeCount==0)
-			b.hide("likeCounterPost"+postID);
+			b.hide("likeCounterPost"+post.id);
 		else
-			b.show("likeCounterPost"+postID);
+			b.show("likeCounterPost"+post.id);
 
 		LikePopoverResponse o=new LikePopoverResponse();
 		o.content=_content;
@@ -496,7 +483,7 @@ public class PostRoutes{
 		o.altTitle=selfID==0 ? null : lang(req).get("liked_by_X_people", Map.of("count", interactions.likeCount+(interactions.isLiked ? -1 : 1)));
 		o.actions=b.commands();
 		o.show=interactions.likeCount>0;
-		o.fullURL="/posts/"+postID+"/likes";
+		o.fullURL="/posts/"+post.id+"/likes";
 		return gson.toJson(o);
 	}
 
@@ -505,6 +492,7 @@ public class PostRoutes{
 		@Nullable Account self=info!=null ? info.account : null;
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		Post post=context(req).getWallController().getPostOrThrow(postID);
+		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 		int offset=offset(req);
 		PaginatedList<User> likes=context(req).getUserInteractionsController().getLikesForObject(post, self!=null ? self.user : null, offset, 100);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req)
@@ -539,6 +527,8 @@ public class PostRoutes{
 	private static Object wall(Request req, Response resp, Actor owner, boolean ownOnly){
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
+		if(owner instanceof Group group)
+			context(req).getPrivacyController().enforceUserAccessToGroupContent(self!=null ? self.user : null, group);
 
 		int offset=offset(req);
 		PaginatedList<Post> wall=context(req).getWallController().getWallPosts(owner, ownOnly, offset, 20);
@@ -591,6 +581,7 @@ public class PostRoutes{
 		@Nullable Account self=info!=null ? info.account : null;
 
 		Post post=getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
+		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 		int maxID=parseIntOrDefault(req.queryParams("firstID"), 0);
 		if(maxID==0)
 			throw new BadRequestException();
@@ -617,7 +608,7 @@ public class PostRoutes{
 		@Nullable Account self=info!=null ? info.account : null;
 
 		Post post=getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
-
+		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 		List<Post> comments=PostStorage.getReplies(post.getReplyKeyForReplies());
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments);
@@ -655,6 +646,7 @@ public class PostRoutes{
 
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
+		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 
 		List<User> users=UserStorage.getByIdAsList(PostStorage.getPollOptionVoters(option.id, offset, 100));
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users);
@@ -690,6 +682,7 @@ public class PostRoutes{
 
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
+		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 
 		List<User> users=UserStorage.getByIdAsList(PostStorage.getPollOptionVoters(option.id, 0, 6));
 		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();

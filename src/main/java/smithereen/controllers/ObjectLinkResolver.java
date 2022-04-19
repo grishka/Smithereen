@@ -20,6 +20,7 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.ServiceActor;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
@@ -43,8 +44,8 @@ public class ObjectLinkResolver{
 
 	private static final Logger LOG=LoggerFactory.getLogger(ObjectLinkResolver.class);
 
-	private final HashMap<ActorTokenKey, ActorToken> actorTokensCache=new HashMap<>();
-	private final HashMap<ActorTokenKey, Object> actorTokenLocks=new HashMap<>();
+	private final HashMap<URI, ActorToken> actorTokensCache=new HashMap<>();
+	private final HashMap<URI, Object> actorTokenLocks=new HashMap<>();
 
 	private final ApplicationContext context;
 
@@ -86,49 +87,48 @@ public class ObjectLinkResolver{
 		return resolve(link, ActivityPubObject.class, false, true, false);
 	}
 
-	public JsonObject getActorToken(User user, Group group){
+	public JsonObject getActorToken(Actor actor, Group group){
 		if(!(group instanceof ForeignGroup fg)){
-			return ActivityPub.generateActorToken(context, user, group);
+			return ActivityPub.generateActorToken(context, actor, group);
 		}else if(fg.actorTokenEndpoint==null){
 			return null;
 		}
-		ActorTokenKey key=new ActorTokenKey(user.id, group.id);
 		boolean needWait;
 		Object lock;
 		synchronized(actorTokensCache){
-			ActorToken token=actorTokensCache.get(key);
+			ActorToken token=actorTokensCache.get(group.activityPubID);
 			if(token!=null && token.isValid())
 				return token.token;
-			if(!actorTokenLocks.containsKey(key)){
+			if(!actorTokenLocks.containsKey(group.activityPubID)){
 				// This thread will request the token, other threads will wait
 				lock=new Object();
-				actorTokenLocks.put(key, lock);
+				actorTokenLocks.put(group.activityPubID, lock);
 				needWait=false;
 			}else{
 				// Other thread is already requesting the token, we'll wait for it to do that
-				lock=actorTokenLocks.get(key);
+				lock=actorTokenLocks.get(group.activityPubID);
 				needWait=true;
 			}
 		}
 		if(needWait){
 			synchronized(lock){
-				while(actorTokenLocks.containsKey(key)){
+				while(actorTokenLocks.containsKey(group.activityPubID)){
 					try{
 						lock.wait();
 					}catch(InterruptedException ignore){}
 				}
 				synchronized(actorTokensCache){
-					return actorTokensCache.get(key).token;
+					return actorTokensCache.get(group.activityPubID).token;
 				}
 			}
 		}else{
-			JsonObject token=ActivityPub.fetchActorToken(context, user, fg);
+			JsonObject token=ActivityPub.fetchActorToken(context, actor, fg);
 			synchronized(actorTokensCache){
 				if(token!=null)
-					actorTokensCache.put(key, new ActorToken(token, Utils.parseISODate(token.getAsJsonPrimitive("validUntil").getAsString())));
+					actorTokensCache.put(group.activityPubID, new ActorToken(token, Utils.parseISODate(token.getAsJsonPrimitive("validUntil").getAsString())));
 			}
 			synchronized(lock){
-				actorTokenLocks.remove(key);
+				actorTokenLocks.remove(group.activityPubID);
 				lock.notifyAll();
 				return token;
 			}
@@ -137,20 +137,20 @@ public class ObjectLinkResolver{
 
 	@NotNull
 	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch){
-		return resolve(_link, expectedType, allowFetching, allowStorage, forceRefetch, null, (JsonObject) null);
+		return resolve(_link, expectedType, allowFetching, allowStorage, forceRefetch, (JsonObject) null);
 	}
 
 	@NotNull
-	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, Actor signer, Actor owner){
+	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, Actor owner){
 		JsonObject actorToken=null;
-		if(!Config.isLocal(_link) && owner instanceof Group g && g.accessType!=Group.AccessType.OPEN && signer instanceof User u){
-			actorToken=getActorToken(u, g);
+		if(!Config.isLocal(_link) && owner instanceof Group g && g.accessType!=Group.AccessType.OPEN){
+			actorToken=getActorToken(ServiceActor.getInstance(), g);
 		}
-		return resolve(_link, expectedType, allowFetching, allowStorage, forceRefetch, signer, actorToken);
+		return resolve(_link, expectedType, allowFetching, allowStorage, forceRefetch, actorToken);
 	}
 
 	@NotNull
-	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, Actor signer, JsonObject actorToken){
+	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken){
 		try{
 			LOG.debug("Resolving ActivityPub link: {}, expected type: {}", _link, expectedType.getName());
 			URI link;
@@ -173,7 +173,7 @@ public class ObjectLinkResolver{
 				}
 				if(allowFetching){
 					try{
-						ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, signer, actorToken);
+						ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken);
 						if(obj!=null){
 							T o=ensureTypeAndCast(obj, expectedType);
 							o.resolveDependencies(context, allowFetching, allowStorage);
@@ -230,8 +230,6 @@ public class ObjectLinkResolver{
 			return type.cast(obj);
 		throw new IllegalStateException("Expected object of type "+type.getName()+", but got "+obj.getClass().getName()+" instead");
 	}
-
-	private record ActorTokenKey(int userID, int groupID){}
 
 	private record ActorToken(JsonObject token, Instant validUntil){
 		public boolean isValid(){

@@ -4,6 +4,7 @@ import smithereen.activitypub.ActivityPubWorker;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.controllers.PrivacyController;
 import smithereen.controllers.UserInteractionsController;
 import smithereen.controllers.UsersController;
 import smithereen.controllers.WallController;
@@ -16,6 +17,7 @@ public class ApplicationContext{
 	private final FriendsController friendsController;
 	private final ObjectLinkResolver objectLinkResolver;
 	private final ActivityPubWorker activityPubWorker;
+	private final PrivacyController privacyController;
 
 	public ApplicationContext(){
 		wallController=new WallController(this);
@@ -25,6 +27,7 @@ public class ApplicationContext{
 		friendsController=new FriendsController(this);
 		objectLinkResolver=new ObjectLinkResolver(this);
 		activityPubWorker=new ActivityPubWorker(this);
+		privacyController=new PrivacyController(this);
 	}
 
 	public WallController getWallController(){
@@ -53,5 +56,9 @@ public class ApplicationContext{
 
 	public ActivityPubWorker getActivityPubWorker(){
 		return activityPubWorker;
+	}
+
+	public PrivacyController getPrivacyController(){
+		return privacyController;
 	}
 }

@@ -86,7 +86,7 @@
 				<li><a href="/groups/{{ group.id }}/join?csrf={{ csrf }}">{{ L('join_event_certain') }}</a></li>
 				{% endif %}
 				{% endif %}
-			    <li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}">{{ L(group.event ? 'leave_event' : 'leave_group') }}</a></li>
+			    <li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}"{% if group.accessType!='OPEN' %} data-confirm-action="/groups/{{ group.id }}/leave?csrf={{ csrf }}" data-confirm-title="{{ L(group.event ? 'leave_event' : 'leave_group') }}" data-confirm-message="{{ L(group.event ? 'confirm_leave_event' : 'confirm_leave_group', {'type': group.accessType}) | nl2br }}"{% endif %}>{{ L(group.event ? 'leave_event' : 'leave_group') }}</a></li>
 				{% if group.accessType!='PRIVATE' or canManageGroup %}
 				<li><a href="/my/friends?act=groupInvite&group={{ group.id }}">{{ L('invite_friends') }}</a></li>
 				{% endif %}

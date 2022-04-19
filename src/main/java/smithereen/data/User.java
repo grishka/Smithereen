@@ -243,6 +243,11 @@ public class User extends Actor{
 	}
 
 	@Override
+	public int getOwnerID(){
+		return id;
+	}
+
+	@Override
 	public URI getWallURL(){
 		return Config.localURI("/users/"+id+"/wall");
 	}

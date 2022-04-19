@@ -32,10 +32,12 @@ import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
+import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Join;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
+import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignGroup;
@@ -540,7 +542,7 @@ public abstract class ActivityPubObject{
 		ActivityPubObject res=switch(type){
 			// Actors
 			case "Person" -> new ForeignUser();
-			case "Service" -> obj.has("id") ? new ForeignUser() : new Service();
+			case "Service", "Application" -> obj.has("id") ? new ForeignUser() : new Service();
 			case "Group", "Organization" -> new ForeignGroup();
 
 			// Objects
@@ -575,6 +577,8 @@ public abstract class ActivityPubObject{
 			case "Reject" -> new Reject();
 			case "Offer" -> new Offer();
 			case "Block" -> new Block();
+			case "Invite" -> new Invite();
+			case "Remove" -> new Remove();
 
 			default -> {
 				LOG.info("Unknown object type {}", type);

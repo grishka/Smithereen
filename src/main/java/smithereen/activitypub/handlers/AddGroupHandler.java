@@ -22,14 +22,15 @@ public class AddGroupHandler extends ActivityTypeHandler<ForeignUser, Add, Group
 		if(activity.target==null || activity.target.link==null)
 			throw new BadRequestException("activity.target is required and must be a URI");
 		URI target=activity.target.link;
-		if(target.equals(actor.getFriendsURL())){
+		if(target.equals(actor.getGroupsURL())){
 			if(object instanceof ForeignGroup && object.id==0)
 				GroupStorage.putOrUpdateForeignGroup((ForeignGroup) object);
 
 			// TODO verify that this user is actually a member of this group and store the membership
 			// https://socialhub.activitypub.rocks/t/querying-activitypub-collections/1866
 
-			NewsfeedStorage.putEntry(actor.id, object.id, object.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
+			if(object.accessType!=Group.AccessType.PRIVATE)
+				NewsfeedStorage.putEntry(actor.id, object.id, object.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
 		}else{
 			LOG.warn("Unknown Add{Group} target {}", target);
 		}

@@ -492,8 +492,9 @@ public class SystemRoutes{
 			ensureUserNotBlocked(self.user, _owner);
 			owner=_owner;
 		}else{
-			Group _owner=GroupStorage.getById(-poll.ownerID);
+			Group _owner=context(req).getGroupsController().getGroupOrThrow(-poll.ownerID);
 			ensureUserNotBlocked(self.user, _owner);
+			context(req).getPrivacyController().enforceUserAccessToGroupContent(self.user, _owner);
 			owner=_owner;
 		}
 

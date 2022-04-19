@@ -353,6 +353,8 @@ public class GroupsRoutes{
 		Group group=getGroup(req);
 		if(tentative && !group.isEvent())
 			throw new BadRequestException();
+		SessionInfo info=sessionInfo(req);
+		context(req).getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
 		model.paginate(context(req).getGroupsController().getMembers(group, offset(req), 100, tentative));
 		model.with("summary", lang(req).get(tentative ? "summary_event_X_tentative_members" : (group.isEvent() ? "summary_event_X_members" : "summary_group_X_members"), Map.of("count", tentative ? group.tentativeMemberCount : group.memberCount)));
@@ -362,6 +364,8 @@ public class GroupsRoutes{
 
 	public static Object admins(Request req, Response resp){
 		Group group=getGroup(req);
+		SessionInfo info=sessionInfo(req);
+		context(req).getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("actor_list", req);
 		model.with("actors", context(req).getGroupsController().getAdmins(group).stream().map(a->new ActorWithDescription(a.user, a.title)).collect(Collectors.toList()));
 		if(isAjax(req)){

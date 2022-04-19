@@ -448,10 +448,14 @@ public class SmithereenApplication{
 			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_not_found")));
 		});
 		exception(UserActionNotAllowedException.class, (x, req, resp)->{
+			if(Config.DEBUG)
+				LOG.warn("403: {}", req.pathInfo(), x);
 			resp.status(403);
 			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_access")));
 		});
 		exception(BadRequestException.class, (x, req, resp)->{
+			if(Config.DEBUG)
+				LOG.warn("400: {}", req.pathInfo(), x);
 			resp.status(400);
 			String msg=x.getMessage();
 			if(StringUtils.isNotEmpty(msg))

@@ -401,7 +401,7 @@ public class Utils{
 		String accept=req.headers("accept");
 		if(StringUtils.isEmpty(accept))
 			return false;
-		String matched=MimeParse.bestMatch(Set.of("application/activity+json", "application/ld+json"), accept);
+		String matched=MimeParse.bestMatch(Set.of("application/activity+json", "application/ld+json", ""), accept);
 		return StringUtils.isNotEmpty(matched);
 	}
 

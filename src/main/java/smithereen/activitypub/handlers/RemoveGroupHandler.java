@@ -19,7 +19,7 @@ public class RemoveGroupHandler extends ActivityTypeHandler<ForeignUser, Remove,
 		if(activity.target==null || activity.target.link==null)
 			throw new BadRequestException("activity.target is required and must be a URI");
 		URI target=activity.target.link;
-		if(target.equals(actor.getFriendsURL())){
+		if(target.equals(actor.getGroupsURL())){
 			NewsfeedStorage.deleteEntry(actor.id, object.id, object.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
 		}else{
 			LOG.warn("Unknown Remove{Group} target {}", target);

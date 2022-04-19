@@ -28,6 +28,7 @@ import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
 import smithereen.data.CachedRemoteImage;
+import smithereen.data.Group;
 import smithereen.data.NonCachedRemoteImage;
 import smithereen.data.SizedImage;
 import smithereen.exceptions.BadRequestException;
@@ -325,6 +326,10 @@ public abstract class Actor extends ActivityPubObject{
 	public String serializeEndpoints(){
 		EndpointsStorageWrapper endpoints=getEndpointsForStorage();
 		return endpoints!=null ? Utils.gson.toJson(endpoints) : null;
+	}
+
+	public int getOwnerID(){
+		return 0;
 	}
 
 	public static class EndpointsStorageWrapper{

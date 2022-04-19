@@ -162,7 +162,7 @@ public class PostStorage{
 		PreparedStatement stmt;
 		if(existing==null){
 			if(post.poll!=null){
-				post.poll.id=putForeignPoll(conn, post.user.id, post.activityPubID, post.poll);
+				post.poll.id=putForeignPoll(conn, post.owner.getOwnerID(), post.activityPubID, post.poll);
 			}
 
 			stmt=new SQLQueryBuilder(conn)
@@ -227,9 +227,9 @@ public class PostStorage{
 						.where("id=?", existing.poll.id)
 						.createStatement()
 						.execute();
-				post.poll.id=putForeignPoll(conn, post.user.id, post.activityPubID, post.poll);
+				post.poll.id=putForeignPoll(conn, post.owner.getOwnerID(), post.activityPubID, post.poll);
 			}else if(post.poll!=null){ // poll was added
-				post.poll.id=putForeignPoll(conn, post.user.id, post.activityPubID, post.poll);
+				post.poll.id=putForeignPoll(conn, post.owner.getOwnerID(), post.activityPubID, post.poll);
 			}else if(existing.poll!=null){ // poll was removed
 				new SQLQueryBuilder(conn)
 						.deleteFrom("polls")

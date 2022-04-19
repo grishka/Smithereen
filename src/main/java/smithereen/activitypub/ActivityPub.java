@@ -58,7 +58,9 @@ import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.User;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.storage.GroupStorage;
 import smithereen.util.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
@@ -390,7 +392,7 @@ public class ActivityPub{
 		if(userHint!=null && userHint.activityPubID.equals(userID))
 			user=userHint;
 		else
-			user=context(req).getObjectLinkResolver().resolve(userID, Actor.class, false, true, false);
+			user=context(req).getObjectLinkResolver().resolve(userID, Actor.class, true, false, false);
 
 		ArrayList<String> sigParts=new ArrayList<>();
 		for(String header:headers){
@@ -421,7 +423,7 @@ public class ActivityPub{
 		try{
 			signer=verifyHttpSignature(req, null);
 		}catch(Exception x){
-			throw new UserActionNotAllowedException("This object is in a "+group.accessType.toString().toLowerCase()+" group. Valid member HTTP signature is required.");
+			throw new UserActionNotAllowedException("This object is in a "+group.accessType.toString().toLowerCase()+" group. Valid member HTTP signature is required.", x);
 		}
 		if(!(signer instanceof ForeignUser user))
 			throw new UserActionNotAllowedException("HTTP signature is valid but actor has wrong type: "+signer.getType());
@@ -442,9 +444,12 @@ public class ActivityPub{
 			}
 			verifyActorToken(token, user, foreignGroup);
 		}else{
-			Group.MembershipState state=context(req).getGroupsController().getUserMembershipState(group, user);
-			if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER)
-				throw new UserActionNotAllowedException("HTTP signature is valid, but this object is in a "+group.accessType.toString().toLowerCase()+" group and "+escapeHTML(user.activityPubID.toString())+" is not its member");
+			try{
+				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, user.domain))
+					 throw new UserActionNotAllowedException("HTTP signature is valid, but this object is in a "+group.accessType.toString().toLowerCase()+" group and "+escapeHTML(user.activityPubID.toString())+" is not its member");
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
 		}
 		LOG.trace("Actor {} was allowed to access object {} in a {} group {}", signer.activityPubID, req.pathInfo(), group.accessType, group.activityPubID);
 	}
@@ -458,11 +463,14 @@ public class ActivityPub{
 				.collect(Collectors.joining("\n"));
 	}
 
-	public static JsonObject generateActorToken(@NotNull ApplicationContext context, @NotNull User actor, @NotNull Group group){
+	public static JsonObject generateActorToken(@NotNull ApplicationContext context, @NotNull Actor actor, @NotNull Group group){
 		group.ensureLocal();
-		Group.MembershipState state=context.getGroupsController().getUserMembershipState(group, actor);
-		if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER)
-			throw new UserActionNotAllowedException("This user is not a member of this group");
+		try{
+			if(!GroupStorage.areThereGroupMembersWithDomain(group.id, actor.domain))
+				throw new UserActionNotAllowedException("There are no "+actor.domain+" members in this group");
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 		Instant now=Instant.now();
 		JsonObject token=new JsonObjectBuilder()
 				.add("issuer", group.activityPubID.toString())
@@ -501,7 +509,7 @@ public class ActivityPub{
 	 * @param group The group that issued the token
 	 * @throws UserActionNotAllowedException if the token is not valid
 	 */
-	public static void verifyActorToken(@NotNull JsonObject token, @NotNull User user, @NotNull ForeignGroup group){
+	public static void verifyActorToken(@NotNull JsonObject token, @NotNull Actor user, @NotNull ForeignGroup group){
 		try{
 			URI issuerID=new URI(token.getAsJsonPrimitive("issuer").getAsString());
 			if(!issuerID.equals(group.activityPubID))
@@ -545,7 +553,7 @@ public class ActivityPub{
 		}
 	}
 
-	public static JsonObject fetchActorToken(@NotNull ApplicationContext context, @NotNull User actor, @NotNull ForeignGroup group){
+	public static JsonObject fetchActorToken(@NotNull ApplicationContext context, @NotNull Actor actor, @NotNull ForeignGroup group){
 		String url=Objects.requireNonNull(group.actorTokenEndpoint).toString();
 		Request.Builder builder=new Request.Builder()
 				.url(url);

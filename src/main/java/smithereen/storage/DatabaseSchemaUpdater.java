@@ -13,7 +13,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=21;
+	public static final int SCHEMA_VERSION=22;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -310,6 +310,7 @@ public class DatabaseSchemaUpdater{
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 		}else if(target==20){
 			// Make room for a new column
+			conn.createStatement().execute("ALTER TABLE `users` DROP KEY `ap_outbox`");
 			conn.createStatement().execute("ALTER TABLE `users` CHANGE `ap_outbox` `ap_outbox` TEXT");
 			conn.createStatement().execute("ALTER TABLE `groups` CHANGE `ap_outbox` `ap_outbox` TEXT");
 			// Then add the new column
@@ -351,6 +352,8 @@ public class DatabaseSchemaUpdater{
 			conn.createStatement().execute("ALTER TABLE `groups` ADD `access_type` tinyint NOT NULL DEFAULT '0'");
 		}else if(target==21){
 			conn.createStatement().execute("ALTER TABLE `group_memberships` ADD `time` timestamp DEFAULT CURRENT_TIMESTAMP()");
+		}else if(target==22){
+			conn.createStatement().execute("ALTER TABLE `polls` CHANGE `owner_id` `owner_id` int NOT NULL");
 		}
 	}
 }

@@ -527,5 +527,7 @@
   "summary_group_X_invites": "{count, plural, =0 {No one is} one {# person is} other {# people are}} invited to join this group",
   "summary_event_X_invites": "{count, plural, =0 {No one is} one {# person is} other {# people are}} invited to join this event",
   "cancel_invitation": "Cancel invitation",
-  "invitation_canceled": "Invitation canceled"
+  "invitation_canceled": "Invitation canceled",
+  "confirm_leave_group": "This is a <b>{type, select, CLOSED {closed} PRIVATE {private} other {}}</b> group. If you leave it, it may be difficult to rejoin.\n\nAre you sure you want to leave this group?",
+  "confirm_leave_event": "This is a <b>private</b> event. If you leave it, it may be difficult to rejoin.\n\nAre you sure you want to leave this event?"
 }

@@ -89,6 +89,9 @@ public class WallController{
 							   @NotNull String textSource, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
 							   @Nullable Poll poll){
 		try{
+			if(wallOwner instanceof Group group){
+				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
+			}
 			if(poll!=null && (StringUtils.isEmpty(poll.question) || poll.options.size()<2)){
 				LOG.warn("Invalid poll object passed to createWallPost: {}", poll);
 				poll=null;
@@ -111,7 +114,7 @@ public class WallController{
 			if(poll!=null){
 				List<String> opts=poll.options.stream().map(o->o.name).collect(Collectors.toList());
 				if(opts.size()>=2){
-					pollID=PostStorage.createPoll(author.id, poll.question, opts, poll.anonymous, poll.multipleChoice, poll.endTime);
+					pollID=PostStorage.createPoll(wallOwner.getOwnerID(), poll.question, opts, poll.anonymous, poll.multipleChoice, poll.endTime);
 				}
 			}
 
@@ -292,11 +295,12 @@ public class WallController{
 	}
 
 	@NotNull
-	public Post editPost(@NotNull UserPermissions permissions, int id, @NotNull String textSource, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @Nullable Poll poll){
+	public Post editPost(@NotNull User self, @NotNull UserPermissions permissions, int id, @NotNull String textSource, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @Nullable Poll poll){
 		try{
 			Post post=getPostOrThrow(id);
 			if(!permissions.canEditPost(post))
 				throw new UserActionNotAllowedException();
+			context.getPrivacyController().enforceObjectPrivacy(self, post);
 			if(textSource.length()==0 && attachmentIDs.isEmpty() && poll==null)
 				throw new BadRequestException("Empty post");
 
@@ -308,7 +312,7 @@ public class WallController{
 			if(poll!=null && !Objects.equals(post.poll, poll)){
 				List<String> opts=poll.options.stream().map(o->o.name).collect(Collectors.toList());
 				if(opts.size()>=2){
-					pollID=PostStorage.createPoll(post.user.id, poll.question, opts, poll.anonymous, poll.multipleChoice, poll.endTime);
+					pollID=PostStorage.createPoll(post.owner.getOwnerID(), poll.question, opts, poll.anonymous, poll.multipleChoice, poll.endTime);
 				}
 			}
 			if(post.poll!=null && pollID==0){

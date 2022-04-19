@@ -9,8 +9,10 @@ import smithereen.activitypub.objects.activities.Follow;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
 import smithereen.data.User;
+import smithereen.data.feed.NewsfeedEntry;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.UserStorage;
 
 public class AcceptFollowGroupHandler extends NestedActivityTypeHandler<ForeignGroup, Accept, Follow, ForeignGroup>{
@@ -20,9 +22,10 @@ public class AcceptFollowGroupHandler extends NestedActivityTypeHandler<ForeignG
 		if(follower==null)
 			throw new ObjectNotFoundException("Follower not found");
 		follower.ensureLocal();
-		GroupStorage.setMemberAccepted(actor.id, follower.id, true);
+		GroupStorage.setMemberAccepted(actor, follower.id, true);
 		if(object.accessType!=Group.AccessType.PRIVATE){
 			context.appContext.getActivityPubWorker().sendAddToGroupsCollectionActivity(follower, actor);
+			NewsfeedStorage.putEntry(follower.id, object.id, object.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
 		}
 	}
 }

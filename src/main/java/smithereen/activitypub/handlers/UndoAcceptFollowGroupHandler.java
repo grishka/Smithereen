@@ -22,7 +22,7 @@ public class UndoAcceptFollowGroupHandler extends DoublyNestedActivityTypeHandle
 			throw new ObjectNotFoundException("Follower not found");
 		follower.ensureLocal();
 		Group.MembershipState state=GroupStorage.getUserMembershipState(actor.id, follower.id);
-		GroupStorage.setMemberAccepted(actor.id, follower.id, false);
+		GroupStorage.setMemberAccepted(actor, follower.id, false);
 		if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER){
 			context.appContext.getActivityPubWorker().sendRemoveFromGroupsCollectionActivity(follower, actor);
 		}

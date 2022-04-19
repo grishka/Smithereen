@@ -10,10 +10,15 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import smithereen.Utils;
 import smithereen.data.PaginatedList;
@@ -75,7 +80,13 @@ public class RenderedTemplateResponse{
 	}
 
 	public RenderedTemplateResponse paginate(PaginatedList<?> list){
-		return paginate(list, req.pathInfo()+"?offset=", req.pathInfo());
+		String pathWithQuery=req.pathInfo();
+		HashSet<String> queryKeys=new HashSet<>(req.queryParams());
+		queryKeys.remove("offset");
+		if(!queryKeys.isEmpty()){
+			 pathWithQuery+='?'+queryKeys.stream().map(k->k+'='+URLEncoder.encode(req.queryParams(k), StandardCharsets.UTF_8)).collect(Collectors.joining("&"));
+		}
+		return paginate(list, pathWithQuery+(queryKeys.isEmpty() ? '?' : '&')+"offset=", pathWithQuery);
 	}
 
 	public void setName(String name){

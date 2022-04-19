@@ -402,8 +402,13 @@ public class GroupsController{
 
 			Utils.ensureUserNotBlocked(self, group);
 			Utils.ensureUserNotBlocked(who, group);
-			if(GroupStorage.getUserMembershipState(group.id, self.id)!=Group.MembershipState.MEMBER)
-				throw new UserActionNotAllowedException();
+			Group.MembershipState selfState=GroupStorage.getUserMembershipState(group.id, self.id);
+			if(group.accessType==Group.AccessType.PRIVATE){
+				enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+			}else{
+				if(selfState!=Group.MembershipState.MEMBER && selfState!=Group.MembershipState.TENTATIVE_MEMBER)
+					throw new UserActionNotAllowedException();
+			}
 
 			int inviteID;
 			synchronized(groupMembershipLock){
@@ -506,7 +511,7 @@ public class GroupsController{
 				Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, user.id);
 				if(state!=Group.MembershipState.REQUESTED)
 					throw new BadRequestException("No join request from this user");
-				GroupStorage.setMemberAccepted(group.id, user.id, true);
+				GroupStorage.setMemberAccepted(group, user.id, true);
 			}
 			if(user instanceof ForeignUser fu){
 				Join join=new Join(false);

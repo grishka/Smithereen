@@ -30,6 +30,8 @@ public class InviteGroupHandler extends ActivityTypeHandler<ForeignUser, Invite,
 			throw new BadRequestException("Invite.to must have exactly 1 element and it must be a user ID");
 		User user=context.appContext.getObjectLinkResolver().resolve(invite.to.get(0).link, User.class, true, true, false);
 		Utils.ensureUserNotBlocked(actor, user);
+		if(object.id==0)
+			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(object);
 		context.appContext.getGroupsController().runLocked(()->{
 			Group.MembershipState state=context.appContext.getGroupsController().getUserMembershipState(object, user);
 			if(state!=Group.MembershipState.NONE)
