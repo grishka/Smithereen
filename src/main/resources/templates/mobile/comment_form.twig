@@ -24,7 +24,7 @@
 	{% set fieldPlaceholder=L('comment_placeholder') %}
 		<button type="button" title="{{ L('attach') }}" id="postFormAttachBtn_{{ id }}" class="attachBtn"></button>
 		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="3" maxlength="65000" placeholder="{{ fieldPlaceholder }}">{{prefilledPostText}}</textarea>
-		<button type="submit" title="{{ L('send') }}" class="sendBtn"></button>
+		<button type="submit" title="{{ L('send') }}" class="sendBtn" id="postFormSubmit_{{ id }}"></button>
 
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
 		{%if replyTo is not null%}

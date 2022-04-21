@@ -55,10 +55,10 @@
 		<table width="100%" cellpadding="0" cellspacing="0" class="bottomBar">
 			<tr><td width="50%" class="left">
 				{% if isEditing %}
-				<button>{{ L('save') }}</button>
+				<button id="postFormSubmit_{{ id }}">{{ L('save') }}</button>
 				<button class="tertiary jsRequired" type="button" onclick="cancelEditingPost({{ editingPostID }})">{{ L('cancel') }}</button>
 				{% else %}
-				<button>{{ L('send') }}</button>
+				<button id="postFormSubmit_{{ id }}">{{ L('send') }}</button>
 				{% endif %}
 			</td><td align="right" class="right">
 				<div class="popupMenuW">

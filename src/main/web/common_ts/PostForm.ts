@@ -31,6 +31,7 @@ class PostForm{
 	private replyBar:HTMLElement;
 	private replyName:HTMLElement;
 	private replyCancel:HTMLElement;
+	private submitButton:HTMLElement;
 
 	private pollLayout:HTMLElement;
 	private pollQuestionField:HTMLInputElement;
@@ -62,6 +63,7 @@ class PostForm{
 		this.replyBar=ge("commentReplying_"+this.id);
 		this.replyName=ge("replyingName_"+this.id);
 		this.replyCancel=ge("cancelReply_"+this.id);
+		this.submitButton=ge("postFormSubmit_"+this.id);
 		if(!this.form)
 			return;
 
@@ -332,7 +334,7 @@ class PostForm{
 			if(this.isMobileComment){
 				this.resetReply();
 			}
-		});
+		}, this.submitButton);
 	}
 
 	private resetReply(){
