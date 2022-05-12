@@ -46,6 +46,7 @@ public abstract class Actor extends ActivityPubObject{
 	public URI sharedInbox;
 	public URI followers;
 	public URI following;
+	public URI collectionQueryEndpoint;
 	public Timestamp lastUpdated;
 
 	public String aboutSource;
@@ -133,6 +134,7 @@ public abstract class Actor extends ActivityPubObject{
 
 		JsonObject endpoints=new JsonObject();
 		endpoints.addProperty("sharedInbox", Config.localURI("/activitypub/sharedInbox").toString());
+		endpoints.addProperty("collectionSimpleQuery", userURL+"/collectionQuery");
 		obj.add("endpoints", endpoints);
 
 		JsonObject pubkey=new JsonObject();
@@ -148,8 +150,9 @@ public abstract class Actor extends ActivityPubObject{
 		if(wallUrl!=null){
 			obj.addProperty("wall", wallUrl.toString());
 			contextCollector.addType("wall", "sm:wall", "@id");
-			contextCollector.addAlias("sm", JLD.SMITHEREEN);
 		}
+		contextCollector.addAlias("collectionSimpleQuery", "sm:collectionSimpleQuery");
+		contextCollector.addAlias("sm", JLD.SMITHEREEN);
 
 		contextCollector.addSchema(JLD.W3_SECURITY);
 
@@ -206,6 +209,8 @@ public abstract class Actor extends ActivityPubObject{
 			JsonObject endpoints=obj.getAsJsonObject("endpoints");
 			sharedInbox=tryParseURL(optString(endpoints, "sharedInbox"));
 			ensureHostMatchesID(sharedInbox, "sharedInbox");
+			collectionQueryEndpoint=tryParseURL(optString(endpoints, "collectionSimpleQuery"));
+			ensureHostMatchesID(collectionQueryEndpoint, "collectionSimpleQuery");
 		}
 
 		if(summary!=null)
@@ -320,6 +325,8 @@ public abstract class Actor extends ActivityPubObject{
 		URI wall=getWallURL();
 		if(wall!=null)
 			ep.wall=wall.toString();
+		if(collectionQueryEndpoint!=null)
+			ep.collectionQuery=collectionQueryEndpoint.toString();
 		return ep;
 	}
 
@@ -347,5 +354,7 @@ public abstract class Actor extends ActivityPubObject{
 		public String groups;
 		@SerializedName("at")
 		public String actorToken;
+		@SerializedName("cq")
+		public String collectionQuery;
 	}
 }

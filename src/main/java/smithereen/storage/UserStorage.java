@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -1067,5 +1068,51 @@ public class UserStorage{
 		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT `users`.id FROM `users` RIGHT JOIN followings ON followings.followee_id=`users`.id" +
 				" WHERE followings.follower_id=? AND followings.mutual=1 AND `users`.bdate IS NOT NULL AND MONTH(`users`.bdate)=? AND DAY(`users`.bdate)=?", userID, month, day);
 		return DatabaseUtils.intResultSetToList(stmt.executeQuery());
+	}
+
+	public static Map<URI, Integer> getFriendsByActivityPubIDs(Collection<URI> ids, int userID) throws SQLException{
+		if(ids.isEmpty())
+			return Map.of();
+		Connection conn=DatabaseConnectionManager.getConnection();
+		ArrayList<Integer> localIDs=new ArrayList<>();
+		ArrayList<String> remoteIDs=new ArrayList<>();
+		for(URI id:ids){
+			if(Config.isLocal(id)){
+				String path=id.getPath();
+				if(StringUtils.isEmpty(path))
+					continue;
+				String[] pathSegments=path.split("/");
+				if(pathSegments.length!=3 || !"users".equals(pathSegments[1])) // "", "users", id
+					continue;
+				int uid=Utils.safeParseInt(pathSegments[2]);
+				if(uid>0)
+					localIDs.add(uid);
+			}else{
+				remoteIDs.add(id.toString());
+			}
+		}
+		HashMap<Integer, URI> localIdToApIdMap=new HashMap<>();
+		if(!remoteIDs.isEmpty()){
+			try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("users").columns("id", "ap_id").whereIn("ap_id", remoteIDs).execute()){
+				while(res.next()){
+					int localID=res.getInt(1);
+					localIDs.add(localID);
+					localIdToApIdMap.put(localID, URI.create(res.getString(2)));
+				}
+			}
+		}
+		if(localIDs.isEmpty())
+			return Map.of();
+		return new SQLQueryBuilder(conn)
+				.selectFrom("followings")
+				.columns("followee_id")
+				.whereIn("followee_id", localIDs)
+				.andWhere("mutual=1 AND accepted=1 AND follower_id=?", userID)
+				.executeAsStream(res->res.getInt(1))
+				.collect(Collectors.toMap(id->localIdToApIdMap.computeIfAbsent(id, UserStorage::localUserURI), Function.identity()));
+	}
+
+	private static URI localUserURI(int id){
+		return Config.localURI("/users/"+id);
 	}
 }

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -446,6 +447,14 @@ public class WallController{
 				p.getAllReplyIDs(postIDs);
 			}
 			return PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<URI, Integer> getPostLocalIDsByActivityPubIDs(@NotNull Collection<URI> ids, Actor owner){
+		try{
+			return PostStorage.getPostLocalIDsByActivityPubIDs(ids, owner instanceof User u ? u.id : 0, owner instanceof Group g ? g.id : 0);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

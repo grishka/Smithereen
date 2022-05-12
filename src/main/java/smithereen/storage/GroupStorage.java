@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -1060,5 +1061,108 @@ public class GroupStorage{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_invites` JOIN `users` ON invitee_id=`users`.id WHERE group_id=? AND `users`.`domain`=?", groupID, domain);
 		return DatabaseUtils.oneFieldToInt(stmt.executeQuery())>0;
+	}
+
+	public static Map<URI, Integer> getMembersByActivityPubIDs(Collection<URI> ids, int groupID, boolean tentative) throws SQLException{
+		if(ids.isEmpty())
+			return Map.of();
+		Connection conn=DatabaseConnectionManager.getConnection();
+		ArrayList<Integer> localIDs=new ArrayList<>();
+		ArrayList<String> remoteIDs=new ArrayList<>();
+		for(URI id:ids){
+			if(Config.isLocal(id)){
+				String path=id.getPath();
+				if(StringUtils.isEmpty(path))
+					continue;
+				String[] pathSegments=path.split("/");
+				if(pathSegments.length!=3 || !"users".equals(pathSegments[1])) // "", "users", id
+					continue;
+				int uid=Utils.safeParseInt(pathSegments[2]);
+				if(uid>0)
+					localIDs.add(uid);
+			}else{
+				remoteIDs.add(id.toString());
+			}
+		}
+		HashMap<Integer, URI> localIdToApIdMap=new HashMap<>();
+		if(!remoteIDs.isEmpty()){
+			try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("users").columns("id", "ap_id").whereIn("ap_id", remoteIDs).execute()){
+				while(res.next()){
+					int localID=res.getInt(1);
+					localIDs.add(localID);
+					localIdToApIdMap.put(localID, URI.create(res.getString(2)));
+				}
+			}
+		}
+		if(localIDs.isEmpty())
+			return Map.of();
+		return new SQLQueryBuilder(conn)
+				.selectFrom("group_memberships")
+				.columns("user_id")
+				.whereIn("user_id", localIDs)
+				.andWhere("tentative=? AND accepted=1 AND group_id=?", tentative, groupID)
+				.executeAsStream(res->res.getInt(1))
+				.collect(Collectors.toMap(id->localIdToApIdMap.computeIfAbsent(id, GroupStorage::localUserURI), Function.identity()));
+	}
+
+	public static Map<URI, Integer> getUserGroupsByActivityPubIDs(Collection<URI> ids, int userID) throws SQLException{
+		if(ids.isEmpty())
+			return Map.of();
+		Connection conn=DatabaseConnectionManager.getConnection();
+		ArrayList<Integer> localIDs=new ArrayList<>();
+		ArrayList<String> remoteIDs=new ArrayList<>();
+		for(URI id:ids){
+			if(Config.isLocal(id)){
+				String path=id.getPath();
+				if(StringUtils.isEmpty(path))
+					continue;
+				String[] pathSegments=path.split("/");
+				if(pathSegments.length!=3 || !"groups".equals(pathSegments[1])) // "", "groups", id
+					continue;
+				int uid=Utils.safeParseInt(pathSegments[2]);
+				if(uid>0)
+					localIDs.add(uid);
+			}else{
+				remoteIDs.add(id.toString());
+			}
+		}
+		if(!localIDs.isEmpty()){
+			// Filter local IDs to avoid returning private groups
+			List<Integer> filteredLocalIDs=new SQLQueryBuilder(conn)
+					.selectFrom("groups")
+					.columns("id")
+					.whereIn("id", localIDs)
+					.andWhere("access_type<>"+Group.AccessType.PRIVATE)
+					.executeAndGetIntList();
+			localIDs.clear();
+			localIDs.addAll(filteredLocalIDs);
+		}
+		HashMap<Integer, URI> localIdToApIdMap=new HashMap<>();
+		if(!remoteIDs.isEmpty()){
+			try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("groups").columns("id", "ap_id").whereIn("ap_id", remoteIDs).andWhere("access_type<>"+Group.AccessType.PRIVATE.ordinal()).execute()){
+				while(res.next()){
+					int localID=res.getInt(1);
+					localIDs.add(localID);
+					localIdToApIdMap.put(localID, URI.create(res.getString(2)));
+				}
+			}
+		}
+		if(localIDs.isEmpty())
+			return Map.of();
+		return new SQLQueryBuilder(conn)
+				.selectFrom("group_memberships")
+				.columns("group_id")
+				.whereIn("group_id", localIDs)
+				.andWhere("accepted=1 AND user_id=?", userID)
+				.executeAsStream(res->res.getInt(1))
+				.collect(Collectors.toMap(id->localIdToApIdMap.computeIfAbsent(id, GroupStorage::localGroupURI), Function.identity()));
+	}
+
+	private static URI localUserURI(int id){
+		return Config.localURI("/users/"+id);
+	}
+
+	private static URI localGroupURI(int id){
+		return Config.localURI("/groups/"+id);
 	}
 }

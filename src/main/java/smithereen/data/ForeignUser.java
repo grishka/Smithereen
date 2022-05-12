@@ -42,6 +42,7 @@ public class ForeignUser extends User implements ForeignActor{
 		wall=tryParseURL(ep.wall);
 		friends=tryParseURL(ep.friends);
 		groups=tryParseURL(ep.groups);
+		collectionQueryEndpoint=tryParseURL(ep.collectionQuery);
 	}
 
 	@Override
@@ -120,7 +121,11 @@ public class ForeignUser extends User implements ForeignActor{
 			gender=Gender.UNKNOWN;
 		}
 		manuallyApprovesFollowers=optBoolean(obj, "manuallyApprovesFollowers");
-		if(optBoolean(obj, "supportsFriendRequests")){
+		JsonObject capabilities=optObject(obj, "capabilities");
+		if(capabilities!=null){
+			if(optBoolean(capabilities, "supportsFriendRequests"))
+				flags|=FLAG_SUPPORTS_FRIEND_REQS;
+		}else if(optBoolean(obj, "supportsFriendRequests")){
 			flags|=FLAG_SUPPORTS_FRIEND_REQS;
 		}
 		if(StringUtils.isNotEmpty(summary))

@@ -73,6 +73,8 @@ public class JLDProcessor{
 		lc.addProperty("TentativeJoin", "sm:TentativeJoin");
 		lc.addProperty("accessType", "sm:accessType");
 		lc.addProperty("actorToken", "sm:actorToken");
+		lc.addProperty("collectionSimpleQuery", "sm:collectionSimpleQuery");
+		lc.addProperty("CollectionQueryResult", "sm:CollectionQueryResult");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

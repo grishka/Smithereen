@@ -132,6 +132,8 @@ public class DatabaseUtils{
 						if(res.next()){
 							action.accept(creator.deserialize(res));
 							return true;
+						}else{
+							res.close();
 						}
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
@@ -145,6 +147,7 @@ public class DatabaseUtils{
 						while(res.next()){
 							action.accept(creator.deserialize(res));
 						}
+						res.close();
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
 					}

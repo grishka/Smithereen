@@ -552,6 +552,22 @@ public class GroupsController{
 		}
 	}
 
+	public Map<URI, Integer> getMembersByActivityPubIDs(@NotNull Group group, Collection<URI> query, boolean tentative){
+		try{
+			return GroupStorage.getMembersByActivityPubIDs(query, group.id, tentative);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<URI, Integer> getUserGroupsByActivityPubIDs(@NotNull User user, Collection<URI> query){
+		try{
+			return GroupStorage.getUserGroupsByActivityPubIDs(query, user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public enum EventsType{
 		FUTURE,
 		PAST,

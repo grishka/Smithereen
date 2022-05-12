@@ -53,7 +53,7 @@ public class ObjectLinkResolver{
 		this.context=context;
 	}
 
-	private static Post getPost(String _id) throws SQLException{
+	private Post getPost(String _id) throws SQLException{
 		int id=parseIntOrDefault(_id, 0);
 		if(id==0)
 			throw new ObjectNotFoundException("Invalid local post ID");
@@ -63,24 +63,18 @@ public class ObjectLinkResolver{
 		return post;
 	}
 
-	private static User getUser(String _id) throws SQLException{
+	private User getUser(String _id){
 		int id=parseIntOrDefault(_id, 0);
 		if(id==0)
 			throw new ObjectNotFoundException();
-		User user=UserStorage.getById(id);
-		if(user==null || user instanceof ForeignUser)
-			throw new ObjectNotFoundException();
-		return user;
+		return context.getUsersController().getLocalUserOrThrow(id);
 	}
 
-	private static Group getGroup(String _id) throws SQLException{
+	private Group getGroup(String _id){
 		int id=parseIntOrDefault(_id, 0);
 		if(id==0)
 			throw new ObjectNotFoundException();
-		Group group=GroupStorage.getById(id);
-		if(group==null || group instanceof ForeignGroup)
-			throw new ObjectNotFoundException();
-		return group;
+		return context.getGroupsController().getLocalGroupOrThrow(id);
 	}
 
 	public ActivityPubObject resolve(URI link){

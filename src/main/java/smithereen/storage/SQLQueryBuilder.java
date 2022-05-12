@@ -5,15 +5,19 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
 
 import smithereen.Config;
+import spark.utils.StringUtils;
 
 public class SQLQueryBuilder{
 	private static final Logger LOG=LoggerFactory.getLogger(SQLQueryBuilder.class);
@@ -28,7 +32,7 @@ public class SQLQueryBuilder{
 	private boolean selectDistinct;
 	private List<Value> values;
 	private String condition;
-	private Object[] conditionArgs;
+	private List<Object> conditionArgs;
 	private int limit, offset;
 	private boolean hasLimit;
 	private String orderBy;
@@ -120,7 +124,7 @@ public class SQLQueryBuilder{
 
 	public SQLQueryBuilder where(String where, Object... args){
 		condition=where;
-		conditionArgs=args;
+		conditionArgs=new ArrayList<>(List.of(args));
 		return this;
 	}
 
@@ -136,7 +140,17 @@ public class SQLQueryBuilder{
 		}
 		sb.append(')');
 		condition=sb.toString();
-		conditionArgs=args;
+		conditionArgs=new ArrayList<>(List.of(args));
+		return this;
+	}
+
+	public SQLQueryBuilder andWhere(String where, Object... args){
+		if(StringUtils.isNotEmpty(condition))
+			condition+=" AND ";
+		condition+=where;
+		if(conditionArgs==null)
+			conditionArgs=new ArrayList<>();
+		conditionArgs.addAll(List.of(args));
 		return this;
 	}
 
@@ -166,6 +180,39 @@ public class SQLQueryBuilder{
 			throw new IllegalStateException("ON DUPLICATE KEY UPDATE can only be used with INSERT");
 		action=Action.INSERT_OR_UPDATE;
 		return this;
+	}
+
+	public void executeNoResult() throws SQLException{
+		try(PreparedStatement stmt=createStatement()){
+			stmt.execute();
+		}
+	}
+
+	public int executeAndGetID() throws SQLException{
+		try(PreparedStatement stmt=createStatement(Statement.RETURN_GENERATED_KEYS)){
+			stmt.execute();
+			return DatabaseUtils.oneFieldToInt(stmt.getGeneratedKeys());
+		}
+	}
+
+	public ResultSet execute() throws SQLException{
+		return createStatement().executeQuery();
+	}
+
+	public <T> Stream<T> executeAsStream(ResultSetDeserializerFunction<T> creator) throws SQLException{
+		return DatabaseUtils.resultSetToObjectStream(createStatement().executeQuery(), creator);
+	}
+
+	public int executeAndGetInt() throws SQLException{
+		try(PreparedStatement stmt=createStatement()){
+			return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		}
+	}
+
+	public List<Integer> executeAndGetIntList() throws SQLException{
+		try(PreparedStatement stmt=createStatement()){
+			return DatabaseUtils.intResultSetToList(stmt.executeQuery());
+		}
 	}
 
 	private void appendSelectColumns(StringBuilder sb){

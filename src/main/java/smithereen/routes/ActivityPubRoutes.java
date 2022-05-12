@@ -17,6 +17,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +74,7 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
+import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.ServiceActor;
@@ -92,8 +94,6 @@ import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
-import smithereen.controllers.ObjectLinkResolver;
-import smithereen.controllers.WallController;
 import smithereen.data.Account;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
@@ -122,7 +122,6 @@ import spark.Response;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.context;
-import static smithereen.Utils.escapeHTML;
 import static smithereen.Utils.gson;
 import static smithereen.Utils.parseIntOrDefault;
 import static smithereen.Utils.safeParseInt;
@@ -844,6 +843,103 @@ public class ActivityPubRoutes{
 		return ActivityPub.generateActorToken(context(req), user, group);
 	}
 
+	public static Object userCollectionQuery(Request req, Response resp){
+		User user=context(req).getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		return collectionQuery(user, req, resp);
+	}
+
+	public static Object groupCollectionQuery(Request req, Response resp){
+		Group group=context(req).getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
+		ActivityPub.enforceGroupContentAccess(req, group);
+		return collectionQuery(group, req, resp);
+	}
+
+	private static Object collectionQuery(Actor owner, Request req, Response resp){
+		URI collectionID;
+		try{
+			String _id=req.queryParams("collection");
+			if(StringUtils.isEmpty(_id)){
+				throw new BadRequestException("Collection ID (`collection` parameter) is required but was empty");
+			}
+			collectionID=new URI(_id);
+		}catch(URISyntaxException x){
+			throw new BadRequestException("Malformed collection ID", x);
+		}
+		if(!Config.isLocal(collectionID))
+			throw new BadRequestException("Collection ID has wrong hostname, expected "+Config.domain);
+		String path=collectionID.getPath();
+		String actorPrefix=owner.getTypeAndIdForURL();
+		if(!path.startsWith(actorPrefix))
+			throw new BadRequestException("Collection path must start with actor prefix ("+actorPrefix+")");
+
+		if(req.queryParams("item")==null)
+			throw new BadRequestException("At least one `item` is required");
+
+		List<URI> items=Arrays.stream(req.queryMap("item").values()).map(s->{
+			try{
+				URI uri=new URI(s);
+				if(!"https".equals(uri.getScheme()) && !"http".equals(uri.getScheme()))
+					throw new BadRequestException("Invalid URL scheme: '"+s+"'");
+				return uri;
+			}catch(URISyntaxException x){
+				throw new BadRequestException("Invalid URL '"+s+"'", x);
+			}
+		}).limit(100).toList();
+
+		String collectionPath=path.substring(actorPrefix.length());
+		Collection<URI> filteredItems=switch(collectionPath){
+			case "/wall" -> queryWallCollection(req, owner, items);
+			case "/friends" -> {
+				if(owner instanceof User u){
+					yield queryUserFriendsCollection(req, u, items);
+				}else{
+					throw new BadRequestException("Unknown collection ID");
+				}
+			}
+			case "/groups" -> {
+				if(owner instanceof User u){
+					yield queryUserGroupsCollection(req, u, items);
+				}else{
+					throw new BadRequestException("Unknown collection ID");
+				}
+			}
+			case "/members", "/tentativeMembers" -> {
+				if(owner instanceof Group g){
+					yield queryGroupMembersCollection(req, g, items, "/tentativeMembers".equals(collectionPath));
+				}else{
+					throw new BadRequestException("Unknown collection ID");
+				}
+			}
+
+			case "/following", "/followers" -> throw new BadRequestException("Querying this collection is not supported");
+			default -> throw new BadRequestException("Unknown collection ID");
+		};
+
+		resp.type(ActivityPub.CONTENT_TYPE);
+		CollectionQueryResult res=new CollectionQueryResult();
+		res.partOf=collectionID;
+		res.items=filteredItems.stream().map(LinkOrObject::new).toList();
+		return res;
+	}
+
+	private static Collection<URI> queryWallCollection(Request req, Actor owner, List<URI> query){
+		return context(req).getWallController().getPostLocalIDsByActivityPubIDs(query, owner).keySet();
+	}
+
+	private static Collection<URI> queryUserFriendsCollection(Request req, User owner, List<URI> query){
+		return context(req).getFriendsController().getFriendsByActivityPubIDs(owner, query).keySet();
+	}
+
+	private static Collection<URI> queryGroupMembersCollection(Request req, Group owner, List<URI> query, boolean tentative){
+		if(tentative && !owner.isEvent())
+			throw new BadRequestException("Unknown collection ID");
+		return context(req).getGroupsController().getMembersByActivityPubIDs(owner, query, tentative).keySet();
+	}
+
+	private static Collection<URI> queryUserGroupsCollection(Request req, User owner, List<URI> query){
+		return context(req).getGroupsController().getUserGroupsByActivityPubIDs(owner, query).keySet();
+	}
+
 	private static boolean verifyHttpDigest(String digestHeader, byte[] bodyData){
 		String[] parts=digestHeader.split(",");
 		for(String part:parts){
@@ -863,27 +959,8 @@ public class ActivityPubRoutes{
 		return true;
 	}
 
-	private static class ActivityTypeHandlerRecord<A extends Actor, T extends Activity, N extends Activity, NN extends Activity, O extends ActivityPubObject>{
-		@NotNull
-		final Class<A> actorClass;
-		@NotNull
-		final Class<T> activityClass;
-		@Nullable
-		final Class<N> nestedActivityClass;
-		@Nullable
-		final Class<NN> doublyNestedActivityClass;
-		@NotNull
-		final Class<O> objectClass;
-		@NotNull
-		final ActivityTypeHandler<A, T, O> handler;
-
-		public ActivityTypeHandlerRecord(@NotNull Class<A> actorClass, @NotNull Class<T> activityClass, @Nullable Class<N> nestedActivityClass, @Nullable Class<NN> doublyNestedActivityClass, @NotNull Class<O> objectClass, @NotNull ActivityTypeHandler<A, T, O> handler){
-			this.actorClass=actorClass;
-			this.activityClass=activityClass;
-			this.nestedActivityClass=nestedActivityClass;
-			this.doublyNestedActivityClass=doublyNestedActivityClass;
-			this.objectClass=objectClass;
-			this.handler=handler;
+	private record ActivityTypeHandlerRecord<A extends Actor, T extends Activity, N extends Activity, NN extends Activity, O extends ActivityPubObject>
+			(@NotNull Class<A> actorClass, @NotNull Class<T> activityClass, @Nullable Class<N> nestedActivityClass,
+				@Nullable Class<NN> doublyNestedActivityClass, @NotNull Class<O> objectClass, @NotNull ActivityTypeHandler<A, T, O> handler){
 		}
-	}
 }

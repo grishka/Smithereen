@@ -42,6 +42,7 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 		}else{
 			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
 			doHandle(post);
+			context.appContext.getActivityPubWorker().fetchAllReplies(post);
 		}
 	}
 

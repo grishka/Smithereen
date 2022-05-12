@@ -185,11 +185,17 @@ public class User extends Actor{
 		contextCollector.addAlias("middleName", "sc:additionalName");
 		contextCollector.addType("gender", "sc:gender", "sc:GenderType");
 		contextCollector.addAlias("sm", JLD.SMITHEREEN);
-		contextCollector.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
 		contextCollector.addAlias("maidenName", "sm:maidenName");
 		contextCollector.addType("friends", "sm:friends", "@id");
 		contextCollector.addType("groups", "sm:groups", "@id");
 		contextCollector.addAlias("vcard", JLD.VCARD);
+
+		JsonObject capabilities=new JsonObject();
+		capabilities.addProperty("supportsFriendRequests", true);
+		obj.add("capabilities", capabilities);
+		contextCollector.addAlias("capabilities", "litepub:capabilities");
+		contextCollector.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
+		contextCollector.addAlias("litepub", JLD.LITEPUB);
 
 		return obj;
 	}

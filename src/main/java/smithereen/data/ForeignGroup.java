@@ -49,6 +49,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 		followers=tryParseURL(ep.followers);
 		wall=tryParseURL(ep.wall);
 		actorTokenEndpoint=tryParseURL(ep.actorToken);
+		collectionQueryEndpoint=tryParseURL(ep.collectionQuery);
 	}
 
 	@Override

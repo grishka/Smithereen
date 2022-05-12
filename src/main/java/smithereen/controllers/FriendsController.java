@@ -1,6 +1,11 @@
 package smithereen.controllers;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.net.URI;
 import java.sql.SQLException;
+import java.util.Collection;
+import java.util.Map;
 
 import smithereen.ApplicationContext;
 import smithereen.data.FriendRequest;
@@ -63,7 +68,15 @@ public class FriendsController{
 		try{
 			return UserStorage.getFriendshipStatus(self.id, other.id);
 		}catch(SQLException x){
-			throw new IllegalStateException(x);
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<URI, Integer> getFriendsByActivityPubIDs(@NotNull User user, Collection<URI> query){
+		try{
+			return UserStorage.getFriendsByActivityPubIDs(query, user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 }
