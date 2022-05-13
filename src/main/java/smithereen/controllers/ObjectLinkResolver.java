@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -135,20 +136,20 @@ public class ObjectLinkResolver{
 
 	@NotNull
 	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch){
-		return resolve(_link, expectedType, allowFetching, allowStorage, forceRefetch, (JsonObject) null);
+		return resolve(_link, expectedType, allowFetching, allowStorage, forceRefetch, (JsonObject) null, false);
 	}
 
 	@NotNull
-	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, Actor owner){
+	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, Actor owner, boolean bypassCollectionCheck){
 		JsonObject actorToken=null;
 		if(!Config.isLocal(_link) && owner instanceof Group g && g.accessType!=Group.AccessType.OPEN){
 			actorToken=getActorToken(ServiceActor.getInstance(), g);
 		}
-		return resolve(_link, expectedType, allowFetching, allowStorage, forceRefetch, actorToken);
+		return resolve(_link, expectedType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck);
 	}
 
 	@NotNull
-	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken){
+	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
 		try{
 			LOG.debug("Resolving ActivityPub link: {}, expected type: {}", _link, expectedType.getName());
 			URI link;
@@ -159,28 +160,35 @@ public class ObjectLinkResolver{
 			}
 			if(!Config.isLocal(link)){
 				if(!forceRefetch){
-					User user=UserStorage.getUserByActivityPubID(link);
-					if(user!=null)
-						return ensureTypeAndCast(user, expectedType);
-					ForeignGroup group=GroupStorage.getForeignGroupByActivityPubID(link);
-					if(group!=null)
-						return ensureTypeAndCast(group, expectedType);
-					Post post=PostStorage.getPostByID(link);
-					if(post!=null)
-						return ensureTypeAndCast(post, expectedType);
+					if(expectedType.isAssignableFrom(User.class)){
+						User user=UserStorage.getUserByActivityPubID(link);
+						if(user!=null)
+							return ensureTypeAndCast(user, expectedType);
+					}
+					if(expectedType.isAssignableFrom(ForeignGroup.class)){
+						ForeignGroup group=GroupStorage.getForeignGroupByActivityPubID(link);
+						if(group!=null)
+							return ensureTypeAndCast(group, expectedType);
+					}
+					if(expectedType.isAssignableFrom(Post.class)){
+						Post post=PostStorage.getPostByID(link);
+						if(post!=null)
+							return ensureTypeAndCast(post, expectedType);
+					}
 				}
 				if(allowFetching){
 					try{
 						ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken);
-						if(obj!=null){
-							T o=ensureTypeAndCast(obj, expectedType);
-							o.resolveDependencies(context, allowFetching, allowStorage);
-							if(allowStorage)
-								storeOrUpdateRemoteObject(o);
-							return o;
-						}else{
-							throw new UnsupportedRemoteObjectTypeException();
+						T o=ensureTypeAndCast(obj, expectedType);
+						o.resolveDependencies(context, allowFetching, allowStorage);
+						if(!bypassCollectionCheck && o instanceof Post post && post.getReplyLevel()==0){ // TODO make this a generalized interface OwnedObject or something
+							if(!Objects.equals(post.owner.activityPubID, post.user.activityPubID)){
+								ensureObjectIsInCollection(post.owner, post.owner.getWallURL(), post.activityPubID);
+							}
 						}
+						if(allowStorage)
+							storeOrUpdateRemoteObject(o);
+						return o;
 					}catch(IOException x){
 						throw new ObjectNotFoundException("Can't resolve remote object: "+link, x);
 					}
@@ -230,6 +238,9 @@ public class ObjectLinkResolver{
 	}
 
 	public void ensureObjectIsInCollection(@NotNull Actor collectionOwner, @NotNull URI collectionID, @NotNull URI objectID){
+		LOG.debug("Checking whether object {} belongs to collection {} owned by {}", objectID, collectionID, collectionOwner.activityPubID);
+		if(Config.isLocal(collectionID))
+			throw new FederationException(collectionID+" is a local collection. Must submit this object with a Create activity first.");
 		if(collectionOwner.collectionQueryEndpoint==null)
 			return; // There's nothing we can do anyway
 		if(collectionID.getHost().equals(objectID.getHost()))

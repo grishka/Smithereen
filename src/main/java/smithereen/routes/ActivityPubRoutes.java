@@ -729,7 +729,13 @@ public class ActivityPubRoutes{
 					}
 				}else{
 					// special case: fetch the object of Announce{Note}, Add{...}, or Invite{Group}
-					aobj=context(req).getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add || activity instanceof Invite, false, false);
+					Actor collectionOwner;
+					if(activity instanceof Add add && add.target!=null && add.target.object instanceof ActivityPubCollection target && target.attributedTo!=null){
+						collectionOwner=context(req).getObjectLinkResolver().resolve(target.attributedTo, Actor.class, false, false, false);
+					}else{
+						collectionOwner=null;
+					}
+					aobj=context(req).getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add || activity instanceof Invite, false, false, collectionOwner, true);
 				}
 			}
 			for(ActivityTypeHandlerRecord r : typeHandlers){

@@ -1,5 +1,7 @@
 package smithereen.activitypub;
 
+import com.google.gson.JsonObject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -185,7 +187,10 @@ public class ActivityPubWorker{
 					}
 					add.cc=cc;
 				}
-				add.target=new LinkOrObject(post.owner.getWallURL());
+				ActivityPubCollection target=new ActivityPubCollection(false);
+				target.activityPubID=post.owner.getWallURL();
+				target.attributedTo=post.owner.activityPubID;
+				add.target=new LinkOrObject(target);
 
 				ArrayList<URI> inboxes=new ArrayList<>();
 				if(post.owner instanceof User)
@@ -685,7 +690,7 @@ public class ActivityPubWorker{
 			LOG.debug("Started fetching parent thread for post {}", initialPost.activityPubID);
 			seenPosts.add(initialPost.activityPubID);
 			while(thread.get(0).inReplyTo!=null){
-				Post post=context.getObjectLinkResolver().resolve(thread.get(0).inReplyTo, Post.class, true, false, false);
+				Post post=context.getObjectLinkResolver().resolve(thread.get(0).inReplyTo, Post.class, true, false, false, (JsonObject) null, true);
 				if(seenPosts.contains(post.activityPubID)){
 					LOG.warn("Already seen post {} while fetching parent thread for {}", post.activityPubID, initialPost.activityPubID);
 					throw new IllegalStateException("Reply thread contains a loop of links");
@@ -758,7 +763,7 @@ public class ActivityPubWorker{
 				}else{
 					ActivityPubCollection collection;
 					if(post.replies.link!=null){
-						collection=context.getObjectLinkResolver().resolve(post.replies.link, ActivityPubCollection.class, true, false, false);
+						collection=context.getObjectLinkResolver().resolve(post.replies.link, ActivityPubCollection.class, true, false, false, post.owner, true);
 						collection.validate(post.activityPubID, "replies");
 					}else if(post.replies.object instanceof ActivityPubCollection){
 						collection=(ActivityPubCollection) post.replies.object;
@@ -773,7 +778,7 @@ public class ActivityPubWorker{
 					}
 					CollectionPage page;
 					if(collection.first.link!=null){
-						page=context.getObjectLinkResolver().resolve(collection.first.link, CollectionPage.class, true, false, false);
+						page=context.getObjectLinkResolver().resolve(collection.first.link, CollectionPage.class, true, false, false, post.owner, false);
 						page.validate(post.activityPubID, "replies.first");
 					}else if(collection.first.object instanceof CollectionPage){
 						page=(CollectionPage) collection.first.object;
@@ -787,7 +792,7 @@ public class ActivityPubWorker{
 					}
 					while(page.next!=null){
 						LOG.trace("getting next page: {}", page.next);
-						page=context.getObjectLinkResolver().resolve(page.next, CollectionPage.class, true, false, false);
+						page=context.getObjectLinkResolver().resolve(page.next, CollectionPage.class, true, false, false, post.owner, false);
 						if(page.items==null){ // you're supposed to not return the "next" field when there are no more pages, but mastodon still does...
 							LOG.debug("done fetching replies because page.items is empty");
 							break;
@@ -876,7 +881,7 @@ public class ActivityPubWorker{
 		protected Post compute(){
 			try{
 				LOG.trace("Fetching remote reply from {}", postID);
-				post=context.getObjectLinkResolver().resolve(postID, Post.class, true, false, false);
+				post=context.getObjectLinkResolver().resolve(postID, Post.class, true, false, false, parentPost.owner, true);
 				post.setParent(parentPost);
 				post.storeDependencies(context);
 				PostStorage.putForeignWallPost(post);

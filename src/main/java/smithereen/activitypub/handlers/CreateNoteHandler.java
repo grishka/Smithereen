@@ -1,5 +1,7 @@
 package smithereen.activitypub.handlers;
 
+import com.google.gson.JsonObject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +56,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 
 		// Special handling for poll votes because using a separate activity type would've been too easy.
 		if((post.attachment==null || post.attachment.isEmpty()) && StringUtils.isEmpty(post.content) && post.inReplyTo!=null && post.name!=null){
-			Post parent=context.appContext.getObjectLinkResolver().resolve(post.inReplyTo, Post.class, false, false, false);
+			Post parent=context.appContext.getObjectLinkResolver().resolve(post.inReplyTo, Post.class, false, false, false, (JsonObject) null, true);
 			if(parent.poll!=null){
 				int optionID=0;
 				if(post.context!=null){
