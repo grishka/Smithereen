@@ -17,7 +17,6 @@ import static smithereen.Utils.*;
 
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
@@ -188,7 +187,7 @@ public class ProfileRoutes{
 			switch(status){
 				case FOLLOWED_BY:
 					if(isAjax(req) && verifyCSRF(req, resp)){
-						UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
+						UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser), false);
 						if(user instanceof ForeignUser){
 							context(req).getActivityPubWorker().sendFollowUserActivity(self.user, (ForeignUser) user);
 						}
@@ -235,7 +234,7 @@ public class ProfileRoutes{
 						context(req).getActivityPubWorker().sendFriendRequestActivity(self.user, (ForeignUser)user, req.queryParams("message"));
 					}
 				}else{
-					UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
+					UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser), false);
 					if(user instanceof ForeignUser){
 						context(req).getActivityPubWorker().sendFollowUserActivity(self.user, (ForeignUser)user);
 					}else{

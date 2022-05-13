@@ -69,12 +69,14 @@ public class JLDProcessor{
 		lc.add("groups", idAndTypeObject("sm:groups", "@id"));
 		lc.addProperty("nonAnonymous", "sm:nonAnonymous");
 		lc.addProperty("tentativeMembership", "sm:tentativeMembership");
+		lc.add("members", idAndTypeObject("sm:members", "@id"));
 		lc.add("tentativeMembers", idAndTypeObject("sm:tentativeMembers", "@id"));
 		lc.addProperty("TentativeJoin", "sm:TentativeJoin");
 		lc.addProperty("accessType", "sm:accessType");
 		lc.addProperty("actorToken", "sm:actorToken");
 		lc.addProperty("collectionSimpleQuery", "sm:collectionSimpleQuery");
 		lc.addProperty("CollectionQueryResult", "sm:CollectionQueryResult");
+		lc.addProperty("tentative", "sm:tentative");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

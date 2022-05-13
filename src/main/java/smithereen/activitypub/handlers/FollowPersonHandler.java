@@ -26,7 +26,7 @@ public class FollowPersonHandler extends ActivityTypeHandler<ForeignUser, Follow
 		if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
 			throw new BadRequestException("Already following");
 		}
-		UserStorage.followUser(actor.id, user.id, true);
+		UserStorage.followUser(actor.id, user.id, true, false);
 		UserStorage.deleteFriendRequest(actor.id, user.id);
 
 		context.appContext.getActivityPubWorker().sendAcceptFollowActivity(actor, user, activity);

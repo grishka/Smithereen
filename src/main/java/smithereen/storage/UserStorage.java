@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -18,7 +17,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -41,7 +39,6 @@ import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Invitation;
 import smithereen.data.PaginatedList;
-import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.data.UserNotifications;
 import spark.utils.StringUtils;
@@ -487,7 +484,7 @@ public class UserStorage{
 		}
 	}
 
-	public static void followUser(int userID, int targetUserID, boolean accepted) throws SQLException{
+	public static void followUser(int userID, int targetUserID, boolean accepted, boolean ignoreAlreadyFollowing) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		conn.createStatement().execute("START TRANSACTION");
 		try{
@@ -503,8 +500,13 @@ public class UserStorage{
 			stmt.setInt(2, targetUserID);
 			try(ResultSet res=stmt.executeQuery()){
 				res.first();
-				if(res.getInt(1)==1)
+				if(res.getInt(1)==1){
+					if(ignoreAlreadyFollowing){
+						conn.createStatement().execute("ROLLBACK");
+						return;
+					}
 					throw new SQLException("Already following");
+				}
 			}
 
 			stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`,`followee_id`,`mutual`,`accepted`) VALUES (?,?,?,?)");

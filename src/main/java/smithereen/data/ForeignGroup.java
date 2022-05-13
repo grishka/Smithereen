@@ -25,6 +25,8 @@ public class ForeignGroup extends Group implements ForeignActor{
 
 	private URI wall;
 	public URI actorTokenEndpoint;
+	public URI members;
+	public URI tentativeMembers;
 	public EnumSet<Capability> capabilities=EnumSet.noneOf(ForeignGroup.Capability.class);
 
 	public static ForeignGroup fromResultSet(ResultSet res) throws SQLException{
@@ -50,6 +52,8 @@ public class ForeignGroup extends Group implements ForeignActor{
 		wall=tryParseURL(ep.wall);
 		actorTokenEndpoint=tryParseURL(ep.actorToken);
 		collectionQueryEndpoint=tryParseURL(ep.collectionQuery);
+		members=tryParseURL(ep.groupMembers);
+		tentativeMembers=tryParseURL(ep.tentativeGroupMembers);
 	}
 
 	@Override
@@ -102,6 +106,10 @@ public class ForeignGroup extends Group implements ForeignActor{
 		JsonObject endpoints=obj.getAsJsonObject("endpoints");
 		actorTokenEndpoint=tryParseURL(optString(endpoints, "actorToken"));
 		ensureHostMatchesID(actorTokenEndpoint, "endpoints.actorToken");
+		members=tryParseURL(optString(obj, "members"));
+		ensureHostMatchesID(members, "members");
+		tentativeMembers=tryParseURL(optString(obj, "tentativeMembers"));
+		ensureHostMatchesID(tentativeMembers, "tentativeMembers");
 
 		return this;
 	}
@@ -172,7 +180,15 @@ public class ForeignGroup extends Group implements ForeignActor{
 		EndpointsStorageWrapper ep=super.getEndpointsForStorage();
 		if(actorTokenEndpoint!=null)
 			ep.actorToken=actorTokenEndpoint.toString();
+		if(members!=null)
+			ep.groupMembers=members.toString();
+		if(tentativeMembers!=null)
+			ep.tentativeGroupMembers=tentativeMembers.toString();
 		return ep;
+	}
+
+	public URI getMembersCollection(){
+		return members!=null ? members : followers;
 	}
 
 	public boolean hasCapability(Capability cap){

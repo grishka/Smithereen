@@ -561,6 +561,7 @@ public abstract class ActivityPubObject{
 			case "OrderedCollection" -> new ActivityPubCollection(true);
 			case "CollectionPage" -> new CollectionPage(false);
 			case "OrderedCollectionPage" -> new CollectionPage(true);
+			case "CollectionQueryResult" -> new CollectionQueryResult();
 
 			// Activities
 			case "Accept" -> new Accept();

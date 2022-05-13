@@ -466,6 +466,7 @@ public class ActivityPubRoutes{
 				return x.toString();
 			}
 		}else if(remoteObj instanceof ForeignGroup group){
+			group.storeDependencies(context(req));
 			GroupStorage.putOrUpdateForeignGroup(group);
 			resp.redirect(Config.localURI("/"+group.getFullUsername()).toString());
 			return "";
@@ -522,7 +523,7 @@ public class ActivityPubRoutes{
 			if(user.supportsFriendRequests()){
 				UserStorage.putFriendRequest(self.user.id, user.id, msg, false);
 			}else{
-				UserStorage.followUser(self.user.id, user.id, false);
+				UserStorage.followUser(self.user.id, user.id, false, false);
 			}
 			Follow follow=new Follow();
 			follow.actor=new LinkOrObject(self.user.activityPubID);

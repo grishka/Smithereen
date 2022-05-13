@@ -11,6 +11,7 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,6 +21,8 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.CollectionQueryResult;
+import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
@@ -27,6 +30,7 @@ import smithereen.data.Group;
 import smithereen.data.Post;
 import smithereen.data.UriBuilder;
 import smithereen.data.User;
+import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
@@ -223,6 +227,18 @@ public class ObjectLinkResolver{
 		if(type.isInstance(obj))
 			return type.cast(obj);
 		throw new IllegalStateException("Expected object of type "+type.getName()+", but got "+obj.getClass().getName()+" instead");
+	}
+
+	public void ensureObjectIsInCollection(@NotNull Actor collectionOwner, @NotNull URI collectionID, @NotNull URI objectID){
+		if(collectionOwner.collectionQueryEndpoint==null)
+			return; // There's nothing we can do anyway
+		if(collectionID.getHost().equals(objectID.getHost()))
+			return; // This collection is on the same server as the object. We trust that that server is sane.
+		CollectionQueryResult cqr=ActivityPub.performCollectionQuery(collectionOwner, collectionID, List.of(objectID));
+		List<LinkOrObject> res=cqr.items;
+		if(res.isEmpty() || !objectID.equals(res.get(0).link))
+			throw new FederationException("Object "+objectID+" is not in collection "+collectionID);
+		LOG.debug("Object {} was confirmed to be contained in {}", objectID, collectionID);
 	}
 
 	private record ActorToken(JsonObject token, Instant validUntil){

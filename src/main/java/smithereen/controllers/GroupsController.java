@@ -23,7 +23,6 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.activities.Join;
 import smithereen.data.Account;
@@ -81,7 +80,7 @@ public class GroupsController{
 				throw new IllegalArgumentException("start time is required for event");
 			int id=GroupStorage.createGroup(name, Utils.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
 			Group group=Objects.requireNonNull(GroupStorage.getById(id));
-			context.getActivityPubWorker().sendAddToGroupsCollectionActivity(admin, group);
+			context.getActivityPubWorker().sendAddToGroupsCollectionActivity(admin, group, false);
 			NewsfeedStorage.putEntry(admin.id, group.id, isEvent ? NewsfeedEntry.Type.CREATE_EVENT : NewsfeedEntry.Type.CREATE_GROUP, null);
 			return group;
 		}catch(SQLException x){
@@ -239,13 +238,17 @@ public class GroupsController{
 	}
 
 	public void joinGroup(@NotNull Group group, @NotNull User user, boolean tentative){
+		joinGroup(group, user, tentative, false);
+	}
+
+	public void joinGroup(@NotNull Group group, @NotNull User user, boolean tentative, boolean forceAccepted){
 		try{
 			Utils.ensureUserNotBlocked(user, group);
 			boolean autoAccepted=true;
 
 			synchronized(groupMembershipLock){
 				Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, user.id);
-				if(!getMemberAdminLevel(group, user).isAtLeast(Group.AdminLevel.ADMIN)){
+				if(!forceAccepted && !getMemberAdminLevel(group, user).isAtLeast(Group.AdminLevel.ADMIN)){
 					if(group.accessType==Group.AccessType.PRIVATE){
 						if(state!=Group.MembershipState.INVITED)
 							throw new UserActionNotAllowedException();
@@ -268,21 +271,23 @@ public class GroupsController{
 				// change certain <-> tentative
 				if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER){
 					GroupStorage.updateUserEventDecision(group, user.id, tentative);
-					if(group instanceof ForeignGroup fg)
+					if(!forceAccepted && group instanceof ForeignGroup fg)
 						context.getActivityPubWorker().sendJoinGroupActivity(user, fg, tentative);
 					return;
 				}
 
-				GroupStorage.joinGroup(group, user.id, tentative, !(group instanceof ForeignGroup) && autoAccepted);
+				GroupStorage.joinGroup(group, user.id, tentative, forceAccepted || (!(group instanceof ForeignGroup) && autoAccepted));
 			}
 
-			if(group instanceof ForeignGroup fg){
-				// Add{Group} will be sent upon receiving Accept{Follow}
-				context.getActivityPubWorker().sendJoinGroupActivity(user, fg, tentative);
-			}else{
-				if(group.accessType!=Group.AccessType.PRIVATE && autoAccepted){
-					context.getActivityPubWorker().sendAddToGroupsCollectionActivity(user, group);
-					NewsfeedStorage.putEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
+			if(!forceAccepted){
+				if(group instanceof ForeignGroup fg){
+					// Add{Group} will be sent upon receiving Accept{Follow}
+					context.getActivityPubWorker().sendJoinGroupActivity(user, fg, tentative);
+				}else{
+					if(group.accessType!=Group.AccessType.PRIVATE && autoAccepted){
+						context.getActivityPubWorker().sendAddToGroupsCollectionActivity(user, group, tentative);
+						NewsfeedStorage.putEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
+					}
 				}
 			}
 			if(group.isEvent()){
@@ -304,7 +309,7 @@ public class GroupsController{
 				}
 				GroupStorage.leaveGroup(group, user.id, state==Group.MembershipState.TENTATIVE_MEMBER, state!=Group.MembershipState.REQUESTED);
 			}
-			if(group instanceof ForeignGroup fg){
+			if(group instanceof ForeignGroup fg && !(user instanceof ForeignUser)){
 				context.getActivityPubWorker().sendLeaveGroupActivity(user, fg);
 			}
 			if(group.accessType!=Group.AccessType.PRIVATE)

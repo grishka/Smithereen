@@ -24,7 +24,7 @@ public class AcceptFollowGroupHandler extends NestedActivityTypeHandler<ForeignG
 		follower.ensureLocal();
 		GroupStorage.setMemberAccepted(actor, follower.id, true);
 		if(object.accessType!=Group.AccessType.PRIVATE){
-			context.appContext.getActivityPubWorker().sendAddToGroupsCollectionActivity(follower, actor);
+			context.appContext.getActivityPubWorker().sendAddToGroupsCollectionActivity(follower, actor, context.appContext.getGroupsController().getUserMembershipState(object, follower)==Group.MembershipState.TENTATIVE_MEMBER);
 			NewsfeedStorage.putEntry(follower.id, object.id, object.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
 		}
 	}

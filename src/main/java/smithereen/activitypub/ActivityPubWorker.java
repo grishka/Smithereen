@@ -293,12 +293,13 @@ public class ActivityPubWorker{
 		}
 	}
 
-	public void sendAddToGroupsCollectionActivity(User self, Group group){
+	public void sendAddToGroupsCollectionActivity(User self, Group group, boolean tentative){
 		Add add=new Add();
 		add.activityPubID=new UriBuilder(self.activityPubID).fragment("addGroupCollection"+group.id+"_"+rand()).build();
 		add.actor=new LinkOrObject(self.activityPubID);
 		add.object=new LinkOrObject(group.activityPubID);
 		add.target=new LinkOrObject(self.getGroupsURL());
+		add.tentative=tentative;
 
 		try{
 			List<URI> inboxes=UserStorage.getFollowerInboxes(self.id);

@@ -32,6 +32,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -45,6 +46,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import okhttp3.Call;
+import okhttp3.FormBody;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -53,11 +56,13 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.User;
+import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.GroupStorage;
@@ -571,5 +576,44 @@ public class ActivityPub{
 			LOG.warn("Error fetching actor token for user {} in group {}", actor.activityPubID, group.activityPubID, x);
 		}
 		return null;
+	}
+
+	public static CollectionQueryResult performCollectionQuery(@NotNull Actor actor, @NotNull URI collectionID, @NotNull Collection<URI> query){
+		actor.ensureRemote();
+		if(actor.collectionQueryEndpoint==null)
+			throw new IllegalArgumentException("This actor does not have a collection query endpoint");
+		if(!collectionID.getHost().equals(actor.activityPubID.getHost()))
+			throw new IllegalArgumentException("Collection ID and actor ID hostnames don't match");
+		if(query.isEmpty())
+			throw new IllegalArgumentException("Query is empty");
+		Request.Builder builder=new Request.Builder()
+				.url(HttpUrl.get(actor.collectionQueryEndpoint.toString()));
+		FormBody.Builder body=new FormBody.Builder().add("collection", collectionID.toString());
+		for(URI uri:query)
+			body.add("item", uri.toString());
+		builder.post(body.build());
+		signRequest(builder, actor.collectionQueryEndpoint, actor, null, "post");
+		try(Response resp=httpClient.newCall(builder.build()).execute()){
+			if(resp.isSuccessful()){
+				JsonElement el=JsonParser.parseReader(resp.body().charStream());
+				JsonObject converted=JLDProcessor.convertToLocalContext(el.getAsJsonObject());
+				ActivityPubObject aobj=ActivityPubObject.parse(converted);
+				if(aobj==null)
+					throw new UnsupportedRemoteObjectTypeException("Unsupported object type "+converted.get("type"));
+				if(aobj instanceof CollectionQueryResult cqr){
+					if(!collectionID.equals(cqr.partOf))
+						throw new FederationException("part_of in the collection query result '"+cqr.partOf+"' does not match expected '"+collectionID+"'");
+					return cqr;
+				}else{
+					throw new UnsupportedRemoteObjectTypeException("Expected object of type sm:CollectionQueryResult, got "+aobj.getType());
+				}
+			}else{
+				LOG.warn("Response for collection query {} was not successful: {}", collectionID, resp);
+				return CollectionQueryResult.empty(collectionID);
+			}
+		}catch(Exception x){
+			LOG.warn("Error querying collection {}", collectionID, x);
+			return CollectionQueryResult.empty(collectionID);
+		}
 	}
 }

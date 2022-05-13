@@ -356,5 +356,9 @@ public abstract class Actor extends ActivityPubObject{
 		public String actorToken;
 		@SerializedName("cq")
 		public String collectionQuery;
+		@SerializedName("gm")
+		public String groupMembers;
+		@SerializedName("tm")
+		public String tentativeGroupMembers;
 	}
 }
