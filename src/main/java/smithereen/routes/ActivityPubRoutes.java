@@ -37,7 +37,9 @@ import smithereen.activitypub.handlers.AcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.AcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.AddGroupHandler;
 import smithereen.activitypub.handlers.AddNoteHandler;
-import smithereen.activitypub.handlers.AddPersonHandler;
+import smithereen.activitypub.handlers.GroupAddPersonHandler;
+import smithereen.activitypub.handlers.GroupRemovePersonHandler;
+import smithereen.activitypub.handlers.PersonAddPersonHandler;
 import smithereen.activitypub.handlers.AnnounceNoteHandler;
 import smithereen.activitypub.handlers.CreateNoteHandler;
 import smithereen.activitypub.handlers.DeleteNoteHandler;
@@ -58,7 +60,7 @@ import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectInviteGroupHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
-import smithereen.activitypub.handlers.RemovePersonHandler;
+import smithereen.activitypub.handlers.PersonRemovePersonHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
@@ -153,8 +155,8 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Delete.class, ForeignUser.class, new DeletePersonHandler());
 		registerActivityHandler(ForeignUser.class, Block.class, User.class, new PersonBlockPersonHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Block.class, User.class, new PersonUndoBlockPersonHandler());
-		registerActivityHandler(ForeignUser.class, Add.class, User.class, new AddPersonHandler());
-		registerActivityHandler(ForeignUser.class, Remove.class, User.class, new RemovePersonHandler());
+		registerActivityHandler(ForeignUser.class, Add.class, User.class, new PersonAddPersonHandler());
+		registerActivityHandler(ForeignUser.class, Remove.class, User.class, new PersonRemovePersonHandler());
 		registerActivityHandler(ForeignUser.class, Add.class, Group.class, new AddGroupHandler());
 		registerActivityHandler(ForeignUser.class, Remove.class, Group.class, new RemoveGroupHandler());
 
@@ -170,6 +172,8 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Invite.class, Group.class, new InviteGroupHandler());
 		registerActivityHandler(ForeignUser.class, Reject.class, Invite.class, Group.class, new RejectInviteGroupHandler());
 		registerActivityHandler(ForeignGroup.class, Undo.class, Invite.class, ForeignGroup.class, new UndoInviteGroupHandler());
+		registerActivityHandler(ForeignGroup.class, Add.class, User.class, new GroupAddPersonHandler());
+		registerActivityHandler(ForeignGroup.class, Remove.class, User.class, new GroupRemovePersonHandler());
 
 		registerActivityHandler(Actor.class, Add.class, Post.class, new AddNoteHandler());
 	}

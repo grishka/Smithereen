@@ -63,4 +63,8 @@ public class LinkOrObject{
 	public ActivityPubObject resolve(){
 		return null;
 	}
+
+	public <T extends ActivityPubObject> T requireObject(){
+		return (T)Objects.requireNonNull(object);
+	}
 }

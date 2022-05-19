@@ -1117,4 +1117,10 @@ public class UserStorage{
 	private static URI localUserURI(int id){
 		return Config.localURI("/users/"+id);
 	}
+
+	public static int getLocalFollowersCount(int userID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `followings` JOIN `users` ON `follower_id`=`users`.id WHERE followee_id=? AND accepted=1 AND `users`.domain=''", userID);
+		return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+	}
 }

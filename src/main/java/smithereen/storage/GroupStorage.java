@@ -152,6 +152,7 @@ public class GroupStorage{
 				.value("flags", Utils.serializeEnumSet(group.capabilities, ForeignGroup.Capability.class))
 				.value("access_type", group.accessType)
 				.value("endpoints", group.serializeEndpoints())
+				.value("about", group.summary)
 				.valueExpr("last_updated", "CURRENT_TIMESTAMP()");
 
 		stmt=builder.createStatement(Statement.RETURN_GENERATED_KEYS);
@@ -173,7 +174,7 @@ public class GroupStorage{
 					.createStatement()
 					.execute();
 		}
-		putIntoCache(group);
+		removeFromCache(group);
 		synchronized(adminUpdateLock){
 			stmt=new SQLQueryBuilder(conn)
 					.selectFrom("group_admins")
@@ -508,7 +509,7 @@ public class GroupStorage{
 
 	public static PaginatedList<URI> getUserGroupIDs(int userID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT count(*) FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups.`access_type`<>2");
+		PreparedStatement stmt=conn.prepareStatement("SELECT count(*) FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups`.`access_type`<>2");
 		stmt.setInt(1, userID);
 		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 		if(total==0)
@@ -1164,5 +1165,21 @@ public class GroupStorage{
 
 	private static URI localGroupURI(int id){
 		return Config.localURI("/groups/"+id);
+	}
+
+	public static void setMemberCount(Group group, int count, boolean tentative) throws SQLException{
+		String field=tentative ? "tentative_member_count" : "member_count";
+		new SQLQueryBuilder()
+				.update("groups")
+				.value(field, count)
+				.where("id=?", group.id)
+				.executeNoResult();
+		removeFromCache(group);
+	}
+
+	public static int getLocalMembersCount(int groupID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_memberships` JOIN `users` ON `user_id`=`users`.id WHERE group_id=? AND accepted=1 AND `users`.domain=''", groupID);
+		return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 	}
 }

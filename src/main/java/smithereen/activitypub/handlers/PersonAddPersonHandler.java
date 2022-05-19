@@ -14,7 +14,7 @@ import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.UserStorage;
 import smithereen.util.BackgroundTaskRunner;
 
-public class AddPersonHandler extends ActivityTypeHandler<ForeignUser, Add, User>{
+public class PersonAddPersonHandler extends ActivityTypeHandler<ForeignUser, Add, User>{
 	@Override
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Add activity, User object) throws SQLException{
 		if(activity.target==null || activity.target.link==null)
@@ -31,8 +31,7 @@ public class AddPersonHandler extends ActivityTypeHandler<ForeignUser, Add, User
 				BackgroundTaskRunner.getInstance().submit(()->{
 					try{
 						context.appContext.getObjectLinkResolver().ensureObjectIsInCollection(foreignUser, foreignUser.getFriendsURL(), actor.activityPubID);
-						UserStorage.followUser(actor.id, object.id, true, true);
-						UserStorage.followUser(object.id, actor.id, true, true);
+						context.appContext.getFriendsController().storeFriendship(actor, object);
 					}catch(Exception x){
 						LOG.warn("Error verifying that {} is a friend of {} or storing that relationship", actor.activityPubID, object.activityPubID);
 					}

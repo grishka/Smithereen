@@ -243,7 +243,8 @@ public class GroupsController{
 
 	public void joinGroup(@NotNull Group group, @NotNull User user, boolean tentative, boolean forceAccepted){
 		try{
-			Utils.ensureUserNotBlocked(user, group);
+			if(!forceAccepted)
+				Utils.ensureUserNotBlocked(user, group);
 			boolean autoAccepted=true;
 
 			synchronized(groupMembershipLock){
@@ -258,11 +259,17 @@ public class GroupsController{
 				}
 
 				if(group.isEvent()){
-					if((state==Group.MembershipState.MEMBER && !tentative) || (state==Group.MembershipState.TENTATIVE_MEMBER && tentative) || state==Group.MembershipState.REQUESTED)
+					if((state==Group.MembershipState.MEMBER && !tentative) || (state==Group.MembershipState.TENTATIVE_MEMBER && tentative) || state==Group.MembershipState.REQUESTED){
+						if(forceAccepted)
+							return;
 						throw new UserErrorException("err_group_already_member");
+					}
 				}else{
-					if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER || state==Group.MembershipState.REQUESTED)
+					if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER || state==Group.MembershipState.REQUESTED){
+						if(forceAccepted)
+							return;
 						throw new UserErrorException("err_group_already_member");
+					}
 				}
 
 				if(tentative && (!group.isEvent() || (group instanceof ForeignGroup fg && !fg.hasCapability(ForeignGroup.Capability.TENTATIVE_MEMBERSHIP))))
@@ -288,6 +295,9 @@ public class GroupsController{
 						context.getActivityPubWorker().sendAddToGroupsCollectionActivity(user, group, tentative);
 						NewsfeedStorage.putEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
 					}
+					if(autoAccepted){
+						context.getActivityPubWorker().sendAddUserToGroupActivity(user, group, tentative);
+					}
 				}
 			}
 			if(group.isEvent()){
@@ -302,8 +312,9 @@ public class GroupsController{
 
 	public void leaveGroup(@NotNull Group group, @NotNull User user){
 		try{
+			Group.MembershipState state;
 			synchronized(groupMembershipLock){
-				Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, user.id);
+				state=GroupStorage.getUserMembershipState(group.id, user.id);
 				if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER && state!=Group.MembershipState.REQUESTED){
 					throw new UserErrorException("err_group_not_member");
 				}
@@ -311,6 +322,9 @@ public class GroupsController{
 			}
 			if(group instanceof ForeignGroup fg && !(user instanceof ForeignUser)){
 				context.getActivityPubWorker().sendLeaveGroupActivity(user, fg);
+			}
+			if(!(group instanceof ForeignGroup)){
+				context.getActivityPubWorker().sendRemoveUserFromGroupActivity(user, group, state==Group.MembershipState.TENTATIVE_MEMBER);
 			}
 			if(group.accessType!=Group.AccessType.PRIVATE)
 				context.getActivityPubWorker().sendRemoveFromGroupsCollectionActivity(user, group);
@@ -486,6 +500,9 @@ public class GroupsController{
 			if(user instanceof ForeignUser fu){
 				context.getActivityPubWorker().sendRejectFollowGroup(fu, group, state==Group.MembershipState.TENTATIVE_MEMBER);
 			}
+			if(!(group instanceof ForeignGroup)){
+				context.getActivityPubWorker().sendRemoveUserFromGroupActivity(user, group, state==Group.MembershipState.TENTATIVE_MEMBER);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -524,6 +541,9 @@ public class GroupsController{
 				join.actor=new LinkOrObject(user.activityPubID);
 				join.to=List.of(new LinkOrObject(group.activityPubID));
 				context.getActivityPubWorker().sendAcceptFollowActivity(fu, group, join);
+			}
+			if(!(group instanceof ForeignGroup)){
+				context.getActivityPubWorker().sendAddUserToGroupActivity(user, group, false);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

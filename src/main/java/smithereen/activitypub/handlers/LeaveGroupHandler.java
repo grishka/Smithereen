@@ -18,5 +18,6 @@ public class LeaveGroupHandler extends ActivityTypeHandler<ForeignUser, Leave, G
 			return;
 		}
 		GroupStorage.leaveGroup(group, actor.id, state==Group.MembershipState.TENTATIVE_MEMBER, state!=Group.MembershipState.REQUESTED);
+		context.appContext.getActivityPubWorker().sendRemoveUserFromGroupActivity(actor, group, state==Group.MembershipState.TENTATIVE_MEMBER);
 	}
 }

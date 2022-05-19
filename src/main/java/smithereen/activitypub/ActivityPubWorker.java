@@ -19,7 +19,9 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.Future;
+import java.util.concurrent.RecursiveAction;
 import java.util.concurrent.RecursiveTask;
 import java.util.function.Consumer;
 
@@ -46,7 +48,6 @@ import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
-import smithereen.controllers.WallController;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
@@ -57,6 +58,8 @@ import smithereen.data.Post;
 import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.data.notifications.NotificationUtils;
+import smithereen.exceptions.FederationException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -64,13 +67,26 @@ import spark.utils.StringUtils;
 
 public class ActivityPubWorker{
 	private static final Logger LOG=LoggerFactory.getLogger(ActivityPubWorker.class);
+	/**
+	 * Will not fetch more than this many comments
+	 */
 	private static final int MAX_COMMENTS=1000;
+	/**
+	 * Will not fetch more than this many friends (or followers/following if there's no friends collection)
+	 */
+	private static final int MAX_FRIENDS=10_000;
+	private static final int ACTORS_BATCH_SIZE=25;
 
-	private ForkJoinPool executor;
-	private Random rand=new Random();
+	private final ForkJoinPool executor;
+	private final Random rand=new Random();
+
+	// These must be accessed from synchronized(this)
 	private HashMap<URI, Future<List<Post>>> fetchingReplyThreads=new HashMap<>();
 	private HashMap<URI, List<Consumer<List<Post>>>> afterFetchReplyThreadActions=new HashMap<>();
 	private HashMap<URI, Future<Post>> fetchingAllReplies=new HashMap<>();
+	private HashSet<URI> fetchingRelationshipCollectionsActors=new HashSet<>();
+	private HashSet<URI> fetchingContentCollectionsActors=new HashSet<>();
+
 	private final ApplicationContext context;
 
 	public ActivityPubWorker(ApplicationContext context){
@@ -106,27 +122,27 @@ public class ActivityPubWorker{
 
 	private List<URI> getInboxesForPost(Post post) throws SQLException{
 		ArrayList<URI> inboxes=new ArrayList<>();
-		if(post.owner instanceof User){
-			boolean sendToFollowers=((User) post.owner).id==post.user.id;
-			if(post.owner instanceof ForeignUser){
-				inboxes.add(actorInbox((ForeignUser) post.owner));
+		if(post.owner instanceof User user){
+			boolean sendToFollowers=user.id==post.user.id;
+			if(post.owner instanceof ForeignUser foreignUser){
+				inboxes.add(actorInbox(foreignUser));
 			}else if(sendToFollowers && post.getReplyLevel()==0){
-				inboxes.addAll(UserStorage.getFollowerInboxes(((User) post.owner).id));
+				inboxes.addAll(UserStorage.getFollowerInboxes(user.id));
 			}else{
 				inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
 			}
-		}else if(post.owner instanceof Group){
-			if(post.owner instanceof ForeignGroup){
-				inboxes.add(actorInbox((ForeignGroup) post.owner));
+		}else if(post.owner instanceof Group group){
+			if(post.owner instanceof ForeignGroup foreignGroup){
+				inboxes.add(actorInbox(foreignGroup));
 			}else if(post.getReplyLevel()==0){
-				inboxes.addAll(GroupStorage.getGroupMemberInboxes(((Group) post.owner).id));
+				inboxes.addAll(GroupStorage.getGroupMemberInboxes(group.id));
 			}else{
 				inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
 			}
 		}
 		for(User user:post.mentionedUsers){
-			if(user instanceof ForeignUser){
-				URI inbox=actorInbox((ForeignUser) user);
+			if(user instanceof ForeignUser foreignUser){
+				URI inbox=actorInbox(foreignUser);
 				if(!inboxes.contains(inbox))
 					inboxes.add(inbox);
 			}
@@ -598,6 +614,54 @@ public class ActivityPubWorker{
 		executor.submit(new SendOneActivityRunnable(undo, actorInbox(user), group));
 	}
 
+	public void sendAddUserToGroupActivity(User user, Group group, boolean tentative){
+		group.ensureLocal();
+		Add add=new Add();
+		add.activityPubID=Config.localURI("/groups/"+group.id+"#addUser"+user.id+"_"+rand());
+		ActivityPubCollection target=new ActivityPubCollection(false);
+		target.activityPubID=Config.localURI("/groups/"+group.id+"/"+(tentative ? "tentativeMembers" : "members"));
+		target.attributedTo=group.activityPubID;
+		add.target=new LinkOrObject(target);
+		if(group.isEvent())
+			add.to=List.of(new LinkOrObject(Config.localURI("/groups/"+group.id+"/members")),
+					new LinkOrObject(Config.localURI("/groups/"+group.id+"/tentativeMembers")));
+		else
+			add.to=List.of(new LinkOrObject(Config.localURI("/groups/"+group.id+"/members")));
+		add.object=new LinkOrObject(user.activityPubID);
+
+		try{
+			for(URI inbox:GroupStorage.getGroupMemberInboxes(group.id)){
+				executor.submit(new SendOneActivityRunnable(add, inbox, group));
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void sendRemoveUserFromGroupActivity(User user, Group group, boolean tentative){
+		group.ensureLocal();
+		Remove remove=new Remove();
+		remove.activityPubID=Config.localURI("/groups/"+group.id+"#removeUser"+user.id+"_"+rand());
+		ActivityPubCollection target=new ActivityPubCollection(false);
+		target.activityPubID=Config.localURI("/groups/"+group.id+"/"+(tentative ? "tentativeMembers" : "members"));
+		target.attributedTo=group.activityPubID;
+		remove.target=new LinkOrObject(target);
+		if(group.isEvent())
+			remove.to=List.of(new LinkOrObject(Config.localURI("/groups/"+group.id+"/members")),
+					new LinkOrObject(Config.localURI("/groups/"+group.id+"/tentativeMembers")));
+		else
+			remove.to=List.of(new LinkOrObject(Config.localURI("/groups/"+group.id+"/members")));
+		remove.object=new LinkOrObject(user.activityPubID);
+
+		try{
+			for(URI inbox:GroupStorage.getGroupMemberInboxes(group.id)){
+				executor.submit(new SendOneActivityRunnable(remove, inbox, group));
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public synchronized Future<List<Post>> fetchReplyThread(Post post){
 		return fetchingReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchReplyThreadRunnable(post)));
 	}
@@ -609,6 +673,38 @@ public class ActivityPubWorker{
 
 	public synchronized Future<Post> fetchAllReplies(Post post){
 		return fetchingAllReplies.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchAllRepliesTask(post)));
+	}
+
+	/**
+	 * Fetch and store actor's collections that are related to relationships.
+	 * For users, that's friends. For groups, that's members and tentative members.
+	 * @param actor the remote actor
+	 */
+	public synchronized void fetchActorRelationshipCollections(Actor actor){
+		LOG.info("Fetching relationship collections for actor {}", actor.activityPubID);
+		actor.ensureRemote();
+		if(fetchingRelationshipCollectionsActors.contains(actor.activityPubID)){
+			LOG.trace("Another fetch is already in progress for {}", actor.activityPubID);
+			return;
+		}
+		fetchingRelationshipCollectionsActors.add(actor.activityPubID);
+		executor.submit(new FetchActorRelationshipCollectionsTask(actor));
+	}
+
+	/**
+	 * Fetch and store actor's collections that are related to its content.
+	 * Currently, that's only the wall with all comments.
+	 * @param actor the remote actor
+	 */
+	public synchronized void fetchActorContentCollections(Actor actor){
+		LOG.info("Fetching content collections for actor {}", actor.activityPubID);
+		actor.ensureRemote();
+		if(fetchingContentCollectionsActors.contains(actor.activityPubID)){
+			LOG.trace("Another fetch is already in progress for {}", actor.activityPubID);
+			return;
+		}
+		fetchingContentCollectionsActors.add(actor.activityPubID);
+		executor.submit(new FetchActorContentCollectionsTask(actor));
 	}
 
 	private static class SendOneActivityRunnable implements Runnable{
@@ -889,6 +985,418 @@ public class ActivityPubWorker{
 				completeExceptionally(x);
 			}
 			return super.compute();
+		}
+	}
+
+	private class FetchActorRelationshipCollectionsTask extends RecursiveAction{
+		private final Actor actor;
+
+		private FetchActorRelationshipCollectionsTask(Actor actor){
+			this.actor=actor;
+		}
+
+		@Override
+		protected void compute(){
+			List<ForkJoinTask<?>> tasks=new ArrayList<>();
+			// TODO also sync removed items
+			if(actor instanceof ForeignUser user){
+				if(user.getFriendsURL()!=null){
+					tasks.add(new FetchUserFriendsDirectlyTask(user));
+					if(user.getGroupsURL()!=null){
+						tasks.add(new FetchUserGroupsDirectlyTask(user));
+					}
+				}else{
+					tasks.add(new FetchUserFriendsAndGroupsViaFollowsTask(user));
+				}
+			}else if(actor instanceof ForeignGroup group){
+				tasks.add(new FetchGroupMembersTask(group, false));
+				if(group.isEvent() && group.tentativeMembers!=null)
+					tasks.add(new FetchGroupMembersTask(group, true));
+			}
+			try{
+				invokeAll(tasks);
+			}catch(Throwable x){
+				LOG.warn("Error fetching relationship collections for {}", actor.activityPubID, x);
+			}
+			synchronized(ActivityPubWorker.this){
+				fetchingRelationshipCollectionsActors.remove(actor.activityPubID);
+			}
+			LOG.info("Done fetching relationship collections for {}", actor.activityPubID);
+		}
+	}
+
+	private class FetchActorContentCollectionsTask extends RecursiveAction{
+		private final Actor actor;
+
+		private FetchActorContentCollectionsTask(Actor actor){
+			this.actor=actor;
+		}
+
+		@Override
+		protected void compute(){
+			List<ForkJoinTask<?>> tasks=new ArrayList<>();
+			if(actor.hasWall()){
+				tasks.add(new FetchActorWallTask(actor));
+			}
+			try{
+				invokeAll(tasks);
+			}catch(Throwable x){
+				LOG.warn("Error fetching content collections for {}", actor.activityPubID, x);
+			}
+			synchronized(ActivityPubWorker.this){
+				fetchingContentCollectionsActors.remove(actor.activityPubID);
+			}
+			LOG.info("Done fetching content collections for {}", actor.activityPubID);
+		}
+	}
+
+	/**
+	 * Base class for tasks that deal with collections. Handles paginating through a collection.
+	 */
+	private abstract class ForwardPaginatingCollectionTask extends RecursiveAction{
+		protected final URI collectionID;
+		protected ActivityPubCollection collection;
+		protected int totalItems, processedItems;
+		protected int maxItems=Integer.MAX_VALUE;
+
+		private ForwardPaginatingCollectionTask(URI collectionID){
+			this.collectionID=Objects.requireNonNull(collectionID);
+		}
+
+		private ForwardPaginatingCollectionTask(ActivityPubCollection collection){
+			this.collection=collection;
+			collectionID=collection.activityPubID;
+		}
+
+		@Override
+		protected void compute(){
+			if(collection==null){
+				LOG.trace("Fetching collection {}", collectionID);
+				collection=context.getObjectLinkResolver().resolve(collectionID, ActivityPubCollection.class, true, false, false);
+			}
+			totalItems=Math.min(collection.totalItems, maxItems);
+			onCollectionLoaded();
+			if(collection.first==null)
+				throw new FederationException("collection.first is not present");
+			if(collection.first.object!=null)
+				processCollectionPage(collection.first.requireObject());
+			else
+				loadNextCollectionPage(collection.first.link);
+		}
+
+		private void loadNextCollectionPage(URI id){
+			LOG.trace("Fetching page {} for collection {}", id, collectionID);
+			CollectionPage page=context.getObjectLinkResolver().resolve(id, CollectionPage.class, true, false, false);
+			processCollectionPage(page);
+		}
+
+		private void processCollectionPage(CollectionPage page){
+			if(page.items==null || page.items.isEmpty()){
+				LOG.trace("Finished processing collection {} because items array was null or empty", collectionID);
+				return;
+			}
+			doOneCollectionPage(page);
+			processedItems+=page.items.size();
+			if(totalItems>=0 && processedItems>=totalItems){
+				LOG.trace("Finished processing collection {} because item count limit {} was reached", collectionID, totalItems);
+				return;
+			}
+			if(page.next!=null){
+				loadNextCollectionPage(page.next);
+			}else{
+				LOG.trace("Finished processing collection {} because there are no next pages", collectionID);
+			}
+		}
+
+		protected abstract void doOneCollectionPage(CollectionPage page);
+
+		protected void onCollectionLoaded(){}
+	}
+
+	/**
+	 * Fetches the user's friends collection directly, assuming there is one
+	 */
+	private class FetchUserFriendsDirectlyTask extends ForwardPaginatingCollectionTask{
+		private final ForeignUser user;
+
+		private FetchUserFriendsDirectlyTask(ForeignUser user){
+			super(Objects.requireNonNull(user.getFriendsURL(), "user must have a friends collection"));
+			this.user=user;
+			maxItems=MAX_FRIENDS;
+		}
+
+		protected void doOneCollectionPage(CollectionPage page){
+			invokeAll(page.items.stream()
+					.filter(lo->lo.link!=null && !Config.isLocal(lo.link))
+					.map(lo->new FetchAndStoreOneUserFolloweeTask(user, lo.link, ForeignUser.class))
+					.toList());
+		}
+	}
+
+	/**
+	 * Fetches the user's friends collection directly, assuming there is one
+	 */
+	private class FetchUserGroupsDirectlyTask extends ForwardPaginatingCollectionTask{
+		private final ForeignUser user;
+
+		private FetchUserGroupsDirectlyTask(ForeignUser user){
+			super(Objects.requireNonNull(user.getGroupsURL(), "user must have a groups collection"));
+			this.user=user;
+			maxItems=MAX_FRIENDS;
+		}
+
+		protected void doOneCollectionPage(CollectionPage page){
+			invokeAll(page.items.stream()
+					.filter(lo->lo.link!=null && !Config.isLocal(lo.link))
+					.map(lo->new FetchAndStoreOneUserFolloweeTask(user, lo.link, ForeignGroup.class))
+					.toList());
+		}
+	}
+
+	/**
+	 * Fetches the user's friends and groups by intersecting followers and following
+	 */
+	private class FetchUserFriendsAndGroupsViaFollowsTask extends RecursiveAction{
+		private final ForeignUser user;
+
+		private FetchUserFriendsAndGroupsViaFollowsTask(ForeignUser user){
+			this.user=user;
+		}
+
+		@Override
+		protected void compute(){
+			if(user.followers==null || user.following==null)
+				throw new FederationException("The user must have followers and following collections");
+
+			ActivityPubCollection followers=context.getObjectLinkResolver().resolve(user.followers, ActivityPubCollection.class, true, false, false);
+			ActivityPubCollection following=context.getObjectLinkResolver().resolve(user.following, ActivityPubCollection.class, true, false, false);
+			LOG.trace("Fetch followers/following: collection sizes: {} followers, {} following", followers.totalItems, following.totalItems);
+
+			if(followers.totalItems<=0 || following.totalItems<=0){
+				LOG.debug("Can't proceed because collection sizes are not known");
+				return;
+			}
+			if(followers.totalItems>MAX_FRIENDS && following.totalItems>MAX_FRIENDS){
+				LOG.debug("Can't proceed because both followers and following exceed the limit of {}", MAX_FRIENDS);
+				return;
+			}
+
+			Set<URI> first=new HashSet<>();
+			new FetchCollectionIntoSetTask(followers.totalItems>following.totalItems ? following : followers, first).fork().join();
+			Set<URI> mutualFollows=new HashSet<>();
+			new FilterCollectionAgainstSetTask(followers.totalItems>following.totalItems ? followers : following, first, mutualFollows).fork().join();
+			List<ForkJoinTask<?>> tasks=new ArrayList<>();
+			for(URI uri:mutualFollows){
+				if(!Config.isLocal(uri)){
+					tasks.add(new FetchAndStoreOneUserFolloweeTask(user, uri, Actor.class));
+				}
+				if(tasks.size()==ACTORS_BATCH_SIZE){
+					invokeAll(tasks);
+					tasks.clear();
+				}
+			}
+			if(!tasks.isEmpty())
+				invokeAll(tasks);
+		}
+	}
+
+	private class FetchGroupMembersTask extends ForwardPaginatingCollectionTask{
+		private final ForeignGroup group;
+		private final boolean tentative;
+
+		private FetchGroupMembersTask(ForeignGroup group, boolean tentative){
+			super(tentative ? group.tentativeMembers : group.members);
+			this.group=group;
+			this.tentative=tentative;
+		}
+
+		@Override
+		protected void doOneCollectionPage(CollectionPage page){
+			invokeAll(page.items.stream()
+					.filter(lo->lo.link!=null && !Config.isLocal(lo.link))
+					.map(lo->new FetchAndStoreOneGroupMemberTask(group, lo.link, tentative))
+					.toList());
+		}
+
+		@Override
+		protected void onCollectionLoaded(){
+			try{
+				GroupStorage.setMemberCount(group, totalItems, tentative);
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+	}
+
+	private class FetchCollectionIntoSetTask extends ForwardPaginatingCollectionTask{
+		private final Set<URI> set;
+
+		private FetchCollectionIntoSetTask(ActivityPubCollection collection, Set<URI> set){
+			super(collection);
+			this.set=set;
+		}
+
+		@Override
+		protected void doOneCollectionPage(CollectionPage page){
+			for(LinkOrObject lo:page.items){
+				if(lo.link!=null)
+					set.add(lo.link);
+			}
+		}
+	}
+
+	private class FilterCollectionAgainstSetTask extends ForwardPaginatingCollectionTask{
+		private final Set<URI> filter;
+		private final Set<URI> result;
+
+		private FilterCollectionAgainstSetTask(ActivityPubCollection collection, Set<URI> filter, Set<URI> result){
+			super(collection);
+			this.filter=filter;
+			this.result=result;
+		}
+
+		@Override
+		protected void doOneCollectionPage(CollectionPage page){
+			for(LinkOrObject lo:page.items){
+				if(lo.link!=null && filter.contains(lo.link))
+					result.add(lo.link);
+			}
+		}
+	}
+
+	private class FetchAndStoreOneUserFolloweeTask extends RecursiveAction{
+		private final ForeignUser user;
+		private final URI targetActorID;
+		private final Class<? extends Actor> type;
+
+		private FetchAndStoreOneUserFolloweeTask(ForeignUser user, URI targetActorID, Class<? extends Actor> type){
+			this.user=user;
+			this.targetActorID=targetActorID;
+			this.type=type;
+		}
+
+		@Override
+		protected void compute(){
+			try{
+				Actor target=context.getObjectLinkResolver().resolve(targetActorID, type, true, false, false);
+				if(target instanceof ForeignUser targetUser){
+					if(targetUser.getFriendsURL()!=null)
+						context.getObjectLinkResolver().ensureObjectIsInCollection(targetUser, targetUser.getFriendsURL(), user.activityPubID);
+					if(targetUser.id==0)
+						context.getObjectLinkResolver().storeOrUpdateRemoteObject(targetUser);
+					context.getFriendsController().storeFriendship(user, targetUser);
+				}else if(target instanceof ForeignGroup targetGroup){
+					if(targetGroup.isEvent())
+						return;
+					if(targetGroup.members!=null)
+						context.getObjectLinkResolver().ensureObjectIsInCollection(targetGroup, targetGroup.members, user.activityPubID);
+					if(targetGroup.id==0)
+						context.getObjectLinkResolver().storeOrUpdateRemoteObject(targetGroup);
+					context.getGroupsController().joinGroup(targetGroup, user, false, true);
+				}
+			}catch(Exception x){
+				LOG.debug("Error fetching remote actor {}", targetActorID, x);
+			}
+		}
+	}
+
+	private class FetchAndStoreOneGroupMemberTask extends RecursiveAction{
+		private final ForeignGroup group;
+		private final URI userID;
+		private final boolean tentative;
+
+		private FetchAndStoreOneGroupMemberTask(ForeignGroup group, URI userID, boolean tentative){
+			this.group=group;
+			this.userID=userID;
+			this.tentative=tentative;
+		}
+
+		@Override
+		protected void compute(){
+			try{
+				ForeignUser user=context.getObjectLinkResolver().resolve(userID, ForeignUser.class, true, false, false);
+				if(user.getGroupsURL()!=null)
+					context.getObjectLinkResolver().ensureObjectIsInCollection(user, user.getGroupsURL(), group.activityPubID);
+				if(user.id==0)
+					context.getObjectLinkResolver().storeOrUpdateRemoteObject(user);
+				context.getGroupsController().joinGroup(group, user, tentative, true);
+			}catch(Exception x){
+				LOG.debug("Error fetching remote user {}", userID, x);
+			}
+		}
+	}
+
+	private class FetchActorWallTask extends ForwardPaginatingCollectionTask{
+		private final Actor actor;
+
+		private FetchActorWallTask(Actor actor){
+			super(actor.getWallURL());
+			this.actor=actor;
+			maxItems=MAX_COMMENTS;
+		}
+
+		@Override
+		protected void doOneCollectionPage(CollectionPage page){
+			ArrayList<ProcessWallPostTask> tasks=new ArrayList<>();
+			for(LinkOrObject lo:page.items){
+				try{
+					if(lo.object instanceof Post post){
+						if(post.inReplyTo==null)
+							  tasks.add(new ProcessWallPostTask(post, actor));
+					}else if(lo.link!=null){
+						tasks.add(new FetchAndProcessWallPostTask(actor, lo.link));
+					}
+				}catch(Exception x){
+					LOG.debug("Error processing post {}", lo);
+				}
+			}
+			invokeAll(tasks);
+		}
+	}
+
+	private class ProcessWallPostTask extends RecursiveAction{
+		protected Post post;
+		protected final Actor owner;
+
+		private ProcessWallPostTask(Post post, Actor owner){
+			this.post=post;
+			this.owner=owner;
+		}
+
+		private ProcessWallPostTask(Actor owner){
+			this.owner=owner;
+		}
+
+		@Override
+		protected void compute(){
+			try{
+				post.resolveDependencies(context, true, true);
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
+				new FetchAllRepliesTask(post).fork().join();
+			}catch(Exception x){
+				LOG.debug("Error processing post {}", post.id, x);
+			}
+		}
+	}
+
+	private class FetchAndProcessWallPostTask extends ProcessWallPostTask{
+		private final URI postID;
+
+		private FetchAndProcessWallPostTask(Actor owner, URI postID){
+			super(owner);
+			this.postID=postID;
+		}
+
+		@Override
+		protected void compute(){
+			try{
+				post=context.getObjectLinkResolver().resolve(postID, Post.class, true, false, false, owner, false);
+				if(post.inReplyTo!=null)
+					return;
+			}catch(Exception x){
+				LOG.debug("Error fetching post {}", postID, x);
+			}
+			super.compute();
 		}
 	}
 }

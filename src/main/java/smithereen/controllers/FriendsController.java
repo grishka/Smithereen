@@ -79,4 +79,15 @@ public class FriendsController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public void storeFriendship(@NotNull User user1, @NotNull User user2){
+		try{
+			if(UserStorage.getFriendshipStatus(user1.id, user2.id)==FriendshipStatus.FRIENDS)
+				return;
+			UserStorage.followUser(user1.id, user2.id, true, true);
+			UserStorage.followUser(user2.id, user1.id, true, true);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

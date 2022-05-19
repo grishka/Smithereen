@@ -24,7 +24,6 @@ import spark.utils.StringUtils;
 public class User extends Actor{
 	public static final long FLAG_SUPPORTS_FRIEND_REQS=1;
 
-
 	public int id;
 	public String firstName;
 	public String lastName;

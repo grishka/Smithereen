@@ -27,5 +27,9 @@ public class AcceptFollowPersonHandler extends NestedActivityTypeHandler<Foreign
 			context.appContext.getActivityPubWorker().sendAddToFriendsCollectionActivity(follower, actor);
 			NewsfeedStorage.putEntry(follower.id, actor.id, NewsfeedEntry.Type.ADD_FRIEND, null);
 		}
+		if(UserStorage.getLocalFollowersCount(actor.id)==1){
+			context.appContext.getActivityPubWorker().fetchActorRelationshipCollections(actor);
+			context.appContext.getActivityPubWorker().fetchActorContentCollections(actor);
+		}
 	}
 }

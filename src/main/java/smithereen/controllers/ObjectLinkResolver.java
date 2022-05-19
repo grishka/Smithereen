@@ -160,7 +160,7 @@ public class ObjectLinkResolver{
 			}
 			if(!Config.isLocal(link)){
 				if(!forceRefetch){
-					if(expectedType.isAssignableFrom(User.class)){
+					if(expectedType.isAssignableFrom(ForeignUser.class)){
 						User user=UserStorage.getUserByActivityPubID(link);
 						if(user!=null)
 							return ensureTypeAndCast(user, expectedType);

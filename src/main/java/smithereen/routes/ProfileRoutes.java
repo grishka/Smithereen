@@ -502,13 +502,31 @@ public class ProfileRoutes{
 	}
 
 
-	private static User getUserOrThrow(Request req) throws SQLException{
+	private static User getUserOrThrow(Request req){
 		int id=parseIntOrDefault(req.params(":id"), 0);
-		if(id==0)
-			throw new ObjectNotFoundException("err_user_not_found");
-		User user=UserStorage.getById(id);
-		if(user==null)
-			throw new ObjectNotFoundException("err_user_not_found");
-		return user;
+		return context(req).getUsersController().getUserOrThrow(id);
+	}
+
+	public static Object syncRelationshipsCollections(Request req, Response resp, Account self){
+		User user=getUserOrThrow(req);
+		user.ensureRemote();
+		context(req).getActivityPubWorker().fetchActorRelationshipCollections(user);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_friends_and_groups"), l.get("sync_started"), l.get("ok"));
+	}
+
+	public static Object syncProfile(Request req, Response resp, Account self){
+		User user=getUserOrThrow(req);
+		user.ensureRemote();
+		context(req).getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
+		return new WebDeltaResponse(resp).refresh();
+	}
+
+	public static Object syncContentCollections(Request req, Response resp, Account self){
+		User user=getUserOrThrow(req);
+		user.ensureRemote();
+		context(req).getActivityPubWorker().fetchActorContentCollections(user);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
 	}
 }

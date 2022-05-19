@@ -582,7 +582,7 @@ public abstract class ActivityPubObject{
 			case "Remove" -> new Remove();
 
 			default -> {
-				LOG.info("Unknown object type {}", type);
+				LOG.debug("Unknown object type {}", type);
 				yield null;
 			}
 		};

@@ -922,4 +922,27 @@ public class GroupsRoutes{
 		resp.redirect(back(req));
 		return "";
 	}
+
+	public static Object syncRelationshipsCollections(Request req, Response resp, Account self){
+		Group group=getGroup(req);
+		group.ensureRemote();
+		context(req).getActivityPubWorker().fetchActorRelationshipCollections(group);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_members"), l.get("sync_started"), l.get("ok"));
+	}
+
+	public static Object syncProfile(Request req, Response resp, Account self){
+		Group group=getGroup(req);
+		group.ensureRemote();
+		context(req).getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
+		return new WebDeltaResponse(resp).refresh();
+	}
+
+	public static Object syncContentCollections(Request req, Response resp, Account self){
+		Group group=getGroup(req);
+		group.ensureRemote();
+		context(req).getActivityPubWorker().fetchActorContentCollections(group);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
+	}
 }

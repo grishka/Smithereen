@@ -64,6 +64,14 @@
 			{%endif%}
 				<li><a href="/users/{{ user.id }}/followers">{{L('followers')}}</a></li>
 				<li><a href="/users/{{ user.id }}/following">{{L('following')}}</a></li>
+				{% if currentUser is not null %}
+				{% if userPermissions.serverAccessLevel.ordinal>=3 and user.domain is not empty %}
+					<li class="separator"></li>
+					<li><a href="/users/{{ user.id }}/syncProfile?csrf={{ csrf }}" data-ajax-box>[A] {{ L('sync_profile') }}</a></li>
+					<li><a href="/users/{{ user.id }}/syncRelCollections?csrf={{ csrf }}" data-ajax-box>[A] {{ L('sync_friends_and_groups') }}</a></li>
+					<li><a href="/users/{{ user.id }}/syncContentCollections?csrf={{ csrf }}" data-ajax-box>[A] {{ L('sync_content') }}</a></li>
+				{% endif %}
+				{% endif %}
 			</ul>
 
 

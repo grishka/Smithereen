@@ -299,6 +299,10 @@ public class SmithereenApplication{
 			});
 			get("/followers", ProfileRoutes::followers);
 			get("/following", ProfileRoutes::following);
+
+			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncRelationshipsCollections);
+			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncContentCollections);
+			getRequiringAccessLevelWithCSRF("/syncProfile", Account.AccessLevel.ADMIN, ProfileRoutes::syncProfile);
 		});
 
 		path("/groups/:id", ()->{
@@ -365,6 +369,10 @@ public class SmithereenApplication{
 			});
 			getWithCSRF("/invite", GroupsRoutes::inviteFriend);
 			postWithCSRF("/respondToInvite", GroupsRoutes::respondToInvite);
+
+			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, GroupsRoutes::syncRelationshipsCollections);
+			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, GroupsRoutes::syncContentCollections);
+			getRequiringAccessLevelWithCSRF("/syncProfile", Account.AccessLevel.ADMIN, GroupsRoutes::syncProfile);
 		});
 
 		path("/posts/:postID", ()->{

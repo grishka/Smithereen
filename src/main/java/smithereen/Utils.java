@@ -692,7 +692,7 @@ public class Utils{
 	public static String transliterate(String in){
 		if(in==null)
 			return null;
-		return unidecode.decode(in.trim());
+		return unidecode.decode(in.trim()).replaceAll(Pattern.quote("[?]"), "");
 	}
 
 	public static boolean isURL(String in){

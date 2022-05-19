@@ -530,5 +530,10 @@
   "cancel_invitation": "Cancel invitation",
   "invitation_canceled": "Invitation canceled",
   "confirm_leave_group": "This is a <b>{type, select, CLOSED {closed} PRIVATE {private} other {}}</b> group. If you leave it, it may be difficult to rejoin.\n\nAre you sure you want to leave this group?",
-  "confirm_leave_event": "This is a <b>private</b> event. If you leave it, it may be difficult to rejoin.\n\nAre you sure you want to leave this event?"
+  "confirm_leave_event": "This is a <b>private</b> event. If you leave it, it may be difficult to rejoin.\n\nAre you sure you want to leave this event?",
+  "sync_friends_and_groups": "Sync friends &amp; groups",
+  "sync_members": "Sync member list",
+  "sync_content": "Sync content",
+  "sync_profile": "Sync profile",
+  "sync_started": "Synchronization started and is being performed in the background."
 }
