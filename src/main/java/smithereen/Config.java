@@ -120,10 +120,8 @@ public class Config{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		try(ResultSet res=conn.createStatement().executeQuery("SELECT * FROM config")){
 			HashMap<String, String> dbValues=new HashMap<>();
-			if(res.first()){
-				do{
-					dbValues.put(res.getString(1), res.getString(2));
-				}while(res.next());
+			while(res.next()){
+				dbValues.put(res.getString(1), res.getString(2));
 			}
 			dbSchemaVersion=Utils.parseIntOrDefault(dbValues.get("SchemaVersion"), 0);
 
