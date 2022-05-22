@@ -299,6 +299,8 @@ public class SmithereenApplication{
 			});
 			get("/followers", ProfileRoutes::followers);
 			get("/following", ProfileRoutes::following);
+			postWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
+			getWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
 
 			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncRelationshipsCollections);
 			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncContentCollections);
@@ -446,8 +448,6 @@ public class SmithereenApplication{
 
 			getLoggedIn("/confirmSendFriendRequest", ProfileRoutes::confirmSendFriendRequest);
 			postWithCSRF("/doSendFriendRequest", ProfileRoutes::doSendFriendRequest);
-			postWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
-			getWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
 			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
 			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
 		});

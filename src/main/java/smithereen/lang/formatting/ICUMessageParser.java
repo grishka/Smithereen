@@ -224,7 +224,7 @@ public class ICUMessageParser{
 				subMessages.put(selector, parseSubMessage(parentType, parentID));
 				skipWhitespace();
 			}
-			if(!subMessages.containsKey("other") && SUB_TYPES.contains(parentType))
+			if(!subMessages.containsKey("other") && /*SUB_TYPES.contains(parentType)*/ parentType.equals("plural"))
 				syntaxError(null, null, "'other' sub-message must be specified in "+parentType);
 			return subMessages;
 		}

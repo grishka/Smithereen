@@ -11,7 +11,7 @@
 		</td>
 		<td class="info">
 			<div><b><a href="{{ invite.group.profileURL }}">{{ invite.group.name }}</a></b></div>
-			<div class="grayText padTop">{{ L('group_invited_by_X_before') }}<a href="{{ invite.inviter.profileURL }}">{{ invite.inviter.fullName }}</a>{{ L('group_invited_by_X_after') }}</div>
+			{{ L('group_invited_by_X', {'inviter': invite.inviter.fullName}, {'inviter': {'href': invite.inviter.profileURL} }) }}
 			<form action="/groups/{{ invite.group.id }}/respondToInvite" method="post" data-ajax>
 				<input type="hidden" name="csrf" value="{{ csrf }}"/>
 				<div id="groupInviteBtns{{ invite.group.id }}" class="buttons">

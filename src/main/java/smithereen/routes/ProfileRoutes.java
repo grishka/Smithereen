@@ -31,6 +31,7 @@ import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponse;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.notifications.Notification;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
@@ -391,35 +392,37 @@ public class ProfileRoutes{
 	}
 
 	public static Object respondToFriendRequest(Request req, Response resp, Account self) throws SQLException{
-		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
-		if(user!=null){
-			if(req.queryParams("accept")!=null){
-				if(user instanceof ForeignUser){
-					UserStorage.acceptFriendRequest(self.user.id, user.id, false);
-					context(req).getActivityPubWorker().sendFollowUserActivity(self.user, (ForeignUser) user);
-				}else{
-					UserStorage.acceptFriendRequest(self.user.id, user.id, true);
-					Notification n=new Notification();
-					n.type=Notification.Type.FRIEND_REQ_ACCEPT;
-					n.actorID=self.user.id;
-					NotificationsStorage.putNotification(user.id, n);
-					context(req).getActivityPubWorker().sendAddToFriendsCollectionActivity(self.user, user);
-					NewsfeedStorage.putEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
-				}
-				NewsfeedStorage.putEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
-			}else if(req.queryParams("decline")!=null){
-				UserStorage.deleteFriendRequest(self.user.id, user.id);
-				if(user instanceof ForeignUser){
-					context(req).getActivityPubWorker().sendRejectFriendRequestActivity(self.user, (ForeignUser) user);
-				}
+		User user=getUserOrThrow(req);
+		boolean accept;
+		if(req.queryParams("accept")!=null){
+			accept=true;
+			if(user instanceof ForeignUser){
+				UserStorage.acceptFriendRequest(self.user.id, user.id, false);
+				context(req).getActivityPubWorker().sendFollowUserActivity(self.user, (ForeignUser) user);
+			}else{
+				UserStorage.acceptFriendRequest(self.user.id, user.id, true);
+				Notification n=new Notification();
+				n.type=Notification.Type.FRIEND_REQ_ACCEPT;
+				n.actorID=self.user.id;
+				NotificationsStorage.putNotification(user.id, n);
+				context(req).getActivityPubWorker().sendAddToFriendsCollectionActivity(self.user, user);
+				NewsfeedStorage.putEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
 			}
-			if(isAjax(req))
-				return new WebDeltaResponse(resp).refresh();
-			resp.redirect(Utils.back(req));
+			NewsfeedStorage.putEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
+		}else if(req.queryParams("decline")!=null){
+			accept=false;
+			UserStorage.deleteFriendRequest(self.user.id, user.id);
+			if(user instanceof ForeignUser){
+				context(req).getActivityPubWorker().sendRejectFriendRequestActivity(self.user, (ForeignUser) user);
+			}
 		}else{
-			throw new ObjectNotFoundException("err_user_not_found");
+			throw new BadRequestException();
 		}
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).setContent("friendReqBtns"+user.id,
+					"<div class=\"settingsMessage\">"+lang(req).get(accept ? "friend_req_accepted" : "friend_req_declined")+"</div>");
+		}
+		resp.redirect(Utils.back(req));
 		return "";
 	}
 

@@ -28,7 +28,7 @@
 					<div>{{ invite.group.domain }}</div>
 					{% endif %}
 					<div class="unlabeled grayText">
-						{{ L('group_invited_by_X_before') }}<a href="{{ invite.inviter.profileURL }}">{{ invite.inviter.fullName }}</a>{{ L('group_invited_by_X_after') }}
+						{{ L('group_invited_by_X', {'inviter': invite.inviter.fullName}, {'inviter': {'href': invite.inviter.profileURL} }) }}
 						<form action="/groups/{{ invite.group.id }}/respondToInvite" method="post" data-ajax>
 							<input type="hidden" name="csrf" value="{{ csrf }}"/>
 							<div id="groupInviteBtns{{ invite.group.id }}" class="buttons">

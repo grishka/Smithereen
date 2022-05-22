@@ -35,10 +35,7 @@
 	<div class="feedIcon feedIcon{{ icon }}"></div>
 	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 	<div class="feedRowContent">
-		<a href="{{ entry.author.profileURL }}">{{ entry.author.completeName }}</a>
-		{{- L("feed_#{langKey}_before", {'gender': entry.author.gender}) -}}
-		<a href="{{ targetHref }}">{{ targetName }}</a>
-		{{- L("feed_#{langKey}_after", {'gender': entry.author.gender}) -}}
+		{{ L("feed_#{langKey}", {'author': entry.author.completeName, 'target': targetName, 'gender': entry.author.gender}, {'author': {'href': entry.author.profileURL}, 'target': {'href': targetHref} }) }}
 	</div>
 </div>
 {%else%}
