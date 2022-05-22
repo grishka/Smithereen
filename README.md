@@ -1,5 +1,7 @@
 # Smithereen
 
+[![Crowdin](https://badges.crowdin.net/smithereen/localized.svg)](https://crowdin.com/project/smithereen)
+
 Federated, ActivityPub-compatible social network with friends, walls, and groups.
 
 If you have any questions or feedback, there's a [Telegram chat](https://t.me/SmithereenProject) you can join.
