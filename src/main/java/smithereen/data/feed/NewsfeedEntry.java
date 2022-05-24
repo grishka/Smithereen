@@ -24,6 +24,10 @@ public abstract class NewsfeedEntry{
 				'}';
 	}
 
+	public boolean isNonPost(){
+		return type!=Type.POST && type!=Type.RETOOT;
+	}
+
 	public enum Type{
 		/**
 		 * New post. objectID is a post
@@ -41,5 +45,11 @@ public abstract class NewsfeedEntry{
 		 * Someone joined a group. objectID is a group
 		 */
 		JOIN_GROUP,
+		/**
+		 * Someone joined an event. objectID is a group
+		 */
+		JOIN_EVENT,
+		CREATE_GROUP,
+		CREATE_EVENT,
 	}
 }

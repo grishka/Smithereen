@@ -11,7 +11,7 @@
 	{% else %}
 	<form action="{{ isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost" }}" method="post">
 	{% if isGroup %}
-		{% set fieldPlaceholder=L('write_on_group_wall') %}
+		{% set fieldPlaceholder=L(wallOwner.event ? 'write_on_event_wall' : 'write_on_group_wall') %}
 	{% elseif wallOwner.id!=currentUser.id%}
 		{% set fieldPlaceholder=L('write_on_X_wall', {'name': wallOwner.firstAndGender}) %}
 	{% elseif replyTo is not null %}
@@ -54,10 +54,10 @@
 		<table width="100%" cellpadding="0" cellspacing="0" class="bottomBar">
 			<tr><td width="50%" class="left">
 				{% if isEditing %}
-				<button>{{ L('save') }}</button>
+				<button id="postFormSubmit_{{ id }}">{{ L('save') }}</button>
 				<button class="secondary jsRequired" type="button" onclick="history.back()">{{ L('cancel') }}</button>
 				{% else %}
-				<button>{{ L('send') }}</button>
+				<button id="postFormSubmit_{{ id }}">{{ L('send') }}</button>
 				{% endif %}
 			</td><td align="right" class="right">
 				<a id="postFormAttachBtn_{{ id }}">{{ L('attach') }}</a>

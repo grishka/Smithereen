@@ -41,7 +41,7 @@
 					<a href="{{ post.internalURL }}/edit" data-ajax="1">{{ L('edit') }}</a>
 					{% endif %}
 					{% if post.owner.id!=post.user.id and tab!="wall2wall" and not post.isGroupOwner %} |
-						<a href="{{ post.owner.profileURL }}/wall/with/{{ post.user.fullUsername }}">{{ L('wall_to_wall') }}</a>
+						<a href="/users/{{ post.owner.id }}/wall/with/{{ post.user.id }}">{{ L('wall_to_wall') }}</a>
 					{% endif %}
 					{% if not post.local %}
 						| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': post.url.host}) }}</a>

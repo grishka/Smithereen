@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -159,6 +161,12 @@ public class Lang{
 	}
 
 	public void inflected(StringBuilder out, User.Gender gender, String first, String last, Inflector.Case _case){
+		if(inflector==null){
+			out.append(first);
+			if(StringUtils.isNotEmpty(last))
+				out.append(' ').append(last);
+			return;
+		}
 		if(gender==null || gender==User.Gender.UNKNOWN){
 			gender=inflector.detectGender(first, last, null);
 		}
@@ -169,7 +177,7 @@ public class Lang{
 		}else{
 			out.append(inflector.isInflectable(first) ? inflector.inflectNamePart(first, Inflector.NamePart.FIRST, gender, _case) : first);
 			if(StringUtils.isNotEmpty(last))
-				out.append(' ').append(inflector.isInflectable(last) ? inflector.inflectNamePart(last, Inflector.NamePart.LAST, gender, _case) : first);
+				out.append(' ').append(inflector.isInflectable(last) ? inflector.inflectNamePart(last, Inflector.NamePart.LAST, gender, _case) : last);
 		}
 	}
 
@@ -180,11 +188,11 @@ public class Lang{
 	}
 
 	public String formatDay(LocalDate date){
-		return get("date_format_other_year", Map.of("day", date.getDayOfMonth(), "month", get("month"+date.getMonthValue()+"_full"), "year", date.getYear()));
+		return get("date_format_other_year", Map.of("day", date.getDayOfMonth(), "month", get("month_full", Map.of("month", date.getMonthValue())), "year", date.getYear()));
 	}
 
-	public String formatDate(Date date, TimeZone timeZone, boolean forceAbsolute){
-		long ts=date.getTime();
+	public String formatDate(Instant date, TimeZone timeZone, boolean forceAbsolute){
+		long ts=date.toEpochMilli();
 		long tsNow=System.currentTimeMillis();
 		long diff=tsNow-ts;
 
@@ -199,7 +207,7 @@ public class Lang{
 		}
 
 		ZonedDateTime now=ZonedDateTime.now(timeZone.toZoneId());
-		ZonedDateTime dt=date.toInstant().atZone(timeZone.toZoneId());
+		ZonedDateTime dt=date.atZone(timeZone.toZoneId());
 		String day=null;
 		if(Math.abs(diff)<=2*24*60*60*1000){
 			if(now.getYear()==dt.getYear() && now.getDayOfYear()==dt.getDayOfYear()){
@@ -216,13 +224,18 @@ public class Lang{
 		}
 		if(day==null){
 			if(now.getYear()==dt.getYear()){
-				day=get("date_format_current_year", Map.of("day", dt.getDayOfMonth(), "month", get("month"+dt.getMonthValue()+"_full")));
+				day=get("date_format_current_year", Map.of("day", dt.getDayOfMonth(), "month", get("month_full", Map.of("month", dt.getMonthValue()))));
 			}else{
-				day=get("date_format_other_year", Map.of("day", dt.getDayOfMonth(), "month", get("month"+dt.getMonthValue()+"_short"), "year", dt.getYear()));
+				day=get("date_format_other_year", Map.of("day", dt.getDayOfMonth(), "month", get("month_short", Map.of("month", dt.getMonthValue())), "year", dt.getYear()));
 			}
 		}
 
 		return get("date_time_format", Map.of("date", day, "time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())));
+	}
+
+	public String formatTime(Instant time, ZoneId timeZone){
+		ZonedDateTime dt=time.atZone(timeZone);
+		return String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute());
 	}
 
 	public String getAsJS(String key){

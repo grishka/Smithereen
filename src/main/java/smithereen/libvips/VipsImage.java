@@ -37,7 +37,7 @@ public class VipsImage{
 		if(loader.equals("VipsForeignLoadJpegFile")){
 			filePath+="[autorotate=true]";
 		}
-		nativePtr=vips_image_new_from_file(filePath, Pointer.NULL);
+		nativePtr=vips_image_new_from_file(filePath);
 		if(nativePtr==Pointer.NULL){
 			throwError();
 		}
@@ -66,7 +66,7 @@ public class VipsImage{
 	public VipsImage resize(double scale) throws IOException{
 		ensureNotReleased();
 		PointerByReference out=new PointerByReference();
-		if(vips_resize(nativePtr, out, scale, Pointer.NULL)!=0){
+		if(vips_resize(nativePtr, out, scale)!=0){
 			throwError();
 		}
 		return new VipsImage(out.getValue());
@@ -75,7 +75,7 @@ public class VipsImage{
 	public VipsImage resize(double hscale, double vscale) throws IOException{
 		ensureNotReleased();
 		PointerByReference out=new PointerByReference();
-		if(vips_resize(nativePtr, out, hscale, "vscale", vscale, Pointer.NULL)!=0){
+		if(vips_resize(nativePtr, out, hscale, vscale)!=0){
 			throwError();
 		}
 		return new VipsImage(out.getValue());
@@ -84,7 +84,7 @@ public class VipsImage{
 	public VipsImage crop(int left, int top, int width, int height) throws IOException{
 		ensureNotReleased();
 		PointerByReference out=new PointerByReference();
-		if(vips_crop(nativePtr, out, left, top, width, height, Pointer.NULL)!=0){
+		if(vips_crop(nativePtr, out, left, top, width, height)!=0){
 			throwError();
 		}
 		return new VipsImage(out.getValue());
@@ -92,7 +92,7 @@ public class VipsImage{
 
 	public void writeToFile(String fileName) throws IOException{
 		ensureNotReleased();
-		if(vips_image_write_to_file(nativePtr, fileName, Pointer.NULL)!=0){
+		if(vips_image_write_to_file(nativePtr, fileName)!=0){
 			throwError();
 		}
 	}
@@ -107,7 +107,7 @@ public class VipsImage{
 		Pointer arr=vips_array_double_new(new double[]{r, g, b}, 3);
 		PointerByReference out=new PointerByReference();
 		try{
-			if(vips_flatten(nativePtr, out, "background", arr, Pointer.NULL)!=0){
+			if(vips_flatten(nativePtr, out, arr)!=0){
 				throwError();
 			}
 		}finally{
@@ -129,7 +129,7 @@ public class VipsImage{
 	public VipsImage castUChar() throws IOException{
 		ensureNotReleased();
 		PointerByReference out=new PointerByReference();
-		if(vips_cast_uchar(nativePtr, out, Pointer.NULL)!=0)
+		if(vips_cast_uchar(nativePtr, out)!=0)
 			throwError();
 		return new VipsImage(out.getValue());
 	}
@@ -159,7 +159,7 @@ public class VipsImage{
 	public VipsImage iccTransform(String outputProfile) throws IOException{
 		ensureNotReleased();
 		PointerByReference out=new PointerByReference();
-		if(vips_icc_transform(nativePtr, out, outputProfile, Pointer.NULL)!=0)
+		if(vips_icc_transform(nativePtr, out, outputProfile)!=0)
 			throwError();
 		return new VipsImage(out.getValue());
 	}

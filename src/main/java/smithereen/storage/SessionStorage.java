@@ -17,6 +17,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Locale;
 import java.util.Objects;
@@ -387,7 +388,7 @@ public class SessionStorage{
 		return false;
 	}
 
-	public static void setLastActive(int accountID, String psid, Timestamp time) throws SQLException{
+	public static void setLastActive(int accountID, String psid, Instant time) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		new SQLQueryBuilder(conn)
 				.update("accounts")

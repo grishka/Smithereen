@@ -384,25 +384,24 @@ function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}):
 	return false;
 }
 
-function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):boolean{
+function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, submitter:HTMLElement=null):boolean{
 	if(submittingForm)
 		return false;
 	if(!form.checkValidity()){
-		if(submitBtn)
-			submitBtn.classList.remove("loading");
 		setGlobalLoading(false);
 		return false;
 	}
 	submittingForm=form;
-	var submitBtn=form.querySelector("button");
-	if(submitBtn)
-		submitBtn.classList.add("loading");
+	if(submitter)
+		submitter.classList.add("loading");
 	setGlobalLoading(true);
 	var data:any={};
 	var elems=form.elements;
 	for(var i=0;i<elems.length;i++){
 		var el=elems[i] as any;
 		if(!el.name)
+			continue;
+		if(((el.tagName=="INPUT" && el.type=="submit") || el.tagName=="BUTTON") && el!=submitter)
 			continue;
 		if((el.type!="radio" && el.type!="checkbox") || ((el.type=="radio" || el.type=="checkbox") && el.checked)){
 			if(data[el.name]){
@@ -419,8 +418,8 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):bo
 	data.csrf=userConfig.csrf;
 	ajaxPost(form.action, data, function(resp:any){
 		submittingForm=null;
-		if(submitBtn)
-			submitBtn.classList.remove("loading");
+		if(submitter)
+			submitter.classList.remove("loading");
 		setGlobalLoading(false);
 		if(resp instanceof Array){
 			for(var i=0;i<resp.length;i++){
@@ -430,8 +429,8 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):bo
 		if(onDone) onDone(true);
 	}, function(msg:string){
 		submittingForm=null;
-		if(submitBtn)
-			submitBtn.classList.remove("loading");
+		if(submitter)
+			submitter.classList.remove("loading");
 		setGlobalLoading(false);
 		new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
 		if(onDone) onDone(false);
@@ -440,11 +439,16 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null):bo
 }
 
 function ajaxFollowLink(link:HTMLAnchorElement):boolean{
-	if(link.dataset.ajax){
+	if(link.dataset.ajax!=undefined){
+		if(link.dataset.ajaxHide!=undefined)
+			ge(link.dataset.ajaxHide).hide();
+		if(link.dataset.ajaxShow!=undefined)
+			ge(link.dataset.ajaxShow).show();
+		link.classList.add("ajaxLoading");
 		ajaxGetAndApplyActions(link.href);
 		return true;
 	}
-	if(link.dataset.ajaxBox){
+	if(link.dataset.ajaxBox!=undefined){
 		LayerManager.getInstance().showBoxLoader();
 		ajaxGetAndApplyActions(link.href);
 		return true;

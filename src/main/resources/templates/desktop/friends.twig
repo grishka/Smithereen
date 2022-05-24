@@ -6,55 +6,45 @@
 {% include 'friends_tabbar' %}
 <div class="summaryWrap">
 	<div class="summary">
+	{% set isSelf=currentUser is not null and currentUser.id==owner.id %}
 	{% if tab=='mutual' %}
-		{{ L('you_and_X_mutual', {'name': owner.firstAndGender, 'numFriends': friendList.size()}) }}
+		{{ L('you_and_X_mutual', {'name': owner.firstAndGender, 'numFriends': totalItems}) }}
+	{% elseif tab=='followers' %}
+		{% if isSelf %}
+			{{ L("summary_own_X_followers", {'count': totalItems}) }}
+		{% else %}
+			{{ L("summary_user_X_followers", {'name': owner.firstAndGender, 'count': totalItems}) }}
+		{% endif %}
+	{% elseif tab=='following' %}
+		{% if isSelf %}
+			{{ L("summary_own_X_follows", {'count': totalItems}) }}
+		{% else %}
+			{{ L("summary_user_X_follows", {'name': owner.firstAndGender, 'count': totalItems}) }}
+		{% endif %}
 	{% else %}
-	{% if currentUser is not null and currentUser.id==owner.id %}
-		{{ L("summary_own_X_friends", {'numFriends': friendList.size()}) }}
-	{% else %}
-		{{ L("summary_user_X_friends", {'name': owner.firstAndGender, 'numFriends': friendList.size()}) }}
-	{% endif %}
+		{% if isSelf %}
+			{{ L("summary_own_X_friends", {'numFriends': totalItems}) }}
+		{% else %}
+			{{ L("summary_user_X_friends", {'name': owner.firstAndGender, 'numFriends': totalItems}) }}
+		{% endif %}
 	{% endif %}
 	</div>
+	{% include "pagination" %}
 </div>
 <div class="singleColumn">
-{%for friend in friendList%}
-<table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
-	<tr valign="top">
-		<td width="100">
-			<a href="{{friend.profileURL}}">{{friend | pictureForAvatar('m')}}</a>
-		</td>
-		<td class="info">
-			<table width="100%" class="noBorderSpacing">
-				<tr>
-					<td width="70" class="grayText">{{ L('name') }}:</td>
-					<td><a href="{{ friend.profileURL }}">{{ friend.completeName }}</a></td>
-				</tr>
-				{% if friend.domain is not empty %}
-					<tr>
-						<td class="grayText">{{ L('server') }}:</td>
-						<td>{{ friend.domain }}</td>
-					</tr>
-				{% endif %}
-			</table>
-		</td>
-		<td width="130">
-			<ul class="actionList">
-				<li><a href="/users/{{ friend.id }}/friends">{{L('view_friends_of')}}</a></li>
-				{%if(currentUser is not null and currentUser.id==owner.id and not followers)%}
-					<li>
-						<a href="{{friend.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'{{friend.getProfileURL('doRemoveFriend')}}?from=list')" data-confirm="{{ L((following ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), {'name': friend.firstLastAndGender}) | forceEscape }}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
-					</li>
-				{%endif%}
-                {%if friend.domain is not null%}
-					<li><a href="{{ friend.url }}" target="_blank">{{ L('open_on_server_X', {'domain': friend.domain}) }}</a></li>
-				{%endif%}
-			</ul>
-		</td>
-	</tr>
-</table>
-{%else%}
-<div class="emptyState">{{ L('no_friends') }}</div>
-{%endfor%}
+{% for friend in items %}
+	{% include "friends_row" with {'friend': friend} %}
+{% else %}
+<div class="emptyState">
+	{% if tab=='followers' %}
+	{{ L('no_followers') }}
+	{% elseif tab=='following' %}
+	{{ L('no_follows') }}
+	{% else %}
+	{{ L('no_friends') }}
+	{% endif %}
 </div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
 {%endblock%}

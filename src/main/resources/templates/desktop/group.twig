@@ -1,5 +1,6 @@
 {# @pebvariable name="group" type="smithereen.data.Group" #}
 {# @pebvariable name="canEditGroup" type="boolean" #}
+{# @pebvariable name="canAccessContent" type="boolean" #}
 {%extends "page"%}
 {% set canEditGroup=userPermissions is not null and userPermissions.canEditGroup(group) %}
 {% set canManageGroup=userPermissions is not null and userPermissions.canManageGroup(group) %}
@@ -18,12 +19,17 @@
 			<h2>{{ group.name }}</h2>
 			<div class="profileFields">
 			<table class="profileBlock" width="100%">
-				{% if group.summary is not null %}
-				<tr><td class="label">{{ L('about_group') }}:</td><td>{{ group.summary | postprocessHTML }}</td></tr>
-				{% endif %}
+				{% for fld in profileFields %}
+				<tr>
+					<td class="label">{{ fld.name }}:</td>
+					<td>{{ fld.value | postprocessHTML }}</td>
+				</tr>
+				{% endfor %}
 			</table>
 			</div>
-			{% include 'wall_profile_block' with {'wallOwner': group, 'isGroup': true, 'fullWallURL': "#{group.profileURL}/wall"} %}
+			{% if canAccessContent %}
+			{% include "profile_module_wall" with {'wallOwner': group, 'isGroup': true, 'headerTitle': L('wall'), 'headerHref': "/groups/#{group.id}/wall", 'additionalHeader': L('X_posts', {'count': totalItems})} %}
+			{% endif %}
 		</td>
 
 		<!-- right column -->
@@ -53,66 +59,64 @@
 			<span class="ava avaPlaceholder inProfile group"></span>
 			{%endif%}
 			{%endif%}
-			{% if currentUser is not null and (membershipStateText is not empty or membershipState=="NONE") %}
+			{% if currentUser is not null and (membershipStateText is not empty or membershipState=="NONE" or membershipState=="INVITED") %}
 			<div class="profileBelowAva">
 				{{ membershipStateText }}
-				{% if membershipState=="NONE" %}
-					<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button{{ membershipStateText is empty ? '' : ' withText' }}">{{ L('join_group') }}</a>
+				{% if group.event %}
+				{% if membershipState=="NONE" or membershipState=="INVITED" %}
+					<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button{{ membershipStateText is empty ? '' : ' withText' }}">{{ L('join_event_certain') }}</a>
+					{% if group.domain is empty or group.hasCapability("TENTATIVE_MEMBERSHIP") %}
+					<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}&tentative=1" class="button withText">{{ L('join_event_tentative') }}</a>
+					{% endif %}
+				{% endif %}
+				{% else %}
+				{% if membershipState=="NONE" or membershipState=="INVITED" %}
+					<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button{{ membershipStateText is empty ? '' : ' withText' }}">{{ L(group.accessType=='CLOSED' ? 'apply_to_join_group' : 'join_group') }}</a>
+				{% endif %}
 				{% endif %}
 			</div>
 			{% endif %}
 			<ul class="actionList marginAfter marginBefore">
 			{% if currentUser is not null %}
-			    {% if membershipState=="MEMBER" %}
-			    <li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}">{{ L('leave_group') }}</a></li>
+			    {% if membershipState=="MEMBER" or membershipState=="TENTATIVE_MEMBER" %}
+				{% if group.event and (group.domain is empty or group.hasCapability("TENTATIVE_MEMBERSHIP")) %}
+				{% if membershipState=="MEMBER" %}
+				<li><a href="/groups/{{ group.id }}/join?csrf={{ csrf }}&tentative=1">{{ L('join_event_tentative') }}</a></li>
+				{% else %}
+				<li><a href="/groups/{{ group.id }}/join?csrf={{ csrf }}">{{ L('join_event_certain') }}</a></li>
+				{% endif %}
+				{% endif %}
+			    <li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}"{% if group.accessType!='OPEN' %} data-confirm-action="/groups/{{ group.id }}/leave?csrf={{ csrf }}" data-confirm-title="{{ L(group.event ? 'leave_event' : 'leave_group') }}" data-confirm-message="{{ L(group.event ? 'confirm_leave_event' : 'confirm_leave_group', {'type': group.accessType}) | nl2br }}"{% endif %}>{{ L(group.event ? 'leave_event' : 'leave_group') }}</a></li>
+				{% if group.accessType!='PRIVATE' or canManageGroup %}
+				<li><a href="/my/friends?act=groupInvite&group={{ group.id }}">{{ L('invite_friends') }}</a></li>
+				{% endif %}
 			    {% endif %}
+				{% if membershipState=='REQUESTED' %}
+				<li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}">{{ L(group.event ? 'leave_event' : 'leave_group') }}</a></li>
+				{% endif %}
 			{% endif %}
 			{% if canEditGroup %}
-				<li><a href="/groups/{{ group.id }}/edit">{{ L('edit_group') }}</a></li>
+				<li><a href="/groups/{{ group.id }}/edit">{{ L(group.event ? 'edit_event' : 'edit_group') }}</a></li>
 			{% elseif canManageGroup %}
-				<li><a href="/groups/{{ group.id }}/editMembers">{{ L('manage_group') }}</a></li>
+				<li><a href="/groups/{{ group.id }}/editMembers">{{ L(group.event ? 'manage_event' : 'manage_group') }}</a></li>
 			{% endif %}
+				{% if currentUser is not null %}
+					{% if userPermissions.serverAccessLevel.ordinal>=3 and group.domain is not empty %}
+						<li class="separator"></li>
+						<li><a href="/groups/{{ group.id }}/syncProfile?csrf={{ csrf }}" data-ajax-box>[A] {{ L('sync_profile') }}</a></li>
+						<li><a href="/groups/{{ group.id }}/syncRelCollections?csrf={{ csrf }}" data-ajax-box>[A] {{ L('sync_members') }}</a></li>
+						<li><a href="/groups/{{ group.id }}/syncContentCollections?csrf={{ csrf }}" data-ajax-box>[A] {{ L('sync_content') }}</a></li>
+					{% endif %}
+				{% endif %}
 			</ul>
 
 			<div class="profileColumnBorder">
 				<div class="rightColumnBorder"></div>
-			<table width="100%" style="table-layout: fixed;" class="profileBlock marginAfter">
-				<tr><th colspan="3" class="blockHeader"><a href="/groups/{{ group.id }}/members">{{ L("members") }}</a></th></tr>
-				<tr><td colspan="3" class="blockSubheader">{{ L('X_members', {'count': group.memberCount}) }}</td></tr>
-				{% for member in members %}
-				{% if(loop.first or loop.index==3) %}<tr valign="top" class="membersRow">{% endif %}
-				<td align="center" width="33%" style="overflow: hidden;">
-					<a href="{{member.profileURL}}">
-						{{member | pictureForAvatar('s')}}<br/>
-						<span class="memberName">{{member.firstName}}<br/>{{member.lastName}}</span>
-					</a>
-				</td>
-				{%if(loop.index==2 or loop.index==5)%}</tr>{%endif%}
-				{%endfor%}
-				{%if(members.size%3!=0)%}
-				<td colspan="{{3-members.size%3}}" width="{{(3-members.size%3)*33}}%">&nbsp;</td></tr>
-				{%endif%}
-			</table>
-
-			<table width="100%" style="table-layout: fixed;" class="profileBlock">
-				<colgroup><col width="48"/><col width="*"/></colgroup>
-				<tr><th colspan="2" class="blockHeader"><a href="/groups/{{ group.id }}/admins" data-ajax-box="1">{{ L("group_admins") }}</a></th></tr>
-				<tr><td colspan="2" class="blockSubheader">{{ L('group_X_admins', {'count': admins.size}) }}</td></tr>
-				{% for admin in admins %}
-					{% if loop.index<5 %}
-						<tr class="oneMemberRow">
-							<td valign="top"><a href="{{ admin.user.profileURL }}">{{ admin.user | pictureForAvatar('s', 40) }}</a></td>
-							<td class="nameAndInfo">
-								<div><a href="{{ admin.user.profileURL }}">{{ admin.user.fullName }}</a></div>
-								{% if admin.title is not empty %}
-									<div class="info">{{ admin.title }}</div>
-								{% endif %}
-							</td>
-						</tr>
-					{% endif %}
-				{% endfor %}
-			</table>
-
+				{% include "profile_module_user_grid" with {'users': members, 'headerTitle': L('members'), 'headerHref': "/groups/#{group.id}/members", 'subheaderTitle': L('X_people', {'count': group.memberCount})} %}
+				{% if group.event and group.tentativeMemberCount>0 %}
+				{% include "profile_module_user_grid" with {'users': tentativeMembers, 'headerTitle': L('tentative_members'), 'headerHref': "/groups/#{group.id}/tentativeMembers", 'subheaderTitle': L('X_people', {'count': group.tentativeMemberCount})} %}
+				{% endif %}
+				{% include "profile_module_user_list" with {'users': admins, 'headerTitle': L(group.event ? 'event_organizers' : 'group_admins'), 'headerHref': "/groups/#{group.id}/admins", 'headerAjaxBox': true, 'subheaderTitle': L(group.event ? 'event_X_organizers' : 'group_X_admins', {'count': admins.size})} %}
 			</div>
 		</td>
 	</tr>

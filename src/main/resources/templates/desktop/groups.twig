@@ -1,7 +1,7 @@
 {% extends "page" %}
 {% block content %}
 {% if currentUser is not null and owner.id==currentUser.id %}
-{% include 'groups_tabbar' %}
+{% include (events ? 'events_tabbar' : 'groups_tabbar') %}
 {% else %}
 <div class="tabbar">
 	<a href="/users/{{ owner.id }}/groups" class="selected">{{ L('user_groups', {'name': owner.firstAndGender}) }}</a>
@@ -10,24 +10,40 @@
 {% endif %}
 <div class="summaryWrap">
 	<div class="summary">
-	{% if currentUser is not null and owner.id==currentUser.id %}
-	{{ L(tab=='managed' ? 'summary_X_managed_groups' : 'summary_own_X_groups', {'numGroups': groups.size()}) }}
+	{% if events %}
+	{{ L(tab=='past' ? 'summary_X_past_events' : 'summary_X_upcoming_events', {'count': totalItems}) }}
+	{% elseif currentUser is not null and owner.id==currentUser.id %}
+	{{ L(tab=='managed' ? 'summary_X_managed_groups' : 'summary_own_X_groups', {'numGroups': totalItems}) }}
 	{% else %}
-	{{ L('summary_user_X_groups', {'name': owner.firstAndGender, 'numGroups': groups.size()}) }}
+	{{ L('summary_user_X_groups', {'name': owner.firstAndGender, 'numGroups': totalItems}) }}
 	{% endif %}
 	</div>
+	{% include "pagination" %}
 </div>
 <div class="singleColumn">
-{% for group in groups %}
+{% for group in items %}
 <table width="100%" class="friendsRow noBorderSpacing" id="grow{{group.id}}">
 	<tr valign="top">
 		<td width="100">
 			<a href="{{group.profileURL}}">{{group | pictureForAvatar('m')}}</a>
 		</td>
 		<td class="info">
-			<b><a href="{{group.profileURL}}">{{group.name}}</a></b>
+			<div class="infoInner">
+				<div class="grayText">{{ L('group_name') }}:</div>
+				<div><a href="{{ group.profileURL }}">{{ group.name }}</a></div>
+				<div class="grayText">{{ L('group_size') }}:</div>
+				<div>{{ L('X_members', {'count': group.memberCount}) }}</div>
+				{% if group.event %}
+				<div class="grayText">{{ L('event_start_time') }}:</div>
+				<div>{{ LD(group.eventStartTime) }}	</div>
+				{% endif %}
+				{% if group.domain is not empty %}
+				<div class="grayText">{{ L('server') }}:</div>
+				<div>{{ group.domain }}</div>
+				{% endif %}
+			</div>
 		</td>
-		<td width="200">
+		<td width="130">
 			<ul class="actionList">
                 {%if group.domain is not null%}
 					<li><a href="{{ group.url }}" target="_blank">{{ L('open_on_server_X', {'domain': group.domain}) }}</a></li>
@@ -37,7 +53,8 @@
 	</tr>
 </table>
 {% else %}
-<div class="emptyState">{{L('no_groups')}}</div>
+<div class="emptyState">{{ L(events ? 'no_events' : 'no_groups') }}</div>
 {% endfor %}
 </div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
 {% endblock %}

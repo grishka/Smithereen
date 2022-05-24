@@ -49,8 +49,11 @@ public class PictureForAvatarFilter implements Filter{
 			typeStr=typeStr.substring(1);
 		if(args.containsKey("size"))
 			size=Templates.asInt(args.get("size"));
-		if(image==null)
-			return new SafeString("<span class=\"ava avaPlaceholder size"+typeStr.toUpperCase()+additionalClasses+"\" style=\"width: "+size+"px;height: "+size+"px\"></span>");
+		if(image==null){
+			if(args.containsKey("wrapperClasses"))
+				additionalClasses+=" "+args.get("wrapperClasses").toString();
+			return new SafeString("<span class=\"ava avaPlaceholder size"+typeStr.toUpperCase()+additionalClasses+"\""+(size>0 ? (" style=\"width: "+size+"px;height: "+size+"px\"") : "")+"></span>");
+		}
 
 		int width, height;
 		if(isRect){
@@ -66,11 +69,11 @@ public class PictureForAvatarFilter implements Filter{
 		if(args.containsKey("classes")){
 			classes.add(args.get("classes").toString());
 		}
-		return new SafeString("<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+"\">"+image.generateHTML(type, classes, null, width, height)+"</span>");
+		return new SafeString("<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+(args.containsKey("wrapperClasses") ? (" "+args.get("wrapperClasses")) : "")+"\">"+image.generateHTML(type, classes, null, width, height)+"</span>");
 	}
 
 	@Override
 	public List<String> getArgumentNames(){
-		return Arrays.asList("type", "size", "classes");
+		return Arrays.asList("type", "size", "classes", "wrapperClasses");
 	}
 }

@@ -1,5 +1,4 @@
 
-$accent: #aab42f;
 $textOnAccent: #FFFFFF;
 $bg: #FFFFFF;
 $gray: #F7F7F7;
@@ -104,6 +103,18 @@ $likeIconColor: rgb(219, 216, 173);
 	}
 }
 @svg-load checkboxOffHover url('img/checkbox_off_hover.svg') {
+	fill: $textAreaBorder;
+	*[fill=red]{
+		fill: $blockBackground;
+	}
+}
+@svg-load dateInputIcon url('img/calendar_input.svg') {
+	fill: $textAreaBorder;
+	*[fill=red]{
+		fill: $blockBackground;
+	}
+}
+@svg-load timeInputIcon url('img/time_input.svg') {
 	fill: $textAreaBorder;
 	*[fill=red]{
 		fill: $blockBackground;
@@ -294,7 +305,7 @@ a, a:link, a:visited, .link{
 	}*/
 }
 
-input[type=text], input[type=password], input[type=email], input[type=date], input[type=number], textarea, select, .prefixedInput{
+input[type=text], input[type=password], input[type=email], input[type=date], input[type=time], input[type=number], textarea, select, .prefixedInput{
 	border: solid 1px $textAreaBorder;
 	padding: 3px;
 	appearance: none;
@@ -308,6 +319,7 @@ input[type=text], input[type=password], input[type=email], input[type=date], inp
 		border: none;
 		padding-left: 0;
 		flex-grow: 1;
+		min-width: 0;
 	}
 	.prefix{
 		color: $auxiliaryGrey;
@@ -682,6 +694,9 @@ ul.actualList{
 	background-size: 32px 8px;
 	min-width: 32px;
 	min-height: 8px;
+	&.white{
+		background: svg-load('img/loading_anim.svg', fill: $textOnAccent) no-repeat center;
+	}
 }
 
 .inlineLoader{
@@ -700,6 +715,9 @@ ul.actualList{
 	}
 	&.feedIconStatus{
 		background: svg-load('img/statuses_s.svg');
+	}
+	&.feedIconEvent{
+		background: svg-load('img/events_s.svg');
 	}
 }
 
@@ -765,4 +783,18 @@ small{
 
 .uppercase{
 	text-transform: uppercase;
+}
+
+.dateTimeInput{
+	display: flex;
+	align-content: center;
+	input[type=date]{
+		flex-grow: 2;
+	}
+	input[type=time]{
+		flex-grow: 1;
+	}
+	input{
+		width: unset !important;
+	}
 }

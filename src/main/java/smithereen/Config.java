@@ -50,7 +50,7 @@ public class Config{
 	public static long mediaCacheFileSizeLimit;
 	public static boolean useHTTP;
 	public static String staticFilesPath;
-	public static final boolean DEBUG=System.getProperty("smithereen.debug")!=null;
+	public static final boolean DEBUG=System.getProperty("smithereen.debug")!=null || System.getenv("SMITHEREEN_DEBUG")!=null;
 
 	public static String imgproxyLocalUploads;
 	public static String imgproxyLocalMediaCache;
@@ -120,10 +120,8 @@ public class Config{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		try(ResultSet res=conn.createStatement().executeQuery("SELECT * FROM config")){
 			HashMap<String, String> dbValues=new HashMap<>();
-			if(res.first()){
-				do{
-					dbValues.put(res.getString(1), res.getString(2));
-				}while(res.next());
+			while(res.next()){
+				dbValues.put(res.getString(1), res.getString(2));
 			}
 			dbSchemaVersion=Utils.parseIntOrDefault(dbValues.get("SchemaVersion"), 0);
 

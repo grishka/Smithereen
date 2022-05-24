@@ -3,12 +3,10 @@ package smithereen.activitypub.handlers;
 import java.sql.SQLException;
 
 import smithereen.activitypub.ActivityHandlerContext;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.User;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -23,9 +21,9 @@ public class RejectFollowGroupHandler extends NestedActivityTypeHandler<ForeignG
 			throw new ObjectNotFoundException("Follower not found");
 		follower.ensureLocal();
 		Group.MembershipState state=GroupStorage.getUserMembershipState(actor.id, follower.id);
-		GroupStorage.leaveGroup(actor, follower.id, false);
+		GroupStorage.leaveGroup(actor, follower.id, false, state!=Group.MembershipState.REQUESTED);
 		if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER){
-			ActivityPubWorker.getInstance().sendRemoveFromGroupsCollectionActivity(follower, actor);
+			context.appContext.getActivityPubWorker().sendRemoveFromGroupsCollectionActivity(follower, actor);
 		}
 	}
 }

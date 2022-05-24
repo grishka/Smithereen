@@ -1,5 +1,7 @@
 package smithereen.lang.formatting;
 
+import com.mitchellbosecke.pebble.extension.escaper.SafeString;
+
 import org.unbescape.html.HtmlEscape;
 
 import java.util.Map;
@@ -16,10 +18,15 @@ public class SubstitutionFormatterNode extends FormatterNode{
 
 	@Override
 	public void formatInto(StringBuilder buf, Map<String, Object> args, Lang lang){
-		if(args.containsKey(id))
-			buf.append(HtmlEscape.escapeHtml4Xml(convertArgument(args.get(id))));
-		else
+		if(args.containsKey(id)){
+			Object arg=args.get(id);
+			if(arg instanceof SafeString)
+				buf.append(convertArgument(arg));
+			else
+				buf.append(HtmlEscape.escapeHtml4Xml(convertArgument(arg)));
+		}else{
 			buf.append("{").append(id).append(" missing}");
+		}
 	}
 
 	@Override

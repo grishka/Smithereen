@@ -1,35 +1,37 @@
 package smithereen.activitypub.handlers;
 
+import com.google.gson.JsonObject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import smithereen.Config;
-import smithereen.ObjectLinkResolver;
-import smithereen.activitypub.objects.ForeignActor;
-import smithereen.data.Group;
-import smithereen.data.PollOption;
-import smithereen.exceptions.BadRequestException;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.activities.Create;
+import smithereen.controllers.WallController;
 import smithereen.data.ForeignUser;
+import smithereen.data.Group;
+import smithereen.data.PollOption;
 import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.data.notifications.NotificationUtils;
+import smithereen.exceptions.BadRequestException;
 import smithereen.storage.PostStorage;
-import smithereen.storage.UserStorage;
+import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
 
 public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, Post>{
@@ -43,7 +45,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			// Already exists. Ignore and return 200 OK.
 			return;
 		}
-		post.resolveDependencies(true, false);
+		post.resolveDependencies(context.appContext, true, false);
 		if(post.user==null || post.user.id!=actor.id)
 			throw new BadRequestException("Can only create posts for self");
 		if(post.owner==null)
@@ -58,7 +60,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 
 		// Special handling for poll votes because using a separate activity type would've been too easy.
 		if((post.attachment==null || post.attachment.isEmpty()) && StringUtils.isEmpty(post.content) && post.inReplyTo!=null && post.name!=null){
-			Post parent=ObjectLinkResolver.resolve(post.inReplyTo, Post.class, false, false, false);
+			Post parent=context.appContext.getObjectLinkResolver().resolve(post.inReplyTo, Post.class, false, false, false, (JsonObject) null, true);
 			if(parent.poll!=null){
 				int optionID=0;
 				if(post.context!=null){
@@ -77,8 +79,10 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					}
 				}
 				if(optionID!=0){
-					if(!parent.poll.isExpired())
+					if(!parent.poll.isExpired()){
 						PostStorage.voteInPoll(actor.id, parent.poll.id, optionID, post.activityPubID, parent.poll.multipleChoice);
+						context.appContext.getWallController().sendUpdateQuestionIfNeeded(parent);
+					}
 					return;
 				}
 			}
@@ -142,14 +146,14 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				return;
 			}
 		}
-		Utils.loadAndPreprocessRemotePostMentions(post);
+		context.appContext.getWallController().loadAndPreprocessRemotePostMentions(post);
 		if(post.inReplyTo!=null){
 			if(post.inReplyTo.equals(post.activityPubID))
 				throw new BadRequestException("Post can't be a reply to itself. This makes no sense.");
 			Post parent=PostStorage.getPostByID(post.inReplyTo);
 			if(parent!=null){
 				post.setParent(parent);
-				ObjectLinkResolver.storeOrUpdateRemoteObject(post);
+				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
 				NotificationUtils.putNotificationsForPost(post, parent);
 				Post topLevel=PostStorage.getPostByID(post.replyKey[0], false);
 				if(topLevel!=null && topLevel.local){
@@ -171,13 +175,13 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					LOG.warn("Dropping post {} because its parent isn't known and it doesn't mention local users.", post.activityPubID);
 					return;
 				}
-				ActivityPubWorker.getInstance().fetchReplyThread(post);
+				context.appContext.getActivityPubWorker().fetchReplyThread(post);
 			}
 		}else{
-			ObjectLinkResolver.storeOrUpdateRemoteObject(post);
+			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
 			NotificationUtils.putNotificationsForPost(post, null);
 			if(!Objects.equals(post.owner.activityPubID, post.user.activityPubID)){
-				ActivityPubWorker.getInstance().sendAddPostToWallActivity(post);
+				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(post);
 			}
 		}
 	}

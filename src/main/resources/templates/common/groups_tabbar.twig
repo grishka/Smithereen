@@ -1,5 +1,8 @@
 <div class="tabbar">
 	<a href="/my/groups" class="{%if tab=="groups"%}selected{%endif%}">{{L('groups')}}</a>
 	<a href="/my/groups/managed" class="{%if tab=="managed"%}selected{%endif%}">{{L('groups_managed')}}</a>
+	{%if userNotifications.newGroupInvitationsCount>0%}
+	<a href="/my/groups/invites" class="{%if tab=="invites"%}selected{%endif%}">{{ L('group_invitations')}} ({{ userNotifications.newGroupInvitationsCount }})</a>
+	{%endif%}
 	<a href="/my/groups/create" class="aux" data-ajax-box="1">{{ L('create_group') }}</a>
 </div>

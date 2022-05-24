@@ -2,7 +2,6 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
-import smithereen.exceptions.BadRequestException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Follow;
@@ -10,6 +9,7 @@ import smithereen.activitypub.objects.activities.Undo;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.exceptions.BadRequestException;
 import smithereen.storage.GroupStorage;
 
 public class UndoFollowGroupHandler extends NestedActivityTypeHandler<ForeignUser, Undo, Follow, Group>{
@@ -18,9 +18,9 @@ public class UndoFollowGroupHandler extends NestedActivityTypeHandler<ForeignUse
 		if(group instanceof ForeignGroup)
 			throw new BadRequestException("Local group required here");
 		Group.MembershipState state=GroupStorage.getUserMembershipState(group.id, actor.id);
-		if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER){
+		if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER && state!=Group.MembershipState.REQUESTED){
 			return;
 		}
-		GroupStorage.leaveGroup(group, actor.id, state==Group.MembershipState.TENTATIVE_MEMBER);
+		GroupStorage.leaveGroup(group, actor.id, state==Group.MembershipState.TENTATIVE_MEMBER, state!=Group.MembershipState.REQUESTED);
 	}
 }

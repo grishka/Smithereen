@@ -45,7 +45,7 @@ public class NotificationsStorage{
 			un.incNewNotificationsCount(1);
 	}
 
-	public static List<Notification> getNotifications(int owner, int offset, @Nullable int[] total) throws SQLException{
+	public static List<Notification> getNotifications(int owner, int offset, int count, @Nullable int[] total) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt;
 		if(total!=null){
@@ -56,9 +56,10 @@ public class NotificationsStorage{
 				total[0]=res.getInt(1);
 			}
 		}
-		stmt=conn.prepareStatement("SELECT * FROM `notifications` WHERE `owner_id`=? ORDER BY `time` DESC LIMIT ?,50");
+		stmt=conn.prepareStatement("SELECT * FROM `notifications` WHERE `owner_id`=? ORDER BY `time` DESC LIMIT ?,?");
 		stmt.setInt(1, owner);
 		stmt.setInt(2, offset);
+		stmt.setInt(3, count);
 		try(ResultSet res=stmt.executeQuery()){
 			if(res.first()){
 				ArrayList<Notification> notifications=new ArrayList<>();
@@ -68,7 +69,7 @@ public class NotificationsStorage{
 				return notifications;
 			}
 		}
-		return Collections.EMPTY_LIST;
+		return Collections.emptyList();
 	}
 
 	public static void deleteNotificationsForObject(@NotNull Notification.ObjectType type, int objID) throws SQLException{
@@ -138,6 +139,15 @@ public class NotificationsStorage{
 		try(ResultSet r=stmt.executeQuery()){
 			r.first();
 			res.incNewNotificationsCount(r.getInt(1));
+		}
+		stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*), is_event FROM group_invites WHERE invitee_id=? GROUP BY is_event", userID);
+		try(ResultSet r=stmt.executeQuery()){
+			while(r.next()){
+				if(r.getBoolean(2)) // event
+					res.incNewEventInvitationsCount(r.getInt(1));
+				else
+					res.incNewGroupInvitationsCount(r.getInt(1));
+			}
 		}
 		userNotificationsCache.put(userID, res);
 		return res;

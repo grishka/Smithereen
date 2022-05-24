@@ -3,6 +3,9 @@ package smithereen.data.notifications;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
+
+import smithereen.storage.DatabaseUtils;
 
 public class Notification{
 	public int id;
@@ -12,7 +15,7 @@ public class Notification{
 	public ObjectType relatedObjectType;
 	public int relatedObjectID;
 	public int actorID;
-	public Timestamp time;
+	public Instant time;
 
 	public static Notification fromResultSet(ResultSet res) throws SQLException{
 		Notification n=new Notification();
@@ -25,7 +28,7 @@ public class Notification{
 		if(!res.wasNull())
 			n.relatedObjectType=ObjectType.values()[res.getInt("related_object_type")];
 		n.actorID=res.getInt("actor_id");
-		n.time=res.getTimestamp("time");
+		n.time=DatabaseUtils.getInstant(res, "time");
 		return n;
 	}
 

@@ -4,16 +4,16 @@
 </div>
 {%endif%}
 <div id="postList">
-	{%for post in wall%}
+	{%for post in items%}
 	<div class="card">
 		{%include "wall_post" with {'post': post}%}
 	</div>
 	{% else %}
-	<div class="card">
+	<div class="card padded">
 		{{ L('wall_empty') }}
 	</div>
 	{%endfor%}
 </div>
 <div class="singleColumn">
-	{%include "pagination" with {'perPage': 25, 'offset': pageOffset, 'total': postCount, 'urlPrefix': (user.profileURL+"?offset=")}%}
+	{% include "pagination" %}
 </div>

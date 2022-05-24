@@ -4,6 +4,7 @@
 {% extends "page" %}
 {% block content %}
 {% include "group_admin_tabbar" with {'tab': 'admins'} %}
+{% include "group_edit_nav" %}
 	<div class="reorderableList groupEditMemberList" id="groupAdminsReorderable">
 		{% for admin in admins %}
 			<div class="reorderableItemWrap">

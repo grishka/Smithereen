@@ -39,6 +39,6 @@
 	{{ serverPolicy | raw }}
 </div>
 <div class="singleColumn" align="center">
-	{{ L('about_software1') }}<a href="https://smithereen.software/" target="_blank">Smithereen</a>{{ L('about_software2') }}{{ serverVersion }}{{ L('about_software3') }}
+	{{ L('about_software', {'sw': 'Smithereen', 'version': serverVersion}, {'sw': {'href': 'https://smithereen.software/', 'target': '_blank'} }) }}
 </div>
 {% endblock %}

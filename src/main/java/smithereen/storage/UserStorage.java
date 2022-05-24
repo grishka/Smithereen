@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -18,7 +17,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -26,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -34,11 +33,12 @@ import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.data.Account;
 import smithereen.data.BirthdayReminder;
+import smithereen.data.EventReminder;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Invitation;
-import smithereen.data.UriBuilder;
+import smithereen.data.PaginatedList;
 import smithereen.data.User;
 import smithereen.data.UserNotifications;
 import spark.utils.StringUtils;
@@ -51,6 +51,7 @@ public class UserStorage{
 	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
 	private static LruCache<Integer, Account> accountCache=new LruCache<>(500);
 	private static final LruCache<Integer, BirthdayReminder> birthdayReminderCache=new LruCache<>(500);
+	private static final LruCache<Integer, EventReminder> eventReminderCache=new LruCache<>(500);
 
 	public static synchronized User getById(int id) throws SQLException{
 		User user=cache.get(id);
@@ -238,8 +239,26 @@ public class UserStorage{
 		}
 	}
 
-	public static List<User> getFriendListForUser(int userID) throws SQLException{
-		return getByIdAsList(getFriendIDsForUser(userID));
+	public static PaginatedList<User> getFriendListForUser(int userID, int offset, int count) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("followings")
+				.count()
+				.where("followee_id=? AND mutual=1", userID)
+				.createStatement();
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(total==0)
+			return PaginatedList.emptyList(count);
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("followings")
+				.columns("followee_id")
+				.where("follower_id=? AND mutual=1", userID)
+				.orderBy("followee_id ASC")
+				.limit(count, offset)
+				.createStatement();
+		try(ResultSet res=stmt.executeQuery()){
+			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
+		}
 	}
 
 	public static List<Integer> getFriendIDsForUser(int userID) throws SQLException{
@@ -320,28 +339,51 @@ public class UserStorage{
 		return DatabaseUtils.intResultSetToList(stmt.executeQuery());
 	}
 
-	public static List<User> getMutualFriendListForUser(int userID, int otherUserID) throws SQLException{
-		return getByIdAsList(getMutualFriendIDsForUser(userID, otherUserID, 0, 100));
+	public static PaginatedList<User> getMutualFriendListForUser(int userID, int otherUserID, int offset, int count) throws SQLException{
+		return new PaginatedList<>(getByIdAsList(getMutualFriendIDsForUser(userID, otherUserID, offset, count)), getMutualFriendsCount(userID, otherUserID), offset, count);
 	}
 
-	public static List<User> getNonMutualFollowers(int userID, boolean followers, boolean accepted) throws SQLException{
+	public static PaginatedList<User> getNonMutualFollowers(int userID, boolean followers, boolean accepted, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		String fld1=followers ? "follower_id" : "followee_id";
 		String fld2=followers ? "followee_id" : "follower_id";
-		PreparedStatement stmt=conn.prepareStatement("SELECT `"+fld1+"` FROM followings WHERE `"+fld2+"`=? AND `mutual`=0 AND `accepted`=?");
-		stmt.setInt(1, userID);
-		stmt.setBoolean(2, accepted);
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("followings")
+				.count()
+				.where(fld2+"=? AND accepted=? AND mutual=0", userID, accepted)
+				.createStatement();
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(total==0)
+			return PaginatedList.emptyList(count);
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("followings")
+				.columns(fld1)
+				.where(fld2+"=? AND accepted=? AND mutual=0", userID, accepted)
+				.orderBy(fld1+" ASC")
+				.limit(count, offset)
+				.createStatement();
 		try(ResultSet res=stmt.executeQuery()){
-			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
+			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
 		}
 	}
 
-	public static List<FriendRequest> getIncomingFriendRequestsForUser(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<FriendRequest> getIncomingFriendRequestsForUser(int userID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT message, from_user_id FROM `friend_requests` WHERE `to_user_id`=? LIMIT ?,?");
-		stmt.setInt(1, userID);
-		stmt.setInt(2, offset);
-		stmt.setInt(3, count);
+		PreparedStatement stmt=new SQLQueryBuilder(conn)
+				.selectFrom("friend_requests")
+				.count()
+				.where("to_user_id=?", userID)
+				.createStatement();
+		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		if(total==0)
+			return PaginatedList.emptyList(count);
+		stmt=new SQLQueryBuilder(conn)
+				.selectFrom("friend_requests")
+				.columns("message", "from_user_id")
+				.where("to_user_id=?", userID)
+				.orderBy("id DESC")
+				.limit(count, offset)
+				.createStatement();
 		List<FriendRequest> reqs;
 		// 1. collect the IDs of mutual friends for each friend request
 		Map<Integer, List<Integer>> mutualFriendIDs=new HashMap<>();
@@ -358,9 +400,9 @@ public class UserStorage{
 			}).collect(Collectors.toList());
 		}
 		if(mutualFriendIDs.isEmpty())
-			return reqs;
+			return new PaginatedList<>(reqs, total, offset, count);
 		// 2. make a list of distinct users we need
-		List<Integer> needUsers=mutualFriendIDs.values().stream().flatMap(Collection::stream).distinct().collect(Collectors.toList());
+		Set<Integer> needUsers=mutualFriendIDs.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
 		// 3. get them all in one go
 		Map<Integer, User> mutualFriends=getById(needUsers);
 		// 4. finally, put them into friend requests
@@ -370,7 +412,7 @@ public class UserStorage{
 				continue;
 			req.mutualFriends=ids.stream().map(mutualFriends::get).collect(Collectors.toList());
 		}
-		return reqs;
+		return new PaginatedList<>(reqs, total, offset, count);
 	}
 
 	public static void acceptFriendRequest(int userID, int targetUserID, boolean followAccepted) throws SQLException{
@@ -442,7 +484,7 @@ public class UserStorage{
 		}
 	}
 
-	public static void followUser(int userID, int targetUserID, boolean accepted) throws SQLException{
+	public static void followUser(int userID, int targetUserID, boolean accepted, boolean ignoreAlreadyFollowing) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		conn.createStatement().execute("START TRANSACTION");
 		try{
@@ -458,8 +500,13 @@ public class UserStorage{
 			stmt.setInt(2, targetUserID);
 			try(ResultSet res=stmt.executeQuery()){
 				res.first();
-				if(res.getInt(1)==1)
+				if(res.getInt(1)==1){
+					if(ignoreAlreadyFollowing){
+						conn.createStatement().execute("ROLLBACK");
+						return;
+					}
 					throw new SQLException("Already following");
+				}
 			}
 
 			stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`,`followee_id`,`mutual`,`accepted`) VALUES (?,?,?,?)");
@@ -508,7 +555,7 @@ public class UserStorage{
 		stmt.execute();
 	}
 
-	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, java.sql.Date bdate, String about) throws SQLException{
+	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate bdate, String about) throws SQLException{
 		new SQLQueryBuilder()
 				.update("users")
 				.where("id=?", user.id)
@@ -581,11 +628,8 @@ public class UserStorage{
 				.value("public_key", user.publicKey.getEncoded())
 				.value("ap_url", Objects.toString(user.url, null))
 				.value("ap_inbox", Objects.toString(user.inbox, null))
-				.value("ap_outbox", Objects.toString(user.outbox, null))
 				.value("ap_shared_inbox", Objects.toString(user.sharedInbox, null))
 				.value("ap_id", user.activityPubID.toString())
-				.value("ap_followers", Objects.toString(user.followers, null))
-				.value("ap_following", Objects.toString(user.following, null))
 				.value("about", user.summary)
 				.value("gender", user.gender)
 				.value("avatar", user.icon!=null ? user.icon.get(0).asActivityPubObject(new JsonObject(), new ContextCollector()).toString() : null)
@@ -593,9 +637,7 @@ public class UserStorage{
 				.value("flags", user.flags)
 				.value("middle_name", user.middleName)
 				.value("maiden_name", user.maidenName)
-				.value("ap_wall", Objects.toString(user.getWallURL(), null))
-				.value("ap_friends", Objects.toString(user.getFriendsURL(), null))
-				.value("ap_groups", Objects.toString(user.getGroupsURL(), null));
+				.value("endpoints", user.serializeEndpoints());
 		stmt=existingUserID!=0 ? bldr.createStatement() : bldr.createStatement(PreparedStatement.RETURN_GENERATED_KEYS);
 
 		stmt.executeUpdate();
@@ -967,6 +1009,29 @@ public class UserStorage{
 		}
 	}
 
+	public static void getFriendIdsWithBirthdaysTodayAndTomorrow(int userID, LocalDate date, List<Integer> today, List<Integer> tomorrow) throws SQLException{
+		LocalDate nextDay=date.plusDays(1);
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT `users`.id, `users`.bdate FROM `users` RIGHT JOIN followings ON followings.followee_id=`users`.id" +
+						" WHERE followings.follower_id=? AND followings.mutual=1 AND `users`.bdate IS NOT NULL" +
+						" AND ((DAY(`users`.bdate)=? AND MONTH(`users`.bdate)=?) OR (DAY(`users`.bdate)=? AND MONTH(`users`.bdate)=?))",
+				userID, date.getDayOfMonth(), date.getMonthValue(), nextDay.getDayOfMonth(), nextDay.getMonthValue());
+
+		try(ResultSet res=stmt.executeQuery()){
+			res.beforeFirst();
+			while(res.next()){
+				int id=res.getInt(1);
+				LocalDate bdate=DatabaseUtils.getLocalDate(res, 2);
+				Objects.requireNonNull(bdate);
+				if(bdate.getDayOfMonth()==date.getDayOfMonth()){
+					today.add(id);
+				}else{
+					tomorrow.add(id);
+				}
+			}
+		}
+	}
+
 	public static BirthdayReminder getBirthdayReminderForUser(int userID, LocalDate date) throws SQLException{
 		synchronized(birthdayReminderCache){
 			BirthdayReminder r=birthdayReminderCache.get(userID);
@@ -974,25 +1039,8 @@ public class UserStorage{
 				return r;
 		}
 		LocalDate nextDay=date.plusDays(1);
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT `users`.id, `users`.bdate FROM `users` RIGHT JOIN followings ON followings.followee_id=`users`.id" +
-				" WHERE followings.follower_id=? AND followings.mutual=1 AND `users`.bdate IS NOT NULL" +
-				" AND ((DAY(`users`.bdate)=? AND MONTH(`users`.bdate)=?) OR (DAY(`users`.bdate)=? AND MONTH(`users`.bdate)=?))",
-				userID, date.getDayOfMonth(), date.getMonthValue(), nextDay.getDayOfMonth(), nextDay.getMonthValue());
-
-		List<Integer> today=new ArrayList<>(), tomorrow=new ArrayList<>();
-		try(ResultSet res=stmt.executeQuery()){
-			res.beforeFirst();
-			while(res.next()){
-				int id=res.getInt(1);
-				Date bdate=res.getDate(2);
-				if(bdate.getDate()==date.getDayOfMonth()){
-					today.add(id);
-				}else{
-					tomorrow.add(id);
-				}
-			}
-		}
+		ArrayList<Integer> today=new ArrayList<>(), tomorrow=new ArrayList<>();
+		getFriendIdsWithBirthdaysTodayAndTomorrow(userID, date, today, tomorrow);
 		BirthdayReminder r=new BirthdayReminder();
 		r.forDay=date;
 		if(!today.isEmpty()){
@@ -1008,5 +1056,71 @@ public class UserStorage{
 			birthdayReminderCache.put(userID, r);
 			return r;
 		}
+	}
+
+	public static List<Integer> getFriendsWithBirthdaysInMonth(int userID, int month) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT `users`.id FROM `users` RIGHT JOIN followings ON followings.followee_id=`users`.id" +
+				" WHERE followings.follower_id=? AND followings.mutual=1 AND `users`.bdate IS NOT NULL AND MONTH(`users`.bdate)=?", userID, month);
+		return DatabaseUtils.intResultSetToList(stmt.executeQuery());
+	}
+
+	public static List<Integer> getFriendsWithBirthdaysOnDay(int userID, int month, int day) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT `users`.id FROM `users` RIGHT JOIN followings ON followings.followee_id=`users`.id" +
+				" WHERE followings.follower_id=? AND followings.mutual=1 AND `users`.bdate IS NOT NULL AND MONTH(`users`.bdate)=? AND DAY(`users`.bdate)=?", userID, month, day);
+		return DatabaseUtils.intResultSetToList(stmt.executeQuery());
+	}
+
+	public static Map<URI, Integer> getFriendsByActivityPubIDs(Collection<URI> ids, int userID) throws SQLException{
+		if(ids.isEmpty())
+			return Map.of();
+		Connection conn=DatabaseConnectionManager.getConnection();
+		ArrayList<Integer> localIDs=new ArrayList<>();
+		ArrayList<String> remoteIDs=new ArrayList<>();
+		for(URI id:ids){
+			if(Config.isLocal(id)){
+				String path=id.getPath();
+				if(StringUtils.isEmpty(path))
+					continue;
+				String[] pathSegments=path.split("/");
+				if(pathSegments.length!=3 || !"users".equals(pathSegments[1])) // "", "users", id
+					continue;
+				int uid=Utils.safeParseInt(pathSegments[2]);
+				if(uid>0)
+					localIDs.add(uid);
+			}else{
+				remoteIDs.add(id.toString());
+			}
+		}
+		HashMap<Integer, URI> localIdToApIdMap=new HashMap<>();
+		if(!remoteIDs.isEmpty()){
+			try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("users").columns("id", "ap_id").whereIn("ap_id", remoteIDs).execute()){
+				while(res.next()){
+					int localID=res.getInt(1);
+					localIDs.add(localID);
+					localIdToApIdMap.put(localID, URI.create(res.getString(2)));
+				}
+			}
+		}
+		if(localIDs.isEmpty())
+			return Map.of();
+		return new SQLQueryBuilder(conn)
+				.selectFrom("followings")
+				.columns("followee_id")
+				.whereIn("followee_id", localIDs)
+				.andWhere("mutual=1 AND accepted=1 AND follower_id=?", userID)
+				.executeAsStream(res->res.getInt(1))
+				.collect(Collectors.toMap(id->localIdToApIdMap.computeIfAbsent(id, UserStorage::localUserURI), Function.identity()));
+	}
+
+	private static URI localUserURI(int id){
+		return Config.localURI("/users/"+id);
+	}
+
+	public static int getLocalFollowersCount(int userID) throws SQLException{
+		Connection conn=DatabaseConnectionManager.getConnection();
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `followings` JOIN `users` ON `follower_id`=`users`.id WHERE followee_id=? AND accepted=1 AND `users`.domain=''", userID);
+		return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 	}
 }

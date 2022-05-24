@@ -1,0 +1,35 @@
+<div class="eventsCalendar">
+	<div class="calendarHeader">
+		{{ L('events_calendar_title') }}
+		<div id="calendarArrows" class="flR">
+			<a href="/my/events/calendar?year={{ year-(month==1 ? 1 : 0) }}&month={{ month==1 ? 12 : (month-1) }}" data-ajax data-ajax-hide="calendarArrows" data-ajax-show="calendarProgress"><span class="arrL"></span></a>
+			<a href="/my/events/calendar?year={{ year+(month==12 ? 1 : 0) }}&month={{ month==12 ? 1 : (month+1) }}" data-ajax data-ajax-hide="calendarArrows" data-ajax-show="calendarProgress"><span class="arrR"></span></a>
+		</div>
+		<div id="calendarProgress" class="flR loader white" style="display: none"></div>
+		<div class="flR">
+			{{ L('date_format_month_year', {'month': L('month_standalone', {'month': month}), 'year': year}) }}
+		</div>
+	</div>
+	<div class="calendarSubheader">
+		{% for i in 1..7 %}<div class="calendarWeekday">{{ L('weekday_short', {'day': i}) }}</div>{% endfor %}
+	</div>
+	<div class="calendarContent">
+		{% for i in 1..(monthStartWeekday-1) %}<div class="calendarCell"></div>{% endfor %}
+		{% for day in 1..monthLength %}
+			<div class="calendarCell{{ ((day+monthStartWeekday-2)%7)>4 ? ' weekend' : '' }}{{ year==todayYear and month==todayMonth and day==todayDay ? ' today' : '' }}">
+				<div class="day">{% if year==todayYear and month==todayMonth and day==todayDay %}{{ L('date_today') | capitalize }}{% else %}{{ day }}{% endif %}</div>
+				{%- if calendarEvents[day] is not empty -%}
+				<div class="calendarEventsPics count{{ min(4, calendarEvents[day] | length) }}">
+					{%- for actor in calendarEvents[day] | slice(0, min(calendarEvents[day] | length, 4)) -%}
+					<a href="{{ actor.profileURL }}">{{ actor | pictureForAvatar('s', -1, wrapperClasses="ava#{loop.index}") }}</a>
+					{%- endfor -%}
+				</div>
+				{%- if (calendarEvents[day] | length)>4 -%}
+				<a href="/my/events/dayEventsPopup?date={{ year }}-{{ month<10 ? "0#{month}" : month }}-{{ day<10 ? "0#{day}" : day }}" class="showMore" data-ajax-box="1">{{ L('show_more') }}</a>
+				{%- endif -%}
+				{%- endif -%}
+			</div>
+		{% endfor %}
+		{% for i in 1..(6-((monthLength+monthStartWeekday-2)%7)) %}<div class="calendarCell"></div>{% endfor %}
+	</div>
+</div>

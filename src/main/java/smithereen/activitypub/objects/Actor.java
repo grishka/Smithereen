@@ -2,6 +2,7 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.annotations.SerializedName;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -27,6 +28,7 @@ import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
 import smithereen.data.CachedRemoteImage;
+import smithereen.data.Group;
 import smithereen.data.NonCachedRemoteImage;
 import smithereen.data.SizedImage;
 import smithereen.exceptions.BadRequestException;
@@ -44,7 +46,10 @@ public abstract class Actor extends ActivityPubObject{
 	public URI sharedInbox;
 	public URI followers;
 	public URI following;
+	public URI collectionQueryEndpoint;
 	public Timestamp lastUpdated;
+
+	public String aboutSource;
 
 	public String getProfileURL(String action){
 		return "/"+getFullUsername()+"/"+action;
@@ -123,12 +128,13 @@ public abstract class Actor extends ActivityPubObject{
 		obj.addProperty("inbox", userURL+"/inbox");
 		obj.addProperty("outbox", userURL+"/outbox");
 		if(canBeFollowed())
-			obj.addProperty("followers", userURL+"/followers");
+			obj.addProperty("followers", getFollowersURL().toString());
 		if(canFollowOtherActors())
 			obj.addProperty("following", userURL+"/following");
 
 		JsonObject endpoints=new JsonObject();
 		endpoints.addProperty("sharedInbox", Config.localURI("/activitypub/sharedInbox").toString());
+		endpoints.addProperty("collectionSimpleQuery", userURL+"/collectionQuery");
 		obj.add("endpoints", endpoints);
 
 		JsonObject pubkey=new JsonObject();
@@ -144,8 +150,9 @@ public abstract class Actor extends ActivityPubObject{
 		if(wallUrl!=null){
 			obj.addProperty("wall", wallUrl.toString());
 			contextCollector.addType("wall", "sm:wall", "@id");
-			contextCollector.addAlias("sm", JLD.SMITHEREEN);
 		}
+		contextCollector.addAlias("collectionSimpleQuery", "sm:collectionSimpleQuery");
+		contextCollector.addAlias("sm", JLD.SMITHEREEN);
 
 		contextCollector.addSchema(JLD.W3_SECURITY);
 
@@ -173,7 +180,7 @@ public abstract class Actor extends ActivityPubObject{
 		if(!keyOwner.equals(activityPubID))
 			throw new IllegalArgumentException("Key owner ("+keyOwner+") is not equal to user ID ("+activityPubID+")");
 		String pkeyEncoded=pkey.get("publicKeyPem").getAsString();
-		pkeyEncoded=pkeyEncoded.replaceAll("-----(BEGIN|END) (RSA )?PUBLIC KEY-----", "").replace("\n", "").trim();
+		pkeyEncoded=pkeyEncoded.replaceAll("-----(BEGIN|END) (RSA )?PUBLIC KEY-----", "").replaceAll("[^A-Za-z0-9+/=]", "").trim();
 		byte[] key=Base64.getDecoder().decode(pkeyEncoded);
 		try{
 			X509EncodedKeySpec spec=new X509EncodedKeySpec(key);
@@ -202,9 +209,9 @@ public abstract class Actor extends ActivityPubObject{
 			JsonObject endpoints=obj.getAsJsonObject("endpoints");
 			sharedInbox=tryParseURL(optString(endpoints, "sharedInbox"));
 			ensureHostMatchesID(sharedInbox, "sharedInbox");
+			collectionQueryEndpoint=tryParseURL(optString(endpoints, "collectionSimpleQuery"));
+			ensureHostMatchesID(collectionQueryEndpoint, "collectionSimpleQuery");
 		}
-		if(sharedInbox==null)
-			sharedInbox=inbox;
 
 		if(summary!=null)
 			summary=Utils.sanitizeHTML(summary);
@@ -249,7 +256,7 @@ public abstract class Actor extends ActivityPubObject{
 				length|=in.read() & 0xFF;
 			}
 		}
-		return length;
+		return Math.min(length, in.available());
 	}
 
 	protected void fillFromResultSet(ResultSet res) throws SQLException{
@@ -276,6 +283,7 @@ public abstract class Actor extends ActivityPubObject{
 		}
 
 		username=res.getString("username");
+		aboutSource=res.getString("about_source");
 	}
 
 	public boolean hasWall(){
@@ -284,12 +292,12 @@ public abstract class Actor extends ActivityPubObject{
 
 	public void ensureLocal(){
 		if(StringUtils.isNotEmpty(domain))
-			throw new IllegalArgumentException("Local actor is required here");
+			throw new IllegalArgumentException("Local actor is required here (got "+activityPubID+")");
 	}
 
 	public void ensureRemote(){
 		if(StringUtils.isEmpty(domain))
-			throw new IllegalArgumentException("Remote actor is required here");
+			throw new IllegalArgumentException("Remote actor is required here (got "+activityPubID+")");
 	}
 
 	protected boolean canFollowOtherActors(){
@@ -298,5 +306,59 @@ public abstract class Actor extends ActivityPubObject{
 
 	protected boolean canBeFollowed(){
 		return true;
+	}
+
+	public String getAboutSource(){
+		return StringUtils.isNotEmpty(aboutSource) ? aboutSource : summary;
+	}
+
+	public EndpointsStorageWrapper getEndpointsForStorage(){
+		if(StringUtils.isEmpty(domain))
+			return null;
+		EndpointsStorageWrapper ep=new EndpointsStorageWrapper();
+		if(followers!=null)
+			ep.followers=followers.toString();
+		if(following!=null)
+			ep.following=following.toString();
+		if(outbox!=null)
+			ep.outbox=outbox.toString();
+		URI wall=getWallURL();
+		if(wall!=null)
+			ep.wall=wall.toString();
+		if(collectionQueryEndpoint!=null)
+			ep.collectionQuery=collectionQueryEndpoint.toString();
+		return ep;
+	}
+
+	public String serializeEndpoints(){
+		EndpointsStorageWrapper endpoints=getEndpointsForStorage();
+		return endpoints!=null ? Utils.gson.toJson(endpoints) : null;
+	}
+
+	public int getOwnerID(){
+		return 0;
+	}
+
+	public static class EndpointsStorageWrapper{
+		@SerializedName("fs")
+		public String followers;
+		@SerializedName("fg")
+		public String following;
+		@SerializedName("ob")
+		public String outbox;
+		@SerializedName("wl")
+		public String wall;
+		@SerializedName("fr")
+		public String friends;
+		@SerializedName("gr")
+		public String groups;
+		@SerializedName("at")
+		public String actorToken;
+		@SerializedName("cq")
+		public String collectionQuery;
+		@SerializedName("gm")
+		public String groupMembers;
+		@SerializedName("tm")
+		public String tentativeGroupMembers;
 	}
 }

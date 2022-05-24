@@ -78,7 +78,7 @@ public class Mailer{
 		Lang l=Utils.lang(req);
 		String link=UriBuilder.local().appendPath("account").appendPath("actuallyResetPassword").queryParam("code", code).build().toString();
 		String plaintext=l.get("email_password_reset_plain_before", Map.of("name", account.user.firstName, "serverName", Config.domain))+"\n\n"+link+"\n\n"+l.get("email_password_reset_after");
-		send(account.email, l.get("email_password_reset_subject", Map.of("serverName", Config.domain)), plaintext, "reset_password", Map.of(
+		send(account.email, l.get("email_password_reset_subject", Map.of("domain", Config.domain)), plaintext, "reset_password", Map.of(
 				"domain", Config.domain,
 				"serverName", Config.serverDisplayName,
 				"name", account.user.firstName,

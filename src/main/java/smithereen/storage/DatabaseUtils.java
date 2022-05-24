@@ -1,9 +1,13 @@
 package smithereen.storage;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Spliterator;
@@ -36,6 +40,17 @@ public class DatabaseUtils{
 		try(res){
 			return res.first() ? res.getInt(1) : -1;
 		}
+	}
+
+	public static <T> T oneFieldToObject(final ResultSet res, Class<T> type) throws SQLException{
+		try(res){
+			return res.first() ? res.getObject(1, type) : null;
+		}
+	}
+
+	public static <T, F> F oneFieldToObject(ResultSet res, Class<T> initialType, Function<T, F> converter) throws SQLException{
+		T obj=oneFieldToObject(res, initialType);
+		return obj==null ? null : converter.apply(obj);
 	}
 
 	public static boolean runWithUniqueUsername(String username, DatabaseRunnable action) throws SQLException{
@@ -83,6 +98,7 @@ public class DatabaseUtils{
 							action.accept(res.getInt(1));
 							return true;
 						}
+						res.close();
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
 					}
@@ -95,6 +111,7 @@ public class DatabaseUtils{
 						while(res.next()){
 							action.accept(res.getInt(1));
 						}
+						res.close();
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
 					}
@@ -115,6 +132,8 @@ public class DatabaseUtils{
 						if(res.next()){
 							action.accept(creator.deserialize(res));
 							return true;
+						}else{
+							res.close();
 						}
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
@@ -128,6 +147,7 @@ public class DatabaseUtils{
 						while(res.next()){
 							action.accept(creator.deserialize(res));
 						}
+						res.close();
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
 					}
@@ -135,6 +155,32 @@ public class DatabaseUtils{
 			}, false);
 		}catch(UncheckedSQLException x){
 			throw x.getCause();
+		}
+	}
+
+	public static Instant getInstant(ResultSet res, String name) throws SQLException{
+		Timestamp ts=res.getTimestamp(name);
+		return ts==null ? null : ts.toInstant();
+	}
+
+	public static LocalDate getLocalDate(ResultSet res, String name) throws SQLException{
+		Date date=res.getDate(name);
+		return date==null ? null : date.toLocalDate();
+	}
+
+	public static LocalDate getLocalDate(ResultSet res, int index) throws SQLException{
+		Date date=res.getDate(index);
+		return date==null ? null : date.toLocalDate();
+	}
+
+	public static void doWithTransaction(Connection conn, SQLRunnable r) throws SQLException{
+		boolean success=false;
+		try{
+			conn.createStatement().execute("START TRANSACTION");
+			r.run();
+			success=true;
+		}finally{
+			conn.createStatement().execute(success ? "COMMIT" : "ROLLBACK");
 		}
 	}
 
@@ -147,5 +193,10 @@ public class DatabaseUtils{
 		public synchronized SQLException getCause(){
 			return (SQLException) super.getCause();
 		}
+	}
+
+	@FunctionalInterface
+	public interface SQLRunnable{
+		void run() throws SQLException;
 	}
 }

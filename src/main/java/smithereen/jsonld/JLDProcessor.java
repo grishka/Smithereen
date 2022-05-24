@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 public class JLDProcessor{
 	private static final Logger LOG=LoggerFactory.getLogger(JLDProcessor.class);
@@ -67,6 +68,19 @@ public class JLDProcessor{
 		lc.add("friends", idAndTypeObject("sm:friends", "@id"));
 		lc.add("groups", idAndTypeObject("sm:groups", "@id"));
 		lc.addProperty("nonAnonymous", "sm:nonAnonymous");
+		lc.addProperty("tentativeMembership", "sm:tentativeMembership");
+		lc.add("members", idAndTypeObject("sm:members", "@id"));
+		lc.add("tentativeMembers", idAndTypeObject("sm:tentativeMembers", "@id"));
+		lc.addProperty("TentativeJoin", "sm:TentativeJoin");
+		lc.addProperty("accessType", "sm:accessType");
+		lc.addProperty("actorToken", "sm:actorToken");
+		lc.addProperty("collectionSimpleQuery", "sm:collectionSimpleQuery");
+		lc.addProperty("CollectionQueryResult", "sm:CollectionQueryResult");
+		lc.addProperty("tentative", "sm:tentative");
+
+		// litepub aliases
+		lc.addProperty("capabilities", "litepub:capabilities");
+		lc.addProperty("acceptsJoins", "litepub:acceptsJoins");
 
 		localContext=updateContext(new JLDContext(), makeArray(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);
@@ -86,8 +100,7 @@ public class JLDProcessor{
 			return (JsonArray) result;
 		if(result==null)
 			return new JsonArray();
-		if(result instanceof JsonObject){
-			JsonObject _r=(JsonObject) result;
+		if(result instanceof JsonObject _r){
 			if(_r.size()==1 && _r.has("@graph"))
 				return _r.get("@graph").getAsJsonArray();
 		}
@@ -141,11 +154,7 @@ public class JLDProcessor{
 
 	private static String readResourceFile(String name){
 		try{
-			InputStream in=JLDProcessor.class.getResourceAsStream("/jsonld-schemas/"+name+".jsonld");
-			byte[] buf=new byte[in.available()];
-			in.read(buf);
-			in.close();
-			return new String(buf, StandardCharsets.UTF_8);
+			return new String(Objects.requireNonNull(JLDProcessor.class.getResourceAsStream("/jsonld-schemas/"+name+".jsonld")).readAllBytes(), StandardCharsets.UTF_8);
 		}catch(IOException x){
 			return null;
 		}
@@ -157,24 +166,18 @@ public class JLDProcessor{
 		}
 		if(schemaCache.containsKey(iri))
 			return schemaCache.get(iri);
-		String file=null;
-		switch(iri){
-			case "https://www.w3.org/ns/activitystreams":
-				file=readResourceFile("activitystreams");
-				break;
-			case "https://w3id.org/security/v1":
-				file=readResourceFile("w3-security");
-				break;
-			case "https://w3id.org/identity/v1":
-				file=readResourceFile("w3-identity");
-				break;
-			case "https://example.com/schemas/litepub-0.1.jsonld":
-				file=readResourceFile("litepub-0.1");
-				break;
-			default:
+		String file=switch(iri){
+			case "https://www.w3.org/ns/activitystreams" -> readResourceFile("activitystreams");
+			case "https://w3id.org/security/v1" -> readResourceFile("w3-security");
+			case "https://w3id.org/identity/v1" -> readResourceFile("w3-identity");
+			case "https://example.com/schemas/litepub-0.1.jsonld" -> readResourceFile("litepub-0.1");
+			default -> {
 				LOG.warn("Can't dereference remote context '{}'", iri);
-				//throw new JLDException("loading remote context failed");
-		}
+				yield null;
+			}
+
+			//throw new JLDException("loading remote context failed");
+		};
 		if(file!=null){
 			JsonObject obj=JsonParser.parseString(file).getAsJsonObject();
 			schemaCache.put(iri, obj);
@@ -474,14 +477,14 @@ public class JLDProcessor{
 	private static JsonArray makeArray(Object... items){
 		JsonArray arr=new JsonArray(items.length);
 		for(Object item:items){
-			if(item instanceof JsonElement)
-				arr.add((JsonElement) item);
-			else if(item instanceof String)
-				arr.add((String)item);
-			else if(item instanceof Number)
-				arr.add((Number)item);
-			else if(item instanceof Boolean)
-				arr.add((Boolean)item);
+			if(item instanceof JsonElement jsonElement)
+				arr.add(jsonElement);
+			else if(item instanceof String str)
+				arr.add(str);
+			else if(item instanceof Number num)
+				arr.add(num);
+			else if(item instanceof Boolean b)
+				arr.add(b);
 			else
 				throw new IllegalArgumentException("Unsupported type "+item.getClass().getName());
 		}
@@ -1763,10 +1766,7 @@ public class JLDProcessor{
 		nodeMap.add("@default", new JsonObject());
 		BlankNodeIdentifierGenerator idGen=new BlankNodeIdentifierGenerator();
 		JsonArray expanded=expandToArray(element, baseURI);
-		//System.out.println(expanded.toString(4));
 		generateNodeMap(expanded, nodeMap, "@default", null, null, null, idGen);
-		//generateNodeMap(element, nodeMap, "@default", null, null, null, idGen);
-		//System.out.println(nodeMap.toString(4));
 		JsonObject defaultGraph=nodeMap.getAsJsonObject("@default");
 		for(String graphName:nodeMap.keySet()){
 			if("@default".equals(graphName))
@@ -1792,7 +1792,6 @@ public class JLDProcessor{
 			if(!(node.has("@id") && node.size()==1))
 				flattened.add(node);
 		}
-//		System.out.println(flattened.toString(4));
 		return flattened;
 	}
 }

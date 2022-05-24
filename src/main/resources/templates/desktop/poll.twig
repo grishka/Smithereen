@@ -7,7 +7,7 @@
 		<h3 class="question">{{ poll.question is empty ? L('poll') : poll.question }}</h3>
 	</div>
 	{% if currentUser is not null and interactions.pollChoices is empty and not poll.expired %}
-		<form action="/system/votePoll?id={{ poll.id }}&csrf={{ csrf }}" method="post" onsubmit="return ajaxSubmitForm(this)">
+		<form action="/system/votePoll?id={{ poll.id }}&csrf={{ csrf }}" method="post" data-ajax>
 			{% if poll.multipleChoice %}
 				{% for opt in poll.options %}
 					<label>

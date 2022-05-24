@@ -1,13 +1,11 @@
-FROM maven:3.6.3-openjdk-15 as builder
+FROM maven:3.8.3-eclipse-temurin-17 as builder
 
 WORKDIR /usr/src/app
-COPY pom.xml .
-RUN mvn dependency:go-offline
 COPY . .
-RUN mvn package
+RUN mvn package -DskipTests=true
 RUN java LibVipsDownloader.java
 
-FROM openjdk:15-buster
+FROM eclipse-temurin:17-jdk
 
 SHELL ["bash", "-c"]
 RUN mkdir -p /opt/smithereen

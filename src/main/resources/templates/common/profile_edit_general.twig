@@ -2,7 +2,7 @@
 {%extends "page"%}
 {%block content%}
 <div class="singleColumn gray wideForms">
-	<form action="/settings/updateProfileGeneral" method="post" onsubmit="return ajaxSubmitForm(this)">
+	<form action="/settings/updateProfileGeneral" method="post" data-ajax>
 		{{ form.start('profileEdit', profileEditMessage) }}
 			{{ form.textInput('first_name', L('first_name'), currentUser.firstName, {'maxlength': 100, 'required': true}) }}
 			{{ form.textInput('middle_name', L('middle_name_or_nickname'), currentUser.middleName, {'maxlength': 100}) }}
@@ -14,7 +14,7 @@
 				{'value': 2, 'label': L('gender_female'), 'selected': currentUser.gender=='FEMALE'}
 			]) }}
         	{{ form.textInput('bdate', L('birth_date'), currentUser.birthDate, {'type': 'date', 'max': todayDate}) }}
-			{{ form.textArea('about', L('profile_about'), currentUser.summary) }}
+			{{ form.textArea('about', L('profile_about'), currentUser.aboutSource) }}
 			{{ form.footer(L('save')) }}
 		{{ form.end() }}
 		<input type="hidden" name="csrf" value="{{csrf}}"/>

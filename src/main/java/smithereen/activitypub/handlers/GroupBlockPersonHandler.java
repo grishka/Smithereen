@@ -3,14 +3,11 @@ package smithereen.activitypub.handlers;
 import java.sql.SQLException;
 
 import smithereen.activitypub.ActivityHandlerContext;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Block;
 import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
 import smithereen.data.User;
 import smithereen.storage.GroupStorage;
-import smithereen.storage.UserStorage;
 
 public class GroupBlockPersonHandler extends ActivityTypeHandler<ForeignGroup, Block, User>{
 
@@ -18,6 +15,6 @@ public class GroupBlockPersonHandler extends ActivityTypeHandler<ForeignGroup, B
 	public void handle(ActivityHandlerContext context, ForeignGroup actor, Block activity, User object) throws SQLException{
 		object.ensureLocal();
 		GroupStorage.blockUser(actor.id, object.id);
-		ActivityPubWorker.getInstance().sendRemoveFromGroupsCollectionActivity(object, actor);
+		context.appContext.getActivityPubWorker().sendRemoveFromGroupsCollectionActivity(object, actor);
 	}
 }

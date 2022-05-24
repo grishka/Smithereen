@@ -33,7 +33,7 @@ public class UserPermissions{
 	}
 
 	public boolean canEditPost(Post post){
-		return post.user.id==userID && System.currentTimeMillis()-post.published.getTime()<24*3600_000L;
+		return post.user.id==userID && System.currentTimeMillis()-post.published.toEpochMilli()<24*3600_000L;
 	}
 
 	public boolean canEditGroup(Group group){

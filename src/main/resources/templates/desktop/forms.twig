@@ -44,6 +44,26 @@
 	</tr>
 {%endmacro%}
 
+{% macro dateTimeInput(name, label, value, options) %}
+{%if options is null%}{%set options={}%}{%endif%}
+	<tr>
+		<td class="label">
+			<label for="{{ name }}_date">{{ label }}</label>:
+		</td>
+		<td>
+			<div class="dateTimeInput control">
+				<input type="date" name="{{ name }}_date" id="{{ name }}_date" value="{{ getDate(value) }}"
+				{%- if options.required %} required{% endif -%}
+				/>
+				<span class="separator">{{ L('date_time_separator') }}</span>
+				<input type="time" name="{{ name }}_time" id="{{ name }}_time" value="{{ getTime(value) }}"
+				{%- if options.required %} required{% endif -%}
+				/>
+			</div>
+		</td>
+	</tr>
+{% endmacro %}
+
 {%macro textArea(name, label, value, options)%}
 {%if options is null%}{%set options={}%}{%endif%}
 	<tr>
@@ -94,8 +114,7 @@ autoSizeTextArea(ge("{{ name }}"));
 		<td>
 			{% for opt in selectOptions %}
 				<div class="radioButtonWrap">
-					<input type="radio" name="{{ name }}" value="{{ opt.value }}" id="{{ name }}{{ loop.index }}" {{ opt.selected ? 'checked' : '' }}/>
-					<label for="{{ name }}{{ loop.index }}">{{ opt.label }}</label>
+					<label><input type="radio" name="{{ name }}" value="{{ opt.value }}" id="{{ name }}{{ loop.index }}" {{ opt.selected ? 'checked' : '' }}/>{{ opt.label }}</label>
 				</div>
 				{% if opt.explanation is not empty %}
 					<span class="formExplanation">{{ opt.explanation }}</span>

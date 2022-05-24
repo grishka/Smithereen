@@ -7,7 +7,7 @@
 		<div class="grayText padTop">{{ L(poll.anonymous ? 'anonymous_poll' : 'public_poll') }}</div>
 	</div>
 	{% if currentUser is not null and interactions.pollChoices is empty and not poll.expired %}
-		<form action="/system/votePoll?id={{ poll.id }}&csrf={{ csrf }}" method="post" onsubmit="return ajaxSubmitForm(this)">
+		<form action="/system/votePoll?id={{ poll.id }}&csrf={{ csrf }}" method="post" data-ajax>
 			{% if poll.multipleChoice %}
 				{% for opt in poll.options %}
 					<label>

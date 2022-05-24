@@ -5,10 +5,10 @@
 {%else%}
 <div class="summaryWrap">
 	<div class="summary">{{ L('summary_notifications') }}</div>
-	{%include "pagination" with {'perPage': 50, 'offset': offset, 'total': total, 'urlPrefix': "/my/notifications?offset="}%}
+	{% include "pagination" %}
 </div>
 <div class="singleColumn">
-{%for notification in notifications%}
+{%for notification in items%}
 {%set actor=users[notification.actorID]%}
 {%if notification.objectID!=0%}
 {%set object=posts[notification.objectID]%}
@@ -88,10 +88,8 @@
 <div class="emptyState">{{ L('notifications_empty') }}</div>
 {%endfor%}
 </div>
-{% if total>50 %}
 <div class="bottomSummaryWrap">
-	{%include "pagination" with {'perPage': 50, 'offset': offset, 'total': total, 'urlPrefix': "/my/notifications?offset="}%}
+	{% include "pagination" %}
 </div>
-{% endif %}
 {%endif%}
 {%endblock%}

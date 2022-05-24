@@ -9,9 +9,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Objects;
@@ -29,6 +30,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
 import smithereen.routes.GroupsRoutes;
@@ -74,6 +76,13 @@ public class SmithereenApplication{
 		System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
 		if(Config.DEBUG)
 			System.setProperty("org.slf4j.simpleLogger.log.smithereen", "trace");
+		String addProperties=System.getenv("SMITHEREEN_SET_PROPS");
+		if(addProperties!=null){
+			Arrays.stream(addProperties.split("&")).forEach(s->{
+				String[] kv=s.split("=", 2);
+				System.setProperty(kv[0], URLDecoder.decode(kv[1], StandardCharsets.UTF_8));
+			});
+		}
 		LOG=LoggerFactory.getLogger(SmithereenApplication.class);
 
 		context=new ApplicationContext();
@@ -135,10 +144,9 @@ public class SmithereenApplication{
 				info.account=UserStorage.getAccount(info.account.id);
 				info.permissions=SessionStorage.getUserPermissions(info.account);
 
-				if(System.currentTimeMillis()-info.account.lastActive.getTime()>=10*60*1000){
-					Timestamp now=new Timestamp(System.currentTimeMillis());
-					info.account.lastActive=now;
-					SessionStorage.setLastActive(info.account.id, request.cookie("psid"), now);
+				if(System.currentTimeMillis()-info.account.lastActive.toEpochMilli()>=10*60*1000){
+					info.account.lastActive=Instant.now();
+					SessionStorage.setLastActive(info.account.id, request.cookie("psid"), info.account.lastActive);
 				}
 			}
 //			String hs="";
@@ -271,6 +279,7 @@ public class SmithereenApplication{
 			getActivityPubCollection("/wall", 100, ActivityPubRoutes::userWall);
 			getActivityPubCollection("/friends", 100, ActivityPubRoutes::userFriends);
 			getActivityPubCollection("/groups", 100, ActivityPubRoutes::userGroups);
+			post("/collectionQuery", ActivityPubRoutes::userCollectionQuery);
 
 			postWithCSRF("/createWallPost", PostRoutes::createUserWallPost);
 			getLoggedIn("/confirmBlock", ProfileRoutes::confirmBlockUser);
@@ -283,6 +292,19 @@ public class SmithereenApplication{
 				get("", ProfileRoutes::friends);
 				getLoggedIn("/mutual", ProfileRoutes::mutualFriends);
 			});
+			path("/wall", ()->{
+				get("", PostRoutes::userWallAll);
+				get("/own", PostRoutes::userWallOwn);
+				get("/with/:otherUserID", PostRoutes::wallToWall);
+			});
+			get("/followers", ProfileRoutes::followers);
+			get("/following", ProfileRoutes::following);
+			postWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
+			getWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
+
+			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncRelationshipsCollections);
+			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncContentCollections);
+			getRequiringAccessLevelWithCSRF("/syncProfile", Account.AccessLevel.ADMIN, ProfileRoutes::syncProfile);
 		});
 
 		path("/groups/:id", ()->{
@@ -308,8 +330,11 @@ public class SmithereenApplication{
 			get("/inbox", SmithereenApplication::methodNotAllowed);
 			getActivityPubCollection("/outbox", 50, ActivityPubRoutes::groupOutbox);
 			post("/outbox", SmithereenApplication::methodNotAllowed);
-			getActivityPubCollection("/followers", 50, ActivityPubRoutes::groupFollowers);
+			getActivityPubCollection("/members", 50, ActivityPubRoutes::groupMembers);
+			getActivityPubCollection("/tentativeMembers", 50, ActivityPubRoutes::groupTentativeMembers);
 			getActivityPubCollection("/wall", 50, ActivityPubRoutes::groupWall);
+			get("/actorToken", ActivityPubRoutes::groupActorToken);
+			post("/collectionQuery", ActivityPubRoutes::groupCollectionQuery);
 
 			getLoggedIn("/edit", GroupsRoutes::editGeneral);
 			postWithCSRF("/saveGeneral", GroupsRoutes::saveGeneral);
@@ -330,9 +355,26 @@ public class SmithereenApplication{
 			postWithCSRF("/unblockUser", GroupsRoutes::unblockUser);
 			postWithCSRF("/blockDomain", GroupsRoutes::blockDomain);
 			postWithCSRF("/unblockDomain", GroupsRoutes::unblockDomain);
+			getLoggedIn("/confirmRemoveUser", GroupsRoutes::confirmRemoveUser);
+			postWithCSRF("/removeUser", GroupsRoutes::removeUser);
+			getLoggedIn("/editJoinRequests", GroupsRoutes::editJoinRequests);
+			getWithCSRF("/acceptJoinRequest", GroupsRoutes::acceptJoinRequest);
+			getWithCSRF("/rejectJoinRequest", GroupsRoutes::rejectJoinRequest);
+			getLoggedIn("/editInvitations", GroupsRoutes::editInvitations);
+			getWithCSRF("/cancelInvite", GroupsRoutes::editCancelInvitation);
 
 			get("/members", GroupsRoutes::members);
+			get("/tentativeMembers", GroupsRoutes::tentativeMembers);
 			get("/admins", GroupsRoutes::admins);
+			path("/wall", ()->{
+				get("", PostRoutes::groupWall);
+			});
+			getWithCSRF("/invite", GroupsRoutes::inviteFriend);
+			postWithCSRF("/respondToInvite", GroupsRoutes::respondToInvite);
+
+			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, GroupsRoutes::syncRelationshipsCollections);
+			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, GroupsRoutes::syncContentCollections);
+			getRequiringAccessLevelWithCSRF("/syncProfile", Account.AccessLevel.ADMIN, GroupsRoutes::syncProfile);
 		});
 
 		path("/posts/:postID", ()->{
@@ -374,6 +416,15 @@ public class SmithereenApplication{
 				getLoggedIn("/managed", GroupsRoutes::myManagedGroups);
 				getLoggedIn("/create", GroupsRoutes::createGroup);
 				postWithCSRF("/create", GroupsRoutes::doCreateGroup);
+				getLoggedIn("/invites", GroupsRoutes::groupInvitations);
+			});
+			path("/events", ()->{
+				getLoggedIn("", GroupsRoutes::myEvents);
+				getLoggedIn("/past", GroupsRoutes::myPastEvents);
+				getLoggedIn("/create", GroupsRoutes::createEvent);
+				getLoggedIn("/calendar", GroupsRoutes::eventCalendar);
+				getLoggedIn("/dayEventsPopup", GroupsRoutes::eventCalendarDayPopup);
+				getLoggedIn("/invites", GroupsRoutes::eventInvitations);
 			});
 		});
 
@@ -393,22 +444,12 @@ public class SmithereenApplication{
 			getActivityPub("", ActivityPubRoutes::userActor);
 			get("", ProfileRoutes::profile);
 
-
 			postWithCSRF("/remoteFollow", ActivityPubRoutes::remoteFollow);
 
 			getLoggedIn("/confirmSendFriendRequest", ProfileRoutes::confirmSendFriendRequest);
 			postWithCSRF("/doSendFriendRequest", ProfileRoutes::doSendFriendRequest);
-			postWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
-			getWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
 			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
 			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
-			get("/followers", ProfileRoutes::followers);
-			get("/following", ProfileRoutes::following);
-			path("/wall", ()->{
-				get("", PostRoutes::wallAll);
-				get("/own", PostRoutes::wallOwn);
-				get("/with/:other_username", PostRoutes::wallToWall);
-			});
 		});
 
 
@@ -417,10 +458,14 @@ public class SmithereenApplication{
 			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_not_found")));
 		});
 		exception(UserActionNotAllowedException.class, (x, req, resp)->{
+			if(Config.DEBUG)
+				LOG.warn("403: {}", req.pathInfo(), x);
 			resp.status(403);
 			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_access")));
 		});
 		exception(BadRequestException.class, (x, req, resp)->{
+			if(Config.DEBUG)
+				LOG.warn("400: {}", req.pathInfo(), x);
 			resp.status(400);
 			String msg=x.getMessage();
 			if(StringUtils.isNotEmpty(msg))
@@ -431,6 +476,9 @@ public class SmithereenApplication{
 		exception(FloodControlViolationException.class, (x, req, resp)->{
 			resp.status(429);
 			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
+		});
+		exception(UserErrorException.class, (x, req, resp)->{
+			resp.body(Utils.wrapErrorString(req, resp, x.getMessage()));
 		});
 		exception(Exception.class, (exception, req, res) -> {
 			LOG.warn("Exception while processing {} {}", req.requestMethod(), req.raw().getPathInfo(), exception);
@@ -506,7 +554,7 @@ public class SmithereenApplication{
 			// These try-catch blocks are needed because these classes might not have been loaded by the time the process is shut down,
 			// and the JVM refuses to load any new classes from within a shutdown hook.
 			try{
-				ActivityPubWorker.shutDown();
+				context.getActivityPubWorker().shutDown();
 			}catch(NoClassDefFoundError ignore){}
 			try{
 				MaintenanceScheduler.shutDown();

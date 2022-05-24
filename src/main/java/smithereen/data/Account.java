@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 
 import smithereen.Utils;
+import smithereen.storage.DatabaseUtils;
 import smithereen.storage.UserStorage;
 
 public class Account{
@@ -16,8 +17,8 @@ public class Account{
 	public User user;
 	public AccessLevel accessLevel;
 	public UserPreferences prefs;
-	public Timestamp createdAt;
-	public Timestamp lastActive;
+	public Instant createdAt;
+	public Instant lastActive;
 	public BanInfo banInfo;
 
 	public User invitedBy; // used in admin UIs
@@ -42,8 +43,8 @@ public class Account{
 		acc.email=res.getString("email");
 		acc.accessLevel=AccessLevel.values()[res.getInt("access_level")];
 		acc.user=UserStorage.getById(res.getInt("user_id"));
-		acc.createdAt=res.getTimestamp("created_at");
-		acc.lastActive=res.getTimestamp("last_active");
+		acc.createdAt=DatabaseUtils.getInstant(res, "created_at");
+		acc.lastActive=DatabaseUtils.getInstant(res, "last_active");
 		String ban=res.getString("ban_info");
 		if(ban!=null)
 			acc.banInfo=Utils.gson.fromJson(ban, BanInfo.class);

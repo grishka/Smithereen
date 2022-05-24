@@ -2,16 +2,17 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
-import smithereen.activitypub.ActivityPubWorker;
-import smithereen.activitypub.objects.Actor;
-import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.data.ForeignGroup;
+import smithereen.data.Group;
 import smithereen.data.User;
+import smithereen.data.feed.NewsfeedEntry;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.UserStorage;
 
 public class AcceptFollowGroupHandler extends NestedActivityTypeHandler<ForeignGroup, Accept, Follow, ForeignGroup>{
@@ -21,7 +22,14 @@ public class AcceptFollowGroupHandler extends NestedActivityTypeHandler<ForeignG
 		if(follower==null)
 			throw new ObjectNotFoundException("Follower not found");
 		follower.ensureLocal();
-		GroupStorage.setMemberAccepted(actor.id, follower.id, true);
-		ActivityPubWorker.getInstance().sendAddToGroupsCollectionActivity(follower, actor);
+		GroupStorage.setMemberAccepted(actor, follower.id, true);
+		if(object.accessType!=Group.AccessType.PRIVATE){
+			context.appContext.getActivityPubWorker().sendAddToGroupsCollectionActivity(follower, actor, context.appContext.getGroupsController().getUserMembershipState(object, follower)==Group.MembershipState.TENTATIVE_MEMBER);
+			NewsfeedStorage.putEntry(follower.id, object.id, object.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
+		}
+		if(GroupStorage.getLocalMembersCount(actor.id)==1){
+			context.appContext.getActivityPubWorker().fetchActorRelationshipCollections(actor);
+			context.appContext.getActivityPubWorker().fetchActorContentCollections(actor);
+		}
 	}
 }

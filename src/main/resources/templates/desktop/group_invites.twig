@@ -1,0 +1,54 @@
+{# @pebvariable name="items" type="java.util.List<smithereen.data.GroupInvitation>" #}
+{% extends "page" %}
+{% block content %}
+{% include (events ? 'events_tabbar' : 'groups_tabbar') with {'tab': 'invites'} %}
+<div class="summaryWrap">
+	<div class="summary">{{ L(events ? 'summary_X_event_invites' : 'summary_X_group_invites', {'numInvites': totalItems}) }}</div>
+	{% include "pagination" %}
+</div>
+<div class="singleColumn">
+	{% for invite in items %}
+	<table width="100%" class="friendsRow noBorderSpacing">
+		<tr>
+			<td width="100" valign="top">
+				<a href="{{ invite.group.profileURL }}">{{ invite.group | pictureForAvatar('m') }}</a>
+			</td>
+			<td class="info" valign="top">
+				<div class="infoInner">
+					<div class="grayText">{{ L('group_name') }}:</div>
+					<div><a href="{{ invite.group.profileURL }}">{{ invite.group.name }}</a></div>
+					<div class="grayText">{{ L('group_size') }}:</div>
+					<div>{{ L('X_members', {'count': invite.group.memberCount}) }}</div>
+					{% if invite.group.event %}
+					<div class="grayText">{{ L('event_start_time') }}:</div>
+					<div>{{ LD(invite.group.eventStartTime) }}	</div>
+					{% endif %}
+					{% if invite.group.domain is not empty %}
+					<div class="grayText">{{ L('server') }}:</div>
+					<div>{{ invite.group.domain }}</div>
+					{% endif %}
+					<div class="unlabeled grayText">
+						{{ L('group_invited_by_X', {'inviter': invite.inviter.fullName}, {'inviter': {'href': invite.inviter.profileURL} }) }}
+						<form action="/groups/{{ invite.group.id }}/respondToInvite" method="post" data-ajax>
+							<input type="hidden" name="csrf" value="{{ csrf }}"/>
+							<div id="groupInviteBtns{{ invite.group.id }}" class="buttons">
+								{% if invite.group.event %}
+								<input type="submit" name="accept" value="{{ L('join_event_certain') }}"/>
+								<input type="submit" name="tentativeAccept" value="{{ L('join_event_tentative') }}"/>
+								{% else %}
+								<input type="submit" name="accept" value="{{ L('join_group') }}"/>
+								{% endif %}
+								<input type="submit" name="decline" value="{{ L('decline_invitation') }}" class="tertiary"/>
+							</div>
+						</form>
+					</div>
+				</div>
+			</td>
+		</tr>
+	</table>
+	{% else %}
+	<div class="emptyState">{{ L(events ? 'no_event_invites' : 'no_group_invites') }}</div>
+	{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}

@@ -8,6 +8,7 @@ import com.google.gson.JsonParser;
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -17,18 +18,18 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.jsonld.JLD;
+import smithereen.storage.DatabaseUtils;
 import spark.utils.StringUtils;
 
 public class User extends Actor{
 	public static final long FLAG_SUPPORTS_FRIEND_REQS=1;
-
 
 	public int id;
 	public String firstName;
 	public String lastName;
 	public String middleName;
 	public String maidenName;
-	public java.sql.Date birthDate;
+	public LocalDate birthDate;
 	public Gender gender;
 	public long flags;
 
@@ -117,7 +118,7 @@ public class User extends Actor{
 		lastName=res.getString("lname");
 		middleName=res.getString("middle_name");
 		maidenName=res.getString("maiden_name");
-		birthDate=res.getDate("bdate");
+		birthDate=DatabaseUtils.getLocalDate(res, "bdate");
 		gender=Gender.valueOf(res.getInt("gender"));
 		summary=res.getString("about");
 		flags=res.getLong("flags");
@@ -183,11 +184,17 @@ public class User extends Actor{
 		contextCollector.addAlias("middleName", "sc:additionalName");
 		contextCollector.addType("gender", "sc:gender", "sc:GenderType");
 		contextCollector.addAlias("sm", JLD.SMITHEREEN);
-		contextCollector.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
 		contextCollector.addAlias("maidenName", "sm:maidenName");
 		contextCollector.addType("friends", "sm:friends", "@id");
 		contextCollector.addType("groups", "sm:groups", "@id");
 		contextCollector.addAlias("vcard", JLD.VCARD);
+
+		JsonObject capabilities=new JsonObject();
+		capabilities.addProperty("supportsFriendRequests", true);
+		obj.add("capabilities", capabilities);
+		contextCollector.addAlias("capabilities", "litepub:capabilities");
+		contextCollector.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
+		contextCollector.addAlias("litepub", JLD.LITEPUB);
 
 		return obj;
 	}
@@ -237,6 +244,11 @@ public class User extends Actor{
 
 	@Override
 	public int getLocalID(){
+		return id;
+	}
+
+	@Override
+	public int getOwnerID(){
 		return id;
 	}
 

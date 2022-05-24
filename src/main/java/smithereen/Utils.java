@@ -26,20 +26,22 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -49,17 +51,13 @@ import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
 import cz.jirutka.unidecode.Unidecode;
-import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.objects.ActivityPubObject;
-import smithereen.activitypub.objects.Mention;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
-import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
-import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
@@ -72,13 +70,15 @@ import smithereen.util.TopLevelDomainList;
 import spark.Request;
 import spark.Response;
 import spark.Session;
+import spark.utils.MimeParse;
 import spark.utils.StringUtils;
+
+import static spark.Spark.get;
 
 public class Utils{
 
 	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor", "healthz");
 	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
-	private static final ThreadLocal<SimpleDateFormat> ISO_DATE_FORMAT=new ThreadLocal<>();
 	public static final String staticFileHash;
 	private static Unidecode unidecode=Unidecode.toAscii();
 	private static Random rand=new Random();
@@ -90,7 +90,7 @@ public class Utils{
 	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
 	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@("+IDN_DOMAIN_REGEX+"))?");
 	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@("+IDN_DOMAIN_REGEX+")");
-	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([a-zA-Z0-9]+)=\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\"\\s*([,;])?\\s*");
+	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([!#$%^'*+\\-.^_`|~0-9A-Za-z]+)=(?:(?:\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\")|([!#$%^'*+\\-.^_`|~0-9A-Za-z]+))\\s*([,;])?\\s*");
 	private static final Pattern NON_ASCII_PATTERN=Pattern.compile("\\P{ASCII}");
 
 	public static final Gson gson=new GsonBuilder()
@@ -162,18 +162,26 @@ public class Utils{
 		}
 	}
 
+	/**
+	 * Parse a decimal integer from string without throwing any exceptions.
+	 * @param s The string to parse.
+	 * @return The parsed integer if successful, 0 on failure or if s was null.
+	 */
+	public static int safeParseInt(String s){
+		return parseIntOrDefault(s, 0);
+	}
+
 	public static Object wrapError(Request req, Response resp, String errorKey){
 		return wrapError(req, resp, errorKey, null);
 	}
 
 	public static Object wrapError(Request req, Response resp, String errorKey, Map<String, Object> formatArgs){
-		SessionInfo info=req.session().attribute("info");
 		Lang l=lang(req);
 		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok"));
 		}
-		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error"));
+		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", back(req)).with("title", l.get("error"));
 	}
 
 	public static String wrapErrorString(Request req, Response resp, String errorKey){
@@ -181,13 +189,14 @@ public class Utils{
 	}
 
 	public static String wrapErrorString(Request req, Response resp, String errorKey, Map<String, Object> formatArgs){
-		SessionInfo info=req.session().attribute("info");
 		Lang l=lang(req);
 		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok")).json();
+		}else if(isActivityPub(req)){
+			return msg;
 		}
-		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", info!=null && info.history!=null ? info.history.last() : "/").with("title", l.get("error")).renderToString();
+		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", back(req)).with("title", l.get("error")).renderToString();
 	}
 
 	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, RenderedTemplateResponse templateModel){
@@ -234,7 +243,7 @@ public class Utils{
 	}
 
 	public static boolean isReservedUsername(String username){
-		return RESERVED_USERNAMES.contains(username.toLowerCase());
+		return RESERVED_USERNAMES.contains(username.toLowerCase()) || username.toLowerCase().matches("^(id|club|event)\\d+$");
 	}
 
 	public static boolean isValidEmail(String email){
@@ -269,23 +278,13 @@ public class Utils{
 		return Jsoup.clean(src, documentLocation.toString(), HTML_SANITIZER);
 	}
 
-	private static SimpleDateFormat isoDateFormat(){
-		SimpleDateFormat format=ISO_DATE_FORMAT.get();
-		if(format!=null)
-			return format;
-		format=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
-		format.setTimeZone(TimeZone.getTimeZone("GMT"));
-		ISO_DATE_FORMAT.set(format);
-		return format;
+	public static String formatDateAsISO(Instant date){
+		return DateTimeFormatter.ISO_INSTANT.format(date);
 	}
 
-	public static String formatDateAsISO(Date date){
-		return isoDateFormat().format(date);
-	}
-
-	public static Date parseISODate(String date){
+	public static Instant parseISODate(String date){
 		try{
-			return new Date(DateTimeFormatter.ISO_INSTANT.parse(date).getLong(ChronoField.INSTANT_SECONDS)*1000L);
+			return DateTimeFormatter.ISO_INSTANT.parse(date, Instant::from);
 		}catch(DateTimeParseException x){
 			return null;
 		}
@@ -378,7 +377,8 @@ public class Utils{
 		String ref=req.headers("referer");
 		if(ref!=null)
 			return ref;
-		return sessionInfo(req).history.last();
+		SessionInfo sessionInfo=sessionInfo(req);
+		return sessionInfo!=null ? sessionInfo.history.last() : "/";
 	}
 
 	public static String truncateOnWordBoundary(String s, int maxLen){
@@ -391,6 +391,18 @@ public class Utils{
 
 	public static boolean isAjax(Request req){
 		return req.queryParams("_ajax")!=null;
+	}
+
+	public static boolean isMobile(Request req){
+		return req.attribute("mobile")!=null;
+	}
+
+	public static boolean isActivityPub(Request req){
+		String accept=req.headers("accept");
+		if(StringUtils.isEmpty(accept))
+			return false;
+		String matched=MimeParse.bestMatch(Set.of("application/activity+json", "application/ld+json", ""), accept);
+		return StringUtils.isNotEmpty(matched);
 	}
 
 	public static String escapeHTML(String s){
@@ -564,6 +576,8 @@ public class Utils{
 	}
 
 	public static String postprocessPostHTMLForDisplay(String text){
+		if(text==null)
+			return "";
 		Document doc=Jsoup.parseBodyFragment(text);
 
 		for(Element el:doc.getElementsByTag("a")){
@@ -607,7 +621,7 @@ public class Utils{
 		return doc.body().html();
 	}
 
-	public static String preprocessRemotePostMentions(String text, List<User> users){
+	public static String preprocessRemotePostMentions(String text, Set<User> users){
 		Document doc=Jsoup.parseBodyFragment(text);
 
 		for(Element link:doc.select("a.mention")){
@@ -631,36 +645,6 @@ public class Utils{
 		return doc.body().html();
 	}
 
-	public static void loadAndPreprocessRemotePostMentions(Post post) throws SQLException{
-		if(post.tag!=null){
-			for(ActivityPubObject tag:post.tag){
-				if(tag instanceof Mention){
-					URI uri=((Mention) tag).href;
-					User mentionedUser=UserStorage.getUserByActivityPubID(uri);
-					if(mentionedUser==null){
-						try{
-							ActivityPubObject _user=ActivityPub.fetchRemoteObject(uri);
-							if(_user instanceof ForeignUser){
-								ForeignUser u=(ForeignUser) _user;
-								UserStorage.putOrUpdateForeignUser(u);
-								mentionedUser=u;
-							}
-						}catch(IOException|ObjectNotFoundException ignore){}
-					}
-					if(mentionedUser!=null){
-						if(post.mentionedUsers.isEmpty())
-							post.mentionedUsers=new ArrayList<>();
-						if(!post.mentionedUsers.contains(mentionedUser))
-							post.mentionedUsers.add(mentionedUser);
-					}
-				}
-			}
-			if(!post.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.content)){
-				post.content=Utils.preprocessRemotePostMentions(post.content, post.mentionedUsers);
-			}
-		}
-	}
-
 	public static void ensureUserNotBlocked(User self, User target) throws SQLException{
 		if(self instanceof ForeignUser && UserStorage.isDomainBlocked(target.id, self.domain))
 			throw new UserActionNotAllowedException();
@@ -681,8 +665,14 @@ public class Utils{
 		HashMap<String, String> curMap=new HashMap<>();
 		while(matcher.find()){
 			String key=matcher.group(1);
-			String value=matcher.group(2).replace("\\\"", "\"").replace("\\\\", "\\");
-			String separator=matcher.group(3);
+
+			String value=matcher.group(2);
+			if(value == null) {
+				value = matcher.group(3);
+			}
+			value = value.replace("\\\"", "\"").replace("\\\\", "\\");
+
+			String separator=matcher.group(4);
 			curMap.put(key, value);
 			if(separator==null || ";".equals(separator)){
 				res.add(curMap);
@@ -702,7 +692,7 @@ public class Utils{
 	public static String transliterate(String in){
 		if(in==null)
 			return null;
-		return unidecode.decode(in.trim());
+		return unidecode.decode(in.trim()).replaceAll(Pattern.quote("[?]"), "");
 	}
 
 	public static boolean isURL(String in){
@@ -757,12 +747,78 @@ public class Utils{
 		return domain;
 	}
 
+	public static int offset(Request req){
+		String offset=req.queryParams("offset");
+		if(StringUtils.isEmpty(offset))
+			return 0;
+		return parseIntOrDefault(offset, 0);
+	}
+
 	@NotNull
 	public static ApplicationContext context(Request req){
 		ApplicationContext context=req.attribute("context");
 		if(context==null)
 			throw new IllegalStateException("context==null");
 		return context;
+	}
+
+	@NotNull
+	public static Instant instantFromDateAndTime(Request req, String dateStr, String timeStr){
+		LocalDate date=DateTimeFormatter.ISO_LOCAL_DATE.parse(dateStr, LocalDate::from);
+		LocalTime time=DateTimeFormatter.ISO_LOCAL_TIME.parse(timeStr, LocalTime::from);
+		return LocalDateTime.of(date, time).atZone(timeZoneForRequest(req).toZoneId()).toInstant();
+	}
+
+	public static <E extends Enum<E>> long serializeEnumSet(EnumSet<E> set, Class<E> cls){
+		if(cls.getEnumConstants().length>64)
+			throw new IllegalArgumentException("this enum has more than 64 constants");
+		long result=0;
+		for(E value:set){
+			result|=1L << value.ordinal();
+		}
+		return result;
+	}
+
+	public static <E extends Enum<E>> void deserializeEnumSet(EnumSet<E> set, Class<E> cls, long l){
+		set.clear();
+		E[] consts=cls.getEnumConstants();
+		if(consts.length>64)
+			throw new IllegalArgumentException("this enum has more than 64 constants");
+		for(E e:consts){
+			if((l&1)==1)
+				set.add(e);
+			l >>= 1;
+		}
+	}
+
+	/**
+	 * Convert a string to an enum value
+	 * @param val
+	 * @param cls
+	 * @param <E>
+	 * @return
+	 */
+	public static <E extends Enum<E>> E enumValue(String val, Class<E> cls){
+		if(val==null)
+			throw new BadRequestException("null value");
+		try{
+			return Enum.valueOf(cls, val);
+		}catch(IllegalArgumentException x){
+			throw new BadRequestException("'"+val+"' is not a valid value for "+cls.getSimpleName());
+		}
+	}
+
+	/**
+	 * Ensure that the request has required query parameters to avoid any surprise NPEs.
+	 * @param req The request
+	 * @param params The parameter names
+	 * @throws BadRequestException if any of the parameters doesn't present
+	 */
+	public static void requireQueryParams(Request req, String... params){
+		for(String param:params){
+			if(StringUtils.isEmpty(req.queryParams(param)))
+				throw new BadRequestException("Required parameter '"+param+"' not present");
+		}
 	}
 
 	public interface MentionCallback{

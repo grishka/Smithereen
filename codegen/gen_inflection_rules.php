@@ -21,22 +21,43 @@ function generateCases($cases){
 		$j[]="\t\t\treturn input;";
 		return;
 	}
-	$j[]="\t\t\tswitch(_case){";
+	$removeCounts=[];
 	for($i=0;$i<count($cases);$i++){
-		$j[]="\t\t\t\tcase {$caseNames[$i]}:";
+		$c=$cases[$i];
+		$toRemove=0;
+		if($c[0]=="-"){
+			for(;$c[$toRemove]=="-";$toRemove++){}
+		}
+		$removeCounts[]=$toRemove;
+	}
+	$commonRemoveCount=-1;
+	if(count(array_unique($removeCounts))==1){
+		$commonRemoveCount=$removeCounts[0];
+	}
+	if($commonRemoveCount>0)
+		$j[]="\t\t\treturn input.substring(0, input.length()-$commonRemoveCount)+switch(_case){";
+	elseif($commonRemoveCount==0)
+		$j[]="\t\t\treturn input+switch(_case){";
+	else	
+		$j[]="\t\t\treturn switch(_case){";
+	for($i=0;$i<count($cases);$i++){
+		$line="\t\t\t\tcase {$caseNames[$i]} -> ";
 		$c=$cases[$i];
 		if($c=="."){
-			$j[]="\t\t\t\t\treturn input;";
-			continue;
-		}else if($c{0}=="-"){
+			$line.="input;";
+		}else if($commonRemoveCount!=-1){
+			$line.="\"".str_replace("-", "", $c)."\";";
+		}else if($c[0]=="-"){
 			$toRemove=0;
-			for(;$c{$toRemove}=="-";$toRemove++){}
-			$j[]="\t\t\t\t\treturn input.substring(0, input.length()-$toRemove)+\"".str_replace("-", "", $c)."\";";
+			for(;$c[$toRemove]=="-";$toRemove++){}
+			$line.="input.substring(0, input.length()-$toRemove)+\"".str_replace("-", "", $c)."\";";
 		}else{
-			$j[]="\t\t\t\t\treturn input+\"$c\";";
+			$line.="input+\"$c\";";
 		}
+		$j[]=$line;
 	}
-	$j[]="\t\t\t}";
+	$j[]="\t\t\t\tdefault -> throw new IllegalArgumentException();";
+	$j[]="\t\t\t};";
 }
 
 function generate($key, $method){
@@ -47,6 +68,7 @@ function generate($key, $method){
 	}
 	$all['r']=$rules->{$key}->suffixes;
 	$j[]="\tpublic static String $method(String input, User.Gender gender, Inflector.Case _case, boolean firstWord){";
+	$j[]="\t\tif(_case==Inflector.Case.NOMINATIVE) return input;";
 	$j[]="\t\tString inputLower=input.toLowerCase();";
 	foreach($all as $gk=>$group){
 		foreach ($group as $ex) {

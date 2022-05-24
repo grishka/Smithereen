@@ -89,7 +89,7 @@ h2{
 	font-size: 20px;
 	margin: 0 -$contentPadding;
 	padding: 0 8px 2px 8px;
-	border-bottom: solid 1px color($accent lightness(+30%));
+	border-bottom: solid 1px $mainHeaderSeparator;
 }
 
 h3{
@@ -97,7 +97,7 @@ h3{
 	font-weight: bold;
 	margin: 0 -$contentPadding;
 	padding: 0 8px 2px 8px;
-	border-bottom: solid 1px color($accent lightness(+30%));
+	border-bottom: solid 1px $mainHeaderSeparator;
 }
 
 h4{
@@ -181,10 +181,19 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	}
 }
 
-input[type=text], input[type=password], input[type=email], input[type=date], textarea, select{
+input[type=text], input[type=password], input[type=email], input[type=date], input[type=time], textarea, select{
 	border-radius: 4px;
 	padding: 8px;
 }
+
+/*input[type=text], input[type=password], input[type=email], input[type=date], input[type=time], input[type=number], textarea, select, .prefixedInput{
+	appearance: none;
+	box-shadow: 0 1px 2px rgb(0 0 0 / 20%) inset, 0 -1px 0 rgb(0 0 0 / 5%) inset;
+	background: linear-gradient(to bottom, #f7f7f8 0%,#ffffff 100%);
+	border: none;
+	border-radius: 4px;
+	padding: 8px;
+}*/
 
 .prefixedInput{
 	padding: 0 0 0 8px;
@@ -333,20 +342,12 @@ select{
 		text-decoration: none;
 	}
 	.curPage{
-		background: $accent;
-		color: $textOnAccent;
+		box-shadow: 0 1px 0 $normalLink inset, 0 4px 0 $tabBackground inset;
+		color: $normalLink;
+		font-weight: bold;
 	}
 	.page{
-		border-bottom: solid 1px color($accent alpha(30%));
-		padding-bottom: 7px;
-		transition-property: border-bottom-color, border-bottom-width, padding-bottom;
-		transition-duration: 0.2s;
-		transition-timing-function: ease-in-out;
-		&:hover, &:visited:hover{
-			border-bottom-color: color($accent alpha(70%));
-			border-bottom-width: 3px;
-			padding-bottom: 5px;
-		}
+		box-shadow: 0 1px 0 $wallPostSeparator inset;
 	}
 }
 
@@ -376,7 +377,7 @@ select{
 		}
 		&.selected{
 			padding-bottom: 0;
-			border-bottom: solid 4px $accent;
+			border-bottom: solid 4px $tabBackground;
 		}
 	}
 }
@@ -592,7 +593,10 @@ select{
 		border-left: solid 2px $auxiliaryGrey;
 	}
 	.buttons{
-		margin-top: 8px;
+		input{
+			float: left;
+			margin: 8px 8px 0 0;
+		}
 	}
 }
 
@@ -659,8 +663,10 @@ select{
 	text-align: center;
 	padding: 16px;
 	.withText{
-		width: 100%;
 		margin-top: 16px;
+	}
+	.button{
+		width: 100%;
 	}
 }
 
@@ -765,6 +771,9 @@ select{
 
 .userList{
 	padding: 0 16px;
+	&.noPadding{
+		padding: 0;
+	}
 	td{
 		padding-bottom: 8px;
 	}
@@ -1266,6 +1275,37 @@ textarea{
 	&.empty>.inner{
 		>.progress{
 			opacity: 0;
+		}
+	}
+}
+
+.dateTimeInput{
+	.separator{
+		line-height: 40px;
+		padding: 0 10px;
+	}
+}
+
+input[type=date]::-webkit-calendar-picker-indicator{
+	background: svg-inline(dateInputIcon) no-repeat center;
+}
+
+input[type=time]::-webkit-calendar-picker-indicator{
+	background: svg-inline(timeInputIcon) no-repeat center;
+}
+
+.rightNavigation{
+	background: $bgGrey;
+	border-bottom: solid 1px $wallPostSeparator;
+	padding: 8px 0 0 8px;
+	.navItem{
+		display: inline-block;
+		padding: 8px;
+		margin: 0 8px 8px 0;
+		border-radius: 8px;
+		&.selected{
+			background: $normalLink;
+			color: $textOnAccent;
 		}
 	}
 }

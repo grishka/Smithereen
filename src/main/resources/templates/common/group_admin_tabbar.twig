@@ -3,9 +3,8 @@
 <div class="tabbar">
 	{% if adminLevel is null or adminLevel.isAtLeast('ADMIN') %}
 	<a href="/groups/{{ group.id }}/edit" class="{{ tab=='general' ? 'selected' : '' }}">{{ L('profile_edit_basic') }}</a>
-	<a href="/groups/{{ group.id }}/editAdmins" class="{{ tab=='admins' ? 'selected' : '' }}">{{ L('group_admins') }}</a>
 	{% endif %}
 	<a href="/groups/{{ group.id }}/editMembers" class="{{ tab=='members' ? 'selected' : '' }}">{{ L('members') }}</a>
 	<a href="/groups/{{ group.id }}/editBlocking" class="{{ tab=='blocking' ? "selected" : "" }}" >{{ L('settings_blocking') }}</a>
-	<a href="{{ group.profileURL }}" class="aux">{{ L('back_to_group') }}</a>
+	<a href="{{ group.profileURL }}" class="aux">{{ L(group.event ? 'back_to_event' : 'back_to_group') }}</a>
 </div>

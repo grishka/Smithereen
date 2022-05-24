@@ -3,7 +3,7 @@
 {%block content%}
 {% include "settings_tabbar" with {'tab': 'general'} %}
 <div class="singleColumn gray narrowForms">
-<form action="/settings/updatePassword?csrf={{ csrf }}" method="post" onsubmit="return ajaxSubmitForm(this)">
+<form action="/settings/updatePassword?csrf={{ csrf }}" method="post" data-ajax>
 	<h2>{{L('change_password')}}</h2>
 	{{ form.start("changePassword", passwordMessage) }}
 		{{ form.textInput("current", L('current_password'), "", {'type' : 'password'}) }}

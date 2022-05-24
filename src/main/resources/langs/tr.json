@@ -1,6 +1,5 @@
 {
   "lang_name": "Türkçe",
-
   "log_in": "Giriş yap",
   "log_out": "Çıkış yap",
   "email_or_username": "Eposta veya kullanıcı adı",
@@ -14,9 +13,6 @@
   "write_on_own_wall": "Neler yeni?",
   "write_on_X_wall": "{name} kullanıcısının duvarına yaz...",
   "birth_date": "Doğum tarihi",
-  "sending_friend_req_to_X": "{name} kullanıcısına arkadaş isteği gönderiyorsun.",
-  "add_optional_message": "İsteğe bağlı bir mesaj ekle",
-
   "err_user_not_found": "Kullanıcı bulunamadı.",
   "err_already_friends": "Bu kullanıcı zaten arkadaş listende.",
   "err_have_incoming_friend_req": "Zaten bu kullanıcıdan gelen bir arkadaş isteğin var.",
@@ -26,7 +22,6 @@
   "go_back": "Geri git",
   "friends": "Arkadaşlar",
   "no_friends": "Arkadaş listesi boş",
-  "X_friend_requests": "{count} arkadaş isteği",
   "friend_requests": "Arkadaş istekleri",
   "accept": "Kabul et",
   "decline": "Reddet",
@@ -105,5 +100,6 @@
   "you_are_following_X": "{name} kullanıcısını takip ediyorsun",
   "X_is_following_you": "{name}, seni takip ediyor",
   "waiting_for_X_to_accept_follow_req": "{name} kullanıcısının, takip isteğini kabul etmesini bekliyorsun",
-  "cancel": "İptal et"
+  "cancel": "İptal et",
+  "sending_friend_req_to_X": "{name} kullanıcısına arkadaş isteği gönderiyorsun."
 }

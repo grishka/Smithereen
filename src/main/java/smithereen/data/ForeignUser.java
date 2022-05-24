@@ -6,6 +6,7 @@ import java.net.URI;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
@@ -31,14 +32,17 @@ public class ForeignUser extends User implements ForeignActor{
 		activityPubID=tryParseURL(res.getString("ap_id"));
 		url=tryParseURL(res.getString("ap_url"));
 		inbox=tryParseURL(res.getString("ap_inbox"));
-		outbox=tryParseURL(res.getString("ap_outbox"));
 		sharedInbox=tryParseURL(res.getString("ap_shared_inbox"));
-		followers=tryParseURL(res.getString("ap_followers"));
-		following=tryParseURL(res.getString("ap_following"));
 		lastUpdated=res.getTimestamp("last_updated");
-		wall=tryParseURL(res.getString("ap_wall"));
-		friends=tryParseURL(res.getString("ap_friends"));
-		groups=tryParseURL(res.getString("ap_groups"));
+
+		EndpointsStorageWrapper ep=Utils.gson.fromJson(res.getString("endpoints"), EndpointsStorageWrapper.class);
+		outbox=tryParseURL(ep.outbox);
+		followers=tryParseURL(ep.followers);
+		following=tryParseURL(ep.following);
+		wall=tryParseURL(ep.wall);
+		friends=tryParseURL(ep.friends);
+		groups=tryParseURL(ep.groups);
+		collectionQueryEndpoint=tryParseURL(ep.collectionQuery);
 	}
 
 	@Override
@@ -103,9 +107,15 @@ public class ForeignUser extends User implements ForeignActor{
 			maidenName=optString(obj, "maidenName");
 		}else{
 			firstName=StringUtils.isNotEmpty(name) ? name : username;
+			// If there's a single space somewhere in the name, assume it's first and last names
+			int spaceIdx=firstName.indexOf(' ');
+			if(spaceIdx>0 && spaceIdx==firstName.lastIndexOf(' ')){
+				lastName=firstName.substring(spaceIdx+1);
+				firstName=firstName.substring(0, spaceIdx);
+			}
 		}
 		if(obj.has("vcard:bday")){
-			birthDate=Date.valueOf(obj.get("vcard:bday").getAsString());
+			birthDate=LocalDate.parse(obj.get("vcard:bday").getAsString());
 		}
 		if(obj.has("gender")){
 			gender=switch(obj.get("gender").getAsString()){
@@ -117,7 +127,11 @@ public class ForeignUser extends User implements ForeignActor{
 			gender=Gender.UNKNOWN;
 		}
 		manuallyApprovesFollowers=optBoolean(obj, "manuallyApprovesFollowers");
-		if(optBoolean(obj, "supportsFriendRequests")){
+		JsonObject capabilities=optObject(obj, "capabilities");
+		if(capabilities!=null){
+			if(optBoolean(capabilities, "supportsFriendRequests"))
+				flags|=FLAG_SUPPORTS_FRIEND_REQS;
+		}else if(optBoolean(obj, "supportsFriendRequests")){
 			flags|=FLAG_SUPPORTS_FRIEND_REQS;
 		}
 		if(StringUtils.isNotEmpty(summary))
@@ -169,5 +183,15 @@ public class ForeignUser extends User implements ForeignActor{
 	@Override
 	public boolean needUpdate(){
 		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.getTime()>24L*60*60*1000;
+	}
+
+	@Override
+	public EndpointsStorageWrapper getEndpointsForStorage(){
+		EndpointsStorageWrapper ep=super.getEndpointsForStorage();
+		if(friends!=null)
+			ep.friends=friends.toString();
+		if(groups!=null)
+			ep.groups=groups.toString();
+		return ep;
 	}
 }

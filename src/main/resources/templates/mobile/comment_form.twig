@@ -1,9 +1,7 @@
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
 <div class="wallPostForm mobileCommentForm" id="wallPostForm_{{id}}" data-unique-id="{{id}}">
 	<div class="mobileCommentReplying" id="commentReplying_{{ id }}" style="display: none">
-		{{- L('in_reply_to_before') -}}
-		<span id="replyingName_{{ id }}"></span>
-		{{- L('in_reply_to_after') -}}
+		{{- L('in_reply_to_X', {}, {'name': {'_': 'span', 'id': 'replyingName_'+id} }) -}}
 		<a class="cancelReply" id="cancelReply_{{ id }}" title="{{ L('cancel') }}"></a>
 	</div>
 	<div class="attachmentsWrap" id="postFormAttachWrap_{{ id }}">
@@ -24,7 +22,7 @@
 	{% set fieldPlaceholder=L('comment_placeholder') %}
 		<button type="button" title="{{ L('attach') }}" id="postFormAttachBtn_{{ id }}" class="attachBtn"></button>
 		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="3" maxlength="65000" placeholder="{{ fieldPlaceholder }}">{{prefilledPostText}}</textarea>
-		<button type="submit" title="{{ L('send') }}" class="sendBtn"></button>
+		<button type="submit" title="{{ L('send') }}" class="sendBtn" id="postFormSubmit_{{ id }}"></button>
 
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
 		{%if replyTo is not null%}

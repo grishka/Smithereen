@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -20,6 +21,7 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
@@ -30,10 +32,12 @@ import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.activitypub.objects.activities.Follow;
+import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Join;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
+import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignGroup;
@@ -54,19 +58,19 @@ public abstract class ActivityPubObject{
 	public String content;
 	public URI context;
 	public String name;
-	public Date endTime;
+	public Instant endTime;
 	public LinkOrObject generator;
 	public List<Image> image;
 	public List<Image> icon;
 	public URI inReplyTo;
 	public LinkOrObject location;
 	public LinkOrObject preview;
-	public Date published;
+	public Instant published;
 	public LinkOrObject replies;
-	public Date startTime;
+	public Instant startTime;
 	public String summary;
 	public List<ActivityPubObject> tag;
-	public Date updated;
+	public Instant updated;
 	public URI url;
 	public List<LinkOrObject> to;
 	public List<LinkOrObject> bto;
@@ -128,7 +132,7 @@ public abstract class ActivityPubObject{
 		if(summary!=null)
 			obj.addProperty("summary", summary);
 		if(tag!=null && !tag.isEmpty())
-			obj.add("tag", serializeObjectArrayCompact(tag, contextCollector));
+			obj.add("tag", serializeObjectArray(tag, contextCollector));
 		if(updated!=null)
 			obj.addProperty("updated", Utils.formatDateAsISO(updated));
 		if(url!=null)
@@ -204,7 +208,7 @@ public abstract class ActivityPubObject{
 		}
 	}
 
-	protected Date tryParseDate(String date){
+	protected Instant tryParseDate(String date){
 		if(date==null)
 			return null;
 		return Utils.parseISODate(date);
@@ -381,11 +385,11 @@ public abstract class ActivityPubObject{
 
 	//abstract String getType();
 
-	public void resolveDependencies(boolean allowFetching, boolean allowStorage) throws SQLException{
+	public void resolveDependencies(ApplicationContext context, boolean allowFetching, boolean allowStorage){
 
 	}
 
-	public void storeDependencies() throws SQLException{
+	public void storeDependencies(ApplicationContext context){
 
 	}
 
@@ -538,7 +542,7 @@ public abstract class ActivityPubObject{
 		ActivityPubObject res=switch(type){
 			// Actors
 			case "Person" -> new ForeignUser();
-			case "Service" -> obj.has("id") ? new ForeignUser() : new Service();
+			case "Service", "Application" -> obj.has("id") ? new ForeignUser() : new Service();
 			case "Group", "Organization" -> new ForeignGroup();
 
 			// Objects
@@ -550,12 +554,14 @@ public abstract class ActivityPubObject{
 			case "Mention" -> new Mention();
 			case "Relationship" -> new Relationship();
 			case "PropertyValue" -> new PropertyValue();
+			case "Event" -> new Event();
 
 			// Collections
 			case "Collection" -> new ActivityPubCollection(false);
 			case "OrderedCollection" -> new ActivityPubCollection(true);
 			case "CollectionPage" -> new CollectionPage(false);
 			case "OrderedCollectionPage" -> new CollectionPage(true);
+			case "CollectionQueryResult" -> new CollectionQueryResult();
 
 			// Activities
 			case "Accept" -> new Accept();
@@ -564,16 +570,19 @@ public abstract class ActivityPubObject{
 			case "Create" -> new Create();
 			case "Delete" -> new Delete();
 			case "Follow" -> new Follow();
-			case "Join" -> new Join();
+			case "Join" -> new Join(false);
+			case "TentativeJoin" -> new Join(true);
 			case "Like" -> new Like();
 			case "Undo" -> new Undo();
 			case "Update" -> new Update();
 			case "Reject" -> new Reject();
 			case "Offer" -> new Offer();
 			case "Block" -> new Block();
+			case "Invite" -> new Invite();
+			case "Remove" -> new Remove();
 
 			default -> {
-				LOG.info("Unknown object type {}", type);
+				LOG.debug("Unknown object type {}", type);
 				yield null;
 			}
 		};

@@ -1,10 +1,12 @@
 package smithereen.activitypub;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -16,29 +18,54 @@ import org.xml.sax.SAXException;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
+import java.security.SignatureException;
+import java.sql.SQLException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import okhttp3.Call;
+import okhttp3.FormBody;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.activitypub.objects.CollectionQueryResult;
+import smithereen.controllers.ObjectLinkResolver;
+import smithereen.data.ForeignGroup;
+import smithereen.data.ForeignUser;
+import smithereen.data.Group;
+import smithereen.data.User;
+import smithereen.exceptions.FederationException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.storage.GroupStorage;
 import smithereen.util.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
@@ -55,8 +82,16 @@ import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDException;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UserAgentInterceptor;
 import spark.utils.StringUtils;
+
+import static smithereen.Utils.context;
+import static smithereen.Utils.escapeHTML;
+import static smithereen.Utils.formatDateAsISO;
+import static smithereen.Utils.isActivityPub;
+import static smithereen.Utils.parseSignatureHeader;
 
 public class ActivityPub{
 
@@ -75,7 +110,7 @@ public class ActivityPub{
 				.build();
 	}
 
-	public static ActivityPubObject fetchRemoteObject(URI _uri) throws IOException{
+	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken) throws IOException{
 		URI uri;
 		String token;
 		if("bear".equals(_uri.getScheme())){
@@ -97,7 +132,9 @@ public class ActivityPub{
 				.header("Accept", CONTENT_TYPE);
 		if(token!=null)
 			builder.header("Authorization", "Bearer "+token);
-		signRequest(builder, uri, ServiceActor.getInstance(), null, "get");
+		else if(actorToken!=null)
+			builder.header("Authorization", "ActivityPubActorToken "+actorToken);
+		signRequest(builder, uri, signer==null ? ServiceActor.getInstance() : signer, null, "get");
 		Request req=builder.build();
 		Call call=httpClient.newCall(req);
 		Response resp=call.execute();
@@ -144,10 +181,9 @@ public class ActivityPub{
 		if(digestHeader!=null)
 			strToSign+="\ndigest: "+digestHeader;
 
-		Signature sig;
 		byte[] signature;
 		try{
-			sig=Signature.getInstance("SHA256withRSA");
+			Signature sig=Signature.getInstance("SHA256withRSA");
 			sig.initSign(actor.privateKey);
 			sig.update(strToSign.getBytes(StandardCharsets.UTF_8));
 			signature=sig.sign();
@@ -205,7 +241,7 @@ public class ActivityPub{
 		String resource="acct:"+username+"@"+domain;
 		String url;
 		if(StringUtils.isEmpty(uriTemplate)){
-			url="https://"+domain+"/.well-known/webfinger?resource="+resource;
+			url=(Config.useHTTP ? "http" : "https")+"://"+domain+"/.well-known/webfinger?resource="+resource;
 		}else{
 			url=uriTemplate.replace("{uri}", resource);
 		}
@@ -260,7 +296,7 @@ public class ActivityPub{
 		}catch(ObjectNotFoundException x){
 			if(redirect==null){
 				Request req=new Request.Builder()
-						.url("https://"+domain+"/.well-known/host-meta")
+						.url((Config.useHTTP ? "http" : "https")+"://"+domain+"/.well-known/host-meta")
 						.header("Accept", "application/xrd+xml")
 						.build();
 				Response resp=httpClient.newCall(req).execute();
@@ -284,7 +320,7 @@ public class ActivityPub{
 									if("lrdd".equals(rel) && "application/xrd+xml".equals(type)){
 										if((template.startsWith("https://") || (Config.useHTTP && template.startsWith("http://"))) && template.contains("{uri}")){
 											synchronized(ActivityPub.class){
-												if(("https://"+domain+"/.well-known/webfinger?resource={uri}").equals(template)){
+												if(template.endsWith("://"+domain+"/.well-known/webfinger?resource={uri}")){
 													// this isn't a real redirect
 													domainRedirects.put(domain, "");
 													// don't repeat the request, we already know that username doesn't exist (but the webfinger endpoint does)
@@ -308,6 +344,276 @@ public class ActivityPub{
 				}
 			}
 			throw new ObjectNotFoundException(x);
+		}
+	}
+
+	public static Actor verifyHttpSignature(spark.Request req, Actor userHint) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, SQLException{
+		String sigHeader=req.headers("Signature");
+		if(sigHeader==null)
+			throw new BadRequestException("Request is missing Signature header");
+		List<Map<String, String>> values=parseSignatureHeader(sigHeader);
+		if(values.isEmpty())
+			throw new BadRequestException("Signature header has invalid format");
+		Map<String, String> supportedSig=null;
+		for(Map<String, String> sig:values){
+			if("rsa-sha256".equalsIgnoreCase(sig.get("algorithm")) || "hs2019".equalsIgnoreCase(sig.get("algorithm"))){
+				supportedSig=sig;
+				break;
+			}
+		}
+		if(supportedSig==null)
+			throw new BadRequestException("Unsupported signature algorithm \""+values.get(0).get("algorithm")+"\", expected \"rsa-sha256\" or \"hs2019\"");
+
+		if(!supportedSig.containsKey("keyId"))
+			throw new BadRequestException("Signature header is missing keyId field");
+		if(!supportedSig.containsKey("signature"))
+			throw new BadRequestException("Signature header is missing signature field");
+		if(!supportedSig.containsKey("headers"))
+			throw new BadRequestException("Signature header is missing headers field");
+
+		String keyId=supportedSig.get("keyId");
+		byte[] signature=Base64.getDecoder().decode(supportedSig.get("signature"));
+		List<String> headers=Arrays.asList(supportedSig.get("headers").split(" "));
+
+		if(!headers.contains("(request-target)"))
+			throw new BadRequestException("(request-target) is not in signed headers");
+		if(!headers.contains("date"))
+			throw new BadRequestException("date is not in signed headers");
+		if(!headers.contains("host"))
+			throw new BadRequestException("host is not in signed headers");
+
+		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+		long unixtime=dateFormat.parse(req.headers("date")).getTime();
+		long now=System.currentTimeMillis();
+		long diff=now-unixtime;
+		if(diff>30000L)
+			throw new BadRequestException("Date is too far in the future (difference: "+diff+"ms)");
+		if(diff<-30000L)
+			throw new BadRequestException("Date is too far in the past (difference: "+diff+"ms)");
+
+		URI userID=Utils.userIdFromKeyId(URI.create(keyId));
+		Actor user;
+		if(userHint!=null && userHint.activityPubID.equals(userID))
+			user=userHint;
+		else
+			user=context(req).getObjectLinkResolver().resolve(userID, Actor.class, true, false, false);
+
+		ArrayList<String> sigParts=new ArrayList<>();
+		for(String header:headers){
+			String value;
+			if(header.equals("(request-target)")){
+				value=req.requestMethod().toLowerCase()+" "+req.pathInfo();
+			}else{
+				value=req.headers(header);
+			}
+			sigParts.add(header+": "+value);
+		}
+		String sigStr=String.join("\n", sigParts);
+		Signature sig=Signature.getInstance("SHA256withRSA");
+		sig.initVerify(user.publicKey);
+		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
+		if(!sig.verify(signature)){
+			LOG.info("Failed signature header: {}", sigHeader);
+			LOG.info("Failed signature string: '{}'", sigStr);
+			throw new BadRequestException("Signature failed to verify");
+		}
+		return user;
+	}
+
+	public static void enforceGroupContentAccess(@NotNull spark.Request req, @NotNull Group group){
+		if(group.accessType==Group.AccessType.OPEN)
+			return;
+		Actor signer;
+		try{
+			signer=verifyHttpSignature(req, null);
+		}catch(Exception x){
+			throw new UserActionNotAllowedException("This object is in a "+group.accessType.toString().toLowerCase()+" group. Valid member HTTP signature is required.", x);
+		}
+		if(!(signer instanceof ForeignUser user))
+			throw new UserActionNotAllowedException("HTTP signature is valid but actor has wrong type: "+signer.getType());
+		if(group instanceof ForeignGroup foreignGroup){
+			String authHeader=req.headers("Authorization");
+			if(StringUtils.isEmpty(authHeader))
+				throw new UserActionNotAllowedException("Authorization header with ActivityPubActorToken is required");
+			String[] parts=authHeader.split(" ", 2);
+			if(parts.length!=2)
+				throw new BadRequestException();
+			if(!"ActivityPubActorToken".equals(parts[0]))
+				throw new BadRequestException("Unsupported auth scheme '"+parts[0]+"'");
+			JsonObject token;
+			try{
+				token=JsonParser.parseString(parts[1]).getAsJsonObject();
+			}catch(JsonParseException x){
+				throw new BadRequestException("Can't parse actor token: "+x.getMessage(), x);
+			}
+			verifyActorToken(token, user, foreignGroup);
+		}else{
+			try{
+				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, user.domain))
+					 throw new UserActionNotAllowedException("HTTP signature is valid, but this object is in a "+group.accessType.toString().toLowerCase()+" group and "+escapeHTML(user.activityPubID.toString())+" is not its member");
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+		LOG.trace("Actor {} was allowed to access object {} in a {} group {}", signer.activityPubID, req.pathInfo(), group.accessType, group.activityPubID);
+	}
+
+	private static String generateActorTokenStringToBeSigned(JsonObject obj){
+		return obj.keySet()
+				.stream()
+				.filter(key->!key.equals("signature"))
+				.map(key->key+": "+obj.getAsJsonPrimitive(key).toString())
+				.sorted()
+				.collect(Collectors.joining("\n"));
+	}
+
+	public static JsonObject generateActorToken(@NotNull ApplicationContext context, @NotNull Actor actor, @NotNull Group group){
+		group.ensureLocal();
+		try{
+			if(!GroupStorage.areThereGroupMembersWithDomain(group.id, actor.domain))
+				throw new UserActionNotAllowedException("There are no "+actor.domain+" members in this group");
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		Instant now=Instant.now();
+		JsonObject token=new JsonObjectBuilder()
+				.add("issuer", group.activityPubID.toString())
+				.add("actor", actor.activityPubID.toString())
+				.add("issuedAt", formatDateAsISO(now))
+				.add("validUntil", formatDateAsISO(now.plus(30, ChronoUnit.MINUTES)))
+				.build();
+		String strToSign=generateActorTokenStringToBeSigned(token);
+		byte[] signature;
+		try{
+			Signature sig=Signature.getInstance("SHA256withRSA");
+			sig.initSign(group.privateKey);
+			sig.update(strToSign.getBytes(StandardCharsets.UTF_8));
+			signature=sig.sign();
+		}catch(Exception x){
+			LOG.error("Exception while signing request", x);
+			throw new RuntimeException(x);
+		}
+
+		String keyID=group.activityPubID+"#main-key";
+		token.add("signatures", new JsonArrayBuilder().add(
+				new JsonObjectBuilder()
+						.add("algorithm", "rsa-sha256")
+						.add("keyId", keyID)
+						.add("signature", Base64.getEncoder().encodeToString(signature))
+						.build()
+		).build());
+
+		return token;
+	}
+
+	/**
+	 * Verify an actor token for user membership in a closed or private group.
+	 * @param token The actor token as received from the group
+	 * @param user The user for which the token was issued
+	 * @param group The group that issued the token
+	 * @throws UserActionNotAllowedException if the token is not valid
+	 */
+	public static void verifyActorToken(@NotNull JsonObject token, @NotNull Actor user, @NotNull ForeignGroup group){
+		try{
+			URI issuerID=new URI(token.getAsJsonPrimitive("issuer").getAsString());
+			if(!issuerID.equals(group.activityPubID))
+				throw new IllegalArgumentException("Issuer ID '"+issuerID+"' doesn't match the expected '"+group.activityPubID+"'");
+			URI actorID=new URI(token.getAsJsonPrimitive("actor").getAsString());
+			if(!actorID.equals(user.activityPubID))
+				throw new IllegalArgumentException("Actor ID '"+actorID+"' doesn't match the expected '"+user.activityPubID+"'");
+			Instant now=Instant.now();
+			Instant issuedAt=DateTimeFormatter.ISO_INSTANT.parse(token.getAsJsonPrimitive("issuedAt").getAsString(), Instant::from);
+			if(issuedAt.isAfter(now.plus(5, ChronoUnit.MINUTES)))
+				throw new IllegalArgumentException("issuedAt is in the future");
+			Instant validUntil=DateTimeFormatter.ISO_INSTANT.parse(token.getAsJsonPrimitive("validUntil").getAsString(), Instant::from);
+			if(validUntil.isBefore(now.minus(5, ChronoUnit.MINUTES)))
+				throw new IllegalArgumentException("This token has expired");
+			if(issuedAt.isAfter(validUntil))
+				throw new IllegalArgumentException("issuedAt is after validUntil");
+			if(ChronoUnit.MINUTES.between(issuedAt, validUntil)>120)
+				throw new IllegalArgumentException("The validity period is longer than 2 hours");
+			JsonArray signatures=token.getAsJsonArray("signatures");
+			JsonObject rsaSignature=null;
+			for(JsonElement _sig:signatures){
+				JsonObject sig=_sig.getAsJsonObject();
+				if("rsa-sha256".equals(sig.getAsJsonPrimitive("algorithm").getAsString())){
+					rsaSignature=sig;
+					break;
+				}
+			}
+			if(rsaSignature==null)
+				throw new IllegalArgumentException("Signature with 'rsa-sha256' algorithm not found");
+			byte[] signature=Base64.getDecoder().decode(rsaSignature.getAsJsonPrimitive("signature").getAsString());
+			String sigStr=generateActorTokenStringToBeSigned(token);
+			Signature sig=Signature.getInstance("SHA256withRSA");
+			sig.initVerify(group.publicKey);
+			sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
+			if(!sig.verify(signature)){
+				throw new IllegalArgumentException("Actor token signature failed to verify");
+			}
+			LOG.debug("Successfully verified actor token {}", token);
+		}catch(Exception x){
+			throw new UserActionNotAllowedException("Actor token is not valid: "+x.getMessage(), x);
+		}
+	}
+
+	public static JsonObject fetchActorToken(@NotNull ApplicationContext context, @NotNull Actor actor, @NotNull ForeignGroup group){
+		String url=Objects.requireNonNull(group.actorTokenEndpoint).toString();
+		Request.Builder builder=new Request.Builder()
+				.url(url);
+		signRequest(builder, group.actorTokenEndpoint, actor, null, "get");
+		Call call=httpClient.newCall(builder.build());
+		try(Response resp=call.execute()){
+			if(resp.isSuccessful()){
+				JsonObject obj=JsonParser.parseReader(resp.body().charStream()).getAsJsonObject();
+				verifyActorToken(obj, actor, group);
+				return obj;
+			}else{
+				LOG.warn("Response for actor token for user {} in group {} was not successful: {}", actor.activityPubID, group.activityPubID, resp);
+			}
+		}catch(Exception x){
+			LOG.warn("Error fetching actor token for user {} in group {}", actor.activityPubID, group.activityPubID, x);
+		}
+		return null;
+	}
+
+	public static CollectionQueryResult performCollectionQuery(@NotNull Actor actor, @NotNull URI collectionID, @NotNull Collection<URI> query){
+		actor.ensureRemote();
+		if(actor.collectionQueryEndpoint==null)
+			throw new IllegalArgumentException("This actor does not have a collection query endpoint");
+		if(!collectionID.getHost().equals(actor.activityPubID.getHost()))
+			throw new IllegalArgumentException("Collection ID and actor ID hostnames don't match");
+		if(query.isEmpty())
+			throw new IllegalArgumentException("Query is empty");
+		Request.Builder builder=new Request.Builder()
+				.url(HttpUrl.get(actor.collectionQueryEndpoint.toString()));
+		FormBody.Builder body=new FormBody.Builder().add("collection", collectionID.toString());
+		for(URI uri:query)
+			body.add("item", uri.toString());
+		builder.post(body.build());
+		signRequest(builder, actor.collectionQueryEndpoint, actor, null, "post");
+		try(Response resp=httpClient.newCall(builder.build()).execute()){
+			if(resp.isSuccessful()){
+				JsonElement el=JsonParser.parseReader(resp.body().charStream());
+				JsonObject converted=JLDProcessor.convertToLocalContext(el.getAsJsonObject());
+				ActivityPubObject aobj=ActivityPubObject.parse(converted);
+				if(aobj==null)
+					throw new UnsupportedRemoteObjectTypeException("Unsupported object type "+converted.get("type"));
+				if(aobj instanceof CollectionQueryResult cqr){
+					if(!collectionID.equals(cqr.partOf))
+						throw new FederationException("part_of in the collection query result '"+cqr.partOf+"' does not match expected '"+collectionID+"'");
+					return cqr;
+				}else{
+					throw new UnsupportedRemoteObjectTypeException("Expected object of type sm:CollectionQueryResult, got "+aobj.getType());
+				}
+			}else{
+				LOG.warn("Response for collection query {} was not successful: {}", collectionID, resp);
+				return CollectionQueryResult.empty(collectionID);
+			}
+		}catch(Exception x){
+			LOG.warn("Error querying collection {}", collectionID, x);
+			return CollectionQueryResult.empty(collectionID);
 		}
 	}
 }

@@ -24,15 +24,15 @@
 	</div>
 	<p class="externalInteractionText">
 		{%if user.supportsFriendRequests%}
-		{{L('external_X_send_friend_req_to_X', {'name': user.firstLastAndGender, 'ownName': currentUser.firstName, 'domain': user.domain})}}
+		{{L('external_X_send_friend_req_to_X', {'name': user.firstLastAndGender, 'selfName': currentUser.firstName, 'domain': user.domain})}}
 		{%else%}
-		{{L('external_X_follow_X', {'name': user.firstLastAndGender, 'ownName': currentUser.firstName, 'domain': user.domain})}}
+		{{L('external_X_follow_X', {'name': user.firstLastAndGender, 'selfName': currentUser.firstName, 'domain': user.domain})}}
 		{%endif%}
 	</p>
 	<form action="{{user.getProfileURL('remoteFollow')}}" method="post" class="externalInteractionForm">
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
 		{%if user.supportsFriendRequests%}
-		<textarea name="message" placeholder="{{L('add_optional_message')}}" cols="100" rows="4"></textarea>
+		<textarea name="message" placeholder="{{L('add_friend_req_message')}}" cols="100" rows="4"></textarea>
 		<input type="submit" value="{{L('send')}}"/>
 		{%else%}
 		<input type="submit" value="{{L('follow')}}"/>

@@ -22,9 +22,16 @@ if(window["Intl"]){
 if(!userConfig || !userConfig["timeZone"] || timeZone!=userConfig.timeZone){
 	ajaxPost("/settings/setTimezone", {tz: timeZone}, function(resp:any){}, function(){});
 }
+var supportsFormSubmitter=window.SubmitEvent!==undefined;
 
 document.body.addEventListener("click", function(ev){
 	var el:HTMLElement=ev.target as HTMLElement;
+	if(((el.tagName=="INPUT" && (el as HTMLInputElement).type=="submit") || el.tagName=="BUTTON") && !supportsFormSubmitter){
+		var form:HTMLFormElement=(el as any).form;
+		if(!form.customData)
+			form.customData={};
+		form.customData.lastSubmitter=el;
+	}
 	do{
 		if(el.tagName=="A"){
 			if(ajaxFollowLink(el as HTMLAnchorElement)){
@@ -75,6 +82,17 @@ document.body.addEventListener("drop", function(ev:DragEvent){
 	dragTimeout=-1;
 	dragEventCount=0;
 	document.body.classList.remove("fileIsBeingDragged");
+}, false);
+document.body.addEventListener("submit", function(ev:SubmitEvent){
+	var form:HTMLFormElement=ev.target as HTMLFormElement;
+	if(form.dataset.ajax==undefined)
+		return;
+	ev.preventDefault();
+	if(supportsFormSubmitter){
+		ajaxSubmitForm(form, null, ev.submitter);
+	}else{
+		ajaxSubmitForm(form, null, form.customData.lastSubmitter);
+	}
 }, false);
 
 var elevator=ge("elevator");

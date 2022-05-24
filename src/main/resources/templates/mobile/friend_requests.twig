@@ -1,19 +1,22 @@
-{# @pebvariable name="friendRequests" type="java.util.List<smithereen.data.FriendRequest>" #}
+{# @pebvariable name="items" type="java.util.List<smithereen.data.FriendRequest>" #}
 {%extends "page"%}
 {%block content%}
 {% include 'friends_tabbar' with {'tab': 'requests'} %}
 <div class="singleColumn">
-	{% for req in friendRequests %}
+	{% for req in items %}
 	<table width="100%" class="friendsRow noBorderSpacing">
 		<tr>
 			<td width="100" valign="top">
 				<a href="{{ req.from.profileURL }}">{{req.from | pictureForAvatar('m')}}</a>
 			</td>
 			<td class="info">
-				<form action="{{req.from.getProfileURL('respondToFriendRequest')}}" method="post">
+				<form action="/users/{{ req.from.id }}/respondToFriendRequest" method="post" data-ajax>
 					<b><a href="{{req.from.profileURL}}">{{req.from.fullName}}</a></b>
 					{% if req.message is not empty %}
 						<blockquote>{{ req.message }}</blockquote>
+					{% endif %}
+					{% if req.mutualFriendsCount>0 %}
+					{{- L('you_and_X_mutual_link', {'name': req.from.firstAndGender, 'numFriends': req.mutualFriendsCount}, {'list': {'href': "/users/#{req.from.id}/friends/mutual"} }) -}}
 					{% endif %}
 					<input type="hidden" name="csrf" value="{{csrf}}"/>
 					<div id="friendReqBtns{{ req.from.id }}" class="buttons">
@@ -25,7 +28,8 @@
 		</tr>
 	</table>
 	{% else %}
-	<center class="notMuchContent">{{L('no_incoming_friend_requests')}}</center>
+	<center class="notMuchContent">{{ L('no_incoming_friend_requests') }}</center>
 	{% endfor %}
 </div>
+{% include "pagination" %}
 {%endblock%}

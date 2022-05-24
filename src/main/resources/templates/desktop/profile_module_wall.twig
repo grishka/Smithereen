@@ -1,0 +1,14 @@
+{% extends "profile_module" %}
+{% block moduleContent %}
+	{% if currentUser is not null and not isSelfBlocked %}
+	{% include "wall_post_form" with {} %}
+	{%endif%}
+	<div class="narrowWall" id="postList">
+		{%for post in items%}
+			<div class="wallRow">{%include "wall_post" with {'post': post}%}</div>
+		{% else %}
+			<div id="wallEmptyState">{{ L('wall_empty') }}</div>
+		{%endfor%}
+	</div>
+	<div class="bottomSummaryWrap noSidePadding">{% include "pagination" %}</div>
+{% endblock %}

@@ -28,10 +28,8 @@ import javax.servlet.http.Part;
 
 import smithereen.BuildInfo;
 import smithereen.Config;
-import smithereen.ObjectLinkResolver;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Document;
@@ -68,21 +66,13 @@ import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.USERNAME_DOMAIN_PATTERN;
-import static smithereen.Utils.back;
-import static smithereen.Utils.ensureUserNotBlocked;
-import static smithereen.Utils.isAjax;
-import static smithereen.Utils.isURL;
-import static smithereen.Utils.isUsernameAndDomain;
-import static smithereen.Utils.lang;
-import static smithereen.Utils.normalizeURLDomain;
-import static smithereen.Utils.parseIntOrDefault;
-import static smithereen.Utils.wrapError;
+import static smithereen.Utils.*;
 
 public class SystemRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(SystemRoutes.class);
 
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
+		requireQueryParams(req, "type", "format", "size");
 		MediaCache cache=MediaCache.getInstance();
 		String type=req.queryParams("type");
 		String mime;
@@ -195,19 +185,13 @@ public class SystemRoutes{
 					if(item==null){
 						if(itemType==MediaCache.ItemType.AVATAR && req.queryParams("retrying")==null){
 							if(user!=null){
-								ActivityPubObject obj=ActivityPub.fetchRemoteObject(user.activityPubID);
-								if(obj instanceof ForeignUser){
-									ForeignUser updatedUser=(ForeignUser) obj;
-									UserStorage.putOrUpdateForeignUser(updatedUser);
-									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
-								}
+								ForeignUser updatedUser=context(req).getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
+								resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+								return "";
 							}else if(group!=null){
-								ActivityPubObject obj=ActivityPub.fetchRemoteObject(group.activityPubID);
-								if(obj instanceof ForeignGroup){
-									ForeignGroup updatedGroup=(ForeignGroup) obj;
-									GroupStorage.putOrUpdateForeignGroup(updatedGroup);
-									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
-								}
+								ForeignGroup updatedGroup=context(req).getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
+								resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+								return "";
 							}
 						}
 						resp.redirect(uri.toString());
@@ -342,7 +326,7 @@ public class SystemRoutes{
 			query=normalizeURLDomain(query);
 			URI uri=URI.create(query);
 			try{
-				ActivityPubObject obj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, false, false, false);
+				ActivityPubObject obj=context(req).getObjectLinkResolver().resolve(uri, ActivityPubObject.class, false, false, false);
 				if(obj instanceof User){
 					users=Collections.singletonList((User)obj);
 				}else if(obj instanceof Group){
@@ -353,7 +337,7 @@ public class SystemRoutes{
 			}catch(ObjectNotFoundException x){
 				if(!Config.isLocal(uri)){
 					try{
-						Actor actor=ObjectLinkResolver.resolve(uri, Actor.class, false, false, false);
+						Actor actor=context(req).getObjectLinkResolver().resolve(uri, Actor.class, false, false, false);
 						if(actor instanceof User){
 							users=Collections.singletonList((User)actor);
 						}else if(actor instanceof Group){
@@ -425,7 +409,7 @@ public class SystemRoutes{
 			}
 		}
 		try{
-			obj=ObjectLinkResolver.resolve(uri, ActivityPubObject.class, true, false, false);
+			obj=context(req).getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, false);
 		}catch(UnsupportedRemoteObjectTypeException x){
 			LOG.debug("Unsupported remote object", x);
 			return new JsonObjectBuilder().add("error", lang(req).get("unsupported_remote_object_type")).build();
@@ -433,32 +417,29 @@ public class SystemRoutes{
 			LOG.debug("Remote object not found", x);
 			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_not_found")).build();
 		}
-		if(obj instanceof ForeignUser){
-			ForeignUser user=(ForeignUser)obj;
-			obj.storeDependencies();
+		if(obj instanceof ForeignUser user){
+			obj.storeDependencies(context(req));
 			UserStorage.putOrUpdateForeignUser(user);
 			return new JsonObjectBuilder().add("success", user.getProfileURL()).build();
-		}else if(obj instanceof ForeignGroup){
-			ForeignGroup group=(ForeignGroup)obj;
-			obj.storeDependencies();
+		}else if(obj instanceof ForeignGroup group){
+			obj.storeDependencies(context(req));
 			GroupStorage.putOrUpdateForeignGroup(group);
 			return new JsonObjectBuilder().add("success", group.getProfileURL()).build();
-		}else if(obj instanceof Post){
-			Post post=(Post)obj;
+		}else if(obj instanceof Post post){
 			if(post.inReplyTo==null || post.id!=0){
-				post.storeDependencies();
+				post.storeDependencies(context(req));
 				PostStorage.putForeignWallPost(post);
 				try{
-					ActivityPubWorker.getInstance().fetchAllReplies(post).get(30, TimeUnit.SECONDS);
+					context(req).getActivityPubWorker().fetchAllReplies(post).get(30, TimeUnit.SECONDS);
 				}catch(Throwable x){
 					x.printStackTrace();
 				}
 				return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+post.id).toString()).build();
 			}else{
-				Future<List<Post>> future=ActivityPubWorker.getInstance().fetchReplyThread(post);
+				Future<List<Post>> future=context(req).getActivityPubWorker().fetchReplyThread(post);
 				try{
 					List<Post> posts=future.get(30, TimeUnit.SECONDS);
-					ActivityPubWorker.getInstance().fetchAllReplies(posts.get(0)).get(30, TimeUnit.SECONDS);
+					context(req).getActivityPubWorker().fetchAllReplies(posts.get(0)).get(30, TimeUnit.SECONDS);
 					return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+posts.get(0).id+"#comment"+post.id).toString()).build();
 				}catch(InterruptedException ignore){
 				}catch(ExecutionException e){
@@ -498,8 +479,9 @@ public class SystemRoutes{
 			ensureUserNotBlocked(self.user, _owner);
 			owner=_owner;
 		}else{
-			Group _owner=GroupStorage.getById(-poll.ownerID);
+			Group _owner=context(req).getGroupsController().getGroupOrThrow(-poll.ownerID);
 			ensureUserNotBlocked(self.user, _owner);
+			context(req).getPrivacyController().enforceUserAccessToGroupContent(self.user, _owner);
 			owner=_owner;
 		}
 
@@ -542,7 +524,13 @@ public class SystemRoutes{
 		for(PollOption opt:options)
 			opt.addVotes(1);
 
-		ActivityPubWorker.getInstance().sendPollVotes(self.user, poll, owner, options, voteIDs);
+		context(req).getActivityPubWorker().sendPollVotes(self.user, poll, owner, options, voteIDs);
+		int postID=PostStorage.getPostIdByPollId(id);
+		if(postID>0){
+			Post post=context(req).getWallController().getPostOrThrow(postID);
+			post.poll=poll; // So the last vote time is as it was before the vote
+			context(req).getWallController().sendUpdateQuestionIfNeeded(post);
+		}
 
 		if(isAjax(req)){
 			UserInteractions interactions=new UserInteractions();

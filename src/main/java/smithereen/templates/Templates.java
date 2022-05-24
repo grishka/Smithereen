@@ -4,7 +4,10 @@ import com.google.gson.JsonObject;
 import com.mitchellbosecke.pebble.PebbleEngine;
 import com.mitchellbosecke.pebble.loader.ClasspathLoader;
 import com.mitchellbosecke.pebble.loader.DelegatingLoader;
+import com.mitchellbosecke.pebble.template.EvaluationContext;
+import com.mitchellbosecke.pebble.template.EvaluationContextImpl;
 import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import com.mitchellbosecke.pebble.template.Scope;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -19,8 +22,10 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.data.Account;
 import smithereen.data.BirthdayReminder;
+import smithereen.data.EventReminder;
 import smithereen.data.SessionInfo;
 import smithereen.data.UserNotifications;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.lang.Lang;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
@@ -73,8 +78,13 @@ public class Templates{
 						model.with("birthdayUsers", UserStorage.getByIdAsList(reminder.userIDs));
 						model.with("birthdaysAreToday", reminder.day.equals(today));
 					}
+					EventReminder eventReminder=Utils.context(req).getGroupsController().getUserEventReminder(account.user, tz.toZoneId());
+					if(!eventReminder.groupIDs.isEmpty()){
+						model.with("eventReminderEvents", Utils.context(req).getGroupsController().getGroupsByIdAsList(eventReminder.groupIDs));
+						model.with("eventsAreToday", eventReminder.day.equals(today));
+					}
 				}catch(SQLException x){
-					throw new RuntimeException(x);
+					throw new InternalServerErrorException(x);
 				}
 			}
 		}
@@ -120,5 +130,20 @@ public class Templates{
 		if(o instanceof Long)
 			return (int)(long)(Long)o;
 		throw new IllegalArgumentException("Can't cast "+o+" to int");
+	}
+
+	/*package*/ static <T> T getVariableRegardless(EvaluationContext context, String key){
+		Object result=context.getVariable(key);
+		if(result!=null)
+			return (T)result;
+		if(context instanceof EvaluationContextImpl contextImpl){
+			List<Scope> scopes=contextImpl.getScopeChain().getGlobalScopes();
+			for(Scope scope:scopes){
+				result=scope.get(key);
+				if(result!=null)
+					return (T)result;
+			}
+		}
+		return null;
 	}
 }

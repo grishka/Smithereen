@@ -12,8 +12,9 @@ import smithereen.data.feed.NewsfeedEntry;
 import smithereen.exceptions.BadRequestException;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.BackgroundTaskRunner;
 
-public class AddPersonHandler extends ActivityTypeHandler<ForeignUser, Add, User>{
+public class PersonAddPersonHandler extends ActivityTypeHandler<ForeignUser, Add, User>{
 	@Override
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Add activity, User object) throws SQLException{
 		if(activity.target==null || activity.target.link==null)
@@ -23,10 +24,19 @@ public class AddPersonHandler extends ActivityTypeHandler<ForeignUser, Add, User
 			if(object instanceof ForeignUser && object.id==0)
 				UserStorage.putOrUpdateForeignUser((ForeignUser) object);
 
-			// TODO verify that friends collections of both users contain each other and store a mutual follow
-			// https://socialhub.activitypub.rocks/t/querying-activitypub-collections/1866
-
 			NewsfeedStorage.putEntry(actor.id, object.id, NewsfeedEntry.Type.ADD_FRIEND, null);
+
+			if(object instanceof ForeignUser foreignUser && foreignUser.getFriendsURL()!=null){
+				// Verify that the target user does indeed have the actor as their friend
+				BackgroundTaskRunner.getInstance().submit(()->{
+					try{
+						context.appContext.getObjectLinkResolver().ensureObjectIsInCollection(foreignUser, foreignUser.getFriendsURL(), actor.activityPubID);
+						context.appContext.getFriendsController().storeFriendship(actor, object);
+					}catch(Exception x){
+						LOG.warn("Error verifying that {} is a friend of {} or storing that relationship", actor.activityPubID, object.activityPubID);
+					}
+				});
+			}
 		}else{
 			LOG.warn("Unknown Add{Person} target {}", target);
 		}

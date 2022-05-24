@@ -1,5 +1,5 @@
 <div class="singleColumn">
-	{%for user in users%}
+	{% for user in items %}
 		<table width="100%" class="friendsRow noBorderSpacing">
 			<tr valign="top">
 				<td width="50">
@@ -12,6 +12,6 @@
 		</table>
 	{% else %}
 	<div class="emptyState">{{ emptyMessage }}</div>
-	{%endfor%}
-	{%include "pagination" with {'perPage': 100, 'offset': pageOffset, 'total': total, 'urlPrefix': paginationUrlPrefix, 'ajax': true}%}
+	{% endfor %}
+	{% include "pagination" %}
 </div>

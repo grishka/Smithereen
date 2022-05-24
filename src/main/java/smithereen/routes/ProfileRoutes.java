@@ -12,21 +12,17 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import static smithereen.Utils.*;
 
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
-import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Group;
-import smithereen.data.ListAndTotal;
+import smithereen.data.PaginatedList;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
@@ -35,12 +31,12 @@ import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponse;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.notifications.Notification;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.NotificationsStorage;
-import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
@@ -56,27 +52,20 @@ public class ProfileRoutes{
 		Lang l=lang(req);
 		if(user!=null){
 			boolean isSelf=self!=null && self.user.id==user.id;
-			int[] postCount={0};
-			int offset=Utils.parseIntOrDefault(req.queryParams("offset"), 0);
-			List<Post> wall=PostStorage.getWallPosts(user.id, false, 0, 0, offset, postCount, false);
-			RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req).with("title", user.getFullName()).with("user", user).with("wall", wall).with("own", self!=null && self.user.id==user.id).with("postCount", postCount[0]);
-			model.with("pageOffset", offset);
-
-			Set<Integer> postIDs=wall.stream().map((Post p)->p.id).collect(Collectors.toSet());
+			int offset=offset(req);
+			PaginatedList<Post> wall=context(req).getWallController().getWallPosts(user, false, offset, 20);
+			RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req)
+					.pageTitle(user.getFullName())
+					.with("user", user)
+					.with("own", self!=null && self.user.id==user.id)
+					.with("postCount", wall.total)
+					.paginate(wall);
 
 			if(req.attribute("mobile")==null){
-				Map<Integer, ListAndTotal<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
-				for(Post post:wall){
-					ListAndTotal<Post> comments=allComments.get(post.id);
-					if(comments!=null){
-						post.repliesObjects=comments.list;
-						post.totalTopLevelComments=comments.total;
-						post.getAllReplyIDs(postIDs);
-					}
-				}
+				context(req).getWallController().populateCommentPreviews(wall.list);
 			}
 
-			HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
+			Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 			model.with("postInteractions", interactions);
 
 			int[] friendCount={0};
@@ -93,7 +82,7 @@ public class ProfileRoutes{
 
 			ArrayList<PropertyValue> profileFields=new ArrayList<>();
 			if(user.birthDate!=null)
-				profileFields.add(new PropertyValue(l.get("birth_date"), l.formatDay(user.birthDate.toLocalDate())));
+				profileFields.add(new PropertyValue(l.get("birth_date"), l.formatDay(user.birthDate)));
 			if(StringUtils.isNotEmpty(user.summary))
 				profileFields.add(new PropertyValue(l.get("profile_about"), user.summary));
 			if(user.attachment!=null)
@@ -145,7 +134,7 @@ public class ProfileRoutes{
 					meta.put("og:first_name", user.firstName);
 				if(StringUtils.isNotEmpty(user.lastName))
 					meta.put("og:last_name", user.lastName);
-				String descr=l.get("X_friends", Map.of("count", friendCount[0]))+", "+l.get("X_posts", Map.of("count", postCount[0]));
+				String descr=l.get("X_friends", Map.of("count", friendCount[0]))+", "+l.get("X_posts", Map.of("count", wall.total));
 				if(StringUtils.isNotEmpty(user.summary))
 					descr+="\n"+Jsoup.clean(user.summary, Whitelist.none());
 				meta.put("og:description", descr);
@@ -172,7 +161,7 @@ public class ProfileRoutes{
 
 			model.addNavBarItem(user.getFullName(), null, isSelf ? l.get("this_is_you") : null);
 
-			model.with("groups", GroupStorage.getUserGroups(user.id));
+			model.with("groups", context(req).getGroupsController().getUserGroups(user, self!=null ? self.user : null, 0, 100).list);
 			jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
 			jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
 			return model;
@@ -196,33 +185,34 @@ public class ProfileRoutes{
 			ensureUserNotBlocked(self.user, user);
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 			Lang l=lang(req);
-			if(status==FriendshipStatus.FOLLOWED_BY){
-				if(isAjax(req) && verifyCSRF(req, resp)){
-					UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
-					if(user instanceof ForeignUser){
-						ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser)user);
+			switch(status){
+				case FOLLOWED_BY:
+					if(isAjax(req) && verifyCSRF(req, resp)){
+						UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser), false);
+						if(user instanceof ForeignUser){
+							context(req).getActivityPubWorker().sendFollowUserActivity(self.user, (ForeignUser) user);
+						}
+						return new WebDeltaResponse(resp).refresh();
+					}else{
+						RenderedTemplateResponse model=new RenderedTemplateResponse("form_page", req);
+						model.with("targetUser", user);
+						model.with("contentTemplate", "send_friend_request").with("formAction", user.getProfileURL("doSendFriendRequest")).with("submitButton", l.get("add_friend"));
+						return model;
 					}
-					return new WebDeltaResponse(resp).refresh();
-				}else{
-					RenderedTemplateResponse model=new RenderedTemplateResponse("form_page", req);
-					model.with("targetUser", user);
-					model.with("contentTemplate", "send_friend_request").with("formAction", user.getProfileURL("doSendFriendRequest")).with("submitButton", l.get("add_friend"));
-					return model;
-				}
-			}else if(status==FriendshipStatus.NONE){
-				if(user.supportsFriendRequests()){
-					RenderedTemplateResponse model=new RenderedTemplateResponse("send_friend_request", req);
-					model.with("targetUser", user);
-					return wrapForm(req, resp, "send_friend_request", user.getProfileURL("doSendFriendRequest"), l.get("send_friend_req_title"), "add_friend", model);
-				}else{
-					return doSendFriendRequest(req, resp, self);
-				}
-			}else if(status==FriendshipStatus.FRIENDS){
-				return wrapError(req, resp, "err_already_friends");
-			}else if(status==FriendshipStatus.REQUEST_RECVD){
-				return wrapError(req, resp, "err_have_incoming_friend_req");
-			}else{ // REQ_SENT
-				return wrapError(req, resp, "err_friend_req_already_sent");
+				case NONE:
+					if(user.supportsFriendRequests()){
+						RenderedTemplateResponse model=new RenderedTemplateResponse("send_friend_request", req);
+						model.with("targetUser", user);
+						return wrapForm(req, resp, "send_friend_request", user.getProfileURL("doSendFriendRequest"), l.get("send_friend_req_title"), "add_friend", model);
+					}else{
+						return doSendFriendRequest(req, resp, self);
+					}
+				case FRIENDS:
+					return wrapError(req, resp, "err_already_friends");
+				case REQUEST_RECVD:
+					return wrapError(req, resp, "err_have_incoming_friend_req");
+				default:  // REQ_SENT
+					return wrapError(req, resp, "err_friend_req_already_sent");
 			}
 		}else{
 			throw new ObjectNotFoundException("err_user_not_found");
@@ -242,14 +232,14 @@ public class ProfileRoutes{
 				if(status==FriendshipStatus.NONE && user.supportsFriendRequests()){
 					UserStorage.putFriendRequest(self.user.id, user.id, req.queryParams("message"), !(user instanceof ForeignUser));
 					if(user instanceof ForeignUser){
-						ActivityPubWorker.getInstance().sendFriendRequestActivity(self.user, (ForeignUser)user, req.queryParams("message"));
+						context(req).getActivityPubWorker().sendFriendRequestActivity(self.user, (ForeignUser)user, req.queryParams("message"));
 					}
 				}else{
-					UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser));
+					UserStorage.followUser(self.user.id, user.id, !(user instanceof ForeignUser), false);
 					if(user instanceof ForeignUser){
-						ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser)user);
+						context(req).getActivityPubWorker().sendFollowUserActivity(self.user, (ForeignUser)user);
 					}else{
-						ActivityPubWorker.getInstance().sendAddToFriendsCollectionActivity(self.user, user);
+						context(req).getActivityPubWorker().sendAddToFriendsCollectionActivity(self.user, user);
 					}
 				}
 				if(isAjax(req)){
@@ -289,13 +279,30 @@ public class ProfileRoutes{
 
 	private static Object friends(Request req, Response resp, User user, Account self) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
-		model.with("friendList", UserStorage.getFriendListForUser(user.id)).with("owner", user).with("tab", 0);
-		model.with("title", lang(req).get("friends"));
+		model.with("owner", user);
+		model.pageTitle(lang(req).get("friends"));
+		model.paginate(context(req).getFriendsController().getFriends(user, offset(req), 100));
 		if(self!=null && user.id!=self.user.id){
 			int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
 			model.with("mutualCount", mutualCount);
 		}
 		model.with("tab", "friends");
+		@Nullable
+		String act=req.queryParams("act");
+		if("groupInvite".equals(act)){
+			int groupID=safeParseInt(req.queryParams("group"));
+			Group group=context(req).getGroupsController().getGroupOrThrow(groupID);
+			model.with("selectionMode", true);
+			model.with("customActions", List.of(
+					Map.of(
+							"href", "/groups/"+groupID+"/invite?csrf="+sessionInfo(req).csrfToken+"&user=",
+							"title", lang(req).get("send_invitation"),
+							"ajax", true
+					)
+			));
+			model.addNavBarItem(group.name, group.getProfileURL()).addNavBarItem(lang(req).get("invite_friends_title"));
+			model.pageTitle(lang(req).get("invite_friends_title"));
+		}
 		jsLangKey(req, "remove_friend", "yes", "no");
 		return model;
 	}
@@ -316,8 +323,9 @@ public class ProfileRoutes{
 		if(user.id==self.user.id)
 			throw new ObjectNotFoundException("err_user_not_found");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
-		model.with("friendList", UserStorage.getMutualFriendListForUser(user.id, self.user.id)).with("owner", user).with("tab", 0);
-		model.with("title", lang(req).get("friends"));
+		model.paginate(context(req).getFriendsController().getMutualFriends(user, self.user, offset(req), 100));
+		model.with("owner", user);
+		model.pageTitle(lang(req).get("friends"));
 		model.with("tab", "mutual");
 		int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
 		model.with("mutualCount", mutualCount);
@@ -328,96 +336,93 @@ public class ProfileRoutes{
 	public static Object followers(Request req, Response resp) throws SQLException{
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
-		String username=req.params(":username");
+		String _id=req.params(":id");
 		User user;
-		if(username==null){
+		if(_id==null){
 			if(requireAccount(req, resp)){
-				user=sessionInfo(req).account.user;
+				user=self.user;
 			}else{
 				return "";
 			}
 		}else{
-			user=UserStorage.getByUsername(username);
+			user=context(req).getUsersController().getUserOrThrow(safeParseInt(_id));
 		}
-		if(user!=null){
-			RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
-			model.with("title", lang(req).get("followers")).with("toolbarTitle", lang(req).get("friends"));
-			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, true, true)).with("owner", user).with("followers", true).with("tab", "followers");
-			if(self!=null && user.id!=self.user.id){
-				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
-				model.with("mutualCount", mutualCount);
-			}
-			return model;
+		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
+		model.with("title", lang(req).get("followers")).with("toolbarTitle", lang(req).get("friends"));
+		model.paginate(context(req).getFriendsController().getFollowers(user, offset(req), 100));
+		model.with("owner", user).with("followers", true).with("tab", "followers");
+		if(self!=null && user.id!=self.user.id){
+			int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
+			model.with("mutualCount", mutualCount);
 		}
-		throw new ObjectNotFoundException("err_user_not_found");
+		return model;
 	}
 
 	public static Object following(Request req, Response resp) throws SQLException{
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
-		String username=req.params(":username");
+		String _id=req.params(":id");
 		User user;
-		if(username==null){
+		if(_id==null){
 			if(requireAccount(req, resp)){
-				user=sessionInfo(req).account.user;
+				user=self.user;
 			}else{
 				return "";
 			}
 		}else{
-			user=UserStorage.getByUsername(username);
+			user=context(req).getUsersController().getUserOrThrow(safeParseInt(_id));
 		}
-		if(user!=null){
-			RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
-			model.with("title", lang(req).get("following")).with("toolbarTitle", lang(req).get("friends"));
-			model.with("friendList", UserStorage.getNonMutualFollowers(user.id, false, true)).with("owner", user).with("following", true).with("tab", "following");
-			if(self!=null && user.id!=self.user.id){
-				int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
-				model.with("mutualCount", mutualCount);
-			}
-			jsLangKey(req, "unfollow", "yes", "no");
-			return model;
+		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
+		model.with("title", lang(req).get("following")).with("toolbarTitle", lang(req).get("friends"));
+		model.paginate(context(req).getFriendsController().getFollows(user, offset(req), 100));
+		model.with("owner", user).with("following", true).with("tab", "following");
+		if(self!=null && user.id!=self.user.id){
+			int mutualCount=UserStorage.getMutualFriendsCount(self.user.id, user.id);
+			model.with("mutualCount", mutualCount);
 		}
-		throw new ObjectNotFoundException("err_user_not_found");
+		jsLangKey(req, "unfollow", "yes", "no");
+		return model;
 	}
 
 	public static Object incomingFriendRequests(Request req, Response resp, Account self) throws SQLException{
-		List<FriendRequest> requests=UserStorage.getIncomingFriendRequestsForUser(self.user.id, 0, 100);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friend_requests", req);
-		model.with("friendRequests", requests);
+		model.paginate(context(req).getFriendsController().getIncomingFriendRequests(self.user, offset(req), 20));
 		model.with("title", lang(req).get("friend_requests")).with("toolbarTitle", lang(req).get("friends")).with("owner", self.user);
 		return model;
 	}
 
 	public static Object respondToFriendRequest(Request req, Response resp, Account self) throws SQLException{
-		String username=req.params(":username");
-		User user=UserStorage.getByUsername(username);
-		if(user!=null){
-			if(req.queryParams("accept")!=null){
-				if(user instanceof ForeignUser){
-					UserStorage.acceptFriendRequest(self.user.id, user.id, false);
-					ActivityPubWorker.getInstance().sendFollowActivity(self.user, (ForeignUser) user);
-				}else{
-					UserStorage.acceptFriendRequest(self.user.id, user.id, true);
-					Notification n=new Notification();
-					n.type=Notification.Type.FRIEND_REQ_ACCEPT;
-					n.actorID=self.user.id;
-					NotificationsStorage.putNotification(user.id, n);
-					ActivityPubWorker.getInstance().sendAddToFriendsCollectionActivity(self.user, user);
-					NewsfeedStorage.putEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
-				}
-				NewsfeedStorage.putEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
-			}else if(req.queryParams("decline")!=null){
-				UserStorage.deleteFriendRequest(self.user.id, user.id);
-				if(user instanceof ForeignUser){
-					ActivityPubWorker.getInstance().sendRejectFriendRequestActivity(self.user, (ForeignUser) user);
-				}
+		User user=getUserOrThrow(req);
+		boolean accept;
+		if(req.queryParams("accept")!=null){
+			accept=true;
+			if(user instanceof ForeignUser){
+				UserStorage.acceptFriendRequest(self.user.id, user.id, false);
+				context(req).getActivityPubWorker().sendFollowUserActivity(self.user, (ForeignUser) user);
+			}else{
+				UserStorage.acceptFriendRequest(self.user.id, user.id, true);
+				Notification n=new Notification();
+				n.type=Notification.Type.FRIEND_REQ_ACCEPT;
+				n.actorID=self.user.id;
+				NotificationsStorage.putNotification(user.id, n);
+				context(req).getActivityPubWorker().sendAddToFriendsCollectionActivity(self.user, user);
+				NewsfeedStorage.putEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
 			}
-			if(isAjax(req))
-				return new WebDeltaResponse(resp).refresh();
-			resp.redirect(Utils.back(req));
+			NewsfeedStorage.putEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
+		}else if(req.queryParams("decline")!=null){
+			accept=false;
+			UserStorage.deleteFriendRequest(self.user.id, user.id);
+			if(user instanceof ForeignUser){
+				context(req).getActivityPubWorker().sendRejectFriendRequestActivity(self.user, (ForeignUser) user);
+			}
 		}else{
-			throw new ObjectNotFoundException("err_user_not_found");
+			throw new BadRequestException();
 		}
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).setContent("friendReqBtns"+user.id,
+					"<div class=\"settingsMessage\">"+lang(req).get(accept ? "friend_req_accepted" : "friend_req_declined")+"</div>");
+		}
+		resp.redirect(Utils.back(req));
 		return "";
 	}
 
@@ -429,10 +434,10 @@ public class ProfileRoutes{
 			if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING || status==FriendshipStatus.FOLLOW_REQUESTED){
 				UserStorage.unfriendUser(self.user.id, user.id);
 				if(user instanceof ForeignUser){
-					ActivityPubWorker.getInstance().sendUnfriendActivity(self.user, user);
+					context(req).getActivityPubWorker().sendUnfriendActivity(self.user, user);
 				}
 				if(status==FriendshipStatus.FRIENDS){
-					ActivityPubWorker.getInstance().sendRemoveFromFriendsCollectionActivity(self.user, user);
+					context(req).getActivityPubWorker().sendRemoveFromFriendsCollectionActivity(self.user, user);
 					NewsfeedStorage.deleteEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND);
 					if(!(user instanceof ForeignUser)){
 						NewsfeedStorage.deleteEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND);
@@ -474,9 +479,9 @@ public class ProfileRoutes{
 		FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 		UserStorage.blockUser(self.user.id, user.id);
 		if(user instanceof ForeignUser)
-			ActivityPubWorker.getInstance().sendBlockActivity(self.user, (ForeignUser) user);
+			context(req).getActivityPubWorker().sendBlockActivity(self.user, (ForeignUser) user);
 		if(status==FriendshipStatus.FRIENDS){
-			ActivityPubWorker.getInstance().sendRemoveFromFriendsCollectionActivity(self.user, user);
+			context(req).getActivityPubWorker().sendRemoveFromFriendsCollectionActivity(self.user, user);
 			NewsfeedStorage.deleteEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND);
 			if(!(user instanceof ForeignUser)){
 				NewsfeedStorage.deleteEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND);
@@ -492,7 +497,7 @@ public class ProfileRoutes{
 		User user=getUserOrThrow(req);
 		UserStorage.unblockUser(self.user.id, user.id);
 		if(user instanceof ForeignUser)
-			ActivityPubWorker.getInstance().sendUndoBlockActivity(self.user, (ForeignUser) user);
+			context(req).getActivityPubWorker().sendUndoBlockActivity(self.user, (ForeignUser) user);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
@@ -500,13 +505,31 @@ public class ProfileRoutes{
 	}
 
 
-	private static User getUserOrThrow(Request req) throws SQLException{
+	private static User getUserOrThrow(Request req){
 		int id=parseIntOrDefault(req.params(":id"), 0);
-		if(id==0)
-			throw new ObjectNotFoundException("err_user_not_found");
-		User user=UserStorage.getById(id);
-		if(user==null)
-			throw new ObjectNotFoundException("err_user_not_found");
-		return user;
+		return context(req).getUsersController().getUserOrThrow(id);
+	}
+
+	public static Object syncRelationshipsCollections(Request req, Response resp, Account self){
+		User user=getUserOrThrow(req);
+		user.ensureRemote();
+		context(req).getActivityPubWorker().fetchActorRelationshipCollections(user);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_friends_and_groups"), l.get("sync_started"), l.get("ok"));
+	}
+
+	public static Object syncProfile(Request req, Response resp, Account self){
+		User user=getUserOrThrow(req);
+		user.ensureRemote();
+		context(req).getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
+		return new WebDeltaResponse(resp).refresh();
+	}
+
+	public static Object syncContentCollections(Request req, Response resp, Account self){
+		User user=getUserOrThrow(req);
+		user.ensureRemote();
+		context(req).getActivityPubWorker().fetchActorContentCollections(user);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
 	}
 }
