@@ -890,12 +890,12 @@ public class PostStorage{
 			}
 		}
 
-		stmt=new SQLQueryBuilder(conn)
+		new SQLQueryBuilder(conn)
 				.update("polls")
 				.valueExpr("num_voted_users", "num_voted_users+1")
+				.valueExpr("last_vote_time", "CURRENT_TIMESTAMP()")
 				.where("id=?", pollID)
-				.createStatement();
-		stmt.execute();
+				.executeNoResult();
 
 		return voteIDs;
 	}
@@ -1132,6 +1132,14 @@ public class PostStorage{
 			result.putAll(builder.executeAsStream(rs->new IdPair(Config.localURI("/posts/"+rs.getInt(1)), rs.getInt(1))).collect(Collectors.toMap(IdPair::apID, IdPair::localID)));
 		}
 		return result;
+	}
+
+	public static int getPostIdByPollId(int pollID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.columns("id")
+				.where("poll_id=?", pollID)
+				.executeAndGetInt();
 	}
 
 	private record DeleteCommentBookmarksRunnable(int postID) implements Runnable{

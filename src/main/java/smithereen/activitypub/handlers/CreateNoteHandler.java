@@ -7,7 +7,10 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import smithereen.Config;
 import smithereen.Utils;
@@ -28,6 +31,7 @@ import smithereen.data.User;
 import smithereen.data.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
 import smithereen.storage.PostStorage;
+import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
 
 public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, Post>{
@@ -75,8 +79,10 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					}
 				}
 				if(optionID!=0){
-					if(!parent.poll.isExpired())
+					if(!parent.poll.isExpired()){
 						PostStorage.voteInPoll(actor.id, parent.poll.id, optionID, post.activityPubID, parent.poll.multipleChoice);
+						context.appContext.getWallController().sendUpdateQuestionIfNeeded(parent);
+					}
 					return;
 				}
 			}

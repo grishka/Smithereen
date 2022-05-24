@@ -28,10 +28,8 @@ import javax.servlet.http.Part;
 
 import smithereen.BuildInfo;
 import smithereen.Config;
-import smithereen.controllers.ObjectLinkResolver;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Document;
@@ -68,18 +66,7 @@ import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.USERNAME_DOMAIN_PATTERN;
-import static smithereen.Utils.back;
-import static smithereen.Utils.context;
-import static smithereen.Utils.ensureUserNotBlocked;
-import static smithereen.Utils.isAjax;
-import static smithereen.Utils.isURL;
-import static smithereen.Utils.isUsernameAndDomain;
-import static smithereen.Utils.lang;
-import static smithereen.Utils.normalizeURLDomain;
-import static smithereen.Utils.parseIntOrDefault;
-import static smithereen.Utils.requireQueryParams;
-import static smithereen.Utils.wrapError;
+import static smithereen.Utils.*;
 
 public class SystemRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(SystemRoutes.class);
@@ -538,6 +525,12 @@ public class SystemRoutes{
 			opt.addVotes(1);
 
 		context(req).getActivityPubWorker().sendPollVotes(self.user, poll, owner, options, voteIDs);
+		int postID=PostStorage.getPostIdByPollId(id);
+		if(postID>0){
+			Post post=context(req).getWallController().getPostOrThrow(postID);
+			post.poll=poll; // So the last vote time is as it was before the vote
+			context(req).getWallController().sendUpdateQuestionIfNeeded(post);
+		}
 
 		if(isAjax(req)){
 			UserInteractions interactions=new UserInteractions();

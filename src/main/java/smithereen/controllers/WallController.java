@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -16,12 +18,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
@@ -43,11 +45,10 @@ import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.ensureUserNotBlocked;
-import static smithereen.Utils.escapeHTML;
-import static smithereen.Utils.preprocessPostHTML;
+import static smithereen.Utils.*;
 
 public class WallController{
 	private static final Logger LOG=LoggerFactory.getLogger(WallController.class);
@@ -449,6 +450,24 @@ public class WallController{
 			return PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void sendUpdateQuestionIfNeeded(Post post){
+		if(post.poll==null)
+			throw new IllegalArgumentException("Post must have a poll");
+		if(!post.local)
+			return;
+
+		if(post.poll.lastVoteTime.until(Instant.now(), ChronoUnit.MINUTES)>=5){
+			BackgroundTaskRunner.getInstance().submitDelayed(()->{
+				try{
+					// Get post again so the poll inside is up-to-date.
+					context.getActivityPubWorker().sendUpdatePostActivity(getPostOrThrow(post.id));
+				}catch(Exception x){
+				  LOG.warn("Error sending Update{Question}", x);
+				}
+			}, 5, TimeUnit.MINUTES);
 		}
 	}
 

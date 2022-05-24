@@ -366,6 +366,7 @@ CREATE TABLE `polls` (
   `is_multi_choice` tinyint(1) NOT NULL DEFAULT '0',
   `end_time` timestamp NULL DEFAULT NULL,
   `num_voted_users` int unsigned NOT NULL DEFAULT '0',
+  `last_vote_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -490,6 +491,7 @@ CREATE TABLE `wall_posts` (
   KEY `author_id` (`author_id`),
   KEY `reply_key` (`reply_key`),
   KEY `owner_group_id` (`owner_group_id`),
+  KEY `poll_id` (`poll_id`),
   CONSTRAINT `wall_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `wall_posts_ibfk_2` FOREIGN KEY (`repost_of`) REFERENCES `wall_posts` (`id`) ON DELETE SET NULL,
   CONSTRAINT `wall_posts_ibfk_3` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
@@ -498,4 +500,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2022-04-18 12:55:04
+-- Dump completed on 2022-05-22 11:21:31

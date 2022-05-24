@@ -22,6 +22,7 @@ public class Poll{
 	public Instant endTime;
 	public int numVoters;
 	public URI activityPubID;
+	public Instant lastVoteTime;
 
 	public static Poll fromResultSet(ResultSet res) throws SQLException{
 		Poll p=new Poll();
@@ -32,6 +33,7 @@ public class Poll{
 		p.anonymous=res.getBoolean("is_anonymous");
 		p.endTime=DatabaseUtils.getInstant(res, "end_time");
 		p.numVoters=res.getInt("num_voted_users");
+		p.lastVoteTime=DatabaseUtils.getInstant(res, "last_vote_time");
 		p.options=new ArrayList<>();
 		String apID=res.getString("ap_id");
 		if(apID!=null)
