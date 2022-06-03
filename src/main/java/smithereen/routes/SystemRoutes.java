@@ -62,6 +62,7 @@ import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.BlurHash;
 import smithereen.util.JsonObjectBuilder;
+import smithereen.util.NamedMutexCollection;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -70,6 +71,7 @@ import static smithereen.Utils.*;
 
 public class SystemRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(SystemRoutes.class);
+	private static final NamedMutexCollection downloadMutex=new NamedMutexCollection();
 
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
 		requireQueryParams(req, "type", "format", "size");
@@ -174,35 +176,41 @@ public class SystemRoutes{
 		}
 
 		if(uri!=null){
-			MediaCache.Item existing=cache.get(uri);
-			if(mime.startsWith("image/")){
-				if(existing!=null){
-					resp.redirect(new CachedRemoteImage((MediaCache.PhotoItem) existing, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
-					return "";
-				}
-				try{
-					MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType);
-					if(item==null){
-						if(itemType==MediaCache.ItemType.AVATAR && req.queryParams("retrying")==null){
-							if(user!=null){
-								ForeignUser updatedUser=context(req).getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
-								resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
-								return "";
-							}else if(group!=null){
-								ForeignGroup updatedGroup=context(req).getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
-								resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
-								return "";
-							}
-						}
-						resp.redirect(uri.toString());
-					}else{
-						resp.redirect(new CachedRemoteImage(item, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
+			final String uriStr=uri.toString();
+			downloadMutex.acquire(uriStr);
+			try{
+				MediaCache.Item existing=cache.get(uri);
+				if(mime.startsWith("image/")){
+					if(existing!=null){
+						resp.redirect(new CachedRemoteImage((MediaCache.PhotoItem) existing, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
+						return "";
 					}
-					return "";
-				}catch(IOException x){
-					LOG.warn("Exception while downloading external media file from {}", uri, x);
+					try{
+						MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType);
+						if(item==null){
+							if(itemType==MediaCache.ItemType.AVATAR && req.queryParams("retrying")==null){
+								if(user!=null){
+									ForeignUser updatedUser=context(req).getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
+									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+									return "";
+								}else if(group!=null){
+									ForeignGroup updatedGroup=context(req).getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
+									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+									return "";
+								}
+							}
+							resp.redirect(uri.toString());
+						}else{
+							resp.redirect(new CachedRemoteImage(item, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
+						}
+						return "";
+					}catch(IOException x){
+						LOG.warn("Exception while downloading external media file from {}", uri, x);
+					}
+					resp.redirect(uri.toString());
 				}
-				resp.redirect(uri.toString());
+			}finally{
+				downloadMutex.release(uriStr);
 			}
 		}
 		return "";
