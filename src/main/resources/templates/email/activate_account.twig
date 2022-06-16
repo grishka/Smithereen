@@ -1,0 +1,8 @@
+{% extends "page" %}
+{% block content %}
+	{{ L('email_confirmation_body_html', {'name': name, 'serverName': domain}) }}
+	<center style="padding: 20px 0;">
+		<a href="{{ confirmationLink }}" style="text-decoration: none; background-color: #4E6C1A; padding: 10px 15px; font-weight: bold; color: #FFFFFF; border-radius: 5px; display: inline-block;">{{ L('email_confirmation_body_button') }}</a>
+	</center>
+{% endblock %}
+

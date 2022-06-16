@@ -250,6 +250,14 @@ public class SessionStorage{
 		return SignupResult.SUCCESS;
 	}
 
+	public static void updateActivationInfo(int accountID, Account.ActivationInfo info) throws SQLException{
+		new SQLQueryBuilder()
+				.update("accounts")
+				.value("activation_info", info==null ? null : Utils.gson.toJson(info))
+				.where("id=?", accountID)
+				.executeNoResult();
+	}
+
 	public static boolean updatePassword(int accountID, String oldPassword, String newPassword) throws SQLException{
 		try{
 			MessageDigest md=MessageDigest.getInstance("SHA-256");
@@ -263,6 +271,14 @@ public class SessionStorage{
 			return stmt.executeUpdate()==1;
 		}catch(NoSuchAlgorithmException ignore){}
 		return false;
+	}
+
+	public static void updateEmail(int accountID, String email) throws SQLException{
+		new SQLQueryBuilder()
+				.update("accounts")
+				.value("email", email)
+				.where("id=?", accountID)
+				.executeNoResult();
 	}
 
 	public static void updatePreferences(int accountID, UserPreferences prefs) throws SQLException{

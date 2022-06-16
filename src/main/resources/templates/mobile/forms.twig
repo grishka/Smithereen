@@ -112,6 +112,34 @@ autoSizeTextArea(ge("{{ name }}"));
 	</div>
 {%endmacro%}
 
+{%macro checkBox(name, label, title, value, options)%}
+	<div class="row">
+		{% if label is not empty %}
+			<div class="label">
+				{{label}}:
+			</div>
+		{% endif %}
+		<div class="radioButtonWrap">
+			<input type="radio" name="{{ name }}" id="{{ name }}" {{ value ? 'checked' : '' }}/>
+			<label for="{{ name }}">{{ title }}</label>
+		</div>
+		{% if options.explanation is not empty %}
+			<span class="formExplanation">{{ options.explanation }}</span>
+		{% endif %}
+	</div>
+{%endmacro%}
+
+{%macro labeledText(label, text)%}
+	<div class="row">
+		{% if label is not empty %}
+			<div class="label">
+				{{label}}:
+			</div>
+		{% endif %}
+		{{ text }}
+	</div>
+{%endmacro%}
+
 {%macro footer(submitTitle)%}
 	<div class="footer">
 		<button>{{ submitTitle }}</button>

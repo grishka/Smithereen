@@ -1,0 +1,18 @@
+{% extends "page" %}
+{% block content %}
+	<div class="heavyBoxWrap">
+		<div class="heavyBox">
+			<h2>{{ L(activated ? 'account_activation' : 'change_email_title') }}</h2>
+			{% if activated %}
+			<div class="marginBefore">{{ L('email_confirmed_activated') }}</div>
+			<div class="marginBefore buttonBar">
+				<a href="/settings/profile/general" class="button flL">{{ L('proceed_fill_profile') }} &raquo;</a>
+				<div class="clear"></div>
+			</div>
+			{% else %}
+			<div class="marginBefore">{{ L('email_confirmed_changed') }}</div>
+			{% endif %}
+		</div>
+	</div>
+{% endblock %}
+

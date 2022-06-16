@@ -16,6 +16,7 @@
 				{'value': 'INVITE_ONLY', 'label': L('admin_signup_mode_invite'), 'selected': signupMode=='INVITE_ONLY'},
 				{'value': 'CLOSED', 'label': L('admin_signup_mode_closed'), 'selected': signupMode=='CLOSED'}
 			], {'explanation': L('admin_signup_mode_explain')})}}
+			{{ form.checkBox('signup_confirm_email', null, L('admin_require_email_confirm'), signupConfirmEmail) }}
 			{{form.footer(L('save'))}}
 		{{form.end()}}
 		<input type="hidden" name="csrf" value="{{csrf}}"/>

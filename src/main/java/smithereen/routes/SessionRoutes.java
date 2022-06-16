@@ -1,8 +1,12 @@
 package smithereen.routes;
 
+import com.mitchellbosecke.pebble.extension.escaper.SafeString;
+
 import java.sql.SQLException;
 import java.util.Base64;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 
 import smithereen.Config;
 import smithereen.Mailer;
@@ -11,7 +15,11 @@ import smithereen.data.Account;
 import smithereen.data.EmailCode;
 import smithereen.data.SessionInfo;
 import smithereen.data.User;
+import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.UserErrorException;
+import smithereen.lang.Lang;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
@@ -145,6 +153,8 @@ public class SessionRoutes{
 			return regError(req, "err_invalid_email");
 		if(StringUtils.isEmpty(first) || first.length()<2)
 			return regError(req, "err_name_too_short");
+		if(SessionStorage.getAccountByEmail(email)!=null)
+			return regError(req, "err_reg_email_taken");
 		if(Config.signupMode!=Config.SignupMode.OPEN){
 			if(StringUtils.isEmpty(invite))
 				invite=req.queryParams("_invite");
@@ -160,7 +170,15 @@ public class SessionRoutes{
 		else
 			res=SessionStorage.registerNewAccount(username, password, email, first, last, gender, invite);
 		if(res==SessionStorage.SignupResult.SUCCESS){
-			Account acc=SessionStorage.getAccountForUsernameAndPassword(username, password);
+			Account acc=Objects.requireNonNull(SessionStorage.getAccountForUsernameAndPassword(username, password));
+			if(Config.signupConfirmEmail){
+				Account.ActivationInfo info=new Account.ActivationInfo();
+				info.emailState=Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED;
+				info.emailConfirmationKey=Mailer.generateConfirmationKey();
+				acc.activationInfo=info;
+				SessionStorage.updateActivationInfo(acc.id, info);
+				Mailer.getInstance().sendAccountActivation(req, acc);
+			}
 			setupSessionWithAccount(req, resp, acc);
 			resp.redirect("/feed");
 		}else if(res==SessionStorage.SignupResult.USERNAME_TAKEN){
@@ -281,5 +299,79 @@ public class SessionRoutes{
 		resp.redirect("/feed");
 
 		return "";
+	}
+
+	public static Object resendEmailConfirmation(Request req, Response resp, Account self){
+		if(self.getUnconfirmedEmail()==null)
+			throw new BadRequestException();
+		FloodControl.EMAIL_CONFIRM_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
+		Mailer.getInstance().sendAccountActivation(req, self);
+		Lang l=lang(req);
+		String msg=l.get("email_confirmation_resent", Map.of("address", escapeHTML(self.getUnconfirmedEmail()))).replace("\n", "<br/>");
+		msg=substituteLinks(msg, Map.of("change", Map.of("href", "/account/changeEmailForm", "data-ajax-box", "")));
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).messageBox(l.get("account_activation"), msg, l.get("close"));
+		return new RenderedTemplateResponse("generic_message", req).with("message", new SafeString(msg)).pageTitle(l.get("account_activation"));
+	}
+
+	public static Object changeEmailForm(Request req, Response resp, Account self){
+		if(self.getUnconfirmedEmail()==null)
+			throw new BadRequestException();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("change_email_form", req);
+		model.with("email", self.getUnconfirmedEmail());
+		return wrapForm(req, resp, "change_email_form", "/account/changeEmail", lang(req).get("change_email_title"), "save", model);
+	}
+
+	public static Object changeEmail(Request req, Response resp, Account self){
+		if(self.activationInfo==null || self.activationInfo.emailState!=Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED)
+			throw new BadRequestException();
+		String email=req.queryParams("email");
+		if(!isValidEmail(email))
+			throw new BadRequestException();
+		if(email.equalsIgnoreCase(self.email))
+			return "";
+		try{
+			if(SessionStorage.getAccountByEmail(email)!=null){
+				if(isAjax(req)){
+					return new WebDeltaResponse(resp).show("formMessage_changeEmail").setContent("formMessage_changeEmail", lang(req).get("err_reg_email_taken")).keepBox();
+				}
+				return "";
+			}
+
+			self.activationInfo.emailConfirmationKey=Mailer.generateConfirmationKey();
+			SessionStorage.updateActivationInfo(self.id, self.activationInfo);
+			SessionStorage.updateEmail(self.id, email);
+			self.email=email;
+
+			FloodControl.EMAIL_CONFIRM_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
+			Mailer.getInstance().sendAccountActivation(req, self);
+
+			if(isAjax(req))
+				return new WebDeltaResponse(resp).refresh();
+			resp.redirect("/feed");
+			return "";
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public static Object activateAccount(Request req, Response resp, Account self){
+		if(self.activationInfo==null)
+			throw new UserErrorException("err_email_already_activated");
+		if(!self.activationInfo.emailConfirmationKey.equals(req.queryParams("key")))
+			throw new UserErrorException("err_email_link_invalid");
+		Account.ActivationInfo.EmailConfirmationState state=self.activationInfo.emailState;
+		try{
+			if(self.activationInfo.emailState==Account.ActivationInfo.EmailConfirmationState.CHANGE_PENDING){
+				Mailer.getInstance().sendEmailChangeDoneToPreviousAddress(req, self);
+				SessionStorage.updateEmail(self.id, self.activationInfo.newEmail);
+				self.email=self.activationInfo.newEmail;
+			}
+			SessionStorage.updateActivationInfo(self.id, null);
+			self.activationInfo=null;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		return new RenderedTemplateResponse("email_confirm_success", req).with("activated", state==Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED);
 	}
 }

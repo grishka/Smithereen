@@ -13,7 +13,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=23;
+	public static final int SCHEMA_VERSION=24;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -352,6 +352,7 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("ALTER TABLE `polls` ADD `last_vote_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP()");
 				conn.createStatement().execute("CREATE INDEX `poll_id` ON `wall_posts` (`poll_id`)");
 			}
+			case 24 -> conn.createStatement().execute("ALTER TABLE `accounts` ADD `activation_info` json DEFAULT NULL");
 		}
 	}
 }

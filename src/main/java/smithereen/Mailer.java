@@ -92,6 +92,64 @@ public class Mailer{
 		send(to, l.get("email_test_subject"), l.get("email_test"), "test", Map.of("gender", self.user.gender), l.getLocale());
 	}
 
+	public void sendAccountActivation(Request req, Account self){
+		Account.ActivationInfo info=self.activationInfo;
+		if(info==null)
+			throw new IllegalArgumentException("This account is already activated");
+		if(info.emailState!=Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED)
+			throw new IllegalArgumentException("Unexpected email state "+info.emailState);
+		if(info.emailConfirmationKey==null)
+			throw new IllegalArgumentException("No email confirmation key");
+
+		Lang l=Utils.lang(req);
+		String link=UriBuilder.local().path("account", "activate").queryParam("key", info.emailConfirmationKey).build().toString();
+		String plaintext=l.get("email_confirmation_body_plain", Map.of("name", self.user.firstName, "serverName", Config.domain))+"\n\n"+link;
+		send(self.email, l.get("email_confirmation_subject", Map.of("domain", Config.domain)), plaintext, "activate_account", Map.of(
+				"name", self.user.firstName,
+				"gender", self.user.gender,
+				"confirmationLink", link
+		), l.getLocale());
+	}
+
+	public void sendEmailChange(Request req, Account self){
+		Account.ActivationInfo info=self.activationInfo;
+		if(info==null)
+			throw new IllegalArgumentException("This account is already activated");
+		if(info.emailState!=Account.ActivationInfo.EmailConfirmationState.CHANGE_PENDING)
+			throw new IllegalArgumentException("Unexpected email state "+info.emailState);
+		if(info.emailConfirmationKey==null)
+			throw new IllegalArgumentException("No email confirmation key");
+
+		Lang l=Utils.lang(req);
+		String link=UriBuilder.local().path("account", "activate").queryParam("key", info.emailConfirmationKey).build().toString();
+		String plaintext=l.get("email_change_new_body_plain", Map.of("name", self.user.firstName, "serverName", Config.domain, "newAddress", self.getUnconfirmedEmail(), "oldAddress", self.email))+"\n\n"+link;
+		send(self.getUnconfirmedEmail(), l.get("email_change_new_subject", Map.of("domain", Config.domain)), plaintext, "update_email_new", Map.of(
+				"name", self.user.firstName,
+				"gender", self.user.gender,
+				"confirmationLink", link,
+				"oldAddress", self.email,
+				"newAddress", self.getUnconfirmedEmail()
+		), l.getLocale());
+	}
+
+	public void sendEmailChangeDoneToPreviousAddress(Request req, Account self){
+		Account.ActivationInfo info=self.activationInfo;
+		if(info==null)
+			throw new IllegalArgumentException("This account is already activated");
+		if(info.emailState!=Account.ActivationInfo.EmailConfirmationState.CHANGE_PENDING)
+			throw new IllegalArgumentException("Unexpected email state "+info.emailState);
+		if(info.emailConfirmationKey==null)
+			throw new IllegalArgumentException("No email confirmation key");
+
+		Lang l=Utils.lang(req);
+		String plaintext=l.get("email_change_old_body", Map.of("name", self.user.firstName, "serverName", Config.domain));
+		send(self.email, l.get("email_change_old_subject", Map.of("domain", Config.domain)), plaintext, "update_email_old", Map.of(
+				"name", self.user.firstName,
+				"gender", self.user.gender,
+				"address", self.getUnconfirmedEmail()
+		), l.getLocale());
+	}
+
 	private void send(String to, String subject, String plaintext, String templateName, Map<String, Object> templateParams, Locale templateLocale){
 		try{
 			MimeMessage msg=new MimeMessage(session);
@@ -122,6 +180,10 @@ public class Mailer{
 		}catch(MessagingException|IOException x){
 			LOG.error("Exception while creating an email", x);
 		}
+	}
+
+	public static String generateConfirmationKey(){
+		return Utils.randomAlphanumericString(64);
 	}
 
 	private static class SendRunnable implements Runnable{

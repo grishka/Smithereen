@@ -12,6 +12,18 @@
 		{{ form.footer(L('change_password')) }}
 	{{ form.end() }}
 </form>
+
+<form action="/settings/updateEmail?csrf={{ csrf }}" method="post" data-ajax>
+	<h2>{{ L('change_email') }}</h2>
+	{% if activationInfo is not null %}
+	<div class="settingsMessage">{{ L('pending_email_change', {'address': activationInfo.newEmail}, {'resend': {'href': "/settings/resendEmailConfirmation?csrf=#{csrf}", 'data-ajax': ''}, 'cancel': {'href': "/settings/cancelEmailChange?csrf=#{csrf}", 'data-ajax': ''} }) }}</div>
+	{% endif %}
+	{{ form.start('changeEmail', emailMessage) }}
+		{{ form.labeledText(L('current_email'), currentEmailMasked) }}
+		{{ form.textInput('email', L('new_email_address'), '', {'type': 'email'}) }}
+		{{ form.footer(L('save')) }}
+	{{ form.end() }}
+</form>
 {%if signupMode=='INVITE_ONLY' or (userPermissions.serverAccessLevel=='ADMIN' and signupMode!='OPEN')%}
 <form action="/settings/createInvite?csrf={{ csrf }}" method="post">
 	<h2>{{L('invitations')}}</h2>

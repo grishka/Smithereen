@@ -1,0 +1,4 @@
+{% import "forms" as form %}
+{{ form.start("changeEmail") }}
+	{{ form.textInput('email', L('new_email_address'), email, {'type': 'email', 'required': true}) }}
+{{ form.end() }}

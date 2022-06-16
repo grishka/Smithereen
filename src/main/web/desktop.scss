@@ -593,6 +593,9 @@ small{
 			width: 140px;
 			padding: 4px 10px 5px 0;
 		}
+		.text{
+			padding: 4px 0 9px;
+		}
 		.control{
 			width: 150px;
 		}
@@ -605,6 +608,9 @@ small{
 		.label{
 			width: 190px;
 			padding: 4px 10px 5px 0;
+		}
+		.text{
+			padding: 4px 0 9px;
 		}
 		.control{
 			width: 220px;
@@ -959,6 +965,9 @@ select{
 		color: $auxiliaryGrey;
 		padding: 5px 8px 4px 8px;
 		width: 30%;
+	}
+	.text{
+		padding: 5px 0 9px;
 	}
 	.control{
 		width: 100%;
@@ -2168,5 +2177,26 @@ label.pretendLink{
 	}
 	&.gray .rightNavigation{
 		margin-left: 0;
+	}
+}
+
+.heavyBoxWrap{
+	background: $gray;
+	padding: 34px 0;
+}
+
+.heavyBox{
+	width: 488px;
+	margin: auto;
+	background: $bg;
+	border: solid 1px $textAreaBorder;
+	box-shadow: 0 0 0 12px $wallPostSeparator inset, 0 4px 0 -2px rgba(0, 0, 0, .05);
+	padding: 32px;
+	border-radius: 2px;
+}
+
+.buttonBar{
+	>.button, >button, >input{
+		margin-right: 10px;
 	}
 }
