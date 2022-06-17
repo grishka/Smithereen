@@ -1309,3 +1309,21 @@ input[type=time]::-webkit-calendar-picker-indicator{
 		}
 	}
 }
+
+.heavyBox{
+	padding: 16px;
+}
+
+.marginBefore{
+	margin-top: 16px;
+}
+
+.marginAfter{
+	margin-bottom: 16px;
+}
+
+.buttonBar{
+	>.button, >button, >input{
+		margin: 0 8px 8px 0;
+	}
+}

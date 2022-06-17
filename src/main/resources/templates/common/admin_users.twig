@@ -27,6 +27,9 @@
 						| <a href="/settings/admin/users/confirmUnban?accountID={{ acc.id }}" data-confirm-action="/settings/admin/users/unban?accountID={{ acc.id }}" data-confirm-title="{{ L('admin_unban') }}" data-confirm-message="{{ L("admin_unban_X_confirm", {'name': acc.user.firstLastAndGender}) | forceEscape }}">{{ L('admin_unban') }}</a>
 					{% endif %}
 				{% endif %}
+				{% if acc.activationInfo is not null %}
+					| <a href="/settings/admin/users/confirmActivate?accountID={{ acc.id }}" data-confirm-action="/settings/admin/users/activate?accountID={{ acc.id }}" data-confirm-title="{{ L('account_activation') }}" data-confirm-message="{{ L("admin_activate_X_confirm", {'name': acc.user.firstLastAndGender}) | forceEscape }}">{{ L('admin_activate_account') }}</a>
+				{% endif %}
 			</td>
 		</tr>
 		{% endfor %}

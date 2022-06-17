@@ -179,6 +179,10 @@ public class SmithereenApplication{
 			post("/resetPassword", SessionRoutes::resetPassword);
 			get("/actuallyResetPassword", SessionRoutes::actuallyResetPasswordForm);
 			post("/actuallyResetPassword", SessionRoutes::actuallyResetPassword);
+			getWithCSRF("/resendConfirmationEmail", SessionRoutes::resendEmailConfirmation);
+			getLoggedIn("/changeEmailForm", SessionRoutes::changeEmailForm);
+			postWithCSRF("/changeEmail", SessionRoutes::changeEmail);
+			getLoggedIn("/activate", SessionRoutes::activateAccount);
 		});
 
 		path("/settings", ()->{
@@ -199,6 +203,9 @@ public class SmithereenApplication{
 			postWithCSRF("/blockDomain", SettingsRoutes::blockDomain);
 			getLoggedIn("/confirmUnblockDomain", SettingsRoutes::confirmUnblockDomain);
 			postWithCSRF("/unblockDomain", SettingsRoutes::unblockDomain);
+			postWithCSRF("/updateEmail", SettingsRoutes::updateEmail);
+			getWithCSRF("/cancelEmailChange", SettingsRoutes::cancelEmailChange);
+			getWithCSRF("/resendEmailConfirmation", SettingsRoutes::resendEmailConfirmation);
 
 			path("/admin", ()->{
 				getRequiringAccessLevel("", Account.AccessLevel.ADMIN, SettingsAdminRoutes::index);
@@ -211,8 +218,10 @@ public class SmithereenApplication{
 				postRequiringAccessLevelWithCSRF("/sendTestEmail", Account.AccessLevel.ADMIN, SettingsAdminRoutes::sendTestEmail);
 				getRequiringAccessLevel("/users/banForm", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::banUserForm);
 				getRequiringAccessLevel("/users/confirmUnban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::confirmUnbanUser);
+				getRequiringAccessLevel("/users/confirmActivate", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::confirmActivateAccount);
 				postRequiringAccessLevelWithCSRF("/users/ban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::banUser);
 				postRequiringAccessLevelWithCSRF("/users/unban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::unbanUser);
+				postRequiringAccessLevelWithCSRF("/users/activate", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::activateAccount);
 			});
 		});
 
@@ -494,7 +503,7 @@ public class SmithereenApplication{
 				long t=(long)l;
 				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
 			}
-			if(req.attribute("isTemplate")!=null){
+			if(req.attribute("isTemplate")!=null && !Utils.isAjax(req)){
 				String cssName=req.attribute("mobile")!=null ? "mobile" : "desktop";
 				resp.header("Link", "</res/"+cssName+".css?"+Utils.staticFileHash+">; rel=preload; as=style, </res/common.js?"+Utils.staticFileHash+">; rel=preload; as=script");
 				resp.header("Vary", "User-Agent, Accept-Language");

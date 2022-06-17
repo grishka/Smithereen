@@ -114,6 +114,17 @@ public class Utils{
 		return String.format(Locale.ENGLISH, "%08x%08x", v1, v2);
 	}
 
+	private static boolean isAllowedForRestrictedAccounts(Request req){
+		String path=req.pathInfo();
+		return List.of(
+				"/account/logout",
+				"/account/resendConfirmationEmail",
+				"/account/changeEmailForm",
+				"/account/changeEmail",
+				"/account/activate"
+		).contains(path);
+	}
+
 	public static boolean requireAccount(Request req, Response resp){
 		if(req.session(false)==null || req.session().attribute("info")==null || ((SessionInfo)req.session().attribute("info")).account==null){
 			String to=req.pathInfo();
@@ -124,12 +135,16 @@ public class Utils{
 			return false;
 		}
 		Account acc=sessionInfo(req).account;
-		if(acc.banInfo!=null){
+		if(acc.banInfo!=null && !isAllowedForRestrictedAccounts(req)){
 			Lang l=lang(req);
 			String msg=l.get("your_account_is_banned");
 			if(StringUtils.isNotEmpty(acc.banInfo.reason))
 				msg+="\n\n"+l.get("ban_reason")+": "+acc.banInfo.reason;
 			resp.body(new RenderedTemplateResponse("generic_message", req).with("message", msg).renderToString());
+			return false;
+		}else if(acc.activationInfo!=null && acc.activationInfo.emailState==Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED && !isAllowedForRestrictedAccounts(req)){
+			Lang l=lang(req);
+			resp.body(new RenderedTemplateResponse("email_confirm_required", req).with("email", acc.email).pageTitle(l.get("account_activation")).renderToString());
 			return false;
 		}
 		return true;
@@ -179,7 +194,7 @@ public class Utils{
 		Lang l=lang(req);
 		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
-			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok"));
+			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("close"));
 		}
 		return new RenderedTemplateResponse("generic_error", req).with("error", msg).with("back", back(req)).with("title", l.get("error"));
 	}
@@ -192,7 +207,7 @@ public class Utils{
 		Lang l=lang(req);
 		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
 		if(isAjax(req)){
-			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("ok")).json();
+			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("close")).json();
 		}else if(isActivityPub(req)){
 			return msg;
 		}
@@ -819,6 +834,28 @@ public class Utils{
 			if(StringUtils.isEmpty(req.queryParams(param)))
 				throw new BadRequestException("Required parameter '"+param+"' not present");
 		}
+	}
+
+	public static String substituteLinks(String str, Map<String, Object> links){
+		Element root=Jsoup.parseBodyFragment(str).body();
+		for(String id:links.keySet()){
+			Element link=root.getElementById(id);
+			if(link==null)
+				continue;
+			link.removeAttr("id");
+			//noinspection unchecked
+			Map<String, Object> attrs=(Map<String, Object>) links.get(id);
+			for(String attr:attrs.keySet()){
+				Object value=attrs.get(attr);
+				if(attr.equals("_")){
+					link.tagName(value.toString());
+				}else if(value instanceof Boolean b)
+					link.attr(attr, b);
+				else if(value instanceof String s)
+					link.attr(attr, s);
+			}
+		}
+		return root.html();
 	}
 
 	public interface MentionCallback{

@@ -13,8 +13,10 @@ import smithereen.data.Account;
 import smithereen.data.PaginatedList;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
+import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
@@ -33,7 +35,8 @@ public class SettingsAdminRoutes{
 				.with("serverShortDescription", Config.serverShortDescription)
 				.with("serverPolicy", Config.serverPolicy)
 				.with("serverAdminEmail", Config.serverAdminEmail)
-				.with("signupMode", Config.signupMode);
+				.with("signupMode", Config.signupMode)
+				.with("signupConfirmEmail", Config.signupConfirmEmail);
 		String msg=req.session().attribute("admin.serverInfoMessage");
 		if(StringUtils.isNotEmpty(msg)){
 			req.session().removeAttribute("admin.serverInfoMessage");
@@ -48,18 +51,21 @@ public class SettingsAdminRoutes{
 		String shortDescr=req.queryParams("server_short_description");
 		String policy=req.queryParams("server_policy");
 		String email=req.queryParams("server_admin_email");
+		boolean confirmEmail="on".equals(req.queryParams("signup_confirm_email"));
 
 		Config.serverDisplayName=name;
 		Config.serverDescription=descr;
 		Config.serverShortDescription=shortDescr;
 		Config.serverPolicy=policy;
 		Config.serverAdminEmail=email;
+		Config.signupConfirmEmail=confirmEmail;
 		Config.updateInDatabase(Map.of(
 				"ServerDisplayName", name,
 				"ServerDescription", descr,
 				"ServerShortDescription", shortDescr,
 				"ServerPolicy", policy,
-				"ServerAdminEmail", email
+				"ServerAdminEmail", email,
+				"SignupConfirmEmail", confirmEmail ? "1" : "0"
 		));
 		try{
 			Config.SignupMode signupMode=Config.SignupMode.valueOf(req.queryParams("signup_mode"));
@@ -244,5 +250,33 @@ public class SettingsAdminRoutes{
 		req.session().attribute("admin.emailTestMessage", lang(req).get(result));
 		resp.redirect("/settings/admin/other");
 		return "";
+	}
+
+	public static Object confirmActivateAccount(Request req, Response resp, Account self) throws SQLException{
+		req.attribute("noHistory", true);
+		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
+		Account target=UserStorage.getAccount(accountID);
+		if(target==null)
+			throw new ObjectNotFoundException("err_user_not_found");
+		Lang l=Utils.lang(req);
+		String back=Utils.back(req);
+		User user=target.user;
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("admin_activate_X_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/settings/admin/users/activate?accountID="+accountID+"&_redir="+URLEncoder.encode(back)).with("back", back);
+	}
+
+	public static Object activateAccount(Request req, Response resp, Account self){
+		try{
+			int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
+			Account target=UserStorage.getAccount(accountID);
+			if(target==null)
+				throw new ObjectNotFoundException("err_user_not_found");
+			SessionStorage.updateActivationInfo(accountID, null);
+			if(isAjax(req))
+				return new WebDeltaResponse(resp).refresh();
+			resp.redirect(back(req));
+			return "";
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 }

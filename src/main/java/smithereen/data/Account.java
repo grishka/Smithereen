@@ -4,7 +4,6 @@ import com.google.gson.JsonParseException;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.Instant;
 
 import smithereen.Utils;
@@ -20,6 +19,7 @@ public class Account{
 	public Instant createdAt;
 	public Instant lastActive;
 	public BanInfo banInfo;
+	public ActivationInfo activationInfo;
 
 	public User invitedBy; // used in admin UIs
 
@@ -33,6 +33,8 @@ public class Account{
 				", prefs="+prefs+
 				", createdAt="+createdAt+
 				", lastActive="+lastActive+
+				", banInfo="+banInfo+
+				", activationInfo="+activationInfo+
 				", invitedBy="+invitedBy+
 				'}';
 	}
@@ -58,7 +60,28 @@ public class Account{
 				acc.prefs=new UserPreferences();
 			}
 		}
+		String activation=res.getString("activation_info");
+		if(activation!=null)
+			acc.activationInfo=Utils.gson.fromJson(activation, ActivationInfo.class);
 		return acc;
+	}
+
+	public String getUnconfirmedEmail(){
+		if(activationInfo==null)
+			return null;
+		return switch(activationInfo.emailState){
+			case NOT_CONFIRMED -> email;
+			case CHANGE_PENDING -> activationInfo.newEmail;
+		};
+	}
+
+	public String getCurrentEmailMasked(){
+		String[] parts=email.split("@", 2);
+		if(parts.length!=2)
+			return email;
+		String user=parts[0];
+		int count=user.length()<5 ? 1 : 2;
+		return user.substring(0, count)+"*".repeat(user.length()-count)+"@"+parts[1];
 	}
 
 	public enum AccessLevel{
@@ -72,5 +95,16 @@ public class Account{
 		public int adminUserId;
 		public String reason;
 		public Instant when;
+	}
+
+	public static class ActivationInfo{
+		public String emailConfirmationKey;
+		public String newEmail;
+		public EmailConfirmationState emailState;
+
+		public enum EmailConfirmationState{
+			NOT_CONFIRMED,
+			CHANGE_PENDING
+		}
 	}
 }

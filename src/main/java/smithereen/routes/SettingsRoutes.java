@@ -26,6 +26,7 @@ import javax.servlet.http.Part;
 import smithereen.Config;
 import static smithereen.Utils.*;
 
+import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Image;
@@ -37,6 +38,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
@@ -45,6 +47,7 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.FloodControl;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -71,6 +74,12 @@ public class SettingsRoutes{
 			model.with("profilePicMessage", s.attribute("settings.profilePicMessage"));
 			s.removeAttribute("settings.profilePicMessage");
 		}
+		if(s.attribute("settings.emailMessage")!=null){
+			model.with("emailMessage", s.attribute("settings.emailMessage"));
+			s.removeAttribute("settings.emailMessage");
+		}
+		model.with("activationInfo", self.activationInfo);
+		model.with("currentEmailMasked", self.getCurrentEmailMasked());
 		model.with("title", lang(req).get("settings"));
 		return model;
 	}
@@ -407,6 +416,72 @@ public class SettingsRoutes{
 			UserStorage.unblockDomain(self.user.id, domain);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object updateEmail(Request req, Response resp, Account self){
+		String email=req.queryParams("email");
+		Lang l=lang(req);
+		String message;
+		if(!isValidEmail(email)){
+			message=l.get("err_invalid_email");
+		}else{
+			try{
+				if(email.equals(self.email) || email.equals(self.getUnconfirmedEmail())){
+					message=null;
+				}else if(Config.signupConfirmEmail){
+					self.activationInfo=new Account.ActivationInfo();
+					self.activationInfo.emailConfirmationKey=Mailer.generateConfirmationKey();
+					self.activationInfo.emailState=Account.ActivationInfo.EmailConfirmationState.CHANGE_PENDING;
+					self.activationInfo.newEmail=email;
+					SessionStorage.updateActivationInfo(self.id, self.activationInfo);
+					FloodControl.EMAIL_CONFIRM_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
+					Mailer.getInstance().sendEmailChange(req, self);
+					message=l.get("change_email_sent");
+				}else{
+					SessionStorage.updateEmail(self.id, email);
+					message=l.get("email_confirmed_changed");
+				}
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+		if(message==null)
+			return "";
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).show("formMessage_changeEmail").setContent("formMessage_changeEmail", message);
+		}
+		Session s=req.session();
+		s.attribute("settings.emailMessage", message);
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object cancelEmailChange(Request req, Response resp, Account self){
+		if(self.activationInfo==null || self.activationInfo.emailState!=Account.ActivationInfo.EmailConfirmationState.CHANGE_PENDING)
+			throw new BadRequestException();
+		try{
+			SessionStorage.updateActivationInfo(self.id, null);
+			self.activationInfo=null;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object resendEmailConfirmation(Request req, Response resp, Account self){
+		if(self.activationInfo==null || self.activationInfo.emailState!=Account.ActivationInfo.EmailConfirmationState.CHANGE_PENDING)
+			throw new BadRequestException();
+		FloodControl.EMAIL_CONFIRM_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
+		Mailer.getInstance().sendEmailChange(req, self);
+		if(isAjax(req)){
+			Lang l=lang(req);
+			return new WebDeltaResponse(resp).messageBox(l.get("change_email_title"), l.get("email_confirmation_resent_short", Map.of("address", self.getUnconfirmedEmail())), l.get("close"));
+		}
 		resp.redirect(back(req));
 		return "";
 	}

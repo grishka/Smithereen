@@ -218,7 +218,7 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, res
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
 	xhr.open("POST", uri);
 	xhr.onload=function(){
-		if(Math.floor(xhr.status/100)==2)
+		if(Math.floor(xhr.status/100)==2 || xhr.response)
 			onDone(xhr.response);
 		else
 			onError(xhr.statusText);
@@ -254,7 +254,7 @@ function ajaxGet(uri:string, onDone:Function, onError:Function, responseType:XML
 		uri+="?_ajax=1";
 	xhr.open("GET", uri);
 	xhr.onload=function(){
-		if(Math.floor(xhr.status/100)==2)
+		if(Math.floor(xhr.status/100)==2 || xhr.response)
 			onDone(xhr.response);
 		else
 			onError(xhr.statusText);
@@ -421,12 +421,17 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 		if(submitter)
 			submitter.classList.remove("loading");
 		setGlobalLoading(false);
+		var dismiss=true;
 		if(resp instanceof Array){
 			for(var i=0;i<resp.length;i++){
-				applyServerCommand(resp[i]);
+				if(resp[i].a=="kb"){
+					dismiss=false;
+				}else{
+					applyServerCommand(resp[i]);
+				}
 			}
 		}
-		if(onDone) onDone(true);
+		if(onDone) onDone(dismiss);
 	}, function(msg:string){
 		submittingForm=null;
 		if(submitter)

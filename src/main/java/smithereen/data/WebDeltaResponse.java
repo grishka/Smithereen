@@ -102,6 +102,11 @@ public class WebDeltaResponse{
 		return this;
 	}
 
+	public WebDeltaResponse keepBox(){
+		commands.add(new KeepBoxCommand());
+		return this;
+	}
+
 	public String json(){
 		return Utils.gson.toJson(commands);
 	}
@@ -306,6 +311,13 @@ public class WebDeltaResponse{
 		public RunScriptCommand(String script){
 			super("run");
 			this.script=script;
+		}
+	}
+
+	public static class KeepBoxCommand extends Command{
+
+		public KeepBoxCommand(){
+			super("kb");
 		}
 	}
 }

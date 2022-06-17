@@ -99,7 +99,7 @@ public class Templates{
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
 		}
-		for(String key: List.of("error", "ok", "network_error", "close")){
+		for(String key: List.of("error", "ok", "network_error", "close", "cancel")){
 			jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 		}
 		if(req.attribute("mobile")!=null){

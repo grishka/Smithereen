@@ -1,0 +1,15 @@
+{% extends "page" %}
+{% block content %}
+	<div class="heavyBoxWrap">
+		<div class="heavyBox">
+			<h2>{{ L('account_activation') }}</h2>
+			<div class="marginBefore">{{ L('account_inactive_confirm_email', {'address': email}) }}</div>
+			<div class="marginBefore buttonBar">
+				<a href="/account/resendConfirmationEmail?csrf={{ csrf }}" class="button flL" data-ajax-box>{{ L('resend_confirm_email') }}</a>
+				<a href="/account/changeEmailForm" class="button flL" data-ajax-box>{{ L('change_email_address') }}</a>
+				<div class="clear"></div>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+

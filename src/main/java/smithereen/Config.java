@@ -69,6 +69,7 @@ public class Config{
 	public static String serverPolicy;
 	public static String serverAdminEmail;
 	public static SignupMode signupMode=SignupMode.CLOSED;
+	public static boolean signupConfirmEmail;
 
 	public static String mailFrom;
 	public static String smtpServerAddress;
@@ -136,6 +137,7 @@ public class Config{
 					signupMode=SignupMode.valueOf(_signupMode);
 				}catch(IllegalArgumentException ignore){}
 			}
+			signupConfirmEmail="1".equals(dbValues.get("SignupConfirmEmail"));
 
 			smtpServerAddress=dbValues.getOrDefault("Mail_SMTP_ServerAddress", "127.0.0.1");
 			smtpPort=Utils.parseIntOrDefault(dbValues.get("Mail_SMTP_ServerPort"), 25);
