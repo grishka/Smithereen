@@ -362,7 +362,7 @@ public class GroupsController{
 			}
 
 			ZonedDateTime now=ZonedDateTime.now(timeZone);
-			Instant todayEnd=now.toInstant().plusNanos(now.until(ZonedDateTime.of(now.getYear(), now.getMonthValue(), now.getDayOfMonth()+1, 0, 0, 0, 0, timeZone), ChronoUnit.NANOS));
+			Instant todayEnd=now.toInstant().plusNanos(now.until(ZonedDateTime.of(now.getYear(), now.getMonthValue(), now.getDayOfMonth(), 23, 59, 59, 999999999, timeZone), ChronoUnit.NANOS)+1L);
 			Instant tomorrowEnd=todayEnd.plus(1, ChronoUnit.DAYS);
 			List<Integer> eventsToday=new ArrayList<>(), eventsTomorrow=new ArrayList<>();
 			for(Group g:events){
