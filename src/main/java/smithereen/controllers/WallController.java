@@ -64,10 +64,14 @@ public class WallController{
 			for(ActivityPubObject tag:post.tag){
 				if(tag instanceof Mention){
 					URI uri=((Mention) tag).href;
-					User mentionedUser=context.getObjectLinkResolver().resolve(uri, User.class, true, true, false);
-					if(post.mentionedUsers.isEmpty())
-						post.mentionedUsers=new HashSet<>();
-					post.mentionedUsers.add(mentionedUser);
+					try{
+						User mentionedUser=context.getObjectLinkResolver().resolve(uri, User.class, true, true, false);
+						if(post.mentionedUsers.isEmpty())
+							post.mentionedUsers=new HashSet<>();
+						post.mentionedUsers.add(mentionedUser);
+					}catch(Exception x){
+						LOG.warn("Error resolving mention for URI {}", uri, x);
+					}
 				}
 			}
 			if(!post.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.content)){
