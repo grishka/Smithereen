@@ -13,7 +13,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=24;
+	public static final int SCHEMA_VERSION=25;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -353,6 +353,20 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("CREATE INDEX `poll_id` ON `wall_posts` (`poll_id`)");
 			}
 			case 24 -> conn.createStatement().execute("ALTER TABLE `accounts` ADD `activation_info` json DEFAULT NULL");
+			case 25 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `signup_requests` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `email` varchar(200) NOT NULL,
+						  `first_name` varchar(100) NOT NULL,
+						  `last_name` varchar(100) DEFAULT NULL,
+						  `reason` text NOT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				conn.createStatement().execute("ALTER TABLE `signup_invitations` ADD `email` varchar(200) DEFAULT NULL, ADD `extra` json DEFAULT NULL, ADD `id` int unsigned NOT NULL AUTO_INCREMENT, ADD UNIQUE (`id`), ADD UNIQUE INDEX (`email`)");
+				conn.createStatement().execute("ALTER TABLE `accounts` ADD UNIQUE INDEX (`email`), ADD INDEX (`invited_by`)");
+			}
 		}
 	}
 }

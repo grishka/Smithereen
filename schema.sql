@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.0.27, for macos12.0 (arm64)
+-- MySQL dump 10.13  Distrib 8.0.28, for macos12.2 (arm64)
 --
 -- Host: localhost    Database: smithereen
 -- ------------------------------------------------------
--- Server version	8.0.27
+-- Server version	8.0.28
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 
 --
@@ -20,8 +20,11 @@ CREATE TABLE `accounts` (
   `preferences` text,
   `last_active` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `ban_info` text,
+  `activation_info` json DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
   KEY `user_id` (`user_id`),
+  KEY `invited_by` (`invited_by`),
   CONSTRAINT `accounts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -422,9 +425,28 @@ CREATE TABLE `signup_invitations` (
   `owner_id` int unsigned DEFAULT NULL,
   `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `signups_remaining` int unsigned NOT NULL,
+  `email` varchar(200) DEFAULT NULL,
+  `extra` json DEFAULT NULL,
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (`code`),
+  UNIQUE KEY `id` (`id`),
+  UNIQUE KEY `email` (`email`),
   KEY `owner_id` (`owner_id`),
   CONSTRAINT `signup_invitations_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `signup_requests`
+--
+
+CREATE TABLE `signup_requests` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `email` varchar(200) NOT NULL,
+  `first_name` varchar(100) NOT NULL,
+  `last_name` varchar(100) DEFAULT NULL,
+  `reason` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -500,4 +522,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2022-05-22 11:21:31
+-- Dump completed on 2022-07-29  5:01:59

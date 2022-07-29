@@ -28,18 +28,21 @@ import static smithereen.Utils.*;
 
 import smithereen.Mailer;
 import smithereen.Utils;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
 import smithereen.data.SessionInfo;
+import smithereen.data.SignupInvitation;
+import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
 import smithereen.storage.GroupStorage;
@@ -58,8 +61,6 @@ public class SettingsRoutes{
 
 	public static Object settings(Request req, Response resp, Account self) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings", req);
-		model.with("invitations", UserStorage.getInvites(self.id, true));
-		model.with("signupMode", Config.signupMode);
 		model.with("languages", Lang.list).with("selectedLang", Utils.lang(req));
 		Session s=req.session();
 		if(s.attribute("settings.passwordMessage")!=null){
@@ -92,7 +93,7 @@ public class SettingsRoutes{
 			return wrapError(req, resp, "err_access");
 		byte[] code=new byte[16];
 		new Random().nextBytes(code);
-		UserStorage.putInvite(self.id, code, 1);
+		UserStorage.putInvite(self.id, code, 1, null, null);
 		req.session().attribute("settings.inviteMessage", Utils.lang(req).get("invitation_created"));
 		resp.redirect("/settings/");
 		return "";
@@ -436,7 +437,7 @@ public class SettingsRoutes{
 					self.activationInfo.emailState=Account.ActivationInfo.EmailConfirmationState.CHANGE_PENDING;
 					self.activationInfo.newEmail=email;
 					SessionStorage.updateActivationInfo(self.id, self.activationInfo);
-					FloodControl.EMAIL_CONFIRM_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
+					FloodControl.EMAIL_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
 					Mailer.getInstance().sendEmailChange(req, self);
 					message=l.get("change_email_sent");
 				}else{
@@ -476,7 +477,7 @@ public class SettingsRoutes{
 	public static Object resendEmailConfirmation(Request req, Response resp, Account self){
 		if(self.activationInfo==null || self.activationInfo.emailState!=Account.ActivationInfo.EmailConfirmationState.CHANGE_PENDING)
 			throw new BadRequestException();
-		FloodControl.EMAIL_CONFIRM_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
+		FloodControl.EMAIL_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
 		Mailer.getInstance().sendEmailChange(req, self);
 		if(isAjax(req)){
 			Lang l=lang(req);
@@ -484,5 +485,101 @@ public class SettingsRoutes{
 		}
 		resp.redirect(back(req));
 		return "";
+	}
+
+	public static Object invites(Request req, Response resp, Account self){
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_invites", req).pageTitle(lang(req).get("my_invites"));
+		model.with("tab", "invites");
+		model.paginate(context(req).getUsersController().getUserInvites(self, offset(req), 100));
+		jsLangKey(req, "yes", "no");
+		String msg=req.session().attribute("invites.message");
+		if(msg!=null){
+			req.session().removeAttribute("invites.message");
+			model.with("message", msg);
+		}
+		return model;
+	}
+
+	public static Object createEmailInviteForm(Request req, Response resp, Account self){
+		if(!sessionInfo(req).permissions.canInviteNewUsers)
+			throw new UserActionNotAllowedException();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_email_invite_form", req);
+		return wrapForm(req, resp, "settings_email_invite_form", "/settings/invites/createEmailInvite", lang(req).get("invite_by_email"), "send", model);
+	}
+
+	public static Object createEmailInvite(Request req, Response resp, Account self){
+		if(!sessionInfo(req).permissions.canInviteNewUsers)
+			throw new UserActionNotAllowedException();
+
+		try{
+			String email=requireFormField(req, "email", "err_invalid_email");
+			String firstName=requireFormFieldLength(req, "first_name", 2, "err_name_too_short");
+			String lastName=req.queryParams("last_name");
+			boolean addFriend="on".equals(req.queryParams("add_friend"));
+			context(req).getUsersController().sendEmailInvite(req, self, email, firstName, lastName, addFriend);
+			req.session().attribute("invites.message", lang(req).get("email_invite_sent"));
+			if(isAjax(req))
+				return new WebDeltaResponse(resp).refresh();
+			resp.redirect(back(req));
+			return "";
+		}catch(UserErrorException x){
+			return wrapForm(req, resp, "settings_email_invite_form", "/settings/invites/createEmailInvite", lang(req).get("invite_by_email"), "send", "createEmailInvite", List.of("email", "first_name", "last_name", "add_friend"), null, lang(req).get(x.getMessage()));
+		}
+	}
+
+	public static Object resendEmailInvite(Request req, Response resp, Account self){
+		int id=safeParseInt(req.params(":id"));
+		if(id<=0)
+			throw new BadRequestException();
+		String msg;
+		try{
+			context(req).getUsersController().resendEmailInvite(req, self, id);
+			msg=lang(req).get("email_invite_resent");
+		}catch(UserErrorException x){
+			msg=lang(req).get(x.getMessage());
+		}
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).show("invitesMessage").setContent("invitesMessage", escapeHTML(msg));
+		req.session().attribute("invites.message", msg);
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object deleteInvite(Request req, Response resp, Account self){
+		int id=safeParseInt(req.params(":id"));
+		if(id<=0)
+			throw new BadRequestException();
+		SignupInvitation invite=context(req).getUsersController().getInvite(id);
+		if(invite==null || invite.ownerID!=self.id)
+			throw new ObjectNotFoundException();
+		context(req).getUsersController().deleteInvite(id);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object createInviteLinkForm(Request req, Response resp, Account self){
+		if(!sessionInfo(req).permissions.canInviteNewUsers)
+			throw new UserActionNotAllowedException();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_link_invite_form", req);
+		return wrapForm(req, resp, "settings_link_invite_form", "/settings/invites/createInviteLink", lang(req).get("invite_create_link_title"), "create", model);
+	}
+
+	public static Object createInviteLink(Request req, Response resp, Account self){
+		if(!sessionInfo(req).permissions.canInviteNewUsers)
+			throw new UserActionNotAllowedException();
+		int signupCount=Math.max(1, parseIntOrDefault(req.queryParams("signups"), 1));
+		String code=context(req).getUsersController().createInviteCode(self, signupCount, "on".equals(req.queryParams("add_friend")));
+		String link=UriBuilder.local().path("account", "register").queryParam("invite", code).build().toString();
+		req.session().attribute("invites.message", lang(req).get("invite_link_created")+"<br/><a herf=\"#\" onclick=\"copyText('"+link+"', '"+lang(req).get("link_copied")+"')\">"+lang(req).get("copy_link")+"</a>");
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object invitedUsers(Request req, Response resp, Account self){
+		return new RenderedTemplateResponse("settings_invited_users", req).paginate(context(req).getUsersController().getInvitedUsers(self, offset(req), 100)).pageTitle(lang(req).get("invited_people_title"));
 	}
 }

@@ -1,0 +1,11 @@
+<div class="tabbar">
+	<a href="/settings/invites" class="{{ tab=='invites' ? 'selected' : '' }}">{{ L('my_invites') }}</a>
+	<a href="/settings/invites/invitedUsers" class="{{ tab=='users' ? 'selected' : '' }}">{{ L('invited_users') }}</a>
+	{% if tab=='invites' and userPermissions.canInviteNewUsers %}
+	<span class="aux">
+		<a href="/settings/invites/createEmailInviteForm" data-ajax-box>{{ L('invite_by_email') }}</a>
+		|
+		<a href="/settings/invites/createInviteLinkForm" data-ajax-box>{{ L('invite_create_link') }}</a>
+	</span>
+	{% endif %}
+</div>

@@ -21,7 +21,7 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 			"u-url",
 			"mention", "hashtag", "invisible"
 	);
-	private static final Pattern NON_IDN_CHAR_REGEX=Pattern.compile("[^a-z\\d-]", Pattern.CASE_INSENSITIVE);
+	private static final Pattern NON_IDN_CHAR_REGEX=Pattern.compile("[^a-z\\d.:-]", Pattern.CASE_INSENSITIVE);
 
 	public MicroFormatAwareHTMLWhitelist(){
 		addTags("a", "b", "i", "u", "s", "code", "p", "em", "strong", "span", "sarcasm", "sub", "sup", "br", "pre");

@@ -15,7 +15,8 @@ import smithereen.exceptions.FloodControlViolationException;
  */
 public class FloodControl<K>{
 	public static final FloodControl<Account> PASSWORD_RESET=FloodControl.ofObjectKey(1, 10, TimeUnit.MINUTES, acc -> "account"+acc.id);
-	public static final FloodControl<String> EMAIL_CONFIRM_RESEND=FloodControl.ofStringKey(1, 10, TimeUnit.MINUTES);
+	public static final FloodControl<String> EMAIL_RESEND=FloodControl.ofStringKey(1, 10, TimeUnit.MINUTES);
+	public static final FloodControl<Account> EMAIL_INVITE=FloodControl.ofObjectKey(5, 1, TimeUnit.HOURS, acc->"account"+acc.id);
 
 	private long timeout;
 	private int count;

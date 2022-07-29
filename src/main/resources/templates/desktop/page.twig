@@ -45,6 +45,7 @@
 				<input type="text" id="qsearchField" placeholder="{{ L('search') }}" autocomplete="off" autocapitalize="off"/>
 				<div id="qsearchResults" style="display: none"></div>
 			</div>
+			{% if userPermissions.canInviteNewUsers %}<a href="/settings/invites" class="nav">{{ L('invite_users') }}</a>{% endif %}
 			<a href="/account/logout?csrf={{ csrf }}" class="nav">{{ L("log_out") }}</a>
 			{%endif%}
 		</td>

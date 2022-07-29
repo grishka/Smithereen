@@ -206,6 +206,17 @@ public class SmithereenApplication{
 			postWithCSRF("/updateEmail", SettingsRoutes::updateEmail);
 			getWithCSRF("/cancelEmailChange", SettingsRoutes::cancelEmailChange);
 			getWithCSRF("/resendEmailConfirmation", SettingsRoutes::resendEmailConfirmation);
+			path("/invites", ()->{
+				getLoggedIn("", SettingsRoutes::invites);
+				getLoggedIn("/createEmailInviteForm", SettingsRoutes::createEmailInviteForm);
+				postWithCSRF("/createEmailInvite", SettingsRoutes::createEmailInvite);
+				getWithCSRF("/:id/resendEmail", SettingsRoutes::resendEmailInvite);
+				getWithCSRF("/:id/delete", SettingsRoutes::deleteInvite);
+				postWithCSRF("/:id/delete", SettingsRoutes::deleteInvite);
+				getLoggedIn("/createInviteLinkForm", SettingsRoutes::createInviteLinkForm);
+				postWithCSRF("/createInviteLink", SettingsRoutes::createInviteLink);
+				getLoggedIn("/invitedUsers", SettingsRoutes::invitedUsers);
+			});
 
 			path("/admin", ()->{
 				getRequiringAccessLevel("", Account.AccessLevel.ADMIN, SettingsAdminRoutes::index);

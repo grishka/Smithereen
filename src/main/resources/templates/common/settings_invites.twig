@@ -1,0 +1,35 @@
+{% extends "page" %}
+{% block content %}
+{% include "settings_invites_tabbar" %}
+{% if not isMobile %}
+<div class="summaryWrap">
+	<div class="summary">{{ L('summary_sent_X_signup_invites', {'count': totalItems}) }}</div>
+	{% include "pagination" %}
+</div>
+{% endif %}
+<div class="singleColumn">
+	<div id="invitesMessage" style="{% if message is empty %}display: none{% endif %}" class="settingsMessage extraMarginBottom">{{ message | raw }}</div>
+{% for invite in items %}
+	<div class="friendsRow">
+		{% if invite.firstName is not empty %}
+		<b>{{ invite.firstName }}{% if invite.lastName is not empty %} {{ invite.lastName }}{% endif %}</b><br/>
+		{% endif %}
+		{{ L('invite_created_at', {'date': LD(invite.createdAt)}) }}<br/>
+		{% if invite.email is empty %}
+		{{ L('X_signups_remaining', {'count': invite.signupsRemaining}) }}<br/>
+		{{ L('invitation_code') }}: <code>{{ invite.code }}</code><br/>
+		<a href="#" onclick="copyText('https://{{ serverDomain }}/account/register?invite={{ invite.code }}', '{{ L('link_copied') }}')">{{ L('copy_link') }}</a>
+		{% else %}
+		{{ L('email') }}: {{ invite.email }}<br/>
+		<a href="/settings/invites/{{ invite.id }}/resendEmail?csrf={{ csrf }}" data-ajax data-ajax-show="inviteLoader{{ invite.id }}">{{ L('resend') }}</a>
+		{% endif %}
+		| <a href="/settings/invites/{{ invite.id }}/delete?csrf={{ csrf }}" data-confirm-action="/settings/invites/{{ invite.id }}/delete?csrf={{ csrf }}" data-confirm-title="{{ L('delete') }}" data-confirm-message="{{ L('confirm_delete_invite') }}">{{ L('delete') }}</a>
+		<div class="inlineLoader" style="display: none" id="inviteLoader{{ invite.id }}"></div>
+	</div>
+{% else %}
+	<div class="emptyState">{{ L('no_invites') }}</div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}
+

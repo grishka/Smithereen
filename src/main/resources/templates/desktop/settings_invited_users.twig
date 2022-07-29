@@ -1,0 +1,23 @@
+{# @pebvariable name="friendList" type="java.util.List<smithereen.data.User>" #}
+{# @pebvariable name="owner" type="smithereen.data.User" #}
+{# @pebvariable name="tab" type="String" #}
+{%extends "page"%}
+{%block content%}
+{% include 'settings_invites_tabbar' with {'tab': 'users'} %}
+<div class="summaryWrap">
+	<div class="summary">
+		{{ L("summary_invited_X_people", {'count': totalItems}) }}
+	</div>
+	{% include "pagination" %}
+</div>
+<div class="singleColumn">
+{% for friend in items %}
+	{% include "friends_row" with {'friend': friend} %}
+{% else %}
+<div class="emptyState">
+	{{ L('no_invited_users') }}
+</div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{%endblock%}

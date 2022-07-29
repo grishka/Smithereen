@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -58,6 +59,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FormValidationException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
@@ -223,6 +225,41 @@ public class Utils{
 			templateModel.setName("form_page");
 			return templateModel;
 		}
+	}
+
+	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, String formID, List<String> fieldNames, Function<String, String> fieldValueGetter, String message){
+		if(isAjax(req)){
+			WebDeltaResponse wdr=new WebDeltaResponse(resp);
+			if(StringUtils.isNotEmpty(message)){
+				wdr.keepBox().show("formMessage_"+formID).setContent("formMessage_"+formID, escapeHTML(message));
+			}
+			return wdr;
+		}
+		RenderedTemplateResponse model=new RenderedTemplateResponse(templateName, req);
+		if(StringUtils.isNotEmpty(message)){
+			model.with(formID+"Message", message);
+		}
+		if(fieldValueGetter==null){
+			fieldValueGetter=req::queryParams;
+		}
+		for(String name:fieldNames){
+			model.with(name, fieldValueGetter.apply(name));
+		}
+		return wrapForm(req, resp, templateName, formAction, title, buttonKey, model);
+	}
+
+	public static String requireFormField(Request req, String field, String errorKey){
+		String value=req.queryParams(field);
+		if(StringUtils.isEmpty(value))
+			throw new FormValidationException(lang(req).get(errorKey));
+		return value;
+	}
+
+	public static String requireFormFieldLength(Request req, String field, int minLength, String errorKey){
+		String value=requireFormField(req, field, errorKey);
+		if(value.length()<minLength)
+			throw new FormValidationException(lang(req).get(errorKey));
+		return value;
 	}
 
 	public static Locale localeForRequest(Request req){
@@ -422,6 +459,10 @@ public class Utils{
 
 	public static String escapeHTML(String s){
 		return HtmlEscape.escapeHtml4Xml(s);
+	}
+
+	public static String stripHTML(String s){
+		return new Cleaner(Whitelist.none()).clean(Jsoup.parseBodyFragment(s)).body().html();
 	}
 
 	public static boolean isMobileUserAgent(String ua){
@@ -752,6 +793,12 @@ public class Utils{
 			chars[i]=alphabet.charAt(rand.nextInt(alphabet.length()));
 		}
 		return new String(chars);
+	}
+
+	public static byte[] randomBytes(int length){
+		byte[] res=new byte[length];
+		rand.nextBytes(res);
+		return res;
 	}
 
 	public static String convertIdnToAsciiIfNeeded(String domain) throws IllegalArgumentException{

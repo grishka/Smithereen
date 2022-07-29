@@ -1,0 +1,7 @@
+{% import "forms" as form %}
+{{ form.start('createEmailInvite', createEmailInviteMessage) }}
+	{{ form.textInput('email', L('email'), email, {'type': 'email', 'required': true}) }}
+	{{ form.textInput('first_name', L('first_name'), firstName, {'maxlength': 100, 'required': true}) }}
+	{{ form.textInput('last_name', L('last_name'), lastName, {'maxlength': 100}) }}
+	{{ form.checkBox('add_friend', null, L('invite_add_friend'), true) }}
+{{ form.end() }}

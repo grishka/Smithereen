@@ -120,7 +120,7 @@ autoSizeTextArea(ge("{{ name }}"));
 			</div>
 		{% endif %}
 		<div class="radioButtonWrap">
-			<input type="radio" name="{{ name }}" id="{{ name }}" {{ value ? 'checked' : '' }}/>
+			<input type="checkbox" name="{{ name }}" id="{{ name }}" {{ value ? 'checked' : '' }}/>
 			<label for="{{ name }}">{{ title }}</label>
 		</div>
 		{% if options.explanation is not empty %}

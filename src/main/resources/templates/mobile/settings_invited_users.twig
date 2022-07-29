@@ -1,0 +1,32 @@
+{% extends "page" %}
+{% block content %}
+{% include 'settings_invites_tabbar' with {'tab': 'users'} %}
+<div class="singleColumn">
+{% for friend in items %}
+<table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
+	<tr valign="top">
+		<td width="50">
+			<a href="{{friend.profileURL}}">{{friend | pictureForAvatar('s')}}</a>
+		</td>
+		<td class="info"{% if cursomActions is empty %} valign="middle"{% endif %}>
+			<b><a href="{{friend.profileURL}}">{{friend.fullName}}</a></b>
+			{% if customActions is not empty %}
+			<div id="frowActions{{ friend.id }}">
+				<ul class="actionList">
+					{% for action in customActions %}
+					<li><a href="{{ action.href }}{{ friend.id }}"{{ action.ajax ? ' data-ajax' : '' }}>{{ action.title }}</a></li>
+					{% endfor %}
+				</ul>
+			</div>
+			{% endif %}
+		</td>
+	</tr>
+</table>
+{% else %}
+<div class="emptyState">
+	{{ L('no_invited_users') }}
+</div>
+{% endfor %}
+</div>
+{% include "pagination" %}
+{% endblock %}

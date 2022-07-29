@@ -1,0 +1,5 @@
+{% import "forms" as form %}
+{{ form.start('createInviteLink', createInviteLinkMessage) }}
+	{{ form.textInput('signups', L('invite_signup_count'), signups | default('1'), {'type': 'number', 'explanation': L('invite_signup_count_explain'), 'required': true}) }}
+	{{ form.checkBox('add_friend', null, L('invite_add_friend'), true) }}
+{{ form.end() }}

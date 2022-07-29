@@ -16,6 +16,11 @@
 	<li><a href="/account/login">{{ L('log_in') }}</a></li>
 	<li><a href="/account/register">{{ L('register') }}</a></li>
 	{%endif%}
+	{% if isMobile %}
+	<li class="separator"></li>
+	{% if userPermissions.canInviteNewUsers %}<li><a href="/settings/invites">{{ L('invite_users') }}</a></li>{% endif %}
+	<li><a href="/account/logout?csrf={{ csrf }}">{{ L('log_out') }}</a></li>
+	{% endif %}
 </ul>
 {% if birthdayUsers is not empty %}
 <div class="leftReminder">
