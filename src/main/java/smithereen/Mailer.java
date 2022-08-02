@@ -150,6 +150,24 @@ public class Mailer{
 		), l.getLocale());
 	}
 
+	public void sendSignupInvitation(Request req, Account self, String email, String code, String firstName, boolean isRequest){
+		Lang l=Utils.lang(req);
+		String link=UriBuilder.local().path("account", "register").queryParam("invite", code).build().toString();
+		String plaintext=Utils.stripHTML(l.get(isRequest ? "email_invite_body_start_approved" : "email_invite_body_start", Map.of(
+				"name", firstName,
+				"inviterName", self.user.getFullName(),
+				"serverName", Config.serverDisplayName
+		)));
+		plaintext+="\n\n"+l.get("email_invite_body_end_plain")+"\n\n"+link;
+		send(email, l.get(isRequest ? "email_invite_subject_approved" : "email_invite_subject", Map.of("serverName", Config.serverDisplayName)), plaintext, "signup_invitation", Map.of(
+				"name", firstName,
+				"inviterName", self.user.getFullName(),
+				"serverName", Config.serverDisplayName,
+				"inviteLink", link,
+				"isRequest", isRequest
+		), l.getLocale());
+	}
+
 	private void send(String to, String subject, String plaintext, String templateName, Map<String, Object> templateParams, Locale templateLocale){
 		try{
 			MimeMessage msg=new MimeMessage(session);

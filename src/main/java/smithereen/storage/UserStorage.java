@@ -37,7 +37,7 @@ import smithereen.data.EventReminder;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
-import smithereen.data.Invitation;
+import smithereen.data.SignupInvitation;
 import smithereen.data.PaginatedList;
 import smithereen.data.User;
 import smithereen.data.UserNotifications;
@@ -531,28 +531,33 @@ public class UserStorage{
 		}
 	}
 
-	public static List<Invitation> getInvites(int userID, boolean onlyValid) throws SQLException{
+	public static PaginatedList<SignupInvitation> getInvites(int userID, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM `signup_invitations` WHERE `owner_id`=?"+(onlyValid ? " AND `signups_remaining`>0" : "")+" ORDER BY `created` DESC");
-		stmt.setInt(1, userID);
-		ArrayList<Invitation> invitations=new ArrayList<>();
-		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				do{
-					invitations.add(Invitation.fromResultSet(res));
-				}while(res.next());
-			}
-		}
-		return invitations;
+		int total=new SQLQueryBuilder(conn)
+				.selectFrom("signup_invitations")
+				.count()
+				.where("owner_id=? AND signups_remaining>0", userID)
+				.executeAndGetInt();
+		List<SignupInvitation> res=new SQLQueryBuilder(conn)
+				.selectFrom("signup_invitations")
+				.allColumns()
+				.where("owner_id=? AND signups_remaining>0", userID)
+				.orderBy("`created` DESC")
+				.limit(count, offset)
+				.executeAsStream(SignupInvitation::fromResultSet)
+				.toList();
+		return new PaginatedList<>(res, total, offset, count);
 	}
 
-	public static void putInvite(int userID, byte[] code, int signups) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `signup_invitations` (`owner_id`, `code`, `signups_remaining`) VALUES (?, ?, ?)");
-		stmt.setInt(1, userID);
-		stmt.setBytes(2, code);
-		stmt.setInt(3, signups);
-		stmt.execute();
+	public static int putInvite(int userID, byte[] code, int signups, String email, String extra) throws SQLException{
+		return new SQLQueryBuilder()
+				.insertInto("signup_invitations")
+				.value("owner_id", userID)
+				.value("code", code)
+				.value("signups_remaining", signups)
+				.value("email", email)
+				.value("extra", extra)
+				.executeAndGetID();
 	}
 
 	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate bdate, String about) throws SQLException{

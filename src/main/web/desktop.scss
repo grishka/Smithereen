@@ -886,7 +886,7 @@ select{
 	border-bottom: solid 1px $tabBackground;
 	padding: 11px 10px 0;
 	height: 35px;
-	a{
+	>a{
 		display: block;
 		padding: 0 10px;
 		margin-right: 5px;
@@ -894,23 +894,19 @@ select{
 		line-height: 23px;
 		float: left;
 	}
-	a:hover, a:visited:hover{
+	>a:hover, >a:visited:hover{
 		text-decoration: none;
 		background: $blockBackground;
 	}
-	a.selected, .a.selected:hover, a.selected:visited:hover{
+	>a.selected, >a.selected:hover, >a.selected:visited:hover{
 		background: $tabBackground;
 		color: $textOnAccent;
 	}
-	a.aux{
+	.aux{
 		float: right;
 		padding: 0;
 		margin-right: 0;
-		border-radius: 0;
-		&:hover, &:visited:hover{
-			background: none;
-			text-decoration: underline;
-		}
+		line-height: 23px;
 	}
 }
 
@@ -1090,6 +1086,9 @@ select{
 	border: solid 1px $alertBorder;
 	background: $alertBackground;
 	color: $text;
+	&.extraMarginBottom{
+		margin-bottom: 15px;
+	}
 }
 
 .profileBelowAva{

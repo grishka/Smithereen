@@ -1,12 +1,17 @@
 package smithereen.util;
 
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import smithereen.Utils;
 import smithereen.data.Account;
 import smithereen.exceptions.FloodControlViolationException;
 
@@ -15,7 +20,9 @@ import smithereen.exceptions.FloodControlViolationException;
  */
 public class FloodControl<K>{
 	public static final FloodControl<Account> PASSWORD_RESET=FloodControl.ofObjectKey(1, 10, TimeUnit.MINUTES, acc -> "account"+acc.id);
-	public static final FloodControl<String> EMAIL_CONFIRM_RESEND=FloodControl.ofStringKey(1, 10, TimeUnit.MINUTES);
+	public static final FloodControl<String> EMAIL_RESEND=FloodControl.ofStringKey(1, 10, TimeUnit.MINUTES);
+	public static final FloodControl<Account> EMAIL_INVITE=FloodControl.ofObjectKey(5, 1, TimeUnit.HOURS, acc->"account"+acc.id);
+	public static final FloodControl<InetAddress> OPEN_SIGNUP_OR_INVITE_REQUEST=FloodControl.ofIPKey(25, 5, TimeUnit.MINUTES);
 
 	private long timeout;
 	private int count;
@@ -34,6 +41,21 @@ public class FloodControl<K>{
 
 	public static <K> FloodControl<K> ofObjectKey(int count, long time, TimeUnit unit, Function<K, String> keyFunction){
 		return new FloodControl<K>(count, time, unit, keyFunction);
+	}
+
+	public static FloodControl<InetAddress> ofIPKey(int count, long time, TimeUnit unit){
+		return new FloodControl<>(count, time, unit, ip->{
+			if(ip instanceof Inet4Address ipv4){
+				return ipv4.getHostAddress();
+			}else if(ip instanceof Inet6Address ipv6){
+				// this may or may not be a cursed way of extracting a /64 subnet prefix
+				byte[] prefix=new byte[8];
+				System.arraycopy(ipv6.getAddress(), 0, prefix, 0, 8);
+				return Utils.byteArrayToHexString(prefix);
+			}else{
+				throw new IllegalArgumentException();
+			}
+		});
 	}
 
 	private ActionTracker tracker(K key){

@@ -24,44 +24,16 @@
 		{{ form.footer(L('save')) }}
 	{{ form.end() }}
 </form>
-{%if signupMode=='INVITE_ONLY' or (userPermissions.serverAccessLevel=='ADMIN' and signupMode!='OPEN')%}
-<form action="/settings/createInvite?csrf={{ csrf }}" method="post">
-	<h2>{{L('invitations')}}</h2>
-	{% if inviteMessage is not null %}
-		<div class="settingsMessage">{{ inviteMessage }}</div>
-	{% endif %}
-	<table class="dataTable smallTable padAround">
-		<tr class="tableHeader">
-			<th>{{L('invitation_code')}}</th>
-			<th>{{L('created')}}</th>
-		</tr>
-{%for invite in invitations%}
-		<tr>
-			<td><code><a href="/account/register?invite={{invite.code}}">{{invite.code}}</a></code></td>
-			<td align="center">{{LD(invite.createdAt)}}</td>
-		</tr>
-{%endfor%}
-{%if invitations.empty%}
-		<tr>
-			<td align="center" colspan="2"><br/><br/>{{L('no_invitations')}}<br/><br/></td>
-		</tr>
-{%endif%}
-	</table>
-	{{ form.start("invitations") }}
-	{{ form.footer(L('create_invitation')) }}
+<form action="/settings/setLanguage?csrf={{ csrf }}" method="post">
+	<h2>{{L('language')}}</h2>
+	{{ form.start("language") }}
+		{% set options=[] %}
+		{% for lang in languages %}
+			{% set _=options.add({'value': lang.locale.toLanguageTag(), 'label': lang.name, 'selected': selectedLang==lang}) %}
+		{% endfor %}
+		{{ form.select('lang', '', options) }}
+		{{ form.footer(L('save')) }}
 	{{ form.end() }}
 </form>
-{%endif%}
-	<form action="/settings/setLanguage?csrf={{ csrf }}" method="post">
-		<h2>{{L('language')}}</h2>
-		{{ form.start("language") }}
-			{% set options=[] %}
-			{% for lang in languages %}
-				{% set _=options.add({'value': lang.locale.toLanguageTag(), 'label': lang.name, 'selected': selectedLang==lang}) %}
-			{% endfor %}
-			{{ form.select('lang', '', options) }}
-			{{ form.footer(L('save')) }}
-		{{ form.end() }}
-	</form>
 </div>
 {%endblock%}

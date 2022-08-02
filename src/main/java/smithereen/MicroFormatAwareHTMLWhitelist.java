@@ -4,10 +4,14 @@ import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Element;
 import org.jsoup.safety.Whitelist;
 
+import java.net.IDN;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
+
+import smithereen.data.UriBuilder;
 
 @SuppressWarnings("deprecation")
 public class MicroFormatAwareHTMLWhitelist extends Whitelist{
@@ -17,6 +21,7 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 			"u-url",
 			"mention", "hashtag", "invisible"
 	);
+	private static final Pattern NON_IDN_CHAR_REGEX=Pattern.compile("[^a-z\\d.:-]", Pattern.CASE_INSENSITIVE);
 
 	public MicroFormatAwareHTMLWhitelist(){
 		addTags("a", "b", "i", "u", "s", "code", "p", "em", "strong", "span", "sarcasm", "sub", "sup", "br", "pre");
@@ -32,8 +37,13 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 			if(attr.getKey().equals("href") && super.isSafeAttribute(tagName, el, attr)){
 				try{
 					URI uri=new URI(attr.getValue());
-					if(uri.getHost()==null)
+					if(uri.getAuthority()==null)
 						return false;
+					String authority=uri.getAuthority();
+					if(NON_IDN_CHAR_REGEX.matcher(authority).find()){
+						uri=new UriBuilder(uri).authority(IDN.toASCII(authority)).build();
+						attr.setValue(uri.toString());
+					}
 //					if(!Config.isLocal(uri)){
 //						el.attr("target", "_blank");
 //					}

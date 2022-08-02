@@ -1,5 +1,6 @@
 package smithereen.storage;
 
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -201,6 +202,13 @@ public class SQLQueryBuilder{
 
 	public <T> Stream<T> executeAsStream(ResultSetDeserializerFunction<T> creator) throws SQLException{
 		return DatabaseUtils.resultSetToObjectStream(createStatement().executeQuery(), creator);
+	}
+
+	@Nullable
+	public <T> T executeAndGetSingleObject(ResultSetDeserializerFunction<T> creator) throws SQLException{
+		try(PreparedStatement stmt=createStatement(); ResultSet res=stmt.executeQuery()){
+			return res.next() ? creator.deserialize(res) : null;
+		}
 	}
 
 	public int executeAndGetInt() throws SQLException{

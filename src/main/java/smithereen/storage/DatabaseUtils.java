@@ -79,6 +79,12 @@ public class DatabaseUtils{
 		}
 	}
 
+	public static void runWithUniqueUsername(DatabaseRunnable action) throws SQLException{
+		synchronized(UNIQUE_USERNAME_LOCK){
+			action.run();
+		}
+	}
+
 	public static int insertAndGetID(PreparedStatement stmt) throws SQLException{
 		stmt.execute();
 		try(ResultSet keys=stmt.getGeneratedKeys()){

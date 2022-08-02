@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.data.Account;
+import smithereen.data.AdminNotifications;
 import smithereen.data.BirthdayReminder;
 import smithereen.data.EventReminder;
 import smithereen.data.SessionInfo;
@@ -85,6 +86,11 @@ public class Templates{
 					}
 				}catch(SQLException x){
 					throw new InternalServerErrorException(x);
+				}
+
+				if(info.permissions.serverAccessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal()){
+					model.with("serverSignupMode", Config.signupMode);
+					model.with("adminNotifications", AdminNotifications.getInstance(req));
 				}
 			}
 		}

@@ -10,6 +10,7 @@ public class UserPermissions{
 	public int userID;
 	public HashMap<Integer, Group.AdminLevel> managedGroups=new HashMap<>();
 	public Account.AccessLevel serverAccessLevel;
+	public boolean canInviteNewUsers;
 
 	public UserPermissions(Account account){
 		userID=account.user.id;

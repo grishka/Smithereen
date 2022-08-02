@@ -1,0 +1,9 @@
+{% extends "page" %}
+{% block content %}
+	{{ L(isRequest ? 'email_invite_body_start_approved' : 'email_invite_body_start', {'name': name, 'inviterName': inviterName, 'serverName': serverName}) }}<br/>
+	{{ L('email_invite_body_end_html') }}
+	<center style="padding: 20px 0;">
+		<a href="{{ inviteLink }}" style="text-decoration: none; background-color: #4E6C1A; padding: 10px 15px; font-weight: bold; color: #FFFFFF; border-radius: 5px; display: inline-block;">{{ L('begin_registration') }}</a>
+	</center>
+{% endblock %}
+

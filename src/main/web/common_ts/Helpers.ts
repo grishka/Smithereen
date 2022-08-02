@@ -450,7 +450,14 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 		if(link.dataset.ajaxShow!=undefined)
 			ge(link.dataset.ajaxShow).show();
 		link.classList.add("ajaxLoading");
-		ajaxGetAndApplyActions(link.href);
+		var done=()=>{
+			if(link.dataset.ajaxHide!=undefined)
+				ge(link.dataset.ajaxHide).show();
+			if(link.dataset.ajaxShow!=undefined)
+				ge(link.dataset.ajaxShow).hide();
+			link.classList.remove("ajaxLoading");
+		};
+		ajaxGetAndApplyActions(link.href, done, done);
 		return true;
 	}
 	if(link.dataset.ajaxBox!=undefined){
@@ -833,4 +840,30 @@ function doneEditingPost(id:number){
 function cancelEditingPost(id:number){
 	doneEditingPost(id);
 	ge("postInner"+id).show();
+}
+
+function copyText(text:string, doneMsg:string){
+	if(!navigator.clipboard){
+		var ta=ce("textarea", {value: text});
+		ta.style.position="fixed";
+		ta.style.left=ta.style.top=ta.style.width=ta.style.height="0";
+		document.body.appendChild(ta);
+		ta.focus();
+		ta.select();
+		try{
+			document.execCommand("copy");
+			new MessageBox("", doneMsg, lang("close")).show();
+		}catch(err){
+			new MessageBox(lang("error"), err.toString(), lang("close")).show();
+		}
+		document.body.removeChild(ta);
+		return;
+	}
+
+	navigator.clipboard.writeText(text).then(()=>{
+		// TODO use popup notifications when these become a thing
+		new MessageBox("", doneMsg, lang("close")).show();
+	}, (err)=>{
+		new MessageBox(lang("error"), err.toString(), lang("close")).show();
+	});
 }

@@ -13,6 +13,7 @@ import smithereen.data.Account;
 import smithereen.data.PaginatedList;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
@@ -278,5 +279,28 @@ public class SettingsAdminRoutes{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public static Object signupRequests(Request req, Response resp, Account self){
+		if(isMobile(req))
+			return null;
+
+		return new RenderedTemplateResponse("admin_signup_requests", req).paginate(context(req).getUsersController().getSignupInviteRequests(offset(req), 50)).pageTitle(lang(req).get("signup_requests_title"));
+	}
+
+	public static Object respondToSignupRequest(Request req, Response resp, Account self){
+		if(req.queryParams("accept")==null && req.queryParams("decline")==null)
+			throw new BadRequestException();
+		boolean accept=req.queryParams("accept")!=null;
+		int id=safeParseInt(req.params(":id"));
+		if(id<=0)
+			throw new ObjectNotFoundException();
+
+		if(accept){
+
+		}else{
+			context(req).getUsersController().deleteSignupInviteRequest(id);
+		}
+		return null;
 	}
 }

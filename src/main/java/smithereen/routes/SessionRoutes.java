@@ -4,6 +4,7 @@ import com.mitchellbosecke.pebble.extension.escaper.SafeString;
 
 import java.sql.SQLException;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -14,10 +15,12 @@ import smithereen.Utils;
 import smithereen.data.Account;
 import smithereen.data.EmailCode;
 import smithereen.data.SessionInfo;
+import smithereen.data.SignupInvitation;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.storage.DatabaseUtils;
@@ -155,23 +158,27 @@ public class SessionRoutes{
 			return regError(req, "err_name_too_short");
 		if(SessionStorage.getAccountByEmail(email)!=null)
 			return regError(req, "err_reg_email_taken");
-		if(Config.signupMode!=Config.SignupMode.OPEN){
-			if(StringUtils.isEmpty(invite))
-				invite=req.queryParams("_invite");
-			if(StringUtils.isEmpty(invite) || !invite.matches("[A-Fa-f0-9]{32}"))
+		SignupInvitation invitation=null;
+		if(StringUtils.isEmpty(invite))
+			invite=req.queryParams("_invite");
+		if(Config.signupMode!=Config.SignupMode.OPEN || StringUtils.isNotEmpty(invite)){
+			if(StringUtils.isEmpty(invite) || !invite.matches("^[A-Fa-f0-9]{32}$"))
+				return regError(req, "err_invalid_invitation");
+			invitation=context(req).getUsersController().getInvite(invite);
+			if(invitation==null)
 				return regError(req, "err_invalid_invitation");
 		}
 
 		User.Gender gender=lang(req).detectGenderForName(first, last, null);
 
 		SessionStorage.SignupResult res;
-		if(Config.signupMode==Config.SignupMode.OPEN)
+		if(Config.signupMode==Config.SignupMode.OPEN && invitation==null)
 			res=SessionStorage.registerNewAccount(username, password, email, first, last, gender);
 		else
 			res=SessionStorage.registerNewAccount(username, password, email, first, last, gender, invite);
 		if(res==SessionStorage.SignupResult.SUCCESS){
 			Account acc=Objects.requireNonNull(SessionStorage.getAccountForUsernameAndPassword(username, password));
-			if(Config.signupConfirmEmail){
+			if(Config.signupConfirmEmail && (invitation==null || StringUtils.isEmpty(invitation.email) || !email.equalsIgnoreCase(invitation.email))){
 				Account.ActivationInfo info=new Account.ActivationInfo();
 				info.emailState=Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED;
 				info.emailConfirmationKey=Mailer.generateConfirmationKey();
@@ -194,13 +201,26 @@ public class SessionRoutes{
 		if(redirectIfLoggedIn(req, resp))
 			return "";
 
-		if(Config.signupMode==Config.SignupMode.CLOSED && StringUtils.isEmpty(req.queryParams("invite")))
+		String invite=req.queryParams("invite");
+		if(Config.signupMode==Config.SignupMode.CLOSED && StringUtils.isEmpty(invite))
 			return wrapError(req, resp, "signups_closed");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("register", req);
 		model.with("signupMode", Config.signupMode);
-		String invite=req.queryParams("invite");
-		if(StringUtils.isNotEmpty(invite))
-			model.with("preFilledInvite", invite);
+		if(StringUtils.isNotEmpty(invite)){
+			SignupInvitation inv=context(req).getUsersController().getInvite(invite);
+			if(inv!=null){
+				model.with("preFilledInvite", invite);
+				if(StringUtils.isNotEmpty(inv.email)){
+					model.with("email", inv.email);
+				}
+				if(StringUtils.isNotEmpty(inv.firstName)){
+					model.with("first_name", inv.firstName);
+					if(StringUtils.isNotEmpty(inv.lastName)){
+						model.with("last_name", inv.lastName);
+					}
+				}
+			}
+		}
 		model.with("title", lang(req).get("register"));
 		return model;
 	}
@@ -304,7 +324,7 @@ public class SessionRoutes{
 	public static Object resendEmailConfirmation(Request req, Response resp, Account self){
 		if(self.getUnconfirmedEmail()==null)
 			throw new BadRequestException();
-		FloodControl.EMAIL_CONFIRM_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
+		FloodControl.EMAIL_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
 		Mailer.getInstance().sendAccountActivation(req, self);
 		Lang l=lang(req);
 		String msg=l.get("email_confirmation_resent", Map.of("address", escapeHTML(self.getUnconfirmedEmail()))).replace("\n", "<br/>");
@@ -343,7 +363,7 @@ public class SessionRoutes{
 			SessionStorage.updateEmail(self.id, email);
 			self.email=email;
 
-			FloodControl.EMAIL_CONFIRM_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
+			FloodControl.EMAIL_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
 			Mailer.getInstance().sendAccountActivation(req, self);
 
 			if(isAjax(req))
@@ -373,5 +393,25 @@ public class SessionRoutes{
 			throw new InternalServerErrorException(x);
 		}
 		return new RenderedTemplateResponse("email_confirm_success", req).with("activated", state==Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED);
+	}
+
+	public static Object requestSignupInvite(Request req, Response resp){
+		if(Config.signupMode!=Config.SignupMode.MANUAL_APPROVAL){
+			throw new UserActionNotAllowedException();
+		}
+		try{
+			String email=requireFormField(req, "email", "err_invalid_email");
+			if(!isValidEmail(email))
+				throw new UserErrorException("err_invalid_email");
+			String firstName=requireFormField(req, "first_name", "err_name_too_short");
+			String lastName=req.queryParams("last_name");
+			if(StringUtils.isEmpty(lastName))
+				lastName=null;
+			String reason=requireFormField(req, "reason", "err_request_invite_reason_empty");
+			context(req).getUsersController().requestSignupInvite(req, firstName, lastName, email, reason);
+			return new RenderedTemplateResponse("generic_message", req).with("message", lang(req).get("signup_request_submitted"));
+		}catch(UserErrorException x){
+			return wrapForm(req, resp, "register_form_request_invite", "/account/requestInvite", lang(req).get("signup_title"), "request_invitation", "requestInvite", List.of("first_name", "last_name", "email", "reason"), req::queryParams, lang(req).get(x.getMessage()));
+		}
 	}
 }
