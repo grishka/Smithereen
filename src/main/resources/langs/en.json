@@ -572,5 +572,20 @@
   "summary_invited_X_people": "You've invited {count, plural, =0 {no one} one {# person} other {# people}} to this server",
   "no_invited_users": "No one signed up using your invitations",
   "resend": "Resend",
-  "invited_people_title": "People you invited"
+  "invited_people_title": "People you invited",
+  "request_invitation": "Request an invitation",
+  "request_invitation_reason": "Why would you like to join us",
+  "request_invitation_reason_explain": "This will help us review your application.",
+  "manual_signup_approval_explain": "Signups on this server are closed, but you can apply for an invitation. If the server staff approves your application, you will receive an invitation on the email you specify here.",
+  "signup_title": "Sign up",
+  "index_welcome": "Welcome!",
+  "err_request_invite_reason_empty": "Please specify why you would like to join",
+  "signup_request_submitted": "You have requested an invitation to join this server. If the server staff approves your application, you will receive an invitation on the email you specified.",
+  "menu_signup_requests": "Signup Requests",
+  "summary_X_signup_requests": "{count, plural, =0 {No requests} one {# request} other {# requests}} to sign up",
+  "no_signup_requests": "There are no unreviewed signup requests.",
+  "signup_requests_title": "Signup requests",
+  "signup_request_sent_at": "Sent",
+  "delete_signup_request": "Delete request",
+  "signup_request_deleted": "Request deleted"
 }

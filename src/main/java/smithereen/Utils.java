@@ -22,9 +22,11 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.IDN;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.net.UnknownHostException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -903,6 +905,21 @@ public class Utils{
 			}
 		}
 		return root.html();
+	}
+
+	public static InetAddress getRequestIP(Request req){
+		String forwardedFor=req.headers("X-Forwarded-For");
+		String ip;
+		if(StringUtils.isNotEmpty(forwardedFor)){
+			ip=forwardedFor.split(",")[0].trim();
+		}else{
+			ip=req.ip();
+		}
+		try{
+			return InetAddress.getByName(ip);
+		}catch(UnknownHostException e){
+			throw new RuntimeException(e); // should never happen
+		}
 	}
 
 	public interface MentionCallback{

@@ -2,9 +2,7 @@ package smithereen.controllers;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -15,6 +13,7 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.PaginatedList;
 import smithereen.data.SignupInvitation;
+import smithereen.data.SignupRequest;
 import smithereen.data.User;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -90,7 +89,7 @@ public class UsersController{
 		}
 	}
 
-	public void sendEmailInvite(Request req, Account self, String email, String firstName, String lastName, boolean addFriend){
+	public void sendEmailInvite(Request req, Account self, String email, String firstName, String lastName, boolean addFriend, int _requestID){
 		try{
 			if(!Utils.isValidEmail(email))
 				throw new UserErrorException("err_invalid_email");
@@ -104,10 +103,20 @@ public class UsersController{
 				if(self.accessLevel!=Account.AccessLevel.ADMIN){
 					FloodControl.EMAIL_INVITE.incrementOrThrow(self);
 				}
+				int requestID=_requestID;
+				if(requestID==0){
+					SignupRequest sr=SessionStorage.getInviteRequestByEmail(email);
+					if(sr!=null){
+						requestID=sr.id;
+					}
+				}
 				byte[] code=Utils.randomBytes(16);
 				String codeStr=Utils.byteArrayToHexString(code);
-				UserStorage.putInvite(self.id, code, 1, email, SignupInvitation.getExtra(!addFriend, firstName, lastName));
-				Mailer.getInstance().sendSignupInvitation(req, self, email, codeStr, firstName);
+				UserStorage.putInvite(self.id, code, 1, email, SignupInvitation.getExtra(!addFriend, firstName, lastName, requestID>0));
+				Mailer.getInstance().sendSignupInvitation(req, self, email, codeStr, firstName, requestID>0);
+				if(requestID>0){
+					deleteSignupInviteRequest(requestID);
+				}
 			});
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -122,7 +131,7 @@ public class UsersController{
 			if(self.accessLevel!=Account.AccessLevel.ADMIN){
 				FloodControl.EMAIL_RESEND.incrementOrThrow(invite.email);
 			}
-			Mailer.getInstance().sendSignupInvitation(req, self, invite.email, invite.code, invite.firstName);
+			Mailer.getInstance().sendSignupInvitation(req, self, invite.email, invite.code, invite.firstName, invite.fromRequest);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -163,7 +172,7 @@ public class UsersController{
 	public String createInviteCode(Account self, int signupCount, boolean addFriend){
 		try{
 			byte[] code=Utils.randomBytes(16);
-			UserStorage.putInvite(self.id, code, signupCount, null, SignupInvitation.getExtra(!addFriend, null, null));
+			UserStorage.putInvite(self.id, code, signupCount, null, SignupInvitation.getExtra(!addFriend, null, null, false));
 			return Utils.byteArrayToHexString(code);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -173,6 +182,55 @@ public class UsersController{
 	public PaginatedList<User> getInvitedUsers(Account self, int offset, int count){
 		try{
 			return SessionStorage.getInvitedUsers(self.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void requestSignupInvite(Request req, String firstName, String lastName, String email, String reason){
+		try{
+			DatabaseUtils.runWithUniqueUsername(()->{
+				if(SessionStorage.getAccountByEmail(email)!=null || SessionStorage.isThereInviteRequestWithEmail(email) || SessionStorage.isEmailInvited(email))
+					throw new UserErrorException("err_reg_email_taken");
+				FloodControl.OPEN_SIGNUP_OR_INVITE_REQUEST.incrementOrThrow(Utils.getRequestIP(req));
+				SessionStorage.putInviteRequest(email, firstName, lastName, reason);
+			});
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getSignupInviteRequestCount(){
+		try{
+			return SessionStorage.getInviteRequestCount();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<SignupRequest> getSignupInviteRequests(int offset, int count){
+		try{
+			return SessionStorage.getInviteRequests(offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteSignupInviteRequest(int id){
+		try{
+			SessionStorage.deleteInviteRequest(id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void acceptSignupInviteRequest(Request req, Account self, int id){
+		try{
+			SignupRequest sr=SessionStorage.getInviteRequest(id);
+			if(sr==null)
+				throw new ObjectNotFoundException();
+
+			sendEmailInvite(req, self, sr.email, sr.firstName, sr.lastName, false, id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

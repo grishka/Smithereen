@@ -4,6 +4,7 @@ import com.mitchellbosecke.pebble.extension.escaper.SafeString;
 
 import java.sql.SQLException;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -19,6 +20,7 @@ import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.storage.DatabaseUtils;
@@ -391,5 +393,25 @@ public class SessionRoutes{
 			throw new InternalServerErrorException(x);
 		}
 		return new RenderedTemplateResponse("email_confirm_success", req).with("activated", state==Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED);
+	}
+
+	public static Object requestSignupInvite(Request req, Response resp){
+		if(Config.signupMode!=Config.SignupMode.MANUAL_APPROVAL){
+			throw new UserActionNotAllowedException();
+		}
+		try{
+			String email=requireFormField(req, "email", "err_invalid_email");
+			if(!isValidEmail(email))
+				throw new UserErrorException("err_invalid_email");
+			String firstName=requireFormField(req, "first_name", "err_name_too_short");
+			String lastName=req.queryParams("last_name");
+			if(StringUtils.isEmpty(lastName))
+				lastName=null;
+			String reason=requireFormField(req, "reason", "err_request_invite_reason_empty");
+			context(req).getUsersController().requestSignupInvite(req, firstName, lastName, email, reason);
+			return new RenderedTemplateResponse("generic_message", req).with("message", lang(req).get("signup_request_submitted"));
+		}catch(UserErrorException x){
+			return wrapForm(req, resp, "register_form_request_invite", "/account/requestInvite", lang(req).get("signup_title"), "request_invitation", "requestInvite", List.of("first_name", "last_name", "email", "reason"), req::queryParams, lang(req).get(x.getMessage()));
+		}
 	}
 }

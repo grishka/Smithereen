@@ -1,0 +1,44 @@
+{# @pebvariable name="items" type="java.util.List<smithereen.data.SignupRequest>" #}
+{%extends "page"%}
+{%block content%}
+<div class="summaryWrap">
+	<div class="summary">{{ L('summary_X_signup_requests', {'count': totalItems}) }}</div>
+	{% include "pagination" %}
+</div>
+<div class="singleColumn">
+	{% for req in items %}
+	<table width="100%" class="friendsRow noBorderSpacing">
+		<tr>
+			<td width="100" valign="top">
+				<span class="ava avaPlaceholder sizeM" style="width: 100px;height: 100px"></span>
+			</td>
+			<td class="info" valign="top">
+				<div class="infoInner">
+					<div class="grayText">{{ L('name') }}:</div>
+					<div>{{ req.fullName }}</div>
+					<div class="grayText">{{ L('email') }}:</div>
+					<div>{{ req.email }}</div>
+					<div class="grayText">{{ L('signup_request_sent_at') }}:</div>
+					<div>{{ LD(req.createdAt) }}</div>
+					<div class="grayText">{{ L('message') }}:</div>
+					<div>{{ req.reason }}</div>
+					<div class="unlabeled">
+						<form action="/settings/admin/signupRequests/{{ req.id }}/respond" method="post" data-ajax>
+							<input type="hidden" name="csrf" value="{{csrf}}"/>
+							<div id="signupReqBtns{{ req.id }}" class="buttons">
+								<input type="submit" name="accept" value="{{L('send_invitation')}}"/>
+								<input type="submit" name="decline" value="{{L('delete_signup_request')}}" class="tertiary"/>
+							</div>
+						</form>
+					</div>
+					</div>
+				</div>
+			</td>
+		</tr>
+	</table>
+	{% else %}
+	<div class="emptyState">{{L('no_signup_requests')}}</div>
+	{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{%endblock%}

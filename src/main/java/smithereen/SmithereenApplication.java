@@ -183,6 +183,7 @@ public class SmithereenApplication{
 			getLoggedIn("/changeEmailForm", SessionRoutes::changeEmailForm);
 			postWithCSRF("/changeEmail", SessionRoutes::changeEmail);
 			getLoggedIn("/activate", SessionRoutes::activateAccount);
+			post("/requestInvite", SessionRoutes::requestSignupInvite);
 		});
 
 		path("/settings", ()->{
@@ -233,6 +234,8 @@ public class SmithereenApplication{
 				postRequiringAccessLevelWithCSRF("/users/ban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::banUser);
 				postRequiringAccessLevelWithCSRF("/users/unban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::unbanUser);
 				postRequiringAccessLevelWithCSRF("/users/activate", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::activateAccount);
+				getRequiringAccessLevel("/signupRequests", Account.AccessLevel.ADMIN, SettingsAdminRoutes::signupRequests);
+				postRequiringAccessLevelWithCSRF("/signupRequests/:id/respond", Account.AccessLevel.ADMIN, SettingsAdminRoutes::respondToSignupRequest);
 			});
 		});
 
@@ -596,7 +599,8 @@ public class SmithereenApplication{
 		return new RenderedTemplateResponse("index", req).with("title", Config.serverDisplayName)
 				.with("signupMode", Config.signupMode)
 				.with("serverDisplayName", Config.serverDisplayName)
-				.with("serverDescription", Config.serverDescription);
+				.with("serverDescription", Config.serverDescription)
+				.addNavBarItem(Utils.lang(req).get("index_welcome"));
 	}
 
 	private static Object methodNotAllowed(Request req, Response resp){

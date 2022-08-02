@@ -14,6 +14,7 @@
 			{{form.select('signup_mode', L('admin_signup_mode'), [
 				{'value': 'OPEN', 'label': L('admin_signup_mode_open'), 'selected': signupMode=='OPEN'},
 				{'value': 'INVITE_ONLY', 'label': L('admin_signup_mode_invite'), 'selected': signupMode=='INVITE_ONLY'},
+				{'value': 'MANUAL_APPROVAL', 'label': L('admin_signup_mode_approval'), 'selected': signupMode=='MANUAL_APPROVAL'},
 				{'value': 'CLOSED', 'label': L('admin_signup_mode_closed'), 'selected': signupMode=='CLOSED'}
 			], {'explanation': L('admin_signup_mode_explain')})}}
 			{{ form.checkBox('signup_confirm_email', null, L('admin_require_email_confirm'), signupConfirmEmail) }}

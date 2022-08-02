@@ -15,7 +15,7 @@ public class SignupInvitation{
 	public int signupsRemaining;
 	public int ownerID;
 
-	public boolean noAddFriend;
+	public boolean noAddFriend, fromRequest;
 	public String firstName, lastName;
 
 	public static SignupInvitation fromResultSet(ResultSet res) throws SQLException{
@@ -32,6 +32,7 @@ public class SignupInvitation{
 			inv.noAddFriend=extra.noAddFriend;
 			inv.firstName=extra.firstName;
 			inv.lastName=extra.lastName;
+			inv.fromRequest=extra.fromRequest;
 		}
 		return inv;
 	}
@@ -44,29 +45,33 @@ public class SignupInvitation{
 				", createdAt="+createdAt+
 				", email='"+email+'\''+
 				", signupsRemaining="+signupsRemaining+
+				", ownerID="+ownerID+
 				", noAddFriend="+noAddFriend+
+				", fromRequest="+fromRequest+
 				", firstName='"+firstName+'\''+
 				", lastName='"+lastName+'\''+
 				'}';
 	}
 
-	public static String getExtra(boolean noAddFriend, String firstName, String lastName){
-		return Utils.gson.toJson(new ExtraInfo(noAddFriend, firstName, lastName));
+	public static String getExtra(boolean noAddFriend, String firstName, String lastName, boolean fromRequest){
+		return Utils.gson.toJson(new ExtraInfo(noAddFriend, firstName, lastName, fromRequest));
 	}
 
 	private static class ExtraInfo{
 		public boolean noAddFriend;
 		public String firstName;
 		public String lastName;
+		public boolean fromRequest;
 
 		public ExtraInfo(){
 
 		}
 
-		public ExtraInfo(boolean noAddFriend, String firstName, String lastName){
+		public ExtraInfo(boolean noAddFriend, String firstName, String lastName, boolean fromRequest){
 			this.noAddFriend=noAddFriend;
 			this.firstName=firstName;
 			this.lastName=lastName;
+			this.fromRequest=fromRequest;
 		}
 	}
 }

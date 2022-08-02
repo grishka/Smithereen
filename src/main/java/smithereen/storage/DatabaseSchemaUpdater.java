@@ -13,7 +13,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=25;
+	public static final int SCHEMA_VERSION=26;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -367,6 +367,7 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("ALTER TABLE `signup_invitations` ADD `email` varchar(200) DEFAULT NULL, ADD `extra` json DEFAULT NULL, ADD `id` int unsigned NOT NULL AUTO_INCREMENT, ADD UNIQUE (`id`), ADD UNIQUE INDEX (`email`)");
 				conn.createStatement().execute("ALTER TABLE `accounts` ADD UNIQUE INDEX (`email`), ADD INDEX (`invited_by`)");
 			}
+			case 26 -> conn.createStatement().execute("ALTER TABLE `signup_requests` ADD UNIQUE INDEX (`email`)");
 		}
 	}
 }

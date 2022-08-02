@@ -27,11 +27,13 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.data.Account;
+import smithereen.data.AdminNotifications;
 import smithereen.data.EmailCode;
 import smithereen.data.Group;
 import smithereen.data.PaginatedList;
 import smithereen.data.SessionInfo;
 import smithereen.data.SignupInvitation;
+import smithereen.data.SignupRequest;
 import smithereen.data.User;
 import smithereen.data.UserPermissions;
 import smithereen.data.UserPreferences;
@@ -132,6 +134,11 @@ public class SessionStorage{
 				return SignupResult.INVITE_INVALID;
 			}
 
+			new SQLQueryBuilder(conn)
+					.deleteFrom("signup_requests")
+					.where("email=?", email)
+					.executeNoResult();
+
 			SignupInvitation inv=getInvitationByCode(Utils.hexStringToByteArray(invite));
 			int inviterAccountID=inv.ownerID;
 
@@ -210,6 +217,11 @@ public class SessionStorage{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		conn.createStatement().execute("START TRANSACTION");
 		try{
+			new SQLQueryBuilder(conn)
+					.deleteFrom("signup_requests")
+					.where("email=?", email)
+					.executeNoResult();
+
 			KeyPairGenerator kpg=KeyPairGenerator.getInstance("RSA");
 			kpg.initialize(2048);
 			KeyPair pair=kpg.generateKeyPair();
@@ -497,6 +509,74 @@ public class SessionStorage{
 						.where("invited_by=?", selfAccountID)
 						.limit(count, offset)
 				.executeAndGetIntList()), total, offset, count);
+	}
+
+	public static boolean isThereInviteRequestWithEmail(String email) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("signup_requests")
+				.count()
+				.where("email=?", email)
+				.executeAndGetInt()>0;
+	}
+
+	public static void putInviteRequest(String email, String firstName, String lastName, String reason) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("signup_requests")
+				.value("email", email)
+				.value("first_name", firstName)
+				.value("last_name", lastName)
+				.value("reason", reason)
+				.executeNoResult();
+		AdminNotifications an=AdminNotifications.getInstance(null);
+		if(an!=null){
+			an.signupRequestsCount=getInviteRequestCount();
+		}
+	}
+
+	public static int getInviteRequestCount() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("signup_requests")
+				.count()
+				.executeAndGetInt();
+	}
+
+	public static PaginatedList<SignupRequest> getInviteRequests(int offset, int count) throws SQLException{
+		int total=getInviteRequestCount();
+		if(total==0)
+			return PaginatedList.emptyList(count);
+		return new PaginatedList<>(new SQLQueryBuilder()
+				.selectFrom("signup_requests")
+				.allColumns()
+				.limit(count, offset)
+				.executeAsStream(SignupRequest::fromResultSet)
+				.toList(), total, offset, count);
+	}
+
+	public static void deleteInviteRequest(int id) throws SQLException{
+		int numRows=new SQLQueryBuilder()
+				.deleteFrom("signup_requests")
+				.where("id=?", id)
+				.createStatement()
+				.executeUpdate();
+		AdminNotifications an=AdminNotifications.getInstance(null);
+		if(an!=null)
+			an.signupRequestsCount=Math.max(0, an.signupRequestsCount-numRows);
+	}
+
+	public static SignupRequest getInviteRequest(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("signup_requests")
+				.allColumns()
+				.where("id=?", id)
+				.executeAndGetSingleObject(SignupRequest::fromResultSet);
+	}
+
+	public static SignupRequest getInviteRequestByEmail(String email) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("signup_requests")
+				.allColumns()
+				.where("email=?", email)
+				.executeAndGetSingleObject(SignupRequest::fromResultSet);
 	}
 
 	public enum SignupResult{

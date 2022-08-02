@@ -516,7 +516,7 @@ public class SettingsRoutes{
 			String firstName=requireFormFieldLength(req, "first_name", 2, "err_name_too_short");
 			String lastName=req.queryParams("last_name");
 			boolean addFriend="on".equals(req.queryParams("add_friend"));
-			context(req).getUsersController().sendEmailInvite(req, self, email, firstName, lastName, addFriend);
+			context(req).getUsersController().sendEmailInvite(req, self, email, firstName, lastName, addFriend, 0);
 			req.session().attribute("invites.message", lang(req).get("email_invite_sent"));
 			if(isAjax(req))
 				return new WebDeltaResponse(resp).refresh();
