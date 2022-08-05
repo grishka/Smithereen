@@ -42,7 +42,7 @@ Example object:
   "content": "<p>Test.<\/p>"
 }
 ```
-TODO: capability negotiation
+After someone posts on a wall, the wall owner sends `Add{Note}` (with a link to the new post) to their followers to signal that a new post was added to the `sm:wall` collection.
 #### A note about comments
 Since this is modelled after VK, comments aren't supposed to appear in newsfeeds by themselves; they only exist in the context of a top-level post. Thus, comments aren't addressed to anyone's followers. They're addressed to `as:Public`, the top-level post author, the parent comment author, and mentioned users, if any.
 ### Friends and Followers
@@ -224,3 +224,6 @@ collection=http%3A%2F%2Fsmithereen.local%3A8080%2Fusers%2F1%2Ffriends&item=http%
 }
 ```
 </details>
+
+### Add and Remove activities for collections
+For `sm:friends` and `sm:groups` collections for users, as well as `sm:members` and `sm:tentativeMembers` for groups and events, their owning actors send `Add` and `Remove` activities to their followers to help keep these lists in sync across servers. Smithereen also uses these activities to display entries like "John Smith added Jane Doe as a friend" in the news feed.
