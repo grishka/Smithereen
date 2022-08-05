@@ -411,7 +411,13 @@ public class SessionRoutes{
 			context(req).getUsersController().requestSignupInvite(req, firstName, lastName, email, reason);
 			return new RenderedTemplateResponse("generic_message", req).with("message", lang(req).get("signup_request_submitted"));
 		}catch(UserErrorException x){
-			return wrapForm(req, resp, "register_form_request_invite", "/account/requestInvite", lang(req).get("signup_title"), "request_invitation", "requestInvite", List.of("first_name", "last_name", "email", "reason"), req::queryParams, lang(req).get(x.getMessage()));
+			return new RenderedTemplateResponse("register_request_invite", req)
+					.with("first_name", req.queryParams("first_name"))
+					.with("last_name", req.queryParams("last_name"))
+					.with("email", req.queryParams("email"))
+					.with("reason", req.queryParams("reason"))
+					.with("message", lang(req).get(x.getMessage()))
+					.pageTitle(lang(req).get("signup_title"));
 		}
 	}
 }

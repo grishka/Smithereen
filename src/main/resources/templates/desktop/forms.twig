@@ -71,7 +71,7 @@
 			<label for="{{name}}">{{label}}</label>:
 		</td>
 		<td>
-			<textarea id="{{name}}" name="{{name}}" rows="3" class="control">{{value}}</textarea>
+			<textarea id="{{name}}" name="{{name}}" rows="3" class="control"{% if options.required %} required{% endif %}>{{value}}</textarea>
 			{%if options.explanation is not null%}
 			<br/><span class="formExplanation">{{options.explanation}}</span>
 			{%endif%}
