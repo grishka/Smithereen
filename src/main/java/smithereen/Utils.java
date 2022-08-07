@@ -32,6 +32,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -101,7 +102,7 @@ public class Utils{
 			.disableHtmlEscaping()
 			.registerTypeAdapter(Instant.class, new InstantMillisJsonAdapter())
 			.registerTypeAdapter(Locale.class, new LocaleJsonAdapter())
-			.registerTypeHierarchyAdapter(TimeZone.class, new TimeZoneJsonAdapter())
+			.registerTypeHierarchyAdapter(ZoneId.class, new TimeZoneJsonAdapter())
 			.create();
 
 	static{
@@ -277,15 +278,15 @@ public class Utils{
 		return Locale.US;
 	}
 
-	public static TimeZone timeZoneForRequest(Request req){
+	public static ZoneId timeZoneForRequest(Request req){
 		SessionInfo info=sessionInfo(req);
 		if(info!=null){
 			if(info.account!=null && info.account.prefs.timeZone!=null)
 				return info.account.prefs.timeZone;
-			if(info.preferredLocale!=null)
+			if(info.timeZone!=null)
 				return info.timeZone;
 		}
-		return TimeZone.getDefault();
+		return ZoneId.systemDefault();
 	}
 
 	public static Lang lang(Request req){
@@ -830,7 +831,7 @@ public class Utils{
 	public static Instant instantFromDateAndTime(Request req, String dateStr, String timeStr){
 		LocalDate date=DateTimeFormatter.ISO_LOCAL_DATE.parse(dateStr, LocalDate::from);
 		LocalTime time=DateTimeFormatter.ISO_LOCAL_TIME.parse(timeStr, LocalTime::from);
-		return LocalDateTime.of(date, time).atZone(timeZoneForRequest(req).toZoneId()).toInstant();
+		return LocalDateTime.of(date, time).atZone(timeZoneForRequest(req)).toInstant();
 	}
 
 	public static <E extends Enum<E>> long serializeEnumSet(EnumSet<E> set, Class<E> cls){

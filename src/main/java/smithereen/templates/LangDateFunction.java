@@ -6,6 +6,7 @@ import com.mitchellbosecke.pebble.template.PebbleTemplate;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -23,7 +24,7 @@ public class LangDateFunction implements Function{
 		if(arg instanceof LocalDate ld)
 			return Lang.get(context.getLocale()).formatDay(ld);
 		if(arg instanceof Instant instant)
-			return Lang.get(context.getLocale()).formatDate(instant, (TimeZone) context.getVariable("timeZone"), (Boolean) args.getOrDefault("forceAbsolute", Boolean.FALSE));
+			return Lang.get(context.getLocale()).formatDate(instant, (ZoneId) context.getVariable("timeZone"), (Boolean) args.getOrDefault("forceAbsolute", Boolean.FALSE));
 		return "????";
 	}
 

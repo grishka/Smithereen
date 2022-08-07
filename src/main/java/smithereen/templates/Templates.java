@@ -11,6 +11,7 @@ import com.mitchellbosecke.pebble.template.Scope;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -55,7 +56,7 @@ public class Templates{
 
 	public static void addGlobalParamsToTemplate(Request req, RenderedTemplateResponse model){
 		JsonObject jsConfig=new JsonObject();
-		TimeZone tz=Utils.timeZoneForRequest(req);
+		ZoneId tz=Utils.timeZoneForRequest(req);
 		if(req.session(false)!=null){
 			SessionInfo info=req.session().attribute("info");
 			if(info==null){
@@ -73,13 +74,13 @@ public class Templates{
 					UserNotifications notifications=NotificationsStorage.getNotificationsForUser(account.user.id, account.prefs.lastSeenNotificationID);
 					model.with("userNotifications", notifications);
 
-					LocalDate today=LocalDate.now(tz.toZoneId());
+					LocalDate today=LocalDate.now(tz);
 					BirthdayReminder reminder=UserStorage.getBirthdayReminderForUser(account.user.id, today);
 					if(!reminder.userIDs.isEmpty()){
 						model.with("birthdayUsers", UserStorage.getByIdAsList(reminder.userIDs));
 						model.with("birthdaysAreToday", reminder.day.equals(today));
 					}
-					EventReminder eventReminder=Utils.context(req).getGroupsController().getUserEventReminder(account.user, tz.toZoneId());
+					EventReminder eventReminder=Utils.context(req).getGroupsController().getUserEventReminder(account.user, tz);
 					if(!eventReminder.groupIDs.isEmpty()){
 						model.with("eventReminderEvents", Utils.context(req).getGroupsController().getGroupsByIdAsList(eventReminder.groupIDs));
 						model.with("eventsAreToday", eventReminder.day.equals(today));
@@ -94,7 +95,7 @@ public class Templates{
 				}
 			}
 		}
-		jsConfig.addProperty("timeZone", tz!=null ? tz.getID() : null);
+		jsConfig.addProperty("timeZone", tz!=null ? tz.getId() : null);
 		ArrayList<String> jsLang=new ArrayList<>();
 		ArrayList<String> k=req.attribute("jsLang");
 		Lang lang=Utils.lang(req);
@@ -113,7 +114,7 @@ public class Templates{
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
 		}
-		model.with("locale", Utils.localeForRequest(req)).with("timeZone", tz!=null ? tz : TimeZone.getDefault()).with("jsConfig", jsConfig.toString())
+		model.with("locale", Utils.localeForRequest(req)).with("timeZone", tz!=null ? tz : ZoneId.systemDefault()).with("jsConfig", jsConfig.toString())
 				.with("jsLangKeys", "{"+String.join(",", jsLang)+"}")
 				.with("staticHash", Utils.staticFileHash)
 				.with("serverName", Config.getServerDisplayName())

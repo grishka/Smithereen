@@ -12,6 +12,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
@@ -312,10 +313,10 @@ public class SettingsRoutes{
 			req.session().attribute("info", info=new SessionInfo());
 		}
 		if(info.account!=null){
-			info.account.prefs.timeZone=TimeZone.getTimeZone(tz);
+			info.account.prefs.timeZone=ZoneId.of(tz);
 			SessionStorage.updatePreferences(info.account.id, info.account.prefs);
 		}else{
-			info.timeZone=TimeZone.getTimeZone(tz);
+			info.timeZone=ZoneId.of(tz);
 		}
 		if(req.queryParams("_ajax")!=null)
 			return "";

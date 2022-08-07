@@ -6,6 +6,7 @@ import com.mitchellbosecke.pebble.template.PebbleTemplate;
 
 import java.time.Instant;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -17,8 +18,8 @@ public class InstantToTimeFunction implements Function{
 		Instant instant=(Instant) args.get("instant");
 		if(instant==null)
 			return "";
-		TimeZone tz=Templates.getVariableRegardless(context, "timeZone");
-		LocalTime time=LocalTime.ofInstant(instant, tz.toZoneId());
+		ZoneId tz=Templates.getVariableRegardless(context, "timeZone");
+		LocalTime time=LocalTime.ofInstant(instant, tz);
 		return String.format(Locale.US, "%02d:%02d", time.getHour(), time.getMinute());
 	}
 

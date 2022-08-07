@@ -1,3 +1,4 @@
+{# @pebvariable name="feed" type="smithereen.data.feed.NewsfeedEntry[]" #}
 {%extends "page"%}
 {%block content%}
 {% include "feed_tabbar" with {'tab': tab | default('news')} %}
@@ -7,6 +8,7 @@
 	{% include "pagination" %}
 </div>
 <div class="singleColumn" id="postList">
+{% set _currentDate='' %}
 {%for entry in feed%}
 {% include "feed_row" with {'entry': entry} %}
 {% else %}

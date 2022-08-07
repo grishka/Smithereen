@@ -191,7 +191,7 @@ public class Lang{
 		return get("date_format_other_year", Map.of("day", date.getDayOfMonth(), "month", get("month_full", Map.of("month", date.getMonthValue())), "year", date.getYear()));
 	}
 
-	public String formatDate(Instant date, TimeZone timeZone, boolean forceAbsolute){
+	public String formatDate(Instant date, ZoneId timeZone, boolean forceAbsolute){
 		long ts=date.toEpochMilli();
 		long tsNow=System.currentTimeMillis();
 		long diff=tsNow-ts;
@@ -206,8 +206,8 @@ public class Lang{
 			}
 		}
 
-		ZonedDateTime now=ZonedDateTime.now(timeZone.toZoneId());
-		ZonedDateTime dt=date.atZone(timeZone.toZoneId());
+		ZonedDateTime now=ZonedDateTime.now(timeZone);
+		ZonedDateTime dt=date.atZone(timeZone);
 		String day=null;
 		if(Math.abs(diff)<=2*24*60*60*1000){
 			if(now.getYear()==dt.getYear() && now.getDayOfYear()==dt.getDayOfYear()){
