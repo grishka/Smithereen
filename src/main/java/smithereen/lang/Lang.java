@@ -191,6 +191,19 @@ public class Lang{
 		return get("date_format_other_year", Map.of("day", date.getDayOfMonth(), "month", get("month_full", Map.of("month", date.getMonthValue())), "year", date.getYear()));
 	}
 
+	public String formatDayRelative(LocalDate date, ZoneId timeZone){
+		LocalDate today=LocalDate.now(timeZone);
+		if(today.isEqual(date))
+			return get("date_today");
+		if(today.minusDays(1).isEqual(date))
+			return get("date_yesterday");
+		if(today.plusDays(1).isEqual(date))
+			return get("date_tomorrow");
+		if(today.getYear()==date.getYear())
+			return get("date_format_current_year", Map.of("day", date.getDayOfMonth(), "month", get("month_full", Map.of("month", date.getMonthValue()))));
+		return get("date_format_other_year", Map.of("day", date.getDayOfMonth(), "month", get("month_full", Map.of("month", date.getMonthValue())), "year", date.getYear()));
+	}
+
 	public String formatDate(Instant date, ZoneId timeZone, boolean forceAbsolute){
 		long ts=date.toEpochMilli();
 		long tsNow=System.currentTimeMillis();

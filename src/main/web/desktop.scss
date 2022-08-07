@@ -2199,3 +2199,24 @@ label.pretendLink{
 		margin-right: 10px;
 	}
 }
+
+.feedDateHeader{
+	background-color: $bgGrey;
+	margin: 0 -10px 10px -10px;
+	padding: 5px 8px 4px;
+	font-size: 9px;
+	font-weight: bold;
+	color: $auxiliaryGrey;
+	border-bottom: solid 1px $sectionHeaderBorder;
+	&:first-child{
+		margin-top: -10px;
+	}
+}
+
+.feedRow+.feedDateHeader{
+	margin-top: -6px;
+}
+
+.feedDateHeader+.feedPostRow>.post:first-child{
+	padding-top: 0;
+}

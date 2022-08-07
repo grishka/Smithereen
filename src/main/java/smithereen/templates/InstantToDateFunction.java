@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TimeZone;
 
 public class InstantToDateFunction implements Function{
@@ -19,7 +20,7 @@ public class InstantToDateFunction implements Function{
 		if(instant==null)
 			return "";
 		ZoneId tz=Templates.getVariableRegardless(context, "timeZone");
-		return LocalDate.ofInstant(instant, tz).toString();
+		return LocalDate.ofInstant(instant, Objects.requireNonNull(tz));
 	}
 
 	@Override

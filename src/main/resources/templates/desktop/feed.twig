@@ -10,6 +10,11 @@
 <div class="singleColumn" id="postList">
 {% set _currentDate='' %}
 {%for entry in feed%}
+{% set _entryDate=getDate(entry.time) %}
+{% if _entryDate!=_currentDate %}
+{% set _currentDate=_entryDate %}
+<div class="feedDateHeader">{{ LD(_currentDate) }}</div>
+{% endif %}
 {% include "feed_row" with {'entry': entry} %}
 {% else %}
 <div class="emptyState" id="wallEmptyState">{{ L('feed_empty') }}</div>
