@@ -127,6 +127,7 @@ public class SessionStorage{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		conn.createStatement().execute("START TRANSACTION");
 		try{
+			SignupInvitation inv=getInvitationByCode(Utils.hexStringToByteArray(invite));
 			PreparedStatement stmt=conn.prepareStatement("UPDATE `signup_invitations` SET `signups_remaining`=`signups_remaining`-1 WHERE `signups_remaining`>0 AND `code`=?");
 			stmt.setBytes(1, Utils.hexStringToByteArray(invite));
 			if(stmt.executeUpdate()!=1){
@@ -139,7 +140,6 @@ public class SessionStorage{
 					.where("email=?", email)
 					.executeNoResult();
 
-			SignupInvitation inv=getInvitationByCode(Utils.hexStringToByteArray(invite));
 			int inviterAccountID=inv.ownerID;
 
 			KeyPairGenerator kpg=KeyPairGenerator.getInstance("RSA");
