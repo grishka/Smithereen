@@ -5,17 +5,16 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Announce;
-import smithereen.controllers.WallController;
 import smithereen.data.ForeignUser;
 import smithereen.data.Post;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.notifications.Notification;
-import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 
@@ -35,28 +34,28 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 			if(parent!=null){
 				post.setParent(parent);
 				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
-				doHandle(post);
+				doHandle(post, context);
 			}else{
-				context.appContext.getActivityPubWorker().fetchReplyThreadAndThen(post, this::onReplyThreadDone);
+				context.appContext.getActivityPubWorker().fetchReplyThreadAndThen(post, thread->onReplyThreadDone(thread, context));
 			}
 		}else{
 			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
-			doHandle(post);
+			doHandle(post, context);
 			context.appContext.getActivityPubWorker().fetchAllReplies(post);
 		}
 	}
 
-	private void onReplyThreadDone(List<Post> thread){
+	private void onReplyThreadDone(List<Post> thread, ActivityHandlerContext context){
 		try{
-			doHandle(thread.get(thread.size()-1));
+			doHandle(thread.get(thread.size()-1), context);
 		}catch(SQLException x){
 			LOG.warn("Error storing retoot", x);
 		}
 	}
 
-	private void doHandle(Post post) throws SQLException{
+	private void doHandle(Post post, ActivityHandlerContext context) throws SQLException{
 		long time=activity.published==null ? System.currentTimeMillis() : activity.published.toEpochMilli();
-		NewsfeedStorage.putEntry(actor.id, post.id, NewsfeedEntry.Type.RETOOT, new Timestamp(time));
+		context.appContext.getNewsfeedController().putFriendsFeedEntry(actor, post.id, NewsfeedEntry.Type.RETOOT, Instant.ofEpochMilli(time));
 
 		if(!(post.user instanceof ForeignUser)){
 			Notification n=new Notification();

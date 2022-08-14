@@ -406,9 +406,9 @@ public class ProfileRoutes{
 				n.actorID=self.user.id;
 				NotificationsStorage.putNotification(user.id, n);
 				context(req).getActivityPubWorker().sendAddToFriendsCollectionActivity(self.user, user);
-				NewsfeedStorage.putEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
+				context(req).getNewsfeedController().putFriendsFeedEntry(user, self.user.id, NewsfeedEntry.Type.ADD_FRIEND);
 			}
-			NewsfeedStorage.putEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND, null);
+			context(req).getNewsfeedController().putFriendsFeedEntry(self.user, user.id, NewsfeedEntry.Type.ADD_FRIEND);
 		}else if(req.queryParams("decline")!=null){
 			accept=false;
 			UserStorage.deleteFriendRequest(self.user.id, user.id);
@@ -438,9 +438,9 @@ public class ProfileRoutes{
 				}
 				if(status==FriendshipStatus.FRIENDS){
 					context(req).getActivityPubWorker().sendRemoveFromFriendsCollectionActivity(self.user, user);
-					NewsfeedStorage.deleteEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND);
+					context(req).getNewsfeedController().deleteFriendsFeedEntry(self.user, user.id, NewsfeedEntry.Type.ADD_FRIEND);
 					if(!(user instanceof ForeignUser)){
-						NewsfeedStorage.deleteEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND);
+						context(req).getNewsfeedController().deleteFriendsFeedEntry(user, self.user.id, NewsfeedEntry.Type.ADD_FRIEND);
 					}
 				}
 				if(isAjax(req)){
@@ -482,9 +482,9 @@ public class ProfileRoutes{
 			context(req).getActivityPubWorker().sendBlockActivity(self.user, (ForeignUser) user);
 		if(status==FriendshipStatus.FRIENDS){
 			context(req).getActivityPubWorker().sendRemoveFromFriendsCollectionActivity(self.user, user);
-			NewsfeedStorage.deleteEntry(self.user.id, user.id, NewsfeedEntry.Type.ADD_FRIEND);
+			context(req).getNewsfeedController().deleteFriendsFeedEntry(self.user, user.id, NewsfeedEntry.Type.ADD_FRIEND);
 			if(!(user instanceof ForeignUser)){
-				NewsfeedStorage.deleteEntry(user.id, self.user.id, NewsfeedEntry.Type.ADD_FRIEND);
+				context(req).getNewsfeedController().deleteFriendsFeedEntry(user, self.user.id, NewsfeedEntry.Type.ADD_FRIEND);
 			}
 		}
 		if(isAjax(req))

@@ -6,22 +6,23 @@ import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.TimeZone;
 
-public class TimeZoneJsonAdapter extends TypeAdapter<TimeZone>{
+public class TimeZoneJsonAdapter extends TypeAdapter<ZoneId>{
 	@Override
-	public void write(JsonWriter jsonWriter, TimeZone tz) throws IOException{
+	public void write(JsonWriter jsonWriter, ZoneId tz) throws IOException{
 		if(tz==null){
 			jsonWriter.nullValue();
 			return;
 		}
-		jsonWriter.value(tz.getID());
+		jsonWriter.value(tz.getId());
 	}
 
 	@Override
-	public TimeZone read(JsonReader jsonReader) throws IOException{
+	public ZoneId read(JsonReader jsonReader) throws IOException{
 		if(jsonReader.peek()==JsonToken.NULL)
 			return null;
-		return TimeZone.getTimeZone(jsonReader.nextString());
+		return ZoneId.of(jsonReader.nextString());
 	}
 }

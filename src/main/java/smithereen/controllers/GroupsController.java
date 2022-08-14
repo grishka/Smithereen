@@ -81,7 +81,7 @@ public class GroupsController{
 			int id=GroupStorage.createGroup(name, Utils.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
 			Group group=Objects.requireNonNull(GroupStorage.getById(id));
 			context.getActivityPubWorker().sendAddToGroupsCollectionActivity(admin, group, false);
-			NewsfeedStorage.putEntry(admin.id, group.id, isEvent ? NewsfeedEntry.Type.CREATE_EVENT : NewsfeedEntry.Type.CREATE_GROUP, null);
+			context.getNewsfeedController().putFriendsFeedEntry(admin, group.id, isEvent ? NewsfeedEntry.Type.CREATE_EVENT : NewsfeedEntry.Type.CREATE_GROUP);
 			return group;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -293,7 +293,7 @@ public class GroupsController{
 				}else{
 					if(group.accessType!=Group.AccessType.PRIVATE && autoAccepted){
 						context.getActivityPubWorker().sendAddToGroupsCollectionActivity(user, group, tentative);
-						NewsfeedStorage.putEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
+						context.getNewsfeedController().putFriendsFeedEntry(user, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
 					}
 					if(autoAccepted){
 						context.getActivityPubWorker().sendAddUserToGroupActivity(user, group, tentative);
@@ -328,7 +328,7 @@ public class GroupsController{
 			}
 			if(group.accessType!=Group.AccessType.PRIVATE)
 				context.getActivityPubWorker().sendRemoveFromGroupsCollectionActivity(user, group);
-			NewsfeedStorage.deleteEntry(user.id, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
+			context.getNewsfeedController().deleteFriendsFeedEntry(user, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
 			if(group.isEvent()){
 				synchronized(eventRemindersCache){
 					eventRemindersCache.remove(user.id);

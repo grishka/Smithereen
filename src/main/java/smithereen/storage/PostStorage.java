@@ -264,11 +264,11 @@ public class PostStorage{
 		}
 	}
 
-	public static List<NewsfeedEntry> getFeed(int userID, int startFromID, int offset, int[] total) throws SQLException{
+	public static List<NewsfeedEntry> getFeed(int userID, int startFromID, int offset, int count, int[] total) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt;
 		if(total!=null){
-			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `newsfeed` WHERE `author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? UNION SELECT ?) AND `id`<=?");
+			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `newsfeed` WHERE `author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? UNION SELECT ?) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY)");
 			stmt.setInt(1, userID);
 			stmt.setInt(2, userID);
 			stmt.setInt(3, startFromID==0 ? Integer.MAX_VALUE : startFromID);
@@ -277,7 +277,7 @@ public class PostStorage{
 				total[0]=res.getInt(1);
 			}
 		}
-		stmt=conn.prepareStatement("SELECT `type`, `object_id`, `author_id`, `id`, `time` FROM `newsfeed` WHERE (`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=? ORDER BY `time` DESC LIMIT ?,25");
+		stmt=conn.prepareStatement("SELECT `type`, `object_id`, `author_id`, `id`, `time` FROM `newsfeed` WHERE (`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=? ORDER BY `time` DESC LIMIT ?,"+count);
 		stmt.setInt(1, userID);
 		stmt.setInt(2, userID);
 		stmt.setInt(3, startFromID==0 ? Integer.MAX_VALUE : startFromID);
@@ -324,6 +324,7 @@ public class PostStorage{
 							_entry.author=UserStorage.getById(res.getInt(3));
 							yield _entry;
 						}
+						default -> throw new IllegalStateException("Unexpected value: "+type);
 					};
 					entry.type=type;
 					entry.id=res.getInt(4);

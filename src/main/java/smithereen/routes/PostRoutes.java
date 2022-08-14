@@ -13,17 +13,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
@@ -236,19 +233,18 @@ public class PostRoutes{
 		int userID=self.user.id;
 		int startFromID=parseIntOrDefault(req.queryParams("startFrom"), 0);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		int[] total={0};
-		List<NewsfeedEntry> feed=PostStorage.getFeed(userID, startFromID, offset, total);
-		List<Post> feedPosts=feed.stream().filter(e->e instanceof PostNewsfeedEntry pe && pe.post!=null).map(e->((PostNewsfeedEntry)e).post).collect(Collectors.toList());
+		PaginatedList<NewsfeedEntry> feed=context(req).getNewsfeedController().getFriendsFeed(self, timeZoneForRequest(req), startFromID, offset, 25);//PostStorage.getFeed(userID, startFromID, offset, 25, total);
+		List<Post> feedPosts=feed.list.stream().filter(e->e instanceof PostNewsfeedEntry pe && pe.post!=null).map(e->((PostNewsfeedEntry)e).post).collect(Collectors.toList());
 		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
 			context(req).getWallController().populateCommentPreviews(feedPosts);
 		}
 		Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(feedPosts, self.user);
-		if(!feed.isEmpty() && startFromID==0)
-			startFromID=feed.get(0).id;
+		if(!feed.list.isEmpty() && startFromID==0)
+			startFromID=feed.list.get(0).id;
 		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
 		jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
-		return new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed).with("postInteractions", interactions)
-				.with("paginationUrlPrefix", "/feed?startFrom="+startFromID+"&offset=").with("totalItems", total[0]).with("paginationOffset", offset).with("paginationPerPage", 25).with("paginationFirstPageUrl", "/feed")
+		return new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list).with("postInteractions", interactions)
+				.with("paginationUrlPrefix", "/feed?startFrom="+startFromID+"&offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationPerPage", 25).with("paginationFirstPageUrl", "/feed")
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
 	}
 

@@ -21,7 +21,7 @@ public class UndoFollowPersonHandler extends NestedActivityTypeHandler<ForeignUs
 		UserStorage.unfriendUser(actor.id, user.id);
 		if(status==FriendshipStatus.FRIENDS){
 			context.appContext.getActivityPubWorker().sendRemoveFromFriendsCollectionActivity(user, actor);
-			NewsfeedStorage.deleteEntry(user.id, actor.id, NewsfeedEntry.Type.ADD_FRIEND);
+			context.appContext.getNewsfeedController().deleteFriendsFeedEntry(user, actor.id, NewsfeedEntry.Type.ADD_FRIEND);
 		}
 	}
 }

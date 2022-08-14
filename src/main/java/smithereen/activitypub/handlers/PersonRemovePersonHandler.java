@@ -23,7 +23,7 @@ public class PersonRemovePersonHandler extends ActivityTypeHandler<ForeignUser, 
 			if(object instanceof ForeignUser && object.id==0)
 				return;
 
-			NewsfeedStorage.deleteEntry(actor.id, object.id, NewsfeedEntry.Type.ADD_FRIEND);
+			context.appContext.getNewsfeedController().deleteFriendsFeedEntry(actor, object.id, NewsfeedEntry.Type.ADD_FRIEND);
 			UserStorage.unfriendUser(actor.id, object.id);
 		}else{
 			LOG.warn("Unknown Remove{Person} target {}", target);

@@ -916,11 +916,11 @@ textarea{
 
 .feedRow{
 	.feedIcon{
-		width: 24px;
-		height: 24px;
-		background-size: 24px;
+		width: 16px;
+		height: 16px;
+		background-size: 16px;
 		float: left;
-		margin: 12px 0 0 12px;
+		margin: 12px 0 0 36px;
 	}
 	.feedRowTime{
 		float: right;
@@ -929,7 +929,7 @@ textarea{
 		color: $grayText;
 	}
 	.feedRowContent{
-		padding: 12px 0 8px 44px;
+		padding: 12px 0 8px 64px;
 	}
 }
 
@@ -1326,4 +1326,27 @@ input[type=time]::-webkit-calendar-picker-indicator{
 	>.button, >button, >input{
 		margin: 0 8px 8px 0;
 	}
+}
+
+.feedRowUsers{
+	display: flex;
+	padding-top: 8px;
+	overflow-x: auto;
+	margin-left: -8px;
+}
+
+.feedRowUser{
+	width: 66px;
+	max-width: 66px;
+	min-width: 66px;
+	overflow-x: hidden;
+	.ava{
+		display: block;
+		margin: auto;
+		margin-bottom: 4px;
+	}
+}
+
+.feedRowUserName{
+	text-align: center;
 }

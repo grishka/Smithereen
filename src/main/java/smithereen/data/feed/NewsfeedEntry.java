@@ -28,6 +28,10 @@ public abstract class NewsfeedEntry{
 		return type!=Type.POST && type!=Type.RETOOT;
 	}
 
+	public boolean canBeGrouped(){
+		return type==Type.ADD_FRIEND || type==Type.JOIN_GROUP || type==Type.JOIN_EVENT;
+	}
+
 	public enum Type{
 		/**
 		 * New post. objectID is a post
@@ -51,5 +55,9 @@ public abstract class NewsfeedEntry{
 		JOIN_EVENT,
 		CREATE_GROUP,
 		CREATE_EVENT,
+		/**
+		 * Multiple entries of the same type, within the same day, grouped together
+		 */
+		GROUPED,
 	}
 }

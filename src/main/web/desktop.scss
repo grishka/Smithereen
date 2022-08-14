@@ -2199,3 +2199,46 @@ label.pretendLink{
 		margin-right: 10px;
 	}
 }
+
+.feedDateHeader{
+	background-color: $bgGrey;
+	margin: 0 -10px 10px -10px;
+	padding: 5px 8px 4px;
+	font-size: 9px;
+	font-weight: bold;
+	color: $auxiliaryGrey;
+	border-bottom: solid 1px $sectionHeaderBorder;
+	&:first-child{
+		margin-top: -10px;
+	}
+}
+
+.feedRow+.feedDateHeader{
+	margin-top: -6px;
+}
+
+.feedDateHeader+.feedPostRow>.post:first-child{
+	padding-top: 0;
+}
+
+.feedRowUsers{
+	display: flex;
+	padding-bottom: 5px;
+}
+
+.feedRowUser{
+	width: 60px;
+	max-width: 60px;
+	margin: 15px 5px 0 0;
+	.ava{
+		display: block;
+		margin: auto;
+	}
+}
+
+.feedRowUserName{
+	text-align: center;
+	font-size: 10px;
+	padding-top: 2px;
+	overflow: hidden;
+}

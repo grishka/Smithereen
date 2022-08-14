@@ -25,8 +25,6 @@ public class GroupAddPersonHandler extends ActivityTypeHandler<ForeignGroup, Add
 			if(object instanceof ForeignUser && object.id==0)
 				UserStorage.putOrUpdateForeignUser((ForeignUser) object);
 
-			NewsfeedStorage.putEntry(actor.id, object.id, NewsfeedEntry.Type.ADD_FRIEND, null);
-
 			if(object instanceof ForeignUser foreignUser && foreignUser.getGroupsURL()!=null){
 				BackgroundTaskRunner.getInstance().submit(()->{
 					try{

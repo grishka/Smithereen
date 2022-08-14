@@ -587,5 +587,8 @@
   "signup_requests_title": "Signup requests",
   "signup_request_sent_at": "Sent",
   "delete_signup_request": "Delete request",
-  "signup_request_deleted": "Request deleted"
+  "signup_request_deleted": "Request deleted",
+  "feed_added_multiple_friends": "<a id=\"author\">{author}</a> added {count, plural, one {# friend} other {# friends}}:",
+  "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> joined {count, plural, one {# group} other {# groups}}:",
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> is attending {count, plural, one {# event} other {# events}}:"
 }

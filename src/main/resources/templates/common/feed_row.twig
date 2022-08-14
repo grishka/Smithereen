@@ -12,6 +12,51 @@
 	</div>
 	{%include "wall_post" with {'post': entry.post}%}
 </div>
+{% elseif entry.type=="GROUPED" %}
+	{% if entry.childEntriesType=="ADD_FRIEND" %}
+		{% set icon="Add" %}
+		{% set langKey="added_multiple_friends" %}
+	{% elseif entry.childEntriesType=="JOIN_GROUP" %}
+		{% set icon="Group" %}
+		{% set langKey="joined_multiple_groups" %}
+	{% elseif entry.childEntriesType=="JOIN_EVENT" %}
+		{% set icon="Event" %}
+		{% set langKey="joined_multiple_events" %}
+	{% endif %}
+<div class="feedRow">
+	<div class="feedIcon feedIcon{{ icon }}"></div>
+	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
+	<div class="feedRowContent">
+		{{ L("feed_#{langKey}", {'author': entry.author.completeName, 'gender': entry.author.gender, 'count': entry.childEntries | length}, {'author': {'href': entry.author.profileURL} }) }}
+		<div class="feedRowUsers">
+				{% for ce in entry.mostRecentEntries %}
+				{% if ce.type=="ADD_FRIEND" %}
+				<div class="feedRowUser">
+					<a href="{{ ce.friend.profileURL }}">
+						{{ ce.friend | pictureForAvatar('s') }}
+						<div class="feedRowUserName">{{ ce.friend.firstName }}</div>
+						<div class="feedRowUserName">{{ ce.friend.lastName }}</div>
+					</a>
+				</div>
+				{% elseif ce.type=="JOIN_GROUP" %}
+				<div class="feedRowUser">
+					<a href="{{ ce.group.profileURL }}">
+						{{ ce.group | pictureForAvatar('s') }}
+						<div class="feedRowUserName">{{ ce.group.name }}</div>
+					</a>
+				</div>
+				{% elseif ce.type=="JOIN_EVENT" %}
+				<div class="feedRowUser">
+					<a href="{{ ce.event.profileURL }}">
+						{{ ce.event | pictureForAvatar('s') }}
+						<div class="feedRowUserName">{{ ce.event.name }}</div>
+					</a>
+				</div>
+				{% endif %}
+				{% endfor %}
+		</div>
+	</div>
+</div>
 {% elseif entry.nonPost %}
 {% if entry.type=="ADD_FRIEND" %}
 	{% set icon="Add" %}

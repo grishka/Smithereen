@@ -29,7 +29,7 @@ public class AddGroupHandler extends ActivityTypeHandler<ForeignUser, Add, Group
 				GroupStorage.putOrUpdateForeignGroup(foreignGroup);
 
 			if(object.accessType!=Group.AccessType.PRIVATE)
-				NewsfeedStorage.putEntry(actor.id, object.id, object.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP, null);
+				context.appContext.getNewsfeedController().putFriendsFeedEntry(actor, object.id, object.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
 
 			if(object instanceof ForeignGroup foreignGroup){
 				// Verify that the group in question does indeed have this user as its member

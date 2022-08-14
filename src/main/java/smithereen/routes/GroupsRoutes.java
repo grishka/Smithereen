@@ -576,7 +576,7 @@ public class GroupsRoutes{
 	}
 
 	public static Object eventCalendar(Request req, Response resp, Account self){
-		ZoneId timeZone=timeZoneForRequest(req).toZoneId();
+		ZoneId timeZone=timeZoneForRequest(req);
 		LocalDate today=LocalDate.now(timeZone);
 		LocalDate tomorrow=today.plusDays(1);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "events_actual_calendar" : "events_calendar", req);
@@ -655,7 +655,7 @@ public class GroupsRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("events_calendar", req);
 		Lang l=lang(req);
 		Instant now=Instant.now();
-		ZoneId timeZone=timeZoneForRequest(req).toZoneId();
+		ZoneId timeZone=timeZoneForRequest(req);
 		LocalDate today=LocalDate.now(timeZone);
 		int month=safeParseInt(req.queryParams("month"));
 		int year=safeParseInt(req.queryParams("year"));
@@ -716,7 +716,7 @@ public class GroupsRoutes{
 		}
 
 		Lang l=lang(req);
-		ZoneId timeZone=timeZoneForRequest(req).toZoneId();
+		ZoneId timeZone=timeZoneForRequest(req);
 		Instant now=Instant.now();
 		LocalDate today=LocalDate.now(timeZone);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("actor_list", req);

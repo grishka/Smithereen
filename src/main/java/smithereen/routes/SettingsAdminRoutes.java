@@ -297,10 +297,15 @@ public class SettingsAdminRoutes{
 			throw new ObjectNotFoundException();
 
 		if(accept){
-
+			context(req).getUsersController().acceptSignupInviteRequest(req, self, id);
 		}else{
 			context(req).getUsersController().deleteSignupInviteRequest(id);
 		}
-		return null;
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).setContent("signupReqBtns"+id,
+					"<div class=\"settingsMessage\">"+lang(req).get(accept ? "email_invite_sent" : "signup_request_deleted")+"</div>");
+		}
+		resp.redirect(Utils.back(req));
+		return "";
 	}
 }

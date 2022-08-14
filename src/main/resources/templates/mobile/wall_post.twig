@@ -5,8 +5,8 @@
 <div class="post" id="post{{ post.id }}">
 	<table width="100%" cellpadding="0" cellspacing="0">
 		<tr>
-			<td width="50" valign="top">
-				<a href="{{post.user.profileURL}}">{{post.user | pictureForAvatar('s')}}</a>
+			<td width="40" valign="top">
+				<a href="{{post.user.profileURL}}">{{post.user | pictureForAvatar('s', 40)}}</a>
 			</td>
 			<td valign="middle" class="headerRight">
 				<div class="singleLine authorNameW"><a href="{{post.user.profileURL}}" class="authorName">{{post.user.fullName}}</a></div>
