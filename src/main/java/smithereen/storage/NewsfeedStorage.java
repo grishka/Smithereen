@@ -4,12 +4,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 
 import smithereen.data.feed.NewsfeedEntry;
 
 public class NewsfeedStorage{
 
-	public static void putEntry(int userID, int objectID, NewsfeedEntry.Type type, Timestamp time) throws SQLException{
+	public static void putEntry(int userID, int objectID, NewsfeedEntry.Type type, Instant time) throws SQLException{
 		SQLQueryBuilder b=new SQLQueryBuilder()
 				.insertIgnoreInto("newsfeed")
 				.value("type", type)

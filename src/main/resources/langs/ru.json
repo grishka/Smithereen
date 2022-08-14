@@ -583,5 +583,8 @@
   "signup_requests_title": "Заявки на регистрацию",
   "signup_request_sent_at": "Отправлена",
   "delete_signup_request": "Удалить заявку",
-  "signup_request_deleted": "Заявка удалена"
+  "signup_request_deleted": "Заявка удалена",
+  "feed_added_multiple_friends": "<a id=\"author\">{author}</a> {gender, select, female {добавила} other {добавил}} {count, plural, one {# друга} few {# друзей} other {# друзей}}:",
+  "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> {gender, select, female {вступила} other {вступил}} в {count, plural, one {# группу} few {# группы} other {# групп}}:",
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> примет участие в {count, plural, one {# встрече} few {# встречах} other {# встречах}}:"
 }

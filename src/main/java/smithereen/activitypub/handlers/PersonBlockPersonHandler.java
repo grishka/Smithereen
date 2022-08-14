@@ -20,7 +20,7 @@ public class PersonBlockPersonHandler extends ActivityTypeHandler<ForeignUser, B
 		UserStorage.blockUser(actor.id, object.id);
 		if(status==FriendshipStatus.FRIENDS){
 			context.appContext.getActivityPubWorker().sendRemoveFromFriendsCollectionActivity(object, actor);
-			NewsfeedStorage.deleteEntry(object.id, actor.id, NewsfeedEntry.Type.ADD_FRIEND);
+			context.appContext.getNewsfeedController().deleteFriendsFeedEntry(object, actor.id, NewsfeedEntry.Type.ADD_FRIEND);
 		}
 	}
 }

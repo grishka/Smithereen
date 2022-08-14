@@ -3,6 +3,7 @@ package smithereen;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.GroupsController;
+import smithereen.controllers.NewsfeedController;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.controllers.PrivacyController;
 import smithereen.controllers.UserInteractionsController;
@@ -18,6 +19,7 @@ public class ApplicationContext{
 	private final ObjectLinkResolver objectLinkResolver;
 	private final ActivityPubWorker activityPubWorker;
 	private final PrivacyController privacyController;
+	private final NewsfeedController newsfeedController;
 
 	public ApplicationContext(){
 		wallController=new WallController(this);
@@ -28,6 +30,7 @@ public class ApplicationContext{
 		objectLinkResolver=new ObjectLinkResolver(this);
 		activityPubWorker=new ActivityPubWorker(this);
 		privacyController=new PrivacyController(this);
+		newsfeedController=new NewsfeedController(this);
 	}
 
 	public WallController getWallController(){
@@ -60,5 +63,9 @@ public class ApplicationContext{
 
 	public PrivacyController getPrivacyController(){
 		return privacyController;
+	}
+
+	public NewsfeedController getNewsfeedController(){
+		return newsfeedController;
 	}
 }

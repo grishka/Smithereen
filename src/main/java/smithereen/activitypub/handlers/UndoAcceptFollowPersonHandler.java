@@ -26,7 +26,7 @@ public class UndoAcceptFollowPersonHandler extends DoublyNestedActivityTypeHandl
 		UserStorage.setFollowAccepted(follower.id, actor.id, false);
 		if(status==FriendshipStatus.FRIENDS){
 			context.appContext.getActivityPubWorker().sendRemoveFromFriendsCollectionActivity(follower, actor);
-			NewsfeedStorage.deleteEntry(follower.id, actor.id, NewsfeedEntry.Type.ADD_FRIEND);
+			context.appContext.getNewsfeedController().deleteFriendsFeedEntry(follower, actor.id, NewsfeedEntry.Type.ADD_FRIEND);
 		}
 	}
 }

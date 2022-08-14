@@ -2220,3 +2220,25 @@ label.pretendLink{
 .feedDateHeader+.feedPostRow>.post:first-child{
 	padding-top: 0;
 }
+
+.feedRowUsers{
+	display: flex;
+	padding-bottom: 5px;
+}
+
+.feedRowUser{
+	width: 60px;
+	max-width: 60px;
+	margin: 15px 5px 0 0;
+	.ava{
+		display: block;
+		margin: auto;
+	}
+}
+
+.feedRowUserName{
+	text-align: center;
+	font-size: 10px;
+	padding-top: 2px;
+	overflow: hidden;
+}

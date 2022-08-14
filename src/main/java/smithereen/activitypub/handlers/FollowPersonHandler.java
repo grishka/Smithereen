@@ -38,7 +38,7 @@ public class FollowPersonHandler extends ActivityTypeHandler<ForeignUser, Follow
 
 		if(status==FriendshipStatus.REQUEST_RECVD || status==FriendshipStatus.FOLLOWED_BY){
 			context.appContext.getActivityPubWorker().sendAddToFriendsCollectionActivity(user, actor);
-			NewsfeedStorage.putEntry(user.id, actor.id, NewsfeedEntry.Type.ADD_FRIEND, null);
+			context.appContext.getNewsfeedController().putFriendsFeedEntry(user, actor.id, NewsfeedEntry.Type.ADD_FRIEND);
 		}
 	}
 }

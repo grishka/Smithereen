@@ -24,7 +24,7 @@ public class PersonAddPersonHandler extends ActivityTypeHandler<ForeignUser, Add
 			if(object instanceof ForeignUser && object.id==0)
 				UserStorage.putOrUpdateForeignUser((ForeignUser) object);
 
-			NewsfeedStorage.putEntry(actor.id, object.id, NewsfeedEntry.Type.ADD_FRIEND, null);
+			context.appContext.getNewsfeedController().putFriendsFeedEntry(actor, object.id, NewsfeedEntry.Type.ADD_FRIEND);
 
 			if(object instanceof ForeignUser foreignUser && foreignUser.getFriendsURL()!=null){
 				// Verify that the target user does indeed have the actor as their friend
