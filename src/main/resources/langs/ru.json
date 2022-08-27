@@ -552,7 +552,7 @@
   "confirm_delete_invite": "Вы действительно хотите удалить это приглашение?",
   "invite_add_friend": "Автоматически добавить ваc в друзья",
   "email_invite_body_start": "<b>{name}</b>, {inviterName} приглашает ваc зарегистрироваться в децентрализованной социальной сети на сервере <b>{serverName}</b>.",
-  "email_invite_body_start_approved": "<b>{name}</b>, ваш запрос на регистрацию на <b>{serverName}</b>, отправленный {date}, был одобрен администрацией сервера.",
+  "email_invite_body_start_approved": "<b>{name}</b>, ваш запрос на регистрацию на <b>{serverName}</b> был одобрен администрацией сервера.",
   "email_invite_body_end_html": "Нажмите на кнопку ниже, чтобы зарегистрироваться.",
   "email_invite_body_end_plain": "Перейдите по ссылке ниже, чтобы начать регистрацию.",
   "email_invite_subject": "Приглашение зарегистрироваться на {serverName}",

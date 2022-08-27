@@ -556,7 +556,7 @@
   "confirm_delete_invite": "Are you sure you want to delete this invitation?",
   "invite_add_friend": "Automatically add you as a friend",
   "email_invite_body_start": "<b>{name}</b>, {inviterName} has invited you to join a decentralized social media server <b>{serverName}</b>.",
-  "email_invite_body_start_approved": "<b>{name}</b>, your request to join <b>{serverName}</b> you sent {date} was approved by the server staff.",
+  "email_invite_body_start_approved": "<b>{name}</b>, your request to join <b>{serverName}</b> was approved by the server staff.",
   "email_invite_body_end_html": "Click the button below to sign up.",
   "email_invite_body_end_plain": "Follow the link below to begin registration.",
   "email_invite_subject": "Invitation to join {serverName}",
