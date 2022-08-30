@@ -76,14 +76,6 @@ public class PostStorage{
 				.value("source_format", 0)
 				.executeAndGetID();
 
-		if(userID==ownerUserID && replyKey==null){
-			 new SQLQueryBuilder(conn)
-					 .insertInto("newsfeed")
-					 .value("type", NewsfeedEntry.Type.POST)
-					 .value("author_id", userID)
-					 .value("object_id", id)
-					 .executeNoResult();
-		}
 		if(replyKey!=null && replyKey.length>0){
 			 new SQLQueryBuilder(conn)
 					 .update("wall_posts")

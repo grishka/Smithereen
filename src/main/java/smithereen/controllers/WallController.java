@@ -36,6 +36,7 @@ import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.UserPermissions;
+import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -193,6 +194,9 @@ public class WallController{
 				replyKey=null;
 			}
 			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, replyKey, mentionedUsers, attachments, contentWarning, pollID);
+			if(ownerUserID==userID && replyKey==null){
+				context.getNewsfeedController().putFriendsFeedEntry(author, postID, NewsfeedEntry.Type.POST);
+			}
 
 			Post post=PostStorage.getPostByID(postID, false);
 			if(post==null)
@@ -374,6 +378,9 @@ public class WallController{
 			}
 
 			PostStorage.updateWallPost(id, text, textSource, mentionedUsers, attachments, contentWarning, pollID);
+			if(!post.isGroupOwner() && post.owner.getLocalID()==post.user.id){
+				context.getNewsfeedController().clearFriendsFeedCache();
+			}
 
 			post=getPostOrThrow(id);
 			context.getActivityPubWorker().sendUpdatePostActivity(post);
