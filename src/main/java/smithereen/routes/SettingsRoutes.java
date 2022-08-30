@@ -128,6 +128,7 @@ public class SettingsRoutes{
 		String middle=req.queryParams("middle_name");
 		String maiden=req.queryParams("maiden_name");
 		String about=req.queryParams("about");
+		String aboutSource=about;
 		if(StringUtils.isNotEmpty(about))
 			about=preprocessPostHTML(about, null);
 		else
@@ -147,7 +148,7 @@ public class SettingsRoutes{
 		if(first.length()<2){
 			message=Utils.lang(req).get("err_name_too_short");
 		}else{
-			UserStorage.changeBasicInfo(self.user, first, last, middle, maiden, gender, bdate, about);
+			UserStorage.changeBasicInfo(self.user, first, last, middle, maiden, gender, bdate, about, aboutSource);
 			message=Utils.lang(req).get("profile_info_updated");
 		}
 		self.user=UserStorage.getById(self.user.id);
