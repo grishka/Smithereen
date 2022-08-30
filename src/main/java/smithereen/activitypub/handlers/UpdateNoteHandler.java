@@ -31,6 +31,9 @@ public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, 
 			}
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(post);
 			PostStorage.putForeignWallPost(post);
+			if(!post.isGroupOwner() && post.owner.getLocalID()==post.user.id){
+				context.appContext.getNewsfeedController().clearFriendsFeedCache();
+			}
 		}else{
 			throw new IllegalArgumentException("No access to update this post");
 		}

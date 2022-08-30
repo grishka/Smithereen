@@ -117,6 +117,10 @@ public class NewsfeedController{
 		}
 	}
 
+	public void clearFriendsFeedCache(){ // TODO only cache objects like posts in one place, use IDs everywhere else
+		friendsNewsFeedCache.evictAll();
+	}
+
 	private static class CachedFeed{
 		public ZoneId timeZone;
 		public ArrayList<NewsfeedEntry> feed=new ArrayList<>();
