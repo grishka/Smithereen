@@ -137,43 +137,12 @@
 					</execution>
 
 					<execution>
-						<id>postcss: desktop</id>
+						<id>build frontend</id>
 						<goals>
-							<goal>npx</goal>
+							<goal>npm</goal>
 						</goals>
-						<phase>generate-resources</phase>
 						<configuration>
-							<arguments>postcss desktop.scss -o ${basedir}/target/generated-resources/public/res/desktop.css</arguments>
-						</configuration>
-					</execution>
-					<execution>
-						<id>postcss: mobile</id>
-						<goals>
-							<goal>npx</goal>
-						</goals>
-						<phase>generate-resources</phase>
-						<configuration>
-							<arguments>postcss mobile.scss -o ${basedir}/target/generated-resources/public/res/mobile.css</arguments>
-						</configuration>
-					</execution>
-					<execution>
-						<id>compile typescript</id>
-						<goals>
-							<goal>npx</goal>
-						</goals>
-						<phase>generate-resources</phase>
-						<configuration>
-							<arguments>tsc -p common_ts --outFile ${basedir}/target/typescript/common.js</arguments>
-						</configuration>
-					</execution>
-					<execution>
-						<id>minify js</id>
-						<goals>
-							<goal>npx</goal>
-						</goals>
-						<phase>generate-resources</phase>
-						<configuration>
-							<arguments>uglify-js --compress --mangle --source-map content='${basedir}/target/typescript/common.js.map',url='common.js.map',root='common_ts' -o ${basedir}/target/generated-resources/public/res/common.js ${basedir}/target/typescript/common.js</arguments>
+							<arguments>run build ${basedir}</arguments>
 						</configuration>
 					</execution>
 				</executions>
@@ -213,14 +182,6 @@
 			</resource>
 			<resource>
 				<directory>target/generated-resources</directory>
-			</resource>
-			<!-- copy typescript sources into /public so they're available from browser devtools -->
-			<resource>
-				<directory>src/main/web</directory>
-				<targetPath>public/res</targetPath>
-				<includes>
-					<include>common_ts/*.ts</include>
-				</includes>
 			</resource>
 		</resources>
 	</build>

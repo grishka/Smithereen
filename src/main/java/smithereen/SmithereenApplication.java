@@ -49,6 +49,7 @@ import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.templates.Templates;
 import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
@@ -518,8 +519,8 @@ public class SmithereenApplication{
 				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
 			}
 			if(req.attribute("isTemplate")!=null && !Utils.isAjax(req)){
-				String cssName=req.attribute("mobile")!=null ? "mobile" : "desktop";
-				resp.header("Link", "</res/"+cssName+".css?"+Utils.staticFileHash+">; rel=preload; as=style, </res/common.js?"+Utils.staticFileHash+">; rel=preload; as=script");
+				String cssName=req.attribute("mobile")!=null ? "mobile.css" : "desktop.css";
+				resp.header("Link", "</res/"+cssName+"?"+Templates.getStaticFileVersion(cssName)+">; rel=preload; as=style, </res/common.js?"+Templates.getStaticFileVersion("common.js")+">; rel=preload; as=script");
 				resp.header("Vary", "User-Agent, Accept-Language");
 				resp.header("X-Powered-By", "frustration with attention economy");
 			}

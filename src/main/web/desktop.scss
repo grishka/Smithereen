@@ -1794,10 +1794,11 @@ textarea{
 	padding: 6px 0 3px;
 	label{
 		display: block;
-		padding: 3px 0;
+		padding: 3px 0 0 16px;
 		cursor: pointer;
 		input{
 			vertical-align: -3px;
+			margin-left: -16px;
 		}
 	}
 	form{

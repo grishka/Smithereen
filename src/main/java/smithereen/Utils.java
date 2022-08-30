@@ -84,7 +84,6 @@ public class Utils{
 
 	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor", "healthz");
 	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
-	public static final String staticFileHash;
 	private static Unidecode unidecode=Unidecode.toAscii();
 	private static Random rand=new Random();
 
@@ -104,10 +103,6 @@ public class Utils{
 			.registerTypeAdapter(Locale.class, new LocaleJsonAdapter())
 			.registerTypeHierarchyAdapter(ZoneId.class, new TimeZoneJsonAdapter())
 			.create();
-
-	static{
-		staticFileHash=String.format(Locale.US, "%016x", new Random().nextLong());
-	}
 
 
 	public static String csrfTokenFromSessionID(byte[] sid){
