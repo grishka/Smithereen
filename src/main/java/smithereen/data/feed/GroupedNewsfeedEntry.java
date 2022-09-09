@@ -26,6 +26,9 @@ public class GroupedNewsfeedEntry extends NewsfeedEntry{
 			if(e.type!=childEntriesType){
 				throw new IllegalArgumentException("Unexpected entry type "+e.type+" added to group of type "+childEntriesType);
 			}
+			if(e.authorID!=authorID){
+				throw new IllegalArgumentException("Unexpected entry author "+e.authorID+" added to group by author "+authorID);
+			}
 			if(time==null || time.isBefore(e.time))
 				time=e.time;
 		}

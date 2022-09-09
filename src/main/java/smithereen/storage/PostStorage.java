@@ -321,6 +321,7 @@ public class PostStorage{
 					entry.type=type;
 					entry.id=res.getInt(4);
 					entry.time=res.getTimestamp(5).toInstant();
+					entry.authorID=res.getInt(3);
 					posts.add(entry);
 				}while(res.next());
 			}
