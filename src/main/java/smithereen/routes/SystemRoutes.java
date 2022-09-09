@@ -49,6 +49,7 @@ import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponse;
+import smithereen.data.attachments.GraffitiAttachment;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
@@ -81,19 +82,19 @@ public class SystemRoutes{
 		URI uri=null;
 		MediaCache.ItemType itemType;
 		SizedImage.Type sizeType;
-		SizedImage.Format format;
+		SizedImage.Format format=switch(req.queryParams("format")){
+			case "jpeg", "jpg" -> SizedImage.Format.JPEG;
+			case "webp" -> SizedImage.Format.WEBP;
+			case "png" -> {
+				if("post_photo".equals(type)){
+					yield SizedImage.Format.PNG;
+				}else{
+					throw new BadRequestException();
+				}
+			}
+			default -> throw new BadRequestException();
+		};
 
-		switch(req.queryParams("format")){
-			case "jpeg":
-			case "jpg":
-				format=SizedImage.Format.JPEG;
-				break;
-			case "webp":
-				format=SizedImage.Format.WEBP;
-				break;
-			default:
-				return "";
-		}
 		sizeType=SizedImage.Type.fromSuffix(req.queryParams("size"));
 		if(sizeType==null)
 			return "";
@@ -101,6 +102,7 @@ public class SystemRoutes{
 		float[] cropRegion=null;
 		User user=null;
 		Group group=null;
+		boolean isGraffiti=false;
 
 		if("user_ava".equals(type)){
 			itemType=MediaCache.ItemType.AVATAR;
@@ -169,6 +171,11 @@ public class SystemRoutes{
 			}else{
 				mime=att.mediaType;
 			}
+			if(format==SizedImage.Format.PNG && (!(att instanceof Image img) || !img.isGraffiti)){
+				LOG.warn("downloading post_photo: requested png but the attachment is not a graffiti");
+				throw new BadRequestException();
+			}
+			isGraffiti=att instanceof Image img && img.isGraffiti;
 			uri=att.url;
 		}else{
 			LOG.warn("unknown external file type {}", type);
@@ -186,7 +193,11 @@ public class SystemRoutes{
 						return "";
 					}
 					try{
-						MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType);
+						MediaCache.PhotoItem item;
+						if(isGraffiti)
+							item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType, true, GraffitiAttachment.WIDTH, GraffitiAttachment.HEIGHT);
+						else
+							item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType, false, 0, 0);
 						if(item==null){
 							if(itemType==MediaCache.ItemType.AVATAR && req.queryParams("retrying")==null){
 								if(user!=null){
@@ -218,6 +229,7 @@ public class SystemRoutes{
 
 	public static Object uploadPostPhoto(Request req, Response resp, Account self) throws SQLException{
 		try{
+			boolean isGraffiti=req.queryParams("graffiti")!=null;
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
 			Part part=req.raw().getPart("file");
 			if(part.getSize()>10*1024*1024){
@@ -240,21 +252,27 @@ public class SystemRoutes{
 				img=flat;
 			}
 
+			if(isGraffiti && (img.getWidth()!=GraffitiAttachment.WIDTH || img.getHeight()!=GraffitiAttachment.HEIGHT)){
+				LOG.warn("Unexpected graffiti size {}x{}", img.getWidth(), img.getHeight());
+				throw new BadRequestException();
+			}
+
 			LocalImage photo=new LocalImage();
 			File postMediaDir=new File(Config.uploadPath, "post_media");
 			postMediaDir.mkdirs();
 			int width, height;
 			try{
 				int[] outSize={0,0};
-				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, keyHex, postMediaDir, outSize);
+				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, keyHex, postMediaDir, outSize);
 
 				SessionInfo sess=Utils.sessionInfo(req);
 				photo.localID=keyHex;
-				photo.mediaType="image/jpeg";
+				photo.mediaType=isGraffiti ? "image/png" : "image/jpeg";
 				photo.path="post_media";
 				photo.width=width=outSize[0];
 				photo.height=height=outSize[1];
 				photo.blurHash=BlurHash.encode(img, 4, 4);
+				photo.isGraffiti=isGraffiti;
 				if(req.queryParams("draft")!=null)
 					sess.postDraftAttachments.add(photo);
 				MediaCache.putDraftAttachment(photo, self.id);

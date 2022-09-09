@@ -5,7 +5,7 @@
 {% else %}
 <div class="tabbar">
 	<a href="/users/{{ owner.id }}/groups" class="selected">{{ L('user_groups', {'name': owner.firstAndGender}) }}</a>
-	<a href="{{ owner.profileURL }}" class="aux">{{ L('back_to_profile') }}</a>
+	<span class="aux"><a href="{{ owner.profileURL }}">{{ L('back_to_profile') }}</a></span>
 </div>
 {% endif %}
 <div class="summaryWrap">

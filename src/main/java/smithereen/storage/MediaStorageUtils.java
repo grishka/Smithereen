@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import smithereen.Config;
@@ -20,6 +21,7 @@ import spark.utils.StringUtils;
 
 public class MediaStorageUtils{
 	private static final Logger LOG=LoggerFactory.getLogger(MediaStorageUtils.class);
+	public static final int QUALITY_LOSSLESS=-1;
 
 	public static long writeResizedWebpImage(VipsImage img, int widthOrSize, int height, int quality, String keyHex, File basePath, int[] outSize) throws IOException{
 		File file=new File(basePath, keyHex+".webp");
@@ -29,21 +31,32 @@ public class MediaStorageUtils{
 		}else{
 			factor=Math.min((double)widthOrSize/(double)img.getWidth(), (double)height/(double)img.getHeight());
 		}
+
+		ArrayList<String> args=new ArrayList<>();
+		if(quality==QUALITY_LOSSLESS){
+			args.add("lossless=true");
+		}else{
+			args.add("Q="+quality);
+		}
+
 		boolean strip=!img.hasColorProfile();
 		if(!strip){
 			for(String key:img.getFields()){
 				if(!"icc-profile-data".equals(key))
 					img.removeField(key);
 			}
+		}else{
+			args.add("strip=true");
 		}
+
 		if(factor>1.0){
-			img.writeToFile(file.getAbsolutePath()+"[Q="+quality+(strip ? ",strip=true" : "")+"]");
+			img.writeToFile(file.getAbsolutePath()+"["+String.join(",", args)+"]");
 			outSize[0]=img.getWidth();
 			outSize[1]=img.getHeight();
 		}else{
 			VipsImage resized=img.resize(factor);
 			try{
-				resized.writeToFile(file.getAbsolutePath()+"[Q="+quality+(strip ? ",strip=true" : "")+"]");
+				resized.writeToFile(file.getAbsolutePath()+"["+String.join(",", args)+"]");
 				outSize[0]=resized.getWidth();
 				outSize[1]=resized.getHeight();
 			}finally{

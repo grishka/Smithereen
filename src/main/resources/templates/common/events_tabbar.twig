@@ -5,5 +5,5 @@
 	{%if userNotifications.newEventInvitationsCount>0%}
 	<a href="/my/events/invites" class="{%if tab=="invites"%}selected{%endif%}">{{ L('group_invitations')}} ({{ userNotifications.newEventInvitationsCount }})</a>
 	{%endif%}
-	<a href="/my/events/create" class="aux" data-ajax-box="1">{{ L('create_event') }}</a>
+	<span class="aux"><a href="/my/events/create" data-ajax-box="1">{{ L('create_event') }}</a></span>
 </div>

@@ -540,7 +540,6 @@ small{
 
 .profileBlock{
 	border-collapse: collapse;
-	overflow-x: hidden;
 	.blockHeader{
 		text-align: left;
 		height: 20px;
@@ -1066,6 +1065,10 @@ select{
 	padding: 0 5px;
 	>button{
 		margin: 0 5px;
+	}
+	>.buttonBarAux{
+		flex-grow: 1;
+		padding-left: 13px;
 	}
 }
 
@@ -1620,15 +1623,8 @@ select{
 		cursor: pointer;
 		border-radius: 2px;
 		color: $normalLink;
-		box-shadow:
-			0 0.1px 0.1px rgba(0, 0, 0, 0.028),
-			0 0.1px 0.3px rgba(0, 0, 0, 0.04),
-			0 0.3px 0.5px rgba(0, 0, 0, 0.05),
-			0 0.4px 0.9px rgba(0, 0, 0, 0.06),
-			0 0.8px 1.7px rgba(0, 0, 0, 0.072),
-			0 2px 4px rgba(0, 0, 0, 0.1)
-		;
 		min-width: 115px;
+		@include popup-shadow;
 		text-align: left;
 
 		ul{
@@ -1679,6 +1675,9 @@ select{
 	&.iconPoll{
 		background-position: 0 -100px;
 	}
+	&.iconGraffiti{
+		background-position: 0 -140px;
+	}
 }
 
 .postCWWrap{
@@ -1707,12 +1706,12 @@ input:checked+.postCWWrap{
 	}
 }
 
-.summaryWrap{
-	color: $boldHeaders;
+.summaryWrap, .realSummaryWrap{
 	padding: 13px 10px 0;
 	border-bottom: solid 1px $wallPostSeparator;
 
 	.summary{
+		color: $boldHeaders;
 		font-weight: bold;
 		padding: 3px 0 4px;
 		float: left;
@@ -1723,7 +1722,7 @@ input:checked+.postCWWrap{
 	}
 }
 
-.bottomSummaryWrap{
+.bottomSummaryWrap, .realBottomSummaryWrap{
 	padding: 0 10px 13px;
 	border-top: solid 1px $wallPostSeparator;
 }
@@ -2245,3 +2244,131 @@ label.pretendLink{
 	padding-top: 2px;
 	overflow: hidden;
 }
+
+.graffitiDrawAreaWrap{
+	border: solid 1px $sectionHeaderBorder;
+	background-color: #fff;
+	width: 588px;
+	height: 295px;
+	position: relative;
+	>*{
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		width: 100%;
+		height: 100%;
+	}
+}
+
+.graffitiControls{
+	padding: 0 12px;
+	height: 68px;
+	display: flex;
+	align-items: center;
+	label{
+		text-align: right;
+		padding-right: 8px;
+		padding-left: 25px;
+	}
+	.colorBtn{
+		display: flex;
+		flex-direction: column;
+		margin-left: 5px;
+		svg{
+			fill: $wallPostSeparator;
+			stroke: $textAreaBorder;
+			stroke-width: 1px;
+		}
+		&:hover svg{
+			fill: none;
+		}
+		.colorPreview{
+			width: 13px;
+			height: 13px;
+			border-radius: 1px;
+			border: solid 1px rgba(0,0,0,.1);
+			margin: 2px auto 4px;
+		}
+	}
+	input[type=range]{
+		width: 101px;
+		height: 16px;
+		padding-top: 8px;
+		margin: 0;
+		-webkit-appearance: none;
+		background: svg-load('img/graffiti_slider_bg.svg', fill: #e4e4e4, stroke: #bfbfbf) no-repeat top center;
+		&::-webkit-slider-runnable-track{
+			-webkit-appearance: none;
+			height: 11px;
+		}
+		&::-moz-range-track{
+			height: 11px;
+		}
+		&::-ms-track{
+			height: 11px;
+		}
+		&::-webkit-slider-thumb{
+			-webkit-appearance: none;
+			width: 8px;
+			height: 11px;
+			background: $wallPostSeparator;
+			border: solid 1px $textAreaBorder;
+			margin-top: 1px;
+		}
+		&::-moz-range-thumb{
+			box-sizing: border-box;
+			width: 8px;
+			height: 11px;
+			background: $wallPostSeparator;
+			border: solid 1px $textAreaBorder;
+			border-radius: 0;
+		}
+		&::-ms-thumb{
+			box-sizing: border-box;
+			width: 8px;
+			height: 11px;
+			background: $wallPostSeparator;
+			border: solid 1px $textAreaBorder;
+			border-radius: 0;
+		}
+	}
+}
+
+.graffitiEditorInner{
+	position: relative;
+	.colorPickerWrap{
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+	}
+	.colorPicker{
+		border: solid 5px rgba(241,241,241,.85);
+		border-radius: 2px;
+		@include popup-shadow;
+		display: grid;
+		grid-gap: 1px;
+		grid-template-columns: repeat(18, 13px);
+		position: absolute;
+		padding: 1px;
+		left: 75px;
+		top: 185px;
+		>div{
+			width: 13px;
+			height: 13px;
+			outline: solid 1px #000;
+			&:hover{
+				outline: solid 1px #fff;
+				z-index: 1;
+			}
+		}
+	}
+}
+
+.summaryLinks{
+	padding: 3px 0 4px;
+}
+

@@ -43,6 +43,7 @@ import smithereen.lang.Lang;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
+import spark.Response;
 
 public class Templates{
 	private static final PebbleEngine desktopEngine=makeEngineInstance("desktop", "common");
@@ -181,5 +182,15 @@ public class Templates{
 			}
 		}
 		return null;
+	}
+
+	public static void addJsLangForNewPostForm(Request req){
+		Utils.jsLangKey(req,
+				"post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment",
+				// polls
+				"create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours",
+				// graffiti
+				"graffiti_clear", "graffiti_undo", "graffiti_clear_confirm", "graffiti_close_confirm", "confirm_title", "graffiti_color", "graffiti_thickness", "graffiti_opacity", "attach"
+			);
 	}
 }

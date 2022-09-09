@@ -1,0 +1,9 @@
+{
+	"compilerOptions":{
+		"outFile": "../../resources/public/res/graffiti.js",
+		"sourceMap": true,
+		"sourceRoot": "/res/graffiti_ts/",
+		"noImplicitAny": true
+	},
+	"include":["*", "../../../../target/typescript/common.d.ts"]
+}

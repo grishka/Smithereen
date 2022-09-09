@@ -83,6 +83,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 						PostStorage.voteInPoll(actor.id, parent.poll.id, optionID, post.activityPubID, parent.poll.multipleChoice);
 						context.appContext.getWallController().sendUpdateQuestionIfNeeded(parent);
 					}
+					context.appContext.getNewsfeedController().clearFriendsFeedCache();
 					return;
 				}
 			}
@@ -182,6 +183,8 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			NotificationUtils.putNotificationsForPost(post, null);
 			if(!Objects.equals(post.owner.activityPubID, post.user.activityPubID)){
 				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(post);
+			}else{
+				context.appContext.getNewsfeedController().clearFriendsFeedCache();
 			}
 		}
 	}

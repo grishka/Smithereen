@@ -4,7 +4,7 @@ class PopupMenu{
 	private menu:HTMLElement;
 	private actualMenu:HTMLElement;
 	private title:HTMLElement;
-	private listener:{(id:string):void};
+	private listener:{(id:string, args:any):void};
 	private prepareCallback:{():void};
 
 	public constructor(el:HTMLElement, listener:{(id:string):void}){
@@ -59,7 +59,7 @@ class PopupMenu{
 			this.menu.hideAnimated();
 		}, 100);
 
-		this.listener(li.dataset.act);
+		this.listener(li.dataset.act, li.dataset.args ? JSON.parse(li.dataset.args) : {});
 	}
 
 	public setItemVisibility(act:string, visible:boolean){

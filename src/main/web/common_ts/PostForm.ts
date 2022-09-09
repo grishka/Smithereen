@@ -1,11 +1,19 @@
 ///<reference path="./PopupMenu.ts"/>
 
+interface GraffitiEditorBox extends Box{
+	(title:string, form:PostForm):GraffitiEditorBox;
+}
+
 interface UploadingAttachment{
 	el:HTMLElement;
 	cancelBtn:HTMLAnchorElement;
 	image:HTMLElement;
 	pbar:ProgressBar;
-	file:File;
+	file:Blob;
+	fileName:string;
+	onDone:{():void};
+	onError:{():void};
+	extraParams:any;
 }
 
 class PostForm{
@@ -205,12 +213,12 @@ class PostForm{
 		for(var i=0;i<files.length;i++){
 			var f=files[i];
 			if(f.type.indexOf("image/")==0){
-				this.uploadFile(f);
+				this.uploadFile(f, f.name);
 			}
 		}
 	}
 
-	private uploadFile(f:File):void{
+	public uploadFile(f:Blob, name:string, extraParams:any={}, onDone:{():void}=null, onError:{():void}=null):void{
 		if(f.size>10*1024*1024){
 			new MessageBox(lang("error"), lang("max_file_size_exceeded", {size: 10}), lang("ok")).show();
 			return;
@@ -227,14 +235,14 @@ class PostForm{
 			img=ce("img", {src: objURL}),
 			ce("div", {className: "scrim"}),
 			pbarEl=ce("div", {className: "progressBar small"}),
-			ce("div", {className: "fileName", innerText: f.name}),
+			ce("div", {className: "fileName", innerText: name}),
 			del=ce("a", {className: "deleteBtn", title: lang("remove_attachment")}),
 		]);
 
 		this.attachContainer.appendChild(cont);
 
 		var pbar=new ProgressBar(pbarEl);
-		var att:UploadingAttachment={el: cont, cancelBtn: del, image: img, pbar: pbar, file: f};
+		var att:UploadingAttachment={el: cont, cancelBtn: del, image: img, pbar: pbar, file: f, fileName: name, onDone: onDone, onError: onError, extraParams: extraParams};
 		del.onclick=()=>{
 			this.uploadQueue.remove(att);
 			cont.parentNode.removeChild(cont);
@@ -252,9 +260,13 @@ class PostForm{
 		}
 		this.currentUploadingAttachment=f;
 		var formData=new FormData();
-		formData.append("file", f.file);
+		formData.append("file", f.file, f.fileName);
 		var xhr=new XMLHttpRequest();
-		xhr.open("POST", "/system/upload/postPhoto?_ajax=1&csrf="+userConfig.csrf);
+		var url="/system/upload/postPhoto?_ajax=1&csrf="+userConfig.csrf;
+		for(var key in f.extraParams){
+			url+="&"+key+"="+encodeURIComponent(f.extraParams[key]);
+		}
+		xhr.open("POST", url);
 		xhr.onload=()=>{
 			f.el.classList.remove("uploading");
 			var resp=xhr.response;
@@ -268,11 +280,15 @@ class PostForm{
 			this.attachmentIDs.push(resp.id);
 			this.attachField.value=this.attachmentIDs.join(",");
 			this.maybeUploadNextAttachment();
+			if(f.onDone)
+				f.onDone();
 		};
 		xhr.onerror=(ev:ProgressEvent)=>{
 			console.log(ev);
 			new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
 			this.maybeUploadNextAttachment();
+			if(f.onError)
+				f.onError();
 		};
 		xhr.upload.onprogress=(ev:ProgressEvent)=>{
 			f.pbar.setProgress(ev.loaded/ev.total);
@@ -363,13 +379,15 @@ class PostForm{
 		}
 	}
 
-	private onAttachMenuItemClick(id:string){
+	private onAttachMenuItemClick(id:string, args:any){
 		if(id=="photo"){
 			this.fileField.click();
 		}else if(id=="cw"){
 			this.showCWLayout();
 		}else if(id=="poll"){
 			this.showPollLayout();
+		}else if(id=="graffiti"){
+			this.showGraffitiEditor(args);
 		}
 	}
 
@@ -546,6 +564,20 @@ class PostForm{
 		this.pollQuestionField=null;
 		this.pollOptionsWrap=null;
 		this.pollTimeSelect=null;
+	}
+
+	private showGraffitiEditor(args:any){
+		if(!this.checkAttachmentCount())
+			return;
+		if((window as any).GraffitiEditorBox!==undefined){
+			new (window as any).GraffitiEditorBox(args.title, this).show();
+		}else{
+			LayerManager.getInstance().showBoxLoader();
+			var script=ce("script", {src: "/res/graffiti.js?"+args.jsHash, onload:()=>{
+				new (window as any).GraffitiEditorBox(args.title, this).show();
+			}});
+			document.body.appendChild(script);
+		}
 	}
 
 	private showMobileAttachMenu(){

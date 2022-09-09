@@ -326,6 +326,11 @@ public class SmithereenApplication{
 			postWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
 			getWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
 
+			getLoggedIn("/confirmSendFriendRequest", ProfileRoutes::confirmSendFriendRequest);
+			postWithCSRF("/doSendFriendRequest", ProfileRoutes::doSendFriendRequest);
+			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
+			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
+
 			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncRelationshipsCollections);
 			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncContentCollections);
 			getRequiringAccessLevelWithCSRF("/syncProfile", Account.AccessLevel.ADMIN, ProfileRoutes::syncProfile);
@@ -469,11 +474,6 @@ public class SmithereenApplication{
 			get("", ProfileRoutes::profile);
 
 			postWithCSRF("/remoteFollow", ActivityPubRoutes::remoteFollow);
-
-			getLoggedIn("/confirmSendFriendRequest", ProfileRoutes::confirmSendFriendRequest);
-			postWithCSRF("/doSendFriendRequest", ProfileRoutes::doSendFriendRequest);
-			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
-			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
 		});
 
 

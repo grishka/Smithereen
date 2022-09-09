@@ -46,6 +46,7 @@ import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.templates.Templates;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -202,8 +203,8 @@ public class GroupsRoutes{
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
 
-		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
-		jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
+		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete");
+		Templates.addJsLangForNewPostForm(req);
 		if(self!=null){
 			Group.AdminLevel level=context(req).getGroupsController().getMemberAdminLevel(group, self.user);
 			model.with("membershipState", membershipState);

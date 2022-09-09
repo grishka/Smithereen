@@ -12,11 +12,11 @@
 	{% elseif tab=="wall2wall" %}
 		<a href="#" class="selected">{{ L('wall_X_and_Y', {'name1': owner.firstName, 'name2': otherUser.firstName}) }}</a>
 	{% endif %}
-	<a href="{{ owner.profileURL }}" class="aux">
+	<span class="aux"><a href="{{ owner.profileURL }}">
 	{% if isGroup %}
 		{{- L('back_to_group') -}}
 	{% else %}
 		{{- L('back_to_profile') -}}
 	{% endif %}
-	</a>
+	</a></span>
 </div>

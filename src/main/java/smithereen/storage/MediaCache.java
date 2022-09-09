@@ -129,7 +129,7 @@ public class MediaCache{
 		return result;
 	}
 
-	public Item downloadAndPut(URI uri, String mime, ItemType type) throws IOException, SQLException{
+	public Item downloadAndPut(URI uri, String mime, ItemType type, boolean lossless, int enforcedWidth, int enforcedHeight) throws IOException, SQLException{
 		byte[] key=keyForURI(uri);
 		String keyHex=Utils.byteArrayToHexString(key);
 
@@ -167,6 +167,8 @@ public class MediaCache{
 				VipsImage img=null;
 				try{
 					img=new VipsImage(tmp.getAbsolutePath());
+					if((enforcedWidth!=0 && img.getWidth()!=enforcedWidth) || (enforcedHeight!=0 && img.getHeight()!=enforcedHeight))
+						throw new IllegalArgumentException("Invalid image size");
 					//System.out.println(img.getWidth()+"x"+img.getHeight());
 					if(img.hasAlpha()){
 						VipsImage flat=img.flatten(255, 255, 255);
@@ -174,7 +176,7 @@ public class MediaCache{
 						img=flat;
 					}
 					int[] size={0,0};
-					photo.totalSize=MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, keyHex, Config.mediaCachePath, size);
+					photo.totalSize=MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, lossless ? MediaStorageUtils.QUALITY_LOSSLESS : 93, keyHex, Config.mediaCachePath, size);
 					photo.width=size[0];
 					photo.height=size[1];
 					photo.key=keyHex;

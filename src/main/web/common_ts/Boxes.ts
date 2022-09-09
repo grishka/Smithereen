@@ -178,9 +178,12 @@ class Box extends BaseLayer{
 	protected boxLayer:HTMLElement;
 	protected noPrimaryButton:boolean=false;
 	protected onDismissListener:{():void;};
+	protected buttonBarLoader:HTMLDivElement;
+	protected buttons:HTMLElement[];
 
 	public constructor(title:string, buttonTitles:string[]=[], onButtonClick:{(index:number):void;}=null){
 		super();
+		this.buttons=[];
 		this.title=title;
 		this.buttonTitles=buttonTitles;
 		this.onButtonClick=onButtonClick;
@@ -216,7 +219,7 @@ class Box extends BaseLayer{
 	}
 
 	public getButton(index:number):HTMLElement{
-		return this.buttonBar.children[index] as HTMLElement;
+		return this.buttons[index];
 	}
 
 	public setButtons(buttonTitles:string[], onButtonClick:{(index:number):void;}){
@@ -262,10 +265,12 @@ class Box extends BaseLayer{
 	}
 
 	private updateButtonBar():void{
+		for(var button of this.buttons){
+			button.remove();
+		}
+		this.buttons=[];
 		if(this.buttonTitles.length){
 			this.buttonBar.show();
-			while(this.buttonBar.firstChild)
-				this.buttonBar.lastChild.remove();
 			for(var i:number=0;i<this.buttonTitles.length;i++){
 				var btn:HTMLButtonElement=ce("button", {type: "button"});
 				btn.innerText=this.buttonTitles[i];
@@ -278,6 +283,7 @@ class Box extends BaseLayer{
 					btn.onclick=this.dismiss.bind(this);
 				}
 				this.buttonBar.appendChild(btn);
+				this.buttons.push(btn);
 			}
 		}else{
 			this.buttonBar.hide();
@@ -292,6 +298,30 @@ class Box extends BaseLayer{
 
 	public setOnDismissListener(listener:{():void}){
 		this.onDismissListener=listener;
+	}
+
+	public showButtonLoading(index:number, loading:boolean){
+		if(mobile){
+			var cl=this.getButton(index).classList;
+			if(loading)
+				cl.add("loading");
+			else
+				cl.remove("loading");
+		}else{
+			if(loading){
+				if(!this.buttonBarLoader){
+					this.buttonBarLoader=ce("div", {className: "buttonBarAux"}, [ce("div", {className: "loader flL"})]);
+					if(this.buttonBar.firstChild)
+						this.buttonBar.insertBefore(this.buttonBarLoader, this.buttonBar.firstChild);
+					else
+						this.buttonBar.appendChild(this.buttonBarLoader);
+				}else{
+					this.buttonBarLoader.show();
+				}
+			}else if(this.buttonBarLoader){
+				this.buttonBarLoader.hide();
+			}
+		}
 	}
 }
 
@@ -385,7 +415,7 @@ class FormBox extends Box{
 					var btn=this.getButton(0);
 					btn.setAttribute("disabled", "");
 					this.getButton(1).setAttribute("disabled", "");
-					btn.classList.add("loading");
+					this.showButtonLoading(0, true);
 					ajaxSubmitForm(this.form, (resp)=>{
 						if(resp){
 							this.dismiss();
@@ -393,7 +423,7 @@ class FormBox extends Box{
 							var btn=this.getButton(0);
 							btn.removeAttribute("disabled");
 							this.getButton(1).removeAttribute("disabled");
-							btn.classList.remove("loading");
+							this.showButtonLoading(0, false);
 						}
 					});
 				}

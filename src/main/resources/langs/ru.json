@@ -586,5 +586,18 @@
   "signup_request_deleted": "Заявка удалена",
   "feed_added_multiple_friends": "<a id=\"author\">{author}</a> {gender, select, female {добавила} other {добавил}} {count, plural, one {# друга} few {# друзей} other {# друзей}}:",
   "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> {gender, select, female {вступила} other {вступил}} в {count, plural, one {# группу} few {# группы} other {# групп}}:",
-  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> примет участие в {count, plural, one {# встрече} few {# встречах} other {# встречах}}:"
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> примет участие в {count, plural, one {# встрече} few {# встречах} other {# встречах}}:",
+  "attach_menu_graffiti": "Граффити",
+  "graffiti_editor_title_user": "Ваше граффити на стену {name, inflect, genitive}",
+  "graffiti_editor_title_group": "Ваше граффити на стену \"{name}\"",
+  "graffiti_clear": "Начать заново",
+  "graffiti_undo": "Отменить последнее действие",
+  "graffiti_clear_confirm": "Вы уверены, что хотите стереть граффити?",
+  "graffiti_close_confirm": "Вы уверены, что хотите прервать рисование без сохранения результата?",
+  "confirm_title": "Предупреждение",
+  "graffiti_color": "Цвет",
+  "graffiti_thickness": "Толщина",
+  "graffiti_opacity": "Интенсивность",
+  "graffiti_on_user_X_wall": "Граффити на стене {name, inflect, genitive}",
+  "graffiti_on_group_X_wall": "Граффити на стене \"{name}\""
 }

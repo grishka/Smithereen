@@ -75,9 +75,9 @@ public class GroupsController{
 	private Group createGroupInternal(User admin, String name, String description, boolean isEvent, Instant startTime, Instant endTime){
 		try{
 			if(StringUtils.isEmpty(name))
-				throw new IllegalArgumentException("name is empty");
+				throw new BadRequestException("name is empty");
 			if(isEvent && startTime==null)
-				throw new IllegalArgumentException("start time is required for event");
+				throw new BadRequestException("start time is required for event");
 			int id=GroupStorage.createGroup(name, Utils.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
 			Group group=Objects.requireNonNull(GroupStorage.getById(id));
 			context.getActivityPubWorker().sendAddToGroupsCollectionActivity(admin, group, false);

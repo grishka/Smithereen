@@ -49,6 +49,7 @@ import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.templates.Templates;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -229,11 +230,10 @@ public class PostRoutes{
 		return "";
 	}
 
-	public static Object feed(Request req, Response resp, Account self) throws SQLException{
-		int userID=self.user.id;
+	public static Object feed(Request req, Response resp, Account self){
 		int startFromID=parseIntOrDefault(req.queryParams("startFrom"), 0);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		PaginatedList<NewsfeedEntry> feed=context(req).getNewsfeedController().getFriendsFeed(self, timeZoneForRequest(req), startFromID, offset, 25);//PostStorage.getFeed(userID, startFromID, offset, 25, total);
+		PaginatedList<NewsfeedEntry> feed=context(req).getNewsfeedController().getFriendsFeed(self, timeZoneForRequest(req), startFromID, offset, 25);
 		List<Post> feedPosts=feed.list.stream().filter(e->e instanceof PostNewsfeedEntry pe && pe.post!=null).map(e->((PostNewsfeedEntry)e).post).collect(Collectors.toList());
 		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
 			context(req).getWallController().populateCommentPreviews(feedPosts);
@@ -241,8 +241,8 @@ public class PostRoutes{
 		Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(feedPosts, self.user);
 		if(!feed.list.isEmpty() && startFromID==0)
 			startFromID=feed.list.get(0).id;
-		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
-		jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
+		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel");
+		Templates.addJsLangForNewPostForm(req);
 		return new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list).with("postInteractions", interactions)
 				.with("paginationUrlPrefix", "/feed?startFrom="+startFromID+"&offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationPerPage", 25).with("paginationFirstPageUrl", "/feed")
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
@@ -304,9 +304,8 @@ public class PostRoutes{
 			boolean hasImage=false;
 			if(post.attachment!=null && !post.attachment.isEmpty()){
 				for(Attachment att : post.getProcessedAttachments()){
-					if(att instanceof PhotoAttachment){
-						PhotoAttachment pa=(PhotoAttachment) att;
-						SizedImage.Dimensions size=((PhotoAttachment) att).image.getDimensionsForSize(SizedImage.Type.MEDIUM);
+					if(att instanceof PhotoAttachment pa){
+						SizedImage.Dimensions size=pa.image.getDimensionsForSize(SizedImage.Type.MEDIUM);
 						meta.put("og:image", pa.image.getUriForSizeAndFormat(SizedImage.Type.MEDIUM, SizedImage.Format.JPEG).toString());
 						meta.put("og:image:width", size.width+"");
 						meta.put("og:image:height", size.height+"");
@@ -369,6 +368,7 @@ public class PostRoutes{
 		if(Config.isLocal(post.activityPubID) && post.attachment!=null && !post.attachment.isEmpty()){
 			MediaStorageUtils.deleteAttachmentFiles(post.attachment);
 		}
+		context(req).getNewsfeedController().clearFriendsFeedCache();
 		User deleteActor=self.user;
 		// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
 		if(self.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal() && post.user.id!=self.id && !post.isGroupOwner() && post.owner.getLocalID()!=self.id && !(post.user instanceof ForeignUser)){
@@ -700,8 +700,8 @@ public class PostRoutes{
 			context(req).getWallController().populateCommentPreviews(feedPosts);
 		}
 		Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(feedPosts, self.user);
-		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment");
-		jsLangKey(req, "create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours");
+		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel");
+		Templates.addJsLangForNewPostForm(req);
 		return new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list).with("postInteractions", interactions)
 				.with("paginationUrlPrefix", "/feed/comments?offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationFirstPageUrl", "/feed/comments").with("tab", "comments").with("paginationPerPage", 25)
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);

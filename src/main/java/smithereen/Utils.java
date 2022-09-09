@@ -471,14 +471,14 @@ public class Utils{
 
 
 	private static void preprocessInsidePre(Node node){
-		if(node instanceof Element){
-			if(node.childNodeSize()>0){
+		if(node instanceof Element el){
+			if(el.tagName().equalsIgnoreCase("hr")){
+				el.after("<br><br>").remove();
+			}else if(node.childNodeSize()>0){
 				for(Node child:node.childNodes()){
 					preprocessInsidePre(child);
 				}
 			}
-		}else if(node instanceof Comment){
-			node.after("<br><br>").remove();
 		}
 	}
 
@@ -571,7 +571,7 @@ public class Utils{
 	}
 
 	public static String preprocessPostHTML(String text, MentionCallback mentionCallback){
-		text=text.replace("\r", "").replaceAll("(?s)<!--.*?-->", "").replaceAll("\n{2,}", "<!--p-->").replace("\n", "<br>");
+		text=text.trim().replace("\r", "").replaceAll("\n{2,}", "<hr>").replace("\n", "<br>");
 
 		Document doc=Jsoup.parseBodyFragment(text);
 		Element body=doc.body();
@@ -579,24 +579,24 @@ public class Utils{
 		// Split into paragraphs
 		ArrayList<Node> currentParagraph=new ArrayList<>();
 		for(Node node:new ArrayList<>(body.childNodes())){
-			if(node instanceof Comment || (node instanceof Element && ((Element) node).isBlock())){
-				if(!currentParagraph.isEmpty()){
-					Element p=new Element("p");
-					currentParagraph.get(0).before(p);
-					currentParagraph.forEach(p::appendChild);
-					currentParagraph.clear();
-				}
-				if(node instanceof Comment){
-					node.remove();
-				}else{ // block
-					Element el=(Element) node;
-					if(!el.tagName().equalsIgnoreCase("p") && !el.tagName().equalsIgnoreCase("pre"))
-						el.tagName("p");
+			if(node instanceof Element el){
+				if(el.isBlock() || el.tagName().equalsIgnoreCase("hr")){
+					if(el.tagName().equalsIgnoreCase("hr"))
+						el.remove();
+					if(!currentParagraph.isEmpty()){
+						Element p=new Element("p");
+						currentParagraph.get(0).before(p);
+						currentParagraph.forEach(p::appendChild);
+						currentParagraph.clear();
+					}
+
 					if(el.tagName().equalsIgnoreCase("pre")){
 						for(Node node1:new ArrayList<>(el.childNodes())){
 							preprocessInsidePre(node1);
 						}
 					}
+				}else{
+					currentParagraph.add(el);
 				}
 			}else{
 				currentParagraph.add(node);
@@ -607,6 +607,10 @@ public class Utils{
 			currentParagraph.get(0).before(p);
 			currentParagraph.forEach(p::appendChild);
 			currentParagraph.clear();
+		}
+		for(Node node:new ArrayList<>(body.childNodes())){
+			if(node instanceof Element el && el.childNodeSize()==0)
+				el.remove();
 		}
 
 		// Remove any leading and trailing <br> in each paragraph

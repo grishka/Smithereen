@@ -21,43 +21,51 @@ if(!fs.existsSync(resOutputDir)){
 
 // TypeScript
 
+var dirNames=["common_ts"]; // Make sure common.js compiles first so other files can depend on it
+
 for(var file of files){
-	if(file.isDirectory() && file.name.substr(-3)=="_ts"){
-		var config=path.join(file.name, "tsconfig.json");
-		if(!fs.existsSync(config))
-			throw Error(`TypeScript config ${config} does not exist`);
-		
-		console.log(`Compiling TypeScript from ${file.name}`)
-		config=compile(config, file.name.replace("_ts", ".js"));
-		var tsOutput=config.options.outFile;
-		var tsMap=tsOutput+".map";
-		console.log(`Running UglifyJS on ${tsOutput}`);
-		var outName=path.basename(tsOutput);
-		var files={};
-		files[outName]=fs.readFileSync(tsOutput, "utf-8");
-		var minifyResult=UglifyJS.minify(files, {
-			sourceMap: {
-				content: fs.readFileSync(tsMap, "utf-8"),
-				url: outName+".map",
-				root: file.name
-			}
-		});
+	if(file.isDirectory() && file.name.substr(-3)=="_ts" && file.name!="common_ts"){
+		dirNames.push(file.name);
+	}
+}
 
-		if(minifyResult.error)
-			throw minifyResult.error;
-
-		fs.writeFileSync(path.join(resOutputDir, outName), minifyResult.code);
-		fs.writeFileSync(path.join(resOutputDir, outName+".map"), minifyResult.map);
-		staticFileVersions[outName]=crypto.createHash("sha1").update(minifyResult.code).digest("hex");
-
-		// Copy TS sources into resources for debugging purposes
-		for(var inFile of config.fileNames){
-			var inDir=path.dirname(inFile);
-			if(!fs.existsSync(path.join(resOutputDir, inDir))){
-				fs.mkdirSync(path.join(resOutputDir, inDir), {recursive: true});
-			}
-			fs.copyFileSync(inFile, path.join(resOutputDir, inFile));
+for(var dir of dirNames){
+	var config=path.join(dir, "tsconfig.json");
+	if(!fs.existsSync(config))
+		throw Error(`TypeScript config ${config} does not exist`);
+	
+	console.log(`Compiling TypeScript from ${dir}`)
+	config=compile(config, dir.replace("_ts", ".js"));
+	var tsOutput=config.options.outFile;
+	var tsMap=tsOutput+".map";
+	console.log(`Running UglifyJS on ${tsOutput}`);
+	var outName=path.basename(tsOutput);
+	var files={};
+	files[outName]=fs.readFileSync(tsOutput, "utf-8");
+	var minifyResult=UglifyJS.minify(files, {
+		sourceMap: {
+			content: fs.readFileSync(tsMap, "utf-8"),
+			url: outName+".map",
+			root: dir
 		}
+	});
+
+	if(minifyResult.error)
+		throw minifyResult.error;
+
+	fs.writeFileSync(path.join(resOutputDir, outName), minifyResult.code);
+	fs.writeFileSync(path.join(resOutputDir, outName+".map"), minifyResult.map);
+	staticFileVersions[outName]=crypto.createHash("sha1").update(minifyResult.code).digest("hex");
+
+	// Copy TS sources into resources for debugging purposes
+	for(var inFile of config.fileNames){
+		if(inFile.substr(0, dir.length)!=dir)
+			continue;
+		var inDir=path.dirname(inFile);
+		if(!fs.existsSync(path.join(resOutputDir, inDir))){
+			fs.mkdirSync(path.join(resOutputDir, inDir), {recursive: true});
+		}
+		fs.copyFileSync(inFile, path.join(resOutputDir, inFile));
 	}
 }
 
@@ -123,6 +131,9 @@ function compile(configFileName, outFileName) {
 	// Extract configuration from config file
 	let config = readConfigFile(configFileName);
 	config.options.outFile=path.join(projectDir, "target", "typescript", outFileName);
+	if(outFileName!="common.js"){ // Other files can depend on common.js
+		config.fileNames.push(path.join(projectDir, "target/typescript/common.d.ts"));
+	}
 
 	// Compile
 	let program = ts.createProgram(config.fileNames, config.options);

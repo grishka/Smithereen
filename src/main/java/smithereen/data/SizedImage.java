@@ -188,13 +188,15 @@ public interface SizedImage{
 	enum Format{
 		JPEG,
 		WEBP,
-		AVIF;
+		AVIF,
+		PNG;
 
 		public String fileExtension(){
 			return switch(this){
 				case JPEG -> "jpg";
 				case WEBP -> "webp";
 				case AVIF -> "avif";
+				case PNG -> "png";
 			};
 		}
 
@@ -203,6 +205,7 @@ public interface SizedImage{
 				case JPEG -> "image/jpeg";
 				case WEBP -> "image/webp";
 				case AVIF -> "image/avif";
+				case PNG -> "image/png";
 			};
 		}
 	}

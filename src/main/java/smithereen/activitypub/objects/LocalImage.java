@@ -10,6 +10,7 @@ import smithereen.Config;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
 import smithereen.data.SizedImage;
+import smithereen.jsonld.JLD;
 import smithereen.storage.ImgProxy;
 
 public class LocalImage extends Image implements SizedImage{
@@ -32,7 +33,7 @@ public class LocalImage extends Image implements SizedImage{
 	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
 		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalUploads+"/"+path+"/"+localID+".webp")
-				.format(SizedImage.Format.JPEG);
+				.format(isGraffiti ? SizedImage.Format.PNG : SizedImage.Format.JPEG);
 		int croppedWidth=width, croppedHeight=height;
 		if(cropRegion!=null){
 			int x=Math.round(cropRegion[0]*width);
@@ -53,7 +54,7 @@ public class LocalImage extends Image implements SizedImage{
 			obj.add("image", im.asActivityPubObject(null, contextCollector));
 		}
 		if(mediaType==null)
-			obj.addProperty("mediaType", "image/jpeg");
+			obj.addProperty("mediaType", isGraffiti ? "image/png" : "image/jpeg");
 		return obj;
 	}
 

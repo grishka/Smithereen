@@ -26,12 +26,12 @@
 			{%if not(isFriend) and not(following) and not(friendRequestSent) and not(followRequested)%}
 			{%if user.supportsFriendRequests%}
 				{% if friendRequestRecvd %}
-					<a href="{{user.profileURL}}/respondToFriendRequest?csrf={{csrf}}&accept" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("accept")}}</a>
+					<a href="/users/{{ user.id }}/respondToFriendRequest?csrf={{csrf}}&accept" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("accept")}}</a>
 				{% else %}
-					<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax-box="1">{{L("add_friend")}}</a>
+					<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax-box="1">{{L("add_friend")}}</a>
 				{% endif %}
 			{%else%}
-				<a href="{{user.profileURL}}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("follow")}}</a>
+				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("follow")}}</a>
 			{%endif%}
 			{%endif%}
 		</div>
@@ -50,7 +50,7 @@
 		<li class="separator"></li>
 		{%if currentUser is not null and currentUser.id!=user.id%}
 		{%if isFriend or following or friendRequestSent or followRequested%}
-			<li><a href="{{user.getProfileURL('confirmRemoveFriend')}}" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'{{user.getProfileURL('doRemoveFriend')}}')" data-confirm="{{ L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
+			<li><a href="/users/{{ user.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'/users/{{ user.id }}/doRemoveFriend')" data-confirm="{{ L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
 		{%endif%}
 		{% if isBlocked %}
 			<li><a href="/users/{{ user.id }}/confirmUnblock" onclick="return ajaxConfirm('unblock', this.dataset.confirm, '/users/{{ user.id }}/unblock')" data-confirm="{{ L('confirm_unblock_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('unblock_user_X', {'name': user.firstAndGender}) }}</a></li>
