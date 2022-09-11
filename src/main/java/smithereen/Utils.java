@@ -334,7 +334,10 @@ public class Utils{
 
 	public static Instant parseISODate(String date){
 		try{
-			return DateTimeFormatter.ISO_INSTANT.parse(date, Instant::from);
+			Instant instant=DateTimeFormatter.ISO_INSTANT.parse(date, Instant::from);
+			if(instant.getEpochSecond()<1)
+				return Instant.ofEpochSecond(1);
+			return instant;
 		}catch(DateTimeParseException x){
 			return null;
 		}
