@@ -1,16 +1,14 @@
 package smithereen;
 
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class HTMLSanitizerTest{
+public class HTMLProcessingTest{
 
-	public HTMLSanitizerTest(){
+	public HTMLProcessingTest(){
 		Config.domain="smithereen.local";
 	}
 
@@ -79,5 +77,92 @@ public class HTMLSanitizerTest{
 		String in="<a href=\"/test.html\">Relative link</a>";
 		String expected="<a href=\"https://example.com/test.html\" target=\"_blank\" rel=\"noopener\">Relative link</a>";
 		assertEquals(expected, Utils.postprocessPostHTMLForDisplay(Utils.sanitizeHTML(in, URI.create("https://example.com/"))));
+	}
+
+	@Test
+	public void testPreprocessingSimple(){
+		String in="This is a test";
+		String expected="<p>This is a test</p>";
+		assertEquals(expected, Utils.preprocessPostHTML(in, null));
+	}
+
+	@Test
+	public void testPreprocessingParagraphsSimple(){
+		String in="This is paragraph 1.\n\nThis is paragraph 2.";
+		String expected="<p>This is paragraph 1.</p>\n<p>This is paragraph 2.</p>";
+		assertEquals(expected, Utils.preprocessPostHTML(in, null));
+	}
+
+	@Test
+	public void testPreprocessingParagraphsWithTags(){
+		String in="This is <b>paragraph 1.\n\nThis </b>is paragraph 2.";
+		String expected="<p>This is <b>paragraph 1.</b></p>\n<p><b>This </b>is paragraph 2.</p>";
+		assertEquals(expected, Utils.preprocessPostHTML(in, null));
+	}
+
+	@Test
+	public void testPreprocessingParagraphsWithTagsWithAttrs(){
+		String in="This is <a href=\"https://example.com\" onclick=\"alert('xss')\">paragraph <i>1.\n\nThis</i> </a>is paragraph 2.";
+		String expected="<p>This is <a href=\"https://example.com\">paragraph <i>1.</i></a></p>\n<p><a href=\"https://example.com\"><i>This</i> </a>is paragraph 2.</p>";
+		assertEquals(expected, Utils.preprocessPostHTML(in, null));
+	}
+
+	@Test
+	public void testPreprocessingPreIsUnmodified(){
+		String in="""
+			<pre>Line 1
+				<i>Line 2</i>
+			
+			
+					Line 3
+						Line 4
+			</pre>""";
+		assertEquals(in, Utils.preprocessPostHTML(in, null));
+	}
+
+	@Test
+	public void testPreprocessingXssSimple(){
+		String in="<script>alert('xss');</script>Test";
+		String expected="<p>Test</p>";
+		assertEquals(expected, Utils.preprocessPostHTML(in, null));
+	}
+
+	@Test
+	public void testPreprocessingXssWhateverTheFuckWasThat(){
+		String in="'\"/test/></title/</script/<style/--><script>document.body.innerHTML = '<div style=\"font-size: 100px; color: red;\">ПРИВЕТ =)</div>'</script>`'<!--";
+		assertFalse(Utils.preprocessPostHTML(in, null).contains("script"));
+	}
+
+	@Test
+	public void testPreprocessingLineBreaksAndParagraphs(){
+		String in="""
+				Test!
+				Test!
+				
+				<b>Test!
+				Test!</b>
+				
+				
+				
+				Test!
+				Test!
+				<p>Test!
+				</p>""";
+		String expected="<p>Test!<br>Test!</p>\n<p><b>Test!<br>Test!</b></p>\n<p>Test!<br>Test!</p>\n<p>Test!</p>";
+		assertEquals(expected, Utils.preprocessPostHTML(in, null));
+	}
+
+	@Test
+	public void testPreprocessingLinks(){
+		String in="https://example.com/";
+		String expected="<p><a href=\"https://example.com/\">https://example.com/</a></p>";
+		assertEquals(expected, Utils.preprocessPostHTML(in, null));
+	}
+
+	@Test
+	public void testPreprocessingLinksWithPunctuationAtEnd(){
+		String in="https://x.com/somepath.\nhttps://x.com/somepath?\nhttps://x.com/somepath?query=string?\nhttps://x.com/somepath!\nhttps://x.com/somepath:";
+		String expected="<p><a href=\"https://x.com/somepath\">https://x.com/somepath</a>.<br><a href=\"https://x.com/somepath\">https://x.com/somepath</a>?<br><a href=\"https://x.com/somepath?query=string\">https://x.com/somepath?query=string</a>?<br><a href=\"https://x.com/somepath\">https://x.com/somepath</a>!<br><a href=\"https://x.com/somepath\">https://x.com/somepath</a>:</p>";
+		assertEquals(expected, Utils.preprocessPostHTML(in, null));
 	}
 }
