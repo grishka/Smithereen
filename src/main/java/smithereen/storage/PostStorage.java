@@ -471,6 +471,16 @@ public class PostStorage{
 		return null;
 	}
 
+	public static Map<Integer, Post> getPostsByID(Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.allColumns()
+				.whereIn("id", ids)
+				.executeAsStream(Post::fromResultSet)
+				.filter(p->!p.isDeleted())
+				.collect(Collectors.toMap(p->p.id, Function.identity()));
+	}
+
 	public static Post getPostByID(URI apID) throws SQLException{
 		if(Config.isLocal(apID)){
 			String[] pathParts=apID.getPath().split("/");
@@ -608,31 +618,25 @@ public class PostStorage{
 		return posts;
 	}
 
-	public static List<Post> getRepliesExact(int[] replyKey, int maxID, int limit, int[] total) throws SQLException{
+	public static PaginatedList<Post> getRepliesExact(int[] replyKey, int maxID, int limit) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		if(total!=null){
-			PreparedStatement stmt=new SQLQueryBuilder(conn)
-					.selectFrom("wall_posts")
-					.count()
-					.where("reply_key=? AND id<?", Utils.serializeIntArray(replyKey), maxID)
-					.createStatement();
-			total[0]=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
-		}
-		PreparedStatement stmt=new SQLQueryBuilder(conn)
+		int total=new SQLQueryBuilder(conn)
+				.selectFrom("wall_posts")
+				.count()
+				.where("reply_key=? AND id<?", Utils.serializeIntArray(replyKey), maxID)
+				.executeAndGetInt();
+		if(total==0)
+			return PaginatedList.emptyList(limit);
+
+		List<Post> posts=new SQLQueryBuilder(conn)
 				.selectFrom("wall_posts")
 				.allColumns()
 				.where("reply_key=? AND id<?", Utils.serializeIntArray(replyKey), maxID)
 				.limit(limit, 0)
 				.orderBy("created_at ASC")
-				.createStatement();
-		try(ResultSet res=stmt.executeQuery()){
-			ArrayList<Post> posts=new ArrayList<>();
-			res.beforeFirst();
-			while(res.next()){
-				posts.add(Post.fromResultSet(res));
-			}
-			return posts;
-		}
+				.executeAsStream(Post::fromResultSet)
+				.toList();
+		return new PaginatedList<>(posts, total, 0, limit);
 	}
 
 	public static URI getActivityPubID(int postID) throws SQLException{

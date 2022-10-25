@@ -6,7 +6,6 @@ import org.jsoup.safety.Whitelist;
 
 import java.net.URI;
 import java.net.URLEncoder;
-import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -19,32 +18,26 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import smithereen.ApplicationContext;
+import smithereen.Config;
+import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
-import smithereen.data.ActorWithDescription;
-import smithereen.data.ForeignUser;
-import smithereen.data.FriendshipStatus;
-import smithereen.data.PaginatedList;
-import smithereen.data.SizedImage;
-import smithereen.exceptions.BadRequestException;
-import smithereen.Config;
-import smithereen.data.GroupAdmin;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.Utils;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.data.Account;
+import smithereen.data.ActorWithDescription;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
+import smithereen.data.GroupAdmin;
+import smithereen.data.PaginatedList;
 import smithereen.data.Post;
 import smithereen.data.SessionInfo;
+import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponse;
-import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.BadRequestException;
 import smithereen.lang.Lang;
-import smithereen.storage.GroupStorage;
-import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import spark.Request;
@@ -67,7 +60,7 @@ public class GroupsRoutes{
 		return group;
 	}
 
-	public static Object myGroups(Request req, Response resp, Account self){
+	public static Object myGroups(Request req, Response resp, Account self, ApplicationContext ctx){
 		return userGroups(req, resp, self.user);
 	}
 
@@ -86,18 +79,18 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object myManagedGroups(Request req, Response resp, Account self){
+	public static Object myManagedGroups(Request req, Response resp, Account self, ApplicationContext ctx){
 		jsLangKey(req, "cancel", "create");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("tab", "managed").with("title", lang(req).get("groups"));
-		model.paginate(context(req).getGroupsController().getUserManagedGroups(self.user, offset(req), 100)).with("owner", self.user);
+		model.paginate(ctx.getGroupsController().getUserManagedGroups(self.user, offset(req), 100)).with("owner", self.user);
 		return model;
 	}
 
-	public static Object myEvents(Request req, Response resp, Account self){
+	public static Object myEvents(Request req, Response resp, Account self, ApplicationContext ctx){
 		return myEvents(req, resp, self, GroupsController.EventsType.FUTURE);
 	}
 
-	public static Object myPastEvents(Request req, Response resp, Account self){
+	public static Object myPastEvents(Request req, Response resp, Account self, ApplicationContext ctx){
 		return myEvents(req, resp, self, GroupsController.EventsType.PAST);
 	}
 
@@ -108,12 +101,12 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object createGroup(Request req, Response resp, Account self){
+	public static Object createGroup(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("create_group", req);
 		return wrapForm(req, resp, "create_group", "/my/groups/create", lang(req).get("create_group_title"), "create", model);
 	}
 
-	public static Object createEvent(Request req, Response resp, Account self){
+	public static Object createEvent(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("create_event", req);
 		return wrapForm(req, resp, "create_event", "/my/groups/create?type=event", lang(req).get("create_event_title"), "create", model);
 	}
@@ -127,7 +120,7 @@ public class GroupsRoutes{
 		return wrapForm(req, resp, "create_group", "/my/groups/create", lang(req).get("create_group_title"), "create", model);
 	}
 
-	public static Object doCreateGroup(Request req, Response resp, Account self){
+	public static Object doCreateGroup(Request req, Response resp, Account self, ApplicationContext ctx){
 		String name=req.queryParams("name");
 		String description=req.queryParams("description");
 		Group group;
@@ -139,12 +132,12 @@ public class GroupsRoutes{
 
 			try{
 				Instant eventStart=instantFromDateAndTime(req, eventDate, eventTime);
-				group=context(req).getGroupsController().createEvent(self.user, name, description, eventStart, null);
+				group=ctx.getGroupsController().createEvent(self.user, name, description, eventStart, null);
 			}catch(DateTimeParseException x){
 				throw new BadRequestException(x);
 			}
 		}else{
-			group=context(req).getGroupsController().createGroup(self.user, name, description);
+			group=ctx.getGroupsController().createGroup(self.user, name, description);
 		}
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).replaceLocation("/"+group.username);
@@ -157,12 +150,13 @@ public class GroupsRoutes{
 	public static Object groupProfile(Request req, Response resp, Group group){
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
+		ApplicationContext ctx=context(req);
 
 		Group.MembershipState membershipState;
 		if(self==null){
 			membershipState=Group.MembershipState.NONE;
 		}else{
-			membershipState=context(req).getGroupsController().getUserMembershipState(group, self.user);
+			membershipState=ctx.getGroupsController().getUserMembershipState(group, self.user);
 		}
 
 		boolean canAccessContent=true;
@@ -178,24 +172,24 @@ public class GroupsRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group", req);
 
 		// Public info: still visible for non-members in public groups
-		List<User> members=context(req).getGroupsController().getRandomMembersForProfile(group, false);
+		List<User> members=ctx.getGroupsController().getRandomMembersForProfile(group, false);
 		model.with("group", group).with("members", members);
 		if(group.isEvent())
-			model.with("tentativeMembers", context(req).getGroupsController().getRandomMembersForProfile(group, true));
+			model.with("tentativeMembers", ctx.getGroupsController().getRandomMembersForProfile(group, true));
 		model.with("title", group.name);
-		model.with("admins", context(req).getGroupsController().getAdmins(group));
+		model.with("admins", ctx.getGroupsController().getAdmins(group));
 		model.with("canAccessContent", canAccessContent);
 
 		// Wall posts
 		int wallPostsCount=0;
 		if(canAccessContent){
 			int offset=offset(req);
-			PaginatedList<Post> wall=context(req).getWallController().getWallPosts(group, false, offset, 20);
+			PaginatedList<Post> wall=ctx.getWallController().getWallPosts(group, false, offset, 20);
 			wallPostsCount=wall.total;
 			if(req.attribute("mobile")==null){
-				context(req).getWallController().populateCommentPreviews(wall.list);
+				ctx.getWallController().populateCommentPreviews(wall.list);
 			}
-			Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
+			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 			model.with("postCount", wall.total).paginate(wall);
 			model.with("postInteractions", interactions);
 		}
@@ -206,7 +200,7 @@ public class GroupsRoutes{
 		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete");
 		Templates.addJsLangForNewPostForm(req);
 		if(self!=null){
-			Group.AdminLevel level=context(req).getGroupsController().getMemberAdminLevel(group, self.user);
+			Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 			model.with("membershipState", membershipState);
 			model.with("groupAdminLevel", level);
 			if(level.isAtLeast(Group.AdminLevel.ADMIN)){
@@ -268,9 +262,9 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object join(Request req, Response resp, Account self){
+	public static Object join(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
-		context(req).getGroupsController().joinGroup(group, self.user, "1".equals(req.queryParams("tentative")));
+		ctx.getGroupsController().joinGroup(group, self.user, "1".equals(req.queryParams("tentative")));
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
@@ -278,9 +272,9 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object leave(Request req, Response resp, Account self) throws SQLException{
+	public static Object leave(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
-		context(req).getGroupsController().leaveGroup(group, self.user);
+		ctx.getGroupsController().leaveGroup(group, self.user);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
@@ -288,7 +282,7 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object editGeneral(Request req, Response resp, Account self){
+	public static Object editGeneral(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_general", req);
 		model.with("group", group).with("title", group.name);
@@ -300,7 +294,7 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object saveGeneral(Request req, Response resp, Account self){
+	public static Object saveGeneral(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
 		String name=req.queryParams("name"), about=req.queryParams("about"), username=req.queryParams("username");
 		Group.AccessType accessType=enumValue(req.queryParams("access"), Group.AccessType.class);
@@ -329,7 +323,7 @@ public class GroupsRoutes{
 			if(StringUtils.isEmpty(about))
 				about=null;
 
-			context(req).getGroupsController().updateGroupInfo(group, self.user, name, about, eventStart, eventEnd, username, accessType);
+			ctx.getGroupsController().updateGroupInfo(group, self.user, name, about, eventStart, eventEnd, username, accessType);
 
 			message=lang(req).get(group.isEvent() ? "event_info_updated" : "group_info_updated");
 		}catch(BadRequestException x){
@@ -376,51 +370,48 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object editAdmins(Request req, Response resp, Account self){
+	public static Object editAdmins(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_admins", req);
 		model.with("group", group).with("title", group.name);
-		model.with("admins", context(req).getGroupsController().getAdmins(group));
+		model.with("admins", ctx.getGroupsController().getAdmins(group));
 		model.with("subtab", "admins");
-		model.with("joinRequestCount", context(req).getGroupsController().getJoinRequestCount(self.user, group));
+		model.with("joinRequestCount", ctx.getGroupsController().getJoinRequestCount(self.user, group));
 		jsLangKey(req, "cancel", "group_admin_demote", "yes", "no");
 		return model;
 	}
 
-	public static Object editMembers(Request req, Response resp, Account self){
+	public static Object editMembers(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
-		Group.AdminLevel level=context(req).getGroupsController().getMemberAdminLevel(group, self.user);
+		Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
-		model.paginate(context(req).getGroupsController().getAllMembers(group, offset(req), 100));
+		model.paginate(ctx.getGroupsController().getAllMembers(group, offset(req), 100));
 		model.with("group", group).with("title", group.name);
-		model.with("adminIDs", context(req).getGroupsController().getAdmins(group).stream().map(adm->adm.user.id).collect(Collectors.toList()));
+		model.with("adminIDs", ctx.getGroupsController().getAdmins(group).stream().map(adm->adm.user.id).collect(Collectors.toList()));
 		model.with("canAddAdmins", level.isAtLeast(Group.AdminLevel.ADMIN));
 		model.with("adminLevel", level);
 		model.with("subtab", "all");
 		model.with("summaryKey", group.isEvent() ? "summary_event_X_members" : "summary_group_X_members");
-		model.with("joinRequestCount", context(req).getGroupsController().getJoinRequestCount(self.user, group));
+		model.with("joinRequestCount", ctx.getGroupsController().getJoinRequestCount(self.user, group));
 		jsLangKey(req, "cancel", "yes", "no");
 		return model;
 	}
 
-	public static Object editAdminForm(Request req, Response resp, Account self) throws SQLException{
+	public static Object editAdminForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		int userID=parseIntOrDefault(req.queryParams("id"), 0);
-		User user=UserStorage.getById(userID);
-		if(user==null)
-			throw new ObjectNotFoundException("user_not_found");
+		User user=ctx.getUsersController().getUserOrThrow(userID);
+
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_admin", req);
-		GroupAdmin admin=GroupStorage.getGroupAdmin(group.id, userID);
+		GroupAdmin admin=ctx.getGroupsController().getAdmin(group, userID);
 		model.with("existingAdmin", admin);
 		return wrapForm(req, resp, "group_edit_admin", "/groups/"+group.id+"/saveAdmin?id="+userID, user.getFullName(), "save", model);
 	}
 
-	public static Object saveAdmin(Request req, Response resp, Account self) throws SQLException{
+	public static Object saveAdmin(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		int userID=parseIntOrDefault(req.queryParams("id"), 0);
-		User user=UserStorage.getById(userID);
-		if(user==null)
-			throw new ObjectNotFoundException("user_not_found");
+		User user=ctx.getUsersController().getUserOrThrow(userID);
 
 		String _lvl=req.queryParams("level");
 		String title=req.queryParams("title");
@@ -435,7 +426,7 @@ public class GroupsRoutes{
 			}
 		}
 
-		GroupStorage.addOrUpdateGroupAdmin(group.id, userID, title, lvl);
+		ctx.getGroupsController().addOrUpdateAdmin(group, user, title, lvl);
 
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
@@ -444,20 +435,20 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object confirmDemoteAdmin(Request req, Response resp, Account self){
+	public static Object confirmDemoteAdmin(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		int userID=safeParseInt(req.queryParams("id"));
-		User user=context(req).getUsersController().getUserOrThrow(userID);
+		User user=ctx.getUsersController().getUserOrThrow(userID);
 		String back=Utils.back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", Utils.lang(req).get("group_admin_demote_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", Config.localURI("/groups/"+group.id+"/removeAdmin?_redir="+URLEncoder.encode(back)+"&id="+userID)).with("back", back);
 	}
 
-	public static Object removeAdmin(Request req, Response resp, Account self) throws SQLException{
+	public static Object removeAdmin(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		int userID=safeParseInt(req.queryParams("id"));
-		User user=context(req).getUsersController().getUserOrThrow(userID);
+		User user=ctx.getUsersController().getUserOrThrow(userID);
 
-		GroupStorage.removeGroupAdmin(group.id, userID);
+		ctx.getGroupsController().removeAdmin(group, user);
 
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
@@ -466,51 +457,47 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object editAdminReorder(Request req, Response resp, Account self) throws SQLException{
+	public static Object editAdminReorder(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		int userID=parseIntOrDefault(req.queryParams("id"), 0);
 		int order=parseIntOrDefault(req.queryParams("order"), 0);
 		if(order<0)
 			throw new BadRequestException();
 
-		GroupStorage.setGroupAdminOrder(group.id, userID, order);
+		ctx.getGroupsController().setAdminOrder(group, ctx.getUsersController().getUserOrThrow(userID), order);
 
 		return "";
 	}
 
-	public static Object blocking(Request req, Response resp, Account self) throws SQLException{
+	public static Object blocking(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
-		Group.AdminLevel level=GroupStorage.getGroupMemberAdminLevel(group.id, self.user.id);
+		Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_blocking", req).with("title", lang(req).get("settings_blocking"));
-		model.with("blockedUsers", GroupStorage.getBlockedUsers(group.id));
-		model.with("blockedDomains", GroupStorage.getBlockedDomains(group.id));
+		model.with("blockedUsers", ctx.getGroupsController().getBlockedUsers(group));
+		model.with("blockedDomains", ctx.getGroupsController().getBlockedDomains(group));
 		model.with("group", group);
 		model.with("adminLevel", level);
 		jsLangKey(req, "unblock", "yes", "no", "cancel");
 		return model;
 	}
 
-	public static Object blockDomainForm(Request req, Response resp, Account self){
+	public static Object blockDomainForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("block_domain", req);
 		return wrapForm(req, resp, "block_domain", "/groups/"+group.id+"/blockDomain", lang(req).get("block_a_domain"), "block", model);
 	}
 
-	public static Object blockDomain(Request req, Response resp, Account self) throws SQLException{
+	public static Object blockDomain(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		String domain=req.queryParams("domain");
-		if(domain.matches("^([a-zA-Z0-9-]+\\.)+[a-zA-Z0-9-]{2,}$")){
-			if(GroupStorage.isDomainBlocked(group.id, domain))
-				return wrapError(req, resp, "err_domain_already_blocked");
-			GroupStorage.blockDomain(group.id, domain);
-		}
+		ctx.getGroupsController().blockDomain(group, domain);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}
 
-	public static Object confirmUnblockDomain(Request req, Response resp, Account self){
+	public static Object confirmUnblockDomain(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		String domain=req.queryParams("domain");
 		Lang l=Utils.lang(req);
@@ -518,11 +505,10 @@ public class GroupsRoutes{
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_domain_X", Map.of("domain", domain))).with("formAction", "/groups/"+group.id+"/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
-	public static Object unblockDomain(Request req, Response resp, Account self) throws SQLException{
+	public static Object unblockDomain(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		String domain=req.queryParams("domain");
-		if(StringUtils.isNotEmpty(domain))
-			GroupStorage.unblockDomain(group.id, domain);
+		ctx.getGroupsController().unblockDomain(group, domain);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
@@ -534,7 +520,7 @@ public class GroupsRoutes{
 		return context(req).getUsersController().getUserOrThrow(id);
 	}
 
-	public static Object confirmBlockUser(Request req, Response resp, Account self){
+	public static Object confirmBlockUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
@@ -542,7 +528,7 @@ public class GroupsRoutes{
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_block_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/blockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
-	public static Object confirmUnblockUser(Request req, Response resp, Account self){
+	public static Object confirmUnblockUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
@@ -550,40 +536,34 @@ public class GroupsRoutes{
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/unblockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
-	public static Object blockUser(Request req, Response resp, Account self) throws SQLException{
+	public static Object blockUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
-		if(GroupStorage.getGroupMemberAdminLevel(group.id, user.id).isAtLeast(Group.AdminLevel.MODERATOR))
-			throw new BadRequestException("Can't block a group manager");
-		GroupStorage.blockUser(group.id, user.id);
-		if(user instanceof ForeignUser)
-			context(req).getActivityPubWorker().sendBlockActivity(group, (ForeignUser) user);
+		ctx.getGroupsController().blockUser(group, user);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}
 
-	public static Object unblockUser(Request req, Response resp, Account self) throws SQLException{
+	public static Object unblockUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
-		GroupStorage.unblockUser(group.id, user.id);
-		if(user instanceof ForeignUser)
-			context(req).getActivityPubWorker().sendUndoBlockActivity(group, (ForeignUser) user);
+		ctx.getGroupsController().unblockUser(group, user);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}
 
-	public static Object eventCalendar(Request req, Response resp, Account self){
+	public static Object eventCalendar(Request req, Response resp, Account self, ApplicationContext ctx){
 		ZoneId timeZone=timeZoneForRequest(req);
 		LocalDate today=LocalDate.now(timeZone);
 		LocalDate tomorrow=today.plusDays(1);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "events_actual_calendar" : "events_calendar", req);
 
 		if(!isAjax(req) && !isMobile(req)){
-			List<User> birthdays=context(req).getUsersController().getFriendsWithBirthdaysWithinTwoDays(self.user, today);
+			List<User> birthdays=ctx.getUsersController().getFriendsWithBirthdaysWithinTwoDays(self.user, today);
 			model.with("birthdays", birthdays);
 			if(!birthdays.isEmpty()){
 				HashMap<Integer, String> days=new HashMap<>(birthdays.size()), ages=new HashMap<>(birthdays.size());
@@ -596,7 +576,7 @@ public class GroupsRoutes{
 				}
 				model.with("userDays", days).with("userAges", ages);
 			}
-			PaginatedList<Group> events=context(req).getGroupsController().getUserEvents(self.user, GroupsController.EventsType.FUTURE, 0, 10);
+			PaginatedList<Group> events=ctx.getGroupsController().getUserEvents(self.user, GroupsController.EventsType.FUTURE, 0, 10);
 			Instant eventMaxTime=tomorrow.atTime(23, 59, 59).atZone(timeZone).toInstant();
 			List<Group> eventsWithinTwoDays=events.list.stream().filter(e->e.eventStartTime.isBefore(eventMaxTime)).toList();
 			model.with("events", eventsWithinTwoDays);
@@ -618,8 +598,8 @@ public class GroupsRoutes{
 		Instant now=Instant.now();
 
 		ArrayList<Actor> eventsInMonth=new ArrayList<>();
-		eventsInMonth.addAll(context(req).getUsersController().getFriendsWithBirthdaysInMonth(self.user, month));
-		eventsInMonth.addAll(context(req).getGroupsController().getUserEventsInMonth(self.user, year, month, timeZone));
+		eventsInMonth.addAll(ctx.getUsersController().getFriendsWithBirthdaysInMonth(self.user, month));
+		eventsInMonth.addAll(ctx.getGroupsController().getUserEventsInMonth(self.user, year, month, timeZone));
 		if(isMobile(req)){
 			Map<Integer, List<ActorWithDescription>> eventsByDay=eventsInMonth.stream()
 					.map(a->new ActorWithDescription(a, getActorCalendarDescription(a, l, today, monthStart, now, timeZone)))
@@ -652,7 +632,7 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object eventCalendarMobile(Request req, Response resp, Account self){
+	public static Object eventCalendarMobile(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("events_calendar", req);
 		Lang l=lang(req);
 		Instant now=Instant.now();
@@ -670,8 +650,8 @@ public class GroupsRoutes{
 		}
 		model.with("month", month).with("year", year);
 		ArrayList<Actor> eventsInMonth=new ArrayList<>();
-		eventsInMonth.addAll(context(req).getUsersController().getFriendsWithBirthdaysInMonth(self.user, month));
-		eventsInMonth.addAll(context(req).getGroupsController().getUserEventsInMonth(self.user, year, month, timeZone));
+		eventsInMonth.addAll(ctx.getUsersController().getFriendsWithBirthdaysInMonth(self.user, month));
+		eventsInMonth.addAll(ctx.getGroupsController().getUserEventsInMonth(self.user, year, month, timeZone));
 		List<ActorWithDescription> actors=eventsInMonth.stream().sorted((a1, a2)->{
 			LocalDate date1, date2;
 			if(a1 instanceof User u)
@@ -708,7 +688,7 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object eventCalendarDayPopup(Request req, Response resp, Account self){
+	public static Object eventCalendarDayPopup(Request req, Response resp, Account self, ApplicationContext ctx){
 		LocalDate date;
 		try{
 			date=LocalDate.parse(Objects.requireNonNullElse(req.queryParams("date"), ""));
@@ -722,8 +702,8 @@ public class GroupsRoutes{
 		LocalDate today=LocalDate.now(timeZone);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("actor_list", req);
 		ArrayList<Actor> actors=new ArrayList<>();
-		actors.addAll(context(req).getUsersController().getFriendsWithBirthdaysOnDay(self.user, date.getMonthValue(), date.getDayOfMonth()));
-		actors.addAll(context(req).getGroupsController().getUserEventsOnDay(self.user, date, timeZone));
+		actors.addAll(ctx.getUsersController().getFriendsWithBirthdaysOnDay(self.user, date.getMonthValue(), date.getDayOfMonth()));
+		actors.addAll(ctx.getGroupsController().getUserEventsOnDay(self.user, date, timeZone));
 		List<ActorWithDescription> actorsDescr=actors.stream().sorted((a1, a2)->{
 			if(a1 instanceof User && a2 instanceof Group){
 				return -1;
@@ -764,12 +744,12 @@ public class GroupsRoutes{
 		}
 	}
 
-	public static Object inviteFriend(Request req, Response resp, Account self){
+	public static Object inviteFriend(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
-		User user=context(req).getUsersController().getUserOrThrow(safeParseInt(req.queryParams("user")));
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.queryParams("user")));
 		String msg=null;
 		try{
-			context(req).getGroupsController().inviteUserToGroup(self.user, user, group);
+			ctx.getGroupsController().inviteUserToGroup(self.user, user, group);
 		}catch(BadRequestException x){
 			msg=lang(req).get(x.getMessage());
 		}
@@ -781,11 +761,11 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object groupInvitations(Request req, Response resp, Account self){
+	public static Object groupInvitations(Request req, Response resp, Account self, ApplicationContext ctx){
 		return invitations(req, resp, self, false);
 	}
 
-	public static Object eventInvitations(Request req, Response resp, Account self){
+	public static Object eventInvitations(Request req, Response resp, Account self, ApplicationContext ctx){
 		return invitations(req, resp, self, true);
 	}
 
@@ -797,7 +777,7 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object respondToInvite(Request req, Response resp, Account self){
+	public static Object respondToInvite(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
 
 		boolean accept, tentative;
@@ -815,9 +795,9 @@ public class GroupsRoutes{
 		}
 
 		if(accept){
-			context(req).getGroupsController().joinGroup(group, self.user, tentative);
+			ctx.getGroupsController().joinGroup(group, self.user, tentative);
 		}else{
-			context(req).getGroupsController().declineInvitation(self.user, group);
+			ctx.getGroupsController().declineInvitation(self.user, group);
 		}
 
 		if(isAjax(req)){
@@ -828,7 +808,7 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object confirmRemoveUser(Request req, Response resp, Account self){
+	public static Object confirmRemoveUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
 		Lang l=Utils.lang(req);
@@ -836,10 +816,10 @@ public class GroupsRoutes{
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_remove_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/removeUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
-	public static Object removeUser(Request req, Response resp, Account self) throws SQLException{
+	public static Object removeUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
-		context(req).getGroupsController().removeUser(self.user, group, user);
+		ctx.getGroupsController().removeUser(self.user, group, user);
 		if(isAjax(req)){
 			if(isMobile(req))
 				return new WebDeltaResponse(resp).refresh();
@@ -849,11 +829,11 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object editJoinRequests(Request req, Response resp, Account self){
+	public static Object editJoinRequests(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
 		model.with("summaryKey", "summary_group_X_join_requests").with("group", group).with("subtab", "requests");
-		PaginatedList<User> list=context(req).getGroupsController().getJoinRequests(self.user, group, offset(req), 50);
+		PaginatedList<User> list=ctx.getGroupsController().getJoinRequests(self.user, group, offset(req), 50);
 		model.paginate(list);
 		model.with("joinRequestCount", list.total);
 		String csrf=sessionInfo(req).csrfToken;
@@ -865,11 +845,11 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object acceptJoinRequest(Request req, Response resp, Account self){
+	public static Object acceptJoinRequest(Request req, Response resp, Account self, ApplicationContext ctx){
 		return respondToJoinRequest(req, resp, self, true);
 	}
 
-	public static Object rejectJoinRequest(Request req, Response resp, Account self){
+	public static Object rejectJoinRequest(Request req, Response resp, Account self, ApplicationContext ctx){
 		return respondToJoinRequest(req, resp, self, false);
 	}
 
@@ -892,13 +872,13 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object editInvitations(Request req, Response resp, Account self){
+	public static Object editInvitations(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
 		model.with("summaryKey", group.isEvent() ? "summary_event_X_invites" : "summary_group_X_invites").with("group", group).with("subtab", "invites");
-		PaginatedList<User> list=context(req).getGroupsController().getGroupInvites(self.user, group, offset(req), 50);
+		PaginatedList<User> list=ctx.getGroupsController().getGroupInvites(self.user, group, offset(req), 50);
 		model.paginate(list);
-		model.with("joinRequestCount", context(req).getGroupsController().getJoinRequestCount(self.user, group));
+		model.with("joinRequestCount", ctx.getGroupsController().getJoinRequestCount(self.user, group));
 		String csrf=sessionInfo(req).csrfToken;
 		model.with("memberActions", List.of(
 				Map.of("href", "/groups/"+group.id+"/cancelInvite?csrf="+csrf+"&id=", "title", lang(req).get("cancel_invitation"))
@@ -908,10 +888,10 @@ public class GroupsRoutes{
 		return model;
 	}
 
-	public static Object editCancelInvitation(Request req, Response resp, Account self){
+	public static Object editCancelInvitation(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
-		context(req).getGroupsController().cancelInvitation(self.user, group, user);
+		ctx.getGroupsController().cancelInvitation(self.user, group, user);
 		if(isAjax(req)){
 			if(isMobile(req))
 				return new WebDeltaResponse(resp).refresh();
@@ -924,25 +904,25 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object syncRelationshipsCollections(Request req, Response resp, Account self){
+	public static Object syncRelationshipsCollections(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
 		group.ensureRemote();
-		context(req).getActivityPubWorker().fetchActorRelationshipCollections(group);
+		ctx.getActivityPubWorker().fetchActorRelationshipCollections(group);
 		Lang l=lang(req);
 		return new WebDeltaResponse(resp).messageBox(l.get("sync_members"), l.get("sync_started"), l.get("ok"));
 	}
 
-	public static Object syncProfile(Request req, Response resp, Account self){
+	public static Object syncProfile(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
 		group.ensureRemote();
-		context(req).getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
+		ctx.getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
 		return new WebDeltaResponse(resp).refresh();
 	}
 
-	public static Object syncContentCollections(Request req, Response resp, Account self){
+	public static Object syncContentCollections(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
 		group.ensureRemote();
-		context(req).getActivityPubWorker().fetchActorContentCollections(group);
+		ctx.getActivityPubWorker().fetchActorContentCollections(group);
 		Lang l=lang(req);
 		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
 	}

@@ -26,6 +26,7 @@ import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
 import javax.servlet.http.Part;
 
+import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
 import smithereen.Utils;
@@ -227,7 +228,7 @@ public class SystemRoutes{
 		return "";
 	}
 
-	public static Object uploadPostPhoto(Request req, Response resp, Account self) throws SQLException{
+	public static Object uploadPostPhoto(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		try{
 			boolean isGraffiti=req.queryParams("graffiti")!=null;
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
@@ -300,7 +301,7 @@ public class SystemRoutes{
 		return "";
 	}
 
-	public static Object deleteDraftAttachment(Request req, Response resp, Account self) throws Exception{
+	public static Object deleteDraftAttachment(Request req, Response resp, Account self, ApplicationContext ctx) throws Exception{
 		SessionInfo sess=Utils.sessionInfo(req);
 		String id=req.queryParams("id");
 		if(id==null){
@@ -338,7 +339,7 @@ public class SystemRoutes{
 		return model;
 	}
 
-	public static Object quickSearch(Request req, Response resp, Account self) throws SQLException{
+	public static Object quickSearch(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String query=req.queryParams("q");
 		if(StringUtils.isEmpty(query) || query.length()<2)
 			return "";
@@ -352,7 +353,7 @@ public class SystemRoutes{
 			query=normalizeURLDomain(query);
 			URI uri=URI.create(query);
 			try{
-				ActivityPubObject obj=context(req).getObjectLinkResolver().resolve(uri, ActivityPubObject.class, false, false, false);
+				ActivityPubObject obj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, false, false, false);
 				if(obj instanceof User){
 					users=Collections.singletonList((User)obj);
 				}else if(obj instanceof Group){
@@ -363,7 +364,7 @@ public class SystemRoutes{
 			}catch(ObjectNotFoundException x){
 				if(!Config.isLocal(uri)){
 					try{
-						Actor actor=context(req).getObjectLinkResolver().resolve(uri, Actor.class, false, false, false);
+						Actor actor=ctx.getObjectLinkResolver().resolve(uri, Actor.class, false, false, false);
 						if(actor instanceof User){
 							users=Collections.singletonList((User)actor);
 						}else if(actor instanceof Group){
@@ -410,7 +411,7 @@ public class SystemRoutes{
 		return new RenderedTemplateResponse("quick_search_results", req).with("users", users).with("groups", groups).with("externalObjects", externalObjects).with("avaSize", req.attribute("mobile")!=null ? 48 : 30);
 	}
 
-	public static Object loadRemoteObject(Request req, Response resp, Account self) throws SQLException{
+	public static Object loadRemoteObject(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String _uri=req.queryParams("uri");
 		if(StringUtils.isEmpty(_uri))
 			throw new BadRequestException();
@@ -435,7 +436,7 @@ public class SystemRoutes{
 			}
 		}
 		try{
-			obj=context(req).getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, false);
+			obj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, false);
 		}catch(UnsupportedRemoteObjectTypeException x){
 			LOG.debug("Unsupported remote object", x);
 			return new JsonObjectBuilder().add("error", lang(req).get("unsupported_remote_object_type")).build();
@@ -444,28 +445,28 @@ public class SystemRoutes{
 			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_not_found")).build();
 		}
 		if(obj instanceof ForeignUser user){
-			obj.storeDependencies(context(req));
+			obj.storeDependencies(ctx);
 			UserStorage.putOrUpdateForeignUser(user);
 			return new JsonObjectBuilder().add("success", user.getProfileURL()).build();
 		}else if(obj instanceof ForeignGroup group){
-			obj.storeDependencies(context(req));
+			obj.storeDependencies(ctx);
 			GroupStorage.putOrUpdateForeignGroup(group);
 			return new JsonObjectBuilder().add("success", group.getProfileURL()).build();
 		}else if(obj instanceof Post post){
 			if(post.inReplyTo==null || post.id!=0){
-				post.storeDependencies(context(req));
+				post.storeDependencies(ctx);
 				PostStorage.putForeignWallPost(post);
 				try{
-					context(req).getActivityPubWorker().fetchAllReplies(post).get(30, TimeUnit.SECONDS);
+					ctx.getActivityPubWorker().fetchAllReplies(post).get(30, TimeUnit.SECONDS);
 				}catch(Throwable x){
 					x.printStackTrace();
 				}
 				return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+post.id).toString()).build();
 			}else{
-				Future<List<Post>> future=context(req).getActivityPubWorker().fetchReplyThread(post);
+				Future<List<Post>> future=ctx.getActivityPubWorker().fetchReplyThread(post);
 				try{
 					List<Post> posts=future.get(30, TimeUnit.SECONDS);
-					context(req).getActivityPubWorker().fetchAllReplies(posts.get(0)).get(30, TimeUnit.SECONDS);
+					ctx.getActivityPubWorker().fetchAllReplies(posts.get(0)).get(30, TimeUnit.SECONDS);
 					return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+posts.get(0).id+"#comment"+post.id).toString()).build();
 				}catch(InterruptedException ignore){
 				}catch(ExecutionException e){
@@ -491,7 +492,7 @@ public class SystemRoutes{
 		return "";
 	}
 
-	public static Object votePoll(Request req, Response resp, Account self) throws SQLException{
+	public static Object votePoll(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		int id=parseIntOrDefault(req.queryParams("id"), 0);
 		if(id==0)
 			throw new ObjectNotFoundException();
@@ -505,9 +506,9 @@ public class SystemRoutes{
 			ensureUserNotBlocked(self.user, _owner);
 			owner=_owner;
 		}else{
-			Group _owner=context(req).getGroupsController().getGroupOrThrow(-poll.ownerID);
+			Group _owner=ctx.getGroupsController().getGroupOrThrow(-poll.ownerID);
 			ensureUserNotBlocked(self.user, _owner);
-			context(req).getPrivacyController().enforceUserAccessToGroupContent(self.user, _owner);
+			ctx.getPrivacyController().enforceUserAccessToGroupContent(self.user, _owner);
 			owner=_owner;
 		}
 
@@ -550,12 +551,12 @@ public class SystemRoutes{
 		for(PollOption opt:options)
 			opt.addVotes(1);
 
-		context(req).getActivityPubWorker().sendPollVotes(self.user, poll, owner, options, voteIDs);
+		ctx.getActivityPubWorker().sendPollVotes(self.user, poll, owner, options, voteIDs);
 		int postID=PostStorage.getPostIdByPollId(id);
 		if(postID>0){
-			Post post=context(req).getWallController().getPostOrThrow(postID);
+			Post post=ctx.getWallController().getPostOrThrow(postID);
 			post.poll=poll; // So the last vote time is as it was before the vote
-			context(req).getWallController().sendUpdateQuestionIfNeeded(post);
+			ctx.getWallController().sendUpdateQuestionIfNeeded(post);
 		}
 
 		if(isAjax(req)){

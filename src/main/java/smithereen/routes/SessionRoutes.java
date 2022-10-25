@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.Utils;
@@ -321,7 +322,7 @@ public class SessionRoutes{
 		return "";
 	}
 
-	public static Object resendEmailConfirmation(Request req, Response resp, Account self){
+	public static Object resendEmailConfirmation(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(self.getUnconfirmedEmail()==null)
 			throw new BadRequestException();
 		FloodControl.EMAIL_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
@@ -334,7 +335,7 @@ public class SessionRoutes{
 		return new RenderedTemplateResponse("generic_message", req).with("message", new SafeString(msg)).pageTitle(l.get("account_activation"));
 	}
 
-	public static Object changeEmailForm(Request req, Response resp, Account self){
+	public static Object changeEmailForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(self.getUnconfirmedEmail()==null)
 			throw new BadRequestException();
 		RenderedTemplateResponse model=new RenderedTemplateResponse("change_email_form", req);
@@ -342,7 +343,7 @@ public class SessionRoutes{
 		return wrapForm(req, resp, "change_email_form", "/account/changeEmail", lang(req).get("change_email_title"), "save", model);
 	}
 
-	public static Object changeEmail(Request req, Response resp, Account self){
+	public static Object changeEmail(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(self.activationInfo==null || self.activationInfo.emailState!=Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED)
 			throw new BadRequestException();
 		String email=req.queryParams("email");
@@ -375,7 +376,7 @@ public class SessionRoutes{
 		}
 	}
 
-	public static Object activateAccount(Request req, Response resp, Account self){
+	public static Object activateAccount(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(self.activationInfo==null)
 			throw new UserErrorException("err_email_already_activated");
 		if(!self.activationInfo.emailConfirmationKey.equals(req.queryParams("key")))

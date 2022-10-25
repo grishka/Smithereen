@@ -74,6 +74,8 @@ public class ForeignGroup extends Group implements ForeignActor{
 			}
 		}
 		wall=tryParseURL(optString(obj, "wall"));
+		if(wall==null)
+			wall=tryParseURL(optString(obj, "sm:wall"));
 		ensureHostMatchesID(wall, "wall");
 
 		if(attachment!=null && !attachment.isEmpty()){

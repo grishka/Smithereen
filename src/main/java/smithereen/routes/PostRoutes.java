@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
@@ -59,20 +60,16 @@ import static smithereen.Utils.*;
 public class PostRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(PostRoutes.class);
 
-	public static Object createUserWallPost(Request req, Response resp, Account self) throws SQLException{
+	public static Object createUserWallPost(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
-		User user=UserStorage.getById(id);
-		if(user==null)
-			throw new ObjectNotFoundException("err_user_not_found");
-		ensureUserNotBlocked(self.user, user);
+		User user=ctx.getUsersController().getUserOrThrow(id);
+		ctx.getUsersController().ensureUserNotBlocked(self.user, user);
 		return createWallPost(req, resp, self, user);
 	}
 
-	public static Object createGroupWallPost(Request req, Response resp, Account self) throws SQLException{
+	public static Object createGroupWallPost(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
-		Group group=GroupStorage.getById(id);
-		if(group==null)
-			throw new ObjectNotFoundException("err_group_not_found");
+		Group group=ctx.getGroupsController().getGroupOrThrow(id);
 		return createWallPost(req, resp, self, group);
 	}
 
@@ -145,12 +142,12 @@ public class PostRoutes{
 		return "";
 	}
 
-	public static Object editPostForm(Request req, Response resp, Account self) throws SQLException{
+	public static Object editPostForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=parseIntOrDefault(req.params(":postID"), 0);
-		Post post=context(req).getWallController().getPostOrThrow(id);
+		Post post=ctx.getWallController().getPostOrThrow(id);
 		if(!sessionInfo(req).permissions.canEditPost(post))
 			throw new UserActionNotAllowedException();
-		context(req).getPrivacyController().enforceObjectPrivacy(self.user, post);
+		ctx.getPrivacyController().enforceObjectPrivacy(self.user, post);
 		RenderedTemplateResponse model;
 		if(isAjax(req)){
 			model=new RenderedTemplateResponse("wall_post_form", req);
@@ -176,13 +173,13 @@ public class PostRoutes{
 		return model.pageTitle(lang(req).get(post.getReplyLevel()>0 ? "editing_comment" : "editing_post"));
 	}
 
-	public static Object editPost(Request req, Response resp, Account self) throws SQLException{
+	public static Object editPost(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=parseIntOrDefault(req.params(":postID"), 0);
 		String text=req.queryParams("text");
 		Poll poll;
 		String pollQuestion=req.queryParams("pollQuestion");
 		if(StringUtils.isNotEmpty(pollQuestion)){
-			Post post=context(req).getWallController().getPostOrThrow(id);
+			Post post=ctx.getWallController().getPostOrThrow(id);
 			List<String> pollOptions=Arrays.stream(req.queryParams("pollOption")!=null ? req.queryMap("pollOption").values() : new String[0]).map(String::trim).filter(StringUtils::isNotEmpty).collect(Collectors.toList());
 			if(pollOptions.size()>=2){
 				poll=new Poll();
@@ -215,12 +212,12 @@ public class PostRoutes{
 		else
 			attachments=Collections.emptyList();
 
-		Post post=context(req).getWallController().editPost(self.user, sessionInfo(req).permissions, id, text, contentWarning, attachments, poll);
+		Post post=ctx.getWallController().editPost(self.user, sessionInfo(req).permissions, id, text, contentWarning, attachments, poll);
 		if(isAjax(req)){
 			if(req.attribute("mobile")!=null)
 				return new WebDeltaResponse(resp).replaceLocation(post.getInternalURL().toString());
 
-			RenderedTemplateResponse model=new RenderedTemplateResponse(post.getReplyLevel()>0 ? "wall_reply" : "wall_post", req).with("post", post).with("postInteractions", PostStorage.getPostInteractions(List.of(post.id), self.user.id));
+			RenderedTemplateResponse model=new RenderedTemplateResponse(post.getReplyLevel()>0 ? "wall_reply" : "wall_post", req).with("post", post).with("postInteractions", ctx.getWallController().getUserInteractions(List.of(post), self.user));
 			return new WebDeltaResponse(resp).setContent("postInner"+post.id, model.renderBlock("postInner"))
 					.show("postInner"+post.id)
 					.remove("wallPostForm_edit"+post.id, "postEditingLabel"+post.id)
@@ -230,15 +227,15 @@ public class PostRoutes{
 		return "";
 	}
 
-	public static Object feed(Request req, Response resp, Account self){
+	public static Object feed(Request req, Response resp, Account self, ApplicationContext ctx){
 		int startFromID=parseIntOrDefault(req.queryParams("startFrom"), 0);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		PaginatedList<NewsfeedEntry> feed=context(req).getNewsfeedController().getFriendsFeed(self, timeZoneForRequest(req), startFromID, offset, 25);
+		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(self, timeZoneForRequest(req), startFromID, offset, 25);
 		List<Post> feedPosts=feed.list.stream().filter(e->e instanceof PostNewsfeedEntry pe && pe.post!=null).map(e->((PostNewsfeedEntry)e).post).collect(Collectors.toList());
 		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
-			context(req).getWallController().populateCommentPreviews(feedPosts);
+			ctx.getWallController().populateCommentPreviews(feedPosts);
 		}
-		Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(feedPosts, self.user);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(feedPosts, self.user);
 		if(!feed.list.isEmpty() && startFromID==0)
 			startFromID=feed.list.get(0).id;
 		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel");
@@ -248,24 +245,14 @@ public class PostRoutes{
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
 	}
 
-	private static Post getPostOrThrow(int postID) throws SQLException{
-		if(postID==0){
-			throw new ObjectNotFoundException("err_post_not_found");
-		}
-		Post post=PostStorage.getPostByID(postID, false);
-		if(post==null){
-			throw new ObjectNotFoundException("err_post_not_found");
-		}
-		return post;
-	}
-
-	public static Object standalonePost(Request req, Response resp) throws SQLException{
+	public static Object standalonePost(Request req, Response resp){
+		ApplicationContext ctx=context(req);
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		Post post=getPostOrThrow(postID);
+		Post post=ctx.getWallController().getPostOrThrow(postID);
 		int[] replyKey=new int[post.replyKey.length+1];
 		System.arraycopy(post.replyKey, 0, replyKey, 0, post.replyKey.length);
 		replyKey[replyKey.length-1]=post.id;
-		post.repliesObjects=PostStorage.getReplies(replyKey);
+		post.repliesObjects=ctx.getWallController().getReplies(replyKey);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone", req);
 		model.with("post", post);
 		model.with("isGroup", post.owner instanceof Group);
@@ -273,8 +260,8 @@ public class PostRoutes{
 		User self=null;
 		if(info!=null && info.account!=null){
 			model.with("draftAttachments", info.postDraftAttachments);
-			if(post.isGroupOwner() && post.getReplyLevel()==0){
-				model.with("groupAdminLevel", GroupStorage.getGroupMemberAdminLevel(((Group) post.owner).id, info.account.user.id));
+			if(post.owner instanceof Group group && post.getReplyLevel()==0){
+				model.with("groupAdminLevel", ctx.getGroupsController().getMemberAdminLevel(group, info.account.user));
 			}
 			self=info.account.user;
 		}
@@ -282,10 +269,10 @@ public class PostRoutes{
 		if(post.replyKey.length>0){
 			model.with("prefilledPostText", post.user.getNameForReply()+", ");
 		}
-		ArrayList<Integer> postIDs=new ArrayList<>();
-		postIDs.add(post.id);
-		post.getAllReplyIDs(postIDs);
-		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, info!=null && info.account!=null ? info.account.user.id : 0);
+		ArrayList<Post> postIDs=new ArrayList<>();
+		postIDs.add(post);
+//		post.getAllReplyIDs(postIDs);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(postIDs, info!=null && info.account!=null ? info.account.user : null);
 		model.with("postInteractions", interactions);
 		if(info==null || info.account==null){
 			HashMap<String, String> moreMeta=new LinkedHashMap<>();
@@ -332,12 +319,7 @@ public class PostRoutes{
 		model.with("title", post.getShortTitle(50)+" | "+post.user.getFullName());
 		if(req.attribute("mobile")!=null){
 			model.with("toolbarTitle", lang(req).get("wall_post_title"));
-			List<User> likers=LikeStorage.getPostLikes(postID, info!=null && info.account!=null ? info.account.user.id : 0, 0, 10).stream().map(id->{
-				try{
-					return UserStorage.getById(id);
-				}catch(SQLException x){}
-				return null;
-			}).filter(Objects::nonNull).collect(Collectors.toList());
+			List<User> likers=ctx.getUserInteractionsController().getLikesForObject(post, info!=null && info.account!=null ? info.account.user : null, 0, 10).list;
 			model.with("likedBy", likers);
 		}
 		if(post.getReplyLevel()>0){
@@ -347,7 +329,7 @@ public class PostRoutes{
 		return model;
 	}
 
-	public static Object confirmDelete(Request req, Response resp, Account self) throws SQLException{
+	public static Object confirmDelete(Request req, Response resp, Account self, ApplicationContext ctx){
 		req.attribute("noHistory", true);
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
@@ -357,24 +339,9 @@ public class PostRoutes{
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete?_redir="+URLEncoder.encode(back))).with("back", back);
 	}
 
-	public static Object delete(Request req, Response resp, Account self) throws SQLException{
-		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		context(req).getPrivacyController().enforceObjectPrivacy(self.user, post);
-		if(!sessionInfo(req).permissions.canDeletePost(post)){
-			throw new UserActionNotAllowedException();
-		}
-		PostStorage.deletePost(post.id);
-		NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
-		if(Config.isLocal(post.activityPubID) && post.attachment!=null && !post.attachment.isEmpty()){
-			MediaStorageUtils.deleteAttachmentFiles(post.attachment);
-		}
-		context(req).getNewsfeedController().clearFriendsFeedCache();
-		User deleteActor=self.user;
-		// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
-		if(self.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal() && post.user.id!=self.id && !post.isGroupOwner() && post.owner.getLocalID()!=self.id && !(post.user instanceof ForeignUser)){
-			deleteActor=post.user;
-		}
-		context(req).getActivityPubWorker().sendDeletePostActivity(post, deleteActor);
+	public static Object delete(Request req, Response resp, Account self, ApplicationContext ctx){
+		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
+		ctx.getWallController().deletePost(requireSession(req), post);
 		if(isAjax(req)){
 			resp.type("application/json");
 			return new WebDeltaResponse().remove("post"+post.id);
@@ -383,56 +350,31 @@ public class PostRoutes{
 		return "";
 	}
 
-	public static Object like(Request req, Response resp, Account self) throws SQLException{
+	public static Object like(Request req, Response resp, Account self, ApplicationContext ctx){
 		req.attribute("noHistory", true);
-		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		context(req).getPrivacyController().enforceObjectPrivacy(self.user, post);
-		if(post.owner instanceof User)
-			ensureUserNotBlocked(self.user, (User) post.owner);
-		else
-			ensureUserNotBlocked(self.user, (Group) post.owner);
-		String back=Utils.back(req);
-
-		int id=LikeStorage.setPostLiked(self.user.id, post.id, true);
-		if(id==0) // Already liked
-			return "";
-		if(!(post.user instanceof ForeignUser) && post.user.id!=self.user.id){
-			Notification n=new Notification();
-			n.type=Notification.Type.LIKE;
-			n.actorID=self.user.id;
-			n.objectID=post.id;
-			n.objectType=Notification.ObjectType.POST;
-			NotificationsStorage.putNotification(post.user.id, n);
-		}
-		context(req).getActivityPubWorker().sendLikeActivity(post, self.user, id);
+		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
+		ctx.getUserInteractionsController().setObjectLiked(post, true, self.user);
 		if(isAjax(req)){
-			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
+			UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(post), self.user).get(post.id);
 			return new WebDeltaResponse(resp)
 					.setContent("likeCounterPost"+post.id, interactions.likeCount+"")
-					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/unlike?csrf="+sessionInfo(req).csrfToken);
+					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/unlike?csrf="+requireSession(req).csrfToken);
 		}
+		String back=Utils.back(req);
 		resp.redirect(back);
 		return "";
 	}
 
-	public static Object unlike(Request req, Response resp, Account self) throws SQLException{
+	public static Object unlike(Request req, Response resp, Account self, ApplicationContext ctx){
 		req.attribute("noHistory", true);
-		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		context(req).getPrivacyController().enforceObjectPrivacy(self.user, post);
+		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
 		String back=Utils.back(req);
-
-		int id=LikeStorage.setPostLiked(self.user.id, post.id, false);
-		if(id==0)
-			return "";
-		if(!(post.user instanceof ForeignUser) && post.user.id!=self.user.id){
-			NotificationsStorage.deleteNotification(Notification.ObjectType.POST, post.id, Notification.Type.LIKE, self.user.id);
-		}
-		context(req).getActivityPubWorker().sendUndoLikeActivity(post, self.user, id);
+		ctx.getUserInteractionsController().setObjectLiked(post, false, self.user);
 		if(isAjax(req)){
-			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), self.user.id).get(post.id);
+			UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(post), self.user).get(post.id);
 			WebDeltaResponse b=new WebDeltaResponse(resp)
 					.setContent("likeCounterPost"+post.id, interactions.likeCount+"")
-					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/like?csrf="+sessionInfo(req).csrfToken);
+					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/like?csrf="+requireSession(req).csrfToken);
 			if(interactions.likeCount==0)
 				b.hide("likeCounterPost"+post.id);
 			return b;
@@ -450,19 +392,17 @@ public class PostRoutes{
 		public boolean show;
 	}
 
-	public static Object likePopover(Request req, Response resp) throws SQLException{
+	public static Object likePopover(Request req, Response resp){
+		ApplicationContext ctx=context(req);
 		req.attribute("noHistory", true);
 		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
 		SessionInfo info=sessionInfo(req);
 		User self=info!=null && info.account!=null ? info.account.user : null;
 		int selfID=self!=null ? self.id : 0;
 		context(req).getPrivacyController().enforceObjectPrivacy(self, post);
-		List<Integer> ids=LikeStorage.getPostLikes(post.id, selfID, 0, 6);
-		ArrayList<User> users=new ArrayList<>();
-		for(int id:ids)
-			users.add(UserStorage.getById(id));
+		List<User> users=ctx.getUserInteractionsController().getLikesForObject(post, self, 0, 6).list;
 		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
-		UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(post.id), selfID).get(post.id);
+		UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(post), self).get(post.id);
 		WebDeltaResponse b=new WebDeltaResponse(resp)
 				.setContent("likeCounterPost"+post.id, interactions.likeCount+"");
 		if(info!=null && info.account!=null){
@@ -490,7 +430,7 @@ public class PostRoutes{
 		Post post=context(req).getWallController().getPostOrThrow(postID);
 		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 		int offset=offset(req);
-		PaginatedList<User> likes=context(req).getUserInteractionsController().getLikesForObject(post, self!=null ? self.user : null, offset, 100);
+		PaginatedList<User> likes=context(req).getUserInteractionsController().getLikesForObject(post, null, offset, 100);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req)
 				.paginate(likes, "/posts/"+postID+"/likes?fromPagination&offset=", null)
 				.with("emptyMessage", lang(req).get("likes_empty"))
@@ -572,59 +512,56 @@ public class PostRoutes{
 				.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
 	}
 
-	public static Object ajaxCommentPreview(Request req, Response resp) throws SQLException{
+	public static Object ajaxCommentPreview(Request req, Response resp){
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
+		ApplicationContext ctx=context(req);
 
-		Post post=getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
-		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
+		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
+		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 		int maxID=parseIntOrDefault(req.queryParams("firstID"), 0);
 		if(maxID==0)
 			throw new BadRequestException();
-		int[] total={0};
-		List<Post> comments=PostStorage.getRepliesExact(new int[]{post.id}, maxID, 100, total);
+
+		PaginatedList<Post> comments=ctx.getWallController().getRepliesExact(new int[]{post.id}, maxID, 100);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
-		model.with("comments", comments);
-		List<Integer> postIDs=comments.stream().map((Post p)->p.id).collect(Collectors.toList());
-		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
+		model.with("comments", comments.list);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(comments.list, self!=null ? self.user : null);
 		model.with("postInteractions", interactions)
 					.with("preview", true)
 					.with("replyFormID", "wallPostForm_commentReplyPost"+post.id);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString())
 				.hide("prevLoader"+post.id);
-		if(total[0]>100){
-			rb.show("loadPrevBtn"+post.id).setAttribute("loadPrevBtn"+post.id, "data-first-id", comments.get(0).id+"");
+		if(comments.total>100){
+			rb.show("loadPrevBtn"+post.id).setAttribute("loadPrevBtn"+post.id, "data-first-id", comments.list.get(0).id+"");
 		}
 		return rb;
 	}
 
-	public static Object ajaxCommentBranch(Request req, Response resp) throws SQLException{
+	public static Object ajaxCommentBranch(Request req, Response resp){
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
+		ApplicationContext ctx=context(req);
 
-		Post post=getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
-		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
-		List<Post> comments=PostStorage.getReplies(post.getReplyKeyForReplies());
+		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
+		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
+		List<Post> comments=ctx.getWallController().getReplies(post.getReplyKeyForReplies());
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments);
-		ArrayList<Integer> postIDs=new ArrayList<>();
-		for(Post comment:comments){
-			postIDs.add(comment.id);
-			comment.getAllReplyIDs(postIDs);
-		}
-		HashMap<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.user.id : 0);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(comments, self!=null ? self.user : null);
 		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
 		return new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString())
 				.remove("loadRepliesLink"+post.id, "repliesLoader"+post.id);
 	}
 
-	public static Object pollOptionVoters(Request req, Response resp) throws SQLException{
+	public static Object pollOptionVoters(Request req, Response resp){
 		int postID=parseIntOrDefault(req.params(":postID"), 0);
 		int optionID=parseIntOrDefault(req.params(":optionID"), 0);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		Post post=getPostOrThrow(postID);
+		ApplicationContext ctx=context(req);
+		Post post=ctx.getWallController().getPostOrThrow(postID);
 		if(post.poll==null)
 			throw new ObjectNotFoundException();
 		if(post.poll.anonymous)
@@ -644,7 +581,7 @@ public class PostRoutes{
 		@Nullable Account self=info!=null ? info.account : null;
 		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 
-		List<User> users=UserStorage.getByIdAsList(PostStorage.getPollOptionVoters(option.id, offset, 100));
+		List<User> users=ctx.getWallController().getPollOptionVoters(option, offset, 100);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users);
 		model.with("pageOffset", offset).with("total", option.getNumVotes()).with("paginationUrlPrefix", "/posts/"+postID+"/pollVoters/"+option.id+"?fromPagination&offset=").with("emptyMessage", lang(req).get("poll_option_votes_empty"));
 		if(isAjax(req)){
@@ -657,10 +594,11 @@ public class PostRoutes{
 		return model;
 	}
 
-	public static Object pollOptionVotersPopover(Request req, Response resp) throws SQLException{
+	public static Object pollOptionVotersPopover(Request req, Response resp){
 		int postID=parseIntOrDefault(req.params(":postID"), 0);
 		int optionID=parseIntOrDefault(req.params(":optionID"), 0);
-		Post post=getPostOrThrow(postID);
+		ApplicationContext ctx=context(req);
+		Post post=ctx.getWallController().getPostOrThrow(postID);
 		if(post.poll==null)
 			throw new ObjectNotFoundException();
 		if(post.poll.anonymous)
@@ -680,7 +618,7 @@ public class PostRoutes{
 		@Nullable Account self=info!=null ? info.account : null;
 		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 
-		List<User> users=UserStorage.getByIdAsList(PostStorage.getPollOptionVoters(option.id, 0, 6));
+		List<User> users=ctx.getWallController().getPollOptionVoters(option, 0, 6);
 		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
 
 		LikePopoverResponse r=new LikePopoverResponse();
@@ -692,14 +630,14 @@ public class PostRoutes{
 		return gson.toJson(r);
 	}
 
-	public static Object commentsFeed(Request req, Response resp, Account self) throws SQLException{
+	public static Object commentsFeed(Request req, Response resp, Account self, ApplicationContext ctx){
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		PaginatedList<NewsfeedEntry> feed=PostStorage.getCommentsFeed(self.user.id, offset, 25);
+		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getCommentsFeed(self, offset, 25);
 		List<Post> feedPosts=feed.list.stream().filter(e->e instanceof PostNewsfeedEntry pe && pe.post!=null).map(e->((PostNewsfeedEntry)e).post).collect(Collectors.toList());
 		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
-			context(req).getWallController().populateCommentPreviews(feedPosts);
+			ctx.getWallController().populateCommentPreviews(feedPosts);
 		}
-		Map<Integer, UserInteractions> interactions=context(req).getWallController().getUserInteractions(feedPosts, self.user);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(feedPosts, self.user);
 		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel");
 		Templates.addJsLangForNewPostForm(req);
 		return new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list).with("postInteractions", interactions)

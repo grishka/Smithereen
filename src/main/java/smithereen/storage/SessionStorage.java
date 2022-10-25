@@ -548,6 +548,7 @@ public class SessionStorage{
 				.selectFrom("signup_requests")
 				.allColumns()
 				.limit(count, offset)
+				.orderBy("id DESC")
 				.executeAsStream(SignupRequest::fromResultSet)
 				.toList(), total, offset, count);
 	}

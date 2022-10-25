@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -252,9 +253,42 @@ public class ObjectLinkResolver{
 		LOG.debug("Object {} was confirmed to be contained in {}", objectID, collectionID);
 	}
 
+	public UsernameResolutionResult resolveUsernameLocally(String username){
+		return resolveUsername(username, false, EnumSet.allOf(UsernameOwnerType.class));
+	}
+
+	public UsernameResolutionResult resolveUsername(String username, boolean allowFetching, EnumSet<UsernameOwnerType> allowedTypes){
+		if(allowedTypes.isEmpty())
+			throw new IllegalArgumentException("allowedTypes can't be empty");
+
+		if(allowFetching)
+			throw new UnsupportedOperationException(); // TODO
+
+		if(allowedTypes.contains(UsernameOwnerType.USER)){
+			int user=context.getUsersController().tryGetUserIdByUsername(username);
+			if(user>0)
+				return new UsernameResolutionResult(UsernameOwnerType.USER, user);
+		}
+
+		if(allowedTypes.contains(UsernameOwnerType.GROUP)){
+			int group=context.getGroupsController().tryGetGroupIdForUsername(username);
+			if(group>0)
+				return new UsernameResolutionResult(UsernameOwnerType.GROUP, group);
+		}
+
+		throw new ObjectNotFoundException();
+	}
+
 	private record ActorToken(JsonObject token, Instant validUntil){
 		public boolean isValid(){
 			return validUntil.isAfter(Instant.now());
 		}
 	}
+
+	public enum UsernameOwnerType{
+		USER,
+		GROUP
+	}
+
+	public record UsernameResolutionResult(UsernameOwnerType type, int localID){}
 }

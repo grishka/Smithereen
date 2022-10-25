@@ -5,12 +5,17 @@ import java.util.Collections;
 import java.util.List;
 
 import smithereen.ApplicationContext;
+import smithereen.Utils;
+import smithereen.data.ForeignUser;
+import smithereen.data.Group;
 import smithereen.data.PaginatedList;
 import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
+import smithereen.data.notifications.Notification;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.storage.LikeStorage;
+import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 
@@ -24,8 +29,44 @@ public class UserInteractionsController{
 	public PaginatedList<User> getLikesForObject(Post object, User self, int offset, int count){
 		try{
 			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(object.id), 0).get(object.id);
-			List<User> users=UserStorage.getByIdAsList(LikeStorage.getPostLikes(object.id, 0, offset, count));
+			List<User> users=UserStorage.getByIdAsList(LikeStorage.getPostLikes(object.id, self!=null ? self.id : 0, offset, count));
 			return new PaginatedList<>(users, interactions.likeCount, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setObjectLiked(Post object, boolean liked, User self){
+		try{
+			context.getPrivacyController().enforceObjectPrivacy(self, object);
+			if(object.owner instanceof User u)
+				Utils.ensureUserNotBlocked(self, u);
+			else if(object.owner instanceof Group g)
+				Utils.ensureUserNotBlocked(self, g);
+
+			if(liked){
+				int id=LikeStorage.setPostLiked(self.id, object.id, true);
+				if(id==0) // Already liked
+					return;
+				if(!(object.user instanceof ForeignUser) && object.user.id!=self.id){
+					Notification n=new Notification();
+					n.type=Notification.Type.LIKE;
+					n.actorID=self.id;
+					n.objectID=object.id;
+					n.objectType=Notification.ObjectType.POST;
+					NotificationsStorage.putNotification(object.user.id, n);
+				}
+				context.getActivityPubWorker().sendLikeActivity(object, self, id);
+			}else{
+				context.getPrivacyController().enforceObjectPrivacy(self, object);
+				int id=LikeStorage.setPostLiked(self.id, object.id, false);
+				if(id==0)
+					return;
+				if(!(object.user instanceof ForeignUser) && object.user.id!=self.id){
+					NotificationsStorage.deleteNotification(Notification.ObjectType.POST, object.id, Notification.Type.LIKE, self.id);
+				}
+				context.getActivityPubWorker().sendUndoLikeActivity(object, self, id);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

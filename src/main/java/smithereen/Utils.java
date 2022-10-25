@@ -404,6 +404,14 @@ public class Utils{
 		return info;
 	}
 
+	@NotNull
+	public static SessionInfo requireSession(Request req){
+		SessionInfo info=sessionInfo(req);
+		if(info==null)
+			throw new UserActionNotAllowedException();
+		return info;
+	}
+
 	public static int[] deserializeIntArray(byte[] a){
 		if(a==null || a.length%4!=0)
 			return null;

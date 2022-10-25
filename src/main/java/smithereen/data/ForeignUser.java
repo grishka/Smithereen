@@ -137,6 +137,8 @@ public class ForeignUser extends User implements ForeignActor{
 		if(StringUtils.isNotEmpty(summary))
 			summary=Utils.sanitizeHTML(summary);
 		wall=tryParseURL(optString(obj, "wall"));
+		if(wall==null)
+			wall=tryParseURL(optString(obj, "sm:wall"));
 		ensureHostMatchesID(wall, "wall");
 		friends=tryParseURL(optString(obj, "friends"));
 		ensureHostMatchesID(friends, "friends");

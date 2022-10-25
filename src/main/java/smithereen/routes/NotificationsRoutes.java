@@ -1,22 +1,14 @@
 package smithereen.routes;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 
-import smithereen.Utils;
+import smithereen.ApplicationContext;
 import smithereen.data.Account;
 import smithereen.data.PaginatedList;
 import smithereen.data.Post;
 import smithereen.data.User;
 import smithereen.data.notifications.Notification;
-import smithereen.storage.NotificationsStorage;
-import smithereen.storage.PostStorage;
-import smithereen.storage.SessionStorage;
-import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
@@ -24,15 +16,13 @@ import spark.Response;
 import static smithereen.Utils.*;
 
 public class NotificationsRoutes{
-	public static Object notifications(Request req, Response resp, Account self) throws SQLException{
-		int offset=offset(req);
+	public static Object notifications(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("notifications", req);
-		int[] total={0};
-		List<Notification> notifications=NotificationsStorage.getNotifications(self.user.id, offset, 50, total);
-		model.pageTitle(lang(req).get("notifications")).paginate(new PaginatedList<Notification>(notifications, total[0], offset, 50));
+		PaginatedList<Notification> notifications=ctx.getNotificationsController().getNotifications(self.user, offset(req), 50);
+		model.pageTitle(lang(req).get("notifications")).paginate(notifications);
 		HashSet<Integer> needUsers=new HashSet<>(), needPosts=new HashSet<>();
 
-		for(Notification n:notifications){
+		for(Notification n:notifications.list){
 			needUsers.add(n.actorID);
 			if(n.objectType==Notification.ObjectType.POST){
 				needPosts.add(n.objectID);
@@ -42,22 +32,15 @@ public class NotificationsRoutes{
 			}
 		}
 
-		Map<Integer, User> users=UserStorage.getById(needUsers);
-		Map<Integer, Post> posts=new HashMap<>();
-		for(Integer pid:needPosts){
-			posts.put(pid, PostStorage.getPostByID(pid, false));
-		}
+		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
+		Map<Integer, Post> posts=ctx.getWallController().getPosts(needPosts);
 
 		model.with("users", users).with("posts", posts);
 
-		if(!notifications.isEmpty()){
-			int last=notifications.get(0).id;
-			if(last>self.prefs.lastSeenNotificationID){
-				self.prefs.lastSeenNotificationID=last;
-				SessionStorage.updatePreferences(self.id, self.prefs);
-			}
+		if(!notifications.list.isEmpty()){
+			int last=notifications.list.get(0).id;
+			ctx.getNotificationsController().setNotificationsSeen(self, last);
 		}
-		NotificationsStorage.getNotificationsForUser(self.user.id, self.prefs.lastSeenNotificationID).setNotificationsViewed();
 
 		return model;
 	}

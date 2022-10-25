@@ -24,6 +24,7 @@ import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
 import javax.servlet.http.Part;
 
+import smithereen.ApplicationContext;
 import smithereen.Config;
 import static smithereen.Utils.*;
 
@@ -60,7 +61,7 @@ import spark.utils.StringUtils;
 public class SettingsRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(SettingsRoutes.class);
 
-	public static Object settings(Request req, Response resp, Account self) throws SQLException{
+	public static Object settings(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings", req);
 		model.with("languages", Lang.list).with("selectedLang", Utils.lang(req));
 		Session s=req.session();
@@ -86,7 +87,7 @@ public class SettingsRoutes{
 		return model;
 	}
 
-	public static Object createInvite(Request req, Response resp, Account self) throws SQLException{
+	public static Object createInvite(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		if(Config.signupMode==Config.SignupMode.OPEN){
 			throw new BadRequestException();
 		}
@@ -100,7 +101,7 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object updatePassword(Request req, Response resp, Account self) throws SQLException{
+	public static Object updatePassword(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String current=req.queryParams("current");
 		String new1=req.queryParams("new");
 		String new2=req.queryParams("new2");
@@ -122,7 +123,7 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object updateProfileGeneral(Request req, Response resp, Account self) throws SQLException{
+	public static Object updateProfileGeneral(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String first=req.queryParams("first_name");
 		String last=req.queryParams("last_name");
 		String middle=req.queryParams("middle_name");
@@ -154,7 +155,7 @@ public class SettingsRoutes{
 		self.user=UserStorage.getById(self.user.id);
 		if(self.user==null)
 			throw new IllegalStateException("?!");
-		context(req).getActivityPubWorker().sendUpdateUserActivity(self.user);
+		ctx.getActivityPubWorker().sendUpdateUserActivity(self.user);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).show("formMessage_profileEdit").setContent("formMessage_profileEdit", message);
 		}
@@ -163,7 +164,7 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object updateProfilePicture(Request req, Response resp, Account self) throws SQLException{
+	public static Object updateProfilePicture(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		try{
 			int groupID=parseIntOrDefault(req.queryParams("group"), 0);
 			Group group=null;
@@ -255,7 +256,7 @@ public class SettingsRoutes{
 					}
 					UserStorage.updateProfilePicture(self.user, MediaStorageUtils.serializeAttachment(ava).toString());
 					self.user=UserStorage.getById(self.user.id);
-					context(req).getActivityPubWorker().sendUpdateUserActivity(self.user);
+					ctx.getActivityPubWorker().sendUpdateUserActivity(self.user);
 				}else{
 					if(group.icon!=null && !(group instanceof ForeignGroup)){
 						LocalImage li=(LocalImage) group.icon.get(0);
@@ -267,7 +268,7 @@ public class SettingsRoutes{
 					}
 					GroupStorage.updateProfilePicture(group, MediaStorageUtils.serializeAttachment(ava).toString());
 					group=GroupStorage.getById(group.id);
-					context(req).getActivityPubWorker().sendUpdateGroupActivity(group);
+					ctx.getActivityPubWorker().sendUpdateGroupActivity(group);
 				}
 				temp.delete();
 			}finally{
@@ -325,7 +326,7 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object profileEditGeneral(Request req, Response resp, Account self){
+	public static Object profileEditGeneral(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("profile_edit_general", req);
 		model.with("todayDate", new java.sql.Date(System.currentTimeMillis()).toString());
 		model.with("title", lang(req).get("edit_profile"));
@@ -337,14 +338,14 @@ public class SettingsRoutes{
 		return model;
 	}
 
-	public static Object confirmRemoveProfilePicture(Request req, Response resp, Account self){
+	public static Object confirmRemoveProfilePicture(Request req, Response resp, Account self, ApplicationContext ctx){
 		req.attribute("noHistory", true);
 		String back=Utils.back(req);
 		String groupParam=req.queryParams("group")!=null ? ("&group="+req.queryParams("group")) : "";
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", Utils.lang(req).get("confirm_remove_profile_picture")).with("formAction", Config.localURI("/settings/removeProfilePicture?_redir="+URLEncoder.encode(back)+groupParam)).with("back", back);
 	}
 
-	public static Object removeProfilePicture(Request req, Response resp, Account self) throws SQLException{
+	public static Object removeProfilePicture(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		int groupID=parseIntOrDefault(req.queryParams("group"), 0);
 		Group group=null;
 		if(groupID!=0){
@@ -368,11 +369,11 @@ public class SettingsRoutes{
 		if(group!=null){
 			GroupStorage.updateProfilePicture(group, null);
 			group=GroupStorage.getById(groupID);
-			context(req).getActivityPubWorker().sendUpdateGroupActivity(group);
+			ctx.getActivityPubWorker().sendUpdateGroupActivity(group);
 		}else{
 			UserStorage.updateProfilePicture(self.user, null);
 			self.user=UserStorage.getById(self.user.id);
-			context(req).getActivityPubWorker().sendUpdateUserActivity(self.user);
+			ctx.getActivityPubWorker().sendUpdateUserActivity(self.user);
 		}
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
@@ -380,7 +381,7 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object blocking(Request req, Response resp, Account self) throws SQLException{
+	public static Object blocking(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_blocking", req).with("title", lang(req).get("settings_blocking"));
 		model.with("blockedUsers", UserStorage.getBlockedUsers(self.user.id));
 		model.with("blockedDomains", UserStorage.getBlockedDomains(self.user.id));
@@ -388,12 +389,12 @@ public class SettingsRoutes{
 		return model;
 	}
 
-	public static Object blockDomainForm(Request req, Response resp, Account self) throws SQLException{
+	public static Object blockDomainForm(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("block_domain", req);
 		return wrapForm(req, resp, "block_domain", "/settings/blockDomain", lang(req).get("block_a_domain"), "block", model);
 	}
 
-	public static Object blockDomain(Request req, Response resp, Account self) throws SQLException{
+	public static Object blockDomain(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String domain=req.queryParams("domain");
 		if(domain.matches("^([a-zA-Z0-9-]+\\.)+[a-zA-Z0-9-]{2,}$")){
 			if(UserStorage.isDomainBlocked(self.user.id, domain))
@@ -406,14 +407,14 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object confirmUnblockDomain(Request req, Response resp, Account self){
+	public static Object confirmUnblockDomain(Request req, Response resp, Account self, ApplicationContext ctx){
 		String domain=req.queryParams("domain");
 		Lang l=Utils.lang(req);
 		String back=Utils.back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_domain_X", Map.of("domain", domain))).with("formAction", "/settings/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
-	public static Object unblockDomain(Request req, Response resp, Account self) throws SQLException{
+	public static Object unblockDomain(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String domain=req.queryParams("domain");
 		if(StringUtils.isNotEmpty(domain))
 			UserStorage.unblockDomain(self.user.id, domain);
@@ -423,7 +424,7 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object updateEmail(Request req, Response resp, Account self){
+	public static Object updateEmail(Request req, Response resp, Account self, ApplicationContext ctx){
 		String email=req.queryParams("email");
 		Lang l=lang(req);
 		String message;
@@ -461,7 +462,7 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object cancelEmailChange(Request req, Response resp, Account self){
+	public static Object cancelEmailChange(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(self.activationInfo==null || self.activationInfo.emailState!=Account.ActivationInfo.EmailConfirmationState.CHANGE_PENDING)
 			throw new BadRequestException();
 		try{
@@ -476,7 +477,7 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object resendEmailConfirmation(Request req, Response resp, Account self){
+	public static Object resendEmailConfirmation(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(self.activationInfo==null || self.activationInfo.emailState!=Account.ActivationInfo.EmailConfirmationState.CHANGE_PENDING)
 			throw new BadRequestException();
 		FloodControl.EMAIL_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
@@ -489,10 +490,10 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object invites(Request req, Response resp, Account self){
+	public static Object invites(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_invites", req).pageTitle(lang(req).get("my_invites"));
 		model.with("tab", "invites");
-		model.paginate(context(req).getUsersController().getUserInvites(self, offset(req), 100));
+		model.paginate(ctx.getUsersController().getUserInvites(self, offset(req), 100));
 		jsLangKey(req, "yes", "no");
 		String msg=req.session().attribute("invites.message");
 		if(msg!=null){
@@ -502,14 +503,14 @@ public class SettingsRoutes{
 		return model;
 	}
 
-	public static Object createEmailInviteForm(Request req, Response resp, Account self){
+	public static Object createEmailInviteForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(!sessionInfo(req).permissions.canInviteNewUsers)
 			throw new UserActionNotAllowedException();
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_email_invite_form", req);
 		return wrapForm(req, resp, "settings_email_invite_form", "/settings/invites/createEmailInvite", lang(req).get("invite_by_email"), "send", model);
 	}
 
-	public static Object createEmailInvite(Request req, Response resp, Account self){
+	public static Object createEmailInvite(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(!sessionInfo(req).permissions.canInviteNewUsers)
 			throw new UserActionNotAllowedException();
 
@@ -518,7 +519,7 @@ public class SettingsRoutes{
 			String firstName=requireFormFieldLength(req, "first_name", 2, "err_name_too_short");
 			String lastName=req.queryParams("last_name");
 			boolean addFriend="on".equals(req.queryParams("add_friend"));
-			context(req).getUsersController().sendEmailInvite(req, self, email, firstName, lastName, addFriend, 0);
+			ctx.getUsersController().sendEmailInvite(req, self, email, firstName, lastName, addFriend, 0);
 			req.session().attribute("invites.message", lang(req).get("email_invite_sent"));
 			if(isAjax(req))
 				return new WebDeltaResponse(resp).refresh();
@@ -529,13 +530,13 @@ public class SettingsRoutes{
 		}
 	}
 
-	public static Object resendEmailInvite(Request req, Response resp, Account self){
+	public static Object resendEmailInvite(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=safeParseInt(req.params(":id"));
 		if(id<=0)
 			throw new BadRequestException();
 		String msg;
 		try{
-			context(req).getUsersController().resendEmailInvite(req, self, id);
+			ctx.getUsersController().resendEmailInvite(req, self, id);
 			msg=lang(req).get("email_invite_resent");
 		}catch(UserErrorException x){
 			msg=lang(req).get(x.getMessage());
@@ -547,32 +548,32 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object deleteInvite(Request req, Response resp, Account self){
+	public static Object deleteInvite(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=safeParseInt(req.params(":id"));
 		if(id<=0)
 			throw new BadRequestException();
-		SignupInvitation invite=context(req).getUsersController().getInvite(id);
+		SignupInvitation invite=ctx.getUsersController().getInvite(id);
 		if(invite==null || invite.ownerID!=self.id)
 			throw new ObjectNotFoundException();
-		context(req).getUsersController().deleteInvite(id);
+		ctx.getUsersController().deleteInvite(id);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}
 
-	public static Object createInviteLinkForm(Request req, Response resp, Account self){
+	public static Object createInviteLinkForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(!sessionInfo(req).permissions.canInviteNewUsers)
 			throw new UserActionNotAllowedException();
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_link_invite_form", req);
 		return wrapForm(req, resp, "settings_link_invite_form", "/settings/invites/createInviteLink", lang(req).get("invite_create_link_title"), "create", model);
 	}
 
-	public static Object createInviteLink(Request req, Response resp, Account self){
+	public static Object createInviteLink(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(!sessionInfo(req).permissions.canInviteNewUsers)
 			throw new UserActionNotAllowedException();
 		int signupCount=Math.max(1, parseIntOrDefault(req.queryParams("signups"), 1));
-		String code=context(req).getUsersController().createInviteCode(self, signupCount, "on".equals(req.queryParams("add_friend")));
+		String code=ctx.getUsersController().createInviteCode(self, signupCount, "on".equals(req.queryParams("add_friend")));
 		String link=UriBuilder.local().path("account", "register").queryParam("invite", code).build().toString();
 		req.session().attribute("invites.message", lang(req).get("invite_link_created")+"<br/><a herf=\"#\" onclick=\"copyText('"+link+"', '"+lang(req).get("link_copied")+"')\">"+lang(req).get("copy_link")+"</a>");
 		if(isAjax(req))
@@ -581,7 +582,7 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object invitedUsers(Request req, Response resp, Account self){
-		return new RenderedTemplateResponse("settings_invited_users", req).paginate(context(req).getUsersController().getInvitedUsers(self, offset(req), 100)).pageTitle(lang(req).get("invited_people_title"));
+	public static Object invitedUsers(Request req, Response resp, Account self, ApplicationContext ctx){
+		return new RenderedTemplateResponse("settings_invited_users", req).paginate(ctx.getUsersController().getInvitedUsers(self, offset(req), 100)).pageTitle(lang(req).get("invited_people_title"));
 	}
 }

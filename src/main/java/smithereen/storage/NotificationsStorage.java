@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 
 import smithereen.LruCache;
+import smithereen.data.PaginatedList;
 import smithereen.data.UserNotifications;
 import smithereen.data.notifications.Notification;
 
@@ -45,31 +46,22 @@ public class NotificationsStorage{
 			un.incNewNotificationsCount(1);
 	}
 
-	public static List<Notification> getNotifications(int owner, int offset, int count, @Nullable int[] total) throws SQLException{
+	public static PaginatedList<Notification> getNotifications(int owner, int offset, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt;
-		if(total!=null){
-			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `notifications` WHERE `owner_id`=?");
-			stmt.setInt(1, owner);
-			try(ResultSet res=stmt.executeQuery()){
-				res.first();
-				total[0]=res.getInt(1);
-			}
-		}
-		stmt=conn.prepareStatement("SELECT * FROM `notifications` WHERE `owner_id`=? ORDER BY `time` DESC LIMIT ?,?");
-		stmt.setInt(1, owner);
-		stmt.setInt(2, offset);
-		stmt.setInt(3, count);
-		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				ArrayList<Notification> notifications=new ArrayList<>();
-				do{
-					notifications.add(Notification.fromResultSet(res));
-				}while(res.next());
-				return notifications;
-			}
-		}
-		return Collections.emptyList();
+		int total=new SQLQueryBuilder(conn)
+				.selectFrom("notifications")
+				.count()
+				.where("owner_id=?", owner)
+				.executeAndGetInt();
+		List<Notification> notifications=new SQLQueryBuilder(conn)
+				.selectFrom("notifications")
+				.allColumns()
+				.where("owner_id=?", owner)
+				.orderBy("`time` DESC")
+				.limit(count, offset)
+				.executeAsStream(Notification::fromResultSet)
+				.toList();
+		return new PaginatedList<>(notifications, total, offset, count);
 	}
 
 	public static void deleteNotificationsForObject(@NotNull Notification.ObjectType type, int objID) throws SQLException{

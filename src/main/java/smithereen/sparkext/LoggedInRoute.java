@@ -1,5 +1,8 @@
 package smithereen.sparkext;
 
+import java.util.Objects;
+
+import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.data.Account;
 import smithereen.data.SessionInfo;
@@ -13,9 +16,9 @@ public interface LoggedInRoute extends Route{
 	default Object handle(Request request, Response response) throws Exception{
 		if(!Utils.requireAccount(request, response))
 			return "";
-		SessionInfo info=Utils.sessionInfo(request);
-		return handle(request, response, info.account);
+		SessionInfo info=Objects.requireNonNull(Utils.sessionInfo(request));
+		return handle(request, response, info.account, Utils.context(request));
 	}
 
-	Object handle(Request request, Response response, Account self) throws Exception;
+	Object handle(Request request, Response response, Account self, ApplicationContext ctx) throws Exception;
 }

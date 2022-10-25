@@ -36,6 +36,7 @@ import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.GraffitiAttachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.VideoAttachment;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.jsonld.JLD;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
@@ -402,7 +403,7 @@ public class Post extends ActivityPubObject{
 		}
 	}
 
-	public List<Attachment> getProcessedAttachments() throws SQLException{
+	public List<Attachment> getProcessedAttachments(){
 		ArrayList<Attachment> result=new ArrayList<>();
 		int i=0;
 		for(ActivityPubObject o:attachment){
@@ -412,7 +413,13 @@ public class Post extends ActivityPubObject{
 				if(o instanceof LocalImage li){
 					att.image=li;
 				}else{
-					MediaCache.PhotoItem item=(MediaCache.PhotoItem) MediaCache.getInstance().get(o.url);
+					// TODO make this less ugly
+					MediaCache.PhotoItem item;
+					try{
+						item=(MediaCache.PhotoItem) MediaCache.getInstance().get(o.url);
+					}catch(SQLException x){
+						throw new InternalServerErrorException(x);
+					}
 					if(item!=null){
 						att.image=new CachedRemoteImage(item);
 					}else{

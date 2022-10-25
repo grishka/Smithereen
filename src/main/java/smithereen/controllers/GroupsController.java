@@ -44,7 +44,6 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
-import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
@@ -132,6 +131,14 @@ public class GroupsController{
 		return group;
 	}
 
+	public int tryGetGroupIdForUsername(@NotNull String username){
+		try{
+			return GroupStorage.getIdByUsername(username);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public List<Group> getGroupsByIdAsList(Collection<Integer> ids){
 		try{
 			return GroupStorage.getByIdAsList(ids);
@@ -167,6 +174,14 @@ public class GroupsController{
 	public List<GroupAdmin> getAdmins(@NotNull Group group){
 		try{
 			return GroupStorage.getGroupAdmins(group.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public GroupAdmin getAdmin(@NotNull Group group, int userID){
+		try{
+			return GroupStorage.getGroupAdmin(group.id, userID);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -588,6 +603,89 @@ public class GroupsController{
 	public Map<URI, Integer> getUserGroupsByActivityPubIDs(@NotNull User user, Collection<URI> query){
 		try{
 			return GroupStorage.getUserGroupsByActivityPubIDs(query, user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void addOrUpdateAdmin(Group group, User user, String title, Group.AdminLevel level){
+		try{
+			GroupStorage.addOrUpdateGroupAdmin(group.id, user.id, title, level);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void removeAdmin(Group group, User user){
+		try{
+			GroupStorage.removeGroupAdmin(group.id, user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setAdminOrder(Group group, User user, int order){
+		try{
+			GroupStorage.setGroupAdminOrder(group.id, user.id, order);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<User> getBlockedUsers(Group group){
+		try{
+			return GroupStorage.getBlockedUsers(group.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<String> getBlockedDomains(Group group){
+		try{
+			return GroupStorage.getBlockedDomains(group.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void blockDomain(Group group, String domain){
+		try{
+			if(!domain.matches("^([a-zA-Z0-9-]+\\.)+[a-zA-Z0-9-]{2,}$"))
+				throw new UserErrorException("Invalid domain");
+			if(GroupStorage.isDomainBlocked(group.id, domain))
+				throw new UserErrorException("err_domain_already_blocked");
+			GroupStorage.blockDomain(group.id, domain);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void unblockDomain(Group group, String domain){
+		try{
+			if(StringUtils.isNotEmpty(domain))
+				GroupStorage.unblockDomain(group.id, domain);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void blockUser(Group group, User user){
+		try{
+			if(GroupStorage.getGroupMemberAdminLevel(group.id, user.id).isAtLeast(Group.AdminLevel.MODERATOR))
+				throw new UserErrorException("Can't block a group manager");
+			GroupStorage.blockUser(group.id, user.id);
+			if(user instanceof ForeignUser fu)
+				context.getActivityPubWorker().sendBlockActivity(group, fu);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void unblockUser(Group group, User user){
+		try{
+			GroupStorage.unblockUser(group.id, user.id);
+			if(user instanceof ForeignUser fu)
+				context.getActivityPubWorker().sendUndoBlockActivity(group, fu);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

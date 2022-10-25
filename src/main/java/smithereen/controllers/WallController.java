@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -29,14 +30,19 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
+import smithereen.data.Account;
+import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.PaginatedList;
 import smithereen.data.Poll;
+import smithereen.data.PollOption;
 import smithereen.data.Post;
+import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.UserPermissions;
 import smithereen.data.feed.NewsfeedEntry;
+import smithereen.data.notifications.Notification;
 import smithereen.data.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -44,6 +50,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
+import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.util.BackgroundTaskRunner;
@@ -485,6 +492,61 @@ public class WallController{
 	public Map<URI, Integer> getPostLocalIDsByActivityPubIDs(@NotNull Collection<URI> ids, Actor owner){
 		try{
 			return PostStorage.getPostLocalIDsByActivityPubIDs(ids, owner instanceof User u ? u.id : 0, owner instanceof Group g ? g.id : 0);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, Post> getPosts(Collection<Integer> ids){
+		try{
+			return PostStorage.getPostsByID(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<Post> getReplies(int[] key){
+		try{
+			return PostStorage.getReplies(key);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Post> getRepliesExact(int[] key, int maxID, int count){
+		try{
+			return PostStorage.getRepliesExact(key, maxID, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deletePost(@NotNull SessionInfo info, Post post){
+		try{
+			context.getPrivacyController().enforceObjectPrivacy(info.account.user, post);
+			if(!info.permissions.canDeletePost(post)){
+				throw new UserActionNotAllowedException();
+			}
+			PostStorage.deletePost(post.id);
+			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
+			if(Config.isLocal(post.activityPubID) && post.attachment!=null && !post.attachment.isEmpty()){
+				MediaStorageUtils.deleteAttachmentFiles(post.attachment);
+			}
+			context.getNewsfeedController().clearFriendsFeedCache();
+			User deleteActor=info.account.user;
+			// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
+			if(info.account.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal() && post.user.id!=info.account.user.id && !post.isGroupOwner() && post.owner.getLocalID()!=info.account.user.id && !(post.user instanceof ForeignUser)){
+				deleteActor=post.user;
+			}
+			context.getActivityPubWorker().sendDeletePostActivity(post, deleteActor);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<User> getPollOptionVoters(PollOption option, int offset, int count){
+		try{
+			return UserStorage.getByIdAsList(PostStorage.getPollOptionVoters(option.id, offset, count));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
