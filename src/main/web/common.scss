@@ -139,6 +139,17 @@ $likeIconColor: rgb(219, 216, 173);
 	;
 }
 
+@mixin popup-shadow{
+	box-shadow:
+		0 0.1px 0.1px rgba(0, 0, 0, 0.028),
+		0 0.1px 0.3px rgba(0, 0, 0, 0.04),
+		0 0.3px 0.5px rgba(0, 0, 0, 0.05),
+		0 0.4px 0.9px rgba(0, 0, 0, 0.06),
+		0 0.8px 1.7px rgba(0, 0, 0, 0.072),
+		0 2px 4px rgba(0, 0, 0, 0.1)
+	;
+}
+
 @keyframes slideFromBottom{
 	0%{
 		opacity: 0;
@@ -798,4 +809,8 @@ small{
 	input{
 		width: unset !important;
 	}
+}
+
+.disableSelection{
+	user-select: none;
 }

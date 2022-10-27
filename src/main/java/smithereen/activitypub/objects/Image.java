@@ -10,6 +10,7 @@ import smithereen.jsonld.JLD;
 public class Image extends Document{
 
 	public float[] cropRegion;
+	public boolean isGraffiti;
 
 	@Override
 	public String getType(){
@@ -26,6 +27,11 @@ public class Image extends Document{
 			contextCollector.addAlias("sm", JLD.SMITHEREEN);
 			contextCollector.addContainerType("cropRegion", "sm:cropRegion", "@list");
 		}
+		if(isGraffiti){
+			contextCollector.addAlias("sm", JLD.SMITHEREEN);
+			contextCollector.addAlias("graffiti", "sm:graffiti");
+			obj.addProperty("graffiti", true);
+		}
 		return obj;
 	}
 
@@ -38,6 +44,7 @@ public class Image extends Document{
 			for(int i=0;i<4;i++)
 				cropRegion[i]=_cr.get(i).getAsFloat();
 		}
+		isGraffiti=optBoolean(obj, "graffiti");
 		return this;
 	}
 }

@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
 import smithereen.Utils;
@@ -37,22 +38,23 @@ import smithereen.activitypub.handlers.AcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.AcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.AddGroupHandler;
 import smithereen.activitypub.handlers.AddNoteHandler;
-import smithereen.activitypub.handlers.GroupAddPersonHandler;
-import smithereen.activitypub.handlers.GroupRemovePersonHandler;
-import smithereen.activitypub.handlers.PersonAddPersonHandler;
 import smithereen.activitypub.handlers.AnnounceNoteHandler;
 import smithereen.activitypub.handlers.CreateNoteHandler;
 import smithereen.activitypub.handlers.DeleteNoteHandler;
 import smithereen.activitypub.handlers.DeletePersonHandler;
 import smithereen.activitypub.handlers.FollowGroupHandler;
 import smithereen.activitypub.handlers.FollowPersonHandler;
+import smithereen.activitypub.handlers.GroupAddPersonHandler;
 import smithereen.activitypub.handlers.GroupBlockPersonHandler;
+import smithereen.activitypub.handlers.GroupRemovePersonHandler;
 import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.InviteGroupHandler;
 import smithereen.activitypub.handlers.LeaveGroupHandler;
 import smithereen.activitypub.handlers.LikeNoteHandler;
 import smithereen.activitypub.handlers.OfferFollowPersonHandler;
+import smithereen.activitypub.handlers.PersonAddPersonHandler;
 import smithereen.activitypub.handlers.PersonBlockPersonHandler;
+import smithereen.activitypub.handlers.PersonRemovePersonHandler;
 import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.RejectAddNoteHandler;
 import smithereen.activitypub.handlers.RejectFollowGroupHandler;
@@ -60,7 +62,6 @@ import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectInviteGroupHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
-import smithereen.activitypub.handlers.PersonRemovePersonHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
@@ -101,8 +102,8 @@ import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Group;
-import smithereen.data.PaginatedList;
 import smithereen.data.NodeInfo;
+import smithereen.data.PaginatedList;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
 import smithereen.data.PollVote;
@@ -123,10 +124,7 @@ import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.context;
-import static smithereen.Utils.gson;
-import static smithereen.Utils.parseIntOrDefault;
-import static smithereen.Utils.safeParseInt;
+import static smithereen.Utils.*;
 
 public class ActivityPubRoutes{
 
@@ -424,7 +422,7 @@ public class ActivityPubRoutes{
 		return ActivityPubCollectionPageResponse.forLinks(GroupStorage.getUserGroupIDs(id, offset, count));
 	}
 
-	public static Object externalInteraction(Request req, Response resp, Account self) throws SQLException{
+	public static Object externalInteraction(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		// ?type=reblog
 		// ?type=favourite
 		// ?type=reply
@@ -446,7 +444,7 @@ public class ActivityPubRoutes{
 					return "Invalid remote object URI";
 				}
 			}
-			remoteObj=context(req).getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, true);
+			remoteObj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, true);
 			if(remoteObj.activityPubID.getHost()==null || uri.getHost()==null || !remoteObj.activityPubID.getHost().equals(uri.getHost())){
 				return "Object ID host doesn't match URI host";
 			}
@@ -470,22 +468,22 @@ public class ActivityPubRoutes{
 				return x.toString();
 			}
 		}else if(remoteObj instanceof ForeignGroup group){
-			group.storeDependencies(context(req));
+			group.storeDependencies(ctx);
 			GroupStorage.putOrUpdateForeignGroup(group);
 			resp.redirect(Config.localURI("/"+group.getFullUsername()).toString());
 			return "";
 		}else if(remoteObj instanceof Post post){
 			try{
 				Post topLevelPost;
-				context(req).getWallController().loadAndPreprocessRemotePostMentions(post);
+				ctx.getWallController().loadAndPreprocessRemotePostMentions(post);
 				if(post.inReplyTo!=null){
 					Post parent=PostStorage.getPostByID(post.inReplyTo);
 					if(parent==null){
-						List<Post> thread=context(req).getActivityPubWorker().fetchReplyThread(post).get(30, TimeUnit.SECONDS);
+						List<Post> thread=ctx.getActivityPubWorker().fetchReplyThread(post).get(30, TimeUnit.SECONDS);
 						topLevelPost=thread.get(0);
 					}else{
 						post.setParent(parent);
-						post.storeDependencies(context(req));
+						post.storeDependencies(ctx);
 						PostStorage.putForeignWallPost(post);
 						topLevelPost=PostStorage.getPostByID(parent.getReplyChainElement(0), false);
 						if(topLevelPost==null)
@@ -493,10 +491,10 @@ public class ActivityPubRoutes{
 					}
 				}else{
 					topLevelPost=post;
-					post.storeDependencies(context(req));
+					post.storeDependencies(ctx);
 					PostStorage.putForeignWallPost(post);
 				}
-				context(req).getActivityPubWorker().fetchAllReplies(topLevelPost);
+				ctx.getActivityPubWorker().fetchAllReplies(topLevelPost);
 				resp.redirect("/posts/"+topLevelPost.id);
 				return "";
 			}catch(Exception x){
@@ -507,7 +505,7 @@ public class ActivityPubRoutes{
 		return "Referer: "+Utils.sanitizeHTML(ref)+"<hr/>URL: "+Utils.sanitizeHTML(req.queryParams("uri"))+"<hr/>Object:<br/><pre>"+Utils.sanitizeHTML(remoteObj.toString())+"</pre>";
 	}
 
-	public static Object remoteFollow(Request req, Response resp, Account self) throws SQLException{
+	public static Object remoteFollow(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String username=req.params(":username");
 		User _user=UserStorage.getByUsername(username);
 		if(!(_user instanceof ForeignUser)){
@@ -615,6 +613,7 @@ public class ActivityPubRoutes{
 	}
 
 	private static Object inbox(Request req, Response resp, Actor owner) throws SQLException{
+		ApplicationContext ctx=context(req);
 		if(req.headers("digest")!=null){
 			if(!verifyHttpDigest(req.headers("digest"), req.bodyAsBytes())){
 				throw new BadRequestException("Digest verification failed");
@@ -647,19 +646,19 @@ public class ActivityPubRoutes{
 		// special case: when users delete themselves but are not in local database, ignore that
 		if(activity instanceof Delete && activity.actor.link.equals(activity.object.link)){
 			try{
-				actor=context(req).getObjectLinkResolver().resolve(activity.actor.link, Actor.class, false, false, false);
+				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, false, false, false);
 			}catch(ObjectNotFoundException x){
 				return "";
 			}
 			canUpdate=false;
 		}else{
-			actor=context(req).getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, false);
+			actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, false);
 		}
 		if(!(actor instanceof ForeignActor fa))
 			throw new BadRequestException("Actor is local");
 		if(fa.needUpdate() && canUpdate){
 			try{
-				actor=context(req).getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, true);
+				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, true);
 			}catch(ObjectNotFoundException x){
 				LOG.warn("Exception while refreshing remote actor", x);
 			}
@@ -706,7 +705,7 @@ public class ActivityPubRoutes{
 				activity=act1;
 		}catch(Exception ignore){}
 
-		ActivityHandlerContext context=new ActivityHandlerContext(context(req), body, hasValidLDSignature ? actor : null, httpSigOwner);
+		ActivityHandlerContext context=new ActivityHandlerContext(ctx, body, hasValidLDSignature ? actor : null, httpSigOwner);
 
 		try{
 			ActivityPubObject aobj;
@@ -715,7 +714,7 @@ public class ActivityPubRoutes{
 				// special case: Mastodon sends Delete{Tombstone} for post deletions
 				if(aobj instanceof Tombstone){
 					try{
-						aobj=context(req).getObjectLinkResolver().resolve(aobj.activityPubID);
+						aobj=ctx.getObjectLinkResolver().resolve(aobj.activityPubID);
 					}catch(ObjectNotFoundException x){
 						LOG.warn("Activity object not found for {}: {}", getActivityType(activity), aobj.activityPubID);
 						// Fail silently. We didn't have that object anyway, there's nothing to delete.
@@ -725,7 +724,7 @@ public class ActivityPubRoutes{
 			}else{
 				if(activity instanceof Like || activity instanceof Delete){
 					try{
-						aobj=context(req).getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, false, false, false);
+						aobj=ctx.getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, false, false, false);
 					}catch(ObjectNotFoundException x){
 						// Fail silently. Pleroma sends all likes to followers, including for objects they may not have.
 						LOG.info("Activity object not known for {}: {}", activity.getType(), activity.object.link);
@@ -735,11 +734,11 @@ public class ActivityPubRoutes{
 					// special case: fetch the object of Announce{Note}, Add{...}, or Invite{Group}
 					Actor collectionOwner;
 					if(activity instanceof Add add && add.target!=null && add.target.object instanceof ActivityPubCollection target && target.attributedTo!=null){
-						collectionOwner=context(req).getObjectLinkResolver().resolve(target.attributedTo, Actor.class, false, false, false);
+						collectionOwner=ctx.getObjectLinkResolver().resolve(target.attributedTo, Actor.class, false, false, false);
 					}else{
 						collectionOwner=null;
 					}
-					aobj=context(req).getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add || activity instanceof Invite, false, false, collectionOwner, true);
+					aobj=ctx.getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add || activity instanceof Invite, false, false, collectionOwner, true);
 				}
 			}
 			for(ActivityTypeHandlerRecord r : typeHandlers){
@@ -750,14 +749,14 @@ public class ActivityPubRoutes{
 							if(nestedActivity.object.object!=null)
 								nestedObject=nestedActivity.object.object;
 							else
-								nestedObject=context(req).getObjectLinkResolver().resolve(nestedActivity.object.link);
+								nestedObject=ctx.getObjectLinkResolver().resolve(nestedActivity.object.link);
 
 							if(r.doublyNestedActivityClass!=null && nestedObject instanceof Activity doublyNestedActivity && r.doublyNestedActivityClass.isInstance(nestedObject)){
 								ActivityPubObject doublyNestedObject;
 								if(doublyNestedActivity.object.object!=null)
 									doublyNestedObject=nestedActivity.object.object;
 								else
-									doublyNestedObject=context(req).getObjectLinkResolver().resolve(nestedActivity.object.link);
+									doublyNestedObject=ctx.getObjectLinkResolver().resolve(nestedActivity.object.link);
 
 								if(r.objectClass.isInstance(doublyNestedObject)){
 									LOG.info("Found match: {}", r.handler.getClass().getName());

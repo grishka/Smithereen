@@ -1,6 +1,8 @@
 package smithereen.templates;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mitchellbosecke.pebble.PebbleEngine;
 import com.mitchellbosecke.pebble.loader.ClasspathLoader;
 import com.mitchellbosecke.pebble.loader.DelegatingLoader;
@@ -9,13 +11,22 @@ import com.mitchellbosecke.pebble.template.EvaluationContextImpl;
 import com.mitchellbosecke.pebble.template.PebbleTemplate;
 import com.mitchellbosecke.pebble.template.Scope;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 
@@ -32,11 +43,30 @@ import smithereen.lang.Lang;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
+import spark.Response;
 
 public class Templates{
 	private static final PebbleEngine desktopEngine=makeEngineInstance("desktop", "common");
 	private static final PebbleEngine mobileEngine=makeEngineInstance("mobile", "common");
 	private static final PebbleEngine popupEngine=makeEngineInstance("popup");
+	private static final Map<String, String> staticHashes=new HashMap<>();
+
+	private static final Logger LOG=LoggerFactory.getLogger(Templates.class);
+
+	static{
+		try(InputStreamReader reader=new InputStreamReader(Objects.requireNonNull(Templates.class.getClassLoader().getResourceAsStream("static_file_versions.json")))){
+			JsonObject obj=JsonParser.parseReader(reader).getAsJsonObject();
+			for(Map.Entry<String, JsonElement> e:obj.entrySet()){
+				staticHashes.put(e.getKey(), e.getValue().getAsString());
+			}
+		}catch(IOException x){
+			LOG.error("Error reading static_file_versions.json", x);
+		}
+	}
+
+	public static String getStaticFileVersion(String name){
+		return staticHashes.get(name);
+	}
 
 	private static ClasspathLoader makeClasspathLoader(String dir){
 		ClasspathLoader loader=new ClasspathLoader();
@@ -116,7 +146,7 @@ public class Templates{
 		}
 		model.with("locale", Utils.localeForRequest(req)).with("timeZone", tz!=null ? tz : ZoneId.systemDefault()).with("jsConfig", jsConfig.toString())
 				.with("jsLangKeys", "{"+String.join(",", jsLang)+"}")
-				.with("staticHash", Utils.staticFileHash)
+				.with("staticHashes", staticHashes)
 				.with("serverName", Config.getServerDisplayName())
 				.with("serverDomain", Config.domain)
 				.with("isMobile", req.attribute("mobile")!=null);
@@ -152,5 +182,15 @@ public class Templates{
 			}
 		}
 		return null;
+	}
+
+	public static void addJsLangForNewPostForm(Request req){
+		Utils.jsLangKey(req,
+				"post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment",
+				// polls
+				"create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours",
+				// graffiti
+				"graffiti_clear", "graffiti_undo", "graffiti_clear_confirm", "graffiti_close_confirm", "confirm_title", "graffiti_color", "graffiti_thickness", "graffiti_opacity", "attach"
+			);
 	}
 }

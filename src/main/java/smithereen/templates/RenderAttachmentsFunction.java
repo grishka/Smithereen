@@ -18,11 +18,17 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import smithereen.Utils;
+import smithereen.activitypub.objects.Actor;
+import smithereen.data.Group;
 import smithereen.data.SizedImage;
+import smithereen.data.User;
 import smithereen.data.attachments.Attachment;
+import smithereen.data.attachments.GraffitiAttachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.SizedAttachment;
 import smithereen.data.attachments.VideoAttachment;
+import smithereen.lang.Lang;
 import smithereen.util.BlurHash;
 import spark.utils.StringUtils;
 
@@ -31,6 +37,17 @@ public class RenderAttachmentsFunction implements Function{
 	@Override
 	public Object execute(Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber){
 		List<Attachment> attachment=(List<Attachment>) args.get("attachments");
+		for(Attachment a:attachment){
+			if(a instanceof GraffitiAttachment ga){
+				Actor owner=(Actor) args.get("owner");
+				Lang lang=Lang.get(context.getLocale());
+				if(owner instanceof User u){
+					ga.boxTitle=lang.get("graffiti_on_user_X_wall", Map.of("name", u.getFirstLastAndGender()));
+				}else if(owner instanceof Group g){
+					ga.boxTitle=lang.get("graffiti_on_group_X_wall", Map.of("name", g.name));
+				}
+			}
+		}
 		ArrayList<String> lines=new ArrayList<>();
 		List<SizedAttachment> sized=attachment.stream().filter(a->a instanceof SizedAttachment).map(a->(SizedAttachment)a).collect(Collectors.toList());
 		if(!sized.isEmpty()){
@@ -68,8 +85,7 @@ public class RenderAttachmentsFunction implements Function{
 
 			if(sized.size()==1){
 				SizedAttachment sa=sized.get(0);
-				if(sa instanceof PhotoAttachment){
-					PhotoAttachment photo=(PhotoAttachment) sa;
+				if(sa instanceof PhotoAttachment photo){
 					renderPhotoAttachment(photo, lines, 510);
 				}
 			}else{
@@ -86,8 +102,7 @@ public class RenderAttachmentsFunction implements Function{
 						}
 					}
 					lines.add("<div style=\""+cellStyle+"\">");
-					if(obj instanceof PhotoAttachment){
-						PhotoAttachment photo=(PhotoAttachment) obj;
+					if(obj instanceof PhotoAttachment photo){
 						renderPhotoAttachment(photo, lines, Math.max(tile.width, tile.height));
 					}
 					lines.add("</div>");
@@ -115,7 +130,7 @@ public class RenderAttachmentsFunction implements Function{
 
 	@Override
 	public List<String> getArgumentNames(){
-		return Collections.singletonList("attachments");
+		return List.of("attachments", "owner");
 	}
 
 	private void renderPhotoAttachment(PhotoAttachment photo, List<String> lines, int size){
@@ -128,16 +143,20 @@ public class RenderAttachmentsFunction implements Function{
 			type=SizedImage.Type.MEDIUM;
 		}
 
-		URI jpegFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.JPEG);
-		URI webpFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.WEBP);
-
 		String styleAttr=null;
 		if(StringUtils.isNotEmpty(photo.blurHash)){
 			styleAttr=String.format(Locale.US, "background-color: #%06X", BlurHash.decodeToSingleColor(photo.blurHash));
 		}
 
-		lines.add("<a class=\"photo\" href=\""+jpegFull+"\" data-full-jpeg=\""+jpegFull+"\" data-full-webp=\""+webpFull+"\" data-size=\""+photo.getWidth()+" "+photo.getHeight()+"\" onclick=\"return openPhotoViewer(this)\">"+
-				photo.image.generateHTML(type, null, styleAttr, 0, 0)+"</a>");
+		if(photo instanceof GraffitiAttachment ga){
+			URI full=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.PNG);
+			lines.add("<a class=\"graffiti\" href=\""+full+"\" data-box-title=\""+Utils.escapeHTML(ga.boxTitle)+"\" onclick=\"return showGraffitiBox(this)\"><img src=\""+full+"\" width=\""+GraffitiAttachment.WIDTH+"\" height=\""+GraffitiAttachment.HEIGHT+"\"/></a>");
+		}else{
+			URI jpegFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.JPEG);
+			URI webpFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.WEBP);
+			lines.add("<a class=\"photo\" href=\""+jpegFull+"\" data-full-jpeg=\""+jpegFull+"\" data-full-webp=\""+webpFull+"\" data-size=\""+photo.getWidth()+" "+photo.getHeight()+"\" onclick=\"return openPhotoViewer(this)\">"+
+					photo.image.generateHTML(type, null, styleAttr, 0, 0)+"</a>");
+		}
 	}
 
 	@NotNull
@@ -146,7 +165,7 @@ public class RenderAttachmentsFunction implements Function{
 			throw new IllegalArgumentException("Minimum attachment count for tiled layout is 2");
 
 		String orients="";
-		ArrayList<Float> ratios=new ArrayList<Float>();
+		ArrayList<Float> ratios=new ArrayList<>();
 		int cnt=thumbs.size();
 
 		TiledLayoutResult result=new TiledLayoutResult();

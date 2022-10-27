@@ -2,6 +2,7 @@ package smithereen.storage;
 
 import com.google.gson.JsonObject;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.URI;
@@ -264,6 +265,22 @@ public class GroupStorage{
 			}
 			return null;
 		}
+	}
+
+	public static int getIdByUsername(@NotNull String username) throws SQLException{
+		String domain;
+		if(username.contains("@")){
+			String[] parts=username.split("@", 2);
+			username=parts[0];
+			domain=parts[1];
+		}else{
+			domain="";
+		}
+		return new SQLQueryBuilder()
+				.selectFrom("groups")
+				.columns("id")
+				.where("username=? AND domain=?", username, domain)
+				.executeAndGetInt();
 	}
 
 	public static synchronized ForeignGroup getForeignGroupByActivityPubID(URI id) throws SQLException{

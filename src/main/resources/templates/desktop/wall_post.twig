@@ -25,7 +25,7 @@
 				{% include "poll" with {'poll': post.poll, 'interactions': interactions} %}
 				{% endif %}
 				{% if post.attachment is not null %}
-					{{ renderAttachments(post.processedAttachments) }}
+					{{ renderAttachments(post.processedAttachments, post.owner) }}
 				{% endif %}
 				{% if post.hasContentWarning %}
 				</div>

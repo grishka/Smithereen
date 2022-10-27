@@ -161,6 +161,23 @@ public class UserStorage{
 		return null;
 	}
 
+	public static int getIdByUsername(@NotNull String username) throws SQLException{
+		String realUsername;
+		String domain="";
+		if(username.contains("@")){
+			String[] parts=username.split("@");
+			realUsername=parts[0];
+			domain=parts[1];
+		}else{
+			realUsername=username;
+		}
+		return new SQLQueryBuilder()
+				.selectFrom("users")
+				.columns("id")
+				.where("username=? AND domain=?", realUsername, domain)
+				.executeAndGetInt();
+	}
+
 	public static FriendshipStatus getFriendshipStatus(int selfUserID, int targetUserID) throws SQLException{
 		PreparedStatement stmt=DatabaseConnectionManager.getConnection().prepareStatement("SELECT `follower_id`,`followee_id`,`mutual`,`accepted` FROM `followings` WHERE (`follower_id`=? AND `followee_id`=?) OR (`follower_id`=? AND `followee_id`=?) LIMIT 1");
 		stmt.setInt(1, selfUserID);
@@ -294,20 +311,17 @@ public class UserStorage{
 		return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 	}
 
-	public static List<User> getRandomFriendsForProfile(int userID, int[] outTotal) throws SQLException{
+	public static PaginatedList<User> getRandomFriendsForProfile(int userID, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		if(outTotal!=null && outTotal.length>=1){
-			PreparedStatement stmt=conn.prepareStatement("SELECT COUNT(*) FROM `followings` WHERE `follower_id`=? AND `mutual`=1");
-			stmt.setInt(1, userID);
-			try(ResultSet res=stmt.executeQuery()){
-				res.first();
-				outTotal[0]=res.getInt(1);
-			}
-		}
+		int total=new SQLQueryBuilder(conn)
+				.selectFrom("followings")
+				.count()
+				.where("follower_id=? AND mutual=1", userID)
+				.executeAndGetInt();
 		PreparedStatement stmt=conn.prepareStatement("SELECT followee_id FROM `followings` WHERE `follower_id`=? AND `mutual`=1 ORDER BY RAND() LIMIT 6");
 		stmt.setInt(1, userID);
 		try(ResultSet res=stmt.executeQuery()){
-			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
+			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, 0, count);
 		}
 	}
 
@@ -319,13 +333,12 @@ public class UserStorage{
 		return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 	}
 
-	public static List<User> getRandomMutualFriendsForProfile(int userID, int otherUserID) throws SQLException{
+	public static PaginatedList<User> getRandomMutualFriendsForProfile(int userID, int otherUserID, int count) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT friends1.followee_id FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1 ORDER BY RAND() LIMIT 3");
-		stmt.setInt(1, userID);
-		stmt.setInt(2, otherUserID);
+		int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1", userID, otherUserID).executeQuery());
+		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT friends1.followee_id FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1 ORDER BY RAND() LIMIT ?", userID, otherUserID, count);
 		try(ResultSet res=stmt.executeQuery()){
-			return getByIdAsList(DatabaseUtils.intResultSetToList(res));
+			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, 0, count);
 		}
 	}
 
@@ -415,7 +428,7 @@ public class UserStorage{
 		return new PaginatedList<>(reqs, total, offset, count);
 	}
 
-	public static void acceptFriendRequest(int userID, int targetUserID, boolean followAccepted) throws SQLException{
+	public static boolean acceptFriendRequest(int userID, int targetUserID, boolean followAccepted) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
 		conn.createStatement().execute("START TRANSACTION");
 		try{
@@ -424,7 +437,7 @@ public class UserStorage{
 			stmt.setInt(2, userID);
 			if(stmt.executeUpdate()!=1){
 				conn.createStatement().execute("ROLLBACK");
-				return;
+				return false;
 			}
 			stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`, `followee_id`, `mutual`, `accepted`) VALUES(?, ?, 1, ?)");
 			stmt.setInt(1, userID);
@@ -436,7 +449,7 @@ public class UserStorage{
 			stmt.setInt(2, userID);
 			if(stmt.executeUpdate()!=1){
 				conn.createStatement().execute("ROLLBACK");
-				return;
+				return false;
 			}
 			conn.createStatement().execute("COMMIT");
 			synchronized(NotificationsStorage.class){
@@ -449,6 +462,7 @@ public class UserStorage{
 			conn.createStatement().execute("ROLLBACK");
 			throw new SQLException(x);
 		}
+		return true;
 	}
 
 	public static void deleteFriendRequest(int userID, int targetUserID) throws SQLException{

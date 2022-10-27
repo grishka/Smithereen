@@ -590,5 +590,18 @@
   "signup_request_deleted": "Request deleted",
   "feed_added_multiple_friends": "<a id=\"author\">{author}</a> added {count, plural, one {# friend} other {# friends}}:",
   "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> joined {count, plural, one {# group} other {# groups}}:",
-  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> is attending {count, plural, one {# event} other {# events}}:"
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> is attending {count, plural, one {# event} other {# events}}:",
+  "attach_menu_graffiti": "Graffiti",
+  "graffiti_editor_title_user": "Your graffiti on {name}''s wall",
+  "graffiti_editor_title_group": "Your graffiti on \"{name}\" wall",
+  "graffiti_clear": "Start over",
+  "graffiti_undo": "Undo last action",
+  "graffiti_clear_confirm": "Are you sure you want to erase this graffiti?",
+  "graffiti_close_confirm": "Are you sure you want to quit drawing without saving?",
+  "confirm_title": "Confirmation",
+  "graffiti_color": "Color",
+  "graffiti_thickness": "Thickness",
+  "graffiti_opacity": "Intensity",
+  "graffiti_on_user_X_wall": "Graffiti on {name}''s wall",
+  "graffiti_on_group_X_wall": "Graffiti on \"{name}\" wall"
 }

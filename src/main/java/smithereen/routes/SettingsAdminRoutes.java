@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.Utils;
@@ -27,7 +28,7 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.*;
 
 public class SettingsAdminRoutes{
-	public static Object index(Request req, Response resp, Account self){
+	public static Object index(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_server_info", req);
 		Lang l=lang(req);
 		model.with("title", l.get("profile_edit_basic")+" | "+l.get("menu_admin")).with("toolbarTitle", l.get("menu_admin"));
@@ -46,7 +47,7 @@ public class SettingsAdminRoutes{
 		return model;
 	}
 
-	public static Object updateServerInfo(Request req, Response resp, Account self) throws SQLException{
+	public static Object updateServerInfo(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String name=req.queryParams("server_name");
 		String descr=req.queryParams("server_description");
 		String shortDescr=req.queryParams("server_short_description");
@@ -81,7 +82,7 @@ public class SettingsAdminRoutes{
 		return "";
 	}
 
-	public static Object users(Request req, Response resp, Account self) throws SQLException{
+	public static Object users(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users", req);
 		Lang l=lang(req);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
@@ -93,7 +94,7 @@ public class SettingsAdminRoutes{
 		return model;
 	}
 
-	public static Object accessLevelForm(Request req, Response resp, Account self) throws SQLException{
+	public static Object accessLevelForm(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		Lang l=lang(req);
 		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
 		Account target=UserStorage.getAccount(accountID);
@@ -104,7 +105,7 @@ public class SettingsAdminRoutes{
 		return wrapForm(req, resp, "admin_users_access_level", "/settings/admin/users/setAccessLevel", l.get("access_level"), "save", model);
 	}
 
-	public static Object setUserAccessLevel(Request req, Response resp, Account self) throws SQLException{
+	public static Object setUserAccessLevel(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
 		Account target=UserStorage.getAccount(accountID);
 		if(target==null || target.id==self.id)
@@ -119,7 +120,7 @@ public class SettingsAdminRoutes{
 		return "";
 	}
 
-	public static Object banUserForm(Request req, Response resp, Account self) throws SQLException{
+	public static Object banUserForm(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		Lang l=lang(req);
 		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
 		Account target=UserStorage.getAccount(accountID);
@@ -130,7 +131,7 @@ public class SettingsAdminRoutes{
 		return wrapForm(req, resp, "admin_ban_user", "/settings/admin/users/ban?accountID="+accountID, l.get("admin_ban"), "admin_ban", model);
 	}
 
-	public static Object banUser(Request req, Response resp, Account self) throws SQLException{
+	public static Object banUser(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
 		Account target=UserStorage.getAccount(accountID);
 		if(target==null || target.id==self.id || target.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal())
@@ -146,7 +147,7 @@ public class SettingsAdminRoutes{
 		return "";
 	}
 
-	public static Object confirmUnbanUser(Request req, Response resp, Account self) throws SQLException{
+	public static Object confirmUnbanUser(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		req.attribute("noHistory", true);
 		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
 		Account target=UserStorage.getAccount(accountID);
@@ -158,7 +159,7 @@ public class SettingsAdminRoutes{
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("admin_unban_X_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/settings/admin/users/unban?accountID="+accountID+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
-	public static Object unbanUser(Request req, Response resp, Account self) throws SQLException{
+	public static Object unbanUser(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
 		Account target=UserStorage.getAccount(accountID);
 		if(target==null)
@@ -170,7 +171,7 @@ public class SettingsAdminRoutes{
 		return "";
 	}
 
-	public static Object otherSettings(Request req, Response resp, Account self) throws SQLException{
+	public static Object otherSettings(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		Lang l=lang(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_other_settings", req);
 		model.with("title", l.get("admin_other")+" | "+l.get("menu_admin")).with("toolbarTitle", l.get("menu_admin"));
@@ -193,7 +194,7 @@ public class SettingsAdminRoutes{
 		return model;
 	}
 
-	public static Object saveEmailSettings(Request req, Response resp, Account self) throws SQLException{
+	public static Object saveEmailSettings(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String from=req.queryParams("from");
 		int smtpPort=parseIntOrDefault(req.queryParams("smtp_port"), 25);
 		String smtpServer=req.queryParams("smtp_server");
@@ -236,7 +237,7 @@ public class SettingsAdminRoutes{
 		return "";
 	}
 
-	public static Object sendTestEmail(Request req, Response resp, Account self) throws SQLException{
+	public static Object sendTestEmail(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String to=req.queryParams("email");
 		String result;
 		if(isValidEmail(to)){
@@ -253,7 +254,7 @@ public class SettingsAdminRoutes{
 		return "";
 	}
 
-	public static Object confirmActivateAccount(Request req, Response resp, Account self) throws SQLException{
+	public static Object confirmActivateAccount(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		req.attribute("noHistory", true);
 		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
 		Account target=UserStorage.getAccount(accountID);
@@ -265,7 +266,7 @@ public class SettingsAdminRoutes{
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("admin_activate_X_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/settings/admin/users/activate?accountID="+accountID+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
-	public static Object activateAccount(Request req, Response resp, Account self){
+	public static Object activateAccount(Request req, Response resp, Account self, ApplicationContext ctx){
 		try{
 			int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
 			Account target=UserStorage.getAccount(accountID);
@@ -281,14 +282,14 @@ public class SettingsAdminRoutes{
 		}
 	}
 
-	public static Object signupRequests(Request req, Response resp, Account self){
+	public static Object signupRequests(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(isMobile(req))
 			return null;
 
-		return new RenderedTemplateResponse("admin_signup_requests", req).paginate(context(req).getUsersController().getSignupInviteRequests(offset(req), 50)).pageTitle(lang(req).get("signup_requests_title"));
+		return new RenderedTemplateResponse("admin_signup_requests", req).paginate(ctx.getUsersController().getSignupInviteRequests(offset(req), 50)).pageTitle(lang(req).get("signup_requests_title"));
 	}
 
-	public static Object respondToSignupRequest(Request req, Response resp, Account self){
+	public static Object respondToSignupRequest(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(req.queryParams("accept")==null && req.queryParams("decline")==null)
 			throw new BadRequestException();
 		boolean accept=req.queryParams("accept")!=null;
@@ -297,9 +298,9 @@ public class SettingsAdminRoutes{
 			throw new ObjectNotFoundException();
 
 		if(accept){
-			context(req).getUsersController().acceptSignupInviteRequest(req, self, id);
+			ctx.getUsersController().acceptSignupInviteRequest(req, self, id);
 		}else{
-			context(req).getUsersController().deleteSignupInviteRequest(id);
+			ctx.getUsersController().deleteSignupInviteRequest(id);
 		}
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).setContent("signupReqBtns"+id,

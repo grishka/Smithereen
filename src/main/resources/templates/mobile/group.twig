@@ -8,7 +8,7 @@
 {%if group.domain is not null%}
 <div class="card padded">
 	{{L('incomplete_profile')}}<br/>
-	<a href="{{group.url}}" target="_blank">{{L('open_on_server_X', group.domain)}}</a>
+	<a href="{{group.url}}" target="_blank">{{L('open_on_server_X', {'domain': group.domain})}}</a>
 </div>
 {%endif%}
 <div class="card singleColumn">

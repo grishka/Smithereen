@@ -2,7 +2,7 @@
 <html>
 <head>
 	<title>{{ title }}</title>
-	<link rel="stylesheet" type="text/css" href="/res/mobile.css?{{staticHash}}"/>
+	<link rel="stylesheet" type="text/css" href="/res/mobile.css?{{ staticHashes['mobile.css'] }}"/>
 	{% if activityPubURL is not null %}
 	<link rel="alternate" type="application/activity+json" href="{{ activityPubURL }}"/>
 	{% endif %}
@@ -53,7 +53,7 @@
 <div class="pageContent">
 {%block content%}{%endblock%}
 </div>
-<script src="/res/common.js?{{staticHash}}"></script>
+<script src="/res/common.js?{{ staticHashes['common.js'] }}"></script>
 {% if _bottomScripts is not empty %}
 <script>
 {{ _bottomScripts | raw }}

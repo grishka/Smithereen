@@ -4,6 +4,7 @@
 		"sourceMap": true,
 		"sourceRoot": "/res/common_ts/",
 		"noImplicitAny": true,
+		"declaration": true
 	},
 	"include":["*"]
 }

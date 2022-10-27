@@ -867,3 +867,30 @@ function copyText(text:string, doneMsg:string){
 		new MessageBox(lang("error"), err.toString(), lang("close")).show();
 	});
 }
+
+function showGraffitiBox(el:HTMLAnchorElement):boolean{
+	class GraffitiBox extends Box{
+		public constructor(el:HTMLAnchorElement){
+			super(el.dataset.boxTitle, [lang("close")]);
+			var imgEl;
+			this.setContent(ce("div", {className: ""}, [
+				imgEl=ce("img", {width: 586, height: 293, src: el.href})
+			]));
+			if(!mobile){
+				this.contentWrap.style.padding="10px";
+			}else{
+				imgEl.style.width="100%";
+				imgEl.style.height="auto";
+			}
+		}
+
+		public show(){
+			super.show();
+			if(!mobile){
+				(this.getContent().querySelector(".boxLayer") as HTMLElement).style.width="606px";
+			}
+		}
+	}
+	new GraffitiBox(el).show();
+	return false;
+}

@@ -3,14 +3,19 @@ package smithereen.controllers;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import smithereen.ApplicationContext;
 import smithereen.Mailer;
 import smithereen.Utils;
+import smithereen.activitypub.objects.Actor;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
+import smithereen.data.Group;
 import smithereen.data.PaginatedList;
 import smithereen.data.SignupInvitation;
 import smithereen.data.SignupRequest;
@@ -50,6 +55,14 @@ public class UsersController{
 		if(user instanceof ForeignUser)
 			throw new ObjectNotFoundException("err_user_not_found");
 		return user;
+	}
+
+	public int tryGetUserIdByUsername(String username){
+		try{
+			return UserStorage.getIdByUsername(username);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 
 	public List<User> getFriendsWithBirthdaysWithinTwoDays(User self, LocalDate date){
@@ -231,6 +244,33 @@ public class UsersController{
 				throw new ObjectNotFoundException();
 
 			sendEmailInvite(req, self, sr.email, sr.firstName, sr.lastName, false, id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public boolean isUserBlocked(User owner, User target){
+		try{
+			return UserStorage.isUserBlocked(owner.id, target.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void ensureUserNotBlocked(User self, Actor target){
+		try{
+			if(target instanceof User u)
+				Utils.ensureUserNotBlocked(self, u);
+			else if(target instanceof Group g)
+				Utils.ensureUserNotBlocked(self, g);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, User> getUsers(Collection<Integer> ids){
+		try{
+			return UserStorage.getById(ids);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

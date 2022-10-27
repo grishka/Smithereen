@@ -33,8 +33,10 @@ import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
 import smithereen.data.attachments.Attachment;
+import smithereen.data.attachments.GraffitiAttachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.VideoAttachment;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.jsonld.JLD;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
@@ -208,7 +210,7 @@ public class Post extends ActivityPubObject{
 		if(root.has("content"))
 			root.addProperty("content", Utils.postprocessPostHTMLForActivityPub(content));
 
-		if(getReplyLevel()==0 && (!(owner instanceof User) || user.id!=((User)owner).id)){
+		if((!(owner instanceof User) || user.id!=((User)owner).id)){
 			ActivityPubCollection wall=new ActivityPubCollection(false);
 			wall.activityPubID=owner.getWallURL();
 			wall.attributedTo=owner.activityPubID;
@@ -401,24 +403,28 @@ public class Post extends ActivityPubObject{
 		}
 	}
 
-	public List<Attachment> getProcessedAttachments() throws SQLException{
+	public List<Attachment> getProcessedAttachments(){
 		ArrayList<Attachment> result=new ArrayList<>();
 		int i=0;
 		for(ActivityPubObject o:attachment){
 			String mediaType=o.mediaType==null ? "" : o.mediaType;
 			if(o instanceof Image || mediaType.startsWith("image/")){
-				PhotoAttachment att=new PhotoAttachment();
-				if(o instanceof LocalImage){
-					LocalImage li=((LocalImage) o);
+				PhotoAttachment att=o instanceof Image img && img.isGraffiti ? new GraffitiAttachment() : new PhotoAttachment();
+				if(o instanceof LocalImage li){
 					att.image=li;
 				}else{
-					MediaCache.PhotoItem item=(MediaCache.PhotoItem) MediaCache.getInstance().get(o.url);
+					// TODO make this less ugly
+					MediaCache.PhotoItem item;
+					try{
+						item=(MediaCache.PhotoItem) MediaCache.getInstance().get(o.url);
+					}catch(SQLException x){
+						throw new InternalServerErrorException(x);
+					}
 					if(item!=null){
 						att.image=new CachedRemoteImage(item);
 					}else{
 						SizedImage.Dimensions size=SizedImage.Dimensions.UNKNOWN;
-						if(o instanceof Document){
-							Document im=(Document) o;
+						if(o instanceof Document im){
 							if(im.width>0 && im.height>0){
 								size=new SizedImage.Dimensions(im.width, im.height);
 							}
@@ -426,8 +432,7 @@ public class Post extends ActivityPubObject{
 						att.image=new NonCachedRemoteImage(new NonCachedRemoteImage.PostPhotoArgs(id, i), size);
 					}
 				}
-				if(o instanceof Document){
-					Document doc=(Document) o;
+				if(o instanceof Document doc){
 					if(StringUtils.isNotEmpty(doc.blurHash))
 						att.blurHash=doc.blurHash;
 				}

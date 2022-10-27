@@ -359,10 +359,10 @@ public class ActivityPubWorker{
 
 	public void sendJoinGroupActivity(User self, ForeignGroup target, boolean tentative){
 		Activity follow;
-		if(target.hasCapability(ForeignGroup.Capability.JOIN_LEAVE_ACTIVITIES))
+//		if(target.hasCapability(ForeignGroup.Capability.JOIN_LEAVE_ACTIVITIES))
 			follow=new Join(tentative);
-		else
-			follow=new Follow();
+//		else
+//			follow=new Follow();
 		follow.actor=new LinkOrObject(self.activityPubID);
 		follow.object=new LinkOrObject(target.activityPubID);
 		follow.activityPubID=new UriBuilder(self.activityPubID).fragment("joinGroup"+target.id+"_"+rand()).build();
@@ -371,17 +371,17 @@ public class ActivityPubWorker{
 
 	public void sendLeaveGroupActivity(User self, ForeignGroup target){
 		Activity undo;
-		if(target.hasCapability(ForeignGroup.Capability.JOIN_LEAVE_ACTIVITIES)){
+//		if(target.hasCapability(ForeignGroup.Capability.JOIN_LEAVE_ACTIVITIES)){
 			undo=new Leave();
 			undo.object=new LinkOrObject(target.activityPubID);
-		}else{
-			undo=new Undo();
-			Follow follow=new Follow();
-			follow.actor=new LinkOrObject(self.activityPubID);
-			follow.object=new LinkOrObject(target.activityPubID);
-			follow.activityPubID=new UriBuilder(self.activityPubID).fragment("joinGroup"+target.id+"_"+rand()).build();
-			undo.object=new LinkOrObject(follow);
-		}
+//		}else{
+//			undo=new Undo();
+//			Follow follow=new Follow();
+//			follow.actor=new LinkOrObject(self.activityPubID);
+//			follow.object=new LinkOrObject(target.activityPubID);
+//			follow.activityPubID=new UriBuilder(self.activityPubID).fragment("joinGroup"+target.id+"_"+rand()).build();
+//			undo.object=new LinkOrObject(follow);
+//		}
 		undo.activityPubID=new UriBuilder(self.activityPubID).fragment("leaveGroup"+target.id+"_"+rand()).build();
 		undo.actor=new LinkOrObject(self.activityPubID);
 
@@ -852,7 +852,7 @@ public class ActivityPubWorker{
 			try{
 				if(post.replies==null){
 					if(post.local){
-						post.repliesObjects=PostStorage.getRepliesExact(post.getReplyKeyForReplies(), Integer.MAX_VALUE, 1000, null);
+						post.repliesObjects=PostStorage.getRepliesExact(post.getReplyKeyForReplies(), Integer.MAX_VALUE, 1000).list;
 					}else{
 						return post;
 					}

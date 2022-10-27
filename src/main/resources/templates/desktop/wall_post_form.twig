@@ -67,6 +67,7 @@
 						<ul class="attachMenu">
 							<li data-act="photo"><span class="iconPhoto"></span>{{ L('attach_menu_photo') }}</li>
 							{% if replyTo is empty %}
+							<li data-act="graffiti" data-args="{{ json({'jsHash': staticHashes['graffiti.js'], 'title': (isGroup ? L('graffiti_editor_title_group', {'name': wallOwner.name}) : L('graffiti_editor_title_user', {'name': wallOwner.firstLastAndGender})).toString()}) }}"><span class="iconGraffiti"></span>{{ L('attach_menu_graffiti') }}</li>
 							<li data-act="poll"><span class="iconPoll"></span>{{ L('attach_menu_poll') }}</li>
 							{% endif %}
 							<li data-act="cw"><span class="iconCW"></span>{{ L('attach_menu_cw') }}</li>

@@ -6,6 +6,7 @@ import com.google.gson.GsonBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Comment;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -13,6 +14,7 @@ import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Whitelist;
+import org.jsoup.select.NodeVisitor;
 import org.slf4j.Logger;
 import org.unbescape.html.HtmlEscape;
 
@@ -40,9 +42,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
@@ -84,7 +88,7 @@ public class Utils{
 
 	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor", "healthz");
 	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
-	public static final String staticFileHash;
+	private static final Pattern POST_LINE_BREAKS=Pattern.compile("\n+");
 	private static Unidecode unidecode=Unidecode.toAscii();
 	private static Random rand=new Random();
 
@@ -92,7 +96,7 @@ public class Utils{
 	private static final String IDN_VALID_CHAR_REGEX="[[\\u00B7\\u0375\\u05F3\\u05F4\\u30FB\\u002D\\u06FD\\u06FE\\u0F0B\\u3007\\u00DF\\u03C2\\u200C\\u200D][^\\p{IsControl}\\p{IsWhite_Space}\\p{gc=S}\\p{IsPunctuation}\\p{gc=Nl}\\p{gc=No}\\p{gc=Me}\\p{blk=Combining_Diacritical_Marks}\\p{blk=Musical_Symbols}\\p{block=Ancient_Greek_Musical_Notation}\\u0640\\u07FA\\u302E\\u302F\\u3031-\\u3035\\u303B]]";
 	// A domain must be at least 2 (possibly IDN) labels
 	private static final String IDN_DOMAIN_REGEX=IDN_VALID_CHAR_REGEX+"+(?:\\."+IDN_VALID_CHAR_REGEX+"+)+";
-	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)*)(\\?(?:\\w+(?:=(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
+	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))*)*)(\\?(?:\\w+(?:=(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
 	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@("+IDN_DOMAIN_REGEX+"))?");
 	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@("+IDN_DOMAIN_REGEX+")");
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([!#$%^'*+\\-.^_`|~0-9A-Za-z]+)=(?:(?:\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\")|([!#$%^'*+\\-.^_`|~0-9A-Za-z]+))\\s*([,;])?\\s*");
@@ -104,10 +108,6 @@ public class Utils{
 			.registerTypeAdapter(Locale.class, new LocaleJsonAdapter())
 			.registerTypeHierarchyAdapter(ZoneId.class, new TimeZoneJsonAdapter())
 			.create();
-
-	static{
-		staticFileHash=String.format(Locale.US, "%016x", new Random().nextLong());
-	}
 
 
 	public static String csrfTokenFromSessionID(byte[] sid){
@@ -339,7 +339,10 @@ public class Utils{
 
 	public static Instant parseISODate(String date){
 		try{
-			return DateTimeFormatter.ISO_INSTANT.parse(date, Instant::from);
+			Instant instant=DateTimeFormatter.ISO_INSTANT.parse(date, Instant::from);
+			if(instant.getEpochSecond()<1)
+				return Instant.ofEpochSecond(1);
+			return instant;
 		}catch(DateTimeParseException x){
 			return null;
 		}
@@ -398,6 +401,14 @@ public class Utils{
 		if(sess==null)
 			return null;
 		SessionInfo info=sess.attribute("info");
+		return info;
+	}
+
+	@NotNull
+	public static SessionInfo requireSession(Request req){
+		SessionInfo info=sessionInfo(req);
+		if(info==null)
+			throw new UserActionNotAllowedException();
 		return info;
 	}
 
@@ -474,22 +485,8 @@ public class Utils{
 				|| (ua.length()>4 && ua.substring(0,4).matches("(?i)1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\\-(n|u)|c55\\/|capi|ccwa|cdm\\-|cell|chtm|cldc|cmd\\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\\-s|devi|dica|dmob|do(c|p)o|ds(12|\\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\\-|_)|g1 u|g560|gene|gf\\-5|g\\-mo|go(\\.w|od)|gr(ad|un)|haie|hcit|hd\\-(m|p|t)|hei\\-|hi(pt|ta)|hp( i|ip)|hs\\-c|ht(c(\\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\\-(20|go|ma)|i230|iac( |\\-|\\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\\/)|klon|kpt |kwc\\-|kyo(c|k)|le(no|xi)|lg( g|\\/(k|l|u)|50|54|\\-[a-w])|libw|m1\\-w|m3ga|m50\\/|ma(te|ui|xo)|mc(01|21|ca)|m\\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\\-2|po(ck|rt|se)|prox|psio|pt\\-g|qa\\-a|qc(07|12|21|32|60|\\-[2-7]|i\\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\\-|oo|p\\-)|sdk\\/|se(c(\\-|0|1)|47|mc|nd|ri)|sgh\\-|shar|sie(\\-|m)|sk\\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\\-|v\\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\\-|tdg\\-|tel(i|m)|tim\\-|t\\-mo|to(pl|sh)|ts(70|m\\-|m3|m5)|tx\\-9|up(\\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\\-|your|zeto|zte\\-"));
 	}
 
-
-	private static void preprocessInsidePre(Node node){
-		if(node instanceof Element){
-			if(node.childNodeSize()>0){
-				for(Node child:node.childNodes()){
-					preprocessInsidePre(child);
-				}
-			}
-		}else if(node instanceof Comment){
-			node.after("<br><br>").remove();
-		}
-	}
-
 	private static void makeLinksAndMentions(Node node, @Nullable MentionCallback mentionCallback){
-		if(node instanceof Element){
-			Element el=(Element)node;
+		if(node instanceof Element el){
 			if(el.tagName().equalsIgnoreCase("pre")){
 				return;
 			}else if(el.tagName().equalsIgnoreCase("a")){
@@ -507,8 +504,7 @@ public class Utils{
 			for(int i=0;i<el.childNodeSize();i++){
 				makeLinksAndMentions(el.childNode(i), mentionCallback);
 			}
-		}else if(node instanceof TextNode){
-			TextNode text=(TextNode)node;
+		}else if(node instanceof TextNode text){
 			Matcher matcher=URL_PATTERN.matcher(text.text());
 
 			outer:
@@ -538,13 +534,20 @@ public class Utils{
 				// Because some people are weird.They write like this.
 				if(StringUtils.isEmpty(scheme)){
 					String tld=host.substring(host.lastIndexOf('.')+1);
-					System.out.println("TLD="+tld);
 					if(!TopLevelDomainList.contains(tld))
 						continue;
 				}
 
 				TextNode inner=matcher.start()==0 ? text : text.splitText(matcher.start());
 				int len=matcher.end()-matcher.start();
+
+				// Don't include punctuation, if any, following the URL, into it
+				char last=url.charAt(url.length()-1);
+				if(last=='.' || last=='?' || last=='!' || last==':' || last==';'){
+					len--;
+					url=url.substring(0, len);
+				}
+
 				if(len<inner.text().length())
 					inner.splitText(len);
 				String realURL=url;
@@ -576,62 +579,91 @@ public class Utils{
 	}
 
 	public static String preprocessPostHTML(String text, MentionCallback mentionCallback){
-		text=text.replace("\r", "").replaceAll("(?s)<!--.*?-->", "").replaceAll("\n{2,}", "<!--p-->").replace("\n", "<br>");
+		text=text.trim().replace("\r", "");
 
 		Document doc=Jsoup.parseBodyFragment(text);
+		doc=new Cleaner(HTML_SANITIZER).clean(doc);
 		Element body=doc.body();
+		Document newDoc=new Document("");
+		Element newBody=newDoc.body();
+		LinkedList<Element> stack=new LinkedList<>(), tmpStack=new LinkedList<>();
+		stack.add(newBody);
 
-		// Split into paragraphs
-		ArrayList<Node> currentParagraph=new ArrayList<>();
-		for(Node node:new ArrayList<>(body.childNodes())){
-			if(node instanceof Comment || (node instanceof Element && ((Element) node).isBlock())){
-				if(!currentParagraph.isEmpty()){
-					Element p=new Element("p");
-					currentParagraph.get(0).before(p);
-					currentParagraph.forEach(p::appendChild);
-					currentParagraph.clear();
-				}
-				if(node instanceof Comment){
-					node.remove();
-				}else{ // block
-					Element el=(Element) node;
-					if(!el.tagName().equalsIgnoreCase("p") && !el.tagName().equalsIgnoreCase("pre"))
-						el.tagName("p");
-					if(el.tagName().equalsIgnoreCase("pre")){
-						for(Node node1:new ArrayList<>(el.childNodes())){
-							preprocessInsidePre(node1);
+		body.traverse(new NodeVisitor(){
+
+			@Override
+			public void head(@NotNull Node node, int depth){
+				if(depth==0)
+					return;
+				if(node instanceof Element el){
+					Element newEl=newDoc.createElement(el.tagName());
+					for(Attribute attr:el.attributes().asList()){
+						newEl.attr(attr.getKey(), attr.getValue());
+					}
+					String tagName=el.tagName();
+					if(depth==1){
+						if(!tagName.equalsIgnoreCase("p") && !tagName.equalsIgnoreCase("pre")){
+							if(stack.size()==1){
+								Element p=newDoc.createElement("p");
+								newBody.appendChild(p);
+								stack.push(p);
+							}
+						}else if(stack.size()>1){
+							stack.pop();
 						}
 					}
+					Objects.requireNonNull(stack.peek()).appendChild(newEl);
+					stack.push(newEl);
+				}else if(node instanceof TextNode tn){
+					if(depth==1 && stack.size()==1){
+						Element p=newDoc.createElement("p");
+						newBody.appendChild(p);
+						stack.push(p);
+					}
+					String text=tn.getWholeText();
+					if(stack.get(stack.size()-2).tagName().equalsIgnoreCase("pre")){
+						Objects.requireNonNull(stack.peek()).appendText(text);
+					}else{
+						Matcher matcher=POST_LINE_BREAKS.matcher(text);
+						int lastPos=0;
+						while(matcher.find()){
+							Objects.requireNonNull(stack.peek()).appendText(text.substring(lastPos, matcher.start()));
+							lastPos=matcher.end();
+							int length=matcher.end()-matcher.start();
+							if(length==1){
+								// Don't add a <br> as last element inside <p>
+								Element parent=Objects.requireNonNull(stack.peek());
+								if(!parent.tagName().equalsIgnoreCase("p") || lastPos<text.length())
+									parent.appendChild(newDoc.createElement("br"));
+							}else{
+								while(stack.size()>1){
+									tmpStack.push(stack.pop().shallowClone());
+								}
+								while(tmpStack.size()>0){
+									Element el=tmpStack.pop();
+									Objects.requireNonNull(stack.peek()).appendChild(el);
+									stack.push(el);
+								}
+							}
+						}
+						Objects.requireNonNull(stack.peek()).appendText(text.substring(lastPos));
+					}
 				}
-			}else{
-				currentParagraph.add(node);
-			}
-		}
-		if(!currentParagraph.isEmpty()){
-			Element p=new Element("p");
-			currentParagraph.get(0).before(p);
-			currentParagraph.forEach(p::appendChild);
-			currentParagraph.clear();
-		}
-
-		// Remove any leading and trailing <br> in each paragraph
-		for(Node node:body.childNodes()){
-			if(node.childNodeSize()==0) continue;
-			while(node.childNodeSize()>0 && node.childNode(0) instanceof Element && ((Element) node.childNode(0)).tagName().equalsIgnoreCase("br")){
-				node.childNode(0).remove();
-			}
-			if(node.childNodeSize()==0) continue;
-			while(node.childNodeSize()>0 && node.childNode(node.childNodeSize()-1) instanceof Element && ((Element) node.childNode(node.childNodeSize()-1)).tagName().equalsIgnoreCase("br")){
-				node.childNode(node.childNodeSize()-1).remove();
 			}
 
-			makeLinksAndMentions(node, mentionCallback);
-		}
+			@Override
+			public void tail(@NotNull Node node, int depth){
+				if(depth>0 && node instanceof Element el){
+					Element stackEl=stack.pop();
+					if(!el.tagName().equals(stackEl.tagName())) // sanity check
+						throw new IllegalStateException();
+				}
+			}
+		});
 
-		doc=new Cleaner(HTML_SANITIZER).clean(doc);
-		body=doc.body();
+		makeLinksAndMentions(newBody, mentionCallback);
 
-		return body.html();
+		return newBody.html();
 	}
 
 	public static String postprocessPostHTMLForDisplay(String text){

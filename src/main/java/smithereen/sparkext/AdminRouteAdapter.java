@@ -1,5 +1,6 @@
 package smithereen.sparkext;
 
+import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.data.Account;
 import smithereen.data.SessionInfo;
@@ -24,13 +25,13 @@ import spark.Route;
 		if(!Utils.requireAccount(request, response) || (needCSRF && !Utils.verifyCSRF(request, response)))
 			return "";
 		SessionInfo info=Utils.sessionInfo(request);
-		return handle(request, response, info.account);
+		return handle(request, response, info.account, Utils.context(request));
 	}
 
-	private Object handle(Request req, Response resp, Account self) throws Exception{
+	private Object handle(Request req, Response resp, Account self, ApplicationContext ctx) throws Exception{
 		if(self.accessLevel.ordinal()<requiredAccessLevel.ordinal()){
 			return Utils.wrapError(req, resp, "err_access");
 		}
-		return target.handle(req, resp, self);
+		return target.handle(req, resp, self, ctx);
 	}
 }

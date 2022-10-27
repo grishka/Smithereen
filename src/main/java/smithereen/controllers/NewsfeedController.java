@@ -121,6 +121,14 @@ public class NewsfeedController{
 		friendsNewsFeedCache.evictAll();
 	}
 
+	public PaginatedList<NewsfeedEntry> getCommentsFeed(Account self, int offset, int count){
+		try{
+			return PostStorage.getCommentsFeed(self.user.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	private static class CachedFeed{
 		public ZoneId timeZone;
 		public ArrayList<NewsfeedEntry> feed=new ArrayList<>();

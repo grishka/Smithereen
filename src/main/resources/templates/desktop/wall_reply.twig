@@ -20,7 +20,7 @@
 				{% endif %}
 				<div class="postContent">{{ post.content | postprocessHTML | truncateText }}</div>
 				{% if post.attachment is not null %}
-				{{ renderAttachments(post.processedAttachments) }}
+				{{ renderAttachments(post.processedAttachments, post.owner) }}
 				{% endif %}
 				{% if post.hasContentWarning %}
 				</div>

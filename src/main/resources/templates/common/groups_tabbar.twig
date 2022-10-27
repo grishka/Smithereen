@@ -4,5 +4,5 @@
 	{%if userNotifications.newGroupInvitationsCount>0%}
 	<a href="/my/groups/invites" class="{%if tab=="invites"%}selected{%endif%}">{{ L('group_invitations')}} ({{ userNotifications.newGroupInvitationsCount }})</a>
 	{%endif%}
-	<a href="/my/groups/create" class="aux" data-ajax-box="1">{{ L('create_group') }}</a>
+	<span class="aux"><a href="/my/groups/create" data-ajax-box="1">{{ L('create_group') }}</a></span>
 </div>

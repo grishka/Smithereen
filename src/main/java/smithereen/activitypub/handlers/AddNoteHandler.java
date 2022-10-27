@@ -29,8 +29,11 @@ public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, Post>{
 			throw new BadRequestException("Add.target doesn't match actor's wall collection");
 		if(!Objects.equals(post.owner.activityPubID, actor.activityPubID))
 			throw new BadRequestException("Post's target collection doesn't match actor's wall collection");
-		if(post.inReplyTo!=null)
-			throw new BadRequestException("Post can't be a reply");
+		if(post.inReplyTo!=null){
+			Post topLevel=context.appContext.getWallController().getPostOrThrow(post.getReplyChainElement(0));
+			if(!post.owner.activityPubID.equals(topLevel.owner.activityPubID))
+				throw new BadRequestException("Reply must have target set to top-level post owner's wall");
+		}
 
 		context.appContext.getWallController().loadAndPreprocessRemotePostMentions(post);
 		context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(post);

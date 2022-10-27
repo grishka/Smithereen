@@ -2,7 +2,7 @@
 <html>
 <head>
 	<title>{{ title }}</title>
-	<link rel="stylesheet" type="text/css" href="/res/desktop.css?{{staticHash}}"/>
+	<link rel="stylesheet" type="text/css" href="/res/desktop.css?{{ staticHashes['desktop.css'] }}"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<script>
 		var userConfig={{jsConfig | raw}};
@@ -27,6 +27,6 @@
 	{%block content%}{%endblock%}
 </div>
 <div></div>
-<script src="/res/common.js?{{staticHash}}"></script>
+<script src="/res/common.js?{{ staticHashes['common.js'] }}"></script>
 </body>
 </html>

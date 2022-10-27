@@ -77,6 +77,7 @@ public class JLDProcessor{
 		lc.addProperty("collectionSimpleQuery", "sm:collectionSimpleQuery");
 		lc.addProperty("CollectionQueryResult", "sm:CollectionQueryResult");
 		lc.addProperty("tentative", "sm:tentative");
+		lc.addProperty("graffiti", "sm:graffiti");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

@@ -83,6 +83,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 						PostStorage.voteInPoll(actor.id, parent.poll.id, optionID, post.activityPubID, parent.poll.multipleChoice);
 						context.appContext.getWallController().sendUpdateQuestionIfNeeded(parent);
 					}
+					context.appContext.getNewsfeedController().clearFriendsFeedCache();
 					return;
 				}
 			}
@@ -157,8 +158,12 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				NotificationUtils.putNotificationsForPost(post, parent);
 				Post topLevel=PostStorage.getPostByID(post.replyKey[0], false);
 				if(topLevel!=null && topLevel.local){
-					if(context.ldSignatureOwner!=null)
-						context.forwardActivity(PostStorage.getInboxesForPostInteractionForwarding(topLevel), topLevel.user);
+					if(!Objects.equals(topLevel.owner.activityPubID, topLevel.user.activityPubID)){
+						context.appContext.getActivityPubWorker().sendAddPostToWallActivity(post);
+					}else{
+						if(context.ldSignatureOwner!=null)
+							context.forwardActivity(PostStorage.getInboxesForPostInteractionForwarding(topLevel), topLevel.user);
+					}
 				}
 			}else{
 				LOG.info("Don't have parent post {} for {}", post.inReplyTo, post.activityPubID);
@@ -182,6 +187,8 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			NotificationUtils.putNotificationsForPost(post, null);
 			if(!Objects.equals(post.owner.activityPubID, post.user.activityPubID)){
 				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(post);
+			}else{
+				context.appContext.getNewsfeedController().clearFriendsFeedCache();
 			}
 		}
 	}
