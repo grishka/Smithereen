@@ -173,6 +173,7 @@ public class WallController{
 
 			int ownerUserID=wallOwner instanceof User u ? u.id : 0;
 			int ownerGroupID=wallOwner instanceof Group g ? g.id : 0;
+			boolean isTopLevelPostOwn=true;
 			int[] replyKey;
 			if(parent!=null){
 				replyKey=new int[parent.replyKey.length+1];
@@ -191,10 +192,12 @@ public class WallController{
 						ownerGroupID=((Group) topLevel.owner).id;
 						ownerUserID=0;
 						ensureUserNotBlocked(author, (Group) topLevel.owner);
+						isTopLevelPostOwn=false;
 					}else{
 						ownerGroupID=0;
 						ownerUserID=((User) topLevel.owner).id;
 						ensureUserNotBlocked(author, (User)topLevel.owner);
+						isTopLevelPostOwn=ownerUserID==topLevel.user.id;
 					}
 				}
 			}else{
@@ -208,7 +211,10 @@ public class WallController{
 			Post post=PostStorage.getPostByID(postID, false);
 			if(post==null)
 				throw new IllegalStateException("?!");
-			if(inReplyToID==0 && (ownerGroupID!=0 || ownerUserID!=userID) && !(wallOwner instanceof ForeignActor)){
+
+			// Add{Note} is sent for any wall posts & comments on them, for local wall owners.
+			// Create{Note} is sent for anything else.
+			if((ownerGroupID!=0 || ownerUserID!=userID) && !isTopLevelPostOwn && !(wallOwner instanceof ForeignActor)){
 				context.getActivityPubWorker().sendAddPostToWallActivity(post);
 			}else{
 				context.getActivityPubWorker().sendCreatePostActivity(post);

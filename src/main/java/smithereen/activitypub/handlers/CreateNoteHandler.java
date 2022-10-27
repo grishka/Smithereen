@@ -158,8 +158,12 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				NotificationUtils.putNotificationsForPost(post, parent);
 				Post topLevel=PostStorage.getPostByID(post.replyKey[0], false);
 				if(topLevel!=null && topLevel.local){
-					if(context.ldSignatureOwner!=null)
-						context.forwardActivity(PostStorage.getInboxesForPostInteractionForwarding(topLevel), topLevel.user);
+					if(!Objects.equals(topLevel.owner.activityPubID, topLevel.user.activityPubID)){
+						context.appContext.getActivityPubWorker().sendAddPostToWallActivity(post);
+					}else{
+						if(context.ldSignatureOwner!=null)
+							context.forwardActivity(PostStorage.getInboxesForPostInteractionForwarding(topLevel), topLevel.user);
+					}
 				}
 			}else{
 				LOG.info("Don't have parent post {} for {}", post.inReplyTo, post.activityPubID);

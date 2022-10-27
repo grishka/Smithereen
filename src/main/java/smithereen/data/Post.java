@@ -210,7 +210,7 @@ public class Post extends ActivityPubObject{
 		if(root.has("content"))
 			root.addProperty("content", Utils.postprocessPostHTMLForActivityPub(content));
 
-		if(getReplyLevel()==0 && (!(owner instanceof User) || user.id!=((User)owner).id)){
+		if((!(owner instanceof User) || user.id!=((User)owner).id)){
 			ActivityPubCollection wall=new ActivityPubCollection(false);
 			wall.activityPubID=owner.getWallURL();
 			wall.attributedTo=owner.activityPubID;
