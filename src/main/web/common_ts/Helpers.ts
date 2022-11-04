@@ -714,6 +714,9 @@ function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 		btn.customData.popoverTimeout=setTimeout(()=>{
 			delete btn.customData.popoverTimeout;
 			ajaxGet(btn.getAttribute("data-popover-url"), (resp:any)=>{
+				if(!resp.content){
+					return;
+				}
 				if(!popover){
 					popover=new Popover(wrap.querySelector(".popoverPlace"));
 					popover.setOnClick(()=>{
