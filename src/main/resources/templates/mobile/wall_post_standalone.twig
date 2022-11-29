@@ -30,7 +30,7 @@
 				<li><a href="{{ post.url }}" target="_blank">{{ L('open_on_server_X', {'domain': post.url.host}) }}</a></li>
 			{%endif%}
 			{%if post.replyLevel>0%}
-				<li><a href="/posts/{{post.getReplyChainElement(0)}}">Top-level</a></li>
+				<li><a href="/posts/{{ post.replyKey[0] }}">Top-level</a></li>
 			{%endif%}
 			{% if post.owner.id!=post.user.id %}
 				<li><a href="/users/{{ post.owner.id }}/wall/with/{{ post.user.id }}">{{ L('wall_to_wall') }}</a></li>

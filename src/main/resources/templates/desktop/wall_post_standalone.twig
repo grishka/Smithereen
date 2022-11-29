@@ -4,7 +4,7 @@
 {% include 'wall_tabbar' with {'tab': 'single', 'owner': post.owner} %}
 <div class="singleColumn">
 {%if post.replyLevel>0%}
-	<a href="/posts/{{post.getReplyChainElement(0)}}">Top-level</a><br/>
+	<a href="/posts/{{ post.replyKey[0] }}">Top-level</a><br/>
 {%endif%}
 {% include "wall_post" with {'standalone': true} %}
 <div id="postReplies{{post.id}}">{%for reply in post.repliesObjects%}
