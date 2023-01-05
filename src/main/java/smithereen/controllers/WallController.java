@@ -180,7 +180,7 @@ public class WallController{
 				System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
 				replyKey[replyKey.length-1]=parent.id;
 				Post topLevel;
-				if(parent.replyKey.length>1){
+				if(parent.replyKey.length>0){
 					topLevel=PostStorage.getPostByID(parent.replyKey[0], false);
 					if(topLevel!=null && !mentionedUsers.contains(topLevel.user))
 						mentionedUsers.add(topLevel.user);
@@ -504,6 +504,8 @@ public class WallController{
 	}
 
 	public Map<Integer, Post> getPosts(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
 		try{
 			return PostStorage.getPostsByID(ids);
 		}catch(SQLException x){
