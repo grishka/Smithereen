@@ -248,6 +248,19 @@ public class Post extends ActivityPubObject{
 		JsonElement _content=obj.get("content");
 		if(_content!=null && _content.isJsonArray()){
 			content=_content.getAsJsonArray().get(0).getAsString();
+		}else if(obj.has("contentMap")){
+			// Pleroma compatibility workaround
+			// TODO find out why "content" gets dropped during JSON-LD processing
+			JsonElement _contentMap=obj.get("contentMap");
+			if(_contentMap.isJsonObject()){
+				JsonObject contentMap=_contentMap.getAsJsonObject();
+				if(contentMap.size()>0){
+					_content=contentMap.get(contentMap.keySet().iterator().next());
+					if(_content!=null && _content.isJsonArray()){
+						content=_content.getAsJsonArray().get(0).getAsString();
+					}
+				}
+			}
 		}
 		String type=obj.get("type").getAsString();
 		boolean isPoll=type.equals("Question") && (obj.has("oneOf") || obj.has("anyOf"));

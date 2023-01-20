@@ -1,38 +1,70 @@
 {
-    "@context": [
-        "https://w3id.org/security/v1",
-        {
-            "Emoji": "toot:Emoji",
-            "Hashtag": "as:Hashtag",
-            "PropertyValue": "schema:PropertyValue",
-            "atomUri": "ostatus:atomUri",
-            "conversation": {
-                "@id": "ostatus:conversation",
-                "@type": "@id"
-            },
-            "discoverable": "toot:discoverable",
-            "manuallyApprovesFollowers": "as:manuallyApprovesFollowers",
-            "ostatus": "http://ostatus.org#",
-            "schema": "http://schema.org#",
-            "toot": "http://joinmastodon.org/ns#",
-            "value": "schema:value",
-            "sensitive": "as:sensitive",
-            "litepub": "http://litepub.social/ns#",
-            "invisible": "litepub:invisible",
-            "directMessage": "litepub:directMessage",
-            "listMessage": {
-                "@id": "litepub:listMessage",
-                "@type": "@id"
-            },
-            "oauthRegistrationEndpoint": {
-                "@id": "litepub:oauthRegistrationEndpoint",
-                "@type": "@id"
-            },
-            "EmojiReaction": "litepub:EmojiReaction",
-            "alsoKnownAs": {
-                "@id": "as:alsoKnownAs",
-                "@type": "@id"
-            }
-        }
-    ]
+  "@context": [
+    "https://w3id.org/security/v1",
+    {
+      "Emoji": "toot:Emoji",
+      "Hashtag": "as:Hashtag",
+      "PropertyValue": "schema:PropertyValue",
+      "atomUri": "ostatus:atomUri",
+      "conversation": {
+        "@id": "ostatus:conversation",
+        "@type": "@id"
+      },
+      "discoverable": "toot:discoverable",
+      "manuallyApprovesFollowers": "as:manuallyApprovesFollowers",
+      "capabilities": "litepub:capabilities",
+      "ostatus": "http://ostatus.org#",
+      "schema": "http://schema.org#",
+      "toot": "http://joinmastodon.org/ns#",
+      "fedibird": "http://fedibird.com/ns#",
+      "value": "schema:value",
+      "sensitive": "as:sensitive",
+      "litepub": "http://litepub.social/ns#",
+      "invisible": "litepub:invisible",
+      "directMessage": "litepub:directMessage",
+      "listMessage": {
+        "@id": "litepub:listMessage",
+        "@type": "@id"
+      },
+      "quoteUrl": "as:quoteUrl",
+      "quoteUri": "fedibird:quoteUri",
+      "oauthRegistrationEndpoint": {
+        "@id": "litepub:oauthRegistrationEndpoint",
+        "@type": "@id"
+      },
+      "EmojiReact": "litepub:EmojiReact",
+      "ChatMessage": "litepub:ChatMessage",
+      "alsoKnownAs": {
+        "@id": "as:alsoKnownAs",
+        "@type": "@id"
+      },
+      "vcard": "http://www.w3.org/2006/vcard/ns#",
+      "sm": "http://smithereen.software/ns#",
+      "nonAnonymous": "sm:nonAnonymous",
+      "formerRepresentations": "litepub:formerRepresentations",
+      "votersCount": "toot:votersCount",
+      "mz": "https://joinmobilizon.org/ns#",
+      "joinMode": {
+        "@id": "mz:joinMode",
+        "@type": "mz:joinModeType"
+      },
+      "joinModeType": {
+        "@id": "mz:joinModeType",
+        "@type": "rdfs:Class"
+      },
+      "participationMessage": {
+        "@id": "mz:participationMessage",
+        "@type": "sc:Text"
+      },
+      "streetAddress": "sc:streetAddress",
+      "postalCode": "sc:postalCode",
+      "addressLocality": "sc:addressLocality",
+      "addressRegion": "sc:addressRegion",
+      "addressCountry": "sc:addressCountry",
+      "location": {
+        "@id": "sc:location",
+        "@type": "sc:Place"
+      }
+    }
+  ]
 }
