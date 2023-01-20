@@ -872,10 +872,9 @@ function copyText(text:string, doneMsg:string){
 	}
 
 	navigator.clipboard.writeText(text).then(()=>{
-		// TODO use popup notifications when these become a thing
-		new MessageBox("", doneMsg, lang("close")).show();
+		LayerManager.getInstance().showSnackbar(doneMsg);
 	}, (err)=>{
-		new MessageBox(lang("error"), err.toString(), lang("close")).show();
+		LayerManager.getInstance().showSnackbar(lang("error")+"\n"+err.toString());
 	});
 }
 
