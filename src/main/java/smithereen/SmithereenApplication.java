@@ -237,6 +237,14 @@ public class SmithereenApplication{
 				postRequiringAccessLevelWithCSRF("/users/activate", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::activateAccount);
 				getRequiringAccessLevel("/signupRequests", Account.AccessLevel.ADMIN, SettingsAdminRoutes::signupRequests);
 				postRequiringAccessLevelWithCSRF("/signupRequests/:id/respond", Account.AccessLevel.ADMIN, SettingsAdminRoutes::respondToSignupRequest);
+				getRequiringAccessLevel("/reports", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportsList);
+				postRequiringAccessLevelWithCSRF("/reports/:id", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportAction);
+				postRequiringAccessLevelWithCSRF("/reports/:id/doAddCW", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportAddCW);
+				getRequiringAccessLevel("/federation", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerList);
+				getRequiringAccessLevel("/federation/:domain", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerDetails);
+				getRequiringAccessLevel("/federation/:domain/restrictionForm", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerRestrictionForm);
+				postRequiringAccessLevelWithCSRF("/federation/:domain/restrict", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationRestrictServer);
+				getRequiringAccessLevelWithCSRF("/federation/:domain/resetAvailability", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationResetServerAvailability);
 			});
 		});
 
@@ -279,6 +287,8 @@ public class SmithereenApplication{
 			getLoggedIn("/qsearch", SystemRoutes::quickSearch);
 			postLoggedIn("/loadRemoteObject", SystemRoutes::loadRemoteObject);
 			postWithCSRF("/votePoll", SystemRoutes::votePoll);
+			getLoggedIn("/reportForm", SystemRoutes::reportForm);
+			postWithCSRF("/submitReport", SystemRoutes::submitReport);
 		});
 
 		path("/users/:id", ()->{
@@ -408,6 +418,7 @@ public class SmithereenApplication{
 
 		path("/posts/:postID", ()->{
 			getActivityPub("", ActivityPubRoutes::post);
+			get("/activityCreate", ActivityPubRoutes::postCreateActivity);
 			get("", PostRoutes::standalonePost);
 
 			getLoggedIn("/confirmDelete", PostRoutes::confirmDelete);

@@ -7,13 +7,15 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashSet;
+import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=26;
+	public static final int SCHEMA_VERSION=28;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -368,6 +370,64 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("ALTER TABLE `accounts` ADD UNIQUE INDEX (`email`), ADD INDEX (`invited_by`)");
 			}
 			case 26 -> conn.createStatement().execute("ALTER TABLE `signup_requests` ADD UNIQUE INDEX (`email`)");
+			case 27 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `reports` (
+							`id` int unsigned NOT NULL AUTO_INCREMENT,
+							`reporter_id` int unsigned NULL DEFAULT NULL,
+							`target_type` tinyint unsigned NOT NULL,
+							`content_type` tinyint unsigned DEFAULT NULL,
+							`target_id` int unsigned NOT NULL,
+							`content_id` int unsigned DEFAULT NULL,
+							`comment` text NOT NULL,
+							`moderator_id` int unsigned DEFAULT NULL,
+							`time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+							`action_time` timestamp NULL DEFAULT NULL,
+							`server_domain` varchar(100) NULL DEFAULT NULL,
+							PRIMARY KEY (`id`),
+							KEY `reporter_id` (`reporter_id`),
+							KEY `moderator_id` (`moderator_id`),
+							CONSTRAINT `reports_ibfk_1` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`),
+							CONSTRAINT `reports_ibfk_2` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 28 -> {
+				conn.createStatement().execute("DROP TABLE IF EXISTS `servers`");
+				conn.createStatement().execute("""
+						CREATE TABLE `servers` (
+						   `id` int unsigned NOT NULL AUTO_INCREMENT,
+						   `host` varchar(100) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+						   `software` varchar(100) DEFAULT NULL,
+						   `version` varchar(30) DEFAULT NULL,
+						   `last_updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						   `last_error_day` date DEFAULT NULL,
+						   `error_day_count` int NOT NULL DEFAULT '0',
+						   `is_up` tinyint(1) unsigned NOT NULL DEFAULT '1',
+						   `is_restricted` tinyint(1) unsigned NOT NULL DEFAULT '0',
+						   `restriction` json DEFAULT NULL,
+						   PRIMARY KEY (`id`),
+						   UNIQUE KEY (`host`),
+						   KEY `is_up` (`is_up`),
+						   KEY `is_restricted` (`is_restricted`),
+						   KEY `error_day_count` (`error_day_count`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				HashSet<String> servers=new HashSet<>();
+				servers.addAll(new SQLQueryBuilder(conn).selectFrom("users").columns("domain").distinct().where("domain<>''").executeAsStream(rs->rs.getString(1).toLowerCase()).collect(Collectors.toSet()));
+				servers.addAll(new SQLQueryBuilder(conn).selectFrom("groups").columns("domain").distinct().where("domain<>''").executeAsStream(rs->rs.getString(1).toLowerCase()).collect(Collectors.toSet()));
+				PreparedStatement stmt=conn.prepareStatement("INSERT INTO `servers` (`host`) VALUES (?)");
+				for(String domain:servers){
+					stmt.setString(1, domain);
+					stmt.execute();
+				}
+				conn.createStatement().execute("""
+						CREATE TABLE `stats_daily` (
+						  `day` date NOT NULL,
+						  `type` int unsigned NOT NULL,
+						  `object_id` int unsigned NOT NULL,
+						  `count` int unsigned NOT NULL,
+						  PRIMARY KEY (`day`,`type`,`object_id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
 		}
 	}
 }

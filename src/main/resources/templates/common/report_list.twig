@@ -1,0 +1,98 @@
+{# @pebvariable name="items" type="smithereen.data.ViolationReport[]" #}
+{% extends "page" %}
+{% block content %}
+<div class="tabbar">
+	<a class="{{ tab=='open' ? 'selected' : '' }}" href="/settings/admin/reports">{{ L('reports_tab_open') }}</a>
+	<a class="{{ tab=='resolved' ? 'selected' : '' }}" href="/settings/admin/reports?resolved">{{ L('reports_tab_resolved') }}</a>
+</div>
+{% if not isMobile %}
+<div class="summaryWrap">
+	<div class="summary">{{ L('summary_X_reports', {'count':  totalItems}) }}</div>
+	{% include "pagination" %}
+</div>
+{% endif %}
+<div class="singleColumn">
+{% for report in items %}
+	<div class="listItemWithDivider adminInfoGrid" id="report{{ report.id }}">
+		<div class="spanAll">
+			{% if report.targetType=='USER' %}
+			{% set user=users[report.targetID] %}
+			<div class="flL smallMarginRight"><a href="{{ user.profileURL }}">{{ user | pictureForAvatar('s') }}</a></div>
+			<div class="ellipsize"><a href="{{ user.profileURL }}"><b>{{ user.completeName }}</b></a></div>
+			<div class="grayText ellipsize">@{{ user.fullUsername }}</div>
+			{% elseif report.targetType=='GROUP' %}
+			{% set group=groups[report.targetID] %}
+			<div class="flL smallMarginRight"><a href="{{ group.profileURL }}">{{ group | pictureForAvatar('s') }}</a></div>
+			<div class="ellipsize"><a href="{{ group.profileURL }}"><b>{{ group.name }}</b></a></div>
+			<div class="grayText ellipsize">@{{ group.fullUsername }}</div>
+			{% endif %}
+		</div>
+		<div class="ellipsize">
+			<span class="grayText">{{ L('report_from') }}:</span>
+			{% if report.reporterID!=0 %}
+			<a href="{{ users[report.reporterID].profileURL }}">{{ users[report.reporterID].completeName }}</a>
+			{% else %}
+			<i>{{ L('report_sender_anonymous') }}</i>
+			{% endif %}
+		</div>
+		<div class="ellipsize">
+			<span class="grayText">{{ L('report_sent_at') }}:</span> {{ LD(report.time) }}
+		</div>
+		{% if report.serverDomain is not empty %}
+		<div class="ellipsize">
+			<span class="grayText">{{ L('server') }}:</span> {{ report.serverDomain }}
+		</div>
+		{% endif %}
+		{% if report.actionTime is not null %}
+		<div class="ellipsize">
+			<span class="grayText">{{ L('report_resolved_at') }}:</span> {{ LD(report.actionTime) }}
+		</div>
+		{% endif %}
+		{% if report.comment is not empty %}
+		<div class="spanAll">
+			<div class="grayText">{{ L('report_comment') }}:</div>
+			{{ report.comment }}
+		</div>
+		{% endif %}
+		{% if report.contentType=='POST' %}
+		<div class="spanAll">
+			{% set post=posts[report.contentID] %}
+			{% if post is not null %}
+			<div class="grayText">{{ L(post.replyLevel>0 ? 'content_type_comment' : 'content_type_post') }}: <a href="/posts/{{ post.id }}?report={{ report.id }}" target="_blank">{{ LD(post.published) }}</a></div>
+			<b>{{ post.user.fullName }}</b>
+			{% if post.user.id!=post.owner.id %}&raquo; <b><a href="{{ post.owner.profileURL }}">{{ post.owner.name }}</a></b>{% endif %}
+			{% if post.content is not empty %}{{ post.content | stripHTML | truncateText }}{% endif %}
+			{% if post.attachment is not empty %}
+			<div>[ {{ describeAttachments(post.processedAttachments) }} ]</div>
+			{% endif %}
+			{% if post.hasContentWarning %}
+			<div>[ <b>{{ L('post_form_cw') }}:</b> {{ post.summary }} ]</div>
+			{% endif %}
+			{% else %}
+			<i>{{ L('post_deleted_placeholder') }}</i>
+			{% endif %}
+		</div>
+		{% endif %}
+		{% if report.actionTime is null %}
+		<form action="/settings/admin/reports/{{ report.id }}" data-ajax-box method="post" class="spanAll flexButtons">
+			{% if report.actionTime is null %}<button name="resolve">{{ L('mark_report_resolved') }}</button>{% endif %}
+			{% if report.contentType=='POST' %}
+			<button name="deleteContent" data-confirm-title="{{ posts[report.contentID].replyLevel==0 ? 'delete_post' : 'delete_reply' }}" data-confirm-message="{{ posts[report.contentID].replyLevel==0 ? 'delete_post_confirm' : 'delete_reply_confirm' }}">
+				{%- if posts[report.contentID].replyLevel==0 %}
+				{{- L(posts[report.contentID].local ? 'report_action_delete_post' : 'report_action_delete_post_locally') }}
+				{%- else %}
+				{{- L(posts[report.contentID].local ? 'report_action_delete_comment' : 'report_action_delete_comment_locally') }}
+				{%- endif -%}
+			</button>
+				{% if not posts[report.contentID].hasContentWarning %}<button name="addCW">{{ L('report_action_add_cw') }}</button>{% endif %}
+			{% endif %}
+			{# <button name="suspend">{{ L('report_action_suspend') }}</button> #}
+		</form>
+		{% endif %}
+	</div>
+{% else %}
+	<div class="emptyState">{{ L('no_reports') }}</div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}

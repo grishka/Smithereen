@@ -19,7 +19,9 @@ public class VipsImage{
 			"VipsForeignLoadPngFile",
 			"VipsForeignLoadGifFile",
 			"VipsForeignLoadWebpFile",
-			"VipsForeignLoadHeifFile");
+			"VipsForeignLoadHeifFile",
+			"VipsForeignLoadNsgifFile"
+	);
 
 	Pointer nativePtr;
 	private boolean released;

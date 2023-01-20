@@ -35,6 +35,9 @@
 			{% if post.owner.id!=post.user.id %}
 				<li><a href="/users/{{ post.owner.id }}/wall/with/{{ post.user.id }}">{{ L('wall_to_wall') }}</a></li>
 			{% endif %}
+			{% if userPermissions is not null and userPermissions.canReport(post) %}
+				<li><a href="/system/reportForm?type=post&id={{ post.id }}" data-ajax-box>{{ L('report') }}</a></li>
+			{% endif %}
 		</ul>
 <div id="postReplies{{post.id}}">
 	{%for reply in post.repliesObjects%}

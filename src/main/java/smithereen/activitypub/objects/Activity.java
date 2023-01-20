@@ -23,7 +23,8 @@ public abstract class Activity extends ActivityPubObject{
 	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
 		obj=super.asActivityPubObject(obj, contextCollector);
 		obj.add("actor", actor.serialize(contextCollector));
-		obj.add("object", object.serialize(contextCollector));
+		if(object!=null)
+			obj.add("object", object.serialize(contextCollector));
 		if(target!=null)
 			obj.add("target", target.serialize(contextCollector));
 		if(result!=null && !result.isEmpty())

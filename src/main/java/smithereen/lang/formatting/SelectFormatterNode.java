@@ -20,12 +20,14 @@ public class SelectFormatterNode extends FormatterNode{
 	public void formatInto(StringBuilder buf, Map<String, Object> args, Lang lang){
 		Object _arg=args.get(id);
 		String arg;
-		if(_arg instanceof User.Gender){
-			arg=switch((User.Gender)_arg){
+		if(_arg instanceof User.Gender g){
+			arg=switch(g){
 				case UNKNOWN -> "other";
 				case MALE -> "male";
 				case FEMALE -> "female";
 			};
+		}else if(_arg instanceof Enum<?> e){
+			arg=e.name().toLowerCase();
 		}else{
 			arg=Objects.toString(_arg);
 		}

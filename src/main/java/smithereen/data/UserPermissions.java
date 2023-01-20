@@ -2,6 +2,8 @@ package smithereen.data;
 
 import java.util.HashMap;
 
+import smithereen.activitypub.objects.ActivityPubObject;
+
 /**
  * A "helper" kind of object passed around everywhere to help determine what a user
  * can and cannot do. Comes from a logged in <code>SessionInfo</code>
@@ -43,5 +45,17 @@ public class UserPermissions{
 
 	public boolean canManageGroup(Group group){
 		return managedGroups.getOrDefault(group.id, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.MODERATOR);
+	}
+
+	public boolean canReport(ActivityPubObject obj){
+		if(obj instanceof User u){
+			return u.id!=userID;
+		}else if(obj instanceof Group g){
+			return managedGroups.getOrDefault(g.id, Group.AdminLevel.REGULAR)!=Group.AdminLevel.OWNER;
+		}else if(obj instanceof Post p){
+			return p.user.id!=userID;
+		}else{
+			return false;
+		}
 	}
 }

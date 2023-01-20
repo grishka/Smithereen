@@ -270,6 +270,11 @@ public class User extends Actor{
 		return "/users/"+id;
 	}
 
+	@Override
+	public String getName(){
+		return getFullName();
+	}
+
 	// for templates
 	public Map<String, Object> getFirstAndGender(){
 		return Map.of("first", firstName, "gender", gender==null ? Gender.UNKNOWN : gender);

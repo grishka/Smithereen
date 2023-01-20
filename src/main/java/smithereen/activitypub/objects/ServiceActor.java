@@ -49,6 +49,11 @@ public class ServiceActor extends Actor{
 	}
 
 	@Override
+	public String getName(){
+		return name;
+	}
+
+	@Override
 	protected boolean canFollowOtherActors(){
 		return false;
 	}

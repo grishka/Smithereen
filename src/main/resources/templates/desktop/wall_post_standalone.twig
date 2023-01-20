@@ -2,6 +2,12 @@
 {%extends "page"%}
 {%block content%}
 {% include 'wall_tabbar' with {'tab': 'single', 'owner': post.owner} %}
+{% if privacyOverridden %}
+<div class="settingsMessage">
+	<b>{{ L('private_post_warning_title') }}</b><br/>
+	{{ L('private_group_post_warning', {'groupType': post.owner.accessType}) }}
+</div>
+{% endif %}
 <div class="singleColumn">
 {%if post.replyLevel>0%}
 	<a href="/posts/{{ post.replyKey[0] }}">Top-level</a><br/>

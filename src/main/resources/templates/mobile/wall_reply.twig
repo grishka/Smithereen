@@ -36,6 +36,9 @@
 						{% if userPermissions is not null and userPermissions.canEditPost(post) %}
 							{% set _=options.add({'type': 'link', 'label': L('edit').toString(), 'href': "#{post.url}/edit"}) %}
 						{% endif %}
+						{% if userPermissions is not null and userPermissions.canReport(post) %}
+							{% set _=options.add({'type': 'link', 'label': L('report').toString(), 'href': "/system/reportForm?type=post&id=#{post.id}", 'ajax': 'box'}) %}
+						{% endif %}
 						{% if not post.local %}
 							{% set _=options.add({'type': 'link', 'target': '_blank', 'href': post.url, 'label': L('open_on_server_X', {'domain': post.url.host}).toString()}) %}
 						{% endif %}

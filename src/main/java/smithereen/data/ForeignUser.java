@@ -18,11 +18,18 @@ import spark.utils.StringUtils;
 public class ForeignUser extends User implements ForeignActor{
 
 	private URI wall, friends, groups;
+	public boolean isServiceActor;
 
 	public static ForeignUser fromResultSet(ResultSet res) throws SQLException{
 		ForeignUser user=new ForeignUser();
 		user.fillFromResultSet(res);
 		return user;
+	}
+
+	public ForeignUser(){}
+
+	public ForeignUser(boolean isServiceActor){
+		this.isServiceActor=isServiceActor;
 	}
 
 	@Override

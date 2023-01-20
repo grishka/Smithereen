@@ -33,6 +33,7 @@ import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
 import smithereen.data.attachments.Attachment;
+import smithereen.data.attachments.AudioAttachment;
 import smithereen.data.attachments.GraffitiAttachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.VideoAttachment;
@@ -439,6 +440,10 @@ public class Post extends ActivityPubObject{
 				result.add(att);
 			}else if(mediaType.startsWith("video/")){
 				VideoAttachment att=new VideoAttachment();
+				att.url=o.url;
+				result.add(att);
+			}else if(mediaType.startsWith("audio/")){
+				AudioAttachment att=new AudioAttachment();
 				att.url=o.url;
 				result.add(att);
 			}

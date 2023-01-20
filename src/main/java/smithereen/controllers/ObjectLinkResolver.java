@@ -179,7 +179,7 @@ public class ObjectLinkResolver{
 				}
 				if(allowFetching){
 					try{
-						ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken);
+						ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context);
 						T o=ensureTypeAndCast(obj, expectedType);
 						o.resolveDependencies(context, allowFetching, allowStorage);
 						if(!bypassCollectionCheck && o instanceof Post post && post.getReplyLevel()==0){ // TODO make this a generalized interface OwnedObject or something
@@ -221,7 +221,7 @@ public class ObjectLinkResolver{
 	public void storeOrUpdateRemoteObject(ActivityPubObject o){
 		try{
 			o.storeDependencies(context);
-			if(o instanceof ForeignUser fu)
+			if(o instanceof ForeignUser fu && !fu.isServiceActor)
 				UserStorage.putOrUpdateForeignUser(fu);
 			else if(o instanceof ForeignGroup fg)
 				GroupStorage.putOrUpdateForeignGroup(fg);

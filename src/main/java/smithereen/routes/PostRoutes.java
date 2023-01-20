@@ -34,6 +34,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
+import smithereen.data.ViolationReport;
 import smithereen.data.WebDeltaResponse;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
@@ -265,7 +266,28 @@ public class PostRoutes{
 			}
 			self=info.account.user;
 		}
-		context(req).getPrivacyController().enforceObjectPrivacy(self, post);
+
+		boolean canOverridePrivacy=false;
+		if(self!=null && info.permissions.serverAccessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal()){
+			int reportID=safeParseInt(req.queryParams("report"));
+			if(reportID!=0){
+				try{
+					ViolationReport report=ctx.getModerationController().getViolationReportByID(reportID);
+					canOverridePrivacy=report.contentType==ViolationReport.ContentType.POST && report.contentID==postID;
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
+
+		if(canOverridePrivacy){
+			try{
+				ctx.getPrivacyController().enforceObjectPrivacy(self, post);
+			}catch(UserActionNotAllowedException x){
+				model.with("privacyOverridden", true);
+			}
+		}else{
+			ctx.getPrivacyController().enforceObjectPrivacy(self, post);
+		}
+
 		if(post.replyKey.length>0){
 			model.with("prefilledPostText", post.user.getNameForReply()+", ");
 		}

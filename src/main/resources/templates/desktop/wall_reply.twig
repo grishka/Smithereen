@@ -30,6 +30,9 @@
 					{% if userPermissions is not null and userPermissions.canEditPost(post) %} |
 					<a href="{{ post.internalURL }}/edit" data-ajax="1">{{ L('edit') }}</a>
 					{% endif %}
+					{% if userPermissions is not null and userPermissions.canReport(post) %}
+						| <a href="/system/reportForm?type=post&id={{ post.id }}" data-ajax-box>{{ L('report') }}</a>
+					{% endif %}
 					{%if not hideReplyLink%}
 						| <a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}')">{{L('add_reply')}}</a>
 					{%endif%}

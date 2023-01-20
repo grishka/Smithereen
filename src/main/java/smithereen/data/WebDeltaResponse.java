@@ -107,6 +107,11 @@ public class WebDeltaResponse{
 		return this;
 	}
 
+	public WebDeltaResponse showSnackbar(String text){
+		commands.add(new ShowSnackbarCommand(text));
+		return this;
+	}
+
 	public String json(){
 		return Utils.gson.toJson(commands);
 	}
@@ -318,6 +323,16 @@ public class WebDeltaResponse{
 
 		public KeepBoxCommand(){
 			super("kb");
+		}
+	}
+
+	public static class ShowSnackbarCommand extends Command{
+		@SerializedName("t")
+		public String text;
+
+		public ShowSnackbarCommand(String text){
+			super("snackbar");
+			this.text=text;
 		}
 	}
 }

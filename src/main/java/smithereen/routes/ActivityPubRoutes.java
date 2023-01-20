@@ -42,6 +42,7 @@ import smithereen.activitypub.handlers.AnnounceNoteHandler;
 import smithereen.activitypub.handlers.CreateNoteHandler;
 import smithereen.activitypub.handlers.DeleteNoteHandler;
 import smithereen.activitypub.handlers.DeletePersonHandler;
+import smithereen.activitypub.handlers.FlagHandler;
 import smithereen.activitypub.handlers.FollowGroupHandler;
 import smithereen.activitypub.handlers.FollowPersonHandler;
 import smithereen.activitypub.handlers.GroupAddPersonHandler;
@@ -88,6 +89,7 @@ import smithereen.activitypub.objects.activities.Announce;
 import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
+import smithereen.activitypub.objects.activities.Flag;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Leave;
@@ -98,6 +100,7 @@ import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.Account;
+import smithereen.data.FederationRestriction;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
@@ -108,6 +111,9 @@ import smithereen.data.Poll;
 import smithereen.data.PollOption;
 import smithereen.data.PollVote;
 import smithereen.data.Post;
+import smithereen.data.Server;
+import smithereen.data.StatsType;
+import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -130,7 +136,15 @@ public class ActivityPubRoutes{
 
 	private static final Logger LOG=LoggerFactory.getLogger(ActivityPubRoutes.class);
 
-	private static ArrayList<ActivityTypeHandlerRecord<?, ?, ?, ?, ?>> typeHandlers=new ArrayList<>();
+	/**
+	 * Handlers that match on (actor type, activity type, object type) + up to 2 levels of activity nesting
+ 	 */
+	private static final ArrayList<ActivityTypeHandlerRecord<?, ?, ?, ?, ?>> typeHandlers=new ArrayList<>();
+
+	/**
+	 * Handlers that match on the activity type only, disregarding actor/object types
+	 */
+	private static final ArrayList<ActivityTypeOnlyHandlerRecord<?>> typeOnlyHandlers=new ArrayList<>();
 
 	public static void registerActivityHandlers(){
 		registerActivityHandler(ForeignUser.class, Create.class, Post.class, new CreateNoteHandler());
@@ -174,6 +188,8 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignGroup.class, Remove.class, User.class, new GroupRemovePersonHandler());
 
 		registerActivityHandler(Actor.class, Add.class, Post.class, new AddNoteHandler());
+
+		registerActivityHandler(Flag.class, new FlagHandler());
 	}
 
 	@SuppressWarnings("SameParameterValue")
@@ -204,6 +220,10 @@ public class ActivityPubRoutes{
 																																							@NotNull DoublyNestedActivityTypeHandler<A, T, N, NN, O> handler){
 		typeHandlers.add(new ActivityTypeHandlerRecord<>(actorClass, activityClass, nestedActivityClass, doublyNestedActivityClass, objectClass, handler));
 //		System.out.println("Registered handler "+handler.getClass().getName()+" for "+actorClass.getSimpleName()+" -> "+activityClass.getSimpleName()+"{"+nestedActivityClass.getSimpleName()+"{"+doublyNestedActivityClass.getSimpleName()+"{"+objectClass.getSimpleName()+"}}}");
+	}
+
+	private static <T extends Activity> void registerActivityHandler(@NotNull Class<T> activityClass, @NotNull ActivityTypeHandler<?, T, ?> handler){
+		typeOnlyHandlers.add(new ActivityTypeOnlyHandlerRecord<>(activityClass, handler));
 	}
 
 	public static Object userActor(Request req, Response resp) throws SQLException{
@@ -256,6 +276,24 @@ public class ActivityPubRoutes{
 			ActivityPub.enforceGroupContentAccess(req, g);
 		resp.type(ActivityPub.CONTENT_TYPE);
 		return post;
+	}
+
+	public static Object postCreateActivity(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		int postID=safeParseInt(req.params(":postID"));
+		Post post=ctx.getWallController().getLocalPostOrThrow(postID);
+		if(post.owner instanceof Group g)
+			ActivityPub.enforceGroupContentAccess(req, g);
+		resp.type(ActivityPub.CONTENT_TYPE);
+
+		Create create=new Create();
+		create.object=new LinkOrObject(post);
+		create.actor=new LinkOrObject(post.user.activityPubID);
+		create.to=post.to;
+		create.cc=post.cc;
+		create.published=post.published;
+		create.activityPubID=new UriBuilder(post.activityPubID).appendPath("activityCreate").build();
+		return create;
 	}
 
 	public static ActivityPubCollectionPageResponse postReplies(Request req, Response resp, int offset, int count) throws SQLException{
@@ -531,7 +569,7 @@ public class ActivityPubRoutes{
 			follow.actor=new LinkOrObject(self.user.activityPubID);
 			follow.object=new LinkOrObject(user.activityPubID);
 			follow.activityPubID=new URI(self.user.activityPubID.getScheme(), self.user.activityPubID.getSchemeSpecificPart(), "follow"+user.id);
-			ActivityPub.postActivity(user.inbox, follow, self.user);
+			ActivityPub.postActivity(user.inbox, follow, self.user, ctx, false);
 			if(user.supportsFriendRequests()){
 				Offer offer=new Offer();
 				offer.actor=new LinkOrObject(self.user.activityPubID);
@@ -543,7 +581,7 @@ public class ActivityPubRoutes{
 				revFollow.actor=new LinkOrObject(user.activityPubID);
 				revFollow.object=new LinkOrObject(self.user.activityPubID);
 				offer.object=new LinkOrObject(revFollow);
-				ActivityPub.postActivity(user.inbox, offer, self.user);
+				ActivityPub.postActivity(user.inbox, offer, self.user, ctx, false);
 			}
 			return "Success";
 		}catch(URISyntaxException ignore){
@@ -641,6 +679,17 @@ public class ActivityPubRoutes{
 		if(Config.isLocal(activity.actor.link))
 			throw new BadRequestException("User domain must be different from this server");
 
+		// Enforce federation blocks before doing something potentially expensive like fetching linked objects.
+		// This may help if the server in question was blocked because of DoS concerns.
+		Server server=ctx.getModerationController().getOrAddServer(activity.actor.link.getAuthority());
+		FederationRestriction restriction=server.restriction();
+		if(restriction!=null){
+			if(restriction.type==FederationRestriction.RestrictionType.SUSPENSION){
+				resp.status(403);
+				return "Federation with "+server.host()+" is blocked by this server's policies";
+			}
+		}
+
 		Actor actor;
 		boolean canUpdate=true;
 		// special case: when users delete themselves but are not in local database, ignore that
@@ -707,7 +756,21 @@ public class ActivityPubRoutes{
 
 		ActivityHandlerContext context=new ActivityHandlerContext(ctx, body, hasValidLDSignature ? actor : null, httpSigOwner);
 
+		ctx.getStatsController().incrementDaily(StatsType.SERVER_ACTIVITIES_RECEIVED, server.id());
+		if(server.getAvailability()!=Server.Availability.UP){
+			ctx.getModerationController().resetServerAvailability(server);
+		}
+
 		try{
+			// First, try matching by activity type only
+			for(ActivityTypeOnlyHandlerRecord r:typeOnlyHandlers){
+				if(r.activityClass.isInstance(activity)){
+					r.handler.handle(context, actor, activity, null);
+					return "";
+				}
+			}
+
+			// Match more thoroughly
 			ActivityPubObject aobj;
 			if(activity.object.object!=null){
 				aobj=activity.object.object;
@@ -741,7 +804,7 @@ public class ActivityPubRoutes{
 					aobj=ctx.getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add || activity instanceof Invite, false, false, collectionOwner, true);
 				}
 			}
-			for(ActivityTypeHandlerRecord r : typeHandlers){
+			for(ActivityTypeHandlerRecord r:typeHandlers){
 				if(r.actorClass.isInstance(actor)){
 					if(r.activityClass.isInstance(activity)){
 						if(r.nestedActivityClass!=null && aobj instanceof Activity nestedActivity && r.nestedActivityClass.isInstance(aobj)){
@@ -780,7 +843,11 @@ public class ActivityPubRoutes{
 			LOG.warn("Exception while processing an incoming activity", x);
 			throw new BadRequestException(x.toString());
 		}
-		throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
+		if(Config.DEBUG)
+			throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
+		else
+			LOG.error("Received and ignored an activity of an unsupported type {}", getActivityType(activity));
+		return "";
 	}
 
 	private static String getActivityType(ActivityPubObject obj){
@@ -972,5 +1039,8 @@ public class ActivityPubRoutes{
 	private record ActivityTypeHandlerRecord<A extends Actor, T extends Activity, N extends Activity, NN extends Activity, O extends ActivityPubObject>
 			(@NotNull Class<A> actorClass, @NotNull Class<T> activityClass, @Nullable Class<N> nestedActivityClass,
 				@Nullable Class<NN> doublyNestedActivityClass, @NotNull Class<O> objectClass, @NotNull ActivityTypeHandler<A, T, O> handler){
-		}
+	}
+
+	private record ActivityTypeOnlyHandlerRecord<T extends Activity>(@NotNull Class<T> activityClass, @NotNull ActivityTypeHandler<?, T, ?> handler){
+	}
 }

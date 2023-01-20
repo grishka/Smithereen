@@ -40,6 +40,9 @@
 					{% if userPermissions is not null and userPermissions.canEditPost(post) %} |
 					<a href="{{ post.internalURL }}/edit" data-ajax="1">{{ L('edit') }}</a>
 					{% endif %}
+					{% if userPermissions is not null and userPermissions.canReport(post) %} |
+					<a href="/system/reportForm?type=post&id={{ post.id }}" data-ajax-box>{{ L('report') }}</a>
+					{% endif %}
 					{% if post.owner.id!=post.user.id and tab!="wall2wall" and not post.isGroupOwner %} |
 						<a href="/users/{{ post.owner.id }}/wall/with/{{ post.user.id }}">{{ L('wall_to_wall') }}</a>
 					{% endif %}

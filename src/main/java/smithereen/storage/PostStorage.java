@@ -100,8 +100,15 @@ public class PostStorage{
 				.value("poll_id", pollID>0 ? pollID : null)
 				.valueExpr("updated_at", "CURRENT_TIMESTAMP()")
 				.where("id=?", id)
-				.createStatement()
-				.execute();
+				.executeNoResult();
+	}
+
+	public static void updateWallPostCW(int id, String contentWarning) throws SQLException{
+		new SQLQueryBuilder()
+				.update("wall_posts")
+				.value("content_warning", contentWarning)
+				.where("id=?", id)
+				.executeNoResult();
 	}
 
 	private static int putForeignPoll(Connection conn, int ownerID, URI activityPubID, Poll poll) throws SQLException{

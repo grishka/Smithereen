@@ -18,11 +18,14 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.Future;
 import java.util.concurrent.RecursiveAction;
 import java.util.concurrent.RecursiveTask;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import smithereen.ApplicationContext;
@@ -33,11 +36,13 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Add;
 import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
+import smithereen.activitypub.objects.activities.Flag;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Join;
@@ -78,6 +83,7 @@ public class ActivityPubWorker{
 	private static final int ACTORS_BATCH_SIZE=25;
 
 	private final ForkJoinPool executor;
+	private final ScheduledExecutorService retryExecutor;
 	private final Random rand=new Random();
 
 	// These must be accessed from synchronized(this)
@@ -92,6 +98,7 @@ public class ActivityPubWorker{
 	public ActivityPubWorker(ApplicationContext context){
 		this.context=context;
 		executor=new ForkJoinPool(Runtime.getRuntime().availableProcessors()*2);
+		retryExecutor=Executors.newSingleThreadScheduledExecutor();
 	}
 
 	public void shutDown(){
@@ -106,6 +113,14 @@ public class ActivityPubWorker{
 
 	private URI actorInbox(ForeignGroup actor){
 		return actor.sharedInbox!=null ? actor.sharedInbox : actor.inbox;
+	}
+
+	private URI actorInbox(Actor actor){
+		if(actor instanceof ForeignUser fu)
+			return actorInbox(fu);
+		else if(actor instanceof ForeignGroup fg)
+			return actorInbox(fg);
+		throw new IllegalArgumentException("Must be a foreign actor");
 	}
 
 	private long rand(){
@@ -662,6 +677,15 @@ public class ActivityPubWorker{
 		}
 	}
 
+	public void sendViolationReport(int reportID, String comment, List<URI> objectIDs, Actor targetActor){
+		Flag flag=new Flag();
+		flag.activityPubID=Config.localURI("/activitypub/objects/reports/"+reportID);
+		flag.actor=new LinkOrObject(ServiceActor.getInstance().activityPubID);
+		flag.object=objectIDs;
+		flag.content=comment;
+		executor.submit(new SendOneActivityRunnable(flag, actorInbox(targetActor), ServiceActor.getInstance()));
+	}
+
 	public synchronized Future<List<Post>> fetchReplyThread(Post post){
 		return fetchingReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchReplyThreadRunnable(post)));
 	}
@@ -707,10 +731,11 @@ public class ActivityPubWorker{
 		executor.submit(new FetchActorContentCollectionsTask(actor));
 	}
 
-	private static class SendOneActivityRunnable implements Runnable{
+	private class SendOneActivityRunnable implements Runnable{
 		private Activity activity;
 		private URI destination;
 		private Actor actor;
+		private int retryAttempt;
 
 		public SendOneActivityRunnable(Activity activity, URI destination, Actor actor){
 			this.activity=activity;
@@ -718,17 +743,28 @@ public class ActivityPubWorker{
 			this.actor=actor;
 		}
 
+		public SendOneActivityRunnable(Activity activity, URI destination, Actor actor, int retryAttempt){
+			this(activity, destination, actor);
+			this.retryAttempt=retryAttempt;
+		}
+
 		@Override
 		public void run(){
 			try{
-				ActivityPub.postActivity(destination, activity, actor);
+				ActivityPub.postActivity(destination, activity, actor, context, retryAttempt>0);
 			}catch(Exception x){
 				LOG.error("Exception while sending activity", x);
+				if(!(x instanceof FederationException)){
+					ActivityDeliveryRetry retry=new ActivityDeliveryRetry(activity, destination, actor, retryAttempt+1);
+					if(retry.needMoreAttempts()){
+						retryExecutor.schedule(new RetryActivityRunnable(retry), retry.getDelayForThisAttempt(), TimeUnit.MILLISECONDS);
+					}
+				}
 			}
 		}
 	}
 
-	private static class SendActivitySequenceRunnable implements Runnable{
+	private class SendActivitySequenceRunnable implements Runnable{
 		private List<Activity> activities;
 		private URI destination;
 		private User user;
@@ -741,16 +777,23 @@ public class ActivityPubWorker{
 
 		@Override
 		public void run(){
-			try{
-				for(Activity activity:activities)
-					ActivityPub.postActivity(destination, activity, user);
-			}catch(Exception x){
-				LOG.error("Exception while sending activity", x);
+			for(Activity activity:activities){
+				try{
+					ActivityPub.postActivity(destination, activity, user, context, false);
+				}catch(Exception x){
+					LOG.error("Exception while sending activity", x);
+					if(!(x instanceof FederationException)){
+						ActivityDeliveryRetry retry=new ActivityDeliveryRetry(activity, destination, user, 1);
+						if(retry.needMoreAttempts()){
+							retryExecutor.schedule(new RetryActivityRunnable(retry), retry.getDelayForThisAttempt(), TimeUnit.MILLISECONDS);
+						}
+					}
+				}
 			}
 		}
 	}
 
-	private static class ForwardOneActivityRunnable implements Runnable{
+	private class ForwardOneActivityRunnable implements Runnable{
 		private String activity;
 		private URI destination;
 		private User user;
@@ -764,7 +807,7 @@ public class ActivityPubWorker{
 		@Override
 		public void run(){
 			try{
-				ActivityPub.postActivity(destination, activity, user);
+				ActivityPub.postActivity(destination, activity, user, context);
 			}catch(Exception x){
 				LOG.error("Exception while forwarding activity", x);
 			}
@@ -1397,6 +1440,41 @@ public class ActivityPubWorker{
 				LOG.debug("Error fetching post {}", postID, x);
 			}
 			super.compute();
+		}
+	}
+
+	private class RetryActivityRunnable implements Runnable{
+		private final ActivityDeliveryRetry retry;
+
+		private RetryActivityRunnable(ActivityDeliveryRetry retry){
+			this.retry=retry;
+		}
+
+		@Override
+		public void run(){
+			LOG.info("Retrying activity delivery to {}, attempt {}", retry.inbox, retry.attemptNumber);
+			executor.submit(new SendOneActivityRunnable(retry.activity, retry.inbox, retry.actor, retry.attemptNumber));
+		}
+	}
+
+	private record ActivityDeliveryRetry(Activity activity, URI inbox, Actor actor, int attemptNumber){
+		public long getDelayForThisAttempt(){
+			return switch(attemptNumber){
+				case 1 -> 30_000; // 30 seconds
+				case 2 -> 60_000; // 1 minute
+				case 3 -> 5*60_000; // 5 minutes
+				case 4 -> 600_000; // 10 minutes
+				case 5 -> 3*600_000; // 30 minutes
+				case 6 -> 3600_000; // 1 hour
+				case 7 -> 3*3600_000; // 3 hours
+				case 8 -> 6*3600_000; // 6 hours
+				case 9 -> 12*3600_000; // 12 hours
+				default -> throw new IllegalStateException();
+			};
+		}
+
+		public boolean needMoreAttempts(){
+			return attemptNumber<10;
 		}
 	}
 }

@@ -63,6 +63,7 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.SessionInfo;
+import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
@@ -231,11 +232,9 @@ public class Utils{
 	}
 
 	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, String formID, List<String> fieldNames, Function<String, String> fieldValueGetter, String message){
-		if(isAjax(req)){
+		if(isAjax(req) && StringUtils.isNotEmpty(message)){
 			WebDeltaResponse wdr=new WebDeltaResponse(resp);
-			if(StringUtils.isNotEmpty(message)){
-				wdr.keepBox().show("formMessage_"+formID).setContent("formMessage_"+formID, escapeHTML(message));
-			}
+			wdr.keepBox().show("formMessage_"+formID).setContent("formMessage_"+formID, escapeHTML(message));
 			return wdr;
 		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse(templateName, req);
@@ -938,6 +937,18 @@ public class Utils{
 			}
 		}
 		return root.html();
+	}
+
+	public static String getRequestPathAndQuery(Request req){
+		String path=req.pathInfo();
+		String query=req.queryString();
+		if(StringUtils.isNotEmpty(query)){
+			path+="?"+query;
+			if(query.contains("_ajax=1")){
+				path=new UriBuilder(path).removeQueryParam("_ajax").build().toString();
+			}
+		}
+		return path;
 	}
 
 	public static InetAddress getRequestIP(Request req){

@@ -390,7 +390,7 @@ public class SQLQueryBuilder{
 		PreparedStatement stmt=conn.prepareStatement(sql);
 		int i=1;
 		for(Object arg:args){
-			if(arg instanceof Enum e)
+			if(arg instanceof Enum<?> e)
 				stmt.setInt(i, e.ordinal());
 			else if(arg instanceof Instant instant)
 				stmt.setTimestamp(i, Timestamp.from(instant));

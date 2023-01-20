@@ -1,0 +1,30 @@
+{# @pebvariable name="items" type="java.util.List<smithereen.data.SignupRequest>" #}
+{%extends "page"%}
+{%block content%}
+<div class="singleColumn">
+	{% for req in items %}
+	<div class="listItemWithDivider">
+		<div class="grayText">{{ L('name') }}:</div>
+		<div>{{ req.fullName }}</div>
+		<div class="grayText marginBefore">{{ L('email') }}:</div>
+		<div>{{ req.email }}</div>
+		<div class="grayText marginBefore">{{ L('signup_request_sent_at') }}:</div>
+		<div>{{ LD(req.createdAt) }}</div>
+		<div class="grayText marginBefore">{{ L('message') }}:</div>
+		<div>{{ req.reason }}</div>
+		<div class="marginBefore">
+			<form action="/settings/admin/signupRequests/{{ req.id }}/respond" method="post" data-ajax>
+				<input type="hidden" name="csrf" value="{{csrf}}"/>
+				<div id="signupReqBtns{{ req.id }}" class="buttons">
+					<input type="submit" name="accept" value="{{L('send_invitation')}}"/>
+					<input type="submit" name="decline" value="{{L('delete_signup_request')}}" class="secondary"/>
+				</div>
+			</form>
+		</div>
+	</div>
+	{% else %}
+	<div class="emptyState">{{L('no_signup_requests')}}</div>
+	{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{%endblock%}

@@ -101,6 +101,25 @@ public class UriBuilder{
 		return this;
 	}
 
+	public UriBuilder replaceQueryParam(String key, String value){
+		String encodedKey=urlEncode(key);
+		if(query==null){
+			query=new ArrayList<>();
+		}else{
+			query.removeIf(kv->kv.key.equals(encodedKey));
+		}
+		query.add(new KeyValuePair(encodedKey, urlEncode(value)));
+		return this;
+	}
+
+	public UriBuilder removeQueryParam(String key){
+		if(query==null)
+			return this;
+		String encodedKey=urlEncode(key);
+		query.removeIf(kv->kv.key.equals(encodedKey));
+		return this;
+	}
+
 	public UriBuilder clearQuery(){
 		query=null;
 		return this;
