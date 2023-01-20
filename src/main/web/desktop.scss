@@ -2480,6 +2480,7 @@ label.pretendLink{
 	justify-content: center;
 	padding: 10px 0;
 	z-index: 115;
+	pointer-events: none;
 	.snackbar{
 		background: rgba(0, 0, 0, 0.75);
 		border-radius: 5px;
@@ -2491,5 +2492,6 @@ label.pretendLink{
 		font-size: 12px;
 		color: #FFF;
 		backdrop-filter: saturate(180%) blur(3px);
+		pointer-events: all;
 	}
 }

@@ -1424,6 +1424,7 @@ input.searchField{
 	justify-content: center;
 	padding: 16px;
 	z-index: 115;
+	pointer-events: none;
 	.snackbar{
 		background: rgba(0, 0, 0, 0.75);
 		border-radius: 5px;
@@ -1434,5 +1435,6 @@ input.searchField{
 		text-shadow: 0px 1px 0px #262626;
 		color: #FFF;
 		backdrop-filter: saturate(180%) blur(3px);
+		pointer-events: all;
 	}
 }
