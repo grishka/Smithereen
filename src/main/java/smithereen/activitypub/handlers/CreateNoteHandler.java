@@ -18,6 +18,7 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Mention;
@@ -50,13 +51,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			throw new BadRequestException("Can only create posts for self");
 		if(post.owner==null)
 			throw new BadRequestException("Unknown wall owner (from target, which must be a link to sm:wall if present - see FEP-400e)");
-		if(post.owner instanceof User && !Objects.equals(post.owner.activityPubID, post.user.activityPubID)){
-			Utils.ensureUserNotBlocked(actor, (User) post.owner);
-			if(post.owner instanceof ForeignActor)
-				throw new BadRequestException("Create{Note} can't be used to notify about posts on foreign actors' walls. Wall owner must send an Add{Note} instead.");
-		}
-		if(post.owner instanceof Group)
-			Utils.ensureUserNotBlocked(actor, (Group) post.owner);
+		checkNotBlocked(post, actor);
 
 		// Special handling for poll votes because using a separate activity type would've been too easy.
 		if((post.attachment==null || post.attachment.isEmpty()) && StringUtils.isEmpty(post.content) && post.inReplyTo!=null && post.name!=null){
@@ -154,6 +149,9 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			Post parent=PostStorage.getPostByID(post.inReplyTo);
 			if(parent!=null){
 				post.setParent(parent);
+
+				checkNotBlocked(post, actor);
+
 				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
 				NotificationUtils.putNotificationsForPost(post, parent);
 				Post topLevel=PostStorage.getPostByID(post.replyKey[0], false);
@@ -191,5 +189,15 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				context.appContext.getNewsfeedController().clearFriendsFeedCache();
 			}
 		}
+	}
+
+	private void checkNotBlocked(Post post, ForeignUser actor) throws SQLException{
+		if(post.owner instanceof User && !Objects.equals(post.owner.activityPubID, post.user.activityPubID)){
+			Utils.ensureUserNotBlocked(actor, (User) post.owner);
+			if(post.owner instanceof ForeignActor)
+				throw new BadRequestException("Create{Note} can't be used to notify about posts on foreign actors' walls. Wall owner must send an Add{Note} instead.");
+		}
+		if(post.owner instanceof Group)
+			Utils.ensureUserNotBlocked(actor, (Group) post.owner);
 	}
 }

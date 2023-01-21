@@ -839,6 +839,16 @@ public class ActivityPubRoutes{
 					}
 				}
 			}
+		}catch(UserActionNotAllowedException x){
+			if(Config.DEBUG){
+				LOG.warn("Rejected incoming {}: {}", getActivityType(activity), x.toString());
+			}
+			resp.status(403);
+			return escapeHTML(x.getMessage());
+		}catch(BadRequestException x){
+			LOG.warn("Bad request", x);
+			resp.status(400);
+			return escapeHTML(x.getMessage());
 		}catch(Exception x){
 			LOG.warn("Exception while processing an incoming activity", x);
 			throw new BadRequestException(x.toString());
