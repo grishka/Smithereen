@@ -17,7 +17,7 @@
 
 {%macro textInput(name, label, value, options)%}
 	{%if options is null%}{%set options={}%}{%endif%}
-	<tr>
+	<tr id="formRow_{{ name }}">
 		<td class="label">
 			<label for="{{name}}">{{label}}</label>:
 		</td>
@@ -46,7 +46,7 @@
 
 {% macro dateTimeInput(name, label, value, options) %}
 {%if options is null%}{%set options={}%}{%endif%}
-	<tr>
+	<tr id="formRow_{{ name }}">
 		<td class="label">
 			<label for="{{ name }}_date">{{ label }}</label>:
 		</td>
@@ -66,7 +66,7 @@
 
 {%macro textArea(name, label, value, options)%}
 {%if options is null%}{%set options={}%}{%endif%}
-	<tr>
+	<tr id="formRow_{{ name }}">
 		<td class="label">
 			<label for="{{name}}">{{label}}</label>:
 		</td>
@@ -84,7 +84,7 @@ autoSizeTextArea(ge("{{ name }}"));
 
 {%macro select(name, label, selectOptions, options)%}
 {%if options is null%}{%set options={}%}{%endif%}
-	<tr>
+	<tr id="formRow_{{ name }}">
 		<td class="label">
 			{% if label is not empty %}
 				<label for="{{name}}">{{label}}</label>:
@@ -105,7 +105,7 @@ autoSizeTextArea(ge("{{ name }}"));
 
 {%macro radioGroup(name, label, selectOptions, options)%}
 	{%if options is null%}{%set options={}%}{%endif%}
-	<tr>
+	<tr id="formRow_{{ name }}">
 		<td class="label">
 				{% if label is not empty %}
 				{{label}}:
@@ -125,7 +125,7 @@ autoSizeTextArea(ge("{{ name }}"));
 {%endmacro%}
 
 {%macro checkBox(name, label, title, value, options)%}
-	<tr>
+	<tr id="formRow_{{ name }}">
 		<td class="label">
 				{% if label is not empty %}
 				{{label}}:

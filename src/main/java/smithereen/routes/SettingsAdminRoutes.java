@@ -363,13 +363,34 @@ public class SettingsAdminRoutes{
 			throw new ObjectNotFoundException();
 		Server server=ctx.getModerationController().getServerByDomain(domain);
 
-		return wrapForm(req, resp, "admin_federation_restriction_form", "/settings/admin/federation/"+domain+"/restrict",
+		Object form=wrapForm(req, resp, "admin_federation_restriction_form", "/settings/admin/federation/"+domain+"/restrict",
 				lang(req).get("federation_restriction_title"), "save", "federationRestriction", List.of("type", "privateComment", "publicComment"), k->switch(k){
 					case "type" -> (server.restriction()!=null ? server.restriction().type : FederationRestriction.RestrictionType.NONE).toString();
 					case "privateComment" -> server.restriction()!=null ? server.restriction().privateComment : null;
 					case "publicComment" -> server.restriction()!=null ? server.restriction().publicComment : null;
 					default -> throw new IllegalArgumentException();
 				}, null);
+		if(form instanceof WebDeltaResponse wdr){
+			wdr.runScript("""
+					function federationServerRestrictionForm_updateFieldVisibility(){
+						var publicComment=ge("formRow_publicComment");
+						var privateComment=ge("formRow_privateComment");
+						var publicCommentField=ge("publicComment");
+						if(ge("type0").checked){
+							publicComment.hide();
+							privateComment.hide();
+							publicCommentField.required=false;
+						}else{
+							publicComment.show();
+							privateComment.show();
+							publicCommentField.required=true;
+						}
+					}
+					ge("type0").addEventListener("change", function(){federationServerRestrictionForm_updateFieldVisibility();}, false);
+					ge("type1").addEventListener("change", function(){federationServerRestrictionForm_updateFieldVisibility();}, false);
+					federationServerRestrictionForm_updateFieldVisibility();""");
+		}
+		return form;
 	}
 
 	public static Object federationRestrictServer(Request req, Response resp, Account self, ApplicationContext ctx){
