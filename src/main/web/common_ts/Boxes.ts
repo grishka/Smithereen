@@ -715,6 +715,9 @@ class PhotoViewerLayer extends BaseLayer{
 			ce("a", {className: "photoViewerNavButton buttonNext", onclick: this.showNextPhoto.bind(this)})
 		]);
 		this.setCurrentPhotoIndex(index);
+		this.photoImage.addEventListener("load", (ev:Event)=>{
+			LayerManager.getInstance().updateTopOffset(this.getContent());
+		});
 	}
 
 	public setCurrentPhotoIndex(i:number){
