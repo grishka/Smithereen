@@ -194,7 +194,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 	private void checkNotBlocked(Post post, ForeignUser actor) throws SQLException{
 		if(post.owner instanceof User && !Objects.equals(post.owner.activityPubID, post.user.activityPubID)){
 			Utils.ensureUserNotBlocked(actor, (User) post.owner);
-			if(post.owner instanceof ForeignActor)
+			if(post.owner instanceof ForeignActor && post.getReplyLevel()==0)
 				throw new BadRequestException("Create{Note} can't be used to notify about posts on foreign actors' walls. Wall owner must send an Add{Note} instead.");
 		}
 		if(post.owner instanceof Group)
