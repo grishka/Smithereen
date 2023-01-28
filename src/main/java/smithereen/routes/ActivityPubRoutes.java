@@ -374,6 +374,7 @@ public class ActivityPubRoutes{
 		if(user==null || user instanceof ForeignUser){
 			throw new ObjectNotFoundException();
 		}
+		resp.type(ActivityPub.CONTENT_TYPE);
 		int _minID=Utils.parseIntOrDefault(req.queryParams("min_id"), -1);
 		int _maxID=Utils.parseIntOrDefault(req.queryParams("max_id"), -1);
 		int minID=Math.max(0, _minID);
@@ -413,7 +414,6 @@ public class ActivityPubRoutes{
 				return collection;
 			}
 		}catch(URISyntaxException ignore){}
-		resp.type(ActivityPub.CONTENT_TYPE);
 		return page;
 	}
 
