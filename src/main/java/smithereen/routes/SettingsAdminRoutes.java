@@ -45,7 +45,8 @@ public class SettingsAdminRoutes{
 				.with("serverPolicy", Config.serverPolicy)
 				.with("serverAdminEmail", Config.serverAdminEmail)
 				.with("signupMode", Config.signupMode)
-				.with("signupConfirmEmail", Config.signupConfirmEmail);
+				.with("signupConfirmEmail", Config.signupConfirmEmail)
+				.with("signupEnableCaptcha", Config.signupFormUseCaptcha);
 		String msg=req.session().attribute("admin.serverInfoMessage");
 		if(StringUtils.isNotEmpty(msg)){
 			req.session().removeAttribute("admin.serverInfoMessage");
@@ -61,6 +62,7 @@ public class SettingsAdminRoutes{
 		String policy=req.queryParams("server_policy");
 		String email=req.queryParams("server_admin_email");
 		boolean confirmEmail="on".equals(req.queryParams("signup_confirm_email"));
+		boolean signupCaptcha="on".equals(req.queryParams("signup_enable_captcha"));
 
 		Config.serverDisplayName=name;
 		Config.serverDescription=descr;
@@ -68,13 +70,15 @@ public class SettingsAdminRoutes{
 		Config.serverPolicy=policy;
 		Config.serverAdminEmail=email;
 		Config.signupConfirmEmail=confirmEmail;
+		Config.signupFormUseCaptcha=signupCaptcha;
 		Config.updateInDatabase(Map.of(
 				"ServerDisplayName", name,
 				"ServerDescription", descr,
 				"ServerShortDescription", shortDescr,
 				"ServerPolicy", policy,
 				"ServerAdminEmail", email,
-				"SignupConfirmEmail", confirmEmail ? "1" : "0"
+				"SignupConfirmEmail", confirmEmail ? "1" : "0",
+				"SignupFormUseCaptcha", signupCaptcha ? "1" : "0"
 		));
 		try{
 			Config.SignupMode signupMode=Config.SignupMode.valueOf(req.queryParams("signup_mode"));

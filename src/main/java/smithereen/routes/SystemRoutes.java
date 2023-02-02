@@ -3,6 +3,7 @@ package smithereen.routes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -22,6 +23,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
+import javax.imageio.ImageIO;
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
 import javax.servlet.http.Part;
@@ -29,6 +31,7 @@ import javax.servlet.http.Part;
 import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
+import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -64,6 +67,7 @@ import smithereen.storage.SearchStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.BlurHash;
+import smithereen.util.CaptchaGenerator;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
 import spark.Request;
@@ -655,5 +659,25 @@ public class SystemRoutes{
 			return new WebDeltaResponse(resp).showSnackbar(lang(req).get("report_submitted"));
 		}
 		return "";
+	}
+
+	public static Object captcha(Request req, Response resp) throws IOException{
+		requireQueryParams(req, "sid");
+		String sid=req.queryParams("sid");
+		if(sid.length()>16)
+			sid=sid.substring(0, 16);
+
+		CaptchaGenerator.Captcha c=CaptchaGenerator.generate();
+		LruCache<String, String> captchas=req.session().attribute("captchas");
+		if(captchas==null){
+			captchas=new LruCache<>(10);
+			req.session().attribute("captchas", captchas);
+		}
+		captchas.put(sid, c.answer());
+
+		resp.type("image/png");
+		ByteArrayOutputStream out=new ByteArrayOutputStream();
+		ImageIO.write(c.image(), "png", out);
+		return out.toByteArray();
 	}
 }

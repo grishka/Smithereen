@@ -70,6 +70,7 @@ public class Config{
 	public static String serverAdminEmail;
 	public static SignupMode signupMode=SignupMode.CLOSED;
 	public static boolean signupConfirmEmail;
+	public static boolean signupFormUseCaptcha;
 
 	public static String mailFrom;
 	public static String smtpServerAddress;
@@ -138,6 +139,7 @@ public class Config{
 				}catch(IllegalArgumentException ignore){}
 			}
 			signupConfirmEmail="1".equals(dbValues.get("SignupConfirmEmail"));
+			signupFormUseCaptcha="1".equals(dbValues.get("SignupFormUseCaptcha"));
 
 			smtpServerAddress=dbValues.getOrDefault("Mail_SMTP_ServerAddress", "127.0.0.1");
 			smtpPort=Utils.parseIntOrDefault(dbValues.get("Mail_SMTP_ServerPort"), 25);

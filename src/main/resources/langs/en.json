@@ -680,5 +680,9 @@
   "federation_restriction_reason": "Reason",
   "post_deleted_placeholder": "Post was deleted",
   "report_resolved_at": "Resolved",
-  "report_submitted": "Your report was submitted to the server staff."
+  "report_submitted": "Your report was submitted to the server staff.",
+  "admin_enable_captcha": "Use captcha",
+  "admin_captcha_signup_form": "In the signup form",
+  "captcha_label": "Code from the image",
+  "err_wrong_captcha": "Wrong code from the image"
 }

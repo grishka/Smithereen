@@ -7,6 +7,10 @@
 		{{ form.textInput('last_name', L('last_name'), last_name, {'maxlength': 100}) }}
 		{{ form.textInput('email', L('email'), email, {'type': 'email', 'required': true}) }}
 		{{ form.textArea('reason', L('request_invitation_reason'), reason, {'required': true, 'explanation': L('request_invitation_reason_explain')}) }}
+		{% if captchaSid is not empty %}
+			{{ form.unlabeledRowStart() }}<img src="/system/captcha?sid={{ captchaSid }}" width="130" height="50"/><input type="hidden" name="captchaSid" value="{{ captchaSid }}"/>{{ form.unlabeledRowEnd() }}
+			{{ form.textInput('captcha', L('captcha_label'), null, {'required': true}) }}
+		{% endif %}
 		{{ form.footer(L('request_invitation')) }}
 	{{ form.end() }}
 </form>

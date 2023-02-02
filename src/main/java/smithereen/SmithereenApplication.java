@@ -65,6 +65,7 @@ import spark.serialization.Serializer;
 import spark.serialization.SerializerChain;
 import spark.utils.StringUtils;
 
+import static smithereen.Utils.randomAlphanumericString;
 import static spark.Spark.*;
 import static smithereen.sparkext.SparkExtension.*;
 
@@ -289,6 +290,7 @@ public class SmithereenApplication{
 			postWithCSRF("/votePoll", SystemRoutes::votePoll);
 			getLoggedIn("/reportForm", SystemRoutes::reportForm);
 			postWithCSRF("/submitReport", SystemRoutes::submitReport);
+			get("/captcha", SystemRoutes::captcha);
 		});
 
 		path("/users/:id", ()->{
@@ -608,11 +610,15 @@ public class SmithereenApplication{
 			resp.redirect("/feed");
 			return "";
 		}
-		return new RenderedTemplateResponse("index", req).with("title", Config.serverDisplayName)
+		RenderedTemplateResponse model=new RenderedTemplateResponse("index", req).with("title", Config.serverDisplayName)
 				.with("signupMode", Config.signupMode)
 				.with("serverDisplayName", Config.serverDisplayName)
 				.with("serverDescription", Config.serverDescription)
 				.addNavBarItem(Utils.lang(req).get("index_welcome"));
+		if((Config.signupMode==Config.SignupMode.OPEN || Config.signupMode==Config.SignupMode.MANUAL_APPROVAL) && Config.signupFormUseCaptcha){
+			model.with("captchaSid", randomAlphanumericString(16));
+		}
+		return model;
 	}
 
 	private static Object methodNotAllowed(Request req, Response resp){

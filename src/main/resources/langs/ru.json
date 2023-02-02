@@ -676,5 +676,9 @@
   "federation_restriction_reason": "Причина",
   "post_deleted_placeholder": "Запись была удалена",
   "report_resolved_at": "Решена",
-  "report_submitted": "Ваша жалоба отправлена администрации сервера."
+  "report_submitted": "Ваша жалоба отправлена администрации сервера.",
+  "admin_enable_captcha": "Использовать капчу",
+  "admin_captcha_signup_form": "В форме регистрации",
+  "captcha_label": "Код с картинки",
+  "err_wrong_captcha": "Неправильный код с картинки"
 }
