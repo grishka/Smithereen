@@ -18,6 +18,8 @@ import smithereen.data.FederationRestriction;
 import smithereen.data.PaginatedList;
 import smithereen.data.Post;
 import smithereen.data.Server;
+import smithereen.data.StatsPoint;
+import smithereen.data.StatsType;
 import smithereen.data.User;
 import smithereen.data.ViolationReport;
 import smithereen.data.WebDeltaResponse;
@@ -28,6 +30,7 @@ import smithereen.lang.Lang;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.JsonArrayBuilder;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -358,6 +361,19 @@ public class SettingsAdminRoutes{
 		Lang l=lang(req);
 		model.addNavBarItem(l.get("menu_admin"), "/settings/admin").addNavBarItem(l.get("admin_federation"), "/settings/admin/federation").addNavBarItem(server.host());
 		model.pageTitle(server.host()+" | "+l.get("admin_federation"));
+		jsLangKey(req, "month_full", "month_short", "month_standalone", "date_format_current_year", "date_format_other_year", "date_format_month_year", "date_format_month_year_short");
+		if(!isMobile(req)){
+			List<StatsPoint> sentActivities=ctx.getStatsController().getDaily(StatsType.SERVER_ACTIVITIES_SENT, server.id());
+			List<StatsPoint> recvdActivities=ctx.getStatsController().getDaily(StatsType.SERVER_ACTIVITIES_RECEIVED, server.id());
+			List<StatsPoint> failedActivities=ctx.getStatsController().getDaily(StatsType.SERVER_ACTIVITIES_FAILED_ATTEMPTS, server.id());
+			String gd;
+			model.with("graphData", gd=makeGraphData(
+					List.of(l.get("server_stats_activities_sent"), l.get("server_stats_activities_received"), l.get("server_stats_delivery_errors")),
+					List.of(sentActivities, recvdActivities, failedActivities),
+					timeZoneForRequest(req)
+			).toString());
+			System.out.println(gd);
+		}
 		return model;
 	}
 

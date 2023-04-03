@@ -3,6 +3,11 @@
 {% block content %}
 <div class="singleColumn">
 	<h2>{{ server.host }}</h2>
+	{% if not mobile %}
+	<h3 class="marginBefore">{{ L('statistics') }}</h3>
+	<div class="marginBefore" id="serverStatsGraph" data-graph-data="{{ graphData }}"></div>
+	{% script %}renderGraph("serverStatsGraph");{% endscript %}
+	{% endif %}
 	<h3 class="marginBefore">{{ L('server_restrictions') }}</h3>
 	<div class="marginBefore">
 		{% if server.restriction is null %}
@@ -28,4 +33,9 @@
 		{% endif %}
 	</div>
 </div>
+{% endblock %}
+{% block extraScripts %}
+{%- if not mobile %}
+<script src="/res/graph.js?{{ staticHashes['graph.js'] }}"></script>
+{% endif -%}
 {% endblock %}

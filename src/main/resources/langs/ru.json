@@ -680,5 +680,10 @@
   "admin_enable_captcha": "Использовать капчу",
   "admin_captcha_signup_form": "В форме регистрации",
   "captcha_label": "Код с картинки",
-  "err_wrong_captcha": "Неправильный код с картинки"
+  "err_wrong_captcha": "Неправильный код с картинки",
+  "date_format_month_year_short": "{month} ''{year}",
+  "statistics": "Статистика",
+  "server_stats_activities_sent": "Отправленные активити",
+  "server_stats_activities_received": "Полученные активити",
+  "server_stats_delivery_errors": "Ошибки отправки"
 }

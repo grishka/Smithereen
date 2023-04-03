@@ -2,6 +2,8 @@ package smithereen;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -63,6 +65,7 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.SessionInfo;
+import smithereen.data.StatsPoint;
 import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
@@ -74,6 +77,8 @@ import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.InstantMillisJsonAdapter;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.LocaleJsonAdapter;
 import smithereen.util.TimeZoneJsonAdapter;
 import smithereen.util.TopLevelDomainList;
@@ -102,6 +107,11 @@ public class Utils{
 	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@("+IDN_DOMAIN_REGEX+")");
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([!#$%^'*+\\-.^_`|~0-9A-Za-z]+)=(?:(?:\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\")|([!#$%^'*+\\-.^_`|~0-9A-Za-z]+))\\s*([,;])?\\s*");
 	private static final Pattern NON_ASCII_PATTERN=Pattern.compile("\\P{ASCII}");
+
+	private static final int[] GRAPH_COLORS={0x597da3, 0xb05c91, 0x4d9fab, 0x569567, 0xac4c4c, 0xc9c255, 0xcd9f4d, 0x876db3,
+			0x6f9fc4, 0xc77bb1, 0x70c5c8, 0x80bb88, 0xce5e5e, 0xe8e282, 0xedb24a, 0xae97d3,
+			0x6391bc, 0xc77bb1, 0x62b1bc, 0x80bb88, 0xb75454, 0xc9c255, 0xdca94f, 0x997fc4,
+			0x85afd0, 0xc77bb1, 0x8ecfce, 0x80bb88, 0xe47070, 0xc9c255, 0xf7be5a, 0xbeaadf};
 
 	public static final Gson gson=new GsonBuilder()
 			.disableHtmlEscaping()
@@ -964,6 +974,30 @@ public class Utils{
 		}catch(UnknownHostException e){
 			throw new RuntimeException(e); // should never happen
 		}
+	}
+
+	public static JsonArray makeGraphData(List<String> categoryTitles, List<List<StatsPoint>> data, ZoneId userTimeZone){
+		if(categoryTitles.size()!=data.size())
+			throw new IllegalArgumentException("categoryTitles.size != data.size");
+		JsonArrayBuilder bldr=new JsonArrayBuilder();
+		LocalDate today=LocalDate.now(userTimeZone);
+		for(int i=0;i<categoryTitles.size();i++){
+			JsonArrayBuilder d=new JsonArrayBuilder();
+			JsonObjectBuilder obj=new JsonObjectBuilder()
+					.add("name", categoryTitles.get(i))
+					.add("c", GRAPH_COLORS[i%GRAPH_COLORS.length]);
+			for(StatsPoint pt:data.get(i)){
+				JsonArrayBuilder jpt=new JsonArrayBuilder()
+						.add(pt.date().atTime(12, 0, 0).atZone(userTimeZone).toEpochSecond())
+						.add(pt.count());
+				if(pt.date().equals(today))
+					jpt.add("-");
+				d.add(jpt);
+			}
+			obj.add("d", d);
+			bldr.add(obj);
+		}
+		return bldr.build();
 	}
 
 	public interface MentionCallback{
