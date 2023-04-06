@@ -320,6 +320,11 @@ small{
 			overflow-x: auto;
 		}
 	}
+	&.standalone{
+		border-bottom: none;
+		margin-bottom: 0;
+		padding-bottom: 0;
+	}
 }
 
 .post.comment .authorName{
@@ -726,6 +731,13 @@ small{
 	}
 	&:hover .treeIndent{
 		background: svg-load('img/comments_tree_indent.svg', fill: $wallPostSeparator, stroke: $wallPostSeparator) top 14px left -5px repeat-x;
+	}
+	&.first td{
+		border-top: none;
+		padding-top: 0;
+		&.postContentWrap{
+			padding-top: 2px;
+		}
 	}
 }
 
@@ -1727,6 +1739,9 @@ input:checked+.postCWWrap{
 		float: right;
 		padding: 3px 0 4px;
 	}
+	&.noPadTop{
+		padding-top: 0;
+	}
 }
 
 .bottomSummaryWrap, .realBottomSummaryWrap{
@@ -1785,7 +1800,7 @@ textarea{
 	display: block;
 	padding-left: 24px;
 	margin-top: -5px;
-	margin-left: 37px;
+	margin-left: 13px;
 	height: 26px;
 	line-height: 26px;
 	background: svg-load('img/load_replies.svg', stroke: color($iconColor alpha(70%))) no-repeat left center;
@@ -2493,5 +2508,20 @@ label.pretendLink{
 		color: #FFF;
 		backdrop-filter: saturate(180%) blur(3px);
 		pointer-events: all;
+	}
+}
+
+.threadedIndented{
+	padding-left: calc(var(--indent-level) * 16px);
+	position: relative;
+	.depthIndicator{
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: calc(var(--indent-level) * 16px);
+	}
+	&:hover .depthIndicator{
+		background: svg-load('img/comments_tree_indent.svg', fill: $wallPostSeparator, stroke: $wallPostSeparator) center left -5px repeat-x;
 	}
 }

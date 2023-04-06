@@ -513,9 +513,9 @@ public class WallController{
 		}
 	}
 
-	public List<Post> getReplies(int[] key){
+	public PaginatedList<Post> getReplies(int[] key, int primaryOffset, int primaryCount, int secondaryCount){
 		try{
-			return PostStorage.getReplies(key);
+			return PostStorage.getRepliesThreaded(key, primaryOffset, primaryCount, secondaryCount);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

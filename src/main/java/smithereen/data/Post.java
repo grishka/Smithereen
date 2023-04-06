@@ -67,6 +67,8 @@ public class Post extends ActivityPubObject{
 	public FederationState federationState;
 
 	private ActivityPubObject activityPubTarget;
+	private boolean loadedRepliesCountKnown;
+	private int loadedRepliesCount;
 
 	public static Post fromResultSet(ResultSet res) throws SQLException{
 		Post post=new Post();
@@ -518,5 +520,28 @@ public class Post extends ActivityPubObject{
 		if(replies.link!=null)
 			return replies.link;
 		return replies.object.activityPubID;
+	}
+
+	public int getMissingRepliesCount(){
+		return replyCount-getLoadedRepliesCount();
+	}
+
+	public int getLoadedRepliesCount(){
+		if(loadedRepliesCountKnown)
+			return loadedRepliesCount;
+		loadedRepliesCount=0;
+		for(Post reply:repliesObjects){
+			loadedRepliesCount+=reply.getLoadedRepliesCount()+1;
+		}
+		loadedRepliesCountKnown=true;
+		return loadedRepliesCount;
+	}
+
+	public int getLoadableRepliesCount(){
+		int count=replyCount;
+		for(Post reply:repliesObjects){
+			count-=reply.replyCount+1;
+		}
+		return count;
 	}
 }

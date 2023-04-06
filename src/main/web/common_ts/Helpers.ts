@@ -809,12 +809,12 @@ function loadOlderComments(id:number){
 	return false;
 }
 
-function loadCommentBranch(id:number){
+function loadCommentBranch(id:number, offset:number){
 	var btn=ge("loadRepliesLink"+id);
 	var loader=ge("repliesLoader"+id);
 	btn.hide();
 	loader.show();
-	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentBranch", null, ()=>{
+	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentBranch?offset="+(offset || 0), null, ()=>{
 		btn.show();
 		loader.hide();
 	});

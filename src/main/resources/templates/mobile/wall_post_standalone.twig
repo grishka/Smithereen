@@ -40,10 +40,11 @@
 			{% endif %}
 		</ul>
 <div id="postReplies{{post.id}}">
-	{%for reply in post.repliesObjects%}
-		{%include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentPost#{post.id}"}%}
-	{%endfor%}
+	{% for reply in items %}
+		{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentPost#{post.id}"} %}
+	{% endfor %}
 </div>
+{% include "pagination" %}
 {%if currentUser is not null%}
 	{% include "comment_form" with {'id': "commentPost#{post.id}", 'replyTo': post} %}
 {%endif%}

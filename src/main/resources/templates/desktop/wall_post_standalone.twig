@@ -13,9 +13,15 @@
 	<a href="/posts/{{ post.replyKey[0] }}">Top-level</a><br/>
 {%endif%}
 {% include "wall_post" with {'standalone': true} %}
-<div id="postReplies{{post.id}}">{%for reply in post.repliesObjects%}
-{%include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.id}"}%}
-{%endfor%}</div>
+</div>
+<div class="summaryWrap noPadTop">
+	<div class="summary">{{ L('X_comments', {'count': post.replyCount}) }}</div>
+	{% include "pagination" %}
+</div>
+<div id="postReplies{{post.id}}" class="singleColumn">
+	{%- for reply in items %}
+	{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.id}", 'first': loop.first} %}
+	{% endfor -%}
 </div>
 {%if currentUser is not null%}
 {% include "wall_post_form" with {'id': "commentReplyPost#{post.id}", 'replyTo': post, 'hidden': true} %}

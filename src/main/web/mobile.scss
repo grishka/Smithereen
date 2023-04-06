@@ -1438,3 +1438,20 @@ input.searchField{
 		pointer-events: all;
 	}
 }
+
+.threadedIndented{
+	padding-left: calc(var(--indent-level) * 16px);
+}
+
+.loadRepliesLink{
+	display: block;
+	padding-left: 24px;
+	height: 32px;
+	line-height: 32px;
+	background: svg-load('img/load_replies.svg', stroke: color($iconColor alpha(70%))) no-repeat left center;
+	background-size: 16px;
+	margin: 8px 12px 0;
+	.loader{
+		display: inline-block;
+	}
+}

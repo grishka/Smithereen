@@ -5,9 +5,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -28,6 +25,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.Config;
 import smithereen.activitypub.objects.activities.Like;
@@ -148,7 +146,7 @@ public class PostStorage{
 		return pollID;
 	}
 
-	public static void putForeignWallPost(Post post) throws SQLException{
+	public static synchronized void putForeignWallPost(Post post) throws SQLException{
 		Post existing=getPostByID(post.activityPubID);
 		Connection conn=DatabaseConnectionManager.getConnection();
 
@@ -589,30 +587,52 @@ public class PostStorage{
 		return map;
 	}
 
-	public static List<Post> getReplies(int[] prefix) throws SQLException{
+	public static PaginatedList<Post> getRepliesThreaded(int[] prefix, int topLevelOffset, int topLevelLimit, int secondaryLimit) throws SQLException{
 		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `reply_key` LIKE BINARY bin_prefix(?) ESCAPE CHAR(255) ORDER BY `reply_key` ASC, `created_at` ASC LIMIT 100");
-		byte[] replyKey;
-		ByteArrayOutputStream b=new ByteArrayOutputStream(prefix.length*4);
-		try{
-			DataOutputStream o=new DataOutputStream(b);
-			for(int id:prefix)
-				o.writeInt(id);
-		}catch(IOException ignore){}
-		replyKey=b.toByteArray();
-		stmt.setBytes(1, replyKey);
-		ArrayList<Post> posts=new ArrayList<>();
-		HashMap<Integer, Post> postMap=new HashMap<>();
-		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				do{
-					Post post=Post.fromResultSet(res);
-					postMap.put(post.id, post);
-					posts.add(post);
-				}while(res.next());
+
+		byte[] serializedPrefix=Utils.serializeIntArray(prefix);
+
+		int total=new SQLQueryBuilder(conn)
+				.selectFrom("wall_posts")
+				.count()
+				.where("reply_key=?", (Object) serializedPrefix)
+				.executeAndGetInt();
+
+		if(total==0)
+			return PaginatedList.emptyList(topLevelLimit);
+
+		List<Post> posts=new SQLQueryBuilder(conn)
+				.selectFrom("wall_posts")
+				.allColumns()
+				.where("reply_key=?", (Object) serializedPrefix)
+				.limit(topLevelLimit, topLevelOffset)
+				.orderBy("created_at ASC")
+				.executeAsStream(Post::fromResultSet)
+				.collect(Collectors.toList());
+
+		int repliesOffset;
+		if(topLevelOffset>0){
+			try(PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn,
+					"SELECT SUM(reply_count) FROM (SELECT reply_count FROM wall_posts WHERE reply_key=? ORDER BY created_at ASC LIMIT ?) AS subq",
+					serializedPrefix, topLevelOffset)){
+				repliesOffset=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 			}
+		}else{
+			repliesOffset=0;
 		}
-		for(Post post:posts){
+
+		List<Post> replies=new SQLQueryBuilder(conn)
+				.selectFrom("wall_posts")
+				.allColumns()
+				.where("reply_key<>? AND reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)", serializedPrefix, serializedPrefix)
+				.orderBy("LENGTH(reply_key) ASC, created_at ASC")
+				.limit(secondaryLimit, repliesOffset)
+				.executeAsStream(Post::fromResultSet)
+				.toList();
+
+		Map<Integer, Post> postMap=Stream.of(posts, replies).flatMap(List::stream).collect(Collectors.toMap(p->p.id, Function.identity()));
+
+		for(Post post:replies){
 			if(post.getReplyLevel()>prefix.length){
 				Post parent=postMap.get(post.replyKey[post.replyKey.length-1]);
 				if(parent!=null){
@@ -620,9 +640,8 @@ public class PostStorage{
 				}
 			}
 		}
-		posts.removeIf(post->post.getReplyLevel()>prefix.length);
 
-		return posts;
+		return new PaginatedList<>(posts, total, topLevelOffset, topLevelLimit);
 	}
 
 	public static PaginatedList<Post> getRepliesExact(int[] replyKey, int maxID, int limit) throws SQLException{

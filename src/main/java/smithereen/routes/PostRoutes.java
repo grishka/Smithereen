@@ -253,8 +253,11 @@ public class PostRoutes{
 		int[] replyKey=new int[post.replyKey.length+1];
 		System.arraycopy(post.replyKey, 0, replyKey, 0, post.replyKey.length);
 		replyKey[replyKey.length-1]=post.id;
-		post.repliesObjects=ctx.getWallController().getReplies(replyKey);
+
+		int offset=offset(req);
+		PaginatedList<Post> replies=ctx.getWallController().getReplies(replyKey, offset, 100, 50);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone", req);
+		model.paginate(replies);
 		model.with("post", post);
 		model.with("isGroup", post.owner instanceof Group);
 		SessionInfo info=Utils.sessionInfo(req);
@@ -565,17 +568,18 @@ public class PostRoutes{
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
+		int offset=offset(req);
 
 		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
 		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
-		List<Post> comments=ctx.getWallController().getReplies(post.getReplyKeyForReplies());
+		List<Post> comments=ctx.getWallController().getReplies(post.getReplyKeyForReplies(), offset, 100, 50).list;
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments);
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(comments, self!=null ? self.user : null);
 		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
 		return new WebDeltaResponse(resp)
-				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString())
-				.remove("loadRepliesLink"+post.id, "repliesLoader"+post.id);
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+post.id, model.renderToString())
+				.remove("loadRepliesContainer"+post.id);
 	}
 
 	public static Object pollOptionVoters(Request req, Response resp){

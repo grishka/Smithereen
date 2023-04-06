@@ -2,7 +2,7 @@
 {% if postInteractions is not null %}
 {% set interactions=postInteractions[post.id] %}
 {% endif %}
-<table width="100%" cellpadding="0" cellspacing="0" class="post" id="post{{post.id}}">
+<table width="100%" cellpadding="0" cellspacing="0" class="post{{ standalone ? ' standalone' : '' }}" id="post{{post.id}}">
 	<tr>
 		<td width="50" valign="top">
 			<a href="{{post.user.profileURL}}">{{post.user | pictureForAvatar('s')}}</a>
