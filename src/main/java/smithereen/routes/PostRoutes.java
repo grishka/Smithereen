@@ -296,7 +296,10 @@ public class PostRoutes{
 		}
 		ArrayList<Post> postIDs=new ArrayList<>();
 		postIDs.add(post);
-//		post.getAllReplyIDs(postIDs);
+		for(Post reply:replies.list){
+			postIDs.add(reply);
+			reply.getAllReplies(postIDs);
+		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(postIDs, info!=null && info.account!=null ? info.account.user : null);
 		model.with("postInteractions", interactions);
 		if(info==null || info.account==null){
@@ -575,7 +578,12 @@ public class PostRoutes{
 		List<Post> comments=ctx.getWallController().getReplies(post.getReplyKeyForReplies(), offset, 100, 50).list;
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments);
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(comments, self!=null ? self.user : null);
+		ArrayList<Post> allReplies=new ArrayList<>();
+		for(Post comment:comments){
+			allReplies.add(comment);
+			comment.getAllReplies(allReplies);
+		}
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(allReplies, self!=null ? self.user : null);
 		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
 		return new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+post.id, model.renderToString())

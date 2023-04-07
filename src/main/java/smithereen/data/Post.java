@@ -544,4 +544,11 @@ public class Post extends ActivityPubObject{
 		}
 		return count;
 	}
+
+	public void getAllReplies(List<Post> replies){
+		replies.addAll(repliesObjects);
+		for(Post reply:repliesObjects){
+			reply.getAllReplies(replies);
+		}
+	}
 }
