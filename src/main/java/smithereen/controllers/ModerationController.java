@@ -120,6 +120,10 @@ public class ModerationController{
 	public void setViolationReportResolved(ViolationReport report, User moderator){
 		try{
 			ModerationStorage.setViolationReportResolved(report.id, moderator.id);
+			AdminNotifications an=AdminNotifications.getInstance(null);
+			if(an!=null){
+				an.openReportsCount=getViolationReportsCount(true);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
