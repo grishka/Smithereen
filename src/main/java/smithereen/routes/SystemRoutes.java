@@ -450,6 +450,9 @@ public class SystemRoutes{
 		}catch(ObjectNotFoundException x){
 			LOG.debug("Remote object not found", x);
 			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_not_found")).build();
+		}catch(Exception x){
+			LOG.debug("Other remote fetch exception", x);
+			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_load_error")+"\n\n"+x.getMessage()).build();
 		}
 		if(obj instanceof ForeignUser user){
 			obj.storeDependencies(ctx);
