@@ -134,10 +134,7 @@ public class SettingsRoutes{
 			about=preprocessPostHTML(about, null);
 		else
 			about=null;
-		int _gender=parseIntOrDefault(req.queryParams("gender"), 0);
-		if(_gender<0 || _gender>2)
-			_gender=0;
-		User.Gender gender=User.Gender.valueOf(_gender);
+		User.Gender gender=enumValue(req.queryParamOrDefault("gender", "UNKNOWN"), User.Gender.class);
 		LocalDate bdate=self.user.birthDate;
 		String _bdate=req.queryParams("bdate");
 		if(_bdate!=null){

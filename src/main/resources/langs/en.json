@@ -691,5 +691,6 @@
   "server_stats_activities_received": "Activities received",
   "server_stats_delivery_errors": "Delivery errors",
   "X_comments": "{count, plural, =0 {No comments} one {# comment} other {# comments}}",
-  "comments_show_X_more_replies": "Show {count, plural, one {# more reply} other {# more replies}}"
+  "comments_show_X_more_replies": "Show {count, plural, one {# more reply} other {# more replies}}",
+  "gender_other": "other"
 }

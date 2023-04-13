@@ -22,7 +22,7 @@ public class SelectFormatterNode extends FormatterNode{
 		String arg;
 		if(_arg instanceof User.Gender g){
 			arg=switch(g){
-				case UNKNOWN -> "other";
+				case UNKNOWN, OTHER -> "other";
 				case MALE -> "male";
 				case FEMALE -> "female";
 			};

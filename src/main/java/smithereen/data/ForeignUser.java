@@ -128,6 +128,7 @@ public class ForeignUser extends User implements ForeignActor{
 			gender=switch(obj.get("gender").getAsString()){
 				case "sc:Male", JLD.SCHEMA_ORG+"Male" -> Gender.MALE;
 				case "sc:Female", JLD.SCHEMA_ORG+"Female" -> Gender.FEMALE;
+				case "sc:Other", JLD.SCHEMA_ORG+"Other" -> Gender.OTHER;
 				default -> Gender.UNKNOWN;
 			};
 		}else{
