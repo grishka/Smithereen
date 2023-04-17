@@ -1,5 +1,7 @@
 # Smithereen
 
+[![SMITHEREEN}(./smithereen.jpg)]
+
 [![Crowdin](https://badges.crowdin.net/smithereen/localized.svg)](https://crowdin.com/project/smithereen)
 
 Federated, ActivityPub-compatible social network with friends, walls, and groups.
