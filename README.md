@@ -1,6 +1,6 @@
 # Smithereen
 
-[![SMITHEREEN}(./smithereen.jpg)]
+![SMITHEREEN](./smithereen.jpg)
 
 [![Crowdin](https://badges.crowdin.net/smithereen/localized.svg)](https://crowdin.com/project/smithereen)
 
