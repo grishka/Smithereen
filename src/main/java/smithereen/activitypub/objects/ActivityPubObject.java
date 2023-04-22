@@ -31,6 +31,7 @@ import smithereen.activitypub.objects.activities.Announce;
 import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.activitypub.objects.activities.Delete;
+import smithereen.activitypub.objects.activities.Flag;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Join;
@@ -185,7 +186,7 @@ public abstract class ActivityPubObject{
 		}
 	}
 
-	protected URI tryParseURL(String url){
+	protected static URI tryParseURL(String url){
 		if(url==null || url.isEmpty())
 			return null;
 		try{
@@ -542,7 +543,7 @@ public abstract class ActivityPubObject{
 		ActivityPubObject res=switch(type){
 			// Actors
 			case "Person" -> new ForeignUser();
-			case "Service", "Application" -> obj.has("id") ? new ForeignUser() : new Service();
+			case "Service", "Application" -> obj.has("id") ? new ForeignUser(type.equals("Application")) : new Service();
 			case "Group", "Organization" -> new ForeignGroup();
 
 			// Objects
@@ -580,6 +581,7 @@ public abstract class ActivityPubObject{
 			case "Block" -> new Block();
 			case "Invite" -> new Invite();
 			case "Remove" -> new Remove();
+			case "Flag" -> new Flag();
 
 			default -> {
 				LOG.debug("Unknown object type {}", type);

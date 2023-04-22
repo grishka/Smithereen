@@ -1,0 +1,41 @@
+{# @pebvariable name="server" type="smithereen.data.Server" #}
+{% extends "page" %}
+{% block content %}
+<div class="singleColumn">
+	<h2>{{ server.host }}</h2>
+	{% if not mobile %}
+	<h3 class="marginBefore">{{ L('statistics') }}</h3>
+	<div class="marginBefore" id="serverStatsGraph" data-graph-data="{{ graphData }}"></div>
+	{% script %}renderGraph("serverStatsGraph");{% endscript %}
+	{% endif %}
+	<h3 class="marginBefore">{{ L('server_restrictions') }}</h3>
+	<div class="marginBefore">
+		{% if server.restriction is null %}
+		{{ L('server_restrictions_none') }}
+		{% else %}
+		<div>{{ L('server_restrictions_suspended') }}</div>
+		<div class="marginBefore"><b><a href="{{ users[server.restriction.moderatorId].profileURL }}">{{ users[server.restriction.moderatorId].fullName }}</a> {{ LD(server.restriction.createdAt) }}</b>{% if server.restriction.privateComment is not null %}: {{ server.restriction.privateComment }}{% endif %}</div>
+		{% endif %}
+	</div>
+	<div class="marginBefore">
+		<a class="button" href="/settings/admin/federation/{{ server.host }}/restrictionForm" data-ajax-box>{{ L('server_restrictions_change') }}</a>
+	</div>
+	<h3 class="marginBefore">{{ L('server_availability') }}</h3>
+	<div class="marginBefore">{{ L('server_availability_explain') }}</div>
+	<div class="marginBefore forceLineHeight">
+		{% if server.availability=='UP' %}
+		✅ {{ L('server_availability_up') }}
+		{% elseif server.availability=='FAILING' %}
+		⚠️ {{ L('server_availability_failing', {'days': 7-server.errorDayCount, 'lastErrorDate': LD(server.lastErrorDay)}) }}
+		{% else %}
+		🚫 {{ L('server_availability_down') }}
+		<a href="/settings/admin/federation/{{ server.host }}/resetAvailability?csrf={{ csrf }}" data-ajax-box>{{ L('server_reset_availability') }}</a>
+		{% endif %}
+	</div>
+</div>
+{% endblock %}
+{% block extraScripts %}
+{%- if not mobile %}
+<script src="/res/graph.js?{{ staticHashes['graph.js'] }}"></script>
+{% endif -%}
+{% endblock %}

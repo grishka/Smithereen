@@ -2,6 +2,7 @@
 {# @pebvariable name="adminNotifications" type="smithereen.data.AdminNotifications" #}
 {# @pebvariable name="birthdayUsers" type="smithereen.data.User[]" #}
 {# @pebvariable name="eventReminderEvents" type="smithereen.data.Group[]" #}
+{# @pebvariable name="userPermissions" type="smithereen.data.UserPermissions" #}
 {% macro menuCounter(count) %}{% if count>0 %} (<b>{{ count | numberformat }}</b>){% endif %}{% endmacro %}
 <ul class="actionList">
 	{% if currentUser is not null %}
@@ -12,16 +13,17 @@
 	<li><a href="/feed">{{L('menu_news')}}</a></li>
 	<li><a href="/my/notifications">{{L('menu_notifications')}}{{ menuCounter(userNotifications.newNotificationsCount) }}</a></li>
 	<li><a href="/settings/">{{L('menu_settings')}}</a></li>
-	{%if userPermissions.serverAccessLevel.ordinal>=3%}
+	{% if userPermissions.serverAccessLevel.ordinal>=2 %}
 	<li class="separator"></li>
-	<li><a href="/settings/admin">{{L('menu_admin')}}</a></li>
-	{% if not isMobile and (serverSignupMode=='MANUAL_APPROVAL' or adminNotifications.signupRequestsCount>0) %}<li><a href="/settings/admin/signupRequests">{{ L('menu_signup_requests') }}{{ menuCounter(adminNotifications.signupRequestsCount) }}</a></li>{% endif %}
-	{%endif%}
+	{% if userPermissions.serverAccessLevel.ordinal>=3 %}<li><a href="/settings/admin">{{L('menu_admin')}}</a></li>{% endif %}
+	{% if serverSignupMode=='MANUAL_APPROVAL' or adminNotifications.signupRequestsCount>0 %}<li><a href="/settings/admin/signupRequests">{{ L('menu_signup_requests') }}{{ menuCounter(adminNotifications.signupRequestsCount) }}</a></li>{% endif %}
+	<li><a href="/settings/admin/reports">{{ L('menu_reports') }}{{ menuCounter(adminNotifications.openReportsCount) }}</a></li>
+	{% endif %}
 	{% else %}
 	<li><a href="/account/login">{{ L('log_in') }}</a></li>
 	<li><a href="/account/register">{{ L('register') }}</a></li>
 	{%endif%}
-	{% if isMobile %}
+	{% if isMobile and currentUser is not null %}
 	<li class="separator"></li>
 	{% if userPermissions.canInviteNewUsers %}<li><a href="/settings/invites">{{ L('invite_users') }}</a></li>{% endif %}
 	<li><a href="/account/logout?csrf={{ csrf }}">{{ L('log_out') }}</a></li>

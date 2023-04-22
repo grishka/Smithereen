@@ -2,16 +2,17 @@ package smithereen;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Attribute;
-import org.jsoup.nodes.Comment;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.Parser;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Whitelist;
 import org.jsoup.select.NodeVisitor;
@@ -49,7 +50,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -63,6 +63,8 @@ import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.SessionInfo;
+import smithereen.data.StatsPoint;
+import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
@@ -73,6 +75,8 @@ import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.InstantMillisJsonAdapter;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.LocaleJsonAdapter;
 import smithereen.util.TimeZoneJsonAdapter;
 import smithereen.util.TopLevelDomainList;
@@ -96,11 +100,16 @@ public class Utils{
 	private static final String IDN_VALID_CHAR_REGEX="[[\\u00B7\\u0375\\u05F3\\u05F4\\u30FB\\u002D\\u06FD\\u06FE\\u0F0B\\u3007\\u00DF\\u03C2\\u200C\\u200D][^\\p{IsControl}\\p{IsWhite_Space}\\p{gc=S}\\p{IsPunctuation}\\p{gc=Nl}\\p{gc=No}\\p{gc=Me}\\p{blk=Combining_Diacritical_Marks}\\p{blk=Musical_Symbols}\\p{block=Ancient_Greek_Musical_Notation}\\u0640\\u07FA\\u302E\\u302F\\u3031-\\u3035\\u303B]]";
 	// A domain must be at least 2 (possibly IDN) labels
 	private static final String IDN_DOMAIN_REGEX=IDN_VALID_CHAR_REGEX+"+(?:\\."+IDN_VALID_CHAR_REGEX+"+)+";
-	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))*)*)(\\?(?:\\w+(?:=(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
+	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))*)*)(\\?(?:\\w+(?:=(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
 	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@("+IDN_DOMAIN_REGEX+"))?");
 	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@("+IDN_DOMAIN_REGEX+")");
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([!#$%^'*+\\-.^_`|~0-9A-Za-z]+)=(?:(?:\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\")|([!#$%^'*+\\-.^_`|~0-9A-Za-z]+))\\s*([,;])?\\s*");
 	private static final Pattern NON_ASCII_PATTERN=Pattern.compile("\\P{ASCII}");
+
+	private static final int[] GRAPH_COLORS={0x597da3, 0xb05c91, 0x4d9fab, 0x569567, 0xac4c4c, 0xc9c255, 0xcd9f4d, 0x876db3,
+			0x6f9fc4, 0xc77bb1, 0x70c5c8, 0x80bb88, 0xce5e5e, 0xe8e282, 0xedb24a, 0xae97d3,
+			0x6391bc, 0xc77bb1, 0x62b1bc, 0x80bb88, 0xb75454, 0xc9c255, 0xdca94f, 0x997fc4,
+			0x85afd0, 0xc77bb1, 0x8ecfce, 0x80bb88, 0xe47070, 0xc9c255, 0xf7be5a, 0xbeaadf};
 
 	public static final Gson gson=new GsonBuilder()
 			.disableHtmlEscaping()
@@ -231,11 +240,9 @@ public class Utils{
 	}
 
 	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, String formID, List<String> fieldNames, Function<String, String> fieldValueGetter, String message){
-		if(isAjax(req)){
+		if(isAjax(req) && StringUtils.isNotEmpty(message)){
 			WebDeltaResponse wdr=new WebDeltaResponse(resp);
-			if(StringUtils.isNotEmpty(message)){
-				wdr.keepBox().show("formMessage_"+formID).setContent("formMessage_"+formID, escapeHTML(message));
-			}
+			wdr.keepBox().show("formMessage_"+formID).setContent("formMessage_"+formID, escapeHTML(message));
 			return wdr;
 		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse(templateName, req);
@@ -326,11 +333,62 @@ public class Utils{
 	}
 
 	public static String sanitizeHTML(String src){
-		return Jsoup.clean(src, HTML_SANITIZER);
+		return sanitizeHTML(src, null);
 	}
 
 	public static String sanitizeHTML(String src, URI documentLocation){
-		return Jsoup.clean(src, documentLocation.toString(), HTML_SANITIZER);
+		Cleaner cleaner=new Cleaner(HTML_SANITIZER);
+		Document doc=Parser.parseBodyFragment(src, Objects.toString(documentLocation, ""));
+		doc.body().traverse(new NodeVisitor(){
+			private final LinkedList<ListNodeInfo> listStack=new LinkedList<>();
+
+			@Override
+			public void head(Node node, int depth){
+				if(node instanceof Element el){
+					if("ul".equals(el.tagName()) || "ol".equals(el.tagName())){
+						listStack.push(new ListNodeInfo("ol".equals(el.tagName()), el));
+						el.tagName("p");
+					}else if("li".equals(el.tagName()) && !listStack.isEmpty()){
+						ListNodeInfo info=listStack.peek();
+						String prefix="  ".repeat(listStack.size()-1);
+						if(info.isOrdered){
+							prefix+=info.currentIndex+". ";
+							info.currentIndex++;
+						}else{
+							prefix+="- ";
+						}
+						el.prependText(prefix);
+						if(el.nextSibling()!=null){
+							el.appendChild(doc.createElement("br"));
+						}
+					}else if("blockquote".equals(el.tagName())){
+						el.tagName("p");
+						el.prependText("> ");
+					}
+				}
+			}
+
+			@Override
+			public void tail(Node node, int depth){
+				if(node instanceof Element el && !listStack.isEmpty() && listStack.peek().element==el){
+					listStack.pop();
+				}
+			}
+
+			private class ListNodeInfo{
+				final boolean isOrdered;
+				final Element element;
+				int currentIndex=1;
+
+				private ListNodeInfo(boolean isOrdered, Element element){
+					this.isOrdered=isOrdered;
+					this.element=element;
+				}
+			}
+		});
+		doc.getElementsByTag("li").forEach(Element::unwrap);
+		doc.normalise();
+		return cleaner.clean(doc).body().html();
 	}
 
 	public static String formatDateAsISO(Instant date){
@@ -940,6 +998,18 @@ public class Utils{
 		return root.html();
 	}
 
+	public static String getRequestPathAndQuery(Request req){
+		String path=req.pathInfo();
+		String query=req.queryString();
+		if(StringUtils.isNotEmpty(query)){
+			path+="?"+query;
+			if(query.contains("_ajax=1")){
+				path=new UriBuilder(path).removeQueryParam("_ajax").build().toString();
+			}
+		}
+		return path;
+	}
+
 	public static InetAddress getRequestIP(Request req){
 		String forwardedFor=req.headers("X-Forwarded-For");
 		String ip;
@@ -953,6 +1023,30 @@ public class Utils{
 		}catch(UnknownHostException e){
 			throw new RuntimeException(e); // should never happen
 		}
+	}
+
+	public static JsonArray makeGraphData(List<String> categoryTitles, List<List<StatsPoint>> data, ZoneId userTimeZone){
+		if(categoryTitles.size()!=data.size())
+			throw new IllegalArgumentException("categoryTitles.size != data.size");
+		JsonArrayBuilder bldr=new JsonArrayBuilder();
+		LocalDate today=LocalDate.now(userTimeZone);
+		for(int i=0;i<categoryTitles.size();i++){
+			JsonArrayBuilder d=new JsonArrayBuilder();
+			JsonObjectBuilder obj=new JsonObjectBuilder()
+					.add("name", categoryTitles.get(i))
+					.add("c", GRAPH_COLORS[i%GRAPH_COLORS.length]);
+			for(StatsPoint pt:data.get(i)){
+				JsonArrayBuilder jpt=new JsonArrayBuilder()
+						.add(pt.date().atTime(12, 0, 0).atZone(userTimeZone).toEpochSecond())
+						.add(pt.count());
+				if(pt.date().equals(today))
+					jpt.add("-");
+				d.add(jpt);
+			}
+			obj.add("d", d);
+			bldr.add(obj);
+		}
+		return bldr.build();
 	}
 
 	public interface MentionCallback{

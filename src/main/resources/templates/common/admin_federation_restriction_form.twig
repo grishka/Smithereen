@@ -1,0 +1,9 @@
+{% import "forms" as form %}
+{{ form.start("federationRestriction") }}
+	{{ form.radioGroup('type', '', [
+		{'value': 'NONE', 'label': L('federation_no_restrictions'), 'selected': type=='NONE'},
+		{'value': 'SUSPENSION', 'label': L('federation_suspend'), 'explanation': L('federation_suspend_explain'), 'selected': type=='SUSPENSION'}
+	]) }}
+	{{ form.textInput('publicComment', L('federation_restriction_public_comment'), publicComment, {'explanation': L('federation_restriction_public_comment_explain'), 'required': true}) }}
+	{{ form.textInput('privateComment', L('federation_restriction_private_comment'), privateComment, {'explanation': L('federation_restriction_private_comment_explain')}) }}
+{{ form.end() }}

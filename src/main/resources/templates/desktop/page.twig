@@ -105,6 +105,7 @@
 	</div>
 </a>
 <script src="/res/common.js?{{ staticHashes['common.js'] }}"></script>
+{% block extraScripts %}{% endblock %}
 {% if _bottomScripts is not empty %}
 <script>
 {{ _bottomScripts | raw }}

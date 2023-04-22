@@ -621,6 +621,9 @@ public class UserStorage{
 	}
 
 	public static synchronized int putOrUpdateForeignUser(ForeignUser user) throws SQLException{
+		if(user.isServiceActor)
+			throw new IllegalArgumentException("Can't store a service actor as a user");
+
 		Connection conn=DatabaseConnectionManager.getConnection();
 		PreparedStatement stmt=new SQLQueryBuilder(conn)
 				.selectFrom("users")

@@ -34,6 +34,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
+import smithereen.data.ViolationReport;
 import smithereen.data.WebDeltaResponse;
 import smithereen.data.attachments.Attachment;
 import smithereen.data.attachments.PhotoAttachment;
@@ -252,8 +253,11 @@ public class PostRoutes{
 		int[] replyKey=new int[post.replyKey.length+1];
 		System.arraycopy(post.replyKey, 0, replyKey, 0, post.replyKey.length);
 		replyKey[replyKey.length-1]=post.id;
-		post.repliesObjects=ctx.getWallController().getReplies(replyKey);
+
+		int offset=offset(req);
+		PaginatedList<Post> replies=ctx.getWallController().getReplies(replyKey, offset, 100, 50);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone", req);
+		model.paginate(replies);
 		model.with("post", post);
 		model.with("isGroup", post.owner instanceof Group);
 		SessionInfo info=Utils.sessionInfo(req);
@@ -265,13 +269,37 @@ public class PostRoutes{
 			}
 			self=info.account.user;
 		}
-		context(req).getPrivacyController().enforceObjectPrivacy(self, post);
+
+		boolean canOverridePrivacy=false;
+		if(self!=null && info.permissions.serverAccessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal()){
+			int reportID=safeParseInt(req.queryParams("report"));
+			if(reportID!=0){
+				try{
+					ViolationReport report=ctx.getModerationController().getViolationReportByID(reportID);
+					canOverridePrivacy=report.contentType==ViolationReport.ContentType.POST && report.contentID==postID;
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
+
+		if(canOverridePrivacy){
+			try{
+				ctx.getPrivacyController().enforceObjectPrivacy(self, post);
+			}catch(UserActionNotAllowedException x){
+				model.with("privacyOverridden", true);
+			}
+		}else{
+			ctx.getPrivacyController().enforceObjectPrivacy(self, post);
+		}
+
 		if(post.replyKey.length>0){
 			model.with("prefilledPostText", post.user.getNameForReply()+", ");
 		}
 		ArrayList<Post> postIDs=new ArrayList<>();
 		postIDs.add(post);
-//		post.getAllReplyIDs(postIDs);
+		for(Post reply:replies.list){
+			postIDs.add(reply);
+			reply.getAllReplies(postIDs);
+		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(postIDs, info!=null && info.account!=null ? info.account.user : null);
 		model.with("postInteractions", interactions);
 		if(info==null || info.account==null){
@@ -543,17 +571,23 @@ public class PostRoutes{
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
+		int offset=offset(req);
 
 		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
 		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
-		List<Post> comments=ctx.getWallController().getReplies(post.getReplyKeyForReplies());
+		List<Post> comments=ctx.getWallController().getReplies(post.getReplyKeyForReplies(), offset, 100, 50).list;
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments);
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(comments, self!=null ? self.user : null);
+		ArrayList<Post> allReplies=new ArrayList<>();
+		for(Post comment:comments){
+			allReplies.add(comment);
+			comment.getAllReplies(allReplies);
+		}
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(allReplies, self!=null ? self.user : null);
 		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
 		return new WebDeltaResponse(resp)
-				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString())
-				.remove("loadRepliesLink"+post.id, "repliesLoader"+post.id);
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+post.id, model.renderToString())
+				.remove("loadRepliesContainer"+post.id);
 	}
 
 	public static Object pollOptionVoters(Request req, Response resp){

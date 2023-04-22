@@ -57,11 +57,12 @@ import okhttp3.ResponseBody;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.activitypub.objects.CollectionQueryResult;
-import smithereen.controllers.ObjectLinkResolver;
+import smithereen.data.FederationRestriction;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
-import smithereen.data.User;
+import smithereen.data.Server;
+import smithereen.data.StatsType;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -90,7 +91,6 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.context;
 import static smithereen.Utils.escapeHTML;
 import static smithereen.Utils.formatDateAsISO;
-import static smithereen.Utils.isActivityPub;
 import static smithereen.Utils.parseSignatureHeader;
 
 public class ActivityPub{
@@ -110,7 +110,7 @@ public class ActivityPub{
 				.build();
 	}
 
-	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken) throws IOException{
+	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx) throws IOException{
 		URI uri;
 		String token;
 		if("bear".equals(_uri.getScheme())){
@@ -127,6 +127,15 @@ public class ActivityPub{
 			throw new IllegalStateException("Local URI in fetchRemoteObject: "+_uri);
 		if(!"https".equals(uri.getScheme()) && !"http".equals(uri.getScheme()))
 			throw new IllegalStateException("Invalid URI scheme in fetchRemoteObject: "+uri);
+
+		Server server=ctx.getModerationController().getOrAddServer(uri.getAuthority());
+		FederationRestriction restriction=server.restriction();
+		if(restriction!=null){
+			if(restriction.type==FederationRestriction.RestrictionType.SUSPENSION){
+				throw new ObjectNotFoundException("Federation with "+server.host()+" is blocked by this server's policies");
+			}
+		}
+
 		Request.Builder builder=new Request.Builder()
 				.url(uri.toString())
 				.header("Accept", CONTENT_TYPE);
@@ -205,16 +214,48 @@ public class ActivityPub{
 		return builder;
 	}
 
-	public static void postActivity(URI inboxUrl, Activity activity, Actor actor) throws IOException{
+	public static void postActivity(URI inboxUrl, Activity activity, Actor actor, ApplicationContext ctx, boolean isRetry) throws IOException{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
+
+		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
+		if(server.getAvailability()==Server.Availability.DOWN){
+			LOG.info("Not sending {} activity to server {} because it's down", activity.getType(), server.host());
+			return;
+		}
+		if(server.restriction()!=null){
+			if(server.restriction().type==FederationRestriction.RestrictionType.SUSPENSION){
+				LOG.info("Not sending {} activity to server {} because federation with it is blocked", activity.getType(), server.host());
+				return;
+			}
+		}
+
 		JsonObject body=activity.asRootActivityPubObject();
 		LinkedDataSignatures.sign(body, actor.privateKey, actor.activityPubID+"#main-key");
 		LOG.info("Sending activity: {}", body);
-		postActivity(inboxUrl, body.toString(), actor);
+		postActivityInternal(inboxUrl, body.toString(), actor, server, ctx, isRetry);
 	}
 
-	public static void postActivity(URI inboxUrl, String activityJson, Actor actor) throws IOException{
+	public static void postActivity(URI inboxUrl, String activityJson, Actor actor, ApplicationContext ctx) throws IOException{
+		if(actor.privateKey==null)
+			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
+
+		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
+		if(server.getAvailability()==Server.Availability.DOWN){
+			LOG.info("Not forwarding activity to server {} because it's down", server.host());
+			return;
+		}
+		if(server.restriction()!=null){
+			if(server.restriction().type==FederationRestriction.RestrictionType.SUSPENSION){
+				LOG.info("Not forwarding activity to server {} because federation with it is blocked", server.host());
+				return;
+			}
+		}
+
+		postActivityInternal(inboxUrl, activityJson, actor, server, ctx, false);
+	}
+
+	private static void postActivityInternal(URI inboxUrl, String activityJson, Actor actor, Server server, ApplicationContext ctx, boolean isRetry) throws IOException{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 
@@ -225,11 +266,31 @@ public class ActivityPub{
 					.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), body)),
 				inboxUrl, actor, body, "post")
 				.build();
-		Response resp=httpClient.newCall(req).execute();
-		LOG.info("Post activity response: {}", resp);
-		try(ResponseBody rb=resp.body()){
-			if(!resp.isSuccessful())
-				LOG.info("Response body: {}", rb.string());
+		try{
+			Response resp=httpClient.newCall(req).execute();
+			LOG.info("Post activity response: {}", resp);
+			try(ResponseBody rb=resp.body()){
+				if(!resp.isSuccessful()){
+					LOG.info("Response body: {}", rb.string());
+					if(resp.code()!=403){
+						if(resp.code()/100==5){ // IOException does trigger retrying, FederationException does not. We want retries for 5xx (server) errors.
+							throw new IOException("Response is not successful: "+resp.code());
+						}else{
+							throw new FederationException("Response is not successful: "+resp.code());
+						}
+					}
+				}
+			}
+			ctx.getStatsController().incrementDaily(StatsType.SERVER_ACTIVITIES_SENT, server.id());
+			if(server.getAvailability()!=Server.Availability.UP){
+				ctx.getModerationController().resetServerAvailability(server);
+			}
+		}catch(IOException x){
+			if(!isRetry){
+				ctx.getModerationController().recordFederationFailure(server);
+				ctx.getStatsController().incrementDaily(StatsType.SERVER_ACTIVITIES_FAILED_ATTEMPTS, server.id());
+			}
+			throw x;
 		}
 	}
 

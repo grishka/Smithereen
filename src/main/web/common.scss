@@ -125,6 +125,7 @@ $likeIconColor: rgb(219, 216, 173);
 
 *{
 	box-sizing: border-box;
+	overflow-wrap: break-word;
 }
 
 
@@ -301,20 +302,7 @@ a, a:link, a:visited, .link{
 #layerContainer{
 	width: 100%;
 	height: 100%;
-	pointer-events: none;
 	z-index: 110;
-}
-
-.layerContent{
-	overflow-y: scroll;
-	max-height: 100%;
-	height: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	/*>div{
-		margin: auto;
-	}*/
 }
 
 input[type=text], input[type=password], input[type=email], input[type=date], input[type=time], input[type=number], textarea, select, .prefixedInput{
@@ -659,14 +647,14 @@ input[type=checkbox]{
 	bottom: 0;
 	left: 0;
 	display: flex;
-	align-items: center;
 	justify-content: center;
 	>div{
 		width: 100px;
 		height: 50px;
-		background: rgba(0,0,0,.7) svg-load('img/loading_anim.svg', fill: #fff) no-repeat center;
+		background: rgba(0,0,0,.75) svg-load('img/loading_anim.svg', fill: #fff) no-repeat center;
 		background-size: 64px 16px;
 		border-radius: 5px;
+		backdrop-filter: saturate(180%) blur(3px);
 		@include layer-shadow;
 	}
 }
@@ -813,4 +801,26 @@ small{
 
 .disableSelection{
 	user-select: none;
+}
+
+.adminInfoGrid{
+	display: grid;
+	>*{
+		/* I hate that I have to do this shit to tell it to disregard any intrinsic sizes */
+		min-width: 0;
+		overflow-x: hidden;
+	}
+}
+
+.smallMarginRight{
+	margin-right: $smallPadding;
+}
+
+.flexButtons{
+	display: flex;
+	flex-wrap: wrap;
+	margin: -$smallPadding 0 0 -$smallPadding;
+	>*{
+		margin: $smallPadding 0 0 $smallPadding;
+	}
 }

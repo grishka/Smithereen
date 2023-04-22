@@ -180,7 +180,7 @@ public class WallController{
 				System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
 				replyKey[replyKey.length-1]=parent.id;
 				Post topLevel;
-				if(parent.replyKey.length>1){
+				if(parent.replyKey.length>0){
 					topLevel=PostStorage.getPostByID(parent.replyKey[0], false);
 					if(topLevel!=null && !mentionedUsers.contains(topLevel.user))
 						mentionedUsers.add(topLevel.user);
@@ -504,6 +504,8 @@ public class WallController{
 	}
 
 	public Map<Integer, Post> getPosts(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
 		try{
 			return PostStorage.getPostsByID(ids);
 		}catch(SQLException x){
@@ -511,9 +513,9 @@ public class WallController{
 		}
 	}
 
-	public List<Post> getReplies(int[] key){
+	public PaginatedList<Post> getReplies(int[] key, int primaryOffset, int primaryCount, int secondaryCount){
 		try{
-			return PostStorage.getReplies(key);
+			return PostStorage.getRepliesThreaded(key, primaryOffset, primaryCount, secondaryCount);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -528,10 +530,20 @@ public class WallController{
 	}
 
 	public void deletePost(@NotNull SessionInfo info, Post post){
+		deletePostInternal(info, post, false);
+	}
+
+	public void deletePostAsServerModerator(@NotNull SessionInfo info, Post post){
+		deletePostInternal(info, post, true);
+	}
+
+	private void deletePostInternal(@NotNull SessionInfo info, Post post, boolean ignorePermissions){
 		try{
-			context.getPrivacyController().enforceObjectPrivacy(info.account.user, post);
-			if(!info.permissions.canDeletePost(post)){
-				throw new UserActionNotAllowedException();
+			if(!ignorePermissions){
+				context.getPrivacyController().enforceObjectPrivacy(info.account.user, post);
+				if(!info.permissions.canDeletePost(post)){
+					throw new UserActionNotAllowedException();
+				}
 			}
 			PostStorage.deletePost(post.id);
 			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
@@ -553,6 +565,26 @@ public class WallController{
 	public List<User> getPollOptionVoters(PollOption option, int offset, int count){
 		try{
 			return UserStorage.getByIdAsList(PostStorage.getPollOptionVoters(option.id, offset, count));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setPostCWAsModerator(@NotNull UserPermissions permissions, Post post, String cw){
+		try{
+			if(permissions.serverAccessLevel.compareTo(Account.AccessLevel.MODERATOR)<0)
+				throw new UserActionNotAllowedException();
+
+			PostStorage.updateWallPostCW(post.id, cw);
+
+			if(!post.isGroupOwner() && post.owner.getLocalID()==post.user.id){
+				context.getNewsfeedController().clearFriendsFeedCache();
+			}
+
+			if(post.local){
+				post=getPostOrThrow(post.id);
+				context.getActivityPubWorker().sendUpdatePostActivity(post);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

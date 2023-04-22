@@ -20,7 +20,9 @@ public class SmithereenExtension extends AbstractExtension{
 			"json", new JsonFunction(),
 			"formatTime", new FormatTimeFunction(),
 			"getTime", new InstantToTimeFunction(),
-			"getDate", new InstantToDateFunction()
+			"getDate", new InstantToDateFunction(),
+			"describeAttachments", new DescribeAttachmentsFunction(),
+			"addQueryParams", new AddQueryParamsFunction()
 		);
 	}
 
@@ -32,7 +34,8 @@ public class SmithereenExtension extends AbstractExtension{
 			"postprocessHTML", new PostprocessHTMLFilter(),
 			"forceEscape", new ForceEscapeFilter(),
 			"nl2br", new Nl2brFilter(),
-			"truncateText", new TruncateTextFilter()
+			"truncateText", new TruncateTextFilter(),
+			"stripHTML", new StripHTMLFilter()
 		);
 	}
 

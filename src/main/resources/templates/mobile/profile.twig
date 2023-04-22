@@ -63,6 +63,9 @@
 		{% if groups is not empty %}
 		<li><a href="/users/{{ user.id }}/groups">{{ L('X_groups', {'count': groups.size}) }}</a></li>
 		{% endif %}
+		{% if userPermissions is not null and userPermissions.canReport(user) %}
+			<li><a href="/system/reportForm?type=user&id={{ user.id }}" data-ajax-box>{{ L('report') }}</a></li>
+		{% endif %}
 	</ul>
 </div>
 

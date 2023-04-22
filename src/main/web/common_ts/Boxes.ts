@@ -20,9 +20,7 @@ class LayerManager{
 	private hideAnimCanceled:boolean=false;
 
 	private constructor(){
-		this.scrim=ce("div", {id: "layerScrim", onclick: ()=>{
-			this.maybeDismissTopLayer();
-		}});
+		this.scrim=ce("div", {id: "layerScrim"});
 		this.scrim.hide();
 		document.body.appendChild(this.scrim);
 
@@ -34,6 +32,8 @@ class LayerManager{
 		container.hide();
 		this.layerContainer=container;
 		document.body.appendChild(container);
+
+		window.addEventListener("resize", this.onWindowResize.bind(this));
 	}
 
 	public show(layer:BaseLayer):void{
@@ -46,6 +46,11 @@ class LayerManager{
 		if(this.stack.length==0){
 			this.scrim.showAnimated();
 			this.layerContainer.show();
+			layerContent.addEventListener("click", (ev:MouseEvent)=>{
+				if(ev.target==layerContent){
+					this.maybeDismissTopLayer();
+				}
+			});
 			layerContent.showAnimated(layer.getCustomAppearAnimation());
 			document.body.addEventListener("keydown", this.escapeKeyListener);
 			this.lockPageScroll();
@@ -57,6 +62,7 @@ class LayerManager{
 		this.stack.push(layer);
 		layer.onShown();
 		this.boxLoader.hideAnimated();
+		this.updateTopOffset(layerContent);
 	}
 
 	public dismiss(layer:BaseLayer):void{
@@ -72,6 +78,7 @@ class LayerManager{
 			if(this.stack.length){
 				var newLayer=this.stack[this.stack.length-1];
 				newLayer.getContent().show();
+				this.updateTopOffset(newLayer.getContent());
 				newLayer.onShown();
 			}
 		}else{
@@ -93,7 +100,7 @@ class LayerManager{
 						this.unlockPageScroll();
 					}
 					this.animatingHide=false;
-				});	
+				});
 			}else{
 				this.layerContainer.removeChild(layerContent);
 				this.layerContainer.hide();
@@ -125,7 +132,36 @@ class LayerManager{
 	}
 
 	public showBoxLoader(){
+		this.updateTopOffset(this.boxLoader);
 		this.boxLoader.showAnimated();
+	}
+
+	public updateTopOffset(el:HTMLElement){
+		if(mobile)
+			return;
+		var layer=el.children[0] as HTMLElement;
+		var height=layer.offsetHeight;
+		layer.style.marginTop=Math.round(Math.max(0, (window.innerHeight-height)/3-10))+"px";
+	}
+
+	private onWindowResize(ev:Event){
+		this.updateTopOffset(this.boxLoader);
+		if(this.stack.length){
+			this.updateTopOffset(this.stack[this.stack.length-1].getContent());
+		}
+	}
+
+	public showSnackbar(text:string){
+		var snackbar=ce("div", {className: "snackbarWrap"}, [
+			ce("div", {className: "snackbar"}, [text])
+		]);
+		document.body.appendChild(snackbar);
+		this.updateTopOffset(snackbar);
+		setTimeout(()=>{
+			snackbar.hideAnimated({keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: 500, easing: "ease"}}, ()=>{
+				snackbar.remove();
+			});
+		}, 2000);
 	}
 }
 
@@ -216,6 +252,9 @@ class Box extends BaseLayer{
 				this.contentWrap.firstChild.remove();
 		}
 		this.contentWrap.appendChild(content);
+		if(this.boxLayer){
+			LayerManager.getInstance().updateTopOffset(this.getContent());
+		}
 	}
 
 	public getButton(index:number):HTMLElement{
@@ -362,7 +401,7 @@ class ScrollableBox extends BoxWithoutContentPadding{
 		super.onShown();
 		this.onContentScroll(null);
 	}
-	
+
 	protected onContentScroll(e:Event){
 		var atTop=this.contentWrap.scrollTop==0;
 		var atBottom=this.contentWrap.scrollTop>=this.contentWrap.scrollHeight-this.contentWrap.offsetHeight;
@@ -645,7 +684,7 @@ interface PhotoInfo{
 }
 
 class PhotoViewerLayer extends BaseLayer{
-	
+
 	private photos:PhotoInfo[];
 	private index:number;
 	private contentWrap:HTMLDivElement;
@@ -676,6 +715,9 @@ class PhotoViewerLayer extends BaseLayer{
 			ce("a", {className: "photoViewerNavButton buttonNext", onclick: this.showNextPhoto.bind(this)})
 		]);
 		this.setCurrentPhotoIndex(index);
+		this.photoImage.addEventListener("load", (ev:Event)=>{
+			LayerManager.getInstance().updateTopOffset(this.getContent());
+		});
 	}
 
 	public setCurrentPhotoIndex(i:number){

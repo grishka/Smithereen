@@ -3,6 +3,7 @@ package smithereen.routes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -22,6 +23,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
+import javax.imageio.ImageIO;
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
 import javax.servlet.http.Part;
@@ -29,6 +31,7 @@ import javax.servlet.http.Part;
 import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
+import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -54,6 +57,7 @@ import smithereen.data.attachments.GraffitiAttachment;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
+import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
@@ -63,6 +67,7 @@ import smithereen.storage.SearchStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.BlurHash;
+import smithereen.util.CaptchaGenerator;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
 import spark.Request;
@@ -326,6 +331,7 @@ public class SystemRoutes{
 	}
 
 	public static Object aboutServer(Request req, Response resp) throws SQLException{
+		ApplicationContext ctx=context(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("about_server", req);
 		model.with("title", lang(req).get("about_server"));
 		model.with("serverPolicy", Config.serverPolicy)
@@ -334,7 +340,8 @@ public class SystemRoutes{
 				.with("totalUsers", UserStorage.getLocalUserCount())
 				.with("totalPosts", PostStorage.getLocalPostCount(false))
 				.with("totalGroups", GroupStorage.getLocalGroupCount())
-				.with("serverVersion", BuildInfo.VERSION);
+				.with("serverVersion", BuildInfo.VERSION)
+				.with("restrictedServers", ctx.getModerationController().getAllServers(0, 10000, null, true, null).list);
 
 		return model;
 	}
@@ -443,6 +450,9 @@ public class SystemRoutes{
 		}catch(ObjectNotFoundException x){
 			LOG.debug("Remote object not found", x);
 			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_not_found")).build();
+		}catch(Exception x){
+			LOG.debug("Other remote fetch exception", x);
+			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_load_error")+"\n\n"+x.getMessage()).build();
 		}
 		if(obj instanceof ForeignUser user){
 			obj.storeDependencies(ctx);
@@ -568,5 +578,109 @@ public class SystemRoutes{
 
 		resp.redirect(back(req));
 		return "";
+	}
+
+	public static Object reportForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "type", "id");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("report_form", req);
+		int id=safeParseInt(req.queryParams("id"));
+		Actor actorForAvatar;
+		String title, subtitle, boxTitle, textareaPlaceholder, titleText, otherServerDomain;
+		Lang l=lang(req);
+		String type=req.queryParams("type");
+		switch(type){
+			case "post" -> {
+				Post post=ctx.getWallController().getPostOrThrow(id);
+				actorForAvatar=post.user;
+				title=post.user.getCompleteName();
+				subtitle=truncateOnWordBoundary(post.content, 200);
+				boxTitle=l.get(post.getReplyLevel()>0 ? "report_title_comment" : "report_title_post");
+				textareaPlaceholder=l.get("report_placeholder_content");
+				titleText=l.get(post.getReplyLevel()>0 ? "report_text_comment" : "report_text_post");
+				otherServerDomain=Config.isLocal(post.activityPubID) ? null : post.activityPubID.getHost();
+			}
+			case "user" -> {
+				User user=ctx.getUsersController().getUserOrThrow(id);
+				actorForAvatar=user;
+				title=user.getCompleteName();
+				subtitle="";
+				boxTitle=l.get("report_title_user");
+				titleText=l.get("report_text_user");
+				textareaPlaceholder=l.get("report_placeholder_profile");
+				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
+			}
+			case "group" -> {
+				Group group=ctx.getGroupsController().getGroupOrThrow(id);
+				actorForAvatar=group;
+				title=group.name;
+				subtitle="";
+				boxTitle=l.get(group.isEvent() ? "report_title_event" : "report_title_group");
+				titleText=l.get(group.isEvent() ? "report_text_event" : "report_text_group");
+				textareaPlaceholder=l.get("report_placeholder_profile");
+				otherServerDomain=group instanceof ForeignGroup fg ? fg.domain : null;
+			}
+			default -> throw new BadRequestException();
+		}
+		model.with("actorForAvatar", actorForAvatar)
+				.with("reportTitle", title)
+				.with("reportSubtitle", subtitle)
+				.with("textAreaPlaceholder", textareaPlaceholder)
+				.with("reportTitleText", titleText)
+				.with("otherServerDomain", otherServerDomain);
+		return wrapForm(req, resp, "report_form", "/system/submitReport?type="+type+"&id="+id, boxTitle, "send", model);
+	}
+
+	public static Object submitReport(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "type", "id");
+		int id=safeParseInt(req.queryParams("id"));
+		String type=req.queryParams("type");
+		String comment=req.queryParamOrDefault("reportText", "");
+		boolean forward="on".equals(req.queryParams("forward"));
+
+		Actor target;
+		ActivityPubObject content;
+
+		switch(type){
+			case "post" -> {
+				Post post=ctx.getWallController().getPostOrThrow(id);
+				content=post;
+				target=post.user;
+			}
+			case "user" -> {
+				target=ctx.getUsersController().getUserOrThrow(id);
+				content=null;
+			}
+			case "group" -> {
+				target=ctx.getGroupsController().getGroupOrThrow(id);
+				content=null;
+			}
+			default -> throw new BadRequestException("invalid type");
+		}
+
+		ctx.getModerationController().createViolationReport(self.user, target, content, comment, forward);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).showSnackbar(lang(req).get("report_submitted"));
+		}
+		return "";
+	}
+
+	public static Object captcha(Request req, Response resp) throws IOException{
+		requireQueryParams(req, "sid");
+		String sid=req.queryParams("sid");
+		if(sid.length()>16)
+			sid=sid.substring(0, 16);
+
+		CaptchaGenerator.Captcha c=CaptchaGenerator.generate();
+		LruCache<String, String> captchas=req.session().attribute("captchas");
+		if(captchas==null){
+			captchas=new LruCache<>(10);
+			req.session().attribute("captchas", captchas);
+		}
+		captchas.put(sid, c.answer());
+
+		resp.type("image/png");
+		ByteArrayOutputStream out=new ByteArrayOutputStream();
+		ImageIO.write(c.image(), "png", out);
+		return out.toByteArray();
 	}
 }

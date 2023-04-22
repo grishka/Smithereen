@@ -83,6 +83,7 @@ public class RenderedTemplateResponse{
 		String pathWithQuery=req.pathInfo();
 		HashSet<String> queryKeys=new HashSet<>(req.queryParams());
 		queryKeys.remove("offset");
+		queryKeys.remove("_ajax");
 		if(!queryKeys.isEmpty()){
 			 pathWithQuery+='?'+queryKeys.stream().map(k->k+'='+URLEncoder.encode(req.queryParams(k), StandardCharsets.UTF_8)).collect(Collectors.joining("&"));
 		}

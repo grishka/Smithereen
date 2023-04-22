@@ -172,6 +172,7 @@ public class User extends Actor{
 		switch(gender){
 			case MALE -> obj.addProperty("gender", "http://schema.org#Male");
 			case FEMALE -> obj.addProperty("gender", "http://schema.org#Female");
+			case OTHER -> obj.addProperty("gender", "http://schema.org#Other");
 		}
 
 		obj.addProperty("supportsFriendRequests", true);
@@ -270,6 +271,11 @@ public class User extends Actor{
 		return "/users/"+id;
 	}
 
+	@Override
+	public String getName(){
+		return getFullName();
+	}
+
 	// for templates
 	public Map<String, Object> getFirstAndGender(){
 		return Map.of("first", firstName, "gender", gender==null ? Gender.UNKNOWN : gender);
@@ -282,13 +288,15 @@ public class User extends Actor{
 	public enum Gender{
 		UNKNOWN,
 		MALE,
-		FEMALE;
+		FEMALE,
+		OTHER;
 
 		public static Gender valueOf(int v){
 			return switch(v){
 				case 0 -> UNKNOWN;
 				case 1 -> MALE;
 				case 2 -> FEMALE;
+				case 3 -> OTHER;
 				default -> throw new IllegalStateException("Unexpected value: "+v);
 			};
 		}

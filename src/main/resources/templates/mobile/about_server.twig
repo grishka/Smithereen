@@ -34,10 +34,21 @@
 	</div>
 {% endif %}
 </div>
-
 <div class="singleColumn">
 	{{ serverPolicy | raw }}
 </div>
+{% if restrictedServers is not empty %}
+<div class="singleColumn">
+	<h2>{{ L('about_server_federation_restrictions') }}</h2>
+	<div class="marginBefore marginAfter">{{ L('about_server_federation_restrictions_explain', {'count': restrictedServers | length}) }}</div>
+	{%- for server in restrictedServers %}
+	<div class="listItemWithDivider">
+		{{ server.host }}
+		<div class="grayText">{{ server.restriction.publicComment }}</div>
+	</div>
+	{%- endfor %}
+</div>
+{% endif %}
 <div class="singleColumn" align="center">
 	{{ L('about_software', {'sw': 'Smithereen', 'version': serverVersion}, {'sw': {'href': 'https://smithereen.software/', 'target': '_blank'} }) }}
 </div>

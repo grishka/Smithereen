@@ -11,6 +11,7 @@ import java.util.Objects;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.LruCache;
 import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.data.Account;
@@ -102,7 +103,7 @@ public class SessionRoutes{
 	}
 
 	private static RenderedTemplateResponse regError(Request req, String errKey){
-		return new RenderedTemplateResponse("register", req)
+		RenderedTemplateResponse model=new RenderedTemplateResponse("register", req)
 				.with("message", Utils.lang(req).get(errKey))
 				.with("username", req.queryParams("username"))
 				.with("password", req.queryParams("password"))
@@ -113,8 +114,11 @@ public class SessionRoutes{
 				.with("invite", req.queryParams("invite"))
 				.with("preFilledInvite", req.queryParams("_invite"))
 				.with("signupMode", Config.signupMode)
-				.with("title", lang(req).get("register"))
-				;
+				.with("title", lang(req).get("register"));
+		if(Config.signupMode==Config.SignupMode.OPEN && Config.signupFormUseCaptcha){
+			model.with("captchaSid", randomAlphanumericString(16));
+		}
+		return model;
 	}
 
 	public static Object register(Request req, Response resp) throws SQLException{
@@ -170,6 +174,18 @@ public class SessionRoutes{
 				return regError(req, "err_invalid_invitation");
 		}
 
+		if(Config.signupFormUseCaptcha && Config.signupMode==Config.SignupMode.OPEN){
+			try{
+				String captcha=requireFormField(req, "captcha", "err_wrong_captcha");
+				String sid=requireFormField(req, "captchaSid", "err_wrong_captcha");
+				LruCache<String, String> captchas=req.session().attribute("captchas");
+				if(captchas==null || !captcha.equals(captchas.remove(sid)))
+					throw new UserErrorException("err_wrong_captcha");
+			}catch(UserErrorException x){
+				return regError(req, x.getMessage());
+			}
+		}
+
 		User.Gender gender=lang(req).detectGenderForName(first, last, null);
 
 		SessionStorage.SignupResult res;
@@ -207,6 +223,9 @@ public class SessionRoutes{
 			return wrapError(req, resp, "signups_closed");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("register", req);
 		model.with("signupMode", Config.signupMode);
+		if(Config.signupMode==Config.SignupMode.OPEN && Config.signupFormUseCaptcha){
+			model.with("captchaSid", randomAlphanumericString(16));
+		}
 		if(StringUtils.isNotEmpty(invite)){
 			SignupInvitation inv=context(req).getUsersController().getInvite(invite);
 			if(inv!=null){
@@ -409,16 +428,27 @@ public class SessionRoutes{
 			if(StringUtils.isEmpty(lastName))
 				lastName=null;
 			String reason=requireFormField(req, "reason", "err_request_invite_reason_empty");
+			if(Config.signupFormUseCaptcha){
+				String captcha=requireFormField(req, "captcha", "err_wrong_captcha");
+				String sid=requireFormField(req, "captchaSid", "err_wrong_captcha");
+				LruCache<String, String> captchas=req.session().attribute("captchas");
+				if(captchas==null || !captcha.equals(captchas.remove(sid)))
+					throw new UserErrorException("err_wrong_captcha");
+			}
 			context(req).getUsersController().requestSignupInvite(req, firstName, lastName, email, reason);
 			return new RenderedTemplateResponse("generic_message", req).with("message", lang(req).get("signup_request_submitted"));
 		}catch(UserErrorException x){
-			return new RenderedTemplateResponse("register_request_invite", req)
+			RenderedTemplateResponse model=new RenderedTemplateResponse("register_request_invite", req)
 					.with("first_name", req.queryParams("first_name"))
 					.with("last_name", req.queryParams("last_name"))
 					.with("email", req.queryParams("email"))
 					.with("reason", req.queryParams("reason"))
 					.with("message", lang(req).get(x.getMessage()))
 					.pageTitle(lang(req).get("signup_title"));
+			if(Config.signupFormUseCaptcha){
+				model.with("captchaSid", randomAlphanumericString(16));
+			}
+			return model;
 		}
 	}
 }

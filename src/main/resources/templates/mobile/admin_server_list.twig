@@ -1,0 +1,39 @@
+{% extends "page" %}
+{% block content %}
+{% include "admin_tabbar" with {'tab': 'federation'} %}
+<div class="gray">
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('search_server_domain') }}" value="{{ query }}" id="domainSearch" data-base-url="{{ urlPath }}"/>
+		{% script %}
+		initAjaxSearch("domainSearch");
+		{% endscript %}
+	</div>
+</div>
+<div id="ajaxUpdatable">
+	{% block ajaxPartialUpdate %}
+	<div class="filters gray">
+		<a class="filterItem{{ onlyRestricted ? '' : ' selected' }}" href="{{ addQueryParams(urlPath, {'restricted': null, 'offset': null}) }}" data-ajax>{{ L('server_filter_all') }}</a>
+		<a class="filterItem{{ onlyRestricted ? ' selected' : '' }}" href="{{ addQueryParams(urlPath, {'restricted': '', 'offset': null}) }}" data-ajax>{{ L('server_filter_restricted') }}</a>
+		<hr/>
+		<a class="filterItem{{ availability is null ? ' selected' : '' }}" href="{{ addQueryParams(urlPath, {'availability': null, 'offset': null}) }}" data-ajax>{{ L('server_filter_any_availability') }}</a>
+		<a class="filterItem{{ availability=='failing' ? ' selected' : '' }}" href="{{ addQueryParams(urlPath, {'availability': 'failing', 'offset': null}) }}" data-ajax>{{ L('server_filter_failing') }}</a>
+		<a class="filterItem{{ availability=='down' ? ' selected' : '' }}" href="{{ addQueryParams(urlPath, {'availability': 'down', 'offset': null}) }}" data-ajax>{{ L('server_filter_unavailable') }}</a>
+	</div>
+	<div class="singleColumn">
+		{% for server in items %}
+		<div class="listItemWithDivider">
+			<div><a href="/settings/admin/federation/{{ server.host }}">{{ server.host }}</a></div>
+			{% if server.restriction is null %}
+			<div class="smallMarginBefore">{{ L('server_state_not_restricted') }}</div>
+			{% else %}
+			<div class="smallMarginBefore">{{ L('server_state_suspended') }}</div>
+			{% endif %}
+		</div>
+		{% else %}
+		<div class="emptyState">{{ L('no_servers') }}</div>
+		{% endfor %}
+	</div>
+	<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+	{% endblock %}
+</div>
+{% endblock %}

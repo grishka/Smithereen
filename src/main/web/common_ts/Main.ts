@@ -85,9 +85,12 @@ document.body.addEventListener("drop", function(ev:DragEvent){
 }, false);
 document.body.addEventListener("submit", function(ev:SubmitEvent){
 	var form:HTMLFormElement=ev.target as HTMLFormElement;
-	if(form.dataset.ajax==undefined)
+	if(form.dataset.ajax==undefined && form.dataset.ajaxBox==undefined)
 		return;
 	ev.preventDefault();
+	if(form.dataset.ajaxBox){
+		LayerManager.getInstance().showBoxLoader();
+	}
 	if(supportsFormSubmitter){
 		ajaxSubmitForm(form, null, ev.submitter);
 	}else{

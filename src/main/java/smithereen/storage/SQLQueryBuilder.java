@@ -376,8 +376,8 @@ public class SQLQueryBuilder{
 		}
 
 		if(conditionArgs!=null){
-			for(Object arg : conditionArgs){
-				stmt.setObject(argIndex++, arg);
+			for(Object arg:conditionArgs){
+				stmt.setObject(argIndex++, convertValue(arg));
 			}
 		}
 
@@ -390,7 +390,7 @@ public class SQLQueryBuilder{
 		PreparedStatement stmt=conn.prepareStatement(sql);
 		int i=1;
 		for(Object arg:args){
-			if(arg instanceof Enum e)
+			if(arg instanceof Enum<?> e)
 				stmt.setInt(i, e.ordinal());
 			else if(arg instanceof Instant instant)
 				stmt.setTimestamp(i, Timestamp.from(instant));
@@ -402,6 +402,17 @@ public class SQLQueryBuilder{
 		}
 		LOG.debug("{}", stmt);
 		return stmt;
+	}
+
+	private static Object convertValue(Object value){
+		if(value instanceof Enum e)
+			return e.ordinal();
+		else if(value instanceof Instant instant)
+			return Timestamp.from(instant);
+		else if(value instanceof LocalDate localDate)
+			return java.sql.Date.valueOf(localDate);
+		else
+			return value;
 	}
 
 	private enum Action{
@@ -419,14 +430,7 @@ public class SQLQueryBuilder{
 
 		public Value(String key, Object value){
 			this.key=key;
-			if(value instanceof Enum e)
-				this.value=e.ordinal();
-			else if(value instanceof Instant instant)
-				this.value=Timestamp.from(instant);
-			else if(value instanceof LocalDate localDate)
-				this.value=java.sql.Date.valueOf(localDate);
-			else
-				this.value=value;
+			this.value=convertValue(value);
 		}
 
 		public void write(StringBuilder sb){

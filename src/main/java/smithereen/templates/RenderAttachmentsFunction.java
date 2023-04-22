@@ -24,6 +24,7 @@ import smithereen.data.Group;
 import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.attachments.Attachment;
+import smithereen.data.attachments.AudioAttachment;
 import smithereen.data.attachments.GraffitiAttachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.SizedAttachment;
@@ -116,8 +117,10 @@ public class RenderAttachmentsFunction implements Function{
 		for(Attachment obj:attachment){
 			if(obj instanceof SizedAttachment)
 				continue;
-			if(obj instanceof VideoAttachment){
-				lines.add("<video src=\""+HtmlEscape.escapeHtml4Xml(((VideoAttachment) obj).url.toString())+"\" controls></video>");
+			if(obj instanceof VideoAttachment va){
+				lines.add("<video src=\""+HtmlEscape.escapeHtml4Xml(va.url.toString())+"\" controls></video>");
+			}else if(obj instanceof AudioAttachment aa){
+				lines.add("<audio src=\""+HtmlEscape.escapeHtml4Xml(aa.url.toString())+"\" preload=\"none\" controls></audio>");
 			}
 		}
 

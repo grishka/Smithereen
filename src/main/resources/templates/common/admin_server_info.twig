@@ -18,6 +18,7 @@
 				{'value': 'CLOSED', 'label': L('admin_signup_mode_closed'), 'selected': signupMode=='CLOSED'}
 			], {'explanation': L('admin_signup_mode_explain')})}}
 			{{ form.checkBox('signup_confirm_email', null, L('admin_require_email_confirm'), signupConfirmEmail) }}
+			{{ form.checkBox('signup_enable_captcha', L('admin_enable_captcha'), L('admin_captcha_signup_form'), signupEnableCaptcha) }}
 			{{form.footer(L('save'))}}
 		{{form.end()}}
 		<input type="hidden" name="csrf" value="{{csrf}}"/>

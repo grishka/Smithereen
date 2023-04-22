@@ -100,6 +100,9 @@
 			{% elseif canManageGroup %}
 				<li><a href="/groups/{{ group.id }}/editMembers">{{ L(group.event ? 'manage_event' : 'manage_group') }}</a></li>
 			{% endif %}
+				{% if userPermissions is not null and userPermissions.canReport(group) %}
+					<li><a href="/system/reportForm?type=group&id={{ group.id }}" data-ajax-box>{{ L('report') }}</a></li>
+				{% endif %}
 				{% if currentUser is not null %}
 					{% if userPermissions.serverAccessLevel.ordinal>=3 and group.domain is not empty %}
 						<li class="separator"></li>

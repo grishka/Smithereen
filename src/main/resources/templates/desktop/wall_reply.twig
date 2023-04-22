@@ -1,6 +1,6 @@
 {# @pebvariable name="post" type="smithereen.data.Post" #}
 <a name="comment{{post.id}}"></a>
-<table width="100%" class="post comment" id="post{{post.id}}" data-reply-name="{{post.user.nameForReply}}">
+<table width="100%" class="post comment{{ first ? ' first' : '' }}" id="post{{post.id}}" data-reply-name="{{post.user.nameForReply}}">
 	<tr>
 		{%if post.replyLevel>1%}
 		<td width="{{ min(post.replyLevel-1, 10)*16 }}" class="treeIndent">&nbsp;</td>
@@ -29,6 +29,9 @@
 					<a href="{{post.url}}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{post.url}}/delete')">{{L('delete')}}</a>{%endif%}
 					{% if userPermissions is not null and userPermissions.canEditPost(post) %} |
 					<a href="{{ post.internalURL }}/edit" data-ajax="1">{{ L('edit') }}</a>
+					{% endif %}
+					{% if userPermissions is not null and userPermissions.canReport(post) %}
+						| <a href="/system/reportForm?type=post&id={{ post.id }}" data-ajax-box>{{ L('report') }}</a>
 					{% endif %}
 					{%if not hideReplyLink%}
 						| <a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}')">{{L('add_reply')}}</a>
@@ -60,14 +63,14 @@
 	</tr>
 </table>
 <div id="postReplies{{post.id}}" class="replies">
-{% if preview %}
-	{% if post.replyCount>0 %}
-		<a class="loadRepliesLink" onclick="return loadCommentBranch({{ post.id }})" id="loadRepliesLink{{ post.id }}">{{ L('comments_show_X_replies', {'count': post.replyCount}) }}</a>
-		<div class="loadRepliesLink" id="repliesLoader{{ post.id }}" style="display: none;"><span class="loader"></span></div>
-	{% endif %}
-{% else %}
 	{%for reply in post.repliesObjects%}
-	{%include "wall_reply" with {'post': reply}%}
+	{% include "wall_reply" with {'post': reply, 'first': false} %}
 	{%endfor%}
-{% endif %}
+	{% if post.loadableRepliesCount>0 %}
+	<div id="loadRepliesContainer{{ post.id }}" class="threadedIndented" style="--indent-level: {{ post.replyLevel-1 }}">
+		<a class="loadRepliesLink" onclick="return loadCommentBranch({{ post.id }}, {{ post.repliesObjects | length }})" id="loadRepliesLink{{ post.id }}">{{ L(post.loadedRepliesCount>0 ? 'comments_show_X_more_replies' : 'comments_show_X_replies', {'count': post.loadableRepliesCount}) }}</a>
+		<div class="loadRepliesLink" id="repliesLoader{{ post.id }}" style="display: none;"><span class="loader"></span></div>
+		<div class="depthIndicator"></div>
+	</div>
+	{% endif %}
 </div>

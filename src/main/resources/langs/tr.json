@@ -46,7 +46,6 @@
   "email": "E-posta",
   "username": "Kullanıcı adı",
   "username_explain": "Harf, sayı, nokta ve alt çizgi içerebilir.",
-  "created": "Oluşturuldu",
   "create_invitation": "Yeni bir davetiye oluştur",
   "no_invitations": "Herhangi bir davetiyen yok",
   "err_reg_invalid_username": "Kullanıcı adı bir harfle başlamalı ve sadece harf, sayı, nokta ve alt çizgi içerebilir.",

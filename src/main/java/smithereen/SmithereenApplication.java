@@ -65,6 +65,7 @@ import spark.serialization.Serializer;
 import spark.serialization.SerializerChain;
 import spark.utils.StringUtils;
 
+import static smithereen.Utils.randomAlphanumericString;
 import static spark.Spark.*;
 import static smithereen.sparkext.SparkExtension.*;
 
@@ -237,6 +238,14 @@ public class SmithereenApplication{
 				postRequiringAccessLevelWithCSRF("/users/activate", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::activateAccount);
 				getRequiringAccessLevel("/signupRequests", Account.AccessLevel.ADMIN, SettingsAdminRoutes::signupRequests);
 				postRequiringAccessLevelWithCSRF("/signupRequests/:id/respond", Account.AccessLevel.ADMIN, SettingsAdminRoutes::respondToSignupRequest);
+				getRequiringAccessLevel("/reports", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportsList);
+				postRequiringAccessLevelWithCSRF("/reports/:id", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportAction);
+				postRequiringAccessLevelWithCSRF("/reports/:id/doAddCW", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportAddCW);
+				getRequiringAccessLevel("/federation", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerList);
+				getRequiringAccessLevel("/federation/:domain", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerDetails);
+				getRequiringAccessLevel("/federation/:domain/restrictionForm", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerRestrictionForm);
+				postRequiringAccessLevelWithCSRF("/federation/:domain/restrict", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationRestrictServer);
+				getRequiringAccessLevelWithCSRF("/federation/:domain/resetAvailability", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationResetServerAvailability);
 			});
 		});
 
@@ -279,6 +288,9 @@ public class SmithereenApplication{
 			getLoggedIn("/qsearch", SystemRoutes::quickSearch);
 			postLoggedIn("/loadRemoteObject", SystemRoutes::loadRemoteObject);
 			postWithCSRF("/votePoll", SystemRoutes::votePoll);
+			getLoggedIn("/reportForm", SystemRoutes::reportForm);
+			postWithCSRF("/submitReport", SystemRoutes::submitReport);
+			get("/captcha", SystemRoutes::captcha);
 		});
 
 		path("/users/:id", ()->{
@@ -408,6 +420,7 @@ public class SmithereenApplication{
 
 		path("/posts/:postID", ()->{
 			getActivityPub("", ActivityPubRoutes::post);
+			get("/activityCreate", ActivityPubRoutes::postCreateActivity);
 			get("", PostRoutes::standalonePost);
 
 			getLoggedIn("/confirmDelete", PostRoutes::confirmDelete);
@@ -597,11 +610,15 @@ public class SmithereenApplication{
 			resp.redirect("/feed");
 			return "";
 		}
-		return new RenderedTemplateResponse("index", req).with("title", Config.serverDisplayName)
+		RenderedTemplateResponse model=new RenderedTemplateResponse("index", req).with("title", Config.serverDisplayName)
 				.with("signupMode", Config.signupMode)
 				.with("serverDisplayName", Config.serverDisplayName)
 				.with("serverDescription", Config.serverDescription)
 				.addNavBarItem(Utils.lang(req).get("index_welcome"));
+		if((Config.signupMode==Config.SignupMode.OPEN || Config.signupMode==Config.SignupMode.MANUAL_APPROVAL) && Config.signupFormUseCaptcha){
+			model.with("captchaSid", randomAlphanumericString(16));
+		}
+		return model;
 	}
 
 	private static Object methodNotAllowed(Request req, Response resp){

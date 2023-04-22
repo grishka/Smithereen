@@ -1,0 +1,4 @@
+{% import "forms" as form %}
+{{ form.start('addCW', addCWMessage) }}
+	{{ form.textInput('cw', L('post_form_cw_placeholder'), cw, {'required': true, 'autocomplete': false}) }}
+{{ form.end() }}

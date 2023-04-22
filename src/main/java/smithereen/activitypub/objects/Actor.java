@@ -222,6 +222,7 @@ public abstract class Actor extends ActivityPubObject{
 	public abstract int getLocalID();
 	public abstract URI getWallURL();
 	public abstract String getTypeAndIdForURL();
+	public abstract String getName();
 
 	private static RSAPublicKeySpec decodeSimpleRSAKey(byte[] key) throws IOException{
 		ByteArrayInputStream in=new ByteArrayInputStream(key);

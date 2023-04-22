@@ -1,0 +1,25 @@
+{# @pebvariable name="contentType" type="String" #}
+{# @pebvariable name="actorForAvatar" type="smithereen.activitypub.objects.Actor" #}
+{# @pebvariable name="reportTitle" type="String" #}
+{# @pebvariable name="reportSubtitle" type="String" #}
+{# @pebvariable name="otherServerDomain" type="String" #}
+{# @pebvariable name="textAreaPlaceholder" type="String" #}
+{# @pebvariable name="reportTitleText" type="String" #}
+<h2>{{ reportTitleText }}</h2>
+<div class="reportFormHeader">
+	<div class="flL">{{ actorForAvatar | pictureForAvatar('s') }}</div>
+	<div><b>{{ reportTitle }}</b></div>
+	<div class="ellipsize">{{ reportSubtitle }}</div>
+	<div class="clear"></div>
+</div>
+<div>
+	<textarea style="width: 100%;" name="reportText" placeholder="{{ textAreaPlaceholder }}"></textarea>
+</div>
+{% if otherServerDomain is not empty %}
+<div class="radioButtonWrap" style="margin-bottom: 0">
+	<label>
+		<input type="checkbox" name="forward" checked/>
+		{{ L('report_forward_to_domain', {'domain': otherServerDomain}) }}
+	</label>
+</div>
+{% endif %}

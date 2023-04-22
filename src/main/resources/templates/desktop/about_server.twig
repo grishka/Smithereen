@@ -40,6 +40,24 @@
 <div class="singleColumn">
 	{{ serverPolicy | raw }}
 </div>
+{% if restrictedServers is not empty %}
+<div class="singleColumn">
+	<h2>{{ L('about_server_federation_restrictions') }}</h2>
+	<div class="marginBefore marginAfter">{{ L('about_server_federation_restrictions_explain', {'count': restrictedServers | length}) }}</div>
+	<table class="dataTable" width="100%">
+		<tr class="tableHeader">
+			<th width="200">{{ L('server') }}</th>
+			<th>{{ L('federation_restriction_reason') }}</th>
+		</tr>
+		{%- for server in restrictedServers %}
+		<tr>
+			<td>{{ server.host }}</td>
+			<td>{{ server.restriction.publicComment }}</td>
+		</tr>
+		{%- endfor %}
+	</table>
+</div>
+{% endif %}
 <div class="singleColumn" align="center">
 	{{ L('about_software', {'sw': 'Smithereen', 'version': serverVersion}, {'sw': {'href': 'https://smithereen.software/', 'target': '_blank'} }) }}
 </div>

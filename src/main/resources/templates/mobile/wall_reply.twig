@@ -36,6 +36,9 @@
 						{% if userPermissions is not null and userPermissions.canEditPost(post) %}
 							{% set _=options.add({'type': 'link', 'label': L('edit').toString(), 'href': "#{post.url}/edit"}) %}
 						{% endif %}
+						{% if userPermissions is not null and userPermissions.canReport(post) %}
+							{% set _=options.add({'type': 'link', 'label': L('report').toString(), 'href': "/system/reportForm?type=post&id=#{post.id}", 'ajax': 'box'}) %}
+						{% endif %}
 						{% if not post.local %}
 							{% set _=options.add({'type': 'link', 'target': '_blank', 'href': post.url, 'label': L('open_on_server_X', {'domain': post.url.host}).toString()}) %}
 						{% endif %}
@@ -67,4 +70,11 @@
 	{%for reply in post.repliesObjects%}
 	{%include "wall_reply" with {'post': reply}%}
 	{%endfor%}
+	{% if post.loadableRepliesCount>0 %}
+		<div id="loadRepliesContainer{{ post.id }}" class="threadedIndented" style="--indent-level: {{ post.replyLevel-1 }}">
+			<a class="loadRepliesLink" onclick="return loadCommentBranch({{ post.id }}, {{ post.repliesObjects | length }})" id="loadRepliesLink{{ post.id }}">{{ L(post.loadedRepliesCount>0 ? 'comments_show_X_more_replies' : 'comments_show_X_replies', {'count': post.loadableRepliesCount}) }}</a>
+			<div class="loadRepliesLink" id="repliesLoader{{ post.id }}" style="display: none;"><span class="loader"></span></div>
+			<div class="depthIndicator"></div>
+		</div>
+	{% endif %}
 </div>

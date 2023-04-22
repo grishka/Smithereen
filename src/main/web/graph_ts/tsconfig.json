@@ -1,0 +1,9 @@
+{
+	"compilerOptions":{
+		"outFile": "../../resources/public/res/graph.js",
+		"sourceMap": true,
+		"sourceRoot": "/res/graph_ts/",
+		"noImplicitAny": true
+	},
+	"include":["*", "../../../../target/typescript/common.d.ts"]
+}

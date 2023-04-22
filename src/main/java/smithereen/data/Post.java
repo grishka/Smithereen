@@ -33,6 +33,7 @@ import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
 import smithereen.data.attachments.Attachment;
+import smithereen.data.attachments.AudioAttachment;
 import smithereen.data.attachments.GraffitiAttachment;
 import smithereen.data.attachments.PhotoAttachment;
 import smithereen.data.attachments.VideoAttachment;
@@ -66,6 +67,8 @@ public class Post extends ActivityPubObject{
 	public FederationState federationState;
 
 	private ActivityPubObject activityPubTarget;
+	private boolean loadedRepliesCountKnown;
+	private int loadedRepliesCount;
 
 	public static Post fromResultSet(ResultSet res) throws SQLException{
 		Post post=new Post();
@@ -247,6 +250,19 @@ public class Post extends ActivityPubObject{
 		JsonElement _content=obj.get("content");
 		if(_content!=null && _content.isJsonArray()){
 			content=_content.getAsJsonArray().get(0).getAsString();
+		}else if(obj.has("contentMap")){
+			// Pleroma compatibility workaround
+			// TODO find out why "content" gets dropped during JSON-LD processing
+			JsonElement _contentMap=obj.get("contentMap");
+			if(_contentMap.isJsonObject()){
+				JsonObject contentMap=_contentMap.getAsJsonObject();
+				if(contentMap.size()>0){
+					_content=contentMap.get(contentMap.keySet().iterator().next());
+					if(_content!=null && _content.isJsonArray()){
+						content=_content.getAsJsonArray().get(0).getAsString();
+					}
+				}
+			}
 		}
 		String type=obj.get("type").getAsString();
 		boolean isPoll=type.equals("Question") && (obj.has("oneOf") || obj.has("anyOf"));
@@ -441,6 +457,10 @@ public class Post extends ActivityPubObject{
 				VideoAttachment att=new VideoAttachment();
 				att.url=o.url;
 				result.add(att);
+			}else if(mediaType.startsWith("audio/")){
+				AudioAttachment att=new AudioAttachment();
+				att.url=o.url;
+				result.add(att);
 			}
 			i++;
 		}
@@ -500,5 +520,35 @@ public class Post extends ActivityPubObject{
 		if(replies.link!=null)
 			return replies.link;
 		return replies.object.activityPubID;
+	}
+
+	public int getMissingRepliesCount(){
+		return replyCount-getLoadedRepliesCount();
+	}
+
+	public int getLoadedRepliesCount(){
+		if(loadedRepliesCountKnown)
+			return loadedRepliesCount;
+		loadedRepliesCount=0;
+		for(Post reply:repliesObjects){
+			loadedRepliesCount+=reply.getLoadedRepliesCount()+1;
+		}
+		loadedRepliesCountKnown=true;
+		return loadedRepliesCount;
+	}
+
+	public int getLoadableRepliesCount(){
+		int count=replyCount;
+		for(Post reply:repliesObjects){
+			count-=reply.replyCount+1;
+		}
+		return count;
+	}
+
+	public void getAllReplies(List<Post> replies){
+		replies.addAll(repliesObjects);
+		for(Post reply:repliesObjects){
+			reply.getAllReplies(replies);
+		}
 	}
 }

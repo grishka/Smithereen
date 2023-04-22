@@ -5,6 +5,8 @@ $siteWidthWide: 1280px;
 $siteWidthNarrow: 791px;
 $leftMenuWidth: 147px; /* from the left edge of the header to the left edge of the content area */
 $headerHeight: 40px;
+$smallPadding: 5px;
+$mediumPadding: 10px;
 
 @import "common.scss";
 
@@ -317,6 +319,11 @@ small{
 		pre{
 			overflow-x: auto;
 		}
+	}
+	&.standalone{
+		border-bottom: none;
+		margin-bottom: 0;
+		padding-bottom: 0;
 	}
 }
 
@@ -646,6 +653,10 @@ small{
 	margin-top: 8px;
 }
 
+.smallMarginBefore{
+	margin-top: 4px;
+}
+
 .ownProfileAvaPlaceholderLabel{
 	color: $grayText;
 	display: inline-block;
@@ -721,11 +732,18 @@ small{
 	&:hover .treeIndent{
 		background: svg-load('img/comments_tree_indent.svg', fill: $wallPostSeparator, stroke: $wallPostSeparator) top 14px left -5px repeat-x;
 	}
+	&.first td{
+		border-top: none;
+		padding-top: 0;
+		&.postContentWrap{
+			padding-top: 2px;
+		}
+	}
 }
 
 .profileFields{
 	line-height: 140%;
-    padding: 10px 6px 15px;
+	padding: 10px 6px 15px;
 	td{
 		padding-top: 3px;
 		vertical-align: top;
@@ -984,6 +1002,7 @@ select{
 
 .boxLayer{
 	width: 410px;
+	min-width: 410px;
 	border-radius: 2px;
 	overflow: hidden;
 	pointer-events: auto;
@@ -1720,6 +1739,9 @@ input:checked+.postCWWrap{
 		float: right;
 		padding: 3px 0 4px;
 	}
+	&.noPadTop{
+		padding-top: 0;
+	}
 }
 
 .bottomSummaryWrap, .realBottomSummaryWrap{
@@ -1778,7 +1800,7 @@ textarea{
 	display: block;
 	padding-left: 24px;
 	margin-top: -5px;
-	margin-left: 37px;
+	margin-left: 13px;
 	height: 26px;
 	line-height: 26px;
 	background: svg-load('img/load_replies.svg', stroke: color($iconColor alpha(70%))) no-repeat left center;
@@ -2372,3 +2394,134 @@ label.pretendLink{
 	padding: 3px 0 4px;
 }
 
+.reportFormHeader{
+	margin: 10px 0;
+	.ava{
+		margin-right: 10px;
+	}
+}
+
+.listItemWithDivider{
+	padding-bottom: 10px;
+	margin-bottom: 10px;
+	border-bottom: solid 1px $wallPostSeparator;
+	&:last-child{
+		padding-bottom: 0px;
+		margin-bottom: 0;
+		border-bottom: none;
+	}
+}
+
+.adminInfoGrid{
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-gap: 10px;
+	>.spanAll{
+		grid-column-start: span 3;
+	}
+}
+
+.borderBottom{
+	border-bottom: solid 1px $wallPostSeparator;
+}
+
+.searchFieldWrap{
+	.searchField{
+		width: 100%;
+		background: svg-load('img/search_icon.svg', fill: color($iconColor alpha(65%))) no-repeat 6px 50%, $bg;
+		padding-left: 21px;
+		height: 25px;
+	}
+}
+
+.withRightColumnFilters{
+	display: flex;
+	.leftColumn{
+		flex-grow: 1;
+		padding: 10px;
+	}
+	.filters{
+		width: 157px;
+		padding: 10px;
+		flex-grow: 0;
+		flex-shrink: 0;
+		background: $gray;
+		border-left: solid 1px $wallPostSeparator;
+		.filterItem{
+			display: block;
+			line-height: 13px;
+			padding: 5px 10px;
+			&:hover{
+				text-decoration: none;
+				background: $blockBackground;
+			}
+			&.selected{
+				color: $textOnAccent;
+				background: $headerGradientBottom;
+				border: solid 1px $headerBorderBottomDark;
+				padding: 4px 9px;
+			}
+		}
+		hr{
+			border: none;
+			border-bottom: solid 1px $wallPostSeparator;
+			margin: 10px 0;
+		}
+	}
+}
+
+.forceLineHeight{
+	line-height: 13px;
+}
+
+.layerContent{
+	overflow-y: scroll;
+	max-height: 100%;
+	height: 100%;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding: 10px 0;
+	transform-origin: 50% 33%;
+}
+
+.snackbarWrap{
+	position: fixed;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding: 10px 0;
+	z-index: 115;
+	pointer-events: none;
+	.snackbar{
+		background: rgba(0, 0, 0, 0.75);
+		border-radius: 5px;
+		box-shadow: 0 2px 15px #888;
+		padding: 15px;
+		width: 410px;
+		text-shadow: 0px 1px 0px #262626;
+		line-height: 160%;
+		font-size: 12px;
+		color: #FFF;
+		backdrop-filter: saturate(180%) blur(3px);
+		pointer-events: all;
+	}
+}
+
+.threadedIndented{
+	padding-left: calc(var(--indent-level) * 16px);
+	position: relative;
+	.depthIndicator{
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: calc(var(--indent-level) * 16px);
+	}
+	&:hover .depthIndicator{
+		background: svg-load('img/comments_tree_indent.svg', fill: $wallPostSeparator, stroke: $wallPostSeparator) center left -5px repeat-x;
+	}
+}

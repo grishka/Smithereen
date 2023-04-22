@@ -384,12 +384,16 @@ function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}):
 	return false;
 }
 
-function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, submitter:HTMLElement=null):boolean{
+function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, submitter:HTMLElement=null, extra:any={}):boolean{
 	if(submittingForm)
 		return false;
 	if(!form.checkValidity()){
 		setGlobalLoading(false);
 		return false;
+	}
+	if(submitter && submitter.dataset.confirmMessage && !extra.confirmed){
+		new ConfirmBox(lang(submitter.dataset.confirmTitle), lang(submitter.dataset.confirmMessage), ()=>ajaxSubmitForm(form, onDone, submitter, {confirmed: true})).show();
+		return;
 	}
 	submittingForm=form;
 	if(submitter)
@@ -472,9 +476,9 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	return false;
 }
 
-function ajaxGetAndApplyActions(url:string, onDone:{():void}=null, onError:{():void}=null):void{
+function ajaxGetAndApplyActions(url:string, onDone:{():void}=null, onError:{():void}=null):XMLHttpRequest{
 	setGlobalLoading(true);
-	ajaxGet(url, function(resp:any){
+	return ajaxGet(url, function(resp:any){
 		setGlobalLoading(false);
 		if(resp instanceof Array){
 			for(var i=0;i<resp.length;i++){
@@ -541,6 +545,7 @@ function applyServerCommand(cmd:any){
 			box.show();
 			if(cmd.w){
 				(box.getContent().querySelector(".boxLayer") as HTMLElement).style.width=cmd.w+"px";
+				(box.getContent().querySelector(".boxLayer") as HTMLElement).style.minWidth=cmd.w+"px";
 			}
 		}
 		break;
@@ -603,6 +608,9 @@ function applyServerCommand(cmd:any){
 			break;
 		case "run":
 			eval(cmd.s);
+			break;
+		case "snackbar":
+			LayerManager.getInstance().showSnackbar(cmd.t);
 			break;
 	}
 }
@@ -801,12 +809,12 @@ function loadOlderComments(id:number){
 	return false;
 }
 
-function loadCommentBranch(id:number){
+function loadCommentBranch(id:number, offset:number){
 	var btn=ge("loadRepliesLink"+id);
 	var loader=ge("repliesLoader"+id);
 	btn.hide();
 	loader.show();
-	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentBranch", null, ()=>{
+	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentBranch?offset="+(offset || 0), null, ()=>{
 		btn.show();
 		loader.hide();
 	});
@@ -864,10 +872,9 @@ function copyText(text:string, doneMsg:string){
 	}
 
 	navigator.clipboard.writeText(text).then(()=>{
-		// TODO use popup notifications when these become a thing
-		new MessageBox("", doneMsg, lang("close")).show();
+		LayerManager.getInstance().showSnackbar(doneMsg);
 	}, (err)=>{
-		new MessageBox(lang("error"), err.toString(), lang("close")).show();
+		LayerManager.getInstance().showSnackbar(lang("error")+"\n"+err.toString());
 	});
 }
 
@@ -896,4 +903,42 @@ function showGraffitiBox(el:HTMLAnchorElement):boolean{
 	}
 	new GraffitiBox(el).show();
 	return false;
+}
+
+function initAjaxSearch(fieldID:string){
+	var input=ge(fieldID) as HTMLInputElement;
+	var inputWrap=input.parentElement;
+	var currentXHR:XMLHttpRequest=null;
+	const ajaxDone=()=>{
+		currentXHR=null;
+	};
+	const performSearch=(q:string)=>{
+		var baseURL=input.dataset.baseUrl;
+		var qstr:string;
+		if(baseURL.indexOf('?')!=-1){
+			var parts=baseURL.split('?', 2);
+			qstr=parts[1];
+			baseURL=parts[0];
+		}else{
+			qstr="";
+		}
+		var params=new URLSearchParams(qstr);
+		params.set("q", q);
+		var url=baseURL+"?"+params.toString();
+		currentXHR=ajaxGetAndApplyActions(url, ajaxDone, ajaxDone);
+	};
+	var debounceTimeout:number=null;
+	input.addEventListener("input", (ev)=>{
+		if(debounceTimeout){
+			clearTimeout(debounceTimeout);
+		}
+		if(currentXHR){
+			currentXHR.abort();
+			currentXHR=null;
+		}
+		debounceTimeout=setTimeout(()=>{
+			debounceTimeout=null;
+			performSearch(input.value);
+		}, 300);
+	});
 }
