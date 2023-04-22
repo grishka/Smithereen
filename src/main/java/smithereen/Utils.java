@@ -3,17 +3,16 @@ package smithereen;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Attribute;
-import org.jsoup.nodes.Comment;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.Parser;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Whitelist;
 import org.jsoup.select.NodeVisitor;
@@ -51,7 +50,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -335,11 +333,62 @@ public class Utils{
 	}
 
 	public static String sanitizeHTML(String src){
-		return Jsoup.clean(src, HTML_SANITIZER);
+		return sanitizeHTML(src, null);
 	}
 
 	public static String sanitizeHTML(String src, URI documentLocation){
-		return Jsoup.clean(src, documentLocation.toString(), HTML_SANITIZER);
+		Cleaner cleaner=new Cleaner(HTML_SANITIZER);
+		Document doc=Parser.parseBodyFragment(src, Objects.toString(documentLocation, ""));
+		doc.body().traverse(new NodeVisitor(){
+			private final LinkedList<ListNodeInfo> listStack=new LinkedList<>();
+
+			@Override
+			public void head(Node node, int depth){
+				if(node instanceof Element el){
+					if("ul".equals(el.tagName()) || "ol".equals(el.tagName())){
+						listStack.push(new ListNodeInfo("ol".equals(el.tagName()), el));
+						el.tagName("p");
+					}else if("li".equals(el.tagName()) && !listStack.isEmpty()){
+						ListNodeInfo info=listStack.peek();
+						String prefix="  ".repeat(listStack.size()-1);
+						if(info.isOrdered){
+							prefix+=info.currentIndex+". ";
+							info.currentIndex++;
+						}else{
+							prefix+="- ";
+						}
+						el.prependText(prefix);
+						if(el.nextSibling()!=null){
+							el.appendChild(doc.createElement("br"));
+						}
+					}else if("blockquote".equals(el.tagName())){
+						el.tagName("p");
+						el.prependText("> ");
+					}
+				}
+			}
+
+			@Override
+			public void tail(Node node, int depth){
+				if(node instanceof Element el && !listStack.isEmpty() && listStack.peek().element==el){
+					listStack.pop();
+				}
+			}
+
+			private class ListNodeInfo{
+				final boolean isOrdered;
+				final Element element;
+				int currentIndex=1;
+
+				private ListNodeInfo(boolean isOrdered, Element element){
+					this.isOrdered=isOrdered;
+					this.element=element;
+				}
+			}
+		});
+		doc.getElementsByTag("li").forEach(Element::unwrap);
+		doc.normalise();
+		return cleaner.clean(doc).body().html();
 	}
 
 	public static String formatDateAsISO(Instant date){
