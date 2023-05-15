@@ -23,7 +23,7 @@ If you have any questions or feedback, there's a [Telegram chat](https://t.me/Sm
 
 ### Using Docker
 
-Copy [Docker-specific config example](examples/config_docker.properties) to the project root directory as `config.properties` and edit it to set your domain. Also edit `docker-compose.yml` to add your imgproxy secrets. You can then use `docker-compose` to run Smithereen, MySQL, and imgproxy. You still need to [configure your web server to reverse proxy the port 4567](examples/nginx.conf). Create the first account by running `docker exec -it smithereen_web_1 bash -c ./smithereen-init-admin`.
+Copy [Docker-specific config example](examples/config_docker.properties) to the project root directory as `config.properties` and edit it to set your domain. Also edit `docker-compose.yml` to add your imgproxy secrets. You can then use `docker-compose` to run Smithereen, MySQL, and imgproxy. You still need to [configure your web server to reverse proxy the port 4567](examples/nginx.conf). Create the first account by running `docker-compose exec web bash -c ./smithereen-init-admin`.
 
 ## Contributing
 
