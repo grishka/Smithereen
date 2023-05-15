@@ -599,8 +599,6 @@ public class SmithereenApplication{
 			try{
 				BackgroundTaskRunner.shutDown();
 			}catch(NoClassDefFoundError ignore){}
-			// Set the exit code to 0 so systemd doesn't say "Failed with result 'exit-code'".
-			Runtime.getRuntime().halt(0);
 		}));
 	}
 
