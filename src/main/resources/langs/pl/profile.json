@@ -1,1 +1,13 @@
-{}
+{
+  "write_on_X_wall": "Napisz na tablicy {name}…",
+  "birth_date": "Data urodzenia",
+  "write_on_own_wall": "Co nowego?",
+  "profile_about": "Informacje",
+  "X_is_your_friend": "{name} jest Twoim znajomym",
+  "you_sent_friend_req_to_X": "Wysłałeś(-aś) zaproszenie do znajomych do {name}",
+  "X_sent_you_friend_req": "{name} {gender, select, female {wysłała} other {wysłał}} Ci zaproszenie do znajomych",
+  "you_are_following_X": "Obserwujesz {name}",
+  "X_is_following_you": "{name} obserwuje Cię",
+  "waiting_for_X_to_accept_follow_req": "Czekasz na przyjęcie prośby o możliwość obserwowania {name}",
+  "incomplete_profile": "Ten profil może być niekompletny."
+}
