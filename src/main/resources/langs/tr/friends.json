@@ -1,1 +1,24 @@
-{}
+{
+  "add_friend": "{name} kullanıcısını arkadaş olarak ekle",
+  "remove_friend": "Arkadaşlıktan çıkar",
+  "cancel_friend_request": "İsteği iptal et",
+  "err_already_friends": "Bu kullanıcı zaten arkadaş listende.",
+  "err_have_incoming_friend_req": "Zaten bu kullanıcıdan gelen bir arkadaş isteğin var.",
+  "err_friend_req_already_sent": "Bu kullanıcıya zaten bir arkadaş isteği gönderdin.",
+  "err_already_following": "Bu kullanıcıyı zaten takip ediyorsun.",
+  "err_cant_friend_self": "Kendini arkadaş olarak eklemek iyi bir fikir değil.",
+  "friends": "Arkadaşlar",
+  "no_friends": "Arkadaş listesi boş",
+  "friend_requests": "Arkadaş istekleri",
+  "no_incoming_friend_requests": "Cevaplanmamış arkadaş isteklerin yok.",
+  "confirm_unfriend_X": "{name} kullanıcısını arkadaşlıktan çıkarmak istediğine emin misin?",
+  "err_not_friends": "Bu kullanıcı arkadaşın değil",
+  "view_friends_of": "Arkadaşları gör",
+  "you_are_about_to_follow": "Takip etmek üzeresin:",
+  "you_are_about_to_send_friend_req": "Arkadaş isteği göndermek üzeresin:",
+  "following": "Takip",
+  "followers": "Takipçi",
+  "unfollow": "Takibi bırak",
+  "X_friends": "{count} arkadaş",
+  "sending_friend_req_to_X": "{name} kullanıcısına arkadaş isteği gönderiyorsun."
+}
