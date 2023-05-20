@@ -1,1 +1,10 @@
-{}
+{
+  "delete_post": "Gönderiyi sil",
+  "delete_post_confirm": "Bu gönderiyi silmek istediğine emin misin?",
+  "wall": "Duvar",
+  "X_posts": "{count} gönderi",
+  "delete_reply": "Yorumu sil",
+  "delete_reply_confirm": "Bu yorumu silmek istediğine emin misin?",
+  "add_reply": "Yanıtla",
+  "comment_placeholder": "Bir yorum yaz..."
+}
