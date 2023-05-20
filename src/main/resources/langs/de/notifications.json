@@ -1,1 +1,16 @@
-{}
+{
+  "notification_replied_to_post": "hat deinen Beitrag kommentiert",
+  "notification_replied_to_comment": "hat auf dein Kommentar geantwortet",
+  "notification_mentioned_in_post": "hat dich in einem Beitrag erwähnt",
+  "notification_mentioned_in_comment": "hat dich in einem Kommentar erwähnt",
+  "notification_liked_post": "gefällt dein Beitrag",
+  "notification_liked_comment": "gefällt dein Kommentar",
+  "notification_reposted_post": "hat deinen Beitrag geteilt",
+  "notification_reposted_comment": "hat dein Kommentar geteilt",
+  "notification_posted_on_wall": "hat auf deine Pinnwand geposted",
+  "notification_invite_signup": "hat sich aufgrund deiner Einladung angemeldet",
+  "notification_follow": "folgt dir",
+  "notification_friend_req_accept": "hat deine Freundschaftsanfrage akzeptiert",
+  "no_notifications": "Es liegen keine Benachrichtigungen vor",
+  "notifications": "Benachrichtigungen"
+}
