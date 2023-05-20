@@ -1,5 +1,4 @@
 {
-  "notifications": "Notificaciones",
   "notification_replied_to_post": "comentó en su publicación",
   "notification_replied_to_comment": "respondió a su comentario",
   "notification_mentioned_in_post": "te mencionó en una publicación",
@@ -13,6 +12,7 @@
   "notification_follow": "te ha seguido",
   "notification_friend_req_accept": "aceptó tu solicitud de amistad",
   "no_notifications": "Todavía no tienes ninguna notificación",
+  "notifications": "Notificaciones",
   "notifications_empty": "Tus notificaciones aparecerán aquí.",
   "summary_notifications": "Mostrando últimas notificaciones"
 }

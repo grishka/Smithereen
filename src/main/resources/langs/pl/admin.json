@@ -38,5 +38,12 @@
   "admin_unban": "Odbanuj",
   "admin_ban_X_confirm": "Czy na pewno chcesz zbanować konto <b>{name}</b>?",
   "admin_unban_X_confirm": "Czy na pewno chcesz odbanować konto <b>{name}</b>?",
-  "ban_reason": "Powód zbanowania"
+  "ban_reason": "Powód zbanowania",
+  "admin_activate_account": "Aktywuj",
+  "signup_request_sent_at": "Wysłano",
+  "menu_reports": "Zgłoszenia",
+  "report_from": "Od",
+  "report_sent_at": "Wysłano",
+  "report_action_delete_post": "Usuń wpis",
+  "report_action_delete_comment": "Usuń komentarz"
 }

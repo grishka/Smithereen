@@ -1,7 +1,7 @@
 {
-  "write_on_own_wall": "Что у ваc нового?",
   "write_on_X_wall": "Написать на стене {name, inflect, genitive}...",
   "birth_date": "Дата рождения",
+  "write_on_own_wall": "Что у ваc нового?",
   "profile_about": "О себе",
   "X_is_your_friend": "{name} у ваc в друзьях",
   "you_sent_friend_req_to_X": "Вы отправили {name, inflect, dative} заявку в друзья",

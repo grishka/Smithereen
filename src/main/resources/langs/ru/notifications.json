@@ -1,5 +1,4 @@
 {
-  "notifications": "Уведомления",
   "notification_replied_to_post": "{gender, select, female {прокомментировала} other {прокомментировал}} вашу запись",
   "notification_replied_to_comment": "{gender, select, female {ответила} other {ответил}} на ваш комментарий",
   "notification_mentioned_in_post": "{gender, select, female {упомянула} other {упомянул}} ваc в записи",
@@ -13,6 +12,7 @@
   "notification_follow": "{gender, select, female {подписалась} other {подписался}} на ваc",
   "notification_friend_req_accept": "{gender, select, female {приняла} other {принял}} вашу заявку в друзья",
   "no_notifications": "У ваc пока нет уведомлений",
+  "notifications": "Уведомления",
   "notifications_empty": "Ваши уведомления появятся здесь.",
   "summary_notifications": "Показаны последние уведомления"
 }

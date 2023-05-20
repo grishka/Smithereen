@@ -109,5 +109,21 @@
   "copy_link": "Copiar enlace",
   "link_copied": "Enlace copiado",
   "resend": "Reenviar",
-  "index_welcome": "¡Bienvenido!"
+  "index_welcome": "¡Bienvenido!",
+  "content_type_post": "Publicación",
+  "content_type_comment": "Comentario",
+  "content_type_photo": "Foto",
+  "content_type_video": "Vídeo",
+  "content_type_audio": "Archivo de audio",
+  "content_type_X_photos": "{count, plural, one {# foto} other {# fotos}}",
+  "content_type_X_videos": "{count, plural, one {# vídeo} other {# vídeos}}",
+  "content_type_X_audios": "{count, plural, one {# archivo de audio} other {# archivos de audio}}",
+  "captcha_label": "Código de la imagen",
+  "err_wrong_captcha": "Código incorrecto de la imagen",
+  "date_format_month_year_short": "{month} ''{year}",
+  "statistics": "Estadísticas",
+  "X_comments": "{count, plural, =0 {Sin comentarios} one {# comentario} other {# comentarios}}",
+  "comments_show_X_more_replies": "Mostrar {count, plural, one {# respuesta más} other {# respuestas más}}",
+  "gender_other": "otros",
+  "remote_object_loading_error": "Error al cargar el objeto remoto."
 }
