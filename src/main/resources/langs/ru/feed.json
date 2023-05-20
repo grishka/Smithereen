@@ -1,0 +1,17 @@
+{
+  "feed_retoot": "<a id=\"author\">{author}</a> {gender, select, female {поделилась} other {поделился}} записью:",
+  "feed_retoot_comment": "<a id=\"author\">{author}</a> {gender, select, female {поделилась} other {поделился}} комментарием:",
+  "feed_added_friend": "<a id=\"author\">{author}</a> {gender, select, female {добавила} other {добавил}} в друзья <a id=\"target\">{target}</a>.",
+  "feed_added_friend_name": "{name, inflect, accusative}",
+  "feed_joined_group": "<a id=\"author\">{author}</a> {gender, select, female {вступила} other {вступил}} в группу <a id=\"target\">{target}</a>.",
+  "feed_empty": "Обновления от ваших друзей появятся здесь.",
+  "feed_tab_news": "Новости",
+  "feed_tab_comments": "Комментарии",
+  "summary_feed": "Показаны последние новости",
+  "feed_joined_event": "<a id=\"author\">{author}</a> примет участие во встрече <a id=\"target\">{target}</a>.",
+  "feed_created_group": "<a id=\"author\">{author}</a> {gender, select, female {создала} other {создал}} группу <a id=\"target\">{target}</a>.",
+  "feed_created_event": "<a id=\"author\">{author}</a> {gender, select, female {создала} other {создал}} встречу <a id=\"target\">{target}</a>.",
+  "feed_added_multiple_friends": "<a id=\"author\">{author}</a> {gender, select, female {добавила} other {добавил}} {count, plural, one {# друга} few {# друзей} other {# друзей}}:",
+  "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> {gender, select, female {вступила} other {вступил}} в {count, plural, one {# группу} few {# группы} other {# групп}}:",
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> примет участие в {count, plural, one {# встрече} few {# встречах} other {# встречах}}:"
+}

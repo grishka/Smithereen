@@ -1,0 +1,16 @@
+{
+  "notifications": "Powiadomienia",
+  "notification_replied_to_post": "{gender, select, female {skomentowała} other {skomentował}} Twój wpis",
+  "notification_replied_to_comment": "{gender, select, female {odpowiedziała} other {odpowiedział}} na Twój komentarz",
+  "notification_mentioned_in_post": "{gender, select, female {wspomniała} other {wspomniał}} o Tobie we wpisie",
+  "notification_mentioned_in_comment": "{gender, select, female {wspomniała} other {wspomniał}} o Tobie w komentarzu",
+  "notification_liked_post": "{gender, select, female {polubiła} other {polubił}} Twój wpis",
+  "notification_liked_comment": "{gender, select, female {polubiła} other {polubił}} Twój komentarz",
+  "notification_reposted_post": "{gender, select, female {udostępniła} other {udostępnił}} Twój wpis",
+  "notification_reposted_comment": "{gender, select, female {udostępniła} other {udostępnił}} Twój komentarz",
+  "notification_posted_on_wall": "{gender, select, female {opublikowała} other {opublikował}} na Twojej tablicy",
+  "notification_invite_signup": "{gender, select, female {zarejestrowała} other {zarejestrował}} się z Twojego zaproszenia",
+  "notification_follow": "{gender, select, female {zaobserwowała} other {zaobserwował}} Cię",
+  "notification_friend_req_accept": "{gender, select, female {zaakceptowała} other {zaakceptował}} Twoje zaproszenie do znajomych",
+  "no_notifications": "Nie masz jeszcze żadnych zaproszeń do znajomych"
+}

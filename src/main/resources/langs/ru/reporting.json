@@ -1,0 +1,18 @@
+{
+  "report": "Пожаловаться",
+  "report_title_post": "Жалоба на запись",
+  "report_title_comment": "Жалоба на комментарий",
+  "report_title_user": "Жалоба на страницу",
+  "report_title_group": "Жалоба на группу",
+  "report_title_event": "Жалоба на встречу",
+  "report_text_post": "Что вам кажется недопустимым в этой записи?",
+  "report_text_comment": "Что вам кажется недопустимым в этом комментарии?",
+  "report_text_user": "Что вам кажется недопустимым на этой странице?",
+  "report_text_group": "Что вам кажется недопустимым в этой группе?",
+  "report_text_event": "Что вам кажется недопустимым в этой встрече?",
+  "report_placeholder_profile": "Например: непристойное изображение на аватаре",
+  "report_placeholder_content": "Например: спам",
+  "report_sent": "Жалоба отправлена",
+  "report_forward_to_domain": "Переслать на сервер <b>{domain}</b> (анонимно)",
+  "report_submitted": "Ваша жалоба отправлена администрации сервера."
+}

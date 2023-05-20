@@ -1,0 +1,18 @@
+{
+  "notifications": "Уведомления",
+  "notification_replied_to_post": "{gender, select, female {прокомментировала} other {прокомментировал}} вашу запись",
+  "notification_replied_to_comment": "{gender, select, female {ответила} other {ответил}} на ваш комментарий",
+  "notification_mentioned_in_post": "{gender, select, female {упомянула} other {упомянул}} ваc в записи",
+  "notification_mentioned_in_comment": "{gender, select, female {упомянула} other {упомянул}} ваc в комментарии",
+  "notification_liked_post": "{gender, select, female {оценила} other {оценил}} вашу запись",
+  "notification_liked_comment": "{gender, select, female {оценила} other {оценил}} ваш комментарий",
+  "notification_reposted_post": "{gender, select, female {поделилась} other {поделился}} вашей записью",
+  "notification_reposted_comment": "{gender, select, female {поделилась} other {поделился}} вашим комментарием",
+  "notification_posted_on_wall": "{gender, select, female {оставила} other {оставил}} запись на вашей стене",
+  "notification_invite_signup": "{gender, select, female {зарегистрировалась} other {зарегистрировался}} по вашему приглашению",
+  "notification_follow": "{gender, select, female {подписалась} other {подписался}} на ваc",
+  "notification_friend_req_accept": "{gender, select, female {приняла} other {принял}} вашу заявку в друзья",
+  "no_notifications": "У ваc пока нет уведомлений",
+  "notifications_empty": "Ваши уведомления появятся здесь.",
+  "summary_notifications": "Показаны последние уведомления"
+}
