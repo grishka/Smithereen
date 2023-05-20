@@ -1,1 +1,18 @@
-{}
+{
+  "report": "Reportar",
+  "report_title_post": "Reportar una publicación",
+  "report_title_comment": "Reportar un comentario",
+  "report_title_user": "Reportar un perfil",
+  "report_title_group": "Reportar un grupo",
+  "report_title_event": "Reportar un evento",
+  "report_text_post": "¿Qué ocurre con esta publicación?",
+  "report_text_comment": "¿Qué ocurre con este comentario?",
+  "report_text_user": "¿Qué ocurre con este perfil?",
+  "report_text_group": "¿Qué ocurre con este grupo?",
+  "report_text_event": "¿Qué ocurre con este evento?",
+  "report_placeholder_profile": "Por ejemplo: foto de perfil explícita",
+  "report_placeholder_content": "Por ejemplo: spam",
+  "report_sent": "Reporte enviado",
+  "report_forward_to_domain": "Reenviar anónimamente a <b>{domain}</b>",
+  "report_submitted": "Tu reporte fue enviado al personal del servidor."
+}
