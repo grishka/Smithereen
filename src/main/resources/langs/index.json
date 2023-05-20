@@ -1,50 +1,47 @@
-[
-  {
-    "locale": "en",
-    "name": "English",
-    "fallback": null,
-    "files": [
-      "en.json"
-    ]
-  },
-  {
-    "locale": "ru",
-    "name": "Russian",
-    "fallback": "en",
-    "files": [
-      "ru.json"
-    ]
-  },
-  {
-    "locale": "tr",
-    "name": "Turkish",
-    "fallback": "en",
-    "files": [
-      "tr.json"
-    ]
-  },
-  {
-    "locale": "pl",
-    "name": "Polish",
-    "fallback": "en",
-    "files": [
-      "pl.json"
-    ]
-  },
-  {
-    "locale": "es",
-    "name": "Spanish",
-    "fallback": "en",
-    "files": [
-      "es.json"
-    ]
-  },
-  {
-    "locale": "de",
-    "name": "German",
-    "fallback": "en",
-    "files": [
-      "de.json"
-    ]
-  }
-]
+{
+  "files": [
+    "global.json",
+    "admin.json",
+    "friends.json",
+    "groups.json",
+    "profile.json",
+    "settings.json",
+    "notifications.json",
+    "feed.json",
+    "wall.json",
+    "email.json",
+    "reporting.json"
+  ],
+  "languages": [
+    {
+      "locale": "en",
+      "name": "English",
+      "fallback": null
+    },
+    {
+      "locale": "ru",
+      "name": "Russian",
+      "fallback": "en"
+    },
+    {
+      "locale": "tr",
+      "name": "Turkish",
+      "fallback": "en"
+    },
+    {
+      "locale": "pl",
+      "name": "Polish",
+      "fallback": "en"
+    },
+    {
+      "locale": "es",
+      "name": "Spanish",
+      "fallback": "en"
+    },
+    {
+      "locale": "de",
+      "name": "German",
+      "fallback": "en"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "write_on_X_wall": "Write on {name}''s wall...",
+  "birth_date": "Birth date",
+  "write_on_own_wall": "What's new?",
+  "profile_about": "About",
+  "X_is_your_friend": "{name} is your friend",
+  "you_sent_friend_req_to_X": "You sent {name} a friend request",
+  "X_sent_you_friend_req": "{name} sent you a friend request",
+  "you_are_following_X": "You follow {name}",
+  "X_is_following_you": "{name} follows you",
+  "waiting_for_X_to_accept_follow_req": "You're waiting for {name} to accept your follow request",
+  "incomplete_profile": "This profile might be incomplete.",
+  "this_is_you": "(this is you)"
+}

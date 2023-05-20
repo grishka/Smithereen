@@ -37,3 +37,5 @@ node_modules/
 .idea/modules
 *.iml
 *.ipr
+
+pom.xml.new-version
