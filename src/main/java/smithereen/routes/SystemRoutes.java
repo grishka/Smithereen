@@ -194,20 +194,17 @@ public class SystemRoutes{
 		if(uri!=null){
 			final String uriStr=uri.toString();
 			downloadMutex.acquire(uriStr);
-			if(isPostPhoto)
-				LOG.trace("downloadExternalMedia: after mutex acquire {}", uri);
+			LOG.trace("downloadExternalMedia: after mutex acquire {}", uri);
 			try{
 				MediaCache.Item existing=cache.get(uri);
 				if(mime.startsWith("image/")){
 					if(existing!=null){
-						if(isPostPhoto)
-							LOG.debug("downloadExternalMedia: found existing {}", uri);
+						LOG.debug("downloadExternalMedia: found existing {}", uri);
 						resp.redirect(new CachedRemoteImage((MediaCache.PhotoItem) existing, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
 						return "";
 					}
 					try{
-						if(isPostPhoto)
-							LOG.debug("downloadExternalMedia: downloading {}", uri);
+						LOG.debug("downloadExternalMedia: downloading {}", uri);
 						MediaCache.PhotoItem item;
 						if(isGraffiti)
 							item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType, true, GraffitiAttachment.WIDTH, GraffitiAttachment.HEIGHT);
@@ -225,12 +222,10 @@ public class SystemRoutes{
 									return "";
 								}
 							}
-							if(isPostPhoto)
-								LOG.debug("downloadExternalMedia: redirecting to original url {}", uri);
+							LOG.debug("downloadExternalMedia: redirecting to original url {}", uri);
 							resp.redirect(uri.toString());
 						}else{
-							if(isPostPhoto)
-								LOG.debug("downloadExternalMedia: download finished {}", uri);
+							LOG.debug("downloadExternalMedia: download finished {}", uri);
 							resp.redirect(new CachedRemoteImage(item, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
 						}
 						return "";
