@@ -97,6 +97,8 @@ public abstract class Actor extends ActivityPubObject{
 		if(icon instanceof LocalImage){
 			return (LocalImage) icon;
 		}
+		if(icon.url==null)
+			return null;
 		MediaCache cache=MediaCache.getInstance();
 		try{
 			MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.get(icon.url);
