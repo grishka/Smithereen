@@ -110,6 +110,8 @@ public class SystemRoutes{
 		Group group=null;
 		boolean isGraffiti=false;
 
+		boolean isPostPhoto="post_photo".equals(type);
+
 		if("user_ava".equals(type)){
 			itemType=MediaCache.ItemType.AVATAR;
 			mime="image/jpeg";
@@ -183,6 +185,7 @@ public class SystemRoutes{
 			}
 			isGraffiti=att instanceof Image img && img.isGraffiti;
 			uri=att.url;
+			LOG.debug("downloadExternalMedia: downloading post photo for post {} index {} url {}", postID, index, uri);
 		}else{
 			LOG.warn("unknown external file type {}", type);
 			return "";
@@ -191,14 +194,20 @@ public class SystemRoutes{
 		if(uri!=null){
 			final String uriStr=uri.toString();
 			downloadMutex.acquire(uriStr);
+			if(isPostPhoto)
+				LOG.trace("downloadExternalMedia: after mutex acquire {}", uri);
 			try{
 				MediaCache.Item existing=cache.get(uri);
 				if(mime.startsWith("image/")){
 					if(existing!=null){
+						if(isPostPhoto)
+							LOG.debug("downloadExternalMedia: found existing {}", uri);
 						resp.redirect(new CachedRemoteImage((MediaCache.PhotoItem) existing, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
 						return "";
 					}
 					try{
+						if(isPostPhoto)
+							LOG.debug("downloadExternalMedia: downloading {}", uri);
 						MediaCache.PhotoItem item;
 						if(isGraffiti)
 							item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType, true, GraffitiAttachment.WIDTH, GraffitiAttachment.HEIGHT);
@@ -216,8 +225,12 @@ public class SystemRoutes{
 									return "";
 								}
 							}
+							if(isPostPhoto)
+								LOG.debug("downloadExternalMedia: redirecting to original url {}", uri);
 							resp.redirect(uri.toString());
 						}else{
+							if(isPostPhoto)
+								LOG.debug("downloadExternalMedia: download finished {}", uri);
 							resp.redirect(new CachedRemoteImage(item, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
 						}
 						return "";
