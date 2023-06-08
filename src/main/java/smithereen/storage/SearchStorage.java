@@ -1,6 +1,5 @@
 package smithereen.storage;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -17,11 +16,13 @@ import smithereen.Utils;
 import smithereen.data.Group;
 import smithereen.data.SearchResult;
 import smithereen.data.User;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
+import smithereen.storage.sql.SQLQueryBuilder;
 
 public class SearchStorage{
 
 	private static void addResults(ResultSet res, ArrayList<SearchResult> results, Set<Integer> users, Set<Integer> groups) throws SQLException{
-		res.beforeFirst();
 		while(res.next()){
 			SearchResult sr;
 			int userID=res.getInt(1);
@@ -45,31 +46,32 @@ public class SearchStorage{
 
 	public static List<SearchResult> search(String query, int selfID, int maxCount) throws SQLException{
 		query=Arrays.stream(Utils.transliterate(query).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("[ \t]+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
-		Connection conn=DatabaseConnectionManager.getConnection();
-		ArrayList<SearchResult> results=new ArrayList<>();
-		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			ArrayList<SearchResult> results=new ArrayList<>();
+			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id, group_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND " +
-				"((user_id IN (SELECT followee_id FROM followings WHERE follower_id=?)) OR (group_id IN (SELECT group_id FROM group_memberships WHERE user_id=?))) LIMIT ?", query, selfID, selfID, maxCount);
-		try(ResultSet res=stmt.executeQuery()){
-			addResults(res, results, needUsers, needGroups);
-		}
-		if(results.size()<maxCount){
-			stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id, group_id FROM qsearch_index WHERE MATCH(string) AGAINST (? IN BOOLEAN MODE) LIMIT ?", query, maxCount-results.size());
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id, group_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND "+
+					"((user_id IN (SELECT followee_id FROM followings WHERE follower_id=?)) OR (group_id IN (SELECT group_id FROM group_memberships WHERE user_id=?))) LIMIT ?", query, selfID, selfID, maxCount);
 			try(ResultSet res=stmt.executeQuery()){
 				addResults(res, results, needUsers, needGroups);
 			}
-		}
-
-		Map<Integer, User> users=UserStorage.getById(needUsers);
-		Map<Integer, Group> groups=GroupStorage.getById(needGroups);
-		for(SearchResult sr:results){
-			switch(sr.type){
-				case USER -> sr.user=users.get(sr.id);
-				case GROUP -> sr.group=groups.get(sr.id);
+			if(results.size()<maxCount){
+				stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id, group_id FROM qsearch_index WHERE MATCH(string) AGAINST (? IN BOOLEAN MODE) LIMIT ?", query, maxCount-results.size());
+				try(ResultSet res=stmt.executeQuery()){
+					addResults(res, results, needUsers, needGroups);
+				}
 			}
-		}
 
-		return results;
+			Map<Integer, User> users=UserStorage.getById(needUsers);
+			Map<Integer, Group> groups=GroupStorage.getById(needGroups);
+			for(SearchResult sr: results){
+				switch(sr.type){
+					case USER -> sr.user=users.get(sr.id);
+					case GROUP -> sr.group=groups.get(sr.id);
+				}
+			}
+
+			return results;
+		}
 	}
 }

@@ -8,11 +8,9 @@ import org.jetbrains.annotations.Nullable;
 import java.net.URI;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,6 +39,9 @@ import smithereen.data.GroupInvitation;
 import smithereen.data.PaginatedList;
 import smithereen.data.User;
 import smithereen.data.UserNotifications;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
+import smithereen.storage.sql.SQLQueryBuilder;
 import spark.utils.StringUtils;
 
 public class GroupStorage{
@@ -53,177 +54,163 @@ public class GroupStorage{
 
 	public static int createGroup(String name, String description, String descriptionSrc, int userID, boolean isEvent, Instant eventStart, Instant eventEnd) throws SQLException{
 		int id;
-		Connection conn=DatabaseConnectionManager.getConnection();
-		try{
-			conn.createStatement().execute("START TRANSACTION");
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			try{
+				conn.createStatement().execute("START TRANSACTION");
 
-			KeyPairGenerator kpg=KeyPairGenerator.getInstance("RSA");
-			kpg.initialize(2048);
-			KeyPair pair=kpg.generateKeyPair();
+				KeyPairGenerator kpg=KeyPairGenerator.getInstance("RSA");
+				kpg.initialize(2048);
+				KeyPair pair=kpg.generateKeyPair();
 
-			PreparedStatement stmt;
-			String username;
-			synchronized(GroupStorage.class){
-				SQLQueryBuilder bldr=new SQLQueryBuilder(conn)
-						.insertInto("groups")
-						.value("name", name)
-						.value("username", "__tmp"+System.currentTimeMillis())
-						.value("public_key", pair.getPublic().getEncoded())
-						.value("private_key", pair.getPrivate().getEncoded())
-						.value("member_count", 1)
-						.value("about", description)
-						.value("about_source", descriptionSrc)
-						.value("event_start_time", eventStart)
-						.value("event_end_time", eventEnd)
-						.value("type", isEvent ? Group.Type.EVENT : Group.Type.GROUP);
+				String username;
+				synchronized(GroupStorage.class){
+					id=new SQLQueryBuilder(conn)
+							.insertInto("groups")
+							.value("name", name)
+							.value("username", "__tmp"+System.currentTimeMillis())
+							.value("public_key", pair.getPublic().getEncoded())
+							.value("private_key", pair.getPrivate().getEncoded())
+							.value("member_count", 1)
+							.value("about", description)
+							.value("about_source", descriptionSrc)
+							.value("event_start_time", eventStart)
+							.value("event_end_time", eventEnd)
+							.value("type", isEvent ? Group.Type.EVENT : Group.Type.GROUP)
+							.executeAndGetID();
 
-				stmt=bldr.createStatement(Statement.RETURN_GENERATED_KEYS);
-				id=DatabaseUtils.insertAndGetID(stmt);
-				username=(isEvent ? "event" : "club")+id;
+					username=(isEvent ? "event" : "club")+id;
+
+					new SQLQueryBuilder(conn)
+							.update("groups")
+							.value("username", username)
+							.where("id=?", id)
+							.executeNoResult();
+				}
 
 				new SQLQueryBuilder(conn)
-						.update("groups")
-						.value("username", username)
-						.where("id=?", id)
-						.createStatement()
-						.execute();
+						.insertInto("group_memberships")
+						.value("user_id", userID)
+						.value("group_id", id)
+						.executeNoResult();
+
+				new SQLQueryBuilder(conn)
+						.insertInto("group_admins")
+						.value("user_id", userID)
+						.value("group_id", id)
+						.value("level", Group.AdminLevel.OWNER)
+						.executeNoResult();
+
+				new SQLQueryBuilder(conn)
+						.insertInto("qsearch_index")
+						.value("string", Utils.transliterate(name)+" "+username)
+						.value("group_id", id)
+						.executeNoResult();
+			}catch(Exception x){
+				conn.createStatement().execute("ROLLBACK");
+				throw new SQLException(x);
 			}
-
-			new SQLQueryBuilder(conn)
-					.insertInto("group_memberships")
-					.value("user_id", userID)
-					.value("group_id", id)
-					.createStatement()
-					.execute();
-
-			new SQLQueryBuilder(conn)
-					.insertInto("group_admins")
-					.value("user_id", userID)
-					.value("group_id", id)
-					.value("level", Group.AdminLevel.OWNER)
-					.createStatement()
-					.execute();
-
-			new SQLQueryBuilder(conn)
-					.insertInto("qsearch_index")
-					.value("string", Utils.transliterate(name)+" "+username)
-					.value("group_id", id)
-					.createStatement()
-					.execute();
-		}catch(Exception x){
-			conn.createStatement().execute("ROLLBACK");
-			throw new SQLException(x);
+			SessionStorage.removeFromUserPermissionsCache(userID);
+			conn.createStatement().execute("COMMIT");
 		}
-		SessionStorage.removeFromUserPermissionsCache(userID);
-		conn.createStatement().execute("COMMIT");
 		return id;
 	}
 
 	public static synchronized void putOrUpdateForeignGroup(ForeignGroup group) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		int existingGroupID;
-		PreparedStatement stmt=new SQLQueryBuilder(conn)
-				.selectFrom("groups")
-				.columns("id")
-				.where("ap_id=?", group.activityPubID.toString())
-				.createStatement();
-		try(ResultSet res=stmt.executeQuery()){
-			existingGroupID=res.first() ? res.getInt(1) : 0;
-		}
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int existingGroupID=new SQLQueryBuilder(conn)
+					.selectFrom("groups")
+					.columns("id")
+					.where("ap_id=?", group.activityPubID.toString())
+					.executeAndGetInt();
 
-		SQLQueryBuilder builder=new SQLQueryBuilder(conn);
-		if(existingGroupID==0){
-			builder.insertInto("groups");
-		}else{
-			builder.update("groups").where("id=?", existingGroupID);
-		}
+			SQLQueryBuilder builder=new SQLQueryBuilder(conn);
+			if(existingGroupID==-1){
+				builder.insertInto("groups");
+			}else{
+				builder.update("groups").where("id=?", existingGroupID);
+			}
 
-		builder.value("name", group.name)
-				.value("username", group.username)
-				.value("domain", group.domain)
-				.value("ap_id", group.activityPubID.toString())
-				.value("ap_url", Objects.toString(group.url, null))
-				.value("ap_inbox", group.inbox.toString())
-				.value("ap_shared_inbox", Objects.toString(group.sharedInbox, null))
-				.value("public_key", group.publicKey.getEncoded())
-				.value("avatar", group.hasAvatar() ? group.icon.get(0).asActivityPubObject(new JsonObject(), new ContextCollector()).toString() : null)
-				.value("event_start_time", group.eventStartTime)
-				.value("event_end_time", group.eventEndTime)
-				.value("type", group.type)
-				.value("flags", Utils.serializeEnumSet(group.capabilities, ForeignGroup.Capability.class))
-				.value("access_type", group.accessType)
-				.value("endpoints", group.serializeEndpoints())
-				.value("about", group.summary)
-				.valueExpr("last_updated", "CURRENT_TIMESTAMP()");
+			builder.value("name", group.name)
+					.value("username", group.username)
+					.value("domain", group.domain)
+					.value("ap_id", group.activityPubID.toString())
+					.value("ap_url", Objects.toString(group.url, null))
+					.value("ap_inbox", group.inbox.toString())
+					.value("ap_shared_inbox", Objects.toString(group.sharedInbox, null))
+					.value("public_key", group.publicKey.getEncoded())
+					.value("avatar", group.hasAvatar() ? group.icon.get(0).asActivityPubObject(new JsonObject(), new ContextCollector()).toString() : null)
+					.value("event_start_time", group.eventStartTime)
+					.value("event_end_time", group.eventEndTime)
+					.value("type", group.type)
+					.value("flags", Utils.serializeEnumSet(group.capabilities, ForeignGroup.Capability.class))
+					.value("access_type", group.accessType)
+					.value("endpoints", group.serializeEndpoints())
+					.value("about", group.summary)
+					.valueExpr("last_updated", "CURRENT_TIMESTAMP()");
 
-		stmt=builder.createStatement(Statement.RETURN_GENERATED_KEYS);
-		if(existingGroupID==0){
-			group.id=DatabaseUtils.insertAndGetID(stmt);
-			new SQLQueryBuilder(conn)
-					.insertInto("qsearch_index")
-					.value("group_id", group.id)
-					.value("string", getQSearchStringForGroup(group))
-					.createStatement()
-					.execute();
-		}else{
-			group.id=existingGroupID;
-			stmt.execute();
-			new SQLQueryBuilder(conn)
-					.update("qsearch_index")
-					.value("string", getQSearchStringForGroup(group))
-					.where("group_id=?", existingGroupID)
-					.createStatement()
-					.execute();
-		}
-		removeFromCache(group);
-		synchronized(adminUpdateLock){
-			stmt=new SQLQueryBuilder(conn)
-					.selectFrom("group_admins")
-					.columns("user_id", "title")
-					.where("group_id=?", group.id)
-					.createStatement();
-			Map<Integer, GroupAdmin> admins=group.adminsForActivityPub.stream().collect(Collectors.toMap(adm->adm.user.id, adm->adm));
-			int count=0;
-			boolean needUpdate=false;
-			try(ResultSet res=stmt.executeQuery()){
-				res.beforeFirst();
-				while(res.next()){
-					count++;
-					int id=res.getInt(1);
-					String title=res.getString(2);
-					if(!admins.containsKey(id)){
-						needUpdate=true;
-						break;
-					}
-					GroupAdmin existing=admins.get(id);
-					if(!Objects.equals(title, existing.title)){
-						needUpdate=true;
-						break;
+			if(existingGroupID==0){
+				group.id=builder.executeAndGetID();
+				new SQLQueryBuilder(conn)
+						.insertInto("qsearch_index")
+						.value("group_id", group.id)
+						.value("string", getQSearchStringForGroup(group))
+						.executeNoResult();
+			}else{
+				group.id=existingGroupID;
+				builder.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("qsearch_index")
+						.value("string", getQSearchStringForGroup(group))
+						.where("group_id=?", existingGroupID)
+						.executeNoResult();
+			}
+			removeFromCache(group);
+			synchronized(adminUpdateLock){
+				builder=new SQLQueryBuilder(conn)
+						.selectFrom("group_admins")
+						.columns("user_id", "title")
+						.where("group_id=?", group.id);
+				Map<Integer, GroupAdmin> admins=group.adminsForActivityPub.stream().collect(Collectors.toMap(adm->adm.user.id, adm->adm));
+				int count=0;
+				boolean needUpdate=false;
+				try(ResultSet res=builder.execute()){
+					res.beforeFirst();
+					while(res.next()){
+						count++;
+						int id=res.getInt(1);
+						String title=res.getString(2);
+						if(!admins.containsKey(id)){
+							needUpdate=true;
+							break;
+						}
+						GroupAdmin existing=admins.get(id);
+						if(!Objects.equals(title, existing.title)){
+							needUpdate=true;
+							break;
+						}
 					}
 				}
-			}
-			if(!needUpdate && count!=group.adminsForActivityPub.size())
-				needUpdate=true;
+				if(!needUpdate && count!=group.adminsForActivityPub.size())
+					needUpdate=true;
 
-			// TODO only update whatever has actually changed
-			if(needUpdate){
-				new SQLQueryBuilder(conn)
-						.deleteFrom("group_admins")
-						.where("group_id=?", group.id)
-						.createStatement()
-						.execute();
-				int order=0;
-				for(GroupAdmin admin:group.adminsForActivityPub){
+				// TODO only update whatever has actually changed
+				if(needUpdate){
 					new SQLQueryBuilder(conn)
-							.insertInto("group_admins")
-							.value("group_id", group.id)
-							.value("user_id", admin.user.id)
-							.value("title", admin.title)
-							.value("level", Group.AdminLevel.MODERATOR.ordinal())
-							.value("display_order", order)
-							.createStatement()
-							.execute();
-					order++;
+							.deleteFrom("group_admins")
+							.where("group_id=?", group.id)
+							.executeNoResult();
+					int order=0;
+					for(GroupAdmin admin: group.adminsForActivityPub){
+						new SQLQueryBuilder(conn)
+								.insertInto("group_admins")
+								.value("group_id", group.id)
+								.value("user_id", admin.user.id)
+								.value("title", admin.title)
+								.value("level", Group.AdminLevel.MODERATOR.ordinal())
+								.value("display_order", order)
+								.executeNoResult();
+						order++;
+					}
 				}
 			}
 		}
@@ -233,15 +220,14 @@ public class GroupStorage{
 		Group g=cacheByID.get(id);
 		if(g!=null)
 			return g;
-		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("groups").allColumns().where("id=?", id).createStatement();
-		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				g=Group.fromResultSet(res);
-				putIntoCache(g);
-				return g;
-			}
-			return null;
-		}
+		g=new SQLQueryBuilder()
+				.selectFrom("groups")
+				.allColumns()
+				.where("id=?", id)
+				.executeAndGetSingleObject(Group::fromResultSet);
+		if(g!=null)
+			putIntoCache(g);
+		return g;
 	}
 
 	public static synchronized Group getByUsername(String username) throws SQLException{
@@ -256,15 +242,14 @@ public class GroupStorage{
 		}else{
 			domain="";
 		}
-		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("groups").allColumns().where("username=? AND domain=?", username, domain).createStatement();
-		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				g=Group.fromResultSet(res);
-				putIntoCache(g);
-				return g;
-			}
-			return null;
-		}
+		g=new SQLQueryBuilder()
+				.selectFrom("groups")
+				.allColumns()
+				.where("username=? AND domain=?", username, domain)
+				.executeAndGetSingleObject(Group::fromResultSet);
+		if(g!=null)
+			putIntoCache(g);
+		return g;
 	}
 
 	public static int getIdByUsername(@NotNull String username) throws SQLException{
@@ -287,15 +272,14 @@ public class GroupStorage{
 		ForeignGroup g=cacheByActivityPubID.get(id);
 		if(g!=null)
 			return g;
-		PreparedStatement stmt=new SQLQueryBuilder().selectFrom("groups").allColumns().where("ap_id=?", id.toString()).createStatement();
-		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				g=ForeignGroup.fromResultSet(res);
-				putIntoCache(g);
-				return g;
-			}
-			return null;
-		}
+		g=new SQLQueryBuilder()
+				.selectFrom("groups")
+				.allColumns()
+				.where("ap_id=?", id.toString())
+				.executeAndGetSingleObject(ForeignGroup::fromResultSet);
+		if(g!=null)
+			putIntoCache(g);
+		return g;
 	}
 
 	public static List<Group> getByIdAsList(Collection<Integer> ids) throws SQLException{
@@ -332,455 +316,404 @@ public class GroupStorage{
 		}
 		if(ids.isEmpty())
 			return result;
-		PreparedStatement stmt=new SQLQueryBuilder()
+		result.putAll(new SQLQueryBuilder()
 				.selectFrom("groups")
 				.allColumns()
 				.whereIn("id", ids)
-				.createStatement();
-		try(ResultSet res=stmt.executeQuery()){
-			res.beforeFirst();
-			while(res.next()){
-				String domain=res.getString("domain");
-				Group group;
-				if(StringUtils.isNotEmpty(domain))
-					group=ForeignGroup.fromResultSet(res);
-				else
-					group=Group.fromResultSet(res);
-				result.put(group.id, group);
+				.executeAsStream(res->{
+					String domain=res.getString("domain");
+					Group group;
+					if(StringUtils.isNotEmpty(domain))
+						group=ForeignGroup.fromResultSet(res);
+					else
+						group=Group.fromResultSet(res);
+					return group;
+				})
+				.collect(Collectors.toMap(g->g.id, Function.identity())));
+		synchronized(GroupStorage.class){
+			for(int id:ids){
+				putIntoCache(result.get(id));
 			}
-			synchronized(GroupStorage.class){
-				for(int id:ids){
-					putIntoCache(result.get(id));
-				}
-			}
-			return result;
 		}
+		return result;
 	}
 
 	public static List<User> getRandomMembersForProfile(int groupID, boolean tentative) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM group_memberships WHERE group_id=? AND tentative=? AND accepted=1 ORDER BY RAND() LIMIT 6", groupID, tentative);
-		try(ResultSet res=stmt.executeQuery()){
-			return UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(res));
-		}
+		return UserStorage.getByIdAsList(
+				new SQLQueryBuilder()
+						.selectFrom("group_memberships")
+						.where("group_id=? AND tentative=? AND accepted=1", groupID, tentative)
+						.orderBy("RAND()")
+						.limit(6, 0)
+						.executeAndGetIntList()
+		);
 	}
 
 	public static PaginatedList<User> getMembers(int groupID, int offset, int count, @Nullable Boolean tentative) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		String _tentative=tentative==null ? "" : (" AND tentative="+(tentative ? '1' : '0'));
-		PreparedStatement stmt=new SQLQueryBuilder(conn)
-				.selectFrom("group_memberships")
-				.count()
-				.where("group_id=? AND accepted=1"+_tentative, groupID)
-				.createStatement();
-		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
-		if(total==0)
-			return PaginatedList.emptyList(count);
-		stmt=new SQLQueryBuilder(conn)
-				.selectFrom("group_memberships")
-				.where("group_id=? AND accepted=1"+_tentative, groupID)
-				.limit(count, offset)
-				.createStatement();
-		try(ResultSet res=stmt.executeQuery()){
-			return new PaginatedList<>(UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String _tentative=tentative==null ? "" : (" AND tentative="+(tentative ? '1' : '0'));
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.count()
+					.where("group_id=? AND accepted=1"+_tentative, groupID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Integer> ids=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.where("group_id=? AND accepted=1"+_tentative, groupID)
+					.limit(count, offset)
+					.executeAndGetIntList();
+			return new PaginatedList<>(UserStorage.getByIdAsList(ids), total, offset, count);
 		}
 	}
 
 	public static Group.MembershipState getUserMembershipState(int groupID, int userID) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM group_memberships WHERE group_id=? AND user_id=?");
-		stmt.setInt(1, groupID);
-		stmt.setInt(2, userID);
-		try(ResultSet res=stmt.executeQuery()){
-			if(!res.first()){
-				stmt=new SQLQueryBuilder(conn).selectFrom("group_invites").count().where("group_id=? AND invitee_id=?", groupID, userID).createStatement();
-				return DatabaseUtils.oneFieldToInt(stmt.executeQuery())==0 ? Group.MembershipState.NONE : Group.MembershipState.INVITED;
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("group_memberships").where("group_id=? AND user_id=?", groupID, userID).execute()){
+				if(!res.next()){
+					return new SQLQueryBuilder(conn).selectFrom("group_invites").count().where("group_id=? AND invitee_id=?", groupID, userID).executeAndGetInt()==0 ? Group.MembershipState.NONE : Group.MembershipState.INVITED;
+				}
+				if(!res.getBoolean("accepted"))
+					return Group.MembershipState.REQUESTED;
+				return res.getBoolean("tentative") ? Group.MembershipState.TENTATIVE_MEMBER : Group.MembershipState.MEMBER;
 			}
-			if(!res.getBoolean("accepted"))
-				return Group.MembershipState.REQUESTED;
-			return res.getBoolean("tentative") ? Group.MembershipState.TENTATIVE_MEMBER : Group.MembershipState.MEMBER;
 		}
 	}
 
 	public static void joinGroup(Group group, int userID, boolean tentative, boolean accepted) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		conn.createStatement().execute("START TRANSACTION");
-		boolean success=false;
-		try{
-			new SQLQueryBuilder(conn)
-					.insertInto("group_memberships")
-					.value("user_id", userID)
-					.value("group_id", group.id)
-					.value("tentative", tentative)
-					.value("accepted", accepted)
-					.createStatement()
-					.execute();
-
-			if(accepted){
-				String memberCountField=tentative ? "tentative_member_count" : "member_count";
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			DatabaseUtils.doWithTransaction(conn, ()->{
 				new SQLQueryBuilder(conn)
-						.update("groups")
-						.valueExpr(memberCountField, memberCountField+"+1")
-						.where("id=?", group.id)
-						.createStatement()
-						.execute();
-			}
+						.insertInto("group_memberships")
+						.value("user_id", userID)
+						.value("group_id", group.id)
+						.value("tentative", tentative)
+						.value("accepted", accepted)
+						.executeNoResult();
 
-			deleteInvitation(userID, group.id, group.isEvent());
+				if(accepted){
+					String memberCountField=tentative ? "tentative_member_count" : "member_count";
+					new SQLQueryBuilder(conn)
+							.update("groups")
+							.valueExpr(memberCountField, memberCountField+"+1")
+							.where("id=?", group.id)
+							.executeNoResult();
+				}
 
-			removeFromCache(group);
-
-			success=true;
-		}finally{
-			conn.createStatement().execute(success ? "COMMIT" : "ROLLBACK");
+				deleteInvitation(userID, group.id, group.isEvent());
+				removeFromCache(group);
+			});
 		}
 	}
 
 	public static void updateUserEventDecision(Group group, int userID, boolean tentative) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		DatabaseUtils.doWithTransaction(conn, ()->{
-			new SQLQueryBuilder(conn)
-					.update("group_memberships")
-					.where("user_id=? AND group_id=?", userID, group.id)
-					.value("tentative", tentative)
-					.createStatement()
-					.execute();
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			DatabaseUtils.doWithTransaction(conn, ()->{
+				new SQLQueryBuilder(conn)
+						.update("group_memberships")
+						.where("user_id=? AND group_id=?", userID, group.id)
+						.value("tentative", tentative)
+						.executeNoResult();
 
-			String memberCountFieldOld=tentative ? "member_count" : "tentative_member_count";
-			String memberCountFieldNew=tentative ? "tentative_member_count" : "member_count";
-			new SQLQueryBuilder(conn)
-					.update("groups")
-					.valueExpr(memberCountFieldOld, memberCountFieldOld+"-1")
-					.valueExpr(memberCountFieldNew, memberCountFieldNew+"+1")
-					.where("id=?", group.id)
-					.createStatement()
-					.execute();
-			removeFromCache(group);
-		});
+				String memberCountFieldOld=tentative ? "member_count" : "tentative_member_count";
+				String memberCountFieldNew=tentative ? "tentative_member_count" : "member_count";
+				new SQLQueryBuilder(conn)
+						.update("groups")
+						.valueExpr(memberCountFieldOld, memberCountFieldOld+"-1")
+						.valueExpr(memberCountFieldNew, memberCountFieldNew+"+1")
+						.where("id=?", group.id)
+						.executeNoResult();
+				removeFromCache(group);
+			});
+		}
 	}
 
 	public static void leaveGroup(Group group, int userID, boolean tentative, boolean wasAccepted) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		conn.createStatement().execute("START TRANSACTION");
-		boolean success=false;
-		try{
-			new SQLQueryBuilder(conn)
-					.deleteFrom("group_memberships")
-					.where("user_id=? AND group_id=?", userID, group.id)
-					.createStatement()
-					.execute();
-
-			if(wasAccepted){
-				String memberCountField=tentative ? "tentative_member_count" : "member_count";
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			DatabaseUtils.doWithTransaction(conn, ()->{
 				new SQLQueryBuilder(conn)
-						.update("groups")
-						.valueExpr(memberCountField, "GREATEST(0, CAST("+memberCountField+" AS SIGNED)-1)")
-						.where("id=?", group.id)
-						.createStatement()
-						.execute();
-			}
+						.deleteFrom("group_memberships")
+						.where("user_id=? AND group_id=?", userID, group.id)
+						.executeNoResult();
 
-			removeFromCache(group);
+				if(wasAccepted){
+					String memberCountField=tentative ? "tentative_member_count" : "member_count";
+					new SQLQueryBuilder(conn)
+							.update("groups")
+							.valueExpr(memberCountField, "GREATEST(0, CAST("+memberCountField+" AS SIGNED)-1)")
+							.where("id=?", group.id)
+							.executeNoResult();
+				}
 
-			success=true;
-		}finally{
-			conn.createStatement().execute(success ? "COMMIT" : "ROLLBACK");
+				removeFromCache(group);
+			});
 		}
 	}
 
 	public static PaginatedList<Group> getUserGroups(int userID, int offset, int count, boolean includePrivate) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		String query="SELECT %s FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0";
-		if(!includePrivate){
-			query+=" AND `groups`.`access_type`<>2";
-		}
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "COUNT(*)"), userID);
-		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
-		if(total==0)
-			return new PaginatedList<>(Collections.emptyList(), 0, 0, count);
-		query+=" ORDER BY group_id ASC LIMIT ? OFFSET ?";
-		stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "group_id"), userID, count, offset);
-		try(ResultSet res=stmt.executeQuery()){
-			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String query="SELECT %s FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0";
+			if(!includePrivate){
+				query+=" AND `groups`.`access_type`<>2";
+			}
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "COUNT(*)"), userID);
+			int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+			if(total==0)
+				return new PaginatedList<>(Collections.emptyList(), 0, 0, count);
+			query+=" ORDER BY group_id ASC LIMIT ? OFFSET ?";
+			stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "group_id"), userID, count, offset);
+			try(ResultSet res=stmt.executeQuery()){
+				return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
+			}
 		}
 	}
 
 	public static PaginatedList<Group> getUserEvents(int userID, GroupsController.EventsType type, int offset, int count) throws SQLException{
-		String query="SELECT %s FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=1";
-		query+=switch(type){
-			case PAST -> " AND event_start_time<=CURRENT_TIMESTAMP()";
-			case FUTURE -> " AND event_start_time>CURRENT_TIMESTAMP()";
-			case ALL -> "";
-		};
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "COUNT(*)"), userID);
-		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
-		if(total==0)
-			return PaginatedList.emptyList(count);
-		query+=" ORDER BY event_start_time "+(type==GroupsController.EventsType.PAST ? "DESC" : "ASC")+" LIMIT ? OFFSET ?";
-		stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "group_id"), userID, count, offset);
-		try(ResultSet res=stmt.executeQuery()){
-			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String query="SELECT %s FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=1";
+			query+=switch(type){
+				case PAST -> " AND event_start_time<=CURRENT_TIMESTAMP()";
+				case FUTURE -> " AND event_start_time>CURRENT_TIMESTAMP()";
+				case ALL -> "";
+			};
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "COUNT(*)"), userID);
+			int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			query+=" ORDER BY event_start_time "+(type==GroupsController.EventsType.PAST ? "DESC" : "ASC")+" LIMIT ? OFFSET ?";
+			stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "group_id"), userID, count, offset);
+			try(ResultSet res=stmt.executeQuery()){
+				return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
+			}
 		}
 	}
 
 	public static PaginatedList<URI> getUserGroupIDs(int userID, int offset, int count) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT count(*) FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups`.`access_type`<>2");
-		stmt.setInt(1, userID);
-		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
-		if(total==0)
-			return new PaginatedList<>(Collections.emptyList(), 0);
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=conn.prepareStatement("SELECT count(*) FROM group_memberships JOIN `groups` ON group_id=`groups`.id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups`.`access_type`<>2");
+			stmt.setInt(1, userID);
+			int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+			if(total==0)
+				return new PaginatedList<>(Collections.emptyList(), 0);
 
-		stmt=conn.prepareStatement("SELECT group_id, ap_id FROM group_memberships JOIN groups ON group_id=id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups`.`access_type`<>2 LIMIT ? OFFSET ?");
-		stmt.setInt(1, userID);
-		stmt.setInt(2, count);
-		stmt.setInt(3, offset);
-		try(ResultSet res=stmt.executeQuery()){
-			ArrayList<URI> list=new ArrayList<>();
-			res.beforeFirst();
-			while(res.next()){
-				String apID=res.getString(2);
-				list.add(apID!=null ? URI.create(apID) : Config.localURI("/groups/"+res.getInt(1)));
+			stmt=conn.prepareStatement("SELECT group_id, ap_id FROM group_memberships JOIN groups ON group_id=id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups`.`access_type`<>2 LIMIT ? OFFSET ?");
+			stmt.setInt(1, userID);
+			stmt.setInt(2, count);
+			stmt.setInt(3, offset);
+			try(ResultSet res=stmt.executeQuery()){
+				ArrayList<URI> list=new ArrayList<>();
+				res.beforeFirst();
+				while(res.next()){
+					String apID=res.getString(2);
+					list.add(apID!=null ? URI.create(apID) : Config.localURI("/groups/"+res.getInt(1)));
+				}
+				return new PaginatedList<>(list, total);
 			}
-			return new PaginatedList<>(list, total);
 		}
 	}
 
 	public static PaginatedList<Group> getUserManagedGroups(int userID, int offset, int count) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=new SQLQueryBuilder(conn)
-				.selectFrom("group_admins")
-				.count()
-				.where("user_id=?", userID)
-				.createStatement();
-		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
-		if(total==0)
-			return PaginatedList.emptyList(count);
-		stmt=new SQLQueryBuilder(conn).selectFrom("group_admins").columns("group_id").where("user_id=?", userID).createStatement();
-		try(ResultSet res=stmt.executeQuery()){
-			return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("group_admins")
+					.count()
+					.where("user_id=?", userID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("group_admins").columns("group_id").where("user_id=?", userID).execute()){
+				return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
+			}
 		}
 	}
 
 	public static PaginatedList<URI> getGroupMemberURIs(int groupID, boolean tentative, int offset, int count) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt;
-		stmt=new SQLQueryBuilder(conn).selectFrom("group_memberships").count().where("group_id=? AND accepted=1 AND tentative=?", groupID, tentative).createStatement();
-		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
-		if(count>0){
-			stmt=conn.prepareStatement("SELECT `ap_id`,`id` FROM `group_memberships` INNER JOIN `users` ON `users`.`id`=`user_id` WHERE `group_id`=? AND `accepted`=1 AND tentative=? LIMIT ? OFFSET ?");
-			stmt.setInt(1, groupID);
-			stmt.setBoolean(2, tentative);
-			stmt.setInt(3, count);
-			stmt.setInt(4, offset);
-			ArrayList<URI> list=new ArrayList<>();
-			try(ResultSet res=stmt.executeQuery()){
-				if(res.first()){
-					do{
-						String _u=res.getString(1);
-						if(_u==null){
-							list.add(Config.localURI("/users/"+res.getInt(2)));
-						}else{
-							list.add(URI.create(_u));
-						}
-					}while(res.next());
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn).selectFrom("group_memberships").count().where("group_id=? AND accepted=1 AND tentative=?", groupID, tentative).executeAndGetInt();
+			if(count>0){
+				PreparedStatement stmt=conn.prepareStatement("SELECT `ap_id`,`id` FROM `group_memberships` INNER JOIN `users` ON `users`.`id`=`user_id` WHERE `group_id`=? AND `accepted`=1 AND tentative=? LIMIT ? OFFSET ?");
+				stmt.setInt(1, groupID);
+				stmt.setBoolean(2, tentative);
+				stmt.setInt(3, count);
+				stmt.setInt(4, offset);
+				ArrayList<URI> list=new ArrayList<>();
+				try(ResultSet res=stmt.executeQuery()){
+					if(res.first()){
+						do{
+							String _u=res.getString(1);
+							if(_u==null){
+								list.add(Config.localURI("/users/"+res.getInt(2)));
+							}else{
+								list.add(URI.create(_u));
+							}
+						}while(res.next());
+					}
 				}
+				return new PaginatedList<>(list, total, offset, count);
 			}
-			return new PaginatedList<>(list, total, offset, count);
+			return new PaginatedList<>(Collections.emptyList(), total, offset, count);
 		}
-		return new PaginatedList<>(Collections.emptyList(), total, offset, count);
 	}
 
 	public static List<URI> getGroupMemberInboxes(int groupID) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT IFNULL(ap_shared_inbox, ap_inbox) FROM `users` WHERE id IN (SELECT user_id FROM group_memberships WHERE group_id=? AND accepted=1) AND ap_inbox IS NOT NULL");
-		stmt.setInt(1, groupID);
-		ArrayList<URI> inboxes=new ArrayList<>();
-		try(ResultSet res=stmt.executeQuery()){
-			res.beforeFirst();
-			while(res.next()){
-				inboxes.add(URI.create(res.getString(1)));
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT IFNULL(ap_shared_inbox, ap_inbox) FROM `users` WHERE id IN (SELECT user_id FROM group_memberships WHERE group_id=? AND accepted=1) AND ap_inbox IS NOT NULL");
+			stmt.setInt(1, groupID);
+			ArrayList<URI> inboxes=new ArrayList<>();
+			try(ResultSet res=stmt.executeQuery()){
+				res.beforeFirst();
+				while(res.next()){
+					inboxes.add(URI.create(res.getString(1)));
+				}
+				return inboxes;
 			}
-			return inboxes;
 		}
 	}
 
 	public static Group.AdminLevel getGroupMemberAdminLevel(int groupID, int userID) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder()
+		int level=new SQLQueryBuilder()
 				.selectFrom("group_admins")
 				.columns("level")
 				.where("group_id=? AND user_id=?", groupID, userID)
-				.createStatement();
-		try(ResultSet res=stmt.executeQuery()){
-			return res.first() ? Group.AdminLevel.values()[res.getInt(1)] : Group.AdminLevel.REGULAR;
-		}
+				.executeAndGetInt();
+		return level==-1 ? Group.AdminLevel.REGULAR : Group.AdminLevel.values()[level];
 	}
 
 	public static void setMemberAccepted(Group group, int userID, boolean accepted) throws SQLException{
 		int groupID=group.id;
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=new SQLQueryBuilder(conn)
-				.selectFrom("group_memberships")
-				.columns("tentative")
-				.where("group_id=? AND user_id=? AND accepted=?", groupID, userID, !accepted)
-				.createStatement();
-		boolean tentative;
-		try(ResultSet res=stmt.executeQuery()){
-			if(!res.first())
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int _tentative=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.columns("tentative")
+					.where("group_id=? AND user_id=? AND accepted=?", groupID, userID, !accepted)
+					.executeAndGetInt();
+			if(_tentative==-1)
 				return;
-			tentative=res.getBoolean(1);
+			boolean tentative=_tentative==1;
+
+			new SQLQueryBuilder(conn)
+					.update("group_memberships")
+					.value("accepted", accepted)
+					.where("group_id=? AND user_id=?", groupID, userID)
+					.executeNoResult();
+
+			String memberCountField=tentative ? "tentative_member_count" : "member_count";
+			new SQLQueryBuilder(conn)
+					.update("groups")
+					.valueExpr(memberCountField, "GREATEST(0, CAST("+memberCountField+" AS SIGNED)"+(accepted ? "+1" : "-1")+")")
+					.where("id=?", groupID)
+					.executeNoResult();
+			removeFromCache(group);
 		}
-
-		new SQLQueryBuilder(conn)
-				.update("group_memberships")
-				.value("accepted", accepted)
-				.where("group_id=? AND user_id=?", groupID, userID)
-				.createStatement()
-				.execute();
-
-		String memberCountField=tentative ? "tentative_member_count" : "member_count";
-		new SQLQueryBuilder(conn)
-				  .update("groups")
-				  .valueExpr(memberCountField, "GREATEST(0, CAST("+memberCountField+" AS SIGNED)"+(accepted ? "+1" : "-1")+")")
-				  .where("id=?", groupID)
-				  .createStatement()
-				  .execute();
-		removeFromCache(group);
 	}
 
 	public static List<GroupAdmin> getGroupAdmins(int groupID) throws SQLException{
-		SQLQueryBuilder b=new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("group_admins")
 				.columns("level", "user_id", "title")
 				.where("group_id=?", groupID)
-				.orderBy("display_order ASC");
-		try(ResultSet res=b.createStatement().executeQuery()){
-			ArrayList<GroupAdmin> admins=new ArrayList<>();
-			res.beforeFirst();
-			while(res.next()){
-				GroupAdmin admin=new GroupAdmin();
-				admin.level=Group.AdminLevel.values()[res.getInt(1)];
-				admin.user=UserStorage.getById(res.getInt(2));
-				admin.title=res.getString(3);
-				admins.add(admin);
-			}
-			return admins;
-		}
+				.orderBy("display_order ASC")
+				.executeAsStream(GroupAdmin::fromResultSet)
+				.toList();
 	}
 
 	public static GroupAdmin getGroupAdmin(int groupID, int userID) throws SQLException{
-		SQLQueryBuilder b=new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("group_admins")
 				.columns("level", "user_id", "title")
-				.where("group_id=? AND user_id=?", groupID, userID);
-		try(ResultSet res=b.createStatement().executeQuery()){
-			ArrayList<GroupAdmin> admins=new ArrayList<>();
-			if(res.first()){
-				GroupAdmin admin=new GroupAdmin();
-				admin.level=Group.AdminLevel.values()[res.getInt(1)];
-				admin.user=UserStorage.getById(res.getInt(2));
-				admin.title=res.getString(3);
-				return admin;
-			}
-			return null;
-		}
+				.where("group_id=? AND user_id=?", groupID, userID)
+				.executeAndGetSingleObject(GroupAdmin::fromResultSet);
 	}
 
 	public static void addOrUpdateGroupAdmin(int groupID, int userID, String title, @Nullable Group.AdminLevel level) throws SQLException{
 		synchronized(adminUpdateLock){
-			GroupAdmin existing=getGroupAdmin(groupID, userID);
-			if(existing!=null){
-				SQLQueryBuilder b=new SQLQueryBuilder()
-						.update("group_admins")
-						.where("group_id=? AND user_id=?", groupID, userID)
-						.value("title", title);
-				if(existing.level!=Group.AdminLevel.OWNER && level!=null){
-					b.value("level", level.ordinal());
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+				GroupAdmin existing=getGroupAdmin(groupID, userID);
+				if(existing!=null){
+					SQLQueryBuilder b=new SQLQueryBuilder(conn)
+							.update("group_admins")
+							.where("group_id=? AND user_id=?", groupID, userID)
+							.value("title", title);
+					if(existing.level!=Group.AdminLevel.OWNER && level!=null){
+						b.value("level", level.ordinal());
+					}
+					b.executeNoResult();
+				}else if(level!=null){
+					int order=new SQLQueryBuilder(conn)
+							.selectFrom("group_admins")
+							.selectExpr("MAX(display_order)+1")
+							.where("group_id=?", groupID)
+							.executeAndGetInt();
+					new SQLQueryBuilder(conn)
+							.insertInto("group_admins")
+							.value("group_id", groupID)
+							.value("user_id", userID)
+							.value("title", title)
+							.value("level", level.ordinal())
+							.value("display_order", order)
+							.executeNoResult();
 				}
-				b.createStatement().execute();
-			}else if(level!=null){
-				int order=DatabaseUtils.intResultSetToList(new SQLQueryBuilder()
-						.selectFrom("group_admins")
-						.selectExpr("MAX(display_order)+1")
-						.where("group_id=?", groupID)
-						.createStatement()
-						.executeQuery()).get(0);
-				new SQLQueryBuilder()
-						.insertInto("group_admins")
-						.value("group_id", groupID)
-						.value("user_id", userID)
-						.value("title", title)
-						.value("level", level.ordinal())
-						.value("display_order", order)
-						.createStatement()
-						.execute();
+				SessionStorage.removeFromUserPermissionsCache(userID);
 			}
-			SessionStorage.removeFromUserPermissionsCache(userID);
 		}
 	}
 
 	public static void removeGroupAdmin(int groupID, int userID) throws SQLException{
 		synchronized(adminUpdateLock){
-			Connection conn=DatabaseConnectionManager.getConnection();
-			PreparedStatement stmt=new SQLQueryBuilder(conn)
-					.selectFrom("group_admins")
-					.columns("display_order")
-					.where("group_id=? AND user_id=?", groupID, userID)
-					.createStatement();
-			List<Integer> _order=DatabaseUtils.intResultSetToList(stmt.executeQuery());
-			if(_order.isEmpty())
-				return;
-			int order=_order.get(0);
-			new SQLQueryBuilder(conn)
-					.deleteFrom("group_admins")
-					.where("group_id=? AND user_id=?", groupID, userID)
-					.createStatement()
-					.execute();
-			new SQLQueryBuilder(conn)
-					.update("group_admins")
-					.valueExpr("display_order", "display_order-1")
-					.where("group_id=? AND display_order>?", groupID, order)
-					.createStatement()
-					.execute();
-			SessionStorage.removeFromUserPermissionsCache(userID);
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+				int order=new SQLQueryBuilder(conn)
+						.selectFrom("group_admins")
+						.columns("display_order")
+						.where("group_id=? AND user_id=?", groupID, userID)
+						.executeAndGetInt();
+				if(order==-1)
+					return;
+				new SQLQueryBuilder(conn)
+						.deleteFrom("group_admins")
+						.where("group_id=? AND user_id=?", groupID, userID)
+						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("group_admins")
+						.valueExpr("display_order", "display_order-1")
+						.where("group_id=? AND display_order>?", groupID, order)
+						.executeNoResult();
+				SessionStorage.removeFromUserPermissionsCache(userID);
+			}
 		}
 	}
 
 	public static void setGroupAdminOrder(int groupID, int userID, int newOrder) throws SQLException{
 		synchronized(adminUpdateLock){
-			Connection conn=DatabaseConnectionManager.getConnection();
-			PreparedStatement stmt=new SQLQueryBuilder(conn)
-					.selectFrom("group_admins")
-					.columns("display_order")
-					.where("group_id=? AND user_id=?", groupID, userID)
-					.createStatement();
-			int order=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
-			if(order==-1 || order==newOrder)
-				return;
-			int count=DatabaseUtils.oneFieldToInt(new SQLQueryBuilder(conn).selectFrom("group_admins").count().where("group_id=?", groupID).createStatement().executeQuery());
-			if(newOrder>=count)
-				return;
-			new SQLQueryBuilder(conn)
-					.update("group_admins")
-					.where("group_id=? AND user_id=?", groupID, userID)
-					.value("display_order", newOrder)
-					.createStatement()
-					.execute();
-			if(newOrder<order){
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+				int order=new SQLQueryBuilder(conn)
+						.selectFrom("group_admins")
+						.columns("display_order")
+						.where("group_id=? AND user_id=?", groupID, userID)
+						.executeAndGetInt();
+				if(order==-1 || order==newOrder)
+					return;
+				int count=new SQLQueryBuilder(conn).selectFrom("group_admins").count().where("group_id=?", groupID).executeAndGetInt();
+				if(newOrder>=count)
+					return;
 				new SQLQueryBuilder(conn)
 						.update("group_admins")
-						.where("group_id=? AND display_order>=? AND display_order<? AND user_id<>?", groupID, newOrder, order, userID)
-						.valueExpr("display_order", "display_order+1")
-						.createStatement()
-						.execute();
-			}else{
-				new SQLQueryBuilder(conn)
-						.update("group_admins")
-						.where("group_id=? AND display_order<=? AND display_order>? AND user_id<>?", groupID, newOrder, order, userID)
-						.valueExpr("display_order", "display_order-1")
-						.createStatement()
-						.execute();
+						.where("group_id=? AND user_id=?", groupID, userID)
+						.value("display_order", newOrder)
+						.executeNoResult();
+				if(newOrder<order){
+					new SQLQueryBuilder(conn)
+							.update("group_admins")
+							.where("group_id=? AND display_order>=? AND display_order<? AND user_id<>?", groupID, newOrder, order, userID)
+							.valueExpr("display_order", "display_order+1")
+							.executeNoResult();
+				}else{
+					new SQLQueryBuilder(conn)
+							.update("group_admins")
+							.where("group_id=? AND display_order<=? AND display_order>? AND user_id<>?", groupID, newOrder, order, userID)
+							.valueExpr("display_order", "display_order-1")
+							.executeNoResult();
+				}
 			}
 		}
 	}
@@ -790,8 +723,7 @@ public class GroupStorage{
 				.update("groups")
 				.value("avatar", serializedPic)
 				.where("id=?", group.id)
-				.createStatement()
-				.execute();
+				.executeNoResult();
 		synchronized(GroupStorage.class){
 			removeFromCache(group);
 		}
@@ -808,16 +740,14 @@ public class GroupStorage{
 				.value("event_end_time", eventEnd)
 				.value("access_type", accessType)
 				.where("id=?", group.id)
-				.createStatement()
-				.execute();
+				.executeNoResult();
 
 		group.name=name;
 		new SQLQueryBuilder()
 				.update("qsearch_index")
 				.value("string", getQSearchStringForGroup(group))
 				.where("group_id=?", group.id)
-				.createStatement()
-				.execute();
+				.executeNoResult();
 
 		synchronized(GroupStorage.class){
 			removeFromCache(group);
@@ -825,72 +755,57 @@ public class GroupStorage{
 	}
 
 	public static boolean isUserBlocked(int ownerID, int targetID) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("blocks_group_user")
 				.count()
 				.where("owner_id=? AND user_id=?", ownerID, targetID)
-				.createStatement();
-		try(ResultSet res=stmt.executeQuery()){
-			res.first();
-			return res.getInt(1)==1;
-		}
+				.executeAndGetInt()==1;
 	}
 
 	public static void blockUser(int selfID, int targetID) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		new SQLQueryBuilder(conn)
-				.insertInto("blocks_group_user")
-				.value("owner_id", selfID)
-				.value("user_id", targetID)
-				.createStatement()
-				.execute();
-		new SQLQueryBuilder(conn)
-				.deleteFrom("group_memberships")
-				.where("user_id=? AND group_id=?", targetID, selfID)
-				.createStatement()
-				.execute();
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			new SQLQueryBuilder(conn)
+					.insertInto("blocks_group_user")
+					.value("owner_id", selfID)
+					.value("user_id", targetID)
+					.executeNoResult();
+			new SQLQueryBuilder(conn)
+					.deleteFrom("group_memberships")
+					.where("user_id=? AND group_id=?", targetID, selfID)
+					.executeNoResult();
+		}
 	}
 
 	public static void unblockUser(int selfID, int targetID) throws SQLException{
 		new SQLQueryBuilder()
 				.deleteFrom("blocks_group_user")
 				.where("owner_id=? AND user_id=?", selfID, targetID)
-				.createStatement()
-				.execute();
+				.executeNoResult();
 	}
 
 	public static List<User> getBlockedUsers(int selfID) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder()
+		return UserStorage.getByIdAsList(new SQLQueryBuilder()
 				.selectFrom("blocks_group_user")
 				.columns("user_id")
 				.where("owner_id=?", selfID)
-				.createStatement();
-		return UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(stmt.executeQuery()));
+				.executeAndGetIntList());
 	}
 
 	public static boolean isDomainBlocked(int selfID, String domain) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("blocks_group_domain")
 				.count()
 				.where("owner_id=? AND domain=?", selfID, domain)
-				.createStatement();
-		return DatabaseUtils.oneFieldToInt(stmt.executeQuery())==1;
+				.executeAndGetInt()==1;
 	}
 
 	public static List<String> getBlockedDomains(int selfID) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("blocks_group_domain")
 				.columns("domain")
 				.where("owner_id=?", selfID)
-				.createStatement();
-		try(ResultSet res=stmt.executeQuery()){
-			ArrayList<String> arr=new ArrayList<>();
-			res.beforeFirst();
-			while(res.next()){
-				arr.add(res.getString(1));
-			}
-			return arr;
-		}
+				.executeAsStream(r->r.getString(1))
+				.toList();
 	}
 
 	public static void blockDomain(int selfID, String domain) throws SQLException{
@@ -898,26 +813,22 @@ public class GroupStorage{
 				.insertInto("blocks_group_domain")
 				.value("owner_id", selfID)
 				.value("domain", domain)
-				.createStatement()
-				.execute();
+				.executeNoResult();
 	}
 
 	public static void unblockDomain(int selfID, String domain) throws SQLException{
 		new SQLQueryBuilder()
 				.deleteFrom("blocks_group_domain")
 				.where("owner_id=? AND domain=?", selfID, domain)
-				.createStatement()
-				.execute();
+				.executeNoResult();
 	}
 
 	public static int getLocalGroupCount() throws SQLException{
-		ResultSet res=new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("groups")
 				.count()
 				.where("domain=''")
-				.createStatement()
-				.executeQuery();
-		return DatabaseUtils.oneFieldToInt(res);
+				.executeAndGetInt();
 	}
 
 	private static void putIntoCache(Group group){
@@ -942,46 +853,39 @@ public class GroupStorage{
 	}
 
 	public static List<Group> getUserEventsInTimeRange(int userID, Instant from, Instant to) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT group_id, event_start_time FROM group_memberships JOIN `groups` ON `groups`.id=group_memberships.group_id WHERE user_id=? AND accepted=1 AND `groups`.type=1 AND event_start_time>=? AND event_start_time<?", userID, from, to);
-		return getByIdAsList(DatabaseUtils.intResultSetToList(stmt.executeQuery()));
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT group_id, event_start_time FROM group_memberships JOIN `groups` ON `groups`.id=group_memberships.group_id WHERE user_id=? AND accepted=1 AND `groups`.type=1 AND event_start_time>=? AND event_start_time<?", userID, from, to);
+			return getByIdAsList(DatabaseUtils.intResultSetToList(stmt.executeQuery()));
+		}
 	}
 
 	public static IntStream getAllMembersAsStream(int groupID) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("group_memberships")
 				.columns("user_id")
 				.where("accepted=1 AND group_id=?", groupID)
-				.createStatement();
-		return DatabaseUtils.intResultSetToStream(stmt.executeQuery());
+				.executeAndGetIntStream();
 	}
 
 	public static int putInvitation(int groupID, int inviterID, int inviteeID, boolean isEvent, String apID) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.insertInto("group_invites")
 				.value("group_id", groupID)
 				.value("inviter_id", inviterID)
 				.value("invitee_id", inviteeID)
 				.value("is_event", isEvent)
 				.value("ap_id", apID)
-				.createStatement(Statement.RETURN_GENERATED_KEYS);
-		stmt.execute();
-		return DatabaseUtils.oneFieldToInt(stmt.getGeneratedKeys());
+				.executeAndGetID();
 	}
 
 	public static List<GroupInvitation> getUserInvitations(int userID, boolean isEvent, int offset, int count) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder()
+		List<IdPair> ids=new SQLQueryBuilder()
 				.selectFrom("group_invites")
 				.columns("group_id", "inviter_id")
 				.where("invitee_id=? AND is_event=?", userID, isEvent)
 				.limit(count, offset)
-				.createStatement();
-		ArrayList<IdPair> ids=new ArrayList<>();
-		try(ResultSet res=stmt.executeQuery()){
-			while(res.next()){
-				ids.add(new IdPair(res.getInt(1), res.getInt(2)));
-			}
-		}
+				.executeAsStream(r->new IdPair(r.getInt(1), r.getInt(2)))
+				.toList();
 		Set<Integer> needGroups=ids.stream().map(IdPair::first).collect(Collectors.toSet());
 		Set<Integer> needUsers=ids.stream().map(IdPair::second).collect(Collectors.toSet());
 		Map<Integer, Group> groups=getById(needGroups);
@@ -991,189 +895,189 @@ public class GroupStorage{
 	}
 
 	public static URI getInvitationApID(int userID, int groupID) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("group_invites")
 				.columns("ap_id")
 				.where("invitee_id=? AND group_id=?", userID, groupID)
-				.createStatement();
-		return DatabaseUtils.oneFieldToObject(stmt.executeQuery(), String.class, URI::create);
+				.executeAndGetSingleObject(r->URI.create(r.getString(1)));
 	}
 
 	public static int deleteInvitation(int userID, int groupID, boolean isEvent) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=new SQLQueryBuilder(conn)
-				.selectFrom("group_invites")
-				.columns("id")
-				.where("invitee_id=? AND group_id=?", userID, groupID)
-				.createStatement();
-		int id=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
-		if(id<1)
-			return id;
-		stmt=new SQLQueryBuilder(conn)
-				.deleteFrom("group_invites")
-				.where("id=?", id)
-				.createStatement();
-		int count=stmt.executeUpdate();
-		if(count>0){
-			UserNotifications notifications=NotificationsStorage.getNotificationsFromCache(userID);
-			if(notifications!=null){
-				if(isEvent)
-					notifications.incNewEventInvitationsCount(-count);
-				else
-					notifications.incNewGroupInvitationsCount(-count);
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int id=new SQLQueryBuilder(conn)
+					.selectFrom("group_invites")
+					.columns("id")
+					.where("invitee_id=? AND group_id=?", userID, groupID)
+					.executeAndGetInt();
+			if(id<1)
+				return id;
+			int count=new SQLQueryBuilder(conn)
+					.deleteFrom("group_invites")
+					.where("id=?", id)
+					.executeUpdate();
+			if(count>0){
+				UserNotifications notifications=NotificationsStorage.getNotificationsFromCache(userID);
+				if(notifications!=null){
+					if(isEvent)
+						notifications.incNewEventInvitationsCount(-count);
+					else
+						notifications.incNewGroupInvitationsCount(-count);
+				}
 			}
+			return id;
 		}
-		return id;
 	}
 
 	public static PaginatedList<User> getGroupJoinRequests(int groupID, int offset, int count) throws SQLException{
 		int total=getJoinRequestCount(groupID);
 		if(total==0)
 			return PaginatedList.emptyList(count);
-		PreparedStatement stmt=new SQLQueryBuilder()
+		return new PaginatedList<>(UserStorage.getByIdAsList(new SQLQueryBuilder()
 				.selectFrom("group_memberships")
 				.columns("user_id")
 				.where("group_id=? AND accepted=0", groupID)
 				.orderBy("time DESC")
 				.limit(count, offset)
-				.createStatement();
-		return new PaginatedList<>(UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(stmt.executeQuery())), total, offset, count);
+				.executeAndGetIntList()), total, offset, count);
 	}
 
 	public static int getJoinRequestCount(int groupID) throws SQLException{
-		PreparedStatement stmt=new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("group_memberships")
 				.count()
 				.where("group_id=? AND accepted=0", groupID)
-				.createStatement();
-		return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+				.executeAndGetInt();
 	}
 
 	public static PaginatedList<User> getGroupInvitations(int groupID, int offset, int count) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=new SQLQueryBuilder(conn)
-				.selectFrom("group_invites")
-				.count()
-				.where("group_id=?", groupID)
-				.createStatement();
-		int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
-		if(total==0)
-			return PaginatedList.emptyList(count);
-		stmt=new SQLQueryBuilder(conn)
-				.selectFrom("group_invites")
-				.columns("invitee_id")
-				.where("group_id=?", groupID)
-				.orderBy("id DESC")
-				.limit(count, offset)
-				.createStatement();
-		return new PaginatedList<>(UserStorage.getByIdAsList(DatabaseUtils.intResultSetToList(stmt.executeQuery())), total, offset, count);
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("group_invites")
+					.count()
+					.where("group_id=?", groupID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Integer> ids=new SQLQueryBuilder(conn)
+					.selectFrom("group_invites")
+					.columns("invitee_id")
+					.where("group_id=?", groupID)
+					.orderBy("id DESC")
+					.limit(count, offset)
+					.executeAndGetIntList();
+			return new PaginatedList<>(UserStorage.getByIdAsList(ids), total, offset, count);
+		}
 	}
 
 	public static boolean areThereGroupMembersWithDomain(int groupID, String domain) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_memberships` JOIN `users` ON user_id=`users`.id WHERE group_id=? AND accepted=1 AND `users`.`domain`=?", groupID, domain);
-		return DatabaseUtils.oneFieldToInt(stmt.executeQuery())>0;
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_memberships` JOIN `users` ON user_id=`users`.id WHERE group_id=? AND accepted=1 AND `users`.`domain`=?", groupID, domain);
+			return DatabaseUtils.oneFieldToInt(stmt.executeQuery())>0;
+		}
 	}
 
 	public static boolean areThereGroupInvitationsWithDomain(int groupID, String domain) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_invites` JOIN `users` ON invitee_id=`users`.id WHERE group_id=? AND `users`.`domain`=?", groupID, domain);
-		return DatabaseUtils.oneFieldToInt(stmt.executeQuery())>0;
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_invites` JOIN `users` ON invitee_id=`users`.id WHERE group_id=? AND `users`.`domain`=?", groupID, domain);
+			return DatabaseUtils.oneFieldToInt(stmt.executeQuery())>0;
+		}
 	}
 
 	public static Map<URI, Integer> getMembersByActivityPubIDs(Collection<URI> ids, int groupID, boolean tentative) throws SQLException{
 		if(ids.isEmpty())
 			return Map.of();
-		Connection conn=DatabaseConnectionManager.getConnection();
-		ArrayList<Integer> localIDs=new ArrayList<>();
-		ArrayList<String> remoteIDs=new ArrayList<>();
-		for(URI id:ids){
-			if(Config.isLocal(id)){
-				String path=id.getPath();
-				if(StringUtils.isEmpty(path))
-					continue;
-				String[] pathSegments=path.split("/");
-				if(pathSegments.length!=3 || !"users".equals(pathSegments[1])) // "", "users", id
-					continue;
-				int uid=Utils.safeParseInt(pathSegments[2]);
-				if(uid>0)
-					localIDs.add(uid);
-			}else{
-				remoteIDs.add(id.toString());
-			}
-		}
-		HashMap<Integer, URI> localIdToApIdMap=new HashMap<>();
-		if(!remoteIDs.isEmpty()){
-			try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("users").columns("id", "ap_id").whereIn("ap_id", remoteIDs).execute()){
-				while(res.next()){
-					int localID=res.getInt(1);
-					localIDs.add(localID);
-					localIdToApIdMap.put(localID, URI.create(res.getString(2)));
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			ArrayList<Integer> localIDs=new ArrayList<>();
+			ArrayList<String> remoteIDs=new ArrayList<>();
+			for(URI id: ids){
+				if(Config.isLocal(id)){
+					String path=id.getPath();
+					if(StringUtils.isEmpty(path))
+						continue;
+					String[] pathSegments=path.split("/");
+					if(pathSegments.length!=3 || !"users".equals(pathSegments[1])) // "", "users", id
+						continue;
+					int uid=Utils.safeParseInt(pathSegments[2]);
+					if(uid>0)
+						localIDs.add(uid);
+				}else{
+					remoteIDs.add(id.toString());
 				}
 			}
+			HashMap<Integer, URI> localIdToApIdMap=new HashMap<>();
+			if(!remoteIDs.isEmpty()){
+				try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("users").columns("id", "ap_id").whereIn("ap_id", remoteIDs).execute()){
+					while(res.next()){
+						int localID=res.getInt(1);
+						localIDs.add(localID);
+						localIdToApIdMap.put(localID, URI.create(res.getString(2)));
+					}
+				}
+			}
+			if(localIDs.isEmpty())
+				return Map.of();
+			return new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.columns("user_id")
+					.whereIn("user_id", localIDs)
+					.andWhere("tentative=? AND accepted=1 AND group_id=?", tentative, groupID)
+					.executeAsStream(res->res.getInt(1))
+					.collect(Collectors.toMap(id->localIdToApIdMap.computeIfAbsent(id, GroupStorage::localUserURI), Function.identity()));
 		}
-		if(localIDs.isEmpty())
-			return Map.of();
-		return new SQLQueryBuilder(conn)
-				.selectFrom("group_memberships")
-				.columns("user_id")
-				.whereIn("user_id", localIDs)
-				.andWhere("tentative=? AND accepted=1 AND group_id=?", tentative, groupID)
-				.executeAsStream(res->res.getInt(1))
-				.collect(Collectors.toMap(id->localIdToApIdMap.computeIfAbsent(id, GroupStorage::localUserURI), Function.identity()));
 	}
 
 	public static Map<URI, Integer> getUserGroupsByActivityPubIDs(Collection<URI> ids, int userID) throws SQLException{
 		if(ids.isEmpty())
 			return Map.of();
-		Connection conn=DatabaseConnectionManager.getConnection();
-		ArrayList<Integer> localIDs=new ArrayList<>();
-		ArrayList<String> remoteIDs=new ArrayList<>();
-		for(URI id:ids){
-			if(Config.isLocal(id)){
-				String path=id.getPath();
-				if(StringUtils.isEmpty(path))
-					continue;
-				String[] pathSegments=path.split("/");
-				if(pathSegments.length!=3 || !"groups".equals(pathSegments[1])) // "", "groups", id
-					continue;
-				int uid=Utils.safeParseInt(pathSegments[2]);
-				if(uid>0)
-					localIDs.add(uid);
-			}else{
-				remoteIDs.add(id.toString());
-			}
-		}
-		if(!localIDs.isEmpty()){
-			// Filter local IDs to avoid returning private groups
-			List<Integer> filteredLocalIDs=new SQLQueryBuilder(conn)
-					.selectFrom("groups")
-					.columns("id")
-					.whereIn("id", localIDs)
-					.andWhere("access_type<>"+Group.AccessType.PRIVATE)
-					.executeAndGetIntList();
-			localIDs.clear();
-			localIDs.addAll(filteredLocalIDs);
-		}
-		HashMap<Integer, URI> localIdToApIdMap=new HashMap<>();
-		if(!remoteIDs.isEmpty()){
-			try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("groups").columns("id", "ap_id").whereIn("ap_id", remoteIDs).andWhere("access_type<>"+Group.AccessType.PRIVATE.ordinal()).execute()){
-				while(res.next()){
-					int localID=res.getInt(1);
-					localIDs.add(localID);
-					localIdToApIdMap.put(localID, URI.create(res.getString(2)));
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			ArrayList<Integer> localIDs=new ArrayList<>();
+			ArrayList<String> remoteIDs=new ArrayList<>();
+			for(URI id: ids){
+				if(Config.isLocal(id)){
+					String path=id.getPath();
+					if(StringUtils.isEmpty(path))
+						continue;
+					String[] pathSegments=path.split("/");
+					if(pathSegments.length!=3 || !"groups".equals(pathSegments[1])) // "", "groups", id
+						continue;
+					int uid=Utils.safeParseInt(pathSegments[2]);
+					if(uid>0)
+						localIDs.add(uid);
+				}else{
+					remoteIDs.add(id.toString());
 				}
 			}
+			if(!localIDs.isEmpty()){
+				// Filter local IDs to avoid returning private groups
+				List<Integer> filteredLocalIDs=new SQLQueryBuilder(conn)
+						.selectFrom("groups")
+						.columns("id")
+						.whereIn("id", localIDs)
+						.andWhere("access_type<>"+Group.AccessType.PRIVATE)
+						.executeAndGetIntList();
+				localIDs.clear();
+				localIDs.addAll(filteredLocalIDs);
+			}
+			HashMap<Integer, URI> localIdToApIdMap=new HashMap<>();
+			if(!remoteIDs.isEmpty()){
+				try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("groups").columns("id", "ap_id").whereIn("ap_id", remoteIDs).andWhere("access_type<>"+Group.AccessType.PRIVATE.ordinal()).execute()){
+					while(res.next()){
+						int localID=res.getInt(1);
+						localIDs.add(localID);
+						localIdToApIdMap.put(localID, URI.create(res.getString(2)));
+					}
+				}
+			}
+			if(localIDs.isEmpty())
+				return Map.of();
+			return new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.columns("group_id")
+					.whereIn("group_id", localIDs)
+					.andWhere("accepted=1 AND user_id=?", userID)
+					.executeAsStream(res->res.getInt(1))
+					.collect(Collectors.toMap(id->localIdToApIdMap.computeIfAbsent(id, GroupStorage::localGroupURI), Function.identity()));
 		}
-		if(localIDs.isEmpty())
-			return Map.of();
-		return new SQLQueryBuilder(conn)
-				.selectFrom("group_memberships")
-				.columns("group_id")
-				.whereIn("group_id", localIDs)
-				.andWhere("accepted=1 AND user_id=?", userID)
-				.executeAsStream(res->res.getInt(1))
-				.collect(Collectors.toMap(id->localIdToApIdMap.computeIfAbsent(id, GroupStorage::localGroupURI), Function.identity()));
 	}
 
 	private static URI localUserURI(int id){
@@ -1195,8 +1099,9 @@ public class GroupStorage{
 	}
 
 	public static int getLocalMembersCount(int groupID) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_memberships` JOIN `users` ON `user_id`=`users`.id WHERE group_id=? AND accepted=1 AND `users`.domain=''", groupID);
-		return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_memberships` JOIN `users` ON `user_id`=`users`.id WHERE group_id=? AND accepted=1 AND `users`.domain=''", groupID);
+			return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		}
 	}
 }

@@ -17,19 +17,18 @@ import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.stream.Stream;
 
-import smithereen.storage.DatabaseConnectionManager;
+import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.util.TopLevelDomainList;
 import spark.utils.StringUtils;
 
@@ -119,8 +118,7 @@ public class Config{
 	}
 
 	public static void loadFromDatabase() throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		try(ResultSet res=conn.createStatement().executeQuery("SELECT * FROM config")){
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection(); ResultSet res=new SQLQueryBuilder(conn).selectFrom("config").allColumns().execute()){
 			HashMap<String, String> dbValues=new HashMap<>();
 			while(res.next()){
 				dbValues.put(res.getString(1), res.getString(2));
@@ -178,24 +176,25 @@ public class Config{
 	}
 
 	public static void updateInDatabase(String key, String value) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO config (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value`=values(`value`)");
-		stmt.setString(1, key);
-		stmt.setString(2, value);
-		stmt.executeUpdate();
+		new SQLQueryBuilder()
+				.insertInto("config")
+				.value("key", key)
+				.value("value", value)
+				.onDuplicateKeyUpdate()
+				.executeNoResult();
 	}
 
 	public static void updateInDatabase(Map<String, String> values) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO config (`key`, `value`) VALUES "+String.join(", ", Collections.nCopies(values.size(), "(?, ?)"))+" ON DUPLICATE KEY UPDATE `value`=values(`value`)");
-		int i=1;
-		for(Map.Entry<String, String> e: values.entrySet()){
-			stmt.setString(i, e.getKey());
-			stmt.setString(i+1, e.getValue());
-			i+=2;
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=conn.prepareStatement("INSERT INTO config (`key`, `value`) VALUES "+String.join(", ", Collections.nCopies(values.size(), "(?, ?)"))+" ON DUPLICATE KEY UPDATE `value`=values(`value`)");
+			int i=1;
+			for(Map.Entry<String, String> e: values.entrySet()){
+				stmt.setString(i, e.getKey());
+				stmt.setString(i+1, e.getValue());
+				i+=2;
+			}
+			stmt.execute();
 		}
-		LOG.debug("{}", stmt);
-		stmt.execute();
 	}
 
 	public static URI localURI(String path){

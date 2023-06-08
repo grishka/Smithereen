@@ -17,6 +17,10 @@ public class MaintenanceScheduler{
 		executor.scheduleAtFixedRate(r, 0, 1, TimeUnit.DAYS);
 	}
 
+	public static void runPeriodically(Runnable r, long time, TimeUnit unit){
+		executor.scheduleAtFixedRate(r, time, time, unit);
+	}
+
 	public static void shutDown(){
 		LOG.info("Stopping thread");
 		Utils.stopExecutorBlocking(executor, LOG);

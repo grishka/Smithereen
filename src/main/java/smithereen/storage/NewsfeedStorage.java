@@ -1,12 +1,10 @@
 package smithereen.storage;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.Instant;
 
 import smithereen.data.feed.NewsfeedEntry;
+import smithereen.storage.sql.SQLQueryBuilder;
 
 public class NewsfeedStorage{
 
@@ -18,14 +16,13 @@ public class NewsfeedStorage{
 				.value("object_id", objectID);
 		if(time!=null)
 			b.value("time", time);
-		b.createStatement().execute();
+		b.executeNoResult();
 	}
 
 	public static void deleteEntry(int userID, int objectID, NewsfeedEntry.Type type) throws SQLException{
 		new SQLQueryBuilder()
 				.deleteFrom("newsfeed")
 				.where("type=? AND author_id=? AND object_id=?", type.ordinal(), userID, objectID)
-				.createStatement()
-				.execute();
+				.executeNoResult();
 	}
 }

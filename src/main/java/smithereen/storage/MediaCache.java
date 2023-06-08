@@ -18,8 +18,6 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -32,6 +30,9 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import smithereen.Config;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
+import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.util.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
@@ -76,12 +77,11 @@ public class MediaCache{
 	}
 
 	private void updateTotalSize() throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		try(ResultSet res=conn.createStatement().executeQuery("SELECT sum(`size`) FROM `media_cache`")){
-			res.first();
-			synchronized(cacheSizeLock){
-				cacheSize=res.getLong(1);
-			}
+		synchronized(cacheSizeLock){
+			cacheSize=new SQLQueryBuilder()
+					.selectFrom("media_cache")
+					.selectExpr("sum(`size`)")
+					.executeAndGetInt();
 		}
 	}
 
@@ -93,18 +93,15 @@ public class MediaCache{
 			asyncUpdater.submit(new LastAccessUpdater(key));
 			return item;
 		}
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("SELECT * FROM `media_cache` WHERE `url_hash`=?");
-		stmt.setBytes(1, key);
-		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				Item result=itemFromResultSet(res);
-				metaCache.put(keyHex, result);
-				asyncUpdater.submit(new LastAccessUpdater(key));
-				return result;
-			}
+		Item result=new SQLQueryBuilder()
+				.selectFrom("media_cache")
+				.where("url_hash=?", (Object) key)
+				.executeAndGetSingleObject(this::itemFromResultSet);
+		if(result!=null){
+			metaCache.put(keyHex, result);
+			asyncUpdater.submit(new LastAccessUpdater(key));
 		}
-		return null;
+		return result;
 	}
 
 	private Item itemFromResultSet(ResultSet res) throws SQLException{
@@ -193,15 +190,15 @@ public class MediaCache{
 		//System.out.println("Total size: "+result.totalSize);
 		metaCache.put(keyHex, result);
 
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `media_cache` (`url_hash`, `size`, `info`, `type`) VALUES (?, ?, ?, ?)");
-		stmt.setBytes(1, key);
-		stmt.setInt(2, (int) result.totalSize);
 		ByteArrayOutputStream buf=new ByteArrayOutputStream();
 		result.serialize(new DataOutputStream(buf));
-		stmt.setBytes(3, buf.toByteArray());
-		stmt.setInt(4, result.getType());
-		stmt.execute();
+		new SQLQueryBuilder()
+				.insertInto("media_cache")
+				.value("url_hash", key)
+				.value("size", result.totalSize)
+				.value("info", buf.toByteArray())
+				.value("type", result.getType())
+				.executeNoResult();
 
 		if(cacheSize==-1)
 			updateTotalSize();
@@ -220,57 +217,55 @@ public class MediaCache{
 	}
 
 	public static void putDraftAttachment(@NotNull LocalImage img, int ownerID) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `draft_attachments` (`id`, `owner_account_id`, `info`) VALUES (?, ?, ?)");
-		stmt.setBytes(1, Utils.hexStringToByteArray(img.localID));
-		stmt.setInt(2, ownerID);
-		stmt.setString(3, MediaStorageUtils.serializeAttachment(img).toString());
-		stmt.execute();
+		new SQLQueryBuilder()
+				.insertInto("draft_attachments")
+				.value("id", Utils.hexStringToByteArray(img.localID))
+				.value("owner_account_id", ownerID)
+				.value("info", MediaStorageUtils.serializeAttachment(img).toString())
+				.executeNoResult();
 	}
 
 	public static boolean deleteDraftAttachment(@NotNull String id, int ownerID) throws Exception{
-		Connection conn=DatabaseConnectionManager.getConnection();
-
-		PreparedStatement stmt=conn.prepareStatement("SELECT `info` FROM `draft_attachments` WHERE `id`=? AND `owner_account_id`=?");
-		stmt.setBytes(1, Utils.hexStringToByteArray(id));
-		stmt.setInt(2, ownerID);
-		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				ActivityPubObject obj=ActivityPubObject.parse(JsonParser.parseString(res.getString(1)).getAsJsonObject(), ParserContext.LOCAL);
-				if(obj instanceof Document)
-					MediaStorageUtils.deleteAttachmentFiles((Document)obj);
-			}else{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String json=new SQLQueryBuilder(conn)
+					.selectFrom("draft_attachments")
+					.columns("info")
+					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
+					.executeAndGetSingleObject(r->r.getString(1));
+			if(json==null)
 				return false;
-			}
-		}
 
-		stmt=conn.prepareStatement("DELETE FROM `draft_attachments` WHERE `id`=? AND `owner_account_id`=?");
-		stmt.setBytes(1, Utils.hexStringToByteArray(id));
-		stmt.setInt(2, ownerID);
-		return stmt.executeUpdate()==1;
+			ActivityPubObject obj=ActivityPubObject.parse(JsonParser.parseString(json).getAsJsonObject(), ParserContext.LOCAL);
+			if(obj instanceof Document doc)
+				MediaStorageUtils.deleteAttachmentFiles(doc);
+
+			return new SQLQueryBuilder(conn)
+					.deleteFrom("draft_attachments")
+					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
+					.executeUpdate()==1;
+		}
 	}
 
 	public static ActivityPubObject getAndDeleteDraftAttachment(@NotNull String id, int ownerID) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		ActivityPubObject result;
-
-		PreparedStatement stmt=conn.prepareStatement("SELECT `info` FROM `draft_attachments` WHERE `id`=? AND `owner_account_id`=?");
-		stmt.setBytes(1, Utils.hexStringToByteArray(id));
-		stmt.setInt(2, ownerID);
-		try(ResultSet res=stmt.executeQuery()){
-			if(res.first()){
-				result=ActivityPubObject.parse(JsonParser.parseString(res.getString(1)).getAsJsonObject(), ParserContext.LOCAL);
-			}else{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String json=new SQLQueryBuilder(conn)
+					.selectFrom("draft_attachments")
+					.columns("info")
+					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
+					.executeAndGetSingleObject(r->r.getString(1));
+			if(json==null)
 				return null;
-			}
+
+			ActivityPubObject obj=ActivityPubObject.parse(JsonParser.parseString(json).getAsJsonObject(), ParserContext.LOCAL);
+			if(obj instanceof Document doc)
+				MediaStorageUtils.deleteAttachmentFiles(doc);
+
+			new SQLQueryBuilder(conn)
+					.deleteFrom("draft_attachments")
+					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
+					.executeNoResult();
+			return obj;
 		}
-
-		stmt=conn.prepareStatement("DELETE FROM `draft_attachments` WHERE `id`=? AND `owner_account_id`=?");
-		stmt.setBytes(1, Utils.hexStringToByteArray(id));
-		stmt.setInt(2, ownerID);
-		stmt.execute();
-
-		return result;
 	}
 
 	public enum ItemType{
@@ -328,10 +323,11 @@ public class MediaCache{
 		@Override
 		public void run(){
 			try{
-				Connection conn=DatabaseConnectionManager.getConnection();
-				PreparedStatement stmt=conn.prepareStatement("UPDATE `media_cache` SET `last_access`=CURRENT_TIMESTAMP() WHERE `url_hash`=?");
-				stmt.setBytes(1, key);
-				stmt.execute();
+				new SQLQueryBuilder()
+						.update("media_cache")
+						.valueExpr("last_access", "CURRENT_TIMESTAMP()")
+						.where("url_hash=?", (Object) key)
+						.executeNoResult();
 			}catch(SQLException x){
 				LOG.warn("Exception while updating last access time", x);
 			}
@@ -343,31 +339,32 @@ public class MediaCache{
 		@Override
 		public void run(){
 			try{
-				Connection conn=DatabaseConnectionManager.getConnection();
-				long sizeNeeded;
-				ArrayList<String> deletedKeys=new ArrayList<>();
-				synchronized(cacheSizeLock){
-					sizeNeeded=cacheSize-Config.mediaCacheMaxSize;
-				}
-				while(sizeNeeded>0){
-					try(ResultSet res=conn.createStatement().executeQuery("SELECT * FROM `media_cache` ORDER BY `last_access` ASC LIMIT 100")){
-						if(res.first()){
-							do{
-								Item item=itemFromResultSet(res);
-								item.deleteFiles();
-								sizeNeeded-=item.totalSize;
-								synchronized(cacheSizeLock){
-									cacheSize-=item.totalSize;
-								}
-								deletedKeys.add("0x"+Utils.byteArrayToHexString(res.getBytes(1)));
-								if(sizeNeeded<=0)
-									break;
-							}while(res.next());
-						}
+				try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+					long sizeNeeded;
+					ArrayList<String> deletedKeys=new ArrayList<>();
+					synchronized(cacheSizeLock){
+						sizeNeeded=cacheSize-Config.mediaCacheMaxSize;
 					}
-					LOG.info("Deleting from media cache: {}", deletedKeys);
-					if(!deletedKeys.isEmpty()){
-						conn.createStatement().execute("DELETE FROM `media_cache` WHERE `url_hash` IN ("+String.join(",", deletedKeys)+")");
+					while(sizeNeeded>0){
+						try(ResultSet res=conn.createStatement().executeQuery("SELECT * FROM `media_cache` ORDER BY `last_access` ASC LIMIT 100")){
+							if(res.first()){
+								do{
+									Item item=itemFromResultSet(res);
+									item.deleteFiles();
+									sizeNeeded-=item.totalSize;
+									synchronized(cacheSizeLock){
+										cacheSize-=item.totalSize;
+									}
+									deletedKeys.add("0x"+Utils.byteArrayToHexString(res.getBytes(1)));
+									if(sizeNeeded<=0)
+										break;
+								}while(res.next());
+							}
+						}
+						LOG.info("Deleting from media cache: {}", deletedKeys);
+						if(!deletedKeys.isEmpty()){
+							conn.createStatement().execute("DELETE FROM `media_cache` WHERE `url_hash` IN ("+String.join(",", deletedKeys)+")");
+						}
 					}
 				}
 			}catch(SQLException x){

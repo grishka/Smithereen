@@ -3,7 +3,6 @@ package smithereen.storage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,6 +12,9 @@ import java.util.stream.Collectors;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
+import smithereen.storage.sql.SQLQueryBuilder;
 
 public class DatabaseSchemaUpdater{
 	public static final int SCHEMA_VERSION=28;
@@ -21,30 +23,31 @@ public class DatabaseSchemaUpdater{
 	public static void maybeUpdate() throws SQLException{
 		if(Config.dbSchemaVersion==0){
 			Config.updateInDatabase("SchemaVersion", SCHEMA_VERSION+"");
-			Connection conn=DatabaseConnectionManager.getConnection();
-			conn.createStatement().execute("""
-					CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
-					RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, BINARY(0xFF), BINARY(0xFFFF)), '%', BINARY(0xFF25)), '_', BINARY(0xFF5F)), '%');""");
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+				conn.createStatement().execute("""
+						CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
+						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, BINARY(0xFF), BINARY(0xFFFF)), '%', BINARY(0xFF25)), '_', BINARY(0xFF5F)), '%');""");
+			}
 		}else{
 			for(int i=Config.dbSchemaVersion+1;i<=SCHEMA_VERSION;i++){
-				Connection conn=DatabaseConnectionManager.getConnection();
-				conn.createStatement().execute("START TRANSACTION");
-				try{
-					updateFromPrevious(i);
-					Config.updateInDatabase("SchemaVersion", i+"");
-					Config.dbSchemaVersion=i;
-				}catch(Exception x){
-					conn.createStatement().execute("ROLLBACK");
-					throw new RuntimeException(x);
+				try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+					conn.createStatement().execute("START TRANSACTION");
+					try{
+						updateFromPrevious(conn, i);
+						Config.updateInDatabase("SchemaVersion", String.valueOf(i));
+						Config.dbSchemaVersion=i;
+					}catch(Exception x){
+						conn.createStatement().execute("ROLLBACK");
+						throw new RuntimeException(x);
+					}
+					conn.createStatement().execute("COMMIT");
 				}
-				conn.createStatement().execute("COMMIT");
 			}
 		}
 	}
 
-	private static void updateFromPrevious(int target) throws SQLException{
+	private static void updateFromPrevious(DatabaseConnection conn, int target) throws SQLException{
 		LOG.info("Updating database schema {} -> {}", Config.dbSchemaVersion, target);
-		Connection conn=DatabaseConnectionManager.getConnection();
 		switch(target){
 			case 2 -> conn.createStatement().execute("ALTER TABLE wall_posts ADD (reply_count INTEGER UNSIGNED NOT NULL DEFAULT 0)");
 			case 3 -> conn.createStatement().execute("ALTER TABLE users ADD middle_name VARCHAR(100) DEFAULT NULL AFTER lname, ADD maiden_name VARCHAR(100) DEFAULT NULL AFTER middle_name");

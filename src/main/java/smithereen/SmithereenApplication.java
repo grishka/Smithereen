@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -48,6 +49,7 @@ import smithereen.storage.GroupStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
 import smithereen.storage.UserStorage;
+import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.util.BackgroundTaskRunner;
@@ -583,6 +585,7 @@ public class SmithereenApplication{
 			FloodControl.PASSWORD_RESET.gc();
 			TopLevelDomainList.updateIfNeeded();
 		});
+		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
 			LOG.info("Stopping Spark");
