@@ -46,7 +46,7 @@ interface AnimationDescription{
 }
 
 interface HTMLElement{
-	popover:Popover;
+	_popover:Popover;
 	customData:{[key:string]: any};
 
 	currentVisibilityAnimation:Animation;
@@ -662,11 +662,11 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 		counter.innerText=(count+1).toString();
 		btn.classList.add("liked");
 		if(count==0) counter.show();
-		if(btn.popover){
-			if(!btn.popover.isShown())
-				btn.popover.show();
-			var title=btn.popover.getTitle();
-			btn.popover.setTitle(btn.customData.altPopoverTitle);
+		if(btn._popover){
+			if(!btn._popover.isShown())
+				btn._popover.show();
+			var title=btn._popover.getTitle();
+			btn._popover.setTitle(btn.customData.altPopoverTitle);
 			btn.customData.altPopoverTitle=title;
 		}
 		if(ownAva) ownAva.show();
@@ -675,13 +675,13 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 		btn.classList.remove("liked");
 		if(count==1){
 			counter.hide();
-			if(btn.popover){
-				btn.popover.hide();
+			if(btn._popover){
+				btn._popover.hide();
 			}
 		}
-		if(btn.popover){
-			var title=btn.popover.getTitle();
-			btn.popover.setTitle(btn.customData.altPopoverTitle);
+		if(btn._popover){
+			var title=btn._popover.getTitle();
+			btn._popover.setTitle(btn.customData.altPopoverTitle);
 			btn.customData.altPopoverTitle=title;
 		}
 		if(ownAva) ownAva.hide();
@@ -716,7 +716,7 @@ function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 	var objType=btn.getAttribute("data-obj-type");
 
 	var ev:MouseEvent=event as MouseEvent;
-	var popover=btn.popover;
+	var popover=btn._popover;
 	if(entered){
 		if(!btn.customData) btn.customData={};
 		btn.customData.popoverTimeout=setTimeout(()=>{
@@ -732,7 +732,7 @@ function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 						LayerManager.getInstance().showBoxLoader();
 						ajaxGetAndApplyActions(resp.fullURL);
 					});
-					btn.popover=popover;
+					btn._popover=popover;
 				}
 				popover.setTitle(resp.title);
 				popover.setContent(resp.content);
