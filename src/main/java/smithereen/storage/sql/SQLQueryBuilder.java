@@ -4,6 +4,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -449,14 +450,20 @@ public class SQLQueryBuilder{
 	}
 
 	private static Object convertValue(Object value){
-		if(value instanceof Enum e)
+		if(value instanceof Enum<?> e)
 			return e.ordinal();
 		else if(value instanceof Instant instant)
 			return Timestamp.from(instant);
 		else if(value instanceof LocalDate localDate)
 			return java.sql.Date.valueOf(localDate);
-		else
+		else if(value instanceof URI uri)
+			return uri.toString();
+		else if(value instanceof String || value instanceof Number || value instanceof Boolean || value instanceof byte[] || value instanceof Timestamp || value instanceof java.sql.Date)
 			return value;
+		else if(value==null)
+			return null;
+		else
+			throw new IllegalArgumentException("Objects of type "+value.getClass().getName()+" are not supported as SQL query arguments");
 	}
 
 	private enum Action{

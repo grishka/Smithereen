@@ -257,8 +257,6 @@ public class MediaCache{
 				return null;
 
 			ActivityPubObject obj=ActivityPubObject.parse(JsonParser.parseString(json).getAsJsonObject(), ParserContext.LOCAL);
-			if(obj instanceof Document doc)
-				MediaStorageUtils.deleteAttachmentFiles(doc);
 
 			new SQLQueryBuilder(conn)
 					.deleteFrom("draft_attachments")
