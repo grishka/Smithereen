@@ -166,11 +166,13 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			}else{
 				LOG.info("Don't have parent post {} for {}", post.inReplyTo, post.activityPubID);
 				boolean mentionsLocalUsers=false;
-				for(ActivityPubObject tag:post.tag){
-					if(tag instanceof Mention){
-						if(Config.isLocal(((Mention) tag).href)){
-							mentionsLocalUsers=true;
-							break;
+				if(post.tag!=null){
+					for(ActivityPubObject tag:post.tag){
+						if(tag instanceof Mention mention){
+							if(Config.isLocal(mention.href)){
+								mentionsLocalUsers=true;
+								break;
+							}
 						}
 					}
 				}
