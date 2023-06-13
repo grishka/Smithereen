@@ -589,7 +589,7 @@ public class UserStorage{
 	public static void updateProfilePicture(User user, String serializedPic) throws SQLException{
 		new SQLQueryBuilder()
 				.update("users")
-				.value("avatar=?", serializedPic)
+				.value("avatar", serializedPic)
 				.where("id=?", user.id)
 				.executeNoResult();
 		synchronized(UserStorage.class){
