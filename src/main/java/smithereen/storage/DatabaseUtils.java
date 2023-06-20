@@ -63,14 +63,14 @@ public class DatabaseUtils{
 				int userCount=new SQLQueryBuilder(conn)
 						.selectFrom("users")
 						.count()
-						.whereIn("username=? AND domain=''", username)
+						.where("username=? AND domain=''", username)
 						.executeAndGetInt();
 				if(userCount>0)
 					return false;
 				int groupCount=new SQLQueryBuilder(conn)
 						.selectFrom("groups")
 						.count()
-						.whereIn("username=? AND domain=''", username)
+						.where("username=? AND domain=''", username)
 						.executeAndGetInt();
 				if(groupCount>0)
 					return false;
