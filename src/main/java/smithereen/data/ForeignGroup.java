@@ -156,14 +156,12 @@ public class ForeignGroup extends Group implements ForeignActor{
 		return wall;
 	}
 
-	@Override
-	public void resolveDependencies(ApplicationContext context, boolean allowFetching, boolean allowStorage){
+	public void resolveDependencies(ApplicationContext context, boolean allowFetching, boolean allowStorage){ // TODO remove this abomination
 		for(GroupAdmin adm:adminsForActivityPub){
 			adm.user=context.getObjectLinkResolver().resolve(adm.activityPubUserID, User.class, allowFetching, allowStorage, false);
 		}
 	}
 
-	@Override
 	public void storeDependencies(ApplicationContext context){
 		for(GroupAdmin adm:adminsForActivityPub){
 			if(adm.user instanceof ForeignUser && adm.user.id==0){

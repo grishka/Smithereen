@@ -1,6 +1,7 @@
 package smithereen.activitypub;
 
 import java.net.URI;
+import java.util.Collection;
 import java.util.List;
 
 import smithereen.ApplicationContext;
@@ -20,7 +21,7 @@ public class ActivityHandlerContext{
 		this.httpSignatureOwner=httpSignatureOwner;
 	}
 
-	public void forwardActivity(List<URI> inboxes, User signer){
+	public void forwardActivity(Collection<URI> inboxes, User signer){
 		if(ldSignatureOwner==null)
 			throw new IllegalStateException("Can't forward an activity without LD-signature");
 		appContext.getActivityPubWorker().forwardActivity(origRequestBody, signer, inboxes, ldSignatureOwner.activityPubID.getHost());

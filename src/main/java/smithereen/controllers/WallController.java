@@ -13,13 +13,15 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -30,9 +32,11 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
+import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.OwnerAndAuthor;
 import smithereen.data.PaginatedList;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
@@ -44,6 +48,7 @@ import smithereen.data.UserPermissions;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.notifications.Notification;
 import smithereen.data.notifications.NotificationUtils;
+import smithereen.data.viewmodel.PostViewModel;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -67,23 +72,22 @@ public class WallController{
 		this.context=context;
 	}
 
-	public void loadAndPreprocessRemotePostMentions(Post post){
-		if(post.tag!=null){
-			for(ActivityPubObject tag:post.tag){
-				if(tag instanceof Mention){
-					URI uri=((Mention) tag).href;
+	public void loadAndPreprocessRemotePostMentions(Post post, NoteOrQuestion apSource){
+		if(apSource.tag!=null){
+			HashMap<Integer, User> mentionedUsers=new HashMap<>();
+			for(ActivityPubObject tag:apSource.tag){
+				if(tag instanceof Mention mention){
+					URI uri=mention.href;
 					try{
 						User mentionedUser=context.getObjectLinkResolver().resolve(uri, User.class, true, true, false);
-						if(post.mentionedUsers.isEmpty())
-							post.mentionedUsers=new HashSet<>();
-						post.mentionedUsers.add(mentionedUser);
+						mentionedUsers.put(mentionedUser.id, mentionedUser);
 					}catch(Exception x){
 						LOG.warn("Error resolving mention for URI {}", uri, x);
 					}
 				}
 			}
-			if(!post.mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.content)){
-				post.content=Utils.preprocessRemotePostMentions(post.content, post.mentionedUsers);
+			if(!mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.text)){
+				post.text=Utils.preprocessRemotePostMentions(post.text, mentionedUsers);
 			}
 		}
 	}
@@ -105,6 +109,10 @@ public class WallController{
 		try{
 			if(wallOwner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
+				if(inReplyToID==0)
+					ensureUserNotBlocked(author, group);
+			}else if(wallOwner instanceof User user && inReplyToID==0){
+				ensureUserNotBlocked(author, user);
 			}
 			if(poll!=null && (StringUtils.isEmpty(poll.question) || poll.options.size()<2)){
 				LOG.warn("Invalid poll object passed to createWallPost: {}", poll);
@@ -126,7 +134,7 @@ public class WallController{
 			int pollID=0;
 
 			if(poll!=null){
-				List<String> opts=poll.options.stream().map(o->o.name).collect(Collectors.toList());
+				List<String> opts=poll.options.stream().map(o->o.text).collect(Collectors.toList());
 				if(opts.size()>=2){
 					pollID=PostStorage.createPoll(wallOwner.getOwnerID(), poll.question, opts, poll.anonymous, poll.multipleChoice, poll.endTime);
 				}
@@ -174,31 +182,32 @@ public class WallController{
 			int ownerUserID=wallOwner instanceof User u ? u.id : 0;
 			int ownerGroupID=wallOwner instanceof Group g ? g.id : 0;
 			boolean isTopLevelPostOwn=true;
-			int[] replyKey;
+			List<Integer> replyKey;
 			if(parent!=null){
-				replyKey=new int[parent.replyKey.length+1];
-				System.arraycopy(parent.replyKey, 0, replyKey, 0, parent.replyKey.length);
-				replyKey[replyKey.length-1]=parent.id;
+				replyKey=parent.getReplyKeyForReplies();
 				Post topLevel;
-				if(parent.replyKey.length>0){
-					topLevel=PostStorage.getPostByID(parent.replyKey[0], false);
-					if(topLevel!=null && !mentionedUsers.contains(topLevel.user))
-						mentionedUsers.add(topLevel.user);
+				if(parent.replyKey.size()>0){
+					topLevel=getPostOrThrow(parent.replyKey.get(0));
 				}else{
 					topLevel=parent;
 				}
-				if(topLevel!=null){
-					if(topLevel.isGroupOwner()){
-						ownerGroupID=((Group) topLevel.owner).id;
-						ownerUserID=0;
-						ensureUserNotBlocked(author, (Group) topLevel.owner);
-						isTopLevelPostOwn=false;
-					}else{
-						ownerGroupID=0;
-						ownerUserID=((User) topLevel.owner).id;
-						ensureUserNotBlocked(author, (User)topLevel.owner);
-						isTopLevelPostOwn=ownerUserID==topLevel.user.id;
-					}
+
+				OwnerAndAuthor topLevelOwnership=getPostAuthorAndOwner(topLevel);
+				Actor topLevelOwner=topLevelOwnership.owner();
+				User topLevelAuthor=topLevelOwnership.author();
+
+				if(!mentionedUsers.contains(topLevelAuthor))
+					mentionedUsers.add(topLevelAuthor);
+				if(topLevel.isGroupOwner()){
+					ownerGroupID=-topLevel.ownerID;
+					ownerUserID=0;
+					ensureUserNotBlocked(author, (Group)topLevelOwner);
+					isTopLevelPostOwn=false;
+				}else{
+					ownerGroupID=0;
+					ownerUserID=topLevel.ownerID;
+					ensureUserNotBlocked(author, (User)topLevelOwner);
+					isTopLevelPostOwn=ownerUserID==topLevel.authorID;
 				}
 			}else{
 				replyKey=null;
@@ -278,12 +287,13 @@ public class WallController{
 
 		if(parent!=null){
 			// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
-			if(parent.replyKey.length>0 && text.startsWith("<p>"+escapeHTML(parent.user.getNameForReply())+", ")){
-				text="<p><a href=\""+escapeHTML(parent.user.url.toString())+"\" class=\"mention\" data-user-id=\""+parent.user.id+"\">"
-						+escapeHTML(parent.user.getNameForReply())+"</a>"+text.substring(parent.user.getNameForReply().length()+3);
+			User parentAuthor=context.getUsersController().getUserOrThrow(parent.authorID);
+			if(parent.replyKey.size()>0 && text.startsWith("<p>"+escapeHTML(parentAuthor.getNameForReply())+", ")){
+				text="<p><a href=\""+escapeHTML(parentAuthor.url.toString())+"\" class=\"mention\" data-user-id=\""+parentAuthor.id+"\">"
+						+escapeHTML(parentAuthor.getNameForReply())+"</a>"+text.substring(parentAuthor.getNameForReply().length()+3);
 			}
-			if(!mentionedUsers.contains(parent.user))
-				mentionedUsers.add(parent.user);
+			if(!mentionedUsers.contains(parentAuthor))
+				mentionedUsers.add(parentAuthor);
 		}
 
 		return text;
@@ -312,9 +322,21 @@ public class WallController{
 	@NotNull
 	public Post getLocalPostOrThrow(int id){
 		Post post=getPostOrThrow(id);
-		if(!post.local)
+		if(!post.isLocal())
 			throw new ObjectNotFoundException("err_post_not_found");
 		return post;
+	}
+
+	@NotNull
+	public Post getPostOrThrow(URI apID){
+		try{
+			Post post=PostStorage.getPostByID(apID);
+			if(post==null)
+				throw new ObjectNotFoundException();
+			return post;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 
 	@NotNull
@@ -333,9 +355,9 @@ public class WallController{
 
 			int pollID=0;
 			if(poll!=null && !Objects.equals(post.poll, poll)){
-				List<String> opts=poll.options.stream().map(o->o.name).collect(Collectors.toList());
+				List<String> opts=poll.options.stream().map(o->o.text).collect(Collectors.toList());
 				if(opts.size()>=2){
-					pollID=PostStorage.createPoll(post.owner.getOwnerID(), poll.question, opts, poll.anonymous, poll.multipleChoice, poll.endTime);
+					pollID=PostStorage.createPoll(post.ownerID, poll.question, opts, poll.anonymous, poll.multipleChoice, poll.endTime);
 				}
 			}
 			if(post.poll!=null && pollID==0){
@@ -349,8 +371,8 @@ public class WallController{
 				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
 
 				ArrayList<String> remainingAttachments=new ArrayList<>(attachmentIDs);
-				if(post.attachment!=null){
-					for(ActivityPubObject att:post.attachment){
+				if(post.attachments!=null){
+					for(ActivityPubObject att:post.attachments){
 						if(att instanceof LocalImage li){
 							if(!remainingAttachments.remove(li.localID)){
 								LOG.debug("Deleting attachment: {}", li.localID);
@@ -368,7 +390,7 @@ public class WallController{
 					for(String aid : remainingAttachments){
 						if(!aid.matches("^[a-fA-F0-9]{32}$"))
 							continue;
-						ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(aid, post.user.id);
+						ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(aid, post.authorID);
 						if(obj!=null){
 							attachObjects.add(obj);
 							attachmentCount++;
@@ -391,7 +413,7 @@ public class WallController{
 			}
 
 			PostStorage.updateWallPost(id, text, textSource, mentionedUsers, attachments, contentWarning, pollID);
-			if(!post.isGroupOwner() && post.owner.getLocalID()==post.user.id){
+			if(post.ownerID>0 && post.ownerID==post.authorID){
 				context.getNewsfeedController().clearFriendsFeedCache();
 			}
 
@@ -443,14 +465,14 @@ public class WallController{
 	 * Add top-level comments to each post.
 	 * @param posts List of posts to add comments to
 	 */
-	public void populateCommentPreviews(@NotNull List<Post> posts){
+	public void populateCommentPreviews(@NotNull List<PostViewModel> posts){
 		try{
-			Set<Integer> postIDs=posts.stream().map((Post p)->p.id).collect(Collectors.toSet());
+			Set<Integer> postIDs=posts.stream().map(p->p.post.id).collect(Collectors.toSet());
 			Map<Integer, PaginatedList<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
-			for(Post post:posts){
-				PaginatedList<Post> comments=allComments.get(post.id);
+			for(PostViewModel post:posts){
+				PaginatedList<Post> comments=allComments.get(post.post.id);
 				if(comments!=null){
-					post.repliesObjects=comments.list;
+					post.repliesObjects=comments.list.stream().map(PostViewModel::new).toList();
 					post.totalTopLevelComments=comments.total;
 				}
 			}
@@ -465,10 +487,10 @@ public class WallController{
 	 * @param self Current user to check whether posts are liked
 	 * @return A map from a post ID to a {@link UserInteractions} object for each post
 	 */
-	public Map<Integer, UserInteractions> getUserInteractions(@NotNull List<Post> posts, @Nullable User self){
+	public Map<Integer, UserInteractions> getUserInteractions(@NotNull List<PostViewModel> posts, @Nullable User self){
 		try{
-			Set<Integer> postIDs=posts.stream().map((Post p)->p.id).collect(Collectors.toSet());
-			for(Post p:posts){
+			Set<Integer> postIDs=posts.stream().map(p->p.post.id).collect(Collectors.toSet());
+			for(PostViewModel p:posts){
 				p.getAllReplyIDs(postIDs);
 			}
 			return PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
@@ -480,7 +502,7 @@ public class WallController{
 	public void sendUpdateQuestionIfNeeded(Post post){
 		if(post.poll==null)
 			throw new IllegalArgumentException("Post must have a poll");
-		if(!post.local)
+		if(!post.isLocal())
 			return;
 
 		if(post.poll.lastVoteTime.until(Instant.now(), ChronoUnit.MINUTES)>=5){
@@ -513,17 +535,40 @@ public class WallController{
 		}
 	}
 
-	public PaginatedList<Post> getReplies(int[] key, int primaryOffset, int primaryCount, int secondaryCount){
+	public String getPostSource(Post post){
 		try{
-			return PostStorage.getRepliesThreaded(key, primaryOffset, primaryCount, secondaryCount);
+			return PostStorage.getPostSource(post.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public PaginatedList<Post> getRepliesExact(int[] key, int maxID, int count){
+	public PaginatedList<PostViewModel> getReplies(List<Integer> key, int primaryOffset, int primaryCount, int secondaryCount){
 		try{
-			return PostStorage.getRepliesExact(key, maxID, count);
+			PostStorage.ThreadedReplies tr=PostStorage.getRepliesThreaded(key.stream().mapToInt(Integer::intValue).toArray(), primaryOffset, primaryCount, secondaryCount);
+
+			List<PostViewModel> posts=tr.posts().stream().map(PostViewModel::new).toList();
+			List<PostViewModel> replies=tr.replies().stream().map(PostViewModel::new).toList();
+			Map<Integer, PostViewModel> postMap=Stream.of(posts, replies).flatMap(List::stream).collect(Collectors.toMap(p->p.post.id, Function.identity()));
+
+			for(PostViewModel post:replies){
+				if(post.post.getReplyLevel()>key.size()){
+					PostViewModel parent=postMap.get(post.post.replyKey.get(post.post.replyKey.size()-1));
+					if(parent!=null){
+						parent.repliesObjects.add(post);
+					}
+				}
+			}
+
+			return new PaginatedList<>(posts, tr.total(), primaryOffset, primaryCount);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Post> getRepliesExact(List<Integer> key, int maxID, int count){
+		try{
+			return PostStorage.getRepliesExact(key.stream().mapToInt(Integer::intValue).toArray(), maxID, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -547,14 +592,15 @@ public class WallController{
 			}
 			PostStorage.deletePost(post.id);
 			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
-			if(Config.isLocal(post.activityPubID) && post.attachment!=null && !post.attachment.isEmpty()){
-				MediaStorageUtils.deleteAttachmentFiles(post.attachment);
+			if(post.isLocal() && post.attachments!=null && !post.attachments.isEmpty()){
+				MediaStorageUtils.deleteAttachmentFiles(post.attachments);
 			}
 			context.getNewsfeedController().clearFriendsFeedCache();
 			User deleteActor=info.account.user;
+			OwnerAndAuthor oaa=getPostAuthorAndOwner(post);
 			// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
-			if(info.account.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal() && post.user.id!=info.account.user.id && !post.isGroupOwner() && post.owner.getLocalID()!=info.account.user.id && !(post.user instanceof ForeignUser)){
-				deleteActor=post.user;
+			if(info.account.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal() && oaa.author().id!=info.account.user.id && !post.isGroupOwner() && post.ownerID!=info.account.user.id && !(oaa.author() instanceof ForeignUser)){
+				deleteActor=oaa.author();
 			}
 			context.getActivityPubWorker().sendDeletePostActivity(post, deleteActor);
 		}catch(SQLException x){
@@ -577,14 +623,34 @@ public class WallController{
 
 			PostStorage.updateWallPostCW(post.id, cw);
 
-			if(!post.isGroupOwner() && post.owner.getLocalID()==post.user.id){
+			if(!post.isGroupOwner() && post.ownerID==post.authorID){
 				context.getNewsfeedController().clearFriendsFeedCache();
 			}
 
-			if(post.local){
+			if(post.isLocal()){
 				post=getPostOrThrow(post.id);
 				context.getActivityPubWorker().sendUpdatePostActivity(post);
 			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public OwnerAndAuthor getPostAuthorAndOwner(Post post){
+		Actor owner;
+		User author;
+		if(post.ownerID<0)
+			owner=context.getGroupsController().getGroupOrThrow(-post.ownerID);
+		else
+			owner=context.getUsersController().getUserOrThrow(post.ownerID);
+		author=context.getUsersController().getUserOrThrow(post.authorID);
+		return new OwnerAndAuthor(owner, author);
+	}
+
+	public int getPostIDByActivityPubID(URI id){
+		try{
+			int lid=PostStorage.getLocalIDByActivityPubID(id);
+			return Math.max(lid, 0);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

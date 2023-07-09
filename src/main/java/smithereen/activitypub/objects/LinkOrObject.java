@@ -1,6 +1,7 @@
 package smithereen.activitypub.objects;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import java.net.URI;
@@ -34,7 +35,7 @@ public class LinkOrObject{
 			throw new NullPointerException("Both link and object are null");
 		if(link!=null)
 			return new JsonPrimitive(link.toString());
-		return object.asActivityPubObject(null, contextCollector);
+		return object.asActivityPubObject(new JsonObject(), contextCollector);
 	}
 
 	@Override
@@ -66,5 +67,11 @@ public class LinkOrObject{
 
 	public <T extends ActivityPubObject> T requireObject(){
 		return (T)Objects.requireNonNull(object);
+	}
+
+	public URI getObjectID(){
+		if(link!=null)
+			return link;
+		return Objects.requireNonNull(object).activityPubID;
 	}
 }

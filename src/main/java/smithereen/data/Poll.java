@@ -77,14 +77,13 @@ public class Poll{
 
 	@Override
 	public boolean equals(Object _other){
-		if(!(_other instanceof Poll))
+		if(!(_other instanceof Poll other))
 			return false;
-		Poll other=(Poll)_other;
 		if(!Objects.equals(question, other.question) || multipleChoice!=other.multipleChoice || anonymous!=other.anonymous
 			|| !Objects.equals(endTime, other.endTime) || options.size()!=other.options.size())
 			return false;
 		for(int i=0;i<options.size();i++){
-			if(!options.get(i).name.equals(other.options.get(i).name))
+			if(!Objects.equals(options.get(i).text, other.options.get(i).text))
 				return false;
 		}
 		return true;

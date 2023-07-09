@@ -5,37 +5,39 @@ import java.util.Objects;
 
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
+import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Update;
-import smithereen.controllers.WallController;
 import smithereen.data.ForeignUser;
+import smithereen.data.OwnerAndAuthor;
 import smithereen.data.Post;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.PostStorage;
 
-public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, Post>{
+public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, NoteOrQuestion>{
 	@Override
-	public void handle(ActivityHandlerContext context, ForeignUser actor, Update activity, Post post) throws SQLException{
-		if(post.user.id==actor.id){
-			Post existing=PostStorage.getPostByID(post.activityPubID);
-			if(existing==null){
-				throw new ObjectNotFoundException("Existing post not found");
-			}
-			if(post.user.id!=existing.user.id){
-				throw new IllegalArgumentException("Post author doesn't match existing");
-			}
-			if(post.inReplyTo==null && !post.owner.activityPubID.equals(existing.owner.activityPubID)){
-				throw new IllegalArgumentException("Post owner doesn't match existing");
-			}
-			if(!Objects.equals(post.inReplyTo, existing.inReplyTo)){
-				throw new IllegalArgumentException("inReplyTo doesn't match existing");
-			}
-			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(post);
-			PostStorage.putForeignWallPost(post);
-			if(!post.isGroupOwner() && post.owner.getLocalID()==post.user.id){
-				context.appContext.getNewsfeedController().clearFriendsFeedCache();
-			}
-		}else{
+	public void handle(ActivityHandlerContext context, ForeignUser actor, Update activity, NoteOrQuestion post) throws SQLException{
+		Post existing;
+		try{
+			existing=context.appContext.getWallController().getPostOrThrow(post.activityPubID);
+		}catch(ObjectNotFoundException x){
+			LOG.debug("Original post {} for Update{Note} not found, ignoring activity", post.activityPubID);
+			return;
+		}
+		Post updated=post.asNativePost(context.appContext);
+		if(updated.authorID!=existing.authorID || actor.id!=existing.authorID)
 			throw new IllegalArgumentException("No access to update this post");
+
+		if(post.inReplyTo==null && updated.ownerID!=existing.ownerID){
+			throw new IllegalArgumentException("Post owner doesn't match existing");
+		}
+		if(!Objects.equals(updated.replyKey, existing.replyKey)){
+			throw new IllegalArgumentException("inReplyTo doesn't match existing");
+		}
+
+		context.appContext.getWallController().loadAndPreprocessRemotePostMentions(updated, post);
+		PostStorage.putForeignWallPost(updated);
+		if(!updated.isGroupOwner() && updated.ownerID==updated.authorID){
+			context.appContext.getNewsfeedController().clearFriendsFeedCache();
 		}
 	}
 }

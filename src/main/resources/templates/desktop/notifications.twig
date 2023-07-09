@@ -13,6 +13,7 @@
 {%if notification.objectID!=0%}
 {%set object=posts[notification.objectID]%}
 {%set isComment=object is not null ? object.replyLevel>0 : false%}
+{% set objectOwner=object.ownerID>0 ? users[object.ownerID] : groups[-object.ownerID] %}
 {%else%}
 {%set object=null%}
 {%endif%}
@@ -45,29 +46,29 @@
 		<td valign="top" class="postContentWrap">
 			<a href="{{actorURL}}" class="authorName">{{actorName}}</a>
 			{%if notification.type=="REPLY"%}
-			{{L(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', {'gender': actorGender})}} <a href="{{relatedObject.internalURL}}">{{relatedObject.shortTitle}}</a>
+			{{L(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', {'gender': actorGender})}} <a href="{{relatedObject.internalURL}}">{{relatedObject.shortTitle | default(LD(relatedObject.createdAt))}}</a>
 			<div class="postContent">
-				{{object.content | raw}}
+				{{ object.text | postprocessHTML }}
 			</div>
-			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments, object.owner)}}<br/>{%endif%}
+			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments, objectOwner)}}<br/>{%endif%}
 			{%set link=object.internalURL%}
 			{%elseif notification.type=="MENTION"%}
 			{{L(isComment ? 'notification_mentioned_in_comment' : 'notification_mentioned_in_post', {'gender': actorGender})}}
 			<div class="postContent">
-				{{object.content | raw}}
+				{{ object.text | postprocessHTML }}
 			</div>
-			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments, object.owner)}}<br/>{%endif%}
+			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments, objectOwner)}}<br/>{%endif%}
 			{%set link=object.internalURL%}
 			{%elseif notification.type=="LIKE"%}
-			{{L(isComment ? 'notification_liked_comment' : 'notification_liked_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle}}</a>
+			{{L(isComment ? 'notification_liked_comment' : 'notification_liked_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle | default(LD(object.createdAt))}}</a>
 			{%elseif notification.type=="RETOOT"%}
-			{{L(isComment ? 'notification_reposted_comment' : 'notification_reposted_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle}}</a>
+			{{L(isComment ? 'notification_reposted_comment' : 'notification_reposted_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle | default(LD(object.createdAt))}}</a>
 			{%elseif notification.type=="POST_OWN_WALL"%}
 			{{L('notification_posted_on_wall', {'gender': actorGender})}}
 			<div class="postContent">
-				{{object.content | raw}}
+				{{ object.text | postprocessHTML }}
 			</div>
-			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments, object.owner)}}<br/>{%endif%}
+			{%if object.attachment is not null%}{{renderAttachments(object.processedAttachments, objectOwner)}}<br/>{%endif%}
 			{%set link=object.internalURL%}
 			{%elseif notification.type=="INVITE_SIGNUP"%}
 			{{L('notification_invite_signup', {'gender': actorGender})}}

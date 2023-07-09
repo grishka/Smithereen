@@ -13,7 +13,7 @@ import java.time.Instant;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +25,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
@@ -35,7 +36,6 @@ import smithereen.data.User;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -150,7 +150,16 @@ public class ObjectLinkResolver{
 	}
 
 	@NotNull
-	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
+	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, Actor owner, boolean bypassCollectionCheck){
+		JsonObject actorToken=null;
+		if(!Config.isLocal(_link) && owner instanceof Group g && g.accessType!=Group.AccessType.OPEN){
+			actorToken=getActorToken(ServiceActor.getInstance(), g);
+		}
+		return resolveNative(_link, expectedType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck);
+	}
+
+	@NotNull
+	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
 		try{
 			LOG.debug("Resolving ActivityPub link: {}, expected type: {}", _link, expectedType.getName());
 			URI link;
@@ -180,11 +189,14 @@ public class ObjectLinkResolver{
 				if(allowFetching){
 					try{
 						ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context);
-						T o=ensureTypeAndCast(obj, expectedType);
-						o.resolveDependencies(context, allowFetching, allowStorage);
-						if(!bypassCollectionCheck && o instanceof Post post && post.getReplyLevel()==0){ // TODO make this a generalized interface OwnedObject or something
-							if(!Objects.equals(post.owner.activityPubID, post.user.activityPubID)){
-								ensureObjectIsInCollection(post.owner, post.owner.getWallURL(), post.activityPubID);
+						if(obj instanceof ForeignGroup fg){
+							fg.resolveDependencies(context, allowFetching, allowStorage);
+						}
+						T o=convertToNativeObject(obj, expectedType);
+						if(!bypassCollectionCheck && o instanceof Post post && obj.inReplyTo==null){ // TODO make this a generalized interface OwnedObject or something
+							if(post.ownerID!=post.authorID){
+								Actor owner=context.getWallController().getPostAuthorAndOwner(post).owner();
+								ensureObjectIsInCollection(owner, owner.getWallURL(), post.getActivityPubID());
 							}
 						}
 						if(allowStorage)
@@ -218,24 +230,53 @@ public class ObjectLinkResolver{
 		throw new ObjectNotFoundException("Invalid local URI");
 	}
 
-	public void storeOrUpdateRemoteObject(ActivityPubObject o){
+	@NotNull
+	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
+		Class<?> nativeType;
+//		if(expectedType.isAssignableFrom(NoteOrQuestion.class)){
+//			nativeType=Post.class;
+//		}else{
+			nativeType=expectedType;
+//		}
+		return convertToActivityPubObject(resolveNative(_link, nativeType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck), expectedType);
+	}
+
+	public void storeOrUpdateRemoteObject(Object o){
 		try{
-			o.storeDependencies(context);
-			if(o instanceof ForeignUser fu && !fu.isServiceActor)
+			if(o instanceof ForeignUser fu && !fu.isServiceActor){
 				UserStorage.putOrUpdateForeignUser(fu);
-			else if(o instanceof ForeignGroup fg)
+			}else if(o instanceof ForeignGroup fg){
+				fg.storeDependencies(context);
 				GroupStorage.putOrUpdateForeignGroup(fg);
-			else if(o instanceof Post p)
+			}else if(o instanceof Post p){
 				PostStorage.putForeignWallPost(p);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	private static <T extends ActivityPubObject> T ensureTypeAndCast(ActivityPubObject obj, Class<T> type){
+	private static <T> T ensureTypeAndCast(Object obj, Class<T> type){
 		if(type.isInstance(obj))
 			return type.cast(obj);
 		throw new IllegalStateException("Expected object of type "+type.getName()+", but got "+obj.getClass().getName()+" instead");
+	}
+
+	public <T extends ActivityPubObject> T convertToActivityPubObject(Object o, Class<T> type){
+		if(o instanceof ActivityPubObject apo)
+			return ensureTypeAndCast(apo, type);
+		if(o instanceof Post post && type.isAssignableFrom(NoteOrQuestion.class))
+			return type.cast(NoteOrQuestion.fromNativePost(post, context));
+		throw new IllegalStateException("Native type "+o.getClass().getName()+" does not have an ActivityPub representation");
+	}
+
+	public <T> T convertToNativeObject(ActivityPubObject o, Class<T> type){
+		if(o instanceof NoteOrQuestion noq && type.isAssignableFrom(Post.class)){
+			return type.cast(noq.asNativePost(context));
+		}else if(type.isAssignableFrom(o.getClass())){
+			return type.cast(o);
+		}
+		throw new IllegalStateException("Can't convert ActivityPub "+o.getClass().getName()+" to a native object of type "+type.getName());
 	}
 
 	public void ensureObjectIsInCollection(@NotNull Actor collectionOwner, @NotNull URI collectionID, @NotNull URI objectID){
@@ -277,6 +318,10 @@ public class ObjectLinkResolver{
 		}
 
 		throw new ObjectNotFoundException();
+	}
+
+	private void collectDependentObjectIDs(Object obj, Set<URI> ids){
+
 	}
 
 	private record ActorToken(JsonObject token, Instant validUntil){

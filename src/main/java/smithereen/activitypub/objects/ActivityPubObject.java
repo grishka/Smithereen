@@ -86,7 +86,7 @@ public abstract class ActivityPubObject{
 
 	public JsonObject asRootActivityPubObject(){
 		ContextCollector contextCollector=new ContextCollector();
-		JsonObject obj=asActivityPubObject(null, contextCollector);
+		JsonObject obj=asActivityPubObject(new JsonObject(), contextCollector);
 		obj.add("@context", contextCollector.toContext());
 		return obj;
 	}
@@ -154,7 +154,7 @@ public abstract class ActivityPubObject{
 		return obj;
 	}
 
-	protected <T extends ActivityPubObject> List<T> parseSingleObjectOrArray(JsonElement o, ParserContext parserContext){
+	public static <T extends ActivityPubObject> List<T> parseSingleObjectOrArray(JsonElement o, ParserContext parserContext){
 		if(o==null)
 			return null;
 		try{
@@ -273,15 +273,15 @@ public abstract class ActivityPubObject{
 		return result;
 	}
 
-	protected JsonArray serializeObjectArray(List<? extends ActivityPubObject> ar, ContextCollector contextCollector){
+	public static JsonArray serializeObjectArray(List<? extends ActivityPubObject> ar, ContextCollector contextCollector){
 		JsonArray res=new JsonArray();
 		for(ActivityPubObject obj:ar){
-			res.add(obj.asActivityPubObject(null, contextCollector));
+			res.add(obj.asActivityPubObject(new JsonObject(), contextCollector));
 		}
 		return res;
 	}
 
-	protected JsonElement serializeObjectArrayCompact(List<? extends ActivityPubObject> ar, ContextCollector contextCollector){
+	public static JsonElement serializeObjectArrayCompact(List<? extends ActivityPubObject> ar, ContextCollector contextCollector){
 		return ar.size()==1 ? ar.get(0).asActivityPubObject(null, contextCollector) : serializeObjectArray(ar, contextCollector);
 	}
 
@@ -385,14 +385,6 @@ public abstract class ActivityPubObject{
 	}
 
 	//abstract String getType();
-
-	public void resolveDependencies(ApplicationContext context, boolean allowFetching, boolean allowStorage){
-
-	}
-
-	public void storeDependencies(ApplicationContext context){
-
-	}
 
 	public void validate(@Nullable URI parentID, String propertyName){
 
@@ -547,7 +539,8 @@ public abstract class ActivityPubObject{
 			case "Group", "Organization" -> new ForeignGroup();
 
 			// Objects
-			case "Note", "Article", "Page", "Question" -> new Post();
+			case "Note", "Article", "Page" -> new Note();
+			case "Question" -> new Question();
 			case "Image" -> new Image();
 			case "_LocalImage" -> parserContext.isLocal ? new LocalImage() : null;
 			case "Document" -> new Document();

@@ -1,5 +1,7 @@
 package smithereen.routes;
 
+import com.google.gson.JsonObject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +41,7 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.data.Account;
 import smithereen.data.CachedRemoteImage;
 import smithereen.data.ForeignGroup;
@@ -152,16 +155,16 @@ public class SystemRoutes{
 			itemType=MediaCache.ItemType.PHOTO;
 			int postID=Utils.parseIntOrDefault(req.queryParams("post_id"), 0);
 			Post post=PostStorage.getPostByID(postID, false);
-			if(post==null || Config.isLocal(post.activityPubID)){
+			if(post==null || Config.isLocal(post.getActivityPubID())){
 				LOG.warn("downloading post_photo: post {} not found or is local", postID);
 				return "";
 			}
 			int index=Utils.parseIntOrDefault(req.queryParams("index"), 0);
-			if(index>=post.attachment.size() || index<0){
-				LOG.warn("downloading post_photo: index {} out of bounds {}", index, post.attachment.size());
+			if(index>=post.attachments.size() || index<0){
+				LOG.warn("downloading post_photo: index {} out of bounds {}", index, post.attachments.size());
 				return "";
 			}
-			ActivityPubObject att=post.attachment.get(index);
+			ActivityPubObject att=post.attachments.get(index);
 			if(!(att instanceof Document)){
 				LOG.warn("downloading post_photo: attachment {} is not a Document", att.getClass().getName());
 				return "";
@@ -430,7 +433,7 @@ public class SystemRoutes{
 		String _uri=req.queryParams("uri");
 		if(StringUtils.isEmpty(_uri))
 			throw new BadRequestException();
-		ActivityPubObject obj=null;
+		Object obj=null;
 		URI uri=null;
 		Matcher matcher=USERNAME_DOMAIN_PATTERN.matcher(_uri);
 		if(matcher.find() && matcher.start()==0 && matcher.end()==_uri.length()){
@@ -451,7 +454,7 @@ public class SystemRoutes{
 			}
 		}
 		try{
-			obj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, false);
+			obj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, false, (JsonObject) null, false);
 		}catch(UnsupportedRemoteObjectTypeException x){
 			LOG.debug("Unsupported remote object", x);
 			return new JsonObjectBuilder().add("error", lang(req).get("unsupported_remote_object_type")).build();
@@ -460,32 +463,32 @@ public class SystemRoutes{
 			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_not_found")).build();
 		}catch(Exception x){
 			LOG.debug("Other remote fetch exception", x);
-			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_load_error")+"\n\n"+x.getMessage()).build();
+			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_load_error")+"<br><br>"+Utils.escapeHTML(x.getMessage())).build();
 		}
 		if(obj instanceof ForeignUser user){
-			obj.storeDependencies(ctx);
 			UserStorage.putOrUpdateForeignUser(user);
 			return new JsonObjectBuilder().add("success", user.getProfileURL()).build();
 		}else if(obj instanceof ForeignGroup group){
-			obj.storeDependencies(ctx);
+			group.storeDependencies(ctx);
 			GroupStorage.putOrUpdateForeignGroup(group);
 			return new JsonObjectBuilder().add("success", group.getProfileURL()).build();
-		}else if(obj instanceof Post post){
-			if(post.inReplyTo==null || post.id!=0){
-				post.storeDependencies(ctx);
-				PostStorage.putForeignWallPost(post);
+		}else if(obj instanceof NoteOrQuestion post){
+			if(post.inReplyTo==null){
+				Post nativePost=post.asNativePost(ctx);
+				PostStorage.putForeignWallPost(nativePost);
 				try{
-					ctx.getActivityPubWorker().fetchAllReplies(post).get(30, TimeUnit.SECONDS);
+					ctx.getActivityPubWorker().fetchAllReplies(nativePost).get(30, TimeUnit.SECONDS);
 				}catch(Throwable x){
 					x.printStackTrace();
 				}
-				return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+post.id).toString()).build();
+				return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+nativePost.id).toString()).build();
 			}else{
 				Future<List<Post>> future=ctx.getActivityPubWorker().fetchReplyThread(post);
 				try{
 					List<Post> posts=future.get(30, TimeUnit.SECONDS);
 					ctx.getActivityPubWorker().fetchAllReplies(posts.get(0)).get(30, TimeUnit.SECONDS);
-					return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+posts.get(0).id+"#comment"+post.id).toString()).build();
+					Post nativePost=post.asNativePost(ctx);
+					return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+posts.get(0).id+"#comment"+nativePost.id).toString()).build();
 				}catch(InterruptedException ignore){
 				}catch(ExecutionException e){
 					Throwable x=e.getCause();
@@ -567,7 +570,7 @@ public class SystemRoutes{
 
 		poll.numVoters++;
 		for(PollOption opt:options)
-			opt.addVotes(1);
+			opt.numVotes++;
 
 		ctx.getActivityPubWorker().sendPollVotes(self.user, poll, owner, options, voteIDs);
 		int postID=PostStorage.getPostIdByPollId(id);
@@ -599,13 +602,14 @@ public class SystemRoutes{
 		switch(type){
 			case "post" -> {
 				Post post=ctx.getWallController().getPostOrThrow(id);
-				actorForAvatar=post.user;
-				title=post.user.getCompleteName();
-				subtitle=truncateOnWordBoundary(post.content, 200);
+				User postAuthor=ctx.getUsersController().getUserOrThrow(post.authorID);
+				actorForAvatar=postAuthor;
+				title=postAuthor.getCompleteName();
+				subtitle=truncateOnWordBoundary(post.text, 200);
 				boxTitle=l.get(post.getReplyLevel()>0 ? "report_title_comment" : "report_title_post");
 				textareaPlaceholder=l.get("report_placeholder_content");
 				titleText=l.get(post.getReplyLevel()>0 ? "report_text_comment" : "report_text_post");
-				otherServerDomain=Config.isLocal(post.activityPubID) ? null : post.activityPubID.getHost();
+				otherServerDomain=Config.isLocal(post.getActivityPubID()) ? null : post.getActivityPubID().getHost();
 			}
 			case "user" -> {
 				User user=ctx.getUsersController().getUserOrThrow(id);
@@ -646,13 +650,13 @@ public class SystemRoutes{
 		boolean forward="on".equals(req.queryParams("forward"));
 
 		Actor target;
-		ActivityPubObject content;
+		Object content;
 
 		switch(type){
 			case "post" -> {
 				Post post=ctx.getWallController().getPostOrThrow(id);
 				content=post;
-				target=post.user;
+				target=ctx.getUsersController().getUserOrThrow(post.authorID);
 			}
 			case "user" -> {
 				target=ctx.getUsersController().getUserOrThrow(id);

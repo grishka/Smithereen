@@ -48,7 +48,6 @@ public class MediaCache{
 	private static MediaCache instance=new MediaCache();
 
 	private LruCache<String, Item> metaCache=new LruCache<>(500);
-	private MessageDigest md5;
 	private ExecutorService asyncUpdater;
 	private OkHttpClient httpClient;
 	private long cacheSize=-1;
@@ -61,9 +60,6 @@ public class MediaCache{
 	}
 
 	private MediaCache(){
-		try{
-			md5=MessageDigest.getInstance("MD5");
-		}catch(NoSuchAlgorithmException ignore){}
 		asyncUpdater=Executors.newFixedThreadPool(1);
 		httpClient=new OkHttpClient.Builder()
 				.addNetworkInterceptor(new DisallowLocalhostInterceptor())
@@ -213,7 +209,11 @@ public class MediaCache{
 	}
 
 	private byte[] keyForURI(URI uri){
-		return md5.digest(uri.toString().getBytes(StandardCharsets.UTF_8));
+		try{
+			return MessageDigest.getInstance("MD5").digest(uri.toString().getBytes(StandardCharsets.UTF_8));
+		}catch(NoSuchAlgorithmException x){
+			throw new RuntimeException(x);
+		}
 	}
 
 	public static void putDraftAttachment(@NotNull LocalImage img, int ownerID) throws SQLException{

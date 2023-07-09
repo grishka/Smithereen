@@ -111,6 +111,7 @@ public class ActivityPub{
 	}
 
 	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx) throws IOException{
+		LOG.trace("Fetching remote object from {}", _uri);
 		URI uri;
 		String token;
 		if("bear".equals(_uri.getScheme())){

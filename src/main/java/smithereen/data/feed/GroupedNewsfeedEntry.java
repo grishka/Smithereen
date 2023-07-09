@@ -16,7 +16,6 @@ public class GroupedNewsfeedEntry extends NewsfeedEntry{
 		NewsfeedEntry first=entries.iterator().next();
 		childEntriesType=first.type;
 		authorID=first.authorID;
-		author=first.author;
 		addChildEntries(entries);
 		type=Type.GROUPED;
 	}

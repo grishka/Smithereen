@@ -21,22 +21,22 @@ public class UserPermissions{
 
 	public boolean canDeletePost(Post post){
 		// Moderators can delete any local posts
-		if(post.local && serverAccessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal())
+		if(post.isLocal() && serverAccessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal())
 			return true;
 		// Users can always delete their own posts
-		if(post.user.id==userID)
+		if(post.authorID==userID)
 			return true;
 
 		// Group moderators can delete any post in their group
 		if(post.isGroupOwner())
-			return managedGroups.containsKey(((Group) post.owner).id);
+			return managedGroups.containsKey(-post.ownerID);
 
 		// Users can delete any post on their own wall
-		return post.owner instanceof User && ((User)post.owner).id==userID;
+		return post.ownerID>0 && post.ownerID==userID;
 	}
 
 	public boolean canEditPost(Post post){
-		return post.user.id==userID && System.currentTimeMillis()-post.published.toEpochMilli()<24*3600_000L;
+		return post.authorID==userID && System.currentTimeMillis()-post.createdAt.toEpochMilli()<24*3600_000L;
 	}
 
 	public boolean canEditGroup(Group group){
@@ -47,13 +47,13 @@ public class UserPermissions{
 		return managedGroups.getOrDefault(group.id, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.MODERATOR);
 	}
 
-	public boolean canReport(ActivityPubObject obj){
+	public boolean canReport(Object obj){
 		if(obj instanceof User u){
 			return u.id!=userID;
 		}else if(obj instanceof Group g){
 			return managedGroups.getOrDefault(g.id, Group.AdminLevel.REGULAR)!=Group.AdminLevel.OWNER;
 		}else if(obj instanceof Post p){
-			return p.user.id!=userID;
+			return p.authorID!=userID;
 		}else{
 			return false;
 		}

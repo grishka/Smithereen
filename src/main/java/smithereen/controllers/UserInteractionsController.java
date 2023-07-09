@@ -8,6 +8,7 @@ import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.OwnerAndAuthor;
 import smithereen.data.PaginatedList;
 import smithereen.data.Post;
 import smithereen.data.User;
@@ -39,22 +40,23 @@ public class UserInteractionsController{
 	public void setObjectLiked(Post object, boolean liked, User self){
 		try{
 			context.getPrivacyController().enforceObjectPrivacy(self, object);
-			if(object.owner instanceof User u)
+			OwnerAndAuthor oaa=context.getWallController().getPostAuthorAndOwner(object);
+			if(oaa.owner() instanceof User u)
 				Utils.ensureUserNotBlocked(self, u);
-			else if(object.owner instanceof Group g)
+			else if(oaa.owner() instanceof Group g)
 				Utils.ensureUserNotBlocked(self, g);
 
 			if(liked){
 				int id=LikeStorage.setPostLiked(self.id, object.id, true);
 				if(id==0) // Already liked
 					return;
-				if(!(object.user instanceof ForeignUser) && object.user.id!=self.id){
+				if(!(oaa.author() instanceof ForeignUser) && object.authorID!=self.id){
 					Notification n=new Notification();
 					n.type=Notification.Type.LIKE;
 					n.actorID=self.id;
 					n.objectID=object.id;
 					n.objectType=Notification.ObjectType.POST;
-					NotificationsStorage.putNotification(object.user.id, n);
+					NotificationsStorage.putNotification(object.authorID, n);
 				}
 				context.getActivityPubWorker().sendLikeActivity(object, self, id);
 			}else{
@@ -62,7 +64,7 @@ public class UserInteractionsController{
 				int id=LikeStorage.setPostLiked(self.id, object.id, false);
 				if(id==0)
 					return;
-				if(!(object.user instanceof ForeignUser) && object.user.id!=self.id){
+				if(!(oaa.author() instanceof ForeignUser) && object.authorID!=self.id){
 					NotificationsStorage.deleteNotification(Notification.ObjectType.POST, object.id, Notification.Type.LIKE, self.id);
 				}
 				context.getActivityPubWorker().sendUndoLikeActivity(object, self, id);

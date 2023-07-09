@@ -16,6 +16,7 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.data.ActivityPubRepresentable;
 import smithereen.data.AdminNotifications;
 import smithereen.data.FederationRestriction;
 import smithereen.data.ForeignGroup;
@@ -40,22 +41,22 @@ public class ModerationController{
 		this.context=context;
 	}
 
-	public void createViolationReport(User self, Actor target, @Nullable ActivityPubObject content, String comment, boolean forward){
+	public void createViolationReport(User self, Actor target, @Nullable Object content, String comment, boolean forward){
 		int reportID=createViolationReportInternal(self, target, content, comment, null);
 		if(forward && (target instanceof ForeignGroup || target instanceof ForeignUser)){
 			ArrayList<URI> objectIDs=new ArrayList<>();
 			objectIDs.add(target.activityPubID);
-			if(content!=null)
-				objectIDs.add(content.activityPubID);
+			if(content instanceof ActivityPubRepresentable apr)
+				objectIDs.add(apr.getActivityPubID());
 			context.getActivityPubWorker().sendViolationReport(reportID, comment, objectIDs, target);
 		}
 	}
 
-	public void createViolationReport(@Nullable User self, Actor target, @Nullable ActivityPubObject content, String comment, String otherServerDomain){
+	public void createViolationReport(@Nullable User self, Actor target, @Nullable Object content, String comment, String otherServerDomain){
 		createViolationReportInternal(self, target, content, comment, otherServerDomain);
 	}
 
-	private int createViolationReportInternal(@Nullable User self, Actor target, @Nullable ActivityPubObject content, String comment, String otherServerDomain){
+	private int createViolationReportInternal(@Nullable User self, Actor target, @Nullable Object content, String comment, String otherServerDomain){
 		try{
 			ViolationReport.TargetType targetType;
 			ViolationReport.ContentType contentType;

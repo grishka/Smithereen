@@ -17,10 +17,10 @@ public class PrivacyController{
 		this.context=context;
 	}
 
-	public void enforceObjectPrivacy(@Nullable User self, @NotNull ActivityPubObject object){
+	public void enforceObjectPrivacy(@Nullable User self, @NotNull Object object){
 		if(object instanceof Post post){
-			if(post.owner instanceof Group group){
-				enforceUserAccessToGroupContent(self, group);
+			if(post.ownerID<0){
+				enforceUserAccessToGroupContent(self, context.getGroupsController().getGroupOrThrow(-post.ownerID));
 			}
 		}
 	}

@@ -9,6 +9,7 @@ import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponse;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.notifications.Notification;
+import smithereen.data.viewmodel.PostViewModel;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
@@ -63,7 +65,9 @@ public class ProfileRoutes{
 				User user=ctx.getUsersController().getUserOrThrow(ur.localID());
 				boolean isSelf=self!=null && self.user.id==user.id;
 				int offset=offset(req);
-				PaginatedList<Post> wall=ctx.getWallController().getWallPosts(user, false, offset, 20);
+				HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+
+				PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(user, false, offset, 20));
 				RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req)
 						.pageTitle(user.getFullName())
 						.with("user", user)
@@ -77,6 +81,9 @@ public class ProfileRoutes{
 
 				Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 				model.with("postInteractions", interactions);
+
+				PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
+				model.with("users", ctx.getUsersController().getUsers(needUsers));
 
 				PaginatedList<User> friends=ctx.getFriendsController().getFriends(user, 0, 6, FriendsController.SortOrder.RANDOM);
 				model.with("friendCount", friends.total).with("friends", friends.list);

@@ -12,7 +12,7 @@
 				{% for opt in poll.options %}
 					<label>
 						<input type="checkbox" name="option" value="{{ opt.id }}" onchange="onPollInputChange(this)"/>
-						{{ opt.name }}
+						{{ opt.text }}
 					</label>
 				{% endfor %}
 				<input type="submit" value="{{ L('submit_vote') }}" id="pollSubmit{{ poll.id }}"/>
@@ -23,7 +23,7 @@
 				{% for opt in poll.options %}
 					<label>
 						<input type="radio" name="option" value="{{ opt.id }}" onchange="onPollInputChange(this)"/>
-						{{ opt.name }}
+						{{ opt.text }}
 					</label>
 				{% endfor %}
 				<noscript>

@@ -1,62 +1,64 @@
-{# @pebvariable name="post" type="smithereen.data.Post" #}
+{# @pebvariable name="post" type="smithereen.data.viewmodel.PostViewModel" #}
+{# @pebvariable name="realPost" type="smithereen.data.Post" #}
+{% set realPost=post.post %}
 {% if postInteractions is not null %}
-{% set interactions=postInteractions[post.id] %}
+{% set interactions=postInteractions[realPost.id] %}
 {% endif %}
-<table width="100%" cellpadding="0" cellspacing="0" class="post{{ standalone ? ' standalone' : '' }}" id="post{{post.id}}">
+<table width="100%" cellpadding="0" cellspacing="0" class="post{{ standalone ? ' standalone' : '' }}" id="post{{ realPost.id }}">
 	<tr>
 		<td width="50" valign="top">
-			<a href="{{post.user.profileURL}}">{{post.user | pictureForAvatar('s')}}</a>
+			<a href="{{ users[realPost.authorID].profileURL }}">{{ users[realPost.authorID] | pictureForAvatar('s') }}</a>
 		</td>
 		<td valign="top" class="postContentWrap">
-			<a href="{{post.user.profileURL}}" class="authorName" id="postAuthor{{ post.id }}">{{post.user.fullName}}</a>
-			<div id="postInner{{ post.id }}">
+			<a href="{{ users[realPost.authorID].profileURL }}" class="authorName" id="postAuthor{{ realPost.id }}">{{ users[realPost.authorID].fullName }}</a>
+			<div id="postInner{{ realPost.id }}">
 				{% block postInner %}
-				{% if post.hasContentWarning %}
-				<input type="checkbox" id="postCW_{{ post.id }}" style="display: none"/>
+				{% if realPost.hasContentWarning %}
+				<input type="checkbox" id="postCW_{{ realPost.id }}" style="display: none"/>
 				<div class="postCWWrap">
-					<label for="postCW_{{ post.id }}" class="postCWButton ellipsize">{{ post.summary }}</label>
+					<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning }}</label>
 				{% endif %}
 				{% if standalone %}
-				<div class="postContent">{{ post.content | postprocessHTML }}</div>
+				<div class="postContent">{{ realPost.text | postprocessHTML }}</div>
 				{% else %}
-				<div class="postContent">{{ post.content | postprocessHTML | truncateText }}</div>
+				<div class="postContent">{{ realPost.text | postprocessHTML | truncateText }}</div>
 				{% endif %}
-				{% if post.poll is not null %}
-				{% include "poll" with {'poll': post.poll, 'interactions': interactions} %}
+				{% if realPost.poll is not null %}
+				{% include "poll" with {'poll': realPost.poll, 'interactions': interactions} %}
 				{% endif %}
-				{% if post.attachment is not null %}
-					{{ renderAttachments(post.processedAttachments, post.owner) }}
+				{% if realPost.attachments is not empty %}
+					{{ renderAttachments(realPost.processedAttachments, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
 				{% endif %}
-				{% if post.hasContentWarning %}
+				{% if realPost.hasContentWarning %}
 				</div>
 				{% endif %}
-				{% if post.federationState=='REJECTED' %}
+				{% if realPost.federationState=='REJECTED' %}
 				<div class="red">{{ L('wall_post_rejected') }}</div>
 				{% endif %}
-				<div class="postInfo"><a href="{{post.internalURL}}" class="postLink">{{LD(post.published)}}</a>
-					{%if userPermissions is not null and userPermissions.canDeletePost(post)%} |
-					<a href="{{post.internalURL}}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{post.internalURL}}/delete')">{{L('delete')}}</a>
-					{%endif%}
-					{% if userPermissions is not null and userPermissions.canEditPost(post) %} |
-					<a href="{{ post.internalURL }}/edit" data-ajax="1">{{ L('edit') }}</a>
+				<div class="postInfo"><a href="{{ realPost.internalURL }}" class="postLink">{{ LD(realPost.createdAt) }}</a>
+					{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %} |
+					<a href="{{ realPost.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{ realPost.internalURL }}/delete')">{{ L('delete') }}</a>
 					{% endif %}
-					{% if userPermissions is not null and userPermissions.canReport(post) %} |
-					<a href="/system/reportForm?type=post&id={{ post.id }}" data-ajax-box>{{ L('report') }}</a>
+					{% if userPermissions is not null and userPermissions.canEditPost(realPost) %} |
+					<a href="{{ realPost.internalURL }}/edit" data-ajax="1">{{ L('edit') }}</a>
 					{% endif %}
-					{% if post.owner.id!=post.user.id and tab!="wall2wall" and not post.isGroupOwner %} |
-						<a href="/users/{{ post.owner.id }}/wall/with/{{ post.user.id }}">{{ L('wall_to_wall') }}</a>
+					{% if userPermissions is not null and userPermissions.canReport(realPost) %} |
+					<a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box>{{ L('report') }}</a>
 					{% endif %}
-					{% if not post.local %}
-						| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': post.url.host}) }}</a>
+					{% if realPost.ownerID!=realPost.authorID and tab!="wall2wall" and realPost.ownerID>0 %} |
+						<a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}">{{ L('wall_to_wall') }}</a>
+					{% endif %}
+					{% if not realPost.local %}
+						| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
 					{% endif %}
 					{% if not standalone and currentUser is not null %}
-						<span id="postCommentLinkWrap{{ post.id }}" style="{{ post.repliesObjects is empty ? '' : 'display: none;' }}">| <a href="{{ post.internalURL }}" onclick="return showPostCommentForm({{ post.id }})">{{ L('add_comment') }}</a></span>
+						<span id="postCommentLinkWrap{{ realPost.id }}" style="{{ post.repliesObjects is empty ? '' : 'display: none;' }}">| <a href="{{ realPost.internalURL }}" onclick="return showPostCommentForm({{ realPost.id }})">{{ L('add_comment') }}</a></span>
 					{% endif %}
 					{%if interactions is not null%}
 					<span class="postActions">
 						<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
-							<a href="{{post.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%} popoverButton" id="likeButtonPost{{post.id}}" data-obj-type="post" data-obj-id="{{post.id}}" data-popover-url="{{post.internalURL}}/likePopover" onclick="return likeOnClick(this)">
-								{{- L('like')}}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{post.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+							<a href="{{ realPost.internalURL }}/{% if interactions.isLiked %}un{% endif %}like?csrf={{ csrf }}" class="action like{% if interactions.isLiked %} liked{% endif %} popoverButton" id="likeButtonPost{{ realPost.id }}" data-obj-type="post" data-obj-id="{{ realPost.id }}" data-popover-url="{{ realPost.internalURL }}/likePopover" onclick="return likeOnClick(this)">
+								{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{ realPost.id }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
 								{{- interactions.likeCount -}}
 							</span></a>
 							<span class="popoverPlace likePopoverWrap"></span>
@@ -72,18 +74,19 @@
 {% if not standalone and interactions is not null %}
 <div class="commentsPreviewWrap">
 	{% if post.totalTopLevelComments>post.repliesObjects.size %}
-		<a href="{{ post.internalURL }}" onclick="return loadOlderComments({{ post.id }})" class="loadPrev" id="loadPrevBtn{{ post.id }}" data-first-id="{{ post.repliesObjects[0].id }}">{{ L('show_previous_comments') }}</a>
-		<div class="prevLoader loader" id="prevLoader{{ post.id }}" style="display: none;"></div>
+		<a href="{{ realPost.internalURL }}" onclick="return loadOlderComments({{ realPost.id }})" class="loadPrev" id="loadPrevBtn{{ realPost.id }}" data-first-id="{{ post.repliesObjects[0].post.id }}">{{ L('show_previous_comments') }}</a>
+		<div class="prevLoader loader" id="prevLoader{{ realPost.id }}" style="display: none;"></div>
 	{% endif %}
-	<div class="commentsPreview" id="postReplies{{ post.id }}" style="{{ post.repliesObjects is empty ? 'display: none;' : '' }}">
+	<div class="commentsPreview" id="postReplies{{ realPost.id }}" style="{{ post.repliesObjects is empty ? 'display: none;' : '' }}">
 	{%for reply in post.repliesObjects%}
-		{%include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': "wallPostForm_commentReplyPost#{post.id}"}%}
+		{% include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': "wallPostForm_commentReplyPost#{realPost.id}"} %}
+		{% set realPost=post.post %}{# the included template overwrites this variable #}
 	{%endfor%}
 	</div>
-	{%set interactions=postInteractions[post.id]%}
+	{%set interactions=postInteractions[realPost.id]%}
 {% if currentUser is not null %}
-	{% include "wall_post_form" with {'id': "commentReplyPost#{post.id}", 'replyTo': post, 'hidden': true} %}
-	{% include "wall_post_form" with {'id': "commentPost#{post.id}", 'replyTo': post, 'hidden': interactions.commentCount==0} %}
+	{% include "wall_post_form" with {'id': "commentReplyPost#{realPost.id}", 'replyTo': realPost, 'hidden': true} %}
+	{% include "wall_post_form" with {'id': "commentPost#{realPost.id}", 'replyTo': realPost, 'hidden': interactions.commentCount==0} %}
 {% endif %}
 </div>
 {% endif %}

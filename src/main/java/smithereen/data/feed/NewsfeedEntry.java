@@ -4,12 +4,11 @@ import java.time.Instant;
 
 import smithereen.data.User;
 
-public abstract class NewsfeedEntry{
+public class NewsfeedEntry{
 	public int id;
 	public Type type;
 	public int objectID;
 	public int authorID;
-	public User author;
 	public Instant time;
 
 	@Override
@@ -19,7 +18,6 @@ public abstract class NewsfeedEntry{
 				", type="+type+
 				", objectID="+objectID+
 				", authorID="+authorID+
-				", author="+author+
 				", time="+time+
 				'}';
 	}

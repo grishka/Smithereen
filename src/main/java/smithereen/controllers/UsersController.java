@@ -269,6 +269,8 @@ public class UsersController{
 	}
 
 	public Map<Integer, User> getUsers(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
 		try{
 			return UserStorage.getById(ids);
 		}catch(SQLException x){

@@ -36,6 +36,7 @@ import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponse;
+import smithereen.data.viewmodel.PostViewModel;
 import smithereen.exceptions.BadRequestException;
 import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
@@ -184,7 +185,7 @@ public class GroupsRoutes{
 		int wallPostsCount=0;
 		if(canAccessContent){
 			int offset=offset(req);
-			PaginatedList<Post> wall=ctx.getWallController().getWallPosts(group, false, offset, 20);
+			PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(group, false, offset, 20));
 			wallPostsCount=wall.total;
 			if(req.attribute("mobile")==null){
 				ctx.getWallController().populateCommentPreviews(wall.list);

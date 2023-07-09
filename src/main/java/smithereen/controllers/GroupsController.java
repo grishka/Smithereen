@@ -140,6 +140,8 @@ public class GroupsController{
 	}
 
 	public List<Group> getGroupsByIdAsList(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return List.of();
 		try{
 			return GroupStorage.getByIdAsList(ids);
 		}catch(SQLException x){
@@ -148,6 +150,8 @@ public class GroupsController{
 	}
 
 	public Map<Integer, Group> getGroupsByIdAsMap(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
 		try{
 			return GroupStorage.getById(ids);
 		}catch(SQLException x){

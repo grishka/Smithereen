@@ -21,43 +21,43 @@ public class NotificationUtils{
 			throw new IllegalArgumentException("Post is not a reply but parent is not null");
 
 		// For a reply to a local post, notify the parent post author about the reply
-		if(isReply && Config.isLocal(parent.url) && Config.isLocal(parent.attributedTo) && !parent.user.equals(post.user)){
+		if(isReply && parent.isLocal() /*&& Config.isLocal(parent.attributedTo)*/ && parent.authorID!=post.authorID){
 			Notification n=new Notification();
 			n.type=Notification.Type.REPLY;
 			n.objectID=post.id;
 			n.objectType=Notification.ObjectType.POST;
 			n.relatedObjectID=parent.id;
 			n.relatedObjectType=Notification.ObjectType.POST;
-			n.actorID=post.user.id;
-			NotificationsStorage.putNotification(parent.user.id, n);
+			n.actorID=post.authorID;
+			NotificationsStorage.putNotification(parent.authorID, n);
 		}
 
 		// Notify every mentioned local user, except the parent post author, if any
-		for(User user:post.mentionedUsers){
+		for(User user:UserStorage.getById(post.mentionedUserIDs).values()){
 			if(user instanceof ForeignUser)
 				continue;
-			if(isReply && user.equals(parent.user))
+			if(isReply && user.id==parent.authorID)
 				continue;
-			if(user.equals(post.user))
+			if(user.id==post.authorID)
 				continue;
-			if(UserStorage.isUserBlocked(user.id, post.user.id))
+			if(UserStorage.isUserBlocked(user.id, post.authorID))
 				continue;
 			Notification n=new Notification();
 			n.type=Notification.Type.MENTION;
 			n.objectID=post.id;
 			n.objectType=Notification.ObjectType.POST;
-			n.actorID=post.user.id;
+			n.actorID=post.authorID;
 			NotificationsStorage.putNotification(user.id, n);
 		}
 
 		// Finally, if it's a wall post on a local user's wall, notify them
-		if(post.getReplyLevel()==0 && !post.owner.equals(post.user) && !(post.owner instanceof ForeignUser) && post.owner instanceof User){
+		if(post.getReplyLevel()==0 && post.ownerID!=post.authorID && post.ownerID>0 && !(UserStorage.getById(post.ownerID) instanceof ForeignUser)){
 			Notification n=new Notification();
 			n.type=Notification.Type.POST_OWN_WALL;
 			n.objectID=post.id;
 			n.objectType=Notification.ObjectType.POST;
-			n.actorID=post.user.id;
-			NotificationsStorage.putNotification(((User) post.owner).id, n);
+			n.actorID=post.authorID;
+			NotificationsStorage.putNotification(post.ownerID, n);
 		}
 	}
 }

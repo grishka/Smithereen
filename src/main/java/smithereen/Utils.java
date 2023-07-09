@@ -40,6 +40,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -59,6 +60,7 @@ import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
 import cz.jirutka.unidecode.Unidecode;
+import smithereen.activitypub.objects.Actor;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
@@ -494,6 +496,30 @@ public class Utils{
 		return os.toByteArray();
 	}
 
+	public static List<Integer> deserializeIntList(byte[] a){
+		if(a==null)
+			return List.of();
+		return Arrays.stream(deserializeIntArray(a)).boxed().toList();
+	}
+
+	public static byte[] serializeIntList(Collection<Integer> a){
+		if(a==null || a.isEmpty())
+			return null;
+		ByteArrayOutputStream os=new ByteArrayOutputStream();
+		try{
+			DataOutputStream out=new DataOutputStream(os);
+			for(int i:a)
+				out.writeInt(i);
+		}catch(IOException ignore){}
+		return os.toByteArray();
+	}
+
+	public static Set<Integer> deserializeIntSet(byte[] a){
+		if(a==null)
+			return Set.of();
+		return Arrays.stream(deserializeIntArray(a)).boxed().collect(Collectors.toSet());
+	}
+
 	public static String back(Request req){
 		String redir=req.queryParams("_redir");
 		if(redir!=null)
@@ -770,15 +796,15 @@ public class Utils{
 		return doc.body().html();
 	}
 
-	public static String preprocessRemotePostMentions(String text, Set<User> users){
+	public static String preprocessRemotePostMentions(String text, Map<Integer, User> users){
 		Document doc=Jsoup.parseBodyFragment(text);
 
 		for(Element link:doc.select("a.mention")){
 			URI href=URI.create(link.attr("href"));
 			boolean found=false;
-			for(User user:users){
+			for(User user:users.values()){
 				if(href.equals(user.url) || href.equals(user.activityPubID)){
-					link.attr("data-user-id", user.id+"");
+					link.attr("data-user-id", String.valueOf(user.id));
 					found=true;
 					break;
 				}
@@ -794,18 +820,18 @@ public class Utils{
 		return doc.body().html();
 	}
 
-	public static void ensureUserNotBlocked(User self, User target) throws SQLException{
-		if(self instanceof ForeignUser && UserStorage.isDomainBlocked(target.id, self.domain))
-			throw new UserActionNotAllowedException();
-		if(UserStorage.isUserBlocked(target.id, self.id))
-			throw new UserActionNotAllowedException();
-	}
-
-	public static void ensureUserNotBlocked(User self, Group target) throws SQLException{
-		if(self instanceof ForeignUser && GroupStorage.isDomainBlocked(target.id, self.domain))
-			throw new UserActionNotAllowedException();
-		if(GroupStorage.isUserBlocked(target.id, self.id))
-			throw new UserActionNotAllowedException();
+	public static void ensureUserNotBlocked(User self, Actor target) throws SQLException{
+		if(target instanceof User user){
+			if(self instanceof ForeignUser && UserStorage.isDomainBlocked(user.id, self.domain))
+				throw new UserActionNotAllowedException();
+			if(UserStorage.isUserBlocked(user.id, self.id))
+				throw new UserActionNotAllowedException();
+		}else if(target instanceof Group group){
+			if(self instanceof ForeignUser && GroupStorage.isDomainBlocked(group.id, self.domain))
+				throw new UserActionNotAllowedException();
+			if(GroupStorage.isUserBlocked(group.id, self.id))
+				throw new UserActionNotAllowedException();
+		}
 	}
 
 	public static List<Map<String, String>> parseSignatureHeader(String header){
