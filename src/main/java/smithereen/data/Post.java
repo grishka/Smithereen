@@ -56,6 +56,10 @@ public class Post implements ActivityPubRepresentable, OwnedContentObject{
 		return contentWarning!=null;
 	}
 
+	public String getContentWarning(){
+		return contentWarning;
+	}
+
 	public URI getActivityPubID(){
 		if(activityPubID!=null)
 			return activityPubID;
