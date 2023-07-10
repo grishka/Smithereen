@@ -3,6 +3,9 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -18,6 +21,7 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.ParserContext;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.data.Post;
 import smithereen.data.UriBuilder;
 import smithereen.data.User;
@@ -25,6 +29,9 @@ import smithereen.exceptions.FederationException;
 import spark.utils.StringUtils;
 
 public abstract sealed class NoteOrQuestion extends ActivityPubObject permits Note, Question, NoteTombstone{
+	private static final int MAX_MENTIONS=10;
+	private static final Logger LOG=LoggerFactory.getLogger(NoteOrQuestion.class);
+
 	public LinkOrObject replies;
 	public Boolean sensitive;
 	public ActivityPubCollection target;
@@ -73,6 +80,24 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		if(post.activityPubReplies!=null)
 			ensureHostMatchesID(post.activityPubReplies, "replies");
 		post.attachments=attachment;
+
+		if(tag!=null){
+			post.mentionedUserIDs=new HashSet<>();
+			int mentionCount=0;
+			for(ActivityPubObject obj:tag){
+				if(obj instanceof Mention mention){
+					try{
+						User mentionedUser=context.getObjectLinkResolver().resolve(mention.href, User.class, true, true, false);
+						post.mentionedUserIDs.add(mentionedUser.id);
+						mentionCount++;
+						if(mentionCount==MAX_MENTIONS)
+							break;
+					}catch(Exception x){
+						LOG.debug("Failed to resolve mention for href={}", mention.href, x);
+					}
+				}
+			}
+		}
 
 		return post;
 	}
