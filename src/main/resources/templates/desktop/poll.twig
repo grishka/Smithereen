@@ -44,7 +44,7 @@
 			<a href="/posts/{{ post.id }}/pollVoters/{{ opt.id }}" class="undecoratedLink popoverButton" data-ajax-box="1" data-popover-url="/posts/{{ post.id }}/pollVoters/{{ opt.id }}/popover">
 			{% endif %}
 			<div class="pollResultRow{{ interactions.pollChoices contains opt.id ? ' userChoice' : '' }}">
-				{{ opt.name }}
+				{{ opt.text }}
 				<div class="pollResultBarW">
 					<div class="pollResultBarBG">
 						<div class="pollResultBarFG" style="transform: scaleX({{ maxOptionVotes>0 ? (opt.numVotes*1.0)/maxOptionVotes : 0 }})"></div>

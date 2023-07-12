@@ -119,27 +119,19 @@ public class PostStorage{
 				.value("num_voted_users",poll.numVoters)
 				.createStatement(Statement.RETURN_GENERATED_KEYS);
 		int pollID=DatabaseUtils.insertAndGetID(stmt);
-		stmt=new SQLQueryBuilder(conn)
-				.insertInto("poll_options")
-				.value("poll_id", pollID)
-				.value("ap_id", null)
-				.value("text", null)
-				.value("num_votes", 0)
-				.createStatement(Statement.RETURN_GENERATED_KEYS);
 		boolean hasIDs=false;
 		for(PollOption opt:poll.options){
 			if(opt.activityPubID!=null)
 				hasIDs=true;
 			else if(hasIDs)
 				throw new IllegalStateException("all options must either have or not have IDs");
-			stmt.setString(2, Objects.toString(opt.activityPubID, null));
-			stmt.setString(3, opt.text);
-			stmt.setInt(4, opt.numVotes);
-			stmt.execute();
-			try(ResultSet res=stmt.getGeneratedKeys()){
-				res.first();
-				opt.id=res.getInt(1);
-			}
+			opt.id=new SQLQueryBuilder(conn)
+					.insertInto("poll_options")
+					.value("poll_id", pollID)
+					.value("ap_id", Objects.toString(opt.activityPubID, null))
+					.value("text", opt.text)
+					.value("num_votes", opt.numVotes)
+					.executeAndGetID();
 		}
 		return pollID;
 	}
