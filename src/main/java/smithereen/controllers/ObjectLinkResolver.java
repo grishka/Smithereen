@@ -233,11 +233,11 @@ public class ObjectLinkResolver{
 	@NotNull
 	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
 		Class<?> nativeType;
-//		if(expectedType.isAssignableFrom(NoteOrQuestion.class)){
-//			nativeType=Post.class;
-//		}else{
+		if(expectedType.isAssignableFrom(NoteOrQuestion.class)){
+			nativeType=Post.class;
+		}else{
 			nativeType=expectedType;
-//		}
+		}
 		return convertToActivityPubObject(resolveNative(_link, nativeType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck), expectedType);
 	}
 
