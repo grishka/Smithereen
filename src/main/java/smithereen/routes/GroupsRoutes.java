@@ -3,6 +3,8 @@ package smithereen.routes;
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Whitelist;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -12,6 +14,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +52,7 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.*;
 
 public class GroupsRoutes{
+	private static final Logger LOG=LoggerFactory.getLogger(GroupsRoutes.class);
 
 	private static Group getGroup(Request req){
 		int id=parseIntOrDefault(req.params(":id"), 0);
@@ -172,6 +176,7 @@ public class GroupsRoutes{
 		Lang l=lang(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group", req);
 
+
 		// Public info: still visible for non-members in public groups
 		List<User> members=ctx.getGroupsController().getRandomMembersForProfile(group, false);
 		model.with("group", group).with("members", members);
@@ -193,6 +198,9 @@ public class GroupsRoutes{
 			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 			model.with("postCount", wall.total).paginate(wall);
 			model.with("postInteractions", interactions);
+			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+			PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
+			model.with("users", ctx.getUsersController().getUsers(needUsers));
 		}
 
 		if(group instanceof ForeignGroup)

@@ -248,14 +248,9 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		if(obj.has("content"))
 			obj.addProperty("content", Utils.postprocessPostHTMLForActivityPub(content));
 		if(target!=null)
-			obj.add("target", target.asActivityPubObject(obj, contextCollector));
+			obj.add("target", target.asActivityPubObject(new JsonObject(), contextCollector));
 		if(likes!=null)
 			obj.addProperty("likes", likes.toString());
-
-//		if(deleted){
-//			obj.addProperty("formerType", "Note");
-//			return obj;
-//		}
 
 		return obj;
 	}
