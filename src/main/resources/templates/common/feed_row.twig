@@ -4,7 +4,7 @@
 <div class="feedRow feedPostRow" id="postWrap{{ entry.objectID }}">
 		{%include "wall_post" with {'post': posts[entry.objectID]}%}
 </div>
-{%elseif entry.type=="RETOOT"%}
+{% elseif entry.type=="RETOOT" and posts[entry.objectID] is not null %}
 <div class="feedRow feedPostRow">
 	<div class="feedIcon feedIconStatus"></div>
 	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>

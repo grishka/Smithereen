@@ -207,6 +207,10 @@ public class SystemRoutes{
 						return "";
 					}
 					try{
+						if(sessionInfo(req)==null){ // Only download attachments for logged-in users. Prevents crawlers from causing unnecessary churn in the media cache
+							resp.redirect(uri.toString());
+							return "";
+						}
 						LOG.debug("downloadExternalMedia: downloading {}", uri);
 						MediaCache.PhotoItem item;
 						if(isGraffiti)
