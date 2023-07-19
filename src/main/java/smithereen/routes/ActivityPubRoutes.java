@@ -752,12 +752,12 @@ public class ActivityPubRoutes{
 				LOG.info("verified LD signature by {}", userID);
 				hasValidLDSignature=true;
 			}catch(Exception x){
-				LOG.warn("Exception while verifying LD-signature", x);
-				throw new BadRequestException(x);
+				LOG.info("Exception while verifying LD-signature", x);
 			}
-		}else{
+		}
+		if(!hasValidLDSignature){
 			if(!actor.equals(httpSigOwner)){
-				throw new BadRequestException("In the absence of an LD-signature, HTTP signature must be made by the activity actor");
+				throw new BadRequestException("In the absence of a valid LD-signature, HTTP signature must be made by the activity actor");
 			}
 			LOG.info("verified HTTP signature by {}", httpSigOwner.activityPubID);
 		}
