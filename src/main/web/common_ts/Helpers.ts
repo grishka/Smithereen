@@ -246,7 +246,12 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, res
 	return xhr;
 }
 
-function ajaxGet(uri:string, onDone:Function, onError:Function, responseType:XMLHttpRequestResponseType="json"):XMLHttpRequest{
+function ajaxGet(uri:string, onDone:{(r:any):void}, onError:{(msg:string):void}, responseType:XMLHttpRequestResponseType="json"):XMLHttpRequest{
+	if(!onError){
+		onError=(msg)=>{
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
+		};
+	}
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
 	if(uri.indexOf("?")!=-1)
 		uri+="&_ajax=1";
@@ -310,7 +315,7 @@ function isVisible(el:HTMLElement):boolean{
 
 function lang(key:string, args:{[key:string]:(string|number)}={}):string{
 	if(!langKeys[key])
-		return key.replace("_", " ");
+		return key.replace(/_/g, " ");
 	var v=langKeys[key];
 	if(typeof v==="function")
 		return (v as Function).apply(this, [args]);
@@ -941,4 +946,28 @@ function initAjaxSearch(fieldID:string){
 			performSearch(input.value);
 		}, 300);
 	});
+}
+
+function quoteRegExp(str:string):string{
+	return (str+'').replace(/[.?*+^$[\]\\(){}|-]/g, "\\$&");
+}
+
+function makeAvatar(urls:string[], baseSize:string, customSize:number=0):HTMLElement{
+	var el;
+	var size=customSize || {s: 50, m: 100, l: 200, xl: 400}[baseSize];
+	if(!urls || !urls.length){
+		el=ce("span", {className: "ava avaPlaceholder size"+baseSize.toUpperCase()});
+	}else{
+		el=ce("span", {className: "ava avaHasImage size"+baseSize.toUpperCase()}, [
+			ce("picture", {}, [
+				ce("source", {srcset: urls[1]+", "+urls[3]+" 2x", type: "image/webp"}),
+				ce("source", {srcset: urls[0]+", "+urls[2]+" 2x", type: "image/jpeg"}),
+				ce("img", {src: urls[0], className: "avaImage", width: size, height: size})
+			])
+		]);
+	}
+	if(customSize){
+		el.style.width=el.style.height=customSize+"px";
+	}
+	return el;
 }

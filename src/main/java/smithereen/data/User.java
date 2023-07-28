@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
 
 import java.net.URI;
 import java.sql.ResultSet;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Map;
 
 import smithereen.Config;
+import smithereen.Utils;
 import smithereen.activitypub.ContextCollector;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
@@ -32,6 +34,7 @@ public class User extends Actor{
 	public LocalDate birthDate;
 	public Gender gender;
 	public long flags;
+	public Map<UserPrivacySettingKey, PrivacySetting> privacySettings=Map.of();
 
 	// additional profile fields
 	public boolean manuallyApprovesFollowers;
@@ -143,6 +146,11 @@ public class User extends Actor{
 					attachment.add(pv);
 				}
 			}
+		}
+
+		String privacy=res.getString("privacy");
+		if(StringUtils.isNotEmpty(privacy)){
+			privacySettings=Utils.gson.fromJson(privacy, new TypeToken<>(){});
 		}
 	}
 

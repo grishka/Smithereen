@@ -489,6 +489,7 @@ select{
 	pointer-events: auto;
 	align-self: flex-end;
 	background: $bg;
+	max-height: calc(100vh - 32px);
 	@include layer-shadow;
 	.boxTitleBar{
 		font-size: 20px;
@@ -1203,6 +1204,7 @@ textarea{
 
 .radioButtonWrap{
 	line-height: 24px;
+	display: block;
 	input{
 		vertical-align: top;
 		margin-right: 8px;
@@ -1453,5 +1455,61 @@ input.searchField{
 	margin: 8px 12px 0;
 	.loader{
 		display: inline-block;
+	}
+}
+
+.privacySettingRow{
+	display: block;
+	padding: 16px;
+	border-bottom: solid 1px $wallPostSeparator;
+	.settingLabel{
+		color: $text;
+		margin-bottom: 8px;
+	}
+	.settingValue{
+		color: $grayText;
+		font-size: 14px;
+	}
+}
+
+.compactUserRow{
+	display: flex;
+	align-items: center;
+	padding: 8px 0;
+	.name{
+		min-width: 0px;
+		flex: 1;
+		margin: 0 8px;
+	}
+	.actionIcon{
+		width: 32px;
+		height: 32px;
+		background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
+	}
+}
+
+.privacyFriendList{
+	margin-bottom: 16px;
+	.selectFriends{
+		display: block;
+		height: 32px;
+		line-height: 32px;
+	}
+}
+
+.selectFriendsListBox{
+	display: flex;
+	flex-direction: column;
+	.scrollableShadowWrap{
+		flex: 1;
+		max-height: calc(100vh - 180px - 32px - 100px);
+	}
+}
+.selectFriendsList{
+	overflow-y: auto;
+	max-height: calc(100vh - 180px - 32px - 100px);
+	min-height: 0;
+	.row input{
+		margin: 0 8px 0 12px;
 	}
 }

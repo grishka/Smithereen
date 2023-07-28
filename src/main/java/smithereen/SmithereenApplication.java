@@ -18,7 +18,6 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.data.Account;
 import smithereen.data.ForeignGroup;
@@ -34,6 +33,7 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
+import smithereen.routes.FriendsRoutes;
 import smithereen.routes.GroupsRoutes;
 import smithereen.routes.NotificationsRoutes;
 import smithereen.routes.PostRoutes;
@@ -222,6 +222,9 @@ public class SmithereenApplication{
 				postWithCSRF("/createInviteLink", SettingsRoutes::createInviteLink);
 				getLoggedIn("/invitedUsers", SettingsRoutes::invitedUsers);
 			});
+			getLoggedIn("/privacy", SettingsRoutes::privacySettings);
+			postWithCSRF("/privacy", SettingsRoutes::savePrivacySettings);
+			getLoggedIn("/privacy/mobileEditSetting", SettingsRoutes::mobileEditPrivacy);
 
 			path("/admin", ()->{
 				getRequiringAccessLevel("", Account.AccessLevel.ADMIN, SettingsAdminRoutes::index);
@@ -327,23 +330,23 @@ public class SmithereenApplication{
 
 			get("/groups", GroupsRoutes::userGroups);
 			path("/friends", ()->{
-				get("", ProfileRoutes::friends);
-				getLoggedIn("/mutual", ProfileRoutes::mutualFriends);
+				get("", FriendsRoutes::friends);
+				getLoggedIn("/mutual", FriendsRoutes::mutualFriends);
 			});
 			path("/wall", ()->{
 				get("", PostRoutes::userWallAll);
 				get("/own", PostRoutes::userWallOwn);
 				get("/with/:otherUserID", PostRoutes::wallToWall);
 			});
-			get("/followers", ProfileRoutes::followers);
-			get("/following", ProfileRoutes::following);
-			postWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
-			getWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
+			get("/followers", FriendsRoutes::followers);
+			get("/following", FriendsRoutes::following);
+			postWithCSRF("/respondToFriendRequest", FriendsRoutes::respondToFriendRequest);
+			getWithCSRF("/respondToFriendRequest", FriendsRoutes::respondToFriendRequest);
 
-			getLoggedIn("/confirmSendFriendRequest", ProfileRoutes::confirmSendFriendRequest);
-			postWithCSRF("/doSendFriendRequest", ProfileRoutes::doSendFriendRequest);
-			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
-			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
+			getLoggedIn("/confirmSendFriendRequest", FriendsRoutes::confirmSendFriendRequest);
+			postWithCSRF("/doSendFriendRequest", FriendsRoutes::doSendFriendRequest);
+			postWithCSRF("/doRemoveFriend", FriendsRoutes::doRemoveFriend);
+			getLoggedIn("/confirmRemoveFriend", FriendsRoutes::confirmRemoveFriend);
 
 			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncRelationshipsCollections);
 			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncContentCollections);
@@ -450,10 +453,10 @@ public class SmithereenApplication{
 		});
 
 		path("/my", ()->{
-			getLoggedIn("/incomingFriendRequests", ProfileRoutes::incomingFriendRequests);
-			getLoggedIn("/friends", ProfileRoutes::ownFriends);
-			get("/followers", ProfileRoutes::followers);
-			get("/following", ProfileRoutes::following);
+			getLoggedIn("/incomingFriendRequests", FriendsRoutes::incomingFriendRequests);
+			getLoggedIn("/friends", FriendsRoutes::ownFriends);
+			get("/followers", FriendsRoutes::followers);
+			get("/following", FriendsRoutes::following);
 			getLoggedIn("/notifications", NotificationsRoutes::notifications);
 			path("/groups", ()->{
 				getLoggedIn("", GroupsRoutes::myGroups);
@@ -470,6 +473,7 @@ public class SmithereenApplication{
 				getLoggedIn("/dayEventsPopup", GroupsRoutes::eventCalendarDayPopup);
 				getLoggedIn("/invites", GroupsRoutes::eventInvitations);
 			});
+			getLoggedIn("/friends/ajaxFriendsForPrivacyBoxes", FriendsRoutes::ajaxFriendsForPrivacyBoxes);
 		});
 
 		path("/api/v1", ()->{

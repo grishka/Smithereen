@@ -371,40 +371,32 @@ class BoxWithoutContentPadding extends Box{
 	}
 }
 
-class ScrollableBox extends BoxWithoutContentPadding{
-
+class BaseScrollableBox extends BoxWithoutContentPadding{
 	private scrollAtTop:boolean=true;
 	private scrollAtBottom:boolean=false;
 	private contentWrapWrap:HTMLDivElement;
-
+	private scrollableEl:HTMLElement;
 	public constructor(title:string, buttonTitles:string[]=[], onButtonClick:{(index:number):void;}=null){
 		super(title, buttonTitles, onButtonClick);
-		this.contentWrap.addEventListener("scroll", this.onContentScroll.bind(this), {passive: true});
 	}
 
-	protected onCreateContentView():HTMLElement{
-		var cont=super.onCreateContentView();
-		cont.classList.add("scrollable");
+	protected wrapScrollableElement(e:HTMLElement):HTMLElement{
+		this.scrollableEl=e;
+		e.addEventListener("scroll", this.onContentScroll.bind(this), {passive: true});
 		var shadowTop;
 
 		this.contentWrapWrap=ce("div", {className: "scrollableShadowWrap scrollAtTop"}, [
 			shadowTop=ce("div", {className: "shadowTop"}),
 			ce("div", {className: "shadowBottom"})
 		]);
-		cont.insertBefore(this.contentWrapWrap, this.contentWrap);
-		this.contentWrapWrap.insertBefore(this.contentWrap, shadowTop);
-
-		return cont;
-	}
-
-	public onShown(){
-		super.onShown();
-		this.onContentScroll(null);
+		// e.insertBefore(this.contentWrapWrap, e);
+		this.contentWrapWrap.insertBefore(e, shadowTop);
+		return this.contentWrapWrap;
 	}
 
 	protected onContentScroll(e:Event){
-		var atTop=this.contentWrap.scrollTop==0;
-		var atBottom=this.contentWrap.scrollTop>=this.contentWrap.scrollHeight-this.contentWrap.offsetHeight;
+		var atTop=this.scrollableEl.scrollTop==0;
+		var atBottom=this.scrollableEl.scrollTop>=this.scrollableEl.scrollHeight-this.scrollableEl.offsetHeight;
 		if(this.scrollAtTop!=atTop){
 			this.scrollAtTop=atTop;
 			if(atTop)
@@ -419,6 +411,24 @@ class ScrollableBox extends BoxWithoutContentPadding{
 			else
 				this.contentWrapWrap.classList.remove("scrollAtBottom");
 		}
+	}
+
+	public onShown(){
+		super.onShown();
+		this.onContentScroll(null);
+	}
+}
+
+class ScrollableBox extends BaseScrollableBox{
+	public constructor(title:string, buttonTitles:string[]=[], onButtonClick:{(index:number):void;}=null){
+		super(title, buttonTitles, onButtonClick);
+	}
+
+	protected onCreateContentView():HTMLElement{
+		var cont=super.onCreateContentView();
+		cont.classList.add("scrollable");
+
+		return this.wrapScrollableElement(cont);
 	}
 }
 

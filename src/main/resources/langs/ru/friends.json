@@ -48,5 +48,11 @@
   "birthday_descr_today": "Исполняется {age, plural, one {# год} few {# года} other {# лет}}",
   "birthday_descr_future": "Исполнится {age, plural, one {# год} few {# года} other {# лет}}",
   "friend_req_accepted": "Заявка принята",
-  "friend_req_declined": "Заявка отклонена"
+  "friend_req_declined": "Заявка отклонена",
+  "select_friends_title": "Выберите друзей",
+  "friends_search_placeholder": "Начните вводить имя друга",
+  "friend_list_your_friends": "Ваши друзья",
+  "friends_in_list": "Друзья в списке",
+  "select_friends_empty_selection": "Вы можете выбрать друзей в списке слева.",
+  "select_friends_button": "Выбрать друзей"
 }

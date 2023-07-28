@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.0.28, for macos12.2 (arm64)
+-- MySQL dump 10.13  Distrib 8.0.32, for macos13.0 (arm64)
 --
 -- Host: localhost    Database: smithereen
 -- ------------------------------------------------------
--- Server version	8.0.28
+-- Server version	8.0.32
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 
 --
@@ -521,6 +521,7 @@ CREATE TABLE `users` (
   `last_updated` timestamp NULL DEFAULT NULL,
   `flags` bigint unsigned NOT NULL,
   `endpoints` json DEFAULT NULL,
+  `privacy` json DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
   UNIQUE KEY `ap_id` (`ap_id`)
@@ -567,4 +568,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2023-01-20 21:59:28
+-- Dump completed on 2023-07-29  0:50:40

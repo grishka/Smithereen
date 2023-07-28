@@ -48,5 +48,11 @@
   "birthday_descr_today": "Turns {age, plural, one {# year} other {# years}}",
   "birthday_descr_future": "Will turn {age, plural, one {# year} other {# years}}",
   "friend_req_accepted": "Friend request accepted",
-  "friend_req_declined": "Friend request declined"
+  "friend_req_declined": "Friend request declined",
+  "select_friends_title": "Select friends",
+  "friends_search_placeholder": "Start typing a friend's name",
+  "friend_list_your_friends": "Your friends",
+  "friends_in_list": "Friends in list",
+  "select_friends_empty_selection": "You can choose friends in the list to the left.",
+  "select_friends_button": "Select friends"
 }

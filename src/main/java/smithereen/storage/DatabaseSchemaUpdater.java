@@ -17,7 +17,7 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=28;
+	public static final int SCHEMA_VERSION=29;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -431,6 +431,7 @@ public class DatabaseSchemaUpdater{
 						  PRIMARY KEY (`day`,`type`,`object_id`)
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
+			case 29 -> conn.createStatement().execute("ALTER TABLE `users` ADD `privacy` json DEFAULT NULL");
 		}
 	}
 }

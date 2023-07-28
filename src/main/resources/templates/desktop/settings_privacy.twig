@@ -1,0 +1,54 @@
+{% extends "page" %}
+{% block content %}
+{% include "settings_tabbar" with {'tab': 'privacy'} %}
+<form method="post" action="/settings/privacy" data-ajax class="singleColumn gray">
+	<div class="settingsMessage" id="formMessage_privacy" style="display: none"></div>
+	<input type="hidden" name="csrf" value="{{ csrf }}"/>
+	<div class="privacySettingsForm">
+		{% for key in settingsKeys %}
+			<div class="settingLabel">{{ L(key.descriptionLangKey) }}</div>
+			{% set setting=privacySettings[key] %}
+			<div class="settingValue">
+				<input type="hidden" name="{{ key }}" id="{{ key }}_value" value="{{ json(setting) }}"/>
+				<span class="popupMenuW">
+					{% if setting.baseRule=='EVERYONE' %}
+						{% set mainRuleKey='privacy_value_everyone' %}
+					{% elseif setting.baseRule=='FRIENDS' %}
+						{% set mainRuleKey='privacy_value_friends' %}
+					{% elseif setting.baseRule=='FRIENDS_OF_FRIENDS' %}
+						{% set mainRuleKey='privacy_value_friends_of_friends' %}
+					{% elseif setting.baseRule=='NONE' %}
+						{% if setting.allowUsers is not empty %}
+							{% set mainRuleKey='privacy_value_certain_friends' %}
+						{% else %}
+							{% set mainRuleKey=key.isOnlyMe ? 'privacy_value_only_me' : 'privacy_value_no_one' %}
+						{% endif %}
+					{% endif %}
+					<a href="javascript:void(0)" onclick="showPrivacyMenu(this, '{{ key }}', {{ key.isOnlyMe }})" class="opener">{{ L(mainRuleKey) }}</a><span id="privacyExtended_{{ key }}">
+						{%- if setting.allowUsers is not empty -%}
+						{{- L("privacy_settings_value_certain_friends_before") -}}
+						{%- for id in setting.allowUsers -%}
+							<a href="{{ users[id].profileURL }}">{{ users[id].fullName }}</a>
+							{%- if not loop.last -%}
+							{{- L("privacy_settings_value_name_separator") -}}
+							{%- endif -%}
+						{%- endfor -%}
+						{%- endif -%}
+						{%- if setting.exceptUsers is not empty -%}
+						{{- L("privacy_settings_value_except") -}}
+						{%- for id in setting.exceptUsers -%}
+							<a href="{{ users[id].profileURL }}">{{ L("privacy_settings_value_except_name", {'name': users[id].firstLastAndGender}) }}</a>
+							{%- if not loop.last -%}
+							{{- L("privacy_settings_value_name_separator") -}}
+							{%- endif -%}
+						{%- endfor -%}
+						{%- endif -%}
+					</span>
+				</span>
+			</div>
+		{% endfor %}
+			<div></div>
+			<div style="margin-top: 12px;"><input type="submit" value="{{ L('save') }}"/></div>
+	</div>
+</form>
+{% endblock %}

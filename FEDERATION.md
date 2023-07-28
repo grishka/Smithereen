@@ -227,3 +227,36 @@ collection=http%3A%2F%2Fsmithereen.local%3A8080%2Fusers%2F1%2Ffriends&item=http%
 
 ### Add and Remove activities for collections
 For `sm:friends` and `sm:groups` collections for users, as well as `sm:members` and `sm:tentativeMembers` for groups and events, their owning actors send `Add` and `Remove` activities to their followers to help keep these lists in sync across servers. Smithereen also uses these activities to display entries like "John Smith added Jane Doe as a friend" in the news feed.
+
+### Privacy settings
+Smithereen allows users to specify privacy settings. These come in two types: **interactions** and **visibility**. The **interaction** settings restrict who can perform actions with this user's account and the content they created, e.g. commenting on posts or sending direct messages. The **visibility** settings specify who can see certain types of content.
+
+Privacy settings are specified in the `sm:privacySettings` field in the user actor object. The following keys are currently defined:
+- `sm:wallPosting`: who can create posts on this user's wall.
+- `sm:wallPostVisibility`: who can see others' posts on this user's wall. If no one on your server can see the posts of this user, the `sm:wall` collection will only contain this user's own posts.
+- `sm:commenting`: who can comment on this user's posts, both their own and posts made by others on their wall.
+- `sm:groupInvitations`: who can invite this user to join groups and events (the `Invite{Group}` activity).
+- `sm:directMessages`: who can send this user direct messages, i.e. `Note`s that are addressed neither to `as:Public` nor to anyone's followers or friends collections.
+
+Each key corresponds to a privacy settings object. The format of this object is:
+- `sm:allowedTo`: an array of actor or collection IDs to whom access is allowed. If it is allowed to everyone, this contains `as:Public` as a single element. If it is not allowed to anyone, this is an empty array or `null`.
+  - Supported collections are: `followers`, `following`, and `sm:friends`.
+  - If the access is allowed to **friends and their friends** (i.e. friends themselves + anyone who has mutual friends with this user), the array would contain 2 elements: the ID of the `sm:friends` collection and a special value `sm:FriendsOfFriends`.
+- `sm:except`: an array of actor IDs who, even if they match `sm:allowedTo`, are not allowed to perform the action or access the content.
+
+The actor ID lists are filtered by the domain of the server that's receiving the actor object to protect that user's privacy. When the user actor is fetched by its URL, the domain of the requesting server is determined by the HTTP signature, so it is important to sign GET requests for actors at all times.
+
+When a user updates their privacy settings, an `Update{Person}` is sent to all affected servers or all followers, whichever set is smaller.
+
+The default value for all privacy settings is "everyone":
+```json
+{
+  "sm:allowedTo": ["as:Public"],
+  "sm:except": []
+}
+```
+
+If a server still sends an activity that is not allowed by the user's privacy settings, Smithereen would respond with a 403 HTTP error.
+
+#### Special exception for direct messages
+If a user sends a message to someone who can't send **them** messages, the recipient is temporarily allowed to send them messages. The exception lasts for a week (168 hours) or 10 messages, whichever comes first. Every outgoing message resets the time and the message count.

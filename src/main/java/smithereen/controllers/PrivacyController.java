@@ -3,12 +3,22 @@ package smithereen.controllers;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.sql.SQLException;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
+
 import smithereen.ApplicationContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.data.Group;
 import smithereen.data.Post;
+import smithereen.data.PrivacySetting;
 import smithereen.data.User;
+import smithereen.data.UserPrivacySettingKey;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.storage.UserStorage;
 
 public class PrivacyController{
 	private final ApplicationContext context;
@@ -47,4 +57,29 @@ public class PrivacyController{
 		}
 	}
 
+	public void updateUserPrivacySettings(@NotNull User self, @NotNull Map<UserPrivacySettingKey, PrivacySetting> settings){
+		try{
+			// Collect user IDs to check their friendship statuses
+			Set<Integer> friendIDs=new HashSet<>();
+			for(PrivacySetting ps:settings.values()){
+				friendIDs.addAll(ps.allowUsers);
+				friendIDs.addAll(ps.exceptUsers);
+			}
+			if(!friendIDs.isEmpty()){
+				friendIDs=UserStorage.intersectWithFriendIDs(self.id, friendIDs);
+			}
+			// Remove any user IDs that are not friends
+			for(PrivacySetting ps:settings.values()){
+				ps.allowUsers.removeIf(Predicate.not(friendIDs::contains));
+				ps.exceptUsers.removeIf(Predicate.not(friendIDs::contains));
+			}
+
+			// TODO check if settings actually changed
+			UserStorage.setPrivacySettings(self, settings);
+			self.privacySettings=settings;
+			context.getActivityPubWorker().sendUpdateUserActivity(self);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

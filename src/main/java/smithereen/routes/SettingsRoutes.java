@@ -14,10 +14,13 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.TimeZone;
 
 import javax.servlet.MultipartConfigElement;
@@ -35,10 +38,12 @@ import smithereen.activitypub.objects.LocalImage;
 import smithereen.data.Account;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
+import smithereen.data.PrivacySetting;
 import smithereen.data.SessionInfo;
 import smithereen.data.SignupInvitation;
 import smithereen.data.UriBuilder;
 import smithereen.data.User;
+import smithereen.data.UserPrivacySettingKey;
 import smithereen.data.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -379,7 +384,7 @@ public class SettingsRoutes{
 	}
 
 	public static Object blocking(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
-		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_blocking", req).with("title", lang(req).get("settings_blocking"));
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_blocking", req).pageTitle(lang(req).get("settings_blocking")).mobileToolbarTitle(lang(req).get("settings"));
 		model.with("blockedUsers", UserStorage.getBlockedUsers(self.user.id));
 		model.with("blockedDomains", UserStorage.getBlockedDomains(self.user.id));
 		jsLangKey(req, "unblock", "yes", "no", "cancel");
@@ -581,5 +586,85 @@ public class SettingsRoutes{
 
 	public static Object invitedUsers(Request req, Response resp, Account self, ApplicationContext ctx){
 		return new RenderedTemplateResponse("settings_invited_users", req).paginate(ctx.getUsersController().getInvitedUsers(self, offset(req), 100)).pageTitle(lang(req).get("invited_people_title"));
+	}
+
+	public static Object privacySettings(Request req, Response resp, Account self, ApplicationContext ctx){
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_privacy", req);
+		model.with("settingsKeys", UserPrivacySettingKey.values()).pageTitle(lang(req).get("privacy_settings_title")).mobileToolbarTitle(lang(req).get("settings"));
+
+		HashMap<UserPrivacySettingKey, PrivacySetting> settings=new HashMap<>(self.user.privacySettings);
+		for(UserPrivacySettingKey key:UserPrivacySettingKey.values()){
+			if(!settings.containsKey(key)){
+				settings.put(key, new PrivacySetting());
+			}
+		}
+		model.with("privacySettings", settings);
+		Set<Integer> needUsers=new HashSet<>();
+		for(PrivacySetting ps:settings.values()){
+			needUsers.addAll(ps.exceptUsers);
+			needUsers.addAll(ps.allowUsers);
+		}
+		model.with("users", ctx.getUsersController().getUsers(needUsers));
+
+		jsLangKey(req,
+				"privacy_value_everyone", "privacy_value_friends", "privacy_value_friends_of_friends", "privacy_value_no_one",
+				"privacy_value_only_me", "privacy_value_everyone_except", "privacy_value_certain_friends",
+				"save", "privacy_settings_title", "privacy_allowed_title", "privacy_denied_title", "privacy_allowed_to_X",
+				"privacy_value_to_everyone", "privacy_value_to_friends", "privacy_value_to_friends_of_friends", "privacy_value_to_certain_friends", "delete", "privacy_enter_friend_name",
+				"privacy_settings_value_except", "privacy_settings_value_certain_friends_before", "privacy_settings_value_name_separator",
+				"select_friends_title", "friends_search_placeholder", "friend_list_your_friends", "friends_in_list", "select_friends_empty_selection");
+		return model;
+	}
+
+	public static Object savePrivacySettings(Request req, Response resp, Account self, ApplicationContext ctx){
+		HashMap<UserPrivacySettingKey, PrivacySetting> settings=new HashMap<>();
+		for(UserPrivacySettingKey key:UserPrivacySettingKey.values()){
+			if(req.queryParams(key.toString())==null)
+				continue;
+			PrivacySetting ps;
+			try{
+				ps=gson.fromJson(req.queryParams(key.toString()), PrivacySetting.class);
+			}catch(Exception x){
+				throw new BadRequestException(x);
+			}
+			if(ps.baseRule==null)
+				throw new BadRequestException();
+			if(ps.allowUsers==null)
+				ps.allowUsers=Set.of();
+			if(ps.exceptUsers==null)
+				ps.exceptUsers=Set.of();
+			settings.put(key, ps);
+		}
+		ctx.getPrivacyController().updateUserPrivacySettings(self.user, settings);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).show("formMessage_privacy").setContent("formMessage_privacy", lang(req).get("privacy_settings_saved"));
+		}
+		resp.redirect("/settings/privacy");
+		return "";
+	}
+
+	public static Object mobileEditPrivacy(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "key");
+		if(!isMobile(req)){
+			resp.redirect("/settings/privacy");
+			return "";
+		}
+		UserPrivacySettingKey key;
+		try{
+			key=UserPrivacySettingKey.valueOf(req.queryParams("key"));
+		}catch(IllegalArgumentException x){
+			resp.redirect("/settings/privacy");
+			return "";
+		}
+		PrivacySetting ps=self.user.privacySettings.computeIfAbsent(key, k->new PrivacySetting());
+		Set<Integer> needUsers=new HashSet<>();
+		needUsers.addAll(ps.exceptUsers);
+		needUsers.addAll(ps.allowUsers);
+		jsLangKey(req, "save", "select_friends_title", "friends_search_placeholder");
+		return new RenderedTemplateResponse("settings_privacy_edit", req)
+				.with("key", key)
+				.with("setting", ps)
+				.with("users", ctx.getUsersController().getUsers(needUsers))
+				.pageTitle(lang(req).get("privacy_settings_title"));
 	}
 }

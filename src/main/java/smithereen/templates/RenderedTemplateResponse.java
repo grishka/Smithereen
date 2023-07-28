@@ -53,6 +53,11 @@ public class RenderedTemplateResponse{
 		return this;
 	}
 
+	public RenderedTemplateResponse mobileToolbarTitle(String title){
+		model.put("toolbarTitle", title);
+		return this;
+	}
+
 	public RenderedTemplateResponse addNavBarItem(String title, String href, String auxText){
 		if(navBarItems==null)
 			navBarItems=new ArrayList<>();

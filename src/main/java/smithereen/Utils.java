@@ -115,6 +115,7 @@ public class Utils{
 
 	public static final Gson gson=new GsonBuilder()
 			.disableHtmlEscaping()
+			.enableComplexMapKeySerialization()
 			.registerTypeAdapter(Instant.class, new InstantMillisJsonAdapter())
 			.registerTypeAdapter(Locale.class, new LocaleJsonAdapter())
 			.registerTypeHierarchyAdapter(ZoneId.class, new TimeZoneJsonAdapter())

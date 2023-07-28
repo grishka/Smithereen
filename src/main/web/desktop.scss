@@ -1004,7 +1004,6 @@ select{
 	width: 410px;
 	min-width: 410px;
 	border-radius: 2px;
-	overflow: hidden;
 	pointer-events: auto;
 	@include layer-shadow;
 	&.wide{
@@ -1017,26 +1016,26 @@ select{
 			overflow-y: auto;
 			position: relative;
 		}
-		.scrollableShadowWrap{
-			position: relative;
-			.shadowTop, .shadowBottom{
-				position: absolute;
-				height: 2px;
-				left: 0;
-				right: 0;
-				background: #000;
-				opacity: .08;
-				transition: opacity .15s ease;
-			}
-			.shadowTop{
-				top: 0;
-			}
-			.shadowBottom{
-				bottom: 0;
-			}
-			&.scrollAtTop .shadowTop, &.scrollAtBottom .shadowBottom{
-				opacity: 0;
-			}
+	}
+	.scrollableShadowWrap{
+		position: relative;
+		.shadowTop, .shadowBottom{
+			position: absolute;
+			height: 2px;
+			left: 0;
+			right: 0;
+			background: #000;
+			opacity: .08;
+			transition: opacity .15s ease;
+		}
+		.shadowTop{
+			top: 0;
+		}
+		.shadowBottom{
+			bottom: 0;
+		}
+		&.scrollAtTop .shadowTop, &.scrollAtBottom .shadowBottom{
+			opacity: 0;
 		}
 	}
 }
@@ -1055,6 +1054,7 @@ select{
 	border: solid 1px $headerBorderBottomDark;
 	box-shadow: 0 1px 0 $headerBorderBottomLight inset;
 	position: relative;
+	border-radius: 2px 2px 0 0;
 	.close{
 		display: block;
 		width: 30px;
@@ -1082,6 +1082,7 @@ select{
 	align-items: center;
 	justify-content: flex-end;
 	padding: 0 5px;
+	border-radius: 0 0 2px 2px;
 	>button{
 		margin: 0 5px;
 	}
@@ -1637,14 +1638,20 @@ select{
 	.popupMenu{
 		position: absolute;
 		z-index: 1;
-		left: -26px;
+		left: -6px;
 		background: #fff;
 		cursor: pointer;
-		border-radius: 2px;
+		border: solid 1px $auxiliaryBlockHeader;
 		color: $normalLink;
 		min-width: 115px;
 		@include popup-shadow;
 		text-align: left;
+		&.withIcons{
+			left: -27px;
+			.menuTitle{
+				padding: 0 10px 0 26px;
+			}
+		}
 
 		ul{
 			list-style-type: none;
@@ -1656,22 +1663,82 @@ select{
 				line-height: 26px;
 				padding-right: 10px;
 				white-space: nowrap;
-				&:hover, &.selected{
+				&:hover:not(.forceUnselected), &.selected{
 					background-color: $blockBackground;
+					.ddIcon{
+						visibility: visible;
+					}
 				}
 			}
 		}
 		.menuTitle{
 			height: 26px;
 			line-height: 26px;
-			padding: 0 10px 0 26px;
+			padding: 0 5px;
 			background-color: color($blockBackground alpha(50%));
 		}
 		&.popupDown{
-			top: -6px;
+			top: -7px;
 		}
 		&.popupUp{
-			bottom: -7px;
+			bottom: -8px;
+			.menuTitle .ddIcon{
+				background-position: 0 -74px;
+			}
+		}
+		&.compact{
+			&.popupDown{
+				top: -4px;
+				ul{
+					margin-bottom: -1px;
+				}
+			}
+			&.popupUp{
+				bottom: -4px;
+				ul{
+					margin-top: -1px;
+				}
+			}
+			.menuTitle{
+				height: 19px;
+				line-height: 19px;
+			}
+			li{
+				height: 19px;
+				line-height: 19px;
+				padding: 0 6px;
+				margin: 0 -1px;
+				&:hover:not(.forceUnselected), &.selected{
+					background-color: $buttonBorder;
+					border: solid 1px $headerBorderBottomDark;
+					line-height: 17px;
+					padding: 0 5px;
+					color: $textOnAccent;
+				}
+			}
+			&.hasDdIcons li{
+				padding-right: 21px;
+				&:hover:not(.forceUnselected), &.selected{
+					padding-right: 20px;
+				}
+			}
+		}
+		.ddIcon{
+			width: 14px;
+			height: 19px;
+			float: right;
+			margin-right: -4px;
+			background-image: svg-load('img/dropdown.svg');
+			background-repeat: no-repeat;
+			background-position: 0 3px;
+		}
+		li .ddIcon{
+			margin-right: -19px;
+			height: 17px;
+			visibility: hidden;
+			&.iconPlus{
+				background-position: 0 -32px;
+			}
 		}
 	}
 }
@@ -2523,5 +2590,201 @@ label.pretendLink{
 	}
 	&:hover .depthIndicator{
 		background: svg-load('img/comments_tree_indent.svg', fill: $wallPostSeparator, stroke: $wallPostSeparator) center left -5px repeat-x;
+	}
+}
+
+.privacySettingsForm{
+	display: grid;
+	grid-template-columns: auto 260px;
+	grid-gap: 13px;
+	padding: 10px 0;
+	>*{
+		min-width: 0;
+	}
+	.settingLabel{
+		text-align: right;
+	}
+	.settingValue{
+		position: relative;
+	}
+}
+
+.tokenInput{
+	border: solid 1px $textAreaBorder;
+	display: flex;
+	flex-wrap: wrap;
+	padding: 0 0 2px 0;
+	position: relative;
+	input{
+		border: none;
+		padding: 0;
+		min-height: 16px;
+		padding-left: 2px;
+		flex-grow: 1;
+		margin: 2px 0 0 2px;
+	}
+	.token{
+		height: 16px;
+		line-height: 16px;
+		padding: 0 18px 0 3px;
+		background: $wallPostSeparator;
+		margin: 2px 0 0 2px;
+		position: relative;
+		max-width: calc(100% - 4px);
+		overflow-x: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		.remove{
+			display: block;
+			width: 16px;
+			height: 16px;
+			background: svg-load('img/tag_remove.svg') no-repeat center;
+			position: absolute;
+			right: 2px;
+			top: 0;
+		}
+		&.selected{
+			background: $normalLink;
+			color: $textOnAccent;
+		}
+	}
+	.completionsWW{
+		position: absolute;
+		bottom: 0;
+		width: 100%;
+		z-index: 10;
+	}
+	.completionsW{
+		position: relative;
+		width: 100%;
+	}
+	.completions{
+		position: absolute;
+		top: 0;
+		left: -1px;
+		right: -1px;
+		overflow-y: auto;
+		max-height: 250px;
+		opacity: 0.95;
+		background: #FFF;
+		@include popup-shadow;
+		.completion{
+			color: #000000;
+			padding: 4px 0 3px 10px;
+			list-style-type: none;
+			border: 1px solid #CCC;
+			border-top: solid 1px transparent;
+			cursor: pointer;
+			margin: -1px 0 0 0;
+			overflow: hidden;
+			text-align: left;
+			line-height: 1.18em;
+			min-height: 22px;
+			position: relative;
+			&:first-child{
+				margin-top: 0;
+			}
+			&:last-child{
+				border-bottom: solid 1px transparent;
+			}
+			&.selected{
+				background: #6c8300;
+				color: #FFFFFF;
+				border-color: #2e6200;
+				z-index: 1;
+			}
+		}
+	}
+	.bordersOverlay{
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		pointer-events: none;
+		margin: 0 -1px;
+		border-top: solid 1px #ccc;
+		border-bottom: solid 1px #ccc;
+		opacity: 0.95;
+		&.firstSelected{
+			border-top: solid 1px #2e6200;
+		}
+		&.lastSelected{
+			border-bottom: solid 1px #2e6200;
+		}
+	}
+}
+
+.privacyExtendedBox{
+	>*{
+		margin-bottom: 10px;
+	}
+	>*:last-child{
+		margin-bottom: 0;
+	}
+	padding-left: 20px;
+	.plusFriends, .minusFriends{
+		display: block;
+		float: left;
+		margin: 2px 0 0 -17px;
+		width: 10px;
+		height: 10px;
+		background: svg-load('img/privacy_plus_minus.svg', fill: $iconColor) no-repeat;
+	}
+	.minusFriends{
+		background-position: 0 -10px;
+	}
+}
+
+.friendSelectionBoxContent{
+	height: 420px;
+	overflow-y: auto;
+	.inner{
+		display: flex;
+	}
+	.separator{
+		width: 1px;
+		margin-left: -1px;
+		background: $blockBorderBottom;
+		align-self: stretch;
+		min-height: 420px;
+	}
+	.list{
+		width: 50%;
+		padding: 10px;
+		h3{
+			padding: 6px 10px 4px;
+		}
+		.row{
+			display: flex;
+			padding: 10px 7px 10px 10px;
+			border-bottom: solid 1px $menuItemsSeparator;
+			align-items: center;
+			cursor: pointer;
+			&:last-child{
+				border-bottom: none;
+			}
+			.ava{
+				margin-right: 10px;
+			}
+			.name{
+				height: 13px;
+				line-height: 13px;
+				margin-right: 5px;
+				flex: 1;
+				font-weight: bold;
+				color: $normalLink;
+				user-select: none;
+			}
+			.icon{
+				width: 12px;
+				height: 12px;
+			}
+		}
+		&.allFriends .icon{
+			background: svg-load('img/plus_12px.svg', fill: $textAreaBorder) no-repeat;
+		}
+		&.selectedFriends .icon{
+			background: svg-load('img/box_close.svg', fill: $textAreaBorder) no-repeat;
+		}
 	}
 }

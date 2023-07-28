@@ -35,10 +35,12 @@ import smithereen.data.EventReminder;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendRequest;
 import smithereen.data.FriendshipStatus;
+import smithereen.data.PrivacySetting;
 import smithereen.data.SignupInvitation;
 import smithereen.data.PaginatedList;
 import smithereen.data.User;
 import smithereen.data.UserNotifications;
+import smithereen.data.UserPrivacySettingKey;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -206,6 +208,18 @@ public class UserStorage{
 			}
 			return status;
 		}
+	}
+
+	public static Set<Integer> intersectWithFriendIDs(int selfUserID, Collection<Integer> userIDs) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("followings")
+				.columns("followee_id")
+				.whereIn("followee_id", userIDs)
+				.andWhere("mutual=1")
+				.andWhere("follower_id=?", selfUserID)
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
 	}
 
 	public static void putFriendRequest(int selfUserID, int targetUserID, String message, boolean followAccepted) throws SQLException{
@@ -1076,5 +1090,14 @@ public class UserStorage{
 			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `followings` JOIN `users` ON `follower_id`=`users`.id WHERE followee_id=? AND accepted=1 AND `users`.domain=''", userID);
 			return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 		}
+	}
+
+	public static void setPrivacySettings(User user, Map<UserPrivacySettingKey, PrivacySetting> settings) throws SQLException{
+		new SQLQueryBuilder()
+				.update("users")
+				.value("privacy", Utils.gson.toJson(settings))
+				.where("id=?", user.id)
+				.executeNoResult();
+		removeFromCache(user);
 	}
 }

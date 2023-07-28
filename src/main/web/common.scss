@@ -10,6 +10,12 @@ $text: #000;
 $alertBackground: #F9F6E7;
 $alertBorder: #D4BC4C;
 
+/*
+ * Made from VK's blue palette by converting it to LCH, applying these formulas:
+ * H=(H+208)%360
+ * C=C*3;
+ * and converting back to RGB
+ * */
 
 /* text */
 $normalLink: rgb(72, 92, 0);
