@@ -365,6 +365,8 @@ public class ActivityPub{
 				try(ResponseBody body=resp.body()){
 					if(resp.isSuccessful()){
 						DocumentBuilderFactory factory=DocumentBuilderFactory.newInstance();
+						factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+						factory.setXIncludeAware(false);
 						DocumentBuilder builder=factory.newDocumentBuilder();
 						Document doc=builder.parse(body.byteStream());
 						NodeList nodes=doc.getElementsByTagName("Link");
