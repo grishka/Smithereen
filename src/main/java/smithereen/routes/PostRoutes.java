@@ -116,6 +116,7 @@ public class PostRoutes{
 			RenderedTemplateResponse model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post", req).with("post", new PostViewModel(post)).with("postInteractions", interactions);
 			if(replyTo!=0){
 				model.with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
+				model.with("topLevel", new PostViewModel(context(req).getWallController().getPostOrThrow(post.replyKey.get(0))));
 			}
 			model.with("users", Map.of(self.user.id, self.user));
 			String postHTML=model.renderToString();
