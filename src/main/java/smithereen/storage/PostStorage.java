@@ -142,117 +142,118 @@ public class PostStorage{
 		}
 		Post existing=getPostByID(post.getActivityPubID());
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-
-			PreparedStatement stmt;
-			if(existing==null){
-				if(post.poll!=null){
-					post.poll.id=putForeignPoll(conn, post.ownerID, post.getActivityPubID(), post.poll);
-				}
-
-				stmt=new SQLQueryBuilder(conn)
-						.insertInto("wall_posts")
-						.value("author_id", post.authorID)
-						.value("owner_user_id", post.ownerID>0 ? post.ownerID : null)
-						.value("owner_group_id", post.ownerID<0 ? -post.ownerID : null)
-						.value("text", post.text)
-						.value("attachments", post.serializeAttachments())
-						.value("content_warning", post.contentWarning)
-						.value("ap_url", post.activityPubURL.toString())
-						.value("ap_id", post.getActivityPubID().toString())
-						.value("reply_key", Utils.serializeIntList(post.replyKey))
-						.value("created_at", post.createdAt)
-						.value("updated_at", post.updatedAt)
-						.value("mentions", Utils.serializeIntList(post.mentionedUserIDs))
-						.value("ap_replies", Objects.toString(post.activityPubReplies, null))
-						.value("poll_id", post.poll!=null ? post.poll.id : null)
-						.createStatement(Statement.RETURN_GENERATED_KEYS);
-			}else{
-				if(post.poll!=null && Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts
-					stmt=new SQLQueryBuilder(conn)
-							.update("polls")
-							.value("num_voted_users", post.poll.numVoters)
-							.where("id=?", existing.poll.id)
-							.createStatement();
-					stmt.execute();
-					post.poll.id=existing.poll.id;
-
-					if(post.poll.options.get(0).activityPubID!=null){ // Match options using IDs
-						HashMap<URI, PollOption> optMap=new HashMap<>(post.poll.options.size());
-						for(PollOption opt: existing.poll.options){
-							optMap.put(opt.activityPubID, opt);
-						}
-						for(PollOption opt: post.poll.options){
-							PollOption existingOpt=optMap.get(opt.activityPubID);
-							if(existingOpt==null)
-								throw new IllegalStateException("option with id "+opt.activityPubID+" not found in existing poll");
-							opt.id=existingOpt.id;
-							if(opt.numVotes!=existingOpt.numVotes){
-								SQLQueryBuilder.prepareStatement(conn, "UPDATE poll_options SET num_votes=? WHERE id=? AND poll_id=?", opt.numVotes, opt.id, post.poll.id).execute();
-							}
-						}
-					}else{ // Match options using titles
-						HashMap<String, PollOption> optMap=new HashMap<>(post.poll.options.size());
-						for(PollOption opt: existing.poll.options){
-							optMap.put(opt.text, opt);
-						}
-						for(PollOption opt: post.poll.options){
-							PollOption existingOpt=optMap.get(opt.text);
-							if(existingOpt==null)
-								throw new IllegalStateException("option with name '"+opt.text+"' not found in existing poll");
-							opt.id=existingOpt.id;
-							if(opt.numVotes!=existingOpt.numVotes){
-								SQLQueryBuilder.prepareStatement(conn, "UPDATE poll_options SET num_votes=? WHERE id=? AND poll_id=?", opt.numVotes, opt.id, post.poll.id).execute();
-							}
-						}
+			DatabaseUtils.doWithTransaction(conn, ()->{
+				PreparedStatement stmt;
+				if(existing==null){
+					if(post.poll!=null){
+						post.poll.id=putForeignPoll(conn, post.ownerID, post.getActivityPubID(), post.poll);
 					}
-				}else if(post.poll!=null && existing.poll!=null){ // poll changed, delete it and recreate again
-					// deletes votes and options because of ON DELETE CASCADE
-					new SQLQueryBuilder(conn)
-							.deleteFrom("polls")
-							.where("id=?", existing.poll.id)
-							.executeNoResult();
-					post.poll.id=putForeignPoll(conn, post.ownerID, post.getActivityPubID(), post.poll);
-				}else if(post.poll!=null){ // poll was added
-					post.poll.id=putForeignPoll(conn, post.ownerID, post.getActivityPubID(), post.poll);
-				}else if(existing.poll!=null){ // poll was removed
-					new SQLQueryBuilder(conn)
-							.deleteFrom("polls")
-							.where("id=?", existing.poll.id)
-							.executeNoResult();
-				}
-				stmt=new SQLQueryBuilder(conn)
-						.update("wall_posts")
-						.where("ap_id=?", post.getActivityPubID().toString())
-						.value("text", post.text)
-						.value("attachments", post.serializeAttachments())
-						.value("content_warning", post.contentWarning)
-						.value("mentions", Utils.serializeIntList(post.mentionedUserIDs))
-						.value("poll_id", post.poll!=null ? post.poll.id : null)
-						.createStatement();
-			}
-			if(existing==null){
-				post.id=DatabaseUtils.insertAndGetID(stmt);
-				if(post.ownerID==post.authorID && post.getReplyLevel()==0){
-					new SQLQueryBuilder(conn)
-							.insertInto("newsfeed")
-							.value("type", NewsfeedEntry.Type.POST)
+
+					stmt=new SQLQueryBuilder(conn)
+							.insertInto("wall_posts")
 							.value("author_id", post.authorID)
-							.value("object_id", post.id)
-							.value("time", post.createdAt)
-							.executeNoResult();
-				}
-				if(post.getReplyLevel()>0){
-					new SQLQueryBuilder(conn)
+							.value("owner_user_id", post.ownerID>0 ? post.ownerID : null)
+							.value("owner_group_id", post.ownerID<0 ? -post.ownerID : null)
+							.value("text", post.text)
+							.value("attachments", post.serializeAttachments())
+							.value("content_warning", post.contentWarning)
+							.value("ap_url", post.activityPubURL.toString())
+							.value("ap_id", post.getActivityPubID().toString())
+							.value("reply_key", Utils.serializeIntList(post.replyKey))
+							.value("created_at", post.createdAt)
+							.value("updated_at", post.updatedAt)
+							.value("mentions", Utils.serializeIntList(post.mentionedUserIDs))
+							.value("ap_replies", Objects.toString(post.activityPubReplies, null))
+							.value("poll_id", post.poll!=null ? post.poll.id : null)
+							.createStatement(Statement.RETURN_GENERATED_KEYS);
+				}else{
+					if(post.poll!=null && Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts
+						stmt=new SQLQueryBuilder(conn)
+								.update("polls")
+								.value("num_voted_users", post.poll.numVoters)
+								.where("id=?", existing.poll.id)
+								.createStatement();
+						stmt.execute();
+						post.poll.id=existing.poll.id;
+
+						if(post.poll.options.get(0).activityPubID!=null){ // Match options using IDs
+							HashMap<URI, PollOption> optMap=new HashMap<>(post.poll.options.size());
+							for(PollOption opt: existing.poll.options){
+								optMap.put(opt.activityPubID, opt);
+							}
+							for(PollOption opt: post.poll.options){
+								PollOption existingOpt=optMap.get(opt.activityPubID);
+								if(existingOpt==null)
+									throw new IllegalStateException("option with id "+opt.activityPubID+" not found in existing poll");
+								opt.id=existingOpt.id;
+								if(opt.numVotes!=existingOpt.numVotes){
+									SQLQueryBuilder.prepareStatement(conn, "UPDATE poll_options SET num_votes=? WHERE id=? AND poll_id=?", opt.numVotes, opt.id, post.poll.id).execute();
+								}
+							}
+						}else{ // Match options using titles
+							HashMap<String, PollOption> optMap=new HashMap<>(post.poll.options.size());
+							for(PollOption opt: existing.poll.options){
+								optMap.put(opt.text, opt);
+							}
+							for(PollOption opt: post.poll.options){
+								PollOption existingOpt=optMap.get(opt.text);
+								if(existingOpt==null)
+									throw new IllegalStateException("option with name '"+opt.text+"' not found in existing poll");
+								opt.id=existingOpt.id;
+								if(opt.numVotes!=existingOpt.numVotes){
+									SQLQueryBuilder.prepareStatement(conn, "UPDATE poll_options SET num_votes=? WHERE id=? AND poll_id=?", opt.numVotes, opt.id, post.poll.id).execute();
+								}
+							}
+						}
+					}else if(post.poll!=null && existing.poll!=null){ // poll changed, delete it and recreate again
+						// deletes votes and options because of ON DELETE CASCADE
+						new SQLQueryBuilder(conn)
+								.deleteFrom("polls")
+								.where("id=?", existing.poll.id)
+								.executeNoResult();
+						post.poll.id=putForeignPoll(conn, post.ownerID, post.getActivityPubID(), post.poll);
+					}else if(post.poll!=null){ // poll was added
+						post.poll.id=putForeignPoll(conn, post.ownerID, post.getActivityPubID(), post.poll);
+					}else if(existing.poll!=null){ // poll was removed
+						new SQLQueryBuilder(conn)
+								.deleteFrom("polls")
+								.where("id=?", existing.poll.id)
+								.executeNoResult();
+					}
+					stmt=new SQLQueryBuilder(conn)
 							.update("wall_posts")
-							.valueExpr("reply_count", "reply_count+1")
-							.whereIn("id", post.replyKey)
-							.executeNoResult();
-					BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey.get(0)));
+							.where("ap_id=?", post.getActivityPubID().toString())
+							.value("text", post.text)
+							.value("attachments", post.serializeAttachments())
+							.value("content_warning", post.contentWarning)
+							.value("mentions", Utils.serializeIntList(post.mentionedUserIDs))
+							.value("poll_id", post.poll!=null ? post.poll.id : null)
+							.createStatement();
 				}
-			}else{
-				stmt.execute();
-				post.id=existing.id;
-			}
+				if(existing==null){
+					post.id=DatabaseUtils.insertAndGetID(stmt);
+					if(post.ownerID==post.authorID && post.getReplyLevel()==0){
+						new SQLQueryBuilder(conn)
+								.insertInto("newsfeed")
+								.value("type", NewsfeedEntry.Type.POST)
+								.value("author_id", post.authorID)
+								.value("object_id", post.id)
+								.value("time", post.createdAt)
+								.executeNoResult();
+					}
+					if(post.getReplyLevel()>0){
+						new SQLQueryBuilder(conn)
+								.update("wall_posts")
+								.valueExpr("reply_count", "reply_count+1")
+								.whereIn("id", post.replyKey)
+								.executeNoResult();
+						BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey.get(0)));
+					}
+				}else{
+					stmt.execute();
+					post.id=existing.id;
+				}
+			});
 		}
 	}
 

@@ -12,6 +12,7 @@ import smithereen.data.ForeignUser;
 import smithereen.data.Group;
 import smithereen.data.User;
 import smithereen.data.UserNotifications;
+import smithereen.data.UserPrivacySettingKey;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.storage.GroupStorage;
@@ -30,6 +31,7 @@ public class InviteGroupHandler extends ActivityTypeHandler<ForeignUser, Invite,
 			throw new BadRequestException("Invite.to must have exactly 1 element and it must be a user ID");
 		User user=context.appContext.getObjectLinkResolver().resolve(invite.to.get(0).link, User.class, true, true, false);
 		Utils.ensureUserNotBlocked(actor, user);
+		context.appContext.getPrivacyController().enforceUserPrivacy(actor, user, UserPrivacySettingKey.GROUP_INVITE);
 		if(object.id==0)
 			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(object);
 		context.appContext.getGroupsController().runLocked(()->{

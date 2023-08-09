@@ -485,44 +485,6 @@ public class ActivityPub{
 		return user;
 	}
 
-	public static void enforceGroupContentAccess(@NotNull spark.Request req, @NotNull Group group){
-		if(group.accessType==Group.AccessType.OPEN)
-			return;
-		Actor signer;
-		try{
-			signer=verifyHttpSignature(req, null);
-		}catch(Exception x){
-			throw new UserActionNotAllowedException("This object is in a "+group.accessType.toString().toLowerCase()+" group. Valid member HTTP signature is required.", x);
-		}
-		if(!(signer instanceof ForeignUser user))
-			throw new UserActionNotAllowedException("HTTP signature is valid but actor has wrong type: "+signer.getType());
-		if(group instanceof ForeignGroup foreignGroup){
-			String authHeader=req.headers("Authorization");
-			if(StringUtils.isEmpty(authHeader))
-				throw new UserActionNotAllowedException("Authorization header with ActivityPubActorToken is required");
-			String[] parts=authHeader.split(" ", 2);
-			if(parts.length!=2)
-				throw new BadRequestException();
-			if(!"ActivityPubActorToken".equals(parts[0]))
-				throw new BadRequestException("Unsupported auth scheme '"+parts[0]+"'");
-			JsonObject token;
-			try{
-				token=JsonParser.parseString(parts[1]).getAsJsonObject();
-			}catch(JsonParseException x){
-				throw new BadRequestException("Can't parse actor token: "+x.getMessage(), x);
-			}
-			verifyActorToken(token, user, foreignGroup);
-		}else{
-			try{
-				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, user.domain))
-					 throw new UserActionNotAllowedException("HTTP signature is valid, but this object is in a "+group.accessType.toString().toLowerCase()+" group and "+escapeHTML(user.activityPubID.toString())+" is not its member");
-			}catch(SQLException x){
-				throw new InternalServerErrorException(x);
-			}
-		}
-		LOG.trace("Actor {} was allowed to access object {} in a {} group {}", signer.activityPubID, req.pathInfo(), group.accessType, group.activityPubID);
-	}
-
 	private static String generateActorTokenStringToBeSigned(JsonObject obj){
 		return obj.keySet()
 				.stream()

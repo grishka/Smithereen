@@ -40,7 +40,7 @@ public class UserInteractionsController{
 	public void setObjectLiked(Post object, boolean liked, User self){
 		try{
 			context.getPrivacyController().enforceObjectPrivacy(self, object);
-			OwnerAndAuthor oaa=context.getWallController().getPostAuthorAndOwner(object);
+			OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(object);
 			if(oaa.owner() instanceof User u)
 				Utils.ensureUserNotBlocked(self, u);
 			else if(oaa.owner() instanceof Group g)

@@ -34,6 +34,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
+import smithereen.data.UserPrivacySettingKey;
 import smithereen.data.ViolationReport;
 import smithereen.data.WebDeltaResponse;
 import smithereen.data.attachments.Attachment;
@@ -323,15 +324,15 @@ public class PostRoutes{
 
 		if(canOverridePrivacy){
 			try{
-				ctx.getPrivacyController().enforceObjectPrivacy(self, post);
+				ctx.getPrivacyController().enforceObjectPrivacy(self, post.post);
 			}catch(UserActionNotAllowedException x){
 				model.with("privacyOverridden", true);
 			}
 		}else{
-			ctx.getPrivacyController().enforceObjectPrivacy(self, post);
+			ctx.getPrivacyController().enforceObjectPrivacy(self, post.post);
 		}
 
-		if(post.post.replyKey.size()>0){
+		if(!post.post.replyKey.isEmpty()){
 			model.with("prefilledPostText", author.getNameForReply()+", ");
 		}
 		ArrayList<PostViewModel> postIDs=new ArrayList<>();
@@ -348,6 +349,8 @@ public class PostRoutes{
 		PostViewModel.collectActorIDs(replies.list, needUsers, needGroups);
 		model.with("users", ctx.getUsersController().getUsers(needUsers))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
+
+		model.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self, u, UserPrivacySettingKey.WALL_OTHERS_POSTS));
 
 		if(info==null || info.account==null){
 			HashMap<String, String> moreMeta=new LinkedHashMap<>();
@@ -522,6 +525,10 @@ public class PostRoutes{
 
 	public static Object userWallAll(Request req, Response resp){
 		User user=context(req).getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
+		ApplicationContext ctx=context(req);
+		ctx.getPrivacyController().enforceUserPrivacy(self==null ? null : self.user, user, UserPrivacySettingKey.WALL_OTHERS_POSTS);
 		return wall(req, resp, user, false);
 	}
 
@@ -562,6 +569,7 @@ public class PostRoutes{
 				.with("owner", owner)
 				.with("isGroup", owner instanceof Group)
 				.with("ownOnly", ownOnly)
+				.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, u, UserPrivacySettingKey.WALL_OTHERS_POSTS))
 				.with("tab", ownOnly ? "own" : "all");
 
 		preparePostList(ctx, wall.list, model);

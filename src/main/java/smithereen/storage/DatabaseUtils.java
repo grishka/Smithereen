@@ -140,7 +140,8 @@ public class DatabaseUtils{
 							return true;
 						}else{
 							res.close();
-							close.run();
+							if(close!=null)
+								close.run();
 						}
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
@@ -155,7 +156,8 @@ public class DatabaseUtils{
 							action.accept(creator.deserialize(res));
 						}
 						res.close();
-						close.run();
+						if(close!=null)
+							close.run();
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
 					}

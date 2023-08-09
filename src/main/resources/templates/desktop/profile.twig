@@ -105,7 +105,7 @@
 					{% endfor %}
 				</table>
 			</div>
-			{% include "profile_module_wall" with {'wallOwner': user, 'headerTitle': L('wall'), 'headerHref': "/users/#{user.id}/wall", 'additionalHeader': L('X_posts', {'count': totalItems})} %}
+			{% include "profile_module_wall" with {'wallOwner': user, 'headerTitle': L('wall'), 'headerHref': "/users/#{user.id}/wall"+(canSeeOthersPosts ? "" : "/own"), 'additionalHeader': L('X_posts', {'count': totalItems})} %}
 		</td>
 	</tr>
 </table>

@@ -14,6 +14,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,7 +25,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
-import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -36,6 +36,7 @@ import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.data.Account;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.OwnedContentObject;
 import smithereen.data.OwnerAndAuthor;
 import smithereen.data.PaginatedList;
 import smithereen.data.Poll;
@@ -45,6 +46,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
 import smithereen.data.UserPermissions;
+import smithereen.data.UserPrivacySettingKey;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.data.notifications.Notification;
 import smithereen.data.notifications.NotificationUtils;
@@ -111,8 +113,14 @@ public class WallController{
 				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
 				if(inReplyToID==0)
 					ensureUserNotBlocked(author, group);
-			}else if(wallOwner instanceof User user && inReplyToID==0){
-				ensureUserNotBlocked(author, user);
+			}else if(wallOwner instanceof User user){
+				if(inReplyToID==0){
+					ensureUserNotBlocked(author, user);
+					if(user.id!=author.id){
+						context.getPrivacyController().enforceUserPrivacy(author, user, UserPrivacySettingKey.WALL_POSTING);
+						context.getPrivacyController().enforceUserPrivacy(author, user, UserPrivacySettingKey.WALL_OTHERS_POSTS);
+					}
+				}
 			}
 			if(poll!=null && (StringUtils.isEmpty(poll.question) || poll.options.size()<2)){
 				LOG.warn("Invalid poll object passed to createWallPost: {}", poll);
@@ -192,7 +200,7 @@ public class WallController{
 					topLevel=parent;
 				}
 
-				OwnerAndAuthor topLevelOwnership=getPostAuthorAndOwner(topLevel);
+				OwnerAndAuthor topLevelOwnership=getContentAuthorAndOwner(topLevel);
 				Actor topLevelOwner=topLevelOwnership.owner();
 				User topLevelAuthor=topLevelOwnership.author();
 
@@ -208,6 +216,7 @@ public class WallController{
 					ownerUserID=topLevel.ownerID;
 					ensureUserNotBlocked(author, (User)topLevelOwner);
 					isTopLevelPostOwn=ownerUserID==topLevel.authorID;
+					context.getPrivacyController().enforceUserPrivacy(author, (User)topLevelOwner, UserPrivacySettingKey.WALL_COMMENTING);
 				}
 			}else{
 				replyKey=null;
@@ -490,8 +499,18 @@ public class WallController{
 	public Map<Integer, UserInteractions> getUserInteractions(@NotNull List<PostViewModel> posts, @Nullable User self){
 		try{
 			Set<Integer> postIDs=posts.stream().map(p->p.post.id).collect(Collectors.toSet());
+			Set<Integer> ownerUserIDs=new HashSet<>();
 			for(PostViewModel p:posts){
 				p.getAllReplyIDs(postIDs);
+				if(p.post.ownerID>0)
+					ownerUserIDs.add(p.post.ownerID);
+			}
+			Map<Integer, Boolean> canComment=context.getUsersController().getUsers(ownerUserIDs)
+					.entrySet()
+					.stream()
+					.collect(Collectors.toMap(Map.Entry::getKey, e->context.getPrivacyController().checkUserPrivacy(self, e.getValue(), UserPrivacySettingKey.WALL_COMMENTING)));
+			for(PostViewModel post:posts){
+				post.canComment=canComment.getOrDefault(post.post.ownerID, true);
 			}
 			return PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
 		}catch(SQLException x){
@@ -597,7 +616,7 @@ public class WallController{
 			}
 			context.getNewsfeedController().clearFriendsFeedCache();
 			User deleteActor=info.account.user;
-			OwnerAndAuthor oaa=getPostAuthorAndOwner(post);
+			OwnerAndAuthor oaa=getContentAuthorAndOwner(post);
 			// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
 			if(info.account.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal() && oaa.author().id!=info.account.user.id && !post.isGroupOwner() && post.ownerID!=info.account.user.id && !(oaa.author() instanceof ForeignUser)){
 				deleteActor=oaa.author();
@@ -636,14 +655,19 @@ public class WallController{
 		}
 	}
 
-	public OwnerAndAuthor getPostAuthorAndOwner(Post post){
+	public OwnerAndAuthor getContentAuthorAndOwner(OwnedContentObject post){
+		int ownerID=post.getOwnerID();
+		int authorID=post.getAuthorID();
 		Actor owner;
 		User author;
-		if(post.ownerID<0)
-			owner=context.getGroupsController().getGroupOrThrow(-post.ownerID);
+		if(ownerID<0)
+			owner=context.getGroupsController().getGroupOrThrow(-ownerID);
 		else
-			owner=context.getUsersController().getUserOrThrow(post.ownerID);
-		author=context.getUsersController().getUserOrThrow(post.authorID);
+			owner=context.getUsersController().getUserOrThrow(ownerID);
+		if(authorID!=0)
+			author=context.getUsersController().getUserOrThrow(authorID);
+		else
+			author=null;
 		return new OwnerAndAuthor(owner, author);
 	}
 

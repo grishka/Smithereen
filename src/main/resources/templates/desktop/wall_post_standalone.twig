@@ -20,13 +20,13 @@
 </div>
 <div id="postReplies{{post.post.id}}" class="singleColumn">
 	{%- for reply in items %}
-	{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.post.id}", 'first': loop.first} %}
+	{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.post.id}", 'first': loop.first, 'topLevel': post} %}
 	{% endfor -%}
 </div>
-{%if currentUser is not null%}
+{% if currentUser is not null and post.canComment %}
 {% include "wall_post_form" with {'id': "commentReplyPost#{post.post.id}", 'replyTo': post.post, 'hidden': true} %}
 {% include "wall_post_form" with {'id': "commentPost#{post.post.id}", 'replyTo': post.post} %}
-{%endif%}
+{% endif %}
 <script>
 	if(window.location.hash && window.location.hash.indexOf("comment")==1){
 		var el=document.getElementById(window.location.hash.replace("#comment", "post"));

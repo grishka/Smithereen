@@ -25,6 +25,7 @@ import smithereen.data.OwnerAndAuthor;
 import smithereen.data.PollOption;
 import smithereen.data.Post;
 import smithereen.data.User;
+import smithereen.data.UserPrivacySettingKey;
 import smithereen.data.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
 import smithereen.storage.PostStorage;
@@ -59,8 +60,13 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 		}else{
 			owner=actor;
 		}
-		if(post.inReplyTo==null)
+		if(post.inReplyTo==null){
 			checkNotBlocked(owner, actor, false);
+			if(owner instanceof User u && u.id!=actor.id){
+				context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_POSTING);
+				context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_OTHERS_POSTS);
+			}
+		}
 
 		// Special handling for poll votes because using a separate activity type would've been too easy.
 		if((post.attachment==null || post.attachment.isEmpty()) && StringUtils.isEmpty(post.content) && post.inReplyTo!=null && post.name!=null){
@@ -162,12 +168,14 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 //				post.setParent(parent);
 				Post topLevel=context.appContext.getWallController().getPostOrThrow(parent.getReplyLevel()>0 ? parent.replyKey.get(0) : parent.id);
-				OwnerAndAuthor oaa=context.appContext.getWallController().getPostAuthorAndOwner(topLevel);
+				OwnerAndAuthor oaa=context.appContext.getWallController().getContentAuthorAndOwner(topLevel);
 				owner=oaa.owner();
 //				nativePost.replyKey=parent.getReplyKeyForReplies();
 //				nativePost.ownerID=topLevel.ownerID;
 
 				checkNotBlocked(owner, actor, true);
+				if(owner instanceof User u)
+					context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_COMMENTING);
 
 				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
 				NotificationUtils.putNotificationsForPost(nativePost, parent);

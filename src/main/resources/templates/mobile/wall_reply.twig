@@ -29,7 +29,9 @@
 				<a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.id}})" class="postLink">{{LD(realPost.createdAt)}}</a>
 				<div class="actions">
 					{% if currentUser is not null %}
-						{%if not hideReplyLink%}<a href="{{realPost.internalURL}}" onclick="return showPostReplyForm({{realPost.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', false)">{{L('add_reply')}}</a>{%endif%}
+						{% if not hideReplyLink and topLevel.canComment -%}
+							<a href="{{realPost.internalURL}}" onclick="return showPostReplyForm({{realPost.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', false)">{{L('add_reply')}}</a>
+						{%- endif %}
 						{% set options=[] %}
 						{% set _=options.add({'type': 'link', 'href': "#{realPost.internalURL}/likes", 'label': L('likes_title').toString()}) %}
 						{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}
@@ -69,9 +71,9 @@
 	</tr>
 </table>
 <div id="postReplies{{realPost.id}}" class="replies">
-	{%for reply in post.repliesObjects%}
-	{%include "wall_reply" with {'post': reply}%}
-	{%endfor%}
+	{% for reply in post.repliesObjects %}
+	{% include "wall_reply" with {'post': reply, 'topLevel': topLevel} %}
+	{% endfor %}
 	{% if post.loadableRepliesCount>0 %}
 		<div id="loadRepliesContainer{{ realPost.id }}" class="threadedIndented" style="--indent-level: {{ realPost.replyLevel-1 }}">
 			<a class="loadRepliesLink" onclick="return loadCommentBranch({{ realPost.id }}, {{ post.repliesObjects | length }})" id="loadRepliesLink{{ realPost.id }}">{{ L(post.loadedRepliesCount>0 ? 'comments_show_X_more_replies' : 'comments_show_X_replies', {'count': post.loadableRepliesCount}) }}</a>

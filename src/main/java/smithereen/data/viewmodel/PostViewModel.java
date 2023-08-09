@@ -14,6 +14,7 @@ public class PostViewModel{
 	public int totalTopLevelComments;
 	private boolean loadedRepliesCountKnown;
 	private int loadedRepliesCount;
+	public boolean canComment=true;
 
 	public PostViewModel(Post post){
 		this.post=post;

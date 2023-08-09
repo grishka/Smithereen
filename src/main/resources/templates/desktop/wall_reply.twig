@@ -1,5 +1,6 @@
 {# @pebvariable name="post" type="smithereen.data.viewmodel.PostViewModel" #}
 {# @pebvariable name="realPost" type="smithereen.data.Post" #}
+{# @pebvariable name="topLevel" type="smithereen.data.viewmodel.PostViewModel" #}
 {% set realPost=post.post %}
 <a name="comment{{realPost.id}}"></a>
 <table width="100%" class="post comment{{ first ? ' first' : '' }}" id="post{{realPost.id}}" data-reply-name="{{users[realPost.authorID].nameForReply}}">
@@ -35,9 +36,9 @@
 					{% if userPermissions is not null and userPermissions.canReport(realPost) %}
 						| <a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box>{{ L('report') }}</a>
 					{% endif %}
-					{%if not hideReplyLink%}
+					{% if not hideReplyLink and topLevel.canComment %}
 						| <a href="{{realPost.internalURL}}" onclick="return showPostReplyForm({{realPost.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}')">{{L('add_reply')}}</a>
-					{%endif%}
+					{% endif %}
 					{% if not realPost.local %}
 						| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
 					{% endif %}
@@ -66,7 +67,7 @@
 </table>
 <div id="postReplies{{realPost.id}}" class="replies">
 	{%for reply in post.repliesObjects%}
-		{% include "wall_reply" with {'post': reply, 'first': false} %}
+		{% include "wall_reply" with {'post': reply, 'first': false, 'topLevel': topLevel} %}
 		{% set realPost=post.post %}
 	{%endfor%}
 	{% if post.loadableRepliesCount>0 %}

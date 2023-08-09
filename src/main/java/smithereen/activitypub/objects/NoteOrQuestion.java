@@ -112,7 +112,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			List<ActivityPubObject> opts=post.poll.options.stream().map(opt->{
 				Note n=new Note();
 				n.name=opt.text;
-				n.activityPubID=opt.getActivityPubID(post.getActivityPubID());
+				n.activityPubID=post.isLocal() ? opt.getActivityPubID(post.getActivityPubID()) : opt.activityPubID;
 				ActivityPubCollection replies=new ActivityPubCollection(false);
 				replies.totalItems=opt.numVotes;
 				if(!post.poll.anonymous){

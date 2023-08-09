@@ -107,6 +107,7 @@ import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Group;
 import smithereen.data.NodeInfo;
+import smithereen.data.OwnedContentObject;
 import smithereen.data.OwnerAndAuthor;
 import smithereen.data.PaginatedList;
 import smithereen.data.Poll;
@@ -277,11 +278,7 @@ public class ActivityPubRoutes{
 		Post post=PostStorage.getPostByID(postID, true);
 		if(post==null || !post.isLocal())
 			throw new ObjectNotFoundException();
-		if(!post.isDeleted()){
-			OwnerAndAuthor oaa=ctx.getWallController().getPostAuthorAndOwner(post);
-			if(oaa.owner() instanceof Group g)
-				ActivityPub.enforceGroupContentAccess(req, g);
-		}
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, post);
 		resp.type(ActivityPub.CONTENT_TYPE);
 		return NoteOrQuestion.fromNativePost(post, ctx);
 	}
@@ -290,9 +287,8 @@ public class ActivityPubRoutes{
 		ApplicationContext ctx=context(req);
 		int postID=safeParseInt(req.params(":postID"));
 		Post post=ctx.getWallController().getLocalPostOrThrow(postID);
-		OwnerAndAuthor oaa=ctx.getWallController().getPostAuthorAndOwner(post);
-		if(oaa.owner() instanceof Group g)
-			ActivityPub.enforceGroupContentAccess(req, g);
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, post);
+		OwnerAndAuthor oaa=ctx.getWallController().getContentAuthorAndOwner(post);
 		resp.type(ActivityPub.CONTENT_TYPE);
 
 		NoteOrQuestion apPost=NoteOrQuestion.fromNativePost(post, ctx);
@@ -310,9 +306,7 @@ public class ActivityPubRoutes{
 		ApplicationContext ctx=context(req);
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		Post post=PostStorage.getPostOrThrow(postID, true);
-		OwnerAndAuthor oaa=ctx.getWallController().getPostAuthorAndOwner(post);
-		if(oaa.owner() instanceof Group g)
-			ActivityPub.enforceGroupContentAccess(req, g);
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, post);
 		int[] _total={0};
 		List<URI> ids=PostStorage.getImmediateReplyActivityPubIDs(post.getReplyKeyForReplies(), offset, count, _total);
 		return ActivityPubCollectionPageResponse.forLinks(ids, _total[0]);
@@ -321,14 +315,13 @@ public class ActivityPubRoutes{
 	public static ActivityPubCollectionPageResponse postLikes(Request req, Response resp, int offset, int count) throws SQLException{
 		ApplicationContext ctx=context(req);
 		Post post=PostStorage.getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
-		OwnerAndAuthor oaa=ctx.getWallController().getPostAuthorAndOwner(post);
-		if(oaa.owner() instanceof Group g)
-			ActivityPub.enforceGroupContentAccess(req, g);
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, post);
 		PaginatedList<Like> likes=LikeStorage.getLikes(post.id, post.getActivityPubID(), Like.ObjectType.POST, offset, count);
 		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
 	}
 
 	public static ActivityPubCollectionPageResponse pollVoters(Request req, Response resp, int offset, int count) throws SQLException{
+		ApplicationContext ctx=context(req);
 		Poll poll=PostStorage.getPoll(parseIntOrDefault(req.params(":pollID"), 0), null);
 		int optionID=parseIntOrDefault(req.params(":optionID"), 0);
 
@@ -338,10 +331,7 @@ public class ActivityPubRoutes{
 			throw new ObjectNotFoundException();
 		if(poll.anonymous)
 			throw new UserActionNotAllowedException();
-		if(poll.ownerID<0){
-			Group owner=context(req).getGroupsController().getGroupOrThrow(-poll.ownerID);
-			ActivityPub.enforceGroupContentAccess(req, owner);
-		}
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, poll);
 
 		PollOption option=null;
 		for(PollOption opt:poll.options){
@@ -446,7 +436,7 @@ public class ActivityPubRoutes{
 		Group group=GroupStorage.getById(id);
 		if(group==null || group instanceof ForeignGroup)
 			throw new ObjectNotFoundException();
-		ActivityPub.enforceGroupContentAccess(req, group);
+		context(req).getPrivacyController().enforceGroupContentAccess(req, group);
 		return actorWall(req, resp, offset, count, group);
 	}
 
@@ -640,15 +630,12 @@ public class ActivityPubRoutes{
 		if(l==null)
 			throw new ObjectNotFoundException();
 		Object likedObject=context(req).getObjectLinkResolver().resolveNative(l.object.link, Object.class, false, false, false, (JsonObject) null, true);
-		if(likedObject instanceof Post post){
-			if(post.ownerID<0)
-				ActivityPub.enforceGroupContentAccess(req, ctx.getGroupsController().getGroupOrThrow(-post.ownerID));
-		}
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, (OwnedContentObject) likedObject);
 		resp.type(ActivityPub.CONTENT_TYPE);
 		return l;
 	}
 
-	public static Object undoLikeObject(Request req, Response resp) throws SQLException{
+	public static Object undoLikeObject(Request req, Response resp){
 		ApplicationContext ctx=context(req);
 		int id=parseIntOrDefault(req.params(":likeID"), 0);
 		if(id==0)
@@ -657,10 +644,8 @@ public class ActivityPubRoutes{
 		if(undo==null)
 			throw new ObjectNotFoundException();
 		Object likedObject=context(req).getObjectLinkResolver().resolveNative(((Like)undo.object.object).object.link, Object.class, false, false, false, (JsonObject) null, true);
-		if(likedObject instanceof Post post){
-			if(post.ownerID<0)
-				ActivityPub.enforceGroupContentAccess(req, ctx.getGroupsController().getGroupOrThrow(-post.ownerID));
-		}
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, (OwnedContentObject) likedObject);
+		resp.type(ActivityPub.CONTENT_TYPE);
 		return undo;
 	}
 
@@ -910,7 +895,7 @@ public class ActivityPubRoutes{
 	private static ActivityPubCollectionPageResponse groupMembers(Request req, Response resp, int offset, int count, boolean tentative) throws SQLException{
 		int id=safeParseInt(req.params(":id"));
 		Group group=context(req).getGroupsController().getLocalGroupOrThrow(id);
-		ActivityPub.enforceGroupContentAccess(req, group);
+		context(req).getPrivacyController().enforceGroupContentAccess(req, group);
 		PaginatedList<URI> followers=GroupStorage.getGroupMemberURIs(group.id, tentative, offset, count);
 		return ActivityPubCollectionPageResponse.forLinks(followers);
 	}
@@ -951,7 +936,7 @@ public class ActivityPubRoutes{
 
 	public static Object groupCollectionQuery(Request req, Response resp){
 		Group group=context(req).getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
-		ActivityPub.enforceGroupContentAccess(req, group);
+		context(req).getPrivacyController().enforceGroupContentAccess(req, group);
 		return collectionQuery(group, req, resp);
 	}
 

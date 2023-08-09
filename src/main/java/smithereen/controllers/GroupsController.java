@@ -36,6 +36,7 @@ import smithereen.data.GroupInvitation;
 import smithereen.data.PaginatedList;
 import smithereen.data.User;
 import smithereen.data.UserNotifications;
+import smithereen.data.UserPrivacySettingKey;
 import smithereen.data.feed.NewsfeedEntry;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -437,6 +438,7 @@ public class GroupsController{
 			// Two users can't be friends if one blocked the other
 			if(context.getFriendsController().getFriendshipStatus(self, who)!=FriendshipStatus.FRIENDS)
 				throw new UserActionNotAllowedException();
+			context.getPrivacyController().enforceUserPrivacy(self, who, UserPrivacySettingKey.GROUP_INVITE);
 
 			Utils.ensureUserNotBlocked(self, group);
 			Utils.ensureUserNotBlocked(who, group);

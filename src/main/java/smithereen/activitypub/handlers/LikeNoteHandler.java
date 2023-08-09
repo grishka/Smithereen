@@ -19,7 +19,7 @@ public class LikeNoteHandler extends ActivityTypeHandler<ForeignUser, Like, Note
 	@Override
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Like activity, NoteOrQuestion _post) throws SQLException{
 		Post post=context.appContext.getWallController().getPostOrThrow(_post.activityPubID);
-		OwnerAndAuthor oaa=context.appContext.getWallController().getPostAuthorAndOwner(post);
+		OwnerAndAuthor oaa=context.appContext.getWallController().getContentAuthorAndOwner(post);
 
 		Utils.ensureUserNotBlocked(actor, oaa.author());
 		Utils.ensureUserNotBlocked(actor, oaa.owner());

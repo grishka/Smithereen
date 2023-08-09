@@ -21,7 +21,7 @@ public class RejectAddNoteHandler extends NestedActivityTypeHandler<Actor, Rejec
 			return;
 		}
 		Post post=context.appContext.getWallController().getPostOrThrow(object.activityPubID);
-		Actor postOwner=context.appContext.getWallController().getPostAuthorAndOwner(post).owner();
+		Actor postOwner=context.appContext.getWallController().getContentAuthorAndOwner(post).owner();
 		if(!actor.activityPubID.equals(postOwner.activityPubID)){
 			LOG.warn("Reject{Add{Note}} post {} owner {} does not match actor {}", object.activityPubID, postOwner.activityPubID, actor.activityPubID);
 			return;

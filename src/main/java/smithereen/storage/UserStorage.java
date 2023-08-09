@@ -210,6 +210,30 @@ public class UserStorage{
 		}
 	}
 
+	public static FriendshipStatus getSimpleFriendshipStatus(int selfUserID, int targetUserID) throws SQLException{
+		try(ResultSet res=new SQLQueryBuilder()
+				.selectFrom("followings")
+				.columns("follower_id", "followee_id", "mutual", "accepted")
+				.where("(follower_id=? AND followee_id=?) OR (follower_id=? AND followee_id=?)", selfUserID, targetUserID, targetUserID, selfUserID)
+				.limit(1, 0)
+				.execute()){
+			if(res.next()){
+				boolean mutual=res.getBoolean(3);
+				boolean accepted=res.getBoolean(4);
+				if(mutual)
+					return FriendshipStatus.FRIENDS;
+				int follower=res.getInt(1);
+				int followee=res.getInt(2);
+				if(follower==selfUserID && followee==targetUserID)
+					return accepted ? FriendshipStatus.FOLLOWING : FriendshipStatus.FOLLOW_REQUESTED;
+				else
+					return FriendshipStatus.FOLLOWED_BY;
+			}else{
+				return FriendshipStatus.NONE;
+			}
+		}
+	}
+
 	public static Set<Integer> intersectWithFriendIDs(int selfUserID, Collection<Integer> userIDs) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("followings")
@@ -700,19 +724,38 @@ public class UserStorage{
 	}
 
 	public static List<URI> getFollowerInboxes(int userID) throws SQLException{
+		return getFollowerInboxes(userID, Set.of());
+	}
+
+	public static List<URI> getFollowerInboxes(int userID, Set<Integer> except) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT IFNULL(`ap_shared_inbox`, `ap_inbox`) FROM `users` WHERE `id` IN (SELECT `follower_id` FROM `followings` WHERE `followee_id`=?)");
-			stmt.setInt(1, userID);
-			ArrayList<URI> list=new ArrayList<>();
-			try(ResultSet res=stmt.executeQuery()){
-				while(res.next()){
-					String url=res.getString(1);
-					if(url==null)
-						continue;
-					list.add(URI.create(url));
-				}
+			String query="SELECT DISTINCT IFNULL(`ap_shared_inbox`, `ap_inbox`) FROM `users` WHERE `id` IN (SELECT `follower_id` FROM `followings` WHERE `followee_id`=?)";
+			if(except!=null && !except.isEmpty()){
+				query+=" AND `id` NOT IN ("+except.stream().map(Object::toString).collect(Collectors.joining(", "))+")";
 			}
-			return list;
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, query, userID);
+			return DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), r->{
+				String url=r.getString(1);
+				if(url==null)
+					return null;
+				return URI.create(url);
+			}, null).filter(Objects::nonNull).collect(Collectors.toList());
+		}
+	}
+
+	public static List<URI> getFriendInboxes(int userID, Set<Integer> except) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String query="SELECT DISTINCT IFNULL(`ap_shared_inbox`, `ap_inbox`) FROM `users` WHERE `id` IN (SELECT `follower_id` FROM `followings` WHERE `followee_id`=? AND mutual=1)";
+			if(except!=null && !except.isEmpty()){
+				query+=" AND `id` NOT IN ("+except.stream().map(Object::toString).collect(Collectors.joining(", "))+")";
+			}
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, query, userID);
+			return DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), r->{
+				String url=r.getString(1);
+				if(url==null)
+					return null;
+				return URI.create(url);
+			}, null).filter(Objects::nonNull).collect(Collectors.toList());
 		}
 	}
 
@@ -1099,5 +1142,21 @@ public class UserStorage{
 				.where("id=?", user.id)
 				.executeNoResult();
 		removeFromCache(user);
+	}
+
+	public static Set<Integer> getFriendIDsWithDomain(int userID, String domain) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT id FROM followings JOIN `users` ON `followee_id`=`users`.id WHERE follower_id=? AND mutual=1 AND `users`.domain=?", userID, domain);
+			return DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), rs->rs.getInt(1), null).collect(Collectors.toSet());
+		}
+	}
+
+	public static int getCountOfFriendsOfFriendsWithDomain(int userID, String domain) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn,
+					"SELECT COUNT(*) FROM followings JOIN `users` ON followings.follower_id=`users`.id WHERE followee_id IN (SELECT follower_id FROM followings WHERE followee_id=? AND mutual=1) AND mutual=1 AND `users`.domain=?",
+					userID, domain);
+			return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		}
 	}
 }

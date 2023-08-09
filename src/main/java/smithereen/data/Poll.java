@@ -12,7 +12,7 @@ import java.util.Objects;
 
 import smithereen.storage.DatabaseUtils;
 
-public class Poll{
+public class Poll implements OwnedContentObject{
 	public int id;
 	public int ownerID;
 	public String question;
@@ -87,5 +87,15 @@ public class Poll{
 				return false;
 		}
 		return true;
+	}
+
+	@Override
+	public int getOwnerID(){
+		return ownerID;
+	}
+
+	@Override
+	public int getAuthorID(){
+		return 0;
 	}
 }

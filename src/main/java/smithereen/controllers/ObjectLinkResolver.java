@@ -195,7 +195,7 @@ public class ObjectLinkResolver{
 						T o=convertToNativeObject(obj, expectedType);
 						if(!bypassCollectionCheck && o instanceof Post post && obj.inReplyTo==null){ // TODO make this a generalized interface OwnedObject or something
 							if(post.ownerID!=post.authorID){
-								Actor owner=context.getWallController().getPostAuthorAndOwner(post).owner();
+								Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
 								ensureObjectIsInCollection(owner, owner.getWallURL(), post.getActivityPubID());
 							}
 						}

@@ -196,7 +196,7 @@ public class GroupsRoutes{
 				ctx.getWallController().populateCommentPreviews(wall.list);
 			}
 			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
-			model.with("postCount", wall.total).paginate(wall);
+			model.with("postCount", wall.total).paginate(wall).with("canPostOnWall", self!=null).with("canSeeOthersPosts", true);
 			model.with("postInteractions", interactions);
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);

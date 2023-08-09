@@ -28,6 +28,7 @@ import smithereen.data.SessionInfo;
 import smithereen.data.SizedImage;
 import smithereen.data.User;
 import smithereen.data.UserInteractions;
+import smithereen.data.UserPrivacySettingKey;
 import smithereen.data.WebDeltaResponse;
 import smithereen.data.viewmodel.PostViewModel;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -58,12 +59,17 @@ public class ProfileRoutes{
 				int offset=offset(req);
 				HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 
-				PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(user, false, offset, 20));
+				boolean canSeeOthers=ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, user, UserPrivacySettingKey.WALL_OTHERS_POSTS);
+				boolean canPost=canSeeOthers && self!=null && ctx.getPrivacyController().checkUserPrivacy(self.user, user, UserPrivacySettingKey.WALL_POSTING);
+
+				PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(user, !canSeeOthers, offset, 20));
 				RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req)
 						.pageTitle(user.getFullName())
 						.with("user", user)
 						.with("own", self!=null && self.user.id==user.id)
 						.with("postCount", wall.total)
+						.with("canPostOnWall", canPost)
+						.with("canSeeOthersPosts", canSeeOthers)
 						.paginate(wall);
 
 				if(req.attribute("mobile")==null){

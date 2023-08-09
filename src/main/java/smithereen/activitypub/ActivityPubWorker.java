@@ -64,8 +64,10 @@ import smithereen.data.Poll;
 import smithereen.data.PollOption;
 import smithereen.data.PollVote;
 import smithereen.data.Post;
+import smithereen.data.PrivacySetting;
 import smithereen.data.UriBuilder;
 import smithereen.data.User;
+import smithereen.data.UserPrivacySettingKey;
 import smithereen.data.notifications.NotificationUtils;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -128,6 +130,14 @@ public class ActivityPubWorker{
 		throw new IllegalArgumentException("Must be a foreign actor");
 	}
 
+	private void getInboxesWithPrivacy(Set<URI> inboxes, User owner, PrivacySetting setting) throws SQLException{
+		switch(setting.baseRule){
+			case EVERYONE -> inboxes.addAll(UserStorage.getFollowerInboxes(owner.id, setting.exceptUsers));
+			case FRIENDS, FRIENDS_OF_FRIENDS -> inboxes.addAll(UserStorage.getFriendInboxes(owner.id, setting.exceptUsers));
+			case NONE -> context.getUsersController().getUsers(setting.allowUsers).values().stream().map(this::actorInbox).forEach(inboxes::add);
+		}
+	}
+
 	private long rand(){
 		return Math.abs(rand.nextLong());
 	}
@@ -142,7 +152,7 @@ public class ActivityPubWorker{
 
 	private Set<URI> getInboxesForPost(Post post) throws SQLException{
 		Set<URI> inboxes=new HashSet<>();
-		OwnerAndAuthor oaa=context.getWallController().getPostAuthorAndOwner(post);
+		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(post);
 		if(oaa.owner() instanceof User user){
 			boolean sendToFollowers=user.id==post.authorID;
 			if(oaa.owner() instanceof ForeignUser foreignUser){
@@ -220,7 +230,7 @@ public class ActivityPubWorker{
 		executor.submit(()->{
 			try{
 				NoteOrQuestion note=NoteOrQuestion.fromNativePost(post, context);
-				OwnerAndAuthor oaa=context.getWallController().getPostAuthorAndOwner(post);
+				OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(post);
 
 				Add add=new Add();
 				add.activityPubID=UriBuilder.local().path("posts", String.valueOf(post.id), "activityAdd").build();
@@ -241,17 +251,19 @@ public class ActivityPubWorker{
 				add.target=new LinkOrObject(target);
 
 				HashSet<URI> inboxes=new HashSet<>();
-				if(oaa.owner() instanceof User user)
-					inboxes.addAll(UserStorage.getFollowerInboxes(user.id));
-				else if(oaa.owner() instanceof Group group)
+				if(oaa.owner() instanceof User user){
+					PrivacySetting setting=user.privacySettings.getOrDefault(UserPrivacySettingKey.WALL_OTHERS_POSTS, new PrivacySetting());
+					getInboxesWithPrivacy(inboxes, user, setting);
+				}else if(oaa.owner() instanceof Group group){
 					inboxes.addAll(GroupStorage.getGroupMemberInboxes(group.id));
-
-				for(User user:context.getUsersController().getUsers(post.mentionedUserIDs).values()){
-					if(user instanceof ForeignUser){
-						URI inbox=actorInbox((ForeignUser) user);
-						inboxes.add(inbox);
-					}
 				}
+
+//				for(User user:context.getUsersController().getUsers(post.mentionedUserIDs).values()){
+//					if(user instanceof ForeignUser){
+//						URI inbox=actorInbox((ForeignUser) user);
+//						inboxes.add(inbox);
+//					}
+//				}
 				if(oaa.author() instanceof ForeignUser fu){
 					URI inbox=actorInbox(fu);
 					inboxes.add(inbox);
@@ -276,7 +288,7 @@ public class ActivityPubWorker{
 			else if(!post.isGroupOwner() && post.ownerID==actualActor.id)
 				actor=actualActor;
 			else if(post.isGroupOwner())
-				actor=context.getWallController().getPostAuthorAndOwner(post).owner();
+				actor=context.getWallController().getContentAuthorAndOwner(post).owner();
 			else{
 				LOG.error("Shouldn't happen: post {} actor for delete can't be chosen", post.id);
 				return;
@@ -916,7 +928,7 @@ public class ActivityPubWorker{
 						return post;
 					}
 				}else{
-					Actor owner=context.getWallController().getPostAuthorAndOwner(post).owner();
+					Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
 
 					ActivityPubCollection collection;
 //					if(post.replies.link!=null){
@@ -1040,7 +1052,7 @@ public class ActivityPubWorker{
 		protected Post compute(){
 			try{
 				LOG.trace("Fetching remote reply from {}", postID);
-				post=context.getObjectLinkResolver().resolveNative(postID, Post.class, true, false, false, context.getWallController().getPostAuthorAndOwner(parentPost).owner(), true);
+				post=context.getObjectLinkResolver().resolveNative(postID, Post.class, true, false, false, context.getWallController().getContentAuthorAndOwner(parentPost).owner(), true);
 //				post.setParent(parentPost);
 //				post.storeDependencies(context);
 				PostStorage.putForeignWallPost(post);

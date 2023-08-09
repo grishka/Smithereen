@@ -30,6 +30,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
@@ -504,7 +505,13 @@ public class SmithereenApplication{
 			if(Config.DEBUG)
 				LOG.warn("403: {}", req.pathInfo(), x);
 			resp.status(403);
-			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_access")));
+			String key;
+			if(x instanceof UserContentUnavailableException){
+				key="err_access_user_content";
+			}else{
+				key="err_access";
+			}
+			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), key)));
 		});
 		exception(BadRequestException.class, (x, req, resp)->{
 			if(Config.DEBUG)

@@ -5,6 +5,8 @@ import com.google.gson.annotations.SerializedName;
 import java.util.Set;
 
 public class PrivacySetting{
+	public static final PrivacySetting DEFAULT=new PrivacySetting();
+
 	@SerializedName("r")
 	public Rule baseRule=Rule.EVERYONE;
 	@SerializedName("au")

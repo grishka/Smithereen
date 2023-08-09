@@ -1,4 +1,4 @@
-{% if currentUser is not null and not isSelfBlocked %}
+{% if canPostOnWall %}
 <div class="card">
 {% include "wall_post_form" %}
 </div>

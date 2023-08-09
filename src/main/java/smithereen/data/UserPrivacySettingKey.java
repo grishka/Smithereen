@@ -31,4 +31,12 @@ public enum UserPrivacySettingKey{
 			default -> false;
 		};
 	}
+
+	// Is this setting for viewing some content, or is it for an active action?
+	public boolean isForViewing(){
+		return switch(this){
+			case WALL_OTHERS_POSTS -> true;
+			default -> false;
+		};
+	}
 }

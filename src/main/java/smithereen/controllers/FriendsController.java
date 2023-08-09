@@ -94,6 +94,20 @@ public class FriendsController{
 		}
 	}
 
+	/**
+	 * Same as getFriendshipStatus but doesn't check friend requests
+	 * @param self
+	 * @param other
+	 * @return
+	 */
+	public FriendshipStatus getSimpleFriendshipStatus(User self, User other){
+		try{
+			return UserStorage.getSimpleFriendshipStatus(self.id, other.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public Map<URI, Integer> getFriendsByActivityPubIDs(@NotNull User user, Collection<URI> query){
 		try{
 			return UserStorage.getFriendsByActivityPubIDs(query, user.id);

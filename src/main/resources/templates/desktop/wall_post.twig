@@ -51,7 +51,7 @@
 					{% if not realPost.local %}
 						| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
 					{% endif %}
-					{% if not standalone and currentUser is not null %}
+					{% if not standalone and currentUser is not null and post.canComment %}
 						<span id="postCommentLinkWrap{{ realPost.id }}" style="{{ post.repliesObjects is empty ? '' : 'display: none;' }}">| <a href="{{ realPost.internalURL }}" onclick="return showPostCommentForm({{ realPost.id }})">{{ L('add_comment') }}</a></span>
 					{% endif %}
 					{%if interactions is not null%}
@@ -79,12 +79,12 @@
 	{% endif %}
 	<div class="commentsPreview" id="postReplies{{ realPost.id }}" style="{{ post.repliesObjects is empty ? 'display: none;' : '' }}">
 	{%for reply in post.repliesObjects%}
-		{% include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': "wallPostForm_commentReplyPost#{realPost.id}"} %}
+		{% include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': "wallPostForm_commentReplyPost#{realPost.id}", 'topLevel': post} %}
 		{% set realPost=post.post %}{# the included template overwrites this variable #}
 	{%endfor%}
 	</div>
 	{%set interactions=postInteractions[realPost.id]%}
-{% if currentUser is not null %}
+{% if currentUser is not null and post.canComment %}
 	{% include "wall_post_form" with {'id': "commentReplyPost#{realPost.id}", 'replyTo': realPost, 'hidden': true} %}
 	{% include "wall_post_form" with {'id': "commentPost#{realPost.id}", 'replyTo': realPost, 'hidden': interactions.commentCount==0} %}
 {% endif %}
