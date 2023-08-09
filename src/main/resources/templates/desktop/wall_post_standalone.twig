@@ -15,7 +15,7 @@
 {% include "wall_post" with {'standalone': true} %}
 </div>
 <div class="summaryWrap noPadTop">
-	<div class="summary">{{ L('X_comments', {'count': totalItems}) }}</div>
+	<div class="summary">{{ L('X_comments', {'count': post.post.replyCount}) }}</div>
 	{% include "pagination" %}
 </div>
 <div id="postReplies{{post.post.id}}" class="singleColumn">
