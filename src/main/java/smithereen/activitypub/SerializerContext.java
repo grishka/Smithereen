@@ -6,12 +6,12 @@ import com.google.gson.JsonObject;
 
 import smithereen.jsonld.JLD;
 
-public class ContextCollector{
+public class SerializerContext{
 
 	private JsonObject additionalContext;
 	private JsonArray context=new JsonArray();
 
-	public ContextCollector(){
+	public SerializerContext(){
 		context.add(JLD.ACTIVITY_STREAMS);
 	}
 

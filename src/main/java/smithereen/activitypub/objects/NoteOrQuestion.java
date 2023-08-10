@@ -19,9 +19,8 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
-import smithereen.controllers.ObjectLinkResolver;
 import smithereen.data.Post;
 import smithereen.data.UriBuilder;
 import smithereen.data.User;
@@ -238,17 +237,17 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		super.asActivityPubObject(obj, serializerContext);
 
-		obj.add("replies", replies.serialize(contextCollector));
+		obj.add("replies", replies.serialize(serializerContext));
 		if(sensitive!=null)
 			obj.addProperty("sensitive", sensitive);
-		contextCollector.addAlias("sensitive", "as:sensitive");
+		serializerContext.addAlias("sensitive", "as:sensitive");
 		if(obj.has("content"))
 			obj.addProperty("content", Utils.postprocessPostHTMLForActivityPub(content));
 		if(target!=null)
-			obj.add("target", target.asActivityPubObject(new JsonObject(), contextCollector));
+			obj.add("target", target.asActivityPubObject(new JsonObject(), serializerContext));
 		if(likes!=null)
 			obj.addProperty("likes", likes.toString());
 

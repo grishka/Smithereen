@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.data.Account;
 import smithereen.data.BirthdayReminder;
 import smithereen.data.EventReminder;
@@ -665,7 +665,7 @@ public class UserStorage{
 					.value("ap_id", user.activityPubID.toString())
 					.value("about", user.summary)
 					.value("gender", user.gender)
-					.value("avatar", user.icon!=null ? user.icon.get(0).asActivityPubObject(new JsonObject(), new ContextCollector()).toString() : null)
+					.value("avatar", user.icon!=null ? user.icon.get(0).asActivityPubObject(new JsonObject(), new SerializerContext()).toString() : null)
 					.value("profile_fields", user.serializeProfileFields())
 					.value("flags", user.flags)
 					.value("middle_name", user.middleName)

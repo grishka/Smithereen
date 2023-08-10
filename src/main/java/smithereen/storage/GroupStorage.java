@@ -30,7 +30,7 @@ import java.util.stream.IntStream;
 import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.controllers.GroupsController;
 import smithereen.data.ForeignGroup;
 import smithereen.data.Group;
@@ -138,7 +138,7 @@ public class GroupStorage{
 					.value("ap_inbox", group.inbox.toString())
 					.value("ap_shared_inbox", Objects.toString(group.sharedInbox, null))
 					.value("public_key", group.publicKey.getEncoded())
-					.value("avatar", group.hasAvatar() ? group.icon.get(0).asActivityPubObject(new JsonObject(), new ContextCollector()).toString() : null)
+					.value("avatar", group.hasAvatar() ? group.icon.get(0).asActivityPubObject(new JsonObject(), new SerializerContext()).toString() : null)
 					.value("event_start_time", group.eventStartTime)
 					.value("event_end_time", group.eventEndTime)
 					.value("type", group.type)

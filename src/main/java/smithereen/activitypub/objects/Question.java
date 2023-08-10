@@ -8,7 +8,7 @@ import java.util.Objects;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
@@ -79,22 +79,22 @@ public non-sealed class Question extends NoteOrQuestion{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		super.asActivityPubObject(obj, serializerContext);
 
 		if(anyOf!=null)
-			obj.add("anyOf", serializeObjectArray(anyOf, contextCollector));
+			obj.add("anyOf", serializeObjectArray(anyOf, serializerContext));
 		if(oneOf!=null)
-			obj.add("oneOf", serializeObjectArray(oneOf, contextCollector));
+			obj.add("oneOf", serializeObjectArray(oneOf, serializerContext));
 		if(closed!=null)
 			obj.addProperty("closed", Utils.formatDateAsISO(closed));
 		obj.addProperty("votersCount", votersCount);
 		obj.addProperty("nonAnonymous", nonAnonymous);
 
-		contextCollector.addAlias("toot", JLD.MASTODON);
-		contextCollector.addAlias("sm", JLD.SMITHEREEN);
-		contextCollector.addAlias("votersCount", "toot:votersCount");
-		contextCollector.addAlias("nonAnonymous", "sm:nonAnonymous");
+		serializerContext.addAlias("toot", JLD.MASTODON);
+		serializerContext.addAlias("sm", JLD.SMITHEREEN);
+		serializerContext.addAlias("votersCount", "toot:votersCount");
+		serializerContext.addAlias("nonAnonymous", "sm:nonAnonymous");
 
 		return obj;
 	}

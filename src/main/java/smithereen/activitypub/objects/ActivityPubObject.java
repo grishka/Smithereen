@@ -10,20 +10,17 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import smithereen.ApplicationContext;
 import smithereen.Utils;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Add;
@@ -43,9 +40,7 @@ import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
-import smithereen.data.Post;
 import smithereen.data.UriBuilder;
-import spark.QueryParamsMap;
 import spark.utils.StringUtils;
 
 public abstract class ActivityPubObject{
@@ -85,13 +80,13 @@ public abstract class ActivityPubObject{
 	public abstract String getType();
 
 	public JsonObject asRootActivityPubObject(){
-		ContextCollector contextCollector=new ContextCollector();
-		JsonObject obj=asActivityPubObject(new JsonObject(), contextCollector);
-		obj.add("@context", contextCollector.toContext());
+		SerializerContext serializerContext=new SerializerContext();
+		JsonObject obj=asActivityPubObject(new JsonObject(), serializerContext);
+		obj.add("@context", serializerContext.toContext());
 		return obj;
 	}
 
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
 		if(obj==null)
 			obj=new JsonObject();
 
@@ -99,7 +94,7 @@ public abstract class ActivityPubObject{
 		if(activityPubID!=null)
 			obj.addProperty("id", activityPubID.toString());
 		if(attachment!=null && !attachment.isEmpty())
-			obj.add("attachment", serializeObjectArray(attachment, contextCollector));
+			obj.add("attachment", serializeObjectArray(attachment, serializerContext));
 		if(attributedTo!=null)
 			obj.addProperty("attributedTo", attributedTo.toString());
 		if(audience!=null)
@@ -113,39 +108,39 @@ public abstract class ActivityPubObject{
 		if(endTime!=null)
 			obj.addProperty("endTime", Utils.formatDateAsISO(endTime));
 		if(generator!=null)
-			obj.add("generator", generator.serialize(contextCollector));
+			obj.add("generator", generator.serialize(serializerContext));
 		if(image!=null && !image.isEmpty())
-			obj.add("image", serializeObjectArrayCompact(image, contextCollector));
+			obj.add("image", serializeObjectArrayCompact(image, serializerContext));
 		if(icon!=null && !icon.isEmpty())
-			obj.add("icon", serializeObjectArrayCompact(icon, contextCollector));
+			obj.add("icon", serializeObjectArrayCompact(icon, serializerContext));
 		if(inReplyTo!=null)
 			obj.addProperty("inReplyTo", inReplyTo.toString());
 		if(location!=null)
-			obj.add("location", location.serialize(contextCollector));
+			obj.add("location", location.serialize(serializerContext));
 		if(preview!=null)
-			obj.add("preview", preview.serialize(contextCollector));
+			obj.add("preview", preview.serialize(serializerContext));
 		if(published!=null)
 			obj.addProperty("published", Utils.formatDateAsISO(published));
 		if(replies!=null)
-			obj.add("replies", replies.serialize(contextCollector));
+			obj.add("replies", replies.serialize(serializerContext));
 		if(startTime!=null)
 			obj.addProperty("startTime", Utils.formatDateAsISO(startTime));
 		if(summary!=null)
 			obj.addProperty("summary", summary);
 		if(tag!=null && !tag.isEmpty())
-			obj.add("tag", serializeObjectArray(tag, contextCollector));
+			obj.add("tag", serializeObjectArray(tag, serializerContext));
 		if(updated!=null)
 			obj.addProperty("updated", Utils.formatDateAsISO(updated));
 		if(url!=null)
 			obj.addProperty("url", url.toString());
 		if(to!=null)
-			obj.add("to", serializeLinkOrObjectArray(to, contextCollector));
+			obj.add("to", serializeLinkOrObjectArray(to, serializerContext));
 		if(bto!=null)
-			obj.add("bto", serializeLinkOrObjectArray(bto, contextCollector));
+			obj.add("bto", serializeLinkOrObjectArray(bto, serializerContext));
 		if(cc!=null)
-			obj.add("cc", serializeLinkOrObjectArray(cc, contextCollector));
+			obj.add("cc", serializeLinkOrObjectArray(cc, serializerContext));
 		if(bcc!=null)
-			obj.add("bcc", serializeLinkOrObjectArray(bcc, contextCollector));
+			obj.add("bcc", serializeLinkOrObjectArray(bcc, serializerContext));
 		if(mediaType!=null)
 			obj.addProperty("mediaType", mediaType);
 		if(duration!=0)
@@ -273,22 +268,22 @@ public abstract class ActivityPubObject{
 		return result;
 	}
 
-	public static JsonArray serializeObjectArray(List<? extends ActivityPubObject> ar, ContextCollector contextCollector){
+	public static JsonArray serializeObjectArray(List<? extends ActivityPubObject> ar, SerializerContext serializerContext){
 		JsonArray res=new JsonArray();
 		for(ActivityPubObject obj:ar){
-			res.add(obj.asActivityPubObject(new JsonObject(), contextCollector));
+			res.add(obj.asActivityPubObject(new JsonObject(), serializerContext));
 		}
 		return res;
 	}
 
-	public static JsonElement serializeObjectArrayCompact(List<? extends ActivityPubObject> ar, ContextCollector contextCollector){
-		return ar.size()==1 ? ar.get(0).asActivityPubObject(null, contextCollector) : serializeObjectArray(ar, contextCollector);
+	public static JsonElement serializeObjectArrayCompact(List<? extends ActivityPubObject> ar, SerializerContext serializerContext){
+		return ar.size()==1 ? ar.get(0).asActivityPubObject(null, serializerContext) : serializeObjectArray(ar, serializerContext);
 	}
 
-	protected JsonArray serializeLinkOrObjectArray(List<LinkOrObject> ar, ContextCollector contextCollector){
+	protected JsonArray serializeLinkOrObjectArray(List<LinkOrObject> ar, SerializerContext serializerContext){
 		JsonArray res=new JsonArray();
 		for(LinkOrObject l:ar){
-			res.add(l.serialize(contextCollector));
+			res.add(l.serialize(serializerContext));
 		}
 		return res;
 	}

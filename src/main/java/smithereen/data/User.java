@@ -15,7 +15,7 @@ import java.util.Map;
 
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.PropertyValue;
@@ -160,9 +160,9 @@ public class User extends Actor{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
 		name=getFullName();
-		obj=super.asActivityPubObject(obj, contextCollector);
+		obj=super.asActivityPubObject(obj, serializerContext);
 
 		obj.addProperty("firstName", firstName);
 		if(StringUtils.isNotEmpty(lastName)){
@@ -187,23 +187,23 @@ public class User extends Actor{
 		obj.addProperty("friends", getFriendsURL().toString());
 		obj.addProperty("groups", getGroupsURL().toString());
 
-		contextCollector.addAlias("sc", JLD.SCHEMA_ORG);
-		contextCollector.addAlias("firstName", "sc:givenName");
-		contextCollector.addAlias("lastName", "sc:familyName");
-		contextCollector.addAlias("middleName", "sc:additionalName");
-		contextCollector.addType("gender", "sc:gender", "sc:GenderType");
-		contextCollector.addAlias("sm", JLD.SMITHEREEN);
-		contextCollector.addAlias("maidenName", "sm:maidenName");
-		contextCollector.addType("friends", "sm:friends", "@id");
-		contextCollector.addType("groups", "sm:groups", "@id");
-		contextCollector.addAlias("vcard", JLD.VCARD);
+		serializerContext.addAlias("sc", JLD.SCHEMA_ORG);
+		serializerContext.addAlias("firstName", "sc:givenName");
+		serializerContext.addAlias("lastName", "sc:familyName");
+		serializerContext.addAlias("middleName", "sc:additionalName");
+		serializerContext.addType("gender", "sc:gender", "sc:GenderType");
+		serializerContext.addAlias("sm", JLD.SMITHEREEN);
+		serializerContext.addAlias("maidenName", "sm:maidenName");
+		serializerContext.addType("friends", "sm:friends", "@id");
+		serializerContext.addType("groups", "sm:groups", "@id");
+		serializerContext.addAlias("vcard", JLD.VCARD);
 
 		JsonObject capabilities=new JsonObject();
 		capabilities.addProperty("supportsFriendRequests", true);
 		obj.add("capabilities", capabilities);
-		contextCollector.addAlias("capabilities", "litepub:capabilities");
-		contextCollector.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
-		contextCollector.addAlias("litepub", JLD.LITEPUB);
+		serializerContext.addAlias("capabilities", "litepub:capabilities");
+		serializerContext.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
+		serializerContext.addAlias("litepub", JLD.LITEPUB);
 
 		return obj;
 	}

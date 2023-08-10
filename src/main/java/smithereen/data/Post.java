@@ -12,7 +12,7 @@ import java.util.Set;
 
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Document;
@@ -139,7 +139,7 @@ public class Post implements ActivityPubRepresentable, OwnedContentObject{
 	public String serializeAttachments(){
 		if(attachments==null)
 			return null;
-		return ActivityPubObject.serializeObjectArrayCompact(attachments, new ContextCollector()).toString();
+		return ActivityPubObject.serializeObjectArrayCompact(attachments, new SerializerContext()).toString();
 	}
 
 	public boolean canBeManagedBy(User user){

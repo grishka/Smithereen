@@ -8,7 +8,7 @@ import java.net.URI;
 import java.util.Objects;
 
 import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 
 public class LinkOrObject{
 	public static final LinkOrObject PUBLIC=new LinkOrObject(ActivityPub.AS_PUBLIC);
@@ -30,12 +30,12 @@ public class LinkOrObject{
 		link=null;
 	}
 
-	public JsonElement serialize(ContextCollector contextCollector){
+	public JsonElement serialize(SerializerContext serializerContext){
 		if(link==null && object==null)
 			throw new NullPointerException("Both link and object are null");
 		if(link!=null)
 			return new JsonPrimitive(link.toString());
-		return object.asActivityPubObject(new JsonObject(), contextCollector);
+		return object.asActivityPubObject(new JsonObject(), serializerContext);
 	}
 
 	@Override

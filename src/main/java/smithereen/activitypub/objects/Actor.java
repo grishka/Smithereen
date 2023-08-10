@@ -25,10 +25,9 @@ import java.util.Collections;
 
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.data.CachedRemoteImage;
-import smithereen.data.Group;
 import smithereen.data.NonCachedRemoteImage;
 import smithereen.data.SizedImage;
 import smithereen.exceptions.BadRequestException;
@@ -122,8 +121,8 @@ public abstract class Actor extends ActivityPubObject{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
 
 		String userURL=activityPubID.toString();
 		obj.addProperty("preferredUsername", username);
@@ -151,12 +150,12 @@ public abstract class Actor extends ActivityPubObject{
 		URI wallUrl=getWallURL();
 		if(wallUrl!=null){
 			obj.addProperty("wall", wallUrl.toString());
-			contextCollector.addType("wall", "sm:wall", "@id");
+			serializerContext.addType("wall", "sm:wall", "@id");
 		}
-		contextCollector.addAlias("collectionSimpleQuery", "sm:collectionSimpleQuery");
-		contextCollector.addAlias("sm", JLD.SMITHEREEN);
+		serializerContext.addAlias("collectionSimpleQuery", "sm:collectionSimpleQuery");
+		serializerContext.addAlias("sm", JLD.SMITHEREEN);
 
-		contextCollector.addSchema(JLD.W3_SECURITY);
+		serializerContext.addSchema(JLD.W3_SECURITY);
 
 		return obj;
 	}

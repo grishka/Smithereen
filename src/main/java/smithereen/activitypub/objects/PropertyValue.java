@@ -3,7 +3,7 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonObject;
 
 import smithereen.Utils;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.jsonld.JLD;
 
@@ -31,11 +31,11 @@ public class PropertyValue extends ActivityPubObject{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
 		obj.addProperty("value", value);
-		contextCollector.addAlias("value", JLD.SCHEMA_ORG+"value");
-		contextCollector.addAlias("PropertyValue", JLD.SCHEMA_ORG+"PropertyValue");
+		serializerContext.addAlias("value", JLD.SCHEMA_ORG+"value");
+		serializerContext.addAlias("PropertyValue", JLD.SCHEMA_ORG+"PropertyValue");
 		return obj;
 	}
 }

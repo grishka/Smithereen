@@ -7,12 +7,10 @@ import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.EnumSet;
 import java.util.List;
 
 import smithereen.Config;
-import smithereen.Utils;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Event;
 import smithereen.jsonld.JLD;
@@ -98,8 +96,8 @@ public class Group extends Actor{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
 
 		String userURL=activityPubID.toString();
 		JsonArray ar=new JsonArray();
@@ -114,30 +112,30 @@ public class Group extends Actor{
 		obj.add("attributedTo", ar);
 
 		obj.addProperty("members", userURL+"/members");
-		contextCollector.addType("members", "sm:members", "@id");
+		serializerContext.addType("members", "sm:members", "@id");
 		JsonObject capabilities=new JsonObject();
 
 		if(type==Type.EVENT){
 			obj.addProperty("tentativeMembers", userURL+"/tentativeMembers");
-			contextCollector.addType("tentativeMembers", "sm:tentativeMembers", "@id");
+			serializerContext.addType("tentativeMembers", "sm:tentativeMembers", "@id");
 			capabilities.addProperty("tentativeMembership", true);
-			contextCollector.addAlias("tentativeMembership", "sm:tentativeMembership");
+			serializerContext.addAlias("tentativeMembership", "sm:tentativeMembership");
 		}
 
-		contextCollector.addAlias("accessType", "sm:accessType");
+		serializerContext.addAlias("accessType", "sm:accessType");
 		obj.addProperty("accessType", accessType.toString().toLowerCase());
 		obj.addProperty("manuallyApprovesFollowers", accessType!=AccessType.OPEN);
 
 		capabilities.addProperty("acceptsJoins", true);
 		obj.add("capabilities", capabilities);
-		contextCollector.addAlias("capabilities", "litepub:capabilities");
-		contextCollector.addAlias("acceptsJoins", "litepub:acceptsJoins");
-		contextCollector.addAlias("litepub", JLD.LITEPUB);
+		serializerContext.addAlias("capabilities", "litepub:capabilities");
+		serializerContext.addAlias("acceptsJoins", "litepub:acceptsJoins");
+		serializerContext.addAlias("litepub", JLD.LITEPUB);
 
 		JsonObject endpoints=obj.getAsJsonObject("endpoints");
 		if(accessType!=AccessType.OPEN){
 			endpoints.addProperty("actorToken", userURL+"/actorToken");
-			contextCollector.addAlias("actorToken", "sm:actorToken");
+			serializerContext.addAlias("actorToken", "sm:actorToken");
 		}
 
 		return obj;
