@@ -18,7 +18,9 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
 import smithereen.data.Account;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
@@ -571,19 +573,33 @@ public class SmithereenApplication{
 		awaitInitialization();
 		setupCustomSerializer();
 
-		responseTypeSerializer(ActivityPubObject.class, (out, obj) -> {
+		responseTypeSerializer(ActivityPubObject.class, (out, obj, req, resp) -> {
+			resp.type(ActivityPub.CONTENT_TYPE);
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
-			Utils.gson.toJson(obj.asRootActivityPubObject(), writer);
+			Utils.gson.toJson(obj.asRootActivityPubObject(Utils.context(req), ()->{
+				if(req.headers("signature")!=null){
+					try{
+						Actor requester=ActivityPub.verifyHttpSignature(req, null);
+						Utils.context(req).getObjectLinkResolver().storeOrUpdateRemoteObject(requester);
+						String requesterDomain=requester.domain;
+						LOG.trace("Requester domain for {} is {}", req.pathInfo(), requesterDomain);
+						return requesterDomain;
+					}catch(Exception x){
+						LOG.trace("Exception while verifying HTTP signature for {}", req.pathInfo(), x);
+					}
+				}
+				return null;
+			}), writer);
 			writer.flush();
 		});
 
-		responseTypeSerializer(RenderedTemplateResponse.class, (out, obj) -> {
+		responseTypeSerializer(RenderedTemplateResponse.class, (out, obj, req, resp) -> {
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
 			obj.renderToWriter(writer);
 			writer.flush();
 		});
 
-		responseTypeSerializer(WebDeltaResponse.class, (out, obj) -> {
+		responseTypeSerializer(WebDeltaResponse.class, (out, obj, req, resp) -> {
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
 			Utils.gson.toJson(obj.commands(), writer);
 			writer.flush();
@@ -641,30 +657,6 @@ public class SmithereenApplication{
 	}
 
 	private static void setupCustomSerializer(){
-		try{
-			Method m=Spark.class.getDeclaredMethod("getInstance");
-			m.setAccessible(true);
-			Service svc=(Service) m.invoke(null);
-			Field serverFld=svc.getClass().getDeclaredField("server");
-			serverFld.setAccessible(true);
-			EmbeddedJettyServer server=(EmbeddedJettyServer) serverFld.get(svc);
-			Field handlerFld=server.getClass().getDeclaredField("handler");
-			handlerFld.setAccessible(true);
-			JettyHandler handler=(JettyHandler) handlerFld.get(server);
-			Field filterFld=handler.getClass().getDeclaredField("filter");
-			filterFld.setAccessible(true);
-			MatcherFilter matcher=(MatcherFilter) filterFld.get(handler);
-			Field serializerChainFld=matcher.getClass().getDeclaredField("serializerChain");
-			serializerChainFld.setAccessible(true);
-			SerializerChain chain=(SerializerChain) serializerChainFld.get(matcher);
-			Field rootFld=chain.getClass().getDeclaredField("root");
-			rootFld.setAccessible(true);
-			Serializer serializer=(Serializer) rootFld.get(chain);
-			ExtendedStreamingSerializer mySerializer=new ExtendedStreamingSerializer();
-			mySerializer.setNext(serializer);
-			rootFld.set(chain, mySerializer);
-		}catch(Exception x){
-			LOG.error("Exception while setting up custom serializer", x);
-		}
+		getSerializerChain().insertBeforeRoot(new ExtendedStreamingSerializer());
 	}
 }

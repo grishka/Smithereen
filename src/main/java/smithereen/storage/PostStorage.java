@@ -266,7 +266,7 @@ public class PostStorage{
 				stmt.setInt(2, userID);
 				stmt.setInt(3, startFromID==0 ? Integer.MAX_VALUE : startFromID);
 				try(ResultSet res=stmt.executeQuery()){
-					res.first();
+					res.next();
 					total[0]=res.getInt(1);
 				}
 			}
@@ -301,7 +301,7 @@ public class PostStorage{
 				stmt=conn.prepareStatement("SELECT COUNT(*) FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+ownCondition);
 				stmt.setInt(1, ownerID);
 				try(ResultSet res=stmt.executeQuery()){
-					res.first();
+					res.next();
 					total[0]=res.getInt(1);
 				}
 			}
@@ -317,10 +317,8 @@ public class PostStorage{
 			stmt.setInt(1, ownerID);
 			ArrayList<Post> posts=new ArrayList<>();
 			try(ResultSet res=stmt.executeQuery()){
-				if(res.first()){
-					do{
-						posts.add(Post.fromResultSet(res));
-					}while(res.next());
+				while(res.next()){
+					posts.add(Post.fromResultSet(res));
 				}
 			}
 			return posts;
@@ -364,7 +362,7 @@ public class PostStorage{
 				stmt.setInt(3, otherUserID);
 				stmt.setInt(4, userID);
 				try(ResultSet res=stmt.executeQuery()){
-					res.first();
+					res.next();
 					total[0]=res.getInt(1);
 				}
 			}
@@ -375,10 +373,8 @@ public class PostStorage{
 			stmt.setInt(4, userID);
 			ArrayList<Post> posts=new ArrayList<>();
 			try(ResultSet res=stmt.executeQuery()){
-				if(res.first()){
-					do{
-						posts.add(Post.fromResultSet(res));
-					}while(res.next());
+				while(res.next()){
+					posts.add(Post.fromResultSet(res));
 				}
 			}
 			return posts;
@@ -453,7 +449,7 @@ public class PostStorage{
 				rk.add(post.id);
 				stmt.setBytes(1, Utils.serializeIntList(rk));
 				try(ResultSet res=stmt.executeQuery()){
-					res.first();
+					res.next();
 					needFullyDelete=res.getInt(1)==0;
 				}
 			}
@@ -498,8 +494,7 @@ public class PostStorage{
 			LOG.debug("{}", stmt);
 			HashMap<Integer, PaginatedList<Post>> map=new HashMap<>();
 			try(ResultSet res=stmt.executeQuery()){
-				res.afterLast();
-				while(res.previous()){
+				while(res.next()){
 					Post post=Post.fromResultSet(res);
 					List<Post> posts=map.computeIfAbsent(post.getReplyChainElement(0), (k)->new PaginatedList<>(new ArrayList<>(), 0)).list;
 					posts.add(post);
@@ -512,7 +507,6 @@ public class PostStorage{
 					.whereIn("reply_key", postIDs.stream().map(id->Utils.serializeIntArray(new int[]{id})).collect(Collectors.toList()))
 					.createStatement();
 			try(ResultSet res=stmt.executeQuery()){
-				res.beforeFirst();
 				while(res.next()){
 					int id=Utils.deserializeIntArray(res.getBytes(2))[0];
 					map.get(id).total=res.getInt(1);
@@ -628,10 +622,8 @@ public class PostStorage{
 				PreparedStatement stmt=conn.prepareStatement("SELECT object_id FROM likes WHERE object_type=0 AND object_id IN ("+idsStr+") AND user_id=?");
 				stmt.setInt(1, userID);
 				try(ResultSet res=stmt.executeQuery()){
-					if(res.first()){
-						do{
-							result.get(res.getInt(1)).isLiked=true;
-						}while(res.next());
+					while(res.next()){
+						result.get(res.getInt(1)).isLiked=true;
 					}
 				}
 			}
@@ -737,7 +729,7 @@ public class PostStorage{
 			PreparedStatement stmt=conn.prepareStatement("SELECT count(*) FROM wall_posts WHERE reply_key=?");
 			stmt.setBytes(1, serializedKey);
 			try(ResultSet res=stmt.executeQuery()){
-				res.first();
+				res.next();
 				total[0]=res.getInt(1);
 			}
 			stmt=conn.prepareStatement("SELECT ap_id, id FROM wall_posts WHERE reply_key=? ORDER BY created_at ASC LIMIT ?,?");
@@ -745,18 +737,15 @@ public class PostStorage{
 			stmt.setInt(2, offset);
 			stmt.setInt(3, count);
 			try(ResultSet res=stmt.executeQuery()){
-				if(res.first()){
-					ArrayList<URI> replies=new ArrayList<>();
-					do{
-						String apID=res.getString(1);
-						if(apID!=null)
-							replies.add(URI.create(apID));
-						else
-							replies.add(Config.localURI("/posts/"+res.getInt(2)));
-					}while(res.next());
-					return replies;
+				ArrayList<URI> replies=new ArrayList<>();
+				while(res.next()){
+					String apID=res.getString(1);
+					if(apID!=null)
+						replies.add(URI.create(apID));
+					else
+						replies.add(Config.localURI("/posts/"+res.getInt(2)));
 				}
-				return Collections.emptyList();
+				return replies;
 			}
 		}
 	}
@@ -810,7 +799,7 @@ public class PostStorage{
 				stmt2.setInt(1, optID);
 				stmt2.execute();
 				try(ResultSet res=stmt1.getGeneratedKeys()){
-					res.first();
+					res.next();
 					voteIDs[i++]=res.getInt(1);
 				}
 			}
@@ -838,7 +827,6 @@ public class PostStorage{
 					.createStatement();
 			boolean userVoted=false;
 			try(ResultSet res=stmt.executeQuery()){
-				res.beforeFirst();
 				while(res.next()){
 					// this is a single-choice poll and there's already a vote
 					if(!allowMultiple)
@@ -921,7 +909,6 @@ public class PostStorage{
 			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn,
 					"SELECT users.id, users.ap_id FROM poll_votes JOIN users ON poll_votes.user_id=users.id WHERE poll_votes.option_id=? LIMIT ? OFFSET ?", optionID, count, offset);
 			try(ResultSet res=stmt.executeQuery()){
-				res.beforeFirst();
 				ArrayList<URI> r=new ArrayList<>();
 				while(res.next()){
 					String apID=res.getString(2);
@@ -1064,7 +1051,7 @@ public class PostStorage{
 					PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT MAX(created_at) FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)", (Object) Utils.serializeIntArray(new int[]{postID}));
 					Timestamp ts;
 					try(ResultSet res=stmt.executeQuery()){
-						res.first();
+						res.next();
 						ts=res.getTimestamp(1);
 					}
 					if(ts==null){

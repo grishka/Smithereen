@@ -101,7 +101,7 @@ public class LikeStorage{
 			PreparedStatement stmt=conn.prepareStatement("SELECT user_id, object_id, object_type FROM likes WHERE id=?");
 			stmt.setInt(1, id);
 			try(ResultSet res=stmt.executeQuery()){
-				if(res.first()){
+				if(res.next()){
 					int userID=res.getInt(1);
 					User user=UserStorage.getById(userID);
 					if(user instanceof ForeignUser)

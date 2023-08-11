@@ -23,9 +23,9 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 
-import javax.servlet.MultipartConfigElement;
-import javax.servlet.ServletException;
-import javax.servlet.http.Part;
+import jakarta.servlet.MultipartConfigElement;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Part;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;

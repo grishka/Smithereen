@@ -16,9 +16,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
@@ -79,10 +81,19 @@ public abstract class ActivityPubObject{
 
 	public abstract String getType();
 
-	public JsonObject asRootActivityPubObject(){
-		SerializerContext serializerContext=new SerializerContext();
+	public JsonObject asRootActivityPubObject(ApplicationContext appContext, String requesterDomain){
+		SerializerContext serializerContext=new SerializerContext(appContext, requesterDomain);
+		return asRootActivityPubObject(serializerContext);
+	}
+
+	public JsonObject asRootActivityPubObject(ApplicationContext appContext, Supplier<String> requesterDomainSupplier){
+		SerializerContext serializerContext=new SerializerContext(appContext, requesterDomainSupplier);
+		return asRootActivityPubObject(serializerContext);
+	}
+
+	private JsonObject asRootActivityPubObject(SerializerContext serializerContext){
 		JsonObject obj=asActivityPubObject(new JsonObject(), serializerContext);
-		obj.add("@context", serializerContext.toContext());
+		obj.add("@context", serializerContext.getJLDContext());
 		return obj;
 	}
 

@@ -2,7 +2,6 @@ package smithereen.routes;
 
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
-import org.jsoup.safety.Whitelist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +43,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
+import smithereen.util.Whitelist;
 import spark.Request;
 import spark.Response;
 import spark.Session;

@@ -74,11 +74,9 @@ public class NotificationsStorage{
 			stmt.setInt(2, objID);
 			stmt.setInt(4, objID);
 			try(ResultSet res=stmt.executeQuery()){
-				if(res.first()){
-					synchronized(NotificationsStorage.class){
-						do{
-							userNotificationsCache.remove(res.getInt(1));
-						}while(res.next());
+				synchronized(NotificationsStorage.class){
+					while(res.next()){
+						userNotificationsCache.remove(res.getInt(1));
 					}
 				}
 			}
@@ -101,7 +99,7 @@ public class NotificationsStorage{
 			stmt.setInt(3, type.ordinal());
 			stmt.setInt(4, actorID);
 			try(ResultSet res=stmt.executeQuery()){
-				if(!res.first())
+				if(!res.next())
 					return;
 				synchronized(NotificationsStorage.class){
 					userNotificationsCache.remove(res.getInt(1));
@@ -125,14 +123,14 @@ public class NotificationsStorage{
 			PreparedStatement stmt=conn.prepareStatement("SELECT COUNT(*) FROM `friend_requests` WHERE `to_user_id`=?");
 			stmt.setInt(1, userID);
 			try(ResultSet r=stmt.executeQuery()){
-				r.first();
+				r.next();
 				res.incNewFriendRequestCount(r.getInt(1));
 			}
 			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `notifications` WHERE `owner_id`=? AND `id`>?");
 			stmt.setInt(1, userID);
 			stmt.setInt(2, lastSeenID);
 			try(ResultSet r=stmt.executeQuery()){
-				r.first();
+				r.next();
 				res.incNewNotificationsCount(r.getInt(1));
 			}
 			stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*), is_event FROM group_invites WHERE invitee_id=? GROUP BY is_event", userID);

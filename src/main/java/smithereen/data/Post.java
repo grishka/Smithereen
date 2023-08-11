@@ -139,7 +139,7 @@ public class Post implements ActivityPubRepresentable, OwnedContentObject{
 	public String serializeAttachments(){
 		if(attachments==null)
 			return null;
-		return ActivityPubObject.serializeObjectArrayCompact(attachments, new SerializerContext()).toString();
+		return ActivityPubObject.serializeObjectArrayCompact(attachments, new SerializerContext(null, (String)null)).toString();
 	}
 
 	public boolean canBeManagedBy(User user){

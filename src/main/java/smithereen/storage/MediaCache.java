@@ -345,18 +345,16 @@ public class MediaCache{
 					}
 					while(sizeNeeded>0){
 						try(ResultSet res=conn.createStatement().executeQuery("SELECT * FROM `media_cache` ORDER BY `last_access` ASC LIMIT 100")){
-							if(res.first()){
-								do{
-									Item item=itemFromResultSet(res);
-									item.deleteFiles();
-									sizeNeeded-=item.totalSize;
-									synchronized(cacheSizeLock){
-										cacheSize-=item.totalSize;
-									}
-									deletedKeys.add("0x"+Utils.byteArrayToHexString(res.getBytes(1)));
-									if(sizeNeeded<=0)
-										break;
-								}while(res.next());
+							while(res.next()){
+								Item item=itemFromResultSet(res);
+								item.deleteFiles();
+								sizeNeeded-=item.totalSize;
+								synchronized(cacheSizeLock){
+									 cacheSize-=item.totalSize;
+								}
+								deletedKeys.add("0x"+Utils.byteArrayToHexString(res.getBytes(1)));
+								if(sizeNeeded<=0)
+									 break;
 							}
 						}
 						LOG.info("Deleting from media cache: {}", deletedKeys);

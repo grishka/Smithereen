@@ -85,7 +85,7 @@ public class MediaStorageUtils{
 	}
 
 	public static JsonObject serializeAttachment(ActivityPubObject att){
-		JsonObject o=att.asActivityPubObject(null, new SerializerContext());
+		JsonObject o=att.asActivityPubObject(null, new SerializerContext(null, (String)null));
 		if(att instanceof Document){
 			Document d=(Document) att;
 			if(StringUtils.isNotEmpty(d.localID)){

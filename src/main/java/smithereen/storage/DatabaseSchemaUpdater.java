@@ -177,7 +177,6 @@ public class DatabaseSchemaUpdater{
 						  CONSTRAINT `qsearch_index_ibfk_2` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 						) ENGINE=InnoDB DEFAULT CHARSET=ascii;""");
 				try(ResultSet res=conn.createStatement().executeQuery("SELECT id, fname, lname, middle_name, maiden_name, username, domain FROM users")){
-					res.beforeFirst();
 					PreparedStatement stmt=conn.prepareStatement("INSERT INTO qsearch_index (string, user_id) VALUES (?, ?)");
 					while(res.next()){
 						int id=res.getInt("id");
@@ -212,7 +211,6 @@ public class DatabaseSchemaUpdater{
 					}
 				}
 				try(ResultSet res=conn.createStatement().executeQuery("SELECT id, name, username, domain FROM groups")){
-					res.beforeFirst();
 					PreparedStatement stmt=conn.prepareStatement("INSERT INTO qsearch_index (string, group_id) VALUES (?, ?)");
 					while(res.next()){
 						String s=Utils.transliterate(res.getString("name"))+" "+res.getString("username");
@@ -318,7 +316,6 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("ALTER TABLE `groups` ADD `endpoints` json DEFAULT NULL");
 				PreparedStatement stmt=conn.prepareStatement("UPDATE `users` SET `endpoints`=? WHERE `id`=?");
 				try(ResultSet res=conn.createStatement().executeQuery("SELECT `id`,`ap_outbox`,`ap_followers`,`ap_following`,`ap_wall`,`ap_friends`,`ap_groups` FROM `users` WHERE `ap_id` IS NOT NULL")){
-					res.beforeFirst();
 					while(res.next()){
 						int id=res.getInt(1);
 						Actor.EndpointsStorageWrapper ep=new Actor.EndpointsStorageWrapper();
@@ -335,7 +332,6 @@ public class DatabaseSchemaUpdater{
 				}
 				stmt=conn.prepareStatement("UPDATE `groups` SET `endpoints`=? WHERE `id`=?");
 				try(ResultSet res=conn.createStatement().executeQuery("SELECT `id`,`ap_outbox`,`ap_followers`,`ap_wall` FROM `groups` WHERE `ap_id` IS NOT NULL")){
-					res.beforeFirst();
 					while(res.next()){
 						int id=res.getInt(1);
 						Actor.EndpointsStorageWrapper ep=new Actor.EndpointsStorageWrapper();

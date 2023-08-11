@@ -312,7 +312,6 @@ public class UserStorage{
 			stmt.setInt(2, count);
 			stmt.setInt(3, offset);
 			try(ResultSet res=stmt.executeQuery()){
-				res.beforeFirst();
 				ArrayList<URI> ids=new ArrayList<>();
 				while(res.next()){
 					String apID=res.getString(2);
@@ -520,13 +519,13 @@ public class UserStorage{
 				stmt.setInt(1, targetUserID);
 				stmt.setInt(2, userID);
 				try(ResultSet res=stmt.executeQuery()){
-					res.first();
+					res.next();
 					mutual=res.getInt(1)==1;
 				}
 				stmt.setInt(1, userID);
 				stmt.setInt(2, targetUserID);
 				try(ResultSet res=stmt.executeQuery()){
-					res.first();
+					res.next();
 					if(res.getInt(1)==1){
 						if(ignoreAlreadyFollowing){
 							conn.createStatement().execute("ROLLBACK");
@@ -665,7 +664,7 @@ public class UserStorage{
 					.value("ap_id", user.activityPubID.toString())
 					.value("about", user.summary)
 					.value("gender", user.gender)
-					.value("avatar", user.icon!=null ? user.icon.get(0).asActivityPubObject(new JsonObject(), new SerializerContext()).toString() : null)
+					.value("avatar", user.icon!=null ? user.icon.get(0).asActivityPubObject(new JsonObject(), new SerializerContext(null, (String)null)).toString() : null)
 					.value("profile_fields", user.serializeProfileFields())
 					.value("flags", user.flags)
 					.value("middle_name", user.middleName)

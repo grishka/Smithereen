@@ -910,7 +910,7 @@ public class ActivityPubRoutes{
 
 	public static Object serviceActor(Request req, Response resp){
 		resp.type(ActivityPub.CONTENT_TYPE);
-		return ServiceActor.getInstance().asRootActivityPubObject();
+		return ServiceActor.getInstance().asRootActivityPubObject(context(req), (String)null);
 	}
 
 	public static Object groupActorToken(Request req, Response resp){

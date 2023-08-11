@@ -26,9 +26,9 @@ import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
-import javax.servlet.MultipartConfigElement;
-import javax.servlet.ServletException;
-import javax.servlet.http.Part;
+import jakarta.servlet.MultipartConfigElement;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Part;
 
 import smithereen.ApplicationContext;
 import smithereen.BuildInfo;

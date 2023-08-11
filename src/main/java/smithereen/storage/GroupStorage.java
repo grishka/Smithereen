@@ -138,7 +138,7 @@ public class GroupStorage{
 					.value("ap_inbox", group.inbox.toString())
 					.value("ap_shared_inbox", Objects.toString(group.sharedInbox, null))
 					.value("public_key", group.publicKey.getEncoded())
-					.value("avatar", group.hasAvatar() ? group.icon.get(0).asActivityPubObject(new JsonObject(), new SerializerContext()).toString() : null)
+					.value("avatar", group.hasAvatar() ? group.icon.get(0).asActivityPubObject(new JsonObject(), new SerializerContext(null, (String)null)).toString() : null)
 					.value("event_start_time", group.eventStartTime)
 					.value("event_end_time", group.eventEndTime)
 					.value("type", group.type)
@@ -174,7 +174,6 @@ public class GroupStorage{
 				int count=0;
 				boolean needUpdate=false;
 				try(ResultSet res=builder.execute()){
-					res.beforeFirst();
 					while(res.next()){
 						count++;
 						int id=res.getInt(1);
@@ -503,7 +502,6 @@ public class GroupStorage{
 			stmt.setInt(3, offset);
 			try(ResultSet res=stmt.executeQuery()){
 				ArrayList<URI> list=new ArrayList<>();
-				res.beforeFirst();
 				while(res.next()){
 					String apID=res.getString(2);
 					list.add(apID!=null ? URI.create(apID) : Config.localURI("/groups/"+res.getInt(1)));
@@ -539,15 +537,13 @@ public class GroupStorage{
 				stmt.setInt(4, offset);
 				ArrayList<URI> list=new ArrayList<>();
 				try(ResultSet res=stmt.executeQuery()){
-					if(res.first()){
-						do{
-							String _u=res.getString(1);
-							if(_u==null){
-								list.add(Config.localURI("/users/"+res.getInt(2)));
-							}else{
-								list.add(URI.create(_u));
-							}
-						}while(res.next());
+					while(res.next()){
+						String _u=res.getString(1);
+						if(_u==null){
+							list.add(Config.localURI("/users/"+res.getInt(2)));
+						}else{
+							list.add(URI.create(_u));
+						}
 					}
 				}
 				return new PaginatedList<>(list, total, offset, count);
@@ -562,7 +558,6 @@ public class GroupStorage{
 			stmt.setInt(1, groupID);
 			ArrayList<URI> inboxes=new ArrayList<>();
 			try(ResultSet res=stmt.executeQuery()){
-				res.beforeFirst();
 				while(res.next()){
 					inboxes.add(URI.create(res.getString(1)));
 				}

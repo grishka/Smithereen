@@ -107,7 +107,7 @@ public class SessionStorage{
 			stmt.setString(1, usernameOrEmail);
 			stmt.setBytes(2, hashedPassword);
 			try(ResultSet res=stmt.executeQuery()){
-				if(res.first()){
+				if(res.next()){
 					return Account.fromResultSet(res);
 				}
 				return null;
@@ -167,7 +167,7 @@ public class SessionStorage{
 				stmt.execute();
 				int userID;
 				try(ResultSet res=stmt.getGeneratedKeys()){
-					res.first();
+					res.next();
 					userID=res.getInt(1);
 				}
 
@@ -187,7 +187,7 @@ public class SessionStorage{
 					stmt=conn.prepareStatement("SELECT `user_id` FROM `accounts` WHERE `id`=?");
 					stmt.setInt(1, inviterAccountID);
 					try(ResultSet res=stmt.executeQuery()){
-						res.first();
+						res.next();
 						inviterUserID=res.getInt(1);
 					}
 
@@ -249,7 +249,7 @@ public class SessionStorage{
 				stmt.execute();
 				int userID;
 				try(ResultSet res=stmt.getGeneratedKeys()){
-					res.first();
+					res.next();
 					userID=res.getInt(1);
 				}
 

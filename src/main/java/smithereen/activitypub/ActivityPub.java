@@ -231,7 +231,7 @@ public class ActivityPub{
 			}
 		}
 
-		JsonObject body=activity.asRootActivityPubObject();
+		JsonObject body=activity.asRootActivityPubObject(ctx, inboxUrl.getAuthority());
 		LinkedDataSignatures.sign(body, actor.privateKey, actor.activityPubID+"#main-key");
 		LOG.info("Sending activity: {}", body);
 		postActivityInternal(inboxUrl, body.toString(), actor, server, ctx, isRetry);

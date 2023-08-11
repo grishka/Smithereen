@@ -2,7 +2,6 @@ package smithereen.routes;
 
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
-import org.jsoup.safety.Whitelist;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -35,6 +34,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
+import smithereen.util.Whitelist;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;

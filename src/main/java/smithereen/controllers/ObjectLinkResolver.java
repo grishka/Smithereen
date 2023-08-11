@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -52,6 +53,7 @@ public class ObjectLinkResolver{
 
 	private final HashMap<URI, ActorToken> actorTokensCache=new HashMap<>();
 	private final HashMap<URI, Object> actorTokenLocks=new HashMap<>();
+	private final LruCache<URI, ForeignUser> serviceActorCache=new LruCache<>(200);
 
 	private final ApplicationContext context;
 
@@ -161,7 +163,7 @@ public class ObjectLinkResolver{
 	@NotNull
 	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
 		try{
-			LOG.debug("Resolving ActivityPub link: {}, expected type: {}", _link, expectedType.getName());
+			LOG.debug("Resolving ActivityPub link: {}, expected type: {}, allow storage {}", _link, expectedType.getName(), allowStorage);
 			URI link;
 			if("bear".equals(_link.getScheme())){
 				link=URI.create(UriBuilder.parseQueryString(_link.getRawQuery()).get("u"));
@@ -172,6 +174,9 @@ public class ObjectLinkResolver{
 				if(!forceRefetch){
 					if(expectedType.isAssignableFrom(ForeignUser.class)){
 						User user=UserStorage.getUserByActivityPubID(link);
+						if(user!=null)
+							return ensureTypeAndCast(user, expectedType);
+						user=serviceActorCache.get(link);
 						if(user!=null)
 							return ensureTypeAndCast(user, expectedType);
 					}
@@ -245,8 +250,12 @@ public class ObjectLinkResolver{
 
 	public void storeOrUpdateRemoteObject(Object o){
 		try{
-			if(o instanceof ForeignUser fu && !fu.isServiceActor){
-				UserStorage.putOrUpdateForeignUser(fu);
+			if(o instanceof ForeignUser fu){
+				if(fu.isServiceActor){
+					serviceActorCache.put(fu.activityPubID, fu);
+				}else{
+					UserStorage.putOrUpdateForeignUser(fu);
+				}
 			}else if(o instanceof ForeignGroup fg){
 				fg.storeDependencies(context);
 				GroupStorage.putOrUpdateForeignGroup(fg);

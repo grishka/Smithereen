@@ -27,7 +27,6 @@ public class DatabaseUtils{
 	private static final Object UNIQUE_USERNAME_LOCK=new Object();
 
 	public static ArrayList<Integer> intResultSetToList(ResultSet res) throws SQLException{
-		res.beforeFirst();
 		ArrayList<Integer> list=new ArrayList<>();
 		while(res.next()){
 			list.add(res.getInt(1));
@@ -38,13 +37,13 @@ public class DatabaseUtils{
 
 	public static int oneFieldToInt(final ResultSet res) throws SQLException{
 		try(res){
-			return res.first() ? res.getInt(1) : -1;
+			return res.next() ? res.getInt(1) : -1;
 		}
 	}
 
 	public static <T> T oneFieldToObject(final ResultSet res, Class<T> type) throws SQLException{
 		try(res){
-			return res.first() ? res.getObject(1, type) : null;
+			return res.next() ? res.getObject(1, type) : null;
 		}
 	}
 
@@ -89,14 +88,13 @@ public class DatabaseUtils{
 	public static int insertAndGetID(PreparedStatement stmt) throws SQLException{
 		stmt.execute();
 		try(ResultSet keys=stmt.getGeneratedKeys()){
-			keys.first();
+			keys.next();
 			return keys.getInt(1);
 		}
 	}
 
 	public static IntStream intResultSetToStream(ResultSet res) throws SQLException{
 		try{
-			res.beforeFirst();
 			return StreamSupport.intStream(new Spliterators.AbstractIntSpliterator(Long.MAX_VALUE, Spliterator.ORDERED){
 				@Override
 				public boolean tryAdvance(IntConsumer action){
