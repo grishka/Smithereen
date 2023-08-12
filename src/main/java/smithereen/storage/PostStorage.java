@@ -497,7 +497,7 @@ public class PostStorage{
 				while(res.next()){
 					Post post=Post.fromResultSet(res);
 					List<Post> posts=map.computeIfAbsent(post.getReplyChainElement(0), (k)->new PaginatedList<>(new ArrayList<>(), 0)).list;
-					posts.add(post);
+					posts.add(0, post);
 				}
 			}
 			stmt=new SQLQueryBuilder(conn)
