@@ -1,18 +1,27 @@
 package smithereen.data;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Objects;
 
+import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.jsonld.JLD;
+import smithereen.jsonld.JLDContext;
 import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
@@ -152,6 +161,70 @@ public class ForeignUser extends User implements ForeignActor{
 		ensureHostMatchesID(friends, "friends");
 		groups=tryParseURL(optString(obj, "groups"));
 		ensureHostMatchesID(groups, "groups");
+
+		JsonObject privacy=optObject(obj, "privacySettings");
+		if(privacy!=null){
+			privacySettings=new HashMap<>();
+			for(UserPrivacySettingKey key:UserPrivacySettingKey.values()){
+				String jKey=key.getActivityPubKey();
+				JsonObject setting=optObject(privacy, jKey.substring(jKey.indexOf(':')+1));
+				if(setting==null)
+					continue;
+				JsonArray allowedTo=optArrayCompact(setting, "allowedTo");
+				if(allowedTo==null)
+					continue;
+				PrivacySetting ps=new PrivacySetting();
+				ps.baseRule=PrivacySetting.Rule.NONE;
+				ps.allowUsers=new HashSet<>();
+				ps.exceptUsers=new HashSet<>();
+				for(int i=0;i<allowedTo.size();i++){
+					String e=allowedTo.get(i).getAsString();
+					if(ActivityPub.AS_PUBLIC.toString().equals(e) || "as:Public".equals(e)){
+						ps.baseRule=PrivacySetting.Rule.EVERYONE;
+						continue;
+					}else if("sm:FriendsOfFriends".equals(e) || (JLD.SMITHEREEN+"sm").equals(e)){
+						ps.baseRule=PrivacySetting.Rule.FRIENDS_OF_FRIENDS;
+						continue;
+					}
+					URI uri;
+					try{
+						uri=new URI(e);
+					}catch(URISyntaxException x){
+						continue;
+					}
+					if(Objects.equals(uri, friends) && ps.baseRule!=PrivacySetting.Rule.FRIENDS_OF_FRIENDS){
+						ps.baseRule=PrivacySetting.Rule.FRIENDS;
+					}else if(Objects.equals(uri, followers)){
+						ps.baseRule=PrivacySetting.Rule.FOLLOWERS;
+					}else if(Objects.equals(uri, following)){
+						ps.baseRule=PrivacySetting.Rule.FOLLOWING;
+					}else if(Config.isLocal(uri)){
+						int id=ObjectLinkResolver.getUserIDFromLocalURL(uri);
+						if(id>0)
+							ps.allowUsers.add(id);
+					}
+				}
+				JsonArray except=optArrayCompact(setting, "except");
+				if(except!=null){
+					for(int i=0;i<except.size();i++){
+						String e=allowedTo.get(i).getAsString();
+						URI uri;
+						try{
+							uri=new URI(e);
+						}catch(URISyntaxException x){
+							continue;
+						}
+						if(Config.isLocal(uri)){
+							int id=ObjectLinkResolver.getUserIDFromLocalURL(uri);
+							if(id>0)
+								ps.exceptUsers.add(id);
+						}
+					}
+				}
+				privacySettings.put(key, ps);
+			}
+		}
+
 		return this;
 	}
 

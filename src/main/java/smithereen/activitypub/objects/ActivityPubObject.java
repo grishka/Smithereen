@@ -43,6 +43,7 @@ import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.UriBuilder;
+import smithereen.util.JsonArrayBuilder;
 import spark.utils.StringUtils;
 
 public abstract class ActivityPubObject{
@@ -358,6 +359,15 @@ public abstract class ActivityPubObject{
 		if(obj.has(key) && obj.get(key).isJsonArray())
 			return obj.getAsJsonArray(key);
 		return null;
+	}
+
+	protected JsonArray optArrayCompact(JsonObject obj, String key){
+		if(!obj.has(key))
+			return null;
+		JsonElement el=obj.get(key);
+		if(el.isJsonArray())
+			return el.getAsJsonArray();
+		return new JsonArrayBuilder().add(el).build();
 	}
 
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){

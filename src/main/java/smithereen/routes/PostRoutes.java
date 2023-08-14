@@ -592,7 +592,7 @@ public class PostRoutes{
 		@Nullable Account self=info!=null ? info.account : null;
 
 		int offset=offset(req);
-		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallToWallPosts(user, otherUser, offset, 20));
+		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallToWallPosts(self!=null ? self.user : null, user, otherUser, offset, 20));
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(wall.list);
 		}

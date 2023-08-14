@@ -211,7 +211,8 @@ public class UserStorage{
 	}
 
 	public static FriendshipStatus getSimpleFriendshipStatus(int selfUserID, int targetUserID) throws SQLException{
-		try(ResultSet res=new SQLQueryBuilder()
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection();
+			ResultSet res=new SQLQueryBuilder(conn)
 				.selectFrom("followings")
 				.columns("follower_id", "followee_id", "mutual", "accepted")
 				.where("(follower_id=? AND followee_id=?) OR (follower_id=? AND followee_id=?)", selfUserID, targetUserID, targetUserID, selfUserID)
@@ -669,7 +670,8 @@ public class UserStorage{
 					.value("flags", user.flags)
 					.value("middle_name", user.middleName)
 					.value("maiden_name", user.maidenName)
-					.value("endpoints", user.serializeEndpoints());
+					.value("endpoints", user.serializeEndpoints())
+					.value("privacy", user.privacySettings!=null ? Utils.gson.toJson(user.privacySettings) : null);
 
 			boolean isNew=existingUserID==-1;
 			if(isNew){

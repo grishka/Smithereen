@@ -11,10 +11,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Map;
 
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
@@ -204,6 +206,59 @@ public class User extends Actor{
 		serializerContext.addAlias("capabilities", "litepub:capabilities");
 		serializerContext.addAlias("supportsFriendRequests", "sm:supportsFriendRequests");
 		serializerContext.addAlias("litepub", JLD.LITEPUB);
+
+		serializerContext.addAlias("privacySettings", "sm:privacySettings");
+		serializerContext.addAlias("allowedTo", "sm:allowedTo");
+		serializerContext.addAlias("except", "sm:except");
+		JsonObject privacy=new JsonObject();
+		for(UserPrivacySettingKey key:UserPrivacySettingKey.values()){
+			String apKey=key.getActivityPubKey();
+			String alias=apKey.substring(apKey.indexOf(':')+1);
+			serializerContext.addAlias(alias, apKey);
+
+			JsonArray allowed=new JsonArray();
+			JsonArray except=new JsonArray();
+
+			if(privacySettings.containsKey(key)){
+				PrivacySetting setting=privacySettings.get(key);
+				switch(setting.baseRule){
+					case EVERYONE -> allowed.add(ActivityPub.AS_PUBLIC.toString());
+					case FRIENDS -> allowed.add(getFriendsURL().toString());
+					case FRIENDS_OF_FRIENDS -> {
+						allowed.add(getFriendsURL().toString());
+						allowed.add("sm:FriendsOfFriends");
+					}
+				}
+				if(!setting.allowUsers.isEmpty() || !setting.exceptUsers.isEmpty()){
+					String domain=serializerContext.getRequesterDomain();
+					if(domain!=null){
+						HashSet<Integer> needUsers=new HashSet<>();
+						needUsers.addAll(setting.allowUsers);
+						needUsers.addAll(setting.exceptUsers);
+						Map<Integer, User> users=serializerContext.appContext.getUsersController().getUsers(needUsers);
+						for(int id:setting.allowUsers){
+							User user=users.get(id);
+							if(user!=null && user.domain.equalsIgnoreCase(domain))
+								allowed.add(user.activityPubID.toString());
+						}
+						for(int id:setting.exceptUsers){
+							User user=users.get(id);
+							if(user!=null && user.domain.equalsIgnoreCase(domain))
+								except.add(user.activityPubID.toString());
+						}
+					}
+				}
+			}else{
+				allowed.add(ActivityPub.AS_PUBLIC.toString());
+			}
+
+			JsonObject setting=new JsonObject();
+			setting.add("allowedTo", allowed);
+			if(!except.isEmpty())
+				setting.add("except", except);
+			privacy.add(alias, setting);
+		}
+		obj.add("privacySettings", privacy);
 
 		return obj;
 	}

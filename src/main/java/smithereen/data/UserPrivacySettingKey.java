@@ -39,4 +39,14 @@ public enum UserPrivacySettingKey{
 			default -> false;
 		};
 	}
+
+	public String getActivityPubKey(){
+		return switch(this){
+			case WALL_POSTING -> "sm:wallPosting";
+			case WALL_OTHERS_POSTS -> "sm:wallPostVisibility";
+			case WALL_COMMENTING -> "sm:commenting";
+			case GROUP_INVITE -> "sm:groupInvitations";
+			case PRIVATE_MESSAGES -> "sm:directMessages";
+		};
+	}
 }

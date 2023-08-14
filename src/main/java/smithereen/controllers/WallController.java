@@ -460,8 +460,10 @@ public class WallController{
 	 * @param count Maximum number of posts to return
 	 * @return A reverse-chronologically sorted paginated list of wall posts
 	 */
-	public PaginatedList<Post> getWallToWallPosts(@NotNull User user, @NotNull User otherUser, int offset, int count){
+	public PaginatedList<Post> getWallToWallPosts(@Nullable User self, @NotNull User user, @NotNull User otherUser, int offset, int count){
 		try{
+			context.getPrivacyController().enforceUserPrivacy(self, user, UserPrivacySettingKey.WALL_OTHERS_POSTS);
+			context.getPrivacyController().enforceUserPrivacy(self, otherUser, UserPrivacySettingKey.WALL_OTHERS_POSTS);
 			int[] postCount={0};
 			List<Post> wall=PostStorage.getWallToWall(user.id, otherUser.id, offset, count, postCount);
 			return new PaginatedList<>(wall, postCount[0], offset, count);

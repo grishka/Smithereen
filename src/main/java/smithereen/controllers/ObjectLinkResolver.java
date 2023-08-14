@@ -331,8 +331,13 @@ public class ObjectLinkResolver{
 		throw new ObjectNotFoundException();
 	}
 
-	private void collectDependentObjectIDs(Object obj, Set<URI> ids){
-
+	public static int getUserIDFromLocalURL(URI url){
+		if(!Config.isLocal(url))
+			return 0;
+		Matcher matcher=USERS.matcher(url.getPath());
+		if(!matcher.find())
+			return 0;
+		return Integer.parseInt(matcher.group(1));
 	}
 
 	private record ActorToken(JsonObject token, Instant validUntil){
