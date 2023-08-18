@@ -1,7 +1,7 @@
 package smithereen.templates;
 
-import com.mitchellbosecke.pebble.error.PebbleException;
-import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import io.pebbletemplates.pebble.error.PebbleException;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

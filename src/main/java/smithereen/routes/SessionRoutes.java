@@ -1,6 +1,6 @@
 package smithereen.routes;
 
-import com.mitchellbosecke.pebble.extension.escaper.SafeString;
+import io.pebbletemplates.pebble.extension.escaper.SafeString;
 
 import java.sql.SQLException;
 import java.util.Base64;
