@@ -753,7 +753,8 @@ function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 			});
 		}, 500);
 	}else{
-		if(btn.customData.popoverTimeout){
+		// Some versions of Firefox can fire mouseLeave without a corresponding mouseEnter on page refresh
+		if(btn.customData && btn.customData.popoverTimeout){
 			clearTimeout(btn.customData.popoverTimeout);
 			delete btn.customData.popoverTimeout;
 		}else if(popover){
