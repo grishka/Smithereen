@@ -1,0 +1,57 @@
+{% extends "page" %}
+{% block content %}
+{% if recentlySentMessage is not null %}
+<div class="settingsMessage">
+	{%- if (recentlySentMessage.to | length)>1 %}
+	{{- L('mail_message_sent_muitl', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender, 'moreCount': (recentlySentMessage.to | length)-1}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.encodedID}"} }) }}
+	{%- else %}
+	{{- L('mail_message_sent', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.encodedID}"} }) }}
+	{%- endif %}
+</div>
+{% endif %}
+{% include "mail_tabbar" %}
+<div class="summaryWrap">
+	<div class="summary">
+		{%- if tab=="inbox" %}
+		{{- L('mail_inbox_summary', {'count': totalItems}) }}
+		{%- elseif tab=="outbox" %}
+		{{- L('mail_outbox_summary', {'count': totalItems}) }}
+		{%- endif %}
+	</div>
+	{% include "pagination" %}
+</div>
+<div>
+{% for msg in items %}
+<div class="mailMessageRow{{ msg.unread ? ' unread' : '' }}" id="msgRow{{ msg.encodedID }}">
+	{%- if tab=="outbox" %}
+	{%- set user=users[msg.firstRecipientID] %}
+	{%- else %}
+	{%- set user=users[msg.senderID] %}
+	{%- endif %}
+	<a href="{{ user.profileURL }}" class="avaW">{{ user | pictureForAvatar('s') }}</a>
+	<a href="/my/mail/messages/{{ msg.encodedID }}" class="msgInfo">
+		<div class="name ellipsize">{{ user.fullName }}{% if msg.senderID==currentUser.id and (msg.to | length)>1 %} +{{ (msg.to | length)-1 }}{% endif %}</div>
+		<div class="time">{{ LD(msg.createdAt) }}</div>
+	</a>
+	<a href="/my/mail/messages/{{ msg.encodedID }}" class="msgContent">
+		{% if msg.subject is not empty %}<div class="subject ellipsize">{{ msg.subject }}</div>{% endif %}
+		<div class="text">{{ msg.textPreview }}</div>
+	</a>
+	<ul class="actionList">
+		<li><a href="/my/mail/messages/{{ msg.encodedID }}/delete?csrf={{ csrf }}" data-ajax class="ajaxReplaceWithLoader">{{ L('delete') }}</a></li>
+	</ul>
+</div>
+{% else %}
+<div class="singleColumn">
+	<div class="emptyState">
+		{%- if tab=="inbox" %}
+		{{- L('mail_inbox_empty') }}
+		{%- elseif tab=="outbox" %}
+		{{- L('mail_outbox_empty') }}
+		{%- endif %}
+	</div>
+</div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}

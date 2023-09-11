@@ -41,6 +41,12 @@ public class DatabaseUtils{
 		}
 	}
 
+	public static long oneFieldToLong(final ResultSet res) throws SQLException{
+		try(res){
+			return res.next() ? res.getLong(1) : -1;
+		}
+	}
+
 	public static <T> T oneFieldToObject(final ResultSet res, Class<T> type) throws SQLException{
 		try(res){
 			return res.next() ? res.getObject(1, type) : null;

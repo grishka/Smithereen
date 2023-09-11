@@ -130,5 +130,6 @@
   "comments_show_X_more_replies": "Show {count, plural, one {# more reply} other {# more replies}}",
   "gender_other": "other",
   "remote_object_loading_error": "Failed to load the remote object.",
-  "err_access_user_content": "This user has chosen to hide this page."
+  "err_access_user_content": "This user has chosen to hide this page.",
+  "menu_mail": "My Messages"
 }

@@ -21,6 +21,7 @@ import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Create;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.MailMessage;
 import smithereen.data.OwnerAndAuthor;
 import smithereen.data.PollOption;
 import smithereen.data.Post;
@@ -134,26 +135,30 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				}
 			}
 		}
-		if(!isPublic)
-			throw new BadRequestException("Only public posts are supported");
-
-		if(actor.activityPubID.equals(owner.activityPubID) && post.inReplyTo==null){
-			URI followers=actor.getFollowersURL();
-			boolean addressesAnyFollowers=false;
-			for(LinkOrObject l:post.to){
+		URI followers=actor.getFollowersURL();
+		boolean addressesAnyFollowers=false;
+		for(LinkOrObject l:post.to){
+			if(followers.equals(l.link)){
+				addressesAnyFollowers=true;
+				break;
+			}
+		}
+		if(!addressesAnyFollowers && post.cc!=null){
+			for(LinkOrObject l:post.cc){
 				if(followers.equals(l.link)){
 					addressesAnyFollowers=true;
 					break;
 				}
 			}
-			if(!addressesAnyFollowers){
-				for(LinkOrObject l:post.cc){
-					if(followers.equals(l.link)){
-						addressesAnyFollowers=true;
-						break;
-					}
-				}
-			}
+		}
+		if(!isPublic){
+			if(addressesAnyFollowers)
+				throw new BadRequestException("Followers-only posts are not supported");
+			handleDirectMessage(context, actor, post);
+			return;
+		}
+
+		if(actor.activityPubID.equals(owner.activityPubID) && post.inReplyTo==null){
 			if(!addressesAnyFollowers){
 				LOG.warn("Dropping this post {} because it's public but doesn't address any followers", post.activityPubID);
 				return;
@@ -228,5 +233,12 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 		}
 		if(owner instanceof Group group)
 			Utils.ensureUserNotBlocked(actor, group);
+	}
+
+	private void handleDirectMessage(ActivityHandlerContext context, ForeignUser actor, NoteOrQuestion post){
+		if(post.attributedTo==null)
+			post.attributedTo=actor.activityPubID;
+		MailMessage msg=post.asNativeMessage(context.appContext);
+		context.appContext.getMailController().putForeignMessage(msg);
 	}
 }

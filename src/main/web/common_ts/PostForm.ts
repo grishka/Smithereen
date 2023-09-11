@@ -53,13 +53,18 @@ class PostForm{
 	private uploadQueue:UploadingAttachment[]=[];
 	private currentUploadingAttachment:UploadingAttachment;
 	private showingAttachCountWarning:boolean=false;
+	private isCollapsible:boolean=true;
+	private photoUploadURL:string;
+	private additionalRequiredFields:HTMLInputElement[]=[];
+	private forceOverrideDirty:boolean=false;
+	private allowedAttachmentTypes:string[]=null;
 
 	public constructor(el:HTMLElement){
 		this.id=el.dataset.uniqueId;
 		this.editing=!!el.dataset.editing;
 		this.root=el;
 		this.input=ge("postFormText_"+this.id) as HTMLTextAreaElement;
-		this.form=el.getElementsByTagName("form")[0];
+		this.form=ge("wallPostFormForm_"+this.id);
 		this.dragOverlay=el.querySelector(".dropOverlay");
 		this.attachContainer=ge("postFormAttachments_"+this.id);
 		this.attachContainer2=ge("postFormAttachments2_"+this.id);
@@ -72,9 +77,17 @@ class PostForm{
 		this.replyName=ge("replyingName_"+this.id);
 		this.replyCancel=ge("cancelReply_"+this.id);
 		this.submitButton=ge("postFormSubmit_"+this.id);
+		if(el.classList.contains("nonCollapsible"))
+			this.isCollapsible=false;
+		this.photoUploadURL=el.dataset.photoUploadUrl || "/system/upload/postPhoto";
 		if(!this.form)
 			return;
 
+		if(this.form.dataset && this.form.dataset.requiredFields){
+			for(var fid of this.form.dataset.requiredFields.split(",")){
+				this.additionalRequiredFields.push(ge(fid) as HTMLInputElement);
+			}
+		}
 		this.form.addEventListener("submit", this.onFormSubmit.bind(this), false);
 		this.input.addEventListener("keydown", this.onInputKeyDown.bind(this), false);
 		this.input.addEventListener("paste", this.onInputPaste.bind(this), false);
@@ -167,6 +180,9 @@ class PostForm{
 			}
 			this.pollTimeSelect=this.pollLayout.qs("select[name=pollTimeLimitValue]");
 			this.pollLayout.qs("input[name=pollTimeLimit]").onchange=this.pollTimeLimitOnChange.bind(this);
+		}
+		if(this.form.dataset.allowedAttachments){
+			this.allowedAttachmentTypes=this.form.dataset.allowedAttachments.split(",");
 		}
 	}
 
@@ -262,7 +278,7 @@ class PostForm{
 		var formData=new FormData();
 		formData.append("file", f.file, f.fileName);
 		var xhr=new XMLHttpRequest();
-		var url="/system/upload/postPhoto?_ajax=1&csrf="+userConfig.csrf;
+		var url=this.photoUploadURL+"?_ajax=1&csrf="+userConfig.csrf;
 		for(var key in f.extraParams){
 			url+="&"+key+"="+encodeURIComponent(f.extraParams[key]);
 		}
@@ -339,6 +355,10 @@ class PostForm{
 				return;
 			}
 		}
+		for(var fld of this.additionalRequiredFields){
+			if(!fld.value.length)
+				return;
+		}
 		ajaxSubmitForm(this.form, (resp)=>{
 			if(resp===false)
 				return;
@@ -350,7 +370,10 @@ class PostForm{
 			if(this.isMobileComment){
 				this.resetReply();
 			}
-		}, this.submitButton);
+			this.forceOverrideDirty=false;
+		}, this.submitButton, {onResponseReceived: (resp:any)=>{
+			this.forceOverrideDirty=true;
+		}});
 	}
 
 	private resetReply(){
@@ -580,21 +603,29 @@ class PostForm{
 		}
 	}
 
+	private canAddAttachment(type:string):boolean{
+		return !this.allowedAttachmentTypes || this.allowedAttachmentTypes.indexOf(type)!=-1;
+	}
+
 	private showMobileAttachMenu(){
 		var opts:any[]=[];
-		opts.push({label: lang("attach_menu_photo"), onclick: ()=>{
-			this.fileField.click();
-		}});
-		if(!this.pollLayout && !this.isMobileComment){
+		if(this.canAddAttachment("photo")){
+			opts.push({label: lang("attach_menu_photo"), onclick: ()=>{
+				this.fileField.click();
+			}});
+		}
+		if(this.canAddAttachment("poll") && !this.pollLayout && !this.isMobileComment){
 			opts.push({label: lang("attach_menu_poll"), onclick: this.showPollLayout.bind(this)});
 		}
-		if(!this.cwLayout){
+		if(this.canAddAttachment("cw") && !this.cwLayout){
 			opts.push({label: lang("attach_menu_cw"), onclick: this.showCWLayout.bind(this)});
 		}
 		new MobileOptionsBox(opts).show();
 	}
 
 	public isDirty():boolean{
+		if(this.forceOverrideDirty)
+			return false;
 		return this.input.value.length>0 || this.attachmentIDs.length>0 || this.cwLayout!=null || this.pollLayout!=null;
 	}
 
@@ -603,7 +634,7 @@ class PostForm{
 	}
 
 	private setCollapsed(collapsed:boolean){
-		if(this.isMobileComment)
+		if(this.isMobileComment || !this.isCollapsible)
 			return;
 		this.collapsed=collapsed;
 		if(collapsed)

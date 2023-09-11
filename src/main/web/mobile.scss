@@ -53,13 +53,7 @@ span.wideOnly{
 	text-overflow: ellipsis;
 	overflow-x: hidden;
 	white-space: nowrap;
-	box-shadow:
-		0 0.2px 0.2px rgba(0, 0, 0, 0.02),
-		0 0.4px 0.4px rgba(0, 0, 0, 0.028),
-		0 0.8px 0.8px rgba(0, 0, 0, 0.035),
-		0 1.3px 1.3px rgba(0, 0, 0, 0.042),
-		0 2.5px 2.5px rgba(0, 0, 0, 0.05),
-		0 6px 6px rgba(0, 0, 0, 0.07);
+	@include medium-shadow;
 	.menuButton{
 		width: 56px;
 		float: left;
@@ -410,7 +404,7 @@ select{
 }
 
 .wallPostForm{
-	textarea{
+	textarea:not(.keepBorder){
 		border: none;
 	}
 	.attachment{
@@ -1511,5 +1505,188 @@ input.searchField{
 	min-height: 0;
 	.row input{
 		margin: 0 8px 0 12px;
+	}
+}
+
+.mailMessageRow{
+	display: flex;
+	padding: 8px 16px;
+	width: 100%;
+	>*{
+		min-width: 0;
+	}
+	.msgContent{
+		flex: 1;
+		margin-left: 8px;
+	}
+	.name, .subject{
+		font-weight: $mediumWeight;
+		margin-bottom: 4px;
+	}
+	.time{
+		float: right;
+		color: $grayText;
+	}
+	.subject, .text{
+		color: $text;
+	}
+	&.unread{
+		background: #fef8ee;
+	}
+}
+
+#mailMessagesList{
+	padding: 8px 0;
+}
+
+.mailMessageView{
+	.messageViewHeader{
+		display: flex;
+		>*{
+			min-width: 0;
+		}
+		.nameAndTime{
+			flex: 1;
+			margin-left: 8px;
+		}
+		.name{
+			font-weight: $mediumWeight;
+		}
+		.time{
+			color: $grayText;
+		}
+	}
+	.messageViewFields{
+		margin-top: 8px;
+		display: grid;
+		grid-template-columns: auto 1fr;
+		grid-gap: 4px;
+		.label{
+			color: $grayText;
+		}
+	}
+	#msgActions{
+		margin-top: 12px;
+	}
+}
+
+.tokenInput{
+	border: solid 1px $textAreaBorder;
+	display: flex;
+	flex-wrap: wrap;
+	padding: 0 0 8px 0;
+	position: relative;
+	border-radius: 4px;
+	input{
+		border: none;
+		padding: 0;
+		min-height: 16px;
+		padding-left: 2px;
+		flex-grow: 1;
+		margin: 8px 0 0 8px;
+	}
+	.token{
+		height: 16px;
+		line-height: 16px;
+		padding: 0 18px 0 3px;
+		background: $wallPostSeparator;
+		margin: 8px 0 0 8px;
+		position: relative;
+		max-width: calc(100% - 16px);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		.remove{
+			display: block;
+			width: 16px;
+			height: 16px;
+			background: svg-load('img/tag_remove.svg') no-repeat center;
+			position: absolute;
+			right: 2px;
+			top: 0;
+		}
+		&.selected{
+			background: $normalLink;
+			color: $textOnAccent;
+		}
+	}
+	.completionsWW{
+		position: absolute;
+		bottom: 0;
+		width: 100%;
+		z-index: 10;
+	}
+	.completionsW{
+		position: relative;
+		width: 100%;
+	}
+	.completions{
+		position: absolute;
+		top: 0;
+		left: -1px;
+		right: -1px;
+		overflow-y: auto;
+		max-height: 250px;
+		opacity: 0.95;
+		background: #FFF;
+		@include popup-shadow;
+		.completion{
+			color: #000000;
+			padding: 4px 0 3px 10px;
+			list-style-type: none;
+			border: 1px solid #CCC;
+			border-top: solid 1px transparent;
+			cursor: pointer;
+			margin: -1px 0 0 0;
+			overflow: hidden;
+			text-align: left;
+			line-height: 1.18em;
+			min-height: 22px;
+			position: relative;
+			&:first-child{
+				margin-top: 0;
+			}
+			&:last-child{
+				border-bottom: solid 1px transparent;
+			}
+			&.selected{
+				background: #6c8300;
+				color: #FFFFFF;
+				border-color: #2e6200;
+				z-index: 1;
+			}
+		}
+	}
+	.bordersOverlay{
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		pointer-events: none;
+		margin: 0 -1px;
+		border-top: solid 1px #ccc;
+		border-bottom: solid 1px #ccc;
+		opacity: 0.95;
+		&.firstSelected{
+			border-top: solid 1px #2e6200;
+		}
+		&.lastSelected{
+			border-bottom: solid 1px #2e6200;
+		}
+	}
+}
+
+.fab{
+	position: fixed;
+	bottom: 16px;
+	right: 16px;
+	display: block;
+	width: 52px;
+	height: 52px;
+	background: $normalLink no-repeat center;
+	border-radius: 50%;
+	@include medium-shadow;
+	&.iconPencil{
+		background-image: svg-load('img/material/ic_edit.svg', fill: $textOnAccent);
 	}
 }

@@ -31,6 +31,7 @@ import smithereen.activitypub.objects.ServiceActor;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.MailMessage;
 import smithereen.data.Post;
 import smithereen.data.UriBuilder;
 import smithereen.data.User;
@@ -38,6 +39,7 @@ import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.MailStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 
@@ -48,6 +50,7 @@ public class ObjectLinkResolver{
 	private static final Pattern POSTS=Pattern.compile("^/posts/(\\d+)$");
 	private static final Pattern USERS=Pattern.compile("^/users/(\\d+)$");
 	private static final Pattern GROUPS=Pattern.compile("^/groups/(\\d+)$");
+	private static final Pattern MESSAGES=Pattern.compile("^/activitypub/objects/messages/([a-zA-Z0-9_-]+)$");
 
 	private static final Logger LOG=LoggerFactory.getLogger(ObjectLinkResolver.class);
 
@@ -190,6 +193,11 @@ public class ObjectLinkResolver{
 						if(post!=null)
 							return ensureTypeAndCast(post, expectedType);
 					}
+					if(expectedType.isAssignableFrom(MailMessage.class)){
+						List<MailMessage> msgs=MailStorage.getMessages(link);
+						if(!msgs.isEmpty())
+							return ensureTypeAndCast(msgs.get(0), expectedType);
+					}
 				}
 				if(allowFetching){
 					try{
@@ -227,6 +235,14 @@ public class ObjectLinkResolver{
 			matcher=GROUPS.matcher(link.getPath());
 			if(matcher.find()){
 				return ensureTypeAndCast(getGroup(matcher.group(1)), expectedType);
+			}
+
+			matcher=MESSAGES.matcher(link.getPath());
+			if(matcher.find()){
+				long id=Utils.decodeLong(matcher.group(1));
+				List<MailMessage> msgs=MailStorage.getMessages(Set.of(id));
+				if(!msgs.isEmpty())
+					return ensureTypeAndCast(msgs.get(0), expectedType);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -276,8 +292,12 @@ public class ObjectLinkResolver{
 	public <T extends ActivityPubObject> T convertToActivityPubObject(Object o, Class<T> type){
 		if(o instanceof ActivityPubObject apo)
 			return ensureTypeAndCast(apo, type);
-		if(o instanceof Post post && type.isAssignableFrom(NoteOrQuestion.class))
-			return type.cast(NoteOrQuestion.fromNativePost(post, context));
+		if(type.isAssignableFrom(NoteOrQuestion.class)){
+			if(o instanceof Post post)
+				return type.cast(NoteOrQuestion.fromNativePost(post, context));
+			if(o instanceof MailMessage message)
+				return type.cast(NoteOrQuestion.fromNativeMessage(message, context));
+		}
 		throw new IllegalStateException("Native type "+o.getClass().getName()+" does not have an ActivityPub representation");
 	}
 

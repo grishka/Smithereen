@@ -12,8 +12,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -21,10 +23,12 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
+import smithereen.data.MailMessage;
 import smithereen.data.Post;
 import smithereen.data.UriBuilder;
 import smithereen.data.User;
 import smithereen.exceptions.FederationException;
+import smithereen.exceptions.ObjectNotFoundException;
 import spark.utils.StringUtils;
 
 public abstract sealed class NoteOrQuestion extends ActivityPubObject permits Note, Question, NoteTombstone{
@@ -208,6 +212,78 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		return noq;
 	}
 
+	public static Note fromNativeMessage(MailMessage msg, ApplicationContext context){
+		User sender=context.getUsersController().getUserOrThrow(msg.senderID);
+		HashSet<Integer> needUsers=new HashSet<>();
+		needUsers.addAll(msg.to);
+		needUsers.addAll(msg.cc);
+		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
+
+		Note n=new Note();
+		n.activityPubID=msg.getActivityPubID();
+		n.content=msg.text;
+		n.name=msg.subject;
+		n.attachment=msg.attachments;
+		n.published=msg.createdAt;
+		n.updated=msg.updatedAt;
+		n.attributedTo=sender.activityPubID;
+		n.to=msg.to.stream().map(users::get).filter(Objects::nonNull).map(u->new LinkOrObject(u.activityPubID)).toList();
+		n.cc=msg.cc.stream().map(users::get).filter(Objects::nonNull).map(u->new LinkOrObject(u.activityPubID)).toList();
+		n.tag=users.values().stream().map(u->{
+			Mention m=new Mention();
+			m.href=u.activityPubID;
+			return (ActivityPubObject)m;
+		}).toList();
+		if(msg.replyInfo!=null){
+			try{
+				n.inReplyTo=switch(msg.replyInfo.type()){
+					case POST -> context.getWallController().getPostOrThrow((int) msg.replyInfo.id()).getActivityPubID();
+					case MESSAGE -> context.getMailController().getMessage(sender, msg.replyInfo.id(), false).getActivityPubID();
+				};
+			}catch(ObjectNotFoundException ignore){}
+		}
+		return n;
+	}
+
+	public MailMessage asNativeMessage(ApplicationContext context){
+		MailMessage msg=new MailMessage();
+
+		if(attributedTo==null)
+			throw new FederationException("attributedTo is required");
+		ensureHostMatchesID(attributedTo, "attributedTo");
+
+		msg.activityPubID=activityPubID;
+		User sender=context.getObjectLinkResolver().resolve(attributedTo, User.class, true, true, false);
+		msg.senderID=sender.id;
+		msg.text=Utils.sanitizeHTML(content);
+		msg.subject=StringUtils.isNotEmpty(name) ? name : summary;
+		msg.attachments=attachment;
+		msg.createdAt=published!=null ? published : Instant.now();
+		msg.updatedAt=updated;
+		msg.inReplyTo=inReplyTo;
+
+		msg.to=new HashSet<>();
+		for(LinkOrObject id:to){
+			try{
+				User user=context.getObjectLinkResolver().resolve(id.link, User.class, true, true, false);
+				msg.to.add(user.id);
+			}catch(ObjectNotFoundException ignore){}
+		}
+		if(cc!=null){
+			msg.cc=new HashSet<>();
+			for(LinkOrObject id:cc){
+				try{
+					User user=context.getObjectLinkResolver().resolve(id.link, User.class, true, true, false);
+					msg.cc.add(user.id);
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}else{
+			msg.cc=Set.of();
+		}
+
+		return msg;
+	}
+
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
@@ -240,7 +316,8 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
 		super.asActivityPubObject(obj, serializerContext);
 
-		obj.add("replies", replies.serialize(serializerContext));
+		if(replies!=null)
+			obj.add("replies", replies.serialize(serializerContext));
 		if(sensitive!=null)
 			obj.addProperty("sensitive", sensitive);
 		serializerContext.addAlias("sensitive", "as:sensitive");

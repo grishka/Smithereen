@@ -3,6 +3,7 @@ package smithereen;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.GroupsController;
+import smithereen.controllers.MailController;
 import smithereen.controllers.ModerationController;
 import smithereen.controllers.NewsfeedController;
 import smithereen.controllers.NotificationsController;
@@ -26,6 +27,7 @@ public class ApplicationContext{
 	private final NotificationsController notificationsController;
 	private final ModerationController moderationController;
 	private final StatsController statsController;
+	private final MailController mailController;
 
 	public ApplicationContext(){
 		wallController=new WallController(this);
@@ -40,6 +42,7 @@ public class ApplicationContext{
 		notificationsController=new NotificationsController(this);
 		moderationController=new ModerationController(this);
 		statsController=new StatsController(this);
+		mailController=new MailController(this);
 	}
 
 	public WallController getWallController(){
@@ -88,5 +91,9 @@ public class ApplicationContext{
 
 	public StatsController getStatsController(){
 		return statsController;
+	}
+
+	public MailController getMailController(){
+		return mailController;
 	}
 }

@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.controllers.MailController;
 import smithereen.data.Account;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
@@ -38,6 +39,7 @@ import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
 import smithereen.routes.FriendsRoutes;
 import smithereen.routes.GroupsRoutes;
+import smithereen.routes.MailRoutes;
 import smithereen.routes.NotificationsRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
@@ -59,6 +61,7 @@ import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
 import smithereen.util.TopLevelDomainList;
+import spark.Filter;
 import spark.Request;
 import spark.Response;
 import spark.Service;
@@ -291,6 +294,7 @@ public class SmithereenApplication{
 			getWithCSRF("/deleteDraftAttachment", SystemRoutes::deleteDraftAttachment);
 			path("/upload", ()->{
 				postWithCSRF("/postPhoto", SystemRoutes::uploadPostPhoto);
+				postWithCSRF("/messagePhoto", SystemRoutes::uploadMessagePhoto);
 			});
 			get("/about", SystemRoutes::aboutServer);
 			getLoggedIn("/qsearch", SystemRoutes::quickSearch);
@@ -477,6 +481,26 @@ public class SmithereenApplication{
 				getLoggedIn("/invites", GroupsRoutes::eventInvitations);
 			});
 			getLoggedIn("/friends/ajaxFriendsForPrivacyBoxes", FriendsRoutes::ajaxFriendsForPrivacyBoxes);
+			path("/mail", ()->{
+				getLoggedIn("", MailRoutes::inbox);
+				getLoggedIn("/outbox", MailRoutes::outbox);
+				getLoggedIn("/compose", MailRoutes::compose);
+				postWithCSRF("/send", MailRoutes::sendMessage);
+				path("/messages/:id", ()->{
+					Filter idParserFilter=(req, resp)->{
+						long id=Utils.decodeLong(req.params(":id"));
+						if(id==0)
+							throw new ObjectNotFoundException();
+						req.attribute("id", id);
+					};
+					before("", idParserFilter);
+					before("/*", idParserFilter);
+					getLoggedIn("", MailRoutes::viewMessage);
+					getWithCSRF("/delete", MailRoutes::delete);
+					getWithCSRF("/deleteForEveryone", MailRoutes::deleteForEveryone);
+					getWithCSRF("/restore", MailRoutes::restore);
+				});
+			});
 		});
 
 		path("/api/v1", ()->{
@@ -613,6 +637,7 @@ public class SmithereenApplication{
 			TopLevelDomainList.updateIfNeeded();
 		});
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
+		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
 			LOG.info("Stopping Spark");

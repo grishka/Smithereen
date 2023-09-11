@@ -9,6 +9,7 @@ public class UserNotifications{
 	private int newNotifications=0;
 	private int newGroupInvitations;
 	private int newEventInvitations;
+	private int unreadMailCount;
 
 	public synchronized int getNewFriendRequestCount(){
 		return newFriendRequests;
@@ -44,5 +45,13 @@ public class UserNotifications{
 
 	public synchronized int getNewEventInvitationsCount(){
 		return newEventInvitations;
+	}
+
+	public synchronized void incUnreadMailCount(int amount){
+		unreadMailCount+=amount;
+	}
+
+	public synchronized int getUnreadMailCount(){
+		return unreadMailCount;
 	}
 }

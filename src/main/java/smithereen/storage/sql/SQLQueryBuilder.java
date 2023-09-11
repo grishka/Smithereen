@@ -215,6 +215,16 @@ public class SQLQueryBuilder{
 		}
 	}
 
+	public long executeAndGetIDLong() throws SQLException{
+		try(PreparedStatement stmt=createStatementInternal(Statement.RETURN_GENERATED_KEYS)){
+			stmt.execute();
+			long id=DatabaseUtils.oneFieldToLong(stmt.getGeneratedKeys());
+			if(needCloseConnection)
+				conn.close();
+			return id;
+		}
+	}
+
 	public ResultSet execute() throws SQLException{
 		if(needCloseConnection)
 			throw new IllegalStateException("You need to pass an existing connection to use this");

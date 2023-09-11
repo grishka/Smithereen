@@ -36,6 +36,7 @@ import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Join;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Offer;
+import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
@@ -591,6 +592,7 @@ public abstract class ActivityPubObject{
 			case "Invite" -> new Invite();
 			case "Remove" -> new Remove();
 			case "Flag" -> new Flag();
+			case "Read" -> new Read();
 
 			default -> {
 				LOG.debug("Unknown object type {}", type);

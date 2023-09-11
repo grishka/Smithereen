@@ -1,0 +1,43 @@
+{% extends "page" %}
+{% block content %}
+{% if recentlySentMessage is not null %}
+<div class="settingsMessage">
+	{%- if (recentlySentMessage.to | length)>1 %}
+	{{- L('mail_message_sent_muitl', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender, 'moreCount': (recentlySentMessage.to | length)-1}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.encodedID}"} }) }}
+	{%- else %}
+	{{- L('mail_message_sent', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.encodedID}"} }) }}
+	{%- endif %}
+</div>
+{% endif %}
+{% include "mail_tabbar" %}
+<a href="/my/mail/compose" class="fab iconPencil" title="{{ L('mail_compose') }}"></a>
+<div id="mailMessagesList">
+{% for msg in items %}
+<a href="/my/mail/messages/{{ msg.encodedID }}" class="mailMessageRow{{ msg.unread ? ' unread' : '' }}" id="msgRow{{ msg.encodedID }}">
+	{%- if tab=="outbox" %}
+	{%- set user=users[msg.firstRecipientID] %}
+	{%- else %}
+	{%- set user=users[msg.senderID] %}
+	{%- endif %}
+	{{ user | pictureForAvatar('s') }}
+	<div class="msgContent">
+		<div class="time">{{ LD(msg.createdAt) }}</div>
+		<div class="name ellipsize">{{ user.fullName }}{% if msg.senderID==currentUser.id and (msg.to | length)>1 %} +{{ (msg.to | length)-1 }}{% endif %}</div>
+		{% if msg.subject is not empty %}<div class="subject ellipsize">{{ msg.subject }}</div>{% endif %}
+		<div class="text">{{ msg.textPreview }}</div>
+	</div>
+</a>
+{% else %}
+<div class="singleColumn">
+	<div class="emptyState">
+		{%- if tab=="inbox" %}
+		{{- L('mail_inbox_empty') }}
+		{%- elseif tab=="outbox" %}
+		{{- L('mail_outbox_empty') }}
+		{%- endif %}
+	</div>
+</div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}

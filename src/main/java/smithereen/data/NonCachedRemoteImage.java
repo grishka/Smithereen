@@ -2,6 +2,8 @@ package smithereen.data;
 
 import java.net.URI;
 
+import smithereen.Utils;
+
 public class NonCachedRemoteImage implements SizedImage{
 
 	private final Args args;
@@ -72,6 +74,24 @@ public class NonCachedRemoteImage implements SizedImage{
 		protected void addToUriBuilder(UriBuilder builder){
 			builder.queryParam("type", "post_photo");
 			builder.queryParam("post_id", postID+"");
+			builder.queryParam("index", index+"");
+		}
+	}
+
+	public static class MessagePhotoArgs extends Args{
+
+		private final int index;
+		private final long messageID;
+
+		public MessagePhotoArgs(long messageID, int index){
+			this.messageID=messageID;
+			this.index=index;
+		}
+
+		@Override
+		protected void addToUriBuilder(UriBuilder builder){
+			builder.queryParam("type", "message_photo");
+			builder.queryParam("msg_id", Utils.encodeLong(messageID));
 			builder.queryParam("index", index+"");
 		}
 	}

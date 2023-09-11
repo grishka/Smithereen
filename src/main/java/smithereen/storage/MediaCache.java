@@ -246,7 +246,7 @@ public class MediaCache{
 		}
 	}
 
-	public static ActivityPubObject getAndDeleteDraftAttachment(@NotNull String id, int ownerID) throws SQLException{
+	public static ActivityPubObject getAndDeleteDraftAttachment(@NotNull String id, int ownerID, String dir) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String json=new SQLQueryBuilder(conn)
 					.selectFrom("draft_attachments")
@@ -257,6 +257,8 @@ public class MediaCache{
 				return null;
 
 			ActivityPubObject obj=ActivityPubObject.parse(JsonParser.parseString(json).getAsJsonObject(), ParserContext.LOCAL);
+			if(obj instanceof LocalImage li && !dir.equals(li.path))
+				return null;
 
 			new SQLQueryBuilder(conn)
 					.deleteFrom("draft_attachments")

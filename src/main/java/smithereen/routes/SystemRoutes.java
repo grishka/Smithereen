@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -43,10 +44,13 @@ import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.data.Account;
+import smithereen.data.ActivityPubRepresentable;
+import smithereen.data.AttachmentHostContentObject;
 import smithereen.data.CachedRemoteImage;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.OwnedContentObject;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
 import smithereen.data.Post;
@@ -58,6 +62,7 @@ import smithereen.data.UserInteractions;
 import smithereen.data.WebDeltaResponse;
 import smithereen.data.attachments.GraffitiAttachment;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.lang.Lang;
@@ -82,6 +87,25 @@ import static smithereen.Utils.*;
 public class SystemRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(SystemRoutes.class);
 	private static final NamedMutexCollection downloadMutex=new NamedMutexCollection();
+
+	private static ActivityPubObject verifyObjectAndGetAttachment(int index, String type, Object obj){
+		ActivityPubRepresentable apr=(ActivityPubRepresentable) obj;
+		if(obj==null || Config.isLocal(apr.getActivityPubID())){
+			LOG.warn("downloading {}: post not found or is local", type);
+			return null;
+		}
+		List<ActivityPubObject> attachments=((AttachmentHostContentObject)obj).getAttachments();
+		if(index>=attachments.size() || index<0){
+			LOG.warn("downloading {}: index {} out of bounds {}", type, index, attachments.size());
+			return null;
+		}
+		ActivityPubObject att=attachments.get(index);
+		if(!(att instanceof Document)){
+			LOG.warn("downloading {}: attachment {} is not a Document", type, att.getClass().getName());
+			return null;
+		}
+		return att;
+	}
 
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
 		requireQueryParams(req, "type", "format", "size");
@@ -151,24 +175,34 @@ public class SystemRoutes{
 				else
 					mime="image/jpeg";
 			}
-		}else if("post_photo".equals(type)){
+		}else if("post_photo".equals(type) || "message_photo".equals(type)){
 			itemType=MediaCache.ItemType.PHOTO;
-			int postID=Utils.parseIntOrDefault(req.queryParams("post_id"), 0);
-			Post post=PostStorage.getPostByID(postID, false);
-			if(post==null || Config.isLocal(post.getActivityPubID())){
-				LOG.warn("downloading post_photo: post {} not found or is local", postID);
-				return "";
+			ApplicationContext ctx=context(req);
+			SessionInfo sess=sessionInfo(req);
+			Object contentObj=switch(type){
+				case "post_photo" -> {
+					int postID=parseIntOrDefault(req.queryParams("post_id"), 0);
+					yield ctx.getWallController().getPostOrThrow(postID);
+				}
+				case "message_photo" -> {
+					requireQueryParams(req, "msg_id");
+					if(sess==null || sess.account==null)
+						yield null;
+					long msgID=decodeLong(req.queryParams("msg_id"));
+					yield context(req).getMailController().getMessage(sess.account.user, msgID, false);
+				}
+				default -> throw new IllegalStateException("Unexpected value: "+type);
+			};
+
+			if(contentObj instanceof OwnedContentObject oco){
+				ctx.getPrivacyController().enforceObjectPrivacy(sess==null || sess.account==null ? null : sess.account.user, oco);
 			}
-			int index=Utils.parseIntOrDefault(req.queryParams("index"), 0);
-			if(index>=post.attachments.size() || index<0){
-				LOG.warn("downloading post_photo: index {} out of bounds {}", index, post.attachments.size());
+
+			int index=safeParseInt(req.queryParams("index"));
+			ActivityPubObject att=verifyObjectAndGetAttachment(index, type, contentObj);
+			if(att==null)
 				return "";
-			}
-			ActivityPubObject att=post.attachments.get(index);
-			if(!(att instanceof Document)){
-				LOG.warn("downloading post_photo: attachment {} is not a Document", att.getClass().getName());
-				return "";
-			}
+
 			if(att.mediaType==null){
 				if(att instanceof Image){
 					mime="image/jpeg";
@@ -188,7 +222,6 @@ public class SystemRoutes{
 			}
 			isGraffiti=att instanceof Image img && img.isGraffiti;
 			uri=att.url;
-			LOG.debug("downloadExternalMedia: downloading post photo for post {} index {} url {}", postID, index, uri);
 		}else{
 			LOG.warn("unknown external file type {}", type);
 			return "";
@@ -248,25 +281,41 @@ public class SystemRoutes{
 		return "";
 	}
 
-	public static Object uploadPostPhoto(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object uploadPostPhoto(Request req, Response resp, Account self, ApplicationContext ctx){
+		boolean isGraffiti=req.queryParams("graffiti")!=null;
+		return uploadPhotoAttachment(req, resp, self, isGraffiti, "post_media");
+	}
+
+	public static Object uploadMessagePhoto(Request req, Response resp, Account self, ApplicationContext ctx){
+		return uploadPhotoAttachment(req, resp, self, false, "mail_images");
+	}
+
+	private static Object uploadPhotoAttachment(Request req, Response resp, Account self, boolean isGraffiti, String dir){
 		try{
-			boolean isGraffiti=req.queryParams("graffiti")!=null;
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
 			Part part=req.raw().getPart("file");
 			if(part.getSize()>10*1024*1024){
-				throw new IOException("file too large");
+				resp.status(413); // Payload Too Large
+				return "File too large";
 			}
 
 			byte[] key=MessageDigest.getInstance("MD5").digest((self.user.username+","+System.currentTimeMillis()+","+part.getSubmittedFileName()).getBytes(StandardCharsets.UTF_8));
 			String keyHex=Utils.byteArrayToHexString(key);
 			String mime=part.getContentType();
-			if(!mime.startsWith("image/"))
-				throw new IOException("incorrect mime type");
+			if(!mime.startsWith("image/")){
+				resp.status(415); // Unsupported Media Type
+				return "Unsupported mime type";
+			}
 
-			File tmpDir = new File(System.getProperty("java.io.tmpdir"));
+			File tmpDir=new File(System.getProperty("java.io.tmpdir"));
 			File temp=new File(tmpDir, keyHex);
 			part.write(keyHex);
-			VipsImage img=new VipsImage(temp.getAbsolutePath());
+			VipsImage img;
+			try{
+				img=new VipsImage(temp.getAbsolutePath());
+			}catch(IOException x){
+				throw new BadRequestException(x.getMessage(), x);
+			}
 			if(img.hasAlpha()){
 				VipsImage flat=img.flatten(255, 255, 255);
 				img.release();
@@ -279,17 +328,17 @@ public class SystemRoutes{
 			}
 
 			LocalImage photo=new LocalImage();
-			File postMediaDir=new File(Config.uploadPath, "post_media");
+			File postMediaDir=new File(Config.uploadPath, dir);
 			postMediaDir.mkdirs();
 			int width, height;
 			try{
 				int[] outSize={0,0};
 				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, keyHex, postMediaDir, outSize);
 
-				SessionInfo sess=Utils.sessionInfo(req);
+				SessionInfo sess=Objects.requireNonNull(sessionInfo(req));
 				photo.localID=keyHex;
 				photo.mediaType=isGraffiti ? "image/png" : "image/jpeg";
-				photo.path="post_media";
+				photo.path=dir;
 				photo.width=width=outSize[0];
 				photo.height=height=outSize[1];
 				photo.blurHash=BlurHash.encode(img, 4, 4);
@@ -315,8 +364,8 @@ public class SystemRoutes{
 						).build();
 			}
 			resp.redirect(Utils.back(req));
-		}catch(IOException|ServletException|NoSuchAlgorithmException x){
-			LOG.warn("Exception while processing a post photo upload", x);
+		}catch(IOException|ServletException|NoSuchAlgorithmException|SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 		return "";
 	}
@@ -328,7 +377,7 @@ public class SystemRoutes{
 			throw new BadRequestException();
 		}
 		if(MediaCache.deleteDraftAttachment(id, self.id)){
-			for(ActivityPubObject o : sess.postDraftAttachments){
+			for(ActivityPubObject o:sess.postDraftAttachments){
 				if(o instanceof Document){
 					if(id.equals(((Document) o).localID)){
 						sess.postDraftAttachments.remove(o);
@@ -467,7 +516,12 @@ public class SystemRoutes{
 			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_not_found")).build();
 		}catch(Exception x){
 			LOG.debug("Other remote fetch exception", x);
-			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_load_error")+"<br><br>"+Utils.escapeHTML(x.getMessage())).build();
+			String errMessage=lang(req).get("remote_object_loading_error");
+			String exMessage=x.getMessage();
+			if(StringUtils.isNotEmpty(exMessage)){
+				errMessage+="<br><br>"+Utils.escapeHTML(exMessage);
+			}
+			return new JsonObjectBuilder().add("error", errMessage).build();
 		}
 		if(obj instanceof ForeignUser user){
 			UserStorage.putOrUpdateForeignUser(user);

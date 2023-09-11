@@ -16,8 +16,9 @@ class TokenInput{
 	private tokenIDs:string[]=[];
 	private ignoreNextBlurEvent:boolean=false;
 	private bordersOverlay:HTMLElement;
+	private valueField:HTMLInputElement;
 
-	public constructor(el:HTMLElement, placeholder:string, completionCallback:{(q:string):TokenInputToken[]}){
+	public constructor(el:HTMLElement, placeholder:string, completionCallback:{(q:string):TokenInputToken[]}, valueField:HTMLInputElement=null){
 		this.root=el;
 		this.completionCallback=completionCallback;
 		el.classList.add("tokenInput");
@@ -85,6 +86,7 @@ class TokenInput{
 			if(ev.target!=this.edit)
 				this.ignoreNextBlurEvent=true;
 		});
+		this.valueField=valueField;
 	}
 
 	public addToken(id:string, title:string, needUpdateCompletions:boolean=true){
@@ -106,6 +108,7 @@ class TokenInput{
 		this.tokenIDs.push(id);
 		if(needUpdateCompletions)
 			this.updateCompletions();
+		this.updateValueField();
 	}
 
 	public removeToken(id:string){
@@ -122,6 +125,7 @@ class TokenInput{
 		this.tokenIDs.remove(id);
 		this.updateCompletions();
 		this.edit.focus();
+		this.updateValueField();
 	}
 
 	public getTokenIDs():string[]{
@@ -212,5 +216,25 @@ class TokenInput{
 
 		this.bordersOverlay.style.height=this.completionsList.offsetHeight+"px";
 		this.bordersOverlay.style.right=(this.completionsList.offsetWidth-this.completionsList.clientWidth)+"px";
+	}
+
+	private updateValueField(){
+		if(!this.valueField)
+			return;
+		this.valueField.value=this.getTokenIDs().join(",");
+	}
+
+	public static filterTokens(q:string, fullList:TokenInputToken[]):TokenInputToken[]{
+		if(q.trim()==""){
+			return fullList;
+		}
+		var re=new RegExp("\\b"+quoteRegExp(q), "i");
+		var res:TokenInputToken[]=[];
+		for(var f of fullList){
+			if(re.test(f.title)){
+				res.push(f);
+			}
+		}
+		return res;
 	}
 }

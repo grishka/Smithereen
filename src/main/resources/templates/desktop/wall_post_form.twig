@@ -10,7 +10,7 @@
 		{% endif %}
 		</div>
 	{% else %}
-	<form action="{{ isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost" }}" method="post">
+	<form action="{{ isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost" }}" id="wallPostFormForm_{{ id }}" method="post">
 	{% if replyTo is not null %}
 		{% set fieldPlaceholder=L('comment_placeholder') %}
 	{% elseif isGroup %}

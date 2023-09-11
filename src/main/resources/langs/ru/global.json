@@ -125,6 +125,7 @@
   "X_comments": "{count, plural, =0 {Нет комментариев} one {# комментарий} few {# комментария} other {# комментариев}}",
   "comments_show_X_more_replies": "Показать ещё {count, plural, one {# ответ} few {# ответа} other {# ответов}}",
   "gender_other": "другой",
-  "remote_object_loading_error": "При загрузке удалённого объекта произошла ошибка.",
-  "err_access_user_content": "Пользователь предпочёл скрыть эту страницу."
+  "remote_object_loading_error": "При получении объекта с другого сервера произошла ошибка.",
+  "err_access_user_content": "Пользователь предпочёл скрыть эту страницу.",
+  "menu_mail": "Мои Сообщения"
 }

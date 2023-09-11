@@ -3,16 +3,22 @@ package smithereen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -26,6 +32,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import smithereen.data.ObfuscatedObjectIDType;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
@@ -80,6 +87,8 @@ public class Config{
 
 	public static PrivateKey serviceActorPrivateKey;
 	public static PublicKey serviceActorPublicKey;
+	public static byte[] objectIdObfuscationKey;
+	public static int[][] objectIdObfuscationKeysByType=new int[ObfuscatedObjectIDType.values().length][];
 
 	private static final Logger LOG=LoggerFactory.getLogger(Config.class);
 
@@ -167,6 +176,30 @@ public class Config{
 					serviceActorPublicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
 				}
 			}catch(NoSuchAlgorithmException|InvalidKeySpecException ignore){}
+
+			String obfKey=dbValues.get("ObjectIdObfuscationKey");
+			if(obfKey==null){
+				byte[] key=new byte[16];
+				new SecureRandom().nextBytes(key);
+				updateInDatabase("ObjectIdObfuscationKey", Base64.getEncoder().encodeToString(key));
+				objectIdObfuscationKey=key;
+			}else{
+				objectIdObfuscationKey=Base64.getDecoder().decode(obfKey);
+			}
+			try{
+				MessageDigest md=MessageDigest.getInstance("SHA-256");
+				for(ObfuscatedObjectIDType type:ObfuscatedObjectIDType.values()){
+					ByteArrayOutputStream buf=new ByteArrayOutputStream();
+					buf.write(objectIdObfuscationKey);
+					buf.write(type.toString().getBytes(StandardCharsets.UTF_8));
+					DataInputStream in=new DataInputStream(new ByteArrayInputStream(md.digest(buf.toByteArray())));
+					int[] key=new int[4];
+					for(int i=0;i<4;i++){
+						key[i]=in.readInt();
+					}
+					objectIdObfuscationKeysByType[type.ordinal()]=key;
+				}
+			}catch(NoSuchAlgorithmException|IOException ignore){}
 
 			TopLevelDomainList.lastUpdatedTime=Long.parseLong(dbValues.getOrDefault("TLDList_LastUpdated", "0"));
 			if(TopLevelDomainList.lastUpdatedTime>0){

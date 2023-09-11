@@ -49,6 +49,7 @@ h2{
 	margin: 0;
 	padding-bottom: 2px;
 	border-bottom: solid 1px $mainHeaderSeparator;
+	line-height: 1.27em;
 }
 
 h3{
@@ -1516,9 +1517,15 @@ select{
 	}
 }
 
-.narrowWall .postAttachments .aspectWrapper .pseudoImage, .comment .postAttachments .aspectWrapper .pseudoImage{
-	max-width: 330px;
-	max-width: min(330px, 100%);
+.narrowWall, .comment, .mailMessageView{
+	.postAttachments .aspectWrapper .pseudoImage{
+		max-width: 330px;
+		max-width: min(330px, 100%);
+	}
+}
+
+.mailMessageView .postAttachments .aspectWrapper .pseudoImage{
+	max-width: 100%;
 }
 
 .narrowWall{
@@ -2281,7 +2288,6 @@ label.pretendLink{
 	border: solid 1px $textAreaBorder;
 	box-shadow: 0 0 0 12px $wallPostSeparator inset, 0 4px 0 -2px rgba(0, 0, 0, .05);
 	padding: 32px;
-	border-radius: 2px;
 }
 
 .buttonBar{
@@ -2787,4 +2793,121 @@ label.pretendLink{
 			background: svg-load('img/box_close.svg', fill: $textAreaBorder) no-repeat;
 		}
 	}
+}
+
+.mailMessageRow{
+	display: grid;
+	padding: 0 10px;
+	grid-template-columns: 50px 140px 1fr auto;
+	align-items: center;
+	border-bottom: 1px solid $wallCommentSeparator;
+	>*{
+		min-width: 0;
+	}
+	>a:hover{
+		text-decoration: none;
+	}
+	.time{
+		color: $auxiliaryGrey;
+		font-size: 9px;
+	}
+	.msgInfo{
+		padding-left: 10px;
+	}
+	.msgContent{
+		padding: 0 15px;
+		line-height: 150%;
+	}
+	.msgInfo, .msgContent{
+		align-self: stretch;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+	}
+	.avaW{
+		margin: 10px 0;
+	}
+	.text{
+		color: #a4ab3b;
+	}
+	&:last-child{
+		border-bottom: 0;
+	}
+	&.unread{
+		background: #fef8ee;
+		border-bottom-color: $wallPostSeparator;
+		.time{
+			color: #949760;
+		}
+	}
+	&.deleted{
+		background: #FEFAE4;
+		border-bottom: 1px solid #E2DAA6;
+		color: #908851;
+		min-height: 71px;
+		.restore{
+			grid-column-start: 3;
+			padding: 0 15px;
+			.loader{
+				height: 13px;
+			}
+		}
+	}
+}
+
+h2, h3, h4{
+	.flR{
+		color: $text;
+		font-size: 11px;
+		font-weight: normal;
+		padding-left: 5px;
+	}
+}
+
+.lower{
+	text-transform: lowercase;
+}
+
+.mailMessageView{
+	h2{
+		margin-bottom: 4px;
+	}
+	.time{
+		color: $auxiliaryGrey;
+		font-size: 9px;
+		margin: 2px 0 15px;
+	}
+	.messageViewHeader{
+		display: grid;
+		grid-template-columns: 50px auto 1fr;
+		grid-gap: 0 10px;
+		line-height: 15px;
+		margin-bottom: 10px;
+		.avaW{
+			grid-row: 1 / 20;
+		}
+		.label{
+			grid-column-start: 2;
+			color: $auxiliaryGrey;
+		}
+	}
+	.mailMessageForm{
+		margin-top: 10px;
+	}
+	.postAttachments{
+		padding-top: 0;
+		margin-top: 10px;
+	}
+}
+
+.mailMessageComposeForm{
+	.subjectField{
+		width: 100%;
+	}
+}
+
+.mailMessageForm{
+	border: none;
+	background: none;
+	padding: 0;
 }

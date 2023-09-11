@@ -10,7 +10,8 @@
     "feed.json",
     "wall.json",
     "email.json",
-    "reporting.json"
+    "reporting.json",
+    "mail.json"
   ],
   "languages": [
     {

@@ -218,10 +218,16 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, res
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
 	xhr.open("POST", uri);
 	xhr.onload=function(){
-		if(Math.floor(xhr.status/100)==2 || xhr.response)
-			onDone(xhr.response);
-		else
-			onError(xhr.statusText);
+		if(Math.floor(xhr.status/100)==2){
+			try{
+				var parsedResponse=responseType=="json" ? JSON.parse(xhr.response) : xhr.response;
+				onDone(parsedResponse);
+			}catch(e){
+				onError(null);
+			}
+		}else{
+			onError(xhr.response || xhr.statusText);
+		}
 	};
 	xhr.onerror=function(ev:Event){
 		console.log(ev);
@@ -241,7 +247,6 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, res
 		}
 	}
 	formData.push("_ajax=1");
-	xhr.responseType=responseType;
 	xhr.send(formData.join("&"));
 	return xhr;
 }
@@ -259,16 +264,21 @@ function ajaxGet(uri:string, onDone:{(r:any):void}, onError:{(msg:string):void},
 		uri+="?_ajax=1";
 	xhr.open("GET", uri);
 	xhr.onload=function(){
-		if(Math.floor(xhr.status/100)==2 || xhr.response)
-			onDone(xhr.response);
-		else
-			onError(xhr.statusText);
+		if(Math.floor(xhr.status/100)==2){
+			try{
+				var parsedResponse=responseType=="json" ? JSON.parse(xhr.response) : xhr.response;
+				onDone(parsedResponse);
+			}catch(e){
+				onError(null);
+			}
+		}else{
+			onError(xhr.response || xhr.statusText);
+		}
 	};
 	xhr.onerror=function(ev:Event){
 		console.log(ev);
 		onError(xhr.statusText);
 	};
-	xhr.responseType=responseType;
 	xhr.send();
 	return xhr;
 }
@@ -426,6 +436,9 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 	}
 	data.csrf=userConfig.csrf;
 	ajaxPost(form.action, data, function(resp:any){
+		if(extra.onResponseReceived){
+			extra.onResponseReceived(resp);
+		}
 		submittingForm=null;
 		if(submitter)
 			submitter.classList.remove("loading");
@@ -454,16 +467,24 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 
 function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	if(link.dataset.ajax!=undefined){
-		if(link.dataset.ajaxHide!=undefined)
-			ge(link.dataset.ajaxHide).hide();
-		if(link.dataset.ajaxShow!=undefined)
-			ge(link.dataset.ajaxShow).show();
+		var elToHide:HTMLElement;
+		var elToShow:HTMLElement;
+		if(link.dataset.ajaxHide!=undefined){
+			elToHide=ge(link.dataset.ajaxHide);
+			if(elToHide)
+				elToHide.hide();
+		}
+		if(link.dataset.ajaxShow!=undefined){
+			elToShow=ge(link.dataset.ajaxShow);
+			if(elToShow)
+				elToShow.show();
+		}
 		link.classList.add("ajaxLoading");
 		var done=()=>{
-			if(link.dataset.ajaxHide!=undefined)
-				ge(link.dataset.ajaxHide).show();
-			if(link.dataset.ajaxShow!=undefined)
-				ge(link.dataset.ajaxShow).hide();
+			if(elToHide)
+				elToHide.show();
+			if(elToShow)
+				elToShow.hide();
 			link.classList.remove("ajaxLoading");
 		};
 		ajaxGetAndApplyActions(link.href, done, done);

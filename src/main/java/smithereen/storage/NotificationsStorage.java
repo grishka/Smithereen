@@ -142,6 +142,7 @@ public class NotificationsStorage{
 						res.incNewGroupInvitationsCount(r.getInt(1));
 				}
 			}
+			res.incUnreadMailCount(MailStorage.getUnreadMessagesCount(userID));
 			userNotificationsCache.put(userID, res);
 			return res;
 		}

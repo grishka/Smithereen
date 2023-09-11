@@ -1,0 +1,42 @@
+{% extends "page" %}
+{% block content %}
+{% include "mail_tabbar" with {'tab': 'compose'} %}
+<div class="singleColumn">
+	<div class="mailMessageComposeForm">
+		<form action="/my/mail/send" method="post" id="wallPostFormForm_mailMessage" data-required-fields="{% if replyTo is null %}mailComposeToFld{% endif %}" data-allowed-attachments="photo">
+			{% if replyTo is not null %}
+			<div class="marginAfter grayText">{{ L('in_reply_to_message', {'name': users[replyTo.senderID].firstLastAndGender}) }}</div>
+			<input type="hidden" name="inReplyTo" value="{{ replyTo.encodedID }}"/>
+			{% endif %}
+			<h4>{{ L('mail_to') }}</h4>
+			{% if replyTo is null %}
+			<div id="mailComposeTo"></div>
+			<input type="hidden" name="to" id="mailComposeToFld"/>
+			{% else %}
+			<div>
+				{%- for id in to -%}
+				<a href="{{ users[id].profileURL }}">{{ users[id].fullName }}</a>{% if not loop.last %}, {% endif %}
+				{%- endfor -%}
+			</div>
+			<input type="hidden" name="to" value="{{ to | join(",") }}"/>
+			{% endif %}
+			<input type="checkbox" class="toggler" id="mailSubjectToggler"{% if subject is not empty %} checked{% endif %}/>
+			<div class="marginAfter marginBefore toggled">
+				<label for="mailSubjectToggler" class="hideWhenOn link">{{ L('mail_specify_subject') }}</label>
+				<div class="showWhenOn">
+					<h4 id="subjectLabel">{{ L('mail_subject') }}</h4>
+					<input type="text" name="subject" aria-labelledby="subjectLabel" class="subjectField" value="{{ subject }}" style="width: 100%"/>
+				</div>
+			</div>
+		{% include "mail_message_form" %}
+		</form>
+	</div>
+</div>
+{% if replyTo is null %}
+{% script %}
+var friendList={{ json(friendList) }};
+new TokenInput(ge("mailComposeTo"), "{{ L('friends_search_placeholder') }}", function(q){return TokenInput.filterTokens(q, friendList);}, ge("mailComposeToFld"));
+{% endscript %}
+{% endif %}
+{% endblock %}
+

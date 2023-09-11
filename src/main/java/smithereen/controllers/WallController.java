@@ -156,7 +156,7 @@ public class WallController{
 				for(String id:attachmentIDs){
 					if(!id.matches("^[a-fA-F0-9]{32}$"))
 						continue;
-					ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(id, authorAccountID);
+					ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(id, authorAccountID, "post_media");
 					if(obj!=null){
 						attachObjects.add(obj);
 						attachmentCount++;
@@ -399,7 +399,7 @@ public class WallController{
 					for(String aid : remainingAttachments){
 						if(!aid.matches("^[a-fA-F0-9]{32}$"))
 							continue;
-						ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(aid, post.authorID);
+						ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(aid, post.authorID, "post_media");
 						if(obj!=null){
 							attachObjects.add(obj);
 							attachmentCount++;

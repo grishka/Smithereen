@@ -29,7 +29,7 @@ import smithereen.storage.MediaCache;
 import smithereen.storage.PostStorage;
 import spark.utils.StringUtils;
 
-public class Post implements ActivityPubRepresentable, OwnedContentObject{
+public class Post implements ActivityPubRepresentable, OwnedContentObject, AttachmentHostContentObject{
 	public int id;
 	public int authorID;
 	// userID or -groupID
@@ -60,6 +60,7 @@ public class Post implements ActivityPubRepresentable, OwnedContentObject{
 		return contentWarning;
 	}
 
+	@Override
 	public URI getActivityPubID(){
 		if(activityPubID!=null)
 			return activityPubID;
@@ -166,54 +167,6 @@ public class Post implements ActivityPubRepresentable, OwnedContentObject{
 		return activityPubID==null;
 	}
 
-	public List<Attachment> getProcessedAttachments(){
-		ArrayList<Attachment> result=new ArrayList<>();
-		int i=0;
-		for(ActivityPubObject o:attachments){
-			String mediaType=o.mediaType==null ? "" : o.mediaType;
-			if(o instanceof Image || mediaType.startsWith("image/")){
-				PhotoAttachment att=o instanceof Image img && img.isGraffiti ? new GraffitiAttachment() : new PhotoAttachment();
-				if(o instanceof LocalImage li){
-					att.image=li;
-				}else{
-					// TODO make this less ugly
-					MediaCache.PhotoItem item;
-					try{
-						item=(MediaCache.PhotoItem) MediaCache.getInstance().get(o.url);
-					}catch(SQLException x){
-						throw new InternalServerErrorException(x);
-					}
-					if(item!=null){
-						att.image=new CachedRemoteImage(item);
-					}else{
-						SizedImage.Dimensions size=SizedImage.Dimensions.UNKNOWN;
-						if(o instanceof Document im){
-							if(im.width>0 && im.height>0){
-								size=new SizedImage.Dimensions(im.width, im.height);
-							}
-						}
-						att.image=new NonCachedRemoteImage(new NonCachedRemoteImage.PostPhotoArgs(id, i), size);
-					}
-				}
-				if(o instanceof Document doc){
-					if(StringUtils.isNotEmpty(doc.blurHash))
-						att.blurHash=doc.blurHash;
-				}
-				result.add(att);
-			}else if(mediaType.startsWith("video/")){
-				VideoAttachment att=new VideoAttachment();
-				att.url=o.url;
-				result.add(att);
-			}else if(mediaType.startsWith("audio/")){
-				AudioAttachment att=new AudioAttachment();
-				att.url=o.url;
-				result.add(att);
-			}
-			i++;
-		}
-		return result;
-	}
-
 	public String getShortTitle(){
 		return getShortTitle(100);
 	}
@@ -240,5 +193,15 @@ public class Post implements ActivityPubRepresentable, OwnedContentObject{
 
 	public void setActivityPubID(URI activityPubID){
 		this.activityPubID=activityPubID;
+	}
+
+	@Override
+	public List<ActivityPubObject> getAttachments(){
+		return attachments;
+	}
+
+	@Override
+	public NonCachedRemoteImage.Args getPhotoArgs(int index){
+		return new NonCachedRemoteImage.PostPhotoArgs(id, index);
 	}
 }

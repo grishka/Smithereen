@@ -74,8 +74,7 @@ public class MediaStorageUtils{
 	}
 
 	public static void deleteAttachmentFiles(Document doc){
-		if(doc instanceof LocalImage){
-			LocalImage img=(LocalImage) doc;
+		if(doc instanceof LocalImage img){
 			File file=new File(Config.uploadPath, img.path+"/"+img.localID+".webp");
 			if(file.exists())
 				file.delete();

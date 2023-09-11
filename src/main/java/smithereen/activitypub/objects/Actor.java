@@ -177,6 +177,8 @@ public abstract class Actor extends ActivityPubObject{
 			url=activityPubID;
 
 		JsonObject pkey=obj.getAsJsonObject("publicKey");
+		if(pkey==null)
+			throw new IllegalArgumentException("The actor is missing a public key (or @context in the actor object doesn't include the namespace \""+JLD.W3_SECURITY+"\")");
 		URI keyOwner=tryParseURL(pkey.get("owner").getAsString());
 		if(!keyOwner.equals(activityPubID))
 			throw new IllegalArgumentException("Key owner ("+keyOwner+") is not equal to user ID ("+activityPubID+")");

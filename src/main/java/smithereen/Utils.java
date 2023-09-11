@@ -39,6 +39,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -994,7 +995,7 @@ public class Utils{
 	 * Ensure that the request has required query parameters to avoid any surprise NPEs.
 	 * @param req The request
 	 * @param params The parameter names
-	 * @throws BadRequestException if any of the parameters doesn't present
+	 * @throws BadRequestException if any of the parameters aren't present
 	 */
 	public static void requireQueryParams(Request req, String... params){
 		for(String param:params){
@@ -1074,6 +1075,63 @@ public class Utils{
 			bldr.add(obj);
 		}
 		return bldr.build();
+	}
+
+	public static byte[] packLong(long x){
+		byte[] r=new byte[8];
+		for(int i=7;i>=0;i--){
+			r[i]=(byte)x;
+			x>>=8;
+		}
+		return r;
+	}
+
+	public static String encodeLong(long x){
+		return Base64.getUrlEncoder().withoutPadding().encodeToString(packLong(x));
+	}
+
+	public static long unpackLong(byte[] x){
+		return unpackLong(x, 0);
+	}
+
+	public static long unpackLong(byte[] x, int offset){
+		if(x==null || x.length-offset<8)
+			return 0;
+		long r=0;
+		for(int i=0;i<8;i++){
+			r<<=8;
+			r|=((long)x[i+offset]) & 0xFFL;
+		}
+		return r;
+	}
+
+	public static long decodeLong(String x){
+		try{
+			return unpackLong(Base64.getUrlDecoder().decode(x));
+		}catch(Exception _x){
+			return 0;
+		}
+	}
+
+	public static byte[] serializeLongCollection(Collection<Long> a){
+		byte[] res=new byte[a.size()*8];
+		int i=0;
+		for(long x:a){
+			System.arraycopy(packLong(x), 0, res, i*8, 8);
+			i++;
+		}
+		return res;
+	}
+
+	public static void deserializeLongCollection(byte[] b, Collection<Long> dest){
+		if(b==null)
+			return;
+		if(b.length%8!=0 || dest==null)
+			throw new IllegalArgumentException();
+		int count=b.length/8;
+		for(int i=0;i<count;i++){
+			dest.add(unpackLong(b, i*8));
+		}
 	}
 
 	public interface MentionCallback{

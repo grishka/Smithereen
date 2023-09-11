@@ -1,0 +1,47 @@
+{# @pebvariable name="message" type="smithereen.data.MailMessage" #}
+{% extends "page" %}
+{% block content %}
+{% include "mail_tabbar" %}
+<div class="singleColumn mailMessageView">
+	<div id="messageViewInner">
+		{% if message.subject is not empty %}
+		<div class="subject">{{ message.subject }}</div>
+		{% endif %}
+		<div class="messageViewHeader">
+			<a href="{{ users[message.senderID].profileURL }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('s') }}</a>
+			<div class="nameAndTime">
+				<div class="name"><a href="{{ users[message.senderID].profileURL }}">{{ users[message.senderID].completeName }}</a></div>
+				<div class="time">{{ LD(message.createdAt) }}{% if message.updatedAt is not null %} | {{ L('mail_edited_at', {'time': LD(message.updatedAt)}) }}{% endif %}</div>
+			</div>
+		</div>
+		<div class="messageViewFields">
+			<div class="label">{{ L('mail_to') }}:</div>
+			<div>
+			{%- for id in message.to -%}
+				<a href="{{ users[id].profileURL }}">{{ users[id].completeName }}</a>{% if not loop.last %}, {% endif %}
+			{%- endfor %}
+			</div>
+			{% if message.cc is not empty %}
+				<div class="label">{{ L('mail_cc') }}:</div>
+				<div>
+				{%- for id in message.cc -%}
+					<a href="{{ users[id].profileURL }}">{{ users[id].completeName }}</a>{% if not loop.last %}, {% endif %}
+				{%- endfor %}
+				</div>
+			{% endif %}
+		</div>
+		<div class="messageContent">
+		{{ message.text | postprocessHTML }}
+		{% if message.attachments is not empty %}
+			{{ renderAttachments(message.processedAttachments, null) }}
+		{% endif %}
+		</div>
+		<div class="" id="msgActions">
+			{% if message.senderID!=currentUser.id %}<a class="button" href="/my/mail/compose?replyTo={{ message.encodedID }}">{{ L('add_reply') }}</a>{% endif %}
+			<a class="button" href="/my/mail/messages/{{ message.encodedID }}/delete?csrf={{ csrf }}&fromView" data-ajax data-ajax-hide="msgActions" data-ajax-show="msgActionsLoader">{{ L('delete') }}</a>
+		</div>
+		<span class="loader" id="msgActionsLoader" style="display: none">&nbsp;</span>
+	</div>
+</div>
+{% endblock %}
+

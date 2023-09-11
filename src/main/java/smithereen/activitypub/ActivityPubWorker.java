@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
@@ -29,6 +30,7 @@ import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -38,6 +40,7 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.Note;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.activities.Accept;
@@ -52,6 +55,7 @@ import smithereen.activitypub.objects.activities.Join;
 import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Offer;
+import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
@@ -59,6 +63,7 @@ import smithereen.activitypub.objects.activities.Update;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.Group;
+import smithereen.data.MailMessage;
 import smithereen.data.OwnerAndAuthor;
 import smithereen.data.Poll;
 import smithereen.data.PollOption;
@@ -714,6 +719,65 @@ public class ActivityPubWorker{
 		flag.object=objectIDs;
 		flag.content=comment;
 		executor.submit(new SendOneActivityRunnable(flag, actorInbox(targetActor), ServiceActor.getInstance()));
+	}
+
+	public void sendDirectMessage(User self, MailMessage msg){
+		HashSet<Integer> needUsers=new HashSet<>();
+		needUsers.addAll(msg.to);
+		needUsers.addAll(msg.cc);
+		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
+
+		Note note=NoteOrQuestion.fromNativeMessage(msg, context);
+		Create create=new Create();
+		create.actor=new LinkOrObject(self.activityPubID);
+		create.object=new LinkOrObject(note);
+		create.to=note.to;
+		create.cc=note.cc;
+		create.activityPubID=new UriBuilder(note.activityPubID).fragment("create").build();
+		Set<URI> inboxes=users.values().stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).collect(Collectors.toSet());
+		for(URI inbox:inboxes){
+			executor.submit(new SendOneActivityRunnable(create, inbox, self));
+		}
+	}
+
+	public void sendDeleteMessageActivity(User self, MailMessage msg){
+		HashSet<Integer> needUsers=new HashSet<>(msg.to);
+		if(msg.cc!=null)
+			needUsers.addAll(msg.cc);
+		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
+
+		Delete delete=new Delete();
+		delete.actor=new LinkOrObject(self.activityPubID);
+		delete.object=new LinkOrObject(msg.getActivityPubID());
+		delete.to=msg.to.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
+		if(msg.cc!=null && !msg.cc.isEmpty())
+			delete.cc=msg.cc.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
+		delete.activityPubID=new UriBuilder(msg.getActivityPubID()).fragment("delete").build();
+
+		Set<URI> inboxes=users.values().stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).collect(Collectors.toSet());
+		for(URI inbox:inboxes){
+			executor.submit(new SendOneActivityRunnable(delete, inbox, self));
+		}
+	}
+
+	public void sendReadMessageActivity(User self, MailMessage msg){
+		HashSet<Integer> needUsers=new HashSet<>(msg.to);
+		if(msg.cc!=null)
+			needUsers.addAll(msg.cc);
+		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
+
+		Read read=new Read();
+		read.actor=new LinkOrObject(self.activityPubID);
+		read.object=new LinkOrObject(msg.getActivityPubID());
+		read.to=msg.to.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
+		if(msg.cc!=null && !msg.cc.isEmpty())
+			read.cc=msg.cc.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
+		read.activityPubID=UriBuilder.local().path("activitypub", "objects", "messages", msg.encodedID).fragment("read"+self.id).build();
+
+		Set<URI> inboxes=users.values().stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).collect(Collectors.toSet());
+		for(URI inbox:inboxes){
+			executor.submit(new SendOneActivityRunnable(read, inbox, self));
+		}
 	}
 
 	public synchronized Future<List<Post>> fetchReplyThread(NoteOrQuestion post){

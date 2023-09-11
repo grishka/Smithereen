@@ -1,6 +1,6 @@
 {# @pebvariable name="entry" type="smithereen.data.feed.NewsfeedEntry" #}
 {% set author=users[entry.authorID] %}
-{%if entry.type=="POST"%}
+{% if entry.type=="POST" and posts[entry.objectID] is not null %}
 <div class="feedRow feedPostRow" id="postWrap{{ entry.objectID }}">
 		{%include "wall_post" with {'post': posts[entry.objectID]}%}
 </div>

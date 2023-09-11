@@ -1,0 +1,55 @@
+{# @pebvariable name="message" type="smithereen.data.MailMessage" #}
+{% extends "page" %}
+{% block content %}
+{% include "mail_tabbar" %}
+<div class="heavyBoxWrap">
+	<div class="heavyBox mailMessageView">
+		<div id="messageViewInner">
+			<h2>
+				{{- L('mail_message') }}
+				<div class="flR lower" id="msgActions">
+					<a href="/my/mail/messages/{{ message.encodedID }}/delete?csrf={{ csrf }}&fromView" data-ajax data-ajax-hide="msgActions" data-ajax-show="msgActionsLoader">{{ L('delete') }}</a>
+				</div>
+				<span class="flR loader" id="msgActionsLoader" style="display: none">&nbsp;</span>
+			</h2>
+			<div class="time">{{ LD(message.createdAt) }}{% if message.updatedAt is not null %} | {{ L('mail_edited_at', {'time': LD(message.updatedAt)}) }}{% endif %}</div>
+			<div class="messageViewHeader">
+				<a href="{{ users[message.senderID].profileURL }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('s') }}</a>
+				<div class="label">{{ L('mail_from') }}:</div>
+				<div><a href="{{ users[message.senderID].profileURL }}">{{ users[message.senderID].completeName }}</a></div>
+				<div class="label">{{ L('mail_to') }}:</div>
+				<div>
+					{%- for id in message.to -%}
+					<a href="{{ users[id].profileURL }}">{{ users[id].completeName }}</a>{% if not loop.last %}, {% endif %}
+					{%- endfor %}
+				</div>
+				{% if message.cc is not empty %}
+				<div class="label">{{ L('mail_cc') }}:</div>
+				<div>
+				{%- for id in message.cc -%}
+					<a href="{{ users[id].profileURL }}">{{ users[id].completeName }}</a>{% if not loop.last %}, {% endif %}
+				{%- endfor %}
+				</div>
+				{% endif %}
+				{% if message.subject is not empty %}
+				<div class="label">{{ L('mail_subject') }}:</div>
+				<div>{{ message.subject }}</div>
+				{% endif %}
+			</div>
+			<div class="messageContent">
+			{{ message.text | postprocessHTML }}
+			{% if message.attachments is not empty %}
+				{{ renderAttachments(message.processedAttachments, null) }}
+			{% endif %}
+			</div>
+			{% if message.senderID!=currentUser.id %}
+			<form action="/my/mail/send?inReplyTo={{ message.encodedID }}" method="post" id="wallPostFormForm_mailMessage">
+				{% if replySubject is not empty %}<input type="text" name="subject" value="{{ replySubject }}" placeholder="{{ L('mail_subject') }}" style="width: 100%"/>{% endif %}
+				{% include "mail_message_form" with {"sendButtonLabel": "add_reply"} %}
+			</form>
+			{% endif %}
+		</div>
+	</div>
+</div>
+{% endblock %}
+
