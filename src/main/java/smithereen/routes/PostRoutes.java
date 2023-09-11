@@ -603,6 +603,7 @@ public class PostRoutes{
 				.with("postInteractions", interactions)
 				.with("owner", user)
 				.with("otherUser", otherUser)
+				.with("canSeeOthersPosts", ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, user, UserPrivacySettingKey.WALL_OTHERS_POSTS))
 				.with("tab", "wall2wall")
 				.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
 		preparePostList(ctx, wall.list, model);
