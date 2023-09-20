@@ -22,7 +22,16 @@ public class WellKnownRoutes{
 	public static Object webfinger(Request req, Response resp) throws SQLException{
 		resp.header("Access-Control-Allow-Origin", "*");
 		String resource=req.queryParams("resource");
-		if(StringUtils.isNotEmpty(resource) && resource.startsWith("acct:")){
+		if(("https://"+Config.domain).equalsIgnoreCase(resource)){
+			resp.type("application/json");
+			WebfingerResponse wfr=new WebfingerResponse();
+			wfr.subject="https://"+Config.domain;
+			WebfingerResponse.Link authLink=new WebfingerResponse.Link();
+			authLink.rel="http://ostatus.org/schema/1.0/subscribe";
+			authLink.template=Config.localURI("activitypub/externalInteraction?uri")+"={uri}";
+			wfr.links=List.of(authLink);
+			return Utils.gson.toJson(wfr);
+		}else if(StringUtils.isNotEmpty(resource) && resource.startsWith("acct:")){
 			String[] parts=resource.substring(5).split("@", 2);
 			if(parts.length==2 && parts[1].equals(Config.domain)){
 				String username=parts[0];
