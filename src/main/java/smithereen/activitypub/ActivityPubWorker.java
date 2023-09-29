@@ -770,9 +770,11 @@ public class ActivityPubWorker{
 		Read read=new Read();
 		read.actor=new LinkOrObject(self.activityPubID);
 		read.object=new LinkOrObject(msg.getActivityPubID());
-		read.to=msg.to.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
+		HashSet<Integer> to=new HashSet<>(msg.to);
+		to.add(msg.senderID);
+		read.to=to.stream().filter(id->id!=self.id).map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
 		if(msg.cc!=null && !msg.cc.isEmpty())
-			read.cc=msg.cc.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
+			read.cc=msg.cc.stream().filter(id->id!=self.id).map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
 		read.activityPubID=UriBuilder.local().path("activitypub", "objects", "messages", msg.encodedID).fragment("read"+self.id).build();
 
 		Set<URI> inboxes=users.values().stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).collect(Collectors.toSet());
