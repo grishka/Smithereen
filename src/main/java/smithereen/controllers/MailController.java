@@ -158,9 +158,9 @@ public class MailController{
 					un.incUnreadMailCount(-1);
 			}
 			// Sender's copy
-			HashSet<Long> ids=new HashSet<>(message.relatedMessageIDs);
-			ids.add(message.id);
-			MailStorage.addMessageReadReceipt(message.senderID, ids, self.id);
+			if(!message.relatedMessageIDs.isEmpty()){
+				MailStorage.addMessageReadReceipt(message.senderID, message.relatedMessageIDs, self.id);
+			}
 			if(!(self instanceof ForeignUser)){
 				context.getActivityPubWorker().sendReadMessageActivity(self, message);
 			}

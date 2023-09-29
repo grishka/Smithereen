@@ -762,6 +762,7 @@ public class ActivityPubWorker{
 
 	public void sendReadMessageActivity(User self, MailMessage msg){
 		HashSet<Integer> needUsers=new HashSet<>(msg.to);
+		needUsers.add(msg.senderID);
 		if(msg.cc!=null)
 			needUsers.addAll(msg.cc);
 		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
