@@ -9,9 +9,9 @@ import java.sql.Types;
 import java.util.List;
 
 import smithereen.LruCache;
-import smithereen.data.PaginatedList;
-import smithereen.data.UserNotifications;
-import smithereen.data.notifications.Notification;
+import smithereen.model.PaginatedList;
+import smithereen.model.UserNotifications;
+import smithereen.model.notifications.Notification;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;

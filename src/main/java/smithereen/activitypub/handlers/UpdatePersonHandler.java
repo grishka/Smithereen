@@ -6,7 +6,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Update;
-import smithereen.data.ForeignUser;
+import smithereen.model.ForeignUser;
 import smithereen.storage.UserStorage;
 
 public class UpdatePersonHandler extends ActivityTypeHandler<ForeignUser, Update, ForeignUser>{

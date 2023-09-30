@@ -11,11 +11,11 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Announce;
-import smithereen.data.ForeignUser;
-import smithereen.data.Post;
-import smithereen.data.User;
-import smithereen.data.feed.NewsfeedEntry;
-import smithereen.data.notifications.Notification;
+import smithereen.model.ForeignUser;
+import smithereen.model.Post;
+import smithereen.model.User;
+import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.notifications.Notification;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 

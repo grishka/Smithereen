@@ -1,6 +1,6 @@
-{# @pebvariable name="post" type="smithereen.data.viewmodel.PostViewModel" #}
-{# @pebvariable name="realPost" type="smithereen.data.Post" #}
-{# @pebvariable name="topLevel" type="smithereen.data.viewmodel.PostViewModel" #}
+{# @pebvariable name="post" type="smithereen.model.viewmodel.PostViewModel" #}
+{# @pebvariable name="realPost" type="smithereen.model.Post" #}
+{# @pebvariable name="topLevel" type="smithereen.model.viewmodel.PostViewModel" #}
 {% set realPost=post.post %}
 <a name="comment{{realPost.id}}"></a>
 <table width="100%" class="post comment{{ first ? ' first' : '' }}" id="post{{realPost.id}}" data-reply-name="{{users[realPost.authorID].nameForReply}}">

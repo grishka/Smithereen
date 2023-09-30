@@ -2,11 +2,10 @@ package smithereen.activitypub;
 
 import java.net.URI;
 import java.util.Collection;
-import java.util.List;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.objects.Actor;
-import smithereen.data.User;
+import smithereen.model.User;
 
 public class ActivityHandlerContext{
 	private String origRequestBody;

@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -27,23 +26,21 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.data.Account;
-import smithereen.data.AdminNotifications;
-import smithereen.data.BirthdayReminder;
-import smithereen.data.EventReminder;
-import smithereen.data.SessionInfo;
-import smithereen.data.UserNotifications;
+import smithereen.model.Account;
+import smithereen.model.AdminNotifications;
+import smithereen.model.BirthdayReminder;
+import smithereen.model.EventReminder;
+import smithereen.model.SessionInfo;
+import smithereen.model.UserNotifications;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.lang.Lang;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
-import spark.Response;
 
 public class Templates{
 	private static final PebbleEngine desktopEngine=makeEngineInstance("desktop", "common");

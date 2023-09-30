@@ -8,10 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import smithereen.data.attachments.Attachment;
-import smithereen.data.attachments.AudioAttachment;
-import smithereen.data.attachments.PhotoAttachment;
-import smithereen.data.attachments.VideoAttachment;
+import smithereen.model.attachments.Attachment;
+import smithereen.model.attachments.AudioAttachment;
+import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.attachments.VideoAttachment;
 import smithereen.lang.Lang;
 
 public class DescribeAttachmentsFunction implements Function{

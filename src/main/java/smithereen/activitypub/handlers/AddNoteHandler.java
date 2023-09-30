@@ -10,8 +10,8 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Add;
-import smithereen.data.Post;
-import smithereen.data.notifications.NotificationUtils;
+import smithereen.model.Post;
+import smithereen.model.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
 
 public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuestion>{

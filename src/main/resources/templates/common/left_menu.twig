@@ -1,8 +1,8 @@
-{# @pebvariable name="userNotifications" type="smithereen.data.UserNotifications" #}
-{# @pebvariable name="adminNotifications" type="smithereen.data.AdminNotifications" #}
-{# @pebvariable name="birthdayUsers" type="smithereen.data.User[]" #}
-{# @pebvariable name="eventReminderEvents" type="smithereen.data.Group[]" #}
-{# @pebvariable name="userPermissions" type="smithereen.data.UserPermissions" #}
+{# @pebvariable name="userNotifications" type="smithereen.model.UserNotifications" #}
+{# @pebvariable name="adminNotifications" type="smithereen.model.AdminNotifications" #}
+{# @pebvariable name="birthdayUsers" type="smithereen.model.User[]" #}
+{# @pebvariable name="eventReminderEvents" type="smithereen.model.Group[]" #}
+{# @pebvariable name="userPermissions" type="smithereen.model.UserPermissions" #}
 {% macro menuCounter(count) %}{% if count>0 %} (<b>{{ count | numberformat }}</b>){% endif %}{% endmacro %}
 <ul class="actionList">
 	{% if currentUser is not null %}

@@ -6,13 +6,12 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Follow;
-import smithereen.data.ForeignGroup;
-import smithereen.data.Group;
-import smithereen.data.User;
-import smithereen.data.feed.NewsfeedEntry;
+import smithereen.model.ForeignGroup;
+import smithereen.model.Group;
+import smithereen.model.User;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.GroupStorage;
-import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.UserStorage;
 
 public class AcceptFollowGroupHandler extends NestedActivityTypeHandler<ForeignGroup, Accept, Follow, ForeignGroup>{

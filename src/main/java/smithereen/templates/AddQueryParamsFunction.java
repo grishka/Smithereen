@@ -7,7 +7,7 @@ import io.pebbletemplates.pebble.template.PebbleTemplate;
 import java.util.List;
 import java.util.Map;
 
-import smithereen.data.UriBuilder;
+import smithereen.model.UriBuilder;
 
 public class AddQueryParamsFunction implements Function{
 	@Override

@@ -3,7 +3,7 @@ package smithereen.storage;
 import java.sql.SQLException;
 import java.time.Instant;
 
-import smithereen.data.feed.NewsfeedEntry;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.storage.sql.SQLQueryBuilder;
 
 public class NewsfeedStorage{

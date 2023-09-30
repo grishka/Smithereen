@@ -12,10 +12,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
-import smithereen.data.MailMessage;
-import smithereen.data.MessagesPrivacyGrant;
-import smithereen.data.ObfuscatedObjectIDType;
-import smithereen.data.PaginatedList;
+import smithereen.model.MailMessage;
+import smithereen.model.MessagesPrivacyGrant;
+import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.PaginatedList;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;

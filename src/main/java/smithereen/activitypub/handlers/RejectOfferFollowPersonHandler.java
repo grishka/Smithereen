@@ -8,8 +8,8 @@ import smithereen.activitypub.DoublyNestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Reject;
-import smithereen.data.ForeignUser;
-import smithereen.data.User;
+import smithereen.model.ForeignUser;
+import smithereen.model.User;
 import smithereen.storage.UserStorage;
 
 public class RejectOfferFollowPersonHandler extends DoublyNestedActivityTypeHandler<ForeignUser, Reject, Offer, Follow, User>{

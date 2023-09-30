@@ -1,4 +1,4 @@
-{# @pebvariable name="entry" type="smithereen.data.feed.NewsfeedEntry" #}
+{# @pebvariable name="entry" type="smithereen.model.feed.NewsfeedEntry" #}
 {% set author=users[entry.authorID] %}
 {% if entry.type=="POST" and posts[entry.objectID] is not null %}
 <div class="feedRow feedPostRow" id="postWrap{{ entry.objectID }}">

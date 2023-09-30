@@ -1,10 +1,9 @@
 package smithereen.lang.formatting;
 
 import java.util.Map;
-import java.util.Objects;
 
 import smithereen.Utils;
-import smithereen.data.User;
+import smithereen.model.User;
 import smithereen.lang.Inflector;
 import smithereen.lang.Lang;
 

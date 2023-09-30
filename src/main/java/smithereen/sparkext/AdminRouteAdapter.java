@@ -2,8 +2,8 @@ package smithereen.sparkext;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
-import smithereen.data.Account;
-import smithereen.data.SessionInfo;
+import smithereen.model.Account;
+import smithereen.model.SessionInfo;
 import spark.Request;
 import spark.Response;
 import spark.Route;

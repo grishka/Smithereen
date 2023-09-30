@@ -13,9 +13,9 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
-import smithereen.data.Group;
-import smithereen.data.SearchResult;
-import smithereen.data.User;
+import smithereen.model.Group;
+import smithereen.model.SearchResult;
+import smithereen.model.User;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;

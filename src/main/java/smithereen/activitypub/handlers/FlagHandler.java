@@ -10,8 +10,8 @@ import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.activities.Flag;
-import smithereen.data.ForeignUser;
-import smithereen.data.User;
+import smithereen.model.ForeignUser;
+import smithereen.model.User;
 import smithereen.exceptions.BadRequestException;
 
 public class FlagHandler extends ActivityTypeHandler<Actor, Flag, ActivityPubObject>{

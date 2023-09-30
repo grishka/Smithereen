@@ -3,7 +3,7 @@ package smithereen.lang;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import smithereen.data.User;
+import smithereen.model.User;
 
 public class RussianInflector extends Inflector{
 	@Override

@@ -9,7 +9,7 @@ import java.util.Objects;
 import smithereen.Config;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
-import smithereen.data.SizedImage;
+import smithereen.model.SizedImage;
 import smithereen.storage.ImgProxy;
 
 public class LocalImage extends Image implements SizedImage{

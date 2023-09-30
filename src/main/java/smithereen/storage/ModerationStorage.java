@@ -6,9 +6,9 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 
-import smithereen.data.PaginatedList;
-import smithereen.data.Server;
-import smithereen.data.ViolationReport;
+import smithereen.model.PaginatedList;
+import smithereen.model.Server;
+import smithereen.model.ViolationReport;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;

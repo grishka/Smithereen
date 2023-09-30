@@ -24,7 +24,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import smithereen.Utils;
-import smithereen.data.User;
+import smithereen.model.User;
 import smithereen.lang.formatting.ICUMessageParser;
 import smithereen.lang.formatting.ICUMessageSyntaxException;
 import smithereen.lang.formatting.StringTemplate;

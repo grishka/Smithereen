@@ -14,12 +14,11 @@ import java.util.List;
 
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
-import smithereen.activitypub.objects.Actor;
-import smithereen.data.Account;
-import smithereen.data.PaginatedList;
-import smithereen.data.User;
-import smithereen.data.feed.GroupedNewsfeedEntry;
-import smithereen.data.feed.NewsfeedEntry;
+import smithereen.model.Account;
+import smithereen.model.PaginatedList;
+import smithereen.model.User;
+import smithereen.model.feed.GroupedNewsfeedEntry;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.PostStorage;

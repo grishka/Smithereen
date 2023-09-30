@@ -2,7 +2,7 @@ package smithereen.activitypub.objects;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
-import smithereen.data.Post;
+import smithereen.model.Post;
 import spark.utils.StringUtils;
 
 public non-sealed class Note extends NoteOrQuestion{

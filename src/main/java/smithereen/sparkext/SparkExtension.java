@@ -4,8 +4,7 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import smithereen.data.Account;
-import spark.ResponseTransformer;
+import smithereen.model.Account;
 import spark.Route;
 
 import static spark.Spark.*;

@@ -6,7 +6,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Delete;
-import smithereen.data.ForeignUser;
+import smithereen.model.ForeignUser;
 
 public class DeletePersonHandler extends ActivityTypeHandler<ForeignUser, Delete, ForeignUser>{
 	@Override

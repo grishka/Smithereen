@@ -9,7 +9,7 @@ import io.pebbletemplates.pebble.template.PebbleTemplate;
 import java.util.List;
 import java.util.Map;
 
-import smithereen.data.SizedImage;
+import smithereen.model.SizedImage;
 
 public class PictureForPhotoFilter implements Filter{
 	@Override

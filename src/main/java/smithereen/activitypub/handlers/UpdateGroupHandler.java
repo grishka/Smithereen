@@ -6,7 +6,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Update;
-import smithereen.data.ForeignGroup;
+import smithereen.model.ForeignGroup;
 import smithereen.storage.GroupStorage;
 
 public class UpdateGroupHandler extends ActivityTypeHandler<ForeignGroup, Update, ForeignGroup>{

@@ -1,7 +1,7 @@
 package smithereen.util;
 
 import smithereen.Config;
-import smithereen.data.ObfuscatedObjectIDType;
+import smithereen.model.ObfuscatedObjectIDType;
 
 public class XTEA{
 	private static final int NUM_ROUNDS=32;

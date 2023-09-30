@@ -7,10 +7,10 @@ import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Announce;
 import smithereen.activitypub.objects.activities.Undo;
-import smithereen.data.ForeignUser;
-import smithereen.data.Post;
-import smithereen.data.feed.NewsfeedEntry;
-import smithereen.data.notifications.Notification;
+import smithereen.model.ForeignUser;
+import smithereen.model.Post;
+import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.notifications.Notification;
 import smithereen.storage.NotificationsStorage;
 
 public class UndoAnnounceNoteHandler extends NestedActivityTypeHandler<ForeignUser, Undo, Announce, NoteOrQuestion>{

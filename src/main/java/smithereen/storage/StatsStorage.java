@@ -5,8 +5,8 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 
-import smithereen.data.StatsPoint;
-import smithereen.data.StatsType;
+import smithereen.model.StatsPoint;
+import smithereen.model.StatsType;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;

@@ -5,11 +5,10 @@ import java.sql.SQLException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Block;
-import smithereen.data.ForeignUser;
-import smithereen.data.FriendshipStatus;
-import smithereen.data.User;
-import smithereen.data.feed.NewsfeedEntry;
-import smithereen.storage.NewsfeedStorage;
+import smithereen.model.ForeignUser;
+import smithereen.model.FriendshipStatus;
+import smithereen.model.User;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.storage.UserStorage;
 
 public class PersonBlockPersonHandler extends ActivityTypeHandler<ForeignUser, Block, User>{

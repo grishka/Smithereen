@@ -41,9 +41,9 @@ import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
-import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
-import smithereen.data.UriBuilder;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
+import smithereen.model.UriBuilder;
 import smithereen.util.JsonArrayBuilder;
 import spark.utils.StringUtils;
 

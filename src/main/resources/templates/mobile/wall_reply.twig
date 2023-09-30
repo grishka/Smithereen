@@ -1,5 +1,5 @@
-{# @pebvariable name="post" type="smithereen.data.viewmodel.PostViewModel" #}
-{# @pebvariable name="realPost" type="smithereen.data.Post" #}
+{# @pebvariable name="post" type="smithereen.model.viewmodel.PostViewModel" #}
+{# @pebvariable name="realPost" type="smithereen.model.Post" #}
 {% set realPost=post.post %}
 <a name="comment{{realPost.id}}"></a>
 <table width="100%" class="post comment" id="post{{realPost.id}}" data-reply-name="{{ users[realPost.authorID].nameForReply}}" data-replying-name="{{ L('in_reply_to_name', {'name': users[realPost.authorID].firstAndGender}) }}">

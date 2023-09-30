@@ -10,9 +10,9 @@ import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
-import smithereen.data.Poll;
-import smithereen.data.PollOption;
-import smithereen.data.Post;
+import smithereen.model.Poll;
+import smithereen.model.PollOption;
+import smithereen.model.Post;
 import smithereen.exceptions.FederationException;
 import smithereen.jsonld.JLD;
 

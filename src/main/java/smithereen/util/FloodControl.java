@@ -4,7 +4,6 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -12,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import smithereen.Utils;
-import smithereen.data.Account;
+import smithereen.model.Account;
 import smithereen.exceptions.FloodControlViolationException;
 
 /**

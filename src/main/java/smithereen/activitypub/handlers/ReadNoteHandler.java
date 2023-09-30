@@ -11,8 +11,8 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Read;
-import smithereen.data.ForeignUser;
-import smithereen.data.MailMessage;
+import smithereen.model.ForeignUser;
+import smithereen.model.MailMessage;
 import smithereen.exceptions.ObjectNotFoundException;
 
 public class ReadNoteHandler extends ActivityTypeHandler<ForeignUser, Read, NoteOrQuestion>{

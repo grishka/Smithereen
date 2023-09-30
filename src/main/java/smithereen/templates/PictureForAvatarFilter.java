@@ -6,16 +6,15 @@ import io.pebbletemplates.pebble.extension.escaper.SafeString;
 import io.pebbletemplates.pebble.template.EvaluationContext;
 import io.pebbletemplates.pebble.template.PebbleTemplate;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import smithereen.activitypub.objects.Actor;
-import smithereen.data.Group;
-import smithereen.data.SizedImage;
-import smithereen.data.User;
+import smithereen.model.Group;
+import smithereen.model.SizedImage;
+import smithereen.model.User;
 
 public class PictureForAvatarFilter implements Filter{
 	@Override

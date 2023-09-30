@@ -9,8 +9,8 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Add;
 import smithereen.activitypub.objects.activities.Reject;
-import smithereen.data.FederationState;
-import smithereen.data.Post;
+import smithereen.model.FederationState;
+import smithereen.model.Post;
 import smithereen.storage.PostStorage;
 
 public class RejectAddNoteHandler extends NestedActivityTypeHandler<Actor, Reject, Add, NoteOrQuestion>{

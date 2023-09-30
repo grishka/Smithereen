@@ -7,8 +7,8 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Reject;
-import smithereen.data.ForeignUser;
-import smithereen.data.User;
+import smithereen.model.ForeignUser;
+import smithereen.model.User;
 import smithereen.storage.UserStorage;
 
 public class RejectFollowPersonHandler extends NestedActivityTypeHandler<ForeignUser, Reject, Follow, User>{

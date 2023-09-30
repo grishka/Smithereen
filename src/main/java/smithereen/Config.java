@@ -32,7 +32,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import smithereen.data.ObfuscatedObjectIDType;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;

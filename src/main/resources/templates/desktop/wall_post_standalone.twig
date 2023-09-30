@@ -1,4 +1,4 @@
-{# @pebvariable name="post" type="smithereen.data.viewmodel.PostViewModel" #}
+{# @pebvariable name="post" type="smithereen.model.viewmodel.PostViewModel" #}
 {%extends "page"%}
 {%block content%}
 {% include 'wall_tabbar' with {'tab': 'single', 'owner': post.post.ownerID>0 ? users[post.post.ownerID] : groups[-post.post.ownerID]} %}

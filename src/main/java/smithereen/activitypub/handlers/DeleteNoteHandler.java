@@ -6,17 +6,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Delete;
-import smithereen.data.ForeignUser;
-import smithereen.data.MailMessage;
-import smithereen.data.Post;
-import smithereen.data.notifications.Notification;
+import smithereen.model.ForeignUser;
+import smithereen.model.MailMessage;
+import smithereen.model.Post;
+import smithereen.model.notifications.Notification;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.MailStorage;

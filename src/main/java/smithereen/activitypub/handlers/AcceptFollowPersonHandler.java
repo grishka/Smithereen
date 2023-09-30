@@ -6,12 +6,11 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Follow;
-import smithereen.data.ForeignUser;
-import smithereen.data.FriendshipStatus;
-import smithereen.data.User;
-import smithereen.data.feed.NewsfeedEntry;
+import smithereen.model.ForeignUser;
+import smithereen.model.FriendshipStatus;
+import smithereen.model.User;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.UserStorage;
 
 public class AcceptFollowPersonHandler extends NestedActivityTypeHandler<ForeignUser, Accept, Follow, User>{

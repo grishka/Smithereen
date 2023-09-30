@@ -6,12 +6,9 @@ import java.sql.SQLException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Remove;
-import smithereen.data.ForeignUser;
-import smithereen.data.Group;
-import smithereen.data.User;
-import smithereen.data.feed.NewsfeedEntry;
+import smithereen.model.ForeignUser;
+import smithereen.model.Group;
 import smithereen.exceptions.BadRequestException;
-import smithereen.storage.NewsfeedStorage;
 
 public class RemoveGroupHandler extends ActivityTypeHandler<ForeignUser, Remove, Group>{
 	@Override

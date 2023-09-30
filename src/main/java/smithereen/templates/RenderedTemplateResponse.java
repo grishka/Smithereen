@@ -17,13 +17,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
-import smithereen.data.PaginatedList;
+import smithereen.model.PaginatedList;
 import spark.Request;
-import spark.Response;
 import spark.utils.StringUtils;
 
 public class RenderedTemplateResponse{

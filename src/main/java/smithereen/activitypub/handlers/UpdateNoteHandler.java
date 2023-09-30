@@ -7,9 +7,8 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Update;
-import smithereen.data.ForeignUser;
-import smithereen.data.OwnerAndAuthor;
-import smithereen.data.Post;
+import smithereen.model.ForeignUser;
+import smithereen.model.Post;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.PostStorage;
 
