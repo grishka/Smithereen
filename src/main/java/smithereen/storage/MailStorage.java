@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 import smithereen.Utils;
 import smithereen.data.MailMessage;
+import smithereen.data.MessagesPrivacyGrant;
 import smithereen.data.ObfuscatedObjectIDType;
 import smithereen.data.PaginatedList;
 import smithereen.storage.sql.DatabaseConnection;
@@ -213,5 +214,31 @@ public class MailStorage{
 				.where("ap_id=?", apID)
 				.executeAsStream(MailMessage::fromResultSet)
 				.toList();
+	}
+
+	public static void createOrRenewPrivacyGrant(int ownerID, int userID, int msgCount) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("mail_privacy_grants")
+				.value("owner_id", ownerID)
+				.value("user_id", userID)
+				.value("messages_remain", msgCount)
+				.valueExpr("created_at", "CURRENT_TIMESTAMP()")
+				.onDuplicateKeyUpdate()
+				.executeNoResult();
+	}
+
+	public static MessagesPrivacyGrant getPrivacyGrant(int ownerID, int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("mail_privacy_grants")
+				.where("owner_id=? AND user_id=?", ownerID, userID)
+				.executeAndGetSingleObject(MessagesPrivacyGrant::fromResultSet);
+	}
+
+	public static void consumePrivacyGrant(int ownerID, int userID) throws SQLException{
+		new SQLQueryBuilder()
+				.update("mail_privacy_grants")
+				.valueExpr("messages_remain", "GREATEST(messages_remain-1, 0)")
+				.where("owner_id=? AND user_id=?", ownerID, userID)
+				.executeNoResult();
 	}
 }

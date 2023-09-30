@@ -339,6 +339,10 @@ public class User extends Actor{
 		return getFullName();
 	}
 
+	public PrivacySetting getPrivacySetting(UserPrivacySettingKey key){
+		return privacySettings.getOrDefault(key, PrivacySetting.DEFAULT);
+	}
+
 	// for templates
 	public Map<String, Object> getFirstAndGender(){
 		return Map.of("first", firstName, "gender", gender==null ? Gender.UNKNOWN : gender);

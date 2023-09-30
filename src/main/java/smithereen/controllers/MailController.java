@@ -25,17 +25,22 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.data.ForeignUser;
 import smithereen.data.MailMessage;
+import smithereen.data.MessagesPrivacyGrant;
 import smithereen.data.PaginatedList;
 import smithereen.data.Post;
+import smithereen.data.PrivacySetting;
 import smithereen.data.User;
 import smithereen.data.UserNotifications;
+import smithereen.data.UserPrivacySettingKey;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.MailStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
+import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
 
 public class MailController{
@@ -74,9 +79,11 @@ public class MailController{
 		}
 	}
 
-	public long sendMessage(User self, int selfAccountID, Set<User> to, String text, String subject, List<String> attachmentIDs, MailMessage inReplyTo){
+	public long sendMessage(User self, int selfAccountID, Set<User> _to, String text, String subject, List<String> attachmentIDs, MailMessage inReplyTo){
 		try{
-			// TODO privacy
+			Set<User> to=_to.stream().filter(u->context.getPrivacyController().checkUserPrivacy(self, u, UserPrivacySettingKey.PRIVATE_MESSAGES)).collect(Collectors.toSet());
+			if(to.isEmpty())
+				throw new UserActionNotAllowedException();
 			if(StringUtils.isNotEmpty(text)){
 				text=Utils.preprocessPostHTML(text, null);
 			}
@@ -134,10 +141,30 @@ public class MailController{
 					un.incUnreadMailCount(1);
 			}
 			long id=MailStorage.createMessage(text, Objects.requireNonNullElse(subject, ""), attachments, self.id, to.stream().map(u->u.id).collect(Collectors.toSet()), null, localOwners, null, replyInfos);
+			for(User user:to){
+				MessagesPrivacyGrant grant=MailStorage.getPrivacyGrant(user.id, self.id);
+				if(grant!=null && grant.isValid()){
+					MailStorage.consumePrivacyGrant(user.id, self.id);
+				}
+			}
 			if(hasForeignRecipients){
 				MailMessage msg=MailStorage.getMessage(self.id, id, false);
 				context.getActivityPubWorker().sendDirectMessage(self, msg);
 			}
+			BackgroundTaskRunner.getInstance().submit(()->{
+				Set<User> usersToGrant=to.stream()
+						.filter(u->!context.getPrivacyController().checkUserPrivacy(u, self, self.getPrivacySetting(UserPrivacySettingKey.PRIVATE_MESSAGES)))
+						.collect(Collectors.toSet());
+				if(usersToGrant.isEmpty())
+					return;
+				try{
+					for(User user:usersToGrant){
+						MailStorage.createOrRenewPrivacyGrant(self.id, user.id, 10);
+					}
+				}catch(SQLException x){
+					LOG.warn("Failed to update privacy grants", x);
+				}
+			});
 			return id;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -246,10 +273,11 @@ public class MailController{
 	public void putForeignMessage(MailMessage msg){
 		try{
 			HashSet<Integer> needUsers=new HashSet<>();
+			needUsers.add(msg.senderID);
 			needUsers.addAll(msg.to);
 			needUsers.addAll(msg.cc);
 			Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
-			// TODO privacy
+			User sender=users.remove(msg.senderID);
 			Map<Integer, MailMessage.ReplyInfo> replyInfos;
 			if(msg.inReplyTo==null){
 				replyInfos=Map.of();
@@ -290,9 +318,23 @@ public class MailController{
 					}
 				}
 			}
-			Set<Integer> localOwners=users.values().stream().filter(u->!(u instanceof ForeignUser)).map(u->u.id).collect(Collectors.toSet());
+			Set<Integer> localOwners=users.values().stream()
+					.filter(u->!(u instanceof ForeignUser))
+					.filter(u->context.getPrivacyController().checkUserPrivacy(sender, u, UserPrivacySettingKey.PRIVATE_MESSAGES))
+					.map(u->u.id)
+					.collect(Collectors.toSet());
+			if(localOwners.isEmpty())
+				throw new UserActionNotAllowedException();
 			MailStorage.createMessage(msg.text, msg.subject!=null ? msg.subject : "", msg.getSerializedAttachments(), msg.senderID, msg.to, msg.cc, localOwners, msg.activityPubID, replyInfos);
 			for(int id:localOwners){
+				MessagesPrivacyGrant grant=MailStorage.getPrivacyGrant(id, msg.senderID);
+				if(grant!=null && grant.isValid())
+					MailStorage.consumePrivacyGrant(id, msg.senderID);
+
+				if(!context.getPrivacyController().checkUserPrivacy(users.get(id), sender, sender.getPrivacySetting(UserPrivacySettingKey.PRIVATE_MESSAGES))){
+					MailStorage.createOrRenewPrivacyGrant(msg.senderID, id, 10);
+				}
+
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(id);
 				if(un!=null)
 					un.incUnreadMailCount(1);

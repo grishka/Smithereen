@@ -16,12 +16,14 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import smithereen.ApplicationContext;
+import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.Actor;
 import smithereen.data.ForeignGroup;
 import smithereen.data.ForeignUser;
 import smithereen.data.FriendshipStatus;
 import smithereen.data.Group;
+import smithereen.data.MessagesPrivacyGrant;
 import smithereen.data.OwnedContentObject;
 import smithereen.data.OwnerAndAuthor;
 import smithereen.data.Post;
@@ -33,6 +35,7 @@ import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.MailStorage;
 import smithereen.storage.UserStorage;
 import spark.utils.StringUtils;
 
@@ -112,8 +115,18 @@ public class PrivacyController{
 	}
 
 	public boolean checkUserPrivacy(@Nullable User self, @NotNull User owner, @NotNull UserPrivacySettingKey key){
-		// TODO special handling for direct messages
-		return checkUserPrivacy(self, owner, owner.privacySettings.getOrDefault(key, PrivacySetting.DEFAULT));
+		boolean r=checkUserPrivacy(self, owner, owner.getPrivacySetting(key));
+		if(key==UserPrivacySettingKey.PRIVATE_MESSAGES && !r && self!=null){
+			try{
+				MessagesPrivacyGrant grant=MailStorage.getPrivacyGrant(owner.id, self.id);
+				if(grant!=null && grant.isValid()){
+					return true;
+				}
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+		return r;
 	}
 
 	public boolean checkUserPrivacy(@Nullable User self, @NotNull User owner, @NotNull PrivacySetting setting){
@@ -123,10 +136,13 @@ public class PrivacyController{
 		// You can always do everything with objects you own
 		if(self.id==owner.id)
 			return true;
-		// TODO check whether blocked
 		// Denied users are always denied regardless of the base rule
 		if(setting.exceptUsers.contains(self.id))
 			return false;
+
+		if(isUserBlocked(self, owner) && setting.baseRule!=PrivacySetting.Rule.EVERYONE)
+			return false;
+
 		// Allowed users are always allowed
 		if(setting.allowUsers.contains(self.id))
 			return true;
@@ -189,7 +205,18 @@ public class PrivacyController{
 		if(oaa.owner() instanceof Group g){
 			enforceGroupContentAccess(req, g);
 		}else if(oaa.owner() instanceof User u){
+			if(obj instanceof Post post && post.ownerID!=post.authorID && post.getReplyLevel()==0){
+				if(!checkUserPrivacyForRemoteServer(getDomainFromRequest(req), u, u.privacySettings.getOrDefault(UserPrivacySettingKey.WALL_OTHERS_POSTS, PrivacySetting.DEFAULT)))
+					throw new UserActionNotAllowedException();
+			}
+		}
+	}
 
+	private String getDomainFromRequest(spark.Request req){
+		try{
+			return ActivityPub.verifyHttpSignature(req, null).domain;
+		}catch(Exception x){
+			return null;
 		}
 	}
 
@@ -229,5 +256,22 @@ public class PrivacyController{
 			}
 		}
 		LOG.trace("Actor {} was allowed to access object {} in a {} group {}", signer.activityPubID, req.pathInfo(), group.accessType, group.activityPubID);
+	}
+
+	public boolean isUserBlocked(User self, Actor target){
+		try{
+			if(target instanceof User user){
+				if(self instanceof ForeignUser && UserStorage.isDomainBlocked(user.id, self.domain))
+					return true;
+				return UserStorage.isUserBlocked(user.id, self.id);
+			}else if(target instanceof Group group){
+				if(self instanceof ForeignUser && GroupStorage.isDomainBlocked(group.id, self.domain))
+					return true;
+				return GroupStorage.isUserBlocked(group.id, self.id);
+			}
+			return false;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 }
