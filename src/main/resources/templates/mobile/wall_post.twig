@@ -42,7 +42,7 @@
 	</div>
 	<table class="postActions" width="100%" cellpadding="0" cellspacing="0">
 		<tr>
-	{%if interactions is not null%}
+	{% if interactions is not null and not hideButtons %}
 			<td width="50%" align="center">
 				<a href="{{ realPost.internalURL }}" class="action comment">
 					<span class="wideOnly">{{ L('comment') }}</span>
@@ -59,7 +59,7 @@
 					</span>
 				</a>
 			</td>
-	{%endif%}
+	{% endif %}
 		</tr>
 	</table>
 </div>
