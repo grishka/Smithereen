@@ -61,6 +61,7 @@ public class ProfileRoutes{
 
 				boolean canSeeOthers=ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, user, UserPrivacySettingKey.WALL_OTHERS_POSTS);
 				boolean canPost=canSeeOthers && self!=null && ctx.getPrivacyController().checkUserPrivacy(self.user, user, UserPrivacySettingKey.WALL_POSTING);
+				boolean canMessage=self!=null && ctx.getPrivacyController().checkUserPrivacy(self.user, user, UserPrivacySettingKey.PRIVATE_MESSAGES);
 
 				PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(user, !canSeeOthers, offset, 20));
 				RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req)
@@ -70,6 +71,7 @@ public class ProfileRoutes{
 						.with("postCount", wall.total)
 						.with("canPostOnWall", canPost)
 						.with("canSeeOthersPosts", canSeeOthers)
+						.with("canMessage", canMessage)
 						.paginate(wall);
 
 				if(req.attribute("mobile")==null){
@@ -172,7 +174,8 @@ public class ProfileRoutes{
 				model.addNavBarItem(user.getFullName(), null, isSelf ? l.get("this_is_you") : null);
 
 				model.with("groups", ctx.getGroupsController().getUserGroups(user, self!=null ? self.user : null, 0, 100).list);
-				jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete");
+				jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete",
+						"mail_tab_compose", "send");
 				Templates.addJsLangForNewPostForm(req);
 				yield model;
 			}

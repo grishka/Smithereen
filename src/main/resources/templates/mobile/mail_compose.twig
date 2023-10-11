@@ -3,13 +3,13 @@
 {% include "mail_tabbar" with {'tab': 'compose'} %}
 <div class="singleColumn">
 	<div class="mailMessageComposeForm">
-		<form action="/my/mail/send" method="post" id="wallPostFormForm_mailMessage" data-required-fields="{% if replyTo is null %}mailComposeToFld{% endif %}" data-allowed-attachments="photo">
+		<form action="/my/mail/send" method="post" id="wallPostFormForm_mailMessage" data-required-fields="{% if replyTo is null and to is empty %}mailComposeToFld{% endif %}" data-allowed-attachments="photo">
 			{% if replyTo is not null %}
 			<div class="marginAfter grayText">{{ L('in_reply_to_message', {'name': users[replyTo.senderID].firstLastAndGender}) }}</div>
 			<input type="hidden" name="inReplyTo" value="{{ replyTo.encodedID }}"/>
 			{% endif %}
 			<h4>{{ L('mail_to') }}</h4>
-			{% if replyTo is null %}
+			{% if replyTo is null and to is empty %}
 			<div id="mailComposeTo"></div>
 			<input type="hidden" name="to" id="mailComposeToFld"/>
 			{% else %}
@@ -32,7 +32,7 @@
 		</form>
 	</div>
 </div>
-{% if replyTo is null %}
+{% if replyTo is null and to is empty %}
 {% script %}
 var friendList={{ json(friendList) }};
 new TokenInput(ge("mailComposeTo"), "{{ L('friends_search_placeholder') }}", function(q){return TokenInput.filterTokens(q, friendList);}, ge("mailComposeToFld"));

@@ -4,9 +4,19 @@
 <div class="heavyBoxWrap">
 	<div class="heavyBox mailMessageComposeForm">
 		<form action="/my/mail/send" method="post" id="wallPostFormForm_mailMessage" data-required-fields="mailComposeToFld">
+			{% if to is empty %}
 			<h4>{{ L('mail_to') }}</h4>
 			<div id="mailComposeTo"></div>
-			<input type="hidden" name="to" id="mailComposeToFld"/>
+			{% else %}
+			<div class="reportFormHeader" style="margin: 0">
+				{% set user=users[to | first] %}
+				<div class="flL">{{ user | pictureForAvatar('s') }}</div>
+				<div><b>{{ user.completeName }}</b></div>
+				{# <div class="ellipsize">{{ reportSubtitle }}</div> #}
+				<div class="clear"></div>
+			</div>
+			{% endif %}
+			<input type="hidden" name="to" id="mailComposeToFld" value="{{ to | join(",") }}"/>
 			<input type="checkbox" class="toggler" id="mailSubjectToggler"/>
 			<div class="marginAfter marginBefore toggled">
 				<label for="mailSubjectToggler" class="hideWhenOn link">{{ L('mail_specify_subject') }}</label>
@@ -19,9 +29,11 @@
 		</form>
 	</div>
 </div>
+{% if to is empty %}
 {% script %}
 var friendList={{ json(friendList) }};
 new TokenInput(ge("mailComposeTo"), "{{ L('friends_search_placeholder') }}", function(q){return TokenInput.filterTokens(q, friendList);}, ge("mailComposeToFld"));
 {% endscript %}
+{% endif %}
 {% endblock %}
 

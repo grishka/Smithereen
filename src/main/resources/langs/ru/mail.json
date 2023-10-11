@@ -29,5 +29,7 @@
   "in_reply_to_message": "В ответ на сообщение {name, inflect, genitive}",
   "mail_in_reply_to": "В ответ на",
   "mail_in_reply_to_post": "запись {name, inflect, genitive}",
-  "mail_in_reply_to_comment": "комментарий {name, inflect, genitive}"
+  "mail_in_reply_to_comment": "комментарий {name, inflect, genitive}",
+  "profile_write_message": "Написать сообщение",
+  "messages_title": "Сообщения"
 }

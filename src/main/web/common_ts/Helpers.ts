@@ -411,6 +411,8 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 		return;
 	}
 	submittingForm=form;
+	if(!submitter && form.dataset.submitterId)
+		submitter=ge(form.dataset.submitterId);
 	if(submitter)
 		submitter.classList.add("loading");
 	setGlobalLoading(true);
@@ -992,4 +994,51 @@ function makeAvatar(urls:string[], baseSize:string, customSize:number=0):HTMLEle
 		el.style.width=el.style.height=customSize+"px";
 	}
 	return el;
+}
+
+function showMailFormBox(el:HTMLAnchorElement){
+	LayerManager.getInstance().showBoxLoader();
+	ajaxGet(el.href, (r)=>{
+		var cont=ce("div", {innerHTML: r.toString()});
+		var form=cont.qs("form") as HTMLFormElement;
+		form.dataset.submitterId="mailMessageFormSubmit";
+		var postForm:PostForm;
+		var box=new Box(lang("mail_tab_compose"), [lang("send"), lang("cancel")], (idx)=>{
+			if(idx==0){
+				var onDone=(success:boolean)=>{
+					if(success){
+						box.dismiss();
+					}else{
+						var btn=this.getButton(0);
+						btn.removeAttribute("disabled");
+						box.getButton(1).removeAttribute("disabled");
+						box.showButtonLoading(0, false);
+					}
+				};
+				if(postForm.send(onDone)){
+					var btn=box.getButton(0);
+					btn.setAttribute("disabled", "");
+					box.getButton(1).setAttribute("disabled", "");
+					box.showButtonLoading(0, true);
+				}
+			}else{
+				box.dismiss();
+			}
+		});
+		box.setContent(cont);
+		box.show();
+		var button=box.getButton(0);
+		button.id="mailMessageFormSubmit";
+		postForm=new PostForm(ge("wallPostForm_mailMessage"));
+		postForm.onSendDone=(success)=>{
+			if(success)
+				box.dismiss();
+		};
+		postForm.focus();
+		box.setOnDismissListener(()=>{
+			postForm.detach();
+		});
+	}, (msg)=>{
+		new MessageBox(lang("error"), msg, lang("close")).show();
+	}, "text");
 }

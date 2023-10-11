@@ -29,5 +29,7 @@
   "in_reply_to_message": "In reply to {name}''s message",
   "mail_in_reply_to": "In reply to",
   "mail_in_reply_to_post": "{name}''s post",
-  "mail_in_reply_to_comment": "{name, inflect, genitive}''s comment"
+  "mail_in_reply_to_comment": "{name, inflect, genitive}''s comment",
+  "profile_write_message": "Send a message",
+  "messages_title": "Messages"
 }

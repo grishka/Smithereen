@@ -49,6 +49,9 @@
 				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("follow")}}</a>
 				{%endif%}
 				{%endif%}
+				{% if canMessage %}
+				<a href="/my/mail/compose?to={{ user.id }}" class="button withText" onclick="showMailFormBox(this); return false;">{{ L('profile_write_message') }}</a>
+				{% endif %}
 			</div>
 			{%endif%}
 			<ul class="actionList marginAfter marginBefore">

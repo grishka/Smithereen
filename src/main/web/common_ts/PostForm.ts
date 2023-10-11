@@ -58,6 +58,14 @@ class PostForm{
 	private additionalRequiredFields:HTMLInputElement[]=[];
 	private forceOverrideDirty:boolean=false;
 	private allowedAttachmentTypes:string[]=null;
+	public onSendDone:{(success:boolean):void};
+	private beforeUnloadListener=(ev:BeforeUnloadEvent)=>{
+				if(this.isDirty()){
+					var msg:string=lang("confirm_discard_post_draft");
+					(ev || window.event).returnValue=msg;
+					return msg;
+				}
+			};
 
 	public constructor(el:HTMLElement){
 		this.id=el.dataset.uniqueId;
@@ -133,13 +141,7 @@ class PostForm{
 		}
 
 		if(!this.editing){
-			window.addEventListener("beforeunload", (ev:BeforeUnloadEvent)=>{
-				if(this.isDirty()){
-					var msg:string=lang("confirm_discard_post_draft");
-					(ev || window.event).returnValue=msg;
-					return msg;
-				}
-			});
+			window.addEventListener("beforeunload", this.beforeUnloadListener);
 		}
 
 		if(mobile){
@@ -188,12 +190,12 @@ class PostForm{
 
 	private onFormSubmit(ev:Event):void{
 		ev.preventDefault();
-		this.send();
+		this.send(this.onSendDone);
 	}
 
 	private onInputKeyDown(ev:KeyboardEvent):void{
 		if(ev.keyCode==13 && (isApple ? ev.metaKey : ev.ctrlKey)){
-			this.send();
+			this.send(this.onSendDone);
 		}
 	}
 
@@ -333,11 +335,11 @@ class PostForm{
 		this.attachField.value=this.attachmentIDs.join(",");
 	}
 
-	private send():void{
+	public send(onDone:{(success:boolean):void}=null):boolean{
 		if(this.input.value.length==0 && this.attachmentIDs.length==0){
 			if(this.pollLayout!=null){
 				if(!this.pollQuestionField.reportValidity())
-					return;
+					return false;
 				var optionCount=0;
 				for(var opt of this.pollOptionFields){
 					if(opt.value.length>0)
@@ -347,21 +349,23 @@ class PostForm{
 					for(var opt of this.pollOptionFields){
 						if(opt.value.length==0){
 							opt.focus();
-							return;
+							return false;
 						}
 					}
 				}
 			}else{
-				return;
+				return false;
 			}
 		}
 		for(var fld of this.additionalRequiredFields){
 			if(!fld.value.length)
-				return;
+				return false;
 		}
 		ajaxSubmitForm(this.form, (resp)=>{
-			if(resp===false)
+			if(resp===false){
+				if(onDone) onDone(false);
 				return;
+			}
 			this.attachmentIDs=[];
 			this.attachField.value="";
 			this.input.resizeToFitContent();
@@ -371,9 +375,15 @@ class PostForm{
 				this.resetReply();
 			}
 			this.forceOverrideDirty=false;
+			if(onDone) onDone(true);
 		}, this.submitButton, {onResponseReceived: (resp:any)=>{
 			this.forceOverrideDirty=true;
 		}});
+		return true;
+	}
+
+	public detach(){
+		window.removeEventListener("beforeunload", this.beforeUnloadListener);
 	}
 
 	private resetReply(){

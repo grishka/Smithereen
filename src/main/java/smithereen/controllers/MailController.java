@@ -80,6 +80,8 @@ public class MailController{
 
 	public long sendMessage(User self, int selfAccountID, Set<User> _to, String text, String subject, List<String> attachmentIDs, MailMessage inReplyTo){
 		try{
+			if(StringUtils.isEmpty(text) && attachmentIDs.isEmpty())
+				throw new BadRequestException();
 			Set<User> to=_to.stream().filter(u->context.getPrivacyController().checkUserPrivacy(self, u, UserPrivacySettingKey.PRIVATE_MESSAGES)).collect(Collectors.toSet());
 			if(to.isEmpty())
 				throw new UserActionNotAllowedException();

@@ -40,6 +40,7 @@ public class MailRoutes{
 			}
 		}
 		model.with("tab", "inbox").pageTitle(lang(req).get("mail_inbox_title")).paginate(list).with("users", ctx.getUsersController().getUsers(needUsers));
+		model.with("toolbarTitle", lang(req).get("messages_title"));
 		return model;
 	}
 
@@ -48,6 +49,7 @@ public class MailRoutes{
 		Set<Integer> needUsers=list.list.stream().flatMap(m->m.to.stream()).collect(Collectors.toSet());
 		RenderedTemplateResponse model=new RenderedTemplateResponse("mail_message_list", req);
 		model.with("tab", "outbox").pageTitle(lang(req).get("mail_outbox_title")).paginate(list).with("users", ctx.getUsersController().getUsers(needUsers));
+		model.with("toolbarTitle", lang(req).get("messages_title"));
 		return model;
 	}
 
@@ -73,11 +75,11 @@ public class MailRoutes{
 				subject="Re: "+subject;
 			model.with("replySubject", subject);
 		}
+		model.with("toolbarTitle", lang(req).get("messages_title"));
 		return model;
 	}
 
 	public static Object sendMessage(Request req, Response resp, Account self, ApplicationContext ctx){
-		requireQueryParams(req, "text");
 		String _inReplyTo=req.queryParams("inReplyTo");
 		MailMessage inReplyTo=null;
 		Set<Integer> toUserIDs;
@@ -104,10 +106,15 @@ public class MailRoutes{
 		Set<User> toUsers=new HashSet<>(ctx.getUsersController().getUsers(toUserIDs).values());
 		if(toUsers.isEmpty())
 			throw new BadRequestException();
-		long id=ctx.getMailController().sendMessage(self.user, self.id, toUsers, req.queryParams("text"), subject, List.of(req.queryParamOrDefault("attachments", "").split(",")), inReplyTo);
+		long id=ctx.getMailController().sendMessage(self.user, self.id, toUsers, req.queryParamOrDefault("text", ""), subject, List.of(req.queryParamOrDefault("attachments", "").split(",")), inReplyTo);
 		MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 		req.session().attribute("recentMessage", msg);
 		if(isAjax(req)){
+			String from=req.queryParams("from");
+			User toUser=toUsers.iterator().next();
+			if("ajaxBox".equals(from)){
+				return new WebDeltaResponse(resp).showSnackbar(Utils.stripHTML(lang(req).get("mail_message_sent", Map.of("name", toUser.getFirstLastAndGender()))));
+			}
 			return new WebDeltaResponse(resp).replaceLocation("/my/mail?fromCompose");
 		}
 		resp.redirect("/my/mail?fromCompose");
@@ -115,32 +122,42 @@ public class MailRoutes{
 	}
 
 	public static Object compose(Request req, Response resp, Account self, ApplicationContext ctx){
-		RenderedTemplateResponse model=new RenderedTemplateResponse("mail_compose", req);
-		model.with("friendList", ctx.getFriendsController()
-				.getFriends(self.user, 0, 1000, FriendsController.SortOrder.ID_ASCENDING)
-				.list.stream()
-				.map(u->Map.of("id", String.valueOf(u.id), "title", u.getFullName()))
-				.toList()
-		).pageTitle(lang(req).get("mail_tab_compose"));
-		String replyToID=req.queryParams("replyTo");
-		if(StringUtils.isNotEmpty(replyToID)){
-			try{
-				MailMessage replyTo=ctx.getMailController().getMessage(self.user, decodeLong(replyToID), false);
-				model.with("replyTo", replyTo);
-				HashSet<Integer> needUsers=new HashSet<>(replyTo.to);
-				needUsers.addAll(replyTo.cc);
-				needUsers.add(replyTo.senderID);
-				if(StringUtils.isNotEmpty(replyTo.subject)){
-					String subject=replyTo.subject;
-					if(!subject.toLowerCase().startsWith("re:"))
-						subject="Re: "+subject;
-					model.with("subject", subject);
+		boolean ajax=isAjax(req);
+		RenderedTemplateResponse model=new RenderedTemplateResponse(ajax ? "mail_compose_ajax_box" : "mail_compose", req);
+		model.pageTitle(lang(req).get("mail_tab_compose"));
+		model.with("toolbarTitle", lang(req).get("messages_title"));
+		int to=safeParseInt(req.queryParams("to"));
+		if(to==0){
+			model.with("friendList", ctx.getFriendsController()
+					.getFriends(self.user, 0, 1000, FriendsController.SortOrder.ID_ASCENDING)
+					.list.stream()
+					.map(u->Map.of("id", String.valueOf(u.id), "title", u.getFullName()))
+					.toList()
+			).pageTitle(lang(req).get("mail_tab_compose"));
+			String replyToID=req.queryParams("replyTo");
+			if(StringUtils.isNotEmpty(replyToID)){
+				try{
+					MailMessage replyTo=ctx.getMailController().getMessage(self.user, decodeLong(replyToID), false);
+					model.with("replyTo", replyTo);
+					HashSet<Integer> needUsers=new HashSet<>(replyTo.to);
+					needUsers.addAll(replyTo.cc);
+					needUsers.add(replyTo.senderID);
+					if(StringUtils.isNotEmpty(replyTo.subject)){
+						String subject=replyTo.subject;
+						if(!subject.toLowerCase().startsWith("re:"))
+							subject="Re: "+subject;
+						model.with("subject", subject);
+					}
+					Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
+					HashSet<Integer> to_=new HashSet<>(needUsers);
+					to_.remove(self.user.id);
+					model.with("to", to_).with("users", users);
+				}catch(ObjectNotFoundException ignore){
 				}
-				Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
-				HashSet<Integer> to=new HashSet<>(needUsers);
-				to.remove(self.user.id);
-				model.with("to", to).with("users", users);
-			}catch(ObjectNotFoundException ignore){}
+			}
+		}else{
+			model.with("to", Set.of(to));
+			model.with("users", ctx.getUsersController().getUsers(Set.of(to)));
 		}
 		if(isMobile(req)){
 			jsLangKey(req, "attach_menu_photo");
