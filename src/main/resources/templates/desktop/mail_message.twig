@@ -35,6 +35,10 @@
 				<div class="label">{{ L('mail_subject') }}:</div>
 				<div>{{ message.subject }}</div>
 				{% endif %}
+				{% if inReplyToURL is not empty %}
+				<div class="label">{{ L('mail_in_reply_to') }}:</div>
+				<div><a href="{{ inReplyToURL }}">{{ inReplyToLink }}</a></div>
+				{% endif %}
 			</div>
 			<div class="messageContent">
 			{{ message.text | postprocessHTML }}

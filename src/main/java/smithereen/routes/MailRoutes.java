@@ -13,6 +13,7 @@ import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
 import smithereen.model.MailMessage;
 import smithereen.model.PaginatedList;
+import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
@@ -76,6 +77,22 @@ public class MailRoutes{
 			model.with("replySubject", subject);
 		}
 		model.with("toolbarTitle", lang(req).get("messages_title"));
+		if(msg.replyInfo!=null && msg.replyInfo.type()!=MailMessage.ParentObjectType.MESSAGE){
+			switch(msg.replyInfo.type()){
+				case POST -> {
+					try{
+						Post post=ctx.getWallController().getPostOrThrow((int)msg.replyInfo.id());
+						String langKey;
+						if(post.authorID==self.user.id){
+							langKey=post.getReplyLevel()>0 ? "mail_in_reply_to_own_comment" : "mail_in_reply_to_own_post";
+						}else{
+							langKey=post.getReplyLevel()>0 ? "mail_in_reply_to_comment" : "mail_in_reply_to_post";
+						}
+						model.with("inReplyToLink", lang(req).get(langKey)).with("inReplyToURL", post.getInternalURL());
+					}catch(ObjectNotFoundException ignore){}
+				}
+			}
+		}
 		return model;
 	}
 

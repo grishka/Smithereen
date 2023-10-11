@@ -30,6 +30,8 @@
   "mail_in_reply_to": "In reply to",
   "mail_in_reply_to_post": "{name}''s post",
   "mail_in_reply_to_comment": "{name, inflect, genitive}''s comment",
+  "mail_in_reply_to_own_post": "your post",
+  "mail_in_reply_to_own_comment": "your comment",
   "profile_write_message": "Send a message",
   "messages_title": "Messages"
 }
