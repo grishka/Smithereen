@@ -33,5 +33,6 @@
   "mail_in_reply_to_own_post": "your post",
   "mail_in_reply_to_own_comment": "your comment",
   "profile_write_message": "Send a message",
-  "messages_title": "Messages"
+  "messages_title": "Messages",
+  "mail_conversation_history": "Conversation history"
 }

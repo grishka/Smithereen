@@ -1,6 +1,7 @@
 package smithereen.storage;
 
 import java.net.URI;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Collection;
@@ -240,5 +241,19 @@ public class MailStorage{
 				.valueExpr("messages_remain", "GREATEST(messages_remain-1, 0)")
 				.where("owner_id=? AND user_id=?", ownerID, userID)
 				.executeNoResult();
+	}
+
+	public static PaginatedList<MailMessage> getHistory(int ownerID, int peerID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM mail_messages_peers JOIN mail_messages ON message_id=mail_messages.id" +
+					" WHERE mail_messages_peers.owner_id=? AND mail_messages_peers.peer_id=? AND mail_messages.deleted_at IS NULL", ownerID, peerID);
+			int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT mail_messages.* FROM mail_messages_peers JOIN mail_messages ON message_id=mail_messages.id" +
+					" WHERE mail_messages_peers.owner_id=? AND mail_messages_peers.peer_id=? AND mail_messages.deleted_at IS NULL ORDER BY message_id DESC LIMIT ? OFFSET ?", ownerID, peerID, count, offset);
+			List<MailMessage> msgs=DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), MailMessage::fromResultSet, null).toList();
+			return new PaginatedList<>(msgs, total, offset, count);
+		}
 	}
 }

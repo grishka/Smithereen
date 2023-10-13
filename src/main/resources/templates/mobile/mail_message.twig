@@ -11,7 +11,7 @@
 			<a href="{{ users[message.senderID].profileURL }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('s') }}</a>
 			<div class="nameAndTime">
 				<div class="name"><a href="{{ users[message.senderID].profileURL }}">{{ users[message.senderID].completeName }}</a></div>
-				<div class="time">{{ LD(message.createdAt) }}{% if message.updatedAt is not null %} | {{ L('mail_edited_at', {'time': LD(message.updatedAt)}) }}{% endif %}</div>
+				<div class="time">{{ LD(message.createdAt, true) }}{% if message.updatedAt is not null %} | {{ L('mail_edited_at', {'time': LD(message.updatedAt)}) }}{% endif %}</div>
 			</div>
 		</div>
 		<div class="messageViewFields">

@@ -22,7 +22,8 @@ public class SmithereenExtension extends AbstractExtension{
 			"getTime", new InstantToTimeFunction(),
 			"getDate", new InstantToDateFunction(),
 			"describeAttachments", new DescribeAttachmentsFunction(),
-			"addQueryParams", new AddQueryParamsFunction()
+			"addQueryParams", new AddQueryParamsFunction(),
+			"randomString", new RandomStringFunction()
 		);
 	}
 

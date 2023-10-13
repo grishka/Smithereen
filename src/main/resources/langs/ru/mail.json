@@ -33,5 +33,6 @@
   "mail_in_reply_to_own_post": "вашу запись",
   "mail_in_reply_to_own_comment": "ваш комментарий",
   "profile_write_message": "Написать сообщение",
-  "messages_title": "Сообщения"
+  "messages_title": "Сообщения",
+  "mail_conversation_history": "История сообщений"
 }

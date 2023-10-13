@@ -1,0 +1,14 @@
+<div class="mailHistory">
+	<div class="summaryWrap">
+		<div class="summary">{{ L('mail_conversation_history') }}</div>
+		{% include "pagination" with {'paginationAjax': true} %}
+	</div>
+	{% for msg in items %}
+	<div class="messageRow{{ msg.unread ? ' unread' : '' }}">
+		<div class="name {{ msg.senderID==currentUser.id ? 'self' : 'peer' }}"><a href="{{ users[msg.senderID].profileURL }}" class="ellipsize">{{ users[msg.senderID].firstName }}</a></div>
+		<div class="content">{{ msg.text | postprocessHTML }}{% if msg.attachments is not empty %}{{ renderAttachments(msg.processedAttachments, null) }}{% endif %}</div>
+		<div class="time"><a href="/my/mail/messages/{{ msg.encodedID }}">{{ LD(msg.createdAt, format="timeOrDay") }}</a></div>
+	</div>
+	{% endfor %}
+	<div class="bottomSummaryWrap">{% include "pagination" with {'paginationAjax': true} %}</div>
+</div>

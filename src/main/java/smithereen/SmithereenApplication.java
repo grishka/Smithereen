@@ -478,6 +478,7 @@ public class SmithereenApplication{
 				getLoggedIn("/outbox", MailRoutes::outbox);
 				getLoggedIn("/compose", MailRoutes::compose);
 				postWithCSRF("/send", MailRoutes::sendMessage);
+				getLoggedIn("/history", MailRoutes::history);
 				path("/messages/:id", ()->{
 					Filter idParserFilter=(req, resp)->{
 						long id=Utils.decodeLong(req.params(":id"));

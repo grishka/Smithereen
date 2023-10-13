@@ -344,4 +344,12 @@ public class MailController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public PaginatedList<MailMessage> getHistory(User self, User peer, int offset, int count){
+		try{
+			return MailStorage.getHistory(self.id, peer.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

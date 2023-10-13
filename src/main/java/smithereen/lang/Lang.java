@@ -24,10 +24,10 @@ import java.util.Locale;
 import java.util.Map;
 
 import smithereen.Utils;
-import smithereen.model.User;
 import smithereen.lang.formatting.ICUMessageParser;
 import smithereen.lang.formatting.ICUMessageSyntaxException;
 import smithereen.lang.formatting.StringTemplate;
+import smithereen.model.User;
 import spark.utils.StringUtils;
 
 public class Lang{
@@ -240,6 +240,15 @@ public class Lang{
 	public String formatTime(Instant time, ZoneId timeZone){
 		ZonedDateTime dt=time.atZone(timeZone);
 		return String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute());
+	}
+
+	public String formatTimeOrDay(Instant time, ZoneId timeZone){
+		ZonedDateTime dt=time.atZone(timeZone);
+		if(dt.toLocalDate().equals(LocalDate.now(timeZone))){
+			return String.format(locale, "%d:%02d:%02d", dt.getHour(), dt.getMinute(), dt.getSecond());
+		}else{
+			return String.format(locale, "%02d.%02d.%02d", dt.getDayOfMonth(), dt.getMonthValue(), dt.getYear()%100);
+		}
 	}
 
 	public String getAsJS(String key){

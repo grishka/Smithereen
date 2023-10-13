@@ -1140,6 +1140,9 @@ select{
 	.curPage{
 		font-weight: bold;
 	}
+	.loader{
+		margin-right: 5px;
+	}
 }
 
 .summaryWrap .pagination{
@@ -2910,4 +2913,73 @@ h2, h3, h4{
 	border: none;
 	background: none;
 	padding: 0;
+}
+
+#mailHistoryWrap{
+	padding: 0;
+	border-top: solid 1px $wallPostSeparator;
+	>.loader{
+		height: 49px;
+	}
+}
+
+#mailShowHistory{
+	display: block;
+	text-align: center;
+	padding: 18px 10px;
+}
+
+.mailHistory{
+	width: 465px;
+	margin: auto;
+	padding-bottom: 10px;
+	.summaryWrap{
+		padding-left: 0;
+		padding-right: 0;
+		margin-bottom: 5px;
+	}
+	.bottomSummaryWrap{
+		padding: 0;
+		margin-top: 5px;
+	}
+	.messageRow{
+		display: grid;
+		grid-template-columns: 1fr 300px 50px;
+		grid-gap: 10px;
+		padding: 5px;
+		&.unread{
+			background: #fef8ee;
+		}
+		>*{
+			min-width: 0;
+		}
+		>.name{
+			text-align: right;
+			font-weight: bold;
+			a{
+				display: block;
+			}
+			&.self a{
+				color: #a4ae46;
+			}
+		}
+		>.content{
+			line-height: 130%;
+			p:first-child{
+				margin-top: 0;
+			}
+			p:last-child{
+				margin-bottom: 0;
+			}
+			.postAttachments .aspectWrapper .pseudoImage{
+				max-width: 200px;
+			}
+		}
+		>.time{
+			text-align: right;
+			a{
+				color: #999;
+			}
+		}
+	}
 }

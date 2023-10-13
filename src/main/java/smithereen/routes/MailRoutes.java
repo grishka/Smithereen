@@ -69,6 +69,7 @@ public class MailRoutes{
 		model.with("tab", "view").with("message", msg).with("users", users);
 		boolean isOutgoing=msg.senderID==self.user.id;
 		User peer=users.get(isOutgoing ? msg.to.iterator().next() : msg.senderID);
+		model.with("peer", peer);
 		model.pageTitle(lang(req).get(isOutgoing ? "mail_message_title_outgoing" : "mail_message_title_incoming", Map.of("name", peer.getFirstLastAndGender())));
 		if(StringUtils.isNotEmpty(msg.subject)){
 			String subject=msg.subject;
@@ -245,5 +246,19 @@ public class MailRoutes{
 		return new WebDeltaResponse(resp)
 				.remove("msgDeletedRow"+msg.encodedID)
 				.show(origElementID);
+	}
+
+	public static Object history(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(!isAjax(req)){
+			resp.redirect("/my/mail");
+			return "";
+		}
+		requireQueryParams(req, "peer");
+		int peerID=safeParseInt(req.queryParams("peer"));
+		User peer=ctx.getUsersController().getUserOrThrow(peerID);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("mail_history", req);
+		model.paginate(ctx.getMailController().getHistory(self.user, peer, offset(req), 50));
+		model.with("users", Map.of(self.user.id, self.user, peerID, peer));
+		return new WebDeltaResponse(resp).setContent("mailHistoryWrap", model.renderToString());
 	}
 }

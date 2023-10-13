@@ -12,7 +12,7 @@
 				</div>
 				<span class="flR loader" id="msgActionsLoader" style="display: none">&nbsp;</span>
 			</h2>
-			<div class="time">{{ LD(message.createdAt) }}{% if message.updatedAt is not null %} | {{ L('mail_edited_at', {'time': LD(message.updatedAt)}) }}{% endif %}</div>
+			<div class="time">{{ LD(message.createdAt, true) }}{% if message.updatedAt is not null %} | {{ L('mail_edited_at', {'time': LD(message.updatedAt)}) }}{% endif %}</div>
 			<div class="messageViewHeader">
 				<a href="{{ users[message.senderID].profileURL }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('s') }}</a>
 				<div class="label">{{ L('mail_from') }}:</div>
@@ -55,5 +55,11 @@
 		</div>
 	</div>
 </div>
+{% if peer is not null %}
+<div id="mailHistoryWrap">
+	<a id="mailShowHistory" class="ellipsize" href="/my/mail/history?peer={{ peer.id }}" data-ajax data-ajax-show="mailHistoryLoader" data-ajax-hide="mailShowHistory">{{ L('mail_show_history', {'name': peer.firstLastAndGender}) }}</a>
+	<div class="loader" id="mailHistoryLoader" style="display: none"></div>
+</div>
+{% endif %}
 {% endblock %}
 

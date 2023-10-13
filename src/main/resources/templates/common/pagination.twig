@@ -10,12 +10,17 @@
 {#- NB: curPage starts at 0, users expect pages to start at 1 -#}
 {% if totalPages>1 %}
 <div class="pagination">
-	{%- if curPage>2 %}<a href="{{ paginationFirstPageUrl ? paginationFirstPageUrl : (paginationUrlPrefix+'0') }}"{% if paginationAjax %} data-ajax="1"{% endif %}>&laquo;</a>{% endif %}
-	{%- if curPage>1 %}<a href="{{ (paginationFirstPageUrl and curPage==2) ? paginationFirstPageUrl : (paginationUrlPrefix+(paginationPerPage*(curPage-2))) }}" class="page"{% if paginationAjax %} data-ajax="1"{% endif %}>{{curPage-1}}</a>{% endif %}
-	{%- if curPage>0 %}<a href="{{ (paginationFirstPageUrl and curPage==1) ? paginationFirstPageUrl : (paginationUrlPrefix+(paginationPerPage*(curPage-1))) }}" class="page"{% if paginationAjax %} data-ajax="1"{% endif %}>{{curPage}}</a>{% endif -%}
+	{%- if paginationAjax %}
+	{%- set loaderID="paginationLoader_"+randomString() %}
+	{%- set ajaxAttrs=' data-ajax data-ajax-show="'+loaderID+'"' -%}
+	<span class="loader" id="{{ loaderID }}" style="display: none"></span>
+	{%- endif %}
+	{%- if curPage>2 %}<a href="{{ paginationFirstPageUrl ? paginationFirstPageUrl : (paginationUrlPrefix+'0') }}"{{ ajaxAttrs | raw }}>&laquo;</a>{% endif %}
+	{%- if curPage>1 %}<a href="{{ (paginationFirstPageUrl and curPage==2) ? paginationFirstPageUrl : (paginationUrlPrefix+(paginationPerPage*(curPage-2))) }}" class="page"{{ ajaxAttrs | raw }}>{{curPage-1}}</a>{% endif %}
+	{%- if curPage>0 %}<a href="{{ (paginationFirstPageUrl and curPage==1) ? paginationFirstPageUrl : (paginationUrlPrefix+(paginationPerPage*(curPage-1))) }}" class="page"{{ ajaxAttrs | raw }}>{{curPage}}</a>{% endif -%}
 	<span class="curPage">{{ curPage+1 }}</span>
-	{%- if totalPages-curPage>1 %}<a href="{{ paginationUrlPrefix }}{{ paginationPerPage*(curPage+1) }}" class="page"{% if paginationAjax %} data-ajax="1"{% endif %}>{{ curPage+2 }}</a>{% endif %}
-	{%- if totalPages-curPage>2 %}<a href="{{ paginationUrlPrefix }}{{ paginationPerPage*(curPage+2) }}" class="page"{% if paginationAjax %} data-ajax="1"{% endif %}>{{ curPage+3 }}</a>{% endif %}
-	{%- if totalPages-curPage>3 %}<a href="{{ paginationUrlPrefix }}{{ paginationPerPage*(totalPages-1) }}"{% if paginationAjax %} data-ajax="1"{% endif %}>&raquo;</a>{% endif %}
+	{%- if totalPages-curPage>1 %}<a href="{{ paginationUrlPrefix }}{{ paginationPerPage*(curPage+1) }}" class="page"{{ ajaxAttrs | raw }}>{{ curPage+2 }}</a>{% endif %}
+	{%- if totalPages-curPage>2 %}<a href="{{ paginationUrlPrefix }}{{ paginationPerPage*(curPage+2) }}" class="page"{{ ajaxAttrs | raw }}>{{ curPage+3 }}</a>{% endif %}
+	{%- if totalPages-curPage>3 %}<a href="{{ paginationUrlPrefix }}{{ paginationPerPage*(totalPages-1) }}"{{ ajaxAttrs | raw }}>&raquo;</a>{% endif %}
 </div>
 {% endif %}
