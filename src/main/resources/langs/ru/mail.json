@@ -32,7 +32,7 @@
   "mail_in_reply_to_comment": "комментарий {name, inflect, genitive}",
   "mail_in_reply_to_own_post": "вашу запись",
   "mail_in_reply_to_own_comment": "ваш комментарий",
-  "profile_write_message": "Написать сообщение",
+  "profile_write_message": "Отправить сообщение",
   "messages_title": "Сообщения",
   "mail_conversation_history": "История сообщений"
 }

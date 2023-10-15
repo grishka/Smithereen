@@ -27,30 +27,30 @@
 			{%else%}
 			{%if currentUser is not null and currentUser.id==user.id%}
 			<a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">
-				<span class="ava avaPlaceholder inProfile{%if user.gender=='FEMALE'%} female{%endif%}">
-					<span class="ownProfileAvaPlaceholderLabel">{{L('upload_avatar')}}</span>
-				</span>
+				<span class="ava avaPlaceholder inProfile own"></span><div class="ownProfileAvaPlaceholderLabel">{{L('upload_avatar')}}</div>
 			</a>
 			{%else%}
-			<span class="ava avaPlaceholder inProfile{%if user.gender=='FEMALE'%} female{%endif%}"></span>
+			<span class="ava avaPlaceholder inProfile"></span>
 			{%endif%}
 			{%endif%}
 			{% if currentUser is not null and currentUser.id!=user.id and not isSelfBlocked %}
 			<div class="profileBelowAva">
-				{{ friendshipStatusText | raw }}
+				{% if canMessage %}
+				<a href="/my/mail/compose?to={{ user.id }}" class="button withText" onclick="showMailFormBox(this); return false;">{{ L('profile_write_message') }}</a>
+				{% endif %}
 				{%if not(isFriend) and not(following) and not(friendRequestSent) and not(followRequested)%}
 				{%if user.supportsFriendRequests%}
 				{% if friendRequestRecvd %}
-					<a href="/users/{{ user.id }}/respondToFriendRequest?csrf={{csrf}}&accept" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("accept")}}</a>
+					<a href="/users/{{ user.id }}/respondToFriendRequest?csrf={{csrf}}&accept" class="button" data-ajax="1">{{L("add_friend")}}</a>
 				{% else %}
-					<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax-box="1">{{L("add_friend")}}</a>
+					<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button" data-ajax-box="1">{{L("add_friend")}}</a>
 				{% endif %}
 				{%else%}
-				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("follow")}}</a>
+				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button" data-ajax="1">{{L("follow")}}</a>
 				{%endif%}
 				{%endif%}
-				{% if canMessage %}
-				<a href="/my/mail/compose?to={{ user.id }}" class="button withText" onclick="showMailFormBox(this); return false;">{{ L('profile_write_message') }}</a>
+				{% if friendshipStatusText is not empty %}
+				<div class="friendshipStatus">{{ friendshipStatusText | raw }}</div>
 				{% endif %}
 			</div>
 			{%endif%}

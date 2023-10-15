@@ -270,34 +270,21 @@ a, a:link, a:visited, .link{
 	background: $gray;
 	vertical-align: top;
 	margin: 0;
-	background-image: svg-load("img/ava_placeholder_male_s.svg", fill: $darkerGray);
+	background-color: #fff;
+	background-image: svg-load("img/ava_question.svg", fill: #809528);
 	background-repeat: no-repeat;
 	background-position: center;
-	border: solid 1px $darkerGray;
+	background-size: contain;
+	border: solid 1px #ece5d1;
 	box-sizing: border-box;
-	&.sizeM{
-		background-size: auto 32px;
-	}
-	&.sizeL{
-		background-size: auto 48px;
-	}
-	&.female{
-		background-image: svg-load("img/ava_placeholder_female_s.svg", fill: $darkerGray);
-	}
-	&.group{
-		background-image: svg-load("img/ava_placeholder_group_s.svg", fill: $darkerGray);
-	}
 	&.inProfile{
 		width: 200px;
-		height: 200px;
-		border: none;
+		height: 115px;
 		position: relative;
-		background-image: svg-load("img/ava_placeholder_male_l.svg", fill: $darkerGray);
-		&.female{
-			background-image: svg-load("img/ava_placeholder_female_l.svg", fill: $darkerGray);
-		}
-		&.group{
-			background-image: svg-load("img/ava_placeholder_group_l.svg", fill: $darkerGray);
+		&.own{
+			background-image: svg-load("img/ava_question.svg", fill: #e8e3bb);
+			background-color: #fff8cc;
+			border: none;
 		}
 	}
 }

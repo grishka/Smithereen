@@ -3,7 +3,7 @@
 {% if recentlySentMessage is not null %}
 <div class="settingsMessage">
 	{%- if (recentlySentMessage.to | length)>1 %}
-	{{- L('mail_message_sent_muitl', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender, 'moreCount': (recentlySentMessage.to | length)-1}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.encodedID}"} }) }}
+	{{- L('mail_message_sent_multi', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender, 'moreCount': (recentlySentMessage.to | length)-1}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.encodedID}"} }) }}
 	{%- else %}
 	{{- L('mail_message_sent', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.encodedID}"} }) }}
 	{%- endif %}
