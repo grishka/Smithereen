@@ -178,16 +178,19 @@ public class MailController{
 		if(message.senderID==self.id)
 			throw new BadRequestException("Can't mark outgoing messages as read");
 		try{
+			HashSet<Long> ids=new HashSet<>(message.relatedMessageIDs);
 			// User's own copy
 			if(!(self instanceof ForeignUser)){
 				MailStorage.addMessageReadReceipt(self.id, Set.of(message.id), self.id);
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(self.id);
 				if(un!=null)
 					un.incUnreadMailCount(-1);
+			}else{
+				ids.add(message.id);
 			}
 			// Sender's copy
-			if(!message.relatedMessageIDs.isEmpty()){
-				MailStorage.addMessageReadReceipt(message.senderID, message.relatedMessageIDs, self.id);
+			if(!ids.isEmpty()){
+				MailStorage.addMessageReadReceipt(message.senderID, ids, self.id);
 			}
 			if(!(self instanceof ForeignUser)){
 				context.getActivityPubWorker().sendReadMessageActivity(self, message);
