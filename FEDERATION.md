@@ -260,3 +260,6 @@ If a server still sends an activity that is not allowed by the user's privacy se
 
 #### Special exception for direct messages
 If a user sends a message to someone who can't send **them** messages, the recipient is temporarily allowed to send them messages. The exception lasts for a week (168 hours) or 10 messages, whichever comes first. Every outgoing message resets the time and the message count.
+
+### Read receipts for direct messages
+When a recipient views a direct message (a `Note` that is only addressed to actors and no collections) for the first time, Smithereen will send a `Read{Note}` activity to its sender.
