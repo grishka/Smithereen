@@ -612,6 +612,7 @@ public class WallController{
 	public PaginatedList<Post> getRepliesExact(@Nullable User self, List<Integer> key, int maxID, int count){
 		try{
 			PaginatedList<Post> posts=PostStorage.getRepliesExact(key.stream().mapToInt(Integer::intValue).toArray(), maxID, count);
+			posts.list=new ArrayList<>(posts.list);
 			context.getPrivacyController().filterPosts(self, posts.list);
 			return posts;
 		}catch(SQLException x){
