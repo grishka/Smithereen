@@ -610,6 +610,7 @@ CREATE TABLE `wall_posts` (
   `federation_state` tinyint unsigned NOT NULL DEFAULT '0',
   `source` text,
   `source_format` tinyint unsigned DEFAULT NULL,
+  `privacy` tinyint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -626,4 +627,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2023-09-03 23:37:58
+-- Dump completed on 2023-10-19  8:31:11

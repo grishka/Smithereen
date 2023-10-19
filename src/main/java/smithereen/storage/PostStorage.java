@@ -298,7 +298,9 @@ public class PostStorage{
 			PreparedStatement stmt;
 			String condition=ownOnly ? " AND owner_user_id=author_id" : "";
 			String ownerField=isGroup ? "owner_group_id" : "owner_user_id";
-			condition+=" AND privacy IN ("+allowedPrivacy.stream().map(p->String.valueOf(p.ordinal())).collect(Collectors.joining(", "))+")";
+			if(allowedPrivacy.size()<Post.Privacy.values().length){
+				condition+=" AND privacy IN ("+allowedPrivacy.stream().map(p->String.valueOf(p.ordinal())).collect(Collectors.joining(", "))+")";
+			}
 			if(total!=null){
 				stmt=conn.prepareStatement("SELECT COUNT(*) FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+condition);
 				stmt.setInt(1, ownerID);

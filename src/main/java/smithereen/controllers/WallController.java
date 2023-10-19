@@ -449,15 +449,20 @@ public class WallController{
 		try{
 			int[] postCount={0};
 			Set<Post.Privacy> allowedPrivacy;
-			FriendshipStatus status=FriendshipStatus.NONE;
 			if(self!=null && owner instanceof User ownerUser){
-				status=context.getFriendsController().getSimpleFriendshipStatus(self, ownerUser);
+				if(self.id==owner.getOwnerID()){
+					allowedPrivacy=EnumSet.allOf(Post.Privacy.class);
+				}else{
+					FriendshipStatus status=context.getFriendsController().getSimpleFriendshipStatus(self, ownerUser);
+					allowedPrivacy=switch(status){
+						case FOLLOWING -> EnumSet.of(Post.Privacy.PUBLIC, Post.Privacy.FOLLOWERS_ONLY, Post.Privacy.FOLLOWERS_AND_MENTIONED);
+						case FRIENDS -> EnumSet.of(Post.Privacy.PUBLIC, Post.Privacy.FOLLOWERS_ONLY, Post.Privacy.FOLLOWERS_AND_MENTIONED, Post.Privacy.FRIENDS_ONLY);
+						default -> EnumSet.of(Post.Privacy.PUBLIC);
+					};
+				}
+			}else{
+				allowedPrivacy=EnumSet.of(Post.Privacy.PUBLIC);
 			}
-			allowedPrivacy=switch(status){
-				case FOLLOWING -> EnumSet.of(Post.Privacy.PUBLIC, Post.Privacy.FOLLOWERS_ONLY, Post.Privacy.FOLLOWERS_AND_MENTIONED);
-				case FRIENDS -> EnumSet.of(Post.Privacy.PUBLIC, Post.Privacy.FOLLOWERS_ONLY, Post.Privacy.FOLLOWERS_AND_MENTIONED, Post.Privacy.FRIENDS_ONLY);
-				default -> EnumSet.of(Post.Privacy.PUBLIC);
-			};
 			List<Post> wall=PostStorage.getWallPosts(owner.getLocalID(), owner instanceof Group, 0, 0, offset, count, postCount, ownOnly, allowedPrivacy);
 			return new PaginatedList<>(wall, postCount[0], offset, count);
 		}catch(SQLException x){
