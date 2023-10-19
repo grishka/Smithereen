@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.sql.SQLException;
+import java.util.HashSet;
 import java.util.Objects;
 
 import smithereen.Config;
@@ -101,66 +102,97 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			}
 		}
 
-		boolean isPublic=false;
-		if(post.to==null || post.to.isEmpty()){
-			if(post.cc==null || post.cc.isEmpty()){
-				throw new BadRequestException("to or cc are both empty");
-			}else{
-				for(LinkOrObject cc:post.cc){
-					if(cc.link==null)
-						throw new BadRequestException("post.cc must only contain links");
-					if(ActivityPub.isPublic(cc.link)){
-						isPublic=true;
-						break;
-					}
-				}
-			}
-		}else{
-			for(LinkOrObject to:post.to){
-				if(to.link==null)
+//		boolean isPublic=false;
+		Post.Privacy privacy=null;
+//		if(post.to==null || post.to.isEmpty()){
+//			if(post.cc==null || post.cc.isEmpty()){
+//				throw new BadRequestException("to or cc are both empty");
+//			}else{
+//				for(LinkOrObject cc:post.cc){
+//					if(cc.link==null)
+//						throw new BadRequestException("post.cc must only contain links");
+//					if(ActivityPub.isPublic(cc.link)){
+//						isPublic=true;
+//						break;
+//					}
+//				}
+//			}
+//		}else{
+//			for(LinkOrObject to:post.to){
+//				if(to.link==null)
+//					throw new BadRequestException("post.to must only contain links");
+//				if(ActivityPub.isPublic(to.link)){
+//					isPublic=true;
+//					break;
+//				}
+//			}
+//			if(!isPublic && post.cc!=null){
+//				for(LinkOrObject cc:post.cc){
+//					if(cc.link==null)
+//						throw new BadRequestException("post.cc must only contain links");
+//					if(ActivityPub.isPublic(cc.link)){
+//						isPublic=true;
+//						break;
+//					}
+//				}
+//			}
+//		}
+//		boolean addressesAnyFollowers=false;
+//		for(LinkOrObject l:post.to){
+//			if(followers.equals(l.link)){
+//				addressesAnyFollowers=true;
+//				break;
+//			}
+//		}
+//		if(!addressesAnyFollowers && post.cc!=null){
+//			for(LinkOrObject l:post.cc){
+//				if(followers.equals(l.link)){
+//					addressesAnyFollowers=true;
+//					break;
+//				}
+//			}
+//		}
+		URI followers=actor.getFollowersURL();
+		URI friends=actor.getFriendsURL();
+		HashSet<URI> recipients=new HashSet<>();
+		if(post.to!=null){
+			for(LinkOrObject l:post.to){
+				if(l.link==null)
 					throw new BadRequestException("post.to must only contain links");
-				if(ActivityPub.isPublic(to.link)){
-					isPublic=true;
-					break;
-				}
-			}
-			if(!isPublic && post.cc!=null){
-				for(LinkOrObject cc:post.cc){
-					if(cc.link==null)
-						throw new BadRequestException("post.cc must only contain links");
-					if(ActivityPub.isPublic(cc.link)){
-						isPublic=true;
-						break;
-					}
-				}
+				recipients.add(l.link);
 			}
 		}
-		URI followers=actor.getFollowersURL();
-		boolean addressesAnyFollowers=false;
-		for(LinkOrObject l:post.to){
-			if(followers.equals(l.link)){
-				addressesAnyFollowers=true;
+		if(post.cc!=null){
+			for(LinkOrObject l:post.cc){
+				if(l.link==null)
+					throw new BadRequestException("post.cc must only contain links");
+				recipients.add(l.link);
+			}
+		}
+		if(recipients.isEmpty())
+			throw new BadRequestException("to or cc are both empty");
+		for(URI uri:recipients){
+			if(ActivityPub.isPublic(uri)){
+				privacy=Post.Privacy.PUBLIC;
 				break;
 			}
 		}
-		if(!addressesAnyFollowers && post.cc!=null){
-			for(LinkOrObject l:post.cc){
-				if(followers.equals(l.link)){
-					addressesAnyFollowers=true;
-					break;
-				}
+		if(privacy==null){
+			if(followers!=null && recipients.contains(followers)){
+				privacy=Post.Privacy.FOLLOWERS_ONLY;
+			}else if(friends!=null && recipients.contains(friends)){
+				privacy=Post.Privacy.FRIENDS_ONLY;
 			}
 		}
-		if(!isPublic){
-			if(addressesAnyFollowers)
-				throw new BadRequestException("Followers-only posts are not supported");
+
+		if(privacy==null){
 			handleDirectMessage(context, actor, post);
 			return;
 		}
 
 		if(actor.activityPubID.equals(owner.activityPubID) && post.inReplyTo==null){
-			if(!addressesAnyFollowers){
-				LOG.warn("Dropping this post {} because it's public but doesn't address any followers", post.activityPubID);
+			if(followers==null || !recipients.contains(followers)){
+				LOG.warn("Dropping post {} because it's public but doesn't address any followers", post.activityPubID);
 				return;
 			}
 		}

@@ -2986,3 +2986,29 @@ h2, h3, h4{
 		}
 	}
 }
+
+.tooltipOuter{
+	position: relative;
+	margin: auto;
+	width: 1px;
+	pointer-events: none;
+	.tooltip{
+		position: absolute;
+		bottom: 2px;
+		left: -18px;
+		width: max-content;
+		user-select: none;
+		padding-bottom: 4px;
+		background: svg-load('img/tt_tip.svg', fill: rgba(0, 0, 0, 0.7)) no-repeat;
+		background-position: 15px 100%;
+		.tooltipInner{
+			color: #fff;
+			line-height: 20px;
+			background: rgba(0, 0, 0, 0.7);
+			border-radius: 3px;
+			padding: 0 7px;
+			height: 21px;
+			font-weight: bold;
+		}
+	}
+}

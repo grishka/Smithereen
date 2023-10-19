@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -385,7 +386,7 @@ public class ActivityPubRoutes{
 		int minID=Math.max(0, _minID);
 		int maxID=Math.max(0, _maxID);
 		int[] _total={0};
-		List<Post> posts=PostStorage.getWallPosts(user.id, false, minID, maxID, 0, 25, _total, true);
+		List<Post> posts=PostStorage.getWallPosts(user.id, false, minID, maxID, 0, 25, _total, true, EnumSet.of(Post.Privacy.PUBLIC));
 		int total=_total[0];
 		CollectionPage page=new CollectionPage(true);
 		page.totalItems=total;

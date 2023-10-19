@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -62,6 +63,7 @@ public class PrivacyController{
 					}
 				}
 			}
+			enforcePostPrivacy(self, post);
 		}
 	}
 
@@ -272,5 +274,30 @@ public class PrivacyController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public boolean checkPostPrivacy(@Nullable User self, Post post){
+		if(post.privacy==Post.Privacy.PUBLIC)
+			return true;
+		if(self==null)
+			return false;
+		if(post.privacy==Post.Privacy.FOLLOWERS_AND_MENTIONED && post.mentionedUserIDs.contains(self.id))
+			return true;
+		FriendshipStatus status=context.getFriendsController().getSimpleFriendshipStatus(self, context.getUsersController().getUserOrThrow(post.authorID));
+		return switch(post.privacy){
+			case FOLLOWERS_ONLY, FOLLOWERS_AND_MENTIONED -> status==FriendshipStatus.FOLLOWING || status==FriendshipStatus.FRIENDS;
+			case FRIENDS_ONLY -> status==FriendshipStatus.FRIENDS;
+			case PUBLIC -> throw new IllegalStateException(); // unreachable
+		};
+	}
+
+	public void enforcePostPrivacy(@Nullable User self, Post post){
+		if(!checkPostPrivacy(self, post))
+			throw new UserContentUnavailableException();
+	}
+
+	public void filterPosts(@Nullable User self, Collection<Post> posts){
+		// TODO optimize this to avoid querying the same friendship states multiple times
+		posts.removeIf(post->!checkPostPrivacy(self, post));
 	}
 }

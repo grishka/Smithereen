@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -22,6 +24,7 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
+import smithereen.exceptions.BadRequestException;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
 import smithereen.model.UriBuilder;
@@ -83,11 +86,13 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			ensureHostMatchesID(post.activityPubReplies, "replies");
 		post.attachments=attachment;
 
+		HashSet<URI> mentionedUserIDs=new HashSet<>();
 		if(tag!=null){
 			post.mentionedUserIDs=new HashSet<>();
 			int mentionCount=0;
 			for(ActivityPubObject obj:tag){
 				if(obj instanceof Mention mention){
+					mentionedUserIDs.add(mention.href);
 					try{
 						User mentionedUser=context.getObjectLinkResolver().resolve(mention.href, User.class, true, true, false);
 						post.mentionedUserIDs.add(mentionedUser.id);
@@ -99,6 +104,23 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 					}
 				}
 			}
+		}
+
+		Set<URI> recipients=Stream.of(to, cc).filter(Objects::nonNull).flatMap(List::stream).map(l->l.link).collect(Collectors.toSet());
+		URI followers=author.getFollowersURL();
+		URI friends=author.getFriendsURL();
+		if(recipients.contains(ActivityPub.AS_PUBLIC) || recipients.contains(URI.create("as:Public"))){
+			post.privacy=Post.Privacy.PUBLIC;
+		}else if(followers!=null && recipients.contains(followers)){
+			post.privacy=!mentionedUserIDs.isEmpty() && recipients.containsAll(mentionedUserIDs) ? Post.Privacy.FOLLOWERS_AND_MENTIONED : Post.Privacy.FOLLOWERS_ONLY;
+		}else if(friends!=null && recipients.contains(friends)){
+			post.privacy=Post.Privacy.FRIENDS_ONLY;
+		}else{
+			throw new FederationException("Unable to determine post privacy from to+cc: "+recipients+" (must contain at least one known collection ID)");
+		}
+
+		if(post.privacy!=Post.Privacy.PUBLIC && post.ownerID!=post.authorID && post.getReplyLevel()==0){
+			throw new BadRequestException("Wall-to-wall posts can't be private. Wall owner controls their visibility instead");
 		}
 
 		return post;

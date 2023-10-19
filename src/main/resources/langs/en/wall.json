@@ -59,5 +59,8 @@
   "graffiti_thickness": "Thickness",
   "graffiti_opacity": "Intensity",
   "graffiti_on_user_X_wall": "Graffiti on {name}''s wall",
-  "graffiti_on_group_X_wall": "Graffiti on \"{name}\" wall"
+  "graffiti_on_group_X_wall": "Graffiti on \"{name}\" wall",
+  "post_visible_to_followers": "This post is only visible to {name}''s followers",
+  "post_visible_to_followers_mentioned": "This post is only visible to {name}''s followers and mentioned people",
+  "post_visible_to_friends": "This post is only visible to {name}''s friends"
 }

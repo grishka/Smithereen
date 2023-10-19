@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -35,6 +36,7 @@ import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.model.Account;
 import smithereen.model.ForeignUser;
+import smithereen.model.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
@@ -134,6 +136,7 @@ public class WallController{
 				throw new BadRequestException("This actor doesn't support wall posts");
 
 			Post parent=inReplyToID!=0 ? getPostOrThrow(inReplyToID) : null;
+			context.getPrivacyController().enforcePostPrivacy(author, parent);
 
 			final ArrayList<User> mentionedUsers=new ArrayList<>();
 			String text=preparePostText(textSource, mentionedUsers, parent);
@@ -442,10 +445,20 @@ public class WallController{
 	 * @param count Maximum number of posts to return
 	 * @return A reverse-chronologically sorted paginated list of wall posts
 	 */
-	public PaginatedList<Post> getWallPosts(@NotNull Actor owner, boolean ownOnly, int offset, int count){
+	public PaginatedList<Post> getWallPosts(@Nullable User self, @NotNull Actor owner, boolean ownOnly, int offset, int count){
 		try{
 			int[] postCount={0};
-			List<Post> wall=PostStorage.getWallPosts(owner.getLocalID(), owner instanceof Group, 0, 0, offset, count, postCount, ownOnly);
+			Set<Post.Privacy> allowedPrivacy;
+			FriendshipStatus status=FriendshipStatus.NONE;
+			if(self!=null && owner instanceof User ownerUser){
+				status=context.getFriendsController().getSimpleFriendshipStatus(self, ownerUser);
+			}
+			allowedPrivacy=switch(status){
+				case FOLLOWING -> EnumSet.of(Post.Privacy.PUBLIC, Post.Privacy.FOLLOWERS_ONLY, Post.Privacy.FOLLOWERS_AND_MENTIONED);
+				case FRIENDS -> EnumSet.of(Post.Privacy.PUBLIC, Post.Privacy.FOLLOWERS_ONLY, Post.Privacy.FOLLOWERS_AND_MENTIONED, Post.Privacy.FRIENDS_ONLY);
+				default -> EnumSet.of(Post.Privacy.PUBLIC);
+			};
+			List<Post> wall=PostStorage.getWallPosts(owner.getLocalID(), owner instanceof Group, 0, 0, offset, count, postCount, ownOnly, allowedPrivacy);
 			return new PaginatedList<>(wall, postCount[0], offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -476,15 +489,18 @@ public class WallController{
 	 * Add top-level comments to each post.
 	 * @param posts List of posts to add comments to
 	 */
-	public void populateCommentPreviews(@NotNull List<PostViewModel> posts){
+	public void populateCommentPreviews(@Nullable User self, @NotNull List<PostViewModel> posts){
 		try{
 			Set<Integer> postIDs=posts.stream().map(p->p.post.id).collect(Collectors.toSet());
 			Map<Integer, PaginatedList<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
 			for(PostViewModel post:posts){
 				PaginatedList<Post> comments=allComments.get(post.post.id);
 				if(comments!=null){
-					post.repliesObjects=comments.list.stream().map(PostViewModel::new).toList();
-					post.totalTopLevelComments=comments.total;
+					context.getPrivacyController().filterPosts(self, comments.list);
+					if(!comments.list.isEmpty()){
+						post.repliesObjects=comments.list.stream().map(PostViewModel::new).toList();
+						post.totalTopLevelComments=comments.total;
+					}
 				}
 			}
 		}catch(SQLException x){

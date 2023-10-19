@@ -11,7 +11,11 @@
 				<a href="{{ users[realPost.authorID].profileURL }}">{{ users[realPost.authorID] | pictureForAvatar('s', 40) }}</a>
 			</td>
 			<td valign="middle" class="headerRight">
-				<div class="singleLine authorNameW"><a href="{{ users[realPost.authorID].profileURL }}" class="authorName">{{ users[realPost.authorID].fullName }}</a></div>
+				<div class="singleLine authorNameW"><a href="{{ users[realPost.authorID].profileURL }}" class="authorName">{{ users[realPost.authorID].fullName }}</a>
+				{%- if realPost.privacy!='PUBLIC' -%}
+				<span class="privatePostLockIcon"></span>
+				{%- endif -%}
+				</div>
 				<div class="singleLine timeW"><a href="{{realPost.internalURL}}" class="postLink">{{LD(realPost.createdAt)}}</a></div>
 			</td>
 		</tr>

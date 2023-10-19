@@ -13,7 +13,10 @@
 			<a href="{{users[realPost.authorID].profileURL}}">{{users[realPost.authorID] | pictureForAvatar('s', 32)}}</a>
 		</td>
 		<td class="postContentWrap">
-			<a href="{{users[realPost.authorID].profileURL}}" class="authorName" id="postAuthor{{ realPost.id }}">{{users[realPost.authorID].fullName}}</a><br/>
+			<a href="{{users[realPost.authorID].profileURL}}" class="authorName" id="postAuthor{{ realPost.id }}">{{users[realPost.authorID].fullName}}</a>
+			{%- if realPost.privacy!='PUBLIC' -%}
+			<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID].firstAndGender}) }}"></span>
+			{%- endif %}<br/>
 			<div id="postInner{{ realPost.id }}">
 				{% block postInner %}
 				{% if realPost.hasContentWarning %}

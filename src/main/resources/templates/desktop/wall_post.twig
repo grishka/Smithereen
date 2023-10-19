@@ -11,6 +11,9 @@
 		</td>
 		<td valign="top" class="postContentWrap">
 			<a href="{{ users[realPost.authorID].profileURL }}" class="authorName" id="postAuthor{{ realPost.id }}">{{ users[realPost.authorID].fullName }}</a>
+			{%- if realPost.privacy!='PUBLIC' -%}
+			<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID].firstAndGender}) }}"></span>
+			{%- endif %}
 			<div id="postInner{{ realPost.id }}">
 				{% block postInner %}
 				{% if realPost.hasContentWarning %}

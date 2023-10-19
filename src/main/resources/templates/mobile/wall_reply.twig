@@ -12,7 +12,11 @@
 			<a href="{{ users[realPost.authorID].profileURL }}">{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
 		</td>
 		<td class="commentContentWrap">
-			<div class="authorNameWrap"><a href="{{ users[realPost.authorID].profileURL }}" class="authorName">{{ users[realPost.authorID].fullName }}</a></div>
+			<div class="authorNameWrap"><a href="{{ users[realPost.authorID].profileURL }}" class="authorName">{{ users[realPost.authorID].fullName }}</a>
+			{%- if realPost.privacy!='PUBLIC' -%}
+			<span class="privatePostLockIcon"></span>
+			{%- endif -%}
+			</div>
 			{% if realPost.hasContentWarning %}
 				<input type="checkbox" id="postCW_{{ realPost.id }}" style="display: none"/>
 			<div class="postCWWrap">

@@ -254,7 +254,7 @@ public class PostRoutes{
 		List<PostViewModel> feedPosts=ctx.getWallController().getPosts(needPosts).values().stream().map(PostViewModel::new).toList();
 
 		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
-			ctx.getWallController().populateCommentPreviews(feedPosts);
+			ctx.getWallController().populateCommentPreviews(self.user, feedPosts);
 		}
 
 		PostViewModel.collectActorIDs(feedPosts, needUsers, needGroups);
@@ -558,9 +558,9 @@ public class PostRoutes{
 			ctx.getPrivacyController().enforceUserAccessToGroupContent(self!=null ? self.user : null, group);
 
 		int offset=offset(req);
-		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(owner, ownOnly, offset, 20));
+		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, owner, ownOnly, offset, 20));
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(wall.list);
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 
@@ -594,7 +594,7 @@ public class PostRoutes{
 		int offset=offset(req);
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallToWallPosts(self!=null ? self.user : null, user, otherUser, offset, 20));
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(wall.list);
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 

@@ -63,7 +63,7 @@ public class ProfileRoutes{
 				boolean canPost=canSeeOthers && self!=null && ctx.getPrivacyController().checkUserPrivacy(self.user, user, UserPrivacySettingKey.WALL_POSTING);
 				boolean canMessage=self!=null && ctx.getPrivacyController().checkUserPrivacy(self.user, user, UserPrivacySettingKey.PRIVATE_MESSAGES);
 
-				PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(user, !canSeeOthers, offset, 20));
+				PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, user, !canSeeOthers, offset, 20));
 				RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req)
 						.pageTitle(user.getFullName())
 						.with("user", user)
@@ -75,7 +75,7 @@ public class ProfileRoutes{
 						.paginate(wall);
 
 				if(req.attribute("mobile")==null){
-					ctx.getWallController().populateCommentPreviews(wall.list);
+					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
 				}
 
 				Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);

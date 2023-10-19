@@ -165,6 +165,7 @@ public class PostStorage{
 							.value("mentions", Utils.serializeIntList(post.mentionedUserIDs))
 							.value("ap_replies", Objects.toString(post.activityPubReplies, null))
 							.value("poll_id", post.poll!=null ? post.poll.id : null)
+							.value("privacy", post.privacy)
 							.createStatement(Statement.RETURN_GENERATED_KEYS);
 				}else{
 					if(post.poll!=null && Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts
@@ -292,13 +293,14 @@ public class PostStorage{
 		}
 	}
 
-	public static List<Post> getWallPosts(int ownerID, boolean isGroup, int minID, int maxID, int offset, int count, int[] total, boolean ownOnly) throws SQLException{
+	public static List<Post> getWallPosts(int ownerID, boolean isGroup, int minID, int maxID, int offset, int count, int[] total, boolean ownOnly, Set<Post.Privacy> allowedPrivacy) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt;
-			String ownCondition=ownOnly ? " AND owner_user_id=author_id" : "";
+			String condition=ownOnly ? " AND owner_user_id=author_id" : "";
 			String ownerField=isGroup ? "owner_group_id" : "owner_user_id";
+			condition+=" AND privacy IN ("+allowedPrivacy.stream().map(p->String.valueOf(p.ordinal())).collect(Collectors.joining(", "))+")";
 			if(total!=null){
-				stmt=conn.prepareStatement("SELECT COUNT(*) FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+ownCondition);
+				stmt=conn.prepareStatement("SELECT COUNT(*) FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+condition);
 				stmt.setInt(1, ownerID);
 				try(ResultSet res=stmt.executeQuery()){
 					res.next();
@@ -306,13 +308,13 @@ public class PostStorage{
 				}
 			}
 			if(minID>0){
-				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`>? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+count);
+				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`>? AND `reply_key` IS NULL"+condition+" ORDER BY created_at DESC LIMIT "+count);
 				stmt.setInt(2, minID);
 			}else if(maxID>0){
-				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`=<? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
+				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`=<? AND `reply_key` IS NULL"+condition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
 				stmt.setInt(2, maxID);
 			}else{
-				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+ownCondition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
+				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+condition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
 			}
 			stmt.setInt(1, ownerID);
 			ArrayList<Post> posts=new ArrayList<>();

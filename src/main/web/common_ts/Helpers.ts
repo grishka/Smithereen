@@ -1042,3 +1042,25 @@ function showMailFormBox(el:HTMLAnchorElement){
 		new MessageBox(lang("error"), msg, lang("close")).show();
 	}, "text");
 }
+
+function showTooltip(el:HTMLElement, text:string){
+	if(!el.customData)
+		el.customData={};
+	var ttEl:HTMLElement=el.customData.tooltip;
+	if(!ttEl){
+		el.customData.tooltip=ttEl=ce("div", {className: "tooltipOuter"}, [
+			ce("div", {className: "tooltip"}, [
+				ce("div", {className: "tooltipInner"}, [text])
+			])
+		]);
+		el.insertAdjacentElement("afterbegin", ttEl);
+	}
+	ttEl.showAnimated();
+}
+
+function hideTooltip(el:HTMLElement){
+	var ttEl:HTMLElement=el.customData && el.customData.tooltip;
+	if(ttEl){
+		ttEl.hideAnimated();
+	}
+}

@@ -44,10 +44,11 @@ document.body.addEventListener("click", function(ev){
 }, false);
 
 function updatePostForms(){
-	document.querySelectorAll(".wallPostForm").forEach(function(el){
+	for(var _el of document.querySelectorAll(".wallPostForm").unfuck()){
+		var el=_el as HTMLElement;
 		if(!postForms[el.id])
-			postForms[el.id]=new PostForm(el as HTMLElement);
-	});
+			postForms[el.id]=new PostForm(el);
+	}
 }
 updatePostForms();
 
@@ -149,3 +150,18 @@ if(elevator){
 		return false;
 	};
 }
+
+document.addEventListener("mouseover", (ev)=>{
+	var target=ev.target as HTMLElement;
+	if(target.dataset.tooltip){
+		var tooltip=target.dataset.tooltip;
+		showTooltip(target, tooltip);
+	}
+}, false);
+
+document.addEventListener("mouseout", (ev)=>{
+	var target=ev.target as HTMLElement;
+	if(target.dataset.tooltip){
+		hideTooltip(target);
+	}
+}, false);

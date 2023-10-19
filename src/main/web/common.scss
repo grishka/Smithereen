@@ -842,3 +842,11 @@ small{
 		background-position: 10px center;
 	}
 }
+
+.privatePostLockIcon{
+	display: inline-block;
+	width: 8px;
+	height: 9px;
+	background: svg-load('img/lock.svg', fill: #cfc39f);
+	margin-left: 5px;
+}

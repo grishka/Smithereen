@@ -41,6 +41,7 @@ public class Post implements ActivityPubRepresentable, OwnedContentObject, Attac
 	public URI activityPubReplies;
 	public boolean isReplyToUnknownPost;
 	public boolean deleted;
+	public Privacy privacy=Privacy.PUBLIC;
 
 	public boolean hasContentWarning(){
 		return contentWarning!=null;
@@ -102,6 +103,7 @@ public class Post implements ActivityPubRepresentable, OwnedContentObject, Attac
 		if(!res.wasNull()){
 			post.poll=PostStorage.getPoll(pollID, post.activityPubID);
 		}
+		post.privacy=Privacy.values()[res.getInt("privacy")];
 
 		return post;
 	}
@@ -193,5 +195,18 @@ public class Post implements ActivityPubRepresentable, OwnedContentObject, Attac
 	@Override
 	public NonCachedRemoteImage.Args getPhotoArgs(int index){
 		return new NonCachedRemoteImage.PostPhotoArgs(id, index);
+	}
+
+	public enum Privacy{
+		PUBLIC(null),
+		FOLLOWERS_AND_MENTIONED("post_visible_to_followers_mentioned"),
+		FOLLOWERS_ONLY("post_visible_to_followers"),
+		FRIENDS_ONLY("post_visible_to_friends");
+
+		public final String langKey;
+
+		Privacy(String langKey){
+			this.langKey=langKey;
+		}
 	}
 }

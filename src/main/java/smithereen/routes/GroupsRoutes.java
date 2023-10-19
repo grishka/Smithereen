@@ -189,10 +189,10 @@ public class GroupsRoutes{
 		int wallPostsCount=0;
 		if(canAccessContent){
 			int offset=offset(req);
-			PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(group, false, offset, 20));
+			PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, group, false, offset, 20));
 			wallPostsCount=wall.total;
 			if(req.attribute("mobile")==null){
-				ctx.getWallController().populateCommentPreviews(wall.list);
+				ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
 			}
 			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 			model.with("postCount", wall.total).paginate(wall).with("canPostOnWall", self!=null).with("canSeeOthersPosts", true);
