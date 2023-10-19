@@ -136,7 +136,8 @@ public class WallController{
 				throw new BadRequestException("This actor doesn't support wall posts");
 
 			Post parent=inReplyToID!=0 ? getPostOrThrow(inReplyToID) : null;
-			context.getPrivacyController().enforcePostPrivacy(author, parent);
+			if(parent!=null)
+				context.getPrivacyController().enforcePostPrivacy(author, parent);
 
 			final ArrayList<User> mentionedUsers=new ArrayList<>();
 			String text=preparePostText(textSource, mentionedUsers, parent);
