@@ -295,13 +295,7 @@ public class PostRoutes{
 			owner=ctx.getUsersController().getUserOrThrow(post.post.ownerID);
 
 		User author=ctx.getUsersController().getUserOrThrow(post.post.authorID);
-
-		int offset=offset(req);
-		PaginatedList<PostViewModel> replies=ctx.getWallController().getReplies(replyKey, offset, 100, 50);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone", req);
-		model.paginate(replies);
-		model.with("post", post);
-		model.with("isGroup", post.post.ownerID<0);
 		SessionInfo info=Utils.sessionInfo(req);
 		User self=null;
 		if(info!=null && info.account!=null){
@@ -311,6 +305,12 @@ public class PostRoutes{
 			}
 			self=info.account.user;
 		}
+
+		int offset=offset(req);
+		PaginatedList<PostViewModel> replies=ctx.getWallController().getReplies(self, replyKey, offset, 100, 50);
+		model.paginate(replies);
+		model.with("post", post);
+		model.with("isGroup", post.post.ownerID<0);
 
 		boolean canOverridePrivacy=false;
 		if(self!=null && info.permissions.serverAccessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal()){
@@ -621,7 +621,7 @@ public class PostRoutes{
 		if(maxID==0)
 			throw new BadRequestException();
 
-		PaginatedList<PostViewModel> comments=PostViewModel.wrap(ctx.getWallController().getRepliesExact(List.of(post.id), maxID, 100));
+		PaginatedList<PostViewModel> comments=PostViewModel.wrap(ctx.getWallController().getRepliesExact(self!=null ? self.user : null, List.of(post.id), maxID, 100));
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments.list);
 		preparePostList(ctx, comments.list, model);
@@ -649,7 +649,7 @@ public class PostRoutes{
 
 		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
 		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
-		List<PostViewModel> comments=ctx.getWallController().getReplies(post.getReplyKeyForReplies(), offset, 100, 50).list;
+		List<PostViewModel> comments=ctx.getWallController().getReplies(self!=null ? self.user : null, post.getReplyKeyForReplies(), offset, 100, 50).list;
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments);
 		ArrayList<PostViewModel> allReplies=new ArrayList<>();

@@ -580,12 +580,12 @@ public class WallController{
 		}
 	}
 
-	public PaginatedList<PostViewModel> getReplies(List<Integer> key, int primaryOffset, int primaryCount, int secondaryCount){
+	public PaginatedList<PostViewModel> getReplies(@Nullable User self, List<Integer> key, int primaryOffset, int primaryCount, int secondaryCount){
 		try{
 			PostStorage.ThreadedReplies tr=PostStorage.getRepliesThreaded(key.stream().mapToInt(Integer::intValue).toArray(), primaryOffset, primaryCount, secondaryCount);
 
-			List<PostViewModel> posts=tr.posts().stream().map(PostViewModel::new).toList();
-			List<PostViewModel> replies=tr.replies().stream().map(PostViewModel::new).toList();
+			List<PostViewModel> posts=tr.posts().stream().filter(p->context.getPrivacyController().checkPostPrivacy(self, p)).map(PostViewModel::new).toList();
+			List<PostViewModel> replies=tr.replies().stream().filter(p->context.getPrivacyController().checkPostPrivacy(self, p)).map(PostViewModel::new).toList();
 			Map<Integer, PostViewModel> postMap=Stream.of(posts, replies).flatMap(List::stream).collect(Collectors.toMap(p->p.post.id, Function.identity()));
 
 			for(PostViewModel post:replies){
@@ -603,9 +603,11 @@ public class WallController{
 		}
 	}
 
-	public PaginatedList<Post> getRepliesExact(List<Integer> key, int maxID, int count){
+	public PaginatedList<Post> getRepliesExact(@Nullable User self, List<Integer> key, int maxID, int count){
 		try{
-			return PostStorage.getRepliesExact(key.stream().mapToInt(Integer::intValue).toArray(), maxID, count);
+			PaginatedList<Post> posts=PostStorage.getRepliesExact(key.stream().mapToInt(Integer::intValue).toArray(), maxID, count);
+			context.getPrivacyController().filterPosts(self, posts.list);
+			return posts;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
