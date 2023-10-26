@@ -465,9 +465,7 @@ CREATE TABLE `reports` (
   `server_domain` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `reporter_id` (`reporter_id`),
-  KEY `moderator_id` (`moderator_id`),
-  CONSTRAINT `reports_ibfk_1` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `reports_ibfk_2` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`)
+  KEY `moderator_id` (`moderator_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -621,10 +619,9 @@ CREATE TABLE `wall_posts` (
   KEY `poll_id` (`poll_id`),
   CONSTRAINT `wall_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `wall_posts_ibfk_2` FOREIGN KEY (`repost_of`) REFERENCES `wall_posts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `wall_posts_ibfk_3` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `wall_posts_ibfk_4` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2023-10-26 11:45:59
+-- Dump completed on 2023-10-26 17:12:16

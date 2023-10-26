@@ -17,7 +17,7 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=32;
+	public static final int SCHEMA_VERSION=33;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -480,6 +480,11 @@ public class DatabaseSchemaUpdater{
 			}
 			case 31 -> conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `privacy` tinyint unsigned NOT NULL DEFAULT '0'");
 			case 32 -> conn.createStatement().execute("ALTER TABLE reports CHANGE content_id content_id BIGINT UNSIGNED");
+			case 33 ->{
+				// Allow deleting users while keeping their IDs in these tables
+				conn.createStatement().execute("ALTER TABLE reports DROP FOREIGN KEY reports_ibfk_1, DROP FOREIGN KEY reports_ibfk_2");
+				conn.createStatement().execute("ALTER TABLE wall_posts DROP FOREIGN KEY wall_posts_ibfk_3");
+			}
 		}
 	}
 }
