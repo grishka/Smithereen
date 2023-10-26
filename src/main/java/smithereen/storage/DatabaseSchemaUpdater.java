@@ -17,7 +17,7 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=31;
+	public static final int SCHEMA_VERSION=32;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -479,6 +479,7 @@ public class DatabaseSchemaUpdater{
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
 			case 31 -> conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `privacy` tinyint unsigned NOT NULL DEFAULT '0'");
+			case 32 -> conn.createStatement().execute("ALTER TABLE reports CHANGE content_id content_id BIGINT UNSIGNED");
 		}
 	}
 }

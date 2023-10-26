@@ -52,6 +52,8 @@ public class UserPermissions{
 			return managedGroups.getOrDefault(g.id, Group.AdminLevel.REGULAR)!=Group.AdminLevel.OWNER;
 		}else if(obj instanceof Post p){
 			return p.authorID!=userID;
+		}else if(obj instanceof MailMessage msg){
+			return msg.senderID!=userID;
 		}else{
 			return false;
 		}

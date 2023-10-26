@@ -457,7 +457,7 @@ CREATE TABLE `reports` (
   `target_type` tinyint unsigned NOT NULL,
   `content_type` tinyint unsigned DEFAULT NULL,
   `target_id` int unsigned NOT NULL,
-  `content_id` int unsigned DEFAULT NULL,
+  `content_id` bigint unsigned DEFAULT NULL,
   `comment` text NOT NULL,
   `moderator_id` int unsigned DEFAULT NULL,
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -627,4 +627,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2023-10-19  8:31:11
+-- Dump completed on 2023-10-26 11:45:59

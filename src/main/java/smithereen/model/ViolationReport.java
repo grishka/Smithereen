@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 
 import smithereen.storage.DatabaseUtils;
+import smithereen.util.XTEA;
 
 public class ViolationReport{
 
@@ -13,7 +14,7 @@ public class ViolationReport{
 	public TargetType targetType;
 	public ContentType contentType;
 	public int targetID;
-	public int contentID;
+	public long contentID;
 	public String comment;
 	public int moderatorID;
 	public Instant time;
@@ -29,7 +30,9 @@ public class ViolationReport{
 		int contentType=res.getInt("content_type");
 		if(!res.wasNull()){
 			r.contentType=ContentType.values()[contentType];
-			r.contentID=res.getInt("content_id");
+			r.contentID=res.getLong("content_id");
+			if(r.contentType==ContentType.MESSAGE)
+				r.contentID=XTEA.obfuscateObjectID(r.contentID, ObfuscatedObjectIDType.MAIL_MESSAGE);
 		}
 		r.comment=res.getString("comment");
 		r.moderatorID=res.getInt("moderator_id");
@@ -40,7 +43,8 @@ public class ViolationReport{
 	}
 
 	public enum ContentType{
-		POST
+		POST,
+		MESSAGE
 	}
 
 	public enum TargetType{

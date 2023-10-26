@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
@@ -255,5 +256,13 @@ public class MailStorage{
 			List<MailMessage> msgs=DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), MailMessage::fromResultSet, null).toList();
 			return new PaginatedList<>(msgs, total, offset, count);
 		}
+	}
+
+	public static Map<Long, MailMessage> getMessagesAsModerator(Collection<Long> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("mail_messages")
+				.whereIn("id", ids.stream().map(i->XTEA.deobfuscateObjectID(i, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet()))
+				.executeAsStream(MailMessage::fromResultSet)
+				.collect(Collectors.toMap(m->m.id, Function.identity()));
 	}
 }

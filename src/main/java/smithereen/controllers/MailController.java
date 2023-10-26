@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -351,6 +352,16 @@ public class MailController{
 	public PaginatedList<MailMessage> getHistory(User self, User peer, int offset, int count){
 		try{
 			return MailStorage.getHistory(self.id, peer.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Long, MailMessage> getMessagesAsModerator(Collection<Long> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			return MailStorage.getMessagesAsModerator(ids);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

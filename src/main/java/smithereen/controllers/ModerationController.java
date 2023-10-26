@@ -21,6 +21,8 @@ import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.MailMessage;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.Server;
@@ -29,6 +31,7 @@ import smithereen.model.ViolationReport;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.ModerationStorage;
+import smithereen.util.XTEA;
 
 public class ModerationController{
 	private static final Logger LOG=LoggerFactory.getLogger(ModerationController.class);
@@ -60,7 +63,7 @@ public class ModerationController{
 			ViolationReport.TargetType targetType;
 			ViolationReport.ContentType contentType;
 			int targetID;
-			int contentID;
+			long contentID;
 			if(target instanceof User u){
 				targetType=ViolationReport.TargetType.USER;
 				targetID=u.id;
@@ -74,6 +77,9 @@ public class ModerationController{
 			if(content instanceof Post p){
 				contentType=ViolationReport.ContentType.POST;
 				contentID=p.id;
+			}else if(content instanceof MailMessage msg){
+				contentType=ViolationReport.ContentType.MESSAGE;
+				contentID=XTEA.deobfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE);
 			}else{
 				contentType=null;
 				contentID=0;

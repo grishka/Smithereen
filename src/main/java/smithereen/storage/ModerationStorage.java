@@ -15,7 +15,7 @@ import smithereen.storage.sql.SQLQueryBuilder;
 import spark.utils.StringUtils;
 
 public class ModerationStorage{
-	public static int createViolationReport(int reporterID, ViolationReport.TargetType targetType, int targetID, ViolationReport.ContentType contentType, int contentID, String comment, String otherServerDomain) throws SQLException{
+	public static int createViolationReport(int reporterID, ViolationReport.TargetType targetType, int targetID, ViolationReport.ContentType contentType, long contentID, String comment, String otherServerDomain) throws SQLException{
 		SQLQueryBuilder bldr=new SQLQueryBuilder()
 				.insertInto("reports")
 				.value("reporter_id", reporterID!=0 ? reporterID : null)

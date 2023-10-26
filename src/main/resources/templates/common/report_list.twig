@@ -58,15 +58,29 @@
 		<div class="spanAll">
 			{% set post=posts[report.contentID] %}
 			{% if post is not null %}
-			<div class="grayText">{{ L(post.replyLevel>0 ? 'content_type_comment' : 'content_type_post') }}: <a href="/posts/{{ post.id }}?report={{ report.id }}" target="_blank">{{ LD(post.published) }}</a></div>
-			<b>{{ post.user.fullName }}</b>
-			{% if post.user.id!=post.owner.id %}&raquo; <b><a href="{{ post.owner.profileURL }}">{{ post.owner.name }}</a></b>{% endif %}
-			{% if post.content is not empty %}{{ post.content | stripHTML | truncateText }}{% endif %}
-			{% if post.attachment is not empty %}
+			<div class="grayText">{{ L(post.replyLevel>0 ? 'content_type_comment' : 'content_type_post') }}: <a href="/posts/{{ post.id }}?report={{ report.id }}" target="_blank">{{ LD(post.createdAt) }}</a></div>
+			<b>{{ users[post.authorID].fullName }}</b>
+			{% if post.authorID!=post.ownerID %}&raquo; <b><a href="{{ users[post.ownerID].profileURL }}">{{ users[post.ownerID].name }}</a></b>{% endif %}
+			{% if post.text is not empty %}{{ post.text | stripHTML | truncateText }}{% endif %}
+			{% if post.attachments is not empty %}
 			<div>[ {{ describeAttachments(post.processedAttachments) }} ]</div>
 			{% endif %}
 			{% if post.hasContentWarning %}
-			<div>[ <b>{{ L('post_form_cw') }}:</b> {{ post.summary }} ]</div>
+			<div>[ <b>{{ L('post_form_cw') }}:</b> {{ post.contentWarning }} ]</div>
+			{% endif %}
+			{% else %}
+			<i>{{ L('post_deleted_placeholder') }}</i>
+			{% endif %}
+		</div>
+		{% elseif report.contentType=='MESSAGE' %}
+		<div class="spanAll">
+			{% set msg=messages[report.contentID] %}
+			{% if msg is not null %}
+			<div class="grayText">{{ L('content_type_message') }}: {{ LD(msg.createdAt) }}</div>
+			<b>{{ users[msg.senderID].fullName }}</b>
+			{% if msg.text is not empty %}{{ msg.text | stripHTML | truncateText }}{% endif %}
+			{% if msg.attachments is not empty %}
+			<div>[ {{ describeAttachments(msg.attachments) }} ]</div>
 			{% endif %}
 			{% else %}
 			<i>{{ L('post_deleted_placeholder') }}</i>

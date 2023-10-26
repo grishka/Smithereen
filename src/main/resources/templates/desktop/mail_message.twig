@@ -9,6 +9,9 @@
 				{{- L('mail_message') }}
 				<div class="flR lower" id="msgActions">
 					<a href="/my/mail/messages/{{ message.encodedID }}/delete?csrf={{ csrf }}&fromView" data-ajax data-ajax-hide="msgActions" data-ajax-show="msgActionsLoader">{{ L('delete') }}</a>
+					{% if userPermissions.canReport(message) %} |
+					<a href="/system/reportForm?type=message&id={{ message.encodedID }}" data-ajax-box>{{ L('report') }}</a>
+					{% endif %}
 				</div>
 				<span class="flR loader" id="msgActionsLoader" style="display: none">&nbsp;</span>
 			</h2>

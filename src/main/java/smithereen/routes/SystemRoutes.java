@@ -50,6 +50,7 @@ import smithereen.model.CachedRemoteImage;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.MailMessage;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
@@ -652,13 +653,14 @@ public class SystemRoutes{
 	public static Object reportForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		requireQueryParams(req, "type", "id");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("report_form", req);
-		int id=safeParseInt(req.queryParams("id"));
+		String rawID=req.queryParams("id");
 		Actor actorForAvatar;
 		String title, subtitle, boxTitle, textareaPlaceholder, titleText, otherServerDomain;
 		Lang l=lang(req);
 		String type=req.queryParams("type");
 		switch(type){
 			case "post" -> {
+				int id=safeParseInt(rawID);
 				Post post=ctx.getWallController().getPostOrThrow(id);
 				User postAuthor=ctx.getUsersController().getUserOrThrow(post.authorID);
 				actorForAvatar=postAuthor;
@@ -670,6 +672,7 @@ public class SystemRoutes{
 				otherServerDomain=Config.isLocal(post.getActivityPubID()) ? null : post.getActivityPubID().getHost();
 			}
 			case "user" -> {
+				int id=safeParseInt(rawID);
 				User user=ctx.getUsersController().getUserOrThrow(id);
 				actorForAvatar=user;
 				title=user.getCompleteName();
@@ -680,6 +683,7 @@ public class SystemRoutes{
 				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
 			}
 			case "group" -> {
+				int id=safeParseInt(rawID);
 				Group group=ctx.getGroupsController().getGroupOrThrow(id);
 				actorForAvatar=group;
 				title=group.name;
@@ -689,6 +693,18 @@ public class SystemRoutes{
 				textareaPlaceholder=l.get("report_placeholder_profile");
 				otherServerDomain=group instanceof ForeignGroup fg ? fg.domain : null;
 			}
+			case "message" -> {
+				long id=decodeLong(rawID);
+				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
+				User user=ctx.getUsersController().getUserOrThrow(msg.senderID);
+				actorForAvatar=user;
+				title=user.getCompleteName();
+				subtitle=truncateOnWordBoundary(msg.text, 200);
+				boxTitle=l.get("report_title_message");
+				titleText=l.get("report_text_message");
+				textareaPlaceholder=l.get("report_placeholder_content");
+				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
+			}
 			default -> throw new BadRequestException();
 		}
 		model.with("actorForAvatar", actorForAvatar)
@@ -697,12 +713,12 @@ public class SystemRoutes{
 				.with("textAreaPlaceholder", textareaPlaceholder)
 				.with("reportTitleText", titleText)
 				.with("otherServerDomain", otherServerDomain);
-		return wrapForm(req, resp, "report_form", "/system/submitReport?type="+type+"&id="+id, boxTitle, "send", model);
+		return wrapForm(req, resp, "report_form", "/system/submitReport?type="+type+"&id="+rawID, boxTitle, "send", model);
 	}
 
 	public static Object submitReport(Request req, Response resp, Account self, ApplicationContext ctx){
 		requireQueryParams(req, "type", "id");
-		int id=safeParseInt(req.queryParams("id"));
+		String rawID=req.queryParams("id");
 		String type=req.queryParams("type");
 		String comment=req.queryParamOrDefault("reportText", "");
 		boolean forward="on".equals(req.queryParams("forward"));
@@ -712,17 +728,26 @@ public class SystemRoutes{
 
 		switch(type){
 			case "post" -> {
+				int id=safeParseInt(rawID);
 				Post post=ctx.getWallController().getPostOrThrow(id);
 				content=post;
 				target=ctx.getUsersController().getUserOrThrow(post.authorID);
 			}
 			case "user" -> {
+				int id=safeParseInt(rawID);
 				target=ctx.getUsersController().getUserOrThrow(id);
 				content=null;
 			}
 			case "group" -> {
+				int id=safeParseInt(rawID);
 				target=ctx.getGroupsController().getGroupOrThrow(id);
 				content=null;
+			}
+			case "message" -> {
+				long id=decodeLong(rawID);
+				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
+				target=ctx.getUsersController().getUserOrThrow(msg.senderID);
+				content=msg;
 			}
 			default -> throw new BadRequestException("invalid type");
 		}
