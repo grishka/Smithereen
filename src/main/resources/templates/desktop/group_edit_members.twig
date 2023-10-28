@@ -18,7 +18,7 @@
 				<div class="groupEditMember">
 					{{ member | pictureForAvatar('s', 25) }}
 					<div class="ellipsize">
-						<a href="{{ member.profileURL }}" class="name">{{ member.fullName }}</a>
+						<a href="{{ member.profileURL }}" class="name">{{ member | name }}</a>
 					</div>
 					<div class="actions" id="groupMemberActions{{ member.id }}">
 						{% if memberActions is not empty %}

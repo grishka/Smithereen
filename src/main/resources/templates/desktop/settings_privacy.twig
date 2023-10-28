@@ -28,7 +28,7 @@
 						{%- if setting.allowUsers is not empty -%}
 						{{- L("privacy_settings_value_certain_friends_before") -}}
 						{%- for id in setting.allowUsers -%}
-							<a href="{{ users[id].profileURL }}">{{ users[id].fullName }}</a>
+							<a href="{{ profileURL(id) }}">{{ users[id] | name }}</a>
 							{%- if not loop.last -%}
 							{{- L("privacy_settings_value_name_separator") -}}
 							{%- endif -%}
@@ -37,7 +37,7 @@
 						{%- if setting.exceptUsers is not empty -%}
 						{{- L("privacy_settings_value_except") -}}
 						{%- for id in setting.exceptUsers -%}
-							<a href="{{ users[id].profileURL }}">{{ L("privacy_settings_value_except_name", {'name': users[id].firstLastAndGender}) }}</a>
+							<a href="{{ profileURL(id) }}">{{ L("privacy_settings_value_except_name", {'name': users[id] | name('fullAndGender')}) }}</a>
 							{%- if not loop.last -%}
 							{{- L("privacy_settings_value_name_separator") -}}
 							{%- endif -%}

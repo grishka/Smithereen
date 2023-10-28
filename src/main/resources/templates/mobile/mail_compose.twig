@@ -15,7 +15,7 @@
 			{% else %}
 			<div>
 				{%- for id in to -%}
-				<a href="{{ users[id].profileURL }}">{{ users[id].fullName }}</a>{% if not loop.last %}, {% endif %}
+				<a href="{{ profileURL(id) }}">{{ users[id] | name }}</a>{% if not loop.last %}, {% endif %}
 				{%- endfor -%}
 			</div>
 			<input type="hidden" name="to" value="{{ to | join(",") }}"/>

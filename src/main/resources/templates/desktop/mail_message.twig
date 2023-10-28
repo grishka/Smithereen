@@ -17,20 +17,20 @@
 			</h2>
 			<div class="time">{{ LD(message.createdAt, true) }}{% if message.updatedAt is not null %} | {{ L('mail_edited_at', {'time': LD(message.updatedAt)}) }}{% endif %}</div>
 			<div class="messageViewHeader">
-				<a href="{{ users[message.senderID].profileURL }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('s') }}</a>
+				<a href="{{ profileURL(message.senderID) }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('s') }}</a>
 				<div class="label">{{ L('mail_from') }}:</div>
-				<div><a href="{{ users[message.senderID].profileURL }}">{{ users[message.senderID].completeName }}</a></div>
+				<div><a href="{{ profileURL(message.senderID) }}">{{ users[message.senderID] | name('complete') }}</a></div>
 				<div class="label">{{ L('mail_to') }}:</div>
 				<div>
 					{%- for id in message.to -%}
-					<a href="{{ users[id].profileURL }}">{{ users[id].completeName }}</a>{% if not loop.last %}, {% endif %}
+					<a href="{{ profileURL(id) }}">{{ users[id] | name('complete') }}</a>{% if not loop.last %}, {% endif %}
 					{%- endfor %}
 				</div>
 				{% if message.cc is not empty %}
 				<div class="label">{{ L('mail_cc') }}:</div>
 				<div>
 				{%- for id in message.cc -%}
-					<a href="{{ users[id].profileURL }}">{{ users[id].completeName }}</a>{% if not loop.last %}, {% endif %}
+					<a href="{{ profileURL(id) }}">{{ users[id] | name('complete') }}</a>{% if not loop.last %}, {% endif %}
 				{%- endfor %}
 				</div>
 				{% endif %}

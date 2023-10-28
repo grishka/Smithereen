@@ -10,9 +10,9 @@
 		<colgroup><col width="*"/><col width="100"/></colgroup>
 		{% for user in blockedUsers %}
 			<tr>
-				<td><a href="{{ user.profileURL }}"><span class="tinyInlineAva">{{user | pictureForAvatar('s', 32)}}</span>{{ user.fullName }}</a></td>
+				<td><a href="{{ user.profileURL }}"><span class="tinyInlineAva">{{user | pictureForAvatar('s', 32)}}</span>{{ user | name('complete') }}</a></td>
 				<td align="right">
-					<a href="/groups/{{ group.id }}/confirmUnblockUser?id={{ user.id }}" data-confirm-action="/groups/{{ group.id }}/unblockUser?id={{ user.id }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ L('confirm_unblock_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('unblock') }}</a>
+					<a href="/groups/{{ group.id }}/confirmUnblockUser?id={{ user.id }}" data-confirm-action="/groups/{{ group.id }}/unblockUser?id={{ user.id }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ L('confirm_unblock_user_X', {'name': user | name('fullAndGender')}) | forceEscape }}">{{ L('unblock') }}</a>
 				</td>
 			</tr>
 		{% else %}

@@ -18,7 +18,7 @@
 			{% if report.targetType=='USER' %}
 			{% set user=users[report.targetID] %}
 			<div class="flL smallMarginRight"><a href="{{ user.profileURL }}">{{ user | pictureForAvatar('s') }}</a></div>
-			<div class="ellipsize"><a href="{{ user.profileURL }}"><b>{{ user.completeName }}</b></a></div>
+			<div class="ellipsize"><a href="{{ user.profileURL }}"><b>{{ user | name('complete') }}</b></a></div>
 			<div class="grayText ellipsize">@{{ user.fullUsername }}</div>
 			{% elseif report.targetType=='GROUP' %}
 			{% set group=groups[report.targetID] %}
@@ -30,7 +30,7 @@
 		<div class="ellipsize">
 			<span class="grayText">{{ L('report_from') }}:</span>
 			{% if report.reporterID!=0 %}
-			<a href="{{ users[report.reporterID].profileURL }}">{{ users[report.reporterID].completeName }}</a>
+			<a href="{{ profileURL(report.reporterID) }}">{{ users[report.reporterID] | name('complete') }}</a>
 			{% else %}
 			<i>{{ L('report_sender_anonymous') }}</i>
 			{% endif %}
@@ -59,8 +59,8 @@
 			{% set post=posts[report.contentID] %}
 			{% if post is not null %}
 			<div class="grayText">{{ L(post.replyLevel>0 ? 'content_type_comment' : 'content_type_post') }}: <a href="/posts/{{ post.id }}?report={{ report.id }}" target="_blank">{{ LD(post.createdAt) }}</a></div>
-			<b>{{ users[post.authorID].fullName }}</b>
-			{% if post.authorID!=post.ownerID %}&raquo; <b><a href="{{ users[post.ownerID].profileURL }}">{{ users[post.ownerID].name }}</a></b>{% endif %}
+			<b>{{ users[post.authorID] | name('full') }}</b>
+			{% if post.authorID!=post.ownerID %}&raquo; <b><a href="{{ profileURL(post.ownerID) }}">{{ (post.ownerID>0 ? users[post.ownerID] : groups[-post.ownerID]) | name }}</a></b>{% endif %}
 			{% if post.text is not empty %}{{ post.text | stripHTML | truncateText }}{% endif %}
 			{% if post.attachments is not empty %}
 			<div>[ {{ describeAttachments(post.processedAttachments) }} ]</div>
@@ -77,7 +77,7 @@
 			{% set msg=messages[report.contentID] %}
 			{% if msg is not null %}
 			<div class="grayText">{{ L('content_type_message') }}: {{ LD(msg.createdAt) }}</div>
-			<b>{{ users[msg.senderID].fullName }}</b>
+			<b>{{ users[msg.senderID] | name }}</b>
 			{% if msg.text is not empty %}{{ msg.text | stripHTML | truncateText }}{% endif %}
 			{% if msg.attachments is not empty %}
 			<div>[ {{ describeAttachments(msg.attachments) }} ]</div>

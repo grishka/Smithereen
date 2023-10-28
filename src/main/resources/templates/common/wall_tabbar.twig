@@ -12,7 +12,7 @@
 	{% if tab=="single" %}
 	    <a href="#" class="selected">{{ L('wall_post_title') }}</a>
 	{% elseif tab=="wall2wall" %}
-		<a href="#" class="selected">{{ L('wall_X_and_Y', {'name1': owner.firstName, 'name2': otherUser.firstName}) }}</a>
+		<a href="#" class="selected">{{ L('wall_X_and_Y', {'name1': owner | firstName, 'name2': otherUser | firstName}) }}</a>
 	{% endif %}
 	<span class="aux"><a href="{{ owner.profileURL }}">
 	{% if isGroup %}

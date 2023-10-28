@@ -14,13 +14,13 @@
 <h2>{{ L('about_admins') }}</h2>
 <div class="padTop">
 {% for admin in serverAdmins %}
-	<table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
+	<table width="100%" class="friendsRow noBorderSpacing" id="frow{{admin.id}}">
 		<tr valign="top">
 			<td width="50">
 				<a href="{{admin.profileURL}}">{{admin | pictureForAvatar('s')}}</a>
 			</td>
 			<td class="info" valign="middle">
-				<b><a href="{{admin.profileURL}}">{{admin.fullName}}</a></b>
+				<b><a href="{{admin.profileURL}}">{{ admin | name }}</a></b>
 			</td>
 		</tr>
 	</table>

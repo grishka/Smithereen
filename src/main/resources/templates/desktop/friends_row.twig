@@ -7,7 +7,7 @@
 		<td class="info">
 			<div class="infoInner">
 				<div class="grayText">{{ L('name') }}:</div>
-				<div><a href="{{ friend.profileURL }}">{{ friend.completeName }}</a></div>
+				<div><a href="{{ friend.profileURL }}">{{ friend | name('complete') }}</a></div>
 				{% if friend.domain is not empty %}
 					<div class="grayText">{{ L('server') }}:</div>
 					<div>{{ friend.domain }}</div>

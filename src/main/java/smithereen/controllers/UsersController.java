@@ -276,4 +276,12 @@ public class UsersController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public void deleteForeignUser(ForeignUser user){
+		try{
+			UserStorage.deleteUser(user);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

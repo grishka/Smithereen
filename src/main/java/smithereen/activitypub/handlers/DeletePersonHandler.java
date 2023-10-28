@@ -13,6 +13,6 @@ public class DeletePersonHandler extends ActivityTypeHandler<ForeignUser, Delete
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Delete activity, ForeignUser object) throws SQLException{
 		if(actor.id!=object.id)
 			throw new BadRequestException("User can only delete themselves");
-		// not implemented yet
+		context.appContext.getUsersController().deleteForeignUser(actor);
 	}
 }

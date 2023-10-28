@@ -7,7 +7,7 @@
 {% for user in users %}
 <a class="qsearchResult" href="{{ user.profileURL }}">
 	{{ user | pictureForAvatar('s', avaSize) }}
-	<div class="qsearchName ellipsize">{{ user.fullName }}</div>
+	<div class="qsearchName ellipsize">{{ user | name('full') }}</div>
 </a>
 {% endfor %}
 {% endif %}

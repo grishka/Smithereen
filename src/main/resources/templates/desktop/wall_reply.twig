@@ -10,12 +10,12 @@
 		{%endif%}
 		{%if not(realPost.deleted)%}
 		<td width="32" valign="top">
-			<a href="{{users[realPost.authorID].profileURL}}">{{users[realPost.authorID] | pictureForAvatar('s', 32)}}</a>
+			<a href="{{ profileURL(realPost.authorID) }}">{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
 		</td>
 		<td class="postContentWrap">
-			<a href="{{users[realPost.authorID].profileURL}}" class="authorName" id="postAuthor{{ realPost.id }}">{{users[realPost.authorID].fullName}}</a>
+			<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}">{{ users[realPost.authorID] | name }}</a>
 			{%- if realPost.privacy!='PUBLIC' -%}
-			<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID].firstAndGender}) }}"></span>
+			<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID] | name('firstAndGender')}) }}"></span>
 			{%- endif %}<br/>
 			<div id="postInner{{ realPost.id }}">
 				{% block postInner %}

@@ -24,14 +24,12 @@
 {%set relatedObject=null%}
 {%endif%}
 {%if actor is not null%}
-{%set actorName=actor.fullName%}
+{%set actorName=actor | name%}
 {%set actorURL=actor.profileURL%}
-{%set actorAva=actor.avatar%}
 {%set actorGender=actor.gender%}
 {%else%}
-{%set actorName=L('deleted_placeholder')%}
+{%set actorName='DELETED'%}
 {%set actorURL="/users/"+notification.actorID%}
-{%set actorAva=null%}
 {%set actorGender=null%}
 {%endif%}
 {%set link=null%}

@@ -22,7 +22,7 @@
 	{{ user | pictureForAvatar('s') }}
 	<div class="msgContent">
 		<div class="time">{{ LD(msg.createdAt) }}</div>
-		<div class="name ellipsize">{{ user.fullName }}{% if msg.senderID==currentUser.id and (msg.to | length)>1 %} +{{ (msg.to | length)-1 }}{% endif %}</div>
+		<div class="name ellipsize">{{ user | name }}{% if msg.senderID==currentUser.id and (msg.to | length)>1 %} +{{ (msg.to | length)-1 }}{% endif %}</div>
 		{% if msg.subject is not empty %}<div class="subject ellipsize">{{ msg.subject }}</div>{% endif %}
 		<div class="text">{{ msg.textPreview }}</div>
 	</div>

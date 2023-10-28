@@ -28,7 +28,7 @@
 				<a class="moreButton" onclick="return showOptions(this)" data-options="{{ json(options) }}"></a>
 				{% endif %}
 				<div class="ellipsize nameWrap">
-					<a href="{{ member.profileURL }}" class="name">{{ member.fullName }}</a>
+					<a href="{{ member.profileURL }}" class="name">{{ member | name }}</a>
 				</div>
 				<div class="clear"></div>
 			</div>

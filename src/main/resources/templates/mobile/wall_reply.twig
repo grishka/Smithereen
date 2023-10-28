@@ -9,10 +9,10 @@
 		{%endif%}
 		{%if not(realPost.deleted)%}
 		<td width="40" valign="top">
-			<a href="{{ users[realPost.authorID].profileURL }}">{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
+			<a href="{{ profileURL(realPost.authorID) }}">{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
 		</td>
 		<td class="commentContentWrap">
-			<div class="authorNameWrap"><a href="{{ users[realPost.authorID].profileURL }}" class="authorName">{{ users[realPost.authorID].fullName }}</a>
+			<div class="authorNameWrap"><a href="{{ profileURL(realPost.authorID) }}" class="authorName">{{ users[realPost.authorID] | name }}</a>
 			{%- if realPost.privacy!='PUBLIC' -%}
 			<span class="privatePostLockIcon"></span>
 			{%- endif -%}

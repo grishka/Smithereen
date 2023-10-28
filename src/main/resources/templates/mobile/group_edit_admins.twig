@@ -17,7 +17,7 @@
 					{% endif %}
 					<a class="moreButton" onclick="return showOptions(this)" data-options="{{ json(options) }}"></a>
 					<div class="ellipsize nameWrap">
-						<a href="{{ admin.user.profileURL }}" class="name">{{ admin.user.fullName }}</a>
+						<a href="{{ admin.user.profileURL }}" class="name">{{ admin.user | name }}</a>
 					</div>
 					{% if admin.title is not empty %}
 						<div class="subtitle ellipsize">{{ admin.title }}</div>

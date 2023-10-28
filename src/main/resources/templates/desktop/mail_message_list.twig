@@ -24,13 +24,14 @@
 {% for msg in items %}
 <div class="mailMessageRow{{ msg.unread ? ' unread' : '' }}" id="msgRow{{ msg.encodedID }}">
 	{%- if tab=="outbox" %}
-	{%- set user=users[msg.firstRecipientID] %}
+	{%- set userID=msg.firstRecipientID %}
 	{%- else %}
-	{%- set user=users[msg.senderID] %}
+	{%- set userID=msg.senderID %}
 	{%- endif %}
-	<a href="{{ user.profileURL }}" class="avaW">{{ user | pictureForAvatar('s') }}</a>
+	{%- set user=users[userID] %}
+	<a href="{{ profileURL(userID) }}" class="avaW">{{ user | pictureForAvatar('s') }}</a>
 	<a href="/my/mail/messages/{{ msg.encodedID }}" class="msgInfo">
-		<div class="name ellipsize">{{ user.fullName }}{% if msg.senderID==currentUser.id and (msg.to | length)>1 %} +{{ (msg.to | length)-1 }}{% endif %}</div>
+		<div class="name ellipsize">{{ user | name }}{% if msg.senderID==currentUser.id and (msg.to | length)>1 %} +{{ (msg.to | length)-1 }}{% endif %}</div>
 		<div class="time">{{ LD(msg.createdAt) }}</div>
 	</a>
 	<a href="/my/mail/messages/{{ msg.encodedID }}" class="msgContent">

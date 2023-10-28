@@ -1160,4 +1160,12 @@ public class UserStorage{
 			return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 		}
 	}
+
+	public static void deleteUser(User user) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("users")
+				.where("id=?", user.id)
+				.executeNoResult();
+		removeFromCache(user);
+	}
 }

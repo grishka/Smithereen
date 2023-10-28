@@ -7,7 +7,7 @@
 	<tr class="oneMemberRow">
 		<td valign="top"><a href="{{ admin.user.profileURL }}">{{ admin.user | pictureForAvatar('s', 40) }}</a></td>
 		<td class="nameAndInfo">
-			<div><a href="{{ admin.user.profileURL }}">{{ admin.user.fullName }}</a></div>
+			<div><a href="{{ admin.user.profileURL }}">{{ admin.user | name }}</a></div>
 			{% if admin.title is not empty %}
 				<div class="info">{{ admin.title }}</div>
 			{% endif %}
