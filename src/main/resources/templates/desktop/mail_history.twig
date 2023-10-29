@@ -5,7 +5,7 @@
 	</div>
 	{% for msg in items %}
 	<div class="messageRow{{ msg.unread ? ' unread' : '' }}">
-		<div class="name {{ msg.senderID==currentUser.id ? 'self' : 'peer' }}"><a href="{{ profileURL(msg.senderID) }}" class="ellipsize">{{ users[msg.senderID] | firstName }}</a></div>
+		<div class="name {{ msg.senderID==currentUser.id ? 'self' : 'peer' }}"><a href="{{ profileURL(msg.senderID) }}" class="ellipsize">{{ users[msg.senderID] | name('first') }}</a></div>
 		<div class="content">{{ msg.text | postprocessHTML }}{% if msg.attachments is not empty %}{{ renderAttachments(msg.processedAttachments, null) }}{% endif %}</div>
 		<div class="time"><a href="/my/mail/messages/{{ msg.encodedID }}" data-tooltip="{{ LD(msg.createdAt) }}">{{ LD(msg.createdAt, format="timeOrDay") }}</a></div>
 	</div>
