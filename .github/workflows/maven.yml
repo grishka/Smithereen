@@ -19,7 +19,10 @@ jobs:
       - name: Cache Maven dependencies
         uses: actions/cache@v3
         with:
-          path: ~/.m2
+          path: |
+            ~/.m2
+            src/main/web/node_modules
+            target/node
           key: ${{ runner.os }}-build-cache-maven
       - name: Build with Maven
         run: mvn -B package
