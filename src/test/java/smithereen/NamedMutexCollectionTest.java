@@ -1,6 +1,8 @@
 package smithereen;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -10,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import smithereen.util.NamedMutexCollection;
 
 public class NamedMutexCollectionTest{
+	private static final Logger LOG=LoggerFactory.getLogger(NamedMutexCollectionTest.class);
 
 	@Test
 	public void testSingleThread(){
@@ -78,9 +81,9 @@ public class NamedMutexCollectionTest{
 
 		@Override
 		public void run(){
-			System.out.println("Starting thread "+Thread.currentThread().getName());
+			LOG.debug("Starting thread {}", Thread.currentThread().getName());
 			mutex.acquire(name);
-			System.out.println("Thread "+Thread.currentThread().getName()+" acquired mutex");
+			LOG.debug("Thread {} acquired mutex", Thread.currentThread().getName());
 			try{
 				try{Thread.sleep(500);}catch(InterruptedException ignore){}
 				if(count==0){
@@ -90,7 +93,7 @@ public class NamedMutexCollectionTest{
 			}finally{
 				mutex.release(name);
 			}
-			System.out.println("Exiting thread "+Thread.currentThread().getName());
+			LOG.debug("Exiting thread {}", Thread.currentThread().getName());
 		}
 	}
 }
