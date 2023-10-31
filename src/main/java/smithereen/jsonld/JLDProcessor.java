@@ -55,6 +55,8 @@ public class JLDProcessor{
 		// ActivityStreams aliases
 		lc.addProperty("sensitive", "as:sensitive");
 		lc.addProperty("manuallyApprovesFollowers", "as:manuallyApprovesFollowers");
+		lc.add("movedTo", idAndTypeObject("as:movedTo", "@id"));
+		lc.add("alsoKnownAs", idAndTypeObject("as:alsoKnownAs", "@id"));
 
 		// Mastodon aliases
 		lc.addProperty("blurhash", "toot:blurhash");

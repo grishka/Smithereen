@@ -1,7 +1,13 @@
 {# @pebvariable name="user" type="smithereen.model.User" #}
 {%extends "page"%}
 {%block content%}
-{%if user.domain%}
+{% if movedTo is not null %}
+<div class="marginsAreMessy"></div>
+<div class="settingsMessage">
+	{{ L('profile_moved', {'name': user | name('first')}) }}<br/>
+	<a href="{{ movedTo.profileURL }}">{{ L('profile_moved_link', {'domain': movedTo.domain, 'name': movedTo | name}) }}</a>
+</div>
+{% elseif user.domain %}
 <div class="marginsAreMessy"></div>
 <div class="settingsMessage">
 	{{L('incomplete_profile')}}<br/>
@@ -33,7 +39,7 @@
 			<span class="ava avaPlaceholder inProfile"></span>
 			{%endif%}
 			{%endif%}
-			{% if currentUser is not null and currentUser.id!=user.id and not isSelfBlocked %}
+			{% if currentUser is not null and currentUser.id!=user.id and not isSelfBlocked and movedTo is null %}
 			<div class="profileBelowAva">
 				{% if canMessage %}
 				<a href="/my/mail/compose?to={{ user.id }}" class="button withText" onclick="showMailFormBox(this); return false;">{{ L('profile_write_message') }}</a>

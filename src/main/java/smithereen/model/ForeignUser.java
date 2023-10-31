@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.Utils;
@@ -25,6 +26,7 @@ import spark.utils.StringUtils;
 public class ForeignUser extends User implements ForeignActor{
 
 	private URI wall, friends, groups;
+	public URI movedToURL;
 	public boolean isServiceActor;
 
 	public static ForeignUser fromResultSet(ResultSet res) throws SQLException{
@@ -221,6 +223,16 @@ public class ForeignUser extends User implements ForeignActor{
 				}
 				privacySettings.put(key, ps);
 			}
+		}
+		if(obj.has("movedTo")){
+			movedToURL=tryParseURL(obj.get("movedTo").getAsString());
+		}
+		if(obj.has("alsoKnownAs")){
+			alsoKnownAs=tryParseArrayOfLinksOrObjects(obj.get("alsoKnownAs"), parserContext)
+					.stream()
+					.filter(l->l.link!=null)
+					.map(l->l.link)
+					.collect(Collectors.toSet());
 		}
 
 		return this;

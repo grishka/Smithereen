@@ -56,6 +56,7 @@ import smithereen.activitypub.handlers.LikeNoteHandler;
 import smithereen.activitypub.handlers.OfferFollowPersonHandler;
 import smithereen.activitypub.handlers.PersonAddPersonHandler;
 import smithereen.activitypub.handlers.PersonBlockPersonHandler;
+import smithereen.activitypub.handlers.PersonMovePersonHandler;
 import smithereen.activitypub.handlers.PersonRemovePersonHandler;
 import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.ReadNoteHandler;
@@ -97,6 +98,7 @@ import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
+import smithereen.activitypub.objects.activities.Move;
 import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
@@ -178,6 +180,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Remove.class, User.class, new PersonRemovePersonHandler());
 		registerActivityHandler(ForeignUser.class, Add.class, Group.class, new AddGroupHandler());
 		registerActivityHandler(ForeignUser.class, Remove.class, Group.class, new RemoveGroupHandler());
+		registerActivityHandler(ForeignUser.class, Move.class, ForeignUser.class, new PersonMovePersonHandler());
 
 		registerActivityHandler(ForeignGroup.class, Update.class, ForeignGroup.class, new UpdateGroupHandler());
 		registerActivityHandler(ForeignUser.class, Follow.class, Group.class, new FollowGroupHandler());

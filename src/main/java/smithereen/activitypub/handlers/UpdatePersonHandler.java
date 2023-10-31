@@ -14,6 +14,7 @@ public class UpdatePersonHandler extends ActivityTypeHandler<ForeignUser, Update
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Update activity, ForeignUser object) throws SQLException{
 		if(!actor.activityPubID.equals(object.activityPubID))
 			throw new BadRequestException("Users can only update themselves");
+		object.copyLocalFields(actor);
 		UserStorage.putOrUpdateForeignUser(object);
 	}
 }

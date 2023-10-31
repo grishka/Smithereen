@@ -10,5 +10,7 @@
   "X_is_following_you": "{name} {gender, select, female {подписана} other {подписан}} на ваc",
   "waiting_for_X_to_accept_follow_req": "Вы ожидаете, пока {name} примет запрос на подписку",
   "incomplete_profile": "Информация на этой странице может быть неполной.",
-  "this_is_you": "(это вы)"
+  "this_is_you": "(это вы)",
+  "profile_moved": "{name} теперь пользуется другой страницей:",
+  "profile_moved_link": "<b>{name}</b> на {domain}"
 }

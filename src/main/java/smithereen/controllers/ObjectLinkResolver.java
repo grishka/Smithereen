@@ -205,6 +205,11 @@ public class ObjectLinkResolver{
 						if(obj instanceof ForeignGroup fg){
 							fg.resolveDependencies(context, allowFetching, allowStorage);
 						}
+						if(obj instanceof ForeignUser fu){
+							if(allowStorage && fu.movedToURL!=null){
+								handleNewlyFetchedMovedUser(fu);
+							}
+						}
 						T o=convertToNativeObject(obj, expectedType);
 						if(!bypassCollectionCheck && o instanceof Post post && obj.inReplyTo==null){ // TODO make this a generalized interface OwnedObject or something
 							if(post.ownerID!=post.authorID){
@@ -358,6 +363,17 @@ public class ObjectLinkResolver{
 		if(!matcher.find())
 			return 0;
 		return Integer.parseInt(matcher.group(1));
+	}
+
+	private void handleNewlyFetchedMovedUser(ForeignUser user){
+		try{
+			User newUser=resolve(user.movedToURL, User.class, true, true, false);
+			if(newUser.alsoKnownAs.contains(user.activityPubID) && user.movedTo!=newUser.id){
+				user.movedTo=newUser.id;
+			}
+		}catch(ObjectNotFoundException x){
+			LOG.warn("User {} moved to {} but the new URL can't be fetched", user.activityPubID, user.movedToURL, x);
+		}
 	}
 
 	private record ActorToken(JsonObject token, Instant validUntil){

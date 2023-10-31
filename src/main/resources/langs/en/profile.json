@@ -10,5 +10,7 @@
   "X_is_following_you": "{name} follows you",
   "waiting_for_X_to_accept_follow_req": "You're waiting for {name} to accept your follow request",
   "incomplete_profile": "This profile might be incomplete.",
-  "this_is_you": "(this is you)"
+  "this_is_you": "(this is you)",
+  "profile_moved": "{name} now uses another profile:",
+  "profile_moved_link": "<b>{name}</b> on {domain}"
 }

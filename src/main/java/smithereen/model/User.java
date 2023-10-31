@@ -9,10 +9,12 @@ import com.google.gson.reflect.TypeToken;
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import smithereen.Config;
 import smithereen.Utils;
@@ -37,6 +39,10 @@ public class User extends Actor{
 	public Gender gender;
 	public long flags;
 	public Map<UserPrivacySettingKey, PrivacySetting> privacySettings=Map.of();
+	public int movedTo;
+	public int movedFrom;
+	public Instant movedAt;
+	public Set<URI> alsoKnownAs=new HashSet<>();
 
 	// additional profile fields
 	public boolean manuallyApprovesFollowers;
@@ -147,6 +153,18 @@ public class User extends Actor{
 					pv.value=fld.get("v").getAsString();
 					attachment.add(pv);
 				}
+			}
+			if(o.has("aka")){
+				JsonArray aka=o.getAsJsonArray("aka");
+				for(JsonElement el:aka){
+					alsoKnownAs.add(URI.create(el.getAsString()));
+				}
+			}
+			movedTo=optInt(o, "movedTo");
+			movedFrom=optInt(o, "movedFrom");
+			if(o.has("movedAt")){
+				long moved=o.get("movedAt").getAsLong();
+				movedAt=Instant.ofEpochSecond(moved);
 			}
 		}
 
@@ -293,6 +311,19 @@ public class User extends Actor{
 		}
 		if(custom!=null)
 			o.add("custom", custom);
+		if(!alsoKnownAs.isEmpty()){
+			JsonArray aka=new JsonArray(alsoKnownAs.size());
+			for(URI uri:alsoKnownAs){
+				aka.add(uri.toString());
+			}
+			o.add("aka", aka);
+		}
+		if(movedTo>0)
+			o.addProperty("movedTo", movedTo);
+		if(movedFrom>0)
+			o.addProperty("movedFrom", movedFrom);
+		if(movedAt!=null)
+			o.addProperty("movedAt", movedAt.getEpochSecond());
 		return o.toString();
 	}
 
@@ -350,6 +381,12 @@ public class User extends Actor{
 
 	public Map<String, Object> getFirstLastAndGender(){
 		return Map.of("first", firstName, "last", lastName==null ? "" : lastName, "gender", gender==null ? Gender.UNKNOWN : gender);
+	}
+
+	public void copyLocalFields(User previous){
+		movedTo=previous.movedTo;
+		movedFrom=previous.movedFrom;
+		movedAt=previous.movedAt;
 	}
 
 	public enum Gender{

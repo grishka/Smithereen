@@ -171,6 +171,11 @@ public class ProfileRoutes{
 					model.with("noindex", true);
 				model.with("activityPubURL", user.activityPubID);
 
+				if(user.movedTo>0){
+					User newProfile=ctx.getUsersController().getUserOrThrow(user.movedTo);
+					model.with("movedTo", newProfile);
+				}
+
 				model.addNavBarItem(user.getFullName(), null, isSelf ? l.get("this_is_you") : null);
 
 				model.with("groups", ctx.getGroupsController().getUserGroups(user, self!=null ? self.user : null, 0, 100).list);

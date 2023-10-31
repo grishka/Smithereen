@@ -793,6 +793,13 @@ public class UserStorage{
 		}
 	}
 
+	public static List<Integer> getUserLocalFollowers(int userID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT follower_id FROM followings INNER JOIN `users` on `users`.id=follower_id WHERE followee_id=? AND accepted=1 AND `users`.ap_id IS NULL", userID);
+			return DatabaseUtils.intResultSetToList(stmt.executeQuery());
+		}
+	}
+
 	public static void setFollowAccepted(int followerID, int followeeID, boolean accepted) throws SQLException{
 		new SQLQueryBuilder()
 				.update("followings")
@@ -918,6 +925,14 @@ public class UserStorage{
 				.selectFrom("blocks_user_user")
 				.columns("user_id")
 				.where("owner_id=?", selfID)
+				.executeAndGetIntList());
+	}
+
+	public static List<User> getBlockingUsers(int selfID) throws SQLException{
+		return getByIdAsList(new SQLQueryBuilder()
+				.selectFrom("blocks_user_user")
+				.columns("owner_id")
+				.where("user_id=?", selfID)
 				.executeAndGetIntList());
 	}
 
