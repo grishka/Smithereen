@@ -13,16 +13,17 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.Utils;
-import smithereen.data.Account;
-import smithereen.data.FederationRestriction;
-import smithereen.data.PaginatedList;
-import smithereen.data.Post;
-import smithereen.data.Server;
-import smithereen.data.StatsPoint;
-import smithereen.data.StatsType;
-import smithereen.data.User;
-import smithereen.data.ViolationReport;
-import smithereen.data.WebDeltaResponse;
+import smithereen.model.Account;
+import smithereen.model.FederationRestriction;
+import smithereen.model.MailMessage;
+import smithereen.model.PaginatedList;
+import smithereen.model.Post;
+import smithereen.model.Server;
+import smithereen.model.StatsPoint;
+import smithereen.model.StatsType;
+import smithereen.model.User;
+import smithereen.model.ViolationReport;
+import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -30,7 +31,6 @@ import smithereen.lang.Lang;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
-import smithereen.util.JsonArrayBuilder;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -466,11 +466,28 @@ public class SettingsAdminRoutes{
 		Set<Integer> userIDs=reports.list.stream().filter(r->r.targetType==ViolationReport.TargetType.USER).map(r->r.targetID).collect(Collectors.toSet());
 		userIDs.addAll(reports.list.stream().filter(r->r.reporterID!=0).map(r->r.reporterID).collect(Collectors.toSet()));
 		Set<Integer> groupIDs=reports.list.stream().filter(r->r.targetType==ViolationReport.TargetType.GROUP).map(r->r.targetID).collect(Collectors.toSet());
-		Set<Integer> postIDs=reports.list.stream().filter(r->r.contentType==ViolationReport.ContentType.POST).map(r->r.contentID).collect(Collectors.toSet());
+		Set<Integer> postIDs=reports.list.stream().filter(r->r.contentType==ViolationReport.ContentType.POST).map(r->(int)r.contentID).collect(Collectors.toSet());
+		Set<Long> messageIDs=reports.list.stream().filter(r->r.contentType==ViolationReport.ContentType.MESSAGE).map(r->r.contentID).collect(Collectors.toSet());
+
+		Map<Integer, Post> posts=ctx.getWallController().getPosts(postIDs);
+		Map<Long, MailMessage> messages=ctx.getMailController().getMessagesAsModerator(messageIDs);
+		for(Post post:posts.values()){
+			userIDs.add(post.authorID);
+			if(post.ownerID!=post.authorID){
+				if(post.ownerID>0)
+					userIDs.add(post.ownerID);
+				else
+					groupIDs.add(-post.ownerID);
+			}
+		}
+		for(MailMessage msg:messages.values()){
+			userIDs.add(msg.senderID);
+		}
 
 		model.with("users", ctx.getUsersController().getUsers(userIDs))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(groupIDs))
-				.with("posts", ctx.getWallController().getPosts(postIDs));
+				.with("posts", posts)
+				.with("messages", messages);
 
 		return model;
 	}
@@ -487,7 +504,7 @@ public class SettingsAdminRoutes{
 		}else if(req.queryParams("deleteContent")!=null){
 			// TODO notify user
 			if(report.contentType==ViolationReport.ContentType.POST){
-				Post post=ctx.getWallController().getPostOrThrow(report.contentID);
+				Post post=ctx.getWallController().getPostOrThrow((int)report.contentID);
 				ctx.getWallController().deletePostAsServerModerator(sessionInfo(req), post);
 			}else{
 				throw new BadRequestException();
@@ -499,7 +516,7 @@ public class SettingsAdminRoutes{
 			resp.redirect(back(req));
 		}else if(req.queryParams("addCW")!=null){
 			if(report.contentType==ViolationReport.ContentType.POST){
-				Post post=ctx.getWallController().getPostOrThrow(report.contentID);
+				Post post=ctx.getWallController().getPostOrThrow((int)report.contentID);
 				if(post.hasContentWarning())
 					throw new BadRequestException();
 
@@ -520,7 +537,7 @@ public class SettingsAdminRoutes{
 
 		// TODO notify user
 		if(report.contentType==ViolationReport.ContentType.POST){
-			Post post=ctx.getWallController().getPostOrThrow(report.contentID);
+			Post post=ctx.getWallController().getPostOrThrow((int)report.contentID);
 			ctx.getWallController().setPostCWAsModerator(sessionInfo(req).permissions, post, req.queryParams("cw"));
 		}else{
 			throw new BadRequestException();

@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 
 import java.net.URI;
 
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 
 public class Relationship extends ActivityPubObject{
@@ -21,11 +21,11 @@ public class Relationship extends ActivityPubObject{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
 		obj.addProperty("relationship", relationship.toString());
-		obj.add("object", object.serialize(contextCollector));
-		obj.add("subject", subject.serialize(contextCollector));
+		obj.add("object", object.serialize(serializerContext));
+		obj.add("subject", subject.serialize(serializerContext));
 		return obj;
 	}
 

@@ -7,12 +7,11 @@ import smithereen.activitypub.DoublyNestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Undo;
-import smithereen.data.ForeignUser;
-import smithereen.data.FriendshipStatus;
-import smithereen.data.User;
-import smithereen.data.feed.NewsfeedEntry;
+import smithereen.model.ForeignUser;
+import smithereen.model.FriendshipStatus;
+import smithereen.model.User;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.UserStorage;
 
 public class UndoAcceptFollowPersonHandler extends DoublyNestedActivityTypeHandler<ForeignUser, Undo, Accept, Follow, User>{

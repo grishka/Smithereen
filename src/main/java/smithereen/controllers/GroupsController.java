@@ -25,18 +25,19 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.activities.Join;
-import smithereen.data.Account;
-import smithereen.data.EventReminder;
-import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
-import smithereen.data.FriendshipStatus;
-import smithereen.data.Group;
-import smithereen.data.GroupAdmin;
-import smithereen.data.GroupInvitation;
-import smithereen.data.PaginatedList;
-import smithereen.data.User;
-import smithereen.data.UserNotifications;
-import smithereen.data.feed.NewsfeedEntry;
+import smithereen.model.Account;
+import smithereen.model.EventReminder;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
+import smithereen.model.FriendshipStatus;
+import smithereen.model.Group;
+import smithereen.model.GroupAdmin;
+import smithereen.model.GroupInvitation;
+import smithereen.model.PaginatedList;
+import smithereen.model.User;
+import smithereen.model.UserNotifications;
+import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -140,6 +141,8 @@ public class GroupsController{
 	}
 
 	public List<Group> getGroupsByIdAsList(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return List.of();
 		try{
 			return GroupStorage.getByIdAsList(ids);
 		}catch(SQLException x){
@@ -148,6 +151,8 @@ public class GroupsController{
 	}
 
 	public Map<Integer, Group> getGroupsByIdAsMap(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
 		try{
 			return GroupStorage.getById(ids);
 		}catch(SQLException x){
@@ -433,6 +438,7 @@ public class GroupsController{
 			// Two users can't be friends if one blocked the other
 			if(context.getFriendsController().getFriendshipStatus(self, who)!=FriendshipStatus.FRIENDS)
 				throw new UserActionNotAllowedException();
+			context.getPrivacyController().enforceUserPrivacy(self, who, UserPrivacySettingKey.GROUP_INVITE);
 
 			Utils.ensureUserNotBlocked(self, group);
 			Utils.ensureUserNotBlocked(who, group);

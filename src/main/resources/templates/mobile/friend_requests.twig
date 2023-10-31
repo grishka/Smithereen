@@ -1,4 +1,4 @@
-{# @pebvariable name="items" type="java.util.List<smithereen.data.FriendRequest>" #}
+{# @pebvariable name="items" type="java.util.List<smithereen.model.FriendRequest>" #}
 {%extends "page"%}
 {%block content%}
 {% include 'friends_tabbar' with {'tab': 'requests'} %}
@@ -11,7 +11,7 @@
 			</td>
 			<td class="info">
 				<form action="/users/{{ req.from.id }}/respondToFriendRequest" method="post" data-ajax>
-					<b><a href="{{req.from.profileURL}}">{{req.from.fullName}}</a></b>
+					<b><a href="{{req.from.profileURL}}">{{ req.from | name }}</a></b>
 					{% if req.message is not empty %}
 						<blockquote>{{ req.message }}</blockquote>
 					{% endif %}

@@ -1,13 +1,14 @@
-{# @pebvariable name="userNotifications" type="smithereen.data.UserNotifications" #}
-{# @pebvariable name="adminNotifications" type="smithereen.data.AdminNotifications" #}
-{# @pebvariable name="birthdayUsers" type="smithereen.data.User[]" #}
-{# @pebvariable name="eventReminderEvents" type="smithereen.data.Group[]" #}
-{# @pebvariable name="userPermissions" type="smithereen.data.UserPermissions" #}
+{# @pebvariable name="userNotifications" type="smithereen.model.UserNotifications" #}
+{# @pebvariable name="adminNotifications" type="smithereen.model.AdminNotifications" #}
+{# @pebvariable name="birthdayUsers" type="smithereen.model.User[]" #}
+{# @pebvariable name="eventReminderEvents" type="smithereen.model.Group[]" #}
+{# @pebvariable name="userPermissions" type="smithereen.model.UserPermissions" #}
 {% macro menuCounter(count) %}{% if count>0 %} (<b>{{ count | numberformat }}</b>){% endif %}{% endmacro %}
 <ul class="actionList">
 	{% if currentUser is not null %}
 	<li class="hasAux"><a href="/{{currentUser.username}}" class="actionMain">{{L('menu_profile')}}</a><a href="/settings/profile/general" class="actionAux">{{L('menu_edit')}}</a></li>
 	<li><a href="/my/friends">{{L('menu_friends')}}{{ menuCounter(userNotifications.newFriendRequestCount) }}</a></li>
+	<li><a href="/my/mail">{{ L('menu_mail') }}{{ menuCounter(userNotifications.unreadMailCount) }}</a></li>
 	<li><a href="/my/groups">{{ L('menu_groups') }}{{ menuCounter(userNotifications.newGroupInvitationsCount) }}</a></li>
 	<li><a href="/my/events">{{ L('menu_events') }}{{ menuCounter(userNotifications.newEventInvitationsCount) }}</a></li>
 	<li><a href="/feed">{{L('menu_news')}}</a></li>

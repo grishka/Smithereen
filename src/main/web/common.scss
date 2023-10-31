@@ -10,6 +10,12 @@ $text: #000;
 $alertBackground: #F9F6E7;
 $alertBorder: #D4BC4C;
 
+/*
+ * Made from VK's blue palette by converting it to LCH, applying these formulas:
+ * H=(H+208)%360
+ * C=C*3;
+ * and converting back to RGB
+ * */
 
 /* text */
 $normalLink: rgb(72, 92, 0);
@@ -151,6 +157,16 @@ $likeIconColor: rgb(219, 216, 173);
 	;
 }
 
+@mixin medium-shadow{
+	box-shadow:
+		0 0.2px 0.2px rgba(0, 0, 0, 0.02),
+		0 0.4px 0.4px rgba(0, 0, 0, 0.028),
+		0 0.8px 0.8px rgba(0, 0, 0, 0.035),
+		0 1.3px 1.3px rgba(0, 0, 0, 0.042),
+		0 2.5px 2.5px rgba(0, 0, 0, 0.05),
+		0 6px 6px rgba(0, 0, 0, 0.07);
+}
+
 @keyframes slideFromBottom{
 	0%{
 		opacity: 0;
@@ -254,34 +270,21 @@ a, a:link, a:visited, .link{
 	background: $gray;
 	vertical-align: top;
 	margin: 0;
-	background-image: svg-load("img/ava_placeholder_male_s.svg", fill: $darkerGray);
+	background-color: #fff;
+	background-image: svg-load("img/ava_question.svg", fill: #809528);
 	background-repeat: no-repeat;
 	background-position: center;
-	border: solid 1px $darkerGray;
+	background-size: contain;
+	border: solid 1px #ece5d1;
 	box-sizing: border-box;
-	&.sizeM{
-		background-size: auto 32px;
-	}
-	&.sizeL{
-		background-size: auto 48px;
-	}
-	&.female{
-		background-image: svg-load("img/ava_placeholder_female_s.svg", fill: $darkerGray);
-	}
-	&.group{
-		background-image: svg-load("img/ava_placeholder_group_s.svg", fill: $darkerGray);
-	}
 	&.inProfile{
 		width: 200px;
-		height: 200px;
-		border: none;
+		height: 115px;
 		position: relative;
-		background-image: svg-load("img/ava_placeholder_male_l.svg", fill: $darkerGray);
-		&.female{
-			background-image: svg-load("img/ava_placeholder_female_l.svg", fill: $darkerGray);
-		}
-		&.group{
-			background-image: svg-load("img/ava_placeholder_group_l.svg", fill: $darkerGray);
+		&.own{
+			background-image: svg-load("img/ava_question.svg", fill: #e8e3bb);
+			background-color: #fff8cc;
+			border: none;
 		}
 	}
 }
@@ -689,7 +692,7 @@ ul.actualList{
 	}
 }
 
-.loader, .inlineLoader{
+.loader, .inlineLoader, .ajaxReplaceWithLoader.ajaxLoading::before{
 	background: svg-load('img/loading_anim.svg', fill: $normalLink) no-repeat center;
 	background-size: 32px 8px;
 	min-width: 32px;
@@ -823,4 +826,27 @@ small{
 	>*{
 		margin: $smallPadding 0 0 $smallPadding;
 	}
+}
+
+.ajaxReplaceWithLoader.ajaxLoading{
+	color: transparent;
+	position: relative;
+	&::before{
+		content: ' ';
+		display: block;
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-position: 10px center;
+	}
+}
+
+.privatePostLockIcon{
+	display: inline-block;
+	width: 8px;
+	height: 9px;
+	background: svg-load('img/lock.svg', fill: #cfc39f);
+	margin-left: 5px;
 }

@@ -1,6 +1,6 @@
-{# @pebvariable name="group" type="smithereen.data.Group" #}
+{# @pebvariable name="group" type="smithereen.model.Group" #}
 {# @pebvariable name="members" type="simthereen.data.User[]" #}
-{# @pebvariable name="member" type="smithereen.data.User" #}
+{# @pebvariable name="member" type="smithereen.model.User" #}
 {# @pebvariable name="adminIDs" type="int[]" #}
 {% extends "page" %}
 {% block content %}
@@ -28,7 +28,7 @@
 				<a class="moreButton" onclick="return showOptions(this)" data-options="{{ json(options) }}"></a>
 				{% endif %}
 				<div class="ellipsize nameWrap">
-					<a href="{{ member.profileURL }}" class="name">{{ member.fullName }}</a>
+					<a href="{{ member.profileURL }}" class="name">{{ member | name }}</a>
 				</div>
 				<div class="clear"></div>
 			</div>

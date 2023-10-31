@@ -1,17 +1,17 @@
 package smithereen.templates;
 
-import com.mitchellbosecke.pebble.extension.Function;
-import com.mitchellbosecke.pebble.template.EvaluationContext;
-import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import io.pebbletemplates.pebble.extension.Function;
+import io.pebbletemplates.pebble.template.EvaluationContext;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import smithereen.data.attachments.Attachment;
-import smithereen.data.attachments.AudioAttachment;
-import smithereen.data.attachments.PhotoAttachment;
-import smithereen.data.attachments.VideoAttachment;
+import smithereen.model.attachments.Attachment;
+import smithereen.model.attachments.AudioAttachment;
+import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.attachments.VideoAttachment;
 import smithereen.lang.Lang;
 
 public class DescribeAttachmentsFunction implements Function{

@@ -9,8 +9,8 @@ import java.time.ZoneId;
 import java.util.List;
 
 import smithereen.ApplicationContext;
-import smithereen.data.StatsPoint;
-import smithereen.data.StatsType;
+import smithereen.model.StatsPoint;
+import smithereen.model.StatsType;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.storage.StatsStorage;
 

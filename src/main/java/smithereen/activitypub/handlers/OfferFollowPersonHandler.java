@@ -9,9 +9,9 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Offer;
-import smithereen.data.ForeignUser;
-import smithereen.data.FriendshipStatus;
-import smithereen.data.User;
+import smithereen.model.ForeignUser;
+import smithereen.model.FriendshipStatus;
+import smithereen.model.User;
 import smithereen.storage.UserStorage;
 
 public class OfferFollowPersonHandler extends NestedActivityTypeHandler<ForeignUser, Offer, Follow, User>{

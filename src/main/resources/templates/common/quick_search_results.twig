@@ -1,5 +1,5 @@
-{# @pebvariable name="users" type="smithereen.data.User[]" #}
-{# @pebvariable name="groups" type="smithereen.data.Group[]" #}
+{# @pebvariable name="users" type="smithereen.model.User[]" #}
+{# @pebvariable name="groups" type="smithereen.model.Group[]" #}
 {# @pebvariable name="externalObjects" type="java.net.URI[]" #}
 {# @pebvariable name="avaSize" type="int" #}
 {% if users is not empty %}
@@ -7,7 +7,7 @@
 {% for user in users %}
 <a class="qsearchResult" href="{{ user.profileURL }}">
 	{{ user | pictureForAvatar('s', avaSize) }}
-	<div class="qsearchName ellipsize">{{ user.fullName }}</div>
+	<div class="qsearchName ellipsize">{{ user | name('full') }}</div>
 </a>
 {% endfor %}
 {% endif %}

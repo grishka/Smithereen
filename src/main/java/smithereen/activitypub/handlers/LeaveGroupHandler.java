@@ -5,8 +5,8 @@ import java.sql.SQLException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Leave;
-import smithereen.data.ForeignUser;
-import smithereen.data.Group;
+import smithereen.model.ForeignUser;
+import smithereen.model.Group;
 import smithereen.storage.GroupStorage;
 
 public class LeaveGroupHandler extends ActivityTypeHandler<ForeignUser, Leave, Group>{

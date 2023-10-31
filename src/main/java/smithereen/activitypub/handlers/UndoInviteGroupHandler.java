@@ -7,8 +7,8 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Undo;
-import smithereen.data.ForeignGroup;
-import smithereen.data.User;
+import smithereen.model.ForeignGroup;
+import smithereen.model.User;
 import smithereen.exceptions.BadRequestException;
 import smithereen.storage.GroupStorage;
 

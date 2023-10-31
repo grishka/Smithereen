@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.net.URI;
 import java.util.List;
 
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 
 public class ActivityPubCollection extends ActivityPubObject{
@@ -30,18 +30,18 @@ public class ActivityPubCollection extends ActivityPubObject{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
 		if(totalItems>=0)
 			obj.addProperty("totalItems", totalItems);
 		if(current!=null)
 			obj.addProperty("current", current.toString());
 		if(first!=null)
-			obj.add("first", first.serialize(contextCollector));
+			obj.add("first", first.serialize(serializerContext));
 		if(last!=null)
 			obj.addProperty("last", last.toString());
 		if(items!=null)
-			obj.add(ordered ? "orderedItems" : "items", serializeLinkOrObjectArray(items, contextCollector));
+			obj.add(ordered ? "orderedItems" : "items", serializeLinkOrObjectArray(items, serializerContext));
 		return obj;
 	}
 

@@ -1,5 +1,7 @@
 package smithereen.routes;
 
+import com.google.gson.JsonObject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -24,9 +27,9 @@ import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
-import javax.servlet.MultipartConfigElement;
-import javax.servlet.ServletException;
-import javax.servlet.http.Part;
+import jakarta.servlet.MultipartConfigElement;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Part;
 
 import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
@@ -39,22 +42,28 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.data.Account;
-import smithereen.data.CachedRemoteImage;
-import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
-import smithereen.data.Group;
-import smithereen.data.Poll;
-import smithereen.data.PollOption;
-import smithereen.data.Post;
-import smithereen.data.SearchResult;
-import smithereen.data.SessionInfo;
-import smithereen.data.SizedImage;
-import smithereen.data.User;
-import smithereen.data.UserInteractions;
-import smithereen.data.WebDeltaResponse;
-import smithereen.data.attachments.GraffitiAttachment;
+import smithereen.activitypub.objects.NoteOrQuestion;
+import smithereen.model.Account;
+import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.AttachmentHostContentObject;
+import smithereen.model.CachedRemoteImage;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
+import smithereen.model.Group;
+import smithereen.model.MailMessage;
+import smithereen.model.OwnedContentObject;
+import smithereen.model.Poll;
+import smithereen.model.PollOption;
+import smithereen.model.Post;
+import smithereen.model.SearchResult;
+import smithereen.model.SessionInfo;
+import smithereen.model.SizedImage;
+import smithereen.model.User;
+import smithereen.model.UserInteractions;
+import smithereen.model.WebDeltaResponse;
+import smithereen.model.attachments.GraffitiAttachment;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.lang.Lang;
@@ -79,6 +88,25 @@ import static smithereen.Utils.*;
 public class SystemRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(SystemRoutes.class);
 	private static final NamedMutexCollection downloadMutex=new NamedMutexCollection();
+
+	private static ActivityPubObject verifyObjectAndGetAttachment(int index, String type, Object obj){
+		ActivityPubRepresentable apr=(ActivityPubRepresentable) obj;
+		if(obj==null || Config.isLocal(apr.getActivityPubID())){
+			LOG.warn("downloading {}: post not found or is local", type);
+			return null;
+		}
+		List<ActivityPubObject> attachments=((AttachmentHostContentObject)obj).getAttachments();
+		if(index>=attachments.size() || index<0){
+			LOG.warn("downloading {}: index {} out of bounds {}", type, index, attachments.size());
+			return null;
+		}
+		ActivityPubObject att=attachments.get(index);
+		if(!(att instanceof Document)){
+			LOG.warn("downloading {}: attachment {} is not a Document", type, att.getClass().getName());
+			return null;
+		}
+		return att;
+	}
 
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
 		requireQueryParams(req, "type", "format", "size");
@@ -109,6 +137,8 @@ public class SystemRoutes{
 		User user=null;
 		Group group=null;
 		boolean isGraffiti=false;
+
+		boolean isPostPhoto="post_photo".equals(type);
 
 		if("user_ava".equals(type)){
 			itemType=MediaCache.ItemType.AVATAR;
@@ -146,24 +176,34 @@ public class SystemRoutes{
 				else
 					mime="image/jpeg";
 			}
-		}else if("post_photo".equals(type)){
+		}else if("post_photo".equals(type) || "message_photo".equals(type)){
 			itemType=MediaCache.ItemType.PHOTO;
-			int postID=Utils.parseIntOrDefault(req.queryParams("post_id"), 0);
-			Post post=PostStorage.getPostByID(postID, false);
-			if(post==null || Config.isLocal(post.activityPubID)){
-				LOG.warn("downloading post_photo: post {} not found or is local", postID);
-				return "";
+			ApplicationContext ctx=context(req);
+			SessionInfo sess=sessionInfo(req);
+			Object contentObj=switch(type){
+				case "post_photo" -> {
+					int postID=parseIntOrDefault(req.queryParams("post_id"), 0);
+					yield ctx.getWallController().getPostOrThrow(postID);
+				}
+				case "message_photo" -> {
+					requireQueryParams(req, "msg_id");
+					if(sess==null || sess.account==null)
+						yield null;
+					long msgID=decodeLong(req.queryParams("msg_id"));
+					yield context(req).getMailController().getMessage(sess.account.user, msgID, false);
+				}
+				default -> throw new IllegalStateException("Unexpected value: "+type);
+			};
+
+			if(contentObj instanceof OwnedContentObject oco){
+				ctx.getPrivacyController().enforceObjectPrivacy(sess==null || sess.account==null ? null : sess.account.user, oco);
 			}
-			int index=Utils.parseIntOrDefault(req.queryParams("index"), 0);
-			if(index>=post.attachment.size() || index<0){
-				LOG.warn("downloading post_photo: index {} out of bounds {}", index, post.attachment.size());
+
+			int index=safeParseInt(req.queryParams("index"));
+			ActivityPubObject att=verifyObjectAndGetAttachment(index, type, contentObj);
+			if(att==null)
 				return "";
-			}
-			ActivityPubObject att=post.attachment.get(index);
-			if(!(att instanceof Document)){
-				LOG.warn("downloading post_photo: attachment {} is not a Document", att.getClass().getName());
-				return "";
-			}
+
 			if(att.mediaType==null){
 				if(att instanceof Image){
 					mime="image/jpeg";
@@ -191,14 +231,21 @@ public class SystemRoutes{
 		if(uri!=null){
 			final String uriStr=uri.toString();
 			downloadMutex.acquire(uriStr);
+			LOG.trace("downloadExternalMedia: after mutex acquire {}", uri);
 			try{
 				MediaCache.Item existing=cache.get(uri);
 				if(mime.startsWith("image/")){
 					if(existing!=null){
+						LOG.debug("downloadExternalMedia: found existing {}", uri);
 						resp.redirect(new CachedRemoteImage((MediaCache.PhotoItem) existing, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
 						return "";
 					}
 					try{
+						if(sessionInfo(req)==null){ // Only download attachments for logged-in users. Prevents crawlers from causing unnecessary churn in the media cache
+							resp.redirect(uri.toString());
+							return "";
+						}
+						LOG.debug("downloadExternalMedia: downloading {}", uri);
 						MediaCache.PhotoItem item;
 						if(isGraffiti)
 							item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType, true, GraffitiAttachment.WIDTH, GraffitiAttachment.HEIGHT);
@@ -216,8 +263,10 @@ public class SystemRoutes{
 									return "";
 								}
 							}
+							LOG.debug("downloadExternalMedia: redirecting to original url {}", uri);
 							resp.redirect(uri.toString());
 						}else{
+							LOG.debug("downloadExternalMedia: download finished {}", uri);
 							resp.redirect(new CachedRemoteImage(item, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
 						}
 						return "";
@@ -233,25 +282,41 @@ public class SystemRoutes{
 		return "";
 	}
 
-	public static Object uploadPostPhoto(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object uploadPostPhoto(Request req, Response resp, Account self, ApplicationContext ctx){
+		boolean isGraffiti=req.queryParams("graffiti")!=null;
+		return uploadPhotoAttachment(req, resp, self, isGraffiti, "post_media");
+	}
+
+	public static Object uploadMessagePhoto(Request req, Response resp, Account self, ApplicationContext ctx){
+		return uploadPhotoAttachment(req, resp, self, false, "mail_images");
+	}
+
+	private static Object uploadPhotoAttachment(Request req, Response resp, Account self, boolean isGraffiti, String dir){
 		try{
-			boolean isGraffiti=req.queryParams("graffiti")!=null;
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
 			Part part=req.raw().getPart("file");
 			if(part.getSize()>10*1024*1024){
-				throw new IOException("file too large");
+				resp.status(413); // Payload Too Large
+				return "File too large";
 			}
 
 			byte[] key=MessageDigest.getInstance("MD5").digest((self.user.username+","+System.currentTimeMillis()+","+part.getSubmittedFileName()).getBytes(StandardCharsets.UTF_8));
 			String keyHex=Utils.byteArrayToHexString(key);
 			String mime=part.getContentType();
-			if(!mime.startsWith("image/"))
-				throw new IOException("incorrect mime type");
+			if(!mime.startsWith("image/")){
+				resp.status(415); // Unsupported Media Type
+				return "Unsupported mime type";
+			}
 
-			File tmpDir = new File(System.getProperty("java.io.tmpdir"));
+			File tmpDir=new File(System.getProperty("java.io.tmpdir"));
 			File temp=new File(tmpDir, keyHex);
 			part.write(keyHex);
-			VipsImage img=new VipsImage(temp.getAbsolutePath());
+			VipsImage img;
+			try{
+				img=new VipsImage(temp.getAbsolutePath());
+			}catch(IOException x){
+				throw new BadRequestException(x.getMessage(), x);
+			}
 			if(img.hasAlpha()){
 				VipsImage flat=img.flatten(255, 255, 255);
 				img.release();
@@ -264,17 +329,17 @@ public class SystemRoutes{
 			}
 
 			LocalImage photo=new LocalImage();
-			File postMediaDir=new File(Config.uploadPath, "post_media");
+			File postMediaDir=new File(Config.uploadPath, dir);
 			postMediaDir.mkdirs();
 			int width, height;
 			try{
 				int[] outSize={0,0};
 				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, keyHex, postMediaDir, outSize);
 
-				SessionInfo sess=Utils.sessionInfo(req);
+				SessionInfo sess=Objects.requireNonNull(sessionInfo(req));
 				photo.localID=keyHex;
 				photo.mediaType=isGraffiti ? "image/png" : "image/jpeg";
-				photo.path="post_media";
+				photo.path=dir;
 				photo.width=width=outSize[0];
 				photo.height=height=outSize[1];
 				photo.blurHash=BlurHash.encode(img, 4, 4);
@@ -300,8 +365,8 @@ public class SystemRoutes{
 						).build();
 			}
 			resp.redirect(Utils.back(req));
-		}catch(IOException|ServletException|NoSuchAlgorithmException x){
-			LOG.warn("Exception while processing a post photo upload", x);
+		}catch(IOException|ServletException|NoSuchAlgorithmException|SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 		return "";
 	}
@@ -313,7 +378,7 @@ public class SystemRoutes{
 			throw new BadRequestException();
 		}
 		if(MediaCache.deleteDraftAttachment(id, self.id)){
-			for(ActivityPubObject o : sess.postDraftAttachments){
+			for(ActivityPubObject o:sess.postDraftAttachments){
 				if(o instanceof Document){
 					if(id.equals(((Document) o).localID)){
 						sess.postDraftAttachments.remove(o);
@@ -422,7 +487,7 @@ public class SystemRoutes{
 		String _uri=req.queryParams("uri");
 		if(StringUtils.isEmpty(_uri))
 			throw new BadRequestException();
-		ActivityPubObject obj=null;
+		Object obj=null;
 		URI uri=null;
 		Matcher matcher=USERNAME_DOMAIN_PATTERN.matcher(_uri);
 		if(matcher.find() && matcher.start()==0 && matcher.end()==_uri.length()){
@@ -443,7 +508,7 @@ public class SystemRoutes{
 			}
 		}
 		try{
-			obj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, false);
+			obj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, false, (JsonObject) null, false);
 		}catch(UnsupportedRemoteObjectTypeException x){
 			LOG.debug("Unsupported remote object", x);
 			return new JsonObjectBuilder().add("error", lang(req).get("unsupported_remote_object_type")).build();
@@ -452,32 +517,37 @@ public class SystemRoutes{
 			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_not_found")).build();
 		}catch(Exception x){
 			LOG.debug("Other remote fetch exception", x);
-			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_load_error")+"\n\n"+x.getMessage()).build();
+			String errMessage=lang(req).get("remote_object_loading_error");
+			String exMessage=x.getMessage();
+			if(StringUtils.isNotEmpty(exMessage)){
+				errMessage+="<br><br>"+Utils.escapeHTML(exMessage);
+			}
+			return new JsonObjectBuilder().add("error", errMessage).build();
 		}
 		if(obj instanceof ForeignUser user){
-			obj.storeDependencies(ctx);
 			UserStorage.putOrUpdateForeignUser(user);
 			return new JsonObjectBuilder().add("success", user.getProfileURL()).build();
 		}else if(obj instanceof ForeignGroup group){
-			obj.storeDependencies(ctx);
+			group.storeDependencies(ctx);
 			GroupStorage.putOrUpdateForeignGroup(group);
 			return new JsonObjectBuilder().add("success", group.getProfileURL()).build();
-		}else if(obj instanceof Post post){
-			if(post.inReplyTo==null || post.id!=0){
-				post.storeDependencies(ctx);
-				PostStorage.putForeignWallPost(post);
+		}else if(obj instanceof NoteOrQuestion post){
+			if(post.inReplyTo==null){
+				Post nativePost=post.asNativePost(ctx);
+				PostStorage.putForeignWallPost(nativePost);
 				try{
-					ctx.getActivityPubWorker().fetchAllReplies(post).get(30, TimeUnit.SECONDS);
+					ctx.getActivityPubWorker().fetchAllReplies(nativePost).get(30, TimeUnit.SECONDS);
 				}catch(Throwable x){
 					x.printStackTrace();
 				}
-				return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+post.id).toString()).build();
+				return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+nativePost.id).toString()).build();
 			}else{
 				Future<List<Post>> future=ctx.getActivityPubWorker().fetchReplyThread(post);
 				try{
 					List<Post> posts=future.get(30, TimeUnit.SECONDS);
 					ctx.getActivityPubWorker().fetchAllReplies(posts.get(0)).get(30, TimeUnit.SECONDS);
-					return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+posts.get(0).id+"#comment"+post.id).toString()).build();
+					Post nativePost=post.asNativePost(ctx);
+					return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+posts.get(0).id+"#comment"+nativePost.id).toString()).build();
 				}catch(InterruptedException ignore){
 				}catch(ExecutionException e){
 					Throwable x=e.getCause();
@@ -559,7 +629,7 @@ public class SystemRoutes{
 
 		poll.numVoters++;
 		for(PollOption opt:options)
-			opt.addVotes(1);
+			opt.numVotes++;
 
 		ctx.getActivityPubWorker().sendPollVotes(self.user, poll, owner, options, voteIDs);
 		int postID=PostStorage.getPostIdByPollId(id);
@@ -583,23 +653,26 @@ public class SystemRoutes{
 	public static Object reportForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		requireQueryParams(req, "type", "id");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("report_form", req);
-		int id=safeParseInt(req.queryParams("id"));
+		String rawID=req.queryParams("id");
 		Actor actorForAvatar;
 		String title, subtitle, boxTitle, textareaPlaceholder, titleText, otherServerDomain;
 		Lang l=lang(req);
 		String type=req.queryParams("type");
 		switch(type){
 			case "post" -> {
+				int id=safeParseInt(rawID);
 				Post post=ctx.getWallController().getPostOrThrow(id);
-				actorForAvatar=post.user;
-				title=post.user.getCompleteName();
-				subtitle=truncateOnWordBoundary(post.content, 200);
+				User postAuthor=ctx.getUsersController().getUserOrThrow(post.authorID);
+				actorForAvatar=postAuthor;
+				title=postAuthor.getCompleteName();
+				subtitle=truncateOnWordBoundary(post.text, 200);
 				boxTitle=l.get(post.getReplyLevel()>0 ? "report_title_comment" : "report_title_post");
 				textareaPlaceholder=l.get("report_placeholder_content");
 				titleText=l.get(post.getReplyLevel()>0 ? "report_text_comment" : "report_text_post");
-				otherServerDomain=Config.isLocal(post.activityPubID) ? null : post.activityPubID.getHost();
+				otherServerDomain=Config.isLocal(post.getActivityPubID()) ? null : post.getActivityPubID().getHost();
 			}
 			case "user" -> {
+				int id=safeParseInt(rawID);
 				User user=ctx.getUsersController().getUserOrThrow(id);
 				actorForAvatar=user;
 				title=user.getCompleteName();
@@ -610,6 +683,7 @@ public class SystemRoutes{
 				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
 			}
 			case "group" -> {
+				int id=safeParseInt(rawID);
 				Group group=ctx.getGroupsController().getGroupOrThrow(id);
 				actorForAvatar=group;
 				title=group.name;
@@ -619,6 +693,18 @@ public class SystemRoutes{
 				textareaPlaceholder=l.get("report_placeholder_profile");
 				otherServerDomain=group instanceof ForeignGroup fg ? fg.domain : null;
 			}
+			case "message" -> {
+				long id=decodeLong(rawID);
+				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
+				User user=ctx.getUsersController().getUserOrThrow(msg.senderID);
+				actorForAvatar=user;
+				title=user.getCompleteName();
+				subtitle=truncateOnWordBoundary(msg.text, 200);
+				boxTitle=l.get("report_title_message");
+				titleText=l.get("report_text_message");
+				textareaPlaceholder=l.get("report_placeholder_content");
+				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
+			}
 			default -> throw new BadRequestException();
 		}
 		model.with("actorForAvatar", actorForAvatar)
@@ -627,32 +713,41 @@ public class SystemRoutes{
 				.with("textAreaPlaceholder", textareaPlaceholder)
 				.with("reportTitleText", titleText)
 				.with("otherServerDomain", otherServerDomain);
-		return wrapForm(req, resp, "report_form", "/system/submitReport?type="+type+"&id="+id, boxTitle, "send", model);
+		return wrapForm(req, resp, "report_form", "/system/submitReport?type="+type+"&id="+rawID, boxTitle, "send", model);
 	}
 
 	public static Object submitReport(Request req, Response resp, Account self, ApplicationContext ctx){
 		requireQueryParams(req, "type", "id");
-		int id=safeParseInt(req.queryParams("id"));
+		String rawID=req.queryParams("id");
 		String type=req.queryParams("type");
 		String comment=req.queryParamOrDefault("reportText", "");
 		boolean forward="on".equals(req.queryParams("forward"));
 
 		Actor target;
-		ActivityPubObject content;
+		Object content;
 
 		switch(type){
 			case "post" -> {
+				int id=safeParseInt(rawID);
 				Post post=ctx.getWallController().getPostOrThrow(id);
 				content=post;
-				target=post.user;
+				target=ctx.getUsersController().getUserOrThrow(post.authorID);
 			}
 			case "user" -> {
+				int id=safeParseInt(rawID);
 				target=ctx.getUsersController().getUserOrThrow(id);
 				content=null;
 			}
 			case "group" -> {
+				int id=safeParseInt(rawID);
 				target=ctx.getGroupsController().getGroupOrThrow(id);
 				content=null;
+			}
+			case "message" -> {
+				long id=decodeLong(rawID);
+				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
+				target=ctx.getUsersController().getUserOrThrow(msg.senderID);
+				content=msg;
 			}
 			default -> throw new BadRequestException("invalid type");
 		}

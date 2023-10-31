@@ -25,12 +25,11 @@ import java.util.Collections;
 
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
-import smithereen.data.CachedRemoteImage;
-import smithereen.data.Group;
-import smithereen.data.NonCachedRemoteImage;
-import smithereen.data.SizedImage;
+import smithereen.model.CachedRemoteImage;
+import smithereen.model.NonCachedRemoteImage;
+import smithereen.model.SizedImage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.jsonld.JLD;
 import smithereen.storage.MediaCache;
@@ -97,6 +96,8 @@ public abstract class Actor extends ActivityPubObject{
 		if(icon instanceof LocalImage){
 			return (LocalImage) icon;
 		}
+		if(icon.url==null)
+			return null;
 		MediaCache cache=MediaCache.getInstance();
 		try{
 			MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.get(icon.url);
@@ -120,8 +121,8 @@ public abstract class Actor extends ActivityPubObject{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
 
 		String userURL=activityPubID.toString();
 		obj.addProperty("preferredUsername", username);
@@ -149,12 +150,12 @@ public abstract class Actor extends ActivityPubObject{
 		URI wallUrl=getWallURL();
 		if(wallUrl!=null){
 			obj.addProperty("wall", wallUrl.toString());
-			contextCollector.addType("wall", "sm:wall", "@id");
+			serializerContext.addType("wall", "sm:wall", "@id");
 		}
-		contextCollector.addAlias("collectionSimpleQuery", "sm:collectionSimpleQuery");
-		contextCollector.addAlias("sm", JLD.SMITHEREEN);
+		serializerContext.addAlias("collectionSimpleQuery", "sm:collectionSimpleQuery");
+		serializerContext.addAlias("sm", JLD.SMITHEREEN);
 
-		contextCollector.addSchema(JLD.W3_SECURITY);
+		serializerContext.addSchema(JLD.W3_SECURITY);
 
 		return obj;
 	}
@@ -176,6 +177,8 @@ public abstract class Actor extends ActivityPubObject{
 			url=activityPubID;
 
 		JsonObject pkey=obj.getAsJsonObject("publicKey");
+		if(pkey==null)
+			throw new IllegalArgumentException("The actor is missing a public key (or @context in the actor object doesn't include the namespace \""+JLD.W3_SECURITY+"\")");
 		URI keyOwner=tryParseURL(pkey.get("owner").getAsString());
 		if(!keyOwner.equals(activityPubID))
 			throw new IllegalArgumentException("Key owner ("+keyOwner+") is not equal to user ID ("+activityPubID+")");

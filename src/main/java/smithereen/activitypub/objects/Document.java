@@ -2,7 +2,7 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.jsonld.JLD;
 import spark.utils.StringUtils;
@@ -29,12 +29,12 @@ public class Document extends ActivityPubObject{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
 		if(StringUtils.isNotEmpty(blurHash)){
 			obj.addProperty("blurhash", blurHash);
-			contextCollector.addAlias("toot", JLD.MASTODON);
-			contextCollector.addAlias("blurhash", "toot:blurhash");
+			serializerContext.addAlias("toot", JLD.MASTODON);
+			serializerContext.addAlias("blurhash", "toot:blurhash");
 		}
 		if(width>0)
 			obj.addProperty("width", width);

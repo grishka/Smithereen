@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.URI;
 
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 
 public class CollectionPage extends ActivityPubCollection{
@@ -25,8 +25,8 @@ public class CollectionPage extends ActivityPubCollection{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
 		if(partOf!=null)
 			obj.addProperty("partOf", partOf.toString());
 		if(prev!=null)

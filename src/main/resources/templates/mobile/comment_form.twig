@@ -18,7 +18,7 @@
 		</div>
 		<div id="postFormAttachments2_{{ id }}"></div>
 	</div>
-	<form action="{{wallOwner.typeAndIdForURL}}/createWallPost" method="post">
+	<form action="{{wallOwner.typeAndIdForURL}}/createWallPost" id="wallPostFormForm_{{ id }}" method="post">
 	{% set fieldPlaceholder=L('comment_placeholder') %}
 		<button type="button" title="{{ L('attach') }}" id="postFormAttachBtn_{{ id }}" class="attachBtn"></button>
 		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="3" maxlength="65000" placeholder="{{ fieldPlaceholder }}">{{prefilledPostText}}</textarea>

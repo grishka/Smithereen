@@ -9,7 +9,7 @@
 			{{ form.textInput('last_name', L('last_name'), currentUser.lastName, {'maxlength': 100}) }}
 			{{ form.textInput('maiden_name', L('maiden_name'), currentUser.maidenName, {'maxlength': 100}) }}
 			{{ form.select('gender', L('gender'), [
-				{'value': 'NONE', 'label': L('gender_none'), 'selected': currentUser.gender=='NONE'},
+				{'value': 'UNKNOWN', 'label': L('gender_none'), 'selected': currentUser.gender=='UNKNOWN'},
 				{'value': 'MALE', 'label': L('gender_male'), 'selected': currentUser.gender=='MALE'},
 				{'value': 'FEMALE', 'label': L('gender_female'), 'selected': currentUser.gender=='FEMALE'},
 				{'value': 'OTHER', 'label': L('gender_other'), 'selected': currentUser.gender=='OTHER'}

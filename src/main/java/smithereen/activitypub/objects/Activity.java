@@ -5,7 +5,7 @@ import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.Objects;
 
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 
 public abstract class Activity extends ActivityPubObject{
@@ -20,19 +20,19 @@ public abstract class Activity extends ActivityPubObject{
 	public abstract String getType();
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
-		obj.add("actor", actor.serialize(contextCollector));
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
+		obj.add("actor", actor.serialize(serializerContext));
 		if(object!=null)
-			obj.add("object", object.serialize(contextCollector));
+			obj.add("object", object.serialize(serializerContext));
 		if(target!=null)
-			obj.add("target", target.serialize(contextCollector));
+			obj.add("target", target.serialize(serializerContext));
 		if(result!=null && !result.isEmpty())
-			obj.add("result", serializeLinkOrObjectArray(result, contextCollector));
+			obj.add("result", serializeLinkOrObjectArray(result, serializerContext));
 		if(origin!=null)
-			obj.add("origin", origin.serialize(contextCollector));
+			obj.add("origin", origin.serialize(serializerContext));
 		if(instrument!=null)
-			obj.add("instrument", instrument.serialize(contextCollector));
+			obj.add("instrument", instrument.serialize(serializerContext));
 		return obj;
 	}
 

@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import smithereen.data.User;
+import smithereen.model.User;
 import smithereen.lang.Lang;
 
 public class SelectFormatterNode extends FormatterNode{

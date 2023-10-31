@@ -1,4 +1,4 @@
-{# @pebvariable name="server" type="smithereen.data.Server" #}
+{# @pebvariable name="server" type="smithereen.model.Server" #}
 {% extends "page" %}
 {% block content %}
 <div class="singleColumn">
@@ -14,7 +14,7 @@
 		{{ L('server_restrictions_none') }}
 		{% else %}
 		<div>{{ L('server_restrictions_suspended') }}</div>
-		<div class="marginBefore"><b><a href="{{ users[server.restriction.moderatorId].profileURL }}">{{ users[server.restriction.moderatorId].fullName }}</a> {{ LD(server.restriction.createdAt) }}</b>{% if server.restriction.privateComment is not null %}: {{ server.restriction.privateComment }}{% endif %}</div>
+		<div class="marginBefore"><b><a href="{{ profileURL(server.restriction.moderatorId) }}">{{ users[server.restriction.moderatorId] | name('full') }}</a> {{ LD(server.restriction.createdAt) }}</b>{% if server.restriction.privateComment is not null %}: {{ server.restriction.privateComment }}{% endif %}</div>
 		{% endif %}
 	</div>
 	<div class="marginBefore">

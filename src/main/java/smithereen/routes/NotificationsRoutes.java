@@ -4,11 +4,11 @@ import java.util.HashSet;
 import java.util.Map;
 
 import smithereen.ApplicationContext;
-import smithereen.data.Account;
-import smithereen.data.PaginatedList;
-import smithereen.data.Post;
-import smithereen.data.User;
-import smithereen.data.notifications.Notification;
+import smithereen.model.Account;
+import smithereen.model.PaginatedList;
+import smithereen.model.Post;
+import smithereen.model.User;
+import smithereen.model.notifications.Notification;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;

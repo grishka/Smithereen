@@ -1,4 +1,4 @@
-{# @pebvariable name="group" type="smithereen.data.Group" #}
+{# @pebvariable name="group" type="smithereen.model.Group" #}
 {# @pebvariable name="canEditGroup" type="boolean" #}
 {%extends "page"%}
 {% set canEditGroup=userPermissions is not null and userPermissions.canEditGroup(group) %}

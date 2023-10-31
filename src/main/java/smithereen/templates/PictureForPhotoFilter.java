@@ -1,15 +1,15 @@
 package smithereen.templates;
 
-import com.mitchellbosecke.pebble.error.PebbleException;
-import com.mitchellbosecke.pebble.extension.Filter;
-import com.mitchellbosecke.pebble.extension.escaper.SafeString;
-import com.mitchellbosecke.pebble.template.EvaluationContext;
-import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import io.pebbletemplates.pebble.error.PebbleException;
+import io.pebbletemplates.pebble.extension.Filter;
+import io.pebbletemplates.pebble.extension.escaper.SafeString;
+import io.pebbletemplates.pebble.template.EvaluationContext;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 
 import java.util.List;
 import java.util.Map;
 
-import smithereen.data.SizedImage;
+import smithereen.model.SizedImage;
 
 public class PictureForPhotoFilter implements Filter{
 	@Override

@@ -4,15 +4,15 @@ import com.google.gson.JsonObject;
 
 import java.net.URI;
 
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 
 public abstract class ActivityPubLink extends ActivityPubObject{
 	public URI href;
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
 		obj.addProperty("href", href.toString());
 		return obj;
 	}

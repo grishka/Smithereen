@@ -1,13 +1,14 @@
 package smithereen.activitypub.objects;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import java.net.URI;
 import java.util.Objects;
 
 import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 
 public class LinkOrObject{
 	public static final LinkOrObject PUBLIC=new LinkOrObject(ActivityPub.AS_PUBLIC);
@@ -29,12 +30,12 @@ public class LinkOrObject{
 		link=null;
 	}
 
-	public JsonElement serialize(ContextCollector contextCollector){
+	public JsonElement serialize(SerializerContext serializerContext){
 		if(link==null && object==null)
 			throw new NullPointerException("Both link and object are null");
 		if(link!=null)
 			return new JsonPrimitive(link.toString());
-		return object.asActivityPubObject(null, contextCollector);
+		return object.asActivityPubObject(new JsonObject(), serializerContext);
 	}
 
 	@Override
@@ -66,5 +67,11 @@ public class LinkOrObject{
 
 	public <T extends ActivityPubObject> T requireObject(){
 		return (T)Objects.requireNonNull(object);
+	}
+
+	public URI getObjectID(){
+		if(link!=null)
+			return link;
+		return Objects.requireNonNull(object).activityPubID;
 	}
 }

@@ -1,6 +1,6 @@
 package smithereen.lang;
 
-import smithereen.data.User;
+import smithereen.model.User;
 
 // Auto-generated, don't edit
 // Сгенерировано из https://github.com/petrovich/petrovich-rules, не редактируйте

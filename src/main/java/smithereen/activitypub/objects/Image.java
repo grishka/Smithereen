@@ -3,7 +3,7 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.jsonld.JLD;
 
@@ -18,18 +18,18 @@ public class Image extends Document{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
 		if(cropRegion!=null){
 			JsonArray _cr=new JsonArray();
 			for(float f:cropRegion) _cr.add((double)f);
 			obj.add("cropRegion", _cr);
-			contextCollector.addAlias("sm", JLD.SMITHEREEN);
-			contextCollector.addContainerType("cropRegion", "sm:cropRegion", "@list");
+			serializerContext.addAlias("sm", JLD.SMITHEREEN);
+			serializerContext.addContainerType("cropRegion", "sm:cropRegion", "@list");
 		}
 		if(isGraffiti){
-			contextCollector.addAlias("sm", JLD.SMITHEREEN);
-			contextCollector.addAlias("graffiti", "sm:graffiti");
+			serializerContext.addAlias("sm", JLD.SMITHEREEN);
+			serializerContext.addAlias("graffiti", "sm:graffiti");
 			obj.addProperty("graffiti", true);
 		}
 		return obj;

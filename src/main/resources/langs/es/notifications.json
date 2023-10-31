@@ -1,0 +1,18 @@
+{
+  "notification_replied_to_post": "comentó en su publicación",
+  "notification_replied_to_comment": "respondió a su comentario",
+  "notification_mentioned_in_post": "te mencionó en una publicación",
+  "notification_mentioned_in_comment": "te mencionó en un comentario",
+  "notification_liked_post": "le gustó tu publicación",
+  "notification_liked_comment": "le gustó tu comentario",
+  "notification_reposted_post": "compartió tu publicación",
+  "notification_reposted_comment": "compartió tu comentario",
+  "notification_posted_on_wall": "publicó en tu muro",
+  "notification_invite_signup": "se registró por tu invitación",
+  "notification_follow": "te ha seguido",
+  "notification_friend_req_accept": "aceptó tu solicitud de amistad",
+  "no_notifications": "Todavía no tienes ninguna notificación",
+  "notifications": "Notificaciones",
+  "notifications_empty": "Tus notificaciones aparecerán aquí.",
+  "summary_notifications": "Mostrando últimas notificaciones"
+}

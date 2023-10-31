@@ -1,10 +1,9 @@
 package smithereen.routes;
 
-import com.mitchellbosecke.pebble.extension.escaper.SafeString;
+import io.pebbletemplates.pebble.extension.escaper.SafeString;
 
 import java.sql.SQLException;
 import java.util.Base64;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -14,12 +13,12 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Mailer;
 import smithereen.Utils;
-import smithereen.data.Account;
-import smithereen.data.EmailCode;
-import smithereen.data.SessionInfo;
-import smithereen.data.SignupInvitation;
-import smithereen.data.User;
-import smithereen.data.WebDeltaResponse;
+import smithereen.model.Account;
+import smithereen.model.EmailCode;
+import smithereen.model.SessionInfo;
+import smithereen.model.SignupInvitation;
+import smithereen.model.User;
+import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;

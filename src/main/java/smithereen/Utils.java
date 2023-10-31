@@ -14,7 +14,6 @@ import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.parser.Parser;
 import org.jsoup.safety.Cleaner;
-import org.jsoup.safety.Whitelist;
 import org.jsoup.select.NodeVisitor;
 import org.slf4j.Logger;
 import org.unbescape.html.HtmlEscape;
@@ -40,6 +39,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -59,14 +60,15 @@ import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
 import cz.jirutka.unidecode.Unidecode;
-import smithereen.data.Account;
-import smithereen.data.ForeignUser;
-import smithereen.data.Group;
-import smithereen.data.SessionInfo;
-import smithereen.data.StatsPoint;
-import smithereen.data.UriBuilder;
-import smithereen.data.User;
-import smithereen.data.WebDeltaResponse;
+import smithereen.activitypub.objects.Actor;
+import smithereen.model.Account;
+import smithereen.model.ForeignUser;
+import smithereen.model.Group;
+import smithereen.model.SessionInfo;
+import smithereen.model.StatsPoint;
+import smithereen.model.UriBuilder;
+import smithereen.model.User;
+import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FormValidationException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -80,6 +82,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.LocaleJsonAdapter;
 import smithereen.util.TimeZoneJsonAdapter;
 import smithereen.util.TopLevelDomainList;
+import smithereen.util.Whitelist;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -113,6 +116,7 @@ public class Utils{
 
 	public static final Gson gson=new GsonBuilder()
 			.disableHtmlEscaping()
+			.enableComplexMapKeySerialization()
 			.registerTypeAdapter(Instant.class, new InstantMillisJsonAdapter())
 			.registerTypeAdapter(Locale.class, new LocaleJsonAdapter())
 			.registerTypeHierarchyAdapter(ZoneId.class, new TimeZoneJsonAdapter())
@@ -494,6 +498,30 @@ public class Utils{
 		return os.toByteArray();
 	}
 
+	public static List<Integer> deserializeIntList(byte[] a){
+		if(a==null)
+			return List.of();
+		return Arrays.stream(deserializeIntArray(a)).boxed().toList();
+	}
+
+	public static byte[] serializeIntList(Collection<Integer> a){
+		if(a==null || a.isEmpty())
+			return null;
+		ByteArrayOutputStream os=new ByteArrayOutputStream();
+		try{
+			DataOutputStream out=new DataOutputStream(os);
+			for(int i:a)
+				out.writeInt(i);
+		}catch(IOException ignore){}
+		return os.toByteArray();
+	}
+
+	public static Set<Integer> deserializeIntSet(byte[] a){
+		if(a==null)
+			return Set.of();
+		return Arrays.stream(deserializeIntArray(a)).boxed().collect(Collectors.toSet());
+	}
+
 	public static String back(Request req){
 		String redir=req.queryParams("_redir");
 		if(redir!=null)
@@ -770,15 +798,15 @@ public class Utils{
 		return doc.body().html();
 	}
 
-	public static String preprocessRemotePostMentions(String text, Set<User> users){
+	public static String preprocessRemotePostMentions(String text, Map<Integer, User> users){
 		Document doc=Jsoup.parseBodyFragment(text);
 
 		for(Element link:doc.select("a.mention")){
 			URI href=URI.create(link.attr("href"));
 			boolean found=false;
-			for(User user:users){
+			for(User user:users.values()){
 				if(href.equals(user.url) || href.equals(user.activityPubID)){
-					link.attr("data-user-id", user.id+"");
+					link.attr("data-user-id", String.valueOf(user.id));
 					found=true;
 					break;
 				}
@@ -794,18 +822,18 @@ public class Utils{
 		return doc.body().html();
 	}
 
-	public static void ensureUserNotBlocked(User self, User target) throws SQLException{
-		if(self instanceof ForeignUser && UserStorage.isDomainBlocked(target.id, self.domain))
-			throw new UserActionNotAllowedException();
-		if(UserStorage.isUserBlocked(target.id, self.id))
-			throw new UserActionNotAllowedException();
-	}
-
-	public static void ensureUserNotBlocked(User self, Group target) throws SQLException{
-		if(self instanceof ForeignUser && GroupStorage.isDomainBlocked(target.id, self.domain))
-			throw new UserActionNotAllowedException();
-		if(GroupStorage.isUserBlocked(target.id, self.id))
-			throw new UserActionNotAllowedException();
+	public static void ensureUserNotBlocked(User self, Actor target) throws SQLException{
+		if(target instanceof User user){
+			if(self instanceof ForeignUser && UserStorage.isDomainBlocked(user.id, self.domain))
+				throw new UserActionNotAllowedException();
+			if(UserStorage.isUserBlocked(user.id, self.id))
+				throw new UserActionNotAllowedException();
+		}else if(target instanceof Group group){
+			if(self instanceof ForeignUser && GroupStorage.isDomainBlocked(group.id, self.domain))
+				throw new UserActionNotAllowedException();
+			if(GroupStorage.isUserBlocked(group.id, self.id))
+				throw new UserActionNotAllowedException();
+		}
 	}
 
 	public static List<Map<String, String>> parseSignatureHeader(String header){
@@ -967,7 +995,7 @@ public class Utils{
 	 * Ensure that the request has required query parameters to avoid any surprise NPEs.
 	 * @param req The request
 	 * @param params The parameter names
-	 * @throws BadRequestException if any of the parameters doesn't present
+	 * @throws BadRequestException if any of the parameters aren't present
 	 */
 	public static void requireQueryParams(Request req, String... params){
 		for(String param:params){
@@ -1047,6 +1075,63 @@ public class Utils{
 			bldr.add(obj);
 		}
 		return bldr.build();
+	}
+
+	public static byte[] packLong(long x){
+		byte[] r=new byte[8];
+		for(int i=7;i>=0;i--){
+			r[i]=(byte)x;
+			x>>=8;
+		}
+		return r;
+	}
+
+	public static String encodeLong(long x){
+		return Base64.getUrlEncoder().withoutPadding().encodeToString(packLong(x));
+	}
+
+	public static long unpackLong(byte[] x){
+		return unpackLong(x, 0);
+	}
+
+	public static long unpackLong(byte[] x, int offset){
+		if(x==null || x.length-offset<8)
+			return 0;
+		long r=0;
+		for(int i=0;i<8;i++){
+			r<<=8;
+			r|=((long)x[i+offset]) & 0xFFL;
+		}
+		return r;
+	}
+
+	public static long decodeLong(String x){
+		try{
+			return unpackLong(Base64.getUrlDecoder().decode(x));
+		}catch(Exception _x){
+			return 0;
+		}
+	}
+
+	public static byte[] serializeLongCollection(Collection<Long> a){
+		byte[] res=new byte[a.size()*8];
+		int i=0;
+		for(long x:a){
+			System.arraycopy(packLong(x), 0, res, i*8, 8);
+			i++;
+		}
+		return res;
+	}
+
+	public static void deserializeLongCollection(byte[] b, Collection<Long> dest){
+		if(b==null)
+			return;
+		if(b.length%8!=0 || dest==null)
+			throw new IllegalArgumentException();
+		int count=b.length/8;
+		for(int i=0;i<count;i++){
+			dest.add(unpackLong(b, i*8));
+		}
 	}
 
 	public interface MentionCallback{

@@ -1,21 +1,20 @@
 package smithereen.templates;
 
-import com.mitchellbosecke.pebble.error.PebbleException;
-import com.mitchellbosecke.pebble.extension.Filter;
-import com.mitchellbosecke.pebble.extension.escaper.SafeString;
-import com.mitchellbosecke.pebble.template.EvaluationContext;
-import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import io.pebbletemplates.pebble.error.PebbleException;
+import io.pebbletemplates.pebble.extension.Filter;
+import io.pebbletemplates.pebble.extension.escaper.SafeString;
+import io.pebbletemplates.pebble.template.EvaluationContext;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import smithereen.activitypub.objects.Actor;
-import smithereen.data.Group;
-import smithereen.data.SizedImage;
-import smithereen.data.User;
+import smithereen.model.Group;
+import smithereen.model.SizedImage;
+import smithereen.model.User;
 
 public class PictureForAvatarFilter implements Filter{
 	@Override

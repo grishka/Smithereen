@@ -5,7 +5,7 @@ import com.google.gson.JsonObject;
 import java.net.URI;
 import java.util.List;
 
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.jsonld.JLD;
 
 public class CollectionQueryResult extends CollectionPage{
@@ -19,10 +19,10 @@ public class CollectionQueryResult extends CollectionPage{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		contextCollector.addAlias("sm", JLD.SMITHEREEN);
-		contextCollector.addAlias("CollectionQueryResult", "sm:CollectionQueryResult");
-		return super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		serializerContext.addAlias("sm", JLD.SMITHEREEN);
+		serializerContext.addAlias("CollectionQueryResult", "sm:CollectionQueryResult");
+		return super.asActivityPubObject(obj, serializerContext);
 	}
 
 	public static CollectionQueryResult empty(URI parent){

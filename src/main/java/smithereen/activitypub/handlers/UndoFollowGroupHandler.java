@@ -6,9 +6,9 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Undo;
-import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
-import smithereen.data.Group;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
+import smithereen.model.Group;
 import smithereen.exceptions.BadRequestException;
 import smithereen.storage.GroupStorage;
 

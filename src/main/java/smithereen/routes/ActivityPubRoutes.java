@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -55,8 +56,10 @@ import smithereen.activitypub.handlers.LikeNoteHandler;
 import smithereen.activitypub.handlers.OfferFollowPersonHandler;
 import smithereen.activitypub.handlers.PersonAddPersonHandler;
 import smithereen.activitypub.handlers.PersonBlockPersonHandler;
+import smithereen.activitypub.handlers.PersonMovePersonHandler;
 import smithereen.activitypub.handlers.PersonRemovePersonHandler;
 import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
+import smithereen.activitypub.handlers.ReadNoteHandler;
 import smithereen.activitypub.handlers.RejectAddNoteHandler;
 import smithereen.activitypub.handlers.RejectFollowGroupHandler;
 import smithereen.activitypub.handlers.RejectFollowPersonHandler;
@@ -81,6 +84,7 @@ import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Accept;
@@ -94,27 +98,31 @@ import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
+import smithereen.activitypub.objects.activities.Move;
 import smithereen.activitypub.objects.activities.Offer;
+import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
-import smithereen.data.Account;
-import smithereen.data.FederationRestriction;
-import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
-import smithereen.data.FriendshipStatus;
-import smithereen.data.Group;
-import smithereen.data.NodeInfo;
-import smithereen.data.PaginatedList;
-import smithereen.data.Poll;
-import smithereen.data.PollOption;
-import smithereen.data.PollVote;
-import smithereen.data.Post;
-import smithereen.data.Server;
-import smithereen.data.StatsType;
-import smithereen.data.UriBuilder;
-import smithereen.data.User;
+import smithereen.model.Account;
+import smithereen.model.FederationRestriction;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
+import smithereen.model.FriendshipStatus;
+import smithereen.model.Group;
+import smithereen.model.NodeInfo;
+import smithereen.model.OwnedContentObject;
+import smithereen.model.OwnerAndAuthor;
+import smithereen.model.PaginatedList;
+import smithereen.model.Poll;
+import smithereen.model.PollOption;
+import smithereen.model.PollVote;
+import smithereen.model.Post;
+import smithereen.model.Server;
+import smithereen.model.StatsType;
+import smithereen.model.UriBuilder;
+import smithereen.model.User;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -147,14 +155,15 @@ public class ActivityPubRoutes{
 	private static final ArrayList<ActivityTypeOnlyHandlerRecord<?>> typeOnlyHandlers=new ArrayList<>();
 
 	public static void registerActivityHandlers(){
-		registerActivityHandler(ForeignUser.class, Create.class, Post.class, new CreateNoteHandler());
-		registerActivityHandler(ForeignUser.class, Like.class, Post.class, new LikeNoteHandler());
-		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, Post.class, new UndoLikeNoteHandler());
-		registerActivityHandler(ForeignUser.class, Announce.class, Post.class, new AnnounceNoteHandler());
-		registerActivityHandler(ForeignUser.class, Undo.class, Announce.class, Post.class, new UndoAnnounceNoteHandler());
-		registerActivityHandler(ForeignUser.class, Update.class, Post.class, new UpdateNoteHandler());
-		registerActivityHandler(ForeignUser.class, Delete.class, Post.class, new DeleteNoteHandler());
-		registerActivityHandler(Actor.class, Reject.class, Add.class, Post.class, new RejectAddNoteHandler());
+		registerActivityHandler(ForeignUser.class, Create.class, NoteOrQuestion.class, new CreateNoteHandler());
+		registerActivityHandler(ForeignUser.class, Like.class, NoteOrQuestion.class, new LikeNoteHandler());
+		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, NoteOrQuestion.class, new UndoLikeNoteHandler());
+		registerActivityHandler(ForeignUser.class, Announce.class, NoteOrQuestion.class, new AnnounceNoteHandler());
+		registerActivityHandler(ForeignUser.class, Undo.class, Announce.class, NoteOrQuestion.class, new UndoAnnounceNoteHandler());
+		registerActivityHandler(ForeignUser.class, Update.class, NoteOrQuestion.class, new UpdateNoteHandler());
+		registerActivityHandler(ForeignUser.class, Delete.class, NoteOrQuestion.class, new DeleteNoteHandler());
+		registerActivityHandler(Actor.class, Reject.class, Add.class, NoteOrQuestion.class, new RejectAddNoteHandler());
+		registerActivityHandler(ForeignUser.class, Read.class, NoteOrQuestion.class, new ReadNoteHandler());
 
 		registerActivityHandler(ForeignUser.class, Follow.class, User.class, new FollowPersonHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Follow.class, User.class, new UndoFollowPersonHandler());
@@ -171,6 +180,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Remove.class, User.class, new PersonRemovePersonHandler());
 		registerActivityHandler(ForeignUser.class, Add.class, Group.class, new AddGroupHandler());
 		registerActivityHandler(ForeignUser.class, Remove.class, Group.class, new RemoveGroupHandler());
+		registerActivityHandler(ForeignUser.class, Move.class, ForeignUser.class, new PersonMovePersonHandler());
 
 		registerActivityHandler(ForeignGroup.class, Update.class, ForeignGroup.class, new UpdateGroupHandler());
 		registerActivityHandler(ForeignUser.class, Follow.class, Group.class, new FollowGroupHandler());
@@ -187,7 +197,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignGroup.class, Add.class, User.class, new GroupAddPersonHandler());
 		registerActivityHandler(ForeignGroup.class, Remove.class, User.class, new GroupRemovePersonHandler());
 
-		registerActivityHandler(Actor.class, Add.class, Post.class, new AddNoteHandler());
+		registerActivityHandler(Actor.class, Add.class, NoteOrQuestion.class, new AddNoteHandler());
 
 		registerActivityHandler(Flag.class, new FlagHandler());
 	}
@@ -270,51 +280,55 @@ public class ActivityPubRoutes{
 	}
 
 	public static Object post(Request req, Response resp) throws SQLException{
+		ApplicationContext ctx=context(req);
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		Post post=PostStorage.getPostOrThrow(postID, true);
-		if(post.owner instanceof Group g)
-			ActivityPub.enforceGroupContentAccess(req, g);
+		Post post=PostStorage.getPostByID(postID, true);
+		if(post==null || !post.isLocal())
+			throw new ObjectNotFoundException();
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, post);
 		resp.type(ActivityPub.CONTENT_TYPE);
-		return post;
+		return NoteOrQuestion.fromNativePost(post, ctx);
 	}
 
 	public static Object postCreateActivity(Request req, Response resp){
 		ApplicationContext ctx=context(req);
 		int postID=safeParseInt(req.params(":postID"));
 		Post post=ctx.getWallController().getLocalPostOrThrow(postID);
-		if(post.owner instanceof Group g)
-			ActivityPub.enforceGroupContentAccess(req, g);
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, post);
+		OwnerAndAuthor oaa=ctx.getWallController().getContentAuthorAndOwner(post);
 		resp.type(ActivityPub.CONTENT_TYPE);
 
+		NoteOrQuestion apPost=NoteOrQuestion.fromNativePost(post, ctx);
 		Create create=new Create();
-		create.object=new LinkOrObject(post);
-		create.actor=new LinkOrObject(post.user.activityPubID);
-		create.to=post.to;
-		create.cc=post.cc;
-		create.published=post.published;
-		create.activityPubID=new UriBuilder(post.activityPubID).appendPath("activityCreate").build();
+		create.object=new LinkOrObject(apPost);
+		create.actor=new LinkOrObject(oaa.author().activityPubID);
+		create.to=apPost.to;
+		create.cc=apPost.cc;
+		create.published=apPost.published;
+		create.activityPubID=new UriBuilder(post.getActivityPubID()).appendPath("activityCreate").build();
 		return create;
 	}
 
 	public static ActivityPubCollectionPageResponse postReplies(Request req, Response resp, int offset, int count) throws SQLException{
+		ApplicationContext ctx=context(req);
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		Post post=PostStorage.getPostOrThrow(postID, true);
-		if(post.owner instanceof Group g)
-			ActivityPub.enforceGroupContentAccess(req, g);
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, post);
 		int[] _total={0};
 		List<URI> ids=PostStorage.getImmediateReplyActivityPubIDs(post.getReplyKeyForReplies(), offset, count, _total);
 		return ActivityPubCollectionPageResponse.forLinks(ids, _total[0]);
 	}
 
 	public static ActivityPubCollectionPageResponse postLikes(Request req, Response resp, int offset, int count) throws SQLException{
+		ApplicationContext ctx=context(req);
 		Post post=PostStorage.getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
-		if(post.owner instanceof Group g)
-			ActivityPub.enforceGroupContentAccess(req, g);
-		PaginatedList<Like> likes=LikeStorage.getLikes(post.id, post.activityPubID, Like.ObjectType.POST, offset, count);
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, post);
+		PaginatedList<Like> likes=LikeStorage.getLikes(post.id, post.getActivityPubID(), Like.ObjectType.POST, offset, count);
 		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
 	}
 
 	public static ActivityPubCollectionPageResponse pollVoters(Request req, Response resp, int offset, int count) throws SQLException{
+		ApplicationContext ctx=context(req);
 		Poll poll=PostStorage.getPoll(parseIntOrDefault(req.params(":pollID"), 0), null);
 		int optionID=parseIntOrDefault(req.params(":optionID"), 0);
 
@@ -324,10 +338,7 @@ public class ActivityPubRoutes{
 			throw new ObjectNotFoundException();
 		if(poll.anonymous)
 			throw new UserActionNotAllowedException();
-		if(poll.ownerID<0){
-			Group owner=context(req).getGroupsController().getGroupOrThrow(-poll.ownerID);
-			ActivityPub.enforceGroupContentAccess(req, owner);
-		}
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, poll);
 
 		PollOption option=null;
 		for(PollOption opt:poll.options){
@@ -344,7 +355,7 @@ public class ActivityPubRoutes{
 			vote.attributedTo=id;
 			return vote;
 		}).collect(Collectors.toList());
-		return ActivityPubCollectionPageResponse.forObjects(votes, option.getNumVotes()).ordered();
+		return ActivityPubCollectionPageResponse.forObjects(votes, option.numVotes).ordered();
 	}
 
 	public static Object userInbox(Request req, Response resp) throws SQLException{
@@ -369,51 +380,49 @@ public class ActivityPubRoutes{
 	}
 
 	public static Object userOutbox(Request req, Response resp) throws SQLException{
+		ApplicationContext ctx=context(req);
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
-		User user=UserStorage.getById(id);
-		if(user==null || user instanceof ForeignUser){
-			throw new ObjectNotFoundException();
-		}
+		User user=ctx.getUsersController().getLocalUserOrThrow(id);
 		resp.type(ActivityPub.CONTENT_TYPE);
 		int _minID=Utils.parseIntOrDefault(req.queryParams("min_id"), -1);
 		int _maxID=Utils.parseIntOrDefault(req.queryParams("max_id"), -1);
 		int minID=Math.max(0, _minID);
 		int maxID=Math.max(0, _maxID);
 		int[] _total={0};
-		List<Post> posts=PostStorage.getWallPosts(user.id, false, minID, maxID, 0, 25, _total, true);
+		List<Post> posts=PostStorage.getWallPosts(user.id, false, minID, maxID, 0, 25, _total, true, EnumSet.of(Post.Privacy.PUBLIC));
 		int total=_total[0];
 		CollectionPage page=new CollectionPage(true);
 		page.totalItems=total;
 		page.items=new ArrayList<>();
-		try{
-			for(Post post:posts){
-				Create activity=new Create();
-				activity.object=new LinkOrObject(post);
-				activity.published=post.published;
-				activity.to=post.to;
-				activity.cc=post.cc;
-				activity.actor=new LinkOrObject(post.attributedTo);
-				activity.activityPubID=new URI(post.activityPubID.getScheme(), post.activityPubID.getSchemeSpecificPart()+"/activityCreate", null);
-				page.items.add(new LinkOrObject(activity));
-			}
-			URI baseURI=Config.localURI("/users/"+user.id+"/outbox");
-			page.partOf=baseURI;
-			if(posts.size()>0){
-				page.next=URI.create(baseURI+"?max_id="+(posts.get(posts.size()-1).id-1));
-				page.prev=URI.create(baseURI+"?min_id="+posts.get(0).id);
-			}
-			if(_minID!=-1)
-				page.activityPubID=URI.create(baseURI+"?min_id="+minID);
-			else
-				page.activityPubID=URI.create(baseURI+"?max_id="+maxID);
-			if(_minID==-1 && _maxID==-1){
-				ActivityPubCollection collection=new ActivityPubCollection(true);
-				collection.activityPubID=page.partOf;
-				collection.totalItems=total;
-				collection.first=new LinkOrObject(page);
-				return collection;
-			}
-		}catch(URISyntaxException ignore){}
+		for(Post post:posts){
+			NoteOrQuestion apPost=NoteOrQuestion.fromNativePost(post, ctx);
+
+			Create activity=new Create();
+			activity.object=new LinkOrObject(apPost);
+			activity.published=apPost.published;
+			activity.to=apPost.to;
+			activity.cc=apPost.cc;
+			activity.actor=new LinkOrObject(apPost.attributedTo);
+			activity.activityPubID=new UriBuilder(post.getActivityPubID()).appendPath("/activityCreate").build();
+			page.items.add(new LinkOrObject(activity));
+		}
+		URI baseURI=Config.localURI("/users/"+user.id+"/outbox");
+		page.partOf=baseURI;
+		if(posts.size()>0){
+			page.next=URI.create(baseURI+"?max_id="+(posts.get(posts.size()-1).id-1));
+			page.prev=URI.create(baseURI+"?min_id="+posts.get(0).id);
+		}
+		if(_minID!=-1)
+			page.activityPubID=URI.create(baseURI+"?min_id="+minID);
+		else
+			page.activityPubID=URI.create(baseURI+"?max_id="+maxID);
+		if(_minID==-1 && _maxID==-1){
+			ActivityPubCollection collection=new ActivityPubCollection(true);
+			collection.activityPubID=page.partOf;
+			collection.totalItems=total;
+			collection.first=new LinkOrObject(page);
+			return collection;
+		}
 		return page;
 	}
 
@@ -434,7 +443,7 @@ public class ActivityPubRoutes{
 		Group group=GroupStorage.getById(id);
 		if(group==null || group instanceof ForeignGroup)
 			throw new ObjectNotFoundException();
-		ActivityPub.enforceGroupContentAccess(req, group);
+		context(req).getPrivacyController().enforceGroupContentAccess(req, group);
 		return actorWall(req, resp, offset, count, group);
 	}
 
@@ -510,27 +519,27 @@ public class ActivityPubRoutes{
 			GroupStorage.putOrUpdateForeignGroup(group);
 			resp.redirect(Config.localURI("/"+group.getFullUsername()).toString());
 			return "";
-		}else if(remoteObj instanceof Post post){
+		}else if(remoteObj instanceof NoteOrQuestion post){
 			try{
 				Post topLevelPost;
-				ctx.getWallController().loadAndPreprocessRemotePostMentions(post);
 				if(post.inReplyTo!=null){
 					Post parent=PostStorage.getPostByID(post.inReplyTo);
 					if(parent==null){
 						List<Post> thread=ctx.getActivityPubWorker().fetchReplyThread(post).get(30, TimeUnit.SECONDS);
 						topLevelPost=thread.get(0);
 					}else{
-						post.setParent(parent);
-						post.storeDependencies(ctx);
-						PostStorage.putForeignWallPost(post);
+						Post nativePost=post.asNativePost(ctx);
+						ctx.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
+						PostStorage.putForeignWallPost(nativePost);
 						topLevelPost=PostStorage.getPostByID(parent.getReplyChainElement(0), false);
 						if(topLevelPost==null)
 							throw new BadRequestException("Top-level post is not available");
 					}
 				}else{
-					topLevelPost=post;
-					post.storeDependencies(ctx);
-					PostStorage.putForeignWallPost(post);
+					Post nativePost=post.asNativePost(ctx);
+					ctx.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
+					topLevelPost=nativePost;
+					PostStorage.putForeignWallPost(nativePost);
 				}
 				ctx.getActivityPubWorker().fetchAllReplies(topLevelPost);
 				resp.redirect("/posts/"+topLevelPost.id);
@@ -620,33 +629,30 @@ public class ActivityPubRoutes{
 	}
 
 	public static Object likeObject(Request req, Response resp) throws SQLException{
+		ApplicationContext ctx=context(req);
 		int id=parseIntOrDefault(req.params(":likeID"), 0);
 		if(id==0)
 			throw new ObjectNotFoundException();
 		Like l=LikeStorage.getByID(id);
 		if(l==null)
 			throw new ObjectNotFoundException();
-		ActivityPubObject likedObject=context(req).getObjectLinkResolver().resolve(l.object.link, ActivityPubObject.class, false, false, false);
-		if(likedObject instanceof Post post){
-			if(post.owner instanceof Group group)
-				ActivityPub.enforceGroupContentAccess(req, group);
-		}
+		Object likedObject=context(req).getObjectLinkResolver().resolveNative(l.object.link, Object.class, false, false, false, (JsonObject) null, true);
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, (OwnedContentObject) likedObject);
 		resp.type(ActivityPub.CONTENT_TYPE);
 		return l;
 	}
 
-	public static Object undoLikeObject(Request req, Response resp) throws SQLException{
+	public static Object undoLikeObject(Request req, Response resp){
+		ApplicationContext ctx=context(req);
 		int id=parseIntOrDefault(req.params(":likeID"), 0);
 		if(id==0)
 			throw new ObjectNotFoundException();
 		Undo undo=ActivityPubCache.getUndoneLike(id);
 		if(undo==null)
 			throw new ObjectNotFoundException();
-		ActivityPubObject likedObject=context(req).getObjectLinkResolver().resolve(((Like)undo.object.object).object.link, ActivityPubObject.class, false, false, false);
-		if(likedObject instanceof Post post){
-			if(post.owner instanceof Group group)
-				ActivityPub.enforceGroupContentAccess(req, group);
-		}
+		Object likedObject=context(req).getObjectLinkResolver().resolveNative(((Like)undo.object.object).object.link, Object.class, false, false, false, (JsonObject) null, true);
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, (OwnedContentObject) likedObject);
+		resp.type(ActivityPub.CONTENT_TYPE);
 		return undo;
 	}
 
@@ -738,12 +744,12 @@ public class ActivityPubRoutes{
 				LOG.info("verified LD signature by {}", userID);
 				hasValidLDSignature=true;
 			}catch(Exception x){
-				LOG.warn("Exception while verifying LD-signature", x);
-				throw new BadRequestException(x);
+				LOG.info("Exception while verifying LD-signature", x);
 			}
-		}else{
+		}
+		if(!hasValidLDSignature){
 			if(!actor.equals(httpSigOwner)){
-				throw new BadRequestException("In the absence of an LD-signature, HTTP signature must be made by the activity actor");
+				throw new BadRequestException("In the absence of a valid LD-signature, HTTP signature must be made by the activity actor");
 			}
 			LOG.info("verified HTTP signature by {}", httpSigOwner.activityPubID);
 		}
@@ -849,10 +855,10 @@ public class ActivityPubRoutes{
 			LOG.warn("Bad request", x);
 			resp.status(400);
 			return escapeHTML(x.getMessage());
-		}catch(Exception x){
+		}/*catch(Exception x){
 			LOG.warn("Exception while processing an incoming activity", x);
 			throw new BadRequestException(x.toString());
-		}
+		}*/
 		if(Config.DEBUG)
 			throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
 		else
@@ -896,7 +902,7 @@ public class ActivityPubRoutes{
 	private static ActivityPubCollectionPageResponse groupMembers(Request req, Response resp, int offset, int count, boolean tentative) throws SQLException{
 		int id=safeParseInt(req.params(":id"));
 		Group group=context(req).getGroupsController().getLocalGroupOrThrow(id);
-		ActivityPub.enforceGroupContentAccess(req, group);
+		context(req).getPrivacyController().enforceGroupContentAccess(req, group);
 		PaginatedList<URI> followers=GroupStorage.getGroupMemberURIs(group.id, tentative, offset, count);
 		return ActivityPubCollectionPageResponse.forLinks(followers);
 	}
@@ -911,7 +917,7 @@ public class ActivityPubRoutes{
 
 	public static Object serviceActor(Request req, Response resp){
 		resp.type(ActivityPub.CONTENT_TYPE);
-		return ServiceActor.getInstance().asRootActivityPubObject();
+		return ServiceActor.getInstance().asRootActivityPubObject(context(req), (String)null);
 	}
 
 	public static Object groupActorToken(Request req, Response resp){
@@ -937,7 +943,7 @@ public class ActivityPubRoutes{
 
 	public static Object groupCollectionQuery(Request req, Response resp){
 		Group group=context(req).getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
-		ActivityPub.enforceGroupContentAccess(req, group);
+		context(req).getPrivacyController().enforceGroupContentAccess(req, group);
 		return collectionQuery(group, req, resp);
 	}
 

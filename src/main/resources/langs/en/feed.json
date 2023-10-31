@@ -1,0 +1,17 @@
+{
+  "feed_retoot": "<a id=\"author\">{author}</a> shared a post:",
+  "feed_retoot_comment": "<a id=\"author\">{author}</a> shared a comment:",
+  "feed_added_friend": "<a id=\"author\">{author}</a> added <a id=\"target\">{target}</a> as a friend.",
+  "feed_added_friend_name": "{name}",
+  "feed_joined_group": "<a id=\"author\">{author}</a> joined the group <a id=\"target\">{target}</a>.",
+  "feed_empty": "Updates from your friends will appear here.",
+  "feed_tab_news": "News",
+  "feed_tab_comments": "Comments",
+  "summary_feed": "Showing latest news",
+  "feed_joined_event": "<a id=\"author\">{author}</a> is attending the event <a id=\"target\">{target}</a>.",
+  "feed_created_group": "<a id=\"author\">{author}</a> created the group <a id=\"target\">{target}</a>.",
+  "feed_created_event": "<a id=\"author\">{author}</a> created the event <a id=\"target\">{target}</a>.",
+  "feed_added_multiple_friends": "<a id=\"author\">{author}</a> added {count, plural, one {# friend} other {# friends}}:",
+  "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> joined {count, plural, one {# group} other {# groups}}:",
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> is attending {count, plural, one {# event} other {# events}}:"
+}

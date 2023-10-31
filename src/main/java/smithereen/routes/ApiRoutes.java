@@ -4,14 +4,11 @@ import java.sql.SQLException;
 
 import smithereen.BuildInfo;
 import smithereen.Config;
-import smithereen.data.api.ApiInstance;
+import smithereen.model.api.ApiInstance;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
 import spark.Response;
-
-import static spark.Spark.*;
-import static smithereen.Utils.*;
 
 public class ApiRoutes{
 	public static Object instance(Request req, Response resp) throws SQLException{

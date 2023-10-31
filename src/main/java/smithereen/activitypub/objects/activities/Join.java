@@ -2,7 +2,7 @@ package smithereen.activitypub.objects.activities;
 
 import com.google.gson.JsonObject;
 
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.jsonld.JLD;
 
 public class Join extends Follow{
@@ -18,9 +18,9 @@ public class Join extends Follow{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		contextCollector.addAlias("TentativeJoin", "sm:TentativeJoin");
-		contextCollector.addAlias("sm", JLD.SMITHEREEN);
-		return super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		serializerContext.addAlias("TentativeJoin", "sm:TentativeJoin");
+		serializerContext.addAlias("sm", JLD.SMITHEREEN);
+		return super.asActivityPubObject(obj, serializerContext);
 	}
 }

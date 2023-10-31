@@ -1,6 +1,6 @@
 package smithereen.lang.formatting;
 
-import com.mitchellbosecke.pebble.extension.escaper.SafeString;
+import io.pebbletemplates.pebble.extension.escaper.SafeString;
 
 import org.unbescape.html.HtmlEscape;
 

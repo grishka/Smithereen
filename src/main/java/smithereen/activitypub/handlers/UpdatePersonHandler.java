@@ -6,7 +6,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Update;
-import smithereen.data.ForeignUser;
+import smithereen.model.ForeignUser;
 import smithereen.storage.UserStorage;
 
 public class UpdatePersonHandler extends ActivityTypeHandler<ForeignUser, Update, ForeignUser>{
@@ -14,6 +14,7 @@ public class UpdatePersonHandler extends ActivityTypeHandler<ForeignUser, Update
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Update activity, ForeignUser object) throws SQLException{
 		if(!actor.activityPubID.equals(object.activityPubID))
 			throw new BadRequestException("Users can only update themselves");
+		object.copyLocalFields(actor);
 		UserStorage.putOrUpdateForeignUser(object);
 	}
 }

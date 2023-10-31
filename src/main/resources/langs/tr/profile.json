@@ -1,0 +1,12 @@
+{
+  "write_on_X_wall": "{name} kullanıcısının duvarına yaz...",
+  "birth_date": "Doğum tarihi",
+  "write_on_own_wall": "Neler yeni?",
+  "profile_about": "Hakkında",
+  "X_is_your_friend": "{name} senin arkadaşın",
+  "you_sent_friend_req_to_X": "{name} kullanıcısına bir arkadaş isteği gönderdin",
+  "X_sent_you_friend_req": "{name}, sana bir arkadaş isteği gönderdi",
+  "you_are_following_X": "{name} kullanıcısını takip ediyorsun",
+  "X_is_following_you": "{name}, seni takip ediyor",
+  "waiting_for_X_to_accept_follow_req": "{name} kullanıcısının, takip isteğini kabul etmesini bekliyorsun"
+}

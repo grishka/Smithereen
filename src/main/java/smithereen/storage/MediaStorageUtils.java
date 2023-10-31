@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import smithereen.Config;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.LocalImage;
@@ -74,8 +74,7 @@ public class MediaStorageUtils{
 	}
 
 	public static void deleteAttachmentFiles(Document doc){
-		if(doc instanceof LocalImage){
-			LocalImage img=(LocalImage) doc;
+		if(doc instanceof LocalImage img){
 			File file=new File(Config.uploadPath, img.path+"/"+img.localID+".webp");
 			if(file.exists())
 				file.delete();
@@ -85,7 +84,7 @@ public class MediaStorageUtils{
 	}
 
 	public static JsonObject serializeAttachment(ActivityPubObject att){
-		JsonObject o=att.asActivityPubObject(null, new ContextCollector());
+		JsonObject o=att.asActivityPubObject(null, new SerializerContext(null, (String)null));
 		if(att instanceof Document){
 			Document d=(Document) att;
 			if(StringUtils.isNotEmpty(d.localID)){

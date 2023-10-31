@@ -1,13 +1,13 @@
 package smithereen.templates;
 
-import com.mitchellbosecke.pebble.extension.Function;
-import com.mitchellbosecke.pebble.template.EvaluationContext;
-import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import io.pebbletemplates.pebble.extension.Function;
+import io.pebbletemplates.pebble.template.EvaluationContext;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 
 import java.util.List;
 import java.util.Map;
 
-import smithereen.data.UriBuilder;
+import smithereen.model.UriBuilder;
 
 public class AddQueryParamsFunction implements Function{
 	@Override

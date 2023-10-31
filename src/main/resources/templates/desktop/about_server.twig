@@ -23,7 +23,7 @@
 					<tr class="oneMemberRow">
 						<td valign="top"><a href="{{ admin.profileURL }}">{{ admin | pictureForAvatar('s', 40) }}</a></td>
 						<td class="nameAndInfo">
-							<div><a href="{{ admin.profileURL }}">{{ admin.fullName }}</a></div>
+							<div><a href="{{ admin.profileURL }}">{{ admin | name }}</a></div>
 						</td>
 					</tr>
 				{% endfor %}

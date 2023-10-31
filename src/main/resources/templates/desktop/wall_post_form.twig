@@ -10,7 +10,7 @@
 		{% endif %}
 		</div>
 	{% else %}
-	<form action="{{ isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost" }}" method="post">
+	<form action="{{ isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost" }}" id="wallPostFormForm_{{ id }}" method="post">
 	{% if replyTo is not null %}
 		{% set fieldPlaceholder=L('comment_placeholder') %}
 	{% elseif isGroup %}
@@ -63,7 +63,7 @@
 			</td><td align="right" class="right">
 				<div class="popupMenuW">
 					<span class="opener">{{ L('attach') }}</span>
-					<div class="popupMenu" style="display: none;">
+					<div class="popupMenu withIcons" style="display: none;">
 						<ul class="attachMenu">
 							<li data-act="photo"><span class="iconPhoto"></span>{{ L('attach_menu_photo') }}</li>
 							{% if replyTo is empty %}

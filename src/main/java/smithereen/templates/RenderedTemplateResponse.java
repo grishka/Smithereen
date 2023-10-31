@@ -1,7 +1,7 @@
 package smithereen.templates;
 
-import com.mitchellbosecke.pebble.error.PebbleException;
-import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import io.pebbletemplates.pebble.error.PebbleException;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,13 +17,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
-import smithereen.data.PaginatedList;
+import smithereen.model.PaginatedList;
 import spark.Request;
-import spark.Response;
 import spark.utils.StringUtils;
 
 public class RenderedTemplateResponse{
@@ -50,6 +48,11 @@ public class RenderedTemplateResponse{
 
 	public RenderedTemplateResponse pageTitle(String title){
 		model.put("title", title);
+		return this;
+	}
+
+	public RenderedTemplateResponse mobileToolbarTitle(String title){
+		model.put("toolbarTitle", title);
 		return this;
 	}
 

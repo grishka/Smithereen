@@ -4,8 +4,8 @@ import java.io.Console;
 import java.io.IOError;
 import java.sql.SQLException;
 
-import smithereen.data.Account;
-import smithereen.data.User;
+import smithereen.model.Account;
+import smithereen.model.User;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 

@@ -17,7 +17,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.List;
 
-import smithereen.data.ForeignUser;
+import smithereen.model.ForeignUser;
 
 import static smithereen.jsonld.TestUtils.*;
 import static org.junit.jupiter.api.Assertions.*;

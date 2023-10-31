@@ -6,13 +6,12 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Follow;
-import smithereen.data.ForeignUser;
-import smithereen.data.FriendshipStatus;
-import smithereen.data.User;
-import smithereen.data.feed.NewsfeedEntry;
-import smithereen.data.notifications.Notification;
+import smithereen.model.ForeignUser;
+import smithereen.model.FriendshipStatus;
+import smithereen.model.User;
+import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.notifications.Notification;
 import smithereen.exceptions.BadRequestException;
-import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
 

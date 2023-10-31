@@ -57,12 +57,11 @@ import okhttp3.ResponseBody;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.activitypub.objects.CollectionQueryResult;
-import smithereen.data.FederationRestriction;
-import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
-import smithereen.data.Group;
-import smithereen.data.Server;
-import smithereen.data.StatsType;
+import smithereen.model.FederationRestriction;
+import smithereen.model.ForeignGroup;
+import smithereen.model.Group;
+import smithereen.model.Server;
+import smithereen.model.StatsType;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -75,7 +74,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.WebfingerResponse;
-import smithereen.data.UriBuilder;
+import smithereen.model.UriBuilder;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
@@ -89,7 +88,6 @@ import smithereen.util.UserAgentInterceptor;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.context;
-import static smithereen.Utils.escapeHTML;
 import static smithereen.Utils.formatDateAsISO;
 import static smithereen.Utils.parseSignatureHeader;
 
@@ -111,6 +109,7 @@ public class ActivityPub{
 	}
 
 	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx) throws IOException{
+		LOG.trace("Fetching remote object from {}", _uri);
 		URI uri;
 		String token;
 		if("bear".equals(_uri.getScheme())){
@@ -230,7 +229,7 @@ public class ActivityPub{
 			}
 		}
 
-		JsonObject body=activity.asRootActivityPubObject();
+		JsonObject body=activity.asRootActivityPubObject(ctx, inboxUrl.getAuthority());
 		LinkedDataSignatures.sign(body, actor.privateKey, actor.activityPubID+"#main-key");
 		LOG.info("Sending activity: {}", body);
 		postActivityInternal(inboxUrl, body.toString(), actor, server, ctx, isRetry);
@@ -364,6 +363,8 @@ public class ActivityPub{
 				try(ResponseBody body=resp.body()){
 					if(resp.isSuccessful()){
 						DocumentBuilderFactory factory=DocumentBuilderFactory.newInstance();
+						factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+						factory.setXIncludeAware(false);
 						DocumentBuilder builder=factory.newDocumentBuilder();
 						Document doc=builder.parse(body.byteStream());
 						NodeList nodes=doc.getElementsByTagName("Link");
@@ -480,44 +481,6 @@ public class ActivityPub{
 			throw new BadRequestException("Signature failed to verify");
 		}
 		return user;
-	}
-
-	public static void enforceGroupContentAccess(@NotNull spark.Request req, @NotNull Group group){
-		if(group.accessType==Group.AccessType.OPEN)
-			return;
-		Actor signer;
-		try{
-			signer=verifyHttpSignature(req, null);
-		}catch(Exception x){
-			throw new UserActionNotAllowedException("This object is in a "+group.accessType.toString().toLowerCase()+" group. Valid member HTTP signature is required.", x);
-		}
-		if(!(signer instanceof ForeignUser user))
-			throw new UserActionNotAllowedException("HTTP signature is valid but actor has wrong type: "+signer.getType());
-		if(group instanceof ForeignGroup foreignGroup){
-			String authHeader=req.headers("Authorization");
-			if(StringUtils.isEmpty(authHeader))
-				throw new UserActionNotAllowedException("Authorization header with ActivityPubActorToken is required");
-			String[] parts=authHeader.split(" ", 2);
-			if(parts.length!=2)
-				throw new BadRequestException();
-			if(!"ActivityPubActorToken".equals(parts[0]))
-				throw new BadRequestException("Unsupported auth scheme '"+parts[0]+"'");
-			JsonObject token;
-			try{
-				token=JsonParser.parseString(parts[1]).getAsJsonObject();
-			}catch(JsonParseException x){
-				throw new BadRequestException("Can't parse actor token: "+x.getMessage(), x);
-			}
-			verifyActorToken(token, user, foreignGroup);
-		}else{
-			try{
-				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, user.domain))
-					 throw new UserActionNotAllowedException("HTTP signature is valid, but this object is in a "+group.accessType.toString().toLowerCase()+" group and "+escapeHTML(user.activityPubID.toString())+" is not its member");
-			}catch(SQLException x){
-				throw new InternalServerErrorException(x);
-			}
-		}
-		LOG.trace("Actor {} was allowed to access object {} in a {} group {}", signer.activityPubID, req.pathInfo(), group.accessType, group.activityPubID);
 	}
 
 	private static String generateActorTokenStringToBeSigned(JsonObject obj){

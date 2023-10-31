@@ -14,7 +14,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 import smithereen.Config;
-import smithereen.data.SizedImage;
+import smithereen.model.SizedImage;
 
 public class ImgProxy{
 

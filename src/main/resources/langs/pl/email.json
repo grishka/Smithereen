@@ -1,0 +1,10 @@
+{
+  "email_password_reset_subject": "Przywracanie hasła {serverName}",
+  "email_password_reset_html_before": "<b>{name}</b>, naciśnij poniższy przycisk, aby zresetować hasło do swojego konta na <b>{serverName}</b>. Ten odnośnik jest aktywny przez 24 godziny.",
+  "email_password_reset_plain_before": "{name}, przejdź na poniższy adres, aby zresetować hasło do swojego konta na {serverName}. Ten odnośnik jest aktywny przez 24 godziny.",
+  "email_password_reset_after": "{gender, select, female {Jeżeli nie próbowałaś resetować hasła, zignoruj ten e-mail. Twoje konto jest bezpieczne.} other {Jeżeli nie próbowałeś resetować hasła, zignoruj ten e-mail. Twoje konto jest bezpieczne.}}",
+  "email_test_subject": "E-mail testowy",
+  "email_test": "Jeżeli to czytasz, prawdopodobnie {gender, select, female {skonfigurowałaś} other {skonfigurowałeś}} swój serwer prawidłowo.",
+  "email_confirmation_subject": "Witaj w {domain}!",
+  "email_confirmation_body_button": "Aktywuj moje konto"
+}

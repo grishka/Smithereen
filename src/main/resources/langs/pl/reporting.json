@@ -1,0 +1,11 @@
+{
+  "report": "Zgłoś",
+  "report_title_group": "Zgłoś grupę",
+  "report_title_event": "Zgłoś wydarzenie",
+  "report_text_post": "Co jest nie tak z tym wpisem?",
+  "report_text_comment": "Co jest nie tak z tym komentarzem?",
+  "report_text_user": "Co jest nie tak z tym profilem?",
+  "report_text_group": "Co jest nie tak z tą grupą?",
+  "report_text_event": "Co jest nie tak z tym wydarzeniem?",
+  "report_sent": "Zgłoszenie wysłane"
+}

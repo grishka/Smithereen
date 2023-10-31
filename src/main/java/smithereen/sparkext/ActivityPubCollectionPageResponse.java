@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
 
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LinkOrObject;
-import smithereen.data.PaginatedList;
+import smithereen.model.PaginatedList;
 
 public class ActivityPubCollectionPageResponse{
 	public int totalItems;

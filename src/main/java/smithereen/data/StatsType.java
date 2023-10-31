@@ -1,7 +1,0 @@
-package smithereen.data;
-
-public enum StatsType{
-	SERVER_ACTIVITIES_SENT,
-	SERVER_ACTIVITIES_FAILED_ATTEMPTS,
-	SERVER_ACTIVITIES_RECEIVED,
-}

@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
@@ -16,24 +14,30 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
-import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
-import smithereen.data.Account;
-import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
-import smithereen.data.Group;
-import smithereen.data.SessionInfo;
-import smithereen.data.User;
-import smithereen.data.WebDeltaResponse;
+import smithereen.activitypub.objects.Actor;
+import smithereen.controllers.MailController;
+import smithereen.model.Account;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
+import smithereen.model.Group;
+import smithereen.model.SessionInfo;
+import smithereen.model.User;
+import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
+import smithereen.routes.FriendsRoutes;
 import smithereen.routes.GroupsRoutes;
+import smithereen.routes.MailRoutes;
 import smithereen.routes.NotificationsRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
@@ -48,21 +52,17 @@ import smithereen.storage.GroupStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.routes.SettingsRoutes;
 import smithereen.storage.UserStorage;
+import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
 import smithereen.util.TopLevelDomainList;
+import spark.Filter;
 import spark.Request;
 import spark.Response;
-import spark.Service;
 import spark.Spark;
-import spark.embeddedserver.jetty.EmbeddedJettyServer;
-import spark.embeddedserver.jetty.JettyHandler;
-import spark.http.matching.MatcherFilter;
-import spark.serialization.Serializer;
-import spark.serialization.SerializerChain;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.randomAlphanumericString;
@@ -220,6 +220,9 @@ public class SmithereenApplication{
 				postWithCSRF("/createInviteLink", SettingsRoutes::createInviteLink);
 				getLoggedIn("/invitedUsers", SettingsRoutes::invitedUsers);
 			});
+			getLoggedIn("/privacy", SettingsRoutes::privacySettings);
+			postWithCSRF("/privacy", SettingsRoutes::savePrivacySettings);
+			getLoggedIn("/privacy/mobileEditSetting", SettingsRoutes::mobileEditPrivacy);
 
 			path("/admin", ()->{
 				getRequiringAccessLevel("", Account.AccessLevel.ADMIN, SettingsAdminRoutes::index);
@@ -283,6 +286,7 @@ public class SmithereenApplication{
 			getWithCSRF("/deleteDraftAttachment", SystemRoutes::deleteDraftAttachment);
 			path("/upload", ()->{
 				postWithCSRF("/postPhoto", SystemRoutes::uploadPostPhoto);
+				postWithCSRF("/messagePhoto", SystemRoutes::uploadMessagePhoto);
 			});
 			get("/about", SystemRoutes::aboutServer);
 			getLoggedIn("/qsearch", SystemRoutes::quickSearch);
@@ -325,23 +329,23 @@ public class SmithereenApplication{
 
 			get("/groups", GroupsRoutes::userGroups);
 			path("/friends", ()->{
-				get("", ProfileRoutes::friends);
-				getLoggedIn("/mutual", ProfileRoutes::mutualFriends);
+				get("", FriendsRoutes::friends);
+				getLoggedIn("/mutual", FriendsRoutes::mutualFriends);
 			});
 			path("/wall", ()->{
 				get("", PostRoutes::userWallAll);
 				get("/own", PostRoutes::userWallOwn);
 				get("/with/:otherUserID", PostRoutes::wallToWall);
 			});
-			get("/followers", ProfileRoutes::followers);
-			get("/following", ProfileRoutes::following);
-			postWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
-			getWithCSRF("/respondToFriendRequest", ProfileRoutes::respondToFriendRequest);
+			get("/followers", FriendsRoutes::followers);
+			get("/following", FriendsRoutes::following);
+			postWithCSRF("/respondToFriendRequest", FriendsRoutes::respondToFriendRequest);
+			getWithCSRF("/respondToFriendRequest", FriendsRoutes::respondToFriendRequest);
 
-			getLoggedIn("/confirmSendFriendRequest", ProfileRoutes::confirmSendFriendRequest);
-			postWithCSRF("/doSendFriendRequest", ProfileRoutes::doSendFriendRequest);
-			postWithCSRF("/doRemoveFriend", ProfileRoutes::doRemoveFriend);
-			getLoggedIn("/confirmRemoveFriend", ProfileRoutes::confirmRemoveFriend);
+			getLoggedIn("/confirmSendFriendRequest", FriendsRoutes::confirmSendFriendRequest);
+			postWithCSRF("/doSendFriendRequest", FriendsRoutes::doSendFriendRequest);
+			postWithCSRF("/doRemoveFriend", FriendsRoutes::doRemoveFriend);
+			getLoggedIn("/confirmRemoveFriend", FriendsRoutes::confirmRemoveFriend);
 
 			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncRelationshipsCollections);
 			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncContentCollections);
@@ -448,10 +452,10 @@ public class SmithereenApplication{
 		});
 
 		path("/my", ()->{
-			getLoggedIn("/incomingFriendRequests", ProfileRoutes::incomingFriendRequests);
-			getLoggedIn("/friends", ProfileRoutes::ownFriends);
-			get("/followers", ProfileRoutes::followers);
-			get("/following", ProfileRoutes::following);
+			getLoggedIn("/incomingFriendRequests", FriendsRoutes::incomingFriendRequests);
+			getLoggedIn("/friends", FriendsRoutes::ownFriends);
+			get("/followers", FriendsRoutes::followers);
+			get("/following", FriendsRoutes::following);
 			getLoggedIn("/notifications", NotificationsRoutes::notifications);
 			path("/groups", ()->{
 				getLoggedIn("", GroupsRoutes::myGroups);
@@ -467,6 +471,28 @@ public class SmithereenApplication{
 				getLoggedIn("/calendar", GroupsRoutes::eventCalendar);
 				getLoggedIn("/dayEventsPopup", GroupsRoutes::eventCalendarDayPopup);
 				getLoggedIn("/invites", GroupsRoutes::eventInvitations);
+			});
+			getLoggedIn("/friends/ajaxFriendsForPrivacyBoxes", FriendsRoutes::ajaxFriendsForPrivacyBoxes);
+			path("/mail", ()->{
+				getLoggedIn("", MailRoutes::inbox);
+				getLoggedIn("/outbox", MailRoutes::outbox);
+				getLoggedIn("/compose", MailRoutes::compose);
+				postWithCSRF("/send", MailRoutes::sendMessage);
+				getLoggedIn("/history", MailRoutes::history);
+				path("/messages/:id", ()->{
+					Filter idParserFilter=(req, resp)->{
+						long id=Utils.decodeLong(req.params(":id"));
+						if(id==0)
+							throw new ObjectNotFoundException();
+						req.attribute("id", id);
+					};
+					before("", idParserFilter);
+					before("/*", idParserFilter);
+					getLoggedIn("", MailRoutes::viewMessage);
+					getWithCSRF("/delete", MailRoutes::delete);
+					getWithCSRF("/deleteForEveryone", MailRoutes::deleteForEveryone);
+					getWithCSRF("/restore", MailRoutes::restore);
+				});
 			});
 		});
 
@@ -498,7 +524,13 @@ public class SmithereenApplication{
 			if(Config.DEBUG)
 				LOG.warn("403: {}", req.pathInfo(), x);
 			resp.status(403);
-			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_access")));
+			String key;
+			if(x instanceof UserContentUnavailableException){
+				key="err_access_user_content";
+			}else{
+				key="err_access";
+			}
+			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), key)));
 		});
 		exception(BadRequestException.class, (x, req, resp)->{
 			if(Config.DEBUG)
@@ -558,19 +590,33 @@ public class SmithereenApplication{
 		awaitInitialization();
 		setupCustomSerializer();
 
-		responseTypeSerializer(ActivityPubObject.class, (out, obj) -> {
+		responseTypeSerializer(ActivityPubObject.class, (out, obj, req, resp) -> {
+			resp.type(ActivityPub.CONTENT_TYPE);
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
-			Utils.gson.toJson(obj.asRootActivityPubObject(), writer);
+			Utils.gson.toJson(obj.asRootActivityPubObject(Utils.context(req), ()->{
+				if(req.headers("signature")!=null){
+					try{
+						Actor requester=ActivityPub.verifyHttpSignature(req, null);
+						Utils.context(req).getObjectLinkResolver().storeOrUpdateRemoteObject(requester);
+						String requesterDomain=requester.domain;
+						LOG.trace("Requester domain for {} is {}", req.pathInfo(), requesterDomain);
+						return requesterDomain;
+					}catch(Exception x){
+						LOG.trace("Exception while verifying HTTP signature for {}", req.pathInfo(), x);
+					}
+				}
+				return null;
+			}), writer);
 			writer.flush();
 		});
 
-		responseTypeSerializer(RenderedTemplateResponse.class, (out, obj) -> {
+		responseTypeSerializer(RenderedTemplateResponse.class, (out, obj, req, resp) -> {
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
 			obj.renderToWriter(writer);
 			writer.flush();
 		});
 
-		responseTypeSerializer(WebDeltaResponse.class, (out, obj) -> {
+		responseTypeSerializer(WebDeltaResponse.class, (out, obj, req, resp) -> {
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
 			Utils.gson.toJson(obj.commands(), writer);
 			writer.flush();
@@ -583,6 +629,8 @@ public class SmithereenApplication{
 			FloodControl.PASSWORD_RESET.gc();
 			TopLevelDomainList.updateIfNeeded();
 		});
+		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
+		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
 			LOG.info("Stopping Spark");
@@ -627,30 +675,6 @@ public class SmithereenApplication{
 	}
 
 	private static void setupCustomSerializer(){
-		try{
-			Method m=Spark.class.getDeclaredMethod("getInstance");
-			m.setAccessible(true);
-			Service svc=(Service) m.invoke(null);
-			Field serverFld=svc.getClass().getDeclaredField("server");
-			serverFld.setAccessible(true);
-			EmbeddedJettyServer server=(EmbeddedJettyServer) serverFld.get(svc);
-			Field handlerFld=server.getClass().getDeclaredField("handler");
-			handlerFld.setAccessible(true);
-			JettyHandler handler=(JettyHandler) handlerFld.get(server);
-			Field filterFld=handler.getClass().getDeclaredField("filter");
-			filterFld.setAccessible(true);
-			MatcherFilter matcher=(MatcherFilter) filterFld.get(handler);
-			Field serializerChainFld=matcher.getClass().getDeclaredField("serializerChain");
-			serializerChainFld.setAccessible(true);
-			SerializerChain chain=(SerializerChain) serializerChainFld.get(matcher);
-			Field rootFld=chain.getClass().getDeclaredField("root");
-			rootFld.setAccessible(true);
-			Serializer serializer=(Serializer) rootFld.get(chain);
-			ExtendedStreamingSerializer mySerializer=new ExtendedStreamingSerializer();
-			mySerializer.setNext(serializer);
-			rootFld.set(chain, mySerializer);
-		}catch(Exception x){
-			LOG.error("Exception while setting up custom serializer", x);
-		}
+		getSerializerChain().insertBeforeRoot(new ExtendedStreamingSerializer());
 	}
 }

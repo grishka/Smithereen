@@ -1,18 +1,18 @@
 package smithereen.templates;
 
-import com.mitchellbosecke.pebble.error.ParserException;
-import com.mitchellbosecke.pebble.extension.NodeVisitor;
-import com.mitchellbosecke.pebble.extension.escaper.SafeString;
-import com.mitchellbosecke.pebble.lexer.Token;
-import com.mitchellbosecke.pebble.lexer.TokenStream;
-import com.mitchellbosecke.pebble.node.AbstractRenderableNode;
-import com.mitchellbosecke.pebble.node.BodyNode;
-import com.mitchellbosecke.pebble.node.RenderableNode;
-import com.mitchellbosecke.pebble.parser.Parser;
-import com.mitchellbosecke.pebble.template.EvaluationContextImpl;
-import com.mitchellbosecke.pebble.template.PebbleTemplateImpl;
-import com.mitchellbosecke.pebble.template.Scope;
-import com.mitchellbosecke.pebble.tokenParser.TokenParser;
+import io.pebbletemplates.pebble.error.ParserException;
+import io.pebbletemplates.pebble.extension.NodeVisitor;
+import io.pebbletemplates.pebble.extension.escaper.SafeString;
+import io.pebbletemplates.pebble.lexer.Token;
+import io.pebbletemplates.pebble.lexer.TokenStream;
+import io.pebbletemplates.pebble.node.AbstractRenderableNode;
+import io.pebbletemplates.pebble.node.BodyNode;
+import io.pebbletemplates.pebble.node.RenderableNode;
+import io.pebbletemplates.pebble.parser.Parser;
+import io.pebbletemplates.pebble.template.EvaluationContextImpl;
+import io.pebbletemplates.pebble.template.PebbleTemplateImpl;
+import io.pebbletemplates.pebble.template.Scope;
+import io.pebbletemplates.pebble.tokenParser.TokenParser;
 
 import java.io.IOException;
 import java.io.StringWriter;

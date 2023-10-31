@@ -1,4 +1,4 @@
-{# @pebvariable name="items" type="java.util.List<smithereen.data.GroupInvitation>" #}
+{# @pebvariable name="items" type="java.util.List<smithereen.model.GroupInvitation>" #}
 {% extends "page" %}
 {% block content %}
 {% include (events ? 'events_tabbar' : 'groups_tabbar') with {'tab': 'invites'} %}
@@ -28,7 +28,7 @@
 					<div>{{ invite.group.domain }}</div>
 					{% endif %}
 					<div class="unlabeled grayText">
-						{{ L('group_invited_by_X', {'inviter': invite.inviter.fullName}, {'inviter': {'href': invite.inviter.profileURL} }) }}
+						{{ L('group_invited_by_X', {'inviter': invite.inviter | name}, {'inviter': {'href': invite.inviter.profileURL} }) }}
 						<form action="/groups/{{ invite.group.id }}/respondToInvite" method="post" data-ajax>
 							<input type="hidden" name="csrf" value="{{ csrf }}"/>
 							<div id="groupInviteBtns{{ invite.group.id }}" class="buttons">

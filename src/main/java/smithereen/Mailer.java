@@ -1,20 +1,17 @@
 package smithereen;
 
-import com.mitchellbosecke.pebble.PebbleEngine;
-import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import io.pebbletemplates.pebble.PebbleEngine;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import javax.mail.Authenticator;
 import javax.mail.Message;
@@ -27,8 +24,8 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
-import smithereen.data.Account;
-import smithereen.data.UriBuilder;
+import smithereen.model.Account;
+import smithereen.model.UriBuilder;
 import smithereen.lang.Lang;
 import smithereen.templates.Templates;
 import smithereen.util.BackgroundTaskRunner;

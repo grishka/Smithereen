@@ -1,8 +1,8 @@
 {% extends "profile_module" %}
 {% block moduleContent %}
-	{% if currentUser is not null and not isSelfBlocked %}
+	{% if canPostOnWall %}
 	{% include "wall_post_form" with {} %}
-	{%endif%}
+	{% endif %}
 	<div class="narrowWall" id="postList">
 		{%for post in items%}
 			<div class="wallRow">{%include "wall_post" with {'post': post}%}</div>

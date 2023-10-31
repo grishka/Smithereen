@@ -1,50 +1,56 @@
-{# @pebvariable name="post" type="smithereen.data.Post" #}
-<a name="comment{{post.id}}"></a>
-<table width="100%" class="post comment{{ first ? ' first' : '' }}" id="post{{post.id}}" data-reply-name="{{post.user.nameForReply}}">
+{# @pebvariable name="post" type="smithereen.model.viewmodel.PostViewModel" #}
+{# @pebvariable name="realPost" type="smithereen.model.Post" #}
+{# @pebvariable name="topLevel" type="smithereen.model.viewmodel.PostViewModel" #}
+{% set realPost=post.post %}
+<a name="comment{{realPost.id}}"></a>
+<table width="100%" class="post comment{{ first ? ' first' : '' }}" id="post{{realPost.id}}" data-reply-name="{{users[realPost.authorID].nameForReply}}">
 	<tr>
-		{%if post.replyLevel>1%}
-		<td width="{{ min(post.replyLevel-1, 10)*16 }}" class="treeIndent">&nbsp;</td>
+		{%if realPost.replyLevel>1%}
+		<td width="{{ min(realPost.replyLevel-1, 10)*16 }}" class="treeIndent">&nbsp;</td>
 		{%endif%}
-		{%if not(post.deleted)%}
+		{%if not(realPost.deleted)%}
 		<td width="32" valign="top">
-			<a href="{{post.user.profileURL}}">{{post.user | pictureForAvatar('s', 32)}}</a>
+			<a href="{{ profileURL(realPost.authorID) }}">{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
 		</td>
 		<td class="postContentWrap">
-			<a href="{{post.user.profileURL}}" class="authorName" id="postAuthor{{ post.id }}">{{post.user.fullName}}</a><br/>
-			<div id="postInner{{ post.id }}">
+			<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}">{{ users[realPost.authorID] | name }}</a>
+			{%- if realPost.privacy!='PUBLIC' -%}
+			<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID] | name('firstAndGender')}) }}"></span>
+			{%- endif %}<br/>
+			<div id="postInner{{ realPost.id }}">
 				{% block postInner %}
-				{% if post.hasContentWarning %}
-				<input type="checkbox" id="postCW_{{ post.id }}" style="display: none"/>
+				{% if realPost.hasContentWarning %}
+				<input type="checkbox" id="postCW_{{ realPost.id }}" style="display: none"/>
 				<div class="postCWWrap">
-					<label for="postCW_{{ post.id }}" class="postCWButton ellipsize">{{ post.summary }}</label>
+					<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning }}</label>
 				{% endif %}
-				<div class="postContent">{{ post.content | postprocessHTML | truncateText }}</div>
-				{% if post.attachment is not null %}
-				{{ renderAttachments(post.processedAttachments, post.owner) }}
+				<div class="postContent">{{ realPost.text | postprocessHTML | truncateText }}</div>
+				{% if realPost.attachments is not empty %}
+				{{ renderAttachments(realPost.processedAttachments, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
 				{% endif %}
-				{% if post.hasContentWarning %}
+				{% if realPost.hasContentWarning %}
 				</div>
 				{% endif %}
-				<div class="postInfo"><a href="{{post.internalURL}}" onclick="return highlightComment({{post.id}})" class="postLink">{{LD(post.published)}}</a>{%if userPermissions is not null and userPermissions.canDeletePost(post)%} |
-					<a href="{{post.url}}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{post.url}}/delete')">{{L('delete')}}</a>{%endif%}
-					{% if userPermissions is not null and userPermissions.canEditPost(post) %} |
-					<a href="{{ post.internalURL }}/edit" data-ajax="1">{{ L('edit') }}</a>
+				<div class="postInfo"><a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.id}})" class="postLink">{{LD(realPost.createdAt)}}</a>{%if userPermissions is not null and userPermissions.canDeletePost(realPost)%} |
+					<a href="{{realPost.internalURL}}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{realPost.internalURL}}/delete')">{{L('delete')}}</a>{%endif%}
+					{% if userPermissions is not null and userPermissions.canEditPost(realPost) %} |
+					<a href="{{ realPost.internalURL }}/edit" data-ajax="1">{{ L('edit') }}</a>
 					{% endif %}
-					{% if userPermissions is not null and userPermissions.canReport(post) %}
-						| <a href="/system/reportForm?type=post&id={{ post.id }}" data-ajax-box>{{ L('report') }}</a>
+					{% if userPermissions is not null and userPermissions.canReport(realPost) %}
+						| <a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box>{{ L('report') }}</a>
 					{% endif %}
-					{%if not hideReplyLink%}
-						| <a href="{{post.internalURL}}" onclick="return showPostReplyForm({{post.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}')">{{L('add_reply')}}</a>
-					{%endif%}
-					{% if not post.local %}
-						| <a href="{{ post.url }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': post.url.host}) }}</a>
+					{% if not hideReplyLink and topLevel.canComment %}
+						| <a href="{{realPost.internalURL}}" onclick="return showPostReplyForm({{realPost.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}')">{{L('add_reply')}}</a>
+					{% endif %}
+					{% if not realPost.local %}
+						| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
 					{% endif %}
 					{%if postInteractions is not null%}
-					{%set interactions=postInteractions[post.id]%}
+					{%set interactions=postInteractions[realPost.id]%}
 					<span class="postActions">
 						<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
-							<a href="{{post.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%} popoverButton" id="likeButtonPost{{post.id}}" data-obj-type="post" data-obj-id="{{post.id}}" data-popover-url="{{post.internalURL}}/likePopover" onclick="return likeOnClick(this)">
-								{{- L('like')}}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{post.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+							<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%} popoverButton" id="likeButtonPost{{realPost.id}}" data-obj-type="post" data-obj-id="{{realPost.id}}" data-popover-url="{{realPost.internalURL}}/likePopover" onclick="return likeOnClick(this)">
+								{{- L('like')}}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{realPost.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
 								{{- interactions.likeCount -}}
 							</span></a>
 							<span class="popoverPlace likePopoverWrap"></span>
@@ -62,14 +68,15 @@
 		{%endif%}
 	</tr>
 </table>
-<div id="postReplies{{post.id}}" class="replies">
+<div id="postReplies{{realPost.id}}" class="replies">
 	{%for reply in post.repliesObjects%}
-	{% include "wall_reply" with {'post': reply, 'first': false} %}
+		{% include "wall_reply" with {'post': reply, 'first': false, 'topLevel': topLevel} %}
+		{% set realPost=post.post %}
 	{%endfor%}
 	{% if post.loadableRepliesCount>0 %}
-	<div id="loadRepliesContainer{{ post.id }}" class="threadedIndented" style="--indent-level: {{ post.replyLevel-1 }}">
-		<a class="loadRepliesLink" onclick="return loadCommentBranch({{ post.id }}, {{ post.repliesObjects | length }})" id="loadRepliesLink{{ post.id }}">{{ L(post.loadedRepliesCount>0 ? 'comments_show_X_more_replies' : 'comments_show_X_replies', {'count': post.loadableRepliesCount}) }}</a>
-		<div class="loadRepliesLink" id="repliesLoader{{ post.id }}" style="display: none;"><span class="loader"></span></div>
+	<div id="loadRepliesContainer{{ realPost.id }}" class="threadedIndented" style="--indent-level: {{ realPost.replyLevel-1 }}">
+		<a class="loadRepliesLink" onclick="return loadCommentBranch({{ realPost.id }}, {{ post.repliesObjects | length }})" id="loadRepliesLink{{ realPost.id }}">{{ L(post.loadedRepliesCount>0 ? 'comments_show_X_more_replies' : 'comments_show_X_replies', {'count': post.loadableRepliesCount}) }}</a>
+		<div class="loadRepliesLink" id="repliesLoader{{ realPost.id }}" style="display: none;"><span class="loader"></span></div>
 		<div class="depthIndicator"></div>
 	</div>
 	{% endif %}

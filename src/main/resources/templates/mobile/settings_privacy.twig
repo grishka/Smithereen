@@ -1,0 +1,44 @@
+{% extends "page" %}
+{% block content %}
+{% include "settings_tabbar" with {'tab': 'privacy'} %}
+{% for key in settingsKeys %}
+	<a href="/settings/privacy/mobileEditSetting?key={{ key }}" class="privacySettingRow">
+		<div class="settingLabel">{{ L(key.descriptionLangKey) }}</div>
+		{% set setting=privacySettings[key] %}
+		<div class="settingValue">
+			{% if setting.baseRule=='EVERYONE' %}
+				{% set mainRuleKey='privacy_value_everyone' %}
+			{% elseif setting.baseRule=='FRIENDS' %}
+				{% set mainRuleKey='privacy_value_friends' %}
+			{% elseif setting.baseRule=='FRIENDS_OF_FRIENDS' %}
+				{% set mainRuleKey='privacy_value_friends_of_friends' %}
+			{% elseif setting.baseRule=='NONE' %}
+				{% if setting.allowUsers is not empty %}
+					 {% set mainRuleKey='privacy_value_certain_friends' %}
+				{% else %}
+					 {% set mainRuleKey=key.isOnlyMe ? 'privacy_value_only_me' : 'privacy_value_no_one' %}
+				{% endif %}
+			{% endif %}
+			{{ L(mainRuleKey) }}
+			{%- if setting.allowUsers is not empty -%}
+				{{- L("privacy_settings_value_certain_friends_before") -}}
+				{%- for id in setting.allowUsers -%}
+					{{ users[id] | name }}
+					{%- if not loop.last -%}
+						{{- L("privacy_settings_value_name_separator") -}}
+					{%- endif -%}
+				{%- endfor -%}
+			{%- endif -%}
+			{%- if setting.exceptUsers is not empty -%}
+				{{- L("privacy_settings_value_except") -}}
+					{%- for id in setting.exceptUsers -%}
+						{{ L("privacy_settings_value_except_name", {'name': users[id] | name('fullAndGender')}) }}
+						{%- if not loop.last -%}
+							{{- L("privacy_settings_value_name_separator") -}}
+						{%- endif -%}
+					{%- endfor -%}
+			{%- endif -%}
+		</div>
+	</a>
+{% endfor %}
+{% endblock %}

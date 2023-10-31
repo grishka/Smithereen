@@ -1,0 +1,16 @@
+{
+  "write_on_X_wall": "Написать на стене {name, inflect, genitive}...",
+  "birth_date": "Дата рождения",
+  "write_on_own_wall": "Что у ваc нового?",
+  "profile_about": "О себе",
+  "X_is_your_friend": "{name} у ваc в друзьях",
+  "you_sent_friend_req_to_X": "Вы отправили {name, inflect, dative} заявку в друзья",
+  "X_sent_you_friend_req": "{name} {gender, select, female {отправила} other {отправил}} вам заявку в друзья",
+  "you_are_following_X": "Вы подписаны на {name, inflect, accusative}",
+  "X_is_following_you": "{name} {gender, select, female {подписана} other {подписан}} на ваc",
+  "waiting_for_X_to_accept_follow_req": "Вы ожидаете, пока {name} примет запрос на подписку",
+  "incomplete_profile": "Информация на этой странице может быть неполной.",
+  "this_is_you": "(это вы)",
+  "profile_moved": "{name} теперь пользуется другой страницей:",
+  "profile_moved_link": "<b>{name}</b> на {domain}"
+}

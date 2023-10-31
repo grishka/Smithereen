@@ -13,8 +13,8 @@
 		{% for acc in items %}
 		<tr>
 			<td>{{acc.id}} ({{acc.user.id}})</td>
-			<td class="ellipsize"><a href="{{acc.user.url}}"><span class="tinyInlineAva">{{acc.user | pictureForAvatar('s', 32)}}</span>{{acc.user.fullName}}</a></td>
-			<td class="ellipsize">{%if acc.invitedBy is not null%}<a href="{{acc.invitedBy.url}}"><span class="tinyInlineAva">{{acc.invitedBy | pictureForAvatar('s', 32)}}</span>{{acc.invitedBy.fullName}}</a>{%else%}&mdash;{%endif%}</td>
+			<td class="ellipsize"><a href="{{acc.user.url}}"><span class="tinyInlineAva">{{acc.user | pictureForAvatar('s', 32)}}</span>{{ acc.user | name('full') }}</a></td>
+			<td class="ellipsize">{%if acc.invitedBy is not null%}<a href="{{acc.invitedBy.url}}"><span class="tinyInlineAva">{{acc.invitedBy | pictureForAvatar('s', 32)}}</span>{{ acc.invitedBy | name('full') }}</a>{%else%}&mdash;{%endif%}</td>
 			<td align="center">{{LD(acc.createdAt)}}</td>
 			<td>
 				{% if acc.user.id!=currentUser.id and userPermissions.serverAccessLevel.ordinal>=3 %}

@@ -1,0 +1,20 @@
+{
+  "report": "Report",
+  "report_title_post": "Report a post",
+  "report_title_comment": "Report a comment",
+  "report_title_user": "Report a profile",
+  "report_title_group": "Report a group",
+  "report_title_event": "Report an event",
+  "report_text_post": "What's wrong with this post?",
+  "report_text_comment": "What's wrong with this comment?",
+  "report_text_user": "What's wrong with this profile?",
+  "report_text_group": "What's wrong with this group?",
+  "report_text_event": "What's wrong with this event?",
+  "report_placeholder_profile": "For example: explicit profile picture",
+  "report_placeholder_content": "For example: spam",
+  "report_sent": "Report sent",
+  "report_forward_to_domain": "Anonymously forward to <b>{domain}</b>",
+  "report_submitted": "Your report was submitted to the server staff.",
+  "report_title_message": "Report a message",
+  "report_text_message": "What's wrong with this message?"
+}

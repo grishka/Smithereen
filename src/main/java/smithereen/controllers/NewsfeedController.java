@@ -10,16 +10,20 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
-import smithereen.activitypub.objects.Actor;
-import smithereen.data.Account;
-import smithereen.data.PaginatedList;
-import smithereen.data.User;
-import smithereen.data.feed.GroupedNewsfeedEntry;
-import smithereen.data.feed.NewsfeedEntry;
+import smithereen.model.Account;
+import smithereen.model.PaginatedList;
+import smithereen.model.Post;
+import smithereen.model.User;
+import smithereen.model.feed.GroupedNewsfeedEntry;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.PostStorage;
@@ -72,6 +76,14 @@ public class NewsfeedController{
 				if(newPage.isEmpty()){
 					break;
 				}
+
+				Set<Integer> needPosts=newPage.stream().filter(e->e.type==NewsfeedEntry.Type.POST).map(e->e.objectID).collect(Collectors.toSet());
+				if(!needPosts.isEmpty()){
+					Map<Integer, Post> posts=context.getWallController().getPosts(needPosts);
+					Set<Integer> inaccessiblePosts=posts.values().stream().filter(p->!context.getPrivacyController().checkPostPrivacy(self.user, p)).map(p->p.id).collect(Collectors.toSet());
+					newPage.removeIf(e->e.type==NewsfeedEntry.Type.POST && inaccessiblePosts.contains(e.objectID));
+				}
+
 				int sizeBefore=cache.feed.size();
 				cache.add(newPage);
 				int i=0;

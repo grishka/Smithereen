@@ -1,0 +1,68 @@
+{# @pebvariable name="message" type="smithereen.model.MailMessage" #}
+{% extends "page" %}
+{% block content %}
+{% include "mail_tabbar" %}
+<div class="heavyBoxWrap">
+	<div class="heavyBox mailMessageView">
+		<div id="messageViewInner">
+			<h2>
+				{{- L('mail_message') }}
+				<div class="flR lower" id="msgActions">
+					<a href="/my/mail/messages/{{ message.encodedID }}/delete?csrf={{ csrf }}&fromView" data-ajax data-ajax-hide="msgActions" data-ajax-show="msgActionsLoader">{{ L('delete') }}</a>
+					{% if userPermissions.canReport(message) %} |
+					<a href="/system/reportForm?type=message&id={{ message.encodedID }}" data-ajax-box>{{ L('report') }}</a>
+					{% endif %}
+				</div>
+				<span class="flR loader" id="msgActionsLoader" style="display: none">&nbsp;</span>
+			</h2>
+			<div class="time">{{ LD(message.createdAt, true) }}{% if message.updatedAt is not null %} | {{ L('mail_edited_at', {'time': LD(message.updatedAt)}) }}{% endif %}</div>
+			<div class="messageViewHeader">
+				<a href="{{ profileURL(message.senderID) }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('s') }}</a>
+				<div class="label">{{ L('mail_from') }}:</div>
+				<div><a href="{{ profileURL(message.senderID) }}">{{ users[message.senderID] | name('complete') }}</a></div>
+				<div class="label">{{ L('mail_to') }}:</div>
+				<div>
+					{%- for id in message.to -%}
+					<a href="{{ profileURL(id) }}">{{ users[id] | name('complete') }}</a>{% if not loop.last %}, {% endif %}
+					{%- endfor %}
+				</div>
+				{% if message.cc is not empty %}
+				<div class="label">{{ L('mail_cc') }}:</div>
+				<div>
+				{%- for id in message.cc -%}
+					<a href="{{ profileURL(id) }}">{{ users[id] | name('complete') }}</a>{% if not loop.last %}, {% endif %}
+				{%- endfor %}
+				</div>
+				{% endif %}
+				{% if message.subject is not empty %}
+				<div class="label">{{ L('mail_subject') }}:</div>
+				<div>{{ message.subject }}</div>
+				{% endif %}
+				{% if inReplyToURL is not empty %}
+				<div class="label">{{ L('mail_in_reply_to') }}:</div>
+				<div><a href="{{ inReplyToURL }}">{{ inReplyToLink }}</a></div>
+				{% endif %}
+			</div>
+			<div class="messageContent">
+			{{ message.text | postprocessHTML }}
+			{% if message.attachments is not empty %}
+				{{ renderAttachments(message.processedAttachments, null) }}
+			{% endif %}
+			</div>
+			{% if message.senderID!=currentUser.id %}
+			<form action="/my/mail/send?inReplyTo={{ message.encodedID }}" method="post" id="wallPostFormForm_mailMessage">
+				{% if replySubject is not empty %}<input type="text" name="subject" value="{{ replySubject }}" placeholder="{{ L('mail_subject') }}" style="width: 100%"/>{% endif %}
+				{% include "mail_message_form" with {"sendButtonLabel": "add_reply"} %}
+			</form>
+			{% endif %}
+		</div>
+	</div>
+</div>
+{% if peer is not null %}
+<div id="mailHistoryWrap">
+	<a id="mailShowHistory" class="ellipsize" href="/my/mail/history?peer={{ peer.id }}" data-ajax data-ajax-show="mailHistoryLoader" data-ajax-hide="mailShowHistory">{{ L('mail_show_history', {'name': peer.firstLastAndGender}) }}</a>
+	<div class="loader" id="mailHistoryLoader" style="display: none"></div>
+</div>
+{% endif %}
+{% endblock %}
+

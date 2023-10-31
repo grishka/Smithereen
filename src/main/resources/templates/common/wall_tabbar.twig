@@ -1,16 +1,18 @@
-{# @pebvariable name="owner" type="smithereen.data.User" #}
-{# @pebvariable name="otherUser" type="smithereen.data.User" #}
+{# @pebvariable name="owner" type="smithereen.model.User" #}
+{# @pebvariable name="otherUser" type="smithereen.model.User" #}
 {# @pebvariable name="isGroup" type="boolean" #}
 {# @pebvariable name="tab" type="String" #}
 <div class="tabbar">
+	{% if canSeeOthersPosts %}
 	<a href="{{ owner.typeAndIdForURL }}/wall" class="{%if tab=="all"%}selected{%endif%}">{{ L(isGroup ? 'wall_of_group' : 'wall_all_posts') }}</a>
+	{% endif %}
 	{% if not isGroup %}
 	<a href="{{ owner.typeAndIdForURL }}/wall/own" class="{%if tab=="own"%}selected{%endif%}">{{ owner==currentUser ? L('wall_my_posts') : L('wall_posts_of_X', {'name': owner.firstAndGender}) }}</a>
 	{% endif %}
 	{% if tab=="single" %}
 	    <a href="#" class="selected">{{ L('wall_post_title') }}</a>
 	{% elseif tab=="wall2wall" %}
-		<a href="#" class="selected">{{ L('wall_X_and_Y', {'name1': owner.firstName, 'name2': otherUser.firstName}) }}</a>
+		<a href="#" class="selected">{{ L('wall_X_and_Y', {'name1': owner | name('first'), 'name2': otherUser | name('first')}) }}</a>
 	{% endif %}
 	<span class="aux"><a href="{{ owner.profileURL }}">
 	{% if isGroup %}

@@ -10,10 +10,13 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
@@ -27,6 +30,7 @@ import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -36,6 +40,8 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.Note;
+import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Add;
@@ -49,22 +55,28 @@ import smithereen.activitypub.objects.activities.Join;
 import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Offer;
+import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
-import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
-import smithereen.data.Group;
-import smithereen.data.Poll;
-import smithereen.data.PollOption;
-import smithereen.data.PollVote;
-import smithereen.data.Post;
-import smithereen.data.UriBuilder;
-import smithereen.data.User;
-import smithereen.data.notifications.NotificationUtils;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
+import smithereen.model.Group;
+import smithereen.model.MailMessage;
+import smithereen.model.OwnerAndAuthor;
+import smithereen.model.Poll;
+import smithereen.model.PollOption;
+import smithereen.model.PollVote;
+import smithereen.model.Post;
+import smithereen.model.PrivacySetting;
+import smithereen.model.UriBuilder;
+import smithereen.model.User;
+import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.notifications.NotificationUtils;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -123,11 +135,19 @@ public class ActivityPubWorker{
 		throw new IllegalArgumentException("Must be a foreign actor");
 	}
 
+	private void getInboxesWithPrivacy(Set<URI> inboxes, User owner, PrivacySetting setting) throws SQLException{
+		switch(setting.baseRule){
+			case EVERYONE -> inboxes.addAll(UserStorage.getFollowerInboxes(owner.id, setting.exceptUsers));
+			case FRIENDS, FRIENDS_OF_FRIENDS -> inboxes.addAll(UserStorage.getFriendInboxes(owner.id, setting.exceptUsers));
+			case NONE -> context.getUsersController().getUsers(setting.allowUsers).values().stream().map(this::actorInbox).forEach(inboxes::add);
+		}
+	}
+
 	private long rand(){
 		return Math.abs(rand.nextLong());
 	}
 
-	public void forwardActivity(String json, User signer, List<URI> inboxes, String originatingDomain){
+	public void forwardActivity(String json, User signer, Collection<URI> inboxes, String originatingDomain){
 		for(URI inbox:inboxes){
 			if(inbox.getHost().equalsIgnoreCase(originatingDomain))
 				continue;
@@ -135,19 +155,20 @@ public class ActivityPubWorker{
 		}
 	}
 
-	private List<URI> getInboxesForPost(Post post) throws SQLException{
-		ArrayList<URI> inboxes=new ArrayList<>();
-		if(post.owner instanceof User user){
-			boolean sendToFollowers=user.id==post.user.id;
-			if(post.owner instanceof ForeignUser foreignUser){
+	private Set<URI> getInboxesForPost(Post post) throws SQLException{
+		Set<URI> inboxes=new HashSet<>();
+		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(post);
+		if(oaa.owner() instanceof User user){
+			boolean sendToFollowers=user.id==post.authorID;
+			if(oaa.owner() instanceof ForeignUser foreignUser){
 				inboxes.add(actorInbox(foreignUser));
 			}else if(sendToFollowers && post.getReplyLevel()==0){
 				inboxes.addAll(UserStorage.getFollowerInboxes(user.id));
 			}else{
 				inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
 			}
-		}else if(post.owner instanceof Group group){
-			if(post.owner instanceof ForeignGroup foreignGroup){
+		}else if(oaa.owner() instanceof Group group){
+			if(oaa.owner() instanceof ForeignGroup foreignGroup){
 				inboxes.add(actorInbox(foreignGroup));
 			}else if(post.getReplyLevel()==0){
 				inboxes.addAll(GroupStorage.getGroupMemberInboxes(group.id));
@@ -155,11 +176,12 @@ public class ActivityPubWorker{
 				inboxes.addAll(PostStorage.getInboxesForPostInteractionForwarding(post));
 			}
 		}
-		for(User user:post.mentionedUsers){
-			if(user instanceof ForeignUser foreignUser){
-				URI inbox=actorInbox(foreignUser);
-				if(!inboxes.contains(inbox))
+		if(!post.mentionedUserIDs.isEmpty()){
+			for(User user: context.getUsersController().getUsers(post.mentionedUserIDs).values()){
+				if(user instanceof ForeignUser foreignUser){
+					URI inbox=actorInbox(foreignUser);
 					inboxes.add(inbox);
+				}
 			}
 		}
 		return inboxes;
@@ -167,86 +189,96 @@ public class ActivityPubWorker{
 
 	private void sendActivityForPost(Post post, Activity activity, Actor actor){
 		try{
-			List<URI> inboxes=getInboxesForPost(post);
+			Set<URI> inboxes=getInboxesForPost(post);
 			LOG.info("Inboxes: {}", inboxes);
 			for(URI inbox:inboxes){
 				executor.submit(new SendOneActivityRunnable(activity, inbox, actor));
 			}
 		}catch(SQLException x){
-			LOG.error("Exception while sending activity for post {}", post.activityPubID, x);
+			LOG.error("Exception while sending activity for post {}", post.getActivityPubID(), x);
 		}
 	}
 
 	public void sendCreatePostActivity(final Post post){
 		executor.submit(()->{
+			NoteOrQuestion note=NoteOrQuestion.fromNativePost(post, context);
+			User author=context.getUsersController().getUserOrThrow(post.authorID);
+
 			Create create=new Create();
-			create.object=new LinkOrObject(post);
-			create.actor=new LinkOrObject(post.user.activityPubID);
-			create.to=post.to;
-			create.cc=post.cc;
-			create.published=post.published;
-			create.activityPubID=Config.localURI(post.activityPubID.getPath()+"/activityCreate");
-			sendActivityForPost(post, create, post.user);
+			create.object=new LinkOrObject(note);
+			create.actor=new LinkOrObject(author.activityPubID);
+			create.to=note.to;
+			create.cc=note.cc;
+			create.published=note.published;
+			create.activityPubID=Config.localURI(note.activityPubID.getPath()+"/activityCreate");
+			sendActivityForPost(post, create, author);
 		});
 	}
 
 	public void sendUpdatePostActivity(final Post post){
 		executor.submit(()->{
+			NoteOrQuestion note=NoteOrQuestion.fromNativePost(post, context);
+			User author=context.getUsersController().getUserOrThrow(post.authorID);
+
 			Update update=new Update();
-			update.object=new LinkOrObject(post);
-			update.actor=new LinkOrObject(post.user.activityPubID);
-			update.to=post.to;
-			update.cc=post.cc;
-			update.published=post.updated;
-			update.activityPubID=Config.localURI(post.activityPubID.getPath()+"#update_"+rand());
-			sendActivityForPost(post, update, post.user);
+			update.object=new LinkOrObject(note);
+			update.actor=new LinkOrObject(author.activityPubID);
+			update.to=note.to;
+			update.cc=note.cc;
+			update.published=note.updated;
+			update.activityPubID=Config.localURI(note.activityPubID.getPath()+"#update_"+rand());
+			sendActivityForPost(post, update, author);
 		});
 	}
 
 	public void sendAddPostToWallActivity(final Post post){
 		executor.submit(()->{
 			try{
+				NoteOrQuestion note=NoteOrQuestion.fromNativePost(post, context);
+				OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(post);
+
 				Add add=new Add();
-				add.activityPubID=UriBuilder.local().path("posts", post.id+"", "activityAdd").build();
-				add.object=new LinkOrObject(post.activityPubID);
-				add.actor=new LinkOrObject(post.owner.activityPubID);
-				add.to=List.of(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(post.owner.getFollowersURL()), new LinkOrObject(post.user.activityPubID));
-				if(!post.mentionedUsers.isEmpty()){
-					ArrayList<LinkOrObject> cc=new ArrayList<>();
-					for(User user : post.mentionedUsers){
-						cc.add(new LinkOrObject(user.activityPubID));
-					}
-					add.cc=cc;
-				}
+				add.activityPubID=UriBuilder.local().path("posts", String.valueOf(post.id), "activityAdd").build();
+				add.object=new LinkOrObject(post.getActivityPubID());
+				add.actor=new LinkOrObject(oaa.owner().activityPubID);
+				add.to=List.of(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(oaa.owner().getFollowersURL()), new LinkOrObject(oaa.author().activityPubID));
+//				if(!post.mentionedUsers.isEmpty()){
+//					ArrayList<LinkOrObject> cc=new ArrayList<>();
+//					for(User user : post.mentionedUsers){
+//						cc.add(new LinkOrObject(user.activityPubID));
+//					}
+//					add.cc=cc;
+//				}
+				add.cc=note.cc;
 				ActivityPubCollection target=new ActivityPubCollection(false);
-				target.activityPubID=post.owner.getWallURL();
-				target.attributedTo=post.owner.activityPubID;
+				target.activityPubID=oaa.owner().getWallURL();
+				target.attributedTo=oaa.owner().activityPubID;
 				add.target=new LinkOrObject(target);
 
-				ArrayList<URI> inboxes=new ArrayList<>();
-				if(post.owner instanceof User)
-					inboxes.addAll(UserStorage.getFollowerInboxes(((User) post.owner).id));
-				else
-					inboxes.addAll(GroupStorage.getGroupMemberInboxes(((Group) post.owner).id));
-
-				for(User user:post.mentionedUsers){
-					if(user instanceof ForeignUser){
-						URI inbox=actorInbox((ForeignUser) user);
-						if(!inboxes.contains(inbox))
-							inboxes.add(inbox);
-					}
+				HashSet<URI> inboxes=new HashSet<>();
+				if(oaa.owner() instanceof User user){
+					PrivacySetting setting=user.privacySettings.getOrDefault(UserPrivacySettingKey.WALL_OTHERS_POSTS, new PrivacySetting());
+					getInboxesWithPrivacy(inboxes, user, setting);
+				}else if(oaa.owner() instanceof Group group){
+					inboxes.addAll(GroupStorage.getGroupMemberInboxes(group.id));
 				}
-				if(post.user instanceof ForeignUser){
-					URI inbox=actorInbox((ForeignUser) post.user);
-					if(!inboxes.contains(inbox))
-						inboxes.add(inbox);
+
+//				for(User user:context.getUsersController().getUsers(post.mentionedUserIDs).values()){
+//					if(user instanceof ForeignUser){
+//						URI inbox=actorInbox((ForeignUser) user);
+//						inboxes.add(inbox);
+//					}
+//				}
+				if(oaa.author() instanceof ForeignUser fu){
+					URI inbox=actorInbox(fu);
+					inboxes.add(inbox);
 				}
 
 				for(URI inbox:inboxes){
-					executor.submit(new SendOneActivityRunnable(add, inbox, post.owner));
+					executor.submit(new SendOneActivityRunnable(add, inbox, oaa.owner()));
 				}
 			}catch(SQLException x){
-				LOG.error("Exception while sending wall post {}", post.activityPubID, x);
+				LOG.error("Exception while sending wall post {}", post.getActivityPubID(), x);
 			}
 		});
 	}
@@ -255,13 +287,13 @@ public class ActivityPubWorker{
 		executor.submit(()->{
 			Actor actor;
 			Delete delete=new Delete();
-			delete.object=new LinkOrObject(post.activityPubID);
-			if(post.user.id==actualActor.id)
+			delete.object=new LinkOrObject(post.getActivityPubID());
+			if(post.authorID==actualActor.id)
 				actor=actualActor;
-			else if(!post.isGroupOwner() && ((User)post.owner).id==actualActor.id)
+			else if(!post.isGroupOwner() && post.ownerID==actualActor.id)
 				actor=actualActor;
 			else if(post.isGroupOwner())
-				actor=post.owner;
+				actor=context.getWallController().getContentAuthorAndOwner(post).owner();
 			else{
 				LOG.error("Shouldn't happen: post {} actor for delete can't be chosen", post.id);
 				return;
@@ -270,11 +302,14 @@ public class ActivityPubWorker{
 				LOG.error("Shouldn't happen: {} actor for delete is a foreign actor", post.id);
 				return;
 			}
+
+			NoteOrQuestion note=NoteOrQuestion.fromNativePost(post, context);
+
 			delete.actor=new LinkOrObject(actor.activityPubID);
-			delete.to=post.to;
-			delete.cc=post.cc;
+			delete.to=note.to;
+			delete.cc=note.cc;
 			delete.published=Instant.now();
-			delete.activityPubID=new UriBuilder(post.activityPubID).appendPath("delete").build();
+			delete.activityPubID=new UriBuilder(post.getActivityPubID()).appendPath("delete").build();
 			sendActivityForPost(post, delete, actor);
 		});
 	}
@@ -486,8 +521,8 @@ public class ActivityPubWorker{
 		Like like=new Like();
 		like.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID);
 		like.actor=new LinkOrObject(user.activityPubID);
-		like.object=new LinkOrObject(post.activityPubID);
-		List<URI> inboxes=PostStorage.getInboxesForPostInteractionForwarding(post);
+		like.object=new LinkOrObject(post.getActivityPubID());
+		Set<URI> inboxes=PostStorage.getInboxesForPostInteractionForwarding(post);
 		LOG.info("Inboxes: {}", inboxes);
 		for(URI inbox:inboxes){
 			executor.submit(new SendOneActivityRunnable(like, inbox, user));
@@ -498,13 +533,13 @@ public class ActivityPubWorker{
 		Like like=new Like();
 		like.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID);
 		like.actor=new LinkOrObject(user.activityPubID);
-		like.object=new LinkOrObject(post.activityPubID);
+		like.object=new LinkOrObject(post.getActivityPubID());
 		Undo undo=new Undo();
 		undo.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID+"/undo");
 		undo.object=new LinkOrObject(like);
 		undo.actor=new LinkOrObject(user.activityPubID);
 		ActivityPubCache.putUndoneLike(likeID, undo);
-		List<URI> inboxes=PostStorage.getInboxesForPostInteractionForwarding(post);
+		Set<URI> inboxes=PostStorage.getInboxesForPostInteractionForwarding(post);
 		for(URI inbox:inboxes){
 			executor.submit(new SendOneActivityRunnable(undo, inbox, user));
 		}
@@ -540,7 +575,7 @@ public class ActivityPubWorker{
 
 			PollVote vote=new PollVote();
 			vote.inReplyTo=poll.activityPubID;
-			vote.name=opt.name;
+			vote.name=opt.text;
 			if(opt.activityPubID!=null)
 				vote.context=opt.activityPubID;
 			vote.activityPubID=new UriBuilder(self.activityPubID).fragment("pollVotes/"+voteID).build();
@@ -686,17 +721,79 @@ public class ActivityPubWorker{
 		executor.submit(new SendOneActivityRunnable(flag, actorInbox(targetActor), ServiceActor.getInstance()));
 	}
 
-	public synchronized Future<List<Post>> fetchReplyThread(Post post){
+	public void sendDirectMessage(User self, MailMessage msg){
+		HashSet<Integer> needUsers=new HashSet<>();
+		needUsers.addAll(msg.to);
+		needUsers.addAll(msg.cc);
+		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
+
+		Note note=NoteOrQuestion.fromNativeMessage(msg, context);
+		Create create=new Create();
+		create.actor=new LinkOrObject(self.activityPubID);
+		create.object=new LinkOrObject(note);
+		create.to=note.to;
+		create.cc=note.cc;
+		create.activityPubID=new UriBuilder(note.activityPubID).fragment("create").build();
+		Set<URI> inboxes=users.values().stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).collect(Collectors.toSet());
+		for(URI inbox:inboxes){
+			executor.submit(new SendOneActivityRunnable(create, inbox, self));
+		}
+	}
+
+	public void sendDeleteMessageActivity(User self, MailMessage msg){
+		HashSet<Integer> needUsers=new HashSet<>(msg.to);
+		if(msg.cc!=null)
+			needUsers.addAll(msg.cc);
+		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
+
+		Delete delete=new Delete();
+		delete.actor=new LinkOrObject(self.activityPubID);
+		delete.object=new LinkOrObject(msg.getActivityPubID());
+		delete.to=msg.to.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
+		if(msg.cc!=null && !msg.cc.isEmpty())
+			delete.cc=msg.cc.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
+		delete.activityPubID=new UriBuilder(msg.getActivityPubID()).fragment("delete").build();
+
+		Set<URI> inboxes=users.values().stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).collect(Collectors.toSet());
+		for(URI inbox:inboxes){
+			executor.submit(new SendOneActivityRunnable(delete, inbox, self));
+		}
+	}
+
+	public void sendReadMessageActivity(User self, MailMessage msg){
+		HashSet<Integer> needUsers=new HashSet<>(msg.to);
+		needUsers.add(msg.senderID);
+		if(msg.cc!=null)
+			needUsers.addAll(msg.cc);
+		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
+
+		Read read=new Read();
+		read.actor=new LinkOrObject(self.activityPubID);
+		read.object=new LinkOrObject(msg.getActivityPubID());
+		HashSet<Integer> to=new HashSet<>(msg.to);
+		to.add(msg.senderID);
+		read.to=to.stream().filter(id->id!=self.id).map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
+		if(msg.cc!=null && !msg.cc.isEmpty())
+			read.cc=msg.cc.stream().filter(id->id!=self.id).map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
+		read.activityPubID=UriBuilder.local().path("activitypub", "objects", "messages", msg.encodedID).fragment("read"+self.id).build();
+
+		Set<URI> inboxes=users.values().stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).collect(Collectors.toSet());
+		for(URI inbox:inboxes){
+			executor.submit(new SendOneActivityRunnable(read, inbox, self));
+		}
+	}
+
+	public synchronized Future<List<Post>> fetchReplyThread(NoteOrQuestion post){
 		return fetchingReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchReplyThreadRunnable(post)));
 	}
 
-	public synchronized Future<List<Post>> fetchReplyThreadAndThen(Post post, Consumer<List<Post>> action){
+	public synchronized Future<List<Post>> fetchReplyThreadAndThen(NoteOrQuestion post, Consumer<List<Post>> action){
 		afterFetchReplyThreadActions.computeIfAbsent(post.activityPubID, (uri)->new ArrayList<>()).add(action);
 		return fetchReplyThread(post);
 	}
 
 	public synchronized Future<Post> fetchAllReplies(Post post){
-		return fetchingAllReplies.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchAllRepliesTask(post)));
+		return fetchingAllReplies.computeIfAbsent(post.getActivityPubID(), (uri)->executor.submit(new FetchAllRepliesTask(post)));
 	}
 
 	/**
@@ -815,11 +912,11 @@ public class ActivityPubWorker{
 	}
 
 	private class FetchReplyThreadRunnable implements Callable<List<Post>>{
-		private ArrayList<Post> thread=new ArrayList<>();
-		private Set<URI> seenPosts=new HashSet<>();
-		private Post initialPost;
+		private final LinkedList<NoteOrQuestion> thread=new LinkedList<>();
+		private final Set<URI> seenPosts=new HashSet<>();
+		private final NoteOrQuestion initialPost;
 
-		public FetchReplyThreadRunnable(Post post){
+		public FetchReplyThreadRunnable(NoteOrQuestion post){
 			thread.add(post);
 			initialPost=post;
 		}
@@ -829,7 +926,7 @@ public class ActivityPubWorker{
 			LOG.debug("Started fetching parent thread for post {}", initialPost.activityPubID);
 			seenPosts.add(initialPost.activityPubID);
 			while(thread.get(0).inReplyTo!=null){
-				Post post=context.getObjectLinkResolver().resolve(thread.get(0).inReplyTo, Post.class, true, false, false, (JsonObject) null, true);
+				NoteOrQuestion post=context.getObjectLinkResolver().resolve(thread.get(0).inReplyTo, NoteOrQuestion.class, true, false, false, (JsonObject) null, true);
 				if(seenPosts.contains(post.activityPubID)){
 					LOG.warn("Already seen post {} while fetching parent thread for {}", post.activityPubID, initialPost.activityPubID);
 					throw new IllegalStateException("Reply thread contains a loop of links");
@@ -837,24 +934,22 @@ public class ActivityPubWorker{
 				seenPosts.add(post.activityPubID);
 				thread.add(0, post);
 			}
-			Post topLevel=thread.get(0);
-			for(int i=0;i<thread.size();i++){
-				Post p=thread.get(i);
-				if(p.id!=0)
+			NoteOrQuestion topLevel=thread.get(0);
+			final ArrayList<Post> realThread=new ArrayList<>();
+			Post parent=null;
+			for(NoteOrQuestion noq:thread){
+				Post p=noq.asNativePost(context);
+
+				if(p.id!=0){
+					realThread.add(p);
+					parent=p;
 					continue;
-				p.storeDependencies(context);
-				Post prev=null;
-				if(i>0){
-					prev=thread.get(i-1);
-					p.setParent(prev);
 				}
-				if(StringUtils.isNotEmpty(p.content))
-					p.content=Utils.sanitizeHTML(p.content);
-				if(StringUtils.isNotEmpty(p.summary))
-					p.summary=Utils.sanitizeHTML(p.summary);
-				context.getWallController().loadAndPreprocessRemotePostMentions(p);
+				context.getWallController().loadAndPreprocessRemotePostMentions(p, noq);
 				PostStorage.putForeignWallPost(p);
-				NotificationUtils.putNotificationsForPost(p, prev);
+				NotificationUtils.putNotificationsForPost(p, parent);
+				realThread.add(p);
+				parent=p;
 			}
 			LOG.info("Done fetching parent thread for post {}", topLevel.activityPubID);
 			synchronized(ActivityPubWorker.this){
@@ -862,10 +957,10 @@ public class ActivityPubWorker{
 				List<Consumer<List<Post>>> actions=afterFetchReplyThreadActions.remove(initialPost.activityPubID);
 				if(actions!=null){
 					for(Consumer<List<Post>> action:actions){
-						executor.submit(()->action.accept(thread));
+						executor.submit(()->action.accept(realThread));
 					}
 				}
-				return thread;
+				return realThread;
 			}
 		}
 	}
@@ -891,38 +986,40 @@ public class ActivityPubWorker{
 
 		@Override
 		protected Post compute(){
-			LOG.debug("Started fetching full reply tree for post {}", post.activityPubID);
+			LOG.debug("Started fetching full reply tree for post {}", post.getActivityPubID());
 			try{
-				if(post.replies==null){
-					if(post.local){
-						post.repliesObjects=PostStorage.getRepliesExact(post.getReplyKeyForReplies(), Integer.MAX_VALUE, 1000).list;
+				if(post.activityPubReplies==null){
+					if(post.isLocal()){
+//						post.repliesObjects=PostStorage.getRepliesExact(post.getReplyKeyForReplies(), Integer.MAX_VALUE, 1000).list;
 					}else{
 						return post;
 					}
 				}else{
+					Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
+
 					ActivityPubCollection collection;
-					if(post.replies.link!=null){
-						collection=context.getObjectLinkResolver().resolve(post.replies.link, ActivityPubCollection.class, true, false, false, post.owner, true);
-						collection.validate(post.activityPubID, "replies");
-					}else if(post.replies.object instanceof ActivityPubCollection){
-						collection=(ActivityPubCollection) post.replies.object;
-					}else{
-						LOG.warn("Post {} doesn't have a replies collection", post.activityPubID);
-						return post;
-					}
+//					if(post.replies.link!=null){
+						collection=context.getObjectLinkResolver().resolve(post.activityPubReplies, ActivityPubCollection.class, true, false, false, owner, true);
+						collection.validate(post.getActivityPubID(), "replies");
+//					}else if(post.replies.object instanceof ActivityPubCollection){
+//						collection=(ActivityPubCollection) post.replies.object;
+//					}else{
+//						LOG.warn("Post {} doesn't have a replies collection", post.activityPubID);
+//						return post;
+//					}
 					LOG.trace("collection: {}", collection);
 					if(collection.first==null){
-						LOG.warn("Post {} doesn't have replies.first", post.activityPubID);
+						LOG.warn("Post {} doesn't have replies.first", post.getActivityPubID());
 						return post;
 					}
 					CollectionPage page;
 					if(collection.first.link!=null){
-						page=context.getObjectLinkResolver().resolve(collection.first.link, CollectionPage.class, true, false, false, post.owner, false);
-						page.validate(post.activityPubID, "replies.first");
+						page=context.getObjectLinkResolver().resolve(collection.first.link, CollectionPage.class, true, false, false, owner, false);
+						page.validate(post.getActivityPubID(), "replies.first");
 					}else if(collection.first.object instanceof CollectionPage){
 						page=(CollectionPage) collection.first.object;
 					}else{
-						LOG.warn("Post {} doesn't have a correct CollectionPage in replies.first", post.activityPubID);
+						LOG.warn("Post {} doesn't have a correct CollectionPage in replies.first", post.getActivityPubID());
 						return post;
 					}
 					LOG.trace("first page: {}", page);
@@ -931,12 +1028,17 @@ public class ActivityPubWorker{
 					}
 					while(page.next!=null){
 						LOG.trace("getting next page: {}", page.next);
-						page=context.getObjectLinkResolver().resolve(page.next, CollectionPage.class, true, false, false, post.owner, false);
-						if(page.items==null){ // you're supposed to not return the "next" field when there are no more pages, but mastodon still does...
-							LOG.debug("done fetching replies because page.items is empty");
-							break;
+						try{
+							page=context.getObjectLinkResolver().resolve(page.next, CollectionPage.class, true, false, false, owner, false);
+							if(page.items==null){ // you're supposed to not return the "next" field when there are no more pages, but mastodon still does...
+								LOG.debug("done fetching replies because page.items is empty");
+								break;
+							}
+							doOneCollectionPage(page.items);
+						}catch(ObjectNotFoundException x){
+							LOG.warn("Failed to get replies collection page for post {}", post.getActivityPubID());
+							return post;
 						}
-						doOneCollectionPage(page.items);
 					}
 				}
 			}catch(Exception x){
@@ -944,7 +1046,7 @@ public class ActivityPubWorker{
 			}
 			if(post.getReplyLevel()==0){
 				synchronized(ActivityPubWorker.this){
-					fetchingAllReplies.remove(post.activityPubID);
+					fetchingAllReplies.remove(post.getActivityPubID());
 					return post;
 				}
 			}
@@ -970,7 +1072,7 @@ public class ActivityPubWorker{
 					FetchPostAndRepliesTask subtask=new FetchPostAndRepliesTask(item.link, this.post, seenPosts);
 					subtasks.add(subtask);
 					subtask.fork();
-				}else if(item.object instanceof Post){
+				}else if(item.object instanceof NoteOrQuestion noq){
 					synchronized(seenPosts){
 						if(seenPosts.contains(item.object.activityPubID)){
 							LOG.warn("Already seen post {}", item.object.activityPubID);
@@ -982,9 +1084,7 @@ public class ActivityPubWorker{
 						}
 						seenPosts.add(item.object.activityPubID);
 					}
-					post=(Post) item.object;
-					post.setParent(this.post);
-					post.resolveDependencies(context, true, true);
+					post=noq.asNativePost(context);
 					PostStorage.putForeignWallPost(post);
 					LOG.trace("got post: {}", post);
 					FetchAllRepliesTask subtask=new FetchAllRepliesTask(post, seenPosts);
@@ -992,7 +1092,6 @@ public class ActivityPubWorker{
 					subtask.fork();
 				}else{
 					LOG.warn("reply object isn't a post: {}", item.object);
-					continue;
 				}
 			}
 			for(FetchAllRepliesTask task:subtasks){
@@ -1020,9 +1119,9 @@ public class ActivityPubWorker{
 		protected Post compute(){
 			try{
 				LOG.trace("Fetching remote reply from {}", postID);
-				post=context.getObjectLinkResolver().resolve(postID, Post.class, true, false, false, parentPost.owner, true);
-				post.setParent(parentPost);
-				post.storeDependencies(context);
+				post=context.getObjectLinkResolver().resolveNative(postID, Post.class, true, false, false, context.getWallController().getContentAuthorAndOwner(parentPost).owner(), true);
+//				post.setParent(parentPost);
+//				post.storeDependencies(context);
 				PostStorage.putForeignWallPost(post);
 			}catch(Exception x){
 				completeExceptionally(x);
@@ -1383,7 +1482,7 @@ public class ActivityPubWorker{
 			ArrayList<ProcessWallPostTask> tasks=new ArrayList<>();
 			for(LinkOrObject lo:page.items){
 				try{
-					if(lo.object instanceof Post post){
+					if(lo.object instanceof NoteOrQuestion post){
 						if(post.inReplyTo==null)
 							  tasks.add(new ProcessWallPostTask(post, actor));
 					}else if(lo.link!=null){
@@ -1398,10 +1497,10 @@ public class ActivityPubWorker{
 	}
 
 	private class ProcessWallPostTask extends RecursiveAction{
-		protected Post post;
+		protected NoteOrQuestion post;
 		protected final Actor owner;
 
-		private ProcessWallPostTask(Post post, Actor owner){
+		private ProcessWallPostTask(NoteOrQuestion post, Actor owner){
 			this.post=post;
 			this.owner=owner;
 		}
@@ -1413,11 +1512,11 @@ public class ActivityPubWorker{
 		@Override
 		protected void compute(){
 			try{
-				post.resolveDependencies(context, true, true);
-				context.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
-				new FetchAllRepliesTask(post).fork().join();
+				Post nativePost=post.asNativePost(context);
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
+				new FetchAllRepliesTask(nativePost).fork().join();
 			}catch(Exception x){
-				LOG.debug("Error processing post {}", post.id, x);
+				LOG.debug("Error processing post {}", post.activityPubID, x);
 			}
 		}
 	}
@@ -1433,7 +1532,7 @@ public class ActivityPubWorker{
 		@Override
 		protected void compute(){
 			try{
-				post=context.getObjectLinkResolver().resolve(postID, Post.class, true, false, false, owner, false);
+				post=context.getObjectLinkResolver().resolve(postID, NoteOrQuestion.class, true, false, false, owner, false);
 				if(post.inReplyTo!=null)
 					return;
 			}catch(Exception x){

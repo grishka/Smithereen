@@ -3,33 +3,39 @@ package smithereen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.stream.Stream;
 
-import smithereen.storage.DatabaseConnectionManager;
+import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.util.TopLevelDomainList;
 import spark.utils.StringUtils;
 
@@ -81,6 +87,8 @@ public class Config{
 
 	public static PrivateKey serviceActorPrivateKey;
 	public static PublicKey serviceActorPublicKey;
+	public static byte[] objectIdObfuscationKey;
+	public static int[][] objectIdObfuscationKeysByType=new int[ObfuscatedObjectIDType.values().length][];
 
 	private static final Logger LOG=LoggerFactory.getLogger(Config.class);
 
@@ -119,8 +127,7 @@ public class Config{
 	}
 
 	public static void loadFromDatabase() throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		try(ResultSet res=conn.createStatement().executeQuery("SELECT * FROM config")){
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection(); ResultSet res=new SQLQueryBuilder(conn).selectFrom("config").allColumns().execute()){
 			HashMap<String, String> dbValues=new HashMap<>();
 			while(res.next()){
 				dbValues.put(res.getString(1), res.getString(2));
@@ -170,6 +177,30 @@ public class Config{
 				}
 			}catch(NoSuchAlgorithmException|InvalidKeySpecException ignore){}
 
+			String obfKey=dbValues.get("ObjectIdObfuscationKey");
+			if(obfKey==null){
+				byte[] key=new byte[16];
+				new SecureRandom().nextBytes(key);
+				updateInDatabase("ObjectIdObfuscationKey", Base64.getEncoder().encodeToString(key));
+				objectIdObfuscationKey=key;
+			}else{
+				objectIdObfuscationKey=Base64.getDecoder().decode(obfKey);
+			}
+			try{
+				MessageDigest md=MessageDigest.getInstance("SHA-256");
+				for(ObfuscatedObjectIDType type:ObfuscatedObjectIDType.values()){
+					ByteArrayOutputStream buf=new ByteArrayOutputStream();
+					buf.write(objectIdObfuscationKey);
+					buf.write(type.toString().getBytes(StandardCharsets.UTF_8));
+					DataInputStream in=new DataInputStream(new ByteArrayInputStream(md.digest(buf.toByteArray())));
+					int[] key=new int[4];
+					for(int i=0;i<4;i++){
+						key[i]=in.readInt();
+					}
+					objectIdObfuscationKeysByType[type.ordinal()]=key;
+				}
+			}catch(NoSuchAlgorithmException|IOException ignore){}
+
 			TopLevelDomainList.lastUpdatedTime=Long.parseLong(dbValues.getOrDefault("TLDList_LastUpdated", "0"));
 			if(TopLevelDomainList.lastUpdatedTime>0){
 				TopLevelDomainList.update(dbValues.get("TLDList_Data"));
@@ -178,24 +209,25 @@ public class Config{
 	}
 
 	public static void updateInDatabase(String key, String value) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO config (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value`=values(`value`)");
-		stmt.setString(1, key);
-		stmt.setString(2, value);
-		stmt.executeUpdate();
+		new SQLQueryBuilder()
+				.insertInto("config")
+				.value("key", key)
+				.value("value", value)
+				.onDuplicateKeyUpdate()
+				.executeNoResult();
 	}
 
 	public static void updateInDatabase(Map<String, String> values) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		PreparedStatement stmt=conn.prepareStatement("INSERT INTO config (`key`, `value`) VALUES "+String.join(", ", Collections.nCopies(values.size(), "(?, ?)"))+" ON DUPLICATE KEY UPDATE `value`=values(`value`)");
-		int i=1;
-		for(Map.Entry<String, String> e: values.entrySet()){
-			stmt.setString(i, e.getKey());
-			stmt.setString(i+1, e.getValue());
-			i+=2;
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=conn.prepareStatement("INSERT INTO config (`key`, `value`) VALUES "+String.join(", ", Collections.nCopies(values.size(), "(?, ?)"))+" ON DUPLICATE KEY UPDATE `value`=values(`value`)");
+			int i=1;
+			for(Map.Entry<String, String> e: values.entrySet()){
+				stmt.setString(i, e.getKey());
+				stmt.setString(i+1, e.getValue());
+				i+=2;
+			}
+			stmt.execute();
 		}
-		LOG.debug("{}", stmt);
-		stmt.execute();
 	}
 
 	public static URI localURI(String path){

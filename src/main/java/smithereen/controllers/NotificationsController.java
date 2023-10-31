@@ -3,10 +3,10 @@ package smithereen.controllers;
 import java.sql.SQLException;
 
 import smithereen.ApplicationContext;
-import smithereen.data.Account;
-import smithereen.data.PaginatedList;
-import smithereen.data.User;
-import smithereen.data.notifications.Notification;
+import smithereen.model.Account;
+import smithereen.model.PaginatedList;
+import smithereen.model.User;
+import smithereen.model.notifications.Notification;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.SessionStorage;

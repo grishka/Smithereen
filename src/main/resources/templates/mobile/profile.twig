@@ -1,7 +1,12 @@
 {%extends "page"%}
 {%block content%}
-{%if user.domain is not null%}
 <div class="cardsBackdrop">
+{% if movedTo is not null %}
+<div class="card padded">
+	{{ L('profile_moved', {'name': user | name('first')}) }}<br/>
+	<a href="{{ movedTo.profileURL }}">{{ L('profile_moved_link', {'domain': movedTo.domain, 'name': movedTo | name}) }}</a>
+</div>
+{% elseif user.domain is not null %}
 <div class="card padded">
 	{{L('incomplete_profile')}}<br/>
 	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', {'domain': user.domain})}}</a>
@@ -14,13 +19,13 @@
 				{{ user | pictureForAvatar('m') }}
 			</td>
 			<td class="profileNameW">
-				<h2 class="profileName">{{ user.completeName }}</h2>
+				<h2 class="profileName">{{ user | name('complete') }}</h2>
 			</td>
 		</tr>
 	</table>
 </div>
 <div class="card singleColumn">
-	{% if currentUser is not null and currentUser.id!=user.id and not isSelfBlocked %}
+	{% if currentUser is not null and currentUser.id!=user.id and not isSelfBlocked and movedTo is null %}
 		<div class="profileBelowAva">
 		{{friendshipStatusText}}
 			{%if not(isFriend) and not(following) and not(friendRequestSent) and not(followRequested)%}
@@ -34,6 +39,9 @@
 				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("follow")}}</a>
 			{%endif%}
 			{%endif%}
+			{% if canMessage %}
+			<a href="/my/mail/compose?to={{ user.id }}" class="button withText">{{ L('profile_write_message') }}</a>
+			{% endif %}
 		</div>
 	{%endif%}
 	<ul class="actionList">

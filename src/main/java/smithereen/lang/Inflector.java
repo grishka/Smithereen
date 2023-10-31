@@ -2,7 +2,7 @@ package smithereen.lang;
 
 import org.jetbrains.annotations.Nullable;
 
-import smithereen.data.User;
+import smithereen.model.User;
 
 public abstract class Inflector{
 	public abstract boolean isInflectable(String str);

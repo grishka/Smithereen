@@ -1,6 +1,5 @@
 package smithereen.storage;
 
-import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -9,25 +8,25 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
-import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import smithereen.Utils;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
+import smithereen.storage.sql.SQLQueryBuilder;
 
 public class DatabaseUtils{
 
 	private static final Object UNIQUE_USERNAME_LOCK=new Object();
 
 	public static ArrayList<Integer> intResultSetToList(ResultSet res) throws SQLException{
-		res.beforeFirst();
 		ArrayList<Integer> list=new ArrayList<>();
 		while(res.next()){
 			list.add(res.getInt(1));
@@ -38,13 +37,19 @@ public class DatabaseUtils{
 
 	public static int oneFieldToInt(final ResultSet res) throws SQLException{
 		try(res){
-			return res.first() ? res.getInt(1) : -1;
+			return res.next() ? res.getInt(1) : -1;
+		}
+	}
+
+	public static long oneFieldToLong(final ResultSet res) throws SQLException{
+		try(res){
+			return res.next() ? res.getLong(1) : -1;
 		}
 	}
 
 	public static <T> T oneFieldToObject(final ResultSet res, Class<T> type) throws SQLException{
 		try(res){
-			return res.first() ? res.getObject(1, type) : null;
+			return res.next() ? res.getObject(1, type) : null;
 		}
 	}
 
@@ -59,23 +64,24 @@ public class DatabaseUtils{
 		if(Utils.isReservedUsername(username))
 			return false;
 		synchronized(UNIQUE_USERNAME_LOCK){
-			Connection conn=DatabaseConnectionManager.getConnection();
-			PreparedStatement stmt=conn.prepareStatement("SELECT COUNT(*) FROM `users` WHERE username=? AND domain=''");
-			stmt.setString(1, username);
-			try(ResultSet res=stmt.executeQuery()){
-				res.first();
-				if(res.getInt(1)>0)
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+				int userCount=new SQLQueryBuilder(conn)
+						.selectFrom("users")
+						.count()
+						.where("username=? AND domain=''", username)
+						.executeAndGetInt();
+				if(userCount>0)
 					return false;
-			}
-			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `groups` WHERE username=? AND domain=''");
-			stmt.setString(1, username);
-			try(ResultSet res=stmt.executeQuery()){
-				res.first();
-				if(res.getInt(1)>0)
+				int groupCount=new SQLQueryBuilder(conn)
+						.selectFrom("groups")
+						.count()
+						.where("username=? AND domain=''", username)
+						.executeAndGetInt();
+				if(groupCount>0)
 					return false;
+				action.run();
+				return true;
 			}
-			action.run();
-			return true;
 		}
 	}
 
@@ -88,14 +94,13 @@ public class DatabaseUtils{
 	public static int insertAndGetID(PreparedStatement stmt) throws SQLException{
 		stmt.execute();
 		try(ResultSet keys=stmt.getGeneratedKeys()){
-			keys.first();
+			keys.next();
 			return keys.getInt(1);
 		}
 	}
 
 	public static IntStream intResultSetToStream(ResultSet res) throws SQLException{
 		try{
-			res.beforeFirst();
 			return StreamSupport.intStream(new Spliterators.AbstractIntSpliterator(Long.MAX_VALUE, Spliterator.ORDERED){
 				@Override
 				public boolean tryAdvance(IntConsumer action){
@@ -128,9 +133,8 @@ public class DatabaseUtils{
 		}
 	}
 
-	public static <T> Stream<T> resultSetToObjectStream(ResultSet res, ResultSetDeserializerFunction<T> creator) throws SQLException{
+	public static <T> Stream<T> resultSetToObjectStream(ResultSet res, ResultSetDeserializerFunction<T> creator, Runnable close) throws SQLException{
 		try{
-			res.beforeFirst();
 			return StreamSupport.stream(new Spliterators.AbstractSpliterator<T>(Long.MAX_VALUE, Spliterator.ORDERED){
 				@Override
 				public boolean tryAdvance(Consumer<? super T> action){
@@ -140,6 +144,8 @@ public class DatabaseUtils{
 							return true;
 						}else{
 							res.close();
+							if(close!=null)
+								close.run();
 						}
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
@@ -154,6 +160,8 @@ public class DatabaseUtils{
 							action.accept(creator.deserialize(res));
 						}
 						res.close();
+						if(close!=null)
+							close.run();
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
 					}
@@ -179,7 +187,7 @@ public class DatabaseUtils{
 		return date==null ? null : date.toLocalDate();
 	}
 
-	public static void doWithTransaction(Connection conn, SQLRunnable r) throws SQLException{
+	public static void doWithTransaction(DatabaseConnection conn, SQLRunnable r) throws SQLException{
 		boolean success=false;
 		try{
 			conn.createStatement().execute("START TRANSACTION");

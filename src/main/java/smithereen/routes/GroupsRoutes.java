@@ -2,7 +2,8 @@ package smithereen.routes;
 
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
-import org.jsoup.safety.Whitelist;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -12,6 +13,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,22 +26,23 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
-import smithereen.data.Account;
-import smithereen.data.ActorWithDescription;
-import smithereen.data.ForeignGroup;
-import smithereen.data.Group;
-import smithereen.data.GroupAdmin;
-import smithereen.data.PaginatedList;
-import smithereen.data.Post;
-import smithereen.data.SessionInfo;
-import smithereen.data.SizedImage;
-import smithereen.data.User;
-import smithereen.data.UserInteractions;
-import smithereen.data.WebDeltaResponse;
+import smithereen.model.Account;
+import smithereen.model.ActorWithDescription;
+import smithereen.model.ForeignGroup;
+import smithereen.model.Group;
+import smithereen.model.GroupAdmin;
+import smithereen.model.PaginatedList;
+import smithereen.model.SessionInfo;
+import smithereen.model.SizedImage;
+import smithereen.model.User;
+import smithereen.model.UserInteractions;
+import smithereen.model.WebDeltaResponse;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.exceptions.BadRequestException;
 import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
+import smithereen.util.Whitelist;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -48,6 +51,7 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.*;
 
 public class GroupsRoutes{
+	private static final Logger LOG=LoggerFactory.getLogger(GroupsRoutes.class);
 
 	private static Group getGroup(Request req){
 		int id=parseIntOrDefault(req.params(":id"), 0);
@@ -171,6 +175,7 @@ public class GroupsRoutes{
 		Lang l=lang(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group", req);
 
+
 		// Public info: still visible for non-members in public groups
 		List<User> members=ctx.getGroupsController().getRandomMembersForProfile(group, false);
 		model.with("group", group).with("members", members);
@@ -184,14 +189,17 @@ public class GroupsRoutes{
 		int wallPostsCount=0;
 		if(canAccessContent){
 			int offset=offset(req);
-			PaginatedList<Post> wall=ctx.getWallController().getWallPosts(group, false, offset, 20);
+			PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, group, false, offset, 20));
 			wallPostsCount=wall.total;
 			if(req.attribute("mobile")==null){
-				ctx.getWallController().populateCommentPreviews(wall.list);
+				ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
 			}
 			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
-			model.with("postCount", wall.total).paginate(wall);
+			model.with("postCount", wall.total).paginate(wall).with("canPostOnWall", self!=null).with("canSeeOthersPosts", true);
 			model.with("postInteractions", interactions);
+			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+			PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
+			model.with("users", ctx.getUsersController().getUsers(needUsers));
 		}
 
 		if(group instanceof ForeignGroup)

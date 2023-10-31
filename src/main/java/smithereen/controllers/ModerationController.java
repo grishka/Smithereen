@@ -14,21 +14,24 @@ import java.util.ArrayList;
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
 import smithereen.Utils;
-import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
-import smithereen.data.AdminNotifications;
-import smithereen.data.FederationRestriction;
-import smithereen.data.ForeignGroup;
-import smithereen.data.ForeignUser;
-import smithereen.data.Group;
-import smithereen.data.PaginatedList;
-import smithereen.data.Post;
-import smithereen.data.Server;
-import smithereen.data.User;
-import smithereen.data.ViolationReport;
+import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.AdminNotifications;
+import smithereen.model.FederationRestriction;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
+import smithereen.model.Group;
+import smithereen.model.MailMessage;
+import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.PaginatedList;
+import smithereen.model.Post;
+import smithereen.model.Server;
+import smithereen.model.User;
+import smithereen.model.ViolationReport;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.ModerationStorage;
+import smithereen.util.XTEA;
 
 public class ModerationController{
 	private static final Logger LOG=LoggerFactory.getLogger(ModerationController.class);
@@ -40,27 +43,27 @@ public class ModerationController{
 		this.context=context;
 	}
 
-	public void createViolationReport(User self, Actor target, @Nullable ActivityPubObject content, String comment, boolean forward){
+	public void createViolationReport(User self, Actor target, @Nullable Object content, String comment, boolean forward){
 		int reportID=createViolationReportInternal(self, target, content, comment, null);
 		if(forward && (target instanceof ForeignGroup || target instanceof ForeignUser)){
 			ArrayList<URI> objectIDs=new ArrayList<>();
 			objectIDs.add(target.activityPubID);
-			if(content!=null)
-				objectIDs.add(content.activityPubID);
+			if(content instanceof ActivityPubRepresentable apr)
+				objectIDs.add(apr.getActivityPubID());
 			context.getActivityPubWorker().sendViolationReport(reportID, comment, objectIDs, target);
 		}
 	}
 
-	public void createViolationReport(@Nullable User self, Actor target, @Nullable ActivityPubObject content, String comment, String otherServerDomain){
+	public void createViolationReport(@Nullable User self, Actor target, @Nullable Object content, String comment, String otherServerDomain){
 		createViolationReportInternal(self, target, content, comment, otherServerDomain);
 	}
 
-	private int createViolationReportInternal(@Nullable User self, Actor target, @Nullable ActivityPubObject content, String comment, String otherServerDomain){
+	private int createViolationReportInternal(@Nullable User self, Actor target, @Nullable Object content, String comment, String otherServerDomain){
 		try{
 			ViolationReport.TargetType targetType;
 			ViolationReport.ContentType contentType;
 			int targetID;
-			int contentID;
+			long contentID;
 			if(target instanceof User u){
 				targetType=ViolationReport.TargetType.USER;
 				targetID=u.id;
@@ -74,6 +77,9 @@ public class ModerationController{
 			if(content instanceof Post p){
 				contentType=ViolationReport.ContentType.POST;
 				contentID=p.id;
+			}else if(content instanceof MailMessage msg){
+				contentType=ViolationReport.ContentType.MESSAGE;
+				contentID=XTEA.deobfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE);
 			}else{
 				contentType=null;
 				contentID=0;

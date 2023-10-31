@@ -4,14 +4,14 @@
 	{% include "pagination" %}
 </div>
 <div class="userGrid">
-	{%for user in items%}
+	{% for user in items %}
 	<div class="userGridItem">
-		<a href="{{user.profileURL}}">
-			{{user | pictureForAvatar('s')}}
-			<div class="name">{{user.fullName}}</div>
+		<a href="{{ user.profileURL }}">
+			{{ user | pictureForAvatar('s') }}
+			<div class="name">{{ user | name }}</div>
 		</a>
 	</div>
-	{%endfor%}
+	{% endfor %}
 </div>
 <div class="bottomSummaryWrap">{% include "pagination" %}</div>
 {% else %}

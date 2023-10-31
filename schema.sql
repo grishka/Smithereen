@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.0.28, for macos12.2 (arm64)
+-- MySQL dump 10.13  Distrib 8.0.32, for macos13.0 (arm64)
 --
 -- Host: localhost    Database: smithereen
 -- ------------------------------------------------------
--- Server version	8.0.28
+-- Server version	8.0.32
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 
 --
@@ -252,8 +252,67 @@ CREATE TABLE `likes` (
   `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   UNIQUE KEY `user_id` (`user_id`,`object_id`,`object_type`),
   UNIQUE KEY `id` (`id`),
-  KEY `object_type` (`object_type`,`object_id`),
-  CONSTRAINT `likes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+  KEY `object_type` (`object_type`,`object_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `mail_messages`
+--
+
+CREATE TABLE `mail_messages` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `owner_id` int unsigned NOT NULL,
+  `sender_id` int unsigned NOT NULL,
+  `to` varbinary(1024) NOT NULL,
+  `cc` varbinary(1024) DEFAULT NULL,
+  `text` text NOT NULL,
+  `subject` text NOT NULL,
+  `attachments` json DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `read_receipts` varbinary(1024) DEFAULT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `reply_info` json DEFAULT NULL,
+  `related_message_ids` varbinary(1024) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `owner_id` (`owner_id`),
+  KEY `sender_id` (`sender_id`),
+  KEY `ap_id` (`ap_id`),
+  KEY `deleted_at` (`deleted_at`),
+  KEY `read_receipts` (`read_receipts`),
+  FULLTEXT KEY `text` (`text`,`subject`),
+  CONSTRAINT `mail_messages_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `mail_messages_peers`
+--
+
+CREATE TABLE `mail_messages_peers` (
+  `owner_id` int unsigned NOT NULL,
+  `peer_id` int unsigned NOT NULL,
+  `message_id` bigint unsigned NOT NULL,
+  KEY `owner_id` (`owner_id`),
+  KEY `message_id` (`message_id`),
+  KEY `peer_id` (`peer_id`),
+  CONSTRAINT `mail_messages_peers_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mail_messages_peers_ibfk_2` FOREIGN KEY (`message_id`) REFERENCES `mail_messages` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `mail_privacy_grants`
+--
+
+CREATE TABLE `mail_privacy_grants` (
+  `owner_id` int unsigned NOT NULL,
+  `user_id` int unsigned NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `messages_remain` int unsigned NOT NULL,
+  PRIMARY KEY (`owner_id`,`user_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `mail_privacy_grants_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mail_privacy_grants_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -351,7 +410,6 @@ CREATE TABLE `poll_votes` (
   KEY `user_id` (`user_id`),
   KEY `poll_id` (`poll_id`),
   KEY `option_id` (`option_id`),
-  CONSTRAINT `poll_votes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `poll_votes_ibfk_2` FOREIGN KEY (`poll_id`) REFERENCES `polls` (`id`) ON DELETE CASCADE,
   CONSTRAINT `poll_votes_ibfk_3` FOREIGN KEY (`option_id`) REFERENCES `poll_options` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -399,7 +457,7 @@ CREATE TABLE `reports` (
   `target_type` tinyint unsigned NOT NULL,
   `content_type` tinyint unsigned DEFAULT NULL,
   `target_id` int unsigned NOT NULL,
-  `content_id` int unsigned DEFAULT NULL,
+  `content_id` bigint unsigned DEFAULT NULL,
   `comment` text NOT NULL,
   `moderator_id` int unsigned DEFAULT NULL,
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -407,9 +465,7 @@ CREATE TABLE `reports` (
   `server_domain` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `reporter_id` (`reporter_id`),
-  KEY `moderator_id` (`moderator_id`),
-  CONSTRAINT `reports_ibfk_1` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `reports_ibfk_2` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`)
+  KEY `moderator_id` (`moderator_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -521,6 +577,7 @@ CREATE TABLE `users` (
   `last_updated` timestamp NULL DEFAULT NULL,
   `flags` bigint unsigned NOT NULL,
   `endpoints` json DEFAULT NULL,
+  `privacy` json DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
   UNIQUE KEY `ap_id` (`ap_id`)
@@ -536,7 +593,7 @@ CREATE TABLE `wall_posts` (
   `owner_user_id` int unsigned DEFAULT NULL,
   `owner_group_id` int unsigned DEFAULT NULL,
   `text` text,
-  `attachments` text,
+  `attachments` json DEFAULT NULL,
   `repost_of` int unsigned DEFAULT NULL,
   `ap_url` varchar(300) DEFAULT NULL,
   `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
@@ -551,6 +608,7 @@ CREATE TABLE `wall_posts` (
   `federation_state` tinyint unsigned NOT NULL DEFAULT '0',
   `source` text,
   `source_format` tinyint unsigned DEFAULT NULL,
+  `privacy` tinyint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -561,10 +619,9 @@ CREATE TABLE `wall_posts` (
   KEY `poll_id` (`poll_id`),
   CONSTRAINT `wall_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `wall_posts_ibfk_2` FOREIGN KEY (`repost_of`) REFERENCES `wall_posts` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `wall_posts_ibfk_3` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `wall_posts_ibfk_4` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2023-01-20 21:59:28
+-- Dump completed on 2023-10-26 17:12:16

@@ -3,10 +3,9 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonObject;
 
 import java.time.Instant;
-import java.util.Date;
 
 import smithereen.Utils;
-import smithereen.activitypub.ContextCollector;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 
 public class Tombstone extends ActivityPubObject{
@@ -20,8 +19,8 @@ public class Tombstone extends ActivityPubObject{
 	}
 
 	@Override
-	public JsonObject asActivityPubObject(JsonObject obj, ContextCollector contextCollector){
-		obj=super.asActivityPubObject(obj, contextCollector);
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
 		if(formerType!=null)
 			obj.addProperty("formerType", formerType);
 		if(deleted!=null)

@@ -4,7 +4,7 @@ import org.jetbrains.annotations.Nullable;
 
 import smithereen.LruCache;
 import smithereen.activitypub.objects.activities.Undo;
-import smithereen.data.Timestamped;
+import smithereen.model.Timestamped;
 
 /**
  * Temporary objects are kept here.

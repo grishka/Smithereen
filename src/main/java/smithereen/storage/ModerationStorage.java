@@ -2,18 +2,20 @@ package smithereen.storage;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 
-import smithereen.data.PaginatedList;
-import smithereen.data.Server;
-import smithereen.data.ViolationReport;
+import smithereen.model.PaginatedList;
+import smithereen.model.Server;
+import smithereen.model.ViolationReport;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
+import smithereen.storage.sql.SQLQueryBuilder;
 import spark.utils.StringUtils;
 
 public class ModerationStorage{
-	public static int createViolationReport(int reporterID, ViolationReport.TargetType targetType, int targetID, ViolationReport.ContentType contentType, int contentID, String comment, String otherServerDomain) throws SQLException{
+	public static int createViolationReport(int reporterID, ViolationReport.TargetType targetType, int targetID, ViolationReport.ContentType contentType, long contentID, String comment, String otherServerDomain) throws SQLException{
 		SQLQueryBuilder bldr=new SQLQueryBuilder()
 				.insertInto("reports")
 				.value("reporter_id", reporterID!=0 ? reporterID : null)
@@ -60,45 +62,46 @@ public class ModerationStorage{
 	}
 
 	public static PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, boolean restrictedOnly, String query) throws SQLException{
-		Connection conn=DatabaseConnectionManager.getConnection();
-		String where="";
-		Object[] whereArgs={};
-		if(availability!=null){
-			where=switch(availability){
-				case UP -> "is_up=1";
-				case DOWN -> "is_up=0";
-				case FAILING -> "error_day_count>0";
-			};
-		}
-		if(restrictedOnly){
-			if(where.length()>0)
-				where+=" AND ";
-			where+="is_restricted=1";
-		}
-		if(StringUtils.isNotEmpty(query)){
-			if(where.length()>0)
-				where+=" AND ";
-			where+="host LIKE ?";
-			whereArgs=new Object[]{"%"+query+"%"};
-		}
-		if(where.isEmpty())
-			where=null;
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String where="";
+			Object[] whereArgs={};
+			if(availability!=null){
+				where=switch(availability){
+					case UP -> "is_up=1";
+					case DOWN -> "is_up=0";
+					case FAILING -> "error_day_count>0";
+				};
+			}
+			if(restrictedOnly){
+				if(where.length()>0)
+					where+=" AND ";
+				where+="is_restricted=1";
+			}
+			if(StringUtils.isNotEmpty(query)){
+				if(where.length()>0)
+					where+=" AND ";
+				where+="host LIKE ?";
+				whereArgs=new Object[]{"%"+query+"%"};
+			}
+			if(where.isEmpty())
+				where=null;
 
-		int total=new SQLQueryBuilder(conn)
-				.selectFrom("servers")
-				.count()
-				.where(where, whereArgs)
-				.executeAndGetInt();
-		if(total==0)
-			return PaginatedList.emptyList(count);
-		List<Server> servers=new SQLQueryBuilder(conn)
-				.selectFrom("servers")
-				.allColumns()
-				.where(where, whereArgs)
-				.limit(count, offset)
-				.executeAsStream(Server::fromResultSet)
-				.toList();
-		return new PaginatedList<>(servers, total, offset, count);
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("servers")
+					.count()
+					.where(where, whereArgs)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Server> servers=new SQLQueryBuilder(conn)
+					.selectFrom("servers")
+					.allColumns()
+					.where(where, whereArgs)
+					.limit(count, offset)
+					.executeAsStream(Server::fromResultSet)
+					.toList();
+			return new PaginatedList<>(servers, total, offset, count);
+		}
 	}
 
 	public static Server getServerByDomain(String domain) throws SQLException{

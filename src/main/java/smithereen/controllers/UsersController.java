@@ -7,19 +7,18 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import smithereen.ApplicationContext;
 import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
-import smithereen.data.Account;
-import smithereen.data.ForeignUser;
-import smithereen.data.Group;
-import smithereen.data.PaginatedList;
-import smithereen.data.SignupInvitation;
-import smithereen.data.SignupRequest;
-import smithereen.data.User;
+import smithereen.model.Account;
+import smithereen.model.ForeignUser;
+import smithereen.model.Group;
+import smithereen.model.PaginatedList;
+import smithereen.model.SignupInvitation;
+import smithereen.model.SignupRequest;
+import smithereen.model.User;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -269,8 +268,18 @@ public class UsersController{
 	}
 
 	public Map<Integer, User> getUsers(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
 		try{
 			return UserStorage.getById(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteForeignUser(ForeignUser user){
+		try{
+			UserStorage.deleteUser(user);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

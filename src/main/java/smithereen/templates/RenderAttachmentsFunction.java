@@ -1,9 +1,9 @@
 package smithereen.templates;
 
-import com.mitchellbosecke.pebble.extension.Function;
-import com.mitchellbosecke.pebble.extension.escaper.SafeString;
-import com.mitchellbosecke.pebble.template.EvaluationContext;
-import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import io.pebbletemplates.pebble.extension.Function;
+import io.pebbletemplates.pebble.extension.escaper.SafeString;
+import io.pebbletemplates.pebble.template.EvaluationContext;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 
 import org.jetbrains.annotations.NotNull;
 import org.unbescape.html.HtmlEscape;
@@ -20,15 +20,15 @@ import java.util.stream.Collectors;
 
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
-import smithereen.data.Group;
-import smithereen.data.SizedImage;
-import smithereen.data.User;
-import smithereen.data.attachments.Attachment;
-import smithereen.data.attachments.AudioAttachment;
-import smithereen.data.attachments.GraffitiAttachment;
-import smithereen.data.attachments.PhotoAttachment;
-import smithereen.data.attachments.SizedAttachment;
-import smithereen.data.attachments.VideoAttachment;
+import smithereen.model.Group;
+import smithereen.model.SizedImage;
+import smithereen.model.User;
+import smithereen.model.attachments.Attachment;
+import smithereen.model.attachments.AudioAttachment;
+import smithereen.model.attachments.GraffitiAttachment;
+import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.attachments.SizedAttachment;
+import smithereen.model.attachments.VideoAttachment;
 import smithereen.lang.Lang;
 import smithereen.util.BlurHash;
 import spark.utils.StringUtils;

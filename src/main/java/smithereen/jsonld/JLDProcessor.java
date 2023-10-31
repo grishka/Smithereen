@@ -55,6 +55,8 @@ public class JLDProcessor{
 		// ActivityStreams aliases
 		lc.addProperty("sensitive", "as:sensitive");
 		lc.addProperty("manuallyApprovesFollowers", "as:manuallyApprovesFollowers");
+		lc.add("movedTo", idAndTypeObject("as:movedTo", "@id"));
+		lc.add("alsoKnownAs", idAndTypeObject("as:alsoKnownAs", "@id"));
 
 		// Mastodon aliases
 		lc.addProperty("blurhash", "toot:blurhash");
@@ -78,6 +80,15 @@ public class JLDProcessor{
 		lc.addProperty("CollectionQueryResult", "sm:CollectionQueryResult");
 		lc.addProperty("tentative", "sm:tentative");
 		lc.addProperty("graffiti", "sm:graffiti");
+		lc.addProperty("privacySettings", "sm:privacySettings");
+		lc.addProperty("allowedTo", "sm:allowedTo");
+		lc.addProperty("except", "sm:except");
+		// privacy settings keys
+		lc.addProperty("wallPosting", "sm:wallPosting");
+		lc.addProperty("wallPostVisibility", "sm:wallPostVisibility");
+		lc.addProperty("commenting", "sm:commenting");
+		lc.addProperty("groupInvitations", "sm:groupInvitations");
+		lc.addProperty("directMessages", "sm:directMessages");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

@@ -6,8 +6,8 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Block;
 import smithereen.activitypub.objects.activities.Undo;
-import smithereen.data.ForeignUser;
-import smithereen.data.User;
+import smithereen.model.ForeignUser;
+import smithereen.model.User;
 import smithereen.storage.UserStorage;
 
 public class PersonUndoBlockPersonHandler extends NestedActivityTypeHandler<ForeignUser, Undo, Block, User>{

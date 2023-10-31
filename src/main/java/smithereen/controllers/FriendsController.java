@@ -7,18 +7,15 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Map;
 
-import javax.swing.SortOrder;
-
 import smithereen.ApplicationContext;
 import smithereen.Utils;
-import smithereen.data.ForeignUser;
-import smithereen.data.FriendRequest;
-import smithereen.data.FriendshipStatus;
-import smithereen.data.PaginatedList;
-import smithereen.data.User;
-import smithereen.data.WebDeltaResponse;
-import smithereen.data.feed.NewsfeedEntry;
-import smithereen.data.notifications.Notification;
+import smithereen.model.ForeignUser;
+import smithereen.model.FriendRequest;
+import smithereen.model.FriendshipStatus;
+import smithereen.model.PaginatedList;
+import smithereen.model.User;
+import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.notifications.Notification;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.storage.NotificationsStorage;
@@ -89,6 +86,20 @@ public class FriendsController{
 	public FriendshipStatus getFriendshipStatus(User self, User other){
 		try{
 			return UserStorage.getFriendshipStatus(self.id, other.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	/**
+	 * Same as getFriendshipStatus but doesn't check friend requests
+	 * @param self
+	 * @param other
+	 * @return
+	 */
+	public FriendshipStatus getSimpleFriendshipStatus(User self, User other){
+		try{
+			return UserStorage.getSimpleFriendshipStatus(self.id, other.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

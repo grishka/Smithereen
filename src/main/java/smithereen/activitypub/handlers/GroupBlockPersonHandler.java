@@ -5,8 +5,8 @@ import java.sql.SQLException;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Block;
-import smithereen.data.ForeignGroup;
-import smithereen.data.User;
+import smithereen.model.ForeignGroup;
+import smithereen.model.User;
 import smithereen.storage.GroupStorage;
 
 public class GroupBlockPersonHandler extends ActivityTypeHandler<ForeignGroup, Block, User>{

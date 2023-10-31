@@ -1,5 +1,5 @@
-{# @pebvariable name="poll" type="smithereen.data.Poll" #}
-{# @pebvariable name="interactions" type="smithereen.data.UserInteractions" #}
+{# @pebvariable name="poll" type="smithereen.model.Poll" #}
+{# @pebvariable name="interactions" type="smithereen.model.UserInteractions" #}
 <div class="poll" id="poll{{ poll.id }}">
 {% block inner %}
 	<div>
@@ -12,7 +12,7 @@
 				{% for opt in poll.options %}
 					<label>
 						<input type="checkbox" name="option" value="{{ opt.id }}" onchange="onPollInputChange(this)"/>
-						{{ opt.name }}
+						{{ opt.text }}
 					</label>
 				{% endfor %}
 				<input type="submit" value="{{ L('submit_vote') }}" id="pollSubmit{{ poll.id }}"/>
@@ -23,7 +23,7 @@
 				{% for opt in poll.options %}
 					<label>
 						<input type="radio" name="option" value="{{ opt.id }}" onchange="onPollInputChange(this)"/>
-						{{ opt.name }}
+						{{ opt.text }}
 					</label>
 				{% endfor %}
 				<noscript>
@@ -43,7 +43,7 @@
 			<a href="/posts/{{ post.id }}/pollVoters/{{ opt.id }}" class="undecoratedLink">
 			{% endif %}
 			<div class="pollResultRow{{ interactions.pollChoices contains opt.id ? ' userChoice' : '' }}">
-				{{ opt.name }}
+				{{ opt.text }}
 				<div class="pollResultBarW">
 					<div class="pollResultBarBG">
 						<div class="pollResultBarFG" style="transform: scaleX({{ maxOptionVotes>0 ? (opt.numVotes*1.0)/maxOptionVotes : 0 }})"></div>

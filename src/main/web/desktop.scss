@@ -49,6 +49,7 @@ h2{
 	margin: 0;
 	padding-bottom: 2px;
 	border-bottom: solid 1px $mainHeaderSeparator;
+	line-height: 1.27em;
 }
 
 h3{
@@ -658,14 +659,11 @@ small{
 }
 
 .ownProfileAvaPlaceholderLabel{
-	color: $grayText;
-	display: inline-block;
-	width: 100%;
-	height: 68px;
-	line-height: 68px;
+	color: $normalLink;
 	text-align: center;
-	position: absolute;
-	bottom: 0;
+	padding: 1px 5px 7px;
+	border-bottom: solid 1px #ffe222;
+	background: #fff8cc;
 }
 
 .membersRow td{
@@ -1004,7 +1002,6 @@ select{
 	width: 410px;
 	min-width: 410px;
 	border-radius: 2px;
-	overflow: hidden;
 	pointer-events: auto;
 	@include layer-shadow;
 	&.wide{
@@ -1017,26 +1014,26 @@ select{
 			overflow-y: auto;
 			position: relative;
 		}
-		.scrollableShadowWrap{
-			position: relative;
-			.shadowTop, .shadowBottom{
-				position: absolute;
-				height: 2px;
-				left: 0;
-				right: 0;
-				background: #000;
-				opacity: .08;
-				transition: opacity .15s ease;
-			}
-			.shadowTop{
-				top: 0;
-			}
-			.shadowBottom{
-				bottom: 0;
-			}
-			&.scrollAtTop .shadowTop, &.scrollAtBottom .shadowBottom{
-				opacity: 0;
-			}
+	}
+	.scrollableShadowWrap{
+		position: relative;
+		.shadowTop, .shadowBottom{
+			position: absolute;
+			height: 2px;
+			left: 0;
+			right: 0;
+			background: #000;
+			opacity: .08;
+			transition: opacity .15s ease;
+		}
+		.shadowTop{
+			top: 0;
+		}
+		.shadowBottom{
+			bottom: 0;
+		}
+		&.scrollAtTop .shadowTop, &.scrollAtBottom .shadowBottom{
+			opacity: 0;
 		}
 	}
 }
@@ -1055,6 +1052,7 @@ select{
 	border: solid 1px $headerBorderBottomDark;
 	box-shadow: 0 1px 0 $headerBorderBottomLight inset;
 	position: relative;
+	border-radius: 2px 2px 0 0;
 	.close{
 		display: block;
 		width: 30px;
@@ -1082,6 +1080,7 @@ select{
 	align-items: center;
 	justify-content: flex-end;
 	padding: 0 5px;
+	border-radius: 0 0 2px 2px;
 	>button{
 		margin: 0 5px;
 	}
@@ -1115,17 +1114,23 @@ select{
 }
 
 .profileBelowAva{
-	background: $gray;
-	border-bottom: solid 1px $darkerGray;
+	background: $blockUnderboxBackground;
 	text-align: center;
-	padding: 22px 16px 16px 16px;
-	margin-top: -6px;
+	padding: 0 8px;
+	margin-top: 8px;
 	color: $textOnGray;
+	overflow: hidden; /* suppress margin collapse with child elements */
 	.button{
 		width: 100%;
-		&.withText{
-			margin-top: 8px;
-		}
+		height: 28px;
+		line-height: 26px;
+		display: block;
+	}
+	>*{
+		margin: 8px 0;
+	}
+	.friendshipStatus{
+		padding: 7.5px 0;
 	}
 }
 
@@ -1137,6 +1142,9 @@ select{
 	}
 	.curPage{
 		font-weight: bold;
+	}
+	.loader{
+		margin-right: 5px;
 	}
 }
 
@@ -1515,9 +1523,15 @@ select{
 	}
 }
 
-.narrowWall .postAttachments .aspectWrapper .pseudoImage, .comment .postAttachments .aspectWrapper .pseudoImage{
-	max-width: 330px;
-	max-width: min(330px, 100%);
+.narrowWall, .comment, .mailMessageView{
+	.postAttachments .aspectWrapper .pseudoImage{
+		max-width: 330px;
+		max-width: min(330px, 100%);
+	}
+}
+
+.mailMessageView .postAttachments .aspectWrapper .pseudoImage{
+	max-width: 100%;
 }
 
 .narrowWall{
@@ -1637,14 +1651,20 @@ select{
 	.popupMenu{
 		position: absolute;
 		z-index: 1;
-		left: -26px;
+		left: -6px;
 		background: #fff;
 		cursor: pointer;
-		border-radius: 2px;
+		border: solid 1px $auxiliaryBlockHeader;
 		color: $normalLink;
 		min-width: 115px;
 		@include popup-shadow;
 		text-align: left;
+		&.withIcons{
+			left: -27px;
+			.menuTitle{
+				padding: 0 10px 0 26px;
+			}
+		}
 
 		ul{
 			list-style-type: none;
@@ -1656,22 +1676,82 @@ select{
 				line-height: 26px;
 				padding-right: 10px;
 				white-space: nowrap;
-				&:hover, &.selected{
+				&:hover:not(.forceUnselected), &.selected{
 					background-color: $blockBackground;
+					.ddIcon{
+						visibility: visible;
+					}
 				}
 			}
 		}
 		.menuTitle{
 			height: 26px;
 			line-height: 26px;
-			padding: 0 10px 0 26px;
+			padding: 0 5px;
 			background-color: color($blockBackground alpha(50%));
 		}
 		&.popupDown{
-			top: -6px;
+			top: -7px;
 		}
 		&.popupUp{
-			bottom: -7px;
+			bottom: -8px;
+			.menuTitle .ddIcon{
+				background-position: 0 -74px;
+			}
+		}
+		&.compact{
+			&.popupDown{
+				top: -4px;
+				ul{
+					margin-bottom: -1px;
+				}
+			}
+			&.popupUp{
+				bottom: -4px;
+				ul{
+					margin-top: -1px;
+				}
+			}
+			.menuTitle{
+				height: 19px;
+				line-height: 19px;
+			}
+			li{
+				height: 19px;
+				line-height: 19px;
+				padding: 0 6px;
+				margin: 0 -1px;
+				&:hover:not(.forceUnselected), &.selected{
+					background-color: $buttonBorder;
+					border: solid 1px $headerBorderBottomDark;
+					line-height: 17px;
+					padding: 0 5px;
+					color: $textOnAccent;
+				}
+			}
+			&.hasDdIcons li{
+				padding-right: 21px;
+				&:hover:not(.forceUnselected), &.selected{
+					padding-right: 20px;
+				}
+			}
+		}
+		.ddIcon{
+			width: 14px;
+			height: 19px;
+			float: right;
+			margin-right: -4px;
+			background-image: svg-load('img/dropdown.svg');
+			background-repeat: no-repeat;
+			background-position: 0 3px;
+		}
+		li .ddIcon{
+			margin-right: -19px;
+			height: 17px;
+			visibility: hidden;
+			&.iconPlus{
+				background-position: 0 -32px;
+			}
 		}
 	}
 }
@@ -2214,7 +2294,6 @@ label.pretendLink{
 	border: solid 1px $textAreaBorder;
 	box-shadow: 0 0 0 12px $wallPostSeparator inset, 0 4px 0 -2px rgba(0, 0, 0, .05);
 	padding: 32px;
-	border-radius: 2px;
 }
 
 .buttonBar{
@@ -2523,5 +2602,413 @@ label.pretendLink{
 	}
 	&:hover .depthIndicator{
 		background: svg-load('img/comments_tree_indent.svg', fill: $wallPostSeparator, stroke: $wallPostSeparator) center left -5px repeat-x;
+	}
+}
+
+.privacySettingsForm{
+	display: grid;
+	grid-template-columns: auto 260px;
+	grid-gap: 13px;
+	padding: 10px 0;
+	>*{
+		min-width: 0;
+	}
+	.settingLabel{
+		text-align: right;
+	}
+	.settingValue{
+		position: relative;
+	}
+}
+
+.tokenInput{
+	border: solid 1px $textAreaBorder;
+	display: flex;
+	flex-wrap: wrap;
+	padding: 0 0 2px 0;
+	position: relative;
+	input{
+		border: none;
+		padding: 0;
+		min-height: 16px;
+		padding-left: 2px;
+		flex-grow: 1;
+		margin: 2px 0 0 2px;
+	}
+	.token{
+		height: 16px;
+		line-height: 16px;
+		padding: 0 18px 0 3px;
+		background: $wallPostSeparator;
+		margin: 2px 0 0 2px;
+		position: relative;
+		max-width: calc(100% - 4px);
+		overflow-x: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		.remove{
+			display: block;
+			width: 16px;
+			height: 16px;
+			background: svg-load('img/tag_remove.svg') no-repeat center;
+			position: absolute;
+			right: 2px;
+			top: 0;
+		}
+		&.selected{
+			background: $normalLink;
+			color: $textOnAccent;
+		}
+	}
+	.completionsWW{
+		position: absolute;
+		bottom: 0;
+		width: 100%;
+		z-index: 10;
+	}
+	.completionsW{
+		position: relative;
+		width: 100%;
+	}
+	.completions{
+		position: absolute;
+		top: 0;
+		left: -1px;
+		right: -1px;
+		overflow-y: auto;
+		max-height: 250px;
+		opacity: 0.95;
+		background: #FFF;
+		@include popup-shadow;
+		.completion{
+			color: #000000;
+			padding: 4px 0 3px 10px;
+			list-style-type: none;
+			border: 1px solid #CCC;
+			border-top: solid 1px transparent;
+			cursor: pointer;
+			margin: -1px 0 0 0;
+			overflow: hidden;
+			text-align: left;
+			line-height: 1.18em;
+			min-height: 22px;
+			position: relative;
+			&:first-child{
+				margin-top: 0;
+			}
+			&:last-child{
+				border-bottom: solid 1px transparent;
+			}
+			&.selected{
+				background: #6c8300;
+				color: #FFFFFF;
+				border-color: #2e6200;
+				z-index: 1;
+			}
+		}
+	}
+	.bordersOverlay{
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		pointer-events: none;
+		margin: 0 -1px;
+		border-top: solid 1px #ccc;
+		border-bottom: solid 1px #ccc;
+		opacity: 0.95;
+		&.firstSelected{
+			border-top: solid 1px #2e6200;
+		}
+		&.lastSelected{
+			border-bottom: solid 1px #2e6200;
+		}
+	}
+}
+
+.privacyExtendedBox{
+	>*{
+		margin-bottom: 10px;
+	}
+	>*:last-child{
+		margin-bottom: 0;
+	}
+	padding-left: 20px;
+	.plusFriends, .minusFriends{
+		display: block;
+		float: left;
+		margin: 2px 0 0 -17px;
+		width: 10px;
+		height: 10px;
+		background: svg-load('img/privacy_plus_minus.svg', fill: $iconColor) no-repeat;
+	}
+	.minusFriends{
+		background-position: 0 -10px;
+	}
+}
+
+.friendSelectionBoxContent{
+	height: 420px;
+	overflow-y: auto;
+	.inner{
+		display: flex;
+	}
+	.separator{
+		width: 1px;
+		margin-left: -1px;
+		background: $blockBorderBottom;
+		align-self: stretch;
+		min-height: 420px;
+	}
+	.list{
+		width: 50%;
+		padding: 10px;
+		h3{
+			padding: 6px 10px 4px;
+		}
+		.row{
+			display: flex;
+			padding: 10px 7px 10px 10px;
+			border-bottom: solid 1px $menuItemsSeparator;
+			align-items: center;
+			cursor: pointer;
+			&:last-child{
+				border-bottom: none;
+			}
+			.ava{
+				margin-right: 10px;
+			}
+			.name{
+				height: 13px;
+				line-height: 13px;
+				margin-right: 5px;
+				flex: 1;
+				font-weight: bold;
+				color: $normalLink;
+				user-select: none;
+			}
+			.icon{
+				width: 12px;
+				height: 12px;
+			}
+		}
+		&.allFriends .icon{
+			background: svg-load('img/plus_12px.svg', fill: $textAreaBorder) no-repeat;
+		}
+		&.selectedFriends .icon{
+			background: svg-load('img/box_close.svg', fill: $textAreaBorder) no-repeat;
+		}
+	}
+}
+
+.mailMessageRow{
+	display: grid;
+	padding: 0 10px;
+	grid-template-columns: 50px 140px 1fr auto;
+	align-items: center;
+	border-bottom: 1px solid $wallCommentSeparator;
+	>*{
+		min-width: 0;
+	}
+	>a:hover{
+		text-decoration: none;
+	}
+	.time{
+		color: $auxiliaryGrey;
+		font-size: 9px;
+	}
+	.msgInfo{
+		padding-left: 10px;
+	}
+	.msgContent{
+		padding: 0 15px;
+		line-height: 150%;
+	}
+	.msgInfo, .msgContent{
+		align-self: stretch;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+	}
+	.avaW{
+		margin: 10px 0;
+	}
+	.text{
+		color: #a4ab3b;
+	}
+	&:last-child{
+		border-bottom: 0;
+	}
+	&.unread{
+		background: #fef8ee;
+		border-bottom-color: $wallPostSeparator;
+		.time{
+			color: #949760;
+		}
+	}
+	&.deleted{
+		background: #FEFAE4;
+		border-bottom: 1px solid #E2DAA6;
+		color: #908851;
+		min-height: 71px;
+		.restore{
+			grid-column-start: 3;
+			padding: 0 15px;
+			.loader{
+				height: 13px;
+			}
+		}
+	}
+}
+
+h2, h3, h4{
+	.flR{
+		color: $text;
+		font-size: 11px;
+		font-weight: normal;
+		padding-left: 5px;
+	}
+}
+
+.lower{
+	text-transform: lowercase;
+}
+
+.mailMessageView{
+	h2{
+		margin-bottom: 4px;
+	}
+	.time{
+		color: $auxiliaryGrey;
+		font-size: 9px;
+		margin: 2px 0 15px;
+	}
+	.messageViewHeader{
+		display: grid;
+		grid-template-columns: 50px auto 1fr;
+		grid-gap: 0 10px;
+		line-height: 15px;
+		margin-bottom: 10px;
+		.avaW{
+			grid-row: 1 / 20;
+		}
+		.label{
+			grid-column-start: 2;
+			color: $auxiliaryGrey;
+		}
+	}
+	.mailMessageForm{
+		margin-top: 10px;
+	}
+	.postAttachments{
+		padding-top: 0;
+		margin-top: 10px;
+	}
+}
+
+.mailMessageComposeForm{
+	.subjectField{
+		width: 100%;
+	}
+}
+
+.mailMessageForm{
+	border: none;
+	background: none;
+	padding: 0;
+}
+
+#mailHistoryWrap{
+	padding: 0;
+	border-top: solid 1px $wallPostSeparator;
+	>.loader{
+		height: 49px;
+	}
+}
+
+#mailShowHistory{
+	display: block;
+	text-align: center;
+	padding: 18px 10px;
+}
+
+.mailHistory{
+	width: 465px;
+	margin: auto;
+	padding-bottom: 10px;
+	.summaryWrap{
+		padding-left: 0;
+		padding-right: 0;
+		margin-bottom: 5px;
+	}
+	.bottomSummaryWrap{
+		padding: 0;
+		margin-top: 5px;
+	}
+	.messageRow{
+		display: grid;
+		grid-template-columns: 1fr 300px 50px;
+		grid-gap: 10px;
+		padding: 5px;
+		&.unread{
+			background: #fef8ee;
+		}
+		>*{
+			min-width: 0;
+		}
+		>.name{
+			text-align: right;
+			font-weight: bold;
+			a{
+				display: block;
+			}
+			&.self a{
+				color: #a4ae46;
+			}
+		}
+		>.content{
+			line-height: 130%;
+			p:first-child{
+				margin-top: 0;
+			}
+			p:last-child{
+				margin-bottom: 0;
+			}
+			.postAttachments .aspectWrapper .pseudoImage{
+				max-width: 200px;
+			}
+		}
+		>.time{
+			text-align: right;
+			a{
+				color: #999;
+			}
+		}
+	}
+}
+
+.tooltipOuter{
+	position: relative;
+	margin: auto;
+	width: 1px;
+	pointer-events: none;
+	.tooltip{
+		position: absolute;
+		bottom: 2px;
+		left: -18px;
+		width: max-content;
+		user-select: none;
+		padding-bottom: 4px;
+		background: svg-load('img/tt_tip.svg', fill: rgba(0, 0, 0, 0.7)) no-repeat;
+		background-position: 15px 100%;
+		.tooltipInner{
+			color: #fff;
+			line-height: 20px;
+			background: rgba(0, 0, 0, 0.7);
+			border-radius: 3px;
+			padding: 0 7px;
+			height: 21px;
+			font-weight: bold;
+		}
 	}
 }

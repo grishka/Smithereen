@@ -1,16 +1,17 @@
-{# @pebvariable name="entry" type="smithereen.data.feed.NewsfeedEntry" #}
-{%if entry.type=="POST"%}
-<div class="feedRow feedPostRow" id="postWrap{{ entry.post.id }}">
-		{%include "wall_post" with {'post': entry.post}%}
+{# @pebvariable name="entry" type="smithereen.model.feed.NewsfeedEntry" #}
+{% set author=users[entry.authorID] %}
+{% if entry.type=="POST" and posts[entry.objectID] is not null %}
+<div class="feedRow feedPostRow" id="postWrap{{ entry.objectID }}">
+		{%include "wall_post" with {'post': posts[entry.objectID]}%}
 </div>
-{%elseif entry.type=="RETOOT"%}
+{% elseif entry.type=="RETOOT" and posts[entry.objectID] is not null %}
 <div class="feedRow feedPostRow">
 	<div class="feedIcon feedIconStatus"></div>
 	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 	<div class="feedRowContent">
-		{{ L(entry.post.replyLevel==0 ? 'feed_retoot' : 'feed_retoot_comment', {'gender': entry.author.gender, 'author': entry.author.fullName}, {'author': {'href': entry.author.profileURL} }) -}}
+		{{ L(posts[entry.objectID].post.replyLevel==0 ? 'feed_retoot' : 'feed_retoot_comment', {'gender': author.gender, 'author': author | name('full')}, {'author': {'href': profileURL(entry.authorID)} }) -}}
 	</div>
-	{%include "wall_post" with {'post': entry.post}%}
+	{%include "wall_post" with {'post': posts[entry.objectID]}%}
 </div>
 {% elseif entry.type=="GROUPED" %}
 	{% if entry.childEntriesType=="ADD_FRIEND" %}
@@ -27,29 +28,32 @@
 	<div class="feedIcon feedIcon{{ icon }}"></div>
 	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 	<div class="feedRowContent">
-		{{ L("feed_#{langKey}", {'author': entry.author.completeName, 'gender': entry.author.gender, 'count': entry.childEntries | length}, {'author': {'href': entry.author.profileURL} }) }}
+		{{ L("feed_#{langKey}", {'author': author | name("complete"), 'gender': author.gender, 'count': entry.childEntries | length}, {'author': {'href': profileURL(entry.authorID)} }) }}
 		<div class="feedRowUsers">
 				{% for ce in entry.mostRecentEntries %}
 				{% if ce.type=="ADD_FRIEND" %}
 				<div class="feedRowUser">
-					<a href="{{ ce.friend.profileURL }}">
-						{{ ce.friend | pictureForAvatar('s') }}
-						<div class="feedRowUserName">{{ ce.friend.firstName }}</div>
-						<div class="feedRowUserName">{{ ce.friend.lastName }}</div>
+					{% set friend=users[ce.objectID] %}
+					<a href="{{ friend.profileURL }}">
+						{{ friend | pictureForAvatar('s') }}
+						<div class="feedRowUserName">{{ friend | name("first") }}</div>
+						<div class="feedRowUserName">{{ friend | name("last") }}</div>
 					</a>
 				</div>
 				{% elseif ce.type=="JOIN_GROUP" %}
 				<div class="feedRowUser">
-					<a href="{{ ce.group.profileURL }}">
-						{{ ce.group | pictureForAvatar('s') }}
-						<div class="feedRowUserName">{{ ce.group.name }}</div>
+					{% set group=groups[ce.objectID] %}
+					<a href="{{ profileURL(-ce.objectID) }}">
+						{{ group | pictureForAvatar('s') }}
+						<div class="feedRowUserName">{{ group | name }}</div>
 					</a>
 				</div>
 				{% elseif ce.type=="JOIN_EVENT" %}
 				<div class="feedRowUser">
-					<a href="{{ ce.event.profileURL }}">
-						{{ ce.event | pictureForAvatar('s') }}
-						<div class="feedRowUserName">{{ ce.event.name }}</div>
+					{% set event=groups[ce.objectID] %}
+					<a href="{{ profileURL(-ce.objectID) }}">
+						{{ event | pictureForAvatar('s') }}
+						<div class="feedRowUserName">{{ event | name }}</div>
 					</a>
 				</div>
 				{% endif %}
@@ -59,26 +63,29 @@
 </div>
 {% elseif entry.nonPost %}
 {% if entry.type=="ADD_FRIEND" %}
+	{% set friend=users[entry.objectID] %}
 	{% set icon="Add" %}
 	{% set langKey="added_friend" %}
-	{% set targetHref=entry.friend.profileURL %}
-	{% set targetName=L('feed_added_friend_name', {'name': entry.friend.firstLastAndGender}) %}
+	{% set targetHref=profileURL(entry.objectID) %}
+	{% set targetName=L('feed_added_friend_name', {'name': friend | name('fullAndGender')}) %}
 {% elseif entry.type=="JOIN_GROUP" or entry.type=="CREATE_GROUP" %}
+	{% set group=groups[entry.objectID] %}
 	{% set icon="Group" %}
 	{% set langKey=(entry.type=="CREATE_GROUP" ? "created_group" : "joined_group") %}
-	{% set targetHref=entry.group.profileURL %}
-	{% set targetName=entry.group.name %}
+	{% set targetHref=profileURL(-entry.objectID) %}
+	{% set targetName=group | name %}
 {% elseif entry.type=="JOIN_EVENT" or entry.type=="CREATE_EVENT" %}
+	{% set event=groups[entry.objectID] %}
 	{% set icon="Event" %}
 	{% set langKey=(entry.type=="CREATE_EVENT" ? "created_event" : "joined_event") %}
-	{% set targetHref=entry.event.profileURL %}
-	{% set targetName=entry.event.name %}
+	{% set targetHref=profileURL(-entry.objectID) %}
+	{% set targetName=event | name %}
 {% endif %}
 <div class="feedRow">
 	<div class="feedIcon feedIcon{{ icon }}"></div>
 	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 	<div class="feedRowContent">
-		{{ L("feed_#{langKey}", {'author': entry.author.completeName, 'target': targetName, 'gender': entry.author.gender}, {'author': {'href': entry.author.profileURL}, 'target': {'href': targetHref} }) }}
+		{{ L("feed_#{langKey}", {'author': author | name('complete'), 'target': targetName, 'gender': author.gender}, {'author': {'href': profileURL(entry.authorID)}, 'target': {'href': targetHref} }) }}
 	</div>
 </div>
 {%else%}

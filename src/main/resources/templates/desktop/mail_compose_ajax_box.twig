@@ -1,0 +1,21 @@
+<div class="mailMessageComposeForm">
+	<form action="/my/mail/send?from=ajaxBox" method="post" id="wallPostFormForm_mailMessage" data-required-fields="mailComposeToFld">
+		<div class="reportFormHeader" style="margin: 0">
+			{% set user=users[to | first] %}
+			<div class="flL">{{ user | pictureForAvatar('s') }}</div>
+			<div><b>{{ user | name('complete') }}</b></div>
+			{# <div class="ellipsize">{{ reportSubtitle }}</div> #}
+			<div class="clear"></div>
+		</div>
+		<input type="hidden" name="to" id="mailComposeToFld" value="{{ to | join(",") }}"/>
+		<input type="checkbox" class="toggler" id="mailSubjectToggler"/>
+		<div class="marginAfter marginBefore toggled">
+			 <label for="mailSubjectToggler" class="hideWhenOn link">{{ L('mail_specify_subject') }}</label>
+			 <div class="showWhenOn">
+				<h4 id="subjectLabel">{{ L('mail_subject') }}</h4>
+				<input type="text" name="subject" aria-labelledby="subjectLabel" class="subjectField"/>
+			 </div>
+		</div>
+	{% include "mail_message_form" with {'hideButton': true} %}
+	</form>
+</div>

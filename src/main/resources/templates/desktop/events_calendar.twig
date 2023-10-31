@@ -12,7 +12,7 @@
 		<td class="info">
 			<div class="infoInner">
 				<div class="grayText">{{ L('name') }}:</div>
-				<div><a href="{{ friend.profileURL }}">{{ friend.completeName }}</a></div>
+				<div><a href="{{ friend.profileURL }}">{{ friend | name('complete') }}</a></div>
 				<div class="grayText">{{ L('birthday') }}:</div>
 				<div>{{ userDays[friend.id] }}</div>
 				<div class="grayText">{{ L('birthday_turns') }}:</div>

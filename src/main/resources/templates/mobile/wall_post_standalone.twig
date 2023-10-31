@@ -1,16 +1,18 @@
-{# @pebvariable name="post" type="smithereen.data.Post" #}
+{# @pebvariable name="post" type="smithereen.model.viewmodel.PostViewModel" #}
+{# @pebvariable name="realPost" type="smithereen.model.Post" #}
+{% set realPost=post.post %}
 {%extends "page"%}
 {%block content%}
-{%include "wall_post" with {'postInteractions': null} %}
+{% include "wall_post" with {'hideButtons': true} %}
 <div class="postActions standaloneLikeBar">
-	{% set interactions=postInteractions[post.id] %}
-	<a href="{{post.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{post.id}}" data-obj-type="post" data-obj-id="{{post.id}}" onclick="return likeOnClick(this)">
+	{% set interactions=postInteractions[realPost.id] %}
+	<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{realPost.id}}" data-obj-type="post" data-obj-id="{{realPost.id}}" onclick="return likeOnClick(this)">
 		<span class="wideOnly">{{ L('like') }}</span>
-		<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{post.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+		<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{realPost.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
 		{{- interactions.likeCount -}}
 	</span>
 	</a>
-	<a href="{{ post.internalURL }}/likes" class="likeAvatars likeAvatars{{ post.id }}">
+	<a href="{{ realPost.internalURL }}/likes" class="likeAvatars likeAvatars{{ realPost.id }}">
 		{% if currentUser is not null %}
 			<span class="currentUserLikeAva" style="{{ interactions.isLiked ? '' : 'display: none' }}">{{ currentUser | pictureForAvatar('s', 34) }}</span>
 		{% endif %}
@@ -20,34 +22,35 @@
 	</a>
 </div>
 <ul class="actionList">
-			{%if currentUser is not null and userPermissions is not null and userPermissions.canDeletePost(post)%}
-				<li><a href="{{ post.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{post.internalURL}}/delete')">{{ L('delete') }}</a></li>
+			{%if currentUser is not null and userPermissions is not null and userPermissions.canDeletePost(realPost)%}
+				<li><a href="{{ realPost.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{realPost.internalURL}}/delete')">{{ L('delete') }}</a></li>
 			{%endif%}
-			{%if currentUser is not null and userPermissions is not null and userPermissions.canEditPost(post)%}
-				<li><a href="{{ post.internalURL }}/edit">{{ L('edit') }}</a></li>
+			{%if currentUser is not null and userPermissions is not null and userPermissions.canEditPost(realPost)%}
+				<li><a href="{{ realPost.internalURL }}/edit">{{ L('edit') }}</a></li>
 			{%endif%}
-			{%if not(post.local)%}
-				<li><a href="{{ post.url }}" target="_blank">{{ L('open_on_server_X', {'domain': post.url.host}) }}</a></li>
+			{%if not(realPost.local)%}
+				<li><a href="{{ realPost.activityPubURL }}" target="_blank">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a></li>
 			{%endif%}
-			{%if post.replyLevel>0%}
-				<li><a href="/posts/{{ post.replyKey[0] }}">Top-level</a></li>
+			{%if realPost.replyLevel>0%}
+				<li><a href="/posts/{{ realPost.replyKey[0] }}">Top-level</a></li>
 			{%endif%}
-			{% if post.owner.id!=post.user.id %}
-				<li><a href="/users/{{ post.owner.id }}/wall/with/{{ post.user.id }}">{{ L('wall_to_wall') }}</a></li>
+			{% if realPost.ownerID!=realPost.authorID %}
+				<li><a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}">{{ L('wall_to_wall') }}</a></li>
 			{% endif %}
-			{% if userPermissions is not null and userPermissions.canReport(post) %}
-				<li><a href="/system/reportForm?type=post&id={{ post.id }}" data-ajax-box>{{ L('report') }}</a></li>
+			{% if userPermissions is not null and userPermissions.canReport(realPost) %}
+				<li><a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box>{{ L('report') }}</a></li>
 			{% endif %}
 		</ul>
-<div id="postReplies{{post.id}}">
+<div id="postReplies{{realPost.id}}">
 	{% for reply in items %}
-		{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentPost#{post.id}"} %}
+		{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentPost#{realPost.id}", 'topLevel': post} %}
+		{% set realPost=post.post %}
 	{% endfor %}
 </div>
 {% include "pagination" %}
-{%if currentUser is not null%}
-	{% include "comment_form" with {'id': "commentPost#{post.id}", 'replyTo': post} %}
-{%endif%}
+{% if currentUser is not null and post.canComment %}
+	{% include "comment_form" with {'id': "commentPost#{realPost.id}", 'replyTo': realPost} %}
+{% endif %}
 {% script %}
 	if(window.location.hash && window.location.hash.indexOf("comment")==1){
 		var el=document.getElementById(window.location.hash.replace("#comment", "post"));

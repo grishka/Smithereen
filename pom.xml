@@ -188,20 +188,19 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>com.sparkjava</groupId>
+			<groupId>me.grishka.sparkjava</groupId>
 			<artifactId>spark-core</artifactId>
-			<version>2.9.4</version>
+			<version>2.9.4+patch.1</version>
 		</dependency>
 		<dependency>
 			<groupId>io.pebbletemplates</groupId>
 			<artifactId>pebble</artifactId>
-			<version>3.1.5</version>
+			<version>3.2.1</version>
 		</dependency>
 		<dependency>
-			<groupId>mysql</groupId>
-			<artifactId>mysql-connector-java</artifactId>
-			<!-- TODO remove all uses of resultSet.first() and upgrade this -->
-			<version>8.0.18</version>
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
+			<version>8.1.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jetbrains</groupId>
@@ -213,7 +212,7 @@
 			<!-- jsoup HTML parser library @ https://jsoup.org/ -->
 			<groupId>org.jsoup</groupId>
 			<artifactId>jsoup</artifactId>
-			<version>1.14.3</version>
+			<version>1.15.3</version>
 		</dependency>
 		<dependency>
 			<groupId>com.squareup.okhttp3</groupId>
@@ -239,7 +238,7 @@
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
 			<artifactId>gson</artifactId>
-			<version>2.9.0</version>
+			<version>2.10.1</version>
 		</dependency>
 		<dependency>
 			<groupId>cz.jirutka.unidecode</groupId>

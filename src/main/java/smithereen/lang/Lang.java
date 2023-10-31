@@ -1,6 +1,5 @@
 package smithereen.lang;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
@@ -18,21 +17,17 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.TimeZone;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
-import smithereen.data.User;
+import smithereen.Utils;
 import smithereen.lang.formatting.ICUMessageParser;
 import smithereen.lang.formatting.ICUMessageSyntaxException;
 import smithereen.lang.formatting.StringTemplate;
+import smithereen.model.User;
 import spark.utils.StringUtils;
 
 public class Lang{
@@ -54,18 +49,15 @@ public class Lang{
 	static{
 		list=new ArrayList<>();
 		try(InputStream in=Lang.class.getClassLoader().getResourceAsStream("langs/index.json")){
-			JsonArray arr=JsonParser.parseReader(new InputStreamReader(in)).getAsJsonArray();
-			for(JsonElement el:arr){
-				JsonObject o=el.getAsJsonObject();
-				String localeID=o.get("locale").getAsString();
-				LOG.debug("Loading language {}", localeID);
-				List<String> files=StreamSupport.stream(o.getAsJsonArray("files").spliterator(), false).map(JsonElement::getAsString).collect(Collectors.toList());
+			IndexFile index=Utils.gson.fromJson(new InputStreamReader(in), IndexFile.class);
+			System.out.println(index);
+			for(IndexLanguage lang:index.languages){
 				try{
-					Lang l=new Lang(localeID, o.get("name").getAsString(), o.get("fallback").isJsonNull() ? null : o.get("fallback").getAsString(), files);
+					Lang l=new Lang(lang.locale, lang.name, lang.fallback, index.files);
 					list.add(l);
-					langsByLocale.put(localeID, l);
+					langsByLocale.put(lang.locale, l);
 				}catch(Exception x){
-					LOG.error("Error loading language {}", localeID, x);
+					LOG.error("Error loading language {}", lang, x);
 				}
 			}
 		}catch(IOException|JsonParseException x){
@@ -74,12 +66,7 @@ public class Lang{
 		if(list.isEmpty())
 			throw new IllegalArgumentException("No languages loaded; check langs/index.json");
 
-		list.sort(new Comparator<Lang>(){
-			@Override
-			public int compare(Lang o1, Lang o2){
-				return o1.locale.toString().compareTo(o2.locale.toString());
-			}
-		});
+		list.sort(Comparator.comparing(o->o.locale.toString()));
 
 		for(Lang lang:list){
 			if(lang.fallbackLocale!=null)
@@ -125,7 +112,11 @@ public class Lang{
 		}
 		this.englishName=englishName;
 		for(String file:files){
-			try(InputStream in=Lang.class.getClassLoader().getResourceAsStream("langs/"+file)){
+			try(InputStream in=Lang.class.getClassLoader().getResourceAsStream("langs/"+localeID+"/"+file)){
+				if(in==null){
+					LOG.warn("Lang {} file {} not found in resources", localeID, file);
+					continue;
+				}
 				JsonObject jobj=JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
 				for(String key : jobj.keySet()){
 					try{
@@ -251,6 +242,15 @@ public class Lang{
 		return String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute());
 	}
 
+	public String formatTimeOrDay(Instant time, ZoneId timeZone){
+		ZonedDateTime dt=time.atZone(timeZone);
+		if(dt.toLocalDate().equals(LocalDate.now(timeZone))){
+			return String.format(locale, "%d:%02d:%02d", dt.getHour(), dt.getMinute(), dt.getSecond());
+		}else{
+			return String.format(locale, "%02d.%02d.%02d", dt.getDayOfMonth(), dt.getMonthValue(), dt.getYear()%100);
+		}
+	}
+
 	public String getAsJS(String key){
 		if(!data.containsKey(key)){
 			if(fallback!=null)
@@ -274,4 +274,7 @@ public class Lang{
 	public PluralCategory getPluralCategory(int quantity){
 		return pluralRules.getCategoryForQuantity(quantity);
 	}
+
+	private record IndexLanguage(String locale, String name, String fallback){}
+	private record IndexFile(List<IndexLanguage> languages, List<String> files){}
 }

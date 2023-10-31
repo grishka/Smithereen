@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="14" height="90" viewBox="0 0 14 90" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" shape-rendering="crispEdges">
+    <g id="Layer1">
+        <g>
+            <path d="M3.25,5L3,4.75L3,4L10,4L10,4.75L9.75,5L3.25,5Z" style="fill:#6e732a;"/>
+            <path d="M9.75,5L6.75,8L6.25,8L3.25,5L9.75,5Z" style="fill:#888e36;"/>
+        </g>
+        <g>
+            <path d="M9.75,85L10,85.25L10,86L3,86L3,85.25L3.25,85L9.75,85Z" style="fill:#6e732a;"/>
+            <path d="M3.25,85L6.25,82L6.75,82L9.75,85L3.25,85Z" style="fill:#888e36;"/>
+        </g>
+        <path d="M3,22L10,22L10,22.75L6.75,26L6.25,26L3,22.75L3,22Z" style="fill:#fff;"/>
+        <path d="M3,68L10,68L10,67.25L6.75,64L6.25,64L3,67.25L3,68Z" style="fill:#fff;"/>
+        <path d="M5,57L5,50L5.75,50L9,53.25L9,53.75L5.75,57L5,57Z" style="fill:#fff;"/>
+        <path d="M0,39L3,39L3,36L6,36L6,39L9,39L9,42L6,42L6,45L3,45L3,42L0,42L0,39Z" style="fill:#fff;"/>
+    </g>
+</svg>

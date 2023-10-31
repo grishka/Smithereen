@@ -1,0 +1,14 @@
+{
+  "write_on_X_wall": "Escribe en el muro de {name}...",
+  "birth_date": "Fecha de nacimiento",
+  "write_on_own_wall": "¿Qué hay de nuevo?",
+  "profile_about": "Acerca de",
+  "X_is_your_friend": "{name} es tu amigo",
+  "you_sent_friend_req_to_X": "Enviasté a {name} una solicitud de amistad",
+  "X_sent_you_friend_req": "{name} te ha enviado una solicitud de amistad",
+  "you_are_following_X": "Sigues a {name}",
+  "X_is_following_you": "{name} te sigue",
+  "waiting_for_X_to_accept_follow_req": "Estás esperando que {name} acepte tu solicitud de seguimiento",
+  "incomplete_profile": "Este perfil puede estar incompleto.",
+  "this_is_you": "(este eres tú)"
+}
