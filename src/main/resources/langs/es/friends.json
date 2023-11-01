@@ -48,5 +48,11 @@
   "birthday_descr_today": "Cumple {age, plural, one {# año} other {# años}}",
   "birthday_descr_future": "Cumplirá {age, plural, one {# año} other {# años}}",
   "friend_req_accepted": "Solicitud de amistad aceptada",
-  "friend_req_declined": "Solicitud de amistad rechazada"
+  "friend_req_declined": "Solicitud de amistad rechazada",
+  "select_friends_title": "Seleccionar amigos",
+  "friends_search_placeholder": "Empieza a escribir el nombre de un amigo",
+  "friend_list_your_friends": "Tus amigos",
+  "friends_in_list": "Amigos en la lista",
+  "select_friends_empty_selection": "Puedes elegir amigos en la lista de la izquierda.",
+  "select_friends_button": "Seleccionar amigos"
 }

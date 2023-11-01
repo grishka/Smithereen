@@ -14,5 +14,7 @@
   "report_placeholder_content": "Por ejemplo: spam",
   "report_sent": "Reporte enviado",
   "report_forward_to_domain": "Reenviar anónimamente a <b>{domain}</b>",
-  "report_submitted": "Tu reporte fue enviado al personal del servidor."
+  "report_submitted": "Tu reporte fue enviado al personal del servidor.",
+  "report_title_message": "Reportar un mensaje",
+  "report_text_message": "¿Cuál es el problema con este mensaje?"
 }
