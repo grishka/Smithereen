@@ -1,6 +1,9 @@
 name: Java CI
 
-on: [push]
+on:
+    push:
+        branches:
+            - master
 
 jobs:
   build:
@@ -14,16 +17,15 @@ jobs:
         with:
           java-version: 17
       - name: Cache Maven dependencies
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-build-cache-maven-${{ hashFiles('pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-build-cache-maven-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+          path: |
+            ~/.m2
+            src/main/web/node_modules
+            target/node
+          key: ${{ runner.os }}-build-cache-maven
       - name: Build with Maven
-        run: mvn -B package --file pom.xml
+        run: mvn -B package
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v1
         with:
