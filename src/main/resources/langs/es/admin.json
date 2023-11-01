@@ -20,7 +20,7 @@
   "admin_signup_mode_invite": "Sólo con invitación",
   "admin_signup_mode_approval": "Por solicitud (con aprobación manual de los administradores)",
   "admin_signup_mode_closed": "Inscripciones cerradas",
-  "admin_signup_mode_explain": "Cuando las nscripciones están cerradas, los administradores pueden seguir invitando a nuevos usuarios.",
+  "admin_signup_mode_explain": "Cuando las inscripciones están cerradas, los administradores pueden seguir invitando a nuevos usuarios.",
   "admin_other": "Otros",
   "admin_email_settings": "Configuración del correo",
   "admin_email_from": "Dirección de emisor",
