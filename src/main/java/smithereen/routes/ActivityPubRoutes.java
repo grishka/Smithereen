@@ -665,7 +665,12 @@ public class ActivityPubRoutes{
 		}
 		String body=req.body();
 		LOG.info("Incoming activity: {}", body);
-		JsonObject rawActivity=JsonParser.parseString(body).getAsJsonObject();
+		JsonObject rawActivity;
+		try{
+			rawActivity=JsonParser.parseString(body).getAsJsonObject();
+		}catch(Exception x){
+			throw new BadRequestException("Failed to parse request body as JSON", x);
+		}
 		JsonObject obj=JLDProcessor.convertToLocalContext(rawActivity);
 
 		Activity activity;
