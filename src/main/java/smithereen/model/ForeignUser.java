@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -19,6 +20,7 @@ import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.jsonld.JLD;
 import spark.utils.StringUtils;
@@ -228,11 +230,13 @@ public class ForeignUser extends User implements ForeignActor{
 			movedToURL=tryParseURL(obj.get("movedTo").getAsString());
 		}
 		if(obj.has("alsoKnownAs")){
-			alsoKnownAs=tryParseArrayOfLinksOrObjects(obj.get("alsoKnownAs"), parserContext)
-					.stream()
-					.filter(l->l.link!=null)
-					.map(l->l.link)
-					.collect(Collectors.toSet());
+			List<LinkOrObject> aka=tryParseArrayOfLinksOrObjects(obj.get("alsoKnownAs"), parserContext);
+			if(aka!=null){
+				alsoKnownAs=aka.stream()
+						.filter(l->l.link!=null)
+						.map(l->l.link)
+						.collect(Collectors.toSet());
+			}
 		}
 
 		return this;
