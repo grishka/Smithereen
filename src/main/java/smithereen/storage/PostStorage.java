@@ -554,14 +554,19 @@ public class PostStorage{
 				repliesOffset=0;
 			}
 
-			List<Post> replies=new SQLQueryBuilder(conn)
-					.selectFrom("wall_posts")
-					.allColumns()
-					.where("reply_key<>? AND reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)", serializedPrefix, serializedPrefix)
-					.orderBy("LENGTH(reply_key) ASC, created_at ASC")
-					.limit(secondaryLimit, repliesOffset)
-					.executeAsStream(Post::fromResultSet)
-					.toList();
+			ArrayList<String> wheres=new ArrayList<>();
+			ArrayList<Object> whereArgs=new ArrayList<>();
+			for(Post post:posts){
+				if(post.replyCount>0){
+					wheres.add("reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)");
+					whereArgs.add(Utils.serializeIntList(post.getReplyKeyForReplies()));
+				}
+			}
+
+			whereArgs.add(secondaryLimit);
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT * FROM wall_posts WHERE "+String.join(" OR ", wheres)+" ORDER BY created_at ASC, LENGTH(reply_key) ASC LIMIT ?",
+					whereArgs.toArray());
+			List<Post> replies=DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), Post::fromResultSet, null).toList();
 
 			return new ThreadedReplies(posts, replies, total);
 		}
