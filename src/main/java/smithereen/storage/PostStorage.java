@@ -543,17 +543,6 @@ public class PostStorage{
 					.executeAsStream(Post::fromResultSet)
 					.collect(Collectors.toList());
 
-			int repliesOffset;
-			if(topLevelOffset>0){
-				try(PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn,
-						"SELECT SUM(reply_count) FROM (SELECT reply_count FROM wall_posts WHERE reply_key=? ORDER BY created_at ASC LIMIT ?) AS subq",
-						serializedPrefix, topLevelOffset)){
-					repliesOffset=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
-				}
-			}else{
-				repliesOffset=0;
-			}
-
 			ArrayList<String> wheres=new ArrayList<>();
 			ArrayList<Object> whereArgs=new ArrayList<>();
 			for(Post post:posts){
