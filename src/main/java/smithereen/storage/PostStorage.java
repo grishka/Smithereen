@@ -552,10 +552,15 @@ public class PostStorage{
 				}
 			}
 
-			whereArgs.add(secondaryLimit);
-			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT * FROM wall_posts WHERE "+String.join(" OR ", wheres)+" ORDER BY created_at ASC, LENGTH(reply_key) ASC LIMIT ?",
-					whereArgs.toArray());
-			List<Post> replies=DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), Post::fromResultSet, null).toList();
+			List<Post> replies;
+			if(!whereArgs.isEmpty()){
+				whereArgs.add(secondaryLimit);
+				PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT * FROM wall_posts WHERE "+String.join(" OR ", wheres)+" ORDER BY created_at ASC, LENGTH(reply_key) ASC LIMIT ?",
+						whereArgs.toArray());
+				replies=DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), Post::fromResultSet, null).toList();
+			}else{
+				replies=List.of();
+			}
 
 			return new ThreadedReplies(posts, replies, total);
 		}
