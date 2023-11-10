@@ -1,0 +1,8 @@
+<p>{{L('choose_role_for_X', {'name': targetAccount.user.firstLastAndGender})}}</p>
+<input type="hidden" name="accountID" value="{{targetAccount.id}}"/>
+<select name="role">
+	<option value="0"{{ targetAccount.roleID==0 ? ' selected' : '' }}>{{ L('role_none') }}</option>
+{% for role in roles %}
+	<option value="{{ role.id }}"{{ targetAccount.roleID==role.id ? ' selected' : '' }}>{{ role.langKey is empty ? role.name : L(role.langKey) }}</option>
+{% endfor %}
+</select>

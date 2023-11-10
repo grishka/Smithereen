@@ -23,6 +23,8 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.model.UserPermissions;
+import smithereen.model.UserRole;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
@@ -112,7 +114,8 @@ public class UsersController{
 				if(SessionStorage.isEmailInvited(email)){
 					throw new UserErrorException("err_email_already_invited");
 				}
-				if(self.accessLevel!=Account.AccessLevel.ADMIN){
+				UserPermissions permissions=SessionStorage.getUserPermissions(self);
+				if(!permissions.hasPermission(UserRole.Permission.MANAGE_INVITES)){
 					FloodControl.EMAIL_INVITE.incrementOrThrow(self);
 				}
 				int requestID=_requestID;
@@ -140,7 +143,8 @@ public class UsersController{
 			SignupInvitation invite=SessionStorage.getInvitationByID(id);
 			if(invite==null || invite.ownerID!=self.id || invite.email==null)
 				throw new ObjectNotFoundException();
-			if(self.accessLevel!=Account.AccessLevel.ADMIN){
+			UserPermissions permissions=SessionStorage.getUserPermissions(self);
+			if(!permissions.hasPermission(UserRole.Permission.MANAGE_INVITES)){
 				FloodControl.EMAIL_RESEND.incrementOrThrow(invite.email);
 			}
 			Mailer.getInstance().sendSignupInvitation(req, self, invite.email, invite.code, invite.firstName, invite.fromRequest);
@@ -280,6 +284,17 @@ public class UsersController{
 	public void deleteForeignUser(ForeignUser user){
 		try{
 			UserStorage.deleteUser(user);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Account getAccountOrThrow(int id){
+		try{
+			Account acc=UserStorage.getAccount(id);
+			if(acc==null)
+				throw new ObjectNotFoundException("err_user_not_found");
+			return acc;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

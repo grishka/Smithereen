@@ -43,6 +43,7 @@ import smithereen.model.SignupInvitation;
 import smithereen.model.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -95,7 +96,7 @@ public class SettingsRoutes{
 		if(Config.signupMode==Config.SignupMode.OPEN){
 			throw new BadRequestException();
 		}
-		if(Config.signupMode==Config.SignupMode.CLOSED && self.accessLevel!=Account.AccessLevel.ADMIN)
+		if(Config.signupMode==Config.SignupMode.CLOSED && !sessionInfo(req).permissions.hasPermission(UserRole.Permission.MANAGE_INVITES))
 			return wrapError(req, resp, "err_access");
 		byte[] code=new byte[16];
 		new Random().nextBytes(code);

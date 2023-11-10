@@ -16,16 +16,21 @@ CREATE TABLE `accounts` (
   `password` binary(32) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `invited_by` int unsigned DEFAULT NULL,
-  `access_level` tinyint unsigned NOT NULL DEFAULT '1',
   `preferences` text,
   `last_active` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `ban_info` text,
   `activation_info` json DEFAULT NULL,
+  `role` int unsigned DEFAULT NULL,
+  `promoted_by` int unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   KEY `user_id` (`user_id`),
   KEY `invited_by` (`invited_by`),
-  CONSTRAINT `accounts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `role` (`role`),
+  KEY `promoted_by` (`promoted_by`),
+  CONSTRAINT `accounts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `accounts_ibfk_2` FOREIGN KEY (`role`) REFERENCES `user_roles` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `accounts_ibfk_3` FOREIGN KEY (`promoted_by`) REFERENCES `accounts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -551,6 +556,17 @@ CREATE TABLE `stats_daily` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `user_roles`
+--
+
+CREATE TABLE `user_roles` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `permissions` varbinary(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `users`
 --
 
@@ -624,4 +640,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2023-10-26 17:12:16
+-- Dump completed on 2023-11-10  6:19:15

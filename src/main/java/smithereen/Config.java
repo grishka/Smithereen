@@ -31,8 +31,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.UserPermissions;
+import smithereen.model.UserRole;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
@@ -89,6 +93,8 @@ public class Config{
 	public static PublicKey serviceActorPublicKey;
 	public static byte[] objectIdObfuscationKey;
 	public static int[][] objectIdObfuscationKeysByType=new int[ObfuscatedObjectIDType.values().length][];
+
+	public static Map<Integer, UserRole> userRoles=new HashMap<>();
 
 	private static final Logger LOG=LoggerFactory.getLogger(Config.class);
 
@@ -243,6 +249,15 @@ public class Config{
 
 	public static String getServerDisplayName(){
 		return StringUtils.isNotEmpty(serverDisplayName) ? serverDisplayName : domain;
+	}
+
+	public static void reloadRoles() throws SQLException{
+		userRoles.clear();
+		userRoles=new SQLQueryBuilder()
+				.selectFrom("user_roles")
+				.allColumns()
+				.executeAsStream(UserRole::fromResultSet)
+				.collect(Collectors.toMap(UserRole::id, Function.identity()));
 	}
 
 	public enum SignupMode{

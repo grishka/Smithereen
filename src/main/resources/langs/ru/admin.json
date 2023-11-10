@@ -10,11 +10,8 @@
   "invited_by": "Кто пригласил",
   "signup_date": "Дата регистрации",
   "actions": "Действия",
-  "access_level": "Уровень доступа",
-  "choose_access_level_for_X": "Выберите уровень доступа для <b>{name, inflect, genitive}</b>",
-  "access_level_regular": "Обычный пользователь",
-  "access_level_moderator": "Модератор",
-  "access_level_admin": "Администратор",
+  "role": "Роль",
+  "choose_role_for_X": "Выберите роль для <b>{name, inflect, genitive}</b>",
   "admin_signup_mode": "Режим регистрации",
   "admin_signup_mode_open": "Открытый",
   "admin_signup_mode_invite": "По приглашениям",
@@ -111,5 +108,13 @@
   "admin_captcha_signup_form": "В форме регистрации",
   "server_stats_activities_sent": "Отправленные активити",
   "server_stats_activities_received": "Полученные активити",
-  "server_stats_delivery_errors": "Ошибки отправки"
+  "server_stats_delivery_errors": "Ошибки отправки",
+  "menu_users": "Пользователи",
+  "menu_access": "Федерация и доступ",
+  "menu_stats": "Статистика",
+  "admin_invites": "Приглашения",
+  "role_none": "(без роли)",
+  "role_owner": "Владелец",
+  "role_admin": "Администратор",
+  "role_moderator": "Модератор"
 }

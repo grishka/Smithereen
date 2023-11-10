@@ -1,10 +1,9 @@
+{# @pebvariable name="userPermissions" type="smithereen.model.UserPermissions" #}
 <div class="tabbar">
-	{% if userPermissions.serverAccessLevel.ordinal>=3 %}
+	{% if userPermissions.hasPermission('MANAGE_SERVER_SETTINGS') %}
 	<a href="/settings/admin" class="{% if tab=='general' %}selected{% endif %}">{{L('profile_edit_basic')}}</a>
 	{% endif %}
-	<a href="/settings/admin/users" class="{% if tab=='users' %}selected{% endif %}">{{L('admin_users')}}</a>
-	<a href="/settings/admin/federation" class="{{ tab=='federation' ? 'selected' : '' }}">{{ L('admin_federation') }}</a>
-	{% if userPermissions.serverAccessLevel.ordinal>=3 %}
+	{% if userPermissions.hasPermission('MANAGE_SERVER_SETTINGS') %}
 	<a href="/settings/admin/other" class="{% if tab=='other' %}selected{% endif %}">{{L('admin_other')}}</a>
 	{% endif %}
 </div>

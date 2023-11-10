@@ -20,12 +20,12 @@ import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.controllers.MailController;
-import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.User;
+import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
@@ -102,6 +102,7 @@ public class SmithereenApplication{
 			Config.load(args[0]);
 			Config.loadFromDatabase();
 			DatabaseSchemaUpdater.maybeUpdate();
+			Config.reloadRoles();
 		}catch(IOException|SQLException x){
 			throw new RuntimeException(x);
 		}
@@ -225,30 +226,30 @@ public class SmithereenApplication{
 			getLoggedIn("/privacy/mobileEditSetting", SettingsRoutes::mobileEditPrivacy);
 
 			path("/admin", ()->{
-				getRequiringAccessLevel("", Account.AccessLevel.ADMIN, SettingsAdminRoutes::index);
-				postRequiringAccessLevelWithCSRF("/updateServerInfo", Account.AccessLevel.ADMIN, SettingsAdminRoutes::updateServerInfo);
-				getRequiringAccessLevel("/users", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::users);
-				getRequiringAccessLevel("/users/accessLevelForm", Account.AccessLevel.ADMIN, SettingsAdminRoutes::accessLevelForm);
-				postRequiringAccessLevelWithCSRF("/users/setAccessLevel", Account.AccessLevel.ADMIN, SettingsAdminRoutes::setUserAccessLevel);
-				getRequiringAccessLevel("/other", Account.AccessLevel.ADMIN, SettingsAdminRoutes::otherSettings);
-				postRequiringAccessLevelWithCSRF("/updateEmailSettings", Account.AccessLevel.ADMIN, SettingsAdminRoutes::saveEmailSettings);
-				postRequiringAccessLevelWithCSRF("/sendTestEmail", Account.AccessLevel.ADMIN, SettingsAdminRoutes::sendTestEmail);
-				getRequiringAccessLevel("/users/banForm", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::banUserForm);
-				getRequiringAccessLevel("/users/confirmUnban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::confirmUnbanUser);
-				getRequiringAccessLevel("/users/confirmActivate", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::confirmActivateAccount);
-				postRequiringAccessLevelWithCSRF("/users/ban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::banUser);
-				postRequiringAccessLevelWithCSRF("/users/unban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::unbanUser);
-				postRequiringAccessLevelWithCSRF("/users/activate", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::activateAccount);
-				getRequiringAccessLevel("/signupRequests", Account.AccessLevel.ADMIN, SettingsAdminRoutes::signupRequests);
-				postRequiringAccessLevelWithCSRF("/signupRequests/:id/respond", Account.AccessLevel.ADMIN, SettingsAdminRoutes::respondToSignupRequest);
-				getRequiringAccessLevel("/reports", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportsList);
-				postRequiringAccessLevelWithCSRF("/reports/:id", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportAction);
-				postRequiringAccessLevelWithCSRF("/reports/:id/doAddCW", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportAddCW);
-				getRequiringAccessLevel("/federation", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerList);
-				getRequiringAccessLevel("/federation/:domain", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerDetails);
-				getRequiringAccessLevel("/federation/:domain/restrictionForm", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerRestrictionForm);
-				postRequiringAccessLevelWithCSRF("/federation/:domain/restrict", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationRestrictServer);
-				getRequiringAccessLevelWithCSRF("/federation/:domain/resetAvailability", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationResetServerAvailability);
+				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);
+				postRequiringPermissionWithCSRF("/updateServerInfo", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::updateServerInfo);
+				getRequiringPermission("/users", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::users);
+				getRequiringPermission("/users/roleForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::roleForm);
+				postRequiringPermissionWithCSRF("/users/setRole", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::setUserRole);
+				getRequiringPermission("/other", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::otherSettings);
+				postRequiringPermissionWithCSRF("/updateEmailSettings", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::saveEmailSettings);
+				postRequiringPermissionWithCSRF("/sendTestEmail", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::sendTestEmail);
+				getRequiringPermission("/users/banForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUserForm);
+				getRequiringPermission("/users/confirmUnban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::confirmUnbanUser);
+				getRequiringPermission("/users/confirmActivate", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::confirmActivateAccount);
+				postRequiringPermissionWithCSRF("/users/ban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUser);
+				postRequiringPermissionWithCSRF("/users/unban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::unbanUser);
+				postRequiringPermissionWithCSRF("/users/activate", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::activateAccount);
+				getRequiringPermission("/signupRequests", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::signupRequests);
+				postRequiringPermissionWithCSRF("/signupRequests/:id/respond", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::respondToSignupRequest);
+				getRequiringPermission("/reports", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportsList);
+				postRequiringPermissionWithCSRF("/reports/:id", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportAction);
+				postRequiringPermissionWithCSRF("/reports/:id/doAddCW", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportAddCW);
+				getRequiringPermission("/federation", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerList);
+				getRequiringPermission("/federation/:domain", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerDetails);
+				getRequiringPermission("/federation/:domain/restrictionForm", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerRestrictionForm);
+				postRequiringPermissionWithCSRF("/federation/:domain/restrict", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationRestrictServer);
+				getRequiringPermissionWithCSRF("/federation/:domain/resetAvailability", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationResetServerAvailability);
 			});
 		});
 
@@ -347,9 +348,9 @@ public class SmithereenApplication{
 			postWithCSRF("/doRemoveFriend", FriendsRoutes::doRemoveFriend);
 			getLoggedIn("/confirmRemoveFriend", FriendsRoutes::confirmRemoveFriend);
 
-			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncRelationshipsCollections);
-			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncContentCollections);
-			getRequiringAccessLevelWithCSRF("/syncProfile", Account.AccessLevel.ADMIN, ProfileRoutes::syncProfile);
+			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncRelationshipsCollections);
+			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncContentCollections);
+			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncProfile);
 		});
 
 		path("/groups/:id", ()->{
@@ -417,9 +418,9 @@ public class SmithereenApplication{
 			getWithCSRF("/invite", GroupsRoutes::inviteFriend);
 			postWithCSRF("/respondToInvite", GroupsRoutes::respondToInvite);
 
-			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, GroupsRoutes::syncRelationshipsCollections);
-			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, GroupsRoutes::syncContentCollections);
-			getRequiringAccessLevelWithCSRF("/syncProfile", Account.AccessLevel.ADMIN, GroupsRoutes::syncProfile);
+			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncRelationshipsCollections);
+			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncContentCollections);
+			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncProfile);
 		});
 
 		path("/posts/:postID", ()->{

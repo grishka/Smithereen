@@ -10,11 +10,8 @@
   "invited_by": "Invited by",
   "signup_date": "Sign up date",
   "actions": "Actions",
-  "access_level": "Access level",
-  "choose_access_level_for_X": "Choose access level for <b>{name}</b>",
-  "access_level_regular": "Regular user",
-  "access_level_moderator": "Moderator",
-  "access_level_admin": "Administrator",
+  "role": "Role",
+  "choose_role_for_X": "Choose role for <b>{name}</b>",
   "admin_signup_mode": "Sign up mode",
   "admin_signup_mode_open": "Open",
   "admin_signup_mode_invite": "Invite-only",
@@ -111,5 +108,13 @@
   "admin_captcha_signup_form": "In the signup form",
   "server_stats_activities_sent": "Activities sent",
   "server_stats_activities_received": "Activities received",
-  "server_stats_delivery_errors": "Delivery errors"
+  "server_stats_delivery_errors": "Delivery errors",
+  "menu_users": "Users",
+  "menu_access": "Federation & access",
+  "menu_stats": "Statistics",
+  "admin_invites": "Invitations",
+  "role_none": "(no role)",
+  "role_owner": "Owner",
+  "role_admin": "Admin",
+  "role_moderator": "Moderator"
 }

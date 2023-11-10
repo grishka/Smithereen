@@ -1,6 +1,7 @@
+{# @pebvariable name="userPermissions" type="smithereen.model.UserPermissions" #}
 {%extends "page"%}
 {%block content%}
-{%include "admin_tabbar" with {'tab': 'users'}%}
+{% include "admin_users_tabbar" with {'tab': 'users'} %}
 <div class="singleColumn wideDataTableWrap">
 	<table width="100%" class="dataTable">
 		<tr class="tableHeader">
@@ -17,10 +18,10 @@
 			<td class="ellipsize">{%if acc.invitedBy is not null%}<a href="{{acc.invitedBy.url}}"><span class="tinyInlineAva">{{acc.invitedBy | pictureForAvatar('s', 32)}}</span>{{ acc.invitedBy | name('full') }}</a>{%else%}&mdash;{%endif%}</td>
 			<td align="center">{{LD(acc.createdAt)}}</td>
 			<td>
-				{% if acc.user.id!=currentUser.id and userPermissions.serverAccessLevel.ordinal>=3 %}
-					<a href="/settings/admin/users/accessLevelForm?accountID={{ acc.id }}" data-ajax-box="1">{{ L('access_level') }}</a>
+				{% if acc.user.id!=currentUser.id and userPermissions.hasPermission('MANAGE_ROLES') %}
+					<a href="/settings/admin/users/roleForm?accountID={{ acc.id }}" data-ajax-box="1">{{ L('role') }}</a>
 				{% endif %}
-				{% if acc.accessLevel!='ADMIN' and acc.accessLevel!='MODERATOR' %}
+				{% if acc.roleID!=0 %}
 					{% if acc.banInfo is null %}
 						| <a href="/settings/admin/users/banForm?accountID={{ acc.id }}" data-ajax-box="1">{{ L('admin_ban') }}</a>
 					{% else %}

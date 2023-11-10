@@ -6,18 +6,20 @@ import org.slf4j.LoggerFactory;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.model.UserRole;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=33;
+	public static final int SCHEMA_VERSION=34;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -27,6 +29,7 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("""
 						CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
 						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, BINARY(0xFF), BINARY(0xFFFF)), '%', BINARY(0xFF25)), '_', BINARY(0xFF5F)), '%');""");
+				insertDefaultRoles(conn);
 			}
 		}else{
 			for(int i=Config.dbSchemaVersion+1;i<=SCHEMA_VERSION;i++){
@@ -485,6 +488,66 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("ALTER TABLE reports DROP FOREIGN KEY reports_ibfk_1, DROP FOREIGN KEY reports_ibfk_2");
 				conn.createStatement().execute("ALTER TABLE wall_posts DROP FOREIGN KEY wall_posts_ibfk_3");
 			}
+			case 34 ->{
+				conn.createStatement().execute("""
+						CREATE TABLE `user_roles` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+						  `permissions` varbinary(255) NOT NULL,
+						  PRIMARY KEY (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				insertDefaultRoles(conn);
+				conn.createStatement().execute("""
+						ALTER TABLE accounts ADD `role` int unsigned DEFAULT NULL,
+						ADD CONSTRAINT `accounts_ibfk_2` FOREIGN KEY (`role`) REFERENCES `user_roles` (`id`) ON DELETE SET NULL,
+						ADD `promoted_by` int unsigned DEFAULT NULL,
+						ADD CONSTRAINT `accounts_ibfk_3` FOREIGN KEY (`promoted_by`) REFERENCES `accounts` (`id`) ON DELETE SET NULL""");
+				new SQLQueryBuilder(conn)
+						.update("accounts")
+						.where("access_level=2") // moderator -> new moderator role
+						.value("role", 3)
+						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("accounts")
+						.where("access_level=3") // admin -> new admin role
+						.value("role", 2)
+						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("accounts")
+						.where("access_level=3 AND id=1") // first admin -> new owner role
+						.value("role", 1)
+						.executeNoResult();
+				conn.createStatement().execute("ALTER TABLE accounts DROP access_level");
+			}
 		}
+	}
+
+	private static void insertDefaultRoles(DatabaseConnection conn) throws SQLException{
+		new SQLQueryBuilder(conn)
+				.insertInto("user_roles")
+				.value("name", "Owner")
+				.value("permissions", Utils.serializeEnumSetToBytes(EnumSet.of(UserRole.Permission.SUPERUSER, UserRole.Permission.VISIBLE_IN_STAFF)))
+				.executeNoResult();
+
+		EnumSet<UserRole.Permission> adminPermissions=EnumSet.allOf(UserRole.Permission.class);
+		adminPermissions.remove(UserRole.Permission.SUPERUSER);
+		new SQLQueryBuilder(conn)
+				.insertInto("user_roles")
+				.value("name", "Admin")
+				.value("permissions", Utils.serializeEnumSetToBytes(adminPermissions))
+				.executeNoResult();
+
+		EnumSet<UserRole.Permission> moderatorPermissions=EnumSet.of(
+				UserRole.Permission.MANAGE_USERS,
+				UserRole.Permission.MANAGE_REPORTS,
+				UserRole.Permission.VIEW_SERVER_AUDIT_LOG,
+				UserRole.Permission.MANAGE_GROUPS
+		);
+		new SQLQueryBuilder(conn)
+				.insertInto("user_roles")
+				.value("name", "Moderator")
+				.value("permissions", Utils.serializeEnumSetToBytes(moderatorPermissions))
+				.executeNoResult();
+		Config.reloadRoles();
 	}
 }

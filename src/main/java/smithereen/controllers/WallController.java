@@ -49,6 +49,7 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.notifications.Notification;
 import smithereen.model.notifications.NotificationUtils;
@@ -645,7 +646,7 @@ public class WallController{
 			User deleteActor=info.account.user;
 			OwnerAndAuthor oaa=getContentAuthorAndOwner(post);
 			// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
-			if(info.account.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal() && oaa.author().id!=info.account.user.id && !post.isGroupOwner() && post.ownerID!=info.account.user.id && !(oaa.author() instanceof ForeignUser)){
+			if(ignorePermissions && oaa.author().id!=info.account.user.id && !post.isGroupOwner() && post.ownerID!=info.account.user.id && !(oaa.author() instanceof ForeignUser)){
 				deleteActor=oaa.author();
 			}
 			context.getActivityPubWorker().sendDeletePostActivity(post, deleteActor);
@@ -664,7 +665,7 @@ public class WallController{
 
 	public void setPostCWAsModerator(@NotNull UserPermissions permissions, Post post, String cw){
 		try{
-			if(permissions.serverAccessLevel.compareTo(Account.AccessLevel.MODERATOR)<0)
+			if(!permissions.hasPermission(UserRole.Permission.MANAGE_REPORTS))
 				throw new UserActionNotAllowedException();
 
 			PostStorage.updateWallPostCW(post.id, cw);

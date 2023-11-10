@@ -40,6 +40,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -972,6 +973,20 @@ public class Utils{
 				set.add(e);
 			l >>= 1;
 		}
+	}
+
+	public static <E extends Enum<E>> byte[] serializeEnumSetToBytes(EnumSet<E> set){
+		BitSet result=new BitSet();
+		for(E value:set){
+			result.set(value.ordinal());
+		}
+		return result.toByteArray();
+	}
+
+	public static <E extends Enum<E>> void deserializeEnumSet(EnumSet<E> set, Class<E> cls, byte[] serialized){
+		set.clear();
+		E[] consts=cls.getEnumConstants();
+		BitSet.valueOf(serialized).stream().mapToObj(i->consts[i]).forEach(set::add);
 	}
 
 	/**

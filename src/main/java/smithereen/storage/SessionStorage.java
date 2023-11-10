@@ -35,6 +35,7 @@ import smithereen.model.SignupRequest;
 import smithereen.model.User;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPreferences;
+import smithereen.model.UserRole;
 import smithereen.model.notifications.Notification;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
@@ -449,7 +450,7 @@ public class SessionStorage{
 		}
 		r.canInviteNewUsers=switch(Config.signupMode){
 			case OPEN, INVITE_ONLY -> true;
-			case CLOSED, MANUAL_APPROVAL -> r.serverAccessLevel==Account.AccessLevel.ADMIN || r.serverAccessLevel==Account.AccessLevel.MODERATOR;
+			case CLOSED, MANUAL_APPROVAL -> r.hasPermission(UserRole.Permission.MANAGE_INVITES);
 		};
 		permissionsCache.put(account.user.id, r);
 		return r;

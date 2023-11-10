@@ -35,6 +35,7 @@ import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
@@ -313,7 +314,7 @@ public class PostRoutes{
 		model.with("isGroup", post.post.ownerID<0);
 
 		boolean canOverridePrivacy=false;
-		if(self!=null && info.permissions.serverAccessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal()){
+		if(self!=null && info.permissions.hasPermission(UserRole.Permission.MANAGE_REPORTS)){
 			int reportID=safeParseInt(req.queryParams("report"));
 			if(reportID!=0){
 				try{

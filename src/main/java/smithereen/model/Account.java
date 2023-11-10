@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.UserStorage;
@@ -14,12 +15,13 @@ public class Account{
 	public int id;
 	public String email;
 	public User user;
-	public AccessLevel accessLevel;
 	public UserPreferences prefs;
 	public Instant createdAt;
 	public Instant lastActive;
 	public BanInfo banInfo;
 	public ActivationInfo activationInfo;
+	public int roleID;
+	public int promotedBy;
 
 	public User invitedBy; // used in admin UIs
 
@@ -29,7 +31,6 @@ public class Account{
 				"id="+id+
 				", email='"+email+'\''+
 				", user="+user+
-				", accessLevel="+accessLevel+
 				", prefs="+prefs+
 				", createdAt="+createdAt+
 				", lastActive="+lastActive+
@@ -43,7 +44,6 @@ public class Account{
 		Account acc=new Account();
 		acc.id=res.getInt("id");
 		acc.email=res.getString("email");
-		acc.accessLevel=AccessLevel.values()[res.getInt("access_level")];
 		acc.user=UserStorage.getById(res.getInt("user_id"));
 		acc.createdAt=DatabaseUtils.getInstant(res, "created_at");
 		acc.lastActive=DatabaseUtils.getInstant(res, "last_active");
@@ -63,6 +63,8 @@ public class Account{
 		String activation=res.getString("activation_info");
 		if(activation!=null)
 			acc.activationInfo=Utils.gson.fromJson(activation, ActivationInfo.class);
+		acc.roleID=res.getInt("role");
+		acc.promotedBy=res.getInt("promoted_by");
 		return acc;
 	}
 
@@ -82,13 +84,6 @@ public class Account{
 		String user=parts[0];
 		int count=user.length()<5 ? 1 : 2;
 		return user.substring(0, count)+"*".repeat(user.length()-count)+"@"+parts[1];
-	}
-
-	public enum AccessLevel{
-		BANNED,
-		REGULAR,
-		MODERATOR,
-		ADMIN
 	}
 
 	public static class BanInfo{

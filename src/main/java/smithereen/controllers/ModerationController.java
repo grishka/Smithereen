@@ -12,9 +12,13 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.AdminNotifications;
 import smithereen.model.FederationRestriction;
@@ -27,10 +31,12 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.User;
+import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.ModerationStorage;
+import smithereen.storage.UserStorage;
 import smithereen.util.XTEA;
 
 public class ModerationController{
@@ -215,6 +221,29 @@ public class ModerationController{
 					serversByDomainCache.remove(server.host());
 				}
 			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setAccountRole(Account self, Account account, int roleID){
+		UserRole ownRole=Config.userRoles.get(self.roleID);
+		UserRole targetRole=null;
+		if(roleID>0){
+			targetRole=Config.userRoles.get(roleID);
+			if(targetRole==null)
+				throw new BadRequestException();
+		}
+		// If not an owner and the user already has a role, can only change roles for someone you promoted yourself
+		if(account.roleID>0 && !ownRole.permissions().contains(UserRole.Permission.SUPERUSER)){
+			if(account.promotedBy!=self.id)
+				throw new UserActionNotAllowedException();
+		}
+		// Can only assign one's own role or a lesser one
+		if(targetRole!=null && !ownRole.permissions().contains(UserRole.Permission.SUPERUSER) && !ownRole.permissions().containsAll(targetRole.permissions()))
+			throw new UserActionNotAllowedException();
+		try{
+			UserStorage.setAccountRole(account, roleID, targetRole==null ? 0 : self.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

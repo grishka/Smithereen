@@ -104,7 +104,7 @@
 					<li><a href="/system/reportForm?type=group&id={{ group.id }}" data-ajax-box>{{ L('report') }}</a></li>
 				{% endif %}
 				{% if currentUser is not null %}
-					{% if userPermissions.serverAccessLevel.ordinal>=3 and group.domain is not empty %}
+					{% if userPermissions.hasPermission('MANAGE_GROUPS') and group.domain is not empty %}
 						<li class="separator"></li>
 						<li><a href="/groups/{{ group.id }}/syncProfile?csrf={{ csrf }}" data-ajax-box>[A] {{ L('sync_profile') }}</a></li>
 						<li><a href="/groups/{{ group.id }}/syncRelCollections?csrf={{ csrf }}" data-ajax-box>[A] {{ L('sync_members') }}</a></li>

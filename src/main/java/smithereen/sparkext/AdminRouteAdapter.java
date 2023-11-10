@@ -1,9 +1,8 @@
 package smithereen.sparkext;
 
-import smithereen.ApplicationContext;
 import smithereen.Utils;
-import smithereen.model.Account;
 import smithereen.model.SessionInfo;
+import smithereen.model.UserRole;
 import spark.Request;
 import spark.Response;
 import spark.Route;
@@ -11,12 +10,12 @@ import spark.Route;
 /*package*/ class AdminRouteAdapter implements Route{
 
 	private final LoggedInRoute target;
-	private final Account.AccessLevel requiredAccessLevel;
+	private final UserRole.Permission permission;
 	private final boolean needCSRF;
 
-	public AdminRouteAdapter(LoggedInRoute target, Account.AccessLevel requiredAccessLevel, boolean needCSRF){
+	public AdminRouteAdapter(LoggedInRoute target, UserRole.Permission permission, boolean needCSRF){
 		this.target=target;
-		this.requiredAccessLevel=requiredAccessLevel;
+		this.permission=permission;
 		this.needCSRF=needCSRF;
 	}
 
@@ -25,13 +24,9 @@ import spark.Route;
 		if(!Utils.requireAccount(request, response) || (needCSRF && !Utils.verifyCSRF(request, response)))
 			return "";
 		SessionInfo info=Utils.sessionInfo(request);
-		return handle(request, response, info.account, Utils.context(request));
-	}
-
-	private Object handle(Request req, Response resp, Account self, ApplicationContext ctx) throws Exception{
-		if(self.accessLevel.ordinal()<requiredAccessLevel.ordinal()){
-			return Utils.wrapError(req, resp, "err_access");
+		if(info.permissions.hasPermission(permission)){
+			return target.handle(request, response, info.account, Utils.context(request));
 		}
-		return target.handle(req, resp, self, ctx);
+		return Utils.wrapError(request, response, "err_access");
 	}
 }

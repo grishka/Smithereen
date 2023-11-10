@@ -41,6 +41,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.UserRole;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -850,22 +851,29 @@ public class UserStorage{
 		return null;
 	}
 
-	public static void setAccountAccessLevel(int id, Account.AccessLevel level) throws SQLException{
+	public static void setAccountRole(Account account, int role, int promotedBy) throws SQLException{
 		new SQLQueryBuilder()
 				.update("accounts")
-				.value("access_level", level)
-				.where("id=?", id)
+				.value("role", role>0 ? role : null)
+				.value("promoted_by", promotedBy>0 ? promotedBy : null)
+				.where("id=?", account.id)
 				.executeNoResult();
-		synchronized(UserStorage.class){
-			accountCache.remove(id);
-		}
+		accountCache.remove(account.id);
+		SessionStorage.removeFromUserPermissionsCache(account.user.id);
 	}
 
 	public static List<User> getAdmins() throws SQLException{
+		Set<Integer> rolesToShow=Config.userRoles.values()
+				.stream()
+				.filter(r->r.permissions().contains(UserRole.Permission.VISIBLE_IN_STAFF))
+				.map(UserRole::id)
+				.collect(Collectors.toSet());
+		if(rolesToShow.isEmpty())
+			return List.of();
 		return getByIdAsList(new SQLQueryBuilder()
 				.selectFrom("accounts")
 				.columns("user_id")
-				.where("access_level=?", Account.AccessLevel.ADMIN)
+				.whereIn("role", rolesToShow)
 				.executeAndGetIntList());
 	}
 

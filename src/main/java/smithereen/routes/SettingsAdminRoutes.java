@@ -3,6 +3,7 @@ package smithereen.routes;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,6 +23,7 @@ import smithereen.model.Server;
 import smithereen.model.StatsPoint;
 import smithereen.model.StatsType;
 import smithereen.model.User;
+import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
@@ -108,25 +110,29 @@ public class SettingsAdminRoutes{
 		return model;
 	}
 
-	public static Object accessLevelForm(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object roleForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		Lang l=lang(req);
 		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
-		Account target=UserStorage.getAccount(accountID);
-		if(target==null || target.id==self.id)
-			throw new ObjectNotFoundException("err_user_not_found");
-		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users_access_level", req);
+		Account target=ctx.getUsersController().getAccountOrThrow(accountID);
+		if(target.id==self.id)
+			return wrapError(req, resp, "err_user_not_found");
+		UserRole myRole=sessionInfo(req).permissions.role;
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users_role", req);
 		model.with("targetAccount", target);
-		return wrapForm(req, resp, "admin_users_access_level", "/settings/admin/users/setAccessLevel", l.get("access_level"), "save", model);
+		model.with("roles", Config.userRoles.values().stream()
+				.filter(r->myRole.permissions().contains(UserRole.Permission.SUPERUSER) || r.permissions().containsAll(myRole.permissions()))
+				.sorted(Comparator.comparingInt(UserRole::id))
+				.toList());
+		return wrapForm(req, resp, "admin_users_role", "/settings/admin/users/setRole", l.get("role"), "save", model);
 	}
 
-	public static Object setUserAccessLevel(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object setUserRole(Request req, Response resp, Account self, ApplicationContext ctx){
 		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
-		Account target=UserStorage.getAccount(accountID);
-		if(target==null || target.id==self.id)
+		int role=safeParseInt(req.queryParams("role"));
+		Account target=ctx.getUsersController().getAccountOrThrow(accountID);
+		if(target.id==self.id)
 			return wrapError(req, resp, "err_user_not_found");
-		try{
-			UserStorage.setAccountAccessLevel(target.id, Account.AccessLevel.valueOf(req.queryParams("level")));
-		}catch(IllegalArgumentException x){}
+		ctx.getModerationController().setAccountRole(self, target, role);
 		if(isAjax(req)){
 			resp.type("application/json");
 			return "[]";
@@ -138,7 +144,7 @@ public class SettingsAdminRoutes{
 		Lang l=lang(req);
 		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
 		Account target=UserStorage.getAccount(accountID);
-		if(target==null || target.id==self.id || target.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal())
+		if(target==null || target.id==self.id || target.roleID!=0)
 			throw new ObjectNotFoundException("err_user_not_found");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_ban_user", req);
 		model.with("targetAccount", target);
@@ -148,7 +154,7 @@ public class SettingsAdminRoutes{
 	public static Object banUser(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
 		Account target=UserStorage.getAccount(accountID);
-		if(target==null || target.id==self.id || target.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal())
+		if(target==null || target.id==self.id || target.roleID!=0)
 			throw new ObjectNotFoundException("err_user_not_found");
 		Account.BanInfo banInfo=new Account.BanInfo();
 		banInfo.reason=req.queryParams("message");

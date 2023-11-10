@@ -116,7 +116,7 @@ public class Templates{
 					throw new InternalServerErrorException(x);
 				}
 
-				if(info.permissions.serverAccessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal()){
+				if(info.permissions.role!=null){ // TODO check if this role actually grants permissions that have counters in left menu
 					model.with("serverSignupMode", Config.signupMode);
 					model.with("adminNotifications", AdminNotifications.getInstance(req));
 				}
