@@ -378,7 +378,6 @@ public class SettingsAdminRoutes{
 					List.of(sentActivities, recvdActivities, failedActivities),
 					timeZoneForRequest(req)
 			).toString());
-			System.out.println(gd);
 		}
 		return model;
 	}
