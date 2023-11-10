@@ -12,7 +12,7 @@ import smithereen.Utils;
 import spark.Response;
 
 public class WebDeltaResponse{
-	private ArrayList<Command> commands=new ArrayList<>();
+	private final ArrayList<Command> commands=new ArrayList<>();
 
 	public WebDeltaResponse(){
 
@@ -109,6 +109,11 @@ public class WebDeltaResponse{
 
 	public WebDeltaResponse showSnackbar(String text){
 		commands.add(new ShowSnackbarCommand(text));
+		return this;
+	}
+
+	public WebDeltaResponse setURL(String url){
+		commands.add(new SetURLCommand(url));
 		return this;
 	}
 
@@ -333,6 +338,15 @@ public class WebDeltaResponse{
 		public ShowSnackbarCommand(String text){
 			super("snackbar");
 			this.text=text;
+		}
+	}
+
+	public static class SetURLCommand extends Command{
+		public String url;
+
+		public SetURLCommand(String url){
+			super("setURL");
+			this.url=url;
 		}
 	}
 }

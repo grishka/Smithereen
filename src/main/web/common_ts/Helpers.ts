@@ -640,6 +640,9 @@ function applyServerCommand(cmd:any){
 		case "snackbar":
 			LayerManager.getInstance().showSnackbar(cmd.t);
 			break;
+		case "setURL":
+			history.replaceState(null, "", cmd.url);
+			break;
 	}
 }
 

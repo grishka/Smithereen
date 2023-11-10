@@ -3,6 +3,7 @@ package smithereen.routes;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -345,7 +346,10 @@ public class SettingsAdminRoutes{
 				.with("onlyRestricted", onlyRestricted)
 				.with("query", q);
 		if(isAjax(req)){
-			return new WebDeltaResponse(resp).setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate")).setAttribute("domainSearch", "data-base-url", baseURL);
+			return new WebDeltaResponse(resp)
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"))
+					.setAttribute("domainSearch", "data-base-url", baseURL)
+					.setURL(baseURL);
 		}
 		return model;
 	}
