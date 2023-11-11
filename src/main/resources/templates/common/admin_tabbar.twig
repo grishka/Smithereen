@@ -1,7 +1,10 @@
 {# @pebvariable name="userPermissions" type="smithereen.model.UserPermissions" #}
 <div class="tabbar">
 	{% if userPermissions.hasPermission('MANAGE_SERVER_SETTINGS') %}
-	<a href="/settings/admin" class="{% if tab=='general' %}selected{% endif %}">{{L('profile_edit_basic')}}</a>
+	<a href="/settings/admin" class="{% if tab=='general' %}selected{% endif %}">{{L('admin_server_settings')}}</a>
+	{% endif %}
+	{% if userPermissions.hasPermission('MANAGE_ROLES') %}
+	<a href="/settings/admin/roles" class="{% if tab=='roles' %}selected{% endif %}">{{L('admin_roles')}}</a>
 	{% endif %}
 	{% if userPermissions.hasPermission('MANAGE_SERVER_SETTINGS') %}
 	<a href="/settings/admin/other" class="{% if tab=='other' %}selected{% endif %}">{{L('admin_other')}}</a>

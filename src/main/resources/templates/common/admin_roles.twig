@@ -1,0 +1,30 @@
+{% extends "page" %}
+{% block content %}
+{% include "admin_tabbar" with {'tab': 'roles'} %}
+{% if message is not empty %}
+<div class="settingsMessage">{{ message }}</div>
+{% endif %}
+<div class="summaryWrap">
+	<div class="summary">
+		{{- L('admin_roles_summary', {'count': roles | length}) -}}
+		<span class="auxText"> | <a href="/settings/admin/roles/create">{{ L('admin_create_role') }}</a>
+	</div>
+</div>
+<div class="singleColumn">
+	{% for role in roles %}
+	<div class="listItemWithDivider" id="roleRow{{ role.role.id }}">
+		<div><b>{{ role.role.langKey is empty ? role.role.name : L(role.role.langKey) }}</b></div>
+		<div class="smallVMargin">
+		{% for permission in role.role.permissions %}{{ L(permission.langKey) }}{% if not loop.last %}, {% endif %}{% endfor %}
+		</div>
+		<a href="/settings/admin/users?role={{ role.role.id }}">{{ L('X_users', {'count': role.numUsers}) }}</a>
+		{%- if role.canEdit %}
+		| <a href="/settings/admin/roles/{{ role.role.id }}">{{ L('edit') }}</a>
+		{%- if role.role.id!=1 and role.role.id!=userPermissions.role.id %}
+		| <a href="/settings/admin/roles/{{ role.role.id }}/delete" data-confirm-message="admin_delete_role_confirm" data-confirm-title="admin_delete_role" data-confirm-action="/settings/admin/roles/{{ role.role.id }}/delete">{{ L('delete') }}</a>
+		{% endif %}
+		{% endif %}
+	</div>
+	{% endfor %}
+</div>
+{% endblock %}

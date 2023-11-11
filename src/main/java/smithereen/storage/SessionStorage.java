@@ -430,6 +430,10 @@ public class SessionStorage{
 		permissionsCache.remove(userID);
 	}
 
+	public static synchronized void resetPermissionsCache(){
+		permissionsCache.evictAll();
+	}
+
 	public static synchronized UserPermissions getUserPermissions(Account account) throws SQLException{
 		UserPermissions r=permissionsCache.get(account.user.id);
 		if(r!=null)

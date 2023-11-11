@@ -1,6 +1,6 @@
 {% extends "page" %}
 {% block content %}
-{% include "admin_tabbar" with {'tab': 'federation'} %}
+{% include "admin_access_tabbar" with {'tab': 'federation'} %}
 <div class="gray">
 	<div class="searchFieldWrap singleColumn">
 		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('search_server_domain') }}" value="{{ query }}" id="domainSearch" data-base-url="{{ urlPath }}"/>

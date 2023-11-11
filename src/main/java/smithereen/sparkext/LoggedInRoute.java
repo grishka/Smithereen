@@ -17,8 +17,8 @@ public interface LoggedInRoute extends Route{
 		if(!Utils.requireAccount(request, response))
 			return "";
 		SessionInfo info=Objects.requireNonNull(Utils.sessionInfo(request));
-		return handle(request, response, info.account, Utils.context(request));
+		return handle(request, response, info, Utils.context(request));
 	}
 
-	Object handle(Request request, Response response, Account self, ApplicationContext ctx) throws Exception;
+	Object handle(Request request, Response response, SessionInfo info, ApplicationContext ctx) throws Exception;
 }

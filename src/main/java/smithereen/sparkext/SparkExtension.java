@@ -21,6 +21,14 @@ public class SparkExtension{
 		post(path, route);
 	}
 
+	public static void getLoggedIn(String path, LoggedInSimpleRoute route){
+		get(path, route);
+	}
+
+	public static void postLoggedIn(String path, LoggedInSimpleRoute route){
+		post(path, route);
+	}
+
 	public static void getWithCSRF(String path, CSRFRoute route){
 		get(path, route);
 	}
@@ -38,6 +46,18 @@ public class SparkExtension{
 	}
 
 	public static void postRequiringPermissionWithCSRF(String path, UserRole.Permission permission, LoggedInRoute route){
+		post(path, new AdminRouteAdapter(route, permission, true));
+	}
+
+	public static void getRequiringPermission(String path, UserRole.Permission permission, LoggedInSimpleRoute route){
+		get(path, new AdminRouteAdapter(route, permission, false));
+	}
+
+	public static void getRequiringPermissionWithCSRF(String path, UserRole.Permission permission, LoggedInSimpleRoute route){
+		get(path, new AdminRouteAdapter(route, permission, true));
+	}
+
+	public static void postRequiringPermissionWithCSRF(String path, UserRole.Permission permission, LoggedInSimpleRoute route){
 		post(path, new AdminRouteAdapter(route, permission, true));
 	}
 

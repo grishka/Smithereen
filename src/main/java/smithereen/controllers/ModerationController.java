@@ -10,6 +10,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -17,6 +21,8 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
@@ -31,11 +37,12 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.User;
+import smithereen.model.UserPermissions;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.model.viewmodel.UserRoleViewModel;
 import smithereen.storage.ModerationStorage;
+import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.util.XTEA;
 
@@ -244,6 +251,81 @@ public class ModerationController{
 			throw new UserActionNotAllowedException();
 		try{
 			UserStorage.setAccountRole(account, roleID, targetRole==null ? 0 : self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<UserRoleViewModel> getRoles(UserPermissions ownPermissions){
+		try{
+			Map<Integer, Integer> roleCounts=ModerationStorage.getRoleAccountCounts();
+			boolean canEditAll=ownPermissions.hasPermission(UserRole.Permission.SUPERUSER);
+			return Config.userRoles.values()
+					.stream()
+					.sorted(Comparator.comparingInt(UserRole::id))
+					.map(r->new UserRoleViewModel(r, roleCounts.getOrDefault(r.id(), 0), canEditAll || ownPermissions.role.permissions().containsAll(r.permissions())))
+					.toList();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateRole(UserPermissions ownPermissions, UserRole role, String name, EnumSet<UserRole.Permission> permissions){
+		try{
+			// Can only use permissions they have themselves
+			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(permissions))
+				throw new UserActionNotAllowedException();
+			// Can't make role #1 not be superuser role
+			if(role.id()==1 && !permissions.contains(UserRole.Permission.SUPERUSER))
+				throw new UserActionNotAllowedException();
+			// Can't change permissions on user's own role but can change settings and name
+			if(ownPermissions.role.id()==role.id()){
+				EnumSet<UserRole.Permission> actualPermissions=EnumSet.copyOf(permissions);
+				actualPermissions.removeIf(UserRole.Permission::isActuallySetting);
+				if(!permissions.containsAll(actualPermissions))
+					throw new UserActionNotAllowedException();
+			}
+			if(permissions.isEmpty())
+				throw new BadRequestException();
+			ModerationStorage.updateRole(role.id(), name, permissions);
+			UserStorage.resetAccountsCache();
+			SessionStorage.resetPermissionsCache();
+			Config.reloadRoles();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public UserRole createRole(UserPermissions ownPermissions, String name, EnumSet<UserRole.Permission> permissions){
+		try{
+			// Can only use permissions they have themselves
+			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(permissions))
+				throw new UserActionNotAllowedException();
+			if(permissions.isEmpty())
+				throw new BadRequestException();
+			int id=ModerationStorage.createRole(name, permissions);
+			Config.reloadRoles();
+			return Config.userRoles.get(id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteRole(UserPermissions ownPermissions, UserRole role){
+		try{
+			// Can only delete roles with same or lesser permissions as their own role
+			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(role.permissions()))
+				throw new UserActionNotAllowedException();
+			// Can't delete the superuser role
+			if(role.id()==1)
+				throw new UserActionNotAllowedException();
+			// Can't delete their own role because that would be a stupid thing to do
+			if(role.id()==ownPermissions.role.id())
+				throw new UserActionNotAllowedException();
+			ModerationStorage.deleteRole(role.id());
+			UserStorage.resetAccountsCache();
+			SessionStorage.resetPermissionsCache();
+			Config.reloadRoles();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -25,7 +25,7 @@ import spark.Route;
 			return "";
 		SessionInfo info=Utils.sessionInfo(request);
 		if(info.permissions.hasPermission(permission)){
-			return target.handle(request, response, info.account, Utils.context(request));
+			return target.handle(request, response, info, Utils.context(request));
 		}
 		return Utils.wrapError(request, response, "err_access");
 	}

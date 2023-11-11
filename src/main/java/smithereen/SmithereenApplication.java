@@ -250,6 +250,12 @@ public class SmithereenApplication{
 				getRequiringPermission("/federation/:domain/restrictionForm", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerRestrictionForm);
 				postRequiringPermissionWithCSRF("/federation/:domain/restrict", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationRestrictServer);
 				getRequiringPermissionWithCSRF("/federation/:domain/resetAvailability", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationResetServerAvailability);
+				getRequiringPermission("/roles", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::roles);
+				getRequiringPermission("/roles/create", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::createRoleForm);
+				postRequiringPermissionWithCSRF("/roles/create", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::saveRole);
+				getRequiringPermission("/roles/:id", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::editRole);
+				postRequiringPermissionWithCSRF("/roles/:id", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::saveRole);
+				postRequiringPermissionWithCSRF("/roles/:id/delete", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::deleteRole);
 			});
 		});
 

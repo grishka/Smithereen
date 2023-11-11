@@ -858,8 +858,14 @@ public class UserStorage{
 				.value("promoted_by", promotedBy>0 ? promotedBy : null)
 				.where("id=?", account.id)
 				.executeNoResult();
-		accountCache.remove(account.id);
+		synchronized(UserStorage.class){
+			accountCache.remove(account.id);
+		}
 		SessionStorage.removeFromUserPermissionsCache(account.user.id);
+	}
+
+	public static synchronized void resetAccountsCache(){
+		accountCache.evictAll();
 	}
 
 	public static List<User> getAdmins() throws SQLException{

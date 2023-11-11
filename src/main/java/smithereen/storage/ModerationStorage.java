@@ -4,10 +4,15 @@ import org.jetbrains.annotations.Nullable;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
+import smithereen.Utils;
 import smithereen.model.PaginatedList;
 import smithereen.model.Server;
+import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
@@ -143,6 +148,40 @@ public class ModerationStorage{
 				.value("moderator_id", moderatorID)
 				.valueExpr("action_time", "CURRENT_TIMESTAMP()")
 				.where("id=?", reportID)
+				.executeNoResult();
+	}
+
+	public static Map<Integer, Integer> getRoleAccountCounts() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("accounts")
+				.selectExpr("role, count(*)")
+				.where("role IS NOT NULL")
+				.groupBy("role")
+				.executeAsStream(rs->new IdPair(rs.getInt(1), rs.getInt(2)))
+				.collect(Collectors.toMap(IdPair::first, IdPair::second));
+	}
+
+	public static void updateRole(int id, String name, EnumSet<UserRole.Permission> permissions) throws SQLException{
+		new SQLQueryBuilder()
+				.update("user_roles")
+				.value("name", name)
+				.value("permissions", Utils.serializeEnumSetToBytes(permissions))
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static int createRole(String name, EnumSet<UserRole.Permission> permissions) throws SQLException{
+		return new SQLQueryBuilder()
+				.insertInto("user_roles")
+				.value("name", name)
+				.value("permissions", Utils.serializeEnumSetToBytes(permissions))
+				.executeAndGetID();
+	}
+
+	public static void deleteRole(int id) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("user_roles")
+				.where("id=?", id)
 				.executeNoResult();
 	}
 }

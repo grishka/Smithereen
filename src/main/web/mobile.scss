@@ -1205,6 +1205,9 @@ textarea{
 		width: 24px;
 		height: 24px;
 	}
+	&.disabled{
+		opacity: 0.6;
+	}
 	margin: 8px 0;
 }
 
@@ -1235,6 +1238,10 @@ textarea{
 	.summary{
 		color: $boldHeaders;
 		font-weight: $mediumWeight;
+		.auxText{
+			font-weight: normal;
+			color: $text;
+		}
 	}
 	.auxLinks{
 		margin: 0 -8px;

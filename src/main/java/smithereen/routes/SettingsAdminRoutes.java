@@ -4,7 +4,9 @@ import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,6 +23,7 @@ import smithereen.model.MailMessage;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.Server;
+import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
 import smithereen.model.StatsType;
 import smithereen.model.User;
@@ -31,6 +34,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
+import smithereen.model.viewmodel.UserRoleViewModel;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
@@ -557,6 +561,105 @@ public class SettingsAdminRoutes{
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 
+		return "";
+	}
+
+	public static Object roles(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		jsLangKey(req, "admin_delete_role", "admin_delete_role_confirm", "yes", "no");
+		List<UserRoleViewModel> roles=ctx.getModerationController().getRoles(info.permissions);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_roles", req)
+				.pageTitle(lang(req).get("admin_roles"))
+				.with("toolbarTitle", lang(req).get("menu_admin"))
+				.with("roles", roles);
+		String msg=req.session().attribute("adminRolesMessage");
+		if(StringUtils.isNotEmpty(msg)){
+			req.session().removeAttribute("adminRolesMessage");
+			model.with("message", msg);
+		}
+		return model;
+	}
+
+	public static Object editRole(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		UserRole role=Config.userRoles.get(safeParseInt(req.params(":id")));
+		if(role==null)
+			throw new ObjectNotFoundException();
+		UserRole myRole=info.permissions.role;
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_edit_role", req);
+		model.pageTitle(lang(req).get("admin_edit_role_title"));
+		model.with("role", role);
+		if(role.id()==1){
+			model.with("permissions", List.of(UserRole.Permission.SUPERUSER));
+			model.with("disabledPermissions", EnumSet.of(UserRole.Permission.SUPERUSER));
+		}else{
+			model.with("permissions", Arrays.stream(UserRole.Permission.values()).filter(p->p!=UserRole.Permission.VISIBLE_IN_STAFF && (myRole.permissions().contains(UserRole.Permission.SUPERUSER) || myRole.permissions().contains(p))).toList());
+			if(role.id()==myRole.id())
+				model.with("disabledPermissions", EnumSet.allOf(UserRole.Permission.class));
+			else
+				model.with("disabledPermissions", EnumSet.noneOf(UserRole.Permission.class));
+		}
+		if(info.permissions.hasPermission(UserRole.Permission.VISIBLE_IN_STAFF))
+			model.with("settings", List.of(UserRole.Permission.VISIBLE_IN_STAFF));
+		return model;
+	}
+
+	public static Object saveRole(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		String _id=req.params(":id");
+		UserRole role;
+		if(StringUtils.isNotEmpty(_id)){
+			role=Config.userRoles.get(safeParseInt(_id));
+			if(role==null)
+				throw new ObjectNotFoundException();
+		}else{
+			role=null;
+		}
+		requireQueryParams(req, "name");
+		String name=req.queryParams("name");
+		EnumSet<UserRole.Permission> permissions=EnumSet.noneOf(UserRole.Permission.class);
+		for(UserRole.Permission permission:UserRole.Permission.values()){
+			if("on".equals(req.queryParams(permission.toString())))
+				permissions.add(permission);
+		}
+		if(permissions.isEmpty()){
+			if(isAjax(req)){
+				return new WebDeltaResponse(resp).show("formMessage_editRole").setContent("formMessage_editRole", lang(req).get("admin_no_permissions_selected"));
+			}
+			resp.redirect(back(req));
+			return "";
+		}
+		if(role!=null){
+			ctx.getModerationController().updateRole(info.permissions, role, name, permissions);
+			req.session().attribute("adminRolesMessage", lang(req).get("admin_role_X_saved", Map.of("name", name)));
+		}else{
+			ctx.getModerationController().createRole(info.permissions, name, permissions);
+			req.session().attribute("adminRolesMessage", lang(req).get("admin_role_X_created", Map.of("name", name)));
+		}
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).replaceLocation("/settings/admin/roles");
+		}
+		resp.redirect("/settings/admin/roles");
+		return "";
+	}
+
+	public static Object createRoleForm(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		UserRole myRole=info.permissions.role;
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_edit_role", req);
+		model.pageTitle(lang(req).get("admin_create_role_title"));
+		model.with("permissions", Arrays.stream(UserRole.Permission.values()).filter(p->p!=UserRole.Permission.VISIBLE_IN_STAFF && (myRole.permissions().contains(UserRole.Permission.SUPERUSER) || myRole.permissions().contains(p))).toList());
+		model.with("disabledPermissions", EnumSet.noneOf(UserRole.Permission.class));
+		if(info.permissions.hasPermission(UserRole.Permission.VISIBLE_IN_STAFF))
+			model.with("settings", List.of(UserRole.Permission.VISIBLE_IN_STAFF));
+		return model;
+	}
+
+	public static Object deleteRole(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		UserRole role=Config.userRoles.get(safeParseInt(req.params(":id")));
+		if(role==null)
+			throw new ObjectNotFoundException();
+		ctx.getModerationController().deleteRole(info.permissions, role);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).remove("roleRow"+role.id());
+		}
+		resp.redirect("/settings/admin/roles");
 		return "";
 	}
 }
