@@ -21,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
@@ -200,8 +201,13 @@ public abstract class ActivityPubObject{
 			return null;
 		try{
 			URI uri=new URI(url);
-			if("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()) || "as".equals(uri.getScheme()))
+			if("https".equals(uri.getScheme()) || "as".equals(uri.getScheme())){
 				return uri;
+			}else if("http".equals(uri.getScheme())){
+				if(Config.useHTTP)
+					return uri;
+				return new UriBuilder(uri).scheme("https").build();
+			}
 			if("bear".equals(uri.getScheme())){
 				Map<String, String> params=UriBuilder.parseQueryString(uri.getRawQuery());
 				String token=params.get("t");
