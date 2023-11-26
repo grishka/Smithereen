@@ -120,6 +120,7 @@ public class PostRoutes{
 				model.with("topLevel", new PostViewModel(context(req).getWallController().getPostOrThrow(post.replyKey.get(0))));
 			}
 			model.with("users", Map.of(self.user.id, self.user));
+			model.with("posts", Map.of(post.id, post));
 			String postHTML=model.renderToString();
 			if(req.attribute("mobile")!=null && replyTo==0){
 				postHTML="<div class=\"card\">"+postHTML+"</div>";
@@ -695,8 +696,9 @@ public class PostRoutes{
 		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 
 		List<User> users=ctx.getWallController().getPollOptionVoters(option, offset, 100);
-		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users);
-		model.with("pageOffset", offset).with("total", option.numVotes).with("paginationUrlPrefix", "/posts/"+postID+"/pollVoters/"+option.id+"?fromPagination&offset=").with("emptyMessage", lang(req).get("poll_option_votes_empty"));
+		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
+		model.paginate(new PaginatedList<>(users, option.numVotes, offset, 100), "/posts/"+postID+"/pollVoters/"+option.id+"?fromPagination&offset=", null);
+		model.with("emptyMessage", lang(req).get("poll_option_votes_empty")).with("summary", lang(req).get("X_people_voted_title", Map.of("count", option.numVotes)));
 		if(isAjax(req)){
 			if(req.queryParams("fromPagination")==null)
 				return new WebDeltaResponse(resp).box(option.text, model.renderToString(), "likesList", 610);
