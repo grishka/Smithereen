@@ -19,7 +19,7 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=34;
+	public static final int SCHEMA_VERSION=35;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -518,6 +518,21 @@ public class DatabaseSchemaUpdater{
 						.value("role", 1)
 						.executeNoResult();
 				conn.createStatement().execute("ALTER TABLE accounts DROP access_level");
+			}
+			case 35 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `audit_log` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `admin_id` int unsigned NOT NULL,
+						  `action` int unsigned NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `owner_id` int DEFAULT NULL,
+						  `object_id` bigint DEFAULT NULL,
+						  `object_type` int unsigned DEFAULT NULL,
+						  `extra` json DEFAULT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `owner_id` (`owner_id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
 		}
 	}
