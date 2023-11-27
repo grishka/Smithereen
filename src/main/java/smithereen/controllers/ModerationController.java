@@ -10,8 +10,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +29,7 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.AdminNotifications;
+import smithereen.model.AuditLogEntry;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -251,6 +254,7 @@ public class ModerationController{
 			throw new UserActionNotAllowedException();
 		try{
 			UserStorage.setAccountRole(account, roleID, targetRole==null ? 0 : self.id);
+			ModerationStorage.createAuditLogEntry(self.user.id, AuditLogEntry.Action.ASSIGN_ROLE, account.user.id, roleID, AuditLogEntry.ObjectType.ROLE, null);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -270,7 +274,7 @@ public class ModerationController{
 		}
 	}
 
-	public void updateRole(UserPermissions ownPermissions, UserRole role, String name, EnumSet<UserRole.Permission> permissions){
+	public void updateRole(User self, UserPermissions ownPermissions, UserRole role, String name, EnumSet<UserRole.Permission> permissions){
 		try{
 			// Can only use permissions they have themselves
 			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(permissions))
@@ -287,16 +291,30 @@ public class ModerationController{
 			}
 			if(permissions.isEmpty())
 				throw new BadRequestException();
+			// Nothing changed
+			if(role.name().equals(name) && role.permissions().equals(permissions))
+				return;
 			ModerationStorage.updateRole(role.id(), name, permissions);
 			UserStorage.resetAccountsCache();
 			SessionStorage.resetPermissionsCache();
 			Config.reloadRoles();
+
+			HashMap<String, Object> extra=new HashMap<>();
+			if(!role.name().equals(name)){
+				extra.put("oldName", role.name());
+				extra.put("newName", name);
+			}
+			if(!role.permissions().equals(permissions)){
+				extra.put("oldPermissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(role.permissions())));
+				extra.put("newPermissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(permissions)));
+			}
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.EDIT_ROLE, 0, role.id(), AuditLogEntry.ObjectType.ROLE, extra);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public UserRole createRole(UserPermissions ownPermissions, String name, EnumSet<UserRole.Permission> permissions){
+	public UserRole createRole(User self, UserPermissions ownPermissions, String name, EnumSet<UserRole.Permission> permissions){
 		try{
 			// Can only use permissions they have themselves
 			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(permissions))
@@ -305,13 +323,17 @@ public class ModerationController{
 				throw new BadRequestException();
 			int id=ModerationStorage.createRole(name, permissions);
 			Config.reloadRoles();
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CREATE_ROLE, 0, id, AuditLogEntry.ObjectType.ROLE, Map.of(
+					"name", name,
+					"permissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(permissions))
+			));
 			return Config.userRoles.get(id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public void deleteRole(UserPermissions ownPermissions, UserRole role){
+	public void deleteRole(User self, UserPermissions ownPermissions, UserRole role){
 		try{
 			// Can only delete roles with same or lesser permissions as their own role
 			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(role.permissions()))
@@ -326,6 +348,18 @@ public class ModerationController{
 			UserStorage.resetAccountsCache();
 			SessionStorage.resetPermissionsCache();
 			Config.reloadRoles();
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.DELETE_ROLE, 0, role.id(), AuditLogEntry.ObjectType.ROLE, Map.of(
+					"name", role.name(),
+					"permissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(role.permissions()))
+			));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<AuditLogEntry> getGlobalAuditLog(int offset, int count){
+		try{
+			return ModerationStorage.getGlobalAuditLog(offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

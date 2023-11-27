@@ -126,7 +126,7 @@
   "admin_permission_rules": "Управление правилами",
   "admin_permission_roles": "Управление ролями пользователей",
   "admin_permission_audit_log": "Просмотр журнала действий",
-  "admin_permission_manage_users": "Управление пользователей",
+  "admin_permission_manage_users": "Управление пользователями",
   "admin_permission_user_access": "Управление доступом пользователей",
   "admin_permission_reports": "Работа с жалобами",
   "admin_permission_federation": "Управление федерацией",
@@ -159,5 +159,13 @@
   "admin_role_X_created": "Роль \"{name}\" создана",
   "admin_no_permissions_selected": "Выберите хотя бы одно право доступа",
   "admin_edit_role_title": "Редактирование роли",
-  "admin_create_role_title": "Создание роли"
+  "admin_create_role_title": "Создание роли",
+  "admin_audit_log": "Журнал действий",
+  "admin_audit_log_summary": "{count, plural, =0 {Нет записей} one {Всего # запись} few {Всего # записи} other {Всего # записей}} в журнале",
+  "admin_audit_log_empty": "Здесь появятся записи об административных действиях",
+  "admin_audit_log_created_role": "<a id=\"adminUser\">{name}</a> {gender, select, female {создала} other {создал}} роль \"{roleName}\"",
+  "admin_audit_log_edited_role": "<a id=\"adminUser\">{name}</a> {gender, select, female {отредактировала} other {отредактировал}} роль \"{roleName}\"",
+  "admin_audit_log_deleted_role": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} роль \"{roleName}\"",
+  "admin_audit_log_assigned_role": "<a id=\"adminUser\">{name}</a> {gender, select, female {назначила} other {назначил}} <a id=\"targetUser\">{targetName, inflect, dative}</a> роль \"{roleName}\"",
+  "admin_audit_log_unassigned_role": "<a id=\"adminUser\">{name}</a> {gender, select, female {разжаловала} other {разжаловал}} <a id=\"targetUser\">{targetName, inflect, dative}</a>"
 }

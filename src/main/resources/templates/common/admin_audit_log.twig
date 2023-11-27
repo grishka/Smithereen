@@ -1,0 +1,27 @@
+{# @pebvariable name="entry" type="smithereen.model.viewmodel.AuditLogEntryViewModel" #}
+{% extends "page" %}
+{% block content %}
+{% include "admin_tabbar" with {'tab': 'auditLog'} %}
+{% if not isMobile %}
+<div class="summaryWrap">
+	<div class="summary">{{ L('admin_audit_log_summary', {'count': totalItems}) }}</div>
+	{% include "pagination" %}
+</div>
+{% endif %}
+<div class="singleColumn">
+{% for entry in items %}
+	<div class="listItemWithDivider itemWithAvatar">
+		<div><a href="{{ profileURL(entry.entry.adminID) }}">{{ users[entry.entry.adminID] | pictureForAvatar('s') }}</a></div>
+		<div>
+			<div class="smallVMargin" style="margin-top: 0;">{{ entry.mainTextHtml | raw }}</div>
+			{% if entry.extraTextHtml is not empty %}<div class="smallVMargin">{{ entry.extraTextHtml | raw }}</div>{% endif %}
+			<div class="grayText">{{ LD(entry.entry.time) }}</div>
+		</div>
+	</div>
+{% else %}
+	<div class="emptyState">{{ L('admin_audit_log_empty') }}</div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}
+

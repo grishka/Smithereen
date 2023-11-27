@@ -256,6 +256,7 @@ public class SmithereenApplication{
 				getRequiringPermission("/roles/:id", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::editRole);
 				postRequiringPermissionWithCSRF("/roles/:id", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::saveRole);
 				postRequiringPermissionWithCSRF("/roles/:id/delete", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::deleteRole);
+				getRequiringPermission("/auditLog", UserRole.Permission.VIEW_SERVER_AUDIT_LOG, SettingsAdminRoutes::auditLog);
 			});
 		});
 

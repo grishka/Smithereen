@@ -6,6 +6,9 @@
 	{% if userPermissions.hasPermission('MANAGE_ROLES') %}
 	<a href="/settings/admin/roles" class="{% if tab=='roles' %}selected{% endif %}">{{L('admin_roles')}}</a>
 	{% endif %}
+	{% if userPermissions.hasPermission('VIEW_SERVER_AUDIT_LOG') %}
+	<a href="/settings/admin/auditLog" class="{% if tab=='auditLog' %}selected{% endif %}">{{ L('admin_audit_log') }}</a>
+	{% endif %}
 	{% if userPermissions.hasPermission('MANAGE_SERVER_SETTINGS') %}
 	<a href="/settings/admin/other" class="{% if tab=='other' %}selected{% endif %}">{{L('admin_other')}}</a>
 	{% endif %}

@@ -5,20 +5,26 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.model.Account;
+import smithereen.model.AuditLogEntry;
 import smithereen.model.FederationRestriction;
+import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -34,6 +40,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
+import smithereen.model.viewmodel.AuditLogEntryViewModel;
 import smithereen.model.viewmodel.UserRoleViewModel;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
@@ -627,10 +634,10 @@ public class SettingsAdminRoutes{
 			return "";
 		}
 		if(role!=null){
-			ctx.getModerationController().updateRole(info.permissions, role, name, permissions);
+			ctx.getModerationController().updateRole(info.account.user, info.permissions, role, name, permissions);
 			req.session().attribute("adminRolesMessage", lang(req).get("admin_role_X_saved", Map.of("name", name)));
 		}else{
-			ctx.getModerationController().createRole(info.permissions, name, permissions);
+			ctx.getModerationController().createRole(info.account.user, info.permissions, name, permissions);
 			req.session().attribute("adminRolesMessage", lang(req).get("admin_role_X_created", Map.of("name", name)));
 		}
 		if(isAjax(req)){
@@ -655,11 +662,113 @@ public class SettingsAdminRoutes{
 		UserRole role=Config.userRoles.get(safeParseInt(req.params(":id")));
 		if(role==null)
 			throw new ObjectNotFoundException();
-		ctx.getModerationController().deleteRole(info.permissions, role);
+		ctx.getModerationController().deleteRole(info.account.user, info.permissions, role);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).remove("roleRow"+role.id());
 		}
 		resp.redirect("/settings/admin/roles");
 		return "";
+	}
+
+	public static Object auditLog(Request req, Response resp, Account self, ApplicationContext ctx){
+		PaginatedList<AuditLogEntry> log=ctx.getModerationController().getGlobalAuditLog(offset(req), 100);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(
+				IntStream.concat(log.list.stream().mapToInt(AuditLogEntry::ownerID), log.list.stream().mapToInt(AuditLogEntry::adminID))
+						.filter(id->id>0)
+						.boxed()
+						.collect(Collectors.toSet())
+		);
+		Map<Integer, Group> groups=ctx.getGroupsController().getGroupsByIdAsMap(log.list.stream().map(AuditLogEntry::ownerID).filter(id->id<0).map(id->-id).collect(Collectors.toSet()));
+		final Lang l=lang(req);
+		List<AuditLogEntryViewModel> viewModels=log.list.stream().map(le->{
+			User adminUser=users.get(le.adminID());
+			HashMap<String, Object> links=new HashMap<>();
+			links.put("adminUser", Map.of("href", adminUser!=null ? adminUser.getProfileURL() : "/id"+le.adminID()));
+			HashMap<String, Object> langArgs=new HashMap<>();
+			langArgs.put("name", adminUser!=null ? adminUser.getFullName() : "DELETED");
+			langArgs.put("gender", adminUser!=null ? adminUser.gender : User.Gender.UNKNOWN);
+			String mainText=switch(le.action()){
+				case CREATE_ROLE -> {
+					langArgs.put("roleName", le.extra().get("name"));
+					yield l.get("admin_audit_log_created_role", langArgs);
+				}
+				case EDIT_ROLE -> {
+					UserRole role=Config.userRoles.get((int)le.objectID());
+					langArgs.put("roleName", role!=null ? role.name() : "#"+le.objectID());
+					yield l.get("admin_audit_log_edited_role", langArgs);
+				}
+				case DELETE_ROLE -> {
+					langArgs.put("roleName", le.extra().get("name"));
+					yield l.get("admin_audit_log_deleted_role", langArgs);
+				}
+				case ASSIGN_ROLE -> {
+					User targetUser=users.get(le.ownerID());
+					langArgs.put("targetName", targetUser!=null ? targetUser.getFirstLastAndGender() : "DELETED");
+					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
+					if(le.objectID()==0){
+						yield l.get("admin_audit_log_unassigned_role", langArgs);
+					}else{
+						UserRole role=Config.userRoles.get((int)le.objectID());
+						langArgs.put("roleName", role!=null ? role.name() : "#"+le.objectID());
+						yield l.get("admin_audit_log_assigned_role", langArgs);
+					}
+				}
+			};
+			String extraText=switch(le.action()){
+				case ASSIGN_ROLE, DELETE_ROLE -> null;
+
+				case CREATE_ROLE -> {
+					StringBuilder sb=new StringBuilder("<i>");
+					EnumSet<UserRole.Permission> permissions=EnumSet.noneOf(UserRole.Permission.class);
+					deserializeEnumSet(permissions, UserRole.Permission.class, Base64.getDecoder().decode((String) le.extra().get("permissions")));
+					for(UserRole.Permission permission:permissions){
+						sb.append("<div>+ ");
+						sb.append(l.get(permission.getLangKey()));
+						sb.append("</div>");
+					}
+					sb.append("</i>");
+					yield sb.toString();
+				}
+				case EDIT_ROLE -> {
+					StringBuilder sb=new StringBuilder("<i>");
+					if(le.extra().containsKey("oldName")){
+						sb.append("<div>");
+						sb.append(l.get("admin_role_name"));
+						sb.append(": \"");
+						sb.append(le.extra().get("oldName"));
+						sb.append("\" &rarr; \"");
+						sb.append(le.extra().get("newName"));
+						sb.append("\"</div>");
+					}
+					if(le.extra().containsKey("oldPermissions")){
+						EnumSet<UserRole.Permission> oldPermissions=EnumSet.noneOf(UserRole.Permission.class);
+						deserializeEnumSet(oldPermissions, UserRole.Permission.class, Base64.getDecoder().decode((String) le.extra().get("oldPermissions")));
+						EnumSet<UserRole.Permission> newPermissions=EnumSet.noneOf(UserRole.Permission.class);
+						deserializeEnumSet(newPermissions, UserRole.Permission.class, Base64.getDecoder().decode((String) le.extra().get("newPermissions")));
+						for(UserRole.Permission permission:oldPermissions){
+							if(!newPermissions.contains(permission)){
+								sb.append("<div>- ");
+								sb.append(l.get(permission.getLangKey()));
+								sb.append("</div>");
+							}
+						}
+						for(UserRole.Permission permission:newPermissions){
+							if(!oldPermissions.contains(permission)){
+								sb.append("<div>+ ");
+								sb.append(l.get(permission.getLangKey()));
+								sb.append("</div>");
+							}
+						}
+					}
+					sb.append("</i>");
+					yield sb.toString();
+				}
+			};
+			return new AuditLogEntryViewModel(le, substituteLinks(mainText, links), extraText);
+		}).toList();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_audit_log", req);
+		model.pageTitle(lang(req).get("admin_audit_log")).with("toolbarTitle", lang(req).get("menu_admin")).with("users", users).with("groups", groups);
+		model.paginate(new PaginatedList<>(log, viewModels));
+		return model;
 	}
 }

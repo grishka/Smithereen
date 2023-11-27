@@ -855,3 +855,8 @@ small{
 	margin: $smallPadding 0;
 }
 
+.itemWithAvatar{
+	display: grid;
+	grid-template-columns: 50px 1fr;
+	grid-gap: $mediumPadding;
+}

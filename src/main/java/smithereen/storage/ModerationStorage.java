@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
+import smithereen.model.AuditLogEntry;
 import smithereen.model.PaginatedList;
 import smithereen.model.Server;
 import smithereen.model.UserRole;
@@ -183,5 +184,35 @@ public class ModerationStorage{
 				.deleteFrom("user_roles")
 				.where("id=?", id)
 				.executeNoResult();
+	}
+
+	public static void createAuditLogEntry(int adminID, AuditLogEntry.Action action, int ownerID, long objectID, AuditLogEntry.ObjectType objectType, Map<String, Object> extra) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("audit_log")
+				.value("admin_id", adminID)
+				.value("action", action)
+				.value("owner_id", ownerID)
+				.value("object_id", objectID)
+				.value("object_type", objectType)
+				.value("extra", extra==null ? null : Utils.gson.toJson(extra))
+				.executeNoResult();
+	}
+
+	public static PaginatedList<AuditLogEntry> getGlobalAuditLog(int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("audit_log")
+					.count()
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			return new PaginatedList<>(new SQLQueryBuilder(conn)
+					.selectFrom("audit_log")
+					.allColumns()
+					.orderBy("id DESC")
+					.limit(count, offset)
+					.executeAsStream(AuditLogEntry::fromResultSet)
+					.toList(), total, offset, count);
+		}
 	}
 }

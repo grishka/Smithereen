@@ -159,5 +159,13 @@
   "admin_role_X_created": "Role \"{name}\" was created",
   "admin_no_permissions_selected": "Select at least one permission",
   "admin_edit_role_title": "Edit role",
-  "admin_create_role_title": "Create role"
+  "admin_create_role_title": "Create role",
+  "admin_audit_log": "Audit log",
+  "admin_audit_log_summary": "{count, plural, =0 {No log entries} one {# log entry total} other {# log entries total}}",
+  "admin_audit_log_empty": "Records of administrative actions will appear here",
+  "admin_audit_log_created_role": "<a id=\"adminUser\">{name}</a> created role \"{roleName}\"",
+  "admin_audit_log_edited_role": "<a id=\"adminUser\">{name}</a> edited role \"{roleName}\"",
+  "admin_audit_log_deleted_role": "<a id=\"adminUser\">{name}</a> deleted role \"{roleName}\"",
+  "admin_audit_log_assigned_role": "<a id=\"adminUser\">{name}</a> assigned role \"{roleName}\" to <a id=\"targetUser\">{targetName}</a>",
+  "admin_audit_log_unassigned_role": "<a id=\"adminUser\">{name}</a> removed <a id=\"targetUser\">{targetName}</a>''s role"
 }
