@@ -1,4 +1,4 @@
-FROM maven:3.8.6-eclipse-temurin-17 as builder
+FROM maven:3.9.5-eclipse-temurin-21 as builder
 
 WORKDIR /usr/src/app
 COPY . .
@@ -6,7 +6,7 @@ ARG MAVEN_OPTS
 RUN mvn package -DskipTests=true
 RUN java LibVipsDownloader.java
 
-FROM eclipse-temurin:17-jdk
+FROM eclipse-temurin:21-jdk
 
 SHELL ["bash", "-c"]
 RUN mkdir -p /opt/smithereen

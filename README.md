@@ -11,7 +11,7 @@ If you have any questions or feedback, there's a [Telegram chat](https://t.me/Sm
 ### Running directly on your server
 
 1. Install and configure MySQL
-2. Install maven and JDK >=17 if you don't have it already
+2. Install maven and JDK >=21 if you don't have it already
 3. Build the jar by running `mvn package -DskipTests=true` and place the one with dependencies at `/opt/smithereen/smithereen.jar`
 4. Set up the image processing native library ([libvips](https://github.com/libvips/libvips)): run `java LibVipsDownloader.java` to automatically download a prebuilt one from [here](https://github.com/lovell/sharp-libvips). If you already have libvips installed on your system, you may skip this step, but be aware that not all libvips builds include all the features Smithereen needs.
 5. Install and configure [imgproxy](https://docs.imgproxy.net/GETTING_STARTED)
