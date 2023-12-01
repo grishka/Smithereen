@@ -4,6 +4,8 @@ import com.google.gson.JsonParser;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -49,17 +51,25 @@ public class SessionStorage{
 
 	private static final LruCache<Integer, UserPermissions> permissionsCache=new LruCache<>(500);
 
-	public static String putNewSession(@NotNull Session sess) throws SQLException{
+	public static String putNewSession(@NotNull Session sess, String userAgent, InetAddress ip) throws SQLException{
 		byte[] sid=new byte[64];
 		SessionInfo info=sess.attribute("info");
 		Account account=info.account;
 		if(account==null)
 			throw new IllegalArgumentException("putNewSession requires a logged in session");
 		random.nextBytes(sid);
+		long uaHash=Utils.hashUserAgent(userAgent);
+		new SQLQueryBuilder()
+				.insertIgnoreInto("user_agents")
+				.value("hash", uaHash)
+				.value("user_agent", userAgent)
+				.executeNoResult();
 		new SQLQueryBuilder()
 				.insertInto("sessions")
 				.value("id", sid)
 				.value("account_id", account.id)
+				.value("user_agent", uaHash)
+				.value("ip", Utils.serializeInetAddress(ip))
 				.executeNoResult();
 		return Base64.getEncoder().encodeToString(sid);
 	}
@@ -75,22 +85,40 @@ public class SessionStorage{
 			return false;
 
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT * FROM `accounts` WHERE `id` IN (SELECT `account_id` FROM `sessions` WHERE `id`=?)", (Object) sid);
-			try(ResultSet res=stmt.executeQuery()){
-				if(!res.next())
-					return false;
-				SessionInfo info=new SessionInfo();
-				info.account=Account.fromResultSet(res);
-				info.csrfToken=Utils.csrfTokenFromSessionID(sid);
-				if(info.account.prefs.locale==null){
-					Locale requestLocale=req.raw().getLocale();
-					if(requestLocale!=null){
-						info.account.prefs.locale=requestLocale;
-						SessionStorage.updatePreferences(info.account.id, info.account.prefs);
-					}
+			record SessionRow(int accountID, InetAddress ip, long uaHash){}
+			SessionRow sr=new SQLQueryBuilder(conn)
+					.selectFrom("sessions")
+					.allColumns()
+					.where("id=?", (Object)sid)
+					.executeAndGetSingleObject(r->{
+						try{
+							return new SessionRow(r.getInt("account_id"), InetAddress.getByAddress(r.getBytes("ip")), r.getLong("user_agent"));
+						}catch(UnknownHostException e){
+							throw new RuntimeException(e);
+						}
+					});
+			if(sr==null)
+				return false;
+			Account acc=new SQLQueryBuilder(conn)
+					.selectFrom("accounts")
+					.allColumns()
+					.where("id=?", sr.accountID)
+					.executeAndGetSingleObject(Account::fromResultSet);
+			if(acc==null)
+				return false;
+			SessionInfo info=new SessionInfo();
+			info.account=acc;
+			info.csrfToken=Utils.csrfTokenFromSessionID(sid);
+			info.ip=sr.ip;
+			info.userAgentHash=sr.uaHash;
+			if(info.account.prefs.locale==null){
+				Locale requestLocale=req.raw().getLocale();
+				if(requestLocale!=null){
+					info.account.prefs.locale=requestLocale;
+					SessionStorage.updatePreferences(info.account.id, info.account.prefs);
 				}
-				sess.attribute("info", info);
 			}
+			sess.attribute("info", info);
 		}
 		return true;
 	}
@@ -422,6 +450,23 @@ public class SessionStorage{
 					.update("sessions")
 					.value("last_active", time)
 					.where("id=?", (Object) sid)
+					.executeNoResult();
+		}
+	}
+
+	public static void setIpAndUserAgent(String psid, InetAddress ip, String userAgent, long uaHash) throws SQLException{
+		byte[] sid=Base64.getDecoder().decode(psid);
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			new SQLQueryBuilder(conn)
+					.update("sessions")
+					.where("id=?", (Object) sid)
+					.value("ip", Utils.serializeInetAddress(ip))
+					.value("user_agent", uaHash)
+					.executeNoResult();
+			new SQLQueryBuilder(conn)
+					.insertIgnoreInto("user_agents")
+					.value("hash", uaHash)
+					.value("user_agent", userAgent)
 					.executeNoResult();
 		}
 	}

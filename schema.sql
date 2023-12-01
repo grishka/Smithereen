@@ -520,7 +520,8 @@ CREATE TABLE `sessions` (
   `id` binary(64) NOT NULL,
   `account_id` int unsigned NOT NULL,
   `last_active` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_ip` varbinary(16) DEFAULT NULL,
+  `ip` binary(16) NOT NULL,
+  `user_agent` bigint NOT NULL,
   PRIMARY KEY (`id`),
   KEY `account_id` (`account_id`),
   CONSTRAINT `sessions_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
@@ -570,6 +571,16 @@ CREATE TABLE `stats_daily` (
   `object_id` int unsigned NOT NULL,
   `count` int unsigned NOT NULL,
   PRIMARY KEY (`day`,`type`,`object_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `user_agents`
+--
+
+CREATE TABLE `user_agents` (
+  `hash` bigint NOT NULL,
+  `user_agent` text NOT NULL,
+  PRIMARY KEY (`hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -657,4 +668,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2023-11-27  7:20:20
+-- Dump completed on 2023-12-01  7:57:20

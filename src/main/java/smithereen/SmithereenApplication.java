@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
@@ -150,6 +151,14 @@ public class SmithereenApplication{
 				if(System.currentTimeMillis()-info.account.lastActive.toEpochMilli()>=10*60*1000){
 					info.account.lastActive=Instant.now();
 					SessionStorage.setLastActive(info.account.id, request.cookie("psid"), info.account.lastActive);
+				}
+				String ua=request.userAgent();
+				long uaHash=Utils.hashUserAgent(ua);
+				InetAddress ip=Utils.getRequestIP(request);
+				if(info.userAgentHash!=uaHash || !Objects.equals(ip, info.ip)){
+					SessionStorage.setIpAndUserAgent(request.cookie("psid"), ip, ua, uaHash);
+					info.userAgentHash=uaHash;
+					info.ip=ip;
 				}
 			}
 //			String hs="";

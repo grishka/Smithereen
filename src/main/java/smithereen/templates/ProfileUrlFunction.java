@@ -12,7 +12,7 @@ import smithereen.model.User;
 public class ProfileUrlFunction implements Function{
 	@Override
 	public Object execute(Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber){
-		int id=(Integer)args.get("id");
+		int id=((Number)args.get("id")).intValue();
 		if(id>0){
 			Map<Integer, User> users=(Map<Integer, User>) context.getVariable("users");
 			if(users==null)

@@ -24,11 +24,16 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.IDN;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -1146,6 +1151,36 @@ public class Utils{
 		int count=b.length/8;
 		for(int i=0;i<count;i++){
 			dest.add(unpackLong(b, i*8));
+		}
+	}
+
+	/**
+	 * Serialize an {@link InetAddress} for storage in the database.
+	 * No reverse method exists because {@link InetAddress#getByAddress(byte[])} takes IPv4-mapped IPv6 addresses and returns an Inet4Address.
+	 * @param ip
+	 * @return 16 bytes. IPv6 addresses are returned as-is, IPv4 are mapped into IPv6 (::ffff:x.x.x.x)
+	 */
+	public static byte[] serializeInetAddress(InetAddress ip){
+		return switch(ip){
+			case null -> null;
+			case Inet4Address ipv4 -> {
+				byte[] a=new byte[16];
+				a[11]=a[10]=-1;
+				System.arraycopy(ipv4.getAddress(), 0, a, 12, 4);
+				yield a;
+			}
+			case Inet6Address ipv6 -> ipv6.getAddress();
+			default -> throw new IllegalStateException("Unexpected value: "+ip); // TODO why is this required for a sealed hierarchy?
+		};
+	}
+
+	public static long hashUserAgent(String ua){
+		try{
+			MessageDigest md5=MessageDigest.getInstance("MD5");
+			byte[] hash=md5.digest(ua.getBytes(StandardCharsets.UTF_8));
+			return unpackLong(hash, 0) ^ unpackLong(hash, 8);
+		}catch(NoSuchAlgorithmException x){
+			throw new RuntimeException(x);
 		}
 	}
 

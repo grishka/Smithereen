@@ -19,7 +19,7 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=35;
+	public static final int SCHEMA_VERSION=36;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -532,6 +532,15 @@ public class DatabaseSchemaUpdater{
 						  `extra` json DEFAULT NULL,
 						  PRIMARY KEY (`id`),
 						  KEY `owner_id` (`owner_id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 36 -> {
+				conn.createStatement().execute("ALTER TABLE sessions DROP last_ip, ADD `ip` binary(16) NOT NULL, ADD `user_agent` bigint NOT NULL");
+				conn.createStatement().execute("""
+						CREATE TABLE `user_agents` (
+						  `hash` bigint NOT NULL,
+						  `user_agent` text COLLATE utf8mb4_general_ci NOT NULL,
+						  PRIMARY KEY (`hash`)
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
 		}
