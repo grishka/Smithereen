@@ -21,7 +21,8 @@ public record AuditLogEntry(int id, int adminID, Action action, Instant time, in
 		// Users
 		ACTIVATE_ACCOUNT,
 		SET_USER_EMAIL,
-		RESET_USER_PASSWORD
+		RESET_USER_PASSWORD,
+		END_USER_SESSION
 	}
 
 	public enum ObjectType{

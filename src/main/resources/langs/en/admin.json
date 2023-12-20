@@ -192,5 +192,7 @@
   "admin_end_session": "End session",
   "admin_audit_log_activated_account": "<a id=\"adminUser\">{name}</a> activated <a id=\"targetUser\">{targetName}</a>''s account",
   "admin_audit_log_changed_email": "<a id=\"adminUser\">{name}</a> changed <a id=\"targetUser\">{targetName}</a>''s email",
-  "admin_audit_log_reset_password": "<a id=\"adminUser\">{name}</a> reset <a id=\"targetUser\">{targetName}</a>''s password"
+  "admin_audit_log_reset_password": "<a id=\"adminUser\">{name}</a> reset <a id=\"targetUser\">{targetName}</a>''s password",
+  "admin_audit_log_ended_session": "<a id=\"adminUser\">{name}</a> terminated one of <a id=\"targetUser\">{targetName}</a>''s sessions",
+  "admin_session_terminated": "Session terminated"
 }

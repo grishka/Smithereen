@@ -27,6 +27,7 @@ import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
+import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.Server;
@@ -776,6 +777,12 @@ public class SettingsAdminRoutes{
 					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
 					yield l.get("admin_audit_log_reset_password", langArgs);
 				}
+				case END_USER_SESSION -> {
+					User targetUser=users.get(le.ownerID());
+					langArgs.put("targetName", targetUser!=null ? targetUser.getFirstLastAndGender() : "DELETED");
+					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
+					yield l.get("admin_audit_log_ended_session", langArgs);
+				}
 			};
 			String extraText=switch(le.action()){
 				case ASSIGN_ROLE, DELETE_ROLE, ACTIVATE_ACCOUNT, RESET_USER_PASSWORD -> null;
@@ -828,6 +835,7 @@ public class SettingsAdminRoutes{
 				}
 
 				case SET_USER_EMAIL -> escapeHTML(le.extra().get("oldEmail").toString())+" &rarr; "+escapeHTML(le.extra().get("newEmail").toString());
+				case END_USER_SESSION -> l.get("ip_address")+": "+deserializeInetAddress(Base64.getDecoder().decode((String)le.extra().get("ip"))).getHostAddress();
 			};
 			return new AuditLogEntryViewModel(le, substituteLinks(mainText, links), extraText);
 		}).toList();
@@ -879,6 +887,33 @@ public class SettingsAdminRoutes{
 		ctx.getModerationController().setUserEmail(self.user, target, email);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object endUserSession(Request req, Response resp, Account self, ApplicationContext ctx){
+		Account target=ctx.getUsersController().getAccountOrThrow(safeParseInt(req.queryParams("accountID")));
+		int sessionID=safeParseInt(req.queryParams("sessionID"));
+		List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(target);
+		OtherSession sessionToRevoke=null;
+		for(OtherSession session:sessions){
+			if(session.id()==sessionID){
+				sessionToRevoke=session;
+				break;
+			}
+		}
+		if(sessionToRevoke==null)
+			throw new ObjectNotFoundException();
+
+		ctx.getModerationController().terminateUserSession(self.user, target, sessionToRevoke);
+
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.addClass("adminSessionRow"+sessionID, "transparent")
+					.addClass("adminSessionRow"+sessionID, "disabled")
+					.showSnackbar(lang(req).get("admin_session_terminated"))
+					.hide("boxLoader");
+		}
 		resp.redirect(back(req));
 		return "";
 	}

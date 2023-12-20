@@ -192,5 +192,7 @@
   "admin_end_session": "Завершить",
   "admin_audit_log_activated_account": "<a id=\"adminUser\">{name}</a> {gender, select, female {активировала} other {активировал}} учётную запись <a id=\"targetUser\">{targetName, inflect, accusative}</a>",
   "admin_audit_log_changed_email": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} email <a id=\"targetUser\">{targetName, inflect, dative}</a>",
-  "admin_audit_log_reset_password": "<a id=\"adminUser\">{name}</a> {gender, select, female {сбросила} other {сбросил}} пароль <a id=\"targetUser\">{targetName, inflect, dative}</a>"
+  "admin_audit_log_reset_password": "<a id=\"adminUser\">{name}</a> {gender, select, female {сбросила} other {сбросил}} пароль <a id=\"targetUser\">{targetName, inflect, dative}</a>",
+  "admin_audit_log_ended_session": "<a id=\"adminUser\">{name}</a> {gender, select, female {завершила} other {завершил}} один из сеансов <a id=\"targetUser\">{targetName, inflect, dative}</a>",
+  "admin_session_terminated": "Сеанс завершён"
 }

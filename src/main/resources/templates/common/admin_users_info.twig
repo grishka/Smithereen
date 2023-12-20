@@ -84,7 +84,9 @@
 			<th>{{ L('settings_activity_access_type') }}</th>
 			<th width="150">{{ L('settings_activity_access_time') }}</th>
 			<th width="150">{{ L('ip_address') }}</th>
+			{% if userPermissions.hasPermission('MANAGE_USER_ACCESS') %}
 			<th width="100">{{ L('actions') }}</th>
+			{% endif %}
 		</tr>
 	{% for session in sessions %}
 		<tr id="adminSessionRow{{ session.id }}">
@@ -97,7 +99,9 @@
 			</td>
 			<td>{{ LD(session.lastActive) }}</td>
 			<td>{{ session.ip.hostAddress }}</td>
+			{% if userPermissions.hasPermission('MANAGE_USER_ACCESS') %}
 			<td><a href="/settings/admin/users/endSession?accountID={{ account.id }}&sessionID={{ session.id }}&csrf={{ csrf }}" data-ajax-box>{{ L('admin_end_session') }}</a></td>
+			{% endif %}
 		</tr>
 	{% endfor %}
 	</table>

@@ -158,6 +158,16 @@ public class SessionStorage{
 				.executeNoResult();
 	}
 
+	public static void deleteSession(int accountID, @NotNull byte[] sid) throws SQLException{
+		if(sid.length!=64)
+			return;
+
+		new SQLQueryBuilder()
+				.deleteFrom("sessions")
+				.where("id=? AND account_id=?", (Object) sid, accountID)
+				.executeNoResult();
+	}
+
 	public static SignupResult registerNewAccount(@NotNull String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite) throws SQLException{
 		SignupResult[] result={SignupResult.SUCCESS};
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){

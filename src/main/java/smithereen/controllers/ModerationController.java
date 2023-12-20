@@ -38,6 +38,7 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.Server;
@@ -404,6 +405,15 @@ public class ModerationController{
 			account.email=newEmail;
 			account.activationInfo=null;
 			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.SET_USER_EMAIL, account.user.id, 0, null, Map.of("oldEmail", oldEmail, "newEmail", newEmail));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void terminateUserSession(User self, Account account, OtherSession session){
+		try{
+			SessionStorage.deleteSession(account.id, session.fullID());
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.END_USER_SESSION, account.user.id, 0, null, Map.of("ip", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeInetAddress(session.ip()))));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

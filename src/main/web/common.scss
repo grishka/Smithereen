@@ -880,3 +880,10 @@ small{
 	grid-gap: $mediumPadding;
 }
 
+.transparent{
+	opacity: 0.5;
+}
+
+.disabled{
+	pointer-events: none;
+}

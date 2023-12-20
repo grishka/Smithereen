@@ -252,6 +252,7 @@ public class SmithereenApplication{
 					postRequiringPermissionWithCSRF("/activate", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::activateAccount);
 					getRequiringPermission("/changeEmailForm", UserRole.Permission.MANAGE_USER_ACCESS, SettingsAdminRoutes::changeUserEmailForm);
 					postRequiringPermissionWithCSRF("/changeEmail", UserRole.Permission.MANAGE_USER_ACCESS, SettingsAdminRoutes::changeUserEmail);
+					getRequiringPermissionWithCSRF("/endSession", UserRole.Permission.MANAGE_USER_ACCESS, SettingsAdminRoutes::endUserSession);
 				});
 				path("/reports", ()->{
 					getRequiringPermission("", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportsList);
