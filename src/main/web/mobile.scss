@@ -1697,3 +1697,24 @@ input.searchField{
 		background-image: svg-load('img/material/ic_edit.svg', fill: $textOnAccent);
 	}
 }
+
+.withRightColumnFilters{
+	display: flex;
+	flex-direction: column-reverse;
+	.leftColumn{
+		padding: $contentPadding;
+	}
+	.filters{
+		background: $gray;
+		.filterFieldBlock{
+			padding: $contentPadding;
+			label{
+				display: block;
+				margin-bottom: $smallPadding;
+			}
+			input, select{
+				width: 100%;
+			}
+		}
+	}
+}

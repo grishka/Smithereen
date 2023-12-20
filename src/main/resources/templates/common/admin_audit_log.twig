@@ -1,7 +1,11 @@
 {# @pebvariable name="entry" type="smithereen.model.viewmodel.AuditLogEntryViewModel" #}
 {% extends "page" %}
 {% block content %}
+{% if user is null %}
 {% include "admin_tabbar" with {'tab': 'auditLog'} %}
+{% else %}
+{% include "admin_users_info_tabbar" with {'tab': 'auditLog'} %}
+{% endif %}
 {% if not isMobile %}
 <div class="summaryWrap">
 	<div class="summary">{{ L('admin_audit_log_summary', {'count': totalItems}) }}</div>

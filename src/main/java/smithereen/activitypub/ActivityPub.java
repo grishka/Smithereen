@@ -317,6 +317,7 @@ public class ActivityPub{
 					throw new IOException("Invalid response");
 				for(WebfingerResponse.Link link:wr.links){
 					if("self".equals(link.rel) && "application/activity+json".equals(link.type) && link.href!=null){
+						LOG.trace("Successfully resolved {}@{} to {}", username, domain, link.href);
 						return link.href;
 					}
 				}

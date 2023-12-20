@@ -23,6 +23,7 @@ import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.jsonld.JLD;
+import smithereen.storage.DatabaseUtils;
 import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
@@ -51,7 +52,7 @@ public class ForeignUser extends User implements ForeignActor{
 		url=tryParseURL(res.getString("ap_url"));
 		inbox=tryParseURL(res.getString("ap_inbox"));
 		sharedInbox=tryParseURL(res.getString("ap_shared_inbox"));
-		lastUpdated=res.getTimestamp("last_updated");
+		lastUpdated=DatabaseUtils.getInstant(res, "last_updated");
 
 		EndpointsStorageWrapper ep=Utils.gson.fromJson(res.getString("endpoints"), EndpointsStorageWrapper.class);
 		outbox=tryParseURL(ep.outbox);
@@ -279,7 +280,7 @@ public class ForeignUser extends User implements ForeignActor{
 
 	@Override
 	public boolean needUpdate(){
-		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.getTime()>24L*60*60*1000;
+		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.toEpochMilli()>24L*60*60*1000;
 	}
 
 	@Override

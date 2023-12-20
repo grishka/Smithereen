@@ -147,5 +147,10 @@
   "privacy_enter_friend_name": "Введите имя друга",
   "privacy_settings_saved": "Настройки приватности сохранены",
   "privacy_settings_value_except": ", кроме ",
-  "privacy_settings_value_except_name": "{name, inflect, genitive}"
+  "privacy_settings_value_except_name": "{name, inflect, genitive}",
+  "settings_sessions": "История активности",
+  "settings_activity_access_type": "Тип доступа",
+  "settings_activity_access_time": "Время",
+  "settings_activity_web": "{browserName} {browserVersion} на {osName}",
+  "unknown_browser": "Неизвестный браузер"
 }

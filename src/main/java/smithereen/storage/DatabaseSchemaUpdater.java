@@ -19,7 +19,7 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=36;
+	public static final int SCHEMA_VERSION=37;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -542,6 +542,11 @@ public class DatabaseSchemaUpdater{
 						  `user_agent` text COLLATE utf8mb4_general_ci NOT NULL,
 						  PRIMARY KEY (`hash`)
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 37 -> {
+				conn.createStatement().execute("ALTER TABLE accounts ADD email_domain varchar(150) NOT NULL DEFAULT '', ADD INDEX (email_domain), DROP ban_info, ADD last_ip binary(16) DEFAULT NULL, ADD INDEX (last_ip)");
+				conn.createStatement().execute("UPDATE accounts SET email_domain=SUBSTR(email, LOCATE('@', email)+1)");
+				conn.createStatement().execute("ALTER TABLE `users` ADD ban_status tinyint unsigned NOT NULL DEFAULT 0, ADD INDEX (ban_status), ADD ban_info json DEFAULT NULL");
 			}
 		}
 	}

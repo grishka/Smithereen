@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -22,6 +23,7 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.CollectionPage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -43,10 +45,12 @@ import smithereen.model.User;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
+import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.UserRoleViewModel;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.InetAddressRange;
 import smithereen.util.XTEA;
 
 public class ModerationController{
@@ -360,6 +364,46 @@ public class ModerationController{
 	public PaginatedList<AuditLogEntry> getGlobalAuditLog(int offset, int count){
 		try{
 			return ModerationStorage.getGlobalAuditLog(offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<AuditLogEntry> getUserAuditLog(User user, int offset, int count){
+		try{
+			return ModerationStorage.getUserAuditLog(user.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<AdminUserViewModel> getAllUsers(int offset, int count, String query, Boolean localOnly, String emailDomain, String ipSubnet, int roleID){
+		try{
+			InetAddressRange subnet=ipSubnet!=null ? InetAddressRange.parse(ipSubnet) : null;
+			return ModerationStorage.getUsers(query, localOnly, emailDomain, subnet, roleID, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, Account> getAccounts(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			return UserStorage.getAccounts(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setUserEmail(User self, Account account, String newEmail){
+		try{
+			String oldEmail=account.email;
+			SessionStorage.updateActivationInfo(account.id, null);
+			SessionStorage.updateEmail(account.id, newEmail);
+			account.email=newEmail;
+			account.activationInfo=null;
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.SET_USER_EMAIL, account.user.id, 0, null, Map.of("oldEmail", oldEmail, "newEmail", newEmail));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

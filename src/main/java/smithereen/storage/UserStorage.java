@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -329,6 +330,14 @@ public class UserStorage{
 				.selectFrom("followings")
 				.count()
 				.where("follower_id=? AND mutual=1", userID)
+				.executeAndGetInt();
+	}
+
+	public static int getUserFollowerOrFollowingCount(int userID, boolean followers) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("followings")
+				.count()
+				.where((followers ? "followee_id" : "follower_id")+"=? AND accepted=1 AND mutual=0", userID)
 				.executeAndGetInt();
 	}
 
@@ -681,6 +690,7 @@ public class UserStorage{
 				bldr.executeNoResult();
 			}
 			user.id=existingUserID;
+			user.lastUpdated=Instant.now();
 			putIntoCache(user);
 
 			if(isNew){
@@ -818,10 +828,6 @@ public class UserStorage{
 			try(ResultSet res=stmt.executeQuery()){
 				while(res.next()){
 					Account acc=Account.fromResultSet(res);
-					int inviterID=res.getInt("inviter_user_id");
-					if(inviterID!=0){
-						acc.invitedBy=getById(inviterID);
-					}
 					accounts.add(acc);
 				}
 			}
@@ -834,21 +840,26 @@ public class UserStorage{
 		if(acc!=null)
 			return acc;
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement("SELECT a1.*, a2.user_id AS inviter_user_id FROM accounts AS a1 LEFT JOIN accounts AS a2 ON a1.invited_by=a2.id WHERE a1.id=?");
+			PreparedStatement stmt=conn.prepareStatement("SELECT * FROM accounts WHERE id=?");
 			stmt.setInt(1, id);
 			try(ResultSet res=stmt.executeQuery()){
 				if(res.next()){
 					acc=Account.fromResultSet(res);
-					int inviterID=res.getInt("inviter_user_id");
-					if(inviterID!=0){
-						acc.invitedBy=getById(inviterID);
-					}
 					accountCache.put(acc.id, acc);
 					return acc;
 				}
 			}
 		}
 		return null;
+	}
+
+	public static Map<Integer, Account> getAccounts(Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("accounts")
+				.allColumns()
+				.whereIn("id", ids)
+				.executeAsStream(Account::fromResultSet)
+				.collect(Collectors.toMap(a->a.id, Function.identity()));
 	}
 
 	public static void setAccountRole(Account account, int role, int promotedBy) throws SQLException{

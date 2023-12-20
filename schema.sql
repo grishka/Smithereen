@@ -18,16 +18,19 @@ CREATE TABLE `accounts` (
   `invited_by` int unsigned DEFAULT NULL,
   `preferences` text,
   `last_active` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `ban_info` text,
   `activation_info` json DEFAULT NULL,
   `role` int unsigned DEFAULT NULL,
   `promoted_by` int unsigned DEFAULT NULL,
+  `email_domain` varchar(150) NOT NULL DEFAULT '',
+  `last_ip` binary(16) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   KEY `user_id` (`user_id`),
   KEY `invited_by` (`invited_by`),
   KEY `role` (`role`),
   KEY `promoted_by` (`promoted_by`),
+  KEY `email_domain` (`email_domain`),
+  KEY `last_ip` (`last_ip`),
   CONSTRAINT `accounts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `accounts_ibfk_2` FOREIGN KEY (`role`) REFERENCES `user_roles` (`id`) ON DELETE SET NULL,
   CONSTRAINT `accounts_ibfk_3` FOREIGN KEY (`promoted_by`) REFERENCES `accounts` (`id`) ON DELETE SET NULL
@@ -622,9 +625,12 @@ CREATE TABLE `users` (
   `flags` bigint unsigned NOT NULL,
   `endpoints` json DEFAULT NULL,
   `privacy` json DEFAULT NULL,
+  `ban_status` tinyint unsigned NOT NULL DEFAULT '0',
+  `ban_info` json DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
-  UNIQUE KEY `ap_id` (`ap_id`)
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `ban_status` (`ban_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -668,4 +674,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2023-12-01  7:57:20
+-- Dump completed on 2023-12-12 20:08:54

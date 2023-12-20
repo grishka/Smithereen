@@ -272,7 +272,15 @@ function ajaxGet(uri:string, onDone:{(r:any):void}, onError:{(msg:string):void},
 				onError(null);
 			}
 		}else{
-			onError(xhr.response || xhr.statusText);
+			if(xhr.response && responseType=="json" && xhr.getResponseHeader("content-type")=="application/json"){
+				try{
+					onDone(JSON.parse(xhr.response));
+				}catch(e){
+					onError(null);
+				}
+			}else{
+				onError(xhr.response || xhr.statusText);
+			}
 		}
 	};
 	xhr.onerror=function(ev:Event){
@@ -504,9 +512,10 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	return false;
 }
 
-function ajaxGetAndApplyActions(url:string, onDone:{():void}=null, onError:{():void}=null):XMLHttpRequest{
+function ajaxGetAndApplyActions(url:string, onDone:{():void}=null, onError:{():void}=null, onBeforeDone:{():void}=null):XMLHttpRequest{
 	setGlobalLoading(true);
 	return ajaxGet(url, function(resp:any){
+		if(onBeforeDone) onBeforeDone();
 		setGlobalLoading(false);
 		if(resp instanceof Array){
 			for(var i=0;i<resp.length;i++){
@@ -941,9 +950,51 @@ function initAjaxSearch(fieldID:string){
 	var input=ge(fieldID) as HTMLInputElement;
 	var inputWrap=input.parentElement;
 	var currentXHR:XMLHttpRequest=null;
+	var debounceTimeout:number=null;
+	var focusedEl:Element;
+	var focusedElSelStart:number, focusedElSelEnd:number;
+	var extraFieldIDs:string[];
+	if(input.dataset.extraFields){
+		extraFieldIDs=input.dataset.extraFields.split(",");
+	}else{
+		extraFieldIDs=[];
+	}
+
+	const onInputListener=(ev:Event)=>{
+		if(ev.target!=input && (!extraFieldIDs || !(ev.target instanceof HTMLElement) || extraFieldIDs.indexOf(ev.target.id)==-1))
+			return;
+		if(debounceTimeout){
+			clearTimeout(debounceTimeout);
+		}
+		if(currentXHR){
+			currentXHR.abort();
+			currentXHR=null;
+		}
+		debounceTimeout=setTimeout(()=>{
+			debounceTimeout=null;
+			performSearch(input.value);
+		}, 300);
+	};
 	const ajaxDone=()=>{
 		currentXHR=null;
+		if(focusedEl && focusedEl.id){
+			var newEl=ge(focusedEl.id);
+			if(newEl && newEl!=focusedEl && newEl instanceof HTMLInputElement){
+				newEl.focus();
+				newEl.selectionStart=focusedElSelStart;
+				newEl.selectionEnd=focusedElSelEnd;
+			}
+		}
+		focusedEl=null;
 	};
+	const ajaxBeforeDone=()=>{
+		focusedEl=document.activeElement;
+		if(focusedEl && focusedEl instanceof HTMLInputElement){
+			focusedElSelStart=focusedEl.selectionStart;
+			focusedElSelEnd=focusedEl.selectionEnd;
+		}
+	};
+
 	const performSearch=(q:string)=>{
 		var baseURL=input.dataset.baseUrl;
 		var qstr:string;
@@ -956,23 +1007,23 @@ function initAjaxSearch(fieldID:string){
 		}
 		var params=new URLSearchParams(qstr);
 		params.set("q", q);
+		var extraFields=input.dataset.extraFields;
+		if(extraFields){
+			for(var fid of extraFields.split(',')){
+				var field=ge(fid) as HTMLInputElement;
+				if(field){
+					if(field.value.length)
+						params.set(field.name, field.value);
+					else
+						params.delete(field.name);
+				}
+			}
+		}
 		var url=baseURL+"?"+params.toString();
-		currentXHR=ajaxGetAndApplyActions(url, ajaxDone, ajaxDone);
+		currentXHR=ajaxGetAndApplyActions(url, ajaxDone, ajaxDone, ajaxBeforeDone);
 	};
-	var debounceTimeout:number=null;
-	input.addEventListener("input", (ev)=>{
-		if(debounceTimeout){
-			clearTimeout(debounceTimeout);
-		}
-		if(currentXHR){
-			currentXHR.abort();
-			currentXHR=null;
-		}
-		debounceTimeout=setTimeout(()=>{
-			debounceTimeout=null;
-			performSearch(input.value);
-		}, 300);
-	});
+	input.addEventListener("input", onInputListener);
+	ge("ajaxUpdatable").addEventListener("input", onInputListener);
 }
 
 function quoteRegExp(str:string):string{

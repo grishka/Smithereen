@@ -1969,6 +1969,7 @@ textarea{
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	padding: 0 10px;
 }
 
 .boxContent .emptyState{
@@ -2522,7 +2523,8 @@ label.pretendLink{
 .withRightColumnFilters{
 	display: flex;
 	.leftColumn{
-		flex-grow: 1;
+		flex: 1;
+		min-width: 0;
 		padding: 10px;
 	}
 	.filters{
@@ -2551,6 +2553,18 @@ label.pretendLink{
 			border: none;
 			border-bottom: solid 1px $wallPostSeparator;
 			margin: 10px 0;
+		}
+		.filterFieldBlock{
+			margin: 10px 0;
+			label{
+				display: block;
+				font-weight: bold;
+				color: $grayText;
+				padding-bottom: 5px;
+			}
+			input, select{
+				width: 100%;
+			}
 		}
 	}
 }
@@ -3017,5 +3031,15 @@ h2, h3, h4{
 			height: 21px;
 			font-weight: bold;
 		}
+	}
+}
+
+.gridWithItemTitles{
+	display: grid;
+	grid-template-columns: auto 1fr;
+	grid-gap: 5px;
+	.itemTitle{
+		text-align: right;
+		color: $grayText;
 	}
 }

@@ -54,5 +54,7 @@
   "friend_list_your_friends": "Ваши друзья",
   "friends_in_list": "Друзья в списке",
   "select_friends_empty_selection": "Вы можете выбрать друзей в списке слева.",
-  "select_friends_button": "Выбрать друзей"
+  "select_friends_button": "Выбрать друзей",
+  "X_followers": "{count, plural, =0 {Нет подписчиков} one {# подписчик} few {# подписчика} other {# подписчиков}}",
+  "X_following": "{count, plural, =0 {Нет подписок} one {# подписка} few {# подписки} other {# подписок}}"
 }

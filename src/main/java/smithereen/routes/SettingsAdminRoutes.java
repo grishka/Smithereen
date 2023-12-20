@@ -24,6 +24,7 @@ import smithereen.Utils;
 import smithereen.model.Account;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.FederationRestriction;
+import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.PaginatedList;
@@ -40,8 +41,12 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
+import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.AuditLogEntryViewModel;
+import smithereen.model.viewmodel.UserContentMetrics;
+import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.model.viewmodel.UserRoleViewModel;
+import smithereen.storage.ModerationStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
@@ -113,12 +118,37 @@ public class SettingsAdminRoutes{
 	public static Object users(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users", req);
 		Lang l=lang(req);
-		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		List<Account> accounts=UserStorage.getAllAccounts(offset, 100);
-		model.paginate(new PaginatedList<>(accounts, UserStorage.getLocalUserCount(), offset, 100));
+		String q=req.queryParams("q");
+		Boolean localOnly=switch(req.queryParams("location")){
+			case "local" -> true;
+			case "remote" -> false;
+			case null, default -> null;
+		};
+		String emailDomain=req.queryParams("emailDomain");
+		String lastIP=req.queryParams("lastIP");
+		int role=safeParseInt(req.queryParams("role"));
+		PaginatedList<AdminUserViewModel> items=ctx.getModerationController().getAllUsers(offset(req), 100, q, localOnly, emailDomain, lastIP, role);
+		model.paginate(items);
+		model.with("users", ctx.getUsersController().getUsers(items.list.stream().map(AdminUserViewModel::userID).collect(Collectors.toSet())));
+		model.with("accounts", ctx.getModerationController().getAccounts(items.list.stream().map(AdminUserViewModel::accountID).filter(i->i>0).collect(Collectors.toSet())));
 		model.with("title", l.get("admin_users")+" | "+l.get("menu_admin")).with("toolbarTitle", l.get("menu_admin"));
-		model.with("wideOnDesktop", true);
+		model.with("allRoles", Config.userRoles.values().stream().sorted(Comparator.comparingInt(UserRole::id)).toList());
+		model.with("rolesMap", Config.userRoles);
+		String baseURL=getRequestPathAndQuery(req);
+		model.with("urlPath", baseURL)
+				.with("location", req.queryParams("location"))
+				.with("emailDomain", emailDomain)
+				.with("lastIP", lastIP)
+				.with("roleID", role)
+				.with("query", q)
+				.with("hasFilters", StringUtils.isNotEmpty(q) || localOnly!=null || StringUtils.isNotEmpty(emailDomain) || StringUtils.isNotEmpty(lastIP) || role>0);
 		jsLangKey(req, "cancel", "yes", "no");
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"))
+					.setAttribute("userSearch", "data-base-url", baseURL)
+					.setURL(baseURL);
+		}
 		return model;
 	}
 
@@ -304,6 +334,12 @@ public class SettingsAdminRoutes{
 			Account target=UserStorage.getAccount(accountID);
 			if(target==null)
 				throw new ObjectNotFoundException("err_user_not_found");
+			if(target.activationInfo==null || target.activationInfo.emailState!=Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED){
+				if(!isAjax(req))
+					resp.redirect(back(req));
+				return "";
+			}
+			ModerationStorage.createAuditLogEntry(self.user.id, AuditLogEntry.Action.ACTIVATE_ACCOUNT, target.user.id, 0, null, null);
 			SessionStorage.updateActivationInfo(accountID, null);
 			if(isAjax(req))
 				return new WebDeltaResponse(resp).refresh();
@@ -671,7 +707,15 @@ public class SettingsAdminRoutes{
 	}
 
 	public static Object auditLog(Request req, Response resp, Account self, ApplicationContext ctx){
-		PaginatedList<AuditLogEntry> log=ctx.getModerationController().getGlobalAuditLog(offset(req), 100);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_audit_log", req);
+		PaginatedList<AuditLogEntry> log;
+		if(req.queryParams("uid")!=null){
+			User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.queryParams("uid")));
+			model.with("user", user);
+			log=ctx.getModerationController().getUserAuditLog(user, offset(req), 100);
+		}else{
+			log=ctx.getModerationController().getGlobalAuditLog(offset(req), 100);
+		}
 		Map<Integer, User> users=ctx.getUsersController().getUsers(
 				IntStream.concat(log.list.stream().mapToInt(AuditLogEntry::ownerID), log.list.stream().mapToInt(AuditLogEntry::adminID))
 						.filter(id->id>0)
@@ -713,9 +757,28 @@ public class SettingsAdminRoutes{
 						yield l.get("admin_audit_log_assigned_role", langArgs);
 					}
 				}
+
+				case SET_USER_EMAIL ->{
+					User targetUser=users.get(le.ownerID());
+					langArgs.put("targetName", targetUser!=null ? targetUser.getFirstLastAndGender() : "DELETED");
+					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
+					yield l.get("admin_audit_log_changed_email", langArgs);
+				}
+				case ACTIVATE_ACCOUNT -> {
+					User targetUser=users.get(le.ownerID());
+					langArgs.put("targetName", targetUser!=null ? targetUser.getFirstLastAndGender() : "DELETED");
+					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
+					yield l.get("admin_audit_log_activated_account", langArgs);
+				}
+				case RESET_USER_PASSWORD -> {
+					User targetUser=users.get(le.ownerID());
+					langArgs.put("targetName", targetUser!=null ? targetUser.getFirstLastAndGender() : "DELETED");
+					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
+					yield l.get("admin_audit_log_reset_password", langArgs);
+				}
 			};
 			String extraText=switch(le.action()){
-				case ASSIGN_ROLE, DELETE_ROLE -> null;
+				case ASSIGN_ROLE, DELETE_ROLE, ACTIVATE_ACCOUNT, RESET_USER_PASSWORD -> null;
 
 				case CREATE_ROLE -> {
 					StringBuilder sb=new StringBuilder("<i>");
@@ -763,12 +826,60 @@ public class SettingsAdminRoutes{
 					sb.append("</i>");
 					yield sb.toString();
 				}
+
+				case SET_USER_EMAIL -> escapeHTML(le.extra().get("oldEmail").toString())+" &rarr; "+escapeHTML(le.extra().get("newEmail").toString());
 			};
 			return new AuditLogEntryViewModel(le, substituteLinks(mainText, links), extraText);
 		}).toList();
-		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_audit_log", req);
 		model.pageTitle(lang(req).get("admin_audit_log")).with("toolbarTitle", lang(req).get("menu_admin")).with("users", users).with("groups", groups);
 		model.paginate(new PaginatedList<>(log, viewModels));
 		return model;
+	}
+
+	public static Object userInfo(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users_info", req);
+		model.with("user", user);
+		Account account;
+		if(!(user instanceof ForeignUser)){
+			account=ctx.getUsersController().getAccountForUser(user);
+			model.with("account", account);
+			if(account.roleID>0){
+				UserRole role=Config.userRoles.get(account.roleID);
+				String roleKey=role.getLangKey();
+				model.with("roleTitle", StringUtils.isNotEmpty(roleKey) ? lang(req).get(roleKey) : role.name());
+			}
+			if(account.inviterAccountID>0){
+				try{
+					model.with("inviter", ctx.getUsersController().getAccountOrThrow(account.inviterAccountID).user);
+				}catch(ObjectNotFoundException ignore){}
+			}
+			model.with("sessions", ctx.getUsersController().getAccountSessions(account));
+		}else{
+			account=null;
+		}
+		UserRelationshipMetrics relMetrics=ctx.getUsersController().getRelationshipMetrics(user);
+		UserContentMetrics contentMetrics=ctx.getUsersController().getContentMetrics(user);
+		model.with("relationshipMetrics", relMetrics).with("contentMetrics", contentMetrics);
+		return model;
+	}
+
+	public static Object changeUserEmailForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		Account target=ctx.getUsersController().getAccountOrThrow(safeParseInt(req.queryParams("accountID")));
+		RenderedTemplateResponse model=new RenderedTemplateResponse("change_email_form", req);
+		model.with("email", target.email);
+		return wrapForm(req, resp, "change_email_form", "/settings/admin/users/changeEmail?accountID="+target.id, lang(req).get("change_email_title"), "save", model);
+	}
+
+	public static Object changeUserEmail(Request req, Response resp, Account self, ApplicationContext ctx){
+		Account target=ctx.getUsersController().getAccountOrThrow(safeParseInt(req.queryParams("accountID")));
+		String email=req.queryParams("email");
+		if(!isValidEmail(email))
+			throw new BadRequestException();
+		ctx.getModerationController().setUserEmail(self.user, target, email);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
 	}
 }

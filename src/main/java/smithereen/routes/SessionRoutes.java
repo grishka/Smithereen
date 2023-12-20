@@ -40,7 +40,7 @@ public class SessionRoutes{
 		SessionInfo info=new SessionInfo();
 		info.account=acc;
 		req.session(true).attribute("info", info);
-		String psid=SessionStorage.putNewSession(req.session(), req.userAgent(), Utils.getRequestIP(req));
+		String psid=SessionStorage.putNewSession(req.session(), Objects.requireNonNull(req.userAgent(), ""), Utils.getRequestIP(req));
 		info.csrfToken=Utils.csrfTokenFromSessionID(Base64.getDecoder().decode(psid));
 		if(acc.prefs.locale==null){
 			Locale requestLocale=req.raw().getLocale();

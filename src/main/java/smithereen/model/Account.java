@@ -2,6 +2,7 @@ package smithereen.model;
 
 import com.google.gson.JsonParseException;
 
+import java.net.InetAddress;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -22,8 +23,8 @@ public class Account{
 	public ActivationInfo activationInfo;
 	public int roleID;
 	public int promotedBy;
-
-	public User invitedBy; // used in admin UIs
+	public InetAddress lastIP;
+	public int inviterAccountID;
 
 	@Override
 	public String toString(){
@@ -36,7 +37,10 @@ public class Account{
 				", lastActive="+lastActive+
 				", banInfo="+banInfo+
 				", activationInfo="+activationInfo+
-				", invitedBy="+invitedBy+
+				", roleID="+roleID+
+				", promotedBy="+promotedBy+
+				", lastIP="+lastIP+
+				", inviterAccountID="+inviterAccountID+
 				'}';
 	}
 
@@ -47,9 +51,11 @@ public class Account{
 		acc.user=UserStorage.getById(res.getInt("user_id"));
 		acc.createdAt=DatabaseUtils.getInstant(res, "created_at");
 		acc.lastActive=DatabaseUtils.getInstant(res, "last_active");
-		String ban=res.getString("ban_info");
-		if(ban!=null)
-			acc.banInfo=Utils.gson.fromJson(ban, BanInfo.class);
+		acc.lastIP=Utils.deserializeInetAddress(res.getBytes("last_ip"));
+		acc.inviterAccountID=res.getInt("invited_by");
+//		String ban=res.getString("ban_info");
+//		if(ban!=null)
+//			acc.banInfo=Utils.gson.fromJson(ban, BanInfo.class);
 		String prefs=res.getString("preferences");
 		if(prefs==null){
 			acc.prefs=new UserPreferences();
@@ -84,6 +90,10 @@ public class Account{
 		String user=parts[0];
 		int count=user.length()<5 ? 1 : 2;
 		return user.substring(0, count)+"*".repeat(user.length()-count)+"@"+parts[1];
+	}
+
+	public String getEmailDomain(){
+		return email.substring(email.indexOf('@')+1);
 	}
 
 	public static class BanInfo{

@@ -1032,6 +1032,22 @@ public class PostStorage{
 				.executeAndGetSingleObject(r->r.getString(1));
 	}
 
+	public static int getUserPostCount(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.count()
+				.where("owner_user_id=? AND author_id=owner_user_id AND reply_key IS NULL", id)
+				.executeAndGetInt();
+	}
+
+	public static int getUserPostCommentCount(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.count()
+				.where("author_id=? AND reply_key IS NOT NULL", id)
+				.executeAndGetInt();
+	}
+
 	private record DeleteCommentBookmarksRunnable(int postID) implements Runnable{
 		@Override
 		public void run(){

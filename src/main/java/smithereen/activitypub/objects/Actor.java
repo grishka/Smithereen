@@ -20,6 +20,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Collections;
 
@@ -46,7 +47,7 @@ public abstract class Actor extends ActivityPubObject{
 	public URI followers;
 	public URI following;
 	public URI collectionQueryEndpoint;
-	public Timestamp lastUpdated;
+	public Instant lastUpdated;
 
 	public String aboutSource;
 

@@ -86,6 +86,7 @@ import smithereen.util.InstantMillisJsonAdapter;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.LocaleJsonAdapter;
+import smithereen.util.InetAddressRange;
 import smithereen.util.TimeZoneJsonAdapter;
 import smithereen.util.TopLevelDomainList;
 import smithereen.util.Whitelist;
@@ -1156,7 +1157,8 @@ public class Utils{
 
 	/**
 	 * Serialize an {@link InetAddress} for storage in the database.
-	 * No reverse method exists because {@link InetAddress#getByAddress(byte[])} takes IPv4-mapped IPv6 addresses and returns an Inet4Address.
+	 * <s>No reverse method exists because {@link InetAddress#getByAddress(byte[])} takes IPv4-mapped IPv6 addresses and returns an Inet4Address.</s>
+	 * Actually no, it exists now because checked exceptions are a pain in the ass
 	 * @param ip
 	 * @return 16 bytes. IPv6 addresses are returned as-is, IPv4 are mapped into IPv6 (::ffff:x.x.x.x)
 	 */
@@ -1172,6 +1174,16 @@ public class Utils{
 			case Inet6Address ipv6 -> ipv6.getAddress();
 			default -> throw new IllegalStateException("Unexpected value: "+ip); // TODO why is this required for a sealed hierarchy?
 		};
+	}
+
+	public static InetAddress deserializeInetAddress(byte[] ip){
+		if(ip==null)
+			return null;
+		try{
+			return InetAddress.getByAddress(ip);
+		}catch(UnknownHostException e){
+			throw new IllegalArgumentException(e);
+		}
 	}
 
 	public static long hashUserAgent(String ua){

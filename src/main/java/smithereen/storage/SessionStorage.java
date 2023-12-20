@@ -20,6 +20,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -30,6 +31,7 @@ import smithereen.model.Account;
 import smithereen.model.AdminNotifications;
 import smithereen.model.EmailCode;
 import smithereen.model.Group;
+import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
@@ -364,6 +366,14 @@ public class SessionStorage{
 		}
 	}
 
+	public static Account getAccountByUserID(int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("accounts")
+				.allColumns()
+				.where("user_id=?", userID)
+				.executeAndGetSingleObject(Account::fromResultSet);
+	}
+
 	public static String storeEmailCode(EmailCode code) throws SQLException{
 		byte[] _id=new byte[64];
 		random.nextBytes(_id);
@@ -438,30 +448,22 @@ public class SessionStorage{
 		return false;
 	}
 
-	public static void setLastActive(int accountID, String psid, Instant time) throws SQLException{
+	public static void setLastActive(int accountID, String psid, Instant time, InetAddress lastIP, String userAgent, long uaHash) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			byte[] serializedIP=Utils.serializeInetAddress(lastIP);
 			new SQLQueryBuilder(conn)
 					.update("accounts")
 					.value("last_active", time)
+					.value("last_ip", serializedIP)
 					.where("id=?", accountID)
 					.executeNoResult();
 			byte[] sid=Base64.getDecoder().decode(psid);
 			new SQLQueryBuilder(conn)
 					.update("sessions")
 					.value("last_active", time)
-					.where("id=?", (Object) sid)
-					.executeNoResult();
-		}
-	}
-
-	public static void setIpAndUserAgent(String psid, InetAddress ip, String userAgent, long uaHash) throws SQLException{
-		byte[] sid=Base64.getDecoder().decode(psid);
-		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			new SQLQueryBuilder(conn)
-					.update("sessions")
-					.where("id=?", (Object) sid)
-					.value("ip", Utils.serializeInetAddress(ip))
+					.value("ip", serializedIP)
 					.value("user_agent", uaHash)
+					.where("id=?", (Object) sid)
 					.executeNoResult();
 			new SQLQueryBuilder(conn)
 					.insertIgnoreInto("user_agents")
@@ -470,6 +472,18 @@ public class SessionStorage{
 					.executeNoResult();
 		}
 	}
+//
+//	public static void setIpAndUserAgent(String psid, InetAddress ip, String userAgent, long uaHash) throws SQLException{
+//		byte[] sid=Base64.getDecoder().decode(psid);
+//		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+//			new SQLQueryBuilder(conn)
+//					.update("sessions")
+//					.where("id=?", (Object) sid)
+//					.value("ip", Utils.serializeInetAddress(ip))
+//					.value("user_agent", uaHash)
+//					.executeNoResult();
+//		}
+//	}
 
 	public static synchronized void removeFromUserPermissionsCache(int userID){
 		permissionsCache.remove(userID);
@@ -621,6 +635,15 @@ public class SessionStorage{
 				.allColumns()
 				.where("email=?", email)
 				.executeAndGetSingleObject(SignupRequest::fromResultSet);
+	}
+
+	public static List<OtherSession> getAccountSessions(int accountID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT sessions.*, user_agents.user_agent AS user_agent_str FROM sessions LEFT JOIN user_agents ON sessions.user_agent=user_agents.hash WHERE account_id=? ORDER BY last_active DESC", accountID);
+			try(ResultSet res=stmt.executeQuery()){
+				return DatabaseUtils.resultSetToObjectStream(res, OtherSession::fromResultSet, null).toList();
+			}
+		}
 	}
 
 	public enum SignupResult{

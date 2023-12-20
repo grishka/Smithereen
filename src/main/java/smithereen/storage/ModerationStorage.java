@@ -2,22 +2,30 @@ package smithereen.storage;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.PaginatedList;
 import smithereen.model.Server;
+import smithereen.model.User;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
+import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.util.InetAddressRange;
 import spark.utils.StringUtils;
 
 public class ModerationStorage{
@@ -213,6 +221,87 @@ public class ModerationStorage{
 					.limit(count, offset)
 					.executeAsStream(AuditLogEntry::fromResultSet)
 					.toList(), total, offset, count);
+		}
+	}
+
+	public static PaginatedList<AuditLogEntry> getUserAuditLog(int userID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("audit_log")
+					.count()
+					.where("owner_id=?", userID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			return new PaginatedList<>(new SQLQueryBuilder(conn)
+					.selectFrom("audit_log")
+					.allColumns()
+					.where("owner_id=?", userID)
+					.orderBy("id DESC")
+					.limit(count, offset)
+					.executeAsStream(AuditLogEntry::fromResultSet)
+					.toList(), total, offset, count);
+		}
+	}
+
+	public static PaginatedList<AdminUserViewModel> getUsers(String q, Boolean localOnly, String emailDomain, InetAddressRange ipRange, int role, int offset, int count) throws SQLException{
+		if(StringUtils.isNotEmpty(q)){
+			q=Arrays.stream(Utils.transliterate(q).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("[ \t]+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
+		}
+		ArrayList<String> whereParts=new ArrayList<>();
+		ArrayList<Object> whereArgs=new ArrayList<>();
+		String selection="`users`.id AS user_id, accounts.id AS account_id, accounts.role, accounts.last_active, accounts.email, accounts.activation_info, accounts.last_ip";
+		String query=" FROM `users` LEFT JOIN accounts ON users.id=accounts.user_id";
+		if(StringUtils.isNotEmpty(q)){
+			query+=" JOIN qsearch_index ON `users`.id=qsearch_index.user_id";
+			whereParts.add("MATCH (qsearch_index.`string`) AGAINST (? IN BOOLEAN MODE)");
+			whereArgs.add(q);
+		}
+		if(localOnly!=null){
+			if(localOnly)
+				whereParts.add("`users`.ap_id IS NULL");
+			else
+				whereParts.add("`users`.ap_id IS NOT NULL");
+		}
+		if(StringUtils.isNotEmpty(emailDomain)){
+			whereParts.add("accounts.email_domain=?");
+			whereArgs.add(emailDomain);
+		}
+		if(ipRange!=null){
+			if(ipRange.isSingleAddress()){
+				whereParts.add("accounts.last_ip=?");
+				whereArgs.add(Utils.serializeInetAddress(ipRange.address()));
+			}else{
+				whereParts.add("accounts.last_ip>=? AND accounts.last_ip<?");
+				whereArgs.add(Utils.serializeInetAddress(ipRange.getMinAddress()));
+				whereArgs.add(Utils.serializeInetAddress(ipRange.getMaxAddress()));
+			}
+		}
+		if(role>0){
+			whereParts.add("accounts.role=?");
+			whereArgs.add(role);
+		}
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String where;
+			if(whereParts.isEmpty())
+				where="";
+			else
+				where=" WHERE ("+String.join(") AND (", whereParts)+")";
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*)"+query+where, whereArgs.toArray(new Object[0]));
+			int total;
+			try(ResultSet res=stmt.executeQuery()){
+				total=DatabaseUtils.oneFieldToInt(res);
+			}
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			whereArgs.add(count);
+			whereArgs.add(offset);
+			stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT "+selection+query+where+" ORDER BY `users`.id ASC LIMIT ? OFFSET ?", whereArgs.toArray(new Object[0]));
+			try(ResultSet res=stmt.executeQuery()){
+				List<AdminUserViewModel> list=DatabaseUtils.resultSetToObjectStream(res, AdminUserViewModel::fromResultSet, null)
+						.toList();
+				return new PaginatedList<>(list, total, offset, count);
+			}
 		}
 	}
 }

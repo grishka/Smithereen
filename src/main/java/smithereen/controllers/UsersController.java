@@ -15,6 +15,7 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.model.Account;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.SignupInvitation;
 import smithereen.model.SignupRequest;
@@ -25,7 +26,10 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserRole;
+import smithereen.model.viewmodel.UserContentMetrics;
+import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.storage.DatabaseUtils;
+import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.util.FloodControl;
@@ -295,6 +299,48 @@ public class UsersController{
 			if(acc==null)
 				throw new ObjectNotFoundException("err_user_not_found");
 			return acc;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Account getAccountForUser(User user){
+		try{
+			Account acc=SessionStorage.getAccountByUserID(user.id);
+			if(acc==null)
+				throw new ObjectNotFoundException();
+			return acc;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public UserRelationshipMetrics getRelationshipMetrics(User user){
+		try{
+			return new UserRelationshipMetrics(
+					UserStorage.getUserFriendsCount(user.id),
+					UserStorage.getUserFollowerOrFollowingCount(user.id, true),
+					UserStorage.getUserFollowerOrFollowingCount(user.id, false)
+			);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public UserContentMetrics getContentMetrics(User user){
+		try{
+			return new UserContentMetrics(
+					PostStorage.getUserPostCount(user.id),
+					PostStorage.getUserPostCommentCount(user.id)
+			);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<OtherSession> getAccountSessions(Account acc){
+		try{
+			return SessionStorage.getAccountSessions(acc.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

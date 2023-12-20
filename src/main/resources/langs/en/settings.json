@@ -149,5 +149,10 @@
   "privacy_settings_value_except": ", excluding ",
   "privacy_settings_value_certain_friends_before": ": ",
   "privacy_settings_value_except_name": "{name}",
-  "privacy_settings_value_name_separator": ", "
+  "privacy_settings_value_name_separator": ", ",
+  "settings_sessions": "Activity history",
+  "settings_activity_access_type": "Access type",
+  "settings_activity_access_time": "Time",
+  "settings_activity_web": "{browserName} {browserVersion} on {osName}",
+  "unknown_browser": "Unknown browser"
 }

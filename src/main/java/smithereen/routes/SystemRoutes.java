@@ -550,6 +550,7 @@ public class SystemRoutes{
 					return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+posts.get(0).id+"#comment"+nativePost.id).toString()).build();
 				}catch(InterruptedException ignore){
 				}catch(ExecutionException e){
+					LOG.trace("Error fetching remote object", e);
 					Throwable x=e.getCause();
 					String error;
 					if(x instanceof UnsupportedRemoteObjectTypeException)

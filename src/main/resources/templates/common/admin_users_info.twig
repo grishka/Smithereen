@@ -1,0 +1,107 @@
+{# @pebvariable name="user" type="smithereen.model.User" #}
+{# @pebvariable name="inviter" type="smithereen.model.User" #}
+{# @pebvariable name="account" type="smithereen.model.Account" #}
+{# @pebvariable name="relationshipMetrics" type="smithereen.model.viewmodel.UserRelationshipMetrics" #}
+{# @pebvariable name="contentMetrics" type="smithereen.model.viewmodel.UserContentMetrics" #}
+{% extends "page" %}
+{% block content %}
+{% include "admin_users_info_tabbar" with {'tab': 'info'} %}
+<div class="singleColumn">
+	<div class="itemWithMediumAvatar">
+		{{ user | pictureForAvatar('m') }}
+		<div>
+			<h2>{{ user | name('complete') }}</h2>
+			<div class="marginBefore marginAfter">
+				@{{ user.fullUsername }}, ID {{ user.id }}
+				{% if account is not null %}
+				<span data-tooltip="{{ L('admin_account_id_tooltip') }}" style="display: inline-block;">({{ account.id }})</span>
+				{% else %}
+				<span data-tooltip="{{ L('admin_ap_actor_id_tooltip') }}" style="display: inline-block;">({{ user.activityPubID }})</span>
+				{% endif %}
+			</div>
+			<div class="marginBefore marginAfter">
+				<a href="/users/{{ user.id }}/friends">{{ L('X_friends', {'count': relationshipMetrics.friends}) }}</a>
+				| <a href="/users/{{ user.id }}/followers">{{ L('X_followers', {'count': relationshipMetrics.followers}) }}</a>
+				| <a href="/users/{{ user.id }}/following">{{ L('X_following', {'count': relationshipMetrics.following}) }}</a>
+			</div>
+			<div class="marginBefore marginAfter">
+				{{ L('X_posts', {'count': contentMetrics.postCount}) }} | {{ L('X_comments', {'count': contentMetrics.commentCount}) }}
+			</div>
+		</div>
+	</div>
+	<div class="gridWithItemTitles marginBefore">
+		{% if account is not null %}
+		<div class="itemTitle">{{ L('email') }}:</div>
+		<div>
+			{{- account.email }}
+			{% if userPermissions.hasPermission('MANAGE_USER_ACCESS') %}
+				[ <a href="/settings/admin/users/changeEmailForm?accountID={{ account.id }}" data-ajax-box="1">{{ L('change') }}</a> ]
+			{% endif %}
+			[ <a href="/settings/admin/users?emailDomain={{ account.emailDomain }}">{{ L('admin_others_with_this_domain') }}</a> ]
+		</div>
+		<div class="itemTitle">{{ L('role') }}:</div>
+		<div>
+			{%- if account.roleID!=0 %}{{ roleTitle }}{% else %}<i>{{ L('role_none') }}</i>{% endif -%}
+			{%- if userPermissions.hasPermission('MANAGE_ROLES') and user.id!=currentUser.id %}
+				[ <a href="/settings/admin/users/roleForm?accountID={{ account.id }}" data-ajax-box="1">{{ L('change') }}</a> ]
+			{%- endif -%}
+		</div>
+		<div class="itemTitle">{{ L('signup_date') }}:</div>
+		<div>{{ LD(account.createdAt) }}</div>
+			<div class="itemTitle">{{ L('admin_account_activation_status') }}:</div>
+			<div>
+				{%- if account.activationInfo is null %}
+				{{- L('admin_account_activated') -}}
+				{% elseif account.activationInfo.emailState=='NOT_CONFIRMED' %}
+				{{- L('admin_account_email_unconfirmed') }}
+				{% if userPermissions.hasPermission('MANAGE_USER_ACCESS') %}
+					[ <a href="/settings/admin/users/confirmActivate?accountID={{ account.id }}" data-confirm-action="/settings/admin/users/activate?accountID={{ account.id }}" data-confirm-title="{{ L('account_activation') }}" data-confirm-message="{{ L("admin_activate_X_confirm", {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('admin_activate_account') }}</a> ]
+				{% endif %}
+				{% elseif account.activationInfo.emailState=='CHANGE_PENDING' %}
+				{{- L('admin_account_email_change_pending', {'newEmail': account.activationInfo.newEmail}) }}
+				{% endif -%}
+			</div>
+		{% if inviter is not null %}
+		<div class="itemTitle">{{ L('invited_by') }}:</div>
+		<div><a href="{{ inviter.profileURL }}">{{ inviter | name('complete') }}</a></div>
+		{% endif %}
+		{% else %}
+		<div class="itemTitle">{{ L('admin_actor_last_updated') }}:</div>
+		<div>{{ LD(user.lastUpdated) }}</div>
+		{% endif %}
+	</div>
+	{% if account is null %}
+	<div class="marginBefore marginAfter">
+		<a href="/users/{{ user.id }}/syncProfile?csrf={{ csrf }}" class="button" data-ajax-box>{{ L('sync_profile') }}</a>
+		<a href="/users/{{ user.id }}/syncRelCollections?csrf={{ csrf }}" class="button" data-ajax-box>{{ L('sync_friends_and_groups') }}</a>
+		<a href="/users/{{ user.id }}/syncContentCollections?csrf={{ csrf }}" class="button" data-ajax-box>{{ L('sync_content') }}</a>
+	</div>
+	{% endif %}
+	{% if account is not null %}
+	<h2 class="marginBefore marginAfter">{{ L('settings_sessions') }}</h2>
+	<table class="dataTable" style="width: 100%">
+		<tr class="tableHeader">
+			<th>{{ L('settings_activity_access_type') }}</th>
+			<th width="150">{{ L('settings_activity_access_time') }}</th>
+			<th width="150">{{ L('ip_address') }}</th>
+			<th width="100">{{ L('actions') }}</th>
+		</tr>
+	{% for session in sessions %}
+		<tr id="adminSessionRow{{ session.id }}">
+			<td>
+				{% if session.userAgent is empty %}
+				{{ L('unknown_browser') }}
+				{% else %}
+				{{ L('settings_activity_web', {'browserName': session.browserInfo.name, 'browserVersion': session.browserInfo.majorVersion, 'osName': session.browserInfo.os.displayName}) }}
+				{% endif %}
+			</td>
+			<td>{{ LD(session.lastActive) }}</td>
+			<td>{{ session.ip.hostAddress }}</td>
+			<td><a href="/settings/admin/users/endSession?accountID={{ account.id }}&sessionID={{ session.id }}&csrf={{ csrf }}" data-ajax-box>{{ L('admin_end_session') }}</a></td>
+		</tr>
+	{% endfor %}
+	</table>
+	{% endif %}
+</div>
+{% endblock %}
+

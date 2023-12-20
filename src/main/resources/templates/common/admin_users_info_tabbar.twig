@@ -1,0 +1,13 @@
+{# @pebvariable name="userPermissions" type="smithereen.model.UserPermissions" #}
+<div class="tabbar">
+	{% if userPermissions.hasPermission('MANAGE_USERS') %}
+	<a href="/users/{{ user.id }}/meminfo" class="{{ tab=='info' ? 'selected' : '' }}">{{ L('admin_manage_user') }}</a>
+	<a href="/users/{{ user.id }}/staffNotes" class="{{ tab=='staffNotes' ? 'selected' : '' }}">{{ L('admin_user_staff_notes') }}</a>
+	{% endif %}
+	{% if userPermissions.hasPermission('MANAGE_REPORTS') %}
+	<a href="/users/{{ user.id }}/reports" class="{{ tab=='reports' ? 'selected' : '' }}">{{ L('menu_reports') }}</a>
+	{% endif %}
+	{% if userPermissions.hasPermission('VIEW_SERVER_AUDIT_LOG') %}
+	<a href="/settings/admin/auditLog?uid={{ user.id }}" class="{{ tab=='auditLog' ? 'selected' : '' }}">{{ L('admin_audit_log') }}</a>
+	{% endif %}
+</div>

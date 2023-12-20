@@ -133,5 +133,7 @@
   "err_access_user_content": "This user has chosen to hide this page.",
   "menu_mail": "My Messages",
   "content_type_message": "Message",
-  "X_users": "{count, plural, =0 {No users} one {# user} other {# users}}"
+  "X_users": "{count, plural, =0 {No users} one {# user} other {# users}}",
+  "change": "Change",
+  "ip_address": "IP address"
 }

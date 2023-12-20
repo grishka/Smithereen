@@ -132,6 +132,7 @@ $likeIconColor: rgb(219, 216, 173);
 *{
 	box-sizing: border-box;
 	overflow-wrap: break-word;
+	min-width: 0;
 }
 
 
@@ -813,10 +814,22 @@ small{
 		min-width: 0;
 		overflow-x: hidden;
 	}
+	.avaAndName{
+		display: grid;
+		grid-gap: 0 $smallPadding;
+		grid-template-columns: 30px 1fr;
+		.avaW{
+			grid-row: span 2;
+		}
+	}
 }
 
 .smallMarginRight{
 	margin-right: $smallPadding;
+}
+
+.mediumMarginRight{
+	margin-right: $mediumPadding;
 }
 
 .flexButtons{
@@ -860,3 +873,10 @@ small{
 	grid-template-columns: 50px 1fr;
 	grid-gap: $mediumPadding;
 }
+
+.itemWithMediumAvatar{
+	display: grid;
+	grid-template-columns: 100px 1fr;
+	grid-gap: $mediumPadding;
+}
+

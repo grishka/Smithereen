@@ -21,6 +21,12 @@ import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.controllers.MailController;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FloodControlViolationException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserContentUnavailableException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -28,12 +34,6 @@ import smithereen.model.SessionInfo;
 import smithereen.model.User;
 import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.FloodControlViolationException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.exceptions.UserContentUnavailableException;
-import smithereen.exceptions.UserErrorException;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
 import smithereen.routes.FriendsRoutes;
@@ -44,6 +44,7 @@ import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
 import smithereen.routes.SettingsAdminRoutes;
+import smithereen.routes.SettingsRoutes;
 import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
 import smithereen.sparkext.ActivityPubCollectionPageResponse;
@@ -51,7 +52,6 @@ import smithereen.sparkext.ExtendedStreamingSerializer;
 import smithereen.storage.DatabaseSchemaUpdater;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.SessionStorage;
-import smithereen.routes.SettingsRoutes;
 import smithereen.storage.UserStorage;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.templates.RenderedTemplateResponse;
@@ -67,8 +67,8 @@ import spark.Spark;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.randomAlphanumericString;
-import static spark.Spark.*;
 import static smithereen.sparkext.SparkExtension.*;
+import static spark.Spark.*;
 
 public class SmithereenApplication{
 	private static final Logger LOG;
@@ -148,17 +148,20 @@ public class SmithereenApplication{
 				info.account=UserStorage.getAccount(info.account.id);
 				info.permissions=SessionStorage.getUserPermissions(info.account);
 
-				if(System.currentTimeMillis()-info.account.lastActive.toEpochMilli()>=10*60*1000){
-					info.account.lastActive=Instant.now();
-					SessionStorage.setLastActive(info.account.id, request.cookie("psid"), info.account.lastActive);
-				}
-				String ua=request.userAgent();
+				String ua=Objects.requireNonNull(request.userAgent(), "");
 				long uaHash=Utils.hashUserAgent(ua);
 				InetAddress ip=Utils.getRequestIP(request);
-				if(info.userAgentHash!=uaHash || !Objects.equals(ip, info.ip)){
-					SessionStorage.setIpAndUserAgent(request.cookie("psid"), ip, ua, uaHash);
+				if(System.currentTimeMillis()-info.account.lastActive.toEpochMilli()>=10*60*1000 || !Objects.equals(info.account.lastIP, ip) || !Objects.equals(info.ip, ip) || info.userAgentHash!=uaHash){
+					info.account.lastActive=Instant.now();
 					info.userAgentHash=uaHash;
 					info.ip=ip;
+					BackgroundTaskRunner.getInstance().submit(()->{
+						try{
+							SessionStorage.setLastActive(info.account.id, request.cookie("psid"), info.account.lastActive, ip, ua, uaHash);
+						}catch(SQLException x){
+							LOG.warn("Error updating account session", x);
+						}
+					});
 				}
 			}
 //			String hs="";
@@ -237,34 +240,46 @@ public class SmithereenApplication{
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);
 				postRequiringPermissionWithCSRF("/updateServerInfo", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::updateServerInfo);
-				getRequiringPermission("/users", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::users);
-				getRequiringPermission("/users/roleForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::roleForm);
-				postRequiringPermissionWithCSRF("/users/setRole", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::setUserRole);
+				path("/users", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::users);
+					getRequiringPermission("/roleForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::roleForm);
+					postRequiringPermissionWithCSRF("/setRole", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::setUserRole);
+					getRequiringPermission("/banForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUserForm);
+					getRequiringPermission("/confirmUnban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::confirmUnbanUser);
+					getRequiringPermission("/confirmActivate", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::confirmActivateAccount);
+					postRequiringPermissionWithCSRF("/ban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUser);
+					postRequiringPermissionWithCSRF("/unban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::unbanUser);
+					postRequiringPermissionWithCSRF("/activate", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::activateAccount);
+					getRequiringPermission("/changeEmailForm", UserRole.Permission.MANAGE_USER_ACCESS, SettingsAdminRoutes::changeUserEmailForm);
+					postRequiringPermissionWithCSRF("/changeEmail", UserRole.Permission.MANAGE_USER_ACCESS, SettingsAdminRoutes::changeUserEmail);
+				});
+				path("/reports", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportsList);
+					postRequiringPermissionWithCSRF("/:id", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportAction);
+					postRequiringPermissionWithCSRF("/:id/doAddCW", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportAddCW);
+				});
+				path("/federation", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerList);
+					getRequiringPermission("/:domain", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerDetails);
+					getRequiringPermission("/:domain/restrictionForm", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerRestrictionForm);
+					postRequiringPermissionWithCSRF("/:domain/restrict", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationRestrictServer);
+					getRequiringPermissionWithCSRF("/:domain/resetAvailability", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationResetServerAvailability);
+				});
+				path("/roles", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::roles);
+					getRequiringPermission("/create", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::createRoleForm);
+					postRequiringPermissionWithCSRF("/create", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::saveRole);
+					getRequiringPermission("/:id", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::editRole);
+					postRequiringPermissionWithCSRF("/:id", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::saveRole);
+					postRequiringPermissionWithCSRF("/:id/delete", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::deleteRole);
+				});
+				path("/signupRequests", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::signupRequests);
+					postRequiringPermissionWithCSRF("/:id/respond", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::respondToSignupRequest);
+				});
 				getRequiringPermission("/other", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::otherSettings);
 				postRequiringPermissionWithCSRF("/updateEmailSettings", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::saveEmailSettings);
 				postRequiringPermissionWithCSRF("/sendTestEmail", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::sendTestEmail);
-				getRequiringPermission("/users/banForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUserForm);
-				getRequiringPermission("/users/confirmUnban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::confirmUnbanUser);
-				getRequiringPermission("/users/confirmActivate", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::confirmActivateAccount);
-				postRequiringPermissionWithCSRF("/users/ban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUser);
-				postRequiringPermissionWithCSRF("/users/unban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::unbanUser);
-				postRequiringPermissionWithCSRF("/users/activate", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::activateAccount);
-				getRequiringPermission("/signupRequests", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::signupRequests);
-				postRequiringPermissionWithCSRF("/signupRequests/:id/respond", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::respondToSignupRequest);
-				getRequiringPermission("/reports", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportsList);
-				postRequiringPermissionWithCSRF("/reports/:id", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportAction);
-				postRequiringPermissionWithCSRF("/reports/:id/doAddCW", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportAddCW);
-				getRequiringPermission("/federation", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerList);
-				getRequiringPermission("/federation/:domain", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerDetails);
-				getRequiringPermission("/federation/:domain/restrictionForm", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerRestrictionForm);
-				postRequiringPermissionWithCSRF("/federation/:domain/restrict", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationRestrictServer);
-				getRequiringPermissionWithCSRF("/federation/:domain/resetAvailability", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationResetServerAvailability);
-				getRequiringPermission("/roles", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::roles);
-				getRequiringPermission("/roles/create", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::createRoleForm);
-				postRequiringPermissionWithCSRF("/roles/create", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::saveRole);
-				getRequiringPermission("/roles/:id", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::editRole);
-				postRequiringPermissionWithCSRF("/roles/:id", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::saveRole);
-				postRequiringPermissionWithCSRF("/roles/:id/delete", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::deleteRole);
 				getRequiringPermission("/auditLog", UserRole.Permission.VIEW_SERVER_AUDIT_LOG, SettingsAdminRoutes::auditLog);
 			});
 		});
@@ -367,6 +382,7 @@ public class SmithereenApplication{
 			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncRelationshipsCollections);
 			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncContentCollections);
 			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncProfile);
+			getRequiringPermission("/meminfo", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userInfo);
 		});
 
 		path("/groups/:id", ()->{
