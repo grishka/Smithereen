@@ -19,7 +19,6 @@ public class Account{
 	public UserPreferences prefs;
 	public Instant createdAt;
 	public Instant lastActive;
-	public BanInfo banInfo;
 	public ActivationInfo activationInfo;
 	public int roleID;
 	public int promotedBy;
@@ -35,7 +34,6 @@ public class Account{
 				", prefs="+prefs+
 				", createdAt="+createdAt+
 				", lastActive="+lastActive+
-				", banInfo="+banInfo+
 				", activationInfo="+activationInfo+
 				", roleID="+roleID+
 				", promotedBy="+promotedBy+
@@ -53,9 +51,6 @@ public class Account{
 		acc.lastActive=DatabaseUtils.getInstant(res, "last_active");
 		acc.lastIP=Utils.deserializeInetAddress(res.getBytes("last_ip"));
 		acc.inviterAccountID=res.getInt("invited_by");
-//		String ban=res.getString("ban_info");
-//		if(ban!=null)
-//			acc.banInfo=Utils.gson.fromJson(ban, BanInfo.class);
 		String prefs=res.getString("preferences");
 		if(prefs==null){
 			acc.prefs=new UserPreferences();

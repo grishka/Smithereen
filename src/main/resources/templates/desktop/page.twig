@@ -40,14 +40,16 @@
 			<a href="/"><img src="/res/desktop_logo_v1.svg" height="28" width="27" border="0" alt="Smithereen"/>{{serverName}}</a>
 		</td>
 		<td align="right" id="headerNav">
-			{%if currentUser is not null%}
+			{% if currentUser is not null %}
+			{% if currentUser.banStatus=='NONE' or currentUser.banStatus=='HIDDEN' %}
 			<div id="qsearchWrap">
 				<input type="text" id="qsearchField" placeholder="{{ L('search') }}" autocomplete="off" autocapitalize="off"/>
 				<div id="qsearchResults" style="display: none"></div>
 			</div>
+			{% endif %}
 			{% if userPermissions.canInviteNewUsers %}<a href="/settings/invites" class="nav">{{ L('invite_users') }}</a>{% endif %}
 			<a href="/account/logout?csrf={{ csrf }}" class="nav">{{ L("log_out") }}</a>
-			{%endif%}
+			{% endif %}
 		</td>
 	</tr>
 </table>

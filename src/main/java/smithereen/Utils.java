@@ -42,6 +42,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -58,6 +59,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -67,6 +69,7 @@ import java.util.zip.CRC32;
 
 import cz.jirutka.unidecode.Unidecode;
 import smithereen.activitypub.objects.Actor;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -74,6 +77,7 @@ import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
 import smithereen.model.UriBuilder;
 import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FormValidationException;
@@ -82,11 +86,12 @@ import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.EmailCodeActionType;
+import smithereen.util.FloodControl;
 import smithereen.util.InstantMillisJsonAdapter;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.LocaleJsonAdapter;
-import smithereen.util.InetAddressRange;
 import smithereen.util.TimeZoneJsonAdapter;
 import smithereen.util.TopLevelDomainList;
 import smithereen.util.Whitelist;
@@ -139,17 +144,6 @@ public class Utils{
 		return String.format(Locale.ENGLISH, "%08x%08x", v1, v2);
 	}
 
-	private static boolean isAllowedForRestrictedAccounts(Request req){
-		String path=req.pathInfo();
-		return List.of(
-				"/account/logout",
-				"/account/resendConfirmationEmail",
-				"/account/changeEmailForm",
-				"/account/changeEmail",
-				"/account/activate"
-		).contains(path);
-	}
-
 	public static boolean requireAccount(Request req, Response resp){
 		if(req.session(false)==null || req.session().attribute("info")==null || ((SessionInfo)req.session().attribute("info")).account==null){
 			String to=req.pathInfo();
@@ -157,19 +151,6 @@ public class Utils{
 			if(StringUtils.isNotEmpty(query))
 				to+="?"+query;
 			resp.redirect("/account/login?to="+URLEncoder.encode(to));
-			return false;
-		}
-		Account acc=sessionInfo(req).account;
-		if(acc.banInfo!=null && !isAllowedForRestrictedAccounts(req)){
-			Lang l=lang(req);
-			String msg=l.get("your_account_is_banned");
-			if(StringUtils.isNotEmpty(acc.banInfo.reason))
-				msg+="\n\n"+l.get("ban_reason")+": "+acc.banInfo.reason;
-			resp.body(new RenderedTemplateResponse("generic_message", req).with("message", msg).renderToString());
-			return false;
-		}else if(acc.activationInfo!=null && acc.activationInfo.emailState==Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED && !isAllowedForRestrictedAccounts(req)){
-			Lang l=lang(req);
-			resp.body(new RenderedTemplateResponse("email_confirm_required", req).with("email", acc.email).pageTitle(l.get("account_activation")).renderToString());
 			return false;
 		}
 		return true;
@@ -250,7 +231,11 @@ public class Utils{
 		}
 	}
 
-	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, String formID, List<String> fieldNames, Function<String, String> fieldValueGetter, String message){
+	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, String formID, List<String> fieldNames, Function<String, Object> fieldValueGetter, String message){
+		return wrapForm(req, resp, templateName, formAction, title, buttonKey, formID, fieldNames, fieldValueGetter, message, null);
+	}
+
+	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, String formID, List<String> fieldNames, Function<String, Object> fieldValueGetter, String message, Map<String, Object> extraTemplateArgs){
 		if(isAjax(req) && StringUtils.isNotEmpty(message)){
 			WebDeltaResponse wdr=new WebDeltaResponse(resp);
 			wdr.keepBox().show("formMessage_"+formID).setContent("formMessage_"+formID, escapeHTML(message));
@@ -265,6 +250,11 @@ public class Utils{
 		}
 		for(String name:fieldNames){
 			model.with(name, fieldValueGetter.apply(name));
+		}
+		if(extraTemplateArgs!=null){
+			for(Map.Entry<String, Object> e:extraTemplateArgs.entrySet()){
+				model.with(e.getKey(), e.getValue());
+			}
 		}
 		return wrapForm(req, resp, templateName, formAction, title, buttonKey, model);
 	}
@@ -1196,8 +1186,33 @@ public class Utils{
 		}
 	}
 
+	public static Object sendEmailConfirmationCode(Request req, Response resp, EmailCodeActionType type, String formAction){
+		SessionInfo info=Objects.requireNonNull(sessionInfo(req));
+		FloodControl.ACTION_CONFIRMATION.incrementOrThrow(info.account);
+		Random rand=ThreadLocalRandom.current();
+		char[] _code=new char[5];
+		for(int i=0;i<_code.length;i++){
+			_code[i]=(char)('0'+rand.nextInt(10));
+		}
+		String code=new String(_code);
+		req.session().attribute("emailCodeInfo", new EmailConfirmationCodeInfo(code, type, Instant.now()));
+		Mailer.getInstance().sendActionConfirmationCode(req, info.account, lang(req).get(type.actionLangKey()), code);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("email_confirmation_code_form", req);
+		model.with("maskedEmail", info.account.getCurrentEmailMasked()).with("action", type.actionLangKey());
+		return wrapForm(req, resp, "email_confirmation_code_form", formAction, lang(req).get("action_confirmation"), "next", model);
+	}
+
+	public static void checkEmailConfirmationCode(Request req, EmailCodeActionType type){
+		EmailConfirmationCodeInfo info=req.session().attribute("emailCodeInfo");
+		req.session().removeAttribute("emailCodeInfo");
+		if(info==null || info.actionType!=type || !Objects.equals(info.code, req.queryParams("code")) || info.sentAt.plus(10, ChronoUnit.MINUTES).isBefore(Instant.now()))
+			throw new UserErrorException("action_confirmation_incorrect_code");
+	}
+
 	public interface MentionCallback{
 		User resolveMention(String username, String domain);
 		User resolveMention(String uri);
 	}
+
+	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}
 }

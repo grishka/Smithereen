@@ -12,5 +12,9 @@
   "incomplete_profile": "Информация на этой странице может быть неполной.",
   "this_is_you": "(это вы)",
   "profile_moved": "{name} теперь пользуется другой страницей:",
-  "profile_moved_link": "<b>{name}</b> на {domain}"
+  "profile_moved_link": "<b>{name}</b> на {domain}",
+  "profile_deactivated": "Страница удалена её владельцем.",
+  "profile_hidden": "Скрытая страница",
+  "profile_hidden_info": "Для просмотра этой страницы нужно войти.",
+  "profile_banned": "Страница заблокирована администрацией сервера."
 }

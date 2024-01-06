@@ -21,9 +21,10 @@ import java.util.Map;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
+import smithereen.Mailer;
+import smithereen.SmithereenApplication;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
-import smithereen.activitypub.objects.CollectionPage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -43,6 +44,8 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.User;
+import smithereen.model.UserBanInfo;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
@@ -53,6 +56,7 @@ import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.util.InetAddressRange;
 import smithereen.util.XTEA;
+import spark.utils.StringUtils;
 
 public class ModerationController{
 	private static final Logger LOG=LoggerFactory.getLogger(ModerationController.class);
@@ -414,6 +418,38 @@ public class ModerationController{
 		try{
 			SessionStorage.deleteSession(account.id, session.fullID());
 			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.END_USER_SESSION, account.user.id, 0, null, Map.of("ip", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeInetAddress(session.ip()))));
+			SmithereenApplication.invalidateAllSessionsForAccount(account.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setUserBanStatus(User self, User target, Account targetAccount, UserBanStatus status, UserBanInfo info){
+		try{
+			UserStorage.setUserBanStatus(target, targetAccount, status, status!=UserBanStatus.NONE ? Utils.gson.toJson(info) : null);
+			HashMap<String, Object> auditLogArgs=new HashMap<>();
+			auditLogArgs.put("status", status);
+			if(info!=null){
+				if(info.expiresAt()!=null)
+					auditLogArgs.put("expiresAt", info.expiresAt().toEpochMilli());
+				if(StringUtils.isNotEmpty(info.message()))
+					auditLogArgs.put("message", info.message());
+				if(info.reportID()>0)
+					auditLogArgs.put("report", info.reportID());
+			}
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.BAN_USER, target.id, 0, null, auditLogArgs);
+			if(!(target instanceof ForeignUser) && (status==UserBanStatus.FROZEN || status==UserBanStatus.SUSPENDED)){
+				Account account=SessionStorage.getAccountByUserID(target.id);
+				Mailer.getInstance().sendAccountBanNotification(account, status, info);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void clearUserBanStatus(Account self){
+		try{
+			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.NONE, null);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

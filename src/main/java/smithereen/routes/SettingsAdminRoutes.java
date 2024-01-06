@@ -3,6 +3,7 @@ package smithereen.routes;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -35,6 +36,8 @@ import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
 import smithereen.model.StatsType;
 import smithereen.model.User;
+import smithereen.model.UserBanInfo;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
@@ -182,57 +185,46 @@ public class SettingsAdminRoutes{
 		}
 		return "";
 	}
-
-	public static Object banUserForm(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
-		Lang l=lang(req);
-		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
-		Account target=UserStorage.getAccount(accountID);
-		if(target==null || target.id==self.id || target.roleID!=0)
-			throw new ObjectNotFoundException("err_user_not_found");
-		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_ban_user", req);
-		model.with("targetAccount", target);
-		return wrapForm(req, resp, "admin_ban_user", "/settings/admin/users/ban?accountID="+accountID, l.get("admin_ban"), "admin_ban", model);
-	}
-
-	public static Object banUser(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
-		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
-		Account target=UserStorage.getAccount(accountID);
-		if(target==null || target.id==self.id || target.roleID!=0)
-			throw new ObjectNotFoundException("err_user_not_found");
-		Account.BanInfo banInfo=new Account.BanInfo();
-		banInfo.reason=req.queryParams("message");
-		banInfo.adminUserId=self.user.id;
-		banInfo.when=Instant.now();
-		UserStorage.putAccountBanInfo(accountID, banInfo);
-		if(isAjax(req))
-			return new WebDeltaResponse(resp).refresh();
-		resp.redirect(back(req));
-		return "";
-	}
-
-	public static Object confirmUnbanUser(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
-		req.attribute("noHistory", true);
-		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
-		Account target=UserStorage.getAccount(accountID);
-		if(target==null)
-			throw new ObjectNotFoundException("err_user_not_found");
-		Lang l=Utils.lang(req);
-		String back=Utils.back(req);
-		User user=target.user;
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("admin_unban_X_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/settings/admin/users/unban?accountID="+accountID+"&_redir="+URLEncoder.encode(back)).with("back", back);
-	}
-
-	public static Object unbanUser(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
-		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
-		Account target=UserStorage.getAccount(accountID);
-		if(target==null)
-			throw new ObjectNotFoundException("err_user_not_found");
-		UserStorage.putAccountBanInfo(accountID, null);
-		if(isAjax(req))
-			return new WebDeltaResponse(resp).refresh();
-		resp.redirect(back(req));
-		return "";
-	}
+//
+//	public static Object banUser(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+//		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
+//		Account target=UserStorage.getAccount(accountID);
+//		if(target==null || target.id==self.id || target.roleID!=0)
+//			throw new ObjectNotFoundException("err_user_not_found");
+//		Account.BanInfo banInfo=new Account.BanInfo();
+//		banInfo.reason=req.queryParams("message");
+//		banInfo.adminUserId=self.user.id;
+//		banInfo.when=Instant.now();
+//		UserStorage.putAccountBanInfo(accountID, banInfo);
+//		if(isAjax(req))
+//			return new WebDeltaResponse(resp).refresh();
+//		resp.redirect(back(req));
+//		return "";
+//	}
+//
+//	public static Object confirmUnbanUser(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+//		req.attribute("noHistory", true);
+//		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
+//		Account target=UserStorage.getAccount(accountID);
+//		if(target==null)
+//			throw new ObjectNotFoundException("err_user_not_found");
+//		Lang l=Utils.lang(req);
+//		String back=Utils.back(req);
+//		User user=target.user;
+//		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("admin_unban_X_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/settings/admin/users/unban?accountID="+accountID+"&_redir="+URLEncoder.encode(back)).with("back", back);
+//	}
+//
+//	public static Object unbanUser(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+//		int accountID=parseIntOrDefault(req.queryParams("accountID"), 0);
+//		Account target=UserStorage.getAccount(accountID);
+//		if(target==null)
+//			throw new ObjectNotFoundException("err_user_not_found");
+//		UserStorage.putAccountBanInfo(accountID, null);
+//		if(isAjax(req))
+//			return new WebDeltaResponse(resp).refresh();
+//		resp.redirect(back(req));
+//		return "";
+//	}
 
 	public static Object otherSettings(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		Lang l=lang(req);
@@ -323,8 +315,8 @@ public class SettingsAdminRoutes{
 		Account target=UserStorage.getAccount(accountID);
 		if(target==null)
 			throw new ObjectNotFoundException("err_user_not_found");
-		Lang l=Utils.lang(req);
-		String back=Utils.back(req);
+		Lang l=lang(req);
+		String back=back(req);
 		User user=target.user;
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("admin_activate_X_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/settings/admin/users/activate?accountID="+accountID+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
@@ -372,7 +364,7 @@ public class SettingsAdminRoutes{
 			return new WebDeltaResponse(resp).setContent("signupReqBtns"+id,
 					"<div class=\"settingsMessage\">"+lang(req).get(accept ? "email_invite_sent" : "signup_request_deleted")+"</div>");
 		}
-		resp.redirect(Utils.back(req));
+		resp.redirect(back(req));
 		return "";
 	}
 
@@ -578,7 +570,7 @@ public class SettingsAdminRoutes{
 					throw new BadRequestException();
 
 				Lang l=lang(req);
-				return wrapForm(req, resp, "admin_add_cw", "/settings/admin/reports/"+report.id+"/doAddCW", l.get("post_form_cw"), "save", "addCW", List.of(), Function.identity(), null);
+				return wrapForm(req, resp, "admin_add_cw", "/settings/admin/reports/"+report.id+"/doAddCW", l.get("post_form_cw"), "save", "addCW", List.of(), null, null);
 			}else{
 				throw new BadRequestException();
 			}
@@ -783,6 +775,12 @@ public class SettingsAdminRoutes{
 					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
 					yield l.get("admin_audit_log_ended_session", langArgs);
 				}
+				case BAN_USER -> {
+					User targetUser=users.get(le.ownerID());
+					langArgs.put("targetName", targetUser!=null ? targetUser.getFirstLastAndGender() : "DELETED");
+					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
+					yield l.get("admin_audit_log_changed_user_restrictions", langArgs);
+				}
 			};
 			String extraText=switch(le.action()){
 				case ASSIGN_ROLE, DELETE_ROLE, ACTIVATE_ACCOUNT, RESET_USER_PASSWORD -> null;
@@ -836,6 +834,25 @@ public class SettingsAdminRoutes{
 
 				case SET_USER_EMAIL -> escapeHTML(le.extra().get("oldEmail").toString())+" &rarr; "+escapeHTML(le.extra().get("newEmail").toString());
 				case END_USER_SESSION -> l.get("ip_address")+": "+deserializeInetAddress(Base64.getDecoder().decode((String)le.extra().get("ip"))).getHostAddress();
+				case BAN_USER -> {
+					User targetUser=users.get(le.ownerID());
+					String statusStr=switch(UserBanStatus.valueOf((String)le.extra().get("status"))){
+						case NONE -> l.get("admin_user_state_no_restrictions");
+						case FROZEN -> l.get("admin_user_state_frozen", Map.of("expirationTime", l.formatDate(Instant.ofEpochMilli(((Number)le.extra().get("expiresAt")).longValue()), timeZoneForRequest(req), false)));
+						case SUSPENDED -> {
+							if(targetUser instanceof ForeignUser)
+								yield l.get("admin_user_state_suspended_foreign");
+							else
+								yield l.get("admin_user_state_suspended", Map.of("deletionTime", l.formatDate(le.time().plus(30, ChronoUnit.DAYS), timeZoneForRequest(req), false)));
+						}
+						case HIDDEN -> l.get("admin_user_state_hidden");
+						case SELF_DEACTIVATED -> null;
+					};
+					if(le.extra().get("message")!=null){
+						statusStr+="<br/>"+l.get("admin_user_ban_message")+": "+escapeHTML((String)le.extra().get("message"));
+					}
+					yield statusStr;
+				}
 			};
 			return new AuditLogEntryViewModel(le, substituteLinks(mainText, links), extraText);
 		}).toList();
@@ -863,12 +880,19 @@ public class SettingsAdminRoutes{
 				}catch(ObjectNotFoundException ignore){}
 			}
 			model.with("sessions", ctx.getUsersController().getAccountSessions(account));
+			if(user.banInfo!=null){
+				if(user.domain==null && (user.banStatus==UserBanStatus.SUSPENDED || user.banStatus==UserBanStatus.SELF_DEACTIVATED)){
+					model.with("accountDeletionTime", user.banInfo.bannedAt().plus(30, ChronoUnit.DAYS));
+				}
+				model.with("banModerator", ctx.getUsersController().getUserOrThrow(user.banInfo.moderatorID()));
+			}
 		}else{
 			account=null;
 		}
 		UserRelationshipMetrics relMetrics=ctx.getUsersController().getRelationshipMetrics(user);
 		UserContentMetrics contentMetrics=ctx.getUsersController().getContentMetrics(user);
 		model.with("relationshipMetrics", relMetrics).with("contentMetrics", contentMetrics);
+		model.pageTitle(lang(req).get("admin_manage_user")+" | "+user.getFullName());
 		return model;
 	}
 
@@ -914,6 +938,71 @@ public class SettingsAdminRoutes{
 					.showSnackbar(lang(req).get("admin_session_terminated"))
 					.hide("boxLoader");
 		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object banUserForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		Lang l=lang(req);
+		Object form=wrapForm(req, resp, "admin_users_ban_form", "/users/"+user.id+"/ban", l.get("admin_ban_user_title"),
+				"save", "banUser", List.of("status", "message", /*"duration",*/ "forcePasswordChange"), s->switch(s){
+					case "status" -> user.banStatus;
+					case "message" -> user.banInfo!=null ? user.banInfo.message() : null;
+					case "forcePasswordChange" -> user.banInfo!=null && user.banInfo.requirePasswordChange();
+					default -> throw new IllegalStateException("Unexpected value: " + s);
+				}, null, Map.of("user", user));
+		if(user.domain==null && form instanceof WebDeltaResponse wdr){
+			wdr.runScript("""
+					function userBanForm_updateFieldVisibility(){
+						var message=ge("formRow_message");
+						var duration=ge("formRow_duration");
+						var forcePasswordChange=ge("formRow_forcePasswordChange");
+						var freezeChecked=ge("status1").checked;
+						var suspendChecked=ge("status2").checked;
+						if(freezeChecked || suspendChecked){
+							message.show();
+						}else{
+							message.hide();
+						}
+						if(freezeChecked){
+							duration.show();
+							forcePasswordChange.show();
+						}else{
+							duration.hide();
+							forcePasswordChange.hide();
+						}
+					}
+					for(var i=0;i<4;i++){
+						ge("status"+i).addEventListener("change", function(){userBanForm_updateFieldVisibility();}, false);
+					}
+					userBanForm_updateFieldVisibility();""");
+		}
+		return form;
+	}
+
+	public static Object banUser(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		UserBanStatus status=enumValue(req.queryParams("status"), UserBanStatus.class);
+		UserBanInfo info;
+		if(status!=UserBanStatus.NONE){
+			String message=null;
+			Instant expiresAt=null;
+			boolean forcePasswordChange=false;
+			if(status==UserBanStatus.FROZEN || status==UserBanStatus.SUSPENDED){
+				message=req.queryParams("message");
+			}
+			if(status==UserBanStatus.FROZEN){
+				expiresAt=Instant.now().plus(safeParseInt(req.queryParams("duration")), ChronoUnit.HOURS);
+				forcePasswordChange="on".equals(req.queryParams("forcePasswordChange"));
+			}
+			info=new UserBanInfo(Instant.now(), expiresAt, message, forcePasswordChange, self.user.id, 0);
+		}else{
+			info=null;
+		}
+		ctx.getModerationController().setUserBanStatus(self.user, user, user instanceof ForeignUser ? null : ctx.getUsersController().getAccountForUser(user), status, info);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}

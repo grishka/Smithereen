@@ -19,6 +19,8 @@ import java.util.function.Predicate;
 import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.Actor;
+import smithereen.exceptions.InaccessibleProfileException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
@@ -28,7 +30,9 @@ import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
+import smithereen.model.SessionInfo;
 import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserContentUnavailableException;
@@ -37,9 +41,10 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
 import smithereen.storage.UserStorage;
+import spark.Request;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.escapeHTML;
+import static smithereen.Utils.*;
 
 public class PrivacyController{
 	private static final Logger LOG=LoggerFactory.getLogger(PrivacyController.class);
@@ -292,6 +297,10 @@ public class PrivacyController{
 	}
 
 	public void enforcePostPrivacy(@Nullable User self, Post post){
+		if(post.ownerID>0){
+			User owner=context.getUsersController().getUserOrThrow(post.ownerID);
+			enforceUserProfileAccess(self, owner);
+		}
 		if(!checkPostPrivacy(self, post))
 			throw new UserContentUnavailableException();
 	}
@@ -299,5 +308,17 @@ public class PrivacyController{
 	public void filterPosts(@Nullable User self, Collection<Post> posts){
 		// TODO optimize this to avoid querying the same friendship states multiple times
 		posts.removeIf(post->!checkPostPrivacy(self, post));
+	}
+
+	public void enforceUserProfileAccess(@Nullable User self, User target){
+		switch(target.banStatus){
+			case NONE -> {}
+			case FROZEN, SUSPENDED -> throw new UserErrorException("profile_banned");
+			case HIDDEN -> {
+				if(self==null)
+					throw new InaccessibleProfileException(target);
+			}
+			case SELF_DEACTIVATED -> throw new UserErrorException("profile_deactivated");
+		}
 	}
 }

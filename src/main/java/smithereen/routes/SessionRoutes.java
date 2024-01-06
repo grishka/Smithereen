@@ -3,6 +3,7 @@ package smithereen.routes;
 import io.pebbletemplates.pebble.extension.escaper.SafeString;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Locale;
 import java.util.Map;
@@ -18,6 +19,7 @@ import smithereen.model.EmailCode;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
 import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -28,6 +30,7 @@ import smithereen.storage.DatabaseUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.EmailCodeActionType;
 import smithereen.util.FloodControl;
 import spark.Request;
 import spark.Response;
@@ -449,5 +452,63 @@ public class SessionRoutes{
 			}
 			return model;
 		}
+	}
+
+	public static Object unfreezeBox(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		if(info.account.user.banStatus!=UserBanStatus.FROZEN || info.account.user.banInfo.expiresAt().isAfter(Instant.now()))
+			throw new UserActionNotAllowedException();
+		return sendEmailConfirmationCode(req, resp, EmailCodeActionType.ACCOUNT_UNFREEZE, "/account/unfreeze");
+	}
+
+	public static Object unfreeze(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(self.user.banStatus!=UserBanStatus.FROZEN || self.user.banInfo.expiresAt().isAfter(Instant.now()))
+			throw new UserActionNotAllowedException();
+		checkEmailConfirmationCode(req, EmailCodeActionType.ACCOUNT_UNFREEZE);
+		if(self.user.banInfo.requirePasswordChange()){
+			req.session().attribute("emailConfirmationForUnfreezingDone", true);
+			Lang l=lang(req);
+			RenderedTemplateResponse model=new RenderedTemplateResponse("account_unfreeze_change_password_form", req);
+			return wrapForm(req, resp, "account_unfreeze_change_password_form", "/account/unfreezeChangePassword", l.get("change_password"), "save", model);
+		}else{
+			ctx.getModerationController().clearUserBanStatus(self);
+			if(isAjax(req))
+				return new WebDeltaResponse(resp).replaceLocation("/feed");
+			resp.redirect("/feed");
+		}
+		return "";
+	}
+
+	public static Object unfreezeChangePassword(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(self.user.banStatus!=UserBanStatus.FROZEN || self.user.banInfo.expiresAt().isAfter(Instant.now()) || !self.user.banInfo.requirePasswordChange())
+			throw new UserActionNotAllowedException();
+		if(req.session().attribute("emailConfirmationForUnfreezingDone")==null)
+			throw new UserActionNotAllowedException();
+		requireQueryParams(req, "current", "new", "new2");
+		String current=req.queryParams("current");
+		String new1=req.queryParams("new");
+		String new2=req.queryParams("new2");
+		String message;
+		if(!new1.equals(new2)){
+			message=Utils.lang(req).get("err_passwords_dont_match");
+		}else{
+			try{
+				ctx.getUsersController().changePassword(self, current, new1);
+				ctx.getModerationController().clearUserBanStatus(self);
+				ctx.getUsersController().terminateSessionsExcept(self, req.cookie("psid"));
+				if(isAjax(req))
+					return new WebDeltaResponse(resp).replaceLocation("/feed");
+				resp.redirect("/feed");
+				return "";
+			}catch(UserErrorException x){
+				message=lang(req).get(x.getMessage());
+			}
+		}
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).keepBox().show("formMessage_changePassword").setContent("formMessage_changePassword", message);
+		}
+		Lang l=lang(req);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("account_unfreeze_change_password_form", req);
+		model.with("passwordMessage", message);
+		return wrapForm(req, resp, "account_unfreeze_change_password_form", "/account/unfreezeChangePassword", l.get("change_password"), "save", model);
 	}
 }

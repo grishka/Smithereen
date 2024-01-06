@@ -1,0 +1,7 @@
+{% extends "page" %}
+{% block content %}
+	{{ L('email_confirmation_code', {'name': name, 'action': action}) }}
+	<div style="margin: 20px auto; background: #f7f7f7; border: solid 1px #ccc; border-radius: 4px; font-size: 20px; padding: 10px;">{{ code }}</div>
+	{{ L('email_confirmation_code_info') }}
+{% endblock %}
+

@@ -3,6 +3,7 @@ package smithereen.controllers;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.Map;
 
 import smithereen.ApplicationContext;
 import smithereen.Mailer;
+import smithereen.SmithereenApplication;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.Account;
@@ -341,6 +343,28 @@ public class UsersController{
 	public List<OtherSession> getAccountSessions(Account acc){
 		try{
 			return SessionStorage.getAccountSessions(acc.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void changePassword(Account self, String oldPassword, String newPassword){
+		try{
+			if(newPassword.length()<4){
+				throw new UserErrorException("err_password_short");
+			}else if(!SessionStorage.updatePassword(self.id, oldPassword, newPassword)){
+				throw new UserErrorException("err_old_password_incorrect");
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void terminateSessionsExcept(Account self, String psid){
+		try{
+			byte[] sid=Base64.getDecoder().decode(psid);
+			SessionStorage.deleteSessionsExcept(self.id, sid);
+			SmithereenApplication.invalidateAllSessionsForAccount(self.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

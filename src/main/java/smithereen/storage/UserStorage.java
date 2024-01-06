@@ -40,6 +40,7 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.SignupInvitation;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
@@ -1207,5 +1208,16 @@ public class UserStorage{
 				.where("id=?", user.id)
 				.executeNoResult();
 		removeFromCache(user);
+	}
+
+	public static void setUserBanStatus(User user, Account userAccount, UserBanStatus status, String banInfo) throws SQLException{
+		new SQLQueryBuilder()
+				.update("users")
+				.value("ban_status", status)
+				.value("ban_info", banInfo)
+				.where("id=?", user.id)
+				.executeNoResult();
+		removeFromCache(user);
+		accountCache.remove(userAccount.id);
 	}
 }

@@ -12,5 +12,9 @@
   "incomplete_profile": "This profile might be incomplete.",
   "this_is_you": "(this is you)",
   "profile_moved": "{name} now uses another profile:",
-  "profile_moved_link": "<b>{name}</b> on {domain}"
+  "profile_moved_link": "<b>{name}</b> on {domain}",
+  "profile_deactivated": "This profile was deleted by its owner.",
+  "profile_hidden": "Hidden profile",
+  "profile_hidden_info": "You need to log in to view this profile.",
+  "profile_banned": "This account was banned by the server staff."
 }

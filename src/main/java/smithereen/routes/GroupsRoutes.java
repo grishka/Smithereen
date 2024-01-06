@@ -77,6 +77,7 @@ public class GroupsRoutes{
 	public static Object userGroups(Request req, Response resp, User user){
 		jsLangKey(req, "cancel", "create");
 		SessionInfo info=sessionInfo(req);
+		context(req).getPrivacyController().enforceUserProfileAccess(info!=null && info.account!=null ? info.account.user : null, user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("tab", "groups").with("title", lang(req).get("groups"));
 		model.paginate(context(req).getGroupsController().getUserGroups(user, info!=null && info.account!=null ? info.account.user : null, offset(req), 100));
 		model.with("owner", user);

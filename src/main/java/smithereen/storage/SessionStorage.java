@@ -37,6 +37,7 @@ import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
 import smithereen.model.SignupRequest;
 import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPreferences;
 import smithereen.model.UserRole;
@@ -327,7 +328,7 @@ public class SessionStorage{
 			byte[] hashedOld=md.digest(oldPassword.getBytes(StandardCharsets.UTF_8));
 			byte[] hashedNew=md.digest(newPassword.getBytes(StandardCharsets.UTF_8));
 			return new SQLQueryBuilder()
-					.update("account")
+					.update("accounts")
 					.value("password", hashedNew)
 					.where("id=? AND `password`=?", accountID, hashedOld)
 					.executeUpdate()==1;
@@ -522,7 +523,7 @@ public class SessionStorage{
 			stmt.close();
 		}
 		r.canInviteNewUsers=switch(Config.signupMode){
-			case OPEN, INVITE_ONLY -> true;
+			case OPEN, INVITE_ONLY -> account.user.banStatus==UserBanStatus.NONE || account.user.banStatus==UserBanStatus.HIDDEN;
 			case CLOSED, MANUAL_APPROVAL -> r.hasPermission(UserRole.Permission.MANAGE_INVITES);
 		};
 		permissionsCache.put(account.user.id, r);
@@ -654,6 +655,13 @@ public class SessionStorage{
 				return DatabaseUtils.resultSetToObjectStream(res, OtherSession::fromResultSet, null).toList();
 			}
 		}
+	}
+
+	public static void deleteSessionsExcept(int accountID, byte[] sid) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("sessions")
+				.where("account_id=? AND id<>?", accountID, sid)
+				.executeNoResult();
 	}
 
 	public enum SignupResult{

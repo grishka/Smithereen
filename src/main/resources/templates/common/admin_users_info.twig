@@ -8,7 +8,7 @@
 {% include "admin_users_info_tabbar" with {'tab': 'info'} %}
 <div class="singleColumn">
 	<div class="itemWithMediumAvatar">
-		{{ user | pictureForAvatar('m') }}
+		<div>{{ user | pictureForAvatar('m') }}</div>
 		<div>
 			<h2>{{ user | name('complete') }}</h2>
 			<div class="marginBefore marginAfter">
@@ -79,33 +79,58 @@
 	{% endif %}
 	{% if account is not null %}
 	<h2 class="marginBefore marginAfter">{{ L('settings_sessions') }}</h2>
-	<table class="dataTable" style="width: 100%">
-		<tr class="tableHeader">
-			<th>{{ L('settings_activity_access_type') }}</th>
-			<th width="150">{{ L('settings_activity_access_time') }}</th>
-			<th width="150">{{ L('ip_address') }}</th>
-			{% if userPermissions.hasPermission('MANAGE_USER_ACCESS') %}
-			<th width="100">{{ L('actions') }}</th>
-			{% endif %}
-		</tr>
-	{% for session in sessions %}
-		<tr id="adminSessionRow{{ session.id }}">
-			<td>
-				{% if session.userAgent is empty %}
-				{{ L('unknown_browser') }}
-				{% else %}
-				{{ L('settings_activity_web', {'browserName': session.browserInfo.name, 'browserVersion': session.browserInfo.majorVersion, 'osName': session.browserInfo.os.displayName}) }}
+	<div class="wideDataTableWrap">
+		<table class="dataTable wideTable">
+			<tr class="tableHeader">
+				<th>{{ L('settings_activity_access_type') }}</th>
+				<th width="150">{{ L('settings_activity_access_time') }}</th>
+				<th width="150">{{ L('ip_address') }}</th>
+				{% if userPermissions.hasPermission('MANAGE_USER_ACCESS') %}
+				<th width="100">{{ L('actions') }}</th>
 				{% endif %}
-			</td>
-			<td>{{ LD(session.lastActive) }}</td>
-			<td>{{ session.ip.hostAddress }}</td>
-			{% if userPermissions.hasPermission('MANAGE_USER_ACCESS') %}
-			<td><a href="/settings/admin/users/endSession?accountID={{ account.id }}&sessionID={{ session.id }}&csrf={{ csrf }}" data-ajax-box>{{ L('admin_end_session') }}</a></td>
-			{% endif %}
-		</tr>
-	{% endfor %}
-	</table>
+			</tr>
+		{% for session in sessions %}
+			<tr id="adminSessionRow{{ session.id }}">
+				<td>
+					{% if session.userAgent is empty %}
+					{{ L('unknown_browser') }}
+					{% else %}
+					{{ L('settings_activity_web', {'browserName': session.browserInfo.name, 'browserVersion': session.browserInfo.majorVersion, 'osName': session.browserInfo.os.displayName}) }}
+					{% endif %}
+				</td>
+				<td>{{ LD(session.lastActive) }}</td>
+				<td><a href="/settings/admin/users?lastIP={{ session.ip.hostAddress }}">{{ session.ip.hostAddress }}</a></td>
+				{% if userPermissions.hasPermission('MANAGE_USER_ACCESS') %}
+				<td><a href="/settings/admin/users/endSession?accountID={{ account.id }}&sessionID={{ session.id }}&csrf={{ csrf }}" data-ajax-box>{{ L('admin_end_session') }}</a></td>
+				{% endif %}
+			</tr>
+		{% endfor %}
+		</table>
+	</div>
 	{% endif %}
+	<h2 class="marginBefore marginAfter">{{ L('admin_user_restrictions') }}</h2>
+	<div class="marginBefore marginAfter">
+		{% if user.banStatus=='NONE' %}
+		{{ L('admin_user_state_no_restrictions') }}
+		{% elseif user.banStatus=='FROZEN' %}
+		{{ L('admin_user_state_frozen', {'expirationTime': LD(user.banInfo.expiresAt)}) }}
+		{% elseif user.banStatus=='SUSPENDED' %}
+		{% if user.domain is empty %}
+		{{ L('admin_user_state_suspended', {'deletionTime': LD(accountDeletionTime)}) }}
+		{% else %}
+		{{ L('admin_user_state_suspended_foreign') }}
+		{% endif %}
+		{% elseif user.banStatus=='HIDDEN' %}
+		{{ L('admin_user_state_hidden') }}
+		{% elseif user.banStatus=='SELF_DEACTIVATED' %}
+		{{ L('admin_user_state_self_deactivated', {'deletionTime': LD(accountDeletionTime)}) }}
+		{% endif %}
+		{% if user.banInfo is not null %}
+		<br/><a href="{{ banModerator.profileURL }}">{{ banModerator | name }}</a>, {{ LD(user.banInfo.bannedAt()) }}
+		{% if user.banInfo.message is not empty %}<br/>{{ L('admin_user_ban_message') }}: {{ user.banInfo.message }}{% endif %}
+		{% endif %}
+	</div>
+	<a href="/users/{{ user.id }}/banForm" data-ajax-box class="button">{{ L('admin_user_change_restrictions') }}</a>
 </div>
 {% endblock %}
 

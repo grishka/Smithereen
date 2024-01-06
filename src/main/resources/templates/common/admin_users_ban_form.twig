@@ -1,0 +1,29 @@
+{% import "forms" as form %}
+{{ form.start("userBan") }}
+	{% if user.domain is empty %}
+	{{ form.radioGroup('status', '', [
+		{'value': 'NONE', 'label': L('admin_user_no_restrictions'), 'selected': status=='NONE'},
+		{'value': 'FROZEN', 'label': L('admin_user_freeze'), 'explanation': L('admin_user_freeze_explain'), 'selected': status=='FROZEN'},
+		{'value': 'SUSPENDED', 'label': L('admin_user_suspend'), 'explanation': L('admin_user_suspend_explain'), 'selected': status=='SUSPENDED'},
+		{'value': 'HIDDEN', 'label': L('admin_user_hide'), 'explanation': L('admin_user_hide_explain'), 'selected': status=='HIDDEN'}
+	]) }}
+	{{ form.textInput('message', L('admin_user_ban_message'), message, {'explanation': L('admin_user_ban_message_explain')}) }}
+	{{ form.select('duration', L('admin_user_ban_duration'), [
+		{'value': '0', 'label': L('admin_user_ban_until_first_login')},
+		{'value': '12', 'label': L('X_hours', {'count': 12})},
+		{'value': '24', 'label': L('X_days', {'count': 1})},
+		{'value': '48', 'label': L('X_days', {'count': 2})},
+		{'value': '72', 'label': L('X_days', {'count': 3})},
+		{'value': '120', 'label': L('X_days', {'count': 5})},
+		{'value': '168', 'label': L('X_days', {'count': 7})},
+		{'value': '336', 'label': L('X_days', {'count': 14})}
+	]) }}
+	{{ form.checkBox('forcePasswordChange', '', L('admin_user_ban_force_password_change'), false) }}
+	{% else %}
+	{{ form.radioGroup('status', '', [
+		{'value': 'NONE', 'label': L('admin_user_no_restrictions'), 'selected': status=='NONE'},
+		{'value': 'SUSPENDED', 'label': L('admin_user_suspend'), 'explanation': L('admin_user_foreign_suspend_explain'), 'selected': status=='SUSPENDED'},
+		{'value': 'HIDDEN', 'label': L('admin_user_hide'), 'explanation': L('admin_user_hide_explain'), 'selected': status=='HIDDEN'}
+	]) }}
+	{% endif %}
+{{ form.end() }}

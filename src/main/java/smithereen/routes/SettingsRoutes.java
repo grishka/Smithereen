@@ -107,18 +107,20 @@ public class SettingsRoutes{
 	}
 
 	public static Object updatePassword(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+		requireQueryParams(req, "current", "new", "new2");
 		String current=req.queryParams("current");
 		String new1=req.queryParams("new");
 		String new2=req.queryParams("new2");
 		String message;
 		if(!new1.equals(new2)){
 			message=Utils.lang(req).get("err_passwords_dont_match");
-		}else if(new1.length()<4){
-			message=Utils.lang(req).get("err_password_short");
-		}else if(!SessionStorage.updatePassword(self.id, current, new1)){
-			message=Utils.lang(req).get("err_old_password_incorrect");
 		}else{
-			message=Utils.lang(req).get("password_changed");
+			try{
+				ctx.getUsersController().changePassword(self, current, new1);
+				message=Utils.lang(req).get("password_changed");
+			}catch(UserErrorException x){
+				message=lang(req).get(x.getMessage());
+			}
 		}
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).show("formMessage_changePassword").setContent("formMessage_changePassword", message);

@@ -128,6 +128,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
+import smithereen.model.UserBanStatus;
 import smithereen.sparkext.ActivityPubCollectionPageResponse;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
@@ -716,6 +717,10 @@ public class ActivityPubRoutes{
 		}
 		if(!(actor instanceof ForeignActor fa))
 			throw new BadRequestException("Actor is local");
+		if(actor instanceof ForeignUser fu && fu.banStatus==UserBanStatus.SUSPENDED){
+			resp.status(403);
+			return "This actor is suspended from this server";
+		}
 		if(fa.needUpdate() && canUpdate){
 			try{
 				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, true);
