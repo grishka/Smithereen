@@ -135,6 +135,7 @@ public class SmithereenApplication{
 
 		ipAddress(Config.serverIP);
 		port(Config.serverPort);
+		useVirtualThreadPool();
 		if(Config.staticFilesPath!=null)
 			externalStaticFileLocation(Config.staticFilesPath);
 		else
