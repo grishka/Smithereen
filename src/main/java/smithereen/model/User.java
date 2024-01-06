@@ -43,7 +43,7 @@ public class User extends Actor{
 	public int movedFrom;
 	public Instant movedAt;
 	public Set<URI> alsoKnownAs=new HashSet<>();
-	public UserBanStatus banStatus;
+	public UserBanStatus banStatus=UserBanStatus.NONE;
 	public UserBanInfo banInfo;
 
 	// additional profile fields
@@ -396,6 +396,7 @@ public class User extends Actor{
 		movedTo=previous.movedTo;
 		movedFrom=previous.movedFrom;
 		movedAt=previous.movedAt;
+		banStatus=previous.banStatus;
 	}
 
 	public enum Gender{
