@@ -18,7 +18,7 @@
 			{%- endif -%}
 			</div>
 			{% if realPost.hasContentWarning %}
-				<input type="checkbox" id="postCW_{{ realPost.id }}" style="display: none"/>
+				<input type="checkbox" id="postCW_{{ realPost.id }}" class="commentCWCheckbox" style="display: none"/>
 			<div class="postCWWrap">
 				<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning }}</label>
 			{% endif %}

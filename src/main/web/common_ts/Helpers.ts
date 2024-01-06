@@ -1118,3 +1118,11 @@ function hideTooltip(el:HTMLElement){
 		ttEl.hideAnimated();
 	}
 }
+
+function expandAllCommentCWs(){
+	for(var cbox of document.querySelectorAll(".commentCWCheckbox").unfuck()){
+		if(cbox instanceof HTMLInputElement && !cbox.checked){
+			cbox.checked=true;
+		}
+	}
+}

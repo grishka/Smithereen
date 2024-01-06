@@ -313,6 +313,12 @@ public class PostRoutes{
 		model.paginate(replies);
 		model.with("post", post);
 		model.with("isGroup", post.post.ownerID<0);
+		int cwCount=0;
+		for(PostViewModel reply:replies.list){
+			if(reply.post.hasContentWarning())
+				cwCount++;
+		}
+		model.with("needExpandCWsButton", cwCount>1);
 
 		boolean canOverridePrivacy=false;
 		if(self!=null && info.permissions.hasPermission(UserRole.Permission.MANAGE_REPORTS)){

@@ -37,6 +37,7 @@
 		<label for="mainMenuToggler"><span>{{L('menu')}}</span></label>
 	</div>
 	<span class="title">{{toolbarTitle is empty ? title : toolbarTitle}}</span>
+	{% block headerActionButtons %}{% endblock %}
 </div>
 <input type="checkbox" id="mainMenuToggler" style="display: none"/>
 <div class="mainMenu">

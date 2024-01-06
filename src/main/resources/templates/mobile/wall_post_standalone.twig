@@ -2,6 +2,11 @@
 {# @pebvariable name="realPost" type="smithereen.model.Post" #}
 {% set realPost=post.post %}
 {%extends "page"%}
+{% block headerActionButtons %}
+	{% if needExpandCWsButton %}
+	    <button title="{{ L('expand_all_cws') }}" class="actionButton iconCW" onclick="expandAllCommentCWs()"></button>
+	{% endif %}
+{% endblock %}
 {%block content%}
 {% include "wall_post" with {'hideButtons': true} %}
 <div class="postActions standaloneLikeBar">

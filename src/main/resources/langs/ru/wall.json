@@ -62,5 +62,6 @@
   "graffiti_on_group_X_wall": "Граффити на стене \"{name}\"",
   "post_visible_to_followers": "Эта запись видна только подписчикам {name, inflect, genitive}",
   "post_visible_to_followers_mentioned": "Эта запись видна только подписчикам {name, inflect, genitive} и упомянутым",
-  "post_visible_to_friends": "Эта запись видна только друзьям {name, inflect, genitive}"
+  "post_visible_to_friends": "Эта запись видна только друзьям {name, inflect, genitive}",
+  "expand_all_cws": "Раскрыть все спойлеры"
 }
