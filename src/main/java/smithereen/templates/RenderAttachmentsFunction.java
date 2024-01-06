@@ -50,7 +50,7 @@ public class RenderAttachmentsFunction implements Function{
 			}
 		}
 		ArrayList<String> lines=new ArrayList<>();
-		List<SizedAttachment> sized=attachment.stream().filter(a->a instanceof SizedAttachment).map(a->(SizedAttachment)a).collect(Collectors.toList());
+		List<SizedAttachment> sized=attachment.stream().filter(a->a instanceof SizedAttachment).map(a->(SizedAttachment)a).limit(10).collect(Collectors.toList());
 		if(!sized.isEmpty()){
 			float aspect;
 			TiledLayoutResult tiledLayout;

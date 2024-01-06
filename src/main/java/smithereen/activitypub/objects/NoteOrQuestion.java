@@ -84,7 +84,10 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		post.activityPubReplies=replies!=null ? replies.getObjectID() : null;
 		if(post.activityPubReplies!=null)
 			ensureHostMatchesID(post.activityPubReplies, "replies");
-		post.attachments=attachment;
+		if(attachment!=null && attachment.size()>10)
+			post.attachments=attachment.subList(0, 10);
+		else
+			post.attachments=attachment;
 
 		HashSet<URI> mentionedUserIDs=new HashSet<>();
 		if(tag!=null){
