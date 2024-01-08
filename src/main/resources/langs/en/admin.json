@@ -211,7 +211,7 @@
   "admin_user_state_suspended": "Account is suspended and will be deleted <b>{deletionTime}</b>.",
   "admin_user_state_suspended_foreign": "This remote user is suspended on your server.",
   "admin_user_state_self_deactivated": "Account was deactivated by the user themselves and will be deleted <b>{deletionTime}</b>.",
-  "admin_user_state_hidden": "Profile is hidden form logged-out users.",
+  "admin_user_state_hidden": "Profile is hidden from logged-out users.",
   "admin_user_delete_account_now": "Delete right now",
   "admin_user_delete_account_confirmation": "You are about to delete <b>{name}</b>''s account with immediate effect.\n\nThis is <b>IRREVERSIBLE</b> even if you have a database and media files backup. To proceed, enter below the complete username with domain for the account you''re deleting.",
   "admin_audit_log_changed_user_restrictions": "<a id=\"adminUser\">{name}</a> changed restrictions for <a id=\"targetUser\">{targetName}</a>''s account"
