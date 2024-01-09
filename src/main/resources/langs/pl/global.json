@@ -70,7 +70,6 @@
   "about_contact": "Kontakt",
   "about_admins": "Administratorzy",
   "about_on_this_server": "Na serwerze jest",
-  "your_account_is_banned": "Twoje konto zostało zbanowane przez administratorów tego serwera.",
   "show_previous_comments": "Pokaż poprzednie komentarze",
   "comments_show_X_replies": "Pokaż {count, plural, one {# odpowiedź} few {# odpowiedzi} other {# odpowiedzi}}",
   "search": "Szukaj",

@@ -69,6 +69,5 @@
   "about_X_groups": "{count, plural, one {<b>#</b> Gruppe} other {<b>#</b> Gruppen}}",
   "about_contact": "Kontakt",
   "about_admins": "Administratoren",
-  "about_on_this_server": "Auf diesem Server sind",
-  "your_account_is_banned": "Dein Konto wurde von diesem Server-Administrator verbannt."
+  "about_on_this_server": "Auf diesem Server sind"
 }

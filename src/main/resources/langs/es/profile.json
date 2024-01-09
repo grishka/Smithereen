@@ -10,5 +10,11 @@
   "X_is_following_you": "{name} te sigue",
   "waiting_for_X_to_accept_follow_req": "Estás esperando que {name} acepte tu solicitud de seguimiento",
   "incomplete_profile": "Este perfil puede estar incompleto.",
-  "this_is_you": "(este eres tú)"
+  "this_is_you": "(este eres tú)",
+  "profile_moved": "{name} ahora usa otro perfil:",
+  "profile_moved_link": "<b>{name}</b> en {domain}",
+  "profile_deactivated": "Este perfil fue eliminado por su propietario.",
+  "profile_hidden": "Perfil oculto",
+  "profile_hidden_info": "Necesitas registrarte para ver este perfil.",
+  "profile_banned": "Esta cuenta fue prohibida por el personal del servidor."
 }
