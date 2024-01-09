@@ -147,7 +147,6 @@
   "account_reactivate": "Восстановить страницу",
   "action_confirmation": "Подтверждение действия",
   "action_confirmation_text": "Мы отправили вам код на <b>{maskedEmail}</b>. Пожалуйста, введите его для подтверждения {action}:",
-  "action_confirmation_send_again": "Повторить отправку",
   "next": "Далее",
   "action_confirmation_incorrect_code": "Неверный код"
 }
