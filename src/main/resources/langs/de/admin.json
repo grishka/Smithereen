@@ -10,11 +10,6 @@
   "invited_by": "Eingeladen durch",
   "signup_date": "Anmeldedatum",
   "actions": "Aktionen",
-  "access_level": "Berechtigungsstufe",
-  "choose_access_level_for_X": "Wähle eine Berechtigungsstufe für <b>{name}</b>",
-  "access_level_regular": "Regulärer Benutzer",
-  "access_level_moderator": "Moderator",
-  "access_level_admin": "Administrator",
   "admin_signup_mode": "Anmeldemodus",
   "admin_signup_mode_open": "Offen",
   "admin_signup_mode_invite": "Nur auf Einladung",
@@ -33,10 +28,5 @@
   "admin_email_test_address": "Adresse",
   "admin_server_short_description": "Kurzbeschreibung",
   "admin_server_policy": "Richtlinien",
-  "admin_server_info_html_explain": "Du kannst HTML-Formatierungen in der Beschreibung und im Richtlinien-Feld verwenden.",
-  "admin_ban": "Verbannen",
-  "admin_unban": "Entbannen",
-  "admin_ban_X_confirm": "Bist du sicher, dass du das Konto <b>{name}</b> verbannen möchtest?",
-  "admin_unban_X_confirm": "Bist du sicher, dass du das Konto <b>{name}</b> entbannen möchtest?",
-  "ban_reason": "Grund für die Verbannung"
+  "admin_server_info_html_explain": "Du kannst HTML-Formatierungen in der Beschreibung und im Richtlinien-Feld verwenden."
 }
