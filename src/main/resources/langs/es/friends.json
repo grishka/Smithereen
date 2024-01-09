@@ -24,9 +24,9 @@
   "external_X_send_friend_req_to_X": "<b>{ownName}</b>, estás a punto de enviar una solicitud de amistad a <b>{name}</b> en <b>{domain}</b>.",
   "mutual_friends": "Amigos mutuos",
   "X_mutual_friends": "{count, plural, one {# amigo mutuo} other {# amigos mutuos}}",
-  "X_mutual_friends_short": "{count, plural, one {# mutuo} other {# mutuos}}",
+  "X_mutual_friends_short": "{count} mutuos",
   "confirm_unfollow_X": "¿Estás seguro de que quieres dejar de seguir a <b>{name}</b>?",
-  "user_friends": "{name} de los amigos",
+  "user_friends": "Amigos de {name}",
   "summary_own_X_friends": "Tienes {numFriends, plural, =0 {0 amigos} one {# amigo} other {# amigos}}",
   "summary_user_X_friends": "{name} tiene {numFriends, plural, =0 {0 amigos} one {# amigo} other {# amigos}}",
   "summary_X_friend_requests": "{numRequests, plural, one {# persona te envió una petición de amistad} other {# personas te enviaron una petición de amistad}}",
@@ -54,5 +54,7 @@
   "friend_list_your_friends": "Tus amigos",
   "friends_in_list": "Amigos en la lista",
   "select_friends_empty_selection": "Puedes elegir amigos en la lista de la izquierda.",
-  "select_friends_button": "Seleccionar amigos"
+  "select_friends_button": "Seleccionar amigos",
+  "X_followers": "{count, plural, =0 {0 seguidores} one {# seguidor} other {# seguidores}}",
+  "X_following": "{count, plural, =0 {Siguiendo a 0} one {Siguiendo a #} other {Siguiendo a #}}"
 }
