@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -66,6 +67,7 @@ public class Mailer{
 		if(StringUtils.isEmpty(Config.smtpPassword)){
 			session=Session.getInstance(props);
 		}else{
+			props.put("mail.smtp.auth", "true");
 			session=Session.getInstance(props, new Authenticator(){
 				@Override
 				protected PasswordAuthentication getPasswordAuthentication(){
@@ -212,6 +214,7 @@ public class Mailer{
 			msg.setFrom(new InternetAddress(Config.mailFrom, Config.getServerDisplayName()));
 			msg.setRecipients(Message.RecipientType.TO, to);
 			msg.setSubject(subject);
+			msg.setSentDate(new Date());
 
 			MimeBodyPart plainPart=new MimeBodyPart();
 			plainPart.setContent(plaintext, "text/plain; charset=UTF-8");
