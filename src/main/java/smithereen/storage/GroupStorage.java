@@ -31,6 +31,7 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.GroupsController;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
@@ -39,6 +40,7 @@ import smithereen.model.GroupInvitation;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserNotifications;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -224,8 +226,14 @@ public class GroupStorage{
 				.allColumns()
 				.where("id=?", id)
 				.executeAndGetSingleObject(Group::fromResultSet);
-		if(g!=null)
+		if(g!=null){
+			if(g.icon!=null && !g.icon.isEmpty() && g.icon.getFirst() instanceof LocalImage li){
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(li.fileID);
+				if(mfr!=null)
+					li.fillIn(mfr);
+			}
 			putIntoCache(g);
+		}
 		return g;
 	}
 
@@ -246,8 +254,14 @@ public class GroupStorage{
 				.allColumns()
 				.where("username=? AND domain=?", username, domain)
 				.executeAndGetSingleObject(Group::fromResultSet);
-		if(g!=null)
+		if(g!=null){
+			if(g.icon!=null && !g.icon.isEmpty() && g.icon.getFirst() instanceof LocalImage li){
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(li.fileID);
+				if(mfr!=null)
+					li.fillIn(mfr);
+			}
 			putIntoCache(g);
+		}
 		return g;
 	}
 
@@ -329,6 +343,21 @@ public class GroupStorage{
 					return group;
 				})
 				.collect(Collectors.toMap(g->g.id, Function.identity())));
+		Set<Long> needAvatars=result.values().stream()
+				.map(g->g.icon!=null && !g.icon.isEmpty() && g.icon.getFirst() instanceof LocalImage li ? li : null)
+				.filter(li->li!=null && li.fileRecord==null)
+				.map(li->li.fileID)
+				.collect(Collectors.toSet());
+		if(!needAvatars.isEmpty()){
+			Map<Long, MediaFileRecord> records=MediaStorage.getMediaFileRecords(needAvatars);
+			for(Group group:result.values()){
+				if(group.icon!=null && !group.icon.isEmpty() && group.icon.getFirst() instanceof LocalImage li && li.fileRecord==null){
+					MediaFileRecord mfr=records.get(li.fileID);
+					if(mfr!=null)
+						li.fillIn(mfr);
+				}
+			}
+		}
 		synchronized(GroupStorage.class){
 			for(int id:ids){
 				putIntoCache(result.get(id));

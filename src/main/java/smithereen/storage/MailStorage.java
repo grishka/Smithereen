@@ -14,10 +14,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
+import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.MailMessage;
 import smithereen.model.MessagesPrivacyGrant;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -41,6 +44,7 @@ public class MailStorage{
 					.orderBy("created_at DESC")
 					.executeAsStream(MailMessage::fromResultSet)
 					.toList();
+			postprocessMessages(messages);
 			return new PaginatedList<>(messages, total, offset, count);
 		}
 	}
@@ -62,11 +66,12 @@ public class MailStorage{
 					.orderBy("created_at DESC")
 					.executeAsStream(MailMessage::fromResultSet)
 					.toList();
+			postprocessMessages(messages);
 			return new PaginatedList<>(messages, total, offset, count);
 		}
 	}
 
-	public static long createMessage(String text, String subject, String attachments, int senderID, Set<Integer> to, Set<Integer> cc, Set<Integer> localOwners, URI apID, Map<Integer, MailMessage.ReplyInfo> replyInfos) throws SQLException{
+	public static long createMessage(String text, String subject, String attachments, int senderID, Set<Integer> to, Set<Integer> cc, Set<Integer> localOwners, URI apID, Map<Integer, MailMessage.ReplyInfo> replyInfos, Map<Integer, Long> allIDs) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			long[] _id={0};
 			DatabaseUtils.doWithTransaction(conn, ()->{
@@ -89,6 +94,8 @@ public class MailStorage{
 							.value("ap_id", Objects.toString(apID, null))
 							.value("reply_info", replyInfo)
 							.executeAndGetIDLong();
+					if(allIDs!=null)
+						allIDs.put(ownerID, id);
 					if(ownerID==senderID)
 						_id[0]=id;
 					messageIDs.add(id);
@@ -160,10 +167,12 @@ public class MailStorage{
 		String where="id=? AND owner_id=?";
 		if(!wantDeleted)
 			where+=" AND deleted_at IS NULL";
-		return new SQLQueryBuilder()
+		MailMessage msg=new SQLQueryBuilder()
 				.selectFrom("mail_messages")
 				.where(where, XTEA.deobfuscateObjectID(messageID, ObfuscatedObjectIDType.MAIL_MESSAGE), ownerID)
 				.executeAndGetSingleObject(MailMessage::fromResultSet);
+		postprocessMessages(Set.of(msg));
+		return msg;
 	}
 
 	public static void addMessageReadReceipt(int ownerID, Collection<Long> messageIDs, int readByUserID) throws SQLException{
@@ -183,39 +192,37 @@ public class MailStorage{
 				.executeAndGetInt();
 	}
 
-	public static int getMessageRefCount(Collection<Long> relatedIDs) throws SQLException{
-		return new SQLQueryBuilder()
-				.selectFrom("mail_messages")
-				.count()
-				.whereIn("id", relatedIDs.stream().map(id->XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet()))
-				.executeAndGetInt();
-	}
-
 	public static List<MailMessage> getMessages(Collection<Long> ids) throws SQLException{
-		return new SQLQueryBuilder()
+		List<MailMessage> msgs=new SQLQueryBuilder()
 				.selectFrom("mail_messages")
 				.allColumns()
 				.whereIn("id", ids.stream().map(id->XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet()))
 				.executeAsStream(MailMessage::fromResultSet)
 				.toList();
+		postprocessMessages(msgs);
+		return msgs;
 	}
 
 	public static List<MailMessage> getRecentlyDeletedMessages(Instant before) throws SQLException{
-		return new SQLQueryBuilder()
+		List<MailMessage> msgs=new SQLQueryBuilder()
 				.selectFrom("mail_messages")
 				.allColumns()
 				.where("deleted_at IS NOT NULL AND deleted_at<?", before)
 				.executeAsStream(MailMessage::fromResultSet)
 				.toList();
+		postprocessMessages(msgs);
+		return msgs;
 	}
 
 	public static List<MailMessage> getMessages(URI apID) throws SQLException{
-		return new SQLQueryBuilder()
+		List<MailMessage> msgs=new SQLQueryBuilder()
 				.selectFrom("mail_messages")
 				.allColumns()
 				.where("ap_id=?", apID)
 				.executeAsStream(MailMessage::fromResultSet)
 				.toList();
+		postprocessMessages(msgs);
+		return msgs;
 	}
 
 	public static void createOrRenewPrivacyGrant(int ownerID, int userID, int msgCount) throws SQLException{
@@ -254,15 +261,41 @@ public class MailStorage{
 			stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT mail_messages.* FROM mail_messages_peers JOIN mail_messages ON message_id=mail_messages.id" +
 					" WHERE mail_messages_peers.owner_id=? AND mail_messages_peers.peer_id=? AND mail_messages.deleted_at IS NULL ORDER BY message_id DESC LIMIT ? OFFSET ?", ownerID, peerID, count, offset);
 			List<MailMessage> msgs=DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), MailMessage::fromResultSet, null).toList();
+			postprocessMessages(msgs);
 			return new PaginatedList<>(msgs, total, offset, count);
 		}
 	}
 
 	public static Map<Long, MailMessage> getMessagesAsModerator(Collection<Long> ids) throws SQLException{
-		return new SQLQueryBuilder()
+		Map<Long, MailMessage> msgs=new SQLQueryBuilder()
 				.selectFrom("mail_messages")
 				.whereIn("id", ids.stream().map(i->XTEA.deobfuscateObjectID(i, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet()))
 				.executeAsStream(MailMessage::fromResultSet)
 				.collect(Collectors.toMap(m->m.id, Function.identity()));
+		postprocessMessages(msgs.values());
+		return msgs;
+	}
+
+	private static void postprocessMessages(Collection<MailMessage> messages) throws SQLException{
+		Set<Long> needFileIDs=messages.stream()
+				.filter(p->p.attachments!=null && !p.attachments.isEmpty())
+				.flatMap(p->p.attachments.stream())
+				.map(att->att instanceof LocalImage li ? li.fileID : 0L)
+				.filter(id->id!=0)
+				.collect(Collectors.toSet());
+		if(needFileIDs.isEmpty())
+			return;
+		Map<Long, MediaFileRecord> mediaFiles=MediaStorage.getMediaFileRecords(needFileIDs);
+		for(MailMessage msg:messages){
+			if(msg.attachments!=null){
+				for(ActivityPubObject attachment:msg.attachments){
+					if(attachment instanceof LocalImage li){
+						MediaFileRecord mfr=mediaFiles.get(li.fileID);
+						if(mfr!=null)
+							li.fillIn(mfr);
+					}
+				}
+			}
+		}
 	}
 }

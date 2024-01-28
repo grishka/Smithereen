@@ -23,6 +23,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.IDN;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
@@ -1207,6 +1209,14 @@ public class Utils{
 		req.session().removeAttribute("emailCodeInfo");
 		if(info==null || info.actionType!=type || !Objects.equals(info.code, req.queryParams("code")) || info.sentAt.plus(10, ChronoUnit.MINUTES).isBefore(Instant.now()))
 			throw new UserErrorException("action_confirmation_incorrect_code");
+	}
+
+	public static void copyBytes(InputStream from, OutputStream to) throws IOException{
+		byte[] buffer=new byte[10240];
+		int read;
+		while((read=from.read(buffer))>0){
+			to.write(buffer, 0, read);
+		}
 	}
 
 	public interface MentionCallback{

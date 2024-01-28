@@ -169,7 +169,8 @@ public class MediaCache{
 						img=flat;
 					}
 					int[] size={0,0};
-					photo.totalSize=MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, lossless ? MediaStorageUtils.QUALITY_LOSSLESS : 93, keyHex, Config.mediaCachePath, size);
+					File destination=new File(Config.mediaCachePath, keyHex+".webp");
+					photo.totalSize=MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, lossless ? MediaStorageUtils.QUALITY_LOSSLESS : 93, destination, size);
 					photo.width=size[0];
 					photo.height=size[1];
 					photo.key=keyHex;
@@ -213,58 +214,6 @@ public class MediaCache{
 			return MessageDigest.getInstance("MD5").digest(uri.toString().getBytes(StandardCharsets.UTF_8));
 		}catch(NoSuchAlgorithmException x){
 			throw new RuntimeException(x);
-		}
-	}
-
-	public static void putDraftAttachment(@NotNull LocalImage img, int ownerID) throws SQLException{
-		new SQLQueryBuilder()
-				.insertInto("draft_attachments")
-				.value("id", Utils.hexStringToByteArray(img.localID))
-				.value("owner_account_id", ownerID)
-				.value("info", MediaStorageUtils.serializeAttachment(img).toString())
-				.executeNoResult();
-	}
-
-	public static boolean deleteDraftAttachment(@NotNull String id, int ownerID) throws Exception{
-		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			String json=new SQLQueryBuilder(conn)
-					.selectFrom("draft_attachments")
-					.columns("info")
-					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
-					.executeAndGetSingleObject(r->r.getString(1));
-			if(json==null)
-				return false;
-
-			ActivityPubObject obj=ActivityPubObject.parse(JsonParser.parseString(json).getAsJsonObject(), ParserContext.LOCAL);
-			if(obj instanceof Document doc)
-				MediaStorageUtils.deleteAttachmentFiles(doc);
-
-			return new SQLQueryBuilder(conn)
-					.deleteFrom("draft_attachments")
-					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
-					.executeUpdate()==1;
-		}
-	}
-
-	public static ActivityPubObject getAndDeleteDraftAttachment(@NotNull String id, int ownerID, String dir) throws SQLException{
-		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			String json=new SQLQueryBuilder(conn)
-					.selectFrom("draft_attachments")
-					.columns("info")
-					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
-					.executeAndGetSingleObject(r->r.getString(1));
-			if(json==null)
-				return null;
-
-			ActivityPubObject obj=ActivityPubObject.parse(JsonParser.parseString(json).getAsJsonObject(), ParserContext.LOCAL);
-			if(obj instanceof LocalImage li && !dir.equals(li.path))
-				return null;
-
-			new SQLQueryBuilder(conn)
-					.deleteFrom("draft_attachments")
-					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
-					.executeNoResult();
-			return obj;
 		}
 	}
 

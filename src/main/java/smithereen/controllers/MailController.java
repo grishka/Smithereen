@@ -9,6 +9,8 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,9 +26,11 @@ import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.ForeignUser;
 import smithereen.model.MailMessage;
 import smithereen.model.MessagesPrivacyGrant;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.User;
@@ -36,11 +40,15 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.media.MediaFileRecord;
+import smithereen.model.media.MediaFileReferenceType;
 import smithereen.storage.MailStorage;
 import smithereen.storage.MediaCache;
+import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
 public class MailController{
@@ -90,21 +98,10 @@ public class MailController{
 				text=Utils.preprocessPostHTML(text, null);
 			}
 			int maxAttachments=10;
-			int attachmentCount=0;
 			String attachments=null;
+			ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
 			if(!attachmentIDs.isEmpty()){
-				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
-				for(String id:attachmentIDs){
-					if(!id.matches("^[a-fA-F0-9]{32}$"))
-						continue;
-					ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(id, selfAccountID, "mail_images");
-					if(obj!=null){
-						attachObjects.add(obj);
-						attachmentCount++;
-					}
-					if(attachmentCount==maxAttachments)
-						break;
-				}
+				MediaStorageUtils.fillAttachmentObjects(attachObjects, attachmentIDs, 0, maxAttachments);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
 						attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
@@ -142,7 +139,15 @@ public class MailController{
 				if(un!=null)
 					un.incUnreadMailCount(1);
 			}
-			long id=MailStorage.createMessage(text, Objects.requireNonNullElse(subject, ""), attachments, self.id, to.stream().map(u->u.id).collect(Collectors.toSet()), null, localOwners, null, replyInfos);
+			HashMap<Integer, Long> allMessageIDs=new HashMap<>();
+			long id=MailStorage.createMessage(text, Objects.requireNonNullElse(subject, ""), attachments, self.id, to.stream().map(u->u.id).collect(Collectors.toSet()), null, localOwners, null, replyInfos, allMessageIDs);
+			for(ActivityPubObject att:attachObjects){
+				if(att instanceof LocalImage li){
+					for(Map.Entry<Integer, Long> mid:allMessageIDs.entrySet()){
+						MediaStorage.createMediaFileReference(li.fileID, mid.getValue(), MediaFileReferenceType.MAIL_ATTACHMENT, mid.getKey());
+					}
+				}
+			}
 			for(User user:to){
 				MessagesPrivacyGrant grant=MailStorage.getPrivacyGrant(user.id, self.id);
 				if(grant!=null && grant.isValid()){
@@ -220,6 +225,9 @@ public class MailController{
 				throw new IllegalArgumentException("This user can't delete this message");
 			}
 			MailStorage.actuallyDeleteMessage(message.id);
+			if(message.attachments!=null && !message.attachments.isEmpty()){
+				MediaStorage.deleteMediaFileReferences(XTEA.deobfuscateObjectID(message.id, ObfuscatedObjectIDType.MAIL_MESSAGE), MediaFileReferenceType.MAIL_ATTACHMENT);
+			}
 			if(message.ownerID!=self.id){
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(message.ownerID);
 				if(un!=null)
@@ -229,14 +237,14 @@ public class MailController{
 				for(MailMessage msg:MailStorage.getMessages(message.relatedMessageIDs)){
 					if(msg.isUnread()){
 						MailStorage.actuallyDeleteMessage(msg.id);
+						if(message.attachments!=null && !message.attachments.isEmpty()){
+							MediaStorage.deleteMediaFileReferences(XTEA.deobfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE), MediaFileReferenceType.MAIL_ATTACHMENT);
+						}
 						UserNotifications un=NotificationsStorage.getNotificationsFromCache(msg.ownerID);
 						if(un!=null)
 							un.incUnreadMailCount(-1);
 					}
 				}
-			}
-			if(message.attachments!=null && !message.attachments.isEmpty() && MailStorage.getMessageRefCount(message.relatedMessageIDs)==0){
-				MediaStorageUtils.deleteAttachmentFiles(message.attachments);
 			}
 			if(!(self instanceof ForeignUser) && deleteRelated && message.senderID==self.id){
 				context.getActivityPubWorker().sendDeleteMessageActivity(self, message);
@@ -266,8 +274,8 @@ public class MailController{
 				return;
 			MailStorage.actuallyDeleteMessages(messages.stream().map(m->m.id).collect(Collectors.toSet()));
 			for(MailMessage message:messages){
-				if(message.attachments!=null && !message.attachments.isEmpty() && MailStorage.getMessageRefCount(message.relatedMessageIDs)==0){
-					MediaStorageUtils.deleteAttachmentFiles(message.attachments);
+				if(message.attachments!=null && !message.attachments.isEmpty()){
+					MediaStorage.deleteMediaFileReferences(XTEA.deobfuscateObjectID(message.id, ObfuscatedObjectIDType.MAIL_MESSAGE), MediaFileReferenceType.MAIL_ATTACHMENT);
 				}
 			}
 		}catch(SQLException x){
@@ -330,7 +338,7 @@ public class MailController{
 					.collect(Collectors.toSet());
 			if(localOwners.isEmpty())
 				throw new UserActionNotAllowedException();
-			MailStorage.createMessage(msg.text, msg.subject!=null ? msg.subject : "", msg.getSerializedAttachments(), msg.senderID, msg.to, msg.cc, localOwners, msg.activityPubID, replyInfos);
+			MailStorage.createMessage(msg.text, msg.subject!=null ? msg.subject : "", msg.getSerializedAttachments(), msg.senderID, msg.to, msg.cc, localOwners, msg.activityPubID, replyInfos, null);
 			for(int id:localOwners){
 				MessagesPrivacyGrant grant=MailStorage.getPrivacyGrant(id, msg.senderID);
 				if(grant!=null && grant.isValid())

@@ -50,7 +50,7 @@ import smithereen.util.JsonArrayBuilder;
 import spark.utils.StringUtils;
 
 public abstract class ActivityPubObject{
-	private static final Logger LOG=LoggerFactory.getLogger(ActivityPubObject.class);
+	protected static final Logger LOG=LoggerFactory.getLogger(ActivityPubObject.class);
 
 	/*attachment | attributedTo | audience | content | context | name | endTime | generator | icon | image | inReplyTo | location | preview | published | replies | startTime | summary | tag | updated | url | to | bto | cc | bcc | mediaType | duration*/
 

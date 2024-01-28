@@ -330,7 +330,6 @@ class PostForm{
 	private deleteAttachment(id:string):void{
 		var el=ge("attachment_"+id);
 		el.parentNode.removeChild(el);
-		ajaxGet("/system/deleteDraftAttachment?id="+id+"&csrf="+userConfig.csrf, function(){}, function(){});
 		this.attachmentIDs.remove(id);
 		this.attachField.value=this.attachmentIDs.join(",");
 	}

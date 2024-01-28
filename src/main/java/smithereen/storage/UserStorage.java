@@ -30,6 +30,7 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.Account;
 import smithereen.model.BirthdayReminder;
 import smithereen.model.EventReminder;
@@ -44,6 +45,7 @@ import smithereen.model.UserBanStatus;
 import smithereen.model.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -57,7 +59,6 @@ public class UserStorage{
 	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
 	private static LruCache<Integer, Account> accountCache=new LruCache<>(500);
 	private static final LruCache<Integer, BirthdayReminder> birthdayReminderCache=new LruCache<>(500);
-	private static final LruCache<Integer, EventReminder> eventReminderCache=new LruCache<>(500);
 
 	public static synchronized User getById(int id) throws SQLException{
 		User user=cache.get(id);
@@ -68,6 +69,11 @@ public class UserStorage{
 				.where("id=?", id)
 				.executeAndGetSingleObject(User::fromResultSet);
 		if(user!=null){
+			if(user.icon!=null && !user.icon.isEmpty() && user.icon.getFirst() instanceof LocalImage li){
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(li.fileID);
+				if(mfr!=null)
+					li.fillIn(mfr);
+			}
 			cache.put(id, user);
 			cacheByUsername.put(user.getFullUsername(), user);
 		}
@@ -114,8 +120,23 @@ public class UserStorage{
 					.whereIn("id", ids)
 					.executeAsStream(User::fromResultSet)
 					.forEach(u->result.put(u.id, u));
+			Set<Long> needAvatars=result.values().stream()
+					.map(u->u.icon!=null && !u.icon.isEmpty() && u.icon.getFirst() instanceof LocalImage li ? li : null)
+					.filter(li->li!=null && li.fileRecord==null)
+					.map(li->li.fileID)
+					.collect(Collectors.toSet());
+			if(!needAvatars.isEmpty()){
+				Map<Long, MediaFileRecord> records=MediaStorage.getMediaFileRecords(needAvatars);
+				for(User user:result.values()){
+					if(user.icon!=null && !user.icon.isEmpty() && user.icon.getFirst() instanceof LocalImage li && li.fileRecord==null){
+						MediaFileRecord mfr=records.get(li.fileID);
+						if(mfr!=null)
+							li.fillIn(mfr);
+					}
+				}
+			}
 			synchronized(UserStorage.class){
-				for(int id: ids){
+				for(int id:ids){
 					User u=result.get(id);
 					if(u!=null)
 						putIntoCache(u);
@@ -144,8 +165,14 @@ public class UserStorage{
 				.allColumns()
 				.where("username=? AND domain=?", realUsername, domain)
 				.executeAndGetSingleObject(User::fromResultSet);
-		if(user!=null)
+		if(user!=null){
+			if(user.icon!=null && !user.icon.isEmpty() && user.icon.getFirst() instanceof LocalImage li){
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(li.fileID);
+				if(mfr!=null)
+					li.fillIn(mfr);
+			}
 			putIntoCache(user);
+		}
 		return user;
 	}
 

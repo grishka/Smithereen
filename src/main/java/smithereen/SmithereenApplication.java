@@ -62,6 +62,7 @@ import smithereen.sparkext.ActivityPubCollectionPageResponse;
 import smithereen.sparkext.ExtendedStreamingSerializer;
 import smithereen.storage.DatabaseSchemaUpdater;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.storage.sql.DatabaseConnectionManager;
@@ -338,7 +339,6 @@ public class SmithereenApplication{
 
 		path("/system", ()->{
 			get("/downloadExternalMedia", SystemRoutes::downloadExternalMedia);
-			getWithCSRF("/deleteDraftAttachment", SystemRoutes::deleteDraftAttachment);
 			path("/upload", ()->{
 				postWithCSRF("/postPhoto", SystemRoutes::uploadPostPhoto);
 				postWithCSRF("/messagePhoto", SystemRoutes::uploadMessagePhoto);
@@ -712,6 +712,7 @@ public class SmithereenApplication{
 		});
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(MediaStorageUtils::deleteAbandonedFiles, 1, TimeUnit.HOURS);
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
 			LOG.info("Stopping Spark");

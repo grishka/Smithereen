@@ -50,7 +50,6 @@ public class Lang{
 		list=new ArrayList<>();
 		try(InputStream in=Lang.class.getClassLoader().getResourceAsStream("langs/index.json")){
 			IndexFile index=Utils.gson.fromJson(new InputStreamReader(in), IndexFile.class);
-			System.out.println(index);
 			for(IndexLanguage lang:index.languages){
 				try{
 					Lang l=new Lang(lang.locale, lang.name, lang.fallback, index.files);

@@ -7,18 +7,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -27,10 +24,10 @@ import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
+
 import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Part;
-
 import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
@@ -43,6 +40,12 @@ import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.NoteOrQuestion;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
+import smithereen.lang.Lang;
+import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.AttachmentHostContentObject;
@@ -62,18 +65,18 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.GraffitiAttachment;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
-import smithereen.lang.Lang;
-import smithereen.libvips.VipsImage;
+import smithereen.model.media.ImageMetadata;
+import smithereen.model.media.MediaFileMetadata;
+import smithereen.model.media.MediaFileRecord;
+import smithereen.model.media.MediaFileType;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
+import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PostStorage;
 import smithereen.storage.SearchStorage;
 import smithereen.storage.UserStorage;
+import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.BlurHash;
 import smithereen.util.CaptchaGenerator;
@@ -284,14 +287,14 @@ public class SystemRoutes{
 
 	public static Object uploadPostPhoto(Request req, Response resp, Account self, ApplicationContext ctx){
 		boolean isGraffiti=req.queryParams("graffiti")!=null;
-		return uploadPhotoAttachment(req, resp, self, isGraffiti, "post_media");
+		return uploadPhotoAttachment(req, resp, self, isGraffiti);
 	}
 
 	public static Object uploadMessagePhoto(Request req, Response resp, Account self, ApplicationContext ctx){
-		return uploadPhotoAttachment(req, resp, self, false, "mail_images");
+		return uploadPhotoAttachment(req, resp, self, false);
 	}
 
-	private static Object uploadPhotoAttachment(Request req, Response resp, Account self, boolean isGraffiti, String dir){
+	private static Object uploadPhotoAttachment(Request req, Response resp, Account self, boolean isGraffiti){
 		try{
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
 			Part part=req.raw().getPart("file");
@@ -300,19 +303,18 @@ public class SystemRoutes{
 				return "File too large";
 			}
 
-			byte[] key=MessageDigest.getInstance("MD5").digest((self.user.username+","+System.currentTimeMillis()+","+part.getSubmittedFileName()).getBytes(StandardCharsets.UTF_8));
-			String keyHex=Utils.byteArrayToHexString(key);
 			String mime=part.getContentType();
 			if(!mime.startsWith("image/")){
 				resp.status(415); // Unsupported Media Type
 				return "Unsupported mime type";
 			}
 
-			File tmpDir=new File(System.getProperty("java.io.tmpdir"));
-			File temp=new File(tmpDir, keyHex);
-			part.write(keyHex);
+			File temp=File.createTempFile("SmithereenUpload", null);
 			VipsImage img;
 			try{
+				try(FileOutputStream out=new FileOutputStream(temp)){
+					copyBytes(part.getInputStream(), out);
+				}
 				img=new VipsImage(temp.getAbsolutePath());
 			}catch(IOException x){
 				throw new BadRequestException(x.getMessage(), x);
@@ -329,24 +331,17 @@ public class SystemRoutes{
 			}
 
 			LocalImage photo=new LocalImage();
-			File postMediaDir=new File(Config.uploadPath, dir);
-			postMediaDir.mkdirs();
 			int width, height;
+			MediaFileRecord fileRecord;
 			try{
+				File resizedFile=File.createTempFile("SmithereenUploadResized", ".webp");
 				int[] outSize={0,0};
-				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, keyHex, postMediaDir, outSize);
-
-				SessionInfo sess=Objects.requireNonNull(sessionInfo(req));
-				photo.localID=keyHex;
-				photo.mediaType=isGraffiti ? "image/png" : "image/jpeg";
-				photo.path=dir;
-				photo.width=width=outSize[0];
-				photo.height=height=outSize[1];
-				photo.blurHash=BlurHash.encode(img, 4, 4);
-				photo.isGraffiti=isGraffiti;
-				if(req.queryParams("draft")!=null)
-					sess.postDraftAttachments.add(photo);
-				MediaCache.putDraftAttachment(photo, self.id);
+				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, resizedFile, outSize);
+				MediaFileMetadata meta=new ImageMetadata(width=outSize[0], height=outSize[1], BlurHash.encode(img, 4, 4), null);
+				fileRecord=MediaStorage.createMediaFileRecord(isGraffiti ? MediaFileType.IMAGE_GRAFFITI : MediaFileType.IMAGE_PHOTO, resizedFile.length(), self.user.id, meta);
+				photo.fileID=fileRecord.id().id();
+				photo.fillIn(fileRecord);
+				MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id());
 
 				temp.delete();
 			}finally{
@@ -356,7 +351,7 @@ public class SystemRoutes{
 			if(isAjax(req)){
 				resp.type("application/json");
 				return new JsonObjectBuilder()
-						.add("id", keyHex)
+						.add("id", fileRecord.id().getIDForClient())
 						.add("width", width)
 						.add("height", height)
 						.add("thumbs", new JsonObjectBuilder()
@@ -365,33 +360,9 @@ public class SystemRoutes{
 						).build();
 			}
 			resp.redirect(Utils.back(req));
-		}catch(IOException|ServletException|NoSuchAlgorithmException|SQLException x){
+		}catch(IOException|ServletException|SQLException x){
 			throw new InternalServerErrorException(x);
 		}
-		return "";
-	}
-
-	public static Object deleteDraftAttachment(Request req, Response resp, Account self, ApplicationContext ctx) throws Exception{
-		SessionInfo sess=Utils.sessionInfo(req);
-		String id=req.queryParams("id");
-		if(id==null){
-			throw new BadRequestException();
-		}
-		if(MediaCache.deleteDraftAttachment(id, self.id)){
-			for(ActivityPubObject o:sess.postDraftAttachments){
-				if(o instanceof Document){
-					if(id.equals(((Document) o).localID)){
-						sess.postDraftAttachments.remove(o);
-						break;
-					}
-				}
-			}
-		}
-		if(isAjax(req)){
-			resp.type("application/json");
-			return "[]";
-		}
-		resp.redirect(Utils.back(req));
 		return "";
 	}
 

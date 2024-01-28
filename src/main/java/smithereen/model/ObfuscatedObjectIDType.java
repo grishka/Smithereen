@@ -1,5 +1,6 @@
 package smithereen.model;
 
 public enum ObfuscatedObjectIDType{
-	MAIL_MESSAGE
+	MAIL_MESSAGE,
+	MEDIA_FILE
 }
