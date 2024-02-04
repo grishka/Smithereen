@@ -467,6 +467,7 @@ public class SystemRoutes{
 			try{
 				uri=ActivityPub.resolveUsername(username, domain);
 			}catch(IOException x){
+				LOG.debug("Error getting remote user", x);
 				String error=lang(req).get("remote_object_network_error");
 				return new JsonObjectBuilder().add("error", error).build();
 			}
