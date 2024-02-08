@@ -401,6 +401,11 @@ public class WallController{
 
 				if(!remainingAttachments.isEmpty()){
 					MediaStorageUtils.fillAttachmentObjects(attachObjects, remainingAttachments, attachmentCount, maxAttachments);
+					for(ActivityPubObject att:attachObjects){
+						if(att instanceof LocalImage li && remainingAttachments.contains(li.fileRecord.id().getIDForClient())){
+							MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.ownerID);
+						}
+					}
 				}
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
