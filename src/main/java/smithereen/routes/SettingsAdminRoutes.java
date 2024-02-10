@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
+import smithereen.SmithereenApplication;
 import smithereen.Utils;
 import smithereen.model.Account;
 import smithereen.model.AuditLogEntry;
@@ -147,6 +148,11 @@ public class SettingsAdminRoutes{
 				.with("query", q)
 				.with("hasFilters", StringUtils.isNotEmpty(q) || localOnly!=null || StringUtils.isNotEmpty(emailDomain) || StringUtils.isNotEmpty(lastIP) || role>0);
 		jsLangKey(req, "cancel", "yes", "no");
+		String msg=req.session().attribute("adminSettingsUsersMessage");
+		if(msg!=null){
+			req.session().removeAttribute("adminSettingsUsersMessage");
+			model.with("message", msg);
+		}
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp)
 					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"))
@@ -334,6 +340,8 @@ public class SettingsAdminRoutes{
 			}
 			ModerationStorage.createAuditLogEntry(self.user.id, AuditLogEntry.Action.ACTIVATE_ACCOUNT, target.user.id, 0, null, null);
 			SessionStorage.updateActivationInfo(accountID, null);
+			UserStorage.removeAccountFromCache(accountID);
+			SmithereenApplication.invalidateAllSessionsForAccount(accountID);
 			if(isAjax(req))
 				return new WebDeltaResponse(resp).refresh();
 			resp.redirect(back(req));
@@ -781,9 +789,14 @@ public class SettingsAdminRoutes{
 					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
 					yield l.get("admin_audit_log_changed_user_restrictions", langArgs);
 				}
+				case DELETE_USER -> {
+					langArgs.put("targetName", le.extra().get("name"));
+					links.put("targetUser", Map.of("href", "/id"+le.ownerID()));
+					yield l.get("admin_audit_log_deleted_user_account", langArgs);
+				}
 			};
 			String extraText=switch(le.action()){
-				case ASSIGN_ROLE, DELETE_ROLE, ACTIVATE_ACCOUNT, RESET_USER_PASSWORD -> null;
+				case ASSIGN_ROLE, DELETE_ROLE, ACTIVATE_ACCOUNT, RESET_USER_PASSWORD, DELETE_USER -> null;
 
 				case CREATE_ROLE -> {
 					StringBuilder sb=new StringBuilder("<i>");
@@ -1004,6 +1017,42 @@ public class SettingsAdminRoutes{
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object deleteAccountImmediatelyForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		if(user instanceof ForeignUser || (user.banStatus!=UserBanStatus.SELF_DEACTIVATED && user.banStatus!=UserBanStatus.SUSPENDED))
+			throw new BadRequestException();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_delete_user_form", req)
+				.with("user", user)
+				.with("username", user.username+"@"+Config.domain);
+		return wrapForm(req, resp, "admin_delete_user_form", "/users/"+user.id+"/deleteImmediately", lang(req).get("admin_user_delete_account_title"), "delete", model);
+	}
+
+	public static Object deleteAccountImmediately(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		if(user instanceof ForeignUser || (user.banStatus!=UserBanStatus.SELF_DEACTIVATED && user.banStatus!=UserBanStatus.SUSPENDED))
+			throw new BadRequestException();
+		String usernameCheck=user.username+"@"+Config.domain;
+		if(!usernameCheck.equalsIgnoreCase(req.queryParams("username"))){
+			String msg=lang(req).get("admin_user_delete_wrong_username");
+			if(isAjax(req))
+				return new WebDeltaResponse(resp)
+						.keepBox()
+						.show("formMessage_deleteUser")
+						.setContent("formMessage_deleteUser", msg);
+			RenderedTemplateResponse model=new RenderedTemplateResponse("admin_delete_user_form", req)
+					.with("user", user)
+					.with("username", user.username+"@"+Config.domain)
+					.with("message", msg);
+			return wrapForm(req, resp, "admin_delete_user_form", "/users/"+user.id+"/deleteImmediately", lang(req).get("admin_user_delete_account_title"), "delete", model);
+		}
+		ctx.getUsersController().deleteLocalUser(self.user, user);
+		req.session().attribute("adminSettingsUsersMessage", lang(req).get("admin_user_deleted_successfully"));
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).replaceLocation("/settings/admin/users");
+		resp.redirect("/settings/admin/users");
 		return "";
 	}
 }

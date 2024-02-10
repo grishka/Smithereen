@@ -1,5 +1,6 @@
 {% extends "page" %}
 {% block content %}
+{% if message is not empty %}<div class="marginsAreMessy"></div><div class="settingsMessage">{{ message }}</div>{% endif %}
 {% include "admin_users_tabbar" with {'tab': 'users'} %}
 <div class="gray borderBottom">
 	<div class="searchFieldWrap singleColumn">

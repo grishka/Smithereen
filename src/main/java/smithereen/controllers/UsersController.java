@@ -15,6 +15,7 @@ import smithereen.SmithereenApplication;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.Account;
+import smithereen.model.AuditLogEntry;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.OtherSession;
@@ -26,11 +27,13 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserRole;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.storage.DatabaseUtils;
+import smithereen.storage.ModerationStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
@@ -290,6 +293,23 @@ public class UsersController{
 	public void deleteForeignUser(ForeignUser user){
 		try{
 			UserStorage.deleteUser(user);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteLocalUser(User admin, User user){
+		if(user instanceof ForeignUser || (user.banStatus!=UserBanStatus.SELF_DEACTIVATED && user.banStatus!=UserBanStatus.SUSPENDED))
+			throw new IllegalArgumentException();
+		try{
+			Account acc=SessionStorage.getAccountByUserID(user.id);
+			if(acc==null)
+				return;
+			context.getActivityPubWorker().sendUserDeleteSelf(user);
+			UserStorage.deleteAccount(acc);
+			SmithereenApplication.invalidateAllSessionsForAccount(acc.id);
+			if(admin!=null)
+				ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.DELETE_USER, user.id, 0, null, Map.of("name", user.getCompleteName()));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

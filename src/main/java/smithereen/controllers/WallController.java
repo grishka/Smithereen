@@ -382,12 +382,12 @@ public class WallController{
 			if(!attachmentIDs.isEmpty()){
 				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
 
-				ArrayList<String> remainingAttachments=new ArrayList<>(attachmentIDs);
+				ArrayList<String> newlyAddedAttachments=new ArrayList<>(attachmentIDs);
 				if(post.attachments!=null){
 					for(ActivityPubObject att:post.attachments){
 						if(att instanceof LocalImage li){
 							String localID=li.fileRecord.id().getIDForClient();
-							if(!remainingAttachments.remove(localID)){
+							if(!newlyAddedAttachments.remove(localID)){
 								LOG.debug("Deleting attachment: {}", localID);
 								MediaStorage.deleteMediaFileReference(post.id, MediaFileReferenceType.WALL_ATTACHMENT, li.fileID);
 							}else{
@@ -399,10 +399,10 @@ public class WallController{
 					}
 				}
 
-				if(!remainingAttachments.isEmpty()){
-					MediaStorageUtils.fillAttachmentObjects(attachObjects, remainingAttachments, attachmentCount, maxAttachments);
+				if(!newlyAddedAttachments.isEmpty()){
+					MediaStorageUtils.fillAttachmentObjects(attachObjects, newlyAddedAttachments, attachmentCount, maxAttachments);
 					for(ActivityPubObject att:attachObjects){
-						if(att instanceof LocalImage li && remainingAttachments.contains(li.fileRecord.id().getIDForClient())){
+						if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
 							MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.ownerID);
 						}
 					}

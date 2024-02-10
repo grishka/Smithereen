@@ -783,6 +783,16 @@ public class ActivityPubWorker{
 		}
 	}
 
+	public void sendUserDeleteSelf(User self) throws SQLException{
+		Delete del=new Delete();
+		del.activityPubID=new UriBuilder(self.activityPubID).fragment("deleteSelf").build();
+		del.actor=new LinkOrObject(self.activityPubID);
+		del.object=new LinkOrObject(self.activityPubID);
+		for(URI inbox:UserStorage.getFollowerInboxes(self.id)){
+			executor.submit(new SendOneActivityRunnable(del, inbox, self));
+		}
+	}
+
 	public synchronized Future<List<Post>> fetchReplyThread(NoteOrQuestion post){
 		return fetchingReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchReplyThreadRunnable(post)));
 	}

@@ -168,22 +168,27 @@ public class SmithereenApplication{
 			SessionInfo info=sessionInfo(request);
 			if(info!=null && info.account!=null){
 				info.account=UserStorage.getAccount(info.account.id);
-				info.permissions=SessionStorage.getUserPermissions(info.account);
+				if(info.account==null){
+					response.removeCookie("/", "psid");
+					request.session().invalidate();
+				}else{
+					info.permissions=SessionStorage.getUserPermissions(info.account);
 
-				String ua=Objects.requireNonNull(request.userAgent(), "");
-				long uaHash=hashUserAgent(ua);
-				InetAddress ip=getRequestIP(request);
-				if(System.currentTimeMillis()-info.account.lastActive.toEpochMilli()>=10*60*1000 || !Objects.equals(info.account.lastIP, ip) || !Objects.equals(info.ip, ip) || info.userAgentHash!=uaHash){
-					info.account.lastActive=Instant.now();
-					info.userAgentHash=uaHash;
-					info.ip=ip;
-					BackgroundTaskRunner.getInstance().submit(()->{
-						try{
-							SessionStorage.setLastActive(info.account.id, request.cookie("psid"), info.account.lastActive, ip, ua, uaHash);
-						}catch(SQLException x){
-							LOG.warn("Error updating account session", x);
-						}
-					});
+					String ua=Objects.requireNonNull(request.userAgent(), "");
+					long uaHash=hashUserAgent(ua);
+					InetAddress ip=getRequestIP(request);
+					if(System.currentTimeMillis()-info.account.lastActive.toEpochMilli()>=10*60*1000 || !Objects.equals(info.account.lastIP, ip) || !Objects.equals(info.ip, ip) || info.userAgentHash!=uaHash){
+						info.account.lastActive=Instant.now();
+						info.userAgentHash=uaHash;
+						info.ip=ip;
+						BackgroundTaskRunner.getInstance().submit(()->{
+							try{
+								SessionStorage.setLastActive(info.account.id, request.cookie("psid"), info.account.lastActive, ip, ua, uaHash);
+							}catch(SQLException x){
+								LOG.warn("Error updating account session", x);
+							}
+						});
+					}
 				}
 			}
 //			String hs="";
@@ -408,6 +413,8 @@ public class SmithereenApplication{
 			getRequiringPermission("/meminfo", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userInfo);
 			getRequiringPermission("/banForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUserForm);
 			postRequiringPermissionWithCSRF("/ban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUser);
+			getRequiringPermission("/deleteImmediatelyForm", UserRole.Permission.DELETE_USERS_IMMEDIATE, SettingsAdminRoutes::deleteAccountImmediatelyForm);
+			postRequiringPermissionWithCSRF("/deleteImmediately", UserRole.Permission.DELETE_USERS_IMMEDIATE, SettingsAdminRoutes::deleteAccountImmediately);
 		});
 
 		path("/groups/:id", ()->{

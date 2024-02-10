@@ -1237,6 +1237,31 @@ public class UserStorage{
 		removeFromCache(user);
 	}
 
+	public static void deleteAccount(Account account) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			// Delete media file refs first because triggers don't trigger on cascade deletes. Argh.
+			new SQLQueryBuilder(conn)
+					.deleteFrom("media_file_refs")
+					.where("owner_user_id=?", account.user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.deleteFrom("accounts")
+					.where("id=?", account.id)
+					.executeNoResult();
+			new SQLQueryBuilder(conn)
+					.deleteFrom("users")
+					.where("id=?", account.user.id)
+					.executeNoResult();
+			removeFromCache(account.user);
+			accountCache.remove(account.id);
+		}
+	}
+
+	public static void removeAccountFromCache(int id){
+		accountCache.remove(id);
+	}
+
 	public static void setUserBanStatus(User user, Account userAccount, UserBanStatus status, String banInfo) throws SQLException{
 		new SQLQueryBuilder()
 				.update("users")

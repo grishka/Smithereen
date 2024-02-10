@@ -131,6 +131,9 @@
 		{% endif %}
 	</div>
 	<a href="/users/{{ user.id }}/banForm" data-ajax-box class="button">{{ L('admin_user_change_restrictions') }}</a>
+	{% if userPermissions.hasPermission('DELETE_USERS_IMMEDIATE') and (user.banStatus=='SUSPENDED' or user.banStatus=='SELF_DEACTIVATED') %}
+	<a href="/users/{{ user.id }}/deleteImmediatelyForm" data-ajax-box class="button">{{ L('admin_user_delete_account_now') }}</a>
+	{% endif %}
 </div>
 {% endblock %}
 
