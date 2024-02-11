@@ -27,6 +27,7 @@ import java.util.Objects;
 import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.Account;
 import smithereen.model.AdminNotifications;
 import smithereen.model.EmailCode;
@@ -128,8 +129,7 @@ public class SessionStorage{
 
 	public static Account getAccountForUsernameAndPassword(@NotNull String usernameOrEmail, @NotNull String password) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			MessageDigest md=MessageDigest.getInstance("SHA-256");
-			byte[] hashedPassword=md.digest(password.getBytes(StandardCharsets.UTF_8));
+			byte[] hashedPassword=hashPassword(password);
 			PreparedStatement stmt;
 			if(usernameOrEmail.contains("@")){
 				stmt=conn.prepareStatement("SELECT * FROM `accounts` WHERE `email`=? AND `password`=?");
@@ -144,8 +144,7 @@ public class SessionStorage{
 				}
 				return null;
 			}
-		}catch(NoSuchAlgorithmException ignore){}
-		throw new AssertionError();
+		}
 	}
 
 	public static void deleteSession(@NotNull String psid) throws SQLException{
@@ -169,6 +168,15 @@ public class SessionStorage{
 				.executeNoResult();
 	}
 
+	private static byte[] hashPassword(String password){
+		try{
+			MessageDigest md=MessageDigest.getInstance("SHA-256");
+			return md.digest(password.getBytes(StandardCharsets.UTF_8));
+		}catch(NoSuchAlgorithmException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public static SignupResult registerNewAccount(@NotNull String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite) throws SQLException{
 		SignupResult[] result={SignupResult.SUCCESS};
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
@@ -189,10 +197,8 @@ public class SessionStorage{
 				int inviterAccountID=inv.ownerID;
 
 				KeyPairGenerator kpg;
-				MessageDigest md;
 				try{
 					kpg=KeyPairGenerator.getInstance("RSA");
-					md=MessageDigest.getInstance("SHA-256");
 				}catch(NoSuchAlgorithmException x){
 					throw new RuntimeException(x);
 				}
@@ -213,7 +219,7 @@ public class SessionStorage{
 					userID=res.getInt(1);
 				}
 
-				byte[] hashedPassword=md.digest(password.getBytes(StandardCharsets.UTF_8));
+				byte[] hashedPassword=hashPassword(password);
 				stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `invited_by`) VALUES (?, ?, ?, ?)");
 				stmt.setInt(1, userID);
 				stmt.setString(2, email);
@@ -271,10 +277,8 @@ public class SessionStorage{
 						.executeNoResult();
 
 				KeyPairGenerator kpg;
-				MessageDigest md;
 				try{
 					kpg=KeyPairGenerator.getInstance("RSA");
-					md=MessageDigest.getInstance("SHA-256");
 				}catch(NoSuchAlgorithmException x){
 					throw new RuntimeException(x);
 				}
@@ -295,7 +299,7 @@ public class SessionStorage{
 					userID=res.getInt(1);
 				}
 
-				byte[] hashedPassword=md.digest(password.getBytes(StandardCharsets.UTF_8));
+				byte[] hashedPassword=hashPassword(password);
 				stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `invited_by`) VALUES (?, ?, ?, ?)");
 				stmt.setInt(1, userID);
 				stmt.setString(2, email);
@@ -323,17 +327,13 @@ public class SessionStorage{
 	}
 
 	public static boolean updatePassword(int accountID, String oldPassword, String newPassword) throws SQLException{
-		try{
-			MessageDigest md=MessageDigest.getInstance("SHA-256");
-			byte[] hashedOld=md.digest(oldPassword.getBytes(StandardCharsets.UTF_8));
-			byte[] hashedNew=md.digest(newPassword.getBytes(StandardCharsets.UTF_8));
-			return new SQLQueryBuilder()
-					.update("accounts")
-					.value("password", hashedNew)
-					.where("id=? AND `password`=?", accountID, hashedOld)
-					.executeUpdate()==1;
-		}catch(NoSuchAlgorithmException ignore){}
-		return false;
+		byte[] hashedOld=hashPassword(oldPassword);
+		byte[] hashedNew=hashPassword(newPassword);
+		return new SQLQueryBuilder()
+				.update("accounts")
+				.value("password", hashedNew)
+				.where("id=? AND `password`=?", accountID, hashedOld)
+				.executeUpdate()==1;
 	}
 
 	public static void updateEmail(int accountID, String email) throws SQLException{
@@ -447,16 +447,21 @@ public class SessionStorage{
 	}
 
 	public static boolean updatePassword(int accountID, String newPassword) throws SQLException{
-		try{
-			MessageDigest md=MessageDigest.getInstance("SHA-256");
-			byte[] hashedNew=md.digest(newPassword.getBytes(StandardCharsets.UTF_8));
-			return new SQLQueryBuilder()
-					.update("accounts")
-					.value("password", hashedNew)
-					.where("id=?", accountID)
-					.executeUpdate()==1;
-		}catch(NoSuchAlgorithmException ignore){}
-		return false;
+		byte[] hashedNew=hashPassword(newPassword);
+		return new SQLQueryBuilder()
+				.update("accounts")
+				.value("password", hashedNew)
+				.where("id=?", accountID)
+				.executeUpdate()==1;
+	}
+
+	public static boolean checkPassword(int accountID, String password) throws SQLException{
+		byte[] hashed=hashPassword(password);
+		return new SQLQueryBuilder()
+				.selectFrom("accounts")
+				.count()
+				.where("id=? AND password=?", accountID, hashed)
+				.executeAndGetInt()==1;
 	}
 
 	public static void setLastActive(int accountID, String psid, Instant time, InetAddress lastIP, String userAgent, long uaHash) throws SQLException{

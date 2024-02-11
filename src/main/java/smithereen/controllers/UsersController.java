@@ -1,6 +1,7 @@
 package smithereen.controllers;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -27,6 +28,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserRole;
@@ -380,11 +382,40 @@ public class UsersController{
 		}
 	}
 
+	public boolean checkPassword(Account self, String password){
+		try{
+			return SessionStorage.checkPassword(self.id, password);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public void terminateSessionsExcept(Account self, String psid){
 		try{
 			byte[] sid=Base64.getDecoder().decode(psid);
 			SessionStorage.deleteSessionsExcept(self.id, sid);
 			SmithereenApplication.invalidateAllSessionsForAccount(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void selfDeactivateAccount(Account self){
+		try{
+			if(self.user.banStatus!=UserBanStatus.NONE)
+				throw new IllegalArgumentException("Already banned");
+			UserBanInfo info=new UserBanInfo(Instant.now(), null, null, false, 0, 0);
+			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.SELF_DEACTIVATED, Utils.gson.toJson(info));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void selfReinstateAccount(Account self){
+		try{
+			if(self.user.banStatus!=UserBanStatus.SELF_DEACTIVATED)
+				throw new IllegalArgumentException("Invalid account status");
+			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.NONE, null);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

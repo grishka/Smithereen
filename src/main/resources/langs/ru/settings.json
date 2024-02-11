@@ -152,5 +152,9 @@
   "settings_activity_access_type": "Тип доступа",
   "settings_activity_access_time": "Время",
   "settings_activity_web": "{browserName} {browserVersion} на {osName}",
-  "unknown_browser": "Неизвестный браузер"
+  "unknown_browser": "Неизвестный браузер",
+  "settings_deactivate_confirm": "Вы действительно хотите удалить свою страницу?\n\nВаша страница будет деактивирована, а через <b>{timeInterval}</b> — необратимо удалена. Если вы передумаете, вы сможете восстановить свою страницу без потери данных в течение периода деактивации.",
+  "settings_deactivate_account": "Вы можете <a id=\"deactivate\">удалить свою страницу</a>.",
+  "settings_reactivate_confirm": "Введите ваш пароль для восстановления своей страницы и отмены её удаления.",
+  "settings_reactivate_title": "Восстановление страницы"
 }

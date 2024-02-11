@@ -5,6 +5,7 @@ import io.pebbletemplates.pebble.extension.escaper.SafeString;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -510,5 +511,19 @@ public class SessionRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("account_unfreeze_change_password_form", req);
 		model.with("passwordMessage", message);
 		return wrapForm(req, resp, "account_unfreeze_change_password_form", "/account/unfreezeChangePassword", l.get("change_password"), "save", model);
+	}
+
+	public static Object reactivateBox(Request req, Response resp, Account self, ApplicationContext ctx){
+		return wrapForm(req, resp, "reactivate_account_form", "/account/reactivate", lang(req).get("settings_reactivate_title"), "restore", "reactivateAccount", List.of(), null, null);
+	}
+
+	public static Object reactivate(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "password");
+		String password=req.queryParams("password");
+		if(!ctx.getUsersController().checkPassword(self, password)){
+			return wrapForm(req, resp, "reactivate_account_form", "/account/reactivate", lang(req).get("settings_reactivate_title"), "restore", "reactivateAccount", List.of(), null, lang(req).get("err_old_password_incorrect"));
+		}
+		ctx.getUsersController().selfReinstateAccount(self);
+		return ajaxAwareRedirect(req, resp, "/feed");
 	}
 }

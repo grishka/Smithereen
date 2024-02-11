@@ -897,7 +897,9 @@ public class SettingsAdminRoutes{
 				if(user.domain==null && (user.banStatus==UserBanStatus.SUSPENDED || user.banStatus==UserBanStatus.SELF_DEACTIVATED)){
 					model.with("accountDeletionTime", user.banInfo.bannedAt().plus(30, ChronoUnit.DAYS));
 				}
-				model.with("banModerator", ctx.getUsersController().getUserOrThrow(user.banInfo.moderatorID()));
+				try{
+					model.with("banModerator", ctx.getUsersController().getUserOrThrow(user.banInfo.moderatorID()));
+				}catch(ObjectNotFoundException ignore){}
 			}
 		}else{
 			account=null;

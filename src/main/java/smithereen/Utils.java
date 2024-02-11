@@ -1219,6 +1219,13 @@ public class Utils{
 		}
 	}
 
+	public static Object ajaxAwareRedirect(Request req, Response resp, String destination){
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).replaceLocation(destination);
+		resp.redirect(destination);
+		return "";
+	}
+
 	public interface MentionCallback{
 		User resolveMention(String username, String domain);
 		User resolveMention(String uri);

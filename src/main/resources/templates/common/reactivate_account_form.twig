@@ -1,0 +1,5 @@
+{% import "forms" as form %}
+<p>{{ L('settings_reactivate_confirm') }}</p>
+{{ form.start("deactivateAccount") }}
+	{{ form.textInput('password', L('password'), email, {'type': 'password', 'required': true}) }}
+{{ form.end() }}

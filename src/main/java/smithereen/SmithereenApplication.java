@@ -230,6 +230,8 @@ public class SmithereenApplication{
 			getLoggedIn("/unfreezeBox", SessionRoutes::unfreezeBox);
 			postWithCSRF("/unfreeze", SessionRoutes::unfreeze);
 			postWithCSRF("/unfreezeChangePassword", SessionRoutes::unfreezeChangePassword);
+			getLoggedIn("/reactivateBox", SessionRoutes::reactivateBox);
+			postWithCSRF("/reactivate", SessionRoutes::reactivate);
 		});
 
 		path("/settings", ()->{
@@ -267,6 +269,8 @@ public class SmithereenApplication{
 			getLoggedIn("/privacy", SettingsRoutes::privacySettings);
 			postWithCSRF("/privacy", SettingsRoutes::savePrivacySettings);
 			getLoggedIn("/privacy/mobileEditSetting", SettingsRoutes::mobileEditPrivacy);
+			getLoggedIn("/deactivateAccountForm", SettingsRoutes::deactivateAccountForm);
+			postWithCSRF("/deactivateAccount", SettingsRoutes::deactivateAccount);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);

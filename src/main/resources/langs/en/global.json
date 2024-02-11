@@ -152,5 +152,6 @@
   "action_confirmation": "Action confirmation",
   "action_confirmation_text": "We''ve sent you a code to <b>{maskedEmail}</b>. Please enter it to confirm {action}:",
   "next": "Next",
-  "action_confirmation_incorrect_code": "Incorrect code"
+  "action_confirmation_incorrect_code": "Incorrect code",
+  "restore": "Restore"
 }

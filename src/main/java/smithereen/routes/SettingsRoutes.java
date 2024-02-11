@@ -9,6 +9,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
@@ -39,6 +40,8 @@ import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
 import smithereen.model.UriBuilder;
 import smithereen.model.User;
+import smithereen.model.UserBanInfo;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
@@ -654,5 +657,19 @@ public class SettingsRoutes{
 				.with("setting", ps)
 				.with("users", ctx.getUsersController().getUsers(needUsers))
 				.pageTitle(lang(req).get("privacy_settings_title"));
+	}
+
+	public static Object deactivateAccountForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		return wrapForm(req, resp, "deactivate_account_form", "/settings/deactivateAccount", lang(req).get("admin_user_delete_account_title"), "delete", "deactivateAccount", List.of(), null, null);
+	}
+
+	public static Object deactivateAccount(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "password");
+		String password=req.queryParams("password");
+		if(!ctx.getUsersController().checkPassword(self, password)){
+			return wrapForm(req, resp, "deactivate_account_form", "/settings/deactivateAccount", lang(req).get("admin_user_delete_account_title"), "delete", "deactivateAccount", List.of(), null, lang(req).get("err_old_password_incorrect"));
+		}
+		ctx.getUsersController().selfDeactivateAccount(self);
+		return ajaxAwareRedirect(req, resp, "/feed");
 	}
 }

@@ -154,5 +154,9 @@
   "settings_activity_access_type": "Access type",
   "settings_activity_access_time": "Time",
   "settings_activity_web": "{browserName} {browserVersion} on {osName}",
-  "unknown_browser": "Unknown browser"
+  "unknown_browser": "Unknown browser",
+  "settings_deactivate_confirm": "Are you sure you want to delete your account?\n\nYour account will be deactivated and only permanently deleted after <b>{timeInterval}</b>. Should you change your mind, you will be able to reinstate your account with no data loss during the deactivation period.",
+  "settings_deactivate_account": "You can <a id=\"deactivate\">delete your account</a>.",
+  "settings_reactivate_confirm": "Enter your password to reinstate your account and cancel its deletion.",
+  "settings_reactivate_title": "Restore account"
 }

@@ -126,7 +126,7 @@
 		{{ L('admin_user_state_self_deactivated', {'deletionTime': LD(accountDeletionTime)}) }}
 		{% endif %}
 		{% if user.banInfo is not null %}
-		<br/><a href="{{ banModerator.profileURL }}">{{ banModerator | name }}</a>, {{ LD(user.banInfo.bannedAt()) }}
+		<br/>{% if banModerator is not null %}<a href="{{ banModerator.profileURL }}">{{ banModerator | name }}</a>, {% endif %}{{ LD(user.banInfo.bannedAt()) }}
 		{% if user.banInfo.message is not empty %}<br/>{{ L('admin_user_ban_message') }}: {{ user.banInfo.message }}{% endif %}
 		{% endif %}
 	</div>
