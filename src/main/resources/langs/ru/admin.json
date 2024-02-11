@@ -214,9 +214,5 @@
   "admin_user_state_hidden": "Страница скрыта от неавторизованных пользователей.",
   "admin_user_delete_account_now": "Удалить сейчас",
   "admin_user_delete_account_confirmation": "Вы собираетесь немедленно удалить страницу <b>{name, inflect, genitive}</b>.\n\nЭто действие <b>НЕОБРАТИМО</b>, даже если у вас есть резервная копия базы данных и медиафайлов. Чтобы продолжить, введите ниже имя пользователя с доменом для удаляемой учётной записи.",
-  "admin_user_delete_account_title": "Удаление страницы",
-  "admin_audit_log_changed_user_restrictions": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} ограничения для страницы <a id=\"targetUser\">{targetName, inflect, genitive}</a>",
-  "admin_user_delete_wrong_username": "Неверное имя пользователя",
-  "admin_user_deleted_successfully": "Страница пользователя успешно удалена",
-  "admin_audit_log_deleted_user_account": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} страницу <a id=\"targetUser\">{targetName}</a>"
+  "admin_audit_log_changed_user_restrictions": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} ограничения для страницы <a id=\"targetUser\">{targetName, inflect, genitive}</a>"
 }
