@@ -1272,4 +1272,12 @@ public class UserStorage{
 		removeFromCache(user);
 		accountCache.remove(userAccount.id);
 	}
+
+	public static List<User> getTerminallyBannedUsers() throws SQLException{
+		return getByIdAsList(new SQLQueryBuilder()
+				.selectFrom("users")
+				.columns("id")
+				.whereIn("ban_status", UserBanStatus.SELF_DEACTIVATED, UserBanStatus.SUSPENDED)
+				.executeAndGetIntList());
+	}
 }

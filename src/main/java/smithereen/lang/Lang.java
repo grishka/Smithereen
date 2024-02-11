@@ -198,6 +198,8 @@ public class Lang{
 		long ts=date.toEpochMilli();
 		long tsNow=System.currentTimeMillis();
 		long diff=tsNow-ts;
+		if(timeZone==null)
+			timeZone=ZoneId.systemDefault();
 
 		if(!forceAbsolute){
 			if(diff>=0 && diff<60_000){

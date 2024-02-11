@@ -1,8 +1,12 @@
 package smithereen.controllers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
@@ -43,6 +47,7 @@ import smithereen.util.FloodControl;
 import spark.Request;
 
 public class UsersController{
+	private static final Logger LOG=LoggerFactory.getLogger(UsersController.class);
 	private final ApplicationContext context;
 
 	public UsersController(ApplicationContext context){
@@ -418,6 +423,32 @@ public class UsersController{
 			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.NONE, null);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public static void doPendingAccountDeletions(){
+		try{
+			ApplicationContext ctx=new ApplicationContext(); // This is probably gonna bite me in the ass in the future
+			List<User> users=UserStorage.getTerminallyBannedUsers();
+			if(users.isEmpty()){
+				LOG.trace("No users to delete");
+				return;
+			}
+			Instant deleteBannedBefore=Instant.now().minus(30, ChronoUnit.DAYS);
+			for(User user:users){
+				if(user.banStatus!=UserBanStatus.SUSPENDED && user.banStatus!=UserBanStatus.SELF_DEACTIVATED){
+					LOG.warn("Ineligible user {} in pending account deletions - bug likely (banStatus {}, banInfo {})", user.id, user.banStatus, user.banInfo);
+					continue;
+				}
+				if(user.banInfo.bannedAt().isBefore(deleteBannedBefore)){
+					LOG.info("Deleting user {}, banStatus {}, banInfo {}", user.id, user.banStatus, user.banInfo);
+					ctx.getUsersController().deleteLocalUser(null, user);
+				}else{
+					LOG.trace("User {} too early to delete", user.id);
+				}
+			}
+		}catch(SQLException x){
+			LOG.error("Failed to delete accounts", x);
 		}
 	}
 }
