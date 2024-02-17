@@ -147,14 +147,19 @@ public class ActivityPub{
 		Call call=httpClient.newCall(req);
 		Response resp=call.execute();
 		try(ResponseBody body=resp.body()){
+			Objects.requireNonNull(body);
 			if(!resp.isSuccessful()){
 				throw new ObjectNotFoundException("Response is not successful: remote server returned "+resp.code()+" "+resp.message());
+			}
+			MediaType contentType=body.contentType();
+			// Allow "application/activity+json" or "application/ld+json"
+			if(contentType==null || !"application".equals(contentType.type()) || !("activity+json".equals(contentType.subtype()) || "ld+json".equals(contentType.subtype()))){
+				throw new ObjectNotFoundException("Invalid Content-Type");
 			}
 
 			try{
 				JsonElement el=JsonParser.parseReader(body.charStream());
 				JsonObject converted=JLDProcessor.convertToLocalContext(el.getAsJsonObject());
-//				System.out.println(converted.toString(4));
 				ActivityPubObject obj=ActivityPubObject.parse(converted);
 				if(obj==null)
 					throw new UnsupportedRemoteObjectTypeException("Unsupported object type "+converted.get("type"));
