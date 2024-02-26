@@ -6,14 +6,15 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.LinkedList;
+import java.util.ArrayList;
 
 import smithereen.Config;
 
 public class DatabaseConnectionManager{
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseConnectionManager.class);
-	private static final LinkedList<DatabaseConnection> pool=new LinkedList<>();
+	private static final ArrayList<DatabaseConnection> pool=new ArrayList<>();
 	private static final ThreadLocal<DatabaseConnection> currentThreadConnection=new ThreadLocal<>();
+	private static final ArrayList<DatabaseConnection> connectionsInUse=new ArrayList<>();
 
 	public static synchronized DatabaseConnection getConnection() throws SQLException{
 		DatabaseConnection conn;
@@ -25,7 +26,7 @@ public class DatabaseConnectionManager{
 		if(pool.isEmpty()){
 			conn=new DatabaseConnection(newConnection());
 		}else{
-			conn=pool.removeFirst();
+			conn=pool.removeLast();
 			try{
 				validateConnection(conn.actualConnection);
 				conn.lastUsed=System.nanoTime();
@@ -39,6 +40,7 @@ public class DatabaseConnectionManager{
 		conn.useDepth++;
 		conn.ownerThread=Thread.currentThread();
 		currentThreadConnection.set(conn);
+		connectionsInUse.add(conn);
 		return conn;
 	}
 
@@ -50,6 +52,7 @@ public class DatabaseConnectionManager{
 			conn.ownerThread=null;
 			currentThreadConnection.remove();
 			pool.add(conn);
+			connectionsInUse.remove(conn);
 			LOG.trace("Reusing database connection. Pool size is {}", pool.size());
 		}
 	}
@@ -72,6 +75,8 @@ public class DatabaseConnectionManager{
 		int size=pool.size();
 		boolean removedAny=pool.removeIf(conn->{
 			if(System.nanoTime()-conn.lastUsed>5*60_000_000_000L){
+				if(conn.useDepth!=0)
+					throw new IllegalStateException("Connection use depth is "+conn.useDepth+", expected 0");
 				try{
 					conn.actualConnection.close();
 				}catch(SQLException ignore){}
@@ -81,6 +86,11 @@ public class DatabaseConnectionManager{
 		});
 		if(removedAny){
 			LOG.debug("Closed {} connections, pool size is {}", size-pool.size(), pool.size());
+		}
+		for(DatabaseConnection conn:connectionsInUse){
+			if(System.nanoTime()-conn.lastUsed>60_000_000_000L){
+				LOG.warn("Database connection {} was not closed! Owner: {}", conn, conn.ownerThread);
+			}
 		}
 	}
 }
