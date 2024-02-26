@@ -267,7 +267,10 @@ public class SQLQueryBuilder{
 	}
 
 	public IntStream executeAndGetIntStream() throws SQLException{
-		return DatabaseUtils.intResultSetToStream(createStatementInternal(0).executeQuery());
+		return DatabaseUtils.intResultSetToStream(createStatementInternal(0).executeQuery(), ()->{
+			if(needCloseConnection)
+				conn.close();
+		});
 	}
 
 	private void appendSelectColumns(StringBuilder sb){

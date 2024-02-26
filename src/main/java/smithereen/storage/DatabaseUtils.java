@@ -99,7 +99,7 @@ public class DatabaseUtils{
 		}
 	}
 
-	public static IntStream intResultSetToStream(ResultSet res) throws SQLException{
+	public static IntStream intResultSetToStream(ResultSet res, Runnable close) throws SQLException{
 		try{
 			return StreamSupport.intStream(new Spliterators.AbstractIntSpliterator(Long.MAX_VALUE, Spliterator.ORDERED){
 				@Override
@@ -110,6 +110,8 @@ public class DatabaseUtils{
 							return true;
 						}
 						res.close();
+						if(close!=null)
+							close.run();
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
 					}
@@ -123,6 +125,8 @@ public class DatabaseUtils{
 							action.accept(res.getInt(1));
 						}
 						res.close();
+						if(close!=null)
+							close.run();
 					}catch(SQLException x){
 						throw new UncheckedSQLException(x);
 					}
