@@ -225,7 +225,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					}
 				}
 			}else{
-				LOG.info("Don't have parent post {} for {}", post.inReplyTo, post.activityPubID);
+				LOG.debug("Don't have parent post {} for {}", post.inReplyTo, post.activityPubID);
 				boolean mentionsLocalUsers=false;
 				if(post.tag!=null){
 					for(ActivityPubObject tag:post.tag){
@@ -238,7 +238,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					}
 				}
 				if(!mentionsLocalUsers){
-					LOG.warn("Dropping post {} because its parent isn't known and it doesn't mention local users.", post.activityPubID);
+					LOG.debug("Dropping post {} because its parent isn't known and it doesn't mention local users.", post.activityPubID);
 					return;
 				}
 				context.appContext.getActivityPubWorker().fetchReplyThread(post);

@@ -665,7 +665,7 @@ public class ActivityPubRoutes{
 			}
 		}
 		String body=req.body();
-		LOG.info("Incoming activity: {}", body);
+		LOG.debug("Incoming activity: {}", body);
 		JsonObject rawActivity;
 		try{
 			rawActivity=JsonParser.parseString(body).getAsJsonObject();
@@ -733,7 +733,7 @@ public class ActivityPubRoutes{
 		try{
 			httpSigOwner=ActivityPub.verifyHttpSignature(req, actor);
 		}catch(Exception x){
-			LOG.warn("Exception while verifying HTTP signature", x);
+			LOG.debug("Exception while verifying HTTP signature", x);
 			throw new UserActionNotAllowedException(x);
 		}
 
@@ -751,17 +751,17 @@ public class ActivityPubRoutes{
 				if(!LinkedDataSignatures.verify(rawActivity, actor.publicKey)){
 					throw new BadRequestException("LD-signature verification failed");
 				}
-				LOG.info("verified LD signature by {}", userID);
+				LOG.debug("verified LD signature by {}", userID);
 				hasValidLDSignature=true;
 			}catch(Exception x){
-				LOG.info("Exception while verifying LD-signature", x);
+				LOG.debug("Exception while verifying LD-signature", x);
 			}
 		}
 		if(!hasValidLDSignature){
 			if(!actor.equals(httpSigOwner)){
 				throw new BadRequestException("In the absence of a valid LD-signature, HTTP signature must be made by the activity actor");
 			}
-			LOG.info("verified HTTP signature by {}", httpSigOwner.activityPubID);
+			LOG.debug("verified HTTP signature by {}", httpSigOwner.activityPubID);
 		}
 		// parse again to make sure the actor is set everywhere
 		try{
@@ -795,7 +795,7 @@ public class ActivityPubRoutes{
 					try{
 						aobj=ctx.getObjectLinkResolver().resolve(aobj.activityPubID);
 					}catch(ObjectNotFoundException x){
-						LOG.warn("Activity object not found for {}: {}", getActivityType(activity), aobj.activityPubID);
+						LOG.debug("Activity object not found for {}: {}", getActivityType(activity), aobj.activityPubID);
 						// Fail silently. We didn't have that object anyway, there's nothing to delete.
 						return "";
 					}
@@ -806,7 +806,7 @@ public class ActivityPubRoutes{
 						aobj=ctx.getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, false, false, false);
 					}catch(ObjectNotFoundException x){
 						// Fail silently. Pleroma sends all likes to followers, including for objects they may not have.
-						LOG.info("Activity object not known for {}: {}", activity.getType(), activity.object.link);
+						LOG.debug("Activity object not known for {}: {}", activity.getType(), activity.object.link);
 						return "";
 					}
 				}else{
@@ -838,17 +838,17 @@ public class ActivityPubRoutes{
 									doublyNestedObject=ctx.getObjectLinkResolver().resolve(nestedActivity.object.link);
 
 								if(r.objectClass.isInstance(doublyNestedObject)){
-									LOG.info("Found match: {}", r.handler.getClass().getName());
+									LOG.debug("Found match: {}", r.handler.getClass().getName());
 									((DoublyNestedActivityTypeHandler)r.handler).handle(context, actor, activity, nestedActivity, doublyNestedActivity, doublyNestedObject);
 									return "";
 								}
 							}else if(r.objectClass.isInstance(nestedObject)){
-								LOG.info("Found match: {}", r.handler.getClass().getName());
+								LOG.debug("Found match: {}", r.handler.getClass().getName());
 								((NestedActivityTypeHandler)r.handler).handle(context, actor, activity, nestedActivity, nestedObject);
 								return "";
 							}
 						}else if(r.objectClass.isInstance(aobj)){
-							LOG.info("Found match: {}", r.handler.getClass().getName());
+							LOG.debug("Found match: {}", r.handler.getClass().getName());
 							r.handler.handle(context, actor, activity, aobj);
 							return "";
 						}
@@ -862,7 +862,7 @@ public class ActivityPubRoutes{
 			resp.status(403);
 			return escapeHTML(x.getMessage());
 		}catch(BadRequestException x){
-			LOG.warn("Bad request", x);
+			LOG.debug("Bad request", x);
 			resp.status(400);
 			return escapeHTML(x.getMessage());
 		}/*catch(Exception x){
