@@ -224,19 +224,19 @@ public class ActivityPub{
 
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
-			LOG.info("Not sending {} activity to server {} because it's down", activity.getType(), server.host());
+			LOG.debug("Not sending {} activity to server {} because it's down", activity.getType(), server.host());
 			return;
 		}
 		if(server.restriction()!=null){
 			if(server.restriction().type==FederationRestriction.RestrictionType.SUSPENSION){
-				LOG.info("Not sending {} activity to server {} because federation with it is blocked", activity.getType(), server.host());
+				LOG.debug("Not sending {} activity to server {} because federation with it is blocked", activity.getType(), server.host());
 				return;
 			}
 		}
 
 		JsonObject body=activity.asRootActivityPubObject(ctx, inboxUrl.getAuthority());
 		LinkedDataSignatures.sign(body, actor.privateKey, actor.activityPubID+"#main-key");
-		LOG.info("Sending activity: {}", body);
+		LOG.debug("Sending activity: {}", body);
 		postActivityInternal(inboxUrl, body.toString(), actor, server, ctx, isRetry);
 	}
 
@@ -246,12 +246,12 @@ public class ActivityPub{
 
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
-			LOG.info("Not forwarding activity to server {} because it's down", server.host());
+			LOG.debug("Not forwarding activity to server {} because it's down", server.host());
 			return;
 		}
 		if(server.restriction()!=null){
 			if(server.restriction().type==FederationRestriction.RestrictionType.SUSPENSION){
-				LOG.info("Not forwarding activity to server {} because federation with it is blocked", server.host());
+				LOG.debug("Not forwarding activity to server {} because federation with it is blocked", server.host());
 				return;
 			}
 		}
@@ -272,10 +272,10 @@ public class ActivityPub{
 				.build();
 		try{
 			Response resp=httpClient.newCall(req).execute();
-			LOG.info("Post activity response: {}", resp);
+			LOG.debug("Post activity response: {}", resp);
 			try(ResponseBody rb=resp.body()){
 				if(!resp.isSuccessful()){
-					LOG.info("Response body: {}", rb.string());
+					LOG.debug("Response body: {}", rb.string());
 					if(resp.code()!=403){
 						if(resp.code()/100==5){ // IOException does trigger retrying, FederationException does not. We want retries for 5xx (server) errors.
 							throw new IOException("Response is not successful: "+resp.code());
@@ -394,7 +394,7 @@ public class ActivityPub{
 													// don't repeat the request, we already know that username doesn't exist (but the webfinger endpoint does)
 													throw new ObjectNotFoundException(x);
 												}else{
-													LOG.info("Found domain redirect: {} -> {}", domain, template);
+													LOG.debug("Found domain redirect: {} -> {}", domain, template);
 													domainRedirects.put(domain, template);
 												}
 											}
@@ -482,8 +482,8 @@ public class ActivityPub{
 		sig.initVerify(user.publicKey);
 		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
 		if(!sig.verify(signature)){
-			LOG.info("Failed signature header: {}", sigHeader);
-			LOG.info("Failed signature string: '{}'", sigStr);
+			LOG.debug("Failed signature header: {}", sigHeader);
+			LOG.debug("Failed signature string: '{}'", sigStr);
 			throw new BadRequestException("Signature failed to verify");
 		}
 		return user;
