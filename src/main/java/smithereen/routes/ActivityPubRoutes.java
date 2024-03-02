@@ -785,6 +785,14 @@ public class ActivityPubRoutes{
 					return "";
 				}
 			}
+			if(activity.object==null){
+				// Something unsupported that doesn't have an object/link
+				if(Config.DEBUG)
+					throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
+				else
+					LOG.error("Received and ignored an activity of an unsupported type {}", getActivityType(activity));
+				return "";
+			}
 
 			// Match more thoroughly
 			ActivityPubObject aobj;
@@ -878,7 +886,7 @@ public class ActivityPubRoutes{
 
 	private static String getActivityType(ActivityPubObject obj){
 		String r=obj.getType();
-		if(obj instanceof Activity a){
+		if(obj instanceof Activity a && a.object!=null){
 			r+="{";
 			if(a.object.object!=null){
 				r+=getActivityType(a.object.object);
