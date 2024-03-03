@@ -70,6 +70,7 @@ import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorage;
@@ -607,16 +608,20 @@ public class SystemRoutes{
 
 		ctx.getActivityPubWorker().sendPollVotes(self.user, poll, owner, options, voteIDs);
 		int postID=PostStorage.getPostIdByPollId(id);
+		Post post;
 		if(postID>0){
-			Post post=ctx.getWallController().getPostOrThrow(postID);
+			post=ctx.getWallController().getPostOrThrow(postID);
 			post.poll=poll; // So the last vote time is as it was before the vote
 			ctx.getWallController().sendUpdateQuestionIfNeeded(post);
+		}else{
+			post=null;
 		}
 
 		if(isAjax(req)){
 			UserInteractions interactions=new UserInteractions();
 			interactions.pollChoices=Arrays.stream(optionIDs).boxed().collect(Collectors.toList());
 			RenderedTemplateResponse model=new RenderedTemplateResponse("poll", req).with("poll", poll).with("interactions", interactions);
+			model.with("post", new PostViewModel(post));
 			return new WebDeltaResponse(resp).setContent("poll"+poll.id, model.renderBlock("inner"));
 		}
 
