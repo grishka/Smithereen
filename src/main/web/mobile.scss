@@ -364,15 +364,10 @@ select{
 	overflow-x: scroll;
 	position: relative;
 	white-space: nowrap;
-	&:before{
-		content: '';
-		display: block;
-		position: absolute;
-		bottom: 0;
-		height: 1px;
-		left: 0;
-		right: 0;
-		background: rgba(0,0,0,.2);
+	box-shadow: inset 0 -1px 0 rgba(0,0,0,.2);
+	scrollbar-width: none;
+	&::-webkit-scrollbar{
+		display: none;
 	}
 	a{
 		display: inline-block;
