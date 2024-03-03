@@ -193,6 +193,9 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 
 		User author=context.getUsersController().getUserOrThrow(post.authorID);
 		noq.content=post.text;
+		if(post.poll!=null && StringUtils.isNotEmpty(post.poll.question)){
+			noq.content+="<p class=\"smithereenPollQuestion\"><i>"+Utils.escapeHTML(post.poll.question)+"</i></p>";
+		}
 		noq.attributedTo=author.activityPubID;
 		noq.published=post.createdAt;
 		noq.updated=post.updatedAt;

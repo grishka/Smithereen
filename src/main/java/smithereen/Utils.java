@@ -378,7 +378,7 @@ public class Utils{
 				}
 			}
 
-			private class ListNodeInfo{
+			private static class ListNodeInfo{
 				final boolean isOrdered;
 				final Element element;
 				int currentIndex=1;
@@ -390,6 +390,7 @@ public class Utils{
 			}
 		});
 		doc.getElementsByTag("li").forEach(Element::unwrap);
+		doc.getElementsByClass("smithereenPollQuestion").forEach(Element::remove);
 		doc.normalise();
 		return cleaner.clean(doc).body().html();
 	}
