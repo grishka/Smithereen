@@ -30,6 +30,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
@@ -326,7 +327,12 @@ public class PostRoutes{
 			if(reportID!=0){
 				try{
 					ViolationReport report=ctx.getModerationController().getViolationReportByID(reportID);
-					canOverridePrivacy=report.contentType==ViolationReport.ContentType.POST && report.contentID==postID;
+					for(ReportableContentObject c:report.content){
+						if(c instanceof Post p && p.id==postID){
+							canOverridePrivacy=true;
+							break;
+						}
+					}
 				}catch(ObjectNotFoundException ignore){}
 			}
 		}

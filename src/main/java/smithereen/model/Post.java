@@ -1,5 +1,7 @@
 package smithereen.model;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.net.URI;
@@ -7,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 
@@ -17,9 +20,11 @@ import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.PostStorage;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import spark.utils.StringUtils;
 
-public class Post implements ActivityPubRepresentable, OwnedContentObject, AttachmentHostContentObject{
+public final class Post implements ActivityPubRepresentable, OwnedContentObject, AttachmentHostContentObject, ReportableContentObject{
 	public int id;
 	public int authorID;
 	// userID or -groupID
@@ -195,6 +200,64 @@ public class Post implements ActivityPubRepresentable, OwnedContentObject, Attac
 	@Override
 	public NonCachedRemoteImage.Args getPhotoArgs(int index){
 		return new NonCachedRemoteImage.PostPhotoArgs(id, index);
+	}
+
+	@Override
+	public JsonObject serializeForReport(int targetID, Set<Long> outFileIDs){
+		if(authorID!=targetID && ownerID!=targetID)
+			return null;
+		JsonObjectBuilder jb=new JsonObjectBuilder()
+				.add("type", "post")
+				.add("id", id)
+				.add("owner", ownerID)
+				.add("author", authorID)
+				.add("created_at", createdAt.getEpochSecond())
+				.add("text", text);
+		if(getReplyLevel()>0)
+			jb.add("replyKey", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeIntList(replyKey)));
+		if(attachments!=null && !attachments.isEmpty())
+			jb.add("attachments", ReportableContentObject.serializeMediaAttachments(attachments, outFileIDs));
+		if(poll!=null){
+			jb.add("pollQuestion", poll.question);
+			JsonArrayBuilder jab=new JsonArrayBuilder();
+			for(PollOption opt:poll.options){
+				jab.add(opt.text);
+			}
+			jb.add("pollOptions", jab.build());
+		}
+		if(hasContentWarning())
+			jb.add("cw", contentWarning);
+		return jb.build();
+	}
+
+	@Override
+	public void fillFromReport(JsonObject jo){
+		id=jo.get("id").getAsInt();
+		ownerID=jo.get("owner").getAsInt();
+		authorID=jo.get("author").getAsInt();
+		createdAt=Instant.ofEpochSecond(jo.get("created_at").getAsLong());
+		text=jo.get("text").getAsString();
+		if(jo.has("replyKey")){
+			replyKey=Utils.deserializeIntList(Base64.getDecoder().decode(jo.get("replyKey").getAsString()));
+		}
+		if(jo.has("attachments")){
+			attachments=new ArrayList<>();
+			for(JsonElement jatt:jo.getAsJsonArray("attachments")){
+				attachments.add(ActivityPubObject.parse(jatt.getAsJsonObject(), ParserContext.LOCAL));
+			}
+		}
+		if(jo.has("pollQuestion")){
+			poll=new Poll();
+			poll.question=jo.get("pollQuestion").getAsString();
+			poll.options=new ArrayList<>();
+			for(JsonElement jopt:jo.getAsJsonArray("pollOptions")){
+				PollOption opt=new PollOption();
+				opt.text=jopt.getAsString();
+				poll.options.add(opt);
+			}
+		}
+		if(jo.has("cw"))
+			contentWarning=jo.get("cw").getAsString();
 	}
 
 	public enum Privacy{

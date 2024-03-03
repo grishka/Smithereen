@@ -1,5 +1,7 @@
 package smithereen.storage;
 
+import com.google.gson.JsonObject;
+
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.PreparedStatement;
@@ -11,6 +13,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -21,6 +24,7 @@ import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
+import smithereen.model.ViolationReportAction;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
@@ -29,18 +33,14 @@ import smithereen.util.InetAddressRange;
 import spark.utils.StringUtils;
 
 public class ModerationStorage{
-	public static int createViolationReport(int reporterID, ViolationReport.TargetType targetType, int targetID, ViolationReport.ContentType contentType, long contentID, String comment, String otherServerDomain) throws SQLException{
+	public static int createViolationReport(int reporterID, int targetID, String comment, String otherServerDomain, String contentJson) throws SQLException{
 		SQLQueryBuilder bldr=new SQLQueryBuilder()
 				.insertInto("reports")
 				.value("reporter_id", reporterID!=0 ? reporterID : null)
-				.value("target_type", targetType.ordinal())
 				.value("target_id", targetID)
 				.value("comment", comment)
-				.value("server_domain", otherServerDomain);
-		if(contentType!=null){
-			bldr.value("content_type", contentType.ordinal())
-					.value("content_id", contentID);
-		}
+				.value("server_domain", otherServerDomain)
+				.value("content", contentJson);
 		return bldr.executeAndGetID();
 	}
 
@@ -48,7 +48,7 @@ public class ModerationStorage{
 		return new SQLQueryBuilder()
 				.selectFrom("reports")
 				.count()
-				.where("action_time IS"+(open ? "" : " NOT")+" NULL")
+				.where("state"+(open ? "=" : "<>")+" ?", ViolationReport.State.OPEN)
 				.executeAndGetInt();
 	}
 
@@ -59,7 +59,7 @@ public class ModerationStorage{
 		List<ViolationReport> reports=new SQLQueryBuilder()
 				.selectFrom("reports")
 				.allColumns()
-				.where("action_time IS"+(open ? "" : " NOT")+" NULL")
+				.where("state"+(open ? "=" : "<>")+" ?", ViolationReport.State.OPEN)
 				.limit(count, offset)
 				.orderBy("id DESC")
 				.executeAsStream(ViolationReport::fromResultSet)
@@ -148,15 +148,6 @@ public class ModerationStorage{
 				.value("error_day_count", errorDayCount)
 				.value("is_up", isUp)
 				.where("id=?", id)
-				.executeNoResult();
-	}
-
-	public static void setViolationReportResolved(int reportID, int moderatorID) throws SQLException{
-		new SQLQueryBuilder()
-				.update("reports")
-				.value("moderator_id", moderatorID)
-				.valueExpr("action_time", "CURRENT_TIMESTAMP()")
-				.where("id=?", reportID)
 				.executeNoResult();
 	}
 
@@ -303,5 +294,34 @@ public class ModerationStorage{
 				return new PaginatedList<>(list, total, offset, count);
 			}
 		}
+	}
+
+	public static List<ViolationReportAction> getViolationReportActions(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("report_actions")
+				.allColumns()
+				.where("report_id=?", id)
+				.orderBy("id ASC")
+				.executeAsStream(ViolationReportAction::fromResultSet)
+				.toList();
+	}
+
+	public static void createViolationReportAction(int reportID, int userID, ViolationReportAction.ActionType type, String text, JsonObject extra) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("report_actions")
+				.value("report_id", reportID)
+				.value("user_id", userID)
+				.value("action_type", type)
+				.value("text", text)
+				.value("extra", extra==null ? null : extra.toString())
+				.executeNoResult();
+	}
+
+	public static void setViolationReportState(int reportID, ViolationReport.State state) throws SQLException{
+		new SQLQueryBuilder()
+				.update("reports")
+				.value("state", state)
+				.where("id=?", reportID)
+				.executeNoResult();
 	}
 }

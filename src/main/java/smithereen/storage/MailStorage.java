@@ -269,9 +269,9 @@ public class MailStorage{
 	public static Map<Long, MailMessage> getMessagesAsModerator(Collection<Long> ids) throws SQLException{
 		Map<Long, MailMessage> msgs=new SQLQueryBuilder()
 				.selectFrom("mail_messages")
-				.whereIn("id", ids.stream().map(i->XTEA.deobfuscateObjectID(i, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet()))
+				.whereIn("id", ids)
 				.executeAsStream(MailMessage::fromResultSet)
-				.collect(Collectors.toMap(m->m.id, Function.identity()));
+				.collect(Collectors.toMap(m->XTEA.deobfuscateObjectID(m.id, ObfuscatedObjectIDType.MAIL_MESSAGE), Function.identity()));
 		postprocessMessages(msgs.values());
 		return msgs;
 	}

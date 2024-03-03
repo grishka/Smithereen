@@ -87,7 +87,7 @@ public class MediaStorage{
 				.value("file_id", fileID)
 				.value("object_id", objectID)
 				.value("object_type", type)
-				.value(ownerID<0 ? "owner_group_id" : "owner_user_id", Math.abs(ownerID))
+				.value(ownerID<0 ? "owner_group_id" : "owner_user_id", ownerID!=0 ? Math.abs(ownerID) : null)
 				.executeNoResult();
 	}
 

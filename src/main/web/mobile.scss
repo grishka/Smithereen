@@ -1382,6 +1382,12 @@ input[type=time]::-webkit-calendar-picker-indicator{
 	&:last-child{
 		border-bottom: none;
 	}
+	p:first-child{
+		margin-top: 0;
+	}
+	p:last-child{
+		margin-bottom: 0;
+	}
 }
 
 .filters{
@@ -1732,4 +1738,22 @@ input.searchField{
 
 .notMuchContent{
 	padding: 16px;
+}
+
+.clickableListItem{
+	border-bottom: solid 1px $wallPostSeparator;
+	padding: 16px;
+	color: $text;
+	&:last-child{
+		border-bottom: none;
+	}
+}
+
+.aBunchOfButtons{
+	display: flex;
+	flex-wrap: wrap;
+	margin-bottom: -8px;
+	>*{
+		margin: 0 8px 8px 0;
+	}
 }

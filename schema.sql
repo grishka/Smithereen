@@ -509,6 +509,23 @@ CREATE TABLE `qsearch_index` (
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
 
 --
+-- Table structure for table `report_actions`
+--
+
+CREATE TABLE `report_actions` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `report_id` int unsigned NOT NULL,
+  `user_id` int unsigned NOT NULL,
+  `action_type` tinyint unsigned NOT NULL,
+  `text` text,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `extra` json DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `report_id` (`report_id`),
+  CONSTRAINT `report_actions_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `reports`
 --
 
@@ -516,17 +533,18 @@ CREATE TABLE `reports` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `reporter_id` int unsigned DEFAULT NULL,
   `target_type` tinyint unsigned NOT NULL,
-  `content_type` tinyint unsigned DEFAULT NULL,
-  `target_id` int unsigned NOT NULL,
-  `content_id` bigint unsigned DEFAULT NULL,
+  `target_id` int NOT NULL,
   `comment` text NOT NULL,
   `moderator_id` int unsigned DEFAULT NULL,
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `action_time` timestamp NULL DEFAULT NULL,
   `server_domain` varchar(100) DEFAULT NULL,
+  `content` json DEFAULT NULL,
+  `state` tinyint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `reporter_id` (`reporter_id`),
-  KEY `moderator_id` (`moderator_id`)
+  KEY `moderator_id` (`moderator_id`),
+  KEY `state` (`state`),
+  KEY `target_id` (`target_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -710,4 +728,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-01-28 14:54:25
+-- Dump completed on 2024-03-03  5:28:12

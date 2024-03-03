@@ -2,11 +2,11 @@
 {{ form.start("userBan") }}
 	{% if user.domain is empty %}
 	{{ form.radioGroup('status', '', [
-		{'value': 'NONE', 'label': L('admin_user_no_restrictions'), 'selected': status=='NONE'},
+		{'value': 'NONE', 'label': L('admin_user_no_restrictions'), 'selected': status=='NONE', 'skip': hideNone},
 		{'value': 'FROZEN', 'label': L('admin_user_freeze'), 'explanation': L('admin_user_freeze_explain'), 'selected': status=='FROZEN'},
 		{'value': 'SUSPENDED', 'label': L('admin_user_suspend'), 'explanation': L('admin_user_suspend_explain'), 'selected': status=='SUSPENDED'},
 		{'value': 'HIDDEN', 'label': L('admin_user_hide'), 'explanation': L('admin_user_hide_explain'), 'selected': status=='HIDDEN'}
-	]) }}
+	], {'required': true}) }}
 	{{ form.textInput('message', L('admin_user_ban_message'), message, {'explanation': L('admin_user_ban_message_explain')}) }}
 	{{ form.select('duration', L('admin_user_ban_duration'), [
 		{'value': '0', 'label': L('admin_user_ban_until_first_login')},
@@ -21,9 +21,9 @@
 	{{ form.checkBox('forcePasswordChange', '', L('admin_user_ban_force_password_change'), false) }}
 	{% else %}
 	{{ form.radioGroup('status', '', [
-		{'value': 'NONE', 'label': L('admin_user_no_restrictions'), 'selected': status=='NONE'},
+		{'value': 'NONE', 'label': L('admin_user_no_restrictions'), 'selected': status=='NONE', 'skip': hideNone},
 		{'value': 'SUSPENDED', 'label': L('admin_user_suspend'), 'explanation': L('admin_user_foreign_suspend_explain'), 'selected': status=='SUSPENDED'},
 		{'value': 'HIDDEN', 'label': L('admin_user_hide'), 'explanation': L('admin_user_hide_explain'), 'selected': status=='HIDDEN'}
-	]) }}
+	], {'required': true}) }}
 	{% endif %}
 {{ form.end() }}

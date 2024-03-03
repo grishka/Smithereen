@@ -1,5 +1,8 @@
 package smithereen.controllers;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,13 +12,13 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -37,12 +40,9 @@ import smithereen.model.AuditLogEntry;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.Group;
-import smithereen.model.MailMessage;
-import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
-import smithereen.model.Post;
+import smithereen.model.ReportableContentObject;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
@@ -50,13 +50,16 @@ import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
+import smithereen.model.ViolationReportAction;
+import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.UserRoleViewModel;
+import smithereen.storage.MediaStorage;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.util.InetAddressRange;
-import smithereen.util.XTEA;
+import smithereen.util.JsonArrayBuilder;
 import spark.utils.StringUtils;
 
 public class ModerationController{
@@ -69,7 +72,7 @@ public class ModerationController{
 		this.context=context;
 	}
 
-	public void createViolationReport(User self, Actor target, @Nullable Object content, String comment, boolean forward){
+	public void createViolationReport(User self, Actor target, @Nullable List<ReportableContentObject> content, String comment, boolean forward){
 		int reportID=createViolationReportInternal(self, target, content, comment, null);
 		if(forward && (target instanceof ForeignGroup || target instanceof ForeignUser)){
 			ArrayList<URI> objectIDs=new ArrayList<>();
@@ -80,41 +83,34 @@ public class ModerationController{
 		}
 	}
 
-	public void createViolationReport(@Nullable User self, Actor target, @Nullable Object content, String comment, String otherServerDomain){
+	public void createViolationReport(@Nullable User self, Actor target, @Nullable List<ReportableContentObject> content, String comment, String otherServerDomain){
 		createViolationReportInternal(self, target, content, comment, otherServerDomain);
 	}
 
-	private int createViolationReportInternal(@Nullable User self, Actor target, @Nullable Object content, String comment, String otherServerDomain){
+	private int createViolationReportInternal(@Nullable User self, Actor target, @Nullable List<ReportableContentObject> content, String comment, String otherServerDomain){
 		try{
-			ViolationReport.TargetType targetType;
-			ViolationReport.ContentType contentType;
-			int targetID;
-			long contentID;
-			if(target instanceof User u){
-				targetType=ViolationReport.TargetType.USER;
-				targetID=u.id;
-			}else if(target instanceof Group g){
-				targetType=ViolationReport.TargetType.GROUP;
-				targetID=g.id;
+			int targetID=target.getOwnerID();
+
+			HashSet<Long> contentFileIDs=new HashSet<>();
+			JsonArray contentJson;
+			if(content!=null && !content.isEmpty()){
+				JsonArrayBuilder ab=new JsonArrayBuilder();
+				for(ReportableContentObject obj:content){
+					JsonObject jo=obj.serializeForReport(targetID, contentFileIDs);
+					if(jo!=null)
+						ab.add(jo);
+				}
+				contentJson=ab.build();
 			}else{
-				throw new IllegalArgumentException();
+				contentJson=null;
 			}
 
-			if(content instanceof Post p){
-				contentType=ViolationReport.ContentType.POST;
-				contentID=p.id;
-			}else if(content instanceof MailMessage msg){
-				contentType=ViolationReport.ContentType.MESSAGE;
-				contentID=XTEA.deobfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE);
-			}else{
-				contentType=null;
-				contentID=0;
-			}
-
-			int id=ModerationStorage.createViolationReport(self!=null ? self.id : 0, targetType, targetID, contentType, contentID, comment, otherServerDomain);
-			AdminNotifications an=AdminNotifications.getInstance(null);
-			if(an!=null){
-				an.openReportsCount=getViolationReportsCount(true);
+			int id=ModerationStorage.createViolationReport(self!=null ? self.id : 0, targetID, comment, otherServerDomain, contentJson==null ? null : contentJson.toString());
+			updateReportsCounter();
+			for(long fid:contentFileIDs){
+				// ownerID set to 0 because reports aren't owned by any particular actor
+				// and referenced files should stick around regardless of any account deletions
+				MediaStorage.createMediaFileReference(fid, id, MediaFileReferenceType.REPORT_OBJECT, 0);
 			}
 			return id;
 		}catch(SQLException x){
@@ -144,18 +140,6 @@ public class ModerationController{
 			if(report==null)
 				throw new ObjectNotFoundException();
 			return report;
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void setViolationReportResolved(ViolationReport report, User moderator){
-		try{
-			ModerationStorage.setViolationReportResolved(report.id, moderator.id);
-			AdminNotifications an=AdminNotifications.getInstance(null);
-			if(an!=null){
-				an.openReportsCount=getViolationReportsCount(true);
-			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -451,6 +435,73 @@ public class ModerationController{
 	public void clearUserBanStatus(Account self){
 		try{
 			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.NONE, null);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	private void updateReportsCounter(){
+		AdminNotifications an=AdminNotifications.getInstance(null);
+		if(an!=null){
+			an.openReportsCount=getViolationReportsCount(true);
+		}
+	}
+
+	public List<ViolationReportAction> getViolationReportActions(ViolationReport report){
+		try{
+			return ModerationStorage.getViolationReportActions(report.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void rejectViolationReport(ViolationReport report, User self){
+		try{
+			if(report.state!=ViolationReport.State.OPEN)
+				throw new IllegalArgumentException("Report is not open");
+			ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_REJECTED);
+			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.RESOLVE_REJECT, null, null);
+			updateReportsCounter();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void markViolationReportUnresolved(ViolationReport report, User self){
+		try{
+			if(report.state==ViolationReport.State.OPEN)
+				throw new IllegalArgumentException("Report is already open");
+			ModerationStorage.setViolationReportState(report.id, ViolationReport.State.OPEN);
+			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.REOPEN, null, null);
+			updateReportsCounter();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void addViolationReportComment(ViolationReport report, User self, String commentText){
+		try{
+			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.COMMENT, Utils.preprocessPostHTML(commentText, null), null);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void resolveViolationReport(ViolationReport report, User self, UserBanStatus status, UserBanInfo banInfo){
+		try{
+			if(report.state!=ViolationReport.State.OPEN)
+				throw new IllegalArgumentException("Report is not open");
+			ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_ACTION_TAKEN);
+			HashMap<String, Object> extra=new HashMap<>();
+			extra.put("status", status);
+			if(banInfo!=null){
+				if(banInfo.expiresAt()!=null)
+					extra.put("expiresAt", banInfo.expiresAt().toEpochMilli());
+				if(StringUtils.isNotEmpty(banInfo.message()))
+					extra.put("message", banInfo.message());
+			}
+			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.RESOLVE_WITH_ACTION, null, Utils.gson.toJsonTree(extra).getAsJsonObject());
+			updateReportsCounter();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

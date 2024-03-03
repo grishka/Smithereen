@@ -10,6 +10,7 @@ import java.util.Base64;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,15 +24,18 @@ import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
 import smithereen.Utils;
+import smithereen.activitypub.objects.Actor;
 import smithereen.model.Account;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
+import smithereen.model.ReportableContentObject;
 import smithereen.model.Server;
 import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
@@ -41,6 +45,7 @@ import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
+import smithereen.model.ViolationReportAction;
 import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -51,10 +56,12 @@ import smithereen.model.viewmodel.AuditLogEntryViewModel;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.model.viewmodel.UserRoleViewModel;
+import smithereen.model.viewmodel.ViolationReportActionViewModel;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -520,37 +527,152 @@ public class SettingsAdminRoutes{
 		PaginatedList<ViolationReport> reports=ctx.getModerationController().getViolationReports(!resolved, offset(req), 50);
 		model.paginate(reports);
 
-		Set<Integer> userIDs=reports.list.stream().filter(r->r.targetType==ViolationReport.TargetType.USER).map(r->r.targetID).collect(Collectors.toSet());
+		Set<Integer> userIDs=reports.list.stream().filter(r->r.targetID>0).map(r->r.targetID).collect(Collectors.toSet());
 		userIDs.addAll(reports.list.stream().filter(r->r.reporterID!=0).map(r->r.reporterID).collect(Collectors.toSet()));
-		Set<Integer> groupIDs=reports.list.stream().filter(r->r.targetType==ViolationReport.TargetType.GROUP).map(r->r.targetID).collect(Collectors.toSet());
-		Set<Integer> postIDs=reports.list.stream().filter(r->r.contentType==ViolationReport.ContentType.POST).map(r->(int)r.contentID).collect(Collectors.toSet());
-		Set<Long> messageIDs=reports.list.stream().filter(r->r.contentType==ViolationReport.ContentType.MESSAGE).map(r->r.contentID).collect(Collectors.toSet());
-
-		Map<Integer, Post> posts=ctx.getWallController().getPosts(postIDs);
-		Map<Long, MailMessage> messages=ctx.getMailController().getMessagesAsModerator(messageIDs);
-		for(Post post:posts.values()){
-			userIDs.add(post.authorID);
-			if(post.ownerID!=post.authorID){
-				if(post.ownerID>0)
-					userIDs.add(post.ownerID);
-				else
-					groupIDs.add(-post.ownerID);
-			}
-		}
-		for(MailMessage msg:messages.values()){
-			userIDs.add(msg.senderID);
-		}
+		Set<Integer> groupIDs=reports.list.stream().filter(r->r.targetID<0).map(r->-r.targetID).collect(Collectors.toSet());
 
 		model.with("users", ctx.getUsersController().getUsers(userIDs))
-				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(groupIDs))
-				.with("posts", posts)
-				.with("messages", messages);
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(groupIDs));
 
 		return model;
 	}
 
+	public static Object viewReport(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id);
+		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		HashSet<Integer> needPosts=new HashSet<>();
+		HashSet<Long> needMessages=new HashSet<>();
+
+		if(report.targetID>0)
+			needUsers.add(report.targetID);
+		if(report.targetID<0)
+			needGroups.add(-report.targetID);
+		needUsers.add(report.reporterID);
+
+		ArrayList<Map<String, Object>> contentForTemplate=new ArrayList<>();
+		int i=0;
+		for(ReportableContentObject co:report.content){
+			switch(co){
+				case Post p -> {
+					needPosts.add(p.id);
+					contentForTemplate.add(Map.of("type", p.getReplyLevel()>0 ? "comment" : "post", "id", p.id, "url", "/settings/admin/reports/"+id+"/content/"+i));
+				}
+				case MailMessage msg -> {
+					needMessages.add(msg.id);
+					contentForTemplate.add(Map.of("type", "message", "id", msg.id, "url", "/settings/admin/reports/"+id+"/content/"+i));
+				}
+			}
+			i++;
+		}
+		List<ViolationReportAction> actions=ctx.getModerationController().getViolationReportActions(report);
+		needUsers.addAll(actions.stream().map(ViolationReportAction::userID).collect(Collectors.toSet()));
+
+		Map<Integer, Post> posts=ctx.getWallController().getPosts(needPosts);
+		Map<Long, MailMessage> messages=ctx.getMailController().getMessagesAsModerator(needMessages);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
+		Map<Integer, Group> groups=ctx.getGroupsController().getGroupsByIdAsMap(needGroups);
+
+		Actor target=report.targetID>0 ? users.get(report.targetID) : groups.get(-report.targetID);
+
+		Lang l=lang(req);
+		List<ViolationReportActionViewModel> actionViewModels=actions.stream().map(a->{
+			User adminUser=users.get(a.userID());
+			HashMap<String, Object> links=new HashMap<>();
+			links.put("adminUser", Map.of("href", adminUser!=null ? adminUser.getProfileURL() : "/id"+a.userID()));
+			HashMap<String, Object> langArgs=new HashMap<>();
+			langArgs.put("name", adminUser!=null ? adminUser.getFullName() : "DELETED");
+			langArgs.put("gender", adminUser!=null ? adminUser.gender : User.Gender.UNKNOWN);
+			String mainText=switch(a.actionType()){
+				default -> null;
+				case REOPEN -> l.get("report_log_reopened", langArgs);
+				case RESOLVE_REJECT -> l.get("report_log_rejected", langArgs);
+				case COMMENT -> l.get("report_log_commented", langArgs);
+				case RESOLVE_WITH_ACTION -> {
+					if(report.targetID>0){
+						User targetUser=(User)target;
+						langArgs.put("targetName", targetUser!=null ? targetUser.getFirstLastAndGender() : "DELETED");
+						links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+report.targetID));
+					}
+					yield l.get("admin_audit_log_changed_user_restrictions", langArgs);
+				}
+			};
+			return new ViolationReportActionViewModel(a, substituteLinks(mainText, links), switch(a.actionType()){
+				default -> null;
+				case COMMENT -> postprocessPostHTMLForDisplay(a.text());
+				case RESOLVE_WITH_ACTION -> {
+					User targetUser=users.get(report.targetID);
+					String statusStr=switch(UserBanStatus.valueOf(a.extra().get("status").getAsString())){
+						case NONE -> l.get("admin_user_state_no_restrictions");
+						case FROZEN -> l.get("admin_user_state_frozen", Map.of("expirationTime", l.formatDate(Instant.ofEpochMilli(a.extra().get("expiresAt").getAsLong()), timeZoneForRequest(req), false)));
+						case SUSPENDED -> {
+							if(targetUser instanceof ForeignUser)
+								yield l.get("admin_user_state_suspended_foreign");
+							else
+								yield l.get("admin_user_state_suspended", Map.of("deletionTime", l.formatDate(a.time().plus(30, ChronoUnit.DAYS), timeZoneForRequest(req), false)));
+						}
+						case HIDDEN -> l.get("admin_user_state_hidden");
+						case SELF_DEACTIVATED -> null;
+					};
+					if(a.extra().has("message")){
+						statusStr+="<br/>"+l.get("admin_user_ban_message")+": "+escapeHTML(a.extra().get("message").getAsString());
+					}
+					yield statusStr;
+				}
+			});
+		}).toList();
+
+		RenderedTemplateResponse model=new RenderedTemplateResponse("report", req);
+		model.pageTitle(lang(req).get("admin_report_title_X", Map.of("id", id)));
+		model.with("report", report);
+		model.with("users", users).with("groups", groups);
+		model.with("posts", posts).with("messages", messages);
+		model.with("canDeleteContent", (!posts.isEmpty() || !messages.isEmpty()) && target!=null);
+		model.with("actions", actionViewModels);
+		model.with("content", contentForTemplate);
+		model.with("isLocalTarget", target!=null && StringUtils.isEmpty(target.domain));
+		model.with("toolbarTitle", l.get("menu_reports"));
+		return model;
+	}
+
+	public static Object reportMarkResolved(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id);
+		if(report.state!=ViolationReport.State.OPEN)
+			throw new BadRequestException();
+		ctx.getModerationController().rejectViolationReport(report, self.user);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object reportMarkUnresolved(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id);
+		if(report.state==ViolationReport.State.OPEN)
+			throw new BadRequestException();
+		ctx.getModerationController().markViolationReportUnresolved(report, self.user);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object reportAddComment(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "text");
+		int id=safeParseInt(req.params(":id"));
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id);
+		String text=req.queryParams("text");
+		ctx.getModerationController().addViolationReportComment(report, self.user, text);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).setContent("commentText", "").refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
 	public static Object reportAction(Request req, Response resp, Account self, ApplicationContext ctx){
-		ViolationReport report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.params(":id")));
+		/*ViolationReport report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.params(":id")));
 		if(report.actionTime!=null)
 			throw new BadRequestException("already resolved");
 		if(req.queryParams("resolve")!=null){
@@ -582,12 +704,12 @@ public class SettingsAdminRoutes{
 			}else{
 				throw new BadRequestException();
 			}
-		}
+		}*/
 		return "";
 	}
 
 	public static Object reportAddCW(Request req, Response resp, Account self, ApplicationContext ctx){
-		ViolationReport report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.params(":id")));
+		/*ViolationReport report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.params(":id")));
 		if(report.actionTime!=null)
 			throw new BadRequestException("already resolved");
 		requireQueryParams(req, "cw");
@@ -603,7 +725,7 @@ public class SettingsAdminRoutes{
 		ctx.getModerationController().setViolationReportResolved(report, self.user);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
-		resp.redirect(back(req));
+		resp.redirect(back(req));*/
 
 		return "";
 	}
@@ -958,15 +1080,24 @@ public class SettingsAdminRoutes{
 	}
 
 	public static Object banUserForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		ViolationReport report;
+		if(req.queryParams("report")!=null){
+			report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.queryParams("report")));
+		}else{
+			report=null;
+		}
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		Lang l=lang(req);
-		Object form=wrapForm(req, resp, "admin_users_ban_form", "/users/"+user.id+"/ban", l.get("admin_ban_user_title"),
+		String formAction="/users/"+user.id+"/ban";
+		if(report!=null)
+			formAction+="?report="+report.id;
+		Object form=wrapForm(req, resp, "admin_users_ban_form", formAction, l.get("admin_ban_user_title"),
 				"save", "banUser", List.of("status", "message", /*"duration",*/ "forcePasswordChange"), s->switch(s){
 					case "status" -> user.banStatus;
 					case "message" -> user.banInfo!=null ? user.banInfo.message() : null;
 					case "forcePasswordChange" -> user.banInfo!=null && user.banInfo.requirePasswordChange();
 					default -> throw new IllegalStateException("Unexpected value: " + s);
-				}, null, Map.of("user", user));
+				}, null, Map.of("user", user, "hideNone", report!=null));
 		if(user.domain==null && form instanceof WebDeltaResponse wdr){
 			wdr.runScript("""
 					function userBanForm_updateFieldVisibility(){
@@ -989,7 +1120,9 @@ public class SettingsAdminRoutes{
 						}
 					}
 					for(var i=0;i<4;i++){
-						ge("status"+i).addEventListener("change", function(){userBanForm_updateFieldVisibility();}, false);
+						var el=ge("status"+i);
+						if(!el) continue;
+						el.addEventListener("change", function(){userBanForm_updateFieldVisibility();}, false);
 					}
 					userBanForm_updateFieldVisibility();""");
 		}
@@ -997,6 +1130,12 @@ public class SettingsAdminRoutes{
 	}
 
 	public static Object banUser(Request req, Response resp, Account self, ApplicationContext ctx){
+		ViolationReport report;
+		if(req.queryParams("report")!=null){
+			report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.queryParams("report")));
+		}else{
+			report=null;
+		}
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		UserBanStatus status=enumValue(req.queryParams("status"), UserBanStatus.class);
 		UserBanInfo info;
@@ -1011,11 +1150,16 @@ public class SettingsAdminRoutes{
 				expiresAt=Instant.now().plus(safeParseInt(req.queryParams("duration")), ChronoUnit.HOURS);
 				forcePasswordChange="on".equals(req.queryParams("forcePasswordChange"));
 			}
-			info=new UserBanInfo(Instant.now(), expiresAt, message, forcePasswordChange, self.user.id, 0);
+			info=new UserBanInfo(Instant.now(), expiresAt, message, forcePasswordChange, self.user.id, report==null ? 0 : report.id);
 		}else{
+			if(report!=null)
+				throw new BadRequestException();
 			info=null;
 		}
 		ctx.getModerationController().setUserBanStatus(self.user, user, user instanceof ForeignUser ? null : ctx.getUsersController().getAccountForUser(user), status, info);
+		if(report!=null){
+			ctx.getModerationController().resolveViolationReport(report, self.user, status, info);
+		}
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));

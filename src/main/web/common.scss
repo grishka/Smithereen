@@ -228,7 +228,7 @@ table{
 	}
 }
 
-a, a:link, a:visited, .link{
+a, a:link, /*a:visited,*/ .link{
 	color: $normalLink;
 	text-decoration: none;
 	cursor: pointer;
@@ -887,3 +887,47 @@ small{
 .disabled{
 	pointer-events: none;
 }
+
+.accent{
+	color: $normalLink;
+}
+
+.friendListLabel{
+	margin: 3px 0px;
+	padding: 2px 4px;
+	line-height: 175%;
+	white-space: nowrap;
+	.l0{
+		background-color: #F5E9E2;
+		color: #8B4C23;
+	}
+	.l1{
+		background-color: #FAEAD8;
+		color: #764F14;
+	}
+	.l2{
+		background-color: #FAF3D8;
+		color: #817945;
+	}
+	.l3{
+		background-color: #E8F2DC;
+		color: #37702A;
+	}
+	.l4{
+		background-color: #E0ECEA;
+		color: #4C7171;
+	}
+	.l5{
+		background-color: #E4EBF1;
+		color: #0B5588;
+	}
+	.l6{
+		background-color: #E4E7F2;
+		color: #2F54AA;
+	}
+	.l7{
+		background-color: #EDE5F0;
+		color: #80478F;
+	}
+}
+

@@ -43,6 +43,16 @@
       "locale": "de",
       "name": "German",
       "fallback": "en"
+    },
+    {
+      "locale": "nl",
+      "name": "Dutch",
+      "fallback": "en"
+    },
+    {
+      "locale": "fr",
+      "name": "French",
+      "fallback": "en"
     }
   ]
 }

@@ -837,6 +837,14 @@ function autoSizeTextArea(el:HTMLTextAreaElement){
 	updateHeight();
 }
 
+function addSendOnCtrlEnter(el:(HTMLTextAreaElement|HTMLInputElement)){
+	el.addEventListener("keydown", (ev:KeyboardEvent)=>{
+		if(ev.keyCode==13 && (isApple ? ev.metaKey : ev.ctrlKey)){
+			(el.form.querySelector("input[type=submit]") as HTMLElement).click();
+		}
+	});
+}
+
 function loadOlderComments(id:number){
 	var btn=ge("loadPrevBtn"+id);
 	var loader=ge("prevLoader"+id);

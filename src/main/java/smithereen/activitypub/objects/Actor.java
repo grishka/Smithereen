@@ -341,7 +341,7 @@ public abstract class Actor extends ActivityPubObject{
 	}
 
 	public int getOwnerID(){
-		return 0;
+		throw new UnsupportedOperationException();
 	}
 
 	public static class EndpointsStorageWrapper{

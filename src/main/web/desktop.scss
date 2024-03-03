@@ -2510,6 +2510,12 @@ label.pretendLink{
 		margin-bottom: 0;
 		border-bottom: none;
 	}
+	p:first-child{
+		margin-top: 0;
+	}
+	p:last-child{
+		margin-bottom: 0;
+	}
 }
 
 .adminInfoGrid{
@@ -3054,5 +3060,27 @@ h2, h3, h4{
 	.itemTitle{
 		text-align: right;
 		color: $grayText;
+	}
+}
+
+a.clickableListItem{
+	border-bottom: solid 1px $wallPostSeparator;
+	padding: 10px;
+	color: $text;
+	&:hover{
+		text-decoration: none;
+		background-color: color($blockBackground a(30%));
+	}
+	&:last-child{
+		border-bottom: none;
+	}
+}
+
+.aBunchOfButtons{
+	display: flex;
+	flex-wrap: wrap;
+	margin-bottom: -5px;
+	>*{
+		margin: 0 5px 5px 0;
 	}
 }

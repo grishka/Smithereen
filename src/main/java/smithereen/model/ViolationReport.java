@@ -1,54 +1,66 @@
 package smithereen.model;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import smithereen.storage.DatabaseUtils;
-import smithereen.util.XTEA;
+import spark.utils.StringUtils;
 
 public class ViolationReport{
 
 	public int id;
 	public int reporterID;
-	public TargetType targetType;
-	public ContentType contentType;
 	public int targetID;
-	public long contentID;
 	public String comment;
 	public int moderatorID;
 	public Instant time;
-	public Instant actionTime;
 	public String serverDomain;
+	public State state;
+	public List<ReportableContentObject> content=List.of();
 
 	public static ViolationReport fromResultSet(ResultSet res) throws SQLException{
 		ViolationReport r=new ViolationReport();
 		r.id=res.getInt("id");
 		r.reporterID=res.getInt("reporter_id");
-		r.targetType=TargetType.values()[res.getInt("target_type")];
 		r.targetID=res.getInt("target_id");
-		int contentType=res.getInt("content_type");
-		if(!res.wasNull()){
-			r.contentType=ContentType.values()[contentType];
-			r.contentID=res.getLong("content_id");
-			if(r.contentType==ContentType.MESSAGE)
-				r.contentID=XTEA.obfuscateObjectID(r.contentID, ObfuscatedObjectIDType.MAIL_MESSAGE);
-		}
 		r.comment=res.getString("comment");
 		r.moderatorID=res.getInt("moderator_id");
 		r.time=DatabaseUtils.getInstant(res, "time");
-		r.actionTime=DatabaseUtils.getInstant(res, "action_time");
 		r.serverDomain=res.getString("server_domain");
+		r.state=State.values()[res.getInt("state")];
+		String content=res.getString("content");
+		if(StringUtils.isNotEmpty(content)){
+			JsonArray ja=JsonParser.parseString(content).getAsJsonArray();
+			r.content=new ArrayList<>();
+			for(JsonElement e:ja){
+				r.content.add(deserializeContentObject(e.getAsJsonObject()));
+			}
+		}
 		return r;
 	}
 
-	public enum ContentType{
-		POST,
-		MESSAGE
+	private static ReportableContentObject deserializeContentObject(JsonObject jo){
+		String type=jo.get("type").getAsString();
+		ReportableContentObject obj=switch(type){
+			case "post" -> new Post();
+			case "message" -> new MailMessage();
+			default -> throw new IllegalStateException("Unexpected value: " + type);
+		};
+		obj.fillFromReport(jo);
+		return obj;
 	}
 
-	public enum TargetType{
-		USER,
-		GROUP
+	public enum State{
+		OPEN,
+		CLOSED_REJECTED,
+		CLOSED_ACTION_TAKEN
 	}
 }

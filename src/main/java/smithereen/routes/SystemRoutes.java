@@ -58,6 +58,7 @@ import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.ReportableContentObject;
 import smithereen.model.SearchResult;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
@@ -697,13 +698,13 @@ public class SystemRoutes{
 		boolean forward="on".equals(req.queryParams("forward"));
 
 		Actor target;
-		Object content;
+		List<ReportableContentObject> content;
 
 		switch(type){
 			case "post" -> {
 				int id=safeParseInt(rawID);
 				Post post=ctx.getWallController().getPostOrThrow(id);
-				content=post;
+				content=List.of(post);
 				target=ctx.getUsersController().getUserOrThrow(post.authorID);
 			}
 			case "user" -> {
@@ -720,7 +721,7 @@ public class SystemRoutes{
 				long id=decodeLong(rawID);
 				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 				target=ctx.getUsersController().getUserOrThrow(msg.senderID);
-				content=msg;
+				content=List.of(msg);
 			}
 			default -> throw new BadRequestException("invalid type");
 		}
