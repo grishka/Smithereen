@@ -276,6 +276,10 @@ public class Utils{
 	}
 
 	public static Locale localeForRequest(Request req){
+		String langParam=req.queryParams("lang");
+		if(StringUtils.isNotEmpty(langParam)){
+			return Locale.forLanguageTag(langParam);
+		}
 		SessionInfo info=sessionInfo(req);
 		if(info!=null){
 			if(info.account!=null && info.account.prefs.locale!=null)
