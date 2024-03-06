@@ -38,6 +38,7 @@ import smithereen.model.User;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.model.UserBanStatus;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
 import smithereen.storage.PostStorage;
@@ -216,6 +217,11 @@ public class ObjectLinkResolver{
 								Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
 								ensureObjectIsInCollection(owner, owner.getWallURL(), post.getActivityPubID());
 							}
+						}
+						if(o instanceof Post post){
+							User author=context.getUsersController().getUserOrThrow(post.authorID);
+							if(author.banStatus==UserBanStatus.SUSPENDED)
+								throw new ObjectNotFoundException("Post author is suspended on this server");
 						}
 						if(allowStorage)
 							storeOrUpdateRemoteObject(o);
