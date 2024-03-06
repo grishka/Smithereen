@@ -231,5 +231,6 @@
   "report_state_rejected": "Отклонена",
   "report_log_rejected": "<a id=\"adminUser\">{name}</a> {gender, select, female {отклонила} other {отклонил}} эту жалобу",
   "report_log_reopened": "<a id=\"adminUser\">{name}</a> {gender, select, female {пометила} other {пометил}} эту жалобу нерешённой",
-  "report_log_commented": "<a id=\"adminUser\">{name}</a> {gender, select, female {оставила} other {оставил}} комментарий:"
+  "report_log_commented": "<a id=\"adminUser\">{name}</a> {gender, select, female {оставила} other {оставил}} комментарий:",
+  "report_content_created_at": "Создано"
 }

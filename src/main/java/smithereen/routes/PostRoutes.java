@@ -326,7 +326,7 @@ public class PostRoutes{
 			int reportID=safeParseInt(req.queryParams("report"));
 			if(reportID!=0){
 				try{
-					ViolationReport report=ctx.getModerationController().getViolationReportByID(reportID);
+					ViolationReport report=ctx.getModerationController().getViolationReportByID(reportID, false);
 					for(ReportableContentObject c:report.content){
 						if(c instanceof Post p && p.id==postID){
 							canOverridePrivacy=true;

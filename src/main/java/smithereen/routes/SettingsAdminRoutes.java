@@ -14,16 +14,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
-import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.Account;
 import smithereen.model.AuditLogEntry;
@@ -31,7 +28,6 @@ import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
-import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -61,7 +57,6 @@ import smithereen.storage.ModerationStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
-import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -539,7 +534,7 @@ public class SettingsAdminRoutes{
 
 	public static Object viewReport(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=safeParseInt(req.params(":id"));
-		ViolationReport report=ctx.getModerationController().getViolationReportByID(id);
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, false);
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		HashSet<Integer> needPosts=new HashSet<>();
 		HashSet<Long> needMessages=new HashSet<>();
@@ -637,7 +632,7 @@ public class SettingsAdminRoutes{
 
 	public static Object reportMarkResolved(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=safeParseInt(req.params(":id"));
-		ViolationReport report=ctx.getModerationController().getViolationReportByID(id);
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, false);
 		if(report.state!=ViolationReport.State.OPEN)
 			throw new BadRequestException();
 		ctx.getModerationController().rejectViolationReport(report, self.user);
@@ -649,7 +644,7 @@ public class SettingsAdminRoutes{
 
 	public static Object reportMarkUnresolved(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=safeParseInt(req.params(":id"));
-		ViolationReport report=ctx.getModerationController().getViolationReportByID(id);
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, false);
 		if(report.state==ViolationReport.State.OPEN)
 			throw new BadRequestException();
 		ctx.getModerationController().markViolationReportUnresolved(report, self.user);
@@ -662,7 +657,7 @@ public class SettingsAdminRoutes{
 	public static Object reportAddComment(Request req, Response resp, Account self, ApplicationContext ctx){
 		requireQueryParams(req, "text");
 		int id=safeParseInt(req.params(":id"));
-		ViolationReport report=ctx.getModerationController().getViolationReportByID(id);
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, false);
 		String text=req.queryParams("text");
 		ctx.getModerationController().addViolationReportComment(report, self.user, text);
 		if(isAjax(req))
@@ -671,63 +666,44 @@ public class SettingsAdminRoutes{
 		return "";
 	}
 
-	public static Object reportAction(Request req, Response resp, Account self, ApplicationContext ctx){
-		/*ViolationReport report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.params(":id")));
-		if(report.actionTime!=null)
-			throw new BadRequestException("already resolved");
-		if(req.queryParams("resolve")!=null){
-			ctx.getModerationController().setViolationReportResolved(report, self.user);
-			if(isAjax(req))
-				return new WebDeltaResponse(resp).refresh();
-			resp.redirect(back(req));
-		}else if(req.queryParams("deleteContent")!=null){
-			// TODO notify user
-			if(report.contentType==ViolationReport.ContentType.POST){
-				Post post=ctx.getWallController().getPostOrThrow((int)report.contentID);
-				ctx.getWallController().deletePostAsServerModerator(sessionInfo(req), post);
-			}else{
-				throw new BadRequestException();
-			}
-
-			ctx.getModerationController().setViolationReportResolved(report, self.user);
-			if(isAjax(req))
-				return new WebDeltaResponse(resp).refresh();
-			resp.redirect(back(req));
-		}else if(req.queryParams("addCW")!=null){
-			if(report.contentType==ViolationReport.ContentType.POST){
-				Post post=ctx.getWallController().getPostOrThrow((int)report.contentID);
-				if(post.hasContentWarning())
-					throw new BadRequestException();
-
-				Lang l=lang(req);
-				return wrapForm(req, resp, "admin_add_cw", "/settings/admin/reports/"+report.id+"/doAddCW", l.get("post_form_cw"), "save", "addCW", List.of(), null, null);
-			}else{
-				throw new BadRequestException();
-			}
-		}*/
-		return "";
-	}
-
-	public static Object reportAddCW(Request req, Response resp, Account self, ApplicationContext ctx){
-		/*ViolationReport report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.params(":id")));
-		if(report.actionTime!=null)
-			throw new BadRequestException("already resolved");
-		requireQueryParams(req, "cw");
-
-		// TODO notify user
-		if(report.contentType==ViolationReport.ContentType.POST){
-			Post post=ctx.getWallController().getPostOrThrow((int)report.contentID);
-			ctx.getWallController().setPostCWAsModerator(sessionInfo(req).permissions, post, req.queryParams("cw"));
-		}else{
+	public static Object reportShowContent(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, true);
+		int index=safeParseInt(req.params(":index"));
+		if(index<0 || index>=report.content.size())
 			throw new BadRequestException();
+		ReportableContentObject cobj=report.content.get(index);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("report_content", req);
+		Lang l=lang(req);
+		String title;
+		model.with("content", cobj);
+		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		switch(cobj){
+			case Post post -> {
+				title=l.get(post.getReplyLevel()>0 ? "admin_report_content_comment" : "admin_report_content_post", Map.of("id", post.id));
+				model.with("contentType", "post");
+				needUsers.add(post.authorID);
+				if(post.ownerID>0)
+					needUsers.add(post.ownerID);
+				else
+					needGroups.add(-post.ownerID);
+			}
+			case MailMessage msg -> {
+				title=l.get("admin_report_content_message", Map.of("id", msg.id));
+				model.with("contentType", "message");
+				needUsers.addAll(msg.to);
+				if(msg.cc!=null)
+					needUsers.addAll(msg.cc);
+				needUsers.add(msg.senderID);
+			}
 		}
-
-		ctx.getModerationController().setViolationReportResolved(report, self.user);
-		if(isAjax(req))
-			return new WebDeltaResponse(resp).refresh();
-		resp.redirect(back(req));*/
-
-		return "";
+		model.with("users", ctx.getUsersController().getUsers(needUsers));
+		model.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).box(title, model.renderBlock("content"), null, !isMobile(req));
+		}
+		model.pageTitle(title);
+		return model;
 	}
 
 	public static Object roles(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
@@ -1082,7 +1058,7 @@ public class SettingsAdminRoutes{
 	public static Object banUserForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		ViolationReport report;
 		if(req.queryParams("report")!=null){
-			report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.queryParams("report")));
+			report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.queryParams("report")), false);
 		}else{
 			report=null;
 		}
@@ -1132,7 +1108,7 @@ public class SettingsAdminRoutes{
 	public static Object banUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		ViolationReport report;
 		if(req.queryParams("report")!=null){
-			report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.queryParams("report")));
+			report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.queryParams("report")), false);
 		}else{
 			report=null;
 		}

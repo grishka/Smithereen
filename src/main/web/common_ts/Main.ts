@@ -8,9 +8,9 @@ declare var mobile:boolean;
 var isApple:boolean=navigator.platform.indexOf("Mac")==0 || navigator.platform=="iPhone" || navigator.platform=="iPad" || navigator.platform=="iPod touch";
 var postForms:{[key:string]:PostForm}={};
 
-window.onerror=function(message, source, lineno, colno, error){
-	alert("JS error:\n\n"+message);
-};
+// window.onerror=function(message, source, lineno, colno, error){
+// 	alert("JS error:\n\n"+message);
+// };
 
 var timeZone:String;
 if(window["Intl"]){

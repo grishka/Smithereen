@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -28,7 +30,9 @@ import smithereen.LruCache;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
 import smithereen.Utils;
+import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -40,8 +44,10 @@ import smithereen.model.AuditLogEntry;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
+import smithereen.model.MailMessage;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
+import smithereen.model.Post;
 import smithereen.model.ReportableContentObject;
 import smithereen.model.Server;
 import smithereen.model.User;
@@ -51,6 +57,7 @@ import smithereen.model.UserPermissions;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.model.ViolationReportAction;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.UserRoleViewModel;
@@ -134,11 +141,36 @@ public class ModerationController{
 		}
 	}
 
-	public ViolationReport getViolationReportByID(int id){
+	public ViolationReport getViolationReportByID(int id, boolean needFiles){
 		try{
 			ViolationReport report=ModerationStorage.getViolationReportByID(id);
 			if(report==null)
 				throw new ObjectNotFoundException();
+			if(needFiles && !report.content.isEmpty()){
+				HashSet<LocalImage> localImages=new HashSet<>();
+				for(ReportableContentObject rco:report.content){
+					List<ActivityPubObject> attachments=switch(rco){
+						case Post p -> p.getAttachments();
+						case MailMessage m -> m.getAttachments();
+					};
+					if(attachments==null)
+						continue;
+					for(ActivityPubObject att:attachments){
+						if(att instanceof LocalImage li){
+							localImages.add(li);
+						}
+					}
+				}
+				Set<Long> fileIDs=localImages.stream().map(li->li.fileID).collect(Collectors.toSet());
+				if(!fileIDs.isEmpty()){
+					Map<Long, MediaFileRecord> files=MediaStorage.getMediaFileRecords(fileIDs);
+					for(LocalImage li:localImages){
+						MediaFileRecord mfr=files.get(li.fileID);
+						if(mfr!=null)
+							li.fillIn(mfr);
+					}
+				}
+			}
 			return report;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

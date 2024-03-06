@@ -231,5 +231,6 @@
   "report_state_rejected": "Rejected",
   "report_log_rejected": "<a id=\"adminUser\">{name}</a> rejected this report",
   "report_log_reopened": "<a id=\"adminUser\">{name}</a> marked this report unresolved",
-  "report_log_commented": "<a id=\"adminUser\">{name}</a> left a comment:"
+  "report_log_commented": "<a id=\"adminUser\">{name}</a> left a comment:",
+  "report_content_created_at": "Created"
 }
