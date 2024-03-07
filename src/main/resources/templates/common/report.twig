@@ -4,6 +4,13 @@
 {% include "reports_tabbar" with {'tab': 'view'} %}
 <div class="singleColumn adminInfoGrid borderBottom" id="report{{ report.id }}">
 	<div class="spanAll">
+		{% if report.state=='OPEN' %}
+		<div class="flR friendListLabel l0">{{ L('report_state_open') }}</div>
+		{% elseif report.state=='CLOSED_REJECTED' %}
+		<div class="flR friendListLabel l6">{{ L('report_state_rejected') }}</div>
+		{% elseif report.state=='CLOSED_ACTION_TAKEN' %}
+		<div class="flR friendListLabel l3">{{ L('report_state_resolved') }}</div>
+		{% endif %}
 		{% if report.targetID>0 %}
 		{% set user=users[report.targetID] %}
 		<div class="flL smallMarginRight"><a href="{{ profileURL(report.targetID) }}">{{ user | pictureForAvatar('s') }}</a></div>

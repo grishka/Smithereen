@@ -12,6 +12,13 @@
 {% for report in items %}
 	<a href="/settings/admin/reports/{{ report.id }}" class="clickableListItem adminInfoGrid" id="report{{ report.id }}">
 		<div class="spanAll">
+			{% if report.state=='OPEN' %}
+			<div class="flR friendListLabel l0">{{ L('report_state_open') }}</div>
+			{% elseif report.state=='CLOSED_REJECTED' %}
+			<div class="flR friendListLabel l6">{{ L('report_state_rejected') }}</div>
+			{% elseif report.state=='CLOSED_ACTION_TAKEN' %}
+			<div class="flR friendListLabel l3">{{ L('report_state_resolved') }}</div>
+			{% endif %}
 			{% if report.targetID>0 %}
 			{% set user=users[report.targetID] %}
 			<div class="flL smallMarginRight">{{ user | pictureForAvatar('s') }}</div>
