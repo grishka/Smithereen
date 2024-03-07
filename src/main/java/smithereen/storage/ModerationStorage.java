@@ -67,6 +67,48 @@ public class ModerationStorage{
 		return new PaginatedList<>(reports, total, offset, count);
 	}
 
+	public static PaginatedList<ViolationReport> getViolationReportsOfActor(int actorID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("reports")
+					.count()
+					.where("target_id=?", actorID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<ViolationReport> reports=new SQLQueryBuilder(conn)
+					.selectFrom("reports")
+					.allColumns()
+					.where("target_id=?", actorID)
+					.limit(count, offset)
+					.orderBy("id DESC")
+					.executeAsStream(ViolationReport::fromResultSet)
+					.toList();
+			return new PaginatedList<>(reports, total, offset, count);
+		}
+	}
+
+	public static PaginatedList<ViolationReport> getViolationReportsByUser(int userID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("reports")
+					.count()
+					.where("reporter_id=?", userID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<ViolationReport> reports=new SQLQueryBuilder(conn)
+					.selectFrom("reports")
+					.allColumns()
+					.where("reporter_id=?", userID)
+					.limit(count, offset)
+					.orderBy("id DESC")
+					.executeAsStream(ViolationReport::fromResultSet)
+					.toList();
+			return new PaginatedList<>(reports, total, offset, count);
+		}
+	}
+
 	public static ViolationReport getViolationReportByID(int id) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("reports")

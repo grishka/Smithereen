@@ -3088,3 +3088,28 @@ a.clickableListItem{
 		margin: 0 5px 5px 0;
 	}
 }
+
+.secondaryTabBar{
+	background: $gray;
+	border-bottom: solid 1px #dde6c7;
+	padding: 13px 10px 12px;
+	display: flex;
+	flex-wrap: wrap;
+	a{
+		padding: 3px 8px 4px;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		overflow: hidden;
+		font-weight: bold;
+		border-radius: 2px;
+		margin-right: 10px;
+		&:hover{
+			text-decoration: none;
+			background: $blockBackground;
+		}
+		&.selected{
+			background: $tabBackground;
+			color: #fff;
+		}
+	}
+}

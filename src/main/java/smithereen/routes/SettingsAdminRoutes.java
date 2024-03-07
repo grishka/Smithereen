@@ -1214,4 +1214,37 @@ public class SettingsAdminRoutes{
 		resp.redirect("/settings/admin/users");
 		return "";
 	}
+
+	public static Object reportsOfUser(Request req, Response resp, Account self, ApplicationContext ctx){
+		return userReports(req, resp, self, ctx, true);
+	}
+
+	public static Object reportsByUser(Request req, Response resp, Account self, ApplicationContext ctx){
+		return userReports(req, resp, self, ctx, false);
+	}
+
+	private static Object userReports(Request req, Response resp, Account self, ApplicationContext ctx, boolean ofUser){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		RenderedTemplateResponse model=new RenderedTemplateResponse("report_list", req);
+		model.pageTitle(lang(req).get("menu_reports"));
+		PaginatedList<ViolationReport> reports;
+		if(ofUser){
+			model.with("tab", "reportsOf");
+			reports=ctx.getModerationController().getViolationReportsOfActor(user, offset(req), 50);
+		}else{
+			model.with("tab", "reportsBy");
+			reports=ctx.getModerationController().getViolationReportsByUser(user, offset(req), 50);
+		}
+		model.paginate(reports);
+
+		Set<Integer> userIDs=reports.list.stream().filter(r->r.targetID>0).map(r->r.targetID).collect(Collectors.toSet());
+		userIDs.addAll(reports.list.stream().filter(r->r.reporterID!=0).map(r->r.reporterID).collect(Collectors.toSet()));
+		Set<Integer> groupIDs=reports.list.stream().filter(r->r.targetID<0).map(r->-r.targetID).collect(Collectors.toSet());
+
+		model.with("users", ctx.getUsersController().getUsers(userIDs))
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(groupIDs))
+				.with("filteredByUser", user);
+
+		return model;
+	}
 }

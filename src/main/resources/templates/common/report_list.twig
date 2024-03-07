@@ -1,7 +1,11 @@
 {# @pebvariable name="items" type="smithereen.model.ViolationReport[]" #}
 {% extends "page" %}
 {% block content %}
+{% if filteredByUser is not null %}
+{% include "reports_user_tabbar" with {'user': filteredByUser} %}
+{% else %}
 {% include "reports_tabbar" %}
+{% endif %}
 {% if not isMobile %}
 <div class="summaryWrap">
 	<div class="summary">{{ L('summary_X_reports', {'count':  totalItems}) }}</div>

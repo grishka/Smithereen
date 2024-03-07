@@ -237,5 +237,7 @@
   "report_delete_content_title": "Удаление контента",
   "report_delete_content_checkbox": "Также удалить контент, прикреплённый к этой жалобе",
   "report_delete_content_checkbox_explanation": "Это действие необратимо",
-  "report_log_deleted_content": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} контент, прикреплённый к жалобе"
+  "report_log_deleted_content": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} контент, прикреплённый к жалобе",
+  "reports_of_user": "На {name, inflect, accusative}",
+  "reports_by_user": "Созданные {name, inflect, instrumental}"
 }

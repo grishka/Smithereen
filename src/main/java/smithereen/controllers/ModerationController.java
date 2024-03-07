@@ -145,6 +145,22 @@ public class ModerationController{
 		}
 	}
 
+	public PaginatedList<ViolationReport> getViolationReportsOfActor(Actor actor, int offset, int count){
+		try{
+			return ModerationStorage.getViolationReportsOfActor(actor.getLocalID(), offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<ViolationReport> getViolationReportsByUser(User user, int offset, int count){
+		try{
+			return ModerationStorage.getViolationReportsByUser(user.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public ViolationReport getViolationReportByID(int id, boolean needFiles){
 		try{
 			ViolationReport report=ModerationStorage.getViolationReportByID(id);

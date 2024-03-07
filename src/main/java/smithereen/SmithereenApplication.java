@@ -76,7 +76,6 @@ import smithereen.util.TopLevelDomainList;
 import spark.Filter;
 import spark.Request;
 import spark.Response;
-import spark.Session;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.*;
@@ -427,6 +426,8 @@ public class SmithereenApplication{
 			postRequiringPermissionWithCSRF("/ban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUser);
 			getRequiringPermission("/deleteImmediatelyForm", UserRole.Permission.DELETE_USERS_IMMEDIATE, SettingsAdminRoutes::deleteAccountImmediatelyForm);
 			postRequiringPermissionWithCSRF("/deleteImmediately", UserRole.Permission.DELETE_USERS_IMMEDIATE, SettingsAdminRoutes::deleteAccountImmediately);
+			getRequiringPermission("/reports", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportsOfUser);
+			getRequiringPermission("/reports/authored", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportsByUser);
 		});
 
 		path("/groups/:id", ()->{

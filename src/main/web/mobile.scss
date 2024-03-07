@@ -1752,3 +1752,23 @@ input.searchField{
 		margin: 0 8px 8px 0;
 	}
 }
+
+.secondaryTabBar{
+	background: $gray;
+	border-bottom: solid 1px #dde6c7;
+	padding: 16px;
+	display: flex;
+	flex-wrap: wrap;
+	a{
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		overflow: hidden;
+		margin-right: 8px;
+		padding: 4px 8px;
+		border-radius: 3px;
+		&.selected{
+			background: $tabBackground;
+			color: #fff;
+		}
+	}
+}
