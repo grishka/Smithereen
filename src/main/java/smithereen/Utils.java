@@ -1231,6 +1231,16 @@ public class Utils{
 		return "";
 	}
 
+	public static Object wrapConfirmation(Request req, Response resp, String title, String message, String action){
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).confirmBox(title, message, action);
+		}
+		req.attribute("noHistory", true);
+		Lang l=lang(req);
+		String back=back(req);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", message).with("formAction", action).with("back", back).pageTitle(title);
+	}
+
 	public interface MentionCallback{
 		User resolveMention(String username, String domain);
 		User resolveMention(String uri);

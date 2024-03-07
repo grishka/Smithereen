@@ -380,9 +380,9 @@ function setGlobalLoading(loading:boolean):void{
 	document.body.style.cursor=loading ? "progress" : "";
 }
 
-function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}):boolean{
+function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}, useLang:boolean=true):boolean{
 	var box:ConfirmBox;
-	box=new ConfirmBox(lang(titleKey), lang(msgKey), function(){
+	box=new ConfirmBox(useLang ? lang(titleKey) : titleKey, useLang ? lang(msgKey) : msgKey, function(){
 		var btn=box.getButton(0);
 		btn.setAttribute("disabled", "");
 		box.getButton(1).setAttribute("disabled", "");
@@ -569,6 +569,9 @@ function applyServerCommand(cmd:any){
 			break;
 		case "formBox":
 			new FormBox(cmd.t, cmd.m, cmd.b, cmd.fa).show();
+			break;
+		case "confirmBox":
+			ajaxConfirm(cmd.t, cmd.m, cmd.fa, {}, false);
 			break;
 		case "box":
 		{

@@ -232,5 +232,10 @@
   "report_log_rejected": "<a id=\"adminUser\">{name}</a> {gender, select, female {отклонила} other {отклонил}} эту жалобу",
   "report_log_reopened": "<a id=\"adminUser\">{name}</a> {gender, select, female {пометила} other {пометил}} эту жалобу нерешённой",
   "report_log_commented": "<a id=\"adminUser\">{name}</a> {gender, select, female {оставила} other {оставил}} комментарий:",
-  "report_content_created_at": "Создано"
+  "report_content_created_at": "Создано",
+  "report_confirm_delete_content": "Вы действительно хотите удалить контент, прикреплённый к этой жалобе? Это действие необратимо.",
+  "report_delete_content_title": "Удаление контента",
+  "report_delete_content_checkbox": "Также удалить контент, прикреплённый к этой жалобе",
+  "report_delete_content_checkbox_explanation": "Это действие необратимо",
+  "report_log_deleted_content": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} контент, прикреплённый к жалобе"
 }

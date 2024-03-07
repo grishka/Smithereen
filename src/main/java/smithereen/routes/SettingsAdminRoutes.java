@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -22,6 +23,7 @@ import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
 import smithereen.activitypub.objects.Actor;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.FederationRestriction;
@@ -591,6 +593,7 @@ public class SettingsAdminRoutes{
 					}
 					yield l.get("admin_audit_log_changed_user_restrictions", langArgs);
 				}
+				case DELETE_CONTENT -> l.get("report_log_deleted_content", langArgs);
 			};
 			return new ViolationReportActionViewModel(a, substituteLinks(mainText, links), switch(a.actionType()){
 				default -> null;
@@ -704,6 +707,23 @@ public class SettingsAdminRoutes{
 		}
 		model.pageTitle(title);
 		return model;
+	}
+
+	public static Object reportConfirmDeleteContent(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		ctx.getModerationController().getViolationReportByID(id, false);
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("report_delete_content_title"), l.get("report_confirm_delete_content"), "/settings/admin/reports/"+id+"/deleteContent");
+	}
+
+	public static Object reportDeleteContent(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, true);
+		ctx.getModerationController().deleteViolationReportContent(report, info, true);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
 	}
 
 	public static Object roles(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
@@ -1057,23 +1077,29 @@ public class SettingsAdminRoutes{
 
 	public static Object banUserForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		ViolationReport report;
+		boolean deleteReportContent;
 		if(req.queryParams("report")!=null){
 			report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.queryParams("report")), false);
+			deleteReportContent=req.queryParams("deleteContent")!=null;
 		}else{
 			report=null;
+			deleteReportContent=false;
 		}
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		Lang l=lang(req);
 		String formAction="/users/"+user.id+"/ban";
-		if(report!=null)
+		if(report!=null){
 			formAction+="?report="+report.id;
+			if(deleteReportContent)
+				formAction+="&deleteContent";
+		}
 		Object form=wrapForm(req, resp, "admin_users_ban_form", formAction, l.get("admin_ban_user_title"),
 				"save", "banUser", List.of("status", "message", /*"duration",*/ "forcePasswordChange"), s->switch(s){
 					case "status" -> user.banStatus;
 					case "message" -> user.banInfo!=null ? user.banInfo.message() : null;
 					case "forcePasswordChange" -> user.banInfo!=null && user.banInfo.requirePasswordChange();
 					default -> throw new IllegalStateException("Unexpected value: " + s);
-				}, null, Map.of("user", user, "hideNone", report!=null));
+				}, null, Map.of("user", user, "hideNone", report!=null, "deleteReportContent", deleteReportContent));
 		if(user.domain==null && form instanceof WebDeltaResponse wdr){
 			wdr.runScript("""
 					function userBanForm_updateFieldVisibility(){
@@ -1107,10 +1133,18 @@ public class SettingsAdminRoutes{
 
 	public static Object banUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		ViolationReport report;
+		boolean deleteReportContent;
 		if(req.queryParams("report")!=null){
 			report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.queryParams("report")), false);
+			deleteReportContent=req.queryParams("deleteContent")!=null;
+			if(deleteReportContent){
+				if(!"on".equals(req.queryParams("confirmReportContentDeletion"))){
+					throw new UserErrorException("Report content deletion not confirmed");
+				}
+			}
 		}else{
 			report=null;
+			deleteReportContent=false;
 		}
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		UserBanStatus status=enumValue(req.queryParams("status"), UserBanStatus.class);
@@ -1134,6 +1168,9 @@ public class SettingsAdminRoutes{
 		}
 		ctx.getModerationController().setUserBanStatus(self.user, user, user instanceof ForeignUser ? null : ctx.getUsersController().getAccountForUser(user), status, info);
 		if(report!=null){
+			if(deleteReportContent){
+				ctx.getModerationController().deleteViolationReportContent(report, Objects.requireNonNull(sessionInfo(req)), false);
+			}
 			ctx.getModerationController().resolveViolationReport(report, self.user, status, info);
 		}
 		if(isAjax(req))

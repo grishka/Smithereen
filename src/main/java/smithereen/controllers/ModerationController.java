@@ -37,6 +37,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.AdminNotifications;
@@ -45,11 +46,13 @@ import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.MailMessage;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.ReportableContentObject;
 import smithereen.model.Server;
+import smithereen.model.SessionInfo;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
@@ -67,6 +70,7 @@ import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.util.InetAddressRange;
 import smithereen.util.JsonArrayBuilder;
+import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
 public class ModerationController{
@@ -443,6 +447,8 @@ public class ModerationController{
 
 	public void setUserBanStatus(User self, User target, Account targetAccount, UserBanStatus status, UserBanInfo info){
 		try{
+			if(self.id==target.id && status!=UserBanStatus.NONE)
+				throw new UserErrorException("You can't ban yourself");
 			UserStorage.setUserBanStatus(target, targetAccount, status, status!=UserBanStatus.NONE ? Utils.gson.toJson(info) : null);
 			HashMap<String, Object> auditLogArgs=new HashMap<>();
 			auditLogArgs.put("status", status);
@@ -534,6 +540,48 @@ public class ModerationController{
 			}
 			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.RESOLVE_WITH_ACTION, null, Utils.gson.toJsonTree(extra).getAsJsonObject());
 			updateReportsCounter();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteViolationReportContent(ViolationReport report, SessionInfo session, boolean markResolved){
+		if(report.content==null)
+			return;
+		if(report.state!=ViolationReport.State.OPEN)
+			throw new IllegalArgumentException("Report is not open");
+		try{
+			boolean actuallyDeletedAnything=false;
+			for(ReportableContentObject rco:report.content){
+				switch(rco){
+					case Post post -> {
+						try{
+							context.getWallController().getPostOrThrow(post.id);
+						}catch(ObjectNotFoundException x){
+							LOG.debug("Post {} already deleted", post.id);
+							continue;
+						}
+						context.getWallController().deletePostAsServerModerator(session, post);
+					}
+					case MailMessage msg -> {
+						if(context.getMailController().getMessagesAsModerator(Set.of(XTEA.obfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE))).isEmpty()){
+							LOG.debug("Message {} already deleted", msg.id);
+							continue;
+						}
+						User sender=context.getUsersController().getUserOrThrow(msg.senderID);
+						context.getMailController().actuallyDeleteMessage(sender, msg, true);
+					}
+				}
+				actuallyDeletedAnything=true;
+			}
+			if(actuallyDeletedAnything){
+				MediaStorage.deleteMediaFileReferences(report.id, MediaFileReferenceType.REPORT_OBJECT);
+				ModerationStorage.createViolationReportAction(report.id, session.account.user.id, ViolationReportAction.ActionType.DELETE_CONTENT, null, null);
+				if(markResolved){
+					ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_ACTION_TAKEN);
+					updateReportsCounter();
+				}
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

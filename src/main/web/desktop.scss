@@ -1427,12 +1427,16 @@ select{
 
 .radioButtonWrap{
 	line-height: 16px;
+	padding-left: 24px;
 	input{
 		vertical-align: top;
-		margin-right: 8px;
+		margin: 0 8px 0 -24px;
 	}
 	input, label{
 		cursor: pointer;
+	}
+	label{
+		display: block;
 	}
 	margin: 8px 0;
 	&.disabled{

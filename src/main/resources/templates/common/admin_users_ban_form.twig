@@ -26,4 +26,7 @@
 		{'value': 'HIDDEN', 'label': L('admin_user_hide'), 'explanation': L('admin_user_hide_explain'), 'selected': status=='HIDDEN'}
 	], {'required': true}) }}
 	{% endif %}
+	{% if deleteReportContent %}
+	{{ form.checkBox('confirmReportContentDeletion', '', L('report_delete_content_checkbox'), false, {'explanation': L('report_delete_content_checkbox_explanation'), 'required': true}) }}
+	{% endif %}
 {{ form.end() }}

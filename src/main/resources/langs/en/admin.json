@@ -232,5 +232,10 @@
   "report_log_rejected": "<a id=\"adminUser\">{name}</a> rejected this report",
   "report_log_reopened": "<a id=\"adminUser\">{name}</a> marked this report unresolved",
   "report_log_commented": "<a id=\"adminUser\">{name}</a> left a comment:",
-  "report_content_created_at": "Created"
+  "report_content_created_at": "Created",
+  "report_confirm_delete_content": "Are you sure you want to delete the content attached to this report? This action can not be undone.",
+  "report_delete_content_title": "Content deletion",
+  "report_delete_content_checkbox": "Also delete content attached to this report",
+  "report_delete_content_checkbox_explanation": "This action can not be undone",
+  "report_log_deleted_content": "<a id=\"adminUser\">{name}</a> deleted the content attached to this report"
 }

@@ -37,6 +37,11 @@ public class WebDeltaResponse{
 		return this;
 	}
 
+	public WebDeltaResponse confirmBox(@NotNull String title, @NotNull String msg, @NotNull String formAction){
+		commands.add(new ConfirmBoxCommand(title, msg, formAction));
+		return this;
+	}
+
 	public WebDeltaResponse box(@NotNull String title, @NotNull String content, @Nullable String id, boolean scrollable){
 		commands.add(new BoxCommand(title, content, id, scrollable, null));
 		return this;
@@ -186,6 +191,22 @@ public class WebDeltaResponse{
 			this.title=title;
 			this.message=message;
 			this.button=button;
+		}
+	}
+
+	private static class ConfirmBoxCommand extends Command{
+		@SerializedName("t")
+		public String title;
+		@SerializedName("m")
+		public String message;
+		@SerializedName("fa")
+		public String formAction;
+
+		public ConfirmBoxCommand(String title, String message, String formAction){
+			super("confirmBox");
+			this.title=title;
+			this.message=message;
+			this.formAction=formAction;
 		}
 	}
 
