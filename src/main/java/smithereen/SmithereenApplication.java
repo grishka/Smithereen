@@ -428,6 +428,10 @@ public class SmithereenApplication{
 			postRequiringPermissionWithCSRF("/deleteImmediately", UserRole.Permission.DELETE_USERS_IMMEDIATE, SettingsAdminRoutes::deleteAccountImmediately);
 			getRequiringPermission("/reports", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportsOfUser);
 			getRequiringPermission("/reports/authored", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportsByUser);
+			getRequiringPermission("/staffNotes", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNotes);
+			postRequiringPermissionWithCSRF("/addStaffNote", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteAdd);
+			getRequiringPermission("/staffNotes/:noteID/confirmDelete", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteConfirmDelete);
+			postRequiringPermissionWithCSRF("/staffNotes/:noteID/delete", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteDelete);
 		});
 
 		path("/groups/:id", ()->{

@@ -652,6 +652,21 @@ CREATE TABLE `user_roles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `user_staff_notes`
+--
+
+CREATE TABLE `user_staff_notes` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `target_id` int unsigned NOT NULL,
+  `author_id` int unsigned NOT NULL,
+  `text` text NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `target_id` (`target_id`),
+  CONSTRAINT `user_staff_notes_ibfk_1` FOREIGN KEY (`target_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `users`
 --
 
@@ -728,4 +743,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-03-03  5:28:12
+-- Dump completed on 2024-03-10 23:24:22

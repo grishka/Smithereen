@@ -239,5 +239,8 @@
   "report_delete_content_checkbox_explanation": "Это действие необратимо",
   "report_log_deleted_content": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} контент, прикреплённый к жалобе",
   "reports_of_user": "На {name, inflect, accusative}",
-  "reports_by_user": "Созданные {name, inflect, instrumental}"
+  "reports_by_user": "Созданные {name, inflect, instrumental}",
+  "admin_user_staff_notes_empty": "Добавьте заметку об этом пользователе для других администраторов сервера или для себя в будущем. Заметки видны только тем, у кого есть доступ к личным карточкам.",
+  "admin_user_X_staff_notes_summary": "{count, plural, =0 {Нет служебных заметок} one {# служебная заметка} few {# служебных заметки} other {# служебных заметок}} об этом пользователе",
+  "admin_user_staff_note_confirm_delete": "Вы действительно хотите удалить эту заметку?"
 }

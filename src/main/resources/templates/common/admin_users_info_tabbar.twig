@@ -2,7 +2,7 @@
 <div class="tabbar">
 	{% if userPermissions.hasPermission('MANAGE_USERS') %}
 	<a href="/users/{{ user.id }}/meminfo" class="{{ tab=='info' ? 'selected' : '' }}">{{ L('admin_manage_user') }}</a>
-	<a href="/users/{{ user.id }}/staffNotes" class="{{ tab=='staffNotes' ? 'selected' : '' }}">{{ L('admin_user_staff_notes') }}</a>
+	<a href="/users/{{ user.id }}/staffNotes" class="{{ tab=='staffNotes' ? 'selected' : '' }}">{{ L('admin_user_staff_notes') }}{% if staffNoteCount>0 %} (<b>{{ staffNoteCount | numberformat }}</b>){% endif %}</a>
 	{% endif %}
 	{% if userPermissions.hasPermission('MANAGE_REPORTS') %}
 	<a href="/users/{{ user.id }}/reports" class="{{ tab=='reports' ? 'selected' : '' }}">{{ L('menu_reports') }}</a>

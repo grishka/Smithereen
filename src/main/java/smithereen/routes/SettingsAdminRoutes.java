@@ -25,6 +25,7 @@ import smithereen.SmithereenApplication;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
+import smithereen.model.ActorStaffNote;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignUser;
@@ -831,6 +832,7 @@ public class SettingsAdminRoutes{
 		if(req.queryParams("uid")!=null){
 			User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.queryParams("uid")));
 			model.with("user", user);
+			model.with("staffNoteCount", ctx.getModerationController().getUserStaffNoteCount(user));
 			log=ctx.getModerationController().getUserAuditLog(user, offset(req), 100);
 		}else{
 			log=ctx.getModerationController().getGlobalAuditLog(offset(req), 100);
@@ -1026,6 +1028,7 @@ public class SettingsAdminRoutes{
 		UserContentMetrics contentMetrics=ctx.getUsersController().getContentMetrics(user);
 		model.with("relationshipMetrics", relMetrics).with("contentMetrics", contentMetrics);
 		model.pageTitle(lang(req).get("admin_manage_user")+" | "+user.getFullName());
+		model.with("staffNoteCount", ctx.getModerationController().getUserStaffNoteCount(user));
 		return model;
 	}
 
@@ -1244,7 +1247,45 @@ public class SettingsAdminRoutes{
 		model.with("users", ctx.getUsersController().getUsers(userIDs))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(groupIDs))
 				.with("filteredByUser", user);
+		model.with("staffNoteCount", ctx.getModerationController().getUserStaffNoteCount(user));
 
 		return model;
+	}
+
+	public static Object userStaffNotes(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users_notes", req);
+		PaginatedList<ActorStaffNote> notes=ctx.getModerationController().getUserStaffNotes(user, offset(req), 50);
+		model.paginate(notes);
+		model.with("users", ctx.getUsersController().getUsers(notes.list.stream().map(ActorStaffNote::authorID).collect(Collectors.toSet())));
+		model.with("user", user).with("staffNoteCount", notes.total);
+		return model;
+	}
+
+	public static Object userStaffNoteAdd(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		requireQueryParams(req, "text");
+		String text=req.queryParams("text");
+		ctx.getModerationController().createUserStaffNote(self.user, user, text);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).setContent("commentText", "").refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object userStaffNoteConfirmDelete(Request req, Response resp, Account self, ApplicationContext ctx){
+		int userID=safeParseInt(req.params(":id"));
+		int noteID=safeParseInt(req.params(":noteID"));
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("delete"), l.get("admin_user_staff_note_confirm_delete"), "/users/"+userID+"/staffNotes/"+noteID+"/delete");
+	}
+
+	public static Object userStaffNoteDelete(Request req, Response resp, Account self, ApplicationContext ctx){
+		int noteID=safeParseInt(req.params(":noteID"));
+		ctx.getModerationController().deleteUserStaffNote(ctx.getModerationController().getUserStaffNoteOrThrow(noteID));
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
 	}
 }

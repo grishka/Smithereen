@@ -40,6 +40,7 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.ActorStaffNote;
 import smithereen.model.AdminNotifications;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.FederationRestriction;
@@ -598,6 +599,49 @@ public class ModerationController{
 					updateReportsCounter();
 				}
 			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getUserStaffNoteCount(User user){
+		try{
+			return ModerationStorage.getUserStaffNoteCount(user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<ActorStaffNote> getUserStaffNotes(User user, int offset, int count){
+		try{
+			return ModerationStorage.getUserStaffNotes(user.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void createUserStaffNote(User self, User target, String text){
+		try{
+			ModerationStorage.createUserStaffNote(target.id, self.id, Utils.preprocessPostHTML(text, null));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteUserStaffNote(ActorStaffNote note){
+		try{
+			ModerationStorage.deleteUserStaffNote(note.id());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public ActorStaffNote getUserStaffNoteOrThrow(int id){
+		try{
+			ActorStaffNote note=ModerationStorage.getUserStaffNote(id);
+			if(note==null)
+				throw new ObjectNotFoundException();
+			return note;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

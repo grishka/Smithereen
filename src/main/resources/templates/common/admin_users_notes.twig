@@ -1,0 +1,37 @@
+{# @pebvariable name="items" type="java.util.List<smithereen.model.ActorStaffNote>" #}
+{% extends "page" %}
+{% block content %}
+{% include "admin_users_info_tabbar" with {'tab': 'staffNotes'} %}
+{% if not mobile %}
+<div class="summaryWrap">
+	<div class="summary">{{ L('admin_user_X_staff_notes_summary', {'count': totalItems}) }}</div>
+	{% include "pagination" %}
+</div>
+{% endif %}
+<div class="singleColumn">
+	{% for note in items %}
+	<div class="listItemWithDivider itemWithAvatar">
+		<div><a href="{{ profileURL(note.authorID) }}">{{ users[note.authorID] | pictureForAvatar('s') }}</a></div>
+		<div>
+			<div class="smallVMargin" style="margin-top: 0;"><a href="{{ profileURL(note.authorID) }}">{{ users[note.authorID] | name('complete') }}</a></div>
+			<div class="smallVMargin">{{ note.text | postprocessHTML }}</div>
+			<div class="grayText">{{ LD(note.time) }} | <a href="/users/{{ user.id }}/staffNotes/{{ note.id }}/confirmDelete" data-confirm-action="/users/{{ user.id }}/staffNotes/{{ note.id }}/delete" data-confirm-title="{{ L('delete') | forceEscape }}" data-confirm-message="{{ L('admin_user_staff_note_confirm_delete') | forceEscape }}">{{ L('delete') }}</a></div>
+		</div>
+	</div>
+	{% else %}
+	<div class="grayText listItemWithDivider" style="text-align: center">{{ L('admin_user_staff_notes_empty') }}</div>
+	{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+<div class="singleColumn">
+	<form class="marginBefore" method="post" action="/users/{{ user.id }}/addStaffNote?csrf={{ csrf }}" data-ajax>
+		<textarea style="width: 100%;" rows="2" placeholder="{{ L('comment_placeholder') }}" name="text" id="commentText"></textarea><br/>
+		<input type="submit" value="{{ L('send') }}"/>
+		{% script %}
+		autoSizeTextArea(ge("commentText"));
+		addSendOnCtrlEnter(ge("commentText"));
+		{% endscript %}
+	</form>
+</div>
+{% endblock %}
+

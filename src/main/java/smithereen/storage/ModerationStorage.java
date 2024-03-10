@@ -18,6 +18,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
+import smithereen.model.ActorStaffNote;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.PaginatedList;
 import smithereen.model.Server;
@@ -365,5 +366,50 @@ public class ModerationStorage{
 				.value("state", state)
 				.where("id=?", reportID)
 				.executeNoResult();
+	}
+
+	public static int getUserStaffNoteCount(int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("user_staff_notes")
+				.count()
+				.where("target_id=?", userID)
+				.executeAndGetInt();
+	}
+
+	public static PaginatedList<ActorStaffNote> getUserStaffNotes(int userID, int offset, int count) throws SQLException{
+		int total=getUserStaffNoteCount(userID);
+		if(total==0)
+			return PaginatedList.emptyList(count);
+		List<ActorStaffNote> notes=new SQLQueryBuilder()
+				.selectFrom("user_staff_notes")
+				.allColumns()
+				.where("target_id=?", userID)
+				.limit(count, offset)
+				.executeAsStream(ActorStaffNote::fromResultSet)
+				.toList();
+		return new PaginatedList<>(notes, total, offset, count);
+	}
+
+	public static int createUserStaffNote(int userID, int authorID, String text) throws SQLException{
+		return new SQLQueryBuilder()
+				.insertInto("user_staff_notes")
+				.value("target_id", userID)
+				.value("author_id", authorID)
+				.value("text", text)
+				.executeAndGetID();
+	}
+
+	public static void deleteUserStaffNote(int id) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("user_staff_notes")
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static ActorStaffNote getUserStaffNote(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("user_staff_notes")
+				.where("id=?", id)
+				.executeAndGetSingleObject(ActorStaffNote::fromResultSet);
 	}
 }

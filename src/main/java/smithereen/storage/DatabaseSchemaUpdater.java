@@ -37,7 +37,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=40;
+	public static final int SCHEMA_VERSION=41;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -614,6 +614,19 @@ public class DatabaseSchemaUpdater{
 						  PRIMARY KEY (`id`),
 						  KEY `report_id` (`report_id`),
 						  CONSTRAINT `report_actions_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;""");
+			}
+			case 41 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `user_staff_notes` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `target_id` int unsigned NOT NULL,
+						  `author_id` int unsigned NOT NULL,
+						  `text` text COLLATE utf8mb4_general_ci NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  KEY `target_id` (`target_id`),
+						  CONSTRAINT `user_staff_notes_ibfk_1` FOREIGN KEY (`target_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;""");
 			}
 		}
