@@ -73,6 +73,7 @@ import cz.jirutka.unidecode.Unidecode;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
+import smithereen.model.CaptchaInfo;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
@@ -1239,6 +1240,19 @@ public class Utils{
 		Lang l=lang(req);
 		String back=back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", message).with("formAction", action).with("back", back).pageTitle(title);
+	}
+
+	public static void verifyCaptcha(Request req){
+		String captcha=requireFormField(req, "captcha", "err_wrong_captcha");
+		String sid=requireFormField(req, "captchaSid", "err_wrong_captcha");
+		LruCache<String, CaptchaInfo> captchas=req.session().attribute("captchas");
+		if(captchas==null)
+			throw new UserErrorException("err_wrong_captcha");
+		CaptchaInfo info=captchas.get(sid);
+		if(info==null)
+			throw new UserErrorException("err_wrong_captcha");
+		if(!info.answer().equals(captcha) || System.currentTimeMillis()-info.generatedAt().toEpochMilli()<3000)
+			throw new UserErrorException("err_wrong_captcha");
 	}
 
 	public interface MentionCallback{

@@ -76,6 +76,7 @@ import smithereen.util.TopLevelDomainList;
 import spark.Filter;
 import spark.Request;
 import spark.Response;
+import spark.Session;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.*;
@@ -148,7 +149,8 @@ public class SmithereenApplication{
 			if(request.pathInfo().startsWith("/api/"))
 				return;
 			request.attribute("start_time", System.currentTimeMillis());
-			if(request.session(false)==null || request.session().attribute("info")==null){
+			Session session=request.session(false);
+			if(session==null || session.attribute("info")==null){
 				String psid=request.cookie("psid");
 				if(psid!=null){
 					if(!SessionStorage.fillSession(psid, request.session(true), request)){
@@ -189,6 +191,10 @@ public class SmithereenApplication{
 							}
 						});
 					}
+				}
+			}else{
+				if(session!=null && session.attribute("bannedBot")!=null){
+					throw new UserActionNotAllowedException();
 				}
 			}
 //			String hs="";

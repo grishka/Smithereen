@@ -154,7 +154,7 @@ public class ActivityPub{
 			MediaType contentType=body.contentType();
 			// Allow "application/activity+json" or "application/ld+json"
 			if(contentType==null || !"application".equals(contentType.type()) || !("activity+json".equals(contentType.subtype()) || "ld+json".equals(contentType.subtype()))){
-				throw new ObjectNotFoundException("Invalid Content-Type");
+				throw new ObjectNotFoundException("Invalid Content-Type: "+contentType);
 			}
 
 			try{

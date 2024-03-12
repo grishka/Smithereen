@@ -128,6 +128,14 @@ public class SessionRoutes{
 		if(redirectIfLoggedIn(req, resp))
 			return "";
 
+		// Honeypot fields
+		String passwordConfirm=req.queryParams("passwordConfirm");
+		String website=req.queryParams("website");
+		if(StringUtils.isNotEmpty(passwordConfirm) || StringUtils.isNotEmpty(website)){
+			req.session().attribute("bannedBot", true);
+			throw new UserActionNotAllowedException();
+		}
+
 		String username=req.queryParams("username");
 		if(StringUtils.isEmpty(username) || !Utils.isValidUsername(username))
 			return regError(req, "err_reg_invalid_username");
@@ -179,11 +187,7 @@ public class SessionRoutes{
 
 		if(Config.signupFormUseCaptcha && Config.signupMode==Config.SignupMode.OPEN){
 			try{
-				String captcha=requireFormField(req, "captcha", "err_wrong_captcha");
-				String sid=requireFormField(req, "captchaSid", "err_wrong_captcha");
-				LruCache<String, String> captchas=req.session().attribute("captchas");
-				if(captchas==null || !captcha.equals(captchas.remove(sid)))
-					throw new UserErrorException("err_wrong_captcha");
+				verifyCaptcha(req);
 			}catch(UserErrorException x){
 				return regError(req, x.getMessage());
 			}
@@ -422,6 +426,15 @@ public class SessionRoutes{
 		if(Config.signupMode!=Config.SignupMode.MANUAL_APPROVAL){
 			throw new UserActionNotAllowedException();
 		}
+
+		// Honeypot fields
+		String password=req.queryParams("password");
+		String website=req.queryParams("website");
+		if(StringUtils.isNotEmpty(password) || StringUtils.isNotEmpty(website)){
+			req.session().attribute("bannedBot", true);
+			throw new UserActionNotAllowedException();
+		}
+
 		try{
 			String email=requireFormField(req, "email", "err_invalid_email");
 			if(!isValidEmail(email))
@@ -432,11 +445,7 @@ public class SessionRoutes{
 				lastName=null;
 			String reason=requireFormField(req, "reason", "err_request_invite_reason_empty");
 			if(Config.signupFormUseCaptcha){
-				String captcha=requireFormField(req, "captcha", "err_wrong_captcha");
-				String sid=requireFormField(req, "captchaSid", "err_wrong_captcha");
-				LruCache<String, String> captchas=req.session().attribute("captchas");
-				if(captchas==null || !captcha.equals(captchas.remove(sid)))
-					throw new UserErrorException("err_wrong_captcha");
+				verifyCaptcha(req);
 			}
 			context(req).getUsersController().requestSignupInvite(req, firstName, lastName, email, reason);
 			return new RenderedTemplateResponse("generic_message", req).with("message", lang(req).get("signup_request_submitted"));

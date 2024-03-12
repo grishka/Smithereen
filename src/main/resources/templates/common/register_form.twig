@@ -1,5 +1,5 @@
 {% import "forms" as form %}
-<form action="/account/register" method="post">
+<form action="/account/register" method="post" id="registerForm">
 	{% if preFilledInvite is not null %}
 	<input type="hidden" name="_invite" value="{{ preFilledInvite }}"/>
 	{% endif %}
@@ -8,14 +8,16 @@
 		{{ form.textInput('username', L('username'), username, {'maxlength': 50, 'required': true, 'pattern': '^[a-zA-Z][a-zA-Z0-9._-]+$', 'explanation': L('username_explain')}) }}
 		{{ form.textInput('first_name', L('first_name'), first_name, {'maxlength': 100, 'required': true}) }}
 		{{ form.textInput('last_name', L('last_name'), last_name, {'maxlength': 100}) }}
+		{{ form.textInput('website', 'Website (do not fill in)', '') }}
 		{{ form.textInput('email', L('email'), email, {'type': 'email', 'required': true}) }}
 		{{ form.textInput('password', L('password'), password, {'type': 'password', 'required': true, 'minlength': 4}) }}
+		{{ form.textInput('passwordConfirm', 'Confirm password (do not fill in)', '', {'type': 'password'}) }}
 		{{ form.textInput('password2', L('password_confirm'), password2, {'type': 'password', 'required': true, 'minlength': 4}) }}
 		{% if signupMode!='OPEN' and preFilledInvite is null %}
 			{{ form.textInput('invite', L('invitation_code'), invite, {'maxlength': 32, 'required': true}) }}
 		{% endif %}
 		{% if captchaSid is not empty %}
-			{{ form.unlabeledRowStart() }}<img src="/system/captcha?sid={{ captchaSid }}" width="130" height="50"/><input type="hidden" name="captchaSid" value="{{ captchaSid }}"/>{{ form.unlabeledRowEnd() }}
+			{{ form.unlabeledRowStart() }}<img src="/res/spacer.gif" width="130" height="50" style="background: url(/system/captcha?sid={{ captchaSid }})"/><input type="hidden" name="captchaSid" value="{{ captchaSid }}"/>{{ form.unlabeledRowEnd() }}
 			{{ form.textInput('captcha', L('captcha_label'), null, {'required': true}) }}
 		{% endif %}
 		{{ form.footer(L('register')) }}

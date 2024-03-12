@@ -931,3 +931,14 @@ small{
 	}
 }
 
+#registerForm{
+	#formRow_website, #formRow_passwordConfirm{
+		display: none;
+	}
+}
+
+#requestInviteForm{
+	#formRow_website, #formRow_password{
+		display: none;
+	}
+}

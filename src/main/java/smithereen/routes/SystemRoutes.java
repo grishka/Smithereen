@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,6 +51,7 @@ import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.AttachmentHostContentObject;
 import smithereen.model.CachedRemoteImage;
+import smithereen.model.CaptchaInfo;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -745,12 +747,12 @@ public class SystemRoutes{
 			sid=sid.substring(0, 16);
 
 		CaptchaGenerator.Captcha c=CaptchaGenerator.generate();
-		LruCache<String, String> captchas=req.session().attribute("captchas");
+		LruCache<String, CaptchaInfo> captchas=req.session().attribute("captchas");
 		if(captchas==null){
 			captchas=new LruCache<>(10);
 			req.session().attribute("captchas", captchas);
 		}
-		captchas.put(sid, c.answer());
+		captchas.put(sid, new CaptchaInfo(c.answer(), Instant.now()));
 
 		resp.type("image/png");
 		ByteArrayOutputStream out=new ByteArrayOutputStream();
