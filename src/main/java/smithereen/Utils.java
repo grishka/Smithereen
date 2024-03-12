@@ -1248,7 +1248,7 @@ public class Utils{
 		LruCache<String, CaptchaInfo> captchas=req.session().attribute("captchas");
 		if(captchas==null)
 			throw new UserErrorException("err_wrong_captcha");
-		CaptchaInfo info=captchas.get(sid);
+		CaptchaInfo info=captchas.remove(sid);
 		if(info==null)
 			throw new UserErrorException("err_wrong_captcha");
 		if(!info.answer().equals(captcha) || System.currentTimeMillis()-info.generatedAt().toEpochMilli()<3000)
