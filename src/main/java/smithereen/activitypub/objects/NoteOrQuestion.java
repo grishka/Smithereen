@@ -66,7 +66,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		}
 
 		// fix for Lemmy (and possibly something else)
-		boolean hasBogusURL=url!=null && !url.getHost().equalsIgnoreCase(activityPubID.getHost());
+		boolean hasBogusURL=url!=null && !url.getHost().equalsIgnoreCase(activityPubID.getHost()) && !url.getHost().equalsIgnoreCase("www."+activityPubID.getHost());
 
 		String text=content;
 		if(hasBogusURL)
@@ -171,8 +171,8 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		Set<URI> to=new HashSet<>(), cc=new HashSet<>();
 		to.add(ActivityPub.AS_PUBLIC);
 
-
-		noq.activityPubID=noq.url=post.getActivityPubID();
+		noq.activityPubID=post.getActivityPubID();
+		noq.url=post.activityPubURL==null ? noq.activityPubID : post.activityPubURL;
 		if(post.activityPubReplies!=null){
 			noq.replies=new LinkOrObject(post.activityPubReplies);
 		}else if(post.isLocal()){
