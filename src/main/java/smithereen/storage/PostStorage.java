@@ -39,7 +39,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.feed.NewsfeedEntry;

@@ -74,7 +74,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.WebfingerResponse;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;

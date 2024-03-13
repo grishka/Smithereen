@@ -70,7 +70,7 @@ import smithereen.model.PollOption;
 import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.notifications.NotificationUtils;

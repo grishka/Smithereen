@@ -45,7 +45,7 @@ import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.util.JsonArrayBuilder;
 import spark.utils.StringUtils;
 
@@ -200,7 +200,7 @@ public abstract class ActivityPubObject{
 		if(url==null || url.isEmpty())
 			return null;
 		try{
-			URI uri=new URI(url);
+			URI uri=UriBuilder.parseAndEncode(url);
 			if("https".equals(uri.getScheme()) || "as".equals(uri.getScheme())){
 				return uri;
 			}else if("http".equals(uri.getScheme())){
@@ -213,7 +213,7 @@ public abstract class ActivityPubObject{
 				String token=params.get("t");
 				String _url=params.get("u");
 				if(StringUtils.isNotEmpty(token) && StringUtils.isNotEmpty(_url)){
-					URI actualURL=new URI(_url);
+					URI actualURL=UriBuilder.parseAndEncode(_url);
 					if("https".equals(actualURL.getScheme()) || "http".equals(actualURL.getScheme()))
 						return uri;
 				}

@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.util.Whitelist;
 
 @SuppressWarnings("deprecation")

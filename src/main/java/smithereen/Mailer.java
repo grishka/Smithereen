@@ -28,7 +28,7 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
 import smithereen.model.Account;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.lang.Lang;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;

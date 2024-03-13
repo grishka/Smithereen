@@ -27,7 +27,7 @@ import smithereen.activitypub.ParserContext;
 import smithereen.exceptions.BadRequestException;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.ObjectNotFoundException;

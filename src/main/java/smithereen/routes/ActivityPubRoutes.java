@@ -121,7 +121,7 @@ import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.StatsType;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -475,10 +475,11 @@ public class ActivityPubRoutes{
 		// ?type=favourite
 		// ?type=reply
 		// user/remote_follow
+		requireQueryParams(req, "uri");
 		String ref=req.headers("referer");
 		ActivityPubObject remoteObj;
 		try{
-			URI uri=new URI(req.queryParams("uri"));
+			URI uri=UriBuilder.parseAndEncode(req.queryParams("uri"));
 			if(!"https".equals(uri.getScheme()) && !(Config.useHTTP && "http".equals(uri.getScheme()))){
 				// try parsing as "username@domain" or "acct:username@domain"
 				String rawUri=uri.getSchemeSpecificPart();
@@ -497,6 +498,7 @@ public class ActivityPubRoutes{
 				return "Object ID host doesn't match URI host";
 			}
 		}catch(IOException|JsonParseException|URISyntaxException x){
+			LOG.debug("Error fetching remote object", x);
 			return x.getMessage();
 		}
 		if(remoteObj instanceof ForeignUser foreignUser){

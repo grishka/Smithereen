@@ -22,6 +22,7 @@ import smithereen.storage.DatabaseUtils;
 import smithereen.storage.PostStorage;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
+import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
 public final class Post implements ActivityPubRepresentable, OwnedContentObject, AttachmentHostContentObject, ReportableContentObject{
