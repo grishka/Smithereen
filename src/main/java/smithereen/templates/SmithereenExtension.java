@@ -25,6 +25,7 @@ public class SmithereenExtension extends AbstractExtension{
 		f.put("addQueryParams", new AddQueryParamsFunction());
 		f.put("randomString", new RandomStringFunction());
 		f.put("profileURL", new ProfileUrlFunction());
+		f.put("profileRel", new ProfileRelFunction());
 		return f;
 	}
 

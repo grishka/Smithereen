@@ -2,12 +2,12 @@
 <table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
 	<tr valign="top">
 		<td width="100">
-			<a href="{{friend.profileURL}}">{{friend | pictureForAvatar('m')}}</a>
+			<a href="{{friend.profileURL}}"{{ profileRel(friend) }}>{{friend | pictureForAvatar('m')}}</a>
 		</td>
 		<td class="info">
 			<div class="infoInner">
 				<div class="grayText">{{ L('name') }}:</div>
-				<div><a href="{{ friend.profileURL }}">{{ friend | name('complete') }}</a></div>
+				<div><a href="{{ friend.profileURL }}"{{ profileRel(friend) }}>{{ friend | name('complete') }}</a></div>
 				{% if friend.domain is not empty %}
 					<div class="grayText">{{ L('server') }}:</div>
 					<div>{{ friend.domain }}</div>

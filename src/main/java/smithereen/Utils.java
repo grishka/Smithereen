@@ -770,6 +770,9 @@ public class Utils{
 						User user=UserStorage.getById(uid);
 						if(user!=null){
 							el.attr("href", "/"+user.getFullUsername());
+							if(user instanceof ForeignUser){
+								el.attr("rel", "nofollow");
+							}
 							el.addClass("u-url");
 							Element parent=el.parent();
 							if(parent==null || !parent.tagName().equalsIgnoreCase("span")){
@@ -784,7 +787,7 @@ public class Utils{
 					URI uri=new URI(href);
 					if(uri.isAbsolute() && !Config.isLocal(uri)){
 						el.attr("target", "_blank");
-						el.attr("rel", "noopener");
+						el.attr("rel", "noopener ugc");
 					}
 				}catch(URISyntaxException x){}
 			}

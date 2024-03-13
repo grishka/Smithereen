@@ -3,6 +3,6 @@
 	<a href="{{ currentUser.profileURL }}" title="{{ currentUser | name }}" class="self">{{currentUser | pictureForAvatar('s', 32)}}</a>
 	{%endif%}
 	{%for user in users%}
-	<a href="{{ user.profileURL }}" title="{{ user | name }}">{{user | pictureForAvatar('s', 32)}}</a>
+	<a href="{{ user.profileURL }}" title="{{ user | name }}"{{ profileRel(user) }}>{{user | pictureForAvatar('s', 32)}}</a>
 	{%endfor%}
 </div>

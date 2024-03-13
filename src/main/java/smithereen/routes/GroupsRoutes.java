@@ -364,6 +364,8 @@ public class GroupsRoutes{
 		model.paginate(context(req).getGroupsController().getMembers(group, offset(req), 100, tentative));
 		model.with("summary", lang(req).get(tentative ? "summary_event_X_tentative_members" : (group.isEvent() ? "summary_event_X_members" : "summary_group_X_members"), Map.of("count", tentative ? group.tentativeMemberCount : group.memberCount)));
 		model.with("contentTemplate", "user_grid").with("title", group.name);
+		if(group instanceof ForeignGroup)
+			model.with("noindex", true);
 		return model;
 	}
 
@@ -373,6 +375,8 @@ public class GroupsRoutes{
 		context(req).getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("actor_list", req);
 		model.with("actors", context(req).getGroupsController().getAdmins(group).stream().map(a->new ActorWithDescription(a.user, a.title)).collect(Collectors.toList()));
+		if(group instanceof ForeignGroup)
+			model.with("noindex", true);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).box(lang(req).get(group.isEvent() ? "event_organizers" : "group_admins"), model.renderContentBlock(), null, true);
 		}

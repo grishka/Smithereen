@@ -11,6 +11,7 @@ import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
+import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
@@ -117,6 +118,8 @@ public class FriendsRoutes{
 			model.addNavBarItem(group.name, group.getProfileURL()).addNavBarItem(lang(req).get("invite_friends_title"));
 			model.pageTitle(lang(req).get("invite_friends_title"));
 		}
+		if(user instanceof ForeignUser)
+			model.with("noindex", true);
 		jsLangKey(req, "remove_friend", "yes", "no");
 		return model;
 	}
@@ -144,6 +147,8 @@ public class FriendsRoutes{
 		model.pageTitle(lang(req).get("friends"));
 		model.with("tab", "mutual");
 		model.with("mutualCount", friends.total);
+		if(user instanceof ForeignUser)
+			model.with("noindex", true);
 		jsLangKey(req, "remove_friend", "yes", "no");
 		return model;
 	}
@@ -172,6 +177,8 @@ public class FriendsRoutes{
 			int mutualCount=ctx.getFriendsController().getMutualFriends(self.user, user, 0, 0, FriendsController.SortOrder.ID_ASCENDING).total;
 			model.with("mutualCount", mutualCount);
 		}
+		if(user instanceof ForeignUser)
+			model.with("noindex", true);
 		return model;
 	}
 
@@ -200,6 +207,8 @@ public class FriendsRoutes{
 			int mutualCount=ctx.getFriendsController().getMutualFriendsCount(self.user, user);
 			model.with("mutualCount", mutualCount);
 		}
+		if(user instanceof ForeignUser)
+			model.with("noindex", true);
 		jsLangKey(req, "unfollow", "yes", "no");
 		return model;
 	}

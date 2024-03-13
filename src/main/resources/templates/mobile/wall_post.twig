@@ -8,10 +8,10 @@
 	<table width="100%" cellpadding="0" cellspacing="0">
 		<tr>
 			<td width="40" valign="top">
-				<a href="{{ profileURL(realPost.authorID) }}">{{ users[realPost.authorID] | pictureForAvatar('s', 40) }}</a>
+				<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('s', 40) }}</a>
 			</td>
 			<td valign="middle" class="headerRight">
-				<div class="singleLine authorNameW"><a href="{{ profileURL(realPost.authorID) }}" class="authorName">{{ users[realPost.authorID] | name }}</a>
+				<div class="singleLine authorNameW"><a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
 				{%- if realPost.privacy!='PUBLIC' -%}
 				<span class="privatePostLockIcon"></span>
 				{%- endif -%}

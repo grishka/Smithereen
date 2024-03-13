@@ -25,12 +25,12 @@
 <table width="100%" class="friendsRow noBorderSpacing" id="grow{{group.id}}">
 	<tr valign="top">
 		<td width="100">
-			<a href="{{group.profileURL}}">{{group | pictureForAvatar('m')}}</a>
+			<a href="{{group.profileURL}}"{{ profileRel(group) }}>{{group | pictureForAvatar('m')}}</a>
 		</td>
 		<td class="info">
 			<div class="infoInner">
 				<div class="grayText">{{ L('group_name') }}:</div>
-				<div><a href="{{ group.profileURL }}">{{ group.name }}</a></div>
+				<div><a href="{{ group.profileURL }}"{{ profileRel(group) }}>{{ group.name }}</a></div>
 				<div class="grayText">{{ L('group_size') }}:</div>
 				<div>{{ L('X_members', {'count': group.memberCount}) }}</div>
 				{% if group.event %}

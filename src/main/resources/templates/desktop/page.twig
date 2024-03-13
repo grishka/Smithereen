@@ -17,7 +17,7 @@
 		{%endfor%}
 	{% endif %}
 	{% if noindex %}
-		<meta name="robots" content="noindex"/>
+		<meta name="robots" content="noindex, nofollow"/>
 	{% endif %}
 	<script>
 		var userConfig={{jsConfig | raw}};

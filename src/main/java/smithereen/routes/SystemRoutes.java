@@ -248,7 +248,8 @@ public class SystemRoutes{
 						return "";
 					}
 					try{
-						if(sessionInfo(req)==null){ // Only download attachments for logged-in users. Prevents crawlers from causing unnecessary churn in the media cache
+						SessionInfo sessionInfo=sessionInfo(req);
+						if(sessionInfo==null || sessionInfo.account==null){ // Only download attachments for logged-in users. Prevents crawlers from causing unnecessary churn in the media cache
 							resp.redirect(uri.toString());
 							return "";
 						}

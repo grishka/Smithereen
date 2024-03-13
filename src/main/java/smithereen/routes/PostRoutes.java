@@ -24,6 +24,7 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.model.Account;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
@@ -419,6 +420,8 @@ public class PostRoutes{
 			model.with("jsRedirect", "/posts/"+post.post.replyKey.get(0)+"#comment"+post.post.id);
 		}
 		model.with("activityPubURL", post.post.getActivityPubID());
+		if(!post.post.isLocal() && owner instanceof ForeignActor)
+			model.with("noindex", true);
 		return model;
 	}
 
@@ -594,6 +597,9 @@ public class PostRoutes{
 		}else{
 			model.pageTitle(lang(req).get("wall_of_group"));
 		}
+
+		if(owner instanceof ForeignActor)
+			model.with("noindex", true);
 
 		return model;
 	}

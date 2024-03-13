@@ -2,7 +2,7 @@
 {% block moduleContent %}
 <div class="padded fixLineHeight">
 {% for group in groups %}
-	<a href="{{ group.profileURL }}">{{ group.name }}</a>{% if not loop.last %} • {% endif %}
+	<a href="{{ group.profileURL }}"{{ profileRel(group) }}>{{ group.name }}</a>{% if not loop.last %} · {% endif %}
 {% endfor %}
 </div>
 {% endblock %}
