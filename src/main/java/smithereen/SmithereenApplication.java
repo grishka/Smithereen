@@ -375,7 +375,6 @@ public class SmithereenApplication{
 		});
 
 		path("/users/:id", ()->{
-			getActivityPub("", ActivityPubRoutes::userActor);
 			get("", (req, resp)->{
 				int id=parseIntOrDefault(req.params(":id"), 0);
 				User user=UserStorage.getById(id);
@@ -386,6 +385,7 @@ public class SmithereenApplication{
 				}
 				return "";
 			});
+			getActivityPub("", ActivityPubRoutes::userActor);
 
 			post("/inbox", ActivityPubRoutes::userInbox);
 			get("/inbox", SmithereenApplication::methodNotAllowed);
@@ -441,8 +441,6 @@ public class SmithereenApplication{
 		});
 
 		path("/groups/:id", ()->{
-			get("", "application/activity+json", ActivityPubRoutes::groupActor);
-			get("", "application/ld+json", ActivityPubRoutes::groupActor);
 			get("", (req, resp)->{
 				int id=parseIntOrDefault(req.params(":id"), 0);
 				Group group=GroupStorage.getById(id);
@@ -453,6 +451,8 @@ public class SmithereenApplication{
 				}
 				return "";
 			});
+			get("", "application/activity+json", ActivityPubRoutes::groupActor);
+			get("", "application/ld+json", ActivityPubRoutes::groupActor);
 
 			postWithCSRF("/createWallPost", PostRoutes::createGroupWallPost);
 
@@ -511,9 +511,9 @@ public class SmithereenApplication{
 		});
 
 		path("/posts/:postID", ()->{
+			get("", PostRoutes::standalonePost);
 			getActivityPub("", ActivityPubRoutes::post);
 			get("/activityCreate", ActivityPubRoutes::postCreateActivity);
-			get("", PostRoutes::standalonePost);
 
 			getLoggedIn("/confirmDelete", PostRoutes::confirmDelete);
 			postWithCSRF("/delete", PostRoutes::delete);
@@ -596,9 +596,9 @@ public class SmithereenApplication{
 		get("/healthz", (req, resp)->"");
 
 		path("/:username", ()->{
+			get("", ProfileRoutes::profile);
 			// These also handle groups
 			getActivityPub("", ActivityPubRoutes::userActor);
-			get("", ProfileRoutes::profile);
 
 			postWithCSRF("/remoteFollow", ActivityPubRoutes::remoteFollow);
 		});

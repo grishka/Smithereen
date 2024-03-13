@@ -374,9 +374,10 @@ public class PostRoutes{
 			meta.put("og:site_name", Config.serverDisplayName);
 			meta.put("og:type", "article");
 			meta.put("og:title", author.getFullName());
-//			meta.put("og:url", post.url.toString());
+			meta.put("og:url", post.post.getInternalURL().toString());
 			meta.put("og:published_time", Utils.formatDateAsISO(post.post.createdAt));
 			meta.put("og:author", author.url.toString());
+			meta.put("profile:username", author.username+"@"+Config.domain);
 			if(StringUtils.isNotEmpty(post.post.text)){
 				String text=Utils.truncateOnWordBoundary(post.post.text, 250);
 				meta.put("og:description", text);
@@ -390,19 +391,23 @@ public class PostRoutes{
 						meta.put("og:image", pa.image.getUriForSizeAndFormat(SizedImage.Type.MEDIUM, SizedImage.Format.JPEG).toString());
 						meta.put("og:image:width", String.valueOf(size.width));
 						meta.put("og:image:height", String.valueOf(size.height));
+						meta.put("og:image:type", "image/jpeg");
+						meta.put("twitter:card", "summary_large_image");
 						hasImage=true;
 						break;
 					}
 				}
 			}
 			if(!hasImage){
+				meta.put("twitter:card", "summary");
 				if(author.hasAvatar()){
-					URI img=author.getAvatar().getUriForSizeAndFormat(SizedImage.Type.LARGE, SizedImage.Format.JPEG);
+					URI img=author.getAvatar().getUriForSizeAndFormat(SizedImage.Type.SQUARE_XLARGE, SizedImage.Format.JPEG);
 					if(img!=null){
-						SizedImage.Dimensions size=author.getAvatar().getDimensionsForSize(SizedImage.Type.LARGE);
+						SizedImage.Dimensions size=author.getAvatar().getDimensionsForSize(SizedImage.Type.SQUARE_XLARGE);
 						meta.put("og:image", img.toString());
 						meta.put("og:image:width", String.valueOf(size.width));
 						meta.put("og:image:height", String.valueOf(size.height));
+						meta.put("og:image:type", "image/jpeg");
 					}
 				}
 			}
