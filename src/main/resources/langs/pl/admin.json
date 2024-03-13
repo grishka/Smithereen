@@ -33,7 +33,5 @@
   "signup_request_sent_at": "Wysłano",
   "menu_reports": "Zgłoszenia",
   "report_from": "Od",
-  "report_sent_at": "Wysłano",
-  "report_action_delete_post": "Usuń wpis",
-  "report_action_delete_comment": "Usuń komentarz"
+  "report_sent_at": "Wysłano"
 }

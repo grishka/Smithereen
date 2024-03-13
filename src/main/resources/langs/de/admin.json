@@ -57,13 +57,7 @@
   "report_comment": "Zusätzliche Benutzerinformation",
   "private_post_warning_title": "Du hast keine Berechtigung zum Zugriff auf diese Nachricht",
   "private_group_post_warning": "Diese Nachricht ist in einer {groupType, select, private {privaten} other {geschlossenen}} Gruppe, in der Du kein Mitglied bist. Du kannst Sie nur sehen, da Du die Nachricht von einer Auswertung aus geöffnet hast.",
-  "mark_report_resolved": "Markiere als gelöst",
-  "report_action_delete_post": "Lösche Nachricht",
-  "report_action_delete_post_locally": "Lösche Nachricht <b>lokal</b>",
-  "report_action_delete_comment": "Lösche Kommentar",
-  "report_action_delete_comment_locally": "Lösche Nachricht <b>lokal</b>",
   "report_action_add_cw": "Füge CW hinzu",
-  "report_action_suspend": "Halte an...",
   "admin_federation": "Verbindung",
   "search_server_domain": "Serverdomäne",
   "summary_X_servers": "{count, plural, one {# Server} other {# Server}} Summe",
@@ -214,5 +208,9 @@
   "admin_user_state_hidden": "Das Profil ist versteckt vor unangemeldeten Benutzern.",
   "admin_user_delete_account_now": "Jetzt löschen",
   "admin_user_delete_account_confirmation": "Du bist dabei <b>{name}</b>''s Konto mit sofortiger Wirkung zu löschen.\n\nDies ist <b>UNWIDERRUFLICH</b> auch wenn Du eine Datenbank- und Mediendateiensicherung hast. Um fortzufahren, gib darunter den kompletten Benutzernamen mit Domäne für das zu löschende Konto ein.",
-  "admin_audit_log_changed_user_restrictions": "<a id=\"adminUser\">{name}</a> hat die Beschränkungen für <a id=\"targetUser\">{targetName}</a>''s Konto geändert"
+  "admin_user_delete_account_title": "Benutzerkonto löschen",
+  "admin_audit_log_changed_user_restrictions": "<a id=\"adminUser\">{name}</a> hat die Beschränkungen für <a id=\"targetUser\">{targetName}</a>''s Konto geändert",
+  "admin_user_delete_wrong_username": "Falscher Benutzername",
+  "admin_user_deleted_successfully": "Das Benutzerkonto wurde gelöscht",
+  "admin_audit_log_deleted_user_account": "<a id=\"adminUser\">{name}</a> hat <a id=\"targetUser\">{targetName}</a>''s Benutzerkonto gelöscht"
 }

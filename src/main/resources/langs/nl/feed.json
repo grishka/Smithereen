@@ -1,1 +1,17 @@
-{}
+{
+  "feed_retoot": "<a id=\"author\">{author}</a> heeft een bericht gedeeld:",
+  "feed_retoot_comment": "<a id=\"author\">{author}</a> deelde een reactie:",
+  "feed_added_friend": "<a id=\"author\">{author}</a> heeft <a id=\"target\">{target}</a> toegevoegd als vriend.",
+  "feed_added_friend_name": "{name}",
+  "feed_joined_group": "<a id=\"author\">{author}</a> sloot zich aan bij groep <a id=\"target\">{target}</a>.",
+  "feed_empty": "Updates van je vrienden verschijnen hier.",
+  "feed_tab_news": "Nieuws",
+  "feed_tab_comments": "Opmerkingen",
+  "summary_feed": "Laat het laatste nieuws zien",
+  "feed_joined_event": "<a id=\"author\">{author}</a> is aanwezig bij evenement <a id=\"target\">{target}</a>.",
+  "feed_created_group": "<a id=\"author\">{author}</a> heeft de groep <a id=\"target\">{target}</a> aangemaakt.",
+  "feed_created_event": "<a id=\"author\">{author}</a> heeft de gebeurtenis <a id=\"target\">{target}</a> gemaakt.",
+  "feed_added_multiple_friends": "<a id=\"author\">{author}</a> heeft {count, plural, one {# vriend} other {# vrienden}} toegevoegd:",
+  "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> heeft zich {count, plural, one {# groep} other {# groepen}} aangesloten:",
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> is aanwezig bij {count, plural, one {# evenement} other {# evenementen}}:"
+}
