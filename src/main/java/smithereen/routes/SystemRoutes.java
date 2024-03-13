@@ -279,7 +279,7 @@ public class SystemRoutes{
 						}
 						return "";
 					}catch(IOException x){
-						LOG.warn("Exception while downloading external media file from {}", uri, x);
+						LOG.debug("Exception while downloading external media file from {}", uri, x);
 					}
 					resp.redirect(uri.toString());
 				}
