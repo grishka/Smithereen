@@ -7,6 +7,8 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
 import org.jetbrains.annotations.NotNull;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -17,6 +19,7 @@ import org.xml.sax.SAXException;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -56,40 +59,38 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.activitypub.objects.CollectionQueryResult;
-import smithereen.model.FederationRestriction;
-import smithereen.model.ForeignGroup;
-import smithereen.model.Group;
-import smithereen.model.Server;
-import smithereen.model.StatsType;
-import smithereen.exceptions.FederationException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.storage.GroupStorage;
-import smithereen.util.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.WebfingerResponse;
-import smithereen.util.UriBuilder;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FederationException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDException;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
+import smithereen.model.FederationRestriction;
+import smithereen.model.ForeignGroup;
+import smithereen.model.Group;
+import smithereen.model.Server;
+import smithereen.model.StatsType;
+import smithereen.storage.GroupStorage;
+import smithereen.util.DisallowLocalhostInterceptor;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.util.UserAgentInterceptor;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.context;
-import static smithereen.Utils.formatDateAsISO;
-import static smithereen.Utils.parseSignatureHeader;
+import static smithereen.Utils.*;
 
 public class ActivityPub{
 
@@ -109,6 +110,10 @@ public class ActivityPub{
 	}
 
 	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx) throws IOException{
+		return fetchRemoteObjectInternal(_uri, signer, actorToken, ctx, true);
+	}
+
+	private static ActivityPubObject fetchRemoteObjectInternal(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean tryHTML) throws IOException{
 		LOG.trace("Fetching remote object from {}", _uri);
 		URI uri;
 		String token;
@@ -152,6 +157,25 @@ public class ActivityPub{
 				throw new ObjectNotFoundException("Response is not successful: remote server returned "+resp.code()+" "+resp.message());
 			}
 			MediaType contentType=body.contentType();
+			if(tryHTML && contentType!=null && "text".equals(contentType.type()) && "html".equals(contentType.subtype())){
+				LOG.trace("Received HTML, trying to extract <link>");
+				org.jsoup.nodes.Document doc=Jsoup.parse(body.string(), uri.toString());
+				for(Element el:doc.select("link[rel=alternate]")){
+					LOG.trace("Candidate element: {}", el);
+					String type=el.attr("type");
+					if("application/activity+json".equals(type) || CONTENT_TYPE.equals(type)){
+						String url=el.absUrl("href");
+						LOG.trace("Will follow redirect: {}", url);
+						if(StringUtils.isNotEmpty(url)){
+							try{
+								return fetchRemoteObjectInternal(UriBuilder.parseAndEncode(url), signer, actorToken, ctx, false);
+							}catch(URISyntaxException x){
+								throw new ObjectNotFoundException("Failed to parse URL from <link rel=\"alternate\">", x);
+							}
+						}
+					}
+				}
+			}
 			// Allow "application/activity+json" or "application/ld+json"
 			if(contentType==null || !"application".equals(contentType.type()) || !("activity+json".equals(contentType.subtype()) || "ld+json".equals(contentType.subtype()))){
 				throw new ObjectNotFoundException("Invalid Content-Type: "+contentType);
