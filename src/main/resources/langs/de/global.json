@@ -148,5 +148,6 @@
   "action_confirmation": "Bestätige die Aktion",
   "action_confirmation_text": "Wir haben Dir einen Code an <b>{maskedEmail}</b> gesendet. Bitte gib ihn ein um {action} zu bestätigen:",
   "next": "Nächste",
-  "action_confirmation_incorrect_code": "Falscher Code"
+  "action_confirmation_incorrect_code": "Falscher Code",
+  "restore": "Wiederherstellen"
 }
