@@ -1,1 +1,25 @@
-{}
+{
+  "menu_admin": "Panneau d'administration",
+  "admin_server_info": "Informations sur le serveur",
+  "admin_server_name": "Nom",
+  "admin_server_description": "Description",
+  "admin_server_admin_email": "E-mail de l'administrateur",
+  "admin_server_info_updated": "Informations sur le serveur mises à jour",
+  "admin_users": "Utilisateurs",
+  "admin_user_id": "ID de compte (ID utilisateur)",
+  "invited_by": "Inviter par",
+  "signup_date": "Date d'inscription",
+  "actions": "Actions",
+  "role": "Rôle",
+  "choose_role_for_X": "Choisissez le rôle pour <b>{name}</b>",
+  "admin_signup_mode": "Mode d'inscription",
+  "admin_signup_mode_open": "Ouvrir",
+  "admin_signup_mode_invite": "Inviter seulement",
+  "admin_signup_mode_approval": "Par application (avec approbation manuelle par les administrateurs)",
+  "admin_signup_mode_closed": "Inscriptions clôturées",
+  "admin_signup_mode_explain": "Lorsque les inscriptions sont fermées, les administrateurs peuvent toujours inviter de nouveaux utilisateurs.",
+  "admin_other": "Autre",
+  "admin_email_settings": "Paramètres de messagerie",
+  "admin_email_from": "Adresse sortante",
+  "admin_email_smtp_server": "Serveur SMTP"
+}
