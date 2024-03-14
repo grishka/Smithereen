@@ -167,7 +167,7 @@ public class ObjectLinkResolver{
 	@NotNull
 	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
 		try{
-			LOG.debug("Resolving ActivityPub link: {}, expected type: {}, allow storage {}", _link, expectedType.getName(), allowStorage);
+			LOG.debug("Resolving ActivityPub link: {}, expected type: {}, allow storage {}, force refetch {}", _link, expectedType.getName(), allowStorage, forceRefetch);
 			URI link;
 			if("bear".equals(_link.getScheme())){
 				link=URI.create(UriBuilder.parseQueryString(_link.getRawQuery()).get("u"));
@@ -210,6 +210,9 @@ public class ObjectLinkResolver{
 							if(allowStorage && fu.movedToURL!=null){
 								handleNewlyFetchedMovedUser(fu);
 							}
+						}
+						if(obj instanceof NoteOrQuestion && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
+							return ensureTypeAndCast(obj, expectedType);
 						}
 						T o=convertToNativeObject(obj, expectedType);
 						if(!bypassCollectionCheck && o instanceof Post post && obj.inReplyTo==null){ // TODO make this a generalized interface OwnedObject or something
