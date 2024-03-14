@@ -211,7 +211,10 @@ public class ObjectLinkResolver{
 								handleNewlyFetchedMovedUser(fu);
 							}
 						}
-						if(obj instanceof NoteOrQuestion && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
+						if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
+							User author=resolve(noq.attributedTo, User.class, false, true, false);
+							if(author.banStatus==UserBanStatus.SUSPENDED)
+								throw new ObjectNotFoundException("Post author is suspended on this server");
 							return ensureTypeAndCast(obj, expectedType);
 						}
 						T o=convertToNativeObject(obj, expectedType);
