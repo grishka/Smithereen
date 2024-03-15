@@ -10,6 +10,7 @@ import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -732,6 +734,28 @@ public class UserStorage{
 			}
 
 			return existingUserID;
+		}catch(SQLIntegrityConstraintViolationException x){
+			// Rare case: user with a matching username@domain but a different AP ID already exists
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+				int oldID=new SQLQueryBuilder(conn)
+						.selectFrom("users")
+						.columns("id")
+						.where("username=? AND domain=? AND ap_id<>?", user.username, user.domain, user.activityPubID)
+						.executeAndGetInt();
+				if(oldID<=0){
+					LOG.warn("Didn't find an existing user with username {}@{} while trying to deduplicate {}", user.username, user.domain, user.activityPubID);
+					throw x;
+				}
+				LOG.info("Deduplicating user rows: username {}@{}, old local ID {}, new AP ID {}", user.username, user.domain, oldID, user.activityPubID);
+				// Assign a temporary random username to this existing user row to get it out of the way
+				new SQLQueryBuilder(conn)
+						.update("users")
+						.value("username", UUID.randomUUID().toString())
+						.where("id=?", oldID)
+						.executeNoResult();
+				// Try again
+				return putOrUpdateForeignUser(user);
+			}
 		}
 	}
 

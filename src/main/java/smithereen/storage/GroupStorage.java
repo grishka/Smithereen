@@ -4,6 +4,8 @@ import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.security.KeyPair;
@@ -11,6 +13,7 @@ import java.security.KeyPairGenerator;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -23,6 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -47,6 +51,7 @@ import smithereen.storage.sql.SQLQueryBuilder;
 import spark.utils.StringUtils;
 
 public class GroupStorage{
+	private static final Logger LOG=LoggerFactory.getLogger(GroupStorage.class);
 
 	private static final LruCache<Integer, Group> cacheByID=new LruCache<>(500);
 	private static final LruCache<String, Group> cacheByUsername=new LruCache<>(500);
@@ -213,6 +218,28 @@ public class GroupStorage{
 						order++;
 					}
 				}
+			}
+		}catch(SQLIntegrityConstraintViolationException x){
+			// Rare case: group with a matching username@domain but a different AP ID already exists
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+				int oldID=new SQLQueryBuilder(conn)
+						.selectFrom("groups")
+						.columns("id")
+						.where("username=? AND domain=? AND ap_id<>?", group.username, group.domain, group.activityPubID)
+						.executeAndGetInt();
+				if(oldID<=0){
+					LOG.warn("Didn't find an existing group with username {}@{} while trying to deduplicate {}", group.username, group.domain, group.activityPubID);
+					throw x;
+				}
+				LOG.info("Deduplicating group rows: username {}@{}, old local ID {}, new AP ID {}", group.username, group.domain, oldID, group.activityPubID);
+				// Assign a temporary random username to this existing user row to get it out of the way
+				new SQLQueryBuilder(conn)
+						.update("groups")
+						.value("username", UUID.randomUUID().toString())
+						.where("id=?", oldID)
+						.executeNoResult();
+				// Try again
+				putOrUpdateForeignGroup(group);
 			}
 		}
 	}
