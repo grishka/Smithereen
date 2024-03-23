@@ -54,6 +54,19 @@ CREATE TABLE `audit_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `blocks_email_domain`
+--
+
+CREATE TABLE `blocks_email_domain` (
+  `domain` varchar(100) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `action` tinyint unsigned NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `note` text NOT NULL,
+  `creator_id` int unsigned NOT NULL,
+  PRIMARY KEY (`domain`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `blocks_group_domain`
 --
 
@@ -76,6 +89,22 @@ CREATE TABLE `blocks_group_user` (
   KEY `user_id` (`user_id`),
   CONSTRAINT `blocks_group_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE,
   CONSTRAINT `blocks_group_user_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `blocks_ip`
+--
+
+CREATE TABLE `blocks_ip` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `address` binary(16) NOT NULL,
+  `prefix_length` tinyint unsigned NOT NULL,
+  `action` tinyint unsigned NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` timestamp NOT NULL,
+  `note` text NOT NULL,
+  `creator_id` int unsigned NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -743,4 +772,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-03-10 23:24:22
+-- Dump completed on 2024-03-23  8:50:17
