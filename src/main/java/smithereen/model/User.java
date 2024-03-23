@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -38,7 +39,7 @@ public class User extends Actor{
 	public LocalDate birthDate;
 	public Gender gender;
 	public long flags;
-	public Map<UserPrivacySettingKey, PrivacySetting> privacySettings=Map.of();
+	public Map<UserPrivacySettingKey, PrivacySetting> privacySettings=new HashMap<>();
 	public int movedTo;
 	public int movedFrom;
 	public Instant movedAt;
