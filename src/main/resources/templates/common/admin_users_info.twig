@@ -10,7 +10,7 @@
 	<div class="itemWithMediumAvatar">
 		<div>{{ user | pictureForAvatar('m') }}</div>
 		<div>
-			<h2>{{ user | name('complete') }}</h2>
+			<h2><a href="{{ user.profileURL }}" target="_blank" rel="noopener">{{ user | name('complete') }}</a></h2>
 			<div class="marginBefore marginAfter">
 				@{{ user.fullUsername }}, ID {{ user.id }}
 				{% if account is not null %}
