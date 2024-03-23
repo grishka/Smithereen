@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -24,7 +23,6 @@ import smithereen.model.EmailDomainBlockRule;
 import smithereen.model.EmailDomainBlockRuleFull;
 import smithereen.model.PaginatedList;
 import smithereen.model.Server;
-import smithereen.model.User;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.model.ViolationReportAction;
@@ -32,7 +30,7 @@ import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
-import smithereen.storage.utils.Pair;
+import smithereen.storage.utils.IntPair;
 import smithereen.util.InetAddressRange;
 import spark.utils.StringUtils;
 
@@ -203,8 +201,8 @@ public class ModerationStorage{
 				.selectExpr("role, count(*)")
 				.where("role IS NOT NULL")
 				.groupBy("role")
-				.executeAsStream(rs->new IdPair(rs.getInt(1), rs.getInt(2)))
-				.collect(Collectors.toMap(IdPair::first, IdPair::second));
+				.executeAsStream(rs->new IntPair(rs.getInt(1), rs.getInt(2)))
+				.collect(Collectors.toMap(IntPair::first, IntPair::second));
 	}
 
 	public static void updateRole(int id, String name, EnumSet<UserRole.Permission> permissions) throws SQLException{

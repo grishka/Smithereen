@@ -48,6 +48,7 @@ import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.utils.IntPair;
 import spark.utils.StringUtils;
 
 public class GroupStorage{
@@ -930,15 +931,15 @@ public class GroupStorage{
 	}
 
 	public static List<GroupInvitation> getUserInvitations(int userID, boolean isEvent, int offset, int count) throws SQLException{
-		List<IdPair> ids=new SQLQueryBuilder()
+		List<IntPair> ids=new SQLQueryBuilder()
 				.selectFrom("group_invites")
 				.columns("group_id", "inviter_id")
 				.where("invitee_id=? AND is_event=?", userID, isEvent)
 				.limit(count, offset)
-				.executeAsStream(r->new IdPair(r.getInt(1), r.getInt(2)))
+				.executeAsStream(r->new IntPair(r.getInt(1), r.getInt(2)))
 				.toList();
-		Set<Integer> needGroups=ids.stream().map(IdPair::first).collect(Collectors.toSet());
-		Set<Integer> needUsers=ids.stream().map(IdPair::second).collect(Collectors.toSet());
+		Set<Integer> needGroups=ids.stream().map(IntPair::first).collect(Collectors.toSet());
+		Set<Integer> needUsers=ids.stream().map(IntPair::second).collect(Collectors.toSet());
 		Map<Integer, Group> groups=getById(needGroups);
 		Map<Integer, User> users=UserStorage.getById(needUsers);
 		// All groups and users must exist, this is taken care of by schema constraints
