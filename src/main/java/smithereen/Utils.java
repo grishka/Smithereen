@@ -263,7 +263,7 @@ public class Utils{
 	public static String requireFormField(Request req, String field, String errorKey){
 		String value=req.queryParams(field);
 		if(StringUtils.isEmpty(value))
-			throw new FormValidationException(lang(req).get(errorKey));
+			throw new FormValidationException(errorKey==null ? ("Required field missing: "+field) : lang(req).get(errorKey));
 		return value;
 	}
 
@@ -272,6 +272,17 @@ public class Utils{
 		if(value.length()<minLength)
 			throw new FormValidationException(lang(req).get(errorKey));
 		return value;
+	}
+
+	public static <E extends Enum<E>> E requireFormField(Request req, String field, String errorKey, Class<E> enumClass){
+		String value=req.queryParams(field);
+		if(StringUtils.isEmpty(value))
+			throw new FormValidationException(errorKey==null ? ("Required field missing: "+field) : lang(req).get(errorKey));
+		try{
+			return Enum.valueOf(enumClass, value);
+		}catch(IllegalArgumentException x){
+			throw new FormValidationException(errorKey==null ? ("Required field missing: "+field) : lang(req).get(errorKey));
+		}
 	}
 
 	public static Locale localeForRequest(Request req){

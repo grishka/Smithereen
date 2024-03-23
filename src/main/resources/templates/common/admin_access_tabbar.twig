@@ -3,4 +3,7 @@
 	{% if userPermissions.hasPermission('MANAGE_FEDERATION') %}
 	<a href="/settings/admin/federation" class="{{ tab=='federation' ? 'selected' : '' }}">{{ L('admin_federation') }}</a>
 	{% endif %}
+	{% if userPermissions.hasPermission('MANAGE_BLOCKING_RULES') %}
+	<a href="/settings/admin/emailRules" class="{{ tab=='emailRules' ? 'selected' : '' }}">{{ L('admin_email_domain_rules') }}</a>
+	{% endif %}
 </div>

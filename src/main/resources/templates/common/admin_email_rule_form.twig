@@ -1,0 +1,13 @@
+{% import "forms" as form %}
+{{ form.start("adminCreateEmailRule") }}
+	{% if editing %}
+	{{ form.labeledText(L('domain'), domain) }}
+	{% else %}
+	{{ form.textInput('domain', L('domain'), domain, {'required': true}) }}
+	{% endif %}
+	{{ form.radioGroup('ruleAction', L('admin_rule_action'), [
+		{'value': 'MANUAL_REVIEW', 'label': L('admin_email_rule_review'), 'selected': ruleAction=='MANUAL_REVIEW'},
+		{'value': 'BLOCK', 'label': L('admin_email_rule_reject'), 'selected': ruleAction=='BLOCK'}
+	], {'required': true}) }}
+	{{ form.textInput('note', L('admin_rule_note'), note, {'explanation': L('admin_rule_note_explanation')}) }}
+{{ form.end() }}

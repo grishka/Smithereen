@@ -25,6 +25,11 @@ public record AuditLogEntry(int id, int adminID, Action action, Instant time, in
 		END_USER_SESSION,
 		BAN_USER,
 		DELETE_USER,
+
+		// Blocking rules
+		CREATE_EMAIL_DOMAIN_RULE,
+		UPDATE_EMAIL_DOMAIN_RULE,
+		DELETE_EMAIL_DOMAIN_RULE,
 	}
 
 	public enum ObjectType{

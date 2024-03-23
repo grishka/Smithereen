@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 import smithereen.Utils;
 import smithereen.model.ActorStaffNote;
 import smithereen.model.AuditLogEntry;
+import smithereen.model.EmailDomainBlockRule;
+import smithereen.model.EmailDomainBlockRuleFull;
 import smithereen.model.PaginatedList;
 import smithereen.model.Server;
 import smithereen.model.User;
@@ -30,6 +32,7 @@ import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.utils.Pair;
 import smithereen.util.InetAddressRange;
 import spark.utils.StringUtils;
 
@@ -411,5 +414,56 @@ public class ModerationStorage{
 				.selectFrom("user_staff_notes")
 				.where("id=?", id)
 				.executeAndGetSingleObject(ActorStaffNote::fromResultSet);
+	}
+
+	public static void createEmailDomainBlockRule(String domain, EmailDomainBlockRule.Action action, String note, int creatorID) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("blocks_email_domain")
+				.value("domain", domain)
+				.value("action", action)
+				.value("note", note)
+				.value("creator_id", creatorID)
+				.executeNoResult();
+	}
+
+	public static void updateEmailDomainBlockRule(String domain, EmailDomainBlockRule.Action action, String note) throws SQLException{
+		new SQLQueryBuilder()
+				.update("blocks_email_domain")
+				.value("action", action)
+				.value("note", note)
+				.where("domain=?", domain)
+				.executeNoResult();
+	}
+
+	public static List<EmailDomainBlockRule> getEmailDomainBlockRules() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_email_domain")
+				.columns("domain", "action")
+				.executeAsStream(EmailDomainBlockRule::fromResultSet)
+				.toList();
+	}
+
+	public static void deleteEmailDomainBlockRule(String domain) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("blocks_email_domain")
+				.where("domain=?", domain)
+				.executeNoResult();
+	}
+
+	public static List<EmailDomainBlockRuleFull> getEmailDomainBlockRulesFull() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_email_domain")
+				.allColumns()
+				.orderBy("created_at DESC")
+				.executeAsStream(EmailDomainBlockRuleFull::fromResultSet)
+				.toList();
+	}
+
+	public static EmailDomainBlockRuleFull getEmailDomainBlockRuleFull(String domain) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_email_domain")
+				.allColumns()
+				.where("domain=?", domain)
+				.executeAndGetSingleObject(EmailDomainBlockRuleFull::fromResultSet);
 	}
 }

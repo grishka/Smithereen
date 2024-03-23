@@ -242,5 +242,21 @@
   "reports_by_user": "Созданные {name, inflect, instrumental}",
   "admin_user_staff_notes_empty": "Добавьте заметку об этом пользователе для других администраторов сервера или для себя в будущем. Заметки видны только тем, у кого есть доступ к личным карточкам.",
   "admin_user_X_staff_notes_summary": "{count, plural, =0 {Нет служебных заметок} one {# служебная заметка} few {# служебных заметки} other {# служебных заметок}} об этом пользователе",
-  "admin_user_staff_note_confirm_delete": "Вы действительно хотите удалить эту заметку?"
+  "admin_user_staff_note_confirm_delete": "Вы действительно хотите удалить эту заметку?",
+  "admin_email_domain_rules": "Домены e-mail",
+  "admin_email_X_domain_rules_summary": "{count, plural, =0 {Нет правил} one {# правило} few {# правила} other {# правил}} для доменов e-mail",
+  "admin_create_rule": "Создать правило",
+  "admin_email_rule_reject": "Запретить регистрацию",
+  "admin_email_rule_review": "Отправлять регистрации на ручное одобрение",
+  "admin_email_domain_rules_empty": "Нет ни одного правила для доменов e-mail",
+  "admin_rule_note": "Заметка",
+  "admin_rule_note_explanation": "Вы можете добавить к этому правилу заметку для других администраторов или для себя в будущем",
+  "admin_rule_action": "Действие",
+  "admin_audit_log_created_email_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {создала} other {создал}} правило для домена e-mail <b>{domain}</b>:",
+  "admin_audit_log_updated_email_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} правило для домена e-mail <b>{domain}</b>:",
+  "admin_audit_log_deleted_email_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} правило для домена e-mail <b>{domain}</b>:",
+  "err_admin_email_rule_already_exists": "Для этого домена уже существует правило",
+  "admin_email_rule_created": "Правило создано",
+  "admin_email_rule_title": "Правило для домена e-mail",
+  "admin_confirm_delete_rule": "Вы действительно хотите удалить это правило?"
 }

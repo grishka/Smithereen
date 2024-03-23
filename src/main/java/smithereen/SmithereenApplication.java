@@ -327,6 +327,17 @@ public class SmithereenApplication{
 				postRequiringPermissionWithCSRF("/updateEmailSettings", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::saveEmailSettings);
 				postRequiringPermissionWithCSRF("/sendTestEmail", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::sendTestEmail);
 				getRequiringPermission("/auditLog", UserRole.Permission.VIEW_SERVER_AUDIT_LOG, SettingsAdminRoutes::auditLog);
+				path("/emailRules", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRules);
+					getRequiringPermission("/createForm", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleCreateForm);
+					postRequiringPermissionWithCSRF("/create", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleCreate);
+					path("/:domain", ()->{
+						getRequiringPermission("/edit", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleEdit);
+						postRequiringPermissionWithCSRF("/update", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleUpdate);
+						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleConfirmDelete);
+						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleDelete);
+					});
+				});
 			});
 		});
 

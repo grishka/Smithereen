@@ -17,6 +17,7 @@ import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.model.Account;
 import smithereen.model.EmailCode;
+import smithereen.model.EmailDomainBlockRule;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
 import smithereen.model.User;
@@ -156,6 +157,17 @@ public class SessionRoutes{
 		if(redirectIfLoggedIn(req, resp))
 			return "";
 
+		ApplicationContext ctx=context(req);
+
+		// TODO move all this into UsersController and don't ask/assign username at signup
+		if(Config.signupFormUseCaptcha && Config.signupMode==Config.SignupMode.OPEN){
+			try{
+				verifyCaptcha(req);
+			}catch(UserErrorException x){
+				return regError(req, x.getMessage());
+			}
+		}
+
 		String username=req.queryParams("username");
 		String password=req.queryParams("password");
 		String password2=req.queryParams("password2");
@@ -185,21 +197,25 @@ public class SessionRoutes{
 				return regError(req, "err_invalid_invitation");
 		}
 
-		if(Config.signupFormUseCaptcha && Config.signupMode==Config.SignupMode.OPEN){
-			try{
-				verifyCaptcha(req);
-			}catch(UserErrorException x){
-				return regError(req, x.getMessage());
-			}
-		}
-
 		User.Gender gender=lang(req).detectGenderForName(first, last, null);
 
 		SessionStorage.SignupResult res;
-		if(Config.signupMode==Config.SignupMode.OPEN && invitation==null)
-			res=SessionStorage.registerNewAccount(username, password, email, first, last, gender);
-		else
+		if(Config.signupMode==Config.SignupMode.OPEN && invitation==null){
+			EmailDomainBlockRule blockRule=ctx.getModerationController().matchEmailDomainBlockRule(email);
+			if(blockRule!=null){
+				return switch(blockRule.action()){
+					case BLOCK -> regError(req, "err_reg_email_domain_not_allowed");
+					case MANUAL_REVIEW -> {
+						context(req).getUsersController().requestSignupInvite(req, first, last, email, "(Automatically sent for manual review because of an email domain rule)");
+						yield new RenderedTemplateResponse("generic_message", req).with("message", lang(req).get("signup_request_submitted"));
+					}
+				};
+			}else{
+				res=SessionStorage.registerNewAccount(username, password, email, first, last, gender);
+			}
+		}else{
 			res=SessionStorage.registerNewAccount(username, password, email, first, last, gender, invite);
+		}
 		if(res==SessionStorage.SignupResult.SUCCESS){
 			Account acc=Objects.requireNonNull(SessionStorage.getAccountForUsernameAndPassword(username, password));
 			if(Config.signupConfirmEmail && (invitation==null || StringUtils.isEmpty(invitation.email) || !email.equalsIgnoreCase(invitation.email))){

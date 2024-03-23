@@ -15,12 +15,14 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,6 +45,8 @@ import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.ActorStaffNote;
 import smithereen.model.AdminNotifications;
 import smithereen.model.AuditLogEntry;
+import smithereen.model.EmailDomainBlockRule;
+import smithereen.model.EmailDomainBlockRuleFull;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -79,6 +83,8 @@ public class ModerationController{
 
 	private final ApplicationContext context;
 	private final LruCache<String, Server> serversByDomainCache=new LruCache<>(500);
+	private final Object emailRulesLock=new Object();
+	private List<EmailDomainBlockRule> emailDomainRules;
 
 	public ModerationController(ApplicationContext context){
 		this.context=context;
@@ -642,6 +648,98 @@ public class ModerationController{
 			if(note==null)
 				throw new ObjectNotFoundException();
 			return note;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<EmailDomainBlockRule> getEmailDomainBlockRules(){
+		try{
+			synchronized(emailRulesLock){
+				if(emailDomainRules!=null)
+					return emailDomainRules;
+				emailDomainRules=Collections.unmodifiableList(ModerationStorage.getEmailDomainBlockRules());
+				return emailDomainRules;
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	private void reloadEmailDomainBlockCache() throws SQLException{
+		synchronized(emailRulesLock){
+			emailDomainRules=Collections.unmodifiableList(ModerationStorage.getEmailDomainBlockRules());
+		}
+	}
+
+	private String normalizeDomain(String domain){
+		return Utils.convertIdnToAsciiIfNeeded(domain).toLowerCase();
+	}
+
+	public void createEmailDomainBlockRule(User self, String domain, EmailDomainBlockRule.Action action, String note){
+		try{
+			domain=normalizeDomain(domain);
+			EmailDomainBlockRuleFull rule=ModerationStorage.getEmailDomainBlockRuleFull(domain);
+			if(rule!=null)
+				throw new UserErrorException("err_admin_email_rule_already_exists");
+			ModerationStorage.createEmailDomainBlockRule(domain, action, note, self.id);
+			reloadEmailDomainBlockCache();
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CREATE_EMAIL_DOMAIN_RULE, 0, 0, null, Map.of("domain", domain, "action", action.toString()));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteEmailDomainBlockRule(User self, EmailDomainBlockRuleFull rule){
+		try{
+			ModerationStorage.deleteEmailDomainBlockRule(normalizeDomain(rule.rule().domain()));
+			reloadEmailDomainBlockCache();
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.DELETE_EMAIL_DOMAIN_RULE, 0, 0, null, Map.of("domain", rule.rule().domain(), "action", rule.rule().action().toString()));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateEmailDomainBlockRule(User self, EmailDomainBlockRuleFull rule, EmailDomainBlockRule.Action action, String note){
+		try{
+			if(action==rule.rule().action() && Objects.equals(rule.note(), note))
+				return;
+			ModerationStorage.updateEmailDomainBlockRule(rule.rule().domain(), action, note);
+			if(action!=rule.rule().action()){
+				ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.UPDATE_EMAIL_DOMAIN_RULE, 0, 0, null, Map.of("domain", rule.rule().domain(), "oldAction", rule.rule().action().toString(), "newAction", action.toString()));
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public EmailDomainBlockRule matchEmailDomainBlockRule(String email){
+		if(!Utils.isValidEmail(email))
+			throw new IllegalArgumentException("'"+email+"' is not a valid email");
+		String domain=normalizeDomain(email.split("@", 2)[1]);
+		List<EmailDomainBlockRule> rules=getEmailDomainBlockRules();
+		for(EmailDomainBlockRule rule:rules){
+			if(rule.matches(domain))
+				return rule;
+		}
+		return null;
+	}
+
+	public List<EmailDomainBlockRuleFull> getEmailDomainBlockRulesFull(){
+		try{
+			return ModerationStorage.getEmailDomainBlockRulesFull();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public EmailDomainBlockRuleFull getEmailDomainBlockRuleOrThrow(String domain){
+		domain=normalizeDomain(domain);
+		try{
+			EmailDomainBlockRuleFull rule=ModerationStorage.getEmailDomainBlockRuleFull(domain);
+			if(rule==null)
+				throw new ObjectNotFoundException();
+			return rule;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

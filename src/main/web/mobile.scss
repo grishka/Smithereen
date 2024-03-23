@@ -1708,6 +1708,9 @@ input.searchField{
 	&.iconPencil{
 		background-image: svg-load('img/material/ic_edit.svg', fill: $textOnAccent);
 	}
+	&.iconAdd{
+		background-image: svg-load('img/material/add_FILL0_wght400_GRAD0_opsz24.svg', fill: $textOnAccent);
+	}
 }
 
 .withRightColumnFilters{

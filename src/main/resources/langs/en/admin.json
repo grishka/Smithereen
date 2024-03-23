@@ -242,5 +242,21 @@
   "reports_by_user": "By {name}",
   "admin_user_staff_notes_empty": "Add a note about this user for other members of your server staff or for your future self. These notes are only visible to those who have access to manage users.",
   "admin_user_X_staff_notes_summary": "{count, plural, =0 {No staff notes} one {# staff note} other {# staff notes}} for this user",
-  "admin_user_staff_note_confirm_delete": "Are you sure you want to delete this note?"
+  "admin_user_staff_note_confirm_delete": "Are you sure you want to delete this note?",
+  "admin_email_domain_rules": "E-mail domains",
+  "admin_email_X_domain_rules_summary": "{count, plural, =0 {No email domain rules} one {# email domain rule} other {# email domain rules}}",
+  "admin_create_rule": "Create rule",
+  "admin_email_rule_reject": "Reject signups",
+  "admin_email_rule_review": "Send signups to manual review",
+  "admin_email_domain_rules_empty": "There are no rules for e-mail domains",
+  "admin_rule_note": "Note",
+  "admin_rule_note_explanation": "You can add a note to this rule for other members of your server staff or for your future self",
+  "admin_rule_action": "Action",
+  "admin_audit_log_created_email_rule": "<a id=\"adminUser\">{name}</a> created a rule for e-mail domain <b>{domain}</b>:",
+  "admin_audit_log_updated_email_rule": "<a id=\"adminUser\">{name}</a> updated a rule for e-mail domain <b>{domain}</b>:",
+  "admin_audit_log_deleted_email_rule": "<a id=\"adminUser\">{name}</a> deleted a rule for e-mail domain <b>{domain}</b>:",
+  "err_admin_email_rule_already_exists": "A rule for this domain already exists",
+  "admin_email_rule_created": "Domain rule created",
+  "admin_email_rule_title": "E-mail domain rule",
+  "admin_confirm_delete_rule": "Are you sure you want to delete this rule?"
 }

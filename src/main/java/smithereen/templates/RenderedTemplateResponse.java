@@ -97,6 +97,15 @@ public class RenderedTemplateResponse{
 		templateName=name;
 	}
 
+	public RenderedTemplateResponse addMessage(Request req, String messageKeyInSession){
+		String msg=req.session().attribute(messageKeyInSession);
+		if(StringUtils.isNotEmpty(msg)){
+			req.session().removeAttribute(messageKeyInSession);
+			with("message", msg);
+		}
+		return this;
+	}
+
 	public void renderToWriter(Writer writer) throws IOException{
 		try{
 			template=getAndPrepareTemplate(req);
