@@ -7,11 +7,13 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
@@ -50,6 +52,8 @@ import smithereen.model.EmailDomainBlockRuleFull;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
+import smithereen.model.IPBlockRule;
+import smithereen.model.IPBlockRuleFull;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OtherSession;
@@ -76,6 +80,7 @@ import smithereen.storage.UserStorage;
 import smithereen.util.InetAddressRange;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.XTEA;
+import spark.Request;
 import spark.utils.StringUtils;
 
 public class ModerationController{
@@ -84,7 +89,9 @@ public class ModerationController{
 	private final ApplicationContext context;
 	private final LruCache<String, Server> serversByDomainCache=new LruCache<>(500);
 	private final Object emailRulesLock=new Object();
+	private final Object ipRulesLock=new Object();
 	private List<EmailDomainBlockRule> emailDomainRules;
+	private List<IPBlockRule> ipRules;
 
 	public ModerationController(ApplicationContext context){
 		this.context=context;
@@ -113,7 +120,7 @@ public class ModerationController{
 			JsonArray contentJson;
 			if(content!=null && !content.isEmpty()){
 				JsonArrayBuilder ab=new JsonArrayBuilder();
-				for(ReportableContentObject obj:content){
+				for(ReportableContentObject obj: content){
 					JsonObject jo=obj.serializeForReport(targetID, contentFileIDs);
 					if(jo!=null)
 						ab.add(jo);
@@ -125,7 +132,7 @@ public class ModerationController{
 
 			int id=ModerationStorage.createViolationReport(self!=null ? self.id : 0, targetID, comment, otherServerDomain, contentJson==null ? null : contentJson.toString());
 			updateReportsCounter();
-			for(long fid:contentFileIDs){
+			for(long fid: contentFileIDs){
 				// ownerID set to 0 because reports aren't owned by any particular actor
 				// and referenced files should stick around regardless of any account deletions
 				MediaStorage.createMediaFileReference(fid, id, MediaFileReferenceType.REPORT_OBJECT, 0);
@@ -175,14 +182,14 @@ public class ModerationController{
 				throw new ObjectNotFoundException();
 			if(needFiles && !report.content.isEmpty()){
 				HashSet<LocalImage> localImages=new HashSet<>();
-				for(ReportableContentObject rco:report.content){
+				for(ReportableContentObject rco: report.content){
 					List<ActivityPubObject> attachments=switch(rco){
 						case Post p -> p.getAttachments();
 						case MailMessage m -> m.getAttachments();
 					};
 					if(attachments==null)
 						continue;
-					for(ActivityPubObject att:attachments){
+					for(ActivityPubObject att: attachments){
 						if(att instanceof LocalImage li){
 							localImages.add(li);
 						}
@@ -191,7 +198,7 @@ public class ModerationController{
 				Set<Long> fileIDs=localImages.stream().map(li->li.fileID).collect(Collectors.toSet());
 				if(!fileIDs.isEmpty()){
 					Map<Long, MediaFileRecord> files=MediaStorage.getMediaFileRecords(fileIDs);
-					for(LocalImage li:localImages){
+					for(LocalImage li: localImages){
 						MediaFileRecord mfr=files.get(li.fileID);
 						if(mfr!=null)
 							li.fillIn(mfr);
@@ -575,7 +582,7 @@ public class ModerationController{
 			throw new IllegalArgumentException("Report is not open");
 		try{
 			boolean actuallyDeletedAnything=false;
-			for(ReportableContentObject rco:report.content){
+			for(ReportableContentObject rco: report.content){
 				switch(rco){
 					case Post post -> {
 						try{
@@ -706,7 +713,8 @@ public class ModerationController{
 				return;
 			ModerationStorage.updateEmailDomainBlockRule(rule.rule().domain(), action, note);
 			if(action!=rule.rule().action()){
-				ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.UPDATE_EMAIL_DOMAIN_RULE, 0, 0, null, Map.of("domain", rule.rule().domain(), "oldAction", rule.rule().action().toString(), "newAction", action.toString()));
+				ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.UPDATE_EMAIL_DOMAIN_RULE, 0, 0, null,
+						Map.of("domain", rule.rule().domain(), "oldAction", rule.rule().action().toString(), "newAction", action.toString()));
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -718,7 +726,7 @@ public class ModerationController{
 			throw new IllegalArgumentException("'"+email+"' is not a valid email");
 		String domain=normalizeDomain(email.split("@", 2)[1]);
 		List<EmailDomainBlockRule> rules=getEmailDomainBlockRules();
-		for(EmailDomainBlockRule rule:rules){
+		for(EmailDomainBlockRule rule: rules){
 			if(rule.matches(domain))
 				return rule;
 		}
@@ -743,5 +751,112 @@ public class ModerationController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public List<IPBlockRule> getIPBlockRules(){
+		try{
+			synchronized(ipRulesLock){
+				if(ipRules!=null)
+					return ipRules;
+				ipRules=Collections.unmodifiableList(ModerationStorage.getIPBlockRules());
+				return ipRules;
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	private void reloadIpBlockCache() throws SQLException{
+		synchronized(ipRulesLock){
+			ipRules=Collections.unmodifiableList(ModerationStorage.getIPBlockRules());
+		}
+	}
+
+	public void createIPBlockRule(User self, InetAddressRange addressRange, IPBlockRule.Action action, int expiryMinutes, String note){
+		try{
+			Instant expiry=Instant.now().plus(expiryMinutes, ChronoUnit.MINUTES);
+			ModerationStorage.createIPBlockRule(addressRange, action, expiry, note, self.id);
+			reloadIpBlockCache();
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CREATE_IP_RULE, 0, 0, null,
+					Map.of("addr", addressRange.toString(), "expiry", expiry.getEpochSecond(), "action", action.toString()));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteIPBlockRule(User self, IPBlockRuleFull rule){
+		try{
+			ModerationStorage.deleteIPBlockRule(rule.rule().id());
+			reloadIpBlockCache();
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.DELETE_IP_RULE, 0, 0, null,
+					Map.of("addr", rule.rule().ipRange().toString(), "expiry", rule.rule().expiresAt().getEpochSecond(), "action", rule.rule().action().toString()));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateIPBlockRule(User self, IPBlockRuleFull rule, IPBlockRule.Action action, int newExpiryMinutes, String note){
+		try{
+			Instant newExpiry=newExpiryMinutes>0 ? Instant.now().plus(newExpiryMinutes, ChronoUnit.MINUTES) : rule.rule().expiresAt();
+			HashMap<String, Object> auditLogArgs=new HashMap<>();
+			if(newExpiryMinutes!=0){
+				auditLogArgs.put("oldExpiry", rule.rule().expiresAt().getEpochSecond());
+				auditLogArgs.put("newExpiry", newExpiry.getEpochSecond());
+			}
+			if(action!=rule.rule().action()){
+				auditLogArgs.put("oldRule", rule.rule().action().toString());
+				auditLogArgs.put("newRule", rule.toString());
+			}
+			ModerationStorage.updateIPBlockRule(rule.rule().id(), action, newExpiry, note);
+			reloadIpBlockCache();
+			if(!auditLogArgs.isEmpty()){
+				auditLogArgs.put("addr", rule.rule().ipRange().toString());
+				ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.UPDATE_IP_RULE, 0, 0, null, auditLogArgs);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public IPBlockRule matchIPBlockRule(InetAddress ip){
+		List<IPBlockRule> rules=getIPBlockRules();
+		Instant now=Instant.now();
+		for(IPBlockRule rule: rules){
+			if(rule.ipRange().contains(ip) && rule.expiresAt().isAfter(now))
+				return rule;
+		}
+		return null;
+	}
+
+	public List<IPBlockRuleFull> getIPBlockRulesFull(){
+		try{
+			return ModerationStorage.getIPBlockRulesFull();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public IPBlockRuleFull getIPBlockRuleFull(int id){
+		try{
+			IPBlockRuleFull rule=ModerationStorage.getIPBlockRuleFull(id);
+			if(rule==null)
+				throw new ObjectNotFoundException();
+			return rule;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Config.SignupMode getEffectiveSignupMode(Request req){
+		InetAddress ip=Utils.getRequestIP(req);
+		IPBlockRule rule=matchIPBlockRule(ip);
+		if(rule!=null){
+			if(rule.action()==IPBlockRule.Action.MANUAL_REVIEW_SIGNUPS && Config.signupMode==Config.SignupMode.OPEN){
+				return Config.SignupMode.MANUAL_APPROVAL;
+			}else if(rule.action()==IPBlockRule.Action.BLOCK_SIGNUPS){
+				return Config.SignupMode.CLOSED;
+			}
+		}
+		return Config.signupMode;
 	}
 }

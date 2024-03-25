@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +22,8 @@ import smithereen.model.ActorStaffNote;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.EmailDomainBlockRule;
 import smithereen.model.EmailDomainBlockRuleFull;
+import smithereen.model.IPBlockRule;
+import smithereen.model.IPBlockRuleFull;
 import smithereen.model.PaginatedList;
 import smithereen.model.Server;
 import smithereen.model.UserRole;
@@ -463,5 +466,60 @@ public class ModerationStorage{
 				.allColumns()
 				.where("domain=?", domain)
 				.executeAndGetSingleObject(EmailDomainBlockRuleFull::fromResultSet);
+	}
+
+
+	public static void createIPBlockRule(InetAddressRange addressRange, IPBlockRule.Action action, Instant expiresAt, String note, int creatorID) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("blocks_ip")
+				.value("address", Utils.serializeInetAddress(addressRange.address()))
+				.value("prefix_length", addressRange.prefixLength())
+				.value("action", action)
+				.value("note", note)
+				.value("creator_id", creatorID)
+				.value("expires_at", expiresAt)
+				.executeNoResult();
+	}
+
+	public static void updateIPBlockRule(int id, IPBlockRule.Action action, Instant expiresAt, String note) throws SQLException{
+		new SQLQueryBuilder()
+				.update("blocks_ip")
+				.value("action", action)
+				.value("note", note)
+				.value("expires_at", expiresAt)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static List<IPBlockRule> getIPBlockRules() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_ip")
+				.columns("id", "address", "prefix_length", "action", "expires_at")
+				.executeAsStream(IPBlockRule::fromResultSet)
+				.toList();
+	}
+
+	public static void deleteIPBlockRule(int id) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("blocks_ip")
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static List<IPBlockRuleFull> getIPBlockRulesFull() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_ip")
+				.allColumns()
+				.orderBy("created_at DESC")
+				.executeAsStream(IPBlockRuleFull::fromResultSet)
+				.toList();
+	}
+
+	public static IPBlockRuleFull getIPBlockRuleFull(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_ip")
+				.allColumns()
+				.where("id=?", id)
+				.executeAndGetSingleObject(IPBlockRuleFull::fromResultSet);
 	}
 }

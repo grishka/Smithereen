@@ -258,5 +258,18 @@
   "err_admin_email_rule_already_exists": "A rule for this domain already exists",
   "admin_email_rule_created": "Domain rule created",
   "admin_email_rule_title": "E-mail domain rule",
-  "admin_confirm_delete_rule": "Are you sure you want to delete this rule?"
+  "admin_confirm_delete_rule": "Are you sure you want to delete this rule?",
+  "admin_ip_rules": "IP addresses",
+  "admin_ip_rule_address": "IP or subnet",
+  "admin_ip_rule_expiry": "Expiry time",
+  "admin_ip_rule_expiry_explanation": "IP addresses are a limited resource and often change owners, so it is not recommended to block them indefinitely",
+  "admin_audit_log_created_ip_rule": "<a id=\"adminUser\">{name}</a> created a rule for IP <b>{addressOrSubnet}</b>:",
+  "admin_audit_log_updated_ip_rule": "<a id=\"adminUser\">{name}</a> updated a rule for IP <b>{addressOrSubnet}</b>:",
+  "admin_audit_log_deleted_ip_rule": "<a id=\"adminUser\">{name}</a> deleted a rule for IP <b>{addressOrSubnet}</b>:",
+  "admin_X_ip_rules_summary": "{count, plural, =0 {No IP address rules} one {# IP address rule} other {# IP address rules}}",
+  "admin_ip_rule_until_time": "{action} until {time}",
+  "admin_ip_rules_empty": "There are no rules for IP addresses",
+  "admin_ip_rule_title": "IP or subnet rule",
+  "err_admin_ip_format_invalid": "Invalid IP address. Enter a single IPv4 or IPv6 address, or an address range in CIDR notation.",
+  "admin_ip_rule_created": "IP rule created"
 }

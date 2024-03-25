@@ -1,0 +1,26 @@
+{% import "forms" as form %}
+{{ form.start("adminCreateIPRule") }}
+	{% if editing %}
+	{{ form.labeledText(L('admin_ip_rule_address'), ipAddress) }}
+	{% else %}
+	{{ form.textInput('ipAddress', L('admin_ip_rule_address'), ipAddress, {'required': true, 'placeholder': '123.0.0.0/8'}) }}
+	{% endif %}
+	{% set options=[
+		{'value': 60, 'label': L('X_hours', {'count': 1})},
+		{'value': 720, 'label': L('X_hours', {'count': 12})},
+		{'value': 1440, 'label': L('X_days', {'count': 1}), 'selected': expiry is null},
+		{'value': 2880, 'label': L('X_days', {'count': 2})},
+		{'value': 10080, 'label': L('X_days', {'count': 7})},
+		{'value': 20160, 'label': L('X_days', {'count': 14})},
+		{'value': 43200, 'label': L('X_days', {'count': 30})},
+		{'value': 86400, 'label': L('X_days', {'count': 60})},
+		{'value': 129600, 'label': L('X_days', {'count': 90})}
+	] %}
+	{% if expiry is not null %}{% set _=options.add({'value': 0, 'label': LD(expiry, true), 'selected': true}) %}{% endif %}
+	{{ form.select('expiry', L('admin_ip_rule_expiry'), options, {'required': true, 'explanation': L('admin_ip_rule_expiry_explanation')}) }}
+	{{ form.radioGroup('ruleAction', L('admin_rule_action'), [
+		{'value': 'MANUAL_REVIEW_SIGNUPS', 'label': L('admin_email_rule_review'), 'selected': ruleAction=='MANUAL_REVIEW_SIGNUPS'},
+		{'value': 'BLOCK_SIGNUPS', 'label': L('admin_email_rule_reject'), 'selected': ruleAction=='BLOCK_SIGNUPS'}
+	], {'required': true}) }}
+	{{ form.textInput('note', L('admin_rule_note'), note, {'explanation': L('admin_rule_note_explanation')}) }}
+{{ form.end() }}

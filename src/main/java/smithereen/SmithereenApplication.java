@@ -338,6 +338,17 @@ public class SmithereenApplication{
 						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleDelete);
 					});
 				});
+				path("/ipRules", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRules);
+					getRequiringPermission("/createForm", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleCreateForm);
+					postRequiringPermissionWithCSRF("/create", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleCreate);
+					path("/:id", ()->{
+						getRequiringPermission("/edit", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleEdit);
+						postRequiringPermissionWithCSRF("/update", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleUpdate);
+						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleConfirmDelete);
+						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleDelete);
+					});
+				});
 			});
 		});
 
@@ -782,12 +793,13 @@ public class SmithereenApplication{
 			resp.redirect("/feed");
 			return "";
 		}
+		Config.SignupMode signupMode=context(req).getModerationController().getEffectiveSignupMode(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("index", req).with("title", Config.serverDisplayName)
-				.with("signupMode", Config.signupMode)
+				.with("signupMode", signupMode)
 				.with("serverDisplayName", Config.serverDisplayName)
 				.with("serverDescription", Config.serverDescription)
 				.addNavBarItem(lang(req).get("index_welcome"));
-		if((Config.signupMode==Config.SignupMode.OPEN || Config.signupMode==Config.SignupMode.MANUAL_APPROVAL) && Config.signupFormUseCaptcha){
+		if((signupMode==Config.SignupMode.OPEN || signupMode==Config.SignupMode.MANUAL_APPROVAL) && Config.signupFormUseCaptcha){
 			model.with("captchaSid", randomAlphanumericString(16));
 		}
 		return model;

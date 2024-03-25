@@ -107,6 +107,7 @@ public class SessionRoutes{
 	}
 
 	private static RenderedTemplateResponse regError(Request req, String errKey){
+		Config.SignupMode signupMode=context(req).getModerationController().getEffectiveSignupMode(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("register", req)
 				.with("message", Utils.lang(req).get(errKey))
 				.with("username", req.queryParams("username"))
@@ -117,9 +118,9 @@ public class SessionRoutes{
 				.with("last_name", req.queryParams("last_name"))
 				.with("invite", req.queryParams("invite"))
 				.with("preFilledInvite", req.queryParams("_invite"))
-				.with("signupMode", Config.signupMode)
+				.with("signupMode", signupMode)
 				.with("title", lang(req).get("register"));
-		if(Config.signupMode==Config.SignupMode.OPEN && Config.signupFormUseCaptcha){
+		if(signupMode==Config.SignupMode.OPEN && Config.signupFormUseCaptcha){
 			model.with("captchaSid", randomAlphanumericString(16));
 		}
 		return model;
@@ -160,7 +161,8 @@ public class SessionRoutes{
 		ApplicationContext ctx=context(req);
 
 		// TODO move all this into UsersController and don't ask/assign username at signup
-		if(Config.signupFormUseCaptcha && Config.signupMode==Config.SignupMode.OPEN){
+		Config.SignupMode signupMode=ctx.getModerationController().getEffectiveSignupMode(req);
+		if(Config.signupFormUseCaptcha && signupMode==Config.SignupMode.OPEN){
 			try{
 				verifyCaptcha(req);
 			}catch(UserErrorException x){
@@ -189,7 +191,7 @@ public class SessionRoutes{
 		SignupInvitation invitation=null;
 		if(StringUtils.isEmpty(invite))
 			invite=req.queryParams("_invite");
-		if(Config.signupMode!=Config.SignupMode.OPEN || StringUtils.isNotEmpty(invite)){
+		if(signupMode!=Config.SignupMode.OPEN || StringUtils.isNotEmpty(invite)){
 			if(StringUtils.isEmpty(invite) || !invite.matches("^[A-Fa-f0-9]{32}$"))
 				return regError(req, "err_invalid_invitation");
 			invitation=context(req).getUsersController().getInvite(invite);
@@ -200,7 +202,7 @@ public class SessionRoutes{
 		User.Gender gender=lang(req).detectGenderForName(first, last, null);
 
 		SessionStorage.SignupResult res;
-		if(Config.signupMode==Config.SignupMode.OPEN && invitation==null){
+		if(signupMode==Config.SignupMode.OPEN && invitation==null){
 			EmailDomainBlockRule blockRule=ctx.getModerationController().matchEmailDomainBlockRule(email);
 			if(blockRule!=null){
 				return switch(blockRule.action()){
@@ -242,11 +244,12 @@ public class SessionRoutes{
 			return "";
 
 		String invite=req.queryParams("invite");
-		if(Config.signupMode==Config.SignupMode.CLOSED && StringUtils.isEmpty(invite))
+		Config.SignupMode signupMode=context(req).getModerationController().getEffectiveSignupMode(req);
+		if(signupMode==Config.SignupMode.CLOSED && StringUtils.isEmpty(invite))
 			return wrapError(req, resp, "signups_closed");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("register", req);
-		model.with("signupMode", Config.signupMode);
-		if(Config.signupMode==Config.SignupMode.OPEN && Config.signupFormUseCaptcha){
+		model.with("signupMode", signupMode);
+		if(signupMode==Config.SignupMode.OPEN && Config.signupFormUseCaptcha){
 			model.with("captchaSid", randomAlphanumericString(16));
 		}
 		if(StringUtils.isNotEmpty(invite)){
@@ -439,7 +442,7 @@ public class SessionRoutes{
 	}
 
 	public static Object requestSignupInvite(Request req, Response resp){
-		if(Config.signupMode!=Config.SignupMode.MANUAL_APPROVAL){
+		if(context(req).getModerationController().getEffectiveSignupMode(req)!=Config.SignupMode.MANUAL_APPROVAL){
 			throw new UserActionNotAllowedException();
 		}
 

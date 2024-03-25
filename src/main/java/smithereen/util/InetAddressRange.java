@@ -103,7 +103,10 @@ public record InetAddressRange(InetAddress address, int prefixLength){
 
 	@Override
 	public String toString(){
-		return address.getHostAddress()+'/'+prefixLength;
+		String addrStr=address.getHostAddress();
+		if((address instanceof Inet4Address && prefixLength<32) || (address instanceof Inet6Address && prefixLength<128))
+			addrStr+="/"+prefixLength;
+		return addrStr;
 	}
 
 	public static InetAddressRange parse(@NotNull String subnet){

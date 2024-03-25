@@ -258,5 +258,18 @@
   "err_admin_email_rule_already_exists": "Для этого домена уже существует правило",
   "admin_email_rule_created": "Правило создано",
   "admin_email_rule_title": "Правило для домена e-mail",
-  "admin_confirm_delete_rule": "Вы действительно хотите удалить это правило?"
+  "admin_confirm_delete_rule": "Вы действительно хотите удалить это правило?",
+  "admin_ip_rules": "IP-адреса",
+  "admin_ip_rule_address": "IP или подсеть",
+  "admin_ip_rule_expiry": "Срок действия",
+  "admin_ip_rule_expiry_explanation": "IP-адреса — это ограниченный ресурс. Они достаточно часто меняют владельцев, так что блокировки по IP на неограниченный срок не рекомендуются",
+  "admin_audit_log_created_ip_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {создала} other {создал}} правило для IP <b>{ipOrSubnet}</b>:",
+  "admin_audit_log_updated_ip_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} правило для IP <b>{ipOrSubnet}</b>:",
+  "admin_audit_log_deleted_ip_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} правило для IP <b>{ipOrSubnet}</b>:",
+  "admin_X_ip_rules_summary": "{count, plural, =0 {Нет правил} one {# правило} few {# правила} other {# правил}} для IP-адресов",
+  "admin_ip_rule_until_time": "{action} до {time}",
+  "admin_ip_rules_empty": "Нет ни одного правила для IP-адресов",
+  "admin_ip_rule_title": "Правило для IP или подсети",
+  "err_admin_ip_format_invalid": "Некорректный IP-адрес. Введите IPv4- или IPv6-адрес или диапазон адресов в формате CIDR.",
+  "admin_ip_rule_created": "Правило для IP создано"
 }

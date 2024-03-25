@@ -30,6 +30,9 @@ public record AuditLogEntry(int id, int adminID, Action action, Instant time, in
 		CREATE_EMAIL_DOMAIN_RULE,
 		UPDATE_EMAIL_DOMAIN_RULE,
 		DELETE_EMAIL_DOMAIN_RULE,
+		CREATE_IP_RULE,
+		UPDATE_IP_RULE,
+		DELETE_IP_RULE,
 	}
 
 	public enum ObjectType{

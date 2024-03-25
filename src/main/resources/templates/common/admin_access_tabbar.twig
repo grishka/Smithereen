@@ -5,5 +5,6 @@
 	{% endif %}
 	{% if userPermissions.hasPermission('MANAGE_BLOCKING_RULES') %}
 	<a href="/settings/admin/emailRules" class="{{ tab=='emailRules' ? 'selected' : '' }}">{{ L('admin_email_domain_rules') }}</a>
+	<a href="/settings/admin/ipRules" class="{{ tab=='ipRules' ? 'selected' : '' }}">{{ L('admin_ip_rules') }}</a>
 	{% endif %}
 </div>
