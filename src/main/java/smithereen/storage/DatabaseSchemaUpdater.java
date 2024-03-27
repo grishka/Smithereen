@@ -37,7 +37,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=42;
+	public static final int SCHEMA_VERSION=43;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -46,7 +46,7 @@ public class DatabaseSchemaUpdater{
 			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 				conn.createStatement().execute("""
 						CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
-						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, BINARY(0xFF), BINARY(0xFFFF)), '%', BINARY(0xFF25)), '_', BINARY(0xFF5F)), '%');""");
+						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_'), '%');""");
 				createMediaRefCountTriggers(conn);
 				insertDefaultRoles(conn);
 			}
@@ -651,6 +651,12 @@ public class DatabaseSchemaUpdater{
 						  `creator_id` int unsigned NOT NULL,
 						  PRIMARY KEY (`id`)
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;""");
+			}
+			case 43 -> {
+				conn.createStatement().execute("DROP FUNCTION `bin_prefix`");
+				conn.createStatement().execute("""
+						CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
+						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_'), '%');""");
 			}
 		}
 	}

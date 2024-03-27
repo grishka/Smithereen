@@ -459,7 +459,7 @@ public class PostStorage{
 			PreparedStatement stmt;
 			boolean needFullyDelete=true;
 			if(post.getReplyLevel()>0){
-				stmt=conn.prepareStatement("SELECT COUNT(*) FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)");
+				stmt=conn.prepareStatement("SELECT COUNT(*) FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)");
 				ArrayList<Integer> rk=new ArrayList<>(post.replyKey.size()+1);
 				rk.add(post.id);
 				stmt.setBytes(1, Utils.serializeIntList(rk));
@@ -560,7 +560,7 @@ public class PostStorage{
 			ArrayList<Object> whereArgs=new ArrayList<>();
 			for(Post post:posts){
 				if(post.replyCount>0){
-					wheres.add("reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)");
+					wheres.add("reply_key LIKE BINARY bin_prefix(?)");
 					whereArgs.add(Utils.serializeIntList(post.getReplyKeyForReplies()));
 				}
 			}
@@ -696,7 +696,7 @@ public class PostStorage{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			ArrayList<String> queryParts=new ArrayList<>();
 			if(post.isLocal()){
-				queryParts.add("SELECT owner_user_id FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)");
+				queryParts.add("SELECT owner_user_id FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)");
 				if(owner instanceof ForeignUser fu)
 					queryParts.add("SELECT "+fu.id);
 				else if(owner instanceof User u)
