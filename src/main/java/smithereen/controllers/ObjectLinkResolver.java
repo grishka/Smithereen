@@ -212,7 +212,7 @@ public class ObjectLinkResolver{
 							}
 						}
 						if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
-							User author=resolve(noq.attributedTo, User.class, false, true, false);
+							User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
 							if(author.banStatus==UserBanStatus.SUSPENDED)
 								throw new ObjectNotFoundException("Post author is suspended on this server");
 							return ensureTypeAndCast(obj, expectedType);
@@ -271,9 +271,9 @@ public class ObjectLinkResolver{
 	@NotNull
 	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
 		Class<?> nativeType;
-		if(expectedType.isAssignableFrom(ActivityPubObject.class)){
+		if(expectedType.isAssignableFrom(ActivityPubObject.class) && allowStorage){
 			nativeType=Object.class;
-		}else if(NoteOrQuestion.class.isAssignableFrom(expectedType)){
+		}else if(NoteOrQuestion.class.isAssignableFrom(expectedType) && allowStorage){
 			nativeType=Post.class;
 		}else{
 			nativeType=expectedType;
