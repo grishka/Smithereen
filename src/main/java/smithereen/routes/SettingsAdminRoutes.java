@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -41,6 +42,7 @@ import smithereen.model.Post;
 import smithereen.model.ReportableContentObject;
 import smithereen.model.Server;
 import smithereen.model.SessionInfo;
+import smithereen.model.SignupInvitation;
 import smithereen.model.StatsPoint;
 import smithereen.model.StatsType;
 import smithereen.model.User;
@@ -944,6 +946,13 @@ public class SettingsAdminRoutes{
 					langArgs.put("ipOrSubnet", le.extra().get("addr"));
 					yield l.get("admin_audit_log_deleted_ip_rule", langArgs);
 				}
+
+				case DELETE_SIGNUP_INVITE -> {
+					User targetUser=users.get(le.ownerID());
+					langArgs.put("targetName", targetUser!=null ? targetUser.getFirstLastAndGender() : "DELETED");
+					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
+					yield l.get("admin_audit_log_deleted_invite", langArgs);
+				}
 			};
 			String extraText=switch(le.action()){
 				case ASSIGN_ROLE, DELETE_ROLE, ACTIVATE_ACCOUNT, RESET_USER_PASSWORD, DELETE_USER -> null;
@@ -1036,6 +1045,15 @@ public class SettingsAdminRoutes{
 								+" &rarr; "+l.formatDate(Instant.ofEpochSecond(((Number)le.extra().get("newExpiry")).longValue()), timeZoneForRequest(req), true));
 					}
 					yield "<i>"+String.join("<br/>", lines)+"</i>";
+				}
+
+				case DELETE_SIGNUP_INVITE -> {
+					String r=l.get("invite_signup_count")+": "+((Number)le.extra().get("signups")).intValue();
+					if(le.extra().containsKey("email"))
+						r+="<br/>"+l.get("email")+": "+escapeHTML(le.extra().get("email").toString());
+					if(le.extra().containsKey("name"))
+						r+="<br/>"+l.get("name")+": "+escapeHTML(le.extra().get("name").toString());
+					yield r;
 				}
 			};
 			return new AuditLogEntryViewModel(le, substituteLinks(mainText, links), extraText);
@@ -1480,5 +1498,37 @@ public class SettingsAdminRoutes{
 		IPBlockRuleFull rule=ctx.getModerationController().getIPBlockRuleFull(safeParseInt(req.params(":id")));
 		ctx.getModerationController().deleteIPBlockRule(self.user, rule);
 		return ajaxAwareRedirect(req, resp, "/settings/admin/ipRules");
+	}
+
+	public static Object invites(Request req, Response resp, Account self, ApplicationContext ctx){
+		PaginatedList<SignupInvitation> invites=ctx.getModerationController().getAllSignupInvites(offset(req), 100);
+		Map<Integer, Account> accounts=ctx.getModerationController().getAccounts(invites.list.stream().map(inv->inv.ownerID).collect(Collectors.toSet()));
+		Map<Integer, User> users=accounts.values().stream().map(a->a.user).collect(Collectors.toMap(u->u.id, Function.identity()));
+		for(SignupInvitation inv:invites.list){
+			if(accounts.containsKey(inv.ownerID)){
+				inv.ownerID=accounts.get(inv.ownerID).user.id;
+			}else{
+				inv.ownerID=0;
+			}
+		}
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_invites", req)
+				.paginate(invites)
+				.with("users", users)
+				.pageTitle(lang(req).get("admin_invites"))
+				.addMessage(req, "adminInviteMessage");
+		return model;
+	}
+
+	public static Object confirmDeleteInvite(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("delete"), l.get("confirm_delete_invite"), "/settings/admin/invites/"+id+"/delete");
+	}
+
+	public static Object deleteInvite(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		ctx.getModerationController().deleteSignupInvite(self.user, id);
+		req.session().attribute("adminInviteMessage", lang(req).get("signup_invite_deleted"));
+		return ajaxAwareRedirect(req, resp, "/settings/admin/invites");
 	}
 }

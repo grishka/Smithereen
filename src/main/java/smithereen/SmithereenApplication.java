@@ -349,6 +349,13 @@ public class SmithereenApplication{
 						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleDelete);
 					});
 				});
+				path("/invites", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::invites);
+					path("/:id", ()->{
+						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::confirmDeleteInvite);
+						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::deleteInvite);
+					});
+				});
 			});
 		});
 

@@ -26,6 +26,7 @@ import smithereen.model.IPBlockRule;
 import smithereen.model.IPBlockRuleFull;
 import smithereen.model.PaginatedList;
 import smithereen.model.Server;
+import smithereen.model.SignupInvitation;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.model.ViolationReportAction;
@@ -521,5 +522,33 @@ public class ModerationStorage{
 				.allColumns()
 				.where("id=?", id)
 				.executeAndGetSingleObject(IPBlockRuleFull::fromResultSet);
+	}
+
+	public static PaginatedList<SignupInvitation> getAllSignupInvites(int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("signup_invitations")
+					.count()
+					.where("signups_remaining>0")
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<SignupInvitation> invites=new SQLQueryBuilder(conn)
+					.selectFrom("signup_invitations")
+					.allColumns()
+					.where("signups_remaining>0")
+					.orderBy("id DESC")
+					.limit(count, offset)
+					.executeAsStream(SignupInvitation::fromResultSet)
+					.toList();
+			return new PaginatedList<>(invites, total, offset, count);
+		}
+	}
+
+	public static void deleteSignupInvite(int id) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("signup_invitations")
+				.where("id=?", id)
+				.executeNoResult();
 	}
 }

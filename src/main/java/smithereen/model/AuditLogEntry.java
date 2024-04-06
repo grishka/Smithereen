@@ -33,12 +33,16 @@ public record AuditLogEntry(int id, int adminID, Action action, Instant time, in
 		CREATE_IP_RULE,
 		UPDATE_IP_RULE,
 		DELETE_IP_RULE,
+
+		// Invites
+		DELETE_SIGNUP_INVITE,
 	}
 
 	public enum ObjectType{
 		ROLE,
 		POST,
 		REPORT,
+		SIGNUP_INVITE,
 	}
 
 	public static AuditLogEntry fromResultSet(ResultSet res) throws SQLException{

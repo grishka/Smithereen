@@ -62,6 +62,7 @@ import smithereen.model.Post;
 import smithereen.model.ReportableContentObject;
 import smithereen.model.Server;
 import smithereen.model.SessionInfo;
+import smithereen.model.SignupInvitation;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
@@ -858,5 +859,31 @@ public class ModerationController{
 			}
 		}
 		return Config.signupMode;
+	}
+
+	public PaginatedList<SignupInvitation> getAllSignupInvites(int offset, int count){
+		try{
+			return ModerationStorage.getAllSignupInvites(offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteSignupInvite(User self, int id){
+		try{
+			SignupInvitation invite=context.getUsersController().getInvite(id);
+			if(invite==null)
+				throw new ObjectNotFoundException();
+			SessionStorage.deleteInvitation(id);
+			Map<String, Object> auditLogArgs=new HashMap<>();
+			auditLogArgs.put("signups", invite.signupsRemaining);
+			if(StringUtils.isNotEmpty(invite.email))
+				auditLogArgs.put("email", invite.email);
+			if(StringUtils.isNotEmpty(invite.firstName))
+				auditLogArgs.put("name", invite.firstName+" "+invite.lastName);
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.DELETE_SIGNUP_INVITE, invite.ownerID, invite.id, AuditLogEntry.ObjectType.SIGNUP_INVITE, auditLogArgs);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 }

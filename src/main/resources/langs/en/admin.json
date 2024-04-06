@@ -271,5 +271,8 @@
   "admin_ip_rules_empty": "There are no rules for IP addresses",
   "admin_ip_rule_title": "IP or subnet rule",
   "err_admin_ip_format_invalid": "Invalid IP address. Enter a single IPv4 or IPv6 address, or an address range in CIDR notation.",
-  "admin_ip_rule_created": "IP rule created"
+  "admin_ip_rule_created": "IP rule created",
+  "summary_admin_X_signup_invites": "{count, plural, =0 {No invitations} one {# invitation} other {# invitations}} total on your server",
+  "admin_audit_log_deleted_invite": "<a id=\"adminUser\">{name}</a> deleted <a id=\"targetUser\">{targetName}</a>''s invitation",
+  "signup_invite_deleted": "Invitation deleted"
 }
