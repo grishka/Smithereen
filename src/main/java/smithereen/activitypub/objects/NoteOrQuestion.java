@@ -75,8 +75,11 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		post.text=text;
 		post.createdAt=published!=null ? published : Instant.now();
 		post.updatedAt=updated;
-		if(sensitive!=null && sensitive && StringUtils.isNotEmpty(summary)){
-			post.contentWarning=summary;
+		if(sensitive!=null && sensitive){
+			if(StringUtils.isNotEmpty(summary))
+				post.contentWarning=summary;
+			else
+				post.contentWarning=""; // Will be rendered as a translatable default string
 		}
 
 		post.setActivityPubID(activityPubID);

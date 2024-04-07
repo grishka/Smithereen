@@ -24,7 +24,7 @@
 		{% if realPost.hasContentWarning %}
 			<input type="checkbox" id="postCW_{{ realPost.id }}" style="display: none"/>
 		<div class="postCWWrap">
-			<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning }}</label>
+			<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
 		{% endif %}
 		{% if standalone %}
 		<div class="postContent">{{ realPost.text | postprocessHTML }}</div>
