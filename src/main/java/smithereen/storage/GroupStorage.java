@@ -951,7 +951,7 @@ public class GroupStorage{
 				.selectFrom("group_invites")
 				.columns("ap_id")
 				.where("invitee_id=? AND group_id=?", userID, groupID)
-				.executeAndGetSingleObject(r->URI.create(r.getString(1)));
+				.executeAndGetSingleObject(r->r.getString(1)==null ? null : URI.create(r.getString(1)));
 	}
 
 	public static int deleteInvitation(int userID, int groupID, boolean isEvent) throws SQLException{
