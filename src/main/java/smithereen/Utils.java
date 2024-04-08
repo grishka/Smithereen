@@ -590,7 +590,7 @@ public class Utils{
 			if(el.tagName().equalsIgnoreCase("pre")){
 				return;
 			}else if(el.tagName().equalsIgnoreCase("a")){
-				if(el.hasClass("mention")){
+				if(el.hasClass("mention") && !el.hasAttr("data-user-id")){
 					User user=mentionCallback==null ? null : mentionCallback.resolveMention(el.attr("href"));
 					if(user==null){
 						el.removeClass("mention");
