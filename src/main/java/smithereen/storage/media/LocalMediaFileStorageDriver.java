@@ -49,8 +49,6 @@ public class LocalMediaFileStorageDriver extends MediaFileStorageDriver{
 		return String.format(Locale.US, "%02d/%02d/%02d/", oid%100, oid/100%100, oid/10000%100)+
 				Base64.getUrlEncoder().withoutPadding().encodeToString(id.randomID())+"_"+
 				Base64.getUrlEncoder().withoutPadding().encodeToString(Utils.packLong(XTEA.obfuscateObjectID(id.id(), ObfuscatedObjectIDType.MEDIA_FILE)))+
-				switch(id.type()){
-					case IMAGE_AVATAR, IMAGE_PHOTO, IMAGE_GRAFFITI -> ".webp";
-				};
+				"."+id.type().getFileExtension();
 	}
 }

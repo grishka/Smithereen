@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
+import smithereen.Config;
 import smithereen.model.media.MediaFileID;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.ImgProxy;
@@ -33,12 +34,15 @@ public abstract class MediaFileStorageDriver{
 				LOG.warn("Failed to delete file {}", id, x);
 			}
 		}
-		return  deletedIDs;
+		return deletedIDs;
 	}
 
 	public static MediaFileStorageDriver getInstance(){
 		if(instance==null){
-			instance=new LocalMediaFileStorageDriver();
+			instance=switch(Config.storageBackend){
+				case LOCAL -> new LocalMediaFileStorageDriver();
+				case S3 -> new S3MediaFileStorageDriver(Config.s3Configuration);
+			};
 		}
 		return instance;
 	}

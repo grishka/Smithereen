@@ -86,7 +86,6 @@
   "search_groups": "Groups",
   "search_external_objects": "External objects",
   "nothing_found": "Nothing found",
-  "max_file_size_exceeded": "This file is larger than the maximum size of {size} MB.",
   "in_reply_to_X": "In reply to <a id=\"name\">{name}</a>",
   "in_reply_to_name": "{name}",
   "X_days": "{count, plural, one {# day} other {# days}}",
@@ -154,5 +153,13 @@
   "next": "Next",
   "action_confirmation_incorrect_code": "Incorrect code",
   "restore": "Restore",
-  "cw_default": "Sensitive content"
+  "cw_default": "Sensitive content",
+  "err_file_upload": "The server was unable to store your file because of an internal error. Please try again later.",
+  "err_file_upload_image_format": "Your image file is damaged or of an unsupported format. Try converting it to JPEG or PNG.",
+  "err_file_upload_too_large": "Your file exceeds the maximum size of {maxSize}.",
+  "file_size_bytes": "{amount} bytes",
+  "file_size_kilobytes": "{amount} KB",
+  "file_size_megabytes": "{amount} MB",
+  "file_size_gigabytes": "{amount} GB",
+  "file_size_terabytes": "{amount} TB"
 }

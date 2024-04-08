@@ -401,6 +401,14 @@ public class SmithereenApplication{
 			getLoggedIn("/reportForm", SystemRoutes::reportForm);
 			postWithCSRF("/submitReport", SystemRoutes::submitReport);
 			get("/captcha", SystemRoutes::captcha);
+			if(Config.DEBUG){
+				path("/debug", ()->{
+					get("/deleteAbandonedFilesNow", (req, resp)->{
+						MediaStorageUtils.deleteAbandonedFiles();
+						return "ok";
+					});
+				});
+			}
 		});
 
 		path("/users/:id", ()->{

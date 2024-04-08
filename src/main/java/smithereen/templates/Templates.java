@@ -183,7 +183,7 @@ public class Templates{
 
 	public static void addJsLangForNewPostForm(Request req){
 		Utils.jsLangKey(req,
-				"post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "max_file_size_exceeded", "max_attachment_count_exceeded", "remove_attachment",
+				"post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "err_file_upload_too_large", "file_size_kilobytes", "file_size_megabytes", "max_attachment_count_exceeded", "remove_attachment",
 				// polls
 				"create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours",
 				// graffiti

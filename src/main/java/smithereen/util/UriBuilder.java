@@ -172,7 +172,7 @@ public class UriBuilder{
 			return Arrays.stream(query.split("&")).map(s->{
 				int offset=s.indexOf('=');
 				if(offset==-1)
-					return new KeyValuePair(s, null);
+					return new KeyValuePair(s, "");
 				return new KeyValuePair(s.substring(0, offset), urlDecode(s.substring(offset+1)));
 			}).collect(Collectors.toMap(kv->kv.key, kv->kv.value));
 		}

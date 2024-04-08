@@ -82,7 +82,6 @@
   "search_groups": "Группы",
   "search_external_objects": "Внешние объекты",
   "nothing_found": "Ничего не найдено",
-  "max_file_size_exceeded": "Этот файл превышает максимальный размер в {size} Мб.",
   "in_reply_to_X": "В ответ <a id=\"name\">{name}</a>",
   "in_reply_to_name": "{name, inflect, dative}",
   "X_days": "{count, plural, one {# день} few {# дня} other {# дней}}",
@@ -150,5 +149,13 @@
   "next": "Далее",
   "action_confirmation_incorrect_code": "Неверный код",
   "restore": "Восстановить",
-  "cw_default": "Содержимое деликатного характера"
+  "cw_default": "Содержимое деликатного характера",
+  "err_file_upload": "Сервер не смог сохранить ваш файл из-за внутренней ошибки. Повторите попытку позже.",
+  "err_file_upload_image_format": "Загруженное изображение повреждено или его формат не поддерживается. Попробуйте преобразовать его в JPEG или PNG.",
+  "err_file_upload_too_large": "Ваш файл превышает максимальный размер в {maxSize}.",
+  "file_size_bytes": "{amount} байт",
+  "file_size_kilobytes": "{amount} Кб",
+  "file_size_megabytes": "{amount} Мб",
+  "file_size_gigabytes": "{amount} Гб",
+  "file_size_terabytes": "{amount} Тб"
 }

@@ -303,6 +303,11 @@ function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):
 	xhr.open("POST", uri);
 	xhr.onload=function(){
 		var resp=xhr.response;
+		if(Math.floor(xhr.status/100)!=2){
+			if(onError)
+				onError(xhr.response || xhr.statusText);
+			return;
+		}
 		if(onDone){
 			if(onDone(resp))
 				return;
@@ -338,6 +343,27 @@ function lang(key:string, args:{[key:string]:(string|number)}={}):string{
 	if(typeof v==="function")
 		return (v as Function).apply(this, [args]);
 	return v as string;
+}
+
+function langFileSize(size:number):string{
+	var key, amount;
+	if(size<1024){
+		key="file_size_bytes";
+		amount=size;
+	}else if(size<1024*1024){
+		key="file_size_kilobytes";
+		amount=size/1024.0;
+	}else if(size<1024*1024*1024){
+		key="file_size_megabytes";
+		amount=size/(1024.0*1024.0);
+	}else if(size<1024*1024*1024*1024){
+		key="file_size_gigabytes";
+		amount=size/(1024.0*1024.0*1024.0);
+	}else{
+		key="file_size_terabytes";
+		amount=size/(1024.0*1024.0*1024.0*1024.0);
+	}
+	return lang(key, {amount: Intl.NumberFormat(userConfig.locale, {maximumFractionDigits: 2}).format(amount)});
 }
 
 var langPluralRules:{[key:string]:(quantity:number)=>string}={

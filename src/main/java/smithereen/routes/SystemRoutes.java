@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -300,18 +301,19 @@ public class SystemRoutes{
 	}
 
 	private static Object uploadPhotoAttachment(Request req, Response resp, Account self, boolean isGraffiti){
+		Lang l=lang(req);
 		try{
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
 			Part part=req.raw().getPart("file");
 			if(part.getSize()>10*1024*1024){
 				resp.status(413); // Payload Too Large
-				return "File too large";
+				return l.get("err_file_upload_too_large", Map.of("maxSize", l.formatFileSize(10*1024*1024)));
 			}
 
 			String mime=part.getContentType();
 			if(!mime.startsWith("image/")){
 				resp.status(415); // Unsupported Media Type
-				return "Unsupported mime type";
+				return l.get("err_file_upload_image_format");
 			}
 
 			File temp=File.createTempFile("SmithereenUpload", null);
@@ -322,7 +324,9 @@ public class SystemRoutes{
 				}
 				img=new VipsImage(temp.getAbsolutePath());
 			}catch(IOException x){
-				throw new BadRequestException(x.getMessage(), x);
+				LOG.warn("VipsImage error", x);
+				resp.status(400);
+				return l.get("err_file_upload_image_format");
 			}
 			if(img.hasAlpha()){
 				VipsImage flat=img.flatten(255, 255, 255);
@@ -366,7 +370,9 @@ public class SystemRoutes{
 			}
 			resp.redirect(Utils.back(req));
 		}catch(IOException|ServletException|SQLException x){
-			throw new InternalServerErrorException(x);
+			LOG.error("File upload failed", x);
+			resp.status(500);
+			return l.get("err_file_upload");
 		}
 		return "";
 	}

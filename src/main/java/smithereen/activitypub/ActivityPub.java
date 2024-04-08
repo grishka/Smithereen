@@ -88,6 +88,7 @@ import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import smithereen.util.UserAgentInterceptor;
+import smithereen.util.XmlParser;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.*;
@@ -392,10 +393,7 @@ public class ActivityPub{
 				Response resp=httpClient.newCall(req).execute();
 				try(ResponseBody body=resp.body()){
 					if(resp.isSuccessful()){
-						DocumentBuilderFactory factory=DocumentBuilderFactory.newInstance();
-						factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-						factory.setXIncludeAware(false);
-						DocumentBuilder builder=factory.newDocumentBuilder();
+						DocumentBuilder builder=XmlParser.newDocumentBuilder();
 						Document doc=builder.parse(body.byteStream());
 						NodeList nodes=doc.getElementsByTagName("Link");
 						for(int i=0; i<nodes.getLength(); i++){
@@ -431,7 +429,7 @@ public class ActivityPub{
 							}
 						}
 					}
-				}catch(ParserConfigurationException|SAXException e){
+				}catch(SAXException e){
 					throw new ObjectNotFoundException("Webfinger returned 404 and host-meta can't be parsed", e);
 				}
 			}
