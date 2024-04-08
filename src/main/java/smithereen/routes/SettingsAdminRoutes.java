@@ -688,6 +688,7 @@ public class SettingsAdminRoutes{
 		Lang l=lang(req);
 		String title;
 		model.with("content", cobj);
+		model.with("reportID", id);
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		switch(cobj){
 			case Post post -> {

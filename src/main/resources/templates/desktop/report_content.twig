@@ -10,7 +10,7 @@
 		<div class="label">{{ L('mail_to') }}:</div>
 		<div><a href="{{ profileURL(post.ownerID) }}">{{ (post.ownerID>0 ? users[post.ownerID] : groups[-post.ownerID]) | name('complete') }}</a></div>
 		<div class="label">{{ L('report_content_created_at') }}:</div>
-		<div>{{ LD(post.createdAt, true) }}</div>
+		<div><a href="/posts/{{ post.id }}?report={{ reportID }}">{{ LD(post.createdAt, true) }}</a></div>
 		{% if post.hasContentWarning %}
 		<div class="label">{{ L('post_form_cw') }}:</div>
 		<div>{{ post.contentWarning }}</div>
