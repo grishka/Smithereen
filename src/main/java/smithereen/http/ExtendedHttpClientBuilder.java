@@ -19,52 +19,62 @@ class ExtendedHttpClientBuilder implements HttpClient.Builder{
 
 	@Override
 	public HttpClient.Builder cookieHandler(CookieHandler cookieHandler){
-		return realBuilder.cookieHandler(cookieHandler);
+		realBuilder.cookieHandler(cookieHandler);
+		return this;
 	}
 
 	@Override
 	public HttpClient.Builder connectTimeout(Duration duration){
-		return realBuilder.connectTimeout(duration);
+		realBuilder.connectTimeout(duration);
+		return this;
 	}
 
 	@Override
 	public HttpClient.Builder sslContext(SSLContext sslContext){
-		return realBuilder.sslContext(sslContext);
+		realBuilder.sslContext(sslContext);
+		return this;
 	}
 
 	@Override
 	public HttpClient.Builder sslParameters(SSLParameters sslParameters){
-		return realBuilder.sslParameters(sslParameters);
+		realBuilder.sslParameters(sslParameters);
+		return this;
 	}
 
 	@Override
 	public HttpClient.Builder executor(Executor executor){
-		return realBuilder.executor(executor);
+		realBuilder.executor(executor);
+		return this;
 	}
 
 	@Override
 	public HttpClient.Builder followRedirects(HttpClient.Redirect policy){
-		return realBuilder.followRedirects(policy);
+		realBuilder.followRedirects(policy);
+		return this;
 	}
 
 	@Override
 	public HttpClient.Builder version(HttpClient.Version version){
-		return realBuilder.version(version);
+		realBuilder.version(version);
+		return this;
 	}
 
 	@Override
 	public HttpClient.Builder priority(int priority){
-		return realBuilder.priority(priority);
+		realBuilder.priority(priority);
+		return this;
 	}
 
 	@Override
 	public HttpClient.Builder proxy(ProxySelector proxySelector){
-		return realBuilder.proxy(proxySelector);
+		realBuilder.proxy(proxySelector);
+		return this;
 	}
 
 	@Override
 	public HttpClient.Builder authenticator(Authenticator authenticator){
-		return realBuilder.authenticator(authenticator);
+		realBuilder.authenticator(authenticator);
+		return this;
 	}
 
 	@Override
