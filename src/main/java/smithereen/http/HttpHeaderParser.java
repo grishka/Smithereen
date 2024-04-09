@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class HttpHeaderParser{
-	private static final Pattern ATTR_REGEX=Pattern.compile("(\\S+)=(\"(?:[^\"\\\\]|\\\\\"|\\\\\\\\)*\"|\\S+)(?:, *|$)");
+	private static final Pattern ATTR_REGEX=Pattern.compile("(\\S+)=(\"(?:[^\"\\\\]|\\\\\"|\\\\\\\\)*\"|\\S+)(?:; *|$)");
 
 	public static Map<String, String> parseAttributes(String raw){
 		HashMap<String, String> res=new HashMap<>();

@@ -24,7 +24,7 @@ public record HttpContentType(String mimeType, Map<String, String> attributes){
 	}
 
 	public boolean matches(HttpContentType other){
-		if(!mimeType.equals(other.mimeType))
+		if(!mimeType.equalsIgnoreCase(other.mimeType))
 			return false;
 		for(Map.Entry<String, String> attr:other.attributes.entrySet()){
 			if(!Objects.equals(attr.getValue(), attributes.get(attr.getKey())))
@@ -34,6 +34,6 @@ public record HttpContentType(String mimeType, Map<String, String> attributes){
 	}
 
 	public boolean matches(String mimeType){
-		return mimeType.equals(this.mimeType);
+		return mimeType.equalsIgnoreCase(this.mimeType);
 	}
 }
