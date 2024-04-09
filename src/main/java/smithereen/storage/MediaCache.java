@@ -305,7 +305,7 @@ public class MediaCache{
 									 break;
 							}
 						}
-						LOG.info("Deleting from media cache: {}", deletedKeys);
+						LOG.debug("Deleting from media cache: {}", deletedKeys);
 						if(!deletedKeys.isEmpty()){
 							conn.createStatement().execute("DELETE FROM `media_cache` WHERE `url_hash` IN ("+String.join(",", deletedKeys)+")");
 						}
