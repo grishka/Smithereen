@@ -158,5 +158,6 @@
   "settings_deactivate_confirm": "Bist Du Dir sicher, dass Du Dein Benutzerkonto löschen möchtest?\n\nDein Benutzerkonto wird deaktiviert und erst nach <b>{timeInterval}</b> permanent gelöscht. Solltest Du Deine Entscheidung während dieser Zeit ändern, hast Du die Möglichkeit, Dein Benutzerkonto ohne Datenverlust zu reaktivieren.",
   "settings_deactivate_account": "Du kannst Dein <a id=\"deactivate\">Konto löschen</a>.",
   "settings_reactivate_confirm": "Gib Dein Passwort ein, um Dein Benutzerkonto wieder zu öffnen und um die Löschung zurückzunehmen.",
-  "settings_reactivate_title": "Konto wiedereröffnen"
+  "settings_reactivate_title": "Konto wiedereröffnen",
+  "err_reg_email_domain_not_allowed": "Anmeldungen mit E-Mail-Adressen von diesem Anbieter sind auf diesem Server nicht gestattet"
 }
