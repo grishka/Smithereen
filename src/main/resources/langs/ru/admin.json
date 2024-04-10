@@ -272,7 +272,6 @@
   "admin_ip_rule_title": "Правило для IP или подсети",
   "err_admin_ip_format_invalid": "Некорректный IP-адрес. Введите IPv4- или IPv6-адрес или диапазон адресов в формате CIDR.",
   "admin_ip_rule_created": "Правило для IP создано",
-  "summary_admin_X_signup_invites": "Всего на сервере {count, plural, one {# приглашение} few {# приглашения} other {# приглашений}}",
   "admin_audit_log_deleted_invite": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} приглашение <a id=\"targetUser\">{targetName, inflect, dative}</a>",
   "signup_invite_deleted": "Приглашение удалено"
 }
