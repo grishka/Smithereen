@@ -79,7 +79,6 @@
   "search_groups": "Grupy",
   "search_external_objects": "Obiekty zewnętrzne",
   "nothing_found": "Nic nie znaleziono",
-  "max_file_size_exceeded": "Ten plik jest większy niż maksymalny rozmiar {size} MB.",
   "in_reply_to_X": "W odpowiedzi do <a id=\"name\">{name}</a>",
   "in_reply_to_name": "{name}",
   "X_days": "{count, plural, one {# dzień} few {# dni} many {# dni} other {# dni}}",

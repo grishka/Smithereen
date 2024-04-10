@@ -82,7 +82,6 @@
   "search_groups": "Gruppen",
   "search_external_objects": "Externe Objekte",
   "nothing_found": "Nichts gefunden",
-  "max_file_size_exceeded": "Diese Datei ist größer, als die maximale Größe von {size} MB.",
   "in_reply_to_X": "In Antwort an <a id=\"name\">{name}</a>",
   "in_reply_to_name": "{name}",
   "X_days": "{count, plural, one {# Tag} other {# Tage}}",
@@ -149,5 +148,6 @@
   "action_confirmation_text": "Wir haben Dir einen Code an <b>{maskedEmail}</b> gesendet. Bitte gib ihn ein um {action} zu bestätigen:",
   "next": "Nächste",
   "action_confirmation_incorrect_code": "Falscher Code",
-  "restore": "Wiederherstellen"
+  "restore": "Wiederherstellen",
+  "cw_default": "Inhaltswarnung (CW)"
 }

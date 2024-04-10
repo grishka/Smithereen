@@ -158,5 +158,6 @@
   "settings_deactivate_confirm": "¿Estás seguro de que quieres eliminar tu cuenta?\n\nTu cuenta será desactivada y únicamente eliminada después de <b>{timeInterval}</b>. Si cambias de opinión, podrás restablecer tu cuenta sin pérdida de datos durante el periodo de desactivación.",
   "settings_deactivate_account": "Puedes <a id=\"deactivate\">eliminar tu cuenta</a>.",
   "settings_reactivate_confirm": "Introduce tu contraseña para restablecer tu cuenta y cancelar su eliminación.",
-  "settings_reactivate_title": "Restaurar cuenta"
+  "settings_reactivate_title": "Restaurar cuenta",
+  "err_reg_email_domain_not_allowed": "Los registros con direcciones de correo electrónico de este proveedor no están permitidos en este servidor"
 }

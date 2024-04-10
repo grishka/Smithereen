@@ -82,7 +82,6 @@
   "search_groups": "Grupos",
   "search_external_objects": "Objetos externos",
   "nothing_found": "Nada encontrado",
-  "max_file_size_exceeded": "Este archivo es mayor que el tamaño máximo de {size} MB.",
   "in_reply_to_X": "En respuesta a <a id=\"name\">{name}</a>",
   "in_reply_to_name": "{name}",
   "X_days": "{count, plural, one {# día} other {# días}}",
@@ -149,5 +148,14 @@
   "action_confirmation_text": "Te hemos enviado un código a <b>{maskedEmail}</b>. Por favor, introdúcelo para confirmar {action}:",
   "next": "Siguiente",
   "action_confirmation_incorrect_code": "Código incorrecto",
-  "restore": "Restaurar"
+  "restore": "Restaurar",
+  "cw_default": "Contenido sensible",
+  "err_file_upload": "Este servidor no pudo almacenar tu archivo debido a un error interno. Por favor, inténtalo de nuevo más tarde.",
+  "err_file_upload_image_format": "Tu archivo de imagen está dañado o es de un formato no compatible. Prueba a convertirlo a JPEG o PNG.",
+  "err_file_upload_too_large": "Tu archivo excede el tamaño máximo de {maxSize}.",
+  "file_size_bytes": "{amount} bytes",
+  "file_size_kilobytes": "{amount} KB",
+  "file_size_megabytes": "{amount} MB",
+  "file_size_gigabytes": "{amount} GB",
+  "file_size_terabytes": "{amount} TB"
 }
