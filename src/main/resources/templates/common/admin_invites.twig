@@ -1,0 +1,34 @@
+{% extends "page" %}
+{% block content %}
+{% include "admin_users_tabbar" with {'tab': 'invites'} %}
+{% if not isMobile %}
+<div class="summaryWrap">
+	<div class="summary">{{ L('summary_admin_X_signup_invites', {'count': totalItems}) }}</div>
+	{% include "pagination" %}
+</div>
+{% endif %}
+<div class="singleColumn">
+	<div id="invitesMessage" style="{% if message is empty %}display: none{% endif %}" class="settingsMessage extraMarginBottom">{{ message | raw }}</div>
+{% for invite in items %}
+	<div class="friendsRow">
+		<div class="smallVMargin" style="margin-top: 0">
+			<a href="{{ profileURL(invite.ownerID) }}"><b>{{ users[invite.ownerID] | name }}</b></a>
+		</div>
+		{% if invite.firstName is not empty %}
+		<b>{{ invite.firstName }}{% if invite.lastName is not empty %} {{ invite.lastName }}{% endif %}</b><br/>
+		{% endif %}
+		{{ L('invite_created_at', {'date': LD(invite.createdAt)}) }}<br/>
+		{{ L('X_signups_remaining', {'count': invite.signupsRemaining}) }}<br/>
+		{{ L('invitation_code') }}: <code>{{ invite.code }}</code><br/>
+		{% if invite.email is not empty %}
+		{{ L('email') }}: {{ invite.email }}<br/>
+		{% endif %}
+		<a href="/settings/admin/invites/{{ invite.id }}/confirmDelete" data-confirm-action="/settings/admin/invites/{{ invite.id }}/delete" data-confirm-title="{{ L('delete') }}" data-confirm-message="{{ L('confirm_delete_invite') }}">{{ L('delete') }}</a>
+	</div>
+{% else %}
+	<div class="emptyState">{{ L('no_invites') }}</div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}
+

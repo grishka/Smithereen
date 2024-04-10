@@ -28,7 +28,8 @@
 		{%- if options.autocomplete==false %} autocomplete="off"{% endif %}
 		{%- if options.pattern is not empty %} pattern="{{ options.pattern }}"{% endif %}
 		{%- if options.min is not null %} min="{{options.min}}"{%endif%}
-		{%- if options.max is not null %} max="{{ options.max }}"{%endif%}/>
+		{%- if options.max is not null %} max="{{ options.max }}"{%endif%}
+		{%- if options.placeholder is not null %} placeholder="{{ options.placeholder }}"{% endif %}/>
 		{% if options.prefix is not empty %}
 		</div>
 		{% endif %}
@@ -101,12 +102,14 @@ autoSizeTextArea(ge("{{ name }}"));
 			</div>
 		{% endif %}
 		{% for opt in selectOptions %}
+			{% if not opt.skip %}
 			<div class="radioButtonWrap">
-				<input type="radio" name="{{ name }}" value="{{ opt.value }}" id="{{ name }}{{ loop.index }}" {{ opt.selected ? 'checked' : '' }}/>
+				<input type="radio" name="{{ name }}" value="{{ opt.value }}" id="{{ name }}{{ loop.index }}"{{ opt.selected ? ' checked' : '' }}{{ options.required ? ' required' : '' }}/>
 				<label for="{{ name }}{{ loop.index }}">{{ opt.label }}</label>
 			</div>
 			{% if opt.explanation is not empty %}
 				<span class="formExplanation">{{ opt.explanation }}</span>
+			{% endif %}
 			{% endif %}
 		{% endfor %}
 	</div>
@@ -119,8 +122,8 @@ autoSizeTextArea(ge("{{ name }}"));
 				{{label}}:
 			</div>
 		{% endif %}
-		<div class="radioButtonWrap">
-			<input type="checkbox" name="{{ name }}" id="{{ name }}" {{ value ? 'checked' : '' }}/>
+		<div class="radioButtonWrap{{ options.disabled ? ' disabled' : '' }}">
+			<input type="checkbox" name="{{ name }}" id="{{ name }}" {{ value ? 'checked' : '' }}{{ options.disabled ? ' disabled' : '' }}{{ options.required ? ' required' : '' }}/>
 			<label for="{{ name }}">{{ title }}</label>
 		</div>
 		{% if options.explanation is not empty %}

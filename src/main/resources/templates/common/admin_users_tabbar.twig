@@ -1,0 +1,9 @@
+{# @pebvariable name="userPermissions" type="smithereen.model.UserPermissions" #}
+<div class="tabbar">
+	{% if userPermissions.hasPermission('MANAGE_USERS') %}
+	<a href="/settings/admin/users" class="{% if tab=='users' %}selected{% endif %}">{{L('admin_users')}}</a>
+	{% endif %}
+	{% if userPermissions.hasPermission('MANAGE_INVITES') %}
+	<a href="/settings/admin/invites" class="{{ tab=='invites' ? 'selected' : '' }}">{{ L('admin_invites') }}</a>
+	{% endif %}
+</div>

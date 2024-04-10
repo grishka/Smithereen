@@ -7,6 +7,8 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
 import org.jetbrains.annotations.NotNull;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -16,7 +18,14 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -42,73 +51,66 @@ import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 
-import okhttp3.Call;
-import okhttp3.FormBody;
-import okhttp3.HttpUrl;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.activitypub.objects.CollectionQueryResult;
-import smithereen.model.FederationRestriction;
-import smithereen.model.ForeignGroup;
-import smithereen.model.Group;
-import smithereen.model.Server;
-import smithereen.model.StatsType;
-import smithereen.exceptions.FederationException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.storage.GroupStorage;
-import smithereen.util.DisallowLocalhostInterceptor;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.WebfingerResponse;
-import smithereen.model.UriBuilder;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FederationException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.http.ExtendedHttpClient;
+import smithereen.http.FormBodyPublisherBuilder;
+import smithereen.http.HttpContentType;
+import smithereen.http.ReaderBodyHandler;
 import smithereen.jsonld.JLD;
 import smithereen.jsonld.JLDException;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
+import smithereen.model.FederationRestriction;
+import smithereen.model.ForeignGroup;
+import smithereen.model.Group;
+import smithereen.model.Server;
+import smithereen.model.StatsType;
+import smithereen.storage.GroupStorage;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
-import smithereen.util.UserAgentInterceptor;
+import smithereen.util.UriBuilder;
+import smithereen.util.XmlParser;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.context;
-import static smithereen.Utils.formatDateAsISO;
-import static smithereen.Utils.parseSignatureHeader;
+import static smithereen.Utils.*;
 
 public class ActivityPub{
 
 	public static final URI AS_PUBLIC=URI.create(JLD.ACTIVITY_STREAMS+"#Public");
 	public static final String CONTENT_TYPE="application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"";
+	public static final HttpContentType EXPECTED_CONTENT_TYPE=new HttpContentType("application/ld+json", Map.of("profile", "https://www.w3.org/ns/activitystreams"));
 	private static final Logger LOG=LoggerFactory.getLogger(ActivityPub.class);
 
-	public static final OkHttpClient httpClient;
+	public static final HttpClient httpClient;
 	private static LruCache<String, String> domainRedirects=new LruCache<>(100);
 
 	static{
-		httpClient=new OkHttpClient.Builder()
-				.addNetworkInterceptor(new DisallowLocalhostInterceptor())
-				.addNetworkInterceptor(new UserAgentInterceptor())
-//				.addNetworkInterceptor(new LoggingInterceptor())
+		httpClient=ExtendedHttpClient.newBuilder()
+				.followRedirects(HttpClient.Redirect.NORMAL)
 				.build();
 	}
 
 	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx) throws IOException{
+		return fetchRemoteObjectInternal(_uri, signer, actorToken, ctx, true);
+	}
+
+	private static ActivityPubObject fetchRemoteObjectInternal(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean tryHTML) throws IOException{
 		LOG.trace("Fetching remote object from {}", _uri);
 		URI uri;
 		String token;
@@ -135,26 +137,54 @@ public class ActivityPub{
 			}
 		}
 
-		Request.Builder builder=new Request.Builder()
-				.url(uri.toString())
+		HttpRequest.Builder builder=HttpRequest.newBuilder(uri)
 				.header("Accept", CONTENT_TYPE);
 		if(token!=null)
 			builder.header("Authorization", "Bearer "+token);
 		else if(actorToken!=null)
 			builder.header("Authorization", "ActivityPubActorToken "+actorToken);
 		signRequest(builder, uri, signer==null ? ServiceActor.getInstance() : signer, null, "get");
-		Request req=builder.build();
-		Call call=httpClient.newCall(req);
-		Response resp=call.execute();
-		try(ResponseBody body=resp.body()){
-			if(!resp.isSuccessful()){
-				throw new ObjectNotFoundException("Response is not successful: remote server returned "+resp.code()+" "+resp.message());
+		HttpResponse<InputStream> resp;
+		try{
+			resp=httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());
+		}catch(InterruptedException x){
+			throw new RuntimeException(x);
+		}
+		if(resp.statusCode()/100!=2){
+			try(InputStream in=resp.body()){
+				while(in.skip(8192)>0L);
+			}
+			throw new ObjectNotFoundException("Response is not successful: remote server returned "+resp.statusCode());
+		}
+		HttpContentType contentType=HttpContentType.from(resp.headers());
+		try(InputStream in=resp.body()){
+			if(tryHTML && contentType.matches("text/html")){
+				LOG.trace("Received HTML, trying to extract <link>");
+				org.jsoup.nodes.Document doc=Jsoup.parse(in, contentType.getCharset().name(), uri.toString());
+				for(Element el:doc.select("link[rel=alternate]")){
+					LOG.trace("Candidate element: {}", el);
+					String type=el.attr("type");
+					if("application/activity+json".equals(type) || CONTENT_TYPE.equals(type)){
+						String url=el.absUrl("href");
+						LOG.trace("Will follow redirect: {}", url);
+						if(StringUtils.isNotEmpty(url)){
+							try{
+								return fetchRemoteObjectInternal(UriBuilder.parseAndEncode(url), signer, actorToken, ctx, false);
+							}catch(URISyntaxException x){
+								throw new ObjectNotFoundException("Failed to parse URL from <link rel=\"alternate\">", x);
+							}
+						}
+					}
+				}
+			}
+			// Allow "application/activity+json" or "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""
+			if(!contentType.matches("application/activity+json") && !contentType.matches(EXPECTED_CONTENT_TYPE)){
+				throw new ObjectNotFoundException("Invalid Content-Type: "+contentType);
 			}
 
 			try{
-				JsonElement el=JsonParser.parseReader(body.charStream());
+				JsonElement el=JsonParser.parseReader(new InputStreamReader(in, contentType.getCharset()));
 				JsonObject converted=JLDProcessor.convertToLocalContext(el.getAsJsonObject());
-//				System.out.println(converted.toString(4));
 				ActivityPubObject obj=ActivityPubObject.parse(converted);
 				if(obj==null)
 					throw new UnsupportedRemoteObjectTypeException("Unsupported object type "+converted.get("type"));
@@ -168,7 +198,7 @@ public class ActivityPub{
 		}
 	}
 
-	private static Request.Builder signRequest(Request.Builder builder, URI url, Actor actor, byte[] body, String method){
+	private static HttpRequest.Builder signRequest(HttpRequest.Builder builder, URI url, Actor actor, byte[] body, String method){
 		String path=url.getPath();
 		String host=url.getHost();
 		if(url.getPort()!=-1)
@@ -219,19 +249,19 @@ public class ActivityPub{
 
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
-			LOG.info("Not sending {} activity to server {} because it's down", activity.getType(), server.host());
+			LOG.debug("Not sending {} activity to server {} because it's down", activity.getType(), server.host());
 			return;
 		}
 		if(server.restriction()!=null){
 			if(server.restriction().type==FederationRestriction.RestrictionType.SUSPENSION){
-				LOG.info("Not sending {} activity to server {} because federation with it is blocked", activity.getType(), server.host());
+				LOG.debug("Not sending {} activity to server {} because federation with it is blocked", activity.getType(), server.host());
 				return;
 			}
 		}
 
 		JsonObject body=activity.asRootActivityPubObject(ctx, inboxUrl.getAuthority());
 		LinkedDataSignatures.sign(body, actor.privateKey, actor.activityPubID+"#main-key");
-		LOG.info("Sending activity: {}", body);
+		LOG.debug("Sending activity: {}", body);
 		postActivityInternal(inboxUrl, body.toString(), actor, server, ctx, isRetry);
 	}
 
@@ -241,12 +271,12 @@ public class ActivityPub{
 
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
-			LOG.info("Not forwarding activity to server {} because it's down", server.host());
+			LOG.debug("Not forwarding activity to server {} because it's down", server.host());
 			return;
 		}
 		if(server.restriction()!=null){
 			if(server.restriction().type==FederationRestriction.RestrictionType.SUSPENSION){
-				LOG.info("Not forwarding activity to server {} because federation with it is blocked", server.host());
+				LOG.debug("Not forwarding activity to server {} because federation with it is blocked", server.host());
 				return;
 			}
 		}
@@ -259,24 +289,22 @@ public class ActivityPub{
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 
 		byte[] body=activityJson.getBytes(StandardCharsets.UTF_8);
-		Request req=signRequest(
-					new Request.Builder()
-					.url(inboxUrl.toString())
-					.post(RequestBody.create(MediaType.parse("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""), body)),
+		HttpRequest req=signRequest(
+				HttpRequest.newBuilder(inboxUrl)
+						.header("Content-Type", CONTENT_TYPE)
+						.POST(HttpRequest.BodyPublishers.ofByteArray(body)),
 				inboxUrl, actor, body, "post")
 				.build();
 		try{
-			Response resp=httpClient.newCall(req).execute();
-			LOG.info("Post activity response: {}", resp);
-			try(ResponseBody rb=resp.body()){
-				if(!resp.isSuccessful()){
-					LOG.info("Response body: {}", rb.string());
-					if(resp.code()!=403){
-						if(resp.code()/100==5){ // IOException does trigger retrying, FederationException does not. We want retries for 5xx (server) errors.
-							throw new IOException("Response is not successful: "+resp.code());
-						}else{
-							throw new FederationException("Response is not successful: "+resp.code());
-						}
+			HttpResponse<String> resp=httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+			LOG.debug("Post activity response: {}", resp);
+			if(resp.statusCode()/100!=2){
+				LOG.debug("Response body: {}", resp.body());
+				if(resp.statusCode()!=403){
+					if(resp.statusCode()/100==5){ // IOException does trigger retrying, FederationException does not. We want retries for 5xx (server) errors.
+						throw new IOException("Response is not successful: "+resp.statusCode());
+					}else{
+						throw new FederationException("Response is not successful: "+resp.statusCode());
 					}
 				}
 			}
@@ -290,7 +318,7 @@ public class ActivityPub{
 				ctx.getStatsController().incrementDaily(StatsType.SERVER_ACTIVITIES_FAILED_ATTEMPTS, server.id());
 			}
 			throw x;
-		}
+		}catch(InterruptedException ignored){}
 	}
 
 	public static boolean isPublic(URI uri){
@@ -299,29 +327,38 @@ public class ActivityPub{
 
 	private static URI doWebfingerRequest(String username, String domain, String uriTemplate) throws IOException{
 		String resource="acct:"+username+"@"+domain;
-		String url;
+		URI url;
 		if(StringUtils.isEmpty(uriTemplate)){
-			url=(Config.useHTTP ? "http" : "https")+"://"+domain+"/.well-known/webfinger?resource="+resource;
+			url=new UriBuilder()
+					.scheme(Config.useHTTP ? "http" : "https")
+					.authority(domain)
+					.path(".well-known", "webfinger")
+					.queryParam("resource", resource)
+					.build();
 		}else{
-			url=uriTemplate.replace("{uri}", resource);
+			url=URI.create(uriTemplate.replace("{uri}", resource));
 		}
-		Request req=new Request.Builder()
-				.url(url)
-				.build();
-		Response resp=httpClient.newCall(req).execute();
-		try(ResponseBody body=resp.body()){
-			if(resp.isSuccessful()){
-				WebfingerResponse wr=Utils.gson.fromJson(body.charStream(), WebfingerResponse.class);
+		HttpRequest req=HttpRequest.newBuilder(url).build();
+		HttpResponse<Reader> resp;
+		try{
+			resp=httpClient.send(req, new ReaderBodyHandler());
+		}catch(InterruptedException e){
+			throw new RuntimeException(e);
+		}
+		try(Reader reader=resp.body()){
+			if(resp.statusCode()/100==2){
+				WebfingerResponse wr=Utils.gson.fromJson(reader, WebfingerResponse.class);
 
 				if(!resource.equalsIgnoreCase(wr.subject))
 					throw new IOException("Invalid response");
 				for(WebfingerResponse.Link link:wr.links){
-					if("self".equals(link.rel) && "application/activity+json".equals(link.type) && link.href!=null){
+					if("self".equals(link.rel) && ("application/activity+json".equals(link.type) || CONTENT_TYPE.equals(link.type)) && link.href!=null){
+						LOG.trace("Successfully resolved {}@{} to {}", username, domain, link.href);
 						return link.href;
 					}
 				}
 				throw new IOException("Link not found");
-			}else if(resp.code()==404){
+			}else if(resp.statusCode()==404){
 				throw new ObjectNotFoundException("User "+username+"@"+domain+" does not exist");
 			}else{
 				throw new IOException("Failed to resolve username "+username+"@"+domain);
@@ -355,18 +392,19 @@ public class ActivityPub{
 			return uri;
 		}catch(ObjectNotFoundException x){
 			if(redirect==null){
-				Request req=new Request.Builder()
-						.url((Config.useHTTP ? "http" : "https")+"://"+domain+"/.well-known/host-meta")
+				HttpRequest req=HttpRequest.newBuilder(new UriBuilder().scheme(Config.useHTTP ? "http" : "https").authority(domain).path(".well-known", "host-meta").build())
 						.header("Accept", "application/xrd+xml")
 						.build();
-				Response resp=httpClient.newCall(req).execute();
-				try(ResponseBody body=resp.body()){
-					if(resp.isSuccessful()){
-						DocumentBuilderFactory factory=DocumentBuilderFactory.newInstance();
-						factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-						factory.setXIncludeAware(false);
-						DocumentBuilder builder=factory.newDocumentBuilder();
-						Document doc=builder.parse(body.byteStream());
+				HttpResponse<InputStream> resp;
+				try{
+					resp=httpClient.send(req, HttpResponse.BodyHandlers.ofInputStream());
+				}catch(InterruptedException e){
+					throw new RuntimeException(e);
+				}
+				try(InputStream in=resp.body()){
+					if(resp.statusCode()/100==2){
+						DocumentBuilder builder=XmlParser.newDocumentBuilder();
+						Document doc=builder.parse(in);
 						NodeList nodes=doc.getElementsByTagName("Link");
 						for(int i=0; i<nodes.getLength(); i++){
 							Node node=nodes.item(i);
@@ -388,7 +426,7 @@ public class ActivityPub{
 													// don't repeat the request, we already know that username doesn't exist (but the webfinger endpoint does)
 													throw new ObjectNotFoundException(x);
 												}else{
-													LOG.info("Found domain redirect: {} -> {}", domain, template);
+													LOG.debug("Found domain redirect: {} -> {}", domain, template);
 													domainRedirects.put(domain, template);
 												}
 											}
@@ -401,7 +439,7 @@ public class ActivityPub{
 							}
 						}
 					}
-				}catch(ParserConfigurationException|SAXException e){
+				}catch(SAXException e){
 					throw new ObjectNotFoundException("Webfinger returned 404 and host-meta can't be parsed", e);
 				}
 			}
@@ -476,8 +514,8 @@ public class ActivityPub{
 		sig.initVerify(user.publicKey);
 		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
 		if(!sig.verify(signature)){
-			LOG.info("Failed signature header: {}", sigHeader);
-			LOG.info("Failed signature string: '{}'", sigStr);
+			LOG.debug("Failed signature header: {}", sigHeader);
+			LOG.debug("Failed signature string: '{}'", sigStr);
 			throw new BadRequestException("Signature failed to verify");
 		}
 		return user;
@@ -584,17 +622,18 @@ public class ActivityPub{
 
 	public static JsonObject fetchActorToken(@NotNull ApplicationContext context, @NotNull Actor actor, @NotNull ForeignGroup group){
 		String url=Objects.requireNonNull(group.actorTokenEndpoint).toString();
-		Request.Builder builder=new Request.Builder()
-				.url(url);
+		HttpRequest.Builder builder=HttpRequest.newBuilder(URI.create(url));
 		signRequest(builder, group.actorTokenEndpoint, actor, null, "get");
-		Call call=httpClient.newCall(builder.build());
-		try(Response resp=call.execute()){
-			if(resp.isSuccessful()){
-				JsonObject obj=JsonParser.parseReader(resp.body().charStream()).getAsJsonObject();
-				verifyActorToken(obj, actor, group);
-				return obj;
-			}else{
-				LOG.warn("Response for actor token for user {} in group {} was not successful: {}", actor.activityPubID, group.activityPubID, resp);
+		try{
+			HttpResponse<Reader> resp=httpClient.send(builder.build(), new ReaderBodyHandler());
+			try(Reader reader=resp.body()){
+				if(resp.statusCode()/100==2){
+					JsonObject obj=JsonParser.parseReader(reader).getAsJsonObject();
+					verifyActorToken(obj, actor, group);
+					return obj;
+				}else{
+					LOG.warn("Response for actor token for user {} in group {} was not successful: {}", actor.activityPubID, group.activityPubID, resp);
+				}
 			}
 		}catch(Exception x){
 			LOG.warn("Error fetching actor token for user {} in group {}", actor.activityPubID, group.activityPubID, x);
@@ -610,30 +649,32 @@ public class ActivityPub{
 			throw new IllegalArgumentException("Collection ID and actor ID hostnames don't match");
 		if(query.isEmpty())
 			throw new IllegalArgumentException("Query is empty");
-		Request.Builder builder=new Request.Builder()
-				.url(HttpUrl.get(actor.collectionQueryEndpoint.toString()));
-		FormBody.Builder body=new FormBody.Builder().add("collection", collectionID.toString());
+		HttpRequest.Builder builder=HttpRequest.newBuilder(actor.collectionQueryEndpoint);
+		FormBodyPublisherBuilder body=new FormBodyPublisherBuilder().add("collection", collectionID.toString());
 		for(URI uri:query)
 			body.add("item", uri.toString());
-		builder.post(body.build());
+		builder.POST(body.build()).header("Content-Type", FormBodyPublisherBuilder.CONTENT_TYPE);
 		signRequest(builder, actor.collectionQueryEndpoint, actor, null, "post");
-		try(Response resp=httpClient.newCall(builder.build()).execute()){
-			if(resp.isSuccessful()){
-				JsonElement el=JsonParser.parseReader(resp.body().charStream());
-				JsonObject converted=JLDProcessor.convertToLocalContext(el.getAsJsonObject());
-				ActivityPubObject aobj=ActivityPubObject.parse(converted);
-				if(aobj==null)
-					throw new UnsupportedRemoteObjectTypeException("Unsupported object type "+converted.get("type"));
-				if(aobj instanceof CollectionQueryResult cqr){
-					if(!collectionID.equals(cqr.partOf))
-						throw new FederationException("part_of in the collection query result '"+cqr.partOf+"' does not match expected '"+collectionID+"'");
-					return cqr;
+		try{
+			HttpResponse<Reader> resp=httpClient.send(builder.build(), new ReaderBodyHandler());
+			try(Reader reader=resp.body()){
+				if(resp.statusCode()/100==2){
+					JsonElement el=JsonParser.parseReader(reader);
+					JsonObject converted=JLDProcessor.convertToLocalContext(el.getAsJsonObject());
+					ActivityPubObject aobj=ActivityPubObject.parse(converted);
+					if(aobj==null)
+						throw new UnsupportedRemoteObjectTypeException("Unsupported object type "+converted.get("type"));
+					if(aobj instanceof CollectionQueryResult cqr){
+						if(!collectionID.equals(cqr.partOf))
+							throw new FederationException("part_of in the collection query result '"+cqr.partOf+"' does not match expected '"+collectionID+"'");
+						return cqr;
+					}else{
+						throw new UnsupportedRemoteObjectTypeException("Expected object of type sm:CollectionQueryResult, got "+aobj.getType());
+					}
 				}else{
-					throw new UnsupportedRemoteObjectTypeException("Expected object of type sm:CollectionQueryResult, got "+aobj.getType());
+					LOG.warn("Response for collection query {} was not successful: {}", collectionID, resp);
+					return CollectionQueryResult.empty(collectionID);
 				}
-			}else{
-				LOG.warn("Response for collection query {} was not successful: {}", collectionID, resp);
-				return CollectionQueryResult.empty(collectionID);
 			}
 		}catch(Exception x){
 			LOG.warn("Error querying collection {}", collectionID, x);

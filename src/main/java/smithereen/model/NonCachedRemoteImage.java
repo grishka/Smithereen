@@ -3,6 +3,7 @@ package smithereen.model;
 import java.net.URI;
 
 import smithereen.Utils;
+import smithereen.util.UriBuilder;
 
 public class NonCachedRemoteImage implements SizedImage{
 

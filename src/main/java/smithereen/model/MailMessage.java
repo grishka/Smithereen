@@ -1,25 +1,31 @@
 package smithereen.model;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.storage.DatabaseUtils;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
-public class MailMessage implements AttachmentHostContentObject, ActivityPubRepresentable{
+public final class MailMessage implements AttachmentHostContentObject, ActivityPubRepresentable, ReportableContentObject{
 	public long id;
 	public int senderID;
 	public int ownerID;
@@ -110,6 +116,42 @@ public class MailMessage implements AttachmentHostContentObject, ActivityPubRepr
 		if(cc!=null)
 			c+=cc.size();
 		return c;
+	}
+
+	@Override
+	public JsonObject serializeForReport(int targetID, Set<Long> outFileIDs){
+		if(ownerID!=targetID && senderID!=targetID)
+			return null;
+		JsonObjectBuilder jb=new JsonObjectBuilder()
+				.add("type", "message")
+				.add("id", XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE))
+				.add("sender", senderID)
+				.add("to", to.stream().collect(JsonArrayBuilder.COLLECTOR))
+				.add("created_at", createdAt.getEpochSecond())
+				.add("text", text);
+		if(replyInfo!=null)
+			jb.add("replyInfo", Utils.gson.toJsonTree(replyInfo));
+		if(attachments!=null && !attachments.isEmpty())
+			jb.add("attachments", ReportableContentObject.serializeMediaAttachments(attachments, outFileIDs));
+		return jb.build();
+	}
+
+	@Override
+	public void fillFromReport(JsonObject jo){
+		id=jo.get("id").getAsLong();
+		senderID=jo.get("sender").getAsInt();
+		to=StreamSupport.stream(jo.getAsJsonArray("to").spliterator(), false).map(JsonElement::getAsInt).collect(Collectors.toSet());
+		createdAt=Instant.ofEpochSecond(jo.get("created_at").getAsLong());
+		text=jo.get("text").getAsString();
+		if(jo.has("replyInfo")){
+			replyInfo=Utils.gson.fromJson(jo.get("replyInfo"), ReplyInfo.class);
+		}
+		if(jo.has("attachments")){
+			attachments=new ArrayList<>();
+			for(JsonElement jatt:jo.getAsJsonArray("attachments")){
+				attachments.add(ActivityPubObject.parse(jatt.getAsJsonObject(), ParserContext.LOCAL));
+			}
+		}
 	}
 
 	public enum ParentObjectType{

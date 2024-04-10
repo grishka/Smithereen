@@ -238,7 +238,7 @@ class PostForm{
 
 	public uploadFile(f:Blob, name:string, extraParams:any={}, onDone:{():void}=null, onError:{():void}=null):void{
 		if(f.size>10*1024*1024){
-			new MessageBox(lang("error"), lang("max_file_size_exceeded", {size: 10}), lang("ok")).show();
+			new MessageBox(lang("error"), lang("err_file_upload_too_large", {maxSize: langFileSize(10*1024*1024)}), lang("ok")).show();
 			return;
 		}
 		if(!this.checkAttachmentCount()){
@@ -286,8 +286,14 @@ class PostForm{
 		}
 		xhr.open("POST", url);
 		xhr.onload=()=>{
+			if(Math.floor(xhr.status/100)!=2){
+				new MessageBox(lang("error"), xhr.response || lang("network_error"), lang("ok")).show();
+				f.el.parentNode.removeChild(f.el);
+				this.maybeUploadNextAttachment();
+				return;
+			}
 			f.el.classList.remove("uploading");
-			var resp=xhr.response;
+			var resp=JSON.parse(xhr.response);
 			f.cancelBtn.href="/system/deleteDraftAttachment?id="+resp.id+"&csrf="+userConfig.csrf;
 			f.image.outerHTML='<picture><source srcset="'+resp.thumbs.webp+'" type="image/webp"/><source srcset="'+resp.thumbs.jpeg+'" type="image/jpeg"/><img src="'+resp.thumbs.jpeg+'" width="'+resp.width+'" height="'+resp.height+'"/></picture>';
 			f.cancelBtn.onclick=(ev:Event)=>{
@@ -311,7 +317,6 @@ class PostForm{
 		xhr.upload.onprogress=(ev:ProgressEvent)=>{
 			f.pbar.setProgress(ev.loaded/ev.total);
 		};
-		xhr.responseType="json";
 		xhr.send(formData);
 		f.cancelBtn.onclick=()=>{
 			xhr.abort();
@@ -330,7 +335,6 @@ class PostForm{
 	private deleteAttachment(id:string):void{
 		var el=ge("attachment_"+id);
 		el.parentNode.removeChild(el);
-		ajaxGet("/system/deleteDraftAttachment?id="+id+"&csrf="+userConfig.csrf, function(){}, function(){});
 		this.attachmentIDs.remove(id);
 		this.attachField.value=this.attachmentIDs.join(",");
 	}

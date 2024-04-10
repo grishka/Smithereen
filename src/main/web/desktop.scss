@@ -975,7 +975,7 @@ select{
 	.label{
 		text-align: right;
 		color: $auxiliaryGrey;
-		padding: 5px 8px 4px 8px;
+		padding: 4px 8px;
 		width: 30%;
 	}
 	.text{
@@ -1180,6 +1180,10 @@ select{
 	}
 }
 
+.bottomSummaryWrap .bottomSummary{
+	padding-top: 13px;
+	text-align: center;
+}
 
 .selfAvaOverlay{
 	position: relative;
@@ -1216,6 +1220,9 @@ select{
 		width: 80%;
 		margin-left: auto;
 		margin-right: auto;
+	}
+	&.wideTable{
+		width: 100%;
 	}
 }
 
@@ -1420,14 +1427,27 @@ select{
 
 .radioButtonWrap{
 	line-height: 16px;
+	padding-left: 24px;
 	input{
 		vertical-align: top;
-		margin-right: 8px;
+		margin: 0 8px 0 -24px;
 	}
 	input, label{
 		cursor: pointer;
 	}
+	label{
+		display: block;
+	}
 	margin: 8px 0;
+	&.disabled{
+		opacity: 0.6;
+	}
+}
+
+.radioButtonWrap+.formExplanation{
+	margin-top: -6px;
+	padding-left: 24px;
+	display: block;
 }
 
 .form .radioButtonWrap:first-child{
@@ -1814,6 +1834,10 @@ input:checked+.postCWWrap{
 		font-weight: bold;
 		padding: 3px 0 4px;
 		float: left;
+		.auxText{
+			font-weight: normal;
+			color: $text;
+		}
 	}
 	.auxLinks{
 		float: right;
@@ -1962,6 +1986,7 @@ textarea{
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	padding: 0 10px;
 }
 
 .boxContent .emptyState{
@@ -2489,6 +2514,12 @@ label.pretendLink{
 		margin-bottom: 0;
 		border-bottom: none;
 	}
+	p:first-child{
+		margin-top: 0;
+	}
+	p:last-child{
+		margin-bottom: 0;
+	}
 }
 
 .adminInfoGrid{
@@ -2515,7 +2546,8 @@ label.pretendLink{
 .withRightColumnFilters{
 	display: flex;
 	.leftColumn{
-		flex-grow: 1;
+		flex: 1;
+		min-width: 0;
 		padding: 10px;
 	}
 	.filters{
@@ -2544,6 +2576,18 @@ label.pretendLink{
 			border: none;
 			border-bottom: solid 1px $wallPostSeparator;
 			margin: 10px 0;
+		}
+		.filterFieldBlock{
+			margin: 10px 0;
+			label{
+				display: block;
+				font-weight: bold;
+				color: $grayText;
+				padding-bottom: 5px;
+			}
+			input, select{
+				width: 100%;
+			}
 		}
 	}
 }
@@ -3009,6 +3053,63 @@ h2, h3, h4{
 			padding: 0 7px;
 			height: 21px;
 			font-weight: bold;
+		}
+	}
+}
+
+.gridWithItemTitles{
+	display: grid;
+	grid-template-columns: auto 1fr;
+	grid-gap: 5px;
+	.itemTitle{
+		text-align: right;
+		color: $grayText;
+	}
+}
+
+a.clickableListItem{
+	border-bottom: solid 1px $wallPostSeparator;
+	padding: 10px;
+	color: $text;
+	&:hover{
+		text-decoration: none;
+		background-color: color($blockBackground a(30%));
+	}
+	&:last-child{
+		border-bottom: none;
+	}
+}
+
+.aBunchOfButtons{
+	display: flex;
+	flex-wrap: wrap;
+	margin-bottom: -5px;
+	>*{
+		margin: 0 5px 5px 0;
+	}
+}
+
+.secondaryTabBar{
+	background: $gray;
+	border-bottom: solid 1px #dde6c7;
+	padding: 13px 10px 12px;
+	display: flex;
+	flex-wrap: wrap;
+	a{
+		padding: 3px 8px 4px;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		overflow: hidden;
+		font-weight: bold;
+		border-radius: 2px;
+		margin-right: 10px;
+		&:hover{
+			text-decoration: none;
+			background: $blockBackground;
+		}
+		&.selected{
+			background: $tabBackground;
+			color: #fff;
 		}
 	}
 }

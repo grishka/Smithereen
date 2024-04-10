@@ -4,6 +4,8 @@ import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.security.KeyPair;
@@ -11,6 +13,7 @@ import java.security.KeyPairGenerator;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -23,6 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -31,6 +35,7 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.GroupsController;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
@@ -39,12 +44,15 @@ import smithereen.model.GroupInvitation;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserNotifications;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.utils.IntPair;
 import spark.utils.StringUtils;
 
 public class GroupStorage{
+	private static final Logger LOG=LoggerFactory.getLogger(GroupStorage.class);
 
 	private static final LruCache<Integer, Group> cacheByID=new LruCache<>(500);
 	private static final LruCache<String, Group> cacheByUsername=new LruCache<>(500);
@@ -212,6 +220,28 @@ public class GroupStorage{
 					}
 				}
 			}
+		}catch(SQLIntegrityConstraintViolationException x){
+			// Rare case: group with a matching username@domain but a different AP ID already exists
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+				int oldID=new SQLQueryBuilder(conn)
+						.selectFrom("groups")
+						.columns("id")
+						.where("username=? AND domain=? AND ap_id<>?", group.username, group.domain, group.activityPubID)
+						.executeAndGetInt();
+				if(oldID<=0){
+					LOG.warn("Didn't find an existing group with username {}@{} while trying to deduplicate {}", group.username, group.domain, group.activityPubID);
+					throw x;
+				}
+				LOG.info("Deduplicating group rows: username {}@{}, old local ID {}, new AP ID {}", group.username, group.domain, oldID, group.activityPubID);
+				// Assign a temporary random username to this existing user row to get it out of the way
+				new SQLQueryBuilder(conn)
+						.update("groups")
+						.value("username", UUID.randomUUID().toString())
+						.where("id=?", oldID)
+						.executeNoResult();
+				// Try again
+				putOrUpdateForeignGroup(group);
+			}
 		}
 	}
 
@@ -224,8 +254,14 @@ public class GroupStorage{
 				.allColumns()
 				.where("id=?", id)
 				.executeAndGetSingleObject(Group::fromResultSet);
-		if(g!=null)
+		if(g!=null){
+			if(g.icon!=null && !g.icon.isEmpty() && g.icon.getFirst() instanceof LocalImage li){
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(li.fileID);
+				if(mfr!=null)
+					li.fillIn(mfr);
+			}
 			putIntoCache(g);
+		}
 		return g;
 	}
 
@@ -246,8 +282,14 @@ public class GroupStorage{
 				.allColumns()
 				.where("username=? AND domain=?", username, domain)
 				.executeAndGetSingleObject(Group::fromResultSet);
-		if(g!=null)
+		if(g!=null){
+			if(g.icon!=null && !g.icon.isEmpty() && g.icon.getFirst() instanceof LocalImage li){
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(li.fileID);
+				if(mfr!=null)
+					li.fillIn(mfr);
+			}
 			putIntoCache(g);
+		}
 		return g;
 	}
 
@@ -329,6 +371,21 @@ public class GroupStorage{
 					return group;
 				})
 				.collect(Collectors.toMap(g->g.id, Function.identity())));
+		Set<Long> needAvatars=result.values().stream()
+				.map(g->g.icon!=null && !g.icon.isEmpty() && g.icon.getFirst() instanceof LocalImage li ? li : null)
+				.filter(li->li!=null && li.fileRecord==null)
+				.map(li->li.fileID)
+				.collect(Collectors.toSet());
+		if(!needAvatars.isEmpty()){
+			Map<Long, MediaFileRecord> records=MediaStorage.getMediaFileRecords(needAvatars);
+			for(Group group:result.values()){
+				if(group.icon!=null && !group.icon.isEmpty() && group.icon.getFirst() instanceof LocalImage li && li.fileRecord==null){
+					MediaFileRecord mfr=records.get(li.fileID);
+					if(mfr!=null)
+						li.fillIn(mfr);
+				}
+			}
+		}
 		synchronized(GroupStorage.class){
 			for(int id:ids){
 				putIntoCache(result.get(id));
@@ -874,15 +931,15 @@ public class GroupStorage{
 	}
 
 	public static List<GroupInvitation> getUserInvitations(int userID, boolean isEvent, int offset, int count) throws SQLException{
-		List<IdPair> ids=new SQLQueryBuilder()
+		List<IntPair> ids=new SQLQueryBuilder()
 				.selectFrom("group_invites")
 				.columns("group_id", "inviter_id")
 				.where("invitee_id=? AND is_event=?", userID, isEvent)
 				.limit(count, offset)
-				.executeAsStream(r->new IdPair(r.getInt(1), r.getInt(2)))
+				.executeAsStream(r->new IntPair(r.getInt(1), r.getInt(2)))
 				.toList();
-		Set<Integer> needGroups=ids.stream().map(IdPair::first).collect(Collectors.toSet());
-		Set<Integer> needUsers=ids.stream().map(IdPair::second).collect(Collectors.toSet());
+		Set<Integer> needGroups=ids.stream().map(IntPair::first).collect(Collectors.toSet());
+		Set<Integer> needUsers=ids.stream().map(IntPair::second).collect(Collectors.toSet());
 		Map<Integer, Group> groups=getById(needGroups);
 		Map<Integer, User> users=UserStorage.getById(needUsers);
 		// All groups and users must exist, this is taken care of by schema constraints
@@ -894,7 +951,7 @@ public class GroupStorage{
 				.selectFrom("group_invites")
 				.columns("ap_id")
 				.where("invitee_id=? AND group_id=?", userID, groupID)
-				.executeAndGetSingleObject(r->URI.create(r.getString(1)));
+				.executeAndGetSingleObject(r->r.getString(1)==null ? null : URI.create(r.getString(1)));
 	}
 
 	public static int deleteInvitation(int userID, int groupID, boolean isEvent) throws SQLException{

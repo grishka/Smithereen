@@ -149,5 +149,15 @@
   "privacy_settings_value_except": ", excluding ",
   "privacy_settings_value_certain_friends_before": ": ",
   "privacy_settings_value_except_name": "{name}",
-  "privacy_settings_value_name_separator": ", "
+  "privacy_settings_value_name_separator": ", ",
+  "settings_sessions": "Activity history",
+  "settings_activity_access_type": "Access type",
+  "settings_activity_access_time": "Time",
+  "settings_activity_web": "{browserName} {browserVersion} on {osName}",
+  "unknown_browser": "Unknown browser",
+  "settings_deactivate_confirm": "Are you sure you want to delete your account?\n\nYour account will be deactivated and only permanently deleted after <b>{timeInterval}</b>. Should you change your mind, you will be able to reinstate your account with no data loss during the deactivation period.",
+  "settings_deactivate_account": "You can <a id=\"deactivate\">delete your account</a>.",
+  "settings_reactivate_confirm": "Enter your password to reinstate your account and cancel its deletion.",
+  "settings_reactivate_title": "Restore account",
+  "err_reg_email_domain_not_allowed": "Signups with e-mail addresses from this provider are not allowed on this server"
 }

@@ -191,6 +191,7 @@ public class SQLQueryBuilder{
 	public void executeNoResult() throws SQLException{
 		try(PreparedStatement stmt=createStatementInternal(0)){
 			stmt.execute();
+		}finally{
 			if(needCloseConnection)
 				conn.close();
 		}
@@ -199,9 +200,10 @@ public class SQLQueryBuilder{
 	public int executeUpdate() throws SQLException{
 		try(PreparedStatement stmt=createStatementInternal(0)){
 			int r=stmt.executeUpdate();
+			return r;
+		}finally{
 			if(needCloseConnection)
 				conn.close();
-			return r;
 		}
 	}
 
@@ -209,9 +211,10 @@ public class SQLQueryBuilder{
 		try(PreparedStatement stmt=createStatementInternal(Statement.RETURN_GENERATED_KEYS)){
 			stmt.execute();
 			int id=DatabaseUtils.oneFieldToInt(stmt.getGeneratedKeys());
+			return id;
+		}finally{
 			if(needCloseConnection)
 				conn.close();
-			return id;
 		}
 	}
 
@@ -219,9 +222,10 @@ public class SQLQueryBuilder{
 		try(PreparedStatement stmt=createStatementInternal(Statement.RETURN_GENERATED_KEYS)){
 			stmt.execute();
 			long id=DatabaseUtils.oneFieldToLong(stmt.getGeneratedKeys());
+			return id;
+		}finally{
 			if(needCloseConnection)
 				conn.close();
-			return id;
 		}
 	}
 
@@ -242,9 +246,10 @@ public class SQLQueryBuilder{
 	public <T> T executeAndGetSingleObject(ResultSetDeserializerFunction<T> creator) throws SQLException{
 		try(PreparedStatement stmt=createStatementInternal(0); ResultSet res=stmt.executeQuery()){
 			T result=res.next() ? creator.deserialize(res) : null;
+			return result;
+		}finally{
 			if(needCloseConnection)
 				conn.close();
-			return result;
 		}
 	}
 
@@ -260,14 +265,18 @@ public class SQLQueryBuilder{
 	public List<Integer> executeAndGetIntList() throws SQLException{
 		try(PreparedStatement stmt=createStatementInternal(0)){
 			List<Integer> r=DatabaseUtils.intResultSetToList(stmt.executeQuery());
+			return r;
+		}finally{
 			if(needCloseConnection)
 				conn.close();
-			return r;
 		}
 	}
 
 	public IntStream executeAndGetIntStream() throws SQLException{
-		return DatabaseUtils.intResultSetToStream(createStatementInternal(0).executeQuery());
+		return DatabaseUtils.intResultSetToStream(createStatementInternal(0).executeQuery(), ()->{
+			if(needCloseConnection)
+				conn.close();
+		});
 	}
 
 	private void appendSelectColumns(StringBuilder sb){

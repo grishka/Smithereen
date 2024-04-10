@@ -1,8 +1,14 @@
 package smithereen.controllers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -10,11 +16,14 @@ import java.util.Map;
 
 import smithereen.ApplicationContext;
 import smithereen.Mailer;
+import smithereen.SmithereenApplication;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.Account;
+import smithereen.model.AuditLogEntry;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.SignupInvitation;
 import smithereen.model.SignupRequest;
@@ -23,13 +32,22 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.model.UserBanInfo;
+import smithereen.model.UserBanStatus;
+import smithereen.model.UserPermissions;
+import smithereen.model.UserRole;
+import smithereen.model.viewmodel.UserContentMetrics;
+import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.storage.DatabaseUtils;
+import smithereen.storage.ModerationStorage;
+import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.util.FloodControl;
 import spark.Request;
 
 public class UsersController{
+	private static final Logger LOG=LoggerFactory.getLogger(UsersController.class);
 	private final ApplicationContext context;
 
 	public UsersController(ApplicationContext context){
@@ -112,7 +130,8 @@ public class UsersController{
 				if(SessionStorage.isEmailInvited(email)){
 					throw new UserErrorException("err_email_already_invited");
 				}
-				if(self.accessLevel!=Account.AccessLevel.ADMIN){
+				UserPermissions permissions=SessionStorage.getUserPermissions(self);
+				if(!permissions.hasPermission(UserRole.Permission.MANAGE_INVITES)){
 					FloodControl.EMAIL_INVITE.incrementOrThrow(self);
 				}
 				int requestID=_requestID;
@@ -140,7 +159,8 @@ public class UsersController{
 			SignupInvitation invite=SessionStorage.getInvitationByID(id);
 			if(invite==null || invite.ownerID!=self.id || invite.email==null)
 				throw new ObjectNotFoundException();
-			if(self.accessLevel!=Account.AccessLevel.ADMIN){
+			UserPermissions permissions=SessionStorage.getUserPermissions(self);
+			if(!permissions.hasPermission(UserRole.Permission.MANAGE_INVITES)){
 				FloodControl.EMAIL_RESEND.incrementOrThrow(invite.email);
 			}
 			Mailer.getInstance().sendSignupInvitation(req, self, invite.email, invite.code, invite.firstName, invite.fromRequest);
@@ -282,6 +302,153 @@ public class UsersController{
 			UserStorage.deleteUser(user);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteLocalUser(User admin, User user){
+		if(user instanceof ForeignUser || (user.banStatus!=UserBanStatus.SELF_DEACTIVATED && user.banStatus!=UserBanStatus.SUSPENDED))
+			throw new IllegalArgumentException();
+		try{
+			Account acc=SessionStorage.getAccountByUserID(user.id);
+			if(acc==null)
+				return;
+			context.getActivityPubWorker().sendUserDeleteSelf(user);
+			UserStorage.deleteAccount(acc);
+			SmithereenApplication.invalidateAllSessionsForAccount(acc.id);
+			if(admin!=null)
+				ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.DELETE_USER, user.id, 0, null, Map.of("name", user.getCompleteName()));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Account getAccountOrThrow(int id){
+		try{
+			Account acc=UserStorage.getAccount(id);
+			if(acc==null)
+				throw new ObjectNotFoundException("err_user_not_found");
+			return acc;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Account getAccountForUser(User user){
+		try{
+			Account acc=SessionStorage.getAccountByUserID(user.id);
+			if(acc==null)
+				throw new ObjectNotFoundException();
+			return acc;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public UserRelationshipMetrics getRelationshipMetrics(User user){
+		try{
+			return new UserRelationshipMetrics(
+					UserStorage.getUserFriendsCount(user.id),
+					UserStorage.getUserFollowerOrFollowingCount(user.id, true),
+					UserStorage.getUserFollowerOrFollowingCount(user.id, false)
+			);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public UserContentMetrics getContentMetrics(User user){
+		try{
+			return new UserContentMetrics(
+					PostStorage.getUserPostCount(user.id),
+					PostStorage.getUserPostCommentCount(user.id)
+			);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<OtherSession> getAccountSessions(Account acc){
+		try{
+			return SessionStorage.getAccountSessions(acc.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void changePassword(Account self, String oldPassword, String newPassword){
+		try{
+			if(newPassword.length()<4){
+				throw new UserErrorException("err_password_short");
+			}else if(!SessionStorage.updatePassword(self.id, oldPassword, newPassword)){
+				throw new UserErrorException("err_old_password_incorrect");
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public boolean checkPassword(Account self, String password){
+		try{
+			return SessionStorage.checkPassword(self.id, password);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void terminateSessionsExcept(Account self, String psid){
+		try{
+			byte[] sid=Base64.getDecoder().decode(psid);
+			SessionStorage.deleteSessionsExcept(self.id, sid);
+			SmithereenApplication.invalidateAllSessionsForAccount(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void selfDeactivateAccount(Account self){
+		try{
+			if(self.user.banStatus!=UserBanStatus.NONE)
+				throw new IllegalArgumentException("Already banned");
+			UserBanInfo info=new UserBanInfo(Instant.now(), null, null, false, 0, 0);
+			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.SELF_DEACTIVATED, Utils.gson.toJson(info));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void selfReinstateAccount(Account self){
+		try{
+			if(self.user.banStatus!=UserBanStatus.SELF_DEACTIVATED)
+				throw new IllegalArgumentException("Invalid account status");
+			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.NONE, null);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public static void doPendingAccountDeletions(){
+		try{
+			ApplicationContext ctx=new ApplicationContext(); // This is probably gonna bite me in the ass in the future
+			List<User> users=UserStorage.getTerminallyBannedUsers();
+			if(users.isEmpty()){
+				LOG.trace("No users to delete");
+				return;
+			}
+			Instant deleteBannedBefore=Instant.now().minus(30, ChronoUnit.DAYS);
+			for(User user:users){
+				if(user.banStatus!=UserBanStatus.SUSPENDED && user.banStatus!=UserBanStatus.SELF_DEACTIVATED){
+					LOG.warn("Ineligible user {} in pending account deletions - bug likely (banStatus {}, banInfo {})", user.id, user.banStatus, user.banInfo);
+					continue;
+				}
+				if(user.banInfo.bannedAt().isBefore(deleteBannedBefore)){
+					LOG.info("Deleting user {}, banStatus {}, banInfo {}", user.id, user.banStatus, user.banInfo);
+					ctx.getUsersController().deleteLocalUser(null, user);
+				}else{
+					LOG.trace("User {} too early to delete", user.id);
+				}
+			}
+		}catch(SQLException x){
+			LOG.error("Failed to delete accounts", x);
 		}
 	}
 }

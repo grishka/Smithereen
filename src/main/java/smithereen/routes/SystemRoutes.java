@@ -7,18 +7,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -27,10 +26,10 @@ import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
+
 import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Part;
-
 import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
@@ -43,10 +42,17 @@ import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.NoteOrQuestion;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
+import smithereen.lang.Lang;
+import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.AttachmentHostContentObject;
 import smithereen.model.CachedRemoteImage;
+import smithereen.model.CaptchaInfo;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -55,6 +61,7 @@ import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.ReportableContentObject;
 import smithereen.model.SearchResult;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
@@ -62,18 +69,19 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.GraffitiAttachment;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
-import smithereen.lang.Lang;
-import smithereen.libvips.VipsImage;
+import smithereen.model.media.ImageMetadata;
+import smithereen.model.media.MediaFileMetadata;
+import smithereen.model.media.MediaFileRecord;
+import smithereen.model.media.MediaFileType;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
+import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PostStorage;
 import smithereen.storage.SearchStorage;
 import smithereen.storage.UserStorage;
+import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.BlurHash;
 import smithereen.util.CaptchaGenerator;
@@ -241,7 +249,8 @@ public class SystemRoutes{
 						return "";
 					}
 					try{
-						if(sessionInfo(req)==null){ // Only download attachments for logged-in users. Prevents crawlers from causing unnecessary churn in the media cache
+						SessionInfo sessionInfo=sessionInfo(req);
+						if(sessionInfo==null || sessionInfo.account==null){ // Only download attachments for logged-in users. Prevents crawlers from causing unnecessary churn in the media cache
 							resp.redirect(uri.toString());
 							return "";
 						}
@@ -271,7 +280,7 @@ public class SystemRoutes{
 						}
 						return "";
 					}catch(IOException x){
-						LOG.warn("Exception while downloading external media file from {}", uri, x);
+						LOG.debug("Exception while downloading external media file from {}", uri, x);
 					}
 					resp.redirect(uri.toString());
 				}
@@ -284,38 +293,40 @@ public class SystemRoutes{
 
 	public static Object uploadPostPhoto(Request req, Response resp, Account self, ApplicationContext ctx){
 		boolean isGraffiti=req.queryParams("graffiti")!=null;
-		return uploadPhotoAttachment(req, resp, self, isGraffiti, "post_media");
+		return uploadPhotoAttachment(req, resp, self, isGraffiti);
 	}
 
 	public static Object uploadMessagePhoto(Request req, Response resp, Account self, ApplicationContext ctx){
-		return uploadPhotoAttachment(req, resp, self, false, "mail_images");
+		return uploadPhotoAttachment(req, resp, self, false);
 	}
 
-	private static Object uploadPhotoAttachment(Request req, Response resp, Account self, boolean isGraffiti, String dir){
+	private static Object uploadPhotoAttachment(Request req, Response resp, Account self, boolean isGraffiti){
+		Lang l=lang(req);
 		try{
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
 			Part part=req.raw().getPart("file");
 			if(part.getSize()>10*1024*1024){
 				resp.status(413); // Payload Too Large
-				return "File too large";
+				return l.get("err_file_upload_too_large", Map.of("maxSize", l.formatFileSize(10*1024*1024)));
 			}
 
-			byte[] key=MessageDigest.getInstance("MD5").digest((self.user.username+","+System.currentTimeMillis()+","+part.getSubmittedFileName()).getBytes(StandardCharsets.UTF_8));
-			String keyHex=Utils.byteArrayToHexString(key);
 			String mime=part.getContentType();
 			if(!mime.startsWith("image/")){
 				resp.status(415); // Unsupported Media Type
-				return "Unsupported mime type";
+				return l.get("err_file_upload_image_format");
 			}
 
-			File tmpDir=new File(System.getProperty("java.io.tmpdir"));
-			File temp=new File(tmpDir, keyHex);
-			part.write(keyHex);
+			File temp=File.createTempFile("SmithereenUpload", null);
 			VipsImage img;
 			try{
+				try(FileOutputStream out=new FileOutputStream(temp)){
+					copyBytes(part.getInputStream(), out);
+				}
 				img=new VipsImage(temp.getAbsolutePath());
 			}catch(IOException x){
-				throw new BadRequestException(x.getMessage(), x);
+				LOG.warn("VipsImage error", x);
+				resp.status(400);
+				return l.get("err_file_upload_image_format");
 			}
 			if(img.hasAlpha()){
 				VipsImage flat=img.flatten(255, 255, 255);
@@ -329,24 +340,17 @@ public class SystemRoutes{
 			}
 
 			LocalImage photo=new LocalImage();
-			File postMediaDir=new File(Config.uploadPath, dir);
-			postMediaDir.mkdirs();
 			int width, height;
+			MediaFileRecord fileRecord;
 			try{
+				File resizedFile=File.createTempFile("SmithereenUploadResized", ".webp");
 				int[] outSize={0,0};
-				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, keyHex, postMediaDir, outSize);
-
-				SessionInfo sess=Objects.requireNonNull(sessionInfo(req));
-				photo.localID=keyHex;
-				photo.mediaType=isGraffiti ? "image/png" : "image/jpeg";
-				photo.path=dir;
-				photo.width=width=outSize[0];
-				photo.height=height=outSize[1];
-				photo.blurHash=BlurHash.encode(img, 4, 4);
-				photo.isGraffiti=isGraffiti;
-				if(req.queryParams("draft")!=null)
-					sess.postDraftAttachments.add(photo);
-				MediaCache.putDraftAttachment(photo, self.id);
+				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, resizedFile, outSize);
+				MediaFileMetadata meta=new ImageMetadata(width=outSize[0], height=outSize[1], BlurHash.encode(img, 4, 4), null);
+				fileRecord=MediaStorage.createMediaFileRecord(isGraffiti ? MediaFileType.IMAGE_GRAFFITI : MediaFileType.IMAGE_PHOTO, resizedFile.length(), self.user.id, meta);
+				photo.fileID=fileRecord.id().id();
+				photo.fillIn(fileRecord);
+				MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id());
 
 				temp.delete();
 			}finally{
@@ -356,7 +360,7 @@ public class SystemRoutes{
 			if(isAjax(req)){
 				resp.type("application/json");
 				return new JsonObjectBuilder()
-						.add("id", keyHex)
+						.add("id", fileRecord.id().getIDForClient())
 						.add("width", width)
 						.add("height", height)
 						.add("thumbs", new JsonObjectBuilder()
@@ -365,33 +369,11 @@ public class SystemRoutes{
 						).build();
 			}
 			resp.redirect(Utils.back(req));
-		}catch(IOException|ServletException|NoSuchAlgorithmException|SQLException x){
-			throw new InternalServerErrorException(x);
+		}catch(IOException|ServletException|SQLException x){
+			LOG.error("File upload failed", x);
+			resp.status(500);
+			return l.get("err_file_upload");
 		}
-		return "";
-	}
-
-	public static Object deleteDraftAttachment(Request req, Response resp, Account self, ApplicationContext ctx) throws Exception{
-		SessionInfo sess=Utils.sessionInfo(req);
-		String id=req.queryParams("id");
-		if(id==null){
-			throw new BadRequestException();
-		}
-		if(MediaCache.deleteDraftAttachment(id, self.id)){
-			for(ActivityPubObject o:sess.postDraftAttachments){
-				if(o instanceof Document){
-					if(id.equals(((Document) o).localID)){
-						sess.postDraftAttachments.remove(o);
-						break;
-					}
-				}
-			}
-		}
-		if(isAjax(req)){
-			resp.type("application/json");
-			return "[]";
-		}
-		resp.redirect(Utils.back(req));
 		return "";
 	}
 
@@ -496,6 +478,7 @@ public class SystemRoutes{
 			try{
 				uri=ActivityPub.resolveUsername(username, domain);
 			}catch(IOException x){
+				LOG.debug("Error getting remote user", x);
 				String error=lang(req).get("remote_object_network_error");
 				return new JsonObjectBuilder().add("error", error).build();
 			}
@@ -550,6 +533,7 @@ public class SystemRoutes{
 					return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+posts.get(0).id+"#comment"+nativePost.id).toString()).build();
 				}catch(InterruptedException ignore){
 				}catch(ExecutionException e){
+					LOG.trace("Error fetching remote object", e);
 					Throwable x=e.getCause();
 					String error;
 					if(x instanceof UnsupportedRemoteObjectTypeException)
@@ -633,16 +617,20 @@ public class SystemRoutes{
 
 		ctx.getActivityPubWorker().sendPollVotes(self.user, poll, owner, options, voteIDs);
 		int postID=PostStorage.getPostIdByPollId(id);
+		Post post;
 		if(postID>0){
-			Post post=ctx.getWallController().getPostOrThrow(postID);
+			post=ctx.getWallController().getPostOrThrow(postID);
 			post.poll=poll; // So the last vote time is as it was before the vote
 			ctx.getWallController().sendUpdateQuestionIfNeeded(post);
+		}else{
+			post=null;
 		}
 
 		if(isAjax(req)){
 			UserInteractions interactions=new UserInteractions();
 			interactions.pollChoices=Arrays.stream(optionIDs).boxed().collect(Collectors.toList());
 			RenderedTemplateResponse model=new RenderedTemplateResponse("poll", req).with("poll", poll).with("interactions", interactions);
+			model.with("post", new PostViewModel(post));
 			return new WebDeltaResponse(resp).setContent("poll"+poll.id, model.renderBlock("inner"));
 		}
 
@@ -724,13 +712,13 @@ public class SystemRoutes{
 		boolean forward="on".equals(req.queryParams("forward"));
 
 		Actor target;
-		Object content;
+		List<ReportableContentObject> content;
 
 		switch(type){
 			case "post" -> {
 				int id=safeParseInt(rawID);
 				Post post=ctx.getWallController().getPostOrThrow(id);
-				content=post;
+				content=List.of(post);
 				target=ctx.getUsersController().getUserOrThrow(post.authorID);
 			}
 			case "user" -> {
@@ -747,7 +735,7 @@ public class SystemRoutes{
 				long id=decodeLong(rawID);
 				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 				target=ctx.getUsersController().getUserOrThrow(msg.senderID);
-				content=msg;
+				content=List.of(msg);
 			}
 			default -> throw new BadRequestException("invalid type");
 		}
@@ -766,12 +754,12 @@ public class SystemRoutes{
 			sid=sid.substring(0, 16);
 
 		CaptchaGenerator.Captcha c=CaptchaGenerator.generate();
-		LruCache<String, String> captchas=req.session().attribute("captchas");
+		LruCache<String, CaptchaInfo> captchas=req.session().attribute("captchas");
 		if(captchas==null){
 			captchas=new LruCache<>(10);
 			req.session().attribute("captchas", captchas);
 		}
-		captchas.put(sid, c.answer());
+		captchas.put(sid, new CaptchaInfo(c.answer(), Instant.now()));
 
 		resp.type("image/png");
 		ByteArrayOutputStream out=new ByteArrayOutputStream();

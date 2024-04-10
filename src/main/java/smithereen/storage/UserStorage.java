@@ -10,7 +10,9 @@ import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -29,6 +32,7 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.Account;
 import smithereen.model.BirthdayReminder;
 import smithereen.model.EventReminder;
@@ -39,8 +43,11 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.SignupInvitation;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.UserRole;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -54,7 +61,6 @@ public class UserStorage{
 	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
 	private static LruCache<Integer, Account> accountCache=new LruCache<>(500);
 	private static final LruCache<Integer, BirthdayReminder> birthdayReminderCache=new LruCache<>(500);
-	private static final LruCache<Integer, EventReminder> eventReminderCache=new LruCache<>(500);
 
 	public static synchronized User getById(int id) throws SQLException{
 		User user=cache.get(id);
@@ -65,6 +71,11 @@ public class UserStorage{
 				.where("id=?", id)
 				.executeAndGetSingleObject(User::fromResultSet);
 		if(user!=null){
+			if(user.icon!=null && !user.icon.isEmpty() && user.icon.getFirst() instanceof LocalImage li){
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(li.fileID);
+				if(mfr!=null)
+					li.fillIn(mfr);
+			}
 			cache.put(id, user);
 			cacheByUsername.put(user.getFullUsername(), user);
 		}
@@ -111,8 +122,23 @@ public class UserStorage{
 					.whereIn("id", ids)
 					.executeAsStream(User::fromResultSet)
 					.forEach(u->result.put(u.id, u));
+			Set<Long> needAvatars=result.values().stream()
+					.map(u->u.icon!=null && !u.icon.isEmpty() && u.icon.getFirst() instanceof LocalImage li ? li : null)
+					.filter(li->li!=null && li.fileRecord==null)
+					.map(li->li.fileID)
+					.collect(Collectors.toSet());
+			if(!needAvatars.isEmpty()){
+				Map<Long, MediaFileRecord> records=MediaStorage.getMediaFileRecords(needAvatars);
+				for(User user:result.values()){
+					if(user.icon!=null && !user.icon.isEmpty() && user.icon.getFirst() instanceof LocalImage li && li.fileRecord==null){
+						MediaFileRecord mfr=records.get(li.fileID);
+						if(mfr!=null)
+							li.fillIn(mfr);
+					}
+				}
+			}
 			synchronized(UserStorage.class){
-				for(int id: ids){
+				for(int id:ids){
 					User u=result.get(id);
 					if(u!=null)
 						putIntoCache(u);
@@ -141,8 +167,14 @@ public class UserStorage{
 				.allColumns()
 				.where("username=? AND domain=?", realUsername, domain)
 				.executeAndGetSingleObject(User::fromResultSet);
-		if(user!=null)
+		if(user!=null){
+			if(user.icon!=null && !user.icon.isEmpty() && user.icon.getFirst() instanceof LocalImage li){
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(li.fileID);
+				if(mfr!=null)
+					li.fillIn(mfr);
+			}
 			putIntoCache(user);
+		}
 		return user;
 	}
 
@@ -328,6 +360,14 @@ public class UserStorage{
 				.selectFrom("followings")
 				.count()
 				.where("follower_id=? AND mutual=1", userID)
+				.executeAndGetInt();
+	}
+
+	public static int getUserFollowerOrFollowingCount(int userID, boolean followers) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("followings")
+				.count()
+				.where((followers ? "followee_id" : "follower_id")+"=? AND accepted=1 AND mutual=0", userID)
 				.executeAndGetInt();
 	}
 
@@ -680,6 +720,7 @@ public class UserStorage{
 				bldr.executeNoResult();
 			}
 			user.id=existingUserID;
+			user.lastUpdated=Instant.now();
 			putIntoCache(user);
 
 			if(isNew){
@@ -693,6 +734,28 @@ public class UserStorage{
 			}
 
 			return existingUserID;
+		}catch(SQLIntegrityConstraintViolationException x){
+			// Rare case: user with a matching username@domain but a different AP ID already exists
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+				int oldID=new SQLQueryBuilder(conn)
+						.selectFrom("users")
+						.columns("id")
+						.where("username=? AND domain=? AND ap_id<>?", user.username, user.domain, user.activityPubID)
+						.executeAndGetInt();
+				if(oldID<=0){
+					LOG.warn("Didn't find an existing user with username {}@{} while trying to deduplicate {}", user.username, user.domain, user.activityPubID);
+					throw x;
+				}
+				LOG.info("Deduplicating user rows: username {}@{}, old local ID {}, new AP ID {}", user.username, user.domain, oldID, user.activityPubID);
+				// Assign a temporary random username to this existing user row to get it out of the way
+				new SQLQueryBuilder(conn)
+						.update("users")
+						.value("username", UUID.randomUUID().toString())
+						.where("id=?", oldID)
+						.executeNoResult();
+				// Try again
+				return putOrUpdateForeignUser(user);
+			}
 		}
 	}
 
@@ -817,10 +880,6 @@ public class UserStorage{
 			try(ResultSet res=stmt.executeQuery()){
 				while(res.next()){
 					Account acc=Account.fromResultSet(res);
-					int inviterID=res.getInt("inviter_user_id");
-					if(inviterID!=0){
-						acc.invitedBy=getById(inviterID);
-					}
 					accounts.add(acc);
 				}
 			}
@@ -833,15 +892,11 @@ public class UserStorage{
 		if(acc!=null)
 			return acc;
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement("SELECT a1.*, a2.user_id AS inviter_user_id FROM accounts AS a1 LEFT JOIN accounts AS a2 ON a1.invited_by=a2.id WHERE a1.id=?");
+			PreparedStatement stmt=conn.prepareStatement("SELECT * FROM accounts WHERE id=?");
 			stmt.setInt(1, id);
 			try(ResultSet res=stmt.executeQuery()){
 				if(res.next()){
 					acc=Account.fromResultSet(res);
-					int inviterID=res.getInt("inviter_user_id");
-					if(inviterID!=0){
-						acc.invitedBy=getById(inviterID);
-					}
 					accountCache.put(acc.id, acc);
 					return acc;
 				}
@@ -850,22 +905,44 @@ public class UserStorage{
 		return null;
 	}
 
-	public static void setAccountAccessLevel(int id, Account.AccessLevel level) throws SQLException{
+	public static Map<Integer, Account> getAccounts(Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("accounts")
+				.allColumns()
+				.whereIn("id", ids)
+				.executeAsStream(Account::fromResultSet)
+				.collect(Collectors.toMap(a->a.id, Function.identity()));
+	}
+
+	public static void setAccountRole(Account account, int role, int promotedBy) throws SQLException{
 		new SQLQueryBuilder()
 				.update("accounts")
-				.value("access_level", level)
-				.where("id=?", id)
+				.value("role", role>0 ? role : null)
+				.value("promoted_by", promotedBy>0 ? promotedBy : null)
+				.where("id=?", account.id)
 				.executeNoResult();
 		synchronized(UserStorage.class){
-			accountCache.remove(id);
+			accountCache.remove(account.id);
 		}
+		SessionStorage.removeFromUserPermissionsCache(account.user.id);
+	}
+
+	public static synchronized void resetAccountsCache(){
+		accountCache.evictAll();
 	}
 
 	public static List<User> getAdmins() throws SQLException{
+		Set<Integer> rolesToShow=Config.userRoles.values()
+				.stream()
+				.filter(r->r.permissions().contains(UserRole.Permission.VISIBLE_IN_STAFF))
+				.map(UserRole::id)
+				.collect(Collectors.toSet());
+		if(rolesToShow.isEmpty())
+			return List.of();
 		return getByIdAsList(new SQLQueryBuilder()
 				.selectFrom("accounts")
 				.columns("user_id")
-				.where("access_level=?", Account.AccessLevel.ADMIN)
+				.whereIn("role", rolesToShow)
 				.executeAndGetIntList());
 	}
 
@@ -1182,5 +1259,49 @@ public class UserStorage{
 				.where("id=?", user.id)
 				.executeNoResult();
 		removeFromCache(user);
+	}
+
+	public static void deleteAccount(Account account) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			// Delete media file refs first because triggers don't trigger on cascade deletes. Argh.
+			new SQLQueryBuilder(conn)
+					.deleteFrom("media_file_refs")
+					.where("owner_user_id=?", account.user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.deleteFrom("accounts")
+					.where("id=?", account.id)
+					.executeNoResult();
+			new SQLQueryBuilder(conn)
+					.deleteFrom("users")
+					.where("id=?", account.user.id)
+					.executeNoResult();
+			removeFromCache(account.user);
+			accountCache.remove(account.id);
+		}
+	}
+
+	public static void removeAccountFromCache(int id){
+		accountCache.remove(id);
+	}
+
+	public static void setUserBanStatus(User user, Account userAccount, UserBanStatus status, String banInfo) throws SQLException{
+		new SQLQueryBuilder()
+				.update("users")
+				.value("ban_status", status)
+				.value("ban_info", banInfo)
+				.where("id=?", user.id)
+				.executeNoResult();
+		removeFromCache(user);
+		accountCache.remove(userAccount.id);
+	}
+
+	public static List<User> getTerminallyBannedUsers() throws SQLException{
+		return getByIdAsList(new SQLQueryBuilder()
+				.selectFrom("users")
+				.columns("id")
+				.whereIn("ban_status", UserBanStatus.SELF_DEACTIVATED, UserBanStatus.SUSPENDED)
+				.executeAndGetIntList());
 	}
 }

@@ -1,0 +1,5 @@
+{% include "admin_users_info_tabbar" with {'tab': 'reports'} %}
+<div class="secondaryTabBar">
+	<a href="/users/{{ user.id }}/reports" class="{{ tab=='reportsOf' ? 'selected' : '' }}">{{ L('reports_of_user', {'name': user.firstAndGender}) }}</a>
+	<a href="/users/{{ user.id }}/reports/authored" class="{{ tab=='reportsBy' ? 'selected' : '' }}">{{ L('reports_by_user', {'name': user.firstAndGender}) }}</a>
+</div>

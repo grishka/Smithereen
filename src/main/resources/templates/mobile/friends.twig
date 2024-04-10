@@ -6,10 +6,10 @@
 <table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
 	<tr valign="top">
 		<td width="50">
-			<a href="{{friend.profileURL}}">{{friend | pictureForAvatar('s')}}</a>
+			<a href="{{friend.profileURL}}"{{ profileRel(friend) }}>{{friend | pictureForAvatar('s')}}</a>
 		</td>
 		<td class="info"{% if cursomActions is empty %} valign="middle"{% endif %}>
-			<b><a href="{{friend.profileURL}}">{{ friend | name }}</a></b>
+			<b><a href="{{friend.profileURL}}"{{ profileRel(friend) }}>{{ friend | name }}</a></b>
 			{% if customActions is not empty %}
 			<div id="frowActions{{ friend.id }}">
 				<ul class="actionList">

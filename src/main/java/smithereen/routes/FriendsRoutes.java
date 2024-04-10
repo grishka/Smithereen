@@ -11,6 +11,7 @@ import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
+import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
@@ -35,6 +36,7 @@ public class FriendsRoutes{
 			return wrapError(req, resp, "err_cant_friend_self");
 		}
 		ctx.getUsersController().ensureUserNotBlocked(self.user, user);
+		ctx.getPrivacyController().enforceUserProfileAccess(self.user, user);
 		FriendshipStatus status=ctx.getFriendsController().getFriendshipStatus(self.user, user);
 		Lang l=lang(req);
 		switch(status){
@@ -67,6 +69,7 @@ public class FriendsRoutes{
 
 	public static Object doSendFriendRequest(Request req, Response resp, Account self, ApplicationContext ctx){
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		ctx.getPrivacyController().enforceUserProfileAccess(self.user, user);
 		ctx.getFriendsController().sendFriendRequest(self.user, user, req.queryParams("message"));
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
@@ -89,6 +92,7 @@ public class FriendsRoutes{
 	}
 
 	private static Object friends(Request req, Response resp, User user, Account self, ApplicationContext ctx){
+		ctx.getPrivacyController().enforceUserProfileAccess(self!=null ? self.user : null, user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 		model.with("owner", user);
 		model.pageTitle(lang(req).get("friends"));
@@ -114,6 +118,8 @@ public class FriendsRoutes{
 			model.addNavBarItem(group.name, group.getProfileURL()).addNavBarItem(lang(req).get("invite_friends_title"));
 			model.pageTitle(lang(req).get("invite_friends_title"));
 		}
+		if(user instanceof ForeignUser)
+			model.with("noindex", true);
 		jsLangKey(req, "remove_friend", "yes", "no");
 		return model;
 	}
@@ -133,6 +139,7 @@ public class FriendsRoutes{
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		if(user.id==self.user.id)
 			throw new ObjectNotFoundException("err_user_not_found");
+		ctx.getPrivacyController().enforceUserProfileAccess(self.user, user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 		PaginatedList<User> friends=ctx.getFriendsController().getMutualFriends(user, self.user, offset(req), 100, FriendsController.SortOrder.ID_ASCENDING);
 		model.paginate(friends);
@@ -140,6 +147,8 @@ public class FriendsRoutes{
 		model.pageTitle(lang(req).get("friends"));
 		model.with("tab", "mutual");
 		model.with("mutualCount", friends.total);
+		if(user instanceof ForeignUser)
+			model.with("noindex", true);
 		jsLangKey(req, "remove_friend", "yes", "no");
 		return model;
 	}
@@ -159,6 +168,7 @@ public class FriendsRoutes{
 		}else{
 			user=context(req).getUsersController().getUserOrThrow(safeParseInt(_id));
 		}
+		ctx.getPrivacyController().enforceUserProfileAccess(self!=null ? self.user : null, user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 		model.with("title", lang(req).get("followers")).with("toolbarTitle", lang(req).get("friends"));
 		model.paginate(context(req).getFriendsController().getFollowers(user, offset(req), 100));
@@ -167,6 +177,8 @@ public class FriendsRoutes{
 			int mutualCount=ctx.getFriendsController().getMutualFriends(self.user, user, 0, 0, FriendsController.SortOrder.ID_ASCENDING).total;
 			model.with("mutualCount", mutualCount);
 		}
+		if(user instanceof ForeignUser)
+			model.with("noindex", true);
 		return model;
 	}
 
@@ -186,6 +198,7 @@ public class FriendsRoutes{
 		}else{
 			user=context(req).getUsersController().getUserOrThrow(safeParseInt(_id));
 		}
+		ctx.getPrivacyController().enforceUserProfileAccess(self!=null ? self.user : null, user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 		model.with("title", lang(req).get("following")).with("toolbarTitle", lang(req).get("friends"));
 		model.paginate(context(req).getFriendsController().getFollows(user, offset(req), 100));
@@ -194,6 +207,8 @@ public class FriendsRoutes{
 			int mutualCount=ctx.getFriendsController().getMutualFriendsCount(self.user, user);
 			model.with("mutualCount", mutualCount);
 		}
+		if(user instanceof ForeignUser)
+			model.with("noindex", true);
 		jsLangKey(req, "unfollow", "yes", "no");
 		return model;
 	}

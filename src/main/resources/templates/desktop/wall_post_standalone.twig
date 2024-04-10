@@ -15,7 +15,10 @@
 {% include "wall_post" with {'standalone': true} %}
 </div>
 <div class="summaryWrap noPadTop">
-	<div class="summary">{{ L('X_comments', {'count': post.post.replyCount}) }}</div>
+	<div class="summary">
+		{{- L('X_comments', {'count': post.post.replyCount}) }}
+		<span class="auxText">{% if needExpandCWsButton %}| <a href="javascript:void(0)" onclick="expandAllCommentCWs()">{{ L('expand_all_cws') }}</a>{% endif %}</span>
+	</div>
 	{% include "pagination" %}
 </div>
 <div id="postReplies{{post.post.id}}" class="singleColumn">

@@ -1,41 +1,83 @@
-{%extends "page"%}
-{%block content%}
-{%include "admin_tabbar" with {'tab': 'users'}%}
-<div class="singleColumn wideDataTableWrap">
-	<table width="100%" class="dataTable">
-		<tr class="tableHeader">
-			<th width="75"><abbr title="{{L('admin_user_id')}}">ID</abbr></th>
-			<th>{{L('name')}}</th>
-			<th width="200">{{L('invited_by')}}</th>
-			<th width="150">{{L('signup_date')}}</th>
-			<th width="150">{{L('actions')}}</th>
-		</tr>
-		{% for acc in items %}
-		<tr>
-			<td>{{acc.id}} ({{acc.user.id}})</td>
-			<td class="ellipsize"><a href="{{acc.user.url}}"><span class="tinyInlineAva">{{acc.user | pictureForAvatar('s', 32)}}</span>{{ acc.user | name('full') }}</a></td>
-			<td class="ellipsize">{%if acc.invitedBy is not null%}<a href="{{acc.invitedBy.url}}"><span class="tinyInlineAva">{{acc.invitedBy | pictureForAvatar('s', 32)}}</span>{{ acc.invitedBy | name('full') }}</a>{%else%}&mdash;{%endif%}</td>
-			<td align="center">{{LD(acc.createdAt)}}</td>
-			<td>
-				{% if acc.user.id!=currentUser.id and userPermissions.serverAccessLevel.ordinal>=3 %}
-					<a href="/settings/admin/users/accessLevelForm?accountID={{ acc.id }}" data-ajax-box="1">{{ L('access_level') }}</a>
+{% extends "page" %}
+{% block content %}
+{% if message is not empty %}<div class="marginsAreMessy"></div><div class="settingsMessage">{{ message }}</div>{% endif %}
+{% include "admin_users_tabbar" with {'tab': 'users'} %}
+<div class="gray borderBottom">
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('search_users') }}" value="{{ query }}" id="userSearch" data-base-url="{{ urlPath }}" data-extra-fields="emailDomain,lastIP,role"/>
+	{% script %}
+		initAjaxSearch("userSearch");
+	{% endscript %}
+	</div>
+</div>
+<div id="ajaxUpdatable">
+{% block ajaxPartialUpdate %}
+	{% if not isMobile %}
+	<div class="summaryWrap">
+		<div class="summary">{{ L(hasFilters ? 'summary_X_users_found' : 'summary_X_users', {'count': totalItems}) }}</div>
+		{% include "pagination" %}
+	</div>
+	{% endif %}
+	<div class="withRightColumnFilters">
+		<div class="leftColumn">
+		{% for user in items %}
+			<div class="listItemWithDivider adminInfoGrid">
+				<div class="spanAll avaAndName">
+					<div class="avaW">{{ users[user.userID] | pictureForAvatar('s', 30) }}</div>
+					<div><a href="/users/{{ user.userID }}/meminfo"><b>{{ users[user.userID] | name("complete") }}</b></a></div>
+					<div class="grayText">@{{ users[user.userID].fullUsername }}, ID {{ user.userID }}</div>
+				</div>
+				{% if user.lastActive is not null %}
+					<div class="ellipsize spanAll">
+						<span class="grayText">{{ L('admin_last_user_activity') }}:</span>
+						{{ LD(user.lastActive) }}
+						{%- if user.lastIP is not null %}, {{ user.lastIP.hostAddress }}{% endif %}
+					</div>
 				{% endif %}
-				{% if acc.accessLevel!='ADMIN' and acc.accessLevel!='MODERATOR' %}
-					{% if acc.banInfo is null %}
-						| <a href="/settings/admin/users/banForm?accountID={{ acc.id }}" data-ajax-box="1">{{ L('admin_ban') }}</a>
+				{% if user.accountID!=0 %}
+				<div class="ellipsize">
+					<span class="grayText">{{ L('email') }}:</span>
+					{{ user.emailDomain }}
+				</div>
+				<div class="ellipsize">
+					<span class="grayText">{{ L('role') }}:</span>
+					{% if user.role!=0 %}
+					{{ rolesMap[user.role].langKey is empty ? rolesMap[user.role].name : L(rolesMap[user.role].langKey) }}
 					{% else %}
-						| <a href="/settings/admin/users/confirmUnban?accountID={{ acc.id }}" data-confirm-action="/settings/admin/users/unban?accountID={{ acc.id }}" data-confirm-title="{{ L('admin_unban') }}" data-confirm-message="{{ L("admin_unban_X_confirm", {'name': acc.user.firstLastAndGender}) | forceEscape }}">{{ L('admin_unban') }}</a>
+					<i>{{ L('role_none') }}</i>
 					{% endif %}
+				</div>
 				{% endif %}
-				{% if acc.activationInfo is not null %}
-					| <a href="/settings/admin/users/confirmActivate?accountID={{ acc.id }}" data-confirm-action="/settings/admin/users/activate?accountID={{ acc.id }}" data-confirm-title="{{ L('account_activation') }}" data-confirm-message="{{ L("admin_activate_X_confirm", {'name': acc.user.firstLastAndGender}) | forceEscape }}">{{ L('admin_activate_account') }}</a>
-				{% endif %}
-			</td>
-		</tr>
+			</div>
+		{% else %}
+			<div class="emptyState">{{ L('no_users_found') }}</div>
 		{% endfor %}
-	</table>
+		</div>
+		<div class="filters">
+			<a class="filterItem{{ location is null ? ' selected' : '' }}" href="{{ addQueryParams(urlPath, {'location': null, 'offset': null}) }}" data-ajax>{{ L('admin_user_location_any') }}</a>
+			<a class="filterItem{{ location=='local' ? ' selected' : '' }}" href="{{ addQueryParams(urlPath, {'location': 'local', 'offset': null}) }}" data-ajax>{{ L('admin_user_location_local') }}</a>
+			<a class="filterItem{{ location=='remote' ? ' selected' : '' }}" href="{{ addQueryParams(urlPath, {'location': 'remote', 'offset': null}) }}" data-ajax>{{ L('admin_user_location_remote') }}</a>
+			<hr/>
+			<div class="filterFieldBlock">
+				<label for="emailDomain">{{ L('admin_user_email_domain') }}</label>
+				<input type="text" name="emailDomain" id="emailDomain" value="{{ emailDomain }}" placeholder="gmail.com"/>
+			</div>
+			<div class="filterFieldBlock">
+				<label for="lastIP">{{ L('admin_user_ip_or_subnet') }}</label>
+				<input type="text" name="lastIP" id="lastIP" value="{{ lastIP }}" placeholder="123.0.0.0/8"/>
+			</div>
+			<div class="filterFieldBlock">
+				<label for="role">{{ L('role') }}</label>
+				<select name="role" id="role">
+					<option value=""{{ roleID==0 ? ' selected' : '' }}>{{ L('any_role') }}</option>
+					{% for role in allRoles %}
+					<option value="{{ role.id }}"{{ roleID==role.id ? ' selected' : '' }}>{{ role.langKey is empty ? role.name : L(role.langKey) }}</option>
+					{% endfor %}
+				</select>
+			</div>
+		</div>
+	</div>
+	<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}
 </div>
-<div class="bottomSummaryWrap">
-	{% include "pagination" %}
-</div>
-{%endblock%}
+{% endblock %}

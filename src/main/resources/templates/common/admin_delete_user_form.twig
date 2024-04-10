@@ -1,0 +1,3 @@
+<div class="settingsMessage" id="formMessage_deleteUser" style="{% if message is empty %}display: none{% endif %}">{{ message }}</div>
+<p>{{ L('admin_user_delete_account_confirmation', {'name': user.firstLastAndGender}) }}</p>
+<p><input type="text" placeholder="{{ username }}" name="username" style="width: 100%"/></p>

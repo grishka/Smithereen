@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="{{ locale.toLanguageTag() }}">
 <head>
 	<title>{{ title }}</title>
 	<link rel="stylesheet" type="text/css" href="/res/mobile.css?{{ staticHashes['mobile.css'] }}"/>
@@ -17,7 +17,7 @@
 		{%endfor%}
 	{% endif %}
 	{% if noindex %}
-		<meta name="robots" content="noindex"/>
+		<meta name="robots" content="noindex, nofollow"/>
 	{% endif %}
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
 	<script>
@@ -37,6 +37,7 @@
 		<label for="mainMenuToggler"><span>{{L('menu')}}</span></label>
 	</div>
 	<span class="title">{{toolbarTitle is empty ? title : toolbarTitle}}</span>
+	{% block headerActionButtons %}{% endblock %}
 </div>
 <input type="checkbox" id="mainMenuToggler" style="display: none"/>
 <div class="mainMenu">

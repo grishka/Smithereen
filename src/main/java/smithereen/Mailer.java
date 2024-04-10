@@ -8,9 +8,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 
 import javax.mail.Authenticator;
@@ -25,8 +28,10 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
 import smithereen.model.Account;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.lang.Lang;
+import smithereen.model.UserBanInfo;
+import smithereen.model.UserBanStatus;
 import smithereen.templates.Templates;
 import smithereen.util.BackgroundTaskRunner;
 import spark.Request;
@@ -62,6 +67,7 @@ public class Mailer{
 		if(StringUtils.isEmpty(Config.smtpPassword)){
 			session=Session.getInstance(props);
 		}else{
+			props.put("mail.smtp.auth", "true");
 			session=Session.getInstance(props, new Authenticator(){
 				@Override
 				protected PasswordAuthentication getPasswordAuthentication(){
@@ -165,12 +171,50 @@ public class Mailer{
 		), l.getLocale());
 	}
 
+	public void sendAccountBanNotification(Account self, UserBanStatus banStatus, UserBanInfo banInfo){
+		Lang l=Lang.get(self.prefs.locale);
+		String text=switch(banStatus){
+			case FROZEN -> l.get("email_account_frozen_body", Map.of(
+					"name", self.user.firstName,
+					"serverName", Config.serverDisplayName,
+					"date", l.formatDate(Objects.requireNonNull(banInfo.expiresAt()), self.prefs.timeZone, false)
+			));
+			case SUSPENDED -> l.get("email_account_suspended_body", Map.of(
+					"name", self.user.firstName,
+					"serverName", Config.serverDisplayName,
+					"deletionDate", l.formatDate(Objects.requireNonNull(banInfo.bannedAt()).plus(30, ChronoUnit.DAYS), self.prefs.timeZone, false)
+			));
+			default -> throw new IllegalArgumentException("Unexpected value: " + banStatus);
+		};
+		String subject=switch(banStatus){
+			case FROZEN -> l.get("email_account_frozen_subject", Map.of("domain", Config.domain));
+			case SUSPENDED -> l.get("email_account_suspended_subject", Map.of("domain", Config.domain));
+			default -> throw new IllegalArgumentException("Unexpected value: " + banStatus);
+		};
+		String htmlText=text;
+		text=Utils.stripHTML(text);
+		if(StringUtils.isNotEmpty(banInfo.message())){
+			htmlText+="<br/><br/>"+l.get("message_from_staff")+": "+Utils.stripHTML(banInfo.message());
+			text+="\n\n"+l.get("message_from_staff")+": "+banInfo.message();
+		}
+		send(self.email, subject, text, "generic", Map.of("text", htmlText), self.prefs.locale);
+	}
+
+	public void sendActionConfirmationCode(Request req, Account self, String action, String code){
+		LOG.trace("Sending code {} for action {}", code, action);
+		Lang l=Utils.lang(req);
+		String plaintext=Utils.stripHTML(l.get("email_confirmation_code", Map.of("name", self.user.firstName, "action", action)))+"\n\n"+code+"\n\n"+Utils.stripHTML(l.get("email_confirmation_code_info"));
+		String subject=l.get("email_confirmation_code_subject", Map.of("domain", Config.domain));
+		send(self.email, subject, plaintext, "confirmation_code", Map.of("name", self.user.firstName, "action", action, "code", code), l.getLocale());
+	}
+
 	private void send(String to, String subject, String plaintext, String templateName, Map<String, Object> templateParams, Locale templateLocale){
 		try{
 			MimeMessage msg=new MimeMessage(session);
 			msg.setFrom(new InternetAddress(Config.mailFrom, Config.getServerDisplayName()));
 			msg.setRecipients(Message.RecipientType.TO, to);
 			msg.setSubject(subject);
+			msg.setSentDate(new Date());
 
 			MimeBodyPart plainPart=new MimeBodyPart();
 			plainPart.setContent(plaintext, "text/plain; charset=UTF-8");

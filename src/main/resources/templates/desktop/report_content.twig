@@ -1,0 +1,72 @@
+{% extends "page" %}
+{% block content %}
+<div class="mailMessageView singleColumn">
+	{% if contentType=='post' %}
+	{% set post=content %}
+	<div class="messageViewHeader">
+		<a href="{{ profileURL(post.authorID) }}" class="avaW">{{ users[post.authorID] | pictureForAvatar('s') }}</a>
+		<div class="label">{{ L('mail_from') }}:</div>
+		<div><a href="{{ profileURL(post.authorID) }}">{{ users[post.authorID] | name('complete') }}</a></div>
+		<div class="label">{{ L('mail_to') }}:</div>
+		<div><a href="{{ profileURL(post.ownerID) }}">{{ (post.ownerID>0 ? users[post.ownerID] : groups[-post.ownerID]) | name('complete') }}</a></div>
+		<div class="label">{{ L('report_content_created_at') }}:</div>
+		<div><a href="/posts/{{ post.id }}?report={{ reportID }}">{{ LD(post.createdAt, true) }}</a></div>
+		{% if post.hasContentWarning %}
+		<div class="label">{{ L('post_form_cw') }}:</div>
+		<div>{{ post.contentWarning }}</div>
+		{% endif %}
+	</div>
+	<div class="messageContent">
+	{{ post.text | postprocessHTML }}
+	{% if post.attachments is not empty %}
+		{{ renderAttachments(post.processedAttachments, null) }}
+	{% endif %}
+	{% if post.poll is not null %}
+		<h2>{{ L('poll') }}: {{ post.poll.question }}</h2>
+		<ul class="actualList">
+		{% for option in post.poll.options %}
+			<li><span>{{ option.text }}</span></li>
+		{% endfor %}
+		</ul>
+	{% endif %}
+	</div>
+	{% elseif contentType=='message' %}
+	{% set message=content %}
+	<div class="messageViewHeader">
+		<a href="{{ profileURL(message.senderID) }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('s') }}</a>
+		<div class="label">{{ L('mail_from') }}:</div>
+		<div><a href="{{ profileURL(message.senderID) }}">{{ users[message.senderID] | name('complete') }}</a></div>
+		<div class="label">{{ L('mail_to') }}:</div>
+		<div>
+			{%- for id in message.to -%}
+			<a href="{{ profileURL(id) }}">{{ users[id] | name('complete') }}</a>{% if not loop.last %}, {% endif %}
+			{%- endfor %}
+		</div>
+		{% if message.cc is not empty %}
+		<div class="label">{{ L('mail_cc') }}:</div>
+		<div>
+		{%- for id in message.cc -%}
+			<a href="{{ profileURL(id) }}">{{ users[id] | name('complete') }}</a>{% if not loop.last %}, {% endif %}
+		{%- endfor %}
+		</div>
+		{% endif %}
+		{% if message.subject is not empty %}
+		<div class="label">{{ L('mail_subject') }}:</div>
+		<div>{{ message.subject }}</div>
+		{% endif %}
+		{% if inReplyToURL is not empty %}
+		<div class="label">{{ L('mail_in_reply_to') }}:</div>
+		<div><a href="{{ inReplyToURL }}">{{ inReplyToLink }}</a></div>
+		{% endif %}
+		<div class="label">{{ L('report_content_created_at') }}:</div>
+		<div>{{ LD(message.createdAt, true) }}</div>
+	</div>
+	<div class="messageContent">
+	{{ message.text | postprocessHTML }}
+	{% if message.attachments is not empty %}
+		{{ renderAttachments(message.processedAttachments, null) }}
+	{% endif %}
+	</div>
+	{% endif %}
+</div>
+{% endblock %}

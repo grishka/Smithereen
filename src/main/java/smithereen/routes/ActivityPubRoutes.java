@@ -121,13 +121,14 @@ import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.StatsType;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.jsonld.JLDProcessor;
 import smithereen.jsonld.LinkedDataSignatures;
+import smithereen.model.UserBanStatus;
 import smithereen.sparkext.ActivityPubCollectionPageResponse;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
@@ -474,10 +475,11 @@ public class ActivityPubRoutes{
 		// ?type=favourite
 		// ?type=reply
 		// user/remote_follow
+		requireQueryParams(req, "uri");
 		String ref=req.headers("referer");
 		ActivityPubObject remoteObj;
 		try{
-			URI uri=new URI(req.queryParams("uri"));
+			URI uri=UriBuilder.parseAndEncode(req.queryParams("uri"));
 			if(!"https".equals(uri.getScheme()) && !(Config.useHTTP && "http".equals(uri.getScheme()))){
 				// try parsing as "username@domain" or "acct:username@domain"
 				String rawUri=uri.getSchemeSpecificPart();
@@ -496,6 +498,7 @@ public class ActivityPubRoutes{
 				return "Object ID host doesn't match URI host";
 			}
 		}catch(IOException|JsonParseException|URISyntaxException x){
+			LOG.debug("Error fetching remote object", x);
 			return x.getMessage();
 		}
 		if(remoteObj instanceof ForeignUser foreignUser){
@@ -664,8 +667,13 @@ public class ActivityPubRoutes{
 			}
 		}
 		String body=req.body();
-		LOG.info("Incoming activity: {}", body);
-		JsonObject rawActivity=JsonParser.parseString(body).getAsJsonObject();
+		LOG.debug("Incoming activity: {}", body);
+		JsonObject rawActivity;
+		try{
+			rawActivity=JsonParser.parseString(body).getAsJsonObject();
+		}catch(Exception x){
+			throw new BadRequestException("Failed to parse request body as JSON", x);
+		}
 		JsonObject obj=JLDProcessor.convertToLocalContext(rawActivity);
 
 		Activity activity;
@@ -711,11 +719,15 @@ public class ActivityPubRoutes{
 		}
 		if(!(actor instanceof ForeignActor fa))
 			throw new BadRequestException("Actor is local");
+		if(actor instanceof ForeignUser fu && fu.banStatus==UserBanStatus.SUSPENDED){
+			resp.status(403);
+			return "This actor is suspended from this server";
+		}
 		if(fa.needUpdate() && canUpdate){
 			try{
 				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, true);
 			}catch(ObjectNotFoundException x){
-				LOG.warn("Exception while refreshing remote actor", x);
+				LOG.warn("Exception while refreshing remote actor {}", activity.actor.link, x);
 			}
 		}
 
@@ -723,7 +735,7 @@ public class ActivityPubRoutes{
 		try{
 			httpSigOwner=ActivityPub.verifyHttpSignature(req, actor);
 		}catch(Exception x){
-			LOG.warn("Exception while verifying HTTP signature", x);
+			LOG.debug("Exception while verifying HTTP signature", x);
 			throw new UserActionNotAllowedException(x);
 		}
 
@@ -741,17 +753,17 @@ public class ActivityPubRoutes{
 				if(!LinkedDataSignatures.verify(rawActivity, actor.publicKey)){
 					throw new BadRequestException("LD-signature verification failed");
 				}
-				LOG.info("verified LD signature by {}", userID);
+				LOG.debug("verified LD signature by {}", userID);
 				hasValidLDSignature=true;
 			}catch(Exception x){
-				LOG.info("Exception while verifying LD-signature", x);
+				LOG.debug("Exception while verifying LD-signature", x);
 			}
 		}
 		if(!hasValidLDSignature){
 			if(!actor.equals(httpSigOwner)){
 				throw new BadRequestException("In the absence of a valid LD-signature, HTTP signature must be made by the activity actor");
 			}
-			LOG.info("verified HTTP signature by {}", httpSigOwner.activityPubID);
+			LOG.debug("verified HTTP signature by {}", httpSigOwner.activityPubID);
 		}
 		// parse again to make sure the actor is set everywhere
 		try{
@@ -775,6 +787,14 @@ public class ActivityPubRoutes{
 					return "";
 				}
 			}
+			if(activity.object==null){
+				// Something unsupported that doesn't have an object/link
+				if(Config.DEBUG)
+					throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
+				else
+					LOG.error("Received and ignored an activity of an unsupported type {}", getActivityType(activity));
+				return "";
+			}
 
 			// Match more thoroughly
 			ActivityPubObject aobj;
@@ -785,7 +805,7 @@ public class ActivityPubRoutes{
 					try{
 						aobj=ctx.getObjectLinkResolver().resolve(aobj.activityPubID);
 					}catch(ObjectNotFoundException x){
-						LOG.warn("Activity object not found for {}: {}", getActivityType(activity), aobj.activityPubID);
+						LOG.debug("Activity object not found for {}: {}", getActivityType(activity), aobj.activityPubID);
 						// Fail silently. We didn't have that object anyway, there's nothing to delete.
 						return "";
 					}
@@ -796,7 +816,7 @@ public class ActivityPubRoutes{
 						aobj=ctx.getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, false, false, false);
 					}catch(ObjectNotFoundException x){
 						// Fail silently. Pleroma sends all likes to followers, including for objects they may not have.
-						LOG.info("Activity object not known for {}: {}", activity.getType(), activity.object.link);
+						LOG.debug("Activity object not known for {}: {}", activity.getType(), activity.object.link);
 						return "";
 					}
 				}else{
@@ -828,17 +848,17 @@ public class ActivityPubRoutes{
 									doublyNestedObject=ctx.getObjectLinkResolver().resolve(nestedActivity.object.link);
 
 								if(r.objectClass.isInstance(doublyNestedObject)){
-									LOG.info("Found match: {}", r.handler.getClass().getName());
+									LOG.debug("Found match: {}", r.handler.getClass().getName());
 									((DoublyNestedActivityTypeHandler)r.handler).handle(context, actor, activity, nestedActivity, doublyNestedActivity, doublyNestedObject);
 									return "";
 								}
 							}else if(r.objectClass.isInstance(nestedObject)){
-								LOG.info("Found match: {}", r.handler.getClass().getName());
+								LOG.debug("Found match: {}", r.handler.getClass().getName());
 								((NestedActivityTypeHandler)r.handler).handle(context, actor, activity, nestedActivity, nestedObject);
 								return "";
 							}
 						}else if(r.objectClass.isInstance(aobj)){
-							LOG.info("Found match: {}", r.handler.getClass().getName());
+							LOG.debug("Found match: {}", r.handler.getClass().getName());
 							r.handler.handle(context, actor, activity, aobj);
 							return "";
 						}
@@ -852,7 +872,7 @@ public class ActivityPubRoutes{
 			resp.status(403);
 			return escapeHTML(x.getMessage());
 		}catch(BadRequestException x){
-			LOG.warn("Bad request", x);
+			LOG.debug("Bad request", x);
 			resp.status(400);
 			return escapeHTML(x.getMessage());
 		}/*catch(Exception x){
@@ -868,7 +888,7 @@ public class ActivityPubRoutes{
 
 	private static String getActivityType(ActivityPubObject obj){
 		String r=obj.getType();
-		if(obj instanceof Activity a){
+		if(obj instanceof Activity a && a.object!=null){
 			r+="{";
 			if(a.object.object!=null){
 				r+=getActivityType(a.object.object);

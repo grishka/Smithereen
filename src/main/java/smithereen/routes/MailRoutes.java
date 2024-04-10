@@ -89,7 +89,11 @@ public class MailRoutes{
 						}else{
 							langKey=post.getReplyLevel()>0 ? "mail_in_reply_to_comment" : "mail_in_reply_to_post";
 						}
-						model.with("inReplyToLink", lang(req).get(langKey)).with("inReplyToURL", post.getInternalURL());
+						User author=null;
+						try{
+							author=ctx.getUsersController().getUserOrThrow(post.authorID);
+						}catch(ObjectNotFoundException ignore){}
+						model.with("inReplyToLink", lang(req).get(langKey, Map.of("name", author==null ? "DELETED" : author.getFirstLastAndGender()))).with("inReplyToURL", post.getInternalURL());
 					}catch(ObjectNotFoundException ignore){}
 				}
 			}

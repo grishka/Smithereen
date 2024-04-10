@@ -1,0 +1,5 @@
+{% import "forms" as form %}
+<p>{{ L('settings_deactivate_confirm', {'timeInterval': L('X_days', {'count': 30})}) }}</p>
+{{ form.start("deactivateAccount") }}
+	{{ form.textInput('password', L('password'), email, {'type': 'password', 'required': true}) }}
+{{ form.end() }}

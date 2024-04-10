@@ -27,7 +27,7 @@ import smithereen.activitypub.ParserContext;
 import smithereen.exceptions.BadRequestException;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -66,7 +66,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		}
 
 		// fix for Lemmy (and possibly something else)
-		boolean hasBogusURL=url!=null && !url.getHost().equalsIgnoreCase(activityPubID.getHost());
+		boolean hasBogusURL=url!=null && !url.getHost().equalsIgnoreCase(activityPubID.getHost()) && !url.getHost().equalsIgnoreCase("www."+activityPubID.getHost());
 
 		String text=content;
 		if(hasBogusURL)
@@ -75,8 +75,11 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		post.text=text;
 		post.createdAt=published!=null ? published : Instant.now();
 		post.updatedAt=updated;
-		if(sensitive!=null && sensitive && StringUtils.isNotEmpty(summary)){
-			post.contentWarning=summary;
+		if(sensitive!=null && sensitive){
+			if(StringUtils.isNotEmpty(summary))
+				post.contentWarning=summary;
+			else
+				post.contentWarning=""; // Will be rendered as a translatable default string
 		}
 
 		post.setActivityPubID(activityPubID);
@@ -84,7 +87,10 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		post.activityPubReplies=replies!=null ? replies.getObjectID() : null;
 		if(post.activityPubReplies!=null)
 			ensureHostMatchesID(post.activityPubReplies, "replies");
-		post.attachments=attachment;
+		if(attachment!=null && attachment.size()>10)
+			post.attachments=attachment.subList(0, 10);
+		else
+			post.attachments=attachment;
 
 		HashSet<URI> mentionedUserIDs=new HashSet<>();
 		if(tag!=null){
@@ -168,8 +174,8 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		Set<URI> to=new HashSet<>(), cc=new HashSet<>();
 		to.add(ActivityPub.AS_PUBLIC);
 
-
-		noq.activityPubID=noq.url=post.getActivityPubID();
+		noq.activityPubID=post.getActivityPubID();
+		noq.url=post.activityPubURL==null ? noq.activityPubID : post.activityPubURL;
 		if(post.activityPubReplies!=null){
 			noq.replies=new LinkOrObject(post.activityPubReplies);
 		}else if(post.isLocal()){
@@ -190,6 +196,9 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 
 		User author=context.getUsersController().getUserOrThrow(post.authorID);
 		noq.content=post.text;
+		if(post.poll!=null && StringUtils.isNotEmpty(post.poll.question)){
+			noq.content+="<p class=\"smithereenPollQuestion\"><i>"+Utils.escapeHTML(post.poll.question)+"</i></p>";
+		}
 		noq.attributedTo=author.activityPubID;
 		noq.published=post.createdAt;
 		noq.updated=post.updatedAt;

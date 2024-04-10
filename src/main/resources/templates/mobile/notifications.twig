@@ -6,7 +6,7 @@
 {%if notification.objectID!=0%}
 {%set object=posts[notification.objectID]%}
 {%set isComment=object is not null ? object.replyLevel>0 : false%}
-{% set objectOwner=object.ownerID>0 ? users[object.ownerID] : groups[-object.ownerID] %}
+{% if object is not null %}{% set objectOwner=object.ownerID>0 ? users[object.ownerID] : groups[-object.ownerID] %}{% endif %}
 {%else%}
 {%set object=null%}
 {%endif%}

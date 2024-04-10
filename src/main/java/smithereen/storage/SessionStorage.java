@@ -4,6 +4,8 @@ import com.google.gson.JsonParser;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -18,23 +20,28 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
 import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.Account;
 import smithereen.model.AdminNotifications;
 import smithereen.model.EmailCode;
 import smithereen.model.Group;
+import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
 import smithereen.model.SignupRequest;
 import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPreferences;
+import smithereen.model.UserRole;
 import smithereen.model.notifications.Notification;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
@@ -48,17 +55,25 @@ public class SessionStorage{
 
 	private static final LruCache<Integer, UserPermissions> permissionsCache=new LruCache<>(500);
 
-	public static String putNewSession(@NotNull Session sess) throws SQLException{
+	public static String putNewSession(@NotNull Session sess, String userAgent, InetAddress ip) throws SQLException{
 		byte[] sid=new byte[64];
 		SessionInfo info=sess.attribute("info");
 		Account account=info.account;
 		if(account==null)
 			throw new IllegalArgumentException("putNewSession requires a logged in session");
 		random.nextBytes(sid);
+		long uaHash=Utils.hashUserAgent(userAgent);
+		new SQLQueryBuilder()
+				.insertIgnoreInto("user_agents")
+				.value("hash", uaHash)
+				.value("user_agent", userAgent)
+				.executeNoResult();
 		new SQLQueryBuilder()
 				.insertInto("sessions")
 				.value("id", sid)
 				.value("account_id", account.id)
+				.value("user_agent", uaHash)
+				.value("ip", Utils.serializeInetAddress(ip))
 				.executeNoResult();
 		return Base64.getEncoder().encodeToString(sid);
 	}
@@ -74,30 +89,47 @@ public class SessionStorage{
 			return false;
 
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT * FROM `accounts` WHERE `id` IN (SELECT `account_id` FROM `sessions` WHERE `id`=?)", (Object) sid);
-			try(ResultSet res=stmt.executeQuery()){
-				if(!res.next())
-					return false;
-				SessionInfo info=new SessionInfo();
-				info.account=Account.fromResultSet(res);
-				info.csrfToken=Utils.csrfTokenFromSessionID(sid);
-				if(info.account.prefs.locale==null){
-					Locale requestLocale=req.raw().getLocale();
-					if(requestLocale!=null){
-						info.account.prefs.locale=requestLocale;
-						SessionStorage.updatePreferences(info.account.id, info.account.prefs);
-					}
+			record SessionRow(int accountID, InetAddress ip, long uaHash){}
+			SessionRow sr=new SQLQueryBuilder(conn)
+					.selectFrom("sessions")
+					.allColumns()
+					.where("id=?", (Object)sid)
+					.executeAndGetSingleObject(r->{
+						try{
+							return new SessionRow(r.getInt("account_id"), InetAddress.getByAddress(r.getBytes("ip")), r.getLong("user_agent"));
+						}catch(UnknownHostException e){
+							throw new RuntimeException(e);
+						}
+					});
+			if(sr==null)
+				return false;
+			Account acc=new SQLQueryBuilder(conn)
+					.selectFrom("accounts")
+					.allColumns()
+					.where("id=?", sr.accountID)
+					.executeAndGetSingleObject(Account::fromResultSet);
+			if(acc==null)
+				return false;
+			SessionInfo info=new SessionInfo();
+			info.account=acc;
+			info.csrfToken=Utils.csrfTokenFromSessionID(sid);
+			info.ip=sr.ip;
+			info.userAgentHash=sr.uaHash;
+			if(info.account.prefs.locale==null){
+				Locale requestLocale=req.raw().getLocale();
+				if(requestLocale!=null){
+					info.account.prefs.locale=requestLocale;
+					SessionStorage.updatePreferences(info.account.id, info.account.prefs);
 				}
-				sess.attribute("info", info);
 			}
+			sess.attribute("info", info);
 		}
 		return true;
 	}
 
 	public static Account getAccountForUsernameAndPassword(@NotNull String usernameOrEmail, @NotNull String password) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			MessageDigest md=MessageDigest.getInstance("SHA-256");
-			byte[] hashedPassword=md.digest(password.getBytes(StandardCharsets.UTF_8));
+			byte[] hashedPassword=hashPassword(password);
 			PreparedStatement stmt;
 			if(usernameOrEmail.contains("@")){
 				stmt=conn.prepareStatement("SELECT * FROM `accounts` WHERE `email`=? AND `password`=?");
@@ -112,8 +144,7 @@ public class SessionStorage{
 				}
 				return null;
 			}
-		}catch(NoSuchAlgorithmException ignore){}
-		throw new AssertionError();
+		}
 	}
 
 	public static void deleteSession(@NotNull String psid) throws SQLException{
@@ -125,6 +156,25 @@ public class SessionStorage{
 				.deleteFrom("sessions")
 				.where("id=?", (Object) sid)
 				.executeNoResult();
+	}
+
+	public static void deleteSession(int accountID, @NotNull byte[] sid) throws SQLException{
+		if(sid.length!=64)
+			return;
+
+		new SQLQueryBuilder()
+				.deleteFrom("sessions")
+				.where("id=? AND account_id=?", (Object) sid, accountID)
+				.executeNoResult();
+	}
+
+	private static byte[] hashPassword(String password){
+		try{
+			MessageDigest md=MessageDigest.getInstance("SHA-256");
+			return md.digest(password.getBytes(StandardCharsets.UTF_8));
+		}catch(NoSuchAlgorithmException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 
 	public static SignupResult registerNewAccount(@NotNull String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite) throws SQLException{
@@ -147,10 +197,8 @@ public class SessionStorage{
 				int inviterAccountID=inv.ownerID;
 
 				KeyPairGenerator kpg;
-				MessageDigest md;
 				try{
 					kpg=KeyPairGenerator.getInstance("RSA");
-					md=MessageDigest.getInstance("SHA-256");
 				}catch(NoSuchAlgorithmException x){
 					throw new RuntimeException(x);
 				}
@@ -171,7 +219,7 @@ public class SessionStorage{
 					userID=res.getInt(1);
 				}
 
-				byte[] hashedPassword=md.digest(password.getBytes(StandardCharsets.UTF_8));
+				byte[] hashedPassword=hashPassword(password);
 				stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `invited_by`) VALUES (?, ?, ?, ?)");
 				stmt.setInt(1, userID);
 				stmt.setString(2, email);
@@ -229,10 +277,8 @@ public class SessionStorage{
 						.executeNoResult();
 
 				KeyPairGenerator kpg;
-				MessageDigest md;
 				try{
 					kpg=KeyPairGenerator.getInstance("RSA");
-					md=MessageDigest.getInstance("SHA-256");
 				}catch(NoSuchAlgorithmException x){
 					throw new RuntimeException(x);
 				}
@@ -253,7 +299,7 @@ public class SessionStorage{
 					userID=res.getInt(1);
 				}
 
-				byte[] hashedPassword=md.digest(password.getBytes(StandardCharsets.UTF_8));
+				byte[] hashedPassword=hashPassword(password);
 				stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `invited_by`) VALUES (?, ?, ?, ?)");
 				stmt.setInt(1, userID);
 				stmt.setString(2, email);
@@ -281,17 +327,13 @@ public class SessionStorage{
 	}
 
 	public static boolean updatePassword(int accountID, String oldPassword, String newPassword) throws SQLException{
-		try{
-			MessageDigest md=MessageDigest.getInstance("SHA-256");
-			byte[] hashedOld=md.digest(oldPassword.getBytes(StandardCharsets.UTF_8));
-			byte[] hashedNew=md.digest(newPassword.getBytes(StandardCharsets.UTF_8));
-			return new SQLQueryBuilder()
-					.update("account")
-					.value("password", hashedNew)
-					.where("id=? AND `password`=?", accountID, hashedOld)
-					.executeUpdate()==1;
-		}catch(NoSuchAlgorithmException ignore){}
-		return false;
+		byte[] hashedOld=hashPassword(oldPassword);
+		byte[] hashedNew=hashPassword(newPassword);
+		return new SQLQueryBuilder()
+				.update("accounts")
+				.value("password", hashedNew)
+				.where("id=? AND `password`=?", accountID, hashedOld)
+				.executeUpdate()==1;
 	}
 
 	public static void updateEmail(int accountID, String email) throws SQLException{
@@ -333,6 +375,14 @@ public class SessionStorage{
 					.where("user_id=?", uid)
 					.executeAndGetSingleObject(Account::fromResultSet);
 		}
+	}
+
+	public static Account getAccountByUserID(int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("accounts")
+				.allColumns()
+				.where("user_id=?", userID)
+				.executeAndGetSingleObject(Account::fromResultSet);
 	}
 
 	public static String storeEmailCode(EmailCode code) throws SQLException{
@@ -397,36 +447,66 @@ public class SessionStorage{
 	}
 
 	public static boolean updatePassword(int accountID, String newPassword) throws SQLException{
-		try{
-			MessageDigest md=MessageDigest.getInstance("SHA-256");
-			byte[] hashedNew=md.digest(newPassword.getBytes(StandardCharsets.UTF_8));
-			return new SQLQueryBuilder()
-					.update("accounts")
-					.value("password", hashedNew)
-					.where("id=?", accountID)
-					.executeUpdate()==1;
-		}catch(NoSuchAlgorithmException ignore){}
-		return false;
+		byte[] hashedNew=hashPassword(newPassword);
+		return new SQLQueryBuilder()
+				.update("accounts")
+				.value("password", hashedNew)
+				.where("id=?", accountID)
+				.executeUpdate()==1;
 	}
 
-	public static void setLastActive(int accountID, String psid, Instant time) throws SQLException{
+	public static boolean checkPassword(int accountID, String password) throws SQLException{
+		byte[] hashed=hashPassword(password);
+		return new SQLQueryBuilder()
+				.selectFrom("accounts")
+				.count()
+				.where("id=? AND password=?", accountID, hashed)
+				.executeAndGetInt()==1;
+	}
+
+	public static void setLastActive(int accountID, String psid, Instant time, InetAddress lastIP, String userAgent, long uaHash) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			byte[] serializedIP=Utils.serializeInetAddress(lastIP);
 			new SQLQueryBuilder(conn)
 					.update("accounts")
 					.value("last_active", time)
+					.value("last_ip", serializedIP)
 					.where("id=?", accountID)
 					.executeNoResult();
 			byte[] sid=Base64.getDecoder().decode(psid);
 			new SQLQueryBuilder(conn)
 					.update("sessions")
 					.value("last_active", time)
+					.value("ip", serializedIP)
+					.value("user_agent", uaHash)
 					.where("id=?", (Object) sid)
+					.executeNoResult();
+			new SQLQueryBuilder(conn)
+					.insertIgnoreInto("user_agents")
+					.value("hash", uaHash)
+					.value("user_agent", userAgent)
 					.executeNoResult();
 		}
 	}
+//
+//	public static void setIpAndUserAgent(String psid, InetAddress ip, String userAgent, long uaHash) throws SQLException{
+//		byte[] sid=Base64.getDecoder().decode(psid);
+//		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+//			new SQLQueryBuilder(conn)
+//					.update("sessions")
+//					.where("id=?", (Object) sid)
+//					.value("ip", Utils.serializeInetAddress(ip))
+//					.value("user_agent", uaHash)
+//					.executeNoResult();
+//		}
+//	}
 
 	public static synchronized void removeFromUserPermissionsCache(int userID){
 		permissionsCache.remove(userID);
+	}
+
+	public static synchronized void resetPermissionsCache(){
+		permissionsCache.evictAll();
 	}
 
 	public static synchronized UserPermissions getUserPermissions(Account account) throws SQLException{
@@ -448,8 +528,8 @@ public class SessionStorage{
 			stmt.close();
 		}
 		r.canInviteNewUsers=switch(Config.signupMode){
-			case OPEN, INVITE_ONLY -> true;
-			case CLOSED, MANUAL_APPROVAL -> r.serverAccessLevel==Account.AccessLevel.ADMIN || r.serverAccessLevel==Account.AccessLevel.MODERATOR;
+			case OPEN, INVITE_ONLY -> account.user.banStatus==UserBanStatus.NONE || account.user.banStatus==UserBanStatus.HIDDEN;
+			case CLOSED, MANUAL_APPROVAL -> r.hasPermission(UserRole.Permission.MANAGE_INVITES);
 		};
 		permissionsCache.put(account.user.id, r);
 		return r;
@@ -571,6 +651,22 @@ public class SessionStorage{
 				.allColumns()
 				.where("email=?", email)
 				.executeAndGetSingleObject(SignupRequest::fromResultSet);
+	}
+
+	public static List<OtherSession> getAccountSessions(int accountID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT sessions.*, user_agents.user_agent AS user_agent_str FROM sessions LEFT JOIN user_agents ON sessions.user_agent=user_agents.hash WHERE account_id=? ORDER BY last_active DESC", accountID);
+			try(ResultSet res=stmt.executeQuery()){
+				return DatabaseUtils.resultSetToObjectStream(res, OtherSession::fromResultSet, null).toList();
+			}
+		}
+	}
+
+	public static void deleteSessionsExcept(int accountID, byte[] sid) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("sessions")
+				.where("account_id=? AND id<>?", accountID, sid)
+				.executeNoResult();
 	}
 
 	public enum SignupResult{

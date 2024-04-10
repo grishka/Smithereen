@@ -132,6 +132,7 @@ $likeIconColor: rgb(219, 216, 173);
 *{
 	box-sizing: border-box;
 	overflow-wrap: break-word;
+	min-width: 0;
 }
 
 
@@ -227,7 +228,7 @@ table{
 	}
 }
 
-a, a:link, a:visited, .link{
+a, a:link, /*a:visited,*/ .link{
 	color: $normalLink;
 	text-decoration: none;
 	cursor: pointer;
@@ -813,10 +814,22 @@ small{
 		min-width: 0;
 		overflow-x: hidden;
 	}
+	.avaAndName{
+		display: grid;
+		grid-gap: 0 $smallPadding;
+		grid-template-columns: 30px 1fr;
+		.avaW{
+			grid-row: span 2;
+		}
+	}
 }
 
 .smallMarginRight{
 	margin-right: $smallPadding;
+}
+
+.mediumMarginRight{
+	margin-right: $mediumPadding;
 }
 
 .flexButtons{
@@ -849,4 +862,83 @@ small{
 	height: 9px;
 	background: svg-load('img/lock.svg', fill: #cfc39f);
 	margin-left: 5px;
+}
+
+.smallVMargin{
+	margin: $smallPadding 0;
+}
+
+.itemWithAvatar{
+	display: grid;
+	grid-template-columns: 50px 1fr;
+	grid-gap: $mediumPadding;
+}
+
+.itemWithMediumAvatar{
+	display: grid;
+	grid-template-columns: 100px 1fr;
+	grid-gap: $mediumPadding;
+}
+
+.transparent{
+	opacity: 0.5;
+}
+
+.disabled{
+	pointer-events: none;
+}
+
+.accent{
+	color: $normalLink;
+}
+
+.friendListLabel{
+	margin: 3px 0px;
+	padding: 2px 4px;
+	line-height: 175%;
+	white-space: nowrap;
+	&.l0{
+		background-color: #F5E9E2;
+		color: #8B4C23;
+	}
+	&.l1{
+		background-color: #FAEAD8;
+		color: #764F14;
+	}
+	&.l2{
+		background-color: #FAF3D8;
+		color: #817945;
+	}
+	&.l3{
+		background-color: #E8F2DC;
+		color: #37702A;
+	}
+	&.l4{
+		background-color: #E0ECEA;
+		color: #4C7171;
+	}
+	&.l5{
+		background-color: #E4EBF1;
+		color: #0B5588;
+	}
+	&.l6{
+		background-color: #E4E7F2;
+		color: #2F54AA;
+	}
+	&.l7{
+		background-color: #EDE5F0;
+		color: #80478F;
+	}
+}
+
+#registerForm{
+	#formRow_website, #formRow_passwordConfirm{
+		display: none;
+	}
+}
+
+#requestInviteForm{
+	#formRow_website, #formRow_password{
+		display: none;
+	}
 }

@@ -27,7 +27,9 @@ import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.FederationState;
 import smithereen.model.ForeignGroup;
@@ -37,11 +39,12 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -325,6 +328,7 @@ public class PostStorage{
 					posts.add(Post.fromResultSet(res));
 				}
 			}
+			postprocessPosts(posts);
 			return posts;
 		}
 	}
@@ -381,6 +385,7 @@ public class PostStorage{
 					posts.add(Post.fromResultSet(res));
 				}
 			}
+			postprocessPosts(posts);
 			return posts;
 		}
 	}
@@ -402,17 +407,20 @@ public class PostStorage{
 				.executeAndGetSingleObject(Post::fromResultSet);
 		if(post==null || (post.isDeleted() && !wantDeleted))
 			return null;
+		postprocessPosts(Set.of(post));
 		return post;
 	}
 
 	public static Map<Integer, Post> getPostsByID(Collection<Integer> ids) throws SQLException{
-		return new SQLQueryBuilder()
+		Map<Integer, Post> posts=new SQLQueryBuilder()
 				.selectFrom("wall_posts")
 				.allColumns()
 				.whereIn("id", ids)
 				.executeAsStream(Post::fromResultSet)
 				.filter(p->!p.isDeleted())
 				.collect(Collectors.toMap(p->p.id, Function.identity()));
+		postprocessPosts(posts.values());
+		return posts;
 	}
 
 	public static Post getPostByID(URI apID) throws SQLException{
@@ -425,11 +433,14 @@ public class PostStorage{
 			}
 			return getPostByID(postID, false);
 		}
-		return new SQLQueryBuilder()
+		Post post=new SQLQueryBuilder()
 				.selectFrom("wall_posts")
 				.allColumns()
 				.where("ap_id=?", apID)
 				.executeAndGetSingleObject(Post::fromResultSet);
+		if(post!=null)
+			postprocessPosts(Set.of(post));
+		return post;
 	}
 
 	public static int getLocalIDByActivityPubID(URI apID) throws SQLException{
@@ -448,7 +459,7 @@ public class PostStorage{
 			PreparedStatement stmt;
 			boolean needFullyDelete=true;
 			if(post.getReplyLevel()>0){
-				stmt=conn.prepareStatement("SELECT COUNT(*) FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)");
+				stmt=conn.prepareStatement("SELECT COUNT(*) FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)");
 				ArrayList<Integer> rk=new ArrayList<>(post.replyKey.size()+1);
 				rk.add(post.id);
 				stmt.setBytes(1, Utils.serializeIntList(rk));
@@ -504,6 +515,7 @@ public class PostStorage{
 					posts.add(0, post);
 				}
 			}
+			postprocessPosts(map.values().stream().flatMap(l->l.list.stream()).toList());
 			stmt=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
 					.selectExpr("count(*), reply_key")
@@ -542,26 +554,27 @@ public class PostStorage{
 					.orderBy("created_at ASC")
 					.executeAsStream(Post::fromResultSet)
 					.collect(Collectors.toList());
+			postprocessPosts(posts);
 
-			int repliesOffset;
-			if(topLevelOffset>0){
-				try(PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn,
-						"SELECT SUM(reply_count) FROM (SELECT reply_count FROM wall_posts WHERE reply_key=? ORDER BY created_at ASC LIMIT ?) AS subq",
-						serializedPrefix, topLevelOffset)){
-					repliesOffset=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+			ArrayList<String> wheres=new ArrayList<>();
+			ArrayList<Object> whereArgs=new ArrayList<>();
+			for(Post post:posts){
+				if(post.replyCount>0){
+					wheres.add("reply_key LIKE BINARY bin_prefix(?)");
+					whereArgs.add(Utils.serializeIntList(post.getReplyKeyForReplies()));
 				}
-			}else{
-				repliesOffset=0;
 			}
 
-			List<Post> replies=new SQLQueryBuilder(conn)
-					.selectFrom("wall_posts")
-					.allColumns()
-					.where("reply_key<>? AND reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)", serializedPrefix, serializedPrefix)
-					.orderBy("LENGTH(reply_key) ASC, created_at ASC")
-					.limit(secondaryLimit, repliesOffset)
-					.executeAsStream(Post::fromResultSet)
-					.toList();
+			List<Post> replies;
+			if(!whereArgs.isEmpty()){
+				whereArgs.add(secondaryLimit);
+				PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT * FROM wall_posts WHERE "+String.join(" OR ", wheres)+" ORDER BY created_at ASC, LENGTH(reply_key) ASC LIMIT ?",
+						whereArgs.toArray());
+				replies=DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), Post::fromResultSet, null).toList();
+				postprocessPosts(replies);
+			}else{
+				replies=List.of();
+			}
 
 			return new ThreadedReplies(posts, replies, total);
 		}
@@ -585,6 +598,7 @@ public class PostStorage{
 					.orderBy("created_at ASC")
 					.executeAsStream(Post::fromResultSet)
 					.toList();
+			postprocessPosts(posts);
 			return new PaginatedList<>(posts, total, 0, limit);
 		}
 	}
@@ -682,7 +696,7 @@ public class PostStorage{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			ArrayList<String> queryParts=new ArrayList<>();
 			if(post.isLocal()){
-				queryParts.add("SELECT owner_user_id FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?) ESCAPE CHAR(255)");
+				queryParts.add("SELECT owner_user_id FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)");
 				if(owner instanceof ForeignUser fu)
 					queryParts.add("SELECT "+fu.id);
 				else if(owner instanceof User u)
@@ -1031,6 +1045,45 @@ public class PostStorage{
 				.columns("source")
 				.where("id=?", id)
 				.executeAndGetSingleObject(r->r.getString(1));
+	}
+
+	public static int getUserPostCount(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.count()
+				.where("owner_user_id=? AND author_id=owner_user_id AND reply_key IS NULL", id)
+				.executeAndGetInt();
+	}
+
+	public static int getUserPostCommentCount(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.count()
+				.where("author_id=? AND reply_key IS NOT NULL", id)
+				.executeAndGetInt();
+	}
+
+	private static void postprocessPosts(Collection<Post> posts) throws SQLException{
+		Set<Long> needFileIDs=posts.stream()
+				.filter(p->p.attachments!=null && !p.attachments.isEmpty())
+				.flatMap(p->p.attachments.stream())
+				.map(att->att instanceof LocalImage li ? li.fileID : 0L)
+				.filter(id->id!=0)
+				.collect(Collectors.toSet());
+		if(needFileIDs.isEmpty())
+			return;
+		Map<Long, MediaFileRecord> mediaFiles=MediaStorage.getMediaFileRecords(needFileIDs);
+		for(Post post:posts){
+			if(post.attachments!=null){
+				for(ActivityPubObject attachment:post.attachments){
+					if(attachment instanceof LocalImage li){
+						MediaFileRecord mfr=mediaFiles.get(li.fileID);
+						if(mfr!=null)
+							li.fillIn(mfr);
+					}
+				}
+			}
+		}
 	}
 
 	private record DeleteCommentBookmarksRunnable(int postID) implements Runnable{

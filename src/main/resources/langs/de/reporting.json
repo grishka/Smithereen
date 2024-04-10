@@ -1,1 +1,20 @@
-{}
+{
+  "report": "Melde",
+  "report_title_post": "Melde einen Beitrag",
+  "report_title_comment": "Melde einen Kommentar",
+  "report_title_user": "Melde ein Profil",
+  "report_title_group": "Melde eine Gruppe",
+  "report_title_event": "Melde ein Ereignis / eine Veranstaltung",
+  "report_text_post": "Was ist falsch an diesem Beitrag?",
+  "report_text_comment": "Was ist falsch an diesem Kommentar?",
+  "report_text_user": "Was ist falsch an diesem Profil?",
+  "report_text_group": "Was ist falsch an dieser Gruppe?",
+  "report_text_event": "Was ist falsch an diesem Ereignis / dieser Veranstaltung?",
+  "report_placeholder_profile": "Zum Beispiel: ein explizites Profilbild",
+  "report_placeholder_content": "Zum Beispiel: Spam",
+  "report_sent": "Meldungsbericht gesendet",
+  "report_forward_to_domain": "Anonym weitergeleitet an <b>{domain}</b>",
+  "report_submitted": "Dein Meldungsbericht wurde an die Serververwalter übermittelt.",
+  "report_title_message": "Melde eine Nachricht",
+  "report_text_message": "Was ist falsch an dieser Nachricht?"
+}

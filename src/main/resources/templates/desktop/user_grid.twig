@@ -6,7 +6,7 @@
 <div class="userGrid">
 	{% for user in items %}
 	<div class="userGridItem">
-		<a href="{{ user.profileURL }}">
+		<a href="{{ user.profileURL }}"{{ profileRel(user) }}>
 			{{ user | pictureForAvatar('s') }}
 			<div class="name">{{ user | name }}</div>
 		</a>

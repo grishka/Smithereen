@@ -1,0 +1,36 @@
+{# @pebvariable name="rules" type="java.util.List<smithereen.model.EmailDomainBlockRuleFull>" #}
+{% extends "page" %}
+{% block content %}
+{% include "admin_access_tabbar" with {'tab': 'emailRules'} %}
+{% if not isMobile %}
+<div class="summaryWrap">
+	<div class="summary">
+		{{ L('admin_email_X_domain_rules_summary', {'count': rules | length}) }}
+		<span class="auxText"> | <a href="/settings/admin/emailRules/createForm" data-ajax-box>{{ L('admin_create_rule') }}</a></span>
+	</div>
+</div>
+{% else %}
+<a href="/settings/admin/emailRules/createForm" class="fab iconAdd" title="{{ L('admin_create_rule') }}" data-ajax-box></a>
+{% endif %}
+<div class="singleColumn">
+	{% if message is not empty %}<div class="settingsMessage">{{ message }}</div>{% endif %}
+	{% for rule in rules %}
+	<div class="listItemWithDivider">
+		<div>
+			<b>{{ rule.rule.domain }}</b> &mdash; {{ L(rule.rule.action.langKey) }}
+		</div>
+		{% if rule.note is not empty %}<div class="smallVMargin">{{ rule.note }}</div>{% endif %}
+		<div class="smallVMargin">
+			<a href="{{ profileURL(rule.creatorID) }}">{{ users[rule.creatorID] | name }}</a>, {{ LD(rule.createdAt) }}
+		</div>
+		<div>
+			<a href="/settings/admin/emailRules/{{ rule.rule.domain }}/confirmDelete" data-confirm-action="/settings/admin/emailRules/{{ rule.rule.domain }}/delete" data-confirm-title="{{ L('delete') | forceEscape }}" data-confirm-message="{{ L('admin_confirm_delete_rule') | forceEscape }}">{{ L('delete') }}</a>
+			| <a href="/settings/admin/emailRules/{{ rule.rule.domain }}/edit" data-ajax-box>{{ L('edit') }}</a>
+		</div>
+	</div>
+	{% else %}
+	<div class="emptyState">{{ L('admin_email_domain_rules_empty') }}</div>
+	{% endfor %}
+</div>
+{% endblock %}
+

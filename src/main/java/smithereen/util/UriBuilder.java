@@ -1,6 +1,7 @@
-package smithereen.model;
+package smithereen.util;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -171,11 +172,21 @@ public class UriBuilder{
 			return Arrays.stream(query.split("&")).map(s->{
 				int offset=s.indexOf('=');
 				if(offset==-1)
-					return new KeyValuePair(s, null);
+					return new KeyValuePair(s, "");
 				return new KeyValuePair(s.substring(0, offset), urlDecode(s.substring(offset+1)));
 			}).collect(Collectors.toMap(kv->kv.key, kv->kv.value));
 		}
 		return Collections.emptyMap();
+	}
+
+	public static URI parseAndEncode(String str) throws URISyntaxException{
+		URI uri=new URI(str);
+		for(char c:str.toCharArray()){
+			if(c>128){
+				return URI.create(uri.toASCIIString());
+			}
+		}
+		return uri;
 	}
 
 	private static String urlEncode(String in){

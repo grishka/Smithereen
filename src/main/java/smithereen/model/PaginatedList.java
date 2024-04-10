@@ -22,6 +22,10 @@ public class PaginatedList<T>{
 		this.perPage=perPage;
 	}
 
+	public PaginatedList(PaginatedList<?> other, List<T> newItems){
+		this(newItems, other.total, other.offset, other.perPage);
+	}
+
 	public static <R> PaginatedList<R> emptyList(int perPage){
 		return new PaginatedList<>(Collections.emptyList(), 0, 0, perPage);
 	}

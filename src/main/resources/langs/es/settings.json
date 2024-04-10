@@ -117,7 +117,7 @@
   "no_invited_users": "Nadie se inscribió usando tus invitaciones",
   "invited_people_title": "La gente a la que has invitado",
   "request_invitation": "Solicitar una invitación",
-  "request_invitation_reason": "Porque te gustaría unirte a nosotros",
+  "request_invitation_reason": "Por qué te gustaría unirte a nosotros",
   "request_invitation_reason_explain": "Esto nos ayudará a revisar tu aplicación.",
   "manual_signup_approval_explain": "Las inscripciones en este servidor están cerradas, pero puedes solicitar una invitación. Si el personal del servidor aprueba tu solicitud, recibirás una invitación en el email que especifiques aquí.",
   "signup_title": "Inscribirse",
@@ -149,5 +149,15 @@
   "privacy_settings_value_except": ", excluyendo ",
   "privacy_settings_value_certain_friends_before": ": ",
   "privacy_settings_value_except_name": "{name}",
-  "privacy_settings_value_name_separator": ", "
+  "privacy_settings_value_name_separator": ", ",
+  "settings_sessions": "Historial de actividad",
+  "settings_activity_access_type": "Tipo de acceso",
+  "settings_activity_access_time": "Hora",
+  "settings_activity_web": "{browserName} {browserVersion} en {osName}",
+  "unknown_browser": "Navegador desconocido",
+  "settings_deactivate_confirm": "¿Estás seguro de que quieres eliminar tu cuenta?\n\nTu cuenta será desactivada y únicamente eliminada después de <b>{timeInterval}</b>. Si cambias de opinión, podrás restablecer tu cuenta sin pérdida de datos durante el periodo de desactivación.",
+  "settings_deactivate_account": "Puedes <a id=\"deactivate\">eliminar tu cuenta</a>.",
+  "settings_reactivate_confirm": "Introduce tu contraseña para restablecer tu cuenta y cancelar su eliminación.",
+  "settings_reactivate_title": "Restaurar cuenta",
+  "err_reg_email_domain_not_allowed": "Los registros con direcciones de correo electrónico de este proveedor no están permitidos en este servidor"
 }

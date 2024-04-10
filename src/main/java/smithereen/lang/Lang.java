@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -50,7 +52,6 @@ public class Lang{
 		list=new ArrayList<>();
 		try(InputStream in=Lang.class.getClassLoader().getResourceAsStream("langs/index.json")){
 			IndexFile index=Utils.gson.fromJson(new InputStreamReader(in), IndexFile.class);
-			System.out.println(index);
 			for(IndexLanguage lang:index.languages){
 				try{
 					Lang l=new Lang(lang.locale, lang.name, lang.fallback, index.files);
@@ -82,6 +83,7 @@ public class Lang{
 	public String name;
 	public final String englishName;
 	private final Locale fallbackLocale;
+	private final NumberFormat fileSizeFormatter;
 
 	private Lang(String localeID, String englishName, String fallbackLocaleID, List<String> files) throws IOException{
 		locale=Locale.forLanguageTag(localeID);
@@ -132,6 +134,8 @@ public class Lang{
 			}
 		}
 		name=data.get("lang_name").toString();
+		fileSizeFormatter=DecimalFormat.getNumberInstance(locale);
+		fileSizeFormatter.setMaximumFractionDigits(2);
 	}
 
 	public String get(String key){
@@ -199,6 +203,8 @@ public class Lang{
 		long ts=date.toEpochMilli();
 		long tsNow=System.currentTimeMillis();
 		long diff=tsNow-ts;
+		if(timeZone==null)
+			timeZone=ZoneId.systemDefault();
 
 		if(!forceAbsolute){
 			if(diff>=0 && diff<60_000){
@@ -249,6 +255,28 @@ public class Lang{
 		}else{
 			return String.format(locale, "%02d.%02d.%02d", dt.getDayOfMonth(), dt.getMonthValue(), dt.getYear()%100);
 		}
+	}
+
+	public String formatFileSize(long size){
+		String key;
+		double amount;
+		if(size<1024){
+			key="file_size_bytes";
+			amount=size;
+		}else if(size<1024L*1024){
+			key="file_size_kilobytes";
+			amount=size/1024.0;
+		}else if(size<1024L*1024*1024){
+			key="file_size_megabytes";
+			amount=size/(1024.0*1024.0);
+		}else if(size<1024L*1024*1024*1024){
+			key="file_size_gigabytes";
+			amount=size/(1024.0*1024.0*1024.0);
+		}else{
+			key="file_size_terabytes";
+			amount=size/(1024.0*1024.0*1024.0*1024.0);
+		}
+		return get(key, Map.of("amount", fileSizeFormatter.format(amount)));
 	}
 
 	public String getAsJS(String key){

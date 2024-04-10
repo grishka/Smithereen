@@ -1,5 +1,6 @@
 package smithereen.model;
 
+import java.net.InetAddress;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Locale;
@@ -14,6 +15,8 @@ public class SessionInfo{
 	public ZoneId timeZone;
 	public ArrayList<ActivityPubObject> postDraftAttachments=new ArrayList<>();
 	public UserPermissions permissions;
+	public long userAgentHash;
+	public InetAddress ip;
 
 	public static class PageHistory{
 		public ArrayList<String> entries=new ArrayList<>();

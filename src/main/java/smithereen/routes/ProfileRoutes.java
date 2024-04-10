@@ -26,6 +26,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.WebDeltaResponse;
@@ -55,6 +56,7 @@ public class ProfileRoutes{
 		return switch(ur.type()){
 			case USER -> {
 				User user=ctx.getUsersController().getUserOrThrow(ur.localID());
+				ctx.getPrivacyController().enforceUserProfileAccess(self!=null ? self.user : null, user);
 				boolean isSelf=self!=null && self.user.id==user.id;
 				int offset=offset(req);
 				HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();

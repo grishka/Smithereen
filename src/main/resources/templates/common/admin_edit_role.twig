@@ -1,0 +1,19 @@
+{% extends "page" %}
+{% import "forms" as form %}
+{% block content %}
+<div class="singleColumn gray">
+	<form action="/settings/admin/roles/{{ role is not null ? role.id : "create" }}" method="post" data-ajax>
+		{{ form.start("editRole", editRoleMessage) }}
+			{{ form.textInput("name", L('admin_role_name'), role.name, {'maxlength': 255, 'required': true}) }}
+			{% for permission in permissions %}
+			{{ form.checkBox(permission.toString(), loop.first ? L('admin_permissions') : '', L(permission.langKey), role.permissions contains permission, {'explanation': L(permission.descriptionLangKey), 'disabled': disabledPermissions contains permission}) }}
+			{% endfor %}
+			{% for permission in settings %}
+			{{ form.checkBox(permission.toString(), loop.first ? L('settings') : '', L(permission.langKey), role.permissions contains permission, {'explanation': L(permission.descriptionLangKey)}) }}
+			{% endfor %}
+			{{ form.footer(L(role is null ? 'create' : 'save')) }}
+		{{ form.end() }}
+	</form>
+</div>
+{% endblock %}
+

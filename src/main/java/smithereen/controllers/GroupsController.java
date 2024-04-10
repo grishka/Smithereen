@@ -490,7 +490,7 @@ public class GroupsController{
 		try{
 			URI apID=GroupStorage.getInvitationApID(self.id, group.id);
 			int localID=GroupStorage.deleteInvitation(self.id, group.id, group.isEvent());
-			if(localID>0 && group instanceof ForeignGroup fg){
+			if(localID>0 && group instanceof ForeignGroup fg && apID!=null){
 				context.getActivityPubWorker().sendRejectGroupInvite(self, fg, localID, apID);
 			}
 		}catch(SQLException x){

@@ -4,6 +4,8 @@ import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import smithereen.util.UriBuilder;
+
 public class PollOption{
 	public int id;
 	public URI activityPubID;

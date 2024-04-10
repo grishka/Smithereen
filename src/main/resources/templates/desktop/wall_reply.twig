@@ -10,19 +10,19 @@
 		{%endif%}
 		{%if not(realPost.deleted)%}
 		<td width="32" valign="top">
-			<a href="{{ profileURL(realPost.authorID) }}">{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
+			<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
 		</td>
 		<td class="postContentWrap">
-			<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}">{{ users[realPost.authorID] | name }}</a>
+			<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
 			{%- if realPost.privacy!='PUBLIC' -%}
 			<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID] | name('firstAndGender')}) }}"></span>
 			{%- endif %}<br/>
 			<div id="postInner{{ realPost.id }}">
 				{% block postInner %}
 				{% if realPost.hasContentWarning %}
-				<input type="checkbox" id="postCW_{{ realPost.id }}" style="display: none"/>
+				<input type="checkbox" id="postCW_{{ realPost.id }}" class="commentCWCheckbox" style="display: none"/>
 				<div class="postCWWrap">
-					<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning }}</label>
+					<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
 				{% endif %}
 				<div class="postContent">{{ realPost.text | postprocessHTML | truncateText }}</div>
 				{% if realPost.attachments is not empty %}

@@ -1,14 +1,16 @@
 {% import "forms" as form %}
-<form action="/account/requestInvite" method="post">
+<form action="/account/requestInvite" method="post" id="requestInviteForm">
 	<h2>{{L('register')}}</h2>
 	<p>{{ L('manual_signup_approval_explain') }}</p>
 	{{ form.start("requestInvite", message) }}
 		{{ form.textInput('first_name', L('first_name'), first_name, {'maxlength': 100, 'required': true}) }}
 		{{ form.textInput('last_name', L('last_name'), last_name, {'maxlength': 100}) }}
+		{{ form.textInput('website', 'Website (do not fill in)', '') }}
 		{{ form.textInput('email', L('email'), email, {'type': 'email', 'required': true}) }}
+		{{ form.textInput('password', 'Password (do not fill in)', '', {'type': 'password'}) }}
 		{{ form.textArea('reason', L('request_invitation_reason'), reason, {'required': true, 'explanation': L('request_invitation_reason_explain')}) }}
 		{% if captchaSid is not empty %}
-			{{ form.unlabeledRowStart() }}<img src="/system/captcha?sid={{ captchaSid }}" width="130" height="50"/><input type="hidden" name="captchaSid" value="{{ captchaSid }}"/>{{ form.unlabeledRowEnd() }}
+			{{ form.unlabeledRowStart() }}<img src="/res/spacer.gif" width="130" height="50" style="background: url(/system/captcha?sid={{ captchaSid }})"/><input type="hidden" name="captchaSid" value="{{ captchaSid }}"/>{{ form.unlabeledRowEnd() }}
 			{{ form.textInput('captcha', L('captcha_label'), null, {'required': true}) }}
 		{% endif %}
 		{{ form.footer(L('request_invitation')) }}

@@ -8,10 +8,10 @@
 <table width="100%" class="friendsRow noBorderSpacing" id="grow{{group.id}}">
 	<tr valign="top">
 		<td width="50">
-			<a href="{{ group.profileURL }}">{{ group | pictureForAvatar('s') }}</a>
+			<a href="{{ group.profileURL }}"{{ profileRel(group) }}>{{ group | pictureForAvatar('s') }}</a>
 		</td>
 		<td class="info" valign="middle">
-			<b><a href="{{ group.profileURL }}">{{ group.name }}</a></b>
+			<b><a href="{{ group.profileURL }}"{{ profileRel(group) }}>{{ group.name }}</a></b>
 		</td>
 	</tr>
 </table>

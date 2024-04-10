@@ -1,5 +1,6 @@
 package smithereen.activitypub.objects.activities;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.net.URI;
@@ -11,6 +12,7 @@ import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.exceptions.FederationException;
 import smithereen.util.JsonArrayBuilder;
 
 public class Flag extends Activity{
@@ -25,7 +27,11 @@ public class Flag extends Activity{
 
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
-		object=StreamSupport.stream(Objects.requireNonNull(obj.getAsJsonArray("object")).spliterator(), false).map(el->tryParseURL(el.getAsString())).toList();
+		JsonElement reportObject=obj.get("object");
+		if(reportObject.isJsonArray())
+			object=StreamSupport.stream(Objects.requireNonNull(reportObject.getAsJsonArray()).spliterator(), false).map(el->tryParseURL(el.getAsString())).toList();
+		else if(reportObject.isJsonPrimitive())
+			object=List.of(tryParseURL(reportObject.getAsString()));
 		return super.parseActivityPubObject(obj, parserContext);
 	}
 

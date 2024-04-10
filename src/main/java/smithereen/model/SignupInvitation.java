@@ -57,21 +57,5 @@ public class SignupInvitation{
 		return Utils.gson.toJson(new ExtraInfo(noAddFriend, firstName, lastName, fromRequest));
 	}
 
-	private static class ExtraInfo{
-		public boolean noAddFriend;
-		public String firstName;
-		public String lastName;
-		public boolean fromRequest;
-
-		public ExtraInfo(){
-
-		}
-
-		public ExtraInfo(boolean noAddFriend, String firstName, String lastName, boolean fromRequest){
-			this.noAddFriend=noAddFriend;
-			this.firstName=firstName;
-			this.lastName=lastName;
-			this.fromRequest=fromRequest;
-		}
-	}
+	private record ExtraInfo(boolean noAddFriend, String firstName, String lastName, boolean fromRequest){}
 }

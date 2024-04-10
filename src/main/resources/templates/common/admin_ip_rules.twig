@@ -1,0 +1,36 @@
+{# @pebvariable name="rules" type="java.util.List<smithereen.model.IPBlockRuleFull>" #}
+{% extends "page" %}
+{% block content %}
+{% include "admin_access_tabbar" with {'tab': 'ipRules'} %}
+{% if not isMobile %}
+<div class="summaryWrap">
+	<div class="summary">
+		{{ L('admin_X_ip_rules_summary', {'count': rules | length}) }}
+		<span class="auxText"> | <a href="/settings/admin/ipRules/createForm" data-ajax-box>{{ L('admin_create_rule') }}</a></span>
+	</div>
+</div>
+{% else %}
+<a href="/settings/admin/ipRules/createForm" class="fab iconAdd" title="{{ L('admin_create_rule') }}" data-ajax-box></a>
+{% endif %}
+<div class="singleColumn">
+	{% if message is not empty %}<div class="settingsMessage">{{ message }}</div>{% endif %}
+	{% for rule in rules %}
+	<div class="listItemWithDivider">
+		<div>
+			<b>{{ rule.rule.ipRange }}</b> &mdash; {{ L('admin_ip_rule_until_time', {'action': L(rule.rule.action.langKey), 'time': LD(rule.rule.expiresAt, true)}) }}
+		</div>
+		{% if rule.note is not empty %}<div class="smallVMargin">{{ rule.note }}</div>{% endif %}
+		<div class="smallVMargin">
+			<a href="{{ profileURL(rule.creatorID) }}">{{ users[rule.creatorID] | name }}</a>, {{ LD(rule.createdAt) }}
+		</div>
+		<div>
+			<a href="/settings/admin/ipRules/{{ rule.rule.id }}/confirmDelete" data-confirm-action="/settings/admin/ipRules/{{ rule.rule.id }}/delete" data-confirm-title="{{ L('delete') | forceEscape }}" data-confirm-message="{{ L('admin_confirm_delete_rule') | forceEscape }}">{{ L('delete') }}</a>
+			| <a href="/settings/admin/ipRules/{{ rule.rule.id }}/edit" data-ajax-box>{{ L('edit') }}</a>
+		</div>
+	</div>
+	{% else %}
+	<div class="emptyState">{{ L('admin_ip_rules_empty') }}</div>
+	{% endfor %}
+</div>
+{% endblock %}
+

@@ -1,0 +1,46 @@
+{# @pebvariable name="status" type="smithereen.model.UserBanStatus" #}
+{# @pebvariable name="banInfo" type="smithereen.model.UserBanInfo" #}
+{% extends "page" %}
+{% block leftMenu %}
+{% if isMobile %}
+<ul class="actionList">
+	<li><a href="/account/logout?csrf={{ csrf }}">{{ L('log_out') }}</a></li>
+</ul>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="notMuchContent">
+	{% if status=='FROZEN' %}
+	<h2 class="marginAfter">{{ L('account_frozen') }}</h2>
+	<p>{{ L('account_frozen_info', {'name': currentUser | name('first')}) }}</p>
+	{% if unfreezeTime is not null %}
+	<p>{{ L('account_frozen_info_time', {'time': LD(unfreezeTime)}) }}
+	{% endif %}
+	{% elseif status=='SUSPENDED' %}
+	<h2 class="marginAfter">{{ L('account_suspended') }}</h2>
+	<p>{{ L('account_suspended_info', {'deletionTime': LD(deletionTime), 'name': currentUser | name('first')}) }}</p>
+	{% elseif status=='SELF_DEACTIVATED' %}
+	<h2 class="marginAfter">{{ L('account_deactivated') }}</h2>
+	<p>{{ L('account_deactivated_info', {'deletionTime': LD(deletionTime)}) }}</p>
+	{% endif %}
+	{% if banInfo.message is not empty %}
+	<p>{{ L('account_ban_message') }}</p>
+	<p><div class="settingsMessage">{{ banInfo.message }}</div></p>
+	{% endif %}
+	{% if status!='SELF_DEACTIVATED' and contactEmail is not empty %}
+	<p>{{ L('account_ban_contact', {}, {'email': {'href': "mailto:#{contactEmail}"} }) }}</p>
+	{% endif %}
+	{% if status=='FROZEN' and unfreezeTime is null %}
+	<p>{{ L(banInfo.requirePasswordChange ? 'account_frozen_unfreeze_password' : 'account_frozen_unfreeze') }}</p>
+	<div>
+		<a href="/account/unfreezeBox" class="button" data-ajax-box>{{ L('unfreeze_my_account') }}</a>
+	</div>
+	{% endif %}
+	{% if status=='SELF_DEACTIVATED' %}
+	<div>
+		<a href="/account/reactivateBox" class="button" data-ajax-box>{{ L('account_reactivate') }}</a>
+	</div>
+	{% endif %}
+</div>
+{% endblock %}
+

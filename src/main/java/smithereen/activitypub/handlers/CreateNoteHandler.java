@@ -38,7 +38,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 
 	@Override
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Create activity, NoteOrQuestion post) throws SQLException{
-		if(!post.attributedTo.equals(actor.activityPubID))
+		if(!Objects.equals(post.attributedTo, actor.activityPubID))
 			throw new BadRequestException("object.attributedTo and actor.id must match");
 		if(PostStorage.getPostByID(post.activityPubID)!=null){
 			// Already exists. Ignore and return 200 OK.
@@ -225,7 +225,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					}
 				}
 			}else{
-				LOG.info("Don't have parent post {} for {}", post.inReplyTo, post.activityPubID);
+				LOG.debug("Don't have parent post {} for {}", post.inReplyTo, post.activityPubID);
 				boolean mentionsLocalUsers=false;
 				if(post.tag!=null){
 					for(ActivityPubObject tag:post.tag){
@@ -238,7 +238,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					}
 				}
 				if(!mentionsLocalUsers){
-					LOG.warn("Dropping post {} because its parent isn't known and it doesn't mention local users.", post.activityPubID);
+					LOG.debug("Dropping post {} because its parent isn't known and it doesn't mention local users.", post.activityPubID);
 					return;
 				}
 				context.appContext.getActivityPubWorker().fetchReplyThread(post);

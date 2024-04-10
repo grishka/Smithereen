@@ -82,8 +82,8 @@ public class CLI{
 			}
 			SessionStorage.registerNewAccount(username, password, email, username, "", User.Gender.UNKNOWN);
 			Account acc=SessionStorage.getAccountForUsernameAndPassword(username, password);
-			UserStorage.setAccountAccessLevel(acc.id, Account.AccessLevel.ADMIN);
-			System.out.println(E_BOLD+"You're all set! Now, make sure your web server is properly configured, then navigate to this server in your web browser and log into your account."+E_RESET);
+			UserStorage.setAccountRole(acc, 1, 0); // owner
+			System.out.println(E_BOLD+"You're all set! Now, make sure your web server is properly configured, then navigate to https://"+Config.domain+" in your web browser and log into your account."+E_RESET);
 		}catch(SQLException|IOError x){
 			x.printStackTrace();
 		}

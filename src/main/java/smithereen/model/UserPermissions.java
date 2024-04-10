@@ -1,6 +1,11 @@
 package smithereen.model;
 
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import smithereen.Config;
 
 /**
  * A "helper" kind of object passed around everywhere to help determine what a user
@@ -9,18 +14,17 @@ import java.util.HashMap;
 public class UserPermissions{
 	public int userID;
 	public HashMap<Integer, Group.AdminLevel> managedGroups=new HashMap<>();
-	public Account.AccessLevel serverAccessLevel;
 	public boolean canInviteNewUsers;
+	public UserRole role;
 
 	public UserPermissions(Account account){
 		userID=account.user.id;
-		serverAccessLevel=account.accessLevel;
+		if(account.roleID>0){
+			role=Config.userRoles.get(account.roleID);
+		}
 	}
 
 	public boolean canDeletePost(Post post){
-		// Moderators can delete any local posts
-		if(post.isLocal() && serverAccessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal())
-			return true;
 		// Users can always delete their own posts
 		if(post.authorID==userID)
 			return true;
@@ -57,5 +61,29 @@ public class UserPermissions{
 		}else{
 			return false;
 		}
+	}
+
+	public boolean hasPermission(UserRole.Permission permission){
+		return role!=null && (role.permissions().contains(permission) || role.permissions().contains(UserRole.Permission.SUPERUSER));
+	}
+
+	public boolean hasAnyPermission(EnumSet<UserRole.Permission> permissions){
+		if(role==null || permissions.isEmpty())
+			return false;
+		if(role.permissions().contains(UserRole.Permission.SUPERUSER))
+			return true;
+		for(UserRole.Permission perm:permissions){
+			if(role.permissions().contains(perm))
+				return true;
+		}
+		return false;
+	}
+
+	public boolean hasPermission(String permission){
+		return hasPermission(UserRole.Permission.valueOf(permission));
+	}
+
+	public boolean hasAnyPermission(List<String> permissions){
+		return hasAnyPermission(permissions.stream().map(UserRole.Permission::valueOf).collect(Collectors.toCollection(()->EnumSet.noneOf(UserRole.Permission.class))));
 	}
 }

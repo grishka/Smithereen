@@ -272,7 +272,15 @@ function ajaxGet(uri:string, onDone:{(r:any):void}, onError:{(msg:string):void},
 				onError(null);
 			}
 		}else{
-			onError(xhr.response || xhr.statusText);
+			if(xhr.response && responseType=="json" && xhr.getResponseHeader("content-type")=="application/json"){
+				try{
+					onDone(JSON.parse(xhr.response));
+				}catch(e){
+					onError(null);
+				}
+			}else{
+				onError(xhr.response || xhr.statusText);
+			}
 		}
 	};
 	xhr.onerror=function(ev:Event){
@@ -295,6 +303,11 @@ function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):
 	xhr.open("POST", uri);
 	xhr.onload=function(){
 		var resp=xhr.response;
+		if(Math.floor(xhr.status/100)!=2){
+			if(onError)
+				onError(xhr.response || xhr.statusText);
+			return;
+		}
 		if(onDone){
 			if(onDone(resp))
 				return;
@@ -330,6 +343,27 @@ function lang(key:string, args:{[key:string]:(string|number)}={}):string{
 	if(typeof v==="function")
 		return (v as Function).apply(this, [args]);
 	return v as string;
+}
+
+function langFileSize(size:number):string{
+	var key, amount;
+	if(size<1024){
+		key="file_size_bytes";
+		amount=size;
+	}else if(size<1024*1024){
+		key="file_size_kilobytes";
+		amount=size/1024.0;
+	}else if(size<1024*1024*1024){
+		key="file_size_megabytes";
+		amount=size/(1024.0*1024.0);
+	}else if(size<1024*1024*1024*1024){
+		key="file_size_gigabytes";
+		amount=size/(1024.0*1024.0*1024.0);
+	}else{
+		key="file_size_terabytes";
+		amount=size/(1024.0*1024.0*1024.0*1024.0);
+	}
+	return lang(key, {amount: Intl.NumberFormat(userConfig.locale, {maximumFractionDigits: 2}).format(amount)});
 }
 
 var langPluralRules:{[key:string]:(quantity:number)=>string}={
@@ -372,9 +406,9 @@ function setGlobalLoading(loading:boolean):void{
 	document.body.style.cursor=loading ? "progress" : "";
 }
 
-function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}):boolean{
+function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}, useLang:boolean=true):boolean{
 	var box:ConfirmBox;
-	box=new ConfirmBox(lang(titleKey), lang(msgKey), function(){
+	box=new ConfirmBox(useLang ? lang(titleKey) : titleKey, useLang ? lang(msgKey) : msgKey, function(){
 		var btn=box.getButton(0);
 		btn.setAttribute("disabled", "");
 		box.getButton(1).setAttribute("disabled", "");
@@ -504,9 +538,10 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	return false;
 }
 
-function ajaxGetAndApplyActions(url:string, onDone:{():void}=null, onError:{():void}=null):XMLHttpRequest{
+function ajaxGetAndApplyActions(url:string, onDone:{():void}=null, onError:{():void}=null, onBeforeDone:{():void}=null):XMLHttpRequest{
 	setGlobalLoading(true);
 	return ajaxGet(url, function(resp:any){
+		if(onBeforeDone) onBeforeDone();
 		setGlobalLoading(false);
 		if(resp instanceof Array){
 			for(var i=0;i<resp.length;i++){
@@ -560,6 +595,9 @@ function applyServerCommand(cmd:any){
 			break;
 		case "formBox":
 			new FormBox(cmd.t, cmd.m, cmd.b, cmd.fa).show();
+			break;
+		case "confirmBox":
+			ajaxConfirm(cmd.t, cmd.m, cmd.fa, {}, false);
 			break;
 		case "box":
 		{
@@ -639,6 +677,9 @@ function applyServerCommand(cmd:any){
 			break;
 		case "snackbar":
 			LayerManager.getInstance().showSnackbar(cmd.t);
+			break;
+		case "setURL":
+			history.replaceState(null, "", cmd.url);
 			break;
 	}
 }
@@ -825,6 +866,14 @@ function autoSizeTextArea(el:HTMLTextAreaElement){
 	updateHeight();
 }
 
+function addSendOnCtrlEnter(el:(HTMLTextAreaElement|HTMLInputElement)){
+	el.addEventListener("keydown", (ev:KeyboardEvent)=>{
+		if(ev.keyCode==13 && (isApple ? ev.metaKey : ev.ctrlKey)){
+			(el.form.querySelector("input[type=submit]") as HTMLElement).click();
+		}
+	});
+}
+
 function loadOlderComments(id:number){
 	var btn=ge("loadPrevBtn"+id);
 	var loader=ge("prevLoader"+id);
@@ -938,9 +987,51 @@ function initAjaxSearch(fieldID:string){
 	var input=ge(fieldID) as HTMLInputElement;
 	var inputWrap=input.parentElement;
 	var currentXHR:XMLHttpRequest=null;
+	var debounceTimeout:number=null;
+	var focusedEl:Element;
+	var focusedElSelStart:number, focusedElSelEnd:number;
+	var extraFieldIDs:string[];
+	if(input.dataset.extraFields){
+		extraFieldIDs=input.dataset.extraFields.split(",");
+	}else{
+		extraFieldIDs=[];
+	}
+
+	const onInputListener=(ev:Event)=>{
+		if(ev.target!=input && (!extraFieldIDs || !(ev.target instanceof HTMLElement) || extraFieldIDs.indexOf(ev.target.id)==-1))
+			return;
+		if(debounceTimeout){
+			clearTimeout(debounceTimeout);
+		}
+		if(currentXHR){
+			currentXHR.abort();
+			currentXHR=null;
+		}
+		debounceTimeout=setTimeout(()=>{
+			debounceTimeout=null;
+			performSearch(input.value);
+		}, 300);
+	};
 	const ajaxDone=()=>{
 		currentXHR=null;
+		if(focusedEl && focusedEl.id){
+			var newEl=ge(focusedEl.id);
+			if(newEl && newEl!=focusedEl && newEl instanceof HTMLInputElement){
+				newEl.focus();
+				newEl.selectionStart=focusedElSelStart;
+				newEl.selectionEnd=focusedElSelEnd;
+			}
+		}
+		focusedEl=null;
 	};
+	const ajaxBeforeDone=()=>{
+		focusedEl=document.activeElement;
+		if(focusedEl && focusedEl instanceof HTMLInputElement){
+			focusedElSelStart=focusedEl.selectionStart;
+			focusedElSelEnd=focusedEl.selectionEnd;
+		}
+	};
+
 	const performSearch=(q:string)=>{
 		var baseURL=input.dataset.baseUrl;
 		var qstr:string;
@@ -953,23 +1044,23 @@ function initAjaxSearch(fieldID:string){
 		}
 		var params=new URLSearchParams(qstr);
 		params.set("q", q);
+		var extraFields=input.dataset.extraFields;
+		if(extraFields){
+			for(var fid of extraFields.split(',')){
+				var field=ge(fid) as HTMLInputElement;
+				if(field){
+					if(field.value.length)
+						params.set(field.name, field.value);
+					else
+						params.delete(field.name);
+				}
+			}
+		}
 		var url=baseURL+"?"+params.toString();
-		currentXHR=ajaxGetAndApplyActions(url, ajaxDone, ajaxDone);
+		currentXHR=ajaxGetAndApplyActions(url, ajaxDone, ajaxDone, ajaxBeforeDone);
 	};
-	var debounceTimeout:number=null;
-	input.addEventListener("input", (ev)=>{
-		if(debounceTimeout){
-			clearTimeout(debounceTimeout);
-		}
-		if(currentXHR){
-			currentXHR.abort();
-			currentXHR=null;
-		}
-		debounceTimeout=setTimeout(()=>{
-			debounceTimeout=null;
-			performSearch(input.value);
-		}, 300);
-	});
+	input.addEventListener("input", onInputListener);
+	ge("ajaxUpdatable").addEventListener("input", onInputListener);
 }
 
 function quoteRegExp(str:string):string{
@@ -1062,5 +1153,13 @@ function hideTooltip(el:HTMLElement){
 	var ttEl:HTMLElement=el.customData && el.customData.tooltip;
 	if(ttEl){
 		ttEl.hideAnimated();
+	}
+}
+
+function expandAllCommentCWs(){
+	for(var cbox of document.querySelectorAll(".commentCWCheckbox").unfuck()){
+		if(cbox instanceof HTMLInputElement && !cbox.checked){
+			cbox.checked=true;
+		}
 	}
 }

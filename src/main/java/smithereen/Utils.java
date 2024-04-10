@@ -23,12 +23,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.IDN;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -37,9 +44,11 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -52,6 +61,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -61,12 +71,13 @@ import java.util.zip.CRC32;
 
 import cz.jirutka.unidecode.Unidecode;
 import smithereen.activitypub.objects.Actor;
-import smithereen.model.Account;
+import smithereen.exceptions.UserErrorException;
+import smithereen.model.CaptchaInfo;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
@@ -76,6 +87,8 @@ import smithereen.lang.Lang;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.EmailCodeActionType;
+import smithereen.util.FloodControl;
 import smithereen.util.InstantMillisJsonAdapter;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
@@ -132,17 +145,6 @@ public class Utils{
 		return String.format(Locale.ENGLISH, "%08x%08x", v1, v2);
 	}
 
-	private static boolean isAllowedForRestrictedAccounts(Request req){
-		String path=req.pathInfo();
-		return List.of(
-				"/account/logout",
-				"/account/resendConfirmationEmail",
-				"/account/changeEmailForm",
-				"/account/changeEmail",
-				"/account/activate"
-		).contains(path);
-	}
-
 	public static boolean requireAccount(Request req, Response resp){
 		if(req.session(false)==null || req.session().attribute("info")==null || ((SessionInfo)req.session().attribute("info")).account==null){
 			String to=req.pathInfo();
@@ -150,19 +152,6 @@ public class Utils{
 			if(StringUtils.isNotEmpty(query))
 				to+="?"+query;
 			resp.redirect("/account/login?to="+URLEncoder.encode(to));
-			return false;
-		}
-		Account acc=sessionInfo(req).account;
-		if(acc.banInfo!=null && !isAllowedForRestrictedAccounts(req)){
-			Lang l=lang(req);
-			String msg=l.get("your_account_is_banned");
-			if(StringUtils.isNotEmpty(acc.banInfo.reason))
-				msg+="\n\n"+l.get("ban_reason")+": "+acc.banInfo.reason;
-			resp.body(new RenderedTemplateResponse("generic_message", req).with("message", msg).renderToString());
-			return false;
-		}else if(acc.activationInfo!=null && acc.activationInfo.emailState==Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED && !isAllowedForRestrictedAccounts(req)){
-			Lang l=lang(req);
-			resp.body(new RenderedTemplateResponse("email_confirm_required", req).with("email", acc.email).pageTitle(l.get("account_activation")).renderToString());
 			return false;
 		}
 		return true;
@@ -243,7 +232,11 @@ public class Utils{
 		}
 	}
 
-	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, String formID, List<String> fieldNames, Function<String, String> fieldValueGetter, String message){
+	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, String formID, List<String> fieldNames, Function<String, Object> fieldValueGetter, String message){
+		return wrapForm(req, resp, templateName, formAction, title, buttonKey, formID, fieldNames, fieldValueGetter, message, null);
+	}
+
+	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, String formID, List<String> fieldNames, Function<String, Object> fieldValueGetter, String message, Map<String, Object> extraTemplateArgs){
 		if(isAjax(req) && StringUtils.isNotEmpty(message)){
 			WebDeltaResponse wdr=new WebDeltaResponse(resp);
 			wdr.keepBox().show("formMessage_"+formID).setContent("formMessage_"+formID, escapeHTML(message));
@@ -259,13 +252,18 @@ public class Utils{
 		for(String name:fieldNames){
 			model.with(name, fieldValueGetter.apply(name));
 		}
+		if(extraTemplateArgs!=null){
+			for(Map.Entry<String, Object> e:extraTemplateArgs.entrySet()){
+				model.with(e.getKey(), e.getValue());
+			}
+		}
 		return wrapForm(req, resp, templateName, formAction, title, buttonKey, model);
 	}
 
 	public static String requireFormField(Request req, String field, String errorKey){
 		String value=req.queryParams(field);
 		if(StringUtils.isEmpty(value))
-			throw new FormValidationException(lang(req).get(errorKey));
+			throw new FormValidationException(errorKey==null ? ("Required field missing: "+field) : lang(req).get(errorKey));
 		return value;
 	}
 
@@ -276,7 +274,22 @@ public class Utils{
 		return value;
 	}
 
+	public static <E extends Enum<E>> E requireFormField(Request req, String field, String errorKey, Class<E> enumClass){
+		String value=req.queryParams(field);
+		if(StringUtils.isEmpty(value))
+			throw new FormValidationException(errorKey==null ? ("Required field missing: "+field) : lang(req).get(errorKey));
+		try{
+			return Enum.valueOf(enumClass, value);
+		}catch(IllegalArgumentException x){
+			throw new FormValidationException(errorKey==null ? ("Required field missing: "+field) : lang(req).get(errorKey));
+		}
+	}
+
 	public static Locale localeForRequest(Request req){
+		String langParam=req.queryParams("lang");
+		if(StringUtils.isNotEmpty(langParam)){
+			return Locale.forLanguageTag(langParam);
+		}
 		SessionInfo info=sessionInfo(req);
 		if(info!=null){
 			if(info.account!=null && info.account.prefs.locale!=null)
@@ -379,7 +392,7 @@ public class Utils{
 				}
 			}
 
-			private class ListNodeInfo{
+			private static class ListNodeInfo{
 				final boolean isOrdered;
 				final Element element;
 				int currentIndex=1;
@@ -391,6 +404,7 @@ public class Utils{
 			}
 		});
 		doc.getElementsByTag("li").forEach(Element::unwrap);
+		doc.getElementsByClass("smithereenPollQuestion").forEach(Element::remove);
 		doc.normalise();
 		return cleaner.clean(doc).body().html();
 	}
@@ -576,7 +590,7 @@ public class Utils{
 			if(el.tagName().equalsIgnoreCase("pre")){
 				return;
 			}else if(el.tagName().equalsIgnoreCase("a")){
-				if(el.hasClass("mention")){
+				if(el.hasClass("mention") && !el.hasAttr("data-user-id")){
 					User user=mentionCallback==null ? null : mentionCallback.resolveMention(el.attr("href"));
 					if(user==null){
 						el.removeClass("mention");
@@ -765,6 +779,9 @@ public class Utils{
 						User user=UserStorage.getById(uid);
 						if(user!=null){
 							el.attr("href", "/"+user.getFullUsername());
+							if(user instanceof ForeignUser){
+								el.attr("rel", "nofollow");
+							}
 							el.addClass("u-url");
 							Element parent=el.parent();
 							if(parent==null || !parent.tagName().equalsIgnoreCase("span")){
@@ -779,7 +796,7 @@ public class Utils{
 					URI uri=new URI(href);
 					if(uri.isAbsolute() && !Config.isLocal(uri)){
 						el.attr("target", "_blank");
-						el.attr("rel", "noopener");
+						el.attr("rel", "noopener ugc");
 					}
 				}catch(URISyntaxException x){}
 			}
@@ -974,6 +991,20 @@ public class Utils{
 		}
 	}
 
+	public static <E extends Enum<E>> byte[] serializeEnumSetToBytes(EnumSet<E> set){
+		BitSet result=new BitSet();
+		for(E value:set){
+			result.set(value.ordinal());
+		}
+		return result.toByteArray();
+	}
+
+	public static <E extends Enum<E>> void deserializeEnumSet(EnumSet<E> set, Class<E> cls, byte[] serialized){
+		set.clear();
+		E[] consts=cls.getEnumConstants();
+		BitSet.valueOf(serialized).stream().mapToObj(i->consts[i]).forEach(set::add);
+	}
+
 	/**
 	 * Convert a string to an enum value
 	 * @param val
@@ -1134,8 +1165,112 @@ public class Utils{
 		}
 	}
 
+	/**
+	 * Serialize an {@link InetAddress} for storage in the database.
+	 * <s>No reverse method exists because {@link InetAddress#getByAddress(byte[])} takes IPv4-mapped IPv6 addresses and returns an Inet4Address.</s>
+	 * Actually no, it exists now because checked exceptions are a pain in the ass
+	 * @param ip
+	 * @return 16 bytes. IPv6 addresses are returned as-is, IPv4 are mapped into IPv6 (::ffff:x.x.x.x)
+	 */
+	public static byte[] serializeInetAddress(InetAddress ip){
+		return switch(ip){
+			case null -> null;
+			case Inet4Address ipv4 -> {
+				byte[] a=new byte[16];
+				a[11]=a[10]=-1;
+				System.arraycopy(ipv4.getAddress(), 0, a, 12, 4);
+				yield a;
+			}
+			case Inet6Address ipv6 -> ipv6.getAddress();
+			default -> throw new IllegalStateException("Unexpected value: "+ip); // TODO why is this required for a sealed hierarchy?
+		};
+	}
+
+	public static InetAddress deserializeInetAddress(byte[] ip){
+		if(ip==null)
+			return null;
+		try{
+			return InetAddress.getByAddress(ip);
+		}catch(UnknownHostException e){
+			throw new IllegalArgumentException(e);
+		}
+	}
+
+	public static long hashUserAgent(String ua){
+		try{
+			MessageDigest md5=MessageDigest.getInstance("MD5");
+			byte[] hash=md5.digest(ua.getBytes(StandardCharsets.UTF_8));
+			return unpackLong(hash, 0) ^ unpackLong(hash, 8);
+		}catch(NoSuchAlgorithmException x){
+			throw new RuntimeException(x);
+		}
+	}
+
+	public static Object sendEmailConfirmationCode(Request req, Response resp, EmailCodeActionType type, String formAction){
+		SessionInfo info=Objects.requireNonNull(sessionInfo(req));
+		FloodControl.ACTION_CONFIRMATION.incrementOrThrow(info.account);
+		Random rand=ThreadLocalRandom.current();
+		char[] _code=new char[5];
+		for(int i=0;i<_code.length;i++){
+			_code[i]=(char)('0'+rand.nextInt(10));
+		}
+		String code=new String(_code);
+		req.session().attribute("emailCodeInfo", new EmailConfirmationCodeInfo(code, type, Instant.now()));
+		Mailer.getInstance().sendActionConfirmationCode(req, info.account, lang(req).get(type.actionLangKey()), code);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("email_confirmation_code_form", req);
+		model.with("maskedEmail", info.account.getCurrentEmailMasked()).with("action", type.actionLangKey());
+		return wrapForm(req, resp, "email_confirmation_code_form", formAction, lang(req).get("action_confirmation"), "next", model);
+	}
+
+	public static void checkEmailConfirmationCode(Request req, EmailCodeActionType type){
+		EmailConfirmationCodeInfo info=req.session().attribute("emailCodeInfo");
+		req.session().removeAttribute("emailCodeInfo");
+		if(info==null || info.actionType!=type || !Objects.equals(info.code, req.queryParams("code")) || info.sentAt.plus(10, ChronoUnit.MINUTES).isBefore(Instant.now()))
+			throw new UserErrorException("action_confirmation_incorrect_code");
+	}
+
+	public static void copyBytes(InputStream from, OutputStream to) throws IOException{
+		byte[] buffer=new byte[10240];
+		int read;
+		while((read=from.read(buffer))>0){
+			to.write(buffer, 0, read);
+		}
+	}
+
+	public static Object ajaxAwareRedirect(Request req, Response resp, String destination){
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).replaceLocation(destination);
+		resp.redirect(destination);
+		return "";
+	}
+
+	public static Object wrapConfirmation(Request req, Response resp, String title, String message, String action){
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).confirmBox(title, message, action);
+		}
+		req.attribute("noHistory", true);
+		Lang l=lang(req);
+		String back=back(req);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", message).with("formAction", action).with("back", back).pageTitle(title);
+	}
+
+	public static void verifyCaptcha(Request req){
+		String captcha=requireFormField(req, "captcha", "err_wrong_captcha");
+		String sid=requireFormField(req, "captchaSid", "err_wrong_captcha");
+		LruCache<String, CaptchaInfo> captchas=req.session().attribute("captchas");
+		if(captchas==null)
+			throw new UserErrorException("err_wrong_captcha");
+		CaptchaInfo info=captchas.remove(sid);
+		if(info==null)
+			throw new UserErrorException("err_wrong_captcha");
+		if(!info.answer().equals(captcha) || System.currentTimeMillis()-info.generatedAt().toEpochMilli()<3000)
+			throw new UserErrorException("err_wrong_captcha");
+	}
+
 	public interface MentionCallback{
 		User resolveMention(String username, String domain);
 		User resolveMention(String uri);
 	}
+
+	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}
 }

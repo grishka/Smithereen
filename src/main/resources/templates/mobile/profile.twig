@@ -74,6 +74,10 @@
 		{% if userPermissions is not null and userPermissions.canReport(user) %}
 			<li><a href="/system/reportForm?type=user&id={{ user.id }}" data-ajax-box>{{ L('report') }}</a></li>
 		{% endif %}
+		{% if userPermissions.hasPermission('MANAGE_USERS') %}
+			<li class="separator"></li>
+			<li><a href="/users/{{ user.id }}/meminfo">{{ L('admin_manage_user') }}</a></li>
+		{% endif %}
 	</ul>
 </div>
 

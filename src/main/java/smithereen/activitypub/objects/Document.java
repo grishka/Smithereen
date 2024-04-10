@@ -9,7 +9,6 @@ import spark.utils.StringUtils;
 
 public class Document extends ActivityPubObject{
 
-	public String localID;
 	public String blurHash;
 	public int width;
 	public int height;

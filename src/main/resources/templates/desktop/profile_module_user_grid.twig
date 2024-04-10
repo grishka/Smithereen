@@ -5,7 +5,7 @@
 	{% for friend in users %}
 		{% if loop.first or loop.index==3 %}<tr valign="top" class="membersRow">{% endif %}
 		<td align="center" width="33%" style="overflow: hidden;">
-			<a href="{{ friend.profileURL }}">
+			<a href="{{ friend.profileURL }}"{{ profileRel(friend) }}>
 				{{ friend | pictureForAvatar('s') }}<br/>
 				<span class="memberName">{{ friend.firstName }}<br/>{{ friend.lastName }}</span>
 			</a>

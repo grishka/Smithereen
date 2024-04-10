@@ -4,7 +4,7 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import smithereen.model.Account;
+import smithereen.model.UserRole;
 import spark.Route;
 
 import static spark.Spark.*;
@@ -21,6 +21,14 @@ public class SparkExtension{
 		post(path, route);
 	}
 
+	public static void getLoggedIn(String path, LoggedInSimpleRoute route){
+		get(path, route);
+	}
+
+	public static void postLoggedIn(String path, LoggedInSimpleRoute route){
+		post(path, route);
+	}
+
 	public static void getWithCSRF(String path, CSRFRoute route){
 		get(path, route);
 	}
@@ -29,16 +37,28 @@ public class SparkExtension{
 		post(path, route);
 	}
 
-	public static void getRequiringAccessLevel(String path, Account.AccessLevel minLevel, LoggedInRoute route){
-		get(path, new AdminRouteAdapter(route, minLevel, false));
+	public static void getRequiringPermission(String path, UserRole.Permission permission, LoggedInRoute route){
+		get(path, new AdminRouteAdapter(route, permission, false));
 	}
 
-	public static void getRequiringAccessLevelWithCSRF(String path, Account.AccessLevel minLevel, LoggedInRoute route){
-		get(path, new AdminRouteAdapter(route, minLevel, true));
+	public static void getRequiringPermissionWithCSRF(String path, UserRole.Permission permission, LoggedInRoute route){
+		get(path, new AdminRouteAdapter(route, permission, true));
 	}
 
-	public static void postRequiringAccessLevelWithCSRF(String path, Account.AccessLevel minLevel, LoggedInRoute route){
-		post(path, new AdminRouteAdapter(route, minLevel, true));
+	public static void postRequiringPermissionWithCSRF(String path, UserRole.Permission permission, LoggedInRoute route){
+		post(path, new AdminRouteAdapter(route, permission, true));
+	}
+
+	public static void getRequiringPermission(String path, UserRole.Permission permission, LoggedInSimpleRoute route){
+		get(path, new AdminRouteAdapter(route, permission, false));
+	}
+
+	public static void getRequiringPermissionWithCSRF(String path, UserRole.Permission permission, LoggedInSimpleRoute route){
+		get(path, new AdminRouteAdapter(route, permission, true));
+	}
+
+	public static void postRequiringPermissionWithCSRF(String path, UserRole.Permission permission, LoggedInSimpleRoute route){
+		post(path, new AdminRouteAdapter(route, permission, true));
 	}
 
 	public static void getActivityPub(String path, Route route){

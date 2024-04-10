@@ -5,11 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -32,17 +30,16 @@ import static smithereen.Utils.*;
 
 import smithereen.Mailer;
 import smithereen.Utils;
-import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.Account;
-import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -51,10 +48,16 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
+import smithereen.model.media.ImageMetadata;
+import smithereen.model.media.MediaFileRecord;
+import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.media.MediaFileType;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
+import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.FloodControl;
 import spark.Request;
@@ -95,7 +98,7 @@ public class SettingsRoutes{
 		if(Config.signupMode==Config.SignupMode.OPEN){
 			throw new BadRequestException();
 		}
-		if(Config.signupMode==Config.SignupMode.CLOSED && self.accessLevel!=Account.AccessLevel.ADMIN)
+		if(Config.signupMode==Config.SignupMode.CLOSED && !sessionInfo(req).permissions.hasPermission(UserRole.Permission.MANAGE_INVITES))
 			return wrapError(req, resp, "err_access");
 		byte[] code=new byte[16];
 		new Random().nextBytes(code);
@@ -106,18 +109,20 @@ public class SettingsRoutes{
 	}
 
 	public static Object updatePassword(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+		requireQueryParams(req, "current", "new", "new2");
 		String current=req.queryParams("current");
 		String new1=req.queryParams("new");
 		String new2=req.queryParams("new2");
 		String message;
 		if(!new1.equals(new2)){
 			message=Utils.lang(req).get("err_passwords_dont_match");
-		}else if(new1.length()<4){
-			message=Utils.lang(req).get("err_password_short");
-		}else if(!SessionStorage.updatePassword(self.id, current, new1)){
-			message=Utils.lang(req).get("err_old_password_incorrect");
 		}else{
-			message=Utils.lang(req).get("password_changed");
+			try{
+				ctx.getUsersController().changePassword(self, current, new1);
+				message=Utils.lang(req).get("password_changed");
+			}catch(UserErrorException x){
+				message=lang(req).get(x.getMessage());
+			}
 		}
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).show("formMessage_changePassword").setContent("formMessage_changePassword", message);
@@ -182,21 +187,24 @@ public class SettingsRoutes{
 				throw new IOException("file too large");
 			}
 
-			byte[] key=MessageDigest.getInstance("MD5").digest((self.user.username+","+System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8));
-			String keyHex=Utils.byteArrayToHexString(key);
 			String mime=part.getContentType();
 			if(!mime.startsWith("image/"))
 				throw new IOException("incorrect mime type");
 
-			File tmpDir = new File(System.getProperty("java.io.tmpdir"));
-			File temp=new File(tmpDir, keyHex);
-			part.write(keyHex);
+			File temp=File.createTempFile("SmithereenUpload", null);
+			try{
+				try(FileOutputStream out=new FileOutputStream(temp)){
+					copyBytes(part.getInputStream(), out);
+				}
+			}catch(IOException x){
+				throw new BadRequestException(x.getMessage(), x);
+			}
 			VipsImage img=new VipsImage(temp.getAbsolutePath());
 			if(img.hasAlpha())
 				img=img.flatten(1, 1, 1);
 			float ratio=(float)img.getWidth()/(float)img.getHeight();
 			boolean ratioIsValid=ratio<=2.5f && ratio>=0.25f;
-			LocalImage ava=new LocalImage();
+			float[] cropRegion=null;
 			if(ratioIsValid){
 				try{
 					String _x1=req.queryParams("x1"),
@@ -214,20 +222,20 @@ public class SettingsRoutes{
 							int x=Math.round(iw*x1);
 							int y=Math.round(ih*y1);
 							int size=Math.round(((x2-x1)*iw+(y2-y1)*ih)/2f);
-							ava.cropRegion=new float[]{x1, y1, x2, y2};
+							cropRegion=new float[]{x1, y1, x2, y2};
 						}
 					}
 				}catch(NumberFormatException ignore){}
 			}
-			if(ava.cropRegion==null && img.getWidth()!=img.getHeight()){
+			if(cropRegion==null && img.getWidth()!=img.getHeight()){
 				int cropSize, cropX=0;
 				if(img.getHeight()>img.getWidth()){
 					cropSize=img.getWidth();
-					ava.cropRegion=new float[]{0f, 0f, 1f, (float)img.getWidth()/(float)img.getHeight()};
+					cropRegion=new float[]{0f, 0f, 1f, (float)img.getWidth()/(float)img.getHeight()};
 				}else{
 					cropSize=img.getHeight();
 					cropX=img.getWidth()/2-img.getHeight()/2;
-					ava.cropRegion=new float[]{(float)cropX/(float)img.getWidth(), 0f, (float)(cropX+img.getHeight())/(float)img.getWidth(), 1f};
+					cropRegion=new float[]{(float)cropX/(float)img.getWidth(), 0f, (float)(cropX+img.getHeight())/(float)img.getWidth(), 1f};
 				}
 				if(!ratioIsValid){
 					VipsImage cropped=img.crop(cropX, 0, cropSize, cropSize);
@@ -236,38 +244,27 @@ public class SettingsRoutes{
 				}
 			}
 
-			File profilePicsDir=new File(Config.uploadPath, "avatars");
-			profilePicsDir.mkdirs();
 			try{
 				int[] size={0, 0};
-				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, keyHex, profilePicsDir, size);
-				ava.localID=keyHex;
-				ava.path="avatars";
-				ava.width=size[0];
-				ava.height=size[1];
+				File resizedFile=File.createTempFile("SmithereenUploadResized", ".webp");
+				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, resizedFile, size);
+				ImageMetadata meta=new ImageMetadata(size[0], size[1], null, cropRegion);
+				MediaFileRecord fileRecord=MediaStorage.createMediaFileRecord(MediaFileType.IMAGE_PHOTO, resizedFile.length(), group==null ? self.user.id : -group.id, meta);
+				MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id());
+				LocalImage ava=new LocalImage();
+				ava.fileID=fileRecord.id().id();
+				ava.fillIn(fileRecord);
 
 				if(group==null){
-					if(self.user.icon!=null){
-						LocalImage li=(LocalImage) self.user.icon.get(0);
-						File file=new File(profilePicsDir, li.localID+".webp");
-						if(file.exists()){
-							LOG.info("Deleting: {}", file.getAbsolutePath());
-							file.delete();
-						}
-					}
+					MediaStorage.deleteMediaFileReferences(self.user.id, MediaFileReferenceType.USER_AVATAR);
 					UserStorage.updateProfilePicture(self.user, MediaStorageUtils.serializeAttachment(ava).toString());
+					MediaStorage.createMediaFileReference(fileRecord.id().id(), self.user.id, MediaFileReferenceType.USER_AVATAR, self.user.id);
 					self.user=UserStorage.getById(self.user.id);
 					ctx.getActivityPubWorker().sendUpdateUserActivity(self.user);
 				}else{
-					if(group.icon!=null && !(group instanceof ForeignGroup)){
-						LocalImage li=(LocalImage) group.icon.get(0);
-						File file=new File(profilePicsDir, li.localID+".webp");
-						if(file.exists()){
-							LOG.info("Deleting: {}", file.getAbsolutePath());
-							file.delete();
-						}
-					}
+					MediaStorage.deleteMediaFileReferences(group.id, MediaFileReferenceType.GROUP_AVATAR);
 					GroupStorage.updateProfilePicture(group, MediaStorageUtils.serializeAttachment(ava).toString());
+					MediaStorage.createMediaFileReference(fileRecord.id().id(), group.id, MediaFileReferenceType.GROUP_AVATAR, -group.id);
 					group=GroupStorage.getById(group.id);
 					ctx.getActivityPubWorker().sendUpdateGroupActivity(group);
 				}
@@ -280,7 +277,7 @@ public class SettingsRoutes{
 
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("avatar_updated"));
 			resp.redirect("/settings/");
-		}catch(IOException|ServletException|NoSuchAlgorithmException|IllegalStateException x){
+		}catch(IOException|ServletException|IllegalStateException x){
 			LOG.error("Exception while processing a profile picture upload", x);
 			if(isAjax(req)){
 				Lang l=lang(req);
@@ -356,16 +353,7 @@ public class SettingsRoutes{
 			}
 		}
 
-		File profilePicsDir=new File(Config.uploadPath, "avatars");
-		List<Image> icon=group!=null ? group.icon : self.user.icon;
-		if(icon!=null && !icon.isEmpty() && icon.get(0) instanceof LocalImage){
-			LocalImage li=(LocalImage) icon.get(0);
-			File file=new File(profilePicsDir, li.localID+".webp");
-			if(file.exists()){
-				LOG.info("Deleting: {}", file.getAbsolutePath());
-				file.delete();
-			}
-		}
+		MediaStorage.deleteMediaFileReferences(group!=null ? group.id : self.user.id, group!=null ? MediaFileReferenceType.GROUP_AVATAR : MediaFileReferenceType.USER_AVATAR);
 
 		if(group!=null){
 			GroupStorage.updateProfilePicture(group, null);
@@ -665,5 +653,19 @@ public class SettingsRoutes{
 				.with("setting", ps)
 				.with("users", ctx.getUsersController().getUsers(needUsers))
 				.pageTitle(lang(req).get("privacy_settings_title"));
+	}
+
+	public static Object deactivateAccountForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		return wrapForm(req, resp, "deactivate_account_form", "/settings/deactivateAccount", lang(req).get("admin_user_delete_account_title"), "delete", "deactivateAccount", List.of(), null, null);
+	}
+
+	public static Object deactivateAccount(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "password");
+		String password=req.queryParams("password");
+		if(!ctx.getUsersController().checkPassword(self, password)){
+			return wrapForm(req, resp, "deactivate_account_form", "/settings/deactivateAccount", lang(req).get("admin_user_delete_account_title"), "delete", "deactivateAccount", List.of(), null, lang(req).get("err_old_password_incorrect"));
+		}
+		ctx.getUsersController().selfDeactivateAccount(self);
+		return ajaxAwareRedirect(req, resp, "/feed");
 	}
 }

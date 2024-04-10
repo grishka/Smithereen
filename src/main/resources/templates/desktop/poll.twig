@@ -41,7 +41,7 @@
 			{% set fraction=(poll.numVoters==0 ? 0 : (opt.numVotes*1.0)/poll.numVoters) %}
 			{% if not poll.anonymous %}
 			<div class="pollResultRowW"{% if opt.numVotes>0 %} onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)"{% endif %}>
-			<a href="/posts/{{ post.id }}/pollVoters/{{ opt.id }}" class="undecoratedLink popoverButton" data-ajax-box="1" data-popover-url="/posts/{{ post.id }}/pollVoters/{{ opt.id }}/popover">
+			<a href="/posts/{{ post.post.id }}/pollVoters/{{ opt.id }}" class="undecoratedLink popoverButton" data-ajax-box="1" data-popover-url="/posts/{{ post.post.id }}/pollVoters/{{ opt.id }}/popover">
 			{% endif %}
 			<div class="pollResultRow{{ interactions.pollChoices contains opt.id ? ' userChoice' : '' }}">
 				{{ opt.text }}

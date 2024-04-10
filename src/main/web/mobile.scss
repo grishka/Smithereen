@@ -49,7 +49,6 @@ span.wideOnly{
 	text-align: left;
 	line-height: 56px;
 	z-index: 1;
-	padding-right: 56px;
 	text-overflow: ellipsis;
 	overflow-x: hidden;
 	white-space: nowrap;
@@ -75,7 +74,19 @@ span.wideOnly{
 		}
 	}
 	.title{
-		margin-left: 16px;
+		margin: 0 16px;
+	}
+	.actionButton{
+		width: 56px;
+		height: 56px;
+		float: right;
+		display: block;
+		background-color: transparent;
+		&.iconCW{
+			background-image: svg-load('img/material/visibility_off_24px.svg', fill: $iconColor);
+			background-position: center;
+			background-repeat: no-repeat;
+		}
 	}
 }
 
@@ -278,6 +289,9 @@ select{
 		height: 42px;
 		line-height: 42px;
 	}
+	.postContent pre{
+		overflow-x: auto;
+	}
 }
 
 .postActions{
@@ -353,15 +367,10 @@ select{
 	overflow-x: scroll;
 	position: relative;
 	white-space: nowrap;
-	&:before{
-		content: '';
-		display: block;
-		position: absolute;
-		bottom: 0;
-		height: 1px;
-		left: 0;
-		right: 0;
-		background: rgba(0,0,0,.2);
+	box-shadow: inset 0 -1px 0 rgba(0,0,0,.2);
+	scrollbar-width: none;
+	&::-webkit-scrollbar{
+		display: none;
 	}
 	a{
 		display: inline-block;
@@ -644,7 +653,7 @@ select{
 	margin-left: auto;
 	margin-right: auto;
 	table{
-		width: 1000px;
+		width: 600px;
 	}
 }
 
@@ -1205,6 +1214,9 @@ textarea{
 		width: 24px;
 		height: 24px;
 	}
+	&.disabled{
+		opacity: 0.6;
+	}
 	margin: 8px 0;
 }
 
@@ -1235,6 +1247,10 @@ textarea{
 	.summary{
 		color: $boldHeaders;
 		font-weight: $mediumWeight;
+		.auxText{
+			font-weight: normal;
+			color: $text;
+		}
 	}
 	.auxLinks{
 		margin: 0 -8px;
@@ -1363,6 +1379,12 @@ input[type=time]::-webkit-calendar-picker-indicator{
 	border-bottom: solid 1px $menuItemsSeparator;
 	&:last-child{
 		border-bottom: none;
+	}
+	p:first-child{
+		margin-top: 0;
+	}
+	p:last-child{
+		margin-bottom: 0;
 	}
 }
 
@@ -1688,5 +1710,71 @@ input.searchField{
 	@include medium-shadow;
 	&.iconPencil{
 		background-image: svg-load('img/material/ic_edit.svg', fill: $textOnAccent);
+	}
+	&.iconAdd{
+		background-image: svg-load('img/material/add_FILL0_wght400_GRAD0_opsz24.svg', fill: $textOnAccent);
+	}
+}
+
+.withRightColumnFilters{
+	display: flex;
+	flex-direction: column-reverse;
+	.leftColumn{
+		padding: $contentPadding;
+	}
+	.filters{
+		background: $gray;
+		.filterFieldBlock{
+			padding: $contentPadding;
+			label{
+				display: block;
+				margin-bottom: $smallPadding;
+			}
+			input, select{
+				width: 100%;
+			}
+		}
+	}
+}
+
+.notMuchContent{
+	padding: 16px;
+}
+
+.clickableListItem{
+	border-bottom: solid 1px $wallPostSeparator;
+	padding: 16px;
+	color: $text;
+	&:last-child{
+		border-bottom: none;
+	}
+}
+
+.aBunchOfButtons{
+	display: flex;
+	flex-wrap: wrap;
+	margin-bottom: -8px;
+	>*{
+		margin: 0 8px 8px 0;
+	}
+}
+
+.secondaryTabBar{
+	background: $gray;
+	border-bottom: solid 1px #dde6c7;
+	padding: 16px;
+	display: flex;
+	flex-wrap: wrap;
+	a{
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		overflow: hidden;
+		margin-right: 8px;
+		padding: 4px 8px;
+		border-radius: 3px;
+		&.selected{
+			background: $tabBackground;
+			color: #fff;
+		}
 	}
 }

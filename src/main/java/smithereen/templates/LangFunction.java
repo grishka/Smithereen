@@ -22,7 +22,7 @@ public class LangFunction implements Function{
 
 		String key=(String) args.get("key");
 		if(args.size()==1){
-			return new SafeString(Lang.get(locale).get(key));
+			return new SafeString(nl2br(Lang.get(locale).get(key)));
 		}else{
 			if(!(args.get("vars") instanceof Map)){
 				throw new IllegalArgumentException("wrong arg types "+args);
@@ -32,9 +32,9 @@ public class LangFunction implements Function{
 			String formatted=Lang.get(locale).get(key, formatArgs);
 			if(args.get("links") instanceof Map links){
 				//noinspection unchecked
-				return new SafeString(Utils.substituteLinks(formatted, links));
+				return new SafeString(nl2br(Utils.substituteLinks(formatted, links)));
 			}else{
-				return new SafeString(formatted);
+				return new SafeString(nl2br(formatted));
 			}
 		}
 	}
@@ -42,5 +42,9 @@ public class LangFunction implements Function{
 	@Override
 	public List<String> getArgumentNames(){
 		return List.of("key", "vars", "links");
+	}
+
+	private String nl2br(String in){
+		return in.replace("\n", "<br/>");
 	}
 }

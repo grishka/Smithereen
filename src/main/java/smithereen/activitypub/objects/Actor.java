@@ -20,6 +20,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Collections;
 
@@ -46,7 +47,7 @@ public abstract class Actor extends ActivityPubObject{
 	public URI followers;
 	public URI following;
 	public URI collectionQueryEndpoint;
-	public Timestamp lastUpdated;
+	public Instant lastUpdated;
 
 	public String aboutSource;
 
@@ -179,8 +180,8 @@ public abstract class Actor extends ActivityPubObject{
 		JsonObject pkey=obj.getAsJsonObject("publicKey");
 		if(pkey==null)
 			throw new IllegalArgumentException("The actor is missing a public key (or @context in the actor object doesn't include the namespace \""+JLD.W3_SECURITY+"\")");
-		URI keyOwner=tryParseURL(pkey.get("owner").getAsString());
-		if(!keyOwner.equals(activityPubID))
+		URI keyOwner=tryParseURL(optString(pkey, "owner"));
+		if(keyOwner!=null && !keyOwner.equals(activityPubID))
 			throw new IllegalArgumentException("Key owner ("+keyOwner+") is not equal to user ID ("+activityPubID+")");
 		String pkeyEncoded=pkey.get("publicKeyPem").getAsString();
 		pkeyEncoded=pkeyEncoded.replaceAll("-----(BEGIN|END) (RSA )?PUBLIC KEY-----", "").replaceAll("[^A-Za-z0-9+/=]", "").trim();
@@ -340,7 +341,7 @@ public abstract class Actor extends ActivityPubObject{
 	}
 
 	public int getOwnerID(){
-		return 0;
+		throw new UnsupportedOperationException();
 	}
 
 	public static class EndpointsStorageWrapper{

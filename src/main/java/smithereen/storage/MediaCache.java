@@ -1,8 +1,5 @@
 package smithereen.storage;
 
-import com.google.gson.JsonParser;
-
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,37 +8,33 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Flow;
 
-import okhttp3.Call;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
 import smithereen.Config;
+import smithereen.LruCache;
+import smithereen.Utils;
+import smithereen.activitypub.ActivityPub;
+import smithereen.libvips.VipsImage;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
-import smithereen.util.DisallowLocalhostInterceptor;
-import smithereen.LruCache;
-import smithereen.Utils;
-import smithereen.activitypub.ParserContext;
-import smithereen.activitypub.objects.ActivityPubObject;
-import smithereen.activitypub.objects.Document;
-import smithereen.activitypub.objects.LocalImage;
-import smithereen.libvips.VipsImage;
-import smithereen.util.UserAgentInterceptor;
 
 public class MediaCache{
 	private static final Logger LOG=LoggerFactory.getLogger(MediaCache.class);
@@ -49,7 +42,6 @@ public class MediaCache{
 
 	private LruCache<String, Item> metaCache=new LruCache<>(500);
 	private ExecutorService asyncUpdater;
-	private OkHttpClient httpClient;
 	private long cacheSize=-1;
 	private final Object cacheSizeLock=new Object();
 
@@ -61,10 +53,6 @@ public class MediaCache{
 
 	private MediaCache(){
 		asyncUpdater=Executors.newFixedThreadPool(1);
-		httpClient=new OkHttpClient.Builder()
-				.addNetworkInterceptor(new DisallowLocalhostInterceptor())
-				.addNetworkInterceptor(new UserAgentInterceptor())
-				.build();
 		try{
 			updateTotalSize();
 		}catch(SQLException x){
@@ -126,29 +114,35 @@ public class MediaCache{
 		byte[] key=keyForURI(uri);
 		String keyHex=Utils.byteArrayToHexString(key);
 
-		Request req=new Request.Builder()
-				.url(uri.toString())
-				.build();
-		Call call=httpClient.newCall(req);
-		Response resp=call.execute();
-		if(!resp.isSuccessful()){
-			resp.body().close();
-			return null;
-		}
+		HttpRequest req=HttpRequest.newBuilder(uri).build();
 		Item result=null;
-		try(ResponseBody body=resp.body()){
-			if(body.contentLength()>Config.mediaCacheFileSizeLimit){
-				throw new IOException("File too large");
+		File tmp=File.createTempFile(keyHex, null);
+		try{
+			HttpResponse<Path> resp=ActivityPub.httpClient.send(req, responseInfo->{
+				if(responseInfo.headers().firstValueAsLong("content-length").orElse(Long.MAX_VALUE)>Config.mediaCacheFileSizeLimit)
+					return new HttpResponse.BodySubscriber<>(){
+						@Override
+						public CompletionStage<Path> getBody(){
+							return CompletableFuture.failedStage(new IOException("File too large"));
+						}
+
+						@Override
+						public void onSubscribe(Flow.Subscription subscription){}
+
+						@Override
+						public void onNext(List<ByteBuffer> item){}
+
+						@Override
+						public void onError(Throwable throwable){}
+
+						@Override
+						public void onComplete(){}
+					};
+				return HttpResponse.BodySubscribers.ofFile(tmp.toPath());
+			});
+			if(resp.statusCode()/100!=2){
+				return null;
 			}
-			File tmp=File.createTempFile(keyHex, null);
-			InputStream in=body.byteStream();
-			FileOutputStream out=new FileOutputStream(tmp);
-			int read;
-			byte[] buf=new byte[10240];
-			while((read=in.read(buf))>0){
-				out.write(buf, 0, read);
-			}
-			out.close();
 
 			if(!Config.mediaCachePath.exists()){
 				Config.mediaCachePath.mkdirs();
@@ -168,8 +162,9 @@ public class MediaCache{
 						img.release();
 						img=flat;
 					}
-					int[] size={0,0};
-					photo.totalSize=MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, lossless ? MediaStorageUtils.QUALITY_LOSSLESS : 93, keyHex, Config.mediaCachePath, size);
+					int[] size={0, 0};
+					File destination=new File(Config.mediaCachePath, keyHex+".webp");
+					photo.totalSize=MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, lossless ? MediaStorageUtils.QUALITY_LOSSLESS : 93, destination, size);
 					photo.width=size[0];
 					photo.height=size[1];
 					photo.key=keyHex;
@@ -181,7 +176,10 @@ public class MediaCache{
 						img.release();
 				}
 			}
-			tmp.delete();
+		}catch(InterruptedException ignored){
+		}finally{
+			if(tmp.exists())
+				tmp.delete();
 		}
 		//System.out.println("Total size: "+result.totalSize);
 		metaCache.put(keyHex, result);
@@ -213,58 +211,6 @@ public class MediaCache{
 			return MessageDigest.getInstance("MD5").digest(uri.toString().getBytes(StandardCharsets.UTF_8));
 		}catch(NoSuchAlgorithmException x){
 			throw new RuntimeException(x);
-		}
-	}
-
-	public static void putDraftAttachment(@NotNull LocalImage img, int ownerID) throws SQLException{
-		new SQLQueryBuilder()
-				.insertInto("draft_attachments")
-				.value("id", Utils.hexStringToByteArray(img.localID))
-				.value("owner_account_id", ownerID)
-				.value("info", MediaStorageUtils.serializeAttachment(img).toString())
-				.executeNoResult();
-	}
-
-	public static boolean deleteDraftAttachment(@NotNull String id, int ownerID) throws Exception{
-		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			String json=new SQLQueryBuilder(conn)
-					.selectFrom("draft_attachments")
-					.columns("info")
-					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
-					.executeAndGetSingleObject(r->r.getString(1));
-			if(json==null)
-				return false;
-
-			ActivityPubObject obj=ActivityPubObject.parse(JsonParser.parseString(json).getAsJsonObject(), ParserContext.LOCAL);
-			if(obj instanceof Document doc)
-				MediaStorageUtils.deleteAttachmentFiles(doc);
-
-			return new SQLQueryBuilder(conn)
-					.deleteFrom("draft_attachments")
-					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
-					.executeUpdate()==1;
-		}
-	}
-
-	public static ActivityPubObject getAndDeleteDraftAttachment(@NotNull String id, int ownerID, String dir) throws SQLException{
-		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			String json=new SQLQueryBuilder(conn)
-					.selectFrom("draft_attachments")
-					.columns("info")
-					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
-					.executeAndGetSingleObject(r->r.getString(1));
-			if(json==null)
-				return null;
-
-			ActivityPubObject obj=ActivityPubObject.parse(JsonParser.parseString(json).getAsJsonObject(), ParserContext.LOCAL);
-			if(obj instanceof LocalImage li && !dir.equals(li.path))
-				return null;
-
-			new SQLQueryBuilder(conn)
-					.deleteFrom("draft_attachments")
-					.where("id=? AND owner_account_id=?", Utils.hexStringToByteArray(id), ownerID)
-					.executeNoResult();
-			return obj;
 		}
 	}
 
@@ -359,7 +305,7 @@ public class MediaCache{
 									 break;
 							}
 						}
-						LOG.info("Deleting from media cache: {}", deletedKeys);
+						LOG.debug("Deleting from media cache: {}", deletedKeys);
 						if(!deletedKeys.isEmpty()){
 							conn.createStatement().execute("DELETE FROM `media_cache` WHERE `url_hash` IN ("+String.join(",", deletedKeys)+")");
 						}

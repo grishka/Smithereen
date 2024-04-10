@@ -21,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
@@ -44,12 +45,12 @@ import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.util.JsonArrayBuilder;
 import spark.utils.StringUtils;
 
 public abstract class ActivityPubObject{
-	private static final Logger LOG=LoggerFactory.getLogger(ActivityPubObject.class);
+	protected static final Logger LOG=LoggerFactory.getLogger(ActivityPubObject.class);
 
 	/*attachment | attributedTo | audience | content | context | name | endTime | generator | icon | image | inReplyTo | location | preview | published | replies | startTime | summary | tag | updated | url | to | bto | cc | bcc | mediaType | duration*/
 
@@ -199,15 +200,20 @@ public abstract class ActivityPubObject{
 		if(url==null || url.isEmpty())
 			return null;
 		try{
-			URI uri=new URI(url);
-			if("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()) || "as".equals(uri.getScheme()))
+			URI uri=UriBuilder.parseAndEncode(url);
+			if("https".equals(uri.getScheme()) || "as".equals(uri.getScheme())){
 				return uri;
+			}else if("http".equals(uri.getScheme())){
+				if(Config.useHTTP)
+					return uri;
+				return new UriBuilder(uri).scheme("https").build();
+			}
 			if("bear".equals(uri.getScheme())){
 				Map<String, String> params=UriBuilder.parseQueryString(uri.getRawQuery());
 				String token=params.get("t");
 				String _url=params.get("u");
 				if(StringUtils.isNotEmpty(token) && StringUtils.isNotEmpty(_url)){
-					URI actualURL=new URI(_url);
+					URI actualURL=UriBuilder.parseAndEncode(_url);
 					if("https".equals(actualURL.getScheme()) || "http".equals(actualURL.getScheme()))
 						return uri;
 				}

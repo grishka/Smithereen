@@ -14,11 +14,13 @@
 	<li><a href="/feed">{{L('menu_news')}}</a></li>
 	<li><a href="/my/notifications">{{L('menu_notifications')}}{{ menuCounter(userNotifications.newNotificationsCount) }}</a></li>
 	<li><a href="/settings/">{{L('menu_settings')}}</a></li>
-	{% if userPermissions.serverAccessLevel.ordinal>=2 %}
+	{% if userPermissions.role is not null %}
 	<li class="separator"></li>
-	{% if userPermissions.serverAccessLevel.ordinal>=3 %}<li><a href="/settings/admin">{{L('menu_admin')}}</a></li>{% endif %}
-	{% if serverSignupMode=='MANUAL_APPROVAL' or adminNotifications.signupRequestsCount>0 %}<li><a href="/settings/admin/signupRequests">{{ L('menu_signup_requests') }}{{ menuCounter(adminNotifications.signupRequestsCount) }}</a></li>{% endif %}
-	<li><a href="/settings/admin/reports">{{ L('menu_reports') }}{{ menuCounter(adminNotifications.openReportsCount) }}</a></li>
+	{% if userPermissions.hasAnyPermission(['MANAGE_SERVER_SETTINGS', 'MANAGE_SERVER_RULES', 'MANAGE_ROLES', 'VIEW_SERVER_AUDIT_LOG']) %}<li><a href="/settings/admin">{{L('menu_admin')}}</a></li>{% endif %}
+	{% if userPermissions.hasAnyPermission(['MANAGE_USERS', 'MANAGE_INVITES']) %}<li><a href="/settings/admin/users">{{ L('menu_users') }}</a></li>{% endif %}
+	{% if userPermissions.hasPermission('MANAGE_INVITES') and (serverSignupMode=='MANUAL_APPROVAL' or adminNotifications.signupRequestsCount>0) %}<li><a href="/settings/admin/signupRequests">{{ L('menu_signup_requests') }}{{ menuCounter(adminNotifications.signupRequestsCount) }}</a></li>{% endif %}
+	{% if userPermissions.hasPermission('MANAGE_REPORTS') %}<li><a href="/settings/admin/reports">{{ L('menu_reports') }}{{ menuCounter(adminNotifications.openReportsCount) }}</a></li>{% endif %}
+	{% if userPermissions.hasAnyPermission(['MANAGE_FEDERATION', 'MANAGE_BLOCKING_RULES']) %}<li><a href="/settings/admin/federation">{{ L('menu_access') }}</a></li>{% endif %}
 	{% endif %}
 	{% else %}
 	<li><a href="/account/login">{{ L('log_in') }}</a></li>

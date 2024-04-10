@@ -1,37 +1,38 @@
 package smithereen.activitypub.objects;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import java.net.URI;
-import java.util.Objects;
 
-import smithereen.Config;
-import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
+import smithereen.activitypub.SerializerContext;
 import smithereen.model.SizedImage;
+import smithereen.model.media.MediaFileRecord;
+import smithereen.model.media.MediaFileType;
 import smithereen.storage.ImgProxy;
+import smithereen.storage.media.MediaFileStorageDriver;
 
 public class LocalImage extends Image implements SizedImage{
-	public String path;
 	public Dimensions size=Dimensions.UNKNOWN;
+	public long fileID;
+	public MediaFileRecord fileRecord;
 
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
-		localID=obj.get("_lid").getAsString();
-		JsonArray s=obj.getAsJsonArray("_sz");
-		path=Objects.requireNonNullElse(optString(obj, "_p"), "post_media");
-		width=s.get(0).getAsInt();
-		height=s.get(1).getAsInt();
-		size=new Dimensions(width, height);
+		if(obj.has("_fileID"))
+			fileID=obj.get("_fileID").getAsLong();
 		return this;
 	}
 
 	@Override
 	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
 		obj=super.asActivityPubObject(obj, serializerContext);
-		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalUploads+"/"+path+"/"+localID+".webp")
+		if(fileRecord==null){
+			LOG.warn("Tried to serialize a LocalImage with fileRecord not set (file ID {})", fileID);
+			return obj;
+		}
+		ImgProxy.UrlBuilder builder=MediaFileStorageDriver.getInstance().getImgProxyURL(fileRecord.id())
 				.format(isGraffiti ? SizedImage.Format.PNG : SizedImage.Format.JPEG);
 		int croppedWidth=width, croppedHeight=height;
 		if(cropRegion!=null){
@@ -46,7 +47,7 @@ public class LocalImage extends Image implements SizedImage{
 			Image im=new Image();
 			im.width=width;
 			im.height=height;
-			im.url=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalUploads+"/"+path+"/"+localID+".webp")
+			im.url=MediaFileStorageDriver.getInstance().getImgProxyURL(fileRecord.id())
 					.format(SizedImage.Format.JPEG)
 					.build();
 			im.mediaType="image/jpeg";
@@ -59,7 +60,11 @@ public class LocalImage extends Image implements SizedImage{
 
 	@Override
 	public URI getUriForSizeAndFormat(Type size, Format format){
-		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalUploads+"/"+path+"/"+localID+".webp")
+		if(fileRecord==null){
+			LOG.warn("Tried to get a URL for a LocalImage with fileRecord not set (file ID {})", fileID);
+			return null;
+		}
+		ImgProxy.UrlBuilder builder=MediaFileStorageDriver.getInstance().getImgProxyURL(fileRecord.id())
 				.format(format)
 				.resize(size.getResizingType(), size.getMaxWidth(), size.getMaxHeight(), false, false);
 		if(cropRegion!=null && size.getResizingType()==ImgProxy.ResizingType.FILL){
@@ -73,5 +78,23 @@ public class LocalImage extends Image implements SizedImage{
 	@Override
 	public Dimensions getOriginalDimensions(){
 		return size;
+	}
+
+	public void fillIn(MediaFileRecord mfr){
+		fileRecord=mfr;
+		width=mfr.metadata().width();
+		height=mfr.metadata().height();
+		size=new Dimensions(width, height);
+		cropRegion=mfr.metadata().cropRegion();
+		blurHash=mfr.metadata().blurhash();
+		isGraffiti=mfr.id().type()==MediaFileType.IMAGE_GRAFFITI;
+	}
+
+	public String getLocalID(){
+		if(fileRecord==null){
+			LOG.warn("Tried to get a local ID for a LocalImage with fileRecord not set (file ID {})", fileID);
+			return null;
+		}
+		return fileRecord.id().getIDForClient();
 	}
 }

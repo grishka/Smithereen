@@ -31,8 +31,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.UserPermissions;
+import smithereen.model.UserRole;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
@@ -66,6 +70,9 @@ public class Config{
 
 	private static URI localURI;
 
+	public static StorageBackend storageBackend;
+	public static S3Configuration s3Configuration;
+
 	// following fields are kept in the config table in database and some are configurable from /settings/admin
 
 	public static int dbSchemaVersion;
@@ -90,13 +97,15 @@ public class Config{
 	public static byte[] objectIdObfuscationKey;
 	public static int[][] objectIdObfuscationKeysByType=new int[ObfuscatedObjectIDType.values().length][];
 
+	public static Map<Integer, UserRole> userRoles=new HashMap<>();
+
 	private static final Logger LOG=LoggerFactory.getLogger(Config.class);
 
 	public static void load(String filePath) throws IOException{
-		FileInputStream in=new FileInputStream(filePath);
 		Properties props=new Properties();
-		props.load(in);
-		in.close();
+		try(FileInputStream in=new FileInputStream(filePath)){
+			props.load(in);
+		}
 
 		dbHost=props.getProperty("db.host");
 		dbUser=props.getProperty("db.user");
@@ -124,6 +133,30 @@ public class Config{
 		imgproxySalt=Utils.hexStringToByteArray(props.getProperty("imgproxy.salt"));
 		if(imgproxyUrl.charAt(0)!='/')
 			imgproxyUrl='/'+imgproxyUrl;
+
+		storageBackend=switch(props.getProperty("upload.backend", "local")){
+			case "local" -> StorageBackend.LOCAL;
+			case "s3" -> StorageBackend.S3;
+			default -> throw new IllegalStateException("Unexpected value for `upload.backend`: " + props.getProperty("upload.backend"));
+		};
+
+		if(storageBackend==StorageBackend.S3){
+			s3Configuration=new S3Configuration(
+					requireProperty(props, "upload.s3.key_id"),
+					requireProperty(props, "upload.s3.secret_key"),
+					props.getProperty("upload.s3.endpoint"),
+					props.getProperty("upload.s3.region", "us-east-1"),
+					requireProperty(props, "upload.s3.bucket"),
+					switch(props.getProperty("upload.s3.protocol", "https")){
+						case "http" -> "http";
+						case "https" -> "https";
+						default -> throw new IllegalArgumentException("`upload.s3.protocol` must be either \"https\" or \"http\"");
+					},
+					props.getProperty("upload.s3.hostname"),
+					props.getProperty("upload.s3.alias_host"),
+					Boolean.parseBoolean(props.getProperty("upload.s3.override_path_style", "false"))
+			);
+		}
 	}
 
 	public static void loadFromDatabase() throws SQLException{
@@ -245,10 +278,33 @@ public class Config{
 		return StringUtils.isNotEmpty(serverDisplayName) ? serverDisplayName : domain;
 	}
 
+	public static void reloadRoles() throws SQLException{
+		userRoles.clear();
+		userRoles=new SQLQueryBuilder()
+				.selectFrom("user_roles")
+				.allColumns()
+				.executeAsStream(UserRole::fromResultSet)
+				.collect(Collectors.toMap(UserRole::id, Function.identity()));
+	}
+
+	private static String requireProperty(Properties props, String name){
+		String value=props.getProperty(name);
+		if(value==null)
+			throw new IllegalArgumentException("Config property `"+name+"` is required");
+		return value;
+	}
+
 	public enum SignupMode{
 		OPEN,
 		CLOSED,
 		INVITE_ONLY,
 		MANUAL_APPROVAL
 	}
+
+	public enum StorageBackend{
+		LOCAL,
+		S3
+	}
+
+	public record S3Configuration(String keyID, String secretKey, String endpoint, String region, String bucket, String protocol, String hostname, String aliasHost, boolean overridePathStyle){}
 }

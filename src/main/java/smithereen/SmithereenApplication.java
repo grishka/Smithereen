@@ -7,32 +7,45 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpSessionEvent;
+import jakarta.servlet.http.HttpSessionListener;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.controllers.MailController;
+import smithereen.controllers.UsersController;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FloodControlViolationException;
+import smithereen.exceptions.InaccessibleProfileException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserContentUnavailableException;
+import smithereen.exceptions.UserErrorException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.User;
+import smithereen.model.UserBanStatus;
+import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.FloodControlViolationException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.exceptions.UserContentUnavailableException;
-import smithereen.exceptions.UserErrorException;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
 import smithereen.routes.FriendsRoutes;
@@ -43,14 +56,15 @@ import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
 import smithereen.routes.SettingsAdminRoutes;
+import smithereen.routes.SettingsRoutes;
 import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
 import smithereen.sparkext.ActivityPubCollectionPageResponse;
 import smithereen.sparkext.ExtendedStreamingSerializer;
 import smithereen.storage.DatabaseSchemaUpdater;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
-import smithereen.routes.SettingsRoutes;
 import smithereen.storage.UserStorage;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.templates.RenderedTemplateResponse;
@@ -62,16 +76,18 @@ import smithereen.util.TopLevelDomainList;
 import spark.Filter;
 import spark.Request;
 import spark.Response;
-import spark.Spark;
+import spark.Session;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.randomAlphanumericString;
-import static spark.Spark.*;
+import static smithereen.Utils.*;
 import static smithereen.sparkext.SparkExtension.*;
+import static spark.Spark.*;
 
 public class SmithereenApplication{
 	private static final Logger LOG;
 	private static final ApplicationContext context;
+	private static HashMap<String, Integer> accountIdsBySession=new HashMap<>();
+	private static HashMap<Integer, Set<HttpSession>> sessionsByAccount=new HashMap<>();
 
 	static{
 		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
@@ -102,6 +118,7 @@ public class SmithereenApplication{
 			Config.load(args[0]);
 			Config.loadFromDatabase();
 			DatabaseSchemaUpdater.maybeUpdate();
+			Config.reloadRoles();
 		}catch(IOException|SQLException x){
 			throw new RuntimeException(x);
 		}
@@ -120,6 +137,7 @@ public class SmithereenApplication{
 
 		ipAddress(Config.serverIP);
 		port(Config.serverPort);
+		useVirtualThreadPool();
 		if(Config.staticFilesPath!=null)
 			externalStaticFileLocation(Config.staticFilesPath);
 		else
@@ -131,24 +149,52 @@ public class SmithereenApplication{
 			if(request.pathInfo().startsWith("/api/"))
 				return;
 			request.attribute("start_time", System.currentTimeMillis());
-			if(request.session(false)==null || request.session().attribute("info")==null){
+			Session session=request.session(false);
+			if(session==null || session.attribute("info")==null){
 				String psid=request.cookie("psid");
 				if(psid!=null){
 					if(!SessionStorage.fillSession(psid, request.session(true), request)){
 						response.removeCookie("/", "psid");
 					}else{
 						response.cookie("/", "psid", psid, 10*365*24*60*60, false);
+						SessionInfo info=sessionInfo(request);
+						if(info.account!=null){
+							synchronized(SmithereenApplication.class){
+								accountIdsBySession.put(request.session().id(), info.account.id);
+								sessionsByAccount.computeIfAbsent(info.account.id, HashSet::new).add(request.session().raw());
+							}
+						}
 					}
 				}
 			}
-			SessionInfo info=Utils.sessionInfo(request);
+			SessionInfo info=sessionInfo(request);
 			if(info!=null && info.account!=null){
 				info.account=UserStorage.getAccount(info.account.id);
-				info.permissions=SessionStorage.getUserPermissions(info.account);
+				if(info.account==null){
+					response.removeCookie("/", "psid");
+					request.session().invalidate();
+				}else{
+					info.permissions=SessionStorage.getUserPermissions(info.account);
 
-				if(System.currentTimeMillis()-info.account.lastActive.toEpochMilli()>=10*60*1000){
-					info.account.lastActive=Instant.now();
-					SessionStorage.setLastActive(info.account.id, request.cookie("psid"), info.account.lastActive);
+					String ua=Objects.requireNonNull(request.userAgent(), "");
+					long uaHash=hashUserAgent(ua);
+					InetAddress ip=getRequestIP(request);
+					if(System.currentTimeMillis()-info.account.lastActive.toEpochMilli()>=10*60*1000 || !Objects.equals(info.account.lastIP, ip) || !Objects.equals(info.ip, ip) || info.userAgentHash!=uaHash){
+						info.account.lastActive=Instant.now();
+						info.userAgentHash=uaHash;
+						info.ip=ip;
+						BackgroundTaskRunner.getInstance().submit(()->{
+							try{
+								SessionStorage.setLastActive(info.account.id, request.cookie("psid"), info.account.lastActive, ip, ua, uaHash);
+							}catch(SQLException x){
+								LOG.warn("Error updating account session", x);
+							}
+						});
+					}
+				}
+			}else{
+				if(session!=null && session.attribute("bannedBot")!=null){
+					throw new UserActionNotAllowedException();
 				}
 			}
 //			String hs="";
@@ -159,10 +205,11 @@ public class SmithereenApplication{
 				request.attribute("popup", Boolean.TRUE);
 			}
 			String ua=request.userAgent();
-			if(StringUtils.isNotEmpty(ua) && Utils.isMobileUserAgent(ua)){
+			if(StringUtils.isNotEmpty(ua) && isMobileUserAgent(ua)){
 				request.attribute("mobile", Boolean.TRUE);
 			}
 		});
+		before(SmithereenApplication::enforceAccountLimitationsIfAny);
 
 		get("/", SmithereenApplication::indexPage);
 
@@ -186,6 +233,11 @@ public class SmithereenApplication{
 			postWithCSRF("/changeEmail", SessionRoutes::changeEmail);
 			getLoggedIn("/activate", SessionRoutes::activateAccount);
 			post("/requestInvite", SessionRoutes::requestSignupInvite);
+			getLoggedIn("/unfreezeBox", SessionRoutes::unfreezeBox);
+			postWithCSRF("/unfreeze", SessionRoutes::unfreeze);
+			postWithCSRF("/unfreezeChangePassword", SessionRoutes::unfreezeChangePassword);
+			getLoggedIn("/reactivateBox", SessionRoutes::reactivateBox);
+			postWithCSRF("/reactivate", SessionRoutes::reactivate);
 		});
 
 		path("/settings", ()->{
@@ -223,32 +275,87 @@ public class SmithereenApplication{
 			getLoggedIn("/privacy", SettingsRoutes::privacySettings);
 			postWithCSRF("/privacy", SettingsRoutes::savePrivacySettings);
 			getLoggedIn("/privacy/mobileEditSetting", SettingsRoutes::mobileEditPrivacy);
+			getLoggedIn("/deactivateAccountForm", SettingsRoutes::deactivateAccountForm);
+			postWithCSRF("/deactivateAccount", SettingsRoutes::deactivateAccount);
 
 			path("/admin", ()->{
-				getRequiringAccessLevel("", Account.AccessLevel.ADMIN, SettingsAdminRoutes::index);
-				postRequiringAccessLevelWithCSRF("/updateServerInfo", Account.AccessLevel.ADMIN, SettingsAdminRoutes::updateServerInfo);
-				getRequiringAccessLevel("/users", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::users);
-				getRequiringAccessLevel("/users/accessLevelForm", Account.AccessLevel.ADMIN, SettingsAdminRoutes::accessLevelForm);
-				postRequiringAccessLevelWithCSRF("/users/setAccessLevel", Account.AccessLevel.ADMIN, SettingsAdminRoutes::setUserAccessLevel);
-				getRequiringAccessLevel("/other", Account.AccessLevel.ADMIN, SettingsAdminRoutes::otherSettings);
-				postRequiringAccessLevelWithCSRF("/updateEmailSettings", Account.AccessLevel.ADMIN, SettingsAdminRoutes::saveEmailSettings);
-				postRequiringAccessLevelWithCSRF("/sendTestEmail", Account.AccessLevel.ADMIN, SettingsAdminRoutes::sendTestEmail);
-				getRequiringAccessLevel("/users/banForm", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::banUserForm);
-				getRequiringAccessLevel("/users/confirmUnban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::confirmUnbanUser);
-				getRequiringAccessLevel("/users/confirmActivate", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::confirmActivateAccount);
-				postRequiringAccessLevelWithCSRF("/users/ban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::banUser);
-				postRequiringAccessLevelWithCSRF("/users/unban", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::unbanUser);
-				postRequiringAccessLevelWithCSRF("/users/activate", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::activateAccount);
-				getRequiringAccessLevel("/signupRequests", Account.AccessLevel.ADMIN, SettingsAdminRoutes::signupRequests);
-				postRequiringAccessLevelWithCSRF("/signupRequests/:id/respond", Account.AccessLevel.ADMIN, SettingsAdminRoutes::respondToSignupRequest);
-				getRequiringAccessLevel("/reports", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportsList);
-				postRequiringAccessLevelWithCSRF("/reports/:id", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportAction);
-				postRequiringAccessLevelWithCSRF("/reports/:id/doAddCW", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::reportAddCW);
-				getRequiringAccessLevel("/federation", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerList);
-				getRequiringAccessLevel("/federation/:domain", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerDetails);
-				getRequiringAccessLevel("/federation/:domain/restrictionForm", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationServerRestrictionForm);
-				postRequiringAccessLevelWithCSRF("/federation/:domain/restrict", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationRestrictServer);
-				getRequiringAccessLevelWithCSRF("/federation/:domain/resetAvailability", Account.AccessLevel.MODERATOR, SettingsAdminRoutes::federationResetServerAvailability);
+				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);
+				postRequiringPermissionWithCSRF("/updateServerInfo", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::updateServerInfo);
+				path("/users", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::users);
+					getRequiringPermission("/roleForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::roleForm);
+					postRequiringPermissionWithCSRF("/setRole", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::setUserRole);
+					getRequiringPermission("/banForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUserForm);
+					getRequiringPermission("/confirmActivate", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::confirmActivateAccount);
+					postRequiringPermissionWithCSRF("/activate", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::activateAccount);
+					getRequiringPermission("/changeEmailForm", UserRole.Permission.MANAGE_USER_ACCESS, SettingsAdminRoutes::changeUserEmailForm);
+					postRequiringPermissionWithCSRF("/changeEmail", UserRole.Permission.MANAGE_USER_ACCESS, SettingsAdminRoutes::changeUserEmail);
+					getRequiringPermissionWithCSRF("/endSession", UserRole.Permission.MANAGE_USER_ACCESS, SettingsAdminRoutes::endUserSession);
+				});
+				path("/reports", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportsList);
+					path("/:id", ()->{
+						getRequiringPermission("", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::viewReport);
+						getRequiringPermissionWithCSRF("/markResolved", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportMarkResolved);
+						getRequiringPermissionWithCSRF("/markUnresolved", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportMarkUnresolved);
+						postRequiringPermissionWithCSRF("/addComment", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportAddComment);
+						getRequiringPermission("/content/:index", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportShowContent);
+						getRequiringPermission("/deleteContentForm", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportConfirmDeleteContent);
+						postRequiringPermissionWithCSRF("/deleteContent", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportDeleteContent);
+					});
+				});
+				path("/federation", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerList);
+					getRequiringPermission("/:domain", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerDetails);
+					getRequiringPermission("/:domain/restrictionForm", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationServerRestrictionForm);
+					postRequiringPermissionWithCSRF("/:domain/restrict", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationRestrictServer);
+					getRequiringPermissionWithCSRF("/:domain/resetAvailability", UserRole.Permission.MANAGE_FEDERATION, SettingsAdminRoutes::federationResetServerAvailability);
+				});
+				path("/roles", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::roles);
+					getRequiringPermission("/create", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::createRoleForm);
+					postRequiringPermissionWithCSRF("/create", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::saveRole);
+					getRequiringPermission("/:id", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::editRole);
+					postRequiringPermissionWithCSRF("/:id", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::saveRole);
+					postRequiringPermissionWithCSRF("/:id/delete", UserRole.Permission.MANAGE_ROLES, SettingsAdminRoutes::deleteRole);
+				});
+				path("/signupRequests", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::signupRequests);
+					postRequiringPermissionWithCSRF("/:id/respond", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::respondToSignupRequest);
+				});
+				getRequiringPermission("/other", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::otherSettings);
+				postRequiringPermissionWithCSRF("/updateEmailSettings", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::saveEmailSettings);
+				postRequiringPermissionWithCSRF("/sendTestEmail", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::sendTestEmail);
+				getRequiringPermission("/auditLog", UserRole.Permission.VIEW_SERVER_AUDIT_LOG, SettingsAdminRoutes::auditLog);
+				path("/emailRules", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRules);
+					getRequiringPermission("/createForm", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleCreateForm);
+					postRequiringPermissionWithCSRF("/create", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleCreate);
+					path("/:domain", ()->{
+						getRequiringPermission("/edit", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleEdit);
+						postRequiringPermissionWithCSRF("/update", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleUpdate);
+						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleConfirmDelete);
+						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::emailDomainRuleDelete);
+					});
+				});
+				path("/ipRules", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRules);
+					getRequiringPermission("/createForm", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleCreateForm);
+					postRequiringPermissionWithCSRF("/create", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleCreate);
+					path("/:id", ()->{
+						getRequiringPermission("/edit", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleEdit);
+						postRequiringPermissionWithCSRF("/update", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleUpdate);
+						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleConfirmDelete);
+						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_BLOCKING_RULES, SettingsAdminRoutes::ipRuleDelete);
+					});
+				});
+				path("/invites", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::invites);
+					path("/:id", ()->{
+						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::confirmDeleteInvite);
+						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::deleteInvite);
+					});
+				});
 			});
 		});
 
@@ -283,7 +390,6 @@ public class SmithereenApplication{
 
 		path("/system", ()->{
 			get("/downloadExternalMedia", SystemRoutes::downloadExternalMedia);
-			getWithCSRF("/deleteDraftAttachment", SystemRoutes::deleteDraftAttachment);
 			path("/upload", ()->{
 				postWithCSRF("/postPhoto", SystemRoutes::uploadPostPhoto);
 				postWithCSRF("/messagePhoto", SystemRoutes::uploadMessagePhoto);
@@ -295,12 +401,19 @@ public class SmithereenApplication{
 			getLoggedIn("/reportForm", SystemRoutes::reportForm);
 			postWithCSRF("/submitReport", SystemRoutes::submitReport);
 			get("/captcha", SystemRoutes::captcha);
+			if(Config.DEBUG){
+				path("/debug", ()->{
+					get("/deleteAbandonedFilesNow", (req, resp)->{
+						MediaStorageUtils.deleteAbandonedFiles();
+						return "ok";
+					});
+				});
+			}
 		});
 
 		path("/users/:id", ()->{
-			getActivityPub("", ActivityPubRoutes::userActor);
 			get("", (req, resp)->{
-				int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+				int id=parseIntOrDefault(req.params(":id"), 0);
 				User user=UserStorage.getById(id);
 				if(user==null || user instanceof ForeignUser){
 					throw new ObjectNotFoundException("err_user_not_found");
@@ -309,6 +422,7 @@ public class SmithereenApplication{
 				}
 				return "";
 			});
+			getActivityPub("", ActivityPubRoutes::userActor);
 
 			post("/inbox", ActivityPubRoutes::userInbox);
 			get("/inbox", SmithereenApplication::methodNotAllowed);
@@ -347,16 +461,25 @@ public class SmithereenApplication{
 			postWithCSRF("/doRemoveFriend", FriendsRoutes::doRemoveFriend);
 			getLoggedIn("/confirmRemoveFriend", FriendsRoutes::confirmRemoveFriend);
 
-			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncRelationshipsCollections);
-			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, ProfileRoutes::syncContentCollections);
-			getRequiringAccessLevelWithCSRF("/syncProfile", Account.AccessLevel.ADMIN, ProfileRoutes::syncProfile);
+			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncRelationshipsCollections);
+			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncContentCollections);
+			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncProfile);
+			getRequiringPermission("/meminfo", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userInfo);
+			getRequiringPermission("/banForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUserForm);
+			postRequiringPermissionWithCSRF("/ban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUser);
+			getRequiringPermission("/deleteImmediatelyForm", UserRole.Permission.DELETE_USERS_IMMEDIATE, SettingsAdminRoutes::deleteAccountImmediatelyForm);
+			postRequiringPermissionWithCSRF("/deleteImmediately", UserRole.Permission.DELETE_USERS_IMMEDIATE, SettingsAdminRoutes::deleteAccountImmediately);
+			getRequiringPermission("/reports", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportsOfUser);
+			getRequiringPermission("/reports/authored", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportsByUser);
+			getRequiringPermission("/staffNotes", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNotes);
+			postRequiringPermissionWithCSRF("/addStaffNote", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteAdd);
+			getRequiringPermission("/staffNotes/:noteID/confirmDelete", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteConfirmDelete);
+			postRequiringPermissionWithCSRF("/staffNotes/:noteID/delete", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteDelete);
 		});
 
 		path("/groups/:id", ()->{
-			get("", "application/activity+json", ActivityPubRoutes::groupActor);
-			get("", "application/ld+json", ActivityPubRoutes::groupActor);
 			get("", (req, resp)->{
-				int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+				int id=parseIntOrDefault(req.params(":id"), 0);
 				Group group=GroupStorage.getById(id);
 				if(group==null || group instanceof ForeignGroup){
 					throw new ObjectNotFoundException("err_group_not_found");
@@ -365,6 +488,8 @@ public class SmithereenApplication{
 				}
 				return "";
 			});
+			get("", "application/activity+json", ActivityPubRoutes::groupActor);
+			get("", "application/ld+json", ActivityPubRoutes::groupActor);
 
 			postWithCSRF("/createWallPost", PostRoutes::createGroupWallPost);
 
@@ -417,15 +542,15 @@ public class SmithereenApplication{
 			getWithCSRF("/invite", GroupsRoutes::inviteFriend);
 			postWithCSRF("/respondToInvite", GroupsRoutes::respondToInvite);
 
-			getRequiringAccessLevelWithCSRF("/syncRelCollections", Account.AccessLevel.ADMIN, GroupsRoutes::syncRelationshipsCollections);
-			getRequiringAccessLevelWithCSRF("/syncContentCollections", Account.AccessLevel.ADMIN, GroupsRoutes::syncContentCollections);
-			getRequiringAccessLevelWithCSRF("/syncProfile", Account.AccessLevel.ADMIN, GroupsRoutes::syncProfile);
+			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncRelationshipsCollections);
+			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncContentCollections);
+			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncProfile);
 		});
 
 		path("/posts/:postID", ()->{
+			get("", PostRoutes::standalonePost);
 			getActivityPub("", ActivityPubRoutes::post);
 			get("/activityCreate", ActivityPubRoutes::postCreateActivity);
-			get("", PostRoutes::standalonePost);
 
 			getLoggedIn("/confirmDelete", PostRoutes::confirmDelete);
 			postWithCSRF("/delete", PostRoutes::delete);
@@ -481,7 +606,7 @@ public class SmithereenApplication{
 				getLoggedIn("/history", MailRoutes::history);
 				path("/messages/:id", ()->{
 					Filter idParserFilter=(req, resp)->{
-						long id=Utils.decodeLong(req.params(":id"));
+						long id=decodeLong(req.params(":id"));
 						if(id==0)
 							throw new ObjectNotFoundException();
 						req.attribute("id", id);
@@ -508,9 +633,9 @@ public class SmithereenApplication{
 		get("/healthz", (req, resp)->"");
 
 		path("/:username", ()->{
+			get("", ProfileRoutes::profile);
 			// These also handle groups
 			getActivityPub("", ActivityPubRoutes::userActor);
-			get("", ProfileRoutes::profile);
 
 			postWithCSRF("/remoteFollow", ActivityPubRoutes::remoteFollow);
 		});
@@ -518,7 +643,7 @@ public class SmithereenApplication{
 
 		exception(ObjectNotFoundException.class, (x, req, resp)->{
 			resp.status(404);
-			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_not_found")));
+			resp.body(wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_not_found")));
 		});
 		exception(UserActionNotAllowedException.class, (x, req, resp)->{
 			if(Config.DEBUG)
@@ -530,7 +655,7 @@ public class SmithereenApplication{
 			}else{
 				key="err_access";
 			}
-			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), key)));
+			resp.body(wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), key)));
 		});
 		exception(BadRequestException.class, (x, req, resp)->{
 			if(Config.DEBUG)
@@ -544,10 +669,15 @@ public class SmithereenApplication{
 		});
 		exception(FloodControlViolationException.class, (x, req, resp)->{
 			resp.status(429);
-			resp.body(Utils.wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
+			resp.body(wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
 		});
 		exception(UserErrorException.class, (x, req, resp)->{
-			resp.body(Utils.wrapErrorString(req, resp, x.getMessage()));
+			resp.body(wrapErrorString(req, resp, x.getMessage()));
+		});
+		exception(InaccessibleProfileException.class, (x, req, resp)->{
+			RenderedTemplateResponse model=new RenderedTemplateResponse("hidden_profile", req);
+			model.with("user", x.user);
+			resp.body(model.renderToString());
 		});
 		exception(Exception.class, (exception, req, res) -> {
 			LOG.warn("Exception while processing {} {}", req.requestMethod(), req.raw().getPathInfo(), exception);
@@ -563,7 +693,7 @@ public class SmithereenApplication{
 				long t=(long)l;
 				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
 			}
-			if(req.attribute("isTemplate")!=null && !Utils.isAjax(req)){
+			if(req.attribute("isTemplate")!=null && !isAjax(req)){
 				String cssName=req.attribute("mobile")!=null ? "mobile.css" : "desktop.css";
 				resp.header("Link", "</res/"+cssName+"?"+Templates.getStaticFileVersion(cssName)+">; rel=preload; as=style, </res/common.js?"+Templates.getStaticFileVersion("common.js")+">; rel=preload; as=script");
 				resp.header("Vary", "User-Agent, Accept-Language");
@@ -593,11 +723,11 @@ public class SmithereenApplication{
 		responseTypeSerializer(ActivityPubObject.class, (out, obj, req, resp) -> {
 			resp.type(ActivityPub.CONTENT_TYPE);
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
-			Utils.gson.toJson(obj.asRootActivityPubObject(Utils.context(req), ()->{
+			gson.toJson(obj.asRootActivityPubObject(context(req), ()->{
 				if(req.headers("signature")!=null){
 					try{
 						Actor requester=ActivityPub.verifyHttpSignature(req, null);
-						Utils.context(req).getObjectLinkResolver().storeOrUpdateRemoteObject(requester);
+						context(req).getObjectLinkResolver().storeOrUpdateRemoteObject(requester);
 						String requesterDomain=requester.domain;
 						LOG.trace("Requester domain for {} is {}", req.pathInfo(), requesterDomain);
 						return requesterDomain;
@@ -618,8 +748,26 @@ public class SmithereenApplication{
 
 		responseTypeSerializer(WebDeltaResponse.class, (out, obj, req, resp) -> {
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
-			Utils.gson.toJson(obj.commands(), writer);
+			gson.toJson(obj.commands(), writer);
 			writer.flush();
+		});
+
+		addServletEventListener(new HttpSessionListener(){
+			@Override
+			public void sessionDestroyed(HttpSessionEvent se){
+				synchronized(SmithereenApplication.class){
+					String sid=se.getSession().getId();
+					int accountID=accountIdsBySession.getOrDefault(sid, 0);
+					if(accountID==0)
+						return;
+					Set<HttpSession> sessions=sessionsByAccount.get(accountID);
+					if(sessions==null)
+						return;
+					sessions.remove(se.getSession());
+					if(sessions.isEmpty())
+						sessionsByAccount.remove(accountID);
+				}
+			}
 		});
 
 		MaintenanceScheduler.runDaily(()->{
@@ -631,10 +779,12 @@ public class SmithereenApplication{
 		});
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(MediaStorageUtils::deleteAbandonedFiles, 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(UsersController::doPendingAccountDeletions, 1, TimeUnit.DAYS);
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
 			LOG.info("Stopping Spark");
-			Spark.awaitStop();
+			awaitStop();
 			LOG.info("Stopped Spark");
 			// These try-catch blocks are needed because these classes might not have been loaded by the time the process is shut down,
 			// and the JVM refuses to load any new classes from within a shutdown hook.
@@ -653,17 +803,18 @@ public class SmithereenApplication{
 	}
 
 	private static Object indexPage(Request req, Response resp){
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		if(info!=null && info.account!=null){
 			resp.redirect("/feed");
 			return "";
 		}
+		Config.SignupMode signupMode=context(req).getModerationController().getEffectiveSignupMode(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("index", req).with("title", Config.serverDisplayName)
-				.with("signupMode", Config.signupMode)
+				.with("signupMode", signupMode)
 				.with("serverDisplayName", Config.serverDisplayName)
 				.with("serverDescription", Config.serverDescription)
-				.addNavBarItem(Utils.lang(req).get("index_welcome"));
-		if((Config.signupMode==Config.SignupMode.OPEN || Config.signupMode==Config.SignupMode.MANUAL_APPROVAL) && Config.signupFormUseCaptcha){
+				.addNavBarItem(lang(req).get("index_welcome"));
+		if((signupMode==Config.SignupMode.OPEN || signupMode==Config.SignupMode.MANUAL_APPROVAL) && Config.signupFormUseCaptcha){
 			model.with("captchaSid", randomAlphanumericString(16));
 		}
 		return model;
@@ -676,5 +827,67 @@ public class SmithereenApplication{
 
 	private static void setupCustomSerializer(){
 		getSerializerChain().insertBeforeRoot(new ExtendedStreamingSerializer());
+	}
+
+	private static boolean isAllowedForRestrictedAccounts(Request req){
+		String path=req.pathInfo();
+		return Set.of(
+				"/account/logout",
+				"/account/resendConfirmationEmail",
+				"/account/changeEmailForm",
+				"/account/changeEmail",
+				"/account/activate",
+				"/account/unfreezeBox",
+				"/account/unfreeze",
+				"/account/unfreezeChangePassword",
+				"/account/reactivateBox",
+				"/account/reactivate"
+		).contains(path);
+	}
+
+	private static void enforceAccountLimitationsIfAny(Request req, Response resp){
+		if(isAllowedForRestrictedAccounts(req))
+			return;
+		SessionInfo info=sessionInfo(req);
+		if(info!=null && info.account!=null){
+			Account acc=info.account;
+			// Mandatory email confirmation
+			if(acc.activationInfo!=null && acc.activationInfo.emailState==Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED){
+				Lang l=lang(req);
+				halt(new RenderedTemplateResponse("email_confirm_required", req).with("email", acc.email).pageTitle(l.get("account_activation")).renderToString());
+				return;
+			}
+			// Account ban or self-deactivation
+			UserBanStatus status=info.account.user.banStatus;
+			if(status==UserBanStatus.NONE || status==UserBanStatus.HIDDEN)
+				return;
+			Lang l=lang(req);
+			RenderedTemplateResponse model=new RenderedTemplateResponse("account_banned", req);
+			model.pageTitle(l.get(switch(status){
+				case FROZEN -> "account_frozen";
+				case SUSPENDED -> "account_suspended";
+				case SELF_DEACTIVATED -> "account_deactivated";
+				default -> throw new IllegalStateException("Unexpected value: " + status);
+			}));
+			model.with("status", status).with("banInfo", acc.user.banInfo).with("contactEmail", Config.serverAdminEmail);
+			switch(status){
+				case FROZEN -> {
+					if(acc.user.banInfo.expiresAt().isAfter(Instant.now())){
+						model.with("unfreezeTime", acc.user.banInfo.expiresAt());
+					}
+				}
+				case SUSPENDED, SELF_DEACTIVATED -> model.with("deletionTime", acc.user.banInfo.bannedAt().plus(30, ChronoUnit.DAYS));
+			}
+			halt(model.renderToString());
+		}
+	}
+
+	public static synchronized void invalidateAllSessionsForAccount(int id){
+		Set<HttpSession> sessions=sessionsByAccount.get(id);
+		if(sessions==null)
+			return;
+		for(HttpSession session:new HashSet<>(sessions)){
+			session.invalidate();
+		}
 	}
 }

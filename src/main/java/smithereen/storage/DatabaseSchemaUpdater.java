@@ -1,23 +1,43 @@
 package smithereen.storage;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.UserRole;
+import smithereen.model.media.ImageMetadata;
+import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.media.MediaFileType;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.util.JsonObjectBuilder;
+import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=33;
+	public static final int SCHEMA_VERSION=43;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -26,7 +46,9 @@ public class DatabaseSchemaUpdater{
 			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 				conn.createStatement().execute("""
 						CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
-						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, BINARY(0xFF), BINARY(0xFFFF)), '%', BINARY(0xFF25)), '_', BINARY(0xFF5F)), '%');""");
+						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_'), '%');""");
+				createMediaRefCountTriggers(conn);
+				insertDefaultRoles(conn);
 			}
 		}else{
 			for(int i=Config.dbSchemaVersion+1;i<=SCHEMA_VERSION;i++){
@@ -485,6 +507,432 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("ALTER TABLE reports DROP FOREIGN KEY reports_ibfk_1, DROP FOREIGN KEY reports_ibfk_2");
 				conn.createStatement().execute("ALTER TABLE wall_posts DROP FOREIGN KEY wall_posts_ibfk_3");
 			}
+			case 34 ->{
+				conn.createStatement().execute("""
+						CREATE TABLE `user_roles` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+						  `permissions` varbinary(255) NOT NULL,
+						  PRIMARY KEY (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				insertDefaultRoles(conn);
+				conn.createStatement().execute("""
+						ALTER TABLE accounts ADD `role` int unsigned DEFAULT NULL,
+						ADD CONSTRAINT `accounts_ibfk_2` FOREIGN KEY (`role`) REFERENCES `user_roles` (`id`) ON DELETE SET NULL,
+						ADD `promoted_by` int unsigned DEFAULT NULL,
+						ADD CONSTRAINT `accounts_ibfk_3` FOREIGN KEY (`promoted_by`) REFERENCES `accounts` (`id`) ON DELETE SET NULL""");
+				new SQLQueryBuilder(conn)
+						.update("accounts")
+						.where("access_level=2") // moderator -> new moderator role
+						.value("role", 3)
+						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("accounts")
+						.where("access_level=3") // admin -> new admin role
+						.value("role", 2)
+						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("accounts")
+						.where("access_level=3 AND id=1") // first admin -> new owner role
+						.value("role", 1)
+						.executeNoResult();
+				conn.createStatement().execute("ALTER TABLE accounts DROP access_level");
+			}
+			case 35 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `audit_log` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `admin_id` int unsigned NOT NULL,
+						  `action` int unsigned NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `owner_id` int DEFAULT NULL,
+						  `object_id` bigint DEFAULT NULL,
+						  `object_type` int unsigned DEFAULT NULL,
+						  `extra` json DEFAULT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `owner_id` (`owner_id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 36 -> {
+				conn.createStatement().execute("ALTER TABLE sessions DROP last_ip, ADD `ip` binary(16) NOT NULL, ADD `user_agent` bigint NOT NULL");
+				conn.createStatement().execute("""
+						CREATE TABLE `user_agents` (
+						  `hash` bigint NOT NULL,
+						  `user_agent` text COLLATE utf8mb4_general_ci NOT NULL,
+						  PRIMARY KEY (`hash`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 37 -> {
+				conn.createStatement().execute("ALTER TABLE accounts ADD email_domain varchar(150) NOT NULL DEFAULT '', ADD INDEX (email_domain), DROP ban_info, ADD last_ip binary(16) DEFAULT NULL, ADD INDEX (last_ip)");
+				conn.createStatement().execute("UPDATE accounts SET email_domain=SUBSTR(email, LOCATE('@', email)+1)");
+				conn.createStatement().execute("ALTER TABLE `users` ADD ban_status tinyint unsigned NOT NULL DEFAULT 0, ADD INDEX (ban_status), ADD ban_info json DEFAULT NULL");
+			}
+			case 38 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE IF NOT EXISTS `media_files` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `random_id` binary(18) NOT NULL,
+						  `size` bigint unsigned NOT NULL,
+						  `type` tinyint unsigned NOT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `metadata` json NOT NULL,
+						  `ref_count` int unsigned NOT NULL DEFAULT '0',
+						  `original_owner_id` int NOT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `ref_count` (`ref_count`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				conn.createStatement().execute("""
+						CREATE TABLE IF NOT EXISTS `media_file_refs` (
+						  `file_id` bigint unsigned NOT NULL,
+						  `object_id` bigint NOT NULL,
+						  `object_type` tinyint unsigned NOT NULL,
+						  `owner_user_id` int unsigned DEFAULT NULL,
+						  `owner_group_id` int unsigned DEFAULT NULL,
+						  PRIMARY KEY (`object_id`,`object_type`,`file_id`),
+						  KEY `file_id` (`file_id`),
+						  KEY `owner_user_id` (`owner_user_id`),
+						  KEY `owner_group_id` (`owner_group_id`),
+						  CONSTRAINT `media_file_refs_ibfk_1` FOREIGN KEY (`file_id`) REFERENCES `media_files` (`id`),
+						  CONSTRAINT `media_file_refs_ibfk_2` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `media_file_refs_ibfk_3` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				conn.createStatement().execute("DROP TABLE IF EXISTS `draft_attachments`");
+				createMediaRefCountTriggers(conn);
+			}
+			case 39 -> migrateMediaFiles(conn);
+			case 40 -> {
+				conn.createStatement().execute("ALTER TABLE `reports` ADD `content` json DEFAULT NULL, ADD `state` tinyint unsigned NOT NULL DEFAULT 0, ADD KEY `state` (`state`), CHANGE `target_id` `target_id` int NOT NULL, ADD KEY `target_id` (`target_id`)");
+				conn.createStatement().execute("""
+						CREATE TABLE `report_actions` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `report_id` int unsigned NOT NULL,
+						  `user_id` int unsigned NOT NULL,
+						  `action_type` tinyint unsigned NOT NULL,
+						  `text` text COLLATE utf8mb4_general_ci,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `extra` json DEFAULT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `report_id` (`report_id`),
+						  CONSTRAINT `report_actions_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;""");
+			}
+			case 41 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `user_staff_notes` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `target_id` int unsigned NOT NULL,
+						  `author_id` int unsigned NOT NULL,
+						  `text` text COLLATE utf8mb4_general_ci NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  KEY `target_id` (`target_id`),
+						  CONSTRAINT `user_staff_notes_ibfk_1` FOREIGN KEY (`target_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;""");
+			}
+			case 42 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `blocks_email_domain` (
+						  `domain` varchar(100) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+						  `action` tinyint unsigned NOT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `note` text COLLATE utf8mb4_general_ci NOT NULL,
+						  `creator_id` int unsigned NOT NULL,
+						  PRIMARY KEY (`domain`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;""");
+				conn.createStatement().execute("""
+						CREATE TABLE `blocks_ip` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `address` binary(16) NOT NULL,
+						  `prefix_length` tinyint unsigned NOT NULL,
+						  `action` tinyint unsigned NOT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `expires_at` timestamp NOT NULL,
+						  `note` text COLLATE utf8mb4_general_ci NOT NULL,
+						  `creator_id` int unsigned NOT NULL,
+						  PRIMARY KEY (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;""");
+			}
+			case 43 -> {
+				conn.createStatement().execute("DROP FUNCTION `bin_prefix`");
+				conn.createStatement().execute("""
+						CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
+						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_'), '%');""");
+			}
 		}
+	}
+
+	private static void insertDefaultRoles(DatabaseConnection conn) throws SQLException{
+		new SQLQueryBuilder(conn)
+				.insertInto("user_roles")
+				.value("name", "Owner")
+				.value("permissions", Utils.serializeEnumSetToBytes(EnumSet.of(UserRole.Permission.SUPERUSER, UserRole.Permission.VISIBLE_IN_STAFF)))
+				.executeNoResult();
+
+		EnumSet<UserRole.Permission> adminPermissions=EnumSet.allOf(UserRole.Permission.class);
+		adminPermissions.remove(UserRole.Permission.SUPERUSER);
+		new SQLQueryBuilder(conn)
+				.insertInto("user_roles")
+				.value("name", "Admin")
+				.value("permissions", Utils.serializeEnumSetToBytes(adminPermissions))
+				.executeNoResult();
+
+		EnumSet<UserRole.Permission> moderatorPermissions=EnumSet.of(
+				UserRole.Permission.MANAGE_USERS,
+				UserRole.Permission.MANAGE_REPORTS,
+				UserRole.Permission.VIEW_SERVER_AUDIT_LOG,
+				UserRole.Permission.MANAGE_GROUPS
+		);
+		new SQLQueryBuilder(conn)
+				.insertInto("user_roles")
+				.value("name", "Moderator")
+				.value("permissions", Utils.serializeEnumSetToBytes(moderatorPermissions))
+				.executeNoResult();
+		Config.reloadRoles();
+	}
+
+	private static void createMediaRefCountTriggers(DatabaseConnection conn) throws SQLException{
+		conn.createStatement().execute("CREATE TRIGGER inc_count_on_insert AFTER INSERT ON media_file_refs FOR EACH ROW UPDATE media_files SET ref_count=ref_count+1 WHERE id=NEW.file_id");
+		conn.createStatement().execute("CREATE TRIGGER dec_count_on_delete AFTER DELETE ON media_file_refs FOR EACH ROW UPDATE media_files SET ref_count=ref_count-1 WHERE id=OLD.file_id");
+	}
+
+	private static void migrateMediaFiles(DatabaseConnection conn) throws SQLException{
+		LOG.info("Started migrating user avatars");
+		try(ResultSet res=new SQLQueryBuilder(conn)
+				.selectFrom("users")
+				.columns("id", "avatar")
+				.where("domain='' AND avatar IS NOT NULL")
+				.execute()){
+			while(res.next()){
+				int id=res.getInt(1);
+				JsonObject avaObj=JsonParser.parseString(res.getString(2)).getAsJsonObject();
+				if(!avaObj.has("_lid"))
+					continue;
+				long newID=migrateOneAvatar(conn, avaObj, id);
+				if(newID==0)
+					continue;
+				new SQLQueryBuilder(conn)
+						.insertInto("media_file_refs")
+						.value("file_id", newID)
+						.value("object_id", id)
+						.value("object_type", MediaFileReferenceType.USER_AVATAR)
+						.value("owner_user_id", id)
+						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("users")
+						.value("avatar", new JsonObjectBuilder().add("type", "_LocalImage").add("_fileID", newID).build().toString())
+						.where("id=?", id)
+						.executeNoResult();
+			}
+		}
+		LOG.info("Started migrating group avatars");
+		try(ResultSet res=new SQLQueryBuilder(conn)
+				.selectFrom("groups")
+				.columns("id", "avatar")
+				.where("domain='' AND avatar IS NOT NULL")
+				.execute()){
+			while(res.next()){
+				int id=res.getInt(1);
+				JsonObject avaObj=JsonParser.parseString(res.getString(2)).getAsJsonObject();
+				if(!avaObj.has("_lid"))
+					continue;
+				long newID=migrateOneAvatar(conn, avaObj, -id);
+				if(newID==0)
+					continue;
+				new SQLQueryBuilder(conn)
+						.insertInto("media_file_refs")
+						.value("file_id", newID)
+						.value("object_id", id)
+						.value("object_type", MediaFileReferenceType.GROUP_AVATAR)
+						.value("owner_group_id", id)
+						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("groups")
+						.value("avatar", new JsonObjectBuilder().add("type", "_LocalImage").add("_fileID", newID).build().toString())
+						.where("id=?", id)
+						.executeNoResult();
+			}
+		}
+		LOG.info("Started migrating wall attachments");
+		try(ResultSet res=new SQLQueryBuilder(conn)
+				.selectFrom("wall_posts")
+				.columns("id", "owner_user_id", "owner_group_id", "attachments")
+				.where("ap_id IS NULL AND attachments IS NOT NULL")
+				.execute()){
+			while(res.next()){
+				int id=res.getInt(1);
+				int ownerID=res.getInt(2);
+				if(res.wasNull())
+					ownerID=-res.getInt(3);
+				JsonElement _attachments=JsonParser.parseString(res.getString(4));
+				List<JsonObject> attachments;
+				if(_attachments instanceof JsonObject jo){
+					attachments=List.of(jo);
+				}else if(_attachments instanceof JsonArray ja){
+					attachments=new ArrayList<>(ja.size());
+					for(JsonElement el:ja)
+						attachments.add(el.getAsJsonObject());
+				}else{
+					throw new IllegalStateException();
+				}
+				if(!attachments.getFirst().has("_p"))
+					continue;
+				long[] attachmentIDs=migrateMediaAttachments(conn, attachments, ownerID);
+				JsonArray newAttachments=new JsonArray();
+				for(long attID:attachmentIDs){
+					newAttachments.add(new JsonObjectBuilder()
+							.add("type", "_LocalImage")
+							.add("_fileID", attID)
+							.build());
+					if(attID==0)
+						continue;
+					new SQLQueryBuilder(conn)
+							.insertInto("media_file_refs")
+							.value("file_id", attID)
+							.value("object_id", id)
+							.value("object_type", MediaFileReferenceType.WALL_ATTACHMENT)
+							.value(ownerID>0 ? "owner_user_id" : "owner_group_id", Math.abs(ownerID))
+							.executeNoResult();
+				}
+				new SQLQueryBuilder(conn)
+						.update("wall_posts")
+						.value("attachments", (newAttachments.size()==1 ? newAttachments.get(0) : newAttachments).toString())
+						.where("id=?", id)
+						.executeNoResult();
+			}
+		}
+		LOG.info("Started migrating mail attachments");
+		try(ResultSet res=new SQLQueryBuilder(conn)
+				.selectFrom("mail_messages")
+				.columns("id", "owner_id", "attachments")
+				.where("ap_id IS NULL AND attachments IS NOT NULL")
+				.execute()){
+			while(res.next()){
+				long id=res.getInt(1);
+				int ownerID=res.getInt(2);
+				JsonElement _attachments=JsonParser.parseString(res.getString(3));
+				List<JsonObject> attachments;
+				if(_attachments instanceof JsonObject jo){
+					attachments=List.of(jo);
+				}else if(_attachments instanceof JsonArray ja){
+					attachments=new ArrayList<>(ja.size());
+					for(JsonElement el:ja)
+						attachments.add(el.getAsJsonObject());
+				}else{
+					throw new IllegalStateException();
+				}
+				if(!attachments.getFirst().has("_p"))
+					continue;
+				long[] attachmentIDs=migrateMediaAttachments(conn, attachments, ownerID);
+				JsonArray newAttachments=new JsonArray();
+				for(long attID:attachmentIDs){
+					newAttachments.add(new JsonObjectBuilder()
+							.add("type", "_LocalImage")
+							.add("_fileID", attID)
+							.build());
+					if(attID==0)
+						continue;
+					new SQLQueryBuilder(conn)
+							.insertInto("media_file_refs")
+							.value("file_id", attID)
+							.value("object_id", id)
+							.value("object_type", MediaFileReferenceType.MAIL_ATTACHMENT)
+							.value("owner_user_id", ownerID)
+							.executeNoResult();
+				}
+				new SQLQueryBuilder(conn)
+						.update("mail_messages")
+						.value("attachments", (newAttachments.size()==1 ? newAttachments.get(0) : newAttachments).toString())
+						.where("id=?", id)
+						.executeNoResult();
+			}
+		}
+		LOG.info("Media file migration done");
+	}
+
+	private static long migrateOneAvatar(DatabaseConnection conn, JsonObject avaObj, int id) throws SQLException{
+		String fileID=avaObj.get("_lid").getAsString();
+		String dirName=avaObj.get("_p").getAsString();
+
+		File actualFile=new File(Config.uploadPath, dirName+"/"+fileID+".webp");
+		if(!actualFile.exists()){
+			LOG.debug("Skipping file {} because it does not exist on disk", actualFile.getAbsolutePath());
+			return 0;
+		}
+
+		int width=avaObj.getAsJsonArray("_sz").get(0).getAsInt();
+		int height=avaObj.getAsJsonArray("_sz").get(1).getAsInt();
+		JsonArray _cropRegion=avaObj.getAsJsonArray("cropRegion");
+		float[] cropRegion=new float[4];
+		for(int i=0;i<4;i++)
+			cropRegion[i]=_cropRegion.get(i).getAsFloat();
+		ImageMetadata meta=new ImageMetadata(width, height, null, cropRegion);
+		byte[] randomID=Utils.randomBytes(18);
+		long newID=new SQLQueryBuilder(conn)
+				.insertInto("media_files")
+				.value("random_id", randomID)
+				.value("size", actualFile.length())
+				.value("type", MediaFileType.IMAGE_AVATAR)
+				.value("metadata", Utils.gson.toJson(meta))
+				.value("original_owner_id", id)
+				.executeAndGetIDLong();
+		int oid=Math.abs(id);
+		File newFileDir=new File(Config.uploadPath, String.format(Locale.US, "%02d/%02d/%02d", oid%100, oid/100%100, oid/100_00%100));
+		if(!newFileDir.exists() && !newFileDir.mkdirs())
+			throw new RuntimeException("mkdirs failed");
+		File newFile=new File(newFileDir, Base64.getUrlEncoder().withoutPadding().encodeToString(randomID)+"_"
+				+Base64.getUrlEncoder().withoutPadding().encodeToString(Utils.packLong(XTEA.obfuscateObjectID(newID, ObfuscatedObjectIDType.MEDIA_FILE)))+".webp");
+		try{
+			LOG.debug("Copying: {} -> {}", actualFile.getAbsolutePath(), newFile.getAbsolutePath());
+			Files.copy(actualFile.toPath(), newFile.toPath());
+		}catch(IOException x){
+			throw new RuntimeException("failed to copy file", x);
+		}
+		return newID;
+	}
+
+	private static long[] migrateMediaAttachments(DatabaseConnection conn, List<JsonObject> attachments, int ownerID) throws SQLException{
+		long[] ids=new long[attachments.size()];
+		int i=0;
+		for(JsonObject obj:attachments){
+			String fileID=obj.get("_lid").getAsString();
+			String dirName=obj.get("_p").getAsString();
+
+			File actualFile=new File(Config.uploadPath, dirName+"/"+fileID+".webp");
+			if(!actualFile.exists()){
+				LOG.debug("Skipping file {} because it does not exist on disk", actualFile.getAbsolutePath());
+				i++;
+				continue;
+			}
+			int width=obj.getAsJsonArray("_sz").get(0).getAsInt();
+			int height=obj.getAsJsonArray("_sz").get(1).getAsInt();
+			String blurhash=obj.has("blurhash") ? obj.get("blurhash").getAsString() : null;
+			ImageMetadata meta=new ImageMetadata(width, height, blurhash, null);
+			byte[] randomID=Utils.randomBytes(18);
+			boolean isGraffiti=obj.has("graffiti") && obj.get("graffiti").getAsBoolean();
+			long newID=new SQLQueryBuilder(conn)
+					.insertInto("media_files")
+					.value("random_id", randomID)
+					.value("size", actualFile.length())
+					.value("type", isGraffiti ? MediaFileType.IMAGE_GRAFFITI : MediaFileType.IMAGE_PHOTO)
+					.value("metadata", Utils.gson.toJson(meta))
+					.value("original_owner_id", ownerID)
+					.executeAndGetIDLong();
+			int oid=Math.abs(ownerID);
+			File newFileDir=new File(Config.uploadPath, String.format(Locale.US, "%02d/%02d/%02d", oid%100, oid/100%100, oid/100_00%100));
+			if(!newFileDir.exists() && !newFileDir.mkdirs())
+				throw new RuntimeException("mkdirs failed");
+			File newFile=new File(newFileDir, Base64.getUrlEncoder().withoutPadding().encodeToString(randomID)+"_"
+					+Base64.getUrlEncoder().withoutPadding().encodeToString(Utils.packLong(XTEA.obfuscateObjectID(newID, ObfuscatedObjectIDType.MEDIA_FILE)))+".webp");
+			try{
+				LOG.debug("Copying: {} -> {}", actualFile.getAbsolutePath(), newFile.getAbsolutePath());
+				Files.copy(actualFile.toPath(), newFile.toPath());
+			}catch(IOException x){
+				throw new RuntimeException("failed to copy file", x);
+			}
+			ids[i]=newID;
+			i++;
+		}
+
+		return ids;
 	}
 }

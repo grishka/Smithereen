@@ -18,6 +18,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Event;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.exceptions.BadRequestException;
+import smithereen.storage.DatabaseUtils;
 import spark.utils.StringUtils;
 
 public class ForeignGroup extends Group implements ForeignActor{
@@ -42,7 +43,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 		url=tryParseURL(res.getString("ap_url"));
 		inbox=tryParseURL(res.getString("ap_inbox"));
 		sharedInbox=tryParseURL(res.getString("ap_shared_inbox"));
-		lastUpdated=res.getTimestamp("last_updated");
+		lastUpdated=DatabaseUtils.getInstant(res, "last_updated");
 		Utils.deserializeEnumSet(capabilities, ForeignGroup.Capability.class, res.getLong("flags"));
 
 		EndpointsStorageWrapper ep=Utils.gson.fromJson(res.getString("endpoints"), EndpointsStorageWrapper.class);
@@ -171,7 +172,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 
 	@Override
 	public boolean needUpdate(){
-		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.getTime()>24L*60*60*1000;
+		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.toEpochMilli()>24L*60*60*1000;
 	}
 
 	@Override

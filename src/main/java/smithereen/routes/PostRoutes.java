@@ -24,17 +24,20 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.model.Account;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
@@ -119,6 +122,7 @@ public class PostRoutes{
 				model.with("topLevel", new PostViewModel(context(req).getWallController().getPostOrThrow(post.replyKey.get(0))));
 			}
 			model.with("users", Map.of(self.user.id, self.user));
+			model.with("posts", Map.of(post.id, post));
 			String postHTML=model.renderToString();
 			if(req.attribute("mobile")!=null && replyTo==0){
 				postHTML="<div class=\"card\">"+postHTML+"</div>";
@@ -311,14 +315,25 @@ public class PostRoutes{
 		model.paginate(replies);
 		model.with("post", post);
 		model.with("isGroup", post.post.ownerID<0);
+		int cwCount=0;
+		for(PostViewModel reply:replies.list){
+			if(reply.post.hasContentWarning())
+				cwCount++;
+		}
+		model.with("needExpandCWsButton", cwCount>1);
 
 		boolean canOverridePrivacy=false;
-		if(self!=null && info.permissions.serverAccessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal()){
+		if(self!=null && info.permissions.hasPermission(UserRole.Permission.MANAGE_REPORTS)){
 			int reportID=safeParseInt(req.queryParams("report"));
 			if(reportID!=0){
 				try{
-					ViolationReport report=ctx.getModerationController().getViolationReportByID(reportID);
-					canOverridePrivacy=report.contentType==ViolationReport.ContentType.POST && report.contentID==postID;
+					ViolationReport report=ctx.getModerationController().getViolationReportByID(reportID, false);
+					for(ReportableContentObject c:report.content){
+						if(c instanceof Post p && p.id==postID){
+							canOverridePrivacy=true;
+							break;
+						}
+					}
 				}catch(ObjectNotFoundException ignore){}
 			}
 		}
@@ -359,9 +374,10 @@ public class PostRoutes{
 			meta.put("og:site_name", Config.serverDisplayName);
 			meta.put("og:type", "article");
 			meta.put("og:title", author.getFullName());
-//			meta.put("og:url", post.url.toString());
+			meta.put("og:url", post.post.getInternalURL().toString());
 			meta.put("og:published_time", Utils.formatDateAsISO(post.post.createdAt));
 			meta.put("og:author", author.url.toString());
+			meta.put("profile:username", author.username+"@"+Config.domain);
 			if(StringUtils.isNotEmpty(post.post.text)){
 				String text=Utils.truncateOnWordBoundary(post.post.text, 250);
 				meta.put("og:description", text);
@@ -375,19 +391,23 @@ public class PostRoutes{
 						meta.put("og:image", pa.image.getUriForSizeAndFormat(SizedImage.Type.MEDIUM, SizedImage.Format.JPEG).toString());
 						meta.put("og:image:width", String.valueOf(size.width));
 						meta.put("og:image:height", String.valueOf(size.height));
+						meta.put("og:image:type", "image/jpeg");
+						meta.put("twitter:card", "summary_large_image");
 						hasImage=true;
 						break;
 					}
 				}
 			}
 			if(!hasImage){
+				meta.put("twitter:card", "summary");
 				if(author.hasAvatar()){
-					URI img=author.getAvatar().getUriForSizeAndFormat(SizedImage.Type.LARGE, SizedImage.Format.JPEG);
+					URI img=author.getAvatar().getUriForSizeAndFormat(SizedImage.Type.SQUARE_XLARGE, SizedImage.Format.JPEG);
 					if(img!=null){
-						SizedImage.Dimensions size=author.getAvatar().getDimensionsForSize(SizedImage.Type.LARGE);
+						SizedImage.Dimensions size=author.getAvatar().getDimensionsForSize(SizedImage.Type.SQUARE_XLARGE);
 						meta.put("og:image", img.toString());
 						meta.put("og:image:width", String.valueOf(size.width));
 						meta.put("og:image:height", String.valueOf(size.height));
+						meta.put("og:image:type", "image/jpeg");
 					}
 				}
 			}
@@ -405,6 +425,8 @@ public class PostRoutes{
 			model.with("jsRedirect", "/posts/"+post.post.replyKey.get(0)+"#comment"+post.post.id);
 		}
 		model.with("activityPubURL", post.post.getActivityPubID());
+		if(!post.post.isLocal() && owner instanceof ForeignActor)
+			model.with("noindex", true);
 		return model;
 	}
 
@@ -581,6 +603,9 @@ public class PostRoutes{
 			model.pageTitle(lang(req).get("wall_of_group"));
 		}
 
+		if(owner instanceof ForeignActor)
+			model.with("noindex", true);
+
 		return model;
 	}
 
@@ -694,8 +719,9 @@ public class PostRoutes{
 		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 
 		List<User> users=ctx.getWallController().getPollOptionVoters(option, offset, 100);
-		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req).with("users", users);
-		model.with("pageOffset", offset).with("total", option.numVotes).with("paginationUrlPrefix", "/posts/"+postID+"/pollVoters/"+option.id+"?fromPagination&offset=").with("emptyMessage", lang(req).get("poll_option_votes_empty"));
+		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
+		model.paginate(new PaginatedList<>(users, option.numVotes, offset, 100), "/posts/"+postID+"/pollVoters/"+option.id+"?fromPagination&offset=", null);
+		model.with("emptyMessage", lang(req).get("poll_option_votes_empty")).with("summary", lang(req).get("X_people_voted_title", Map.of("count", option.numVotes)));
 		if(isAjax(req)){
 			if(req.queryParams("fromPagination")==null)
 				return new WebDeltaResponse(resp).box(option.text, model.renderToString(), "likesList", 610);

@@ -33,11 +33,12 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.model.UserBanStatus;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
 import smithereen.storage.PostStorage;
@@ -166,7 +167,7 @@ public class ObjectLinkResolver{
 	@NotNull
 	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
 		try{
-			LOG.debug("Resolving ActivityPub link: {}, expected type: {}, allow storage {}", _link, expectedType.getName(), allowStorage);
+			LOG.debug("Resolving ActivityPub link: {}, expected type: {}, allow storage {}, force refetch {}", _link, expectedType.getName(), allowStorage, forceRefetch);
 			URI link;
 			if("bear".equals(_link.getScheme())){
 				link=URI.create(UriBuilder.parseQueryString(_link.getRawQuery()).get("u"));
@@ -210,12 +211,23 @@ public class ObjectLinkResolver{
 								handleNewlyFetchedMovedUser(fu);
 							}
 						}
+						if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
+							User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
+							if(author.banStatus==UserBanStatus.SUSPENDED)
+								throw new ObjectNotFoundException("Post author is suspended on this server");
+							return ensureTypeAndCast(obj, expectedType);
+						}
 						T o=convertToNativeObject(obj, expectedType);
 						if(!bypassCollectionCheck && o instanceof Post post && obj.inReplyTo==null){ // TODO make this a generalized interface OwnedObject or something
 							if(post.ownerID!=post.authorID){
 								Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
 								ensureObjectIsInCollection(owner, owner.getWallURL(), post.getActivityPubID());
 							}
+						}
+						if(o instanceof Post post){
+							User author=context.getUsersController().getUserOrThrow(post.authorID);
+							if(author.banStatus==UserBanStatus.SUSPENDED)
+								throw new ObjectNotFoundException("Post author is suspended on this server");
 						}
 						if(allowStorage)
 							storeOrUpdateRemoteObject(o);
@@ -259,9 +271,9 @@ public class ObjectLinkResolver{
 	@NotNull
 	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
 		Class<?> nativeType;
-		if(expectedType.isAssignableFrom(ActivityPubObject.class)){
+		if(expectedType.isAssignableFrom(ActivityPubObject.class) && (allowStorage || Config.isLocal(_link))){
 			nativeType=Object.class;
-		}else if(NoteOrQuestion.class.isAssignableFrom(expectedType)){
+		}else if(NoteOrQuestion.class.isAssignableFrom(expectedType) && (allowStorage || Config.isLocal(_link))){
 			nativeType=Post.class;
 		}else{
 			nativeType=expectedType;

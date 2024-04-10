@@ -22,6 +22,7 @@ public class FloodControl<K>{
 	public static final FloodControl<String> EMAIL_RESEND=FloodControl.ofStringKey(1, 10, TimeUnit.MINUTES);
 	public static final FloodControl<Account> EMAIL_INVITE=FloodControl.ofObjectKey(5, 1, TimeUnit.HOURS, acc->"account"+acc.id);
 	public static final FloodControl<InetAddress> OPEN_SIGNUP_OR_INVITE_REQUEST=FloodControl.ofIPKey(25, 5, TimeUnit.MINUTES);
+	public static final FloodControl<Account> ACTION_CONFIRMATION=FloodControl.ofObjectKey(5, 10, TimeUnit.MINUTES, acc->"account"+acc.id);
 
 	private long timeout;
 	private int count;

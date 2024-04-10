@@ -34,7 +34,6 @@ import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.NoteOrQuestion;
-import smithereen.model.Account;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.Group;
@@ -49,7 +48,9 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.notifications.NotificationUtils;
 import smithereen.model.viewmodel.PostViewModel;
@@ -57,7 +58,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.storage.MediaCache;
+import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
@@ -157,17 +158,7 @@ public class WallController{
 			String attachments=null;
 			if(!attachmentIDs.isEmpty()){
 				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
-				for(String id:attachmentIDs){
-					if(!id.matches("^[a-fA-F0-9]{32}$"))
-						continue;
-					ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(id, authorAccountID, "post_media");
-					if(obj!=null){
-						attachObjects.add(obj);
-						attachmentCount++;
-					}
-					if(attachmentCount==maxAttachments)
-						break;
-				}
+				MediaStorageUtils.fillAttachmentObjects(attachObjects, attachmentIDs, attachmentCount, maxAttachments);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
 						attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
@@ -233,6 +224,14 @@ public class WallController{
 			Post post=PostStorage.getPostByID(postID, false);
 			if(post==null)
 				throw new IllegalStateException("?!");
+
+			if(post.attachments!=null){
+				for(ActivityPubObject att:post.attachments){
+					if(att instanceof LocalImage li){
+						MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.getOwnerID());
+					}
+				}
+			}
 
 			// Add{Note} is sent for any wall posts & comments on them, for local wall owners.
 			// Create{Note} is sent for anything else.
@@ -383,13 +382,14 @@ public class WallController{
 			if(!attachmentIDs.isEmpty()){
 				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
 
-				ArrayList<String> remainingAttachments=new ArrayList<>(attachmentIDs);
+				ArrayList<String> newlyAddedAttachments=new ArrayList<>(attachmentIDs);
 				if(post.attachments!=null){
 					for(ActivityPubObject att:post.attachments){
 						if(att instanceof LocalImage li){
-							if(!remainingAttachments.remove(li.localID)){
-								LOG.debug("Deleting attachment: {}", li.localID);
-								MediaStorageUtils.deleteAttachmentFiles(li);
+							String localID=li.fileRecord.id().getIDForClient();
+							if(!newlyAddedAttachments.remove(localID)){
+								LOG.debug("Deleting attachment: {}", localID);
+								MediaStorage.deleteMediaFileReference(post.id, MediaFileReferenceType.WALL_ATTACHMENT, li.fileID);
 							}else{
 								attachObjects.add(li);
 							}
@@ -399,17 +399,12 @@ public class WallController{
 					}
 				}
 
-				if(!remainingAttachments.isEmpty()){
-					for(String aid : remainingAttachments){
-						if(!aid.matches("^[a-fA-F0-9]{32}$"))
-							continue;
-						ActivityPubObject obj=MediaCache.getAndDeleteDraftAttachment(aid, post.authorID, "post_media");
-						if(obj!=null){
-							attachObjects.add(obj);
-							attachmentCount++;
+				if(!newlyAddedAttachments.isEmpty()){
+					MediaStorageUtils.fillAttachmentObjects(attachObjects, newlyAddedAttachments, attachmentCount, maxAttachments);
+					for(ActivityPubObject att:attachObjects){
+						if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
+							MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.ownerID);
 						}
-						if(attachmentCount==maxAttachments)
-							break;
 					}
 				}
 				if(!attachObjects.isEmpty()){
@@ -638,17 +633,18 @@ public class WallController{
 			}
 			PostStorage.deletePost(post.id);
 			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
-			if(post.isLocal() && post.attachments!=null && !post.attachments.isEmpty()){
-				MediaStorageUtils.deleteAttachmentFiles(post.attachments);
-			}
 			context.getNewsfeedController().clearFriendsFeedCache();
 			User deleteActor=info.account.user;
 			OwnerAndAuthor oaa=getContentAuthorAndOwner(post);
 			// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
-			if(info.account.accessLevel.ordinal()>=Account.AccessLevel.MODERATOR.ordinal() && oaa.author().id!=info.account.user.id && !post.isGroupOwner() && post.ownerID!=info.account.user.id && !(oaa.author() instanceof ForeignUser)){
+			if(ignorePermissions && oaa.author().id!=info.account.user.id && !post.isGroupOwner() && post.ownerID!=info.account.user.id && !(oaa.author() instanceof ForeignUser)){
 				deleteActor=oaa.author();
 			}
 			context.getActivityPubWorker().sendDeletePostActivity(post, deleteActor);
+
+			if(post.isLocal() && post.attachments!=null){
+				MediaStorage.deleteMediaFileReferences(post.id, MediaFileReferenceType.WALL_ATTACHMENT);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -664,7 +660,7 @@ public class WallController{
 
 	public void setPostCWAsModerator(@NotNull UserPermissions permissions, Post post, String cw){
 		try{
-			if(permissions.serverAccessLevel.compareTo(Account.AccessLevel.MODERATOR)<0)
+			if(!permissions.hasPermission(UserRole.Permission.MANAGE_REPORTS))
 				throw new UserActionNotAllowedException();
 
 			PostStorage.updateWallPostCW(post.id, cw);

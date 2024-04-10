@@ -51,6 +51,8 @@ public class DeleteNoteHandler extends ActivityTypeHandler<ForeignUser, Delete, 
 					if(context.ldSignatureOwner!=null)
 						context.forwardActivity(PostStorage.getInboxesForPostInteractionForwarding(topLevel), context.appContext.getUsersController().getUserOrThrow(topLevel.authorID));
 				}
+			}else{
+				context.appContext.getNewsfeedController().clearFriendsFeedCache();
 			}
 		}else{
 			throw new BadRequestException("No access to delete this post");

@@ -1,0 +1,5 @@
+<div class="tabbar">
+	<a class="{{ tab=='open' ? 'selected' : '' }}" href="/settings/admin/reports">{{ L('reports_tab_open') }}</a>
+	<a class="{{ tab=='resolved' ? 'selected' : '' }}" href="/settings/admin/reports?resolved">{{ L('reports_tab_resolved') }}</a>
+	{% if tab=='view' %}<a class="selected" href="/settings/admin/reports/{{ report.id }}">{{ L('admin_report_details') }}</a>{% endif %}
+</div>

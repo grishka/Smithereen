@@ -12,7 +12,7 @@ import smithereen.Utils;
 import spark.Response;
 
 public class WebDeltaResponse{
-	private ArrayList<Command> commands=new ArrayList<>();
+	private final ArrayList<Command> commands=new ArrayList<>();
 
 	public WebDeltaResponse(){
 
@@ -34,6 +34,11 @@ public class WebDeltaResponse{
 
 	public WebDeltaResponse messageBox(@NotNull String title, @NotNull String msg, @NotNull String button){
 		commands.add(new MessageBoxCommand(title, msg, button));
+		return this;
+	}
+
+	public WebDeltaResponse confirmBox(@NotNull String title, @NotNull String msg, @NotNull String formAction){
+		commands.add(new ConfirmBoxCommand(title, msg, formAction));
 		return this;
 	}
 
@@ -112,6 +117,11 @@ public class WebDeltaResponse{
 		return this;
 	}
 
+	public WebDeltaResponse setURL(String url){
+		commands.add(new SetURLCommand(url));
+		return this;
+	}
+
 	public String json(){
 		return Utils.gson.toJson(commands);
 	}
@@ -181,6 +191,22 @@ public class WebDeltaResponse{
 			this.title=title;
 			this.message=message;
 			this.button=button;
+		}
+	}
+
+	private static class ConfirmBoxCommand extends Command{
+		@SerializedName("t")
+		public String title;
+		@SerializedName("m")
+		public String message;
+		@SerializedName("fa")
+		public String formAction;
+
+		public ConfirmBoxCommand(String title, String message, String formAction){
+			super("confirmBox");
+			this.title=title;
+			this.message=message;
+			this.formAction=formAction;
 		}
 	}
 
@@ -333,6 +359,15 @@ public class WebDeltaResponse{
 		public ShowSnackbarCommand(String text){
 			super("snackbar");
 			this.text=text;
+		}
+	}
+
+	public static class SetURLCommand extends Command{
+		public String url;
+
+		public SetURLCommand(String url){
+			super("setURL");
+			this.url=url;
 		}
 	}
 }

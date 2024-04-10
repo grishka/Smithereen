@@ -3,7 +3,9 @@ package smithereen.routes;
 import io.pebbletemplates.pebble.extension.escaper.SafeString;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -15,9 +17,11 @@ import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.model.Account;
 import smithereen.model.EmailCode;
+import smithereen.model.EmailDomainBlockRule;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
 import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -28,6 +32,7 @@ import smithereen.storage.DatabaseUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.EmailCodeActionType;
 import smithereen.util.FloodControl;
 import spark.Request;
 import spark.Response;
@@ -40,7 +45,7 @@ public class SessionRoutes{
 		SessionInfo info=new SessionInfo();
 		info.account=acc;
 		req.session(true).attribute("info", info);
-		String psid=SessionStorage.putNewSession(req.session());
+		String psid=SessionStorage.putNewSession(req.session(), Objects.requireNonNull(req.userAgent(), ""), Utils.getRequestIP(req));
 		info.csrfToken=Utils.csrfTokenFromSessionID(Base64.getDecoder().decode(psid));
 		if(acc.prefs.locale==null){
 			Locale requestLocale=req.raw().getLocale();
@@ -102,6 +107,7 @@ public class SessionRoutes{
 	}
 
 	private static RenderedTemplateResponse regError(Request req, String errKey){
+		Config.SignupMode signupMode=context(req).getModerationController().getEffectiveSignupMode(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("register", req)
 				.with("message", Utils.lang(req).get(errKey))
 				.with("username", req.queryParams("username"))
@@ -112,9 +118,9 @@ public class SessionRoutes{
 				.with("last_name", req.queryParams("last_name"))
 				.with("invite", req.queryParams("invite"))
 				.with("preFilledInvite", req.queryParams("_invite"))
-				.with("signupMode", Config.signupMode)
+				.with("signupMode", signupMode)
 				.with("title", lang(req).get("register"));
-		if(Config.signupMode==Config.SignupMode.OPEN && Config.signupFormUseCaptcha){
+		if(signupMode==Config.SignupMode.OPEN && Config.signupFormUseCaptcha){
 			model.with("captchaSid", randomAlphanumericString(16));
 		}
 		return model;
@@ -123,6 +129,14 @@ public class SessionRoutes{
 	public static Object register(Request req, Response resp) throws SQLException{
 		if(redirectIfLoggedIn(req, resp))
 			return "";
+
+		// Honeypot fields
+		String passwordConfirm=req.queryParams("passwordConfirm");
+		String website=req.queryParams("website");
+		if(StringUtils.isNotEmpty(passwordConfirm) || StringUtils.isNotEmpty(website)){
+			req.session().attribute("bannedBot", true);
+			throw new UserActionNotAllowedException();
+		}
 
 		String username=req.queryParams("username");
 		if(StringUtils.isEmpty(username) || !Utils.isValidUsername(username))
@@ -143,6 +157,18 @@ public class SessionRoutes{
 	public static Object doRegister(Request req, Response resp) throws SQLException{
 		if(redirectIfLoggedIn(req, resp))
 			return "";
+
+		ApplicationContext ctx=context(req);
+
+		// TODO move all this into UsersController and don't ask/assign username at signup
+		Config.SignupMode signupMode=ctx.getModerationController().getEffectiveSignupMode(req);
+		if(Config.signupFormUseCaptcha && signupMode==Config.SignupMode.OPEN){
+			try{
+				verifyCaptcha(req);
+			}catch(UserErrorException x){
+				return regError(req, x.getMessage());
+			}
+		}
 
 		String username=req.queryParams("username");
 		String password=req.queryParams("password");
@@ -165,7 +191,7 @@ public class SessionRoutes{
 		SignupInvitation invitation=null;
 		if(StringUtils.isEmpty(invite))
 			invite=req.queryParams("_invite");
-		if(Config.signupMode!=Config.SignupMode.OPEN || StringUtils.isNotEmpty(invite)){
+		if(signupMode!=Config.SignupMode.OPEN || StringUtils.isNotEmpty(invite)){
 			if(StringUtils.isEmpty(invite) || !invite.matches("^[A-Fa-f0-9]{32}$"))
 				return regError(req, "err_invalid_invitation");
 			invitation=context(req).getUsersController().getInvite(invite);
@@ -173,25 +199,25 @@ public class SessionRoutes{
 				return regError(req, "err_invalid_invitation");
 		}
 
-		if(Config.signupFormUseCaptcha && Config.signupMode==Config.SignupMode.OPEN){
-			try{
-				String captcha=requireFormField(req, "captcha", "err_wrong_captcha");
-				String sid=requireFormField(req, "captchaSid", "err_wrong_captcha");
-				LruCache<String, String> captchas=req.session().attribute("captchas");
-				if(captchas==null || !captcha.equals(captchas.remove(sid)))
-					throw new UserErrorException("err_wrong_captcha");
-			}catch(UserErrorException x){
-				return regError(req, x.getMessage());
-			}
-		}
-
 		User.Gender gender=lang(req).detectGenderForName(first, last, null);
 
 		SessionStorage.SignupResult res;
-		if(Config.signupMode==Config.SignupMode.OPEN && invitation==null)
-			res=SessionStorage.registerNewAccount(username, password, email, first, last, gender);
-		else
+		if(signupMode==Config.SignupMode.OPEN && invitation==null){
+			EmailDomainBlockRule blockRule=ctx.getModerationController().matchEmailDomainBlockRule(email);
+			if(blockRule!=null){
+				return switch(blockRule.action()){
+					case BLOCK -> regError(req, "err_reg_email_domain_not_allowed");
+					case MANUAL_REVIEW -> {
+						context(req).getUsersController().requestSignupInvite(req, first, last, email, "(Automatically sent for manual review because of an email domain rule)");
+						yield new RenderedTemplateResponse("generic_message", req).with("message", lang(req).get("signup_request_submitted"));
+					}
+				};
+			}else{
+				res=SessionStorage.registerNewAccount(username, password, email, first, last, gender);
+			}
+		}else{
 			res=SessionStorage.registerNewAccount(username, password, email, first, last, gender, invite);
+		}
 		if(res==SessionStorage.SignupResult.SUCCESS){
 			Account acc=Objects.requireNonNull(SessionStorage.getAccountForUsernameAndPassword(username, password));
 			if(Config.signupConfirmEmail && (invitation==null || StringUtils.isEmpty(invitation.email) || !email.equalsIgnoreCase(invitation.email))){
@@ -218,11 +244,12 @@ public class SessionRoutes{
 			return "";
 
 		String invite=req.queryParams("invite");
-		if(Config.signupMode==Config.SignupMode.CLOSED && StringUtils.isEmpty(invite))
+		Config.SignupMode signupMode=context(req).getModerationController().getEffectiveSignupMode(req);
+		if(signupMode==Config.SignupMode.CLOSED && StringUtils.isEmpty(invite))
 			return wrapError(req, resp, "signups_closed");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("register", req);
-		model.with("signupMode", Config.signupMode);
-		if(Config.signupMode==Config.SignupMode.OPEN && Config.signupFormUseCaptcha){
+		model.with("signupMode", signupMode);
+		if(signupMode==Config.SignupMode.OPEN && Config.signupFormUseCaptcha){
 			model.with("captchaSid", randomAlphanumericString(16));
 		}
 		if(StringUtils.isNotEmpty(invite)){
@@ -415,9 +442,18 @@ public class SessionRoutes{
 	}
 
 	public static Object requestSignupInvite(Request req, Response resp){
-		if(Config.signupMode!=Config.SignupMode.MANUAL_APPROVAL){
+		if(context(req).getModerationController().getEffectiveSignupMode(req)!=Config.SignupMode.MANUAL_APPROVAL){
 			throw new UserActionNotAllowedException();
 		}
+
+		// Honeypot fields
+		String password=req.queryParams("password");
+		String website=req.queryParams("website");
+		if(StringUtils.isNotEmpty(password) || StringUtils.isNotEmpty(website)){
+			req.session().attribute("bannedBot", true);
+			throw new UserActionNotAllowedException();
+		}
+
 		try{
 			String email=requireFormField(req, "email", "err_invalid_email");
 			if(!isValidEmail(email))
@@ -428,11 +464,7 @@ public class SessionRoutes{
 				lastName=null;
 			String reason=requireFormField(req, "reason", "err_request_invite_reason_empty");
 			if(Config.signupFormUseCaptcha){
-				String captcha=requireFormField(req, "captcha", "err_wrong_captcha");
-				String sid=requireFormField(req, "captchaSid", "err_wrong_captcha");
-				LruCache<String, String> captchas=req.session().attribute("captchas");
-				if(captchas==null || !captcha.equals(captchas.remove(sid)))
-					throw new UserErrorException("err_wrong_captcha");
+				verifyCaptcha(req);
 			}
 			context(req).getUsersController().requestSignupInvite(req, firstName, lastName, email, reason);
 			return new RenderedTemplateResponse("generic_message", req).with("message", lang(req).get("signup_request_submitted"));
@@ -449,5 +481,77 @@ public class SessionRoutes{
 			}
 			return model;
 		}
+	}
+
+	public static Object unfreezeBox(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		if(info.account.user.banStatus!=UserBanStatus.FROZEN || info.account.user.banInfo.expiresAt().isAfter(Instant.now()))
+			throw new UserActionNotAllowedException();
+		return sendEmailConfirmationCode(req, resp, EmailCodeActionType.ACCOUNT_UNFREEZE, "/account/unfreeze");
+	}
+
+	public static Object unfreeze(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(self.user.banStatus!=UserBanStatus.FROZEN || self.user.banInfo.expiresAt().isAfter(Instant.now()))
+			throw new UserActionNotAllowedException();
+		checkEmailConfirmationCode(req, EmailCodeActionType.ACCOUNT_UNFREEZE);
+		if(self.user.banInfo.requirePasswordChange()){
+			req.session().attribute("emailConfirmationForUnfreezingDone", true);
+			Lang l=lang(req);
+			RenderedTemplateResponse model=new RenderedTemplateResponse("account_unfreeze_change_password_form", req);
+			return wrapForm(req, resp, "account_unfreeze_change_password_form", "/account/unfreezeChangePassword", l.get("change_password"), "save", model);
+		}else{
+			ctx.getModerationController().clearUserBanStatus(self);
+			if(isAjax(req))
+				return new WebDeltaResponse(resp).replaceLocation("/feed");
+			resp.redirect("/feed");
+		}
+		return "";
+	}
+
+	public static Object unfreezeChangePassword(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(self.user.banStatus!=UserBanStatus.FROZEN || self.user.banInfo.expiresAt().isAfter(Instant.now()) || !self.user.banInfo.requirePasswordChange())
+			throw new UserActionNotAllowedException();
+		if(req.session().attribute("emailConfirmationForUnfreezingDone")==null)
+			throw new UserActionNotAllowedException();
+		requireQueryParams(req, "current", "new", "new2");
+		String current=req.queryParams("current");
+		String new1=req.queryParams("new");
+		String new2=req.queryParams("new2");
+		String message;
+		if(!new1.equals(new2)){
+			message=Utils.lang(req).get("err_passwords_dont_match");
+		}else{
+			try{
+				ctx.getUsersController().changePassword(self, current, new1);
+				ctx.getModerationController().clearUserBanStatus(self);
+				ctx.getUsersController().terminateSessionsExcept(self, req.cookie("psid"));
+				if(isAjax(req))
+					return new WebDeltaResponse(resp).replaceLocation("/feed");
+				resp.redirect("/feed");
+				return "";
+			}catch(UserErrorException x){
+				message=lang(req).get(x.getMessage());
+			}
+		}
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).keepBox().show("formMessage_changePassword").setContent("formMessage_changePassword", message);
+		}
+		Lang l=lang(req);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("account_unfreeze_change_password_form", req);
+		model.with("passwordMessage", message);
+		return wrapForm(req, resp, "account_unfreeze_change_password_form", "/account/unfreezeChangePassword", l.get("change_password"), "save", model);
+	}
+
+	public static Object reactivateBox(Request req, Response resp, Account self, ApplicationContext ctx){
+		return wrapForm(req, resp, "reactivate_account_form", "/account/reactivate", lang(req).get("settings_reactivate_title"), "restore", "reactivateAccount", List.of(), null, null);
+	}
+
+	public static Object reactivate(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "password");
+		String password=req.queryParams("password");
+		if(!ctx.getUsersController().checkPassword(self, password)){
+			return wrapForm(req, resp, "reactivate_account_form", "/account/reactivate", lang(req).get("settings_reactivate_title"), "restore", "reactivateAccount", List.of(), null, lang(req).get("err_old_password_incorrect"));
+		}
+		ctx.getUsersController().selfReinstateAccount(self);
+		return ajaxAwareRedirect(req, resp, "/feed");
 	}
 }

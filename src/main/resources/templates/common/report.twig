@@ -1,0 +1,112 @@
+{# @pebvariable name="report" type="smithereen.model.ViolationReport" #}
+{% extends "page" %}
+{% block content %}
+{% include "reports_tabbar" with {'tab': 'view'} %}
+<div class="singleColumn adminInfoGrid borderBottom" id="report{{ report.id }}">
+	<div class="spanAll">
+		{% if report.state=='OPEN' %}
+		<div class="flR friendListLabel l0">{{ L('report_state_open') }}</div>
+		{% elseif report.state=='CLOSED_REJECTED' %}
+		<div class="flR friendListLabel l6">{{ L('report_state_rejected') }}</div>
+		{% elseif report.state=='CLOSED_ACTION_TAKEN' %}
+		<div class="flR friendListLabel l3">{{ L('report_state_resolved') }}</div>
+		{% endif %}
+		{% if report.targetID>0 %}
+		{% set user=users[report.targetID] %}
+		<div class="flL smallMarginRight"><a href="{{ profileURL(report.targetID) }}">{{ user | pictureForAvatar('s') }}</a></div>
+		<div class="ellipsize"><b><a href="{{ profileURL(report.targetID) }}">{{ user | name('complete') }}</a></b></div>
+		<div class="grayText ellipsize">@{{ user.fullUsername }}</div>
+		{% if userPermissions.hasPermission('MANAGE_USERS') %}
+		<div><a href="/users/{{ report.targetID }}/meminfo">{{ L('admin_manage_user') }}</a></div>
+		{% endif %}
+		{% elseif report.targetID<0 %}
+		{% set group=groups[-report.targetID] %}
+		<div class="flL smallMarginRight"><a href="{{ profileURL(report.targetID) }}">{{ group | pictureForAvatar('s') }}</a></div>
+		<div class="ellipsize"><b><a href="{{ profileURL(report.targetID) }}">{{ group.name }}</a></b></div>
+		<div class="grayText ellipsize">@{{ group.fullUsername }}</div>
+		{% endif %}
+	</div>
+	<div class="ellipsize">
+		<span class="grayText">{{ L('report_from') }}:</span>
+		{% if report.reporterID!=0 %}
+		<a href="{{ profileURL(report.reporterID) }}">{{ users[report.reporterID] | name('complete') }}</a>
+		{% else %}
+		<i>{{ L('report_sender_anonymous') }}</i>
+		{% endif %}
+	</div>
+	<div class="ellipsize">
+		<span class="grayText">{{ L('report_sent_at') }}:</span> {{ LD(report.time) }}
+	</div>
+	{% if report.serverDomain is not empty %}
+	<div class="ellipsize">
+		<span class="grayText">{{ L('server') }}:</span> {{ report.serverDomain }}
+	</div>
+	{% endif %}
+	{% if report.actionTime is not null %}
+	<div class="ellipsize">
+		<span class="grayText">{{ L('report_resolved_at') }}:</span> {{ LD(report.actionTime) }}
+	</div>
+	{% endif %}
+	{% if report.comment is not empty %}
+	<div class="spanAll">
+		<div class="grayText">{{ L('report_comment') }}:</div>
+		{{ report.comment }}
+	</div>
+	{% endif %}
+	{% if content is not empty %}
+	<div class="spanAll">
+		<div class="grayText">{{ L('admin_report_content') }}:</div>
+		{% for cont in content %}
+		<div>
+			{%- if cont.type=='post' %}
+			{%- set langKey='admin_report_content_post' %}
+			{%- set exists=posts contains cont.id %}
+			{%- elseif cont.type=='comment' %}
+			{%- set langKey='admin_report_content_comment' %}
+			{%- set exists=posts contains cont.id %}
+			{%- elseif cont.type=='message' %}
+			{%- set langKey='admin_report_content_message' %}
+			{%- set exists=messages contains cont.id %}
+			{%- endif %}
+			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" data-ajax-box>{{ L(langKey, {'id': cont.id}) }}</a>
+		</div>
+		{% endfor %}
+	</div>
+	{% endif %}
+</div>
+<div class="singleColumn">
+	{% for action in actions %}
+	<div class="listItemWithDivider itemWithAvatar">
+		<div><a href="{{ profileURL(action.action.userID) }}">{{ users[action.action.userID] | pictureForAvatar('s') }}</a></div>
+		<div>
+			<div class="smallVMargin" style="margin-top: 0;">{{ action.mainTextHtml | raw }}</div>
+			{% if action.extraTextHtml is not empty %}<div class="smallVMargin">{{ action.extraTextHtml | raw }}</div>{% endif %}
+			<div class="grayText">{{ LD(action.action.time) }}</div>
+		</div>
+	</div>
+	{% else %}
+	<div class="grayText listItemWithDivider" style="text-align: center">{{ L('admin_report_no_actions') }}</div>
+	{% endfor %}
+	<div class="marginBefore marginAfter">
+		<div class="aBunchOfButtons">
+			{% if report.state=='OPEN' %}
+			<a href="/settings/admin/reports/{{ report.id }}/markResolved?csrf={{ csrf }}" class="button" data-ajax>{{ L('report_action_reject') }}</a>
+			{% if canDeleteContent %}<a href="/settings/admin/reports/{{ report.id }}/deleteContentForm" class="button" data-ajax-box>{{ L(isLocalTarget ? 'report_action_delete_content' : 'report_action_delete_content_locally') }}</a>{% endif %}
+			{% if report.targetID>0 %}<a href="/users/{{ report.targetID }}/banForm?report={{ report.id }}" class="button" data-ajax-box>{{ L('report_action_limit_user') }}</a>{% endif %}
+			{% if canDeleteContent and report.targetID>0 %}<a href="/users/{{ report.targetID }}/banForm?report={{ report.id }}&deleteContent" class="button" data-ajax-box>{{ L('report_action_delete_and_limit') }}</a>{% endif %}
+			{% else %}
+			<a href="/settings/admin/reports/{{ report.id }}/markUnresolved?csrf={{ csrf }}" class="button" data-ajax>{{ L('mark_report_unresolved') }}</a>
+			{% endif %}
+		</div>
+	</div>
+	<form class="marginBefore" method="post" action="/settings/admin/reports/{{ report.id }}/addComment?csrf={{ csrf }}" data-ajax>
+		<textarea style="width: 100%;" rows="2" placeholder="{{ L('comment_placeholder') }}" name="text" id="commentText"></textarea><br/>
+		<input type="submit" value="{{ L('send') }}"/>
+		{% script %}
+		autoSizeTextArea(ge("commentText"));
+		addSendOnCtrlEnter(ge("commentText"));
+		{% endscript %}
+	</form>
+</div>
+{% endblock %}
+

@@ -6,8 +6,8 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<maven.compiler.source>17</maven.compiler.source>
-		<maven.compiler.target>17</maven.compiler.target>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
 		<maven.install.skip>true</maven.install.skip>
 <!--		<skipTests>true</skipTests>-->
 	</properties>
@@ -112,7 +112,7 @@
 				<artifactId>frontend-maven-plugin</artifactId>
 				<!-- Use the latest released version:
 				https://repo1.maven.org/maven2/com/github/eirslett/frontend-maven-plugin/ -->
-				<version>1.12.0</version>
+				<version>1.14.2</version>
 				<configuration>
 					<nodeVersion>v16.13.1</nodeVersion>
 					<workingDirectory>src/main/web</workingDirectory>
@@ -190,7 +190,7 @@
 		<dependency>
 			<groupId>me.grishka.sparkjava</groupId>
 			<artifactId>spark-core</artifactId>
-			<version>2.9.4+patch.1</version>
+			<version>2.9.4+patch.2</version>
 		</dependency>
 		<dependency>
 			<groupId>io.pebbletemplates</groupId>
@@ -213,11 +213,6 @@
 			<groupId>org.jsoup</groupId>
 			<artifactId>jsoup</artifactId>
 			<version>1.15.3</version>
-		</dependency>
-		<dependency>
-			<groupId>com.squareup.okhttp3</groupId>
-			<artifactId>okhttp</artifactId>
-			<version>3.14.9</version>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>

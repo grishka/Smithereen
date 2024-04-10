@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -38,11 +39,13 @@ public class User extends Actor{
 	public LocalDate birthDate;
 	public Gender gender;
 	public long flags;
-	public Map<UserPrivacySettingKey, PrivacySetting> privacySettings=Map.of();
+	public Map<UserPrivacySettingKey, PrivacySetting> privacySettings=new HashMap<>();
 	public int movedTo;
 	public int movedFrom;
 	public Instant movedAt;
 	public Set<URI> alsoKnownAs=new HashSet<>();
+	public UserBanStatus banStatus=UserBanStatus.NONE;
+	public UserBanInfo banInfo;
 
 	// additional profile fields
 	public boolean manuallyApprovesFollowers;
@@ -171,6 +174,13 @@ public class User extends Actor{
 		String privacy=res.getString("privacy");
 		if(StringUtils.isNotEmpty(privacy)){
 			privacySettings=Utils.gson.fromJson(privacy, new TypeToken<>(){});
+		}
+		banStatus=UserBanStatus.values()[res.getInt("ban_status")];
+		if(banStatus!=UserBanStatus.NONE){
+			String _banInfo=res.getString("ban_info");
+			if(StringUtils.isNotEmpty(_banInfo)){
+				banInfo=Utils.gson.fromJson(_banInfo, UserBanInfo.class);
+			}
 		}
 	}
 
@@ -387,6 +397,7 @@ public class User extends Actor{
 		movedTo=previous.movedTo;
 		movedFrom=previous.movedFrom;
 		movedAt=previous.movedAt;
+		banStatus=previous.banStatus;
 	}
 
 	public enum Gender{

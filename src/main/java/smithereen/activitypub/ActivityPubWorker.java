@@ -70,7 +70,7 @@ import smithereen.model.PollOption;
 import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
-import smithereen.model.UriBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.notifications.NotificationUtils;
@@ -190,7 +190,7 @@ public class ActivityPubWorker{
 	private void sendActivityForPost(Post post, Activity activity, Actor actor){
 		try{
 			Set<URI> inboxes=getInboxesForPost(post);
-			LOG.info("Inboxes: {}", inboxes);
+			LOG.trace("Inboxes: {}", inboxes);
 			for(URI inbox:inboxes){
 				executor.submit(new SendOneActivityRunnable(activity, inbox, actor));
 			}
@@ -523,7 +523,7 @@ public class ActivityPubWorker{
 		like.actor=new LinkOrObject(user.activityPubID);
 		like.object=new LinkOrObject(post.getActivityPubID());
 		Set<URI> inboxes=PostStorage.getInboxesForPostInteractionForwarding(post);
-		LOG.info("Inboxes: {}", inboxes);
+		LOG.trace("Inboxes: {}", inboxes);
 		for(URI inbox:inboxes){
 			executor.submit(new SendOneActivityRunnable(like, inbox, user));
 		}
@@ -783,6 +783,16 @@ public class ActivityPubWorker{
 		}
 	}
 
+	public void sendUserDeleteSelf(User self) throws SQLException{
+		Delete del=new Delete();
+		del.activityPubID=new UriBuilder(self.activityPubID).fragment("deleteSelf").build();
+		del.actor=new LinkOrObject(self.activityPubID);
+		del.object=new LinkOrObject(self.activityPubID);
+		for(URI inbox:UserStorage.getFollowerInboxes(self.id)){
+			executor.submit(new SendOneActivityRunnable(del, inbox, self));
+		}
+	}
+
 	public synchronized Future<List<Post>> fetchReplyThread(NoteOrQuestion post){
 		return fetchingReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchReplyThreadRunnable(post)));
 	}
@@ -802,7 +812,7 @@ public class ActivityPubWorker{
 	 * @param actor the remote actor
 	 */
 	public synchronized void fetchActorRelationshipCollections(Actor actor){
-		LOG.info("Fetching relationship collections for actor {}", actor.activityPubID);
+		LOG.debug("Fetching relationship collections for actor {}", actor.activityPubID);
 		actor.ensureRemote();
 		if(fetchingRelationshipCollectionsActors.contains(actor.activityPubID)){
 			LOG.trace("Another fetch is already in progress for {}", actor.activityPubID);
@@ -818,7 +828,7 @@ public class ActivityPubWorker{
 	 * @param actor the remote actor
 	 */
 	public synchronized void fetchActorContentCollections(Actor actor){
-		LOG.info("Fetching content collections for actor {}", actor.activityPubID);
+		LOG.debug("Fetching content collections for actor {}", actor.activityPubID);
 		actor.ensureRemote();
 		if(fetchingContentCollectionsActors.contains(actor.activityPubID)){
 			LOG.trace("Another fetch is already in progress for {}", actor.activityPubID);
@@ -951,7 +961,7 @@ public class ActivityPubWorker{
 				realThread.add(p);
 				parent=p;
 			}
-			LOG.info("Done fetching parent thread for post {}", topLevel.activityPubID);
+			LOG.debug("Done fetching parent thread for post {}", topLevel.activityPubID);
 			synchronized(ActivityPubWorker.this){
 				fetchingReplyThreads.remove(initialPost.activityPubID);
 				List<Consumer<List<Post>>> actions=afterFetchReplyThreadActions.remove(initialPost.activityPubID);
@@ -1163,7 +1173,7 @@ public class ActivityPubWorker{
 			synchronized(ActivityPubWorker.this){
 				fetchingRelationshipCollectionsActors.remove(actor.activityPubID);
 			}
-			LOG.info("Done fetching relationship collections for {}", actor.activityPubID);
+			LOG.debug("Done fetching relationship collections for {}", actor.activityPubID);
 		}
 	}
 
@@ -1188,7 +1198,7 @@ public class ActivityPubWorker{
 			synchronized(ActivityPubWorker.this){
 				fetchingContentCollectionsActors.remove(actor.activityPubID);
 			}
-			LOG.info("Done fetching content collections for {}", actor.activityPubID);
+			LOG.debug("Done fetching content collections for {}", actor.activityPubID);
 		}
 	}
 
@@ -1551,7 +1561,7 @@ public class ActivityPubWorker{
 
 		@Override
 		public void run(){
-			LOG.info("Retrying activity delivery to {}, attempt {}", retry.inbox, retry.attemptNumber);
+			LOG.debug("Retrying activity delivery to {}, attempt {}", retry.inbox, retry.attemptNumber);
 			executor.submit(new SendOneActivityRunnable(retry.activity, retry.inbox, retry.actor, retry.attemptNumber));
 		}
 	}
