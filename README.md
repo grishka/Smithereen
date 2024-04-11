@@ -1,4 +1,4 @@
-<p align="center"><img src="/img/logo_text.svg" height="130" alt="Smithereen"/></p>
+<p align="center"><img src="/img/logo_text.svg" alt="Smithereen"/></p>
 
 Federated, ActivityPub-compatible social network with friends, walls, and groups.
 
