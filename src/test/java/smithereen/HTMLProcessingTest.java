@@ -23,8 +23,8 @@ public class HTMLProcessingTest{
 	public void testMastodonTootMicroformatIsKept(){
 		String in="<p>Экстра-кадр: Чик-чик-чик-чирик!..</p><p><a href=\"https://mastodon.host/tags/photo\" class=\"mention hashtag\" rel=\"tag\">#<span>photo</span></a> <a href=\"https://mastodon.host/tags/birds\" class=\"mention hashtag\" rel=\"tag\">#<span>birds</span></a> <a href=\"https://mastodon.host/tags/sparrow\" class=\"mention hashtag\" rel=\"tag\">#<span>sparrow</span></a> <a href=\"https://mastodon.host/tags/%D1%84%D0%BE%D1%82%D0%BE\" class=\"mention hashtag\" rel=\"tag\">#<span>фото</span></a> <a href=\"https://mastodon.host/tags/%D0%BF%D1%82%D0%B8%D1%86%D1%8B\" class=\"mention hashtag\" rel=\"tag\">#<span>птицы</span></a> <a href=\"https://mastodon.host/tags/%D0%B2%D0%BE%D1%80%D0%BE%D0%B1%D0%B5%D0%B9\" class=\"mention hashtag\" rel=\"tag\">#<span>воробей</span></a></p><p><span class=\"h-card\"><a href=\"https://mastodonsocial.ru/@rf\" class=\"u-url mention\">@<span>rf</span></a></span> <span class=\"h-card\"><a href=\"https://mastodon.social/@russian_mastodon\" class=\"u-url mention\">@<span>russian_mastodon</span></a></span></p>";
 		String expected="<p>Экстра-кадр: Чик-чик-чик-чирик!..</p>\n"+
-				"<p><a href=\"https://mastodon.host/tags/photo\" class=\"mention hashtag\" rel=\"noopener\" target=\"_blank\">#<span>photo</span></a> <a href=\"https://mastodon.host/tags/birds\" class=\"mention hashtag\" rel=\"noopener\" target=\"_blank\">#<span>birds</span></a> <a href=\"https://mastodon.host/tags/sparrow\" class=\"mention hashtag\" rel=\"noopener\" target=\"_blank\">#<span>sparrow</span></a> <a href=\"https://mastodon.host/tags/%D1%84%D0%BE%D1%82%D0%BE\" class=\"mention hashtag\" rel=\"noopener\" target=\"_blank\">#<span>фото</span></a> <a href=\"https://mastodon.host/tags/%D0%BF%D1%82%D0%B8%D1%86%D1%8B\" class=\"mention hashtag\" rel=\"noopener\" target=\"_blank\">#<span>птицы</span></a> <a href=\"https://mastodon.host/tags/%D0%B2%D0%BE%D1%80%D0%BE%D0%B1%D0%B5%D0%B9\" class=\"mention hashtag\" rel=\"noopener\" target=\"_blank\">#<span>воробей</span></a></p>\n"+
-				"<p><span class=\"h-card\"><a href=\"https://mastodonsocial.ru/@rf\" class=\"u-url mention\" target=\"_blank\" rel=\"noopener\">@<span>rf</span></a></span> <span class=\"h-card\"><a href=\"https://mastodon.social/@russian_mastodon\" class=\"u-url mention\" target=\"_blank\" rel=\"noopener\">@<span>russian_mastodon</span></a></span></p>";
+				"<p><a href=\"https://mastodon.host/tags/photo\" class=\"mention hashtag\" rel=\"noopener ugc\" target=\"_blank\">#<span>photo</span></a> <a href=\"https://mastodon.host/tags/birds\" class=\"mention hashtag\" rel=\"noopener ugc\" target=\"_blank\">#<span>birds</span></a> <a href=\"https://mastodon.host/tags/sparrow\" class=\"mention hashtag\" rel=\"noopener ugc\" target=\"_blank\">#<span>sparrow</span></a> <a href=\"https://mastodon.host/tags/%D1%84%D0%BE%D1%82%D0%BE\" class=\"mention hashtag\" rel=\"noopener ugc\" target=\"_blank\">#<span>фото</span></a> <a href=\"https://mastodon.host/tags/%D0%BF%D1%82%D0%B8%D1%86%D1%8B\" class=\"mention hashtag\" rel=\"noopener ugc\" target=\"_blank\">#<span>птицы</span></a> <a href=\"https://mastodon.host/tags/%D0%B2%D0%BE%D1%80%D0%BE%D0%B1%D0%B5%D0%B9\" class=\"mention hashtag\" rel=\"noopener ugc\" target=\"_blank\">#<span>воробей</span></a></p>\n"+
+				"<p><span class=\"h-card\"><a href=\"https://mastodonsocial.ru/@rf\" class=\"u-url mention\" target=\"_blank\" rel=\"noopener ugc\">@<span>rf</span></a></span> <span class=\"h-card\"><a href=\"https://mastodon.social/@russian_mastodon\" class=\"u-url mention\" target=\"_blank\" rel=\"noopener ugc\">@<span>russian_mastodon</span></a></span></p>";
 
 		String out=Utils.postprocessPostHTMLForDisplay(Utils.sanitizeHTML(in));
 		assertEquals(expected.replaceAll("\\s*\n", ""), out.replaceAll("\\s*\n", ""));
@@ -33,7 +33,7 @@ public class HTMLProcessingTest{
 	@Test
 	public void testTargetBlankIsAddedToExternalLinks(){
 		String in="<a href=\"https://example.com\">External link</a>";
-		String expected="<a href=\"https://example.com\" target=\"_blank\" rel=\"noopener\">External link</a>";
+		String expected="<a href=\"https://example.com\" target=\"_blank\" rel=\"noopener ugc\">External link</a>";
 		String out=Utils.postprocessPostHTMLForDisplay(Utils.sanitizeHTML(in));
 		assertEquals(expected, out);
 	}
@@ -75,7 +75,7 @@ public class HTMLProcessingTest{
 	@Test
 	public void testRelativeUrlsAreExpended(){
 		String in="<a href=\"/test.html\">Relative link</a>";
-		String expected="<a href=\"https://example.com/test.html\" target=\"_blank\" rel=\"noopener\">Relative link</a>";
+		String expected="<a href=\"https://example.com/test.html\" target=\"_blank\" rel=\"noopener ugc\">Relative link</a>";
 		assertEquals(expected, Utils.postprocessPostHTMLForDisplay(Utils.sanitizeHTML(in, URI.create("https://example.com/"))));
 	}
 
