@@ -265,10 +265,8 @@ public class PostStorage{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt;
 			if(total!=null){
-				stmt=conn.prepareStatement("SELECT COUNT(*) FROM `newsfeed` WHERE `author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? UNION SELECT ?) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY)");
-				stmt.setInt(1, userID);
-				stmt.setInt(2, userID);
-				stmt.setInt(3, startFromID==0 ? Integer.MAX_VALUE : startFromID);
+				stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `newsfeed` WHERE (`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY)",
+						userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID);
 				try(ResultSet res=stmt.executeQuery()){
 					res.next();
 					total[0]=res.getInt(1);
