@@ -1,0 +1,42 @@
+{# @pebvariable name="post" type="smithereen.model.viewmodel.PostViewModel" #}
+{# @pebvariable name="realPost" type="smithereen.model.Post" #}
+{# @pebvariable name="repostDepth" type="int" #}
+{% set realPost=post.post %}
+{% if realPost.hasContentWarning %}
+	<input type="checkbox" id="postCW_{{ realPost.id }}" style="display: none"/>
+<div class="postCWWrap">
+	<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
+{% endif %}
+{% if standalone %}
+<div class="postContent">{{ realPost.text | postprocessHTML }}</div>
+{% else %}
+<div class="postContent">{{ realPost.text | postprocessHTML | truncateText }}</div>
+{% endif %}
+{% if realPost.attachments is not empty %}
+{{ renderAttachments(realPost.processedAttachments, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
+{% endif %}
+{% if realPost.poll is not null %}
+{% include "poll" with {'poll': realPost.poll, 'interactions': interactions} %}
+{% endif %}
+{% if post.repost is not null %}
+<div class="repostHeader">
+	{% set authorID=post.repost.post.post.authorID %}
+	<a href="{{ profileURL(authorID) }}" class="flL avaW"{{ profileRel(authorID) }}>{{ users[authorID] | pictureForAvatar('s', 32) }}</a>
+	<div class="nameW"><span class="repostIcon{{ realPost.mastodonStyleRepost ? ' mastodonStyle' : '' }}"></span><a href="{{ profileURL(authorID) }}" class="name"{{ profileRel(authorID) }}>{{ users[authorID] | name('complete') }}</a></div>
+	<div class="ellipsize grayText">
+		{%- if post.repost.post.post.replyLevel>0 -%}
+		{%- if post.repost.topLevel is not null %}
+		{{ L('comment_repost_title', {'time': LD(post.repost.post.post.createdAt), 'postSnippet': post.repost.topLevel.post.shortTitle | default(LD(post.repost.topLevel.post.createdAt))}, {'originalComment': {'href': post.repost.post.post.internalURL, 'class': 'grayText'}, 'topLevelPost': {'href': post.repost.topLevel.post.internalURL} }) }}
+		{%- else -%}
+		{{ L('comment_deleted_repost_title', {'time': LD(post.repost.post.post.createdAt)}, {'originalComment': {'href': post.repost.post.post.internalURL, 'class': 'grayText'} }) }}
+		{%- endif -%}
+		{%- else -%}
+		<a href="{{ post.repost.post.post.internalURL }}" class="grayText">{{ LD(post.repost.post.post.createdAt) }}</a>
+		{%- endif -%}
+	</div>
+</div>
+{% if repostDepth<(maxRepostDepth | default(2)) %}{% include "wall_post_inner" with {'post': post.repost.post, 'repostDepth': repostDepth+1} %}{% endif %}
+{% endif %}
+{% if realPost.hasContentWarning %}
+</div>
+{% endif %}

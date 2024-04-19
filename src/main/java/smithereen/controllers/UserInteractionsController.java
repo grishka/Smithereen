@@ -29,6 +29,9 @@ public class UserInteractionsController{
 
 	public PaginatedList<User> getLikesForObject(Post object, User self, int offset, int count){
 		try{
+			if(object.isMastodonStyleRepost()){
+				object=context.getWallController().getPostOrThrow(object.repostOf);
+			}
 			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(object.id), 0).get(object.id);
 			List<User> users=UserStorage.getByIdAsList(LikeStorage.getPostLikes(object.id, self!=null ? self.id : 0, offset, count));
 			return new PaginatedList<>(users, interactions.likeCount, offset, count);
@@ -39,6 +42,9 @@ public class UserInteractionsController{
 
 	public void setObjectLiked(Post object, boolean liked, User self){
 		try{
+			if(object.isMastodonStyleRepost()){
+				object=context.getWallController().getPostOrThrow(object.repostOf);
+			}
 			context.getPrivacyController().enforceObjectPrivacy(self, object);
 			OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(object);
 			if(oaa.owner() instanceof User u)

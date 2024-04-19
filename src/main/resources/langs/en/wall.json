@@ -63,5 +63,8 @@
   "post_visible_to_followers": "This post is only visible to {name}''s followers",
   "post_visible_to_followers_mentioned": "This post is only visible to {name}''s followers and mentioned people",
   "post_visible_to_friends": "This post is only visible to {name}''s friends",
-  "expand_all_cws": "Expand all CWs"
+  "expand_all_cws": "Expand all CWs",
+  "comment_repost_title": "<a id=\"originalComment\">{time}</a> on post <a id=\"topLevelPost\">{postSnippet}</a>",
+  "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> on a deleted post",
+  "commenting_on_repost_hint": "Your comment will appear on {name}''s original post."
 }

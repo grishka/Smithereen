@@ -137,8 +137,12 @@ public class WallController{
 				throw new BadRequestException("This actor doesn't support wall posts");
 
 			Post parent=inReplyToID!=0 ? getPostOrThrow(inReplyToID) : null;
-			if(parent!=null)
+			if(parent!=null){
+				if(parent.isMastodonStyleRepost()){
+					parent=getPostOrThrow(parent.repostOf);
+				}
 				context.getPrivacyController().enforcePostPrivacy(author, parent);
+			}
 
 			final ArrayList<User> mentionedUsers=new ArrayList<>();
 			String text=preparePostText(textSource, mentionedUsers, parent);
@@ -492,10 +496,10 @@ public class WallController{
 	 */
 	public void populateCommentPreviews(@Nullable User self, @NotNull List<PostViewModel> posts){
 		try{
-			Set<Integer> postIDs=posts.stream().map(p->p.post.id).collect(Collectors.toSet());
+			Set<Integer> postIDs=posts.stream().map(p->p.post.getIDForInteractions()).collect(Collectors.toSet());
 			Map<Integer, PaginatedList<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
 			for(PostViewModel post:posts){
-				PaginatedList<Post> comments=allComments.get(post.post.id);
+				PaginatedList<Post> comments=allComments.get(post.post.getIDForInteractions());
 				if(comments!=null){
 					context.getPrivacyController().filterPosts(self, comments.list);
 					if(!comments.list.isEmpty()){
@@ -517,19 +521,39 @@ public class WallController{
 	 */
 	public Map<Integer, UserInteractions> getUserInteractions(@NotNull List<PostViewModel> posts, @Nullable User self){
 		try{
-			Set<Integer> postIDs=posts.stream().map(p->p.post.id).collect(Collectors.toSet());
+			Set<Integer> postIDs=posts.stream().map(p->p.post.getIDForInteractions()).collect(Collectors.toSet());
 			Set<Integer> ownerUserIDs=new HashSet<>();
 			for(PostViewModel p:posts){
 				p.getAllReplyIDs(postIDs);
-				if(p.post.ownerID>0)
-					ownerUserIDs.add(p.post.ownerID);
+				if(!p.post.isMastodonStyleRepost()){
+					if(p.post.ownerID>0)
+						ownerUserIDs.add(p.post.ownerID);
+				}else if(p.repost!=null && p.repost.post()!=null){
+					Post repost=p.repost.post().post;
+					if(repost.ownerID>0)
+						ownerUserIDs.add(repost.ownerID);
+				}
 			}
 			Map<Integer, Boolean> canComment=context.getUsersController().getUsers(ownerUserIDs)
 					.entrySet()
 					.stream()
 					.collect(Collectors.toMap(Map.Entry::getKey, e->context.getPrivacyController().checkUserPrivacy(self, e.getValue(), UserPrivacySettingKey.WALL_COMMENTING)));
 			for(PostViewModel post:posts){
-				post.canComment=canComment.getOrDefault(post.post.ownerID, true);
+				int ownerID;
+				if(post.post.isMastodonStyleRepost()){
+					if(post.repost!=null && post.repost.post()!=null){
+						ownerID=post.repost.post().post.ownerID;
+					}else{
+						ownerID=0;
+					}
+				}else{
+					ownerID=post.post.ownerID;
+				}
+				// Can't comment on posts or in threads that don't exist
+				if(post.post.isMastodonStyleRepost() && post.repost!=null && (post.repost.post()==null || (post.repost.post().post.getReplyLevel()>0 && post.repost.topLevel()==null)))
+					post.canComment=false;
+				else
+					post.canComment=canComment.getOrDefault(ownerID, true);
 			}
 			return PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
 		}catch(SQLException x){
@@ -700,6 +724,53 @@ public class WallController{
 			return Math.max(lid, 0);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void populateReposts(User self, List<PostViewModel> posts, int maxDepth){
+		HashMap<Integer, PostViewModel> knownPosts=posts.stream().collect(Collectors.toMap(p->p.post.id, Function.identity(), (a, b)->b, HashMap::new));
+		HashSet<Integer> needPosts=new HashSet<>();
+		HashSet<PostViewModel> reposts=new HashSet<>(), nextReposts=new HashSet<>();
+		for(PostViewModel post:posts){
+			if(post.post.repostOf!=0){
+				reposts.add(post);
+			}
+		}
+		for(int i=0;i<maxDepth;i++){
+			needPosts.clear();
+			nextReposts.clear();
+			for(PostViewModel post:reposts){
+				if(!knownPosts.containsKey(post.post.repostOf)){
+					needPosts.add(post.post.repostOf);
+				}
+			}
+			if(!needPosts.isEmpty()){
+				Map<Integer, Post> newPosts=getPosts(needPosts);
+				needPosts.clear();
+				for(Post post:newPosts.values()){
+					knownPosts.put(post.id, new PostViewModel(post));
+					if(post.getReplyLevel()>0 && !knownPosts.containsKey(post.replyKey.getFirst())){
+						needPosts.add(post.replyKey.getFirst());
+					}
+				}
+				// For comments, get their top-level posts
+				if(!needPosts.isEmpty()){
+					for(Post post:getPosts(needPosts).values()){
+						knownPosts.put(post.id, new PostViewModel(post));
+					}
+				}
+			}
+			for(PostViewModel post:reposts){
+				PostViewModel repost=knownPosts.get(post.post.repostOf);
+				if(repost!=null){
+					PostViewModel topLevel=repost.post.getReplyLevel()>0 ? knownPosts.get(repost.post.replyKey.getFirst()) : null;
+					post.repost=new PostViewModel.Repost(repost, topLevel);
+					nextReposts.add(repost);
+				}
+			}
+			HashSet<PostViewModel> tmp=reposts;
+			reposts=nextReposts;
+			nextReposts=tmp;
 		}
 	}
 }

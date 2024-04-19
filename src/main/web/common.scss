@@ -351,7 +351,7 @@ textarea{
 	background: $gray;
 }
 
-.grayText{
+.grayText, a.grayText{
 	color: $auxiliaryGrey;
 }
 
@@ -395,12 +395,6 @@ textarea{
 		width: 100%;
 		max-width: 100%;
 		vertical-align: top;
-	}
-	.bottomBar{
-		margin-top: 8px;
-		.right{
-			padding-right: 5px;
-		}
 	}
 }
 

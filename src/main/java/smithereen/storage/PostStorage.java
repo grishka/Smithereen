@@ -169,6 +169,8 @@ public class PostStorage{
 							.value("ap_replies", Objects.toString(post.activityPubReplies, null))
 							.value("poll_id", post.poll!=null ? post.poll.id : null)
 							.value("privacy", post.privacy)
+							.value("repost_of", post.repostOf)
+							.value("flags", Utils.serializeEnumSet(post.flags))
 							.createStatement(Statement.RETURN_GENERATED_KEYS);
 				}else{
 					if(post.poll!=null && Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts
@@ -469,6 +471,26 @@ public class PostStorage{
 
 			if(post.poll!=null && post.poll.ownerID==post.authorID){
 				SQLQueryBuilder.prepareStatement(conn, "DELETE FROM polls WHERE id=?", post.poll.id).execute();
+			}
+
+			// Delete Mastodon-style reposts as well
+			Set<Integer> reposts=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.columns("id")
+					.where("repost_of=? AND (flags & 1)=1", id)
+					.executeAndGetIntStream()
+					.boxed()
+					.collect(Collectors.toSet());
+			if(!reposts.isEmpty()){
+				new SQLQueryBuilder(conn)
+						.deleteFrom("newsfeed")
+						.whereIn("object_id", reposts)
+						.andWhere("`type`=?", NewsfeedEntry.Type.POST)
+						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.deleteFrom("wall_posts")
+						.whereIn("id", reposts)
+						.executeNoResult();
 			}
 
 			if(needFullyDelete){

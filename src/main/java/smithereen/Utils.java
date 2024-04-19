@@ -969,12 +969,13 @@ public class Utils{
 		return LocalDateTime.of(date, time).atZone(timeZoneForRequest(req)).toInstant();
 	}
 
-	public static <E extends Enum<E>> long serializeEnumSet(EnumSet<E> set, Class<E> cls){
-		if(cls.getEnumConstants().length>64)
-			throw new IllegalArgumentException("this enum has more than 64 constants");
+	public static <E extends Enum<E>> long serializeEnumSet(EnumSet<E> set){
 		long result=0;
 		for(E value:set){
-			result|=1L << value.ordinal();
+			int ordinal=value.ordinal();
+			if(ordinal>=64)
+				throw new IllegalArgumentException("this enum has more than 64 constants");
+			result|=1L << ordinal;
 		}
 		return result;
 	}
@@ -1052,6 +1053,8 @@ public class Utils{
 					link.attr(attr, b);
 				else if(value instanceof String s)
 					link.attr(attr, s);
+				else if(value!=null)
+					link.attr(attr, value.toString());
 			}
 		}
 		return root.html();

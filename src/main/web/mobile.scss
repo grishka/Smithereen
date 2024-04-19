@@ -292,6 +292,26 @@ select{
 	.postContent pre{
 		overflow-x: auto;
 	}
+	.repostHeader{
+		padding-bottom: 8px;
+		.avaW{
+			margin-right: 8px;
+		}
+		.name{
+			font-weight: $mediumWeight;
+		}
+		.repostIcon{
+			display: inline-block;
+			width: 10px;
+			height: 12px;
+			margin-right: 4px;
+			position: relative;
+			background: svg-load('img/repost_icons_mobile.svg', fill: $normalLink) no-repeat;
+			&.mastodonStyle{
+				background-position: 0 -12px;
+			}
+		}
+	}
 }
 
 .postActions{
@@ -415,6 +435,12 @@ select{
 .wallPostForm{
 	textarea:not(.keepBorder){
 		border: none;
+	}
+	.bottomBar{
+		margin-top: 8px;
+		.right{
+			padding-right: 5px;
+		}
 	}
 	.attachment{
 		margin: 8px 4px;

@@ -326,6 +326,34 @@ small{
 		margin-bottom: 0;
 		padding-bottom: 0;
 	}
+	.repostHeader{
+		margin: 5px 0;
+		.avaW{
+			margin-right: 7px;
+		}
+		.name{
+			font-weight: bold;
+			line-height: 13px;
+		}
+		.nameW{
+			margin-bottom: 4px;
+		}
+		.repostIcon{
+			display: inline-block;
+			width: 9px;
+			height: 11px;
+			margin: 0 3px 0 1px;
+			position: relative;
+			top: 2px;
+			background: svg-load('img/repost_icons.svg') no-repeat;
+			&.mastodonStyle{
+				background-position: 0 -11px;
+			}
+		}
+	}
+	.authorName{
+		line-height: 13px;
+	}
 }
 
 .post.comment .authorName{
@@ -473,6 +501,27 @@ small{
 		background: none;
 		padding: 8px 0 0 0;
 	}
+	.bottomBar{
+		margin-top: 8px;
+		display: flex;
+		align-items: center;
+		.center{
+			flex-grow: 1;
+			margin-left: 10px;
+			max-height: 26px;
+			text-overflow: ellipsis;
+			overflow-y: hidden;
+			display: -webkit-box;
+			-webkit-box-orient: vertical;
+			-webkit-line-clamp: 2;
+		}
+		.right{
+			margin: 0 10px;
+		}
+		.left, .right{
+			flex-shrink: 0;
+		}
+	}
 	.attachment{
 		position: relative;
 		float: left;
@@ -544,6 +593,10 @@ small{
 			}
 		}
 	}
+}
+
+.commentsPreview:empty+.wallPostForm{
+	margin-top: 5px;
 }
 
 .profileBlock{

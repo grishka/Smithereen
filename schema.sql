@@ -757,6 +757,7 @@ CREATE TABLE `wall_posts` (
   `source` text,
   `source_format` tinyint unsigned DEFAULT NULL,
   `privacy` tinyint unsigned NOT NULL DEFAULT '0',
+  `flags` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -766,10 +767,9 @@ CREATE TABLE `wall_posts` (
   KEY `owner_group_id` (`owner_group_id`),
   KEY `poll_id` (`poll_id`),
   CONSTRAINT `wall_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `wall_posts_ibfk_2` FOREIGN KEY (`repost_of`) REFERENCES `wall_posts` (`id`) ON DELETE SET NULL,
   CONSTRAINT `wall_posts_ibfk_4` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-03-23  8:50:17
+-- Dump completed on 2024-04-19  5:12:04

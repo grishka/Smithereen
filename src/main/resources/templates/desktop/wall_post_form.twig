@@ -52,15 +52,19 @@
 			{% if poll is not null %}{% include 'poll_form' with {'poll': poll} %}{% endif %}
 		</div>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
-		<table width="100%" cellpadding="0" cellspacing="0" class="bottomBar">
-			<tr><td width="50%" class="left">
+		<div class="bottomBar">
+			<div class="left">
 				{% if isEditing %}
 				<button id="postFormSubmit_{{ id }}">{{ L('save') }}</button>
 				<button class="tertiary jsRequired" type="button" onclick="cancelEditingPost({{ editingPostID }})">{{ L('cancel') }}</button>
 				{% else %}
 				<button id="postFormSubmit_{{ id }}">{{ L('send') }}</button>
 				{% endif %}
-			</td><td align="right" class="right">
+			</div>
+			<div class="center grayText">
+			{% if originalPostAuthor is not null %}{{ L('commenting_on_repost_hint', {'name': originalPostAuthor | name('firstAndGender')}) }}{% endif %}
+			</div>
+			<div class="right">
 				<div class="popupMenuW">
 					<span class="opener">{{ L('attach') }}</span>
 					<div class="popupMenu withIcons" style="display: none;">
@@ -74,8 +78,8 @@
 						</ul>
 					</div>
 				</div>
-			</td></tr>
-		</table>
+			</div>
+		</div>
 	</form>
 	<form action="/system/upload/postPhoto?draft=1&csrf={{csrf}}" method="post" enctype="multipart/form-data" id="attachmentUploadForm_{{id}}">
 		<noscript>

@@ -76,6 +76,7 @@ public class ProfileRoutes{
 						.with("canMessage", canMessage)
 						.paginate(wall);
 
+				ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 				if(req.attribute("mobile")==null){
 					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
 				}

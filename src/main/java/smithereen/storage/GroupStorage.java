@@ -150,7 +150,7 @@ public class GroupStorage{
 					.value("event_start_time", group.eventStartTime)
 					.value("event_end_time", group.eventEndTime)
 					.value("type", group.type)
-					.value("flags", Utils.serializeEnumSet(group.capabilities, ForeignGroup.Capability.class))
+					.value("flags", Utils.serializeEnumSet(group.capabilities))
 					.value("access_type", group.accessType)
 					.value("endpoints", group.serializeEndpoints())
 					.value("about", group.summary)

@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
@@ -48,6 +49,7 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 	public boolean isReplyToUnknownPost;
 	public boolean deleted;
 	public Privacy privacy=Privacy.PUBLIC;
+	public EnumSet<Flag> flags=EnumSet.noneOf(Flag.class);
 
 	public boolean hasContentWarning(){
 		return contentWarning!=null;
@@ -110,6 +112,7 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 			post.poll=PostStorage.getPoll(pollID, post.activityPubID);
 		}
 		post.privacy=Privacy.values()[res.getInt("privacy")];
+		Utils.deserializeEnumSet(post.flags, Flag.class, res.getLong("flags"));
 
 		return post;
 	}
@@ -261,6 +264,15 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 			contentWarning=jo.get("cw").getAsString();
 	}
 
+	public boolean isMastodonStyleRepost(){
+		return flags.contains(Flag.MASTODON_STYLE_REPOST);
+	}
+
+	public int getIDForInteractions(){
+		// Mastodon-style repost posts can't be interacted with
+		return flags.contains(Flag.MASTODON_STYLE_REPOST) ? repostOf : id;
+	}
+
 	public enum Privacy{
 		PUBLIC(null),
 		FOLLOWERS_AND_MENTIONED("post_visible_to_followers_mentioned"),
@@ -272,5 +284,9 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 		Privacy(String langKey){
 			this.langKey=langKey;
 		}
+	}
+
+	public enum Flag{
+		MASTODON_STYLE_REPOST,
 	}
 }

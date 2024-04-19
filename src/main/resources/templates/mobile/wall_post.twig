@@ -2,7 +2,7 @@
 {# @pebvariable name="realPost" type="smithereen.model.Post" #}
 {% set realPost=post.post %}
 {% if postInteractions is not null %}
-{% set interactions=postInteractions[realPost.id] %}
+{% set interactions=postInteractions[realPost.getIDForInteractions()] %}
 {% endif %}
 <div class="post" id="post{{ realPost.id }}">
 	<table width="100%" cellpadding="0" cellspacing="0">
@@ -21,25 +21,8 @@
 		</tr>
 	</table>
 	<div class="postContentWrap">
-		{% if realPost.hasContentWarning %}
-			<input type="checkbox" id="postCW_{{ realPost.id }}" style="display: none"/>
-		<div class="postCWWrap">
-			<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
-		{% endif %}
-		{% if standalone %}
-		<div class="postContent">{{ realPost.text | postprocessHTML }}</div>
-		{% else %}
-		<div class="postContent">{{ realPost.text | postprocessHTML | truncateText }}</div>
-		{% endif %}
-		{% if realPost.attachments is not empty %}
-		{{ renderAttachments(realPost.processedAttachments, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
-		{% endif %}
-		{% if realPost.poll is not null %}
-		{% include "poll" with {'poll': realPost.poll, 'interactions': interactions} %}
-		{% endif %}
-		{% if realPost.hasContentWarning %}
-		</div>
-		{% endif %}
+		{% include "wall_post_inner" with {'post': post, 'repostDepth': 0} %}
+		{% set realPost=post.post %}{# because included template overwrote it #}
 		{% if realPost.federationState=='REJECTED' %}
 		<div class="red">{{ L('wall_post_rejected') }}</div>
 		{% endif %}

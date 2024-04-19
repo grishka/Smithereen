@@ -21,15 +21,12 @@ public class PictureForAvatarFilter implements Filter{
 	public Object apply(Object input, Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber) throws PebbleException{
 		SizedImage image;
 		String additionalClasses="";
-		if(input instanceof Actor){
-			Actor actor=(Actor) input;
+		if(input instanceof Actor actor){
 			image=actor.getAvatar();
-			if(actor instanceof User && ((User)actor).gender==User.Gender.FEMALE)
-				additionalClasses=" female";
-			else if(actor instanceof Group)
+			if(actor instanceof Group)
 				additionalClasses=" group";
 		}else{
-			return "";
+			image=null;
 		}
 
 		String typeStr=(String) args.get("type");

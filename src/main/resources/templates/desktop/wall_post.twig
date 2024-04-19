@@ -2,7 +2,7 @@
 {# @pebvariable name="realPost" type="smithereen.model.Post" #}
 {% set realPost=post.post %}
 {% if postInteractions is not null %}
-{% set interactions=postInteractions[realPost.id] %}
+{% set interactions=postInteractions[realPost.getIDForInteractions()] %}
 {% endif %}
 <table width="100%" cellpadding="0" cellspacing="0" class="post{{ standalone ? ' standalone' : '' }}" id="post{{ realPost.id }}">
 	<tr>
@@ -16,25 +16,8 @@
 			{%- endif %}
 			<div id="postInner{{ realPost.id }}">
 				{% block postInner %}
-				{% if realPost.hasContentWarning %}
-				<input type="checkbox" id="postCW_{{ realPost.id }}" style="display: none"/>
-				<div class="postCWWrap">
-					<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
-				{% endif %}
-				{% if standalone %}
-				<div class="postContent">{{ realPost.text | postprocessHTML }}</div>
-				{% else %}
-				<div class="postContent">{{ realPost.text | postprocessHTML | truncateText }}</div>
-				{% endif %}
-				{% if realPost.poll is not null %}
-				{% include "poll" with {'poll': realPost.poll, 'interactions': interactions} %}
-				{% endif %}
-				{% if realPost.attachments is not empty %}
-					{{ renderAttachments(realPost.processedAttachments, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
-				{% endif %}
-				{% if realPost.hasContentWarning %}
-				</div>
-				{% endif %}
+				{% include "wall_post_inner" with {'post': post, 'repostDepth': 0} %}
+				{% set realPost=post.post %}{# because included template overwrote it #}
 				{% if realPost.federationState=='REJECTED' %}
 				<div class="red">{{ L('wall_post_rejected') }}</div>
 				{% endif %}
@@ -81,15 +64,16 @@
 		<div class="prevLoader loader" id="prevLoader{{ realPost.id }}" style="display: none;"></div>
 	{% endif %}
 	<div class="commentsPreview" id="postReplies{{ realPost.id }}" style="{{ post.repliesObjects is empty ? 'display: none;' : '' }}">
-	{%for reply in post.repliesObjects%}
+	{%- for reply in post.repliesObjects %}
 		{% include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': "wallPostForm_commentReplyPost#{realPost.id}", 'topLevel': post} %}
 		{% set realPost=post.post %}{# the included template overwrites this variable #}
-	{%endfor%}
+	{% endfor -%}
 	</div>
-	{%set interactions=postInteractions[realPost.id]%}
+	{%set interactions=postInteractions[realPost.getIDForInteractions()]%}
 {% if currentUser is not null and post.canComment %}
-	{% include "wall_post_form" with {'id': "commentReplyPost#{realPost.id}", 'replyTo': realPost, 'hidden': true} %}
-	{% include "wall_post_form" with {'id': "commentPost#{realPost.id}", 'replyTo': realPost, 'hidden': interactions.commentCount==0} %}
+	{% if post.repost is not null and post.repost.post is not null %}{% set origAuthor=users[post.repost.post.post.authorID] %}{% endif %}
+	{% include "wall_post_form" with {'id': "commentPost#{realPost.id}", 'replyTo': realPost, 'replyToModel': post, 'hidden': interactions.commentCount==0, 'originalPostAuthor': origAuthor} %}
+	{% include "wall_post_form" with {'id': "commentReplyPost#{realPost.id}", 'replyTo': realPost, 'hidden': true, 'originalPostAuthor': origAuthor} %}
 {% endif %}
 </div>
 {% endif %}

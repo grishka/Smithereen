@@ -257,6 +257,7 @@ public class PostRoutes{
 
 		List<PostViewModel> feedPosts=ctx.getWallController().getPosts(needPosts).values().stream().map(PostViewModel::new).toList();
 
+		ctx.getWallController().populateReposts(self!=null ? self.user : null, feedPosts, 2);
 		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
 			ctx.getWallController().populateCommentPreviews(self.user, feedPosts);
 		}
@@ -298,7 +299,6 @@ public class PostRoutes{
 		else
 			owner=ctx.getUsersController().getUserOrThrow(post.post.ownerID);
 
-		User author=ctx.getUsersController().getUserOrThrow(post.post.authorID);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone", req);
 		SessionInfo info=Utils.sessionInfo(req);
 		User self=null;
@@ -310,11 +310,22 @@ public class PostRoutes{
 			self=info.account.user;
 		}
 
+		if(post.post.repostOf!=0){
+			if(post.post.isMastodonStyleRepost()){
+				resp.redirect("/posts/"+post.post.repostOf);
+				return "";
+			}
+			ctx.getWallController().populateReposts(self, List.of(post), 10);
+		}
+
+		User author=ctx.getUsersController().getUserOrThrow(post.post.authorID);
+
 		int offset=offset(req);
 		PaginatedList<PostViewModel> replies=ctx.getWallController().getReplies(self, replyKey, offset, 100, 50);
 		model.paginate(replies);
 		model.with("post", post);
 		model.with("isGroup", post.post.ownerID<0);
+		model.with("maxRepostDepth", 10);
 		int cwCount=0;
 		for(PostViewModel reply:replies.list){
 			if(reply.post.hasContentWarning())
@@ -456,7 +467,7 @@ public class PostRoutes{
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
 		ctx.getUserInteractionsController().setObjectLiked(post, true, self.user);
 		if(isAjax(req)){
-			UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self.user).get(post.id);
+			UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self.user).get(post.getIDForInteractions());
 			return new WebDeltaResponse(resp)
 					.setContent("likeCounterPost"+post.id, String.valueOf(interactions.likeCount))
 					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/unlike?csrf="+requireSession(req).csrfToken);
@@ -472,7 +483,7 @@ public class PostRoutes{
 		String back=Utils.back(req);
 		ctx.getUserInteractionsController().setObjectLiked(post, false, self.user);
 		if(isAjax(req)){
-			UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self.user).get(post.id);
+			UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self.user).get(post.getIDForInteractions());
 			WebDeltaResponse b=new WebDeltaResponse(resp)
 					.setContent("likeCounterPost"+post.id, String.valueOf(interactions.likeCount))
 					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/like?csrf="+requireSession(req).csrfToken);
@@ -581,6 +592,7 @@ public class PostRoutes{
 
 		int offset=offset(req);
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, owner, ownOnly, offset, 20));
+		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
 		}
@@ -618,6 +630,7 @@ public class PostRoutes{
 
 		int offset=offset(req);
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallToWallPosts(self!=null ? self.user : null, user, otherUser, offset, 20));
+		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
 		}

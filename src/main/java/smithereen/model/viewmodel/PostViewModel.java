@@ -15,6 +15,7 @@ public class PostViewModel{
 	private boolean loadedRepliesCountKnown;
 	private int loadedRepliesCount;
 	public boolean canComment=true;
+	public Repost repost;
 
 	public PostViewModel(Post post){
 		this.post=post;
@@ -68,7 +69,15 @@ public class PostViewModel{
 				userIDs.add(pvm.post.ownerID);
 			else
 				groupIDs.add(-pvm.post.ownerID);
+			if(pvm.repost!=null){
+				if(pvm.repost.post!=null)
+					collectActorIDs(Set.of(pvm.repost.post), userIDs, groupIDs);
+				if(pvm.repost.topLevel!=null)
+					collectActorIDs(Set.of(pvm.repost.topLevel), userIDs, groupIDs);
+			}
 			collectActorIDs(pvm.repliesObjects, userIDs, groupIDs);
 		}
 	}
+
+	public record Repost(PostViewModel post, PostViewModel topLevel){}
 }

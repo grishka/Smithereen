@@ -37,7 +37,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=43;
+	public static final int SCHEMA_VERSION=44;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -657,6 +657,9 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("""
 						CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
 						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_'), '%');""");
+			}
+			case 44 -> {
+				conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `flags` bigint unsigned NOT NULL DEFAULT 0, DROP FOREIGN KEY wall_posts_ibfk_2");
 			}
 		}
 	}
