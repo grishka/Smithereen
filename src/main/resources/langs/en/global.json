@@ -161,5 +161,6 @@
   "file_size_kilobytes": "{amount} KB",
   "file_size_megabytes": "{amount} MB",
   "file_size_gigabytes": "{amount} GB",
-  "file_size_terabytes": "{amount} TB"
+  "file_size_terabytes": "{amount} TB",
+  "remote_object_timeout": "Timeout exceeded while waiting for response from {server}."
 }

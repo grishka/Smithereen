@@ -35,6 +35,7 @@ import java.security.SignatureException;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -138,6 +139,7 @@ public class ActivityPub{
 		}
 
 		HttpRequest.Builder builder=HttpRequest.newBuilder(uri)
+				.timeout(Duration.ofSeconds(10))
 				.header("Accept", CONTENT_TYPE);
 		if(token!=null)
 			builder.header("Authorization", "Bearer "+token);

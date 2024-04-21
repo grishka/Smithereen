@@ -157,5 +157,6 @@
   "file_size_kilobytes": "{amount} Кб",
   "file_size_megabytes": "{amount} Мб",
   "file_size_gigabytes": "{amount} Гб",
-  "file_size_terabytes": "{amount} Тб"
+  "file_size_terabytes": "{amount} Тб",
+  "remote_object_timeout": "Превышено время ожидания ответа от {server}."
 }

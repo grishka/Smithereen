@@ -11,6 +11,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.http.HttpTimeoutException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -43,7 +44,6 @@ import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.lang.Lang;
@@ -471,6 +471,7 @@ public class SystemRoutes{
 			throw new BadRequestException();
 		Object obj=null;
 		URI uri=null;
+		Lang l=lang(req);
 		Matcher matcher=USERNAME_DOMAIN_PATTERN.matcher(_uri);
 		if(matcher.find() && matcher.start()==0 && matcher.end()==_uri.length()){
 			String username=matcher.group(1);
@@ -479,7 +480,7 @@ public class SystemRoutes{
 				uri=ActivityPub.resolveUsername(username, domain);
 			}catch(IOException x){
 				LOG.debug("Error getting remote user", x);
-				String error=lang(req).get("remote_object_network_error");
+				String error=l.get("remote_object_network_error");
 				return new JsonObjectBuilder().add("error", error).build();
 			}
 		}
@@ -491,69 +492,93 @@ public class SystemRoutes{
 			}
 		}
 		try{
+			obj=ctx.getObjectLinkResolver().resolveLocally(uri, Object.class);
+			return switch(obj){
+				case User u -> new JsonObjectBuilder().add("success", u.getProfileURL()).build();
+				case Group g -> new JsonObjectBuilder().add("success", g.getProfileURL()).build();
+				case Post p ->{
+					try{
+						ctx.getActivityPubWorker().fetchAllReplies(p).get(30, TimeUnit.SECONDS);
+					}catch(Throwable x){
+						LOG.trace("Error fetching replies", x);
+					}
+					yield new JsonObjectBuilder().add("success", "/posts/"+p.id).build();
+				}
+				default -> new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
+			};
+		}catch(ObjectNotFoundException ignore){}
+		try{
 			obj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, false, (JsonObject) null, false);
 		}catch(UnsupportedRemoteObjectTypeException x){
 			LOG.debug("Unsupported remote object", x);
-			return new JsonObjectBuilder().add("error", lang(req).get("unsupported_remote_object_type")).build();
+			return new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
 		}catch(ObjectNotFoundException x){
 			LOG.debug("Remote object not found", x);
-			return new JsonObjectBuilder().add("error", lang(req).get("remote_object_not_found")).build();
+			String error=switch(x.getCause()){
+				case HttpTimeoutException ignored -> l.get("remote_object_timeout", Map.of("server", uri.getHost()));
+				case IOException ignored -> l.get("remote_object_network_error");
+				case null, default -> l.get("remote_object_not_found");
+			};
+			return new JsonObjectBuilder().add("error", error).build();
 		}catch(Exception x){
 			LOG.debug("Other remote fetch exception", x);
-			String errMessage=lang(req).get("remote_object_loading_error");
+			String errMessage=l.get("remote_object_loading_error");
 			String exMessage=x.getMessage();
 			if(StringUtils.isNotEmpty(exMessage)){
 				errMessage+="<br><br>"+Utils.escapeHTML(exMessage);
 			}
 			return new JsonObjectBuilder().add("error", errMessage).build();
 		}
-		if(obj instanceof ForeignUser user){
-			UserStorage.putOrUpdateForeignUser(user);
-			return new JsonObjectBuilder().add("success", user.getProfileURL()).build();
-		}else if(obj instanceof ForeignGroup group){
-			group.storeDependencies(ctx);
-			GroupStorage.putOrUpdateForeignGroup(group);
-			return new JsonObjectBuilder().add("success", group.getProfileURL()).build();
-		}else if(obj instanceof NoteOrQuestion post){
-			if(post.inReplyTo==null){
-				Post nativePost=post.asNativePost(ctx);
-				PostStorage.putForeignWallPost(nativePost);
-				try{
-					ctx.getActivityPubWorker().fetchAllReplies(nativePost).get(30, TimeUnit.SECONDS);
-				}catch(Throwable x){
-					x.printStackTrace();
-				}
-				return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+nativePost.id).toString()).build();
-			}else{
-				Future<List<Post>> future=ctx.getActivityPubWorker().fetchReplyThread(post);
-				try{
-					List<Post> posts=future.get(30, TimeUnit.SECONDS);
-					ctx.getActivityPubWorker().fetchAllReplies(posts.get(0)).get(30, TimeUnit.SECONDS);
+		return switch(obj){
+			case ForeignUser user -> {
+				UserStorage.putOrUpdateForeignUser(user);
+				yield new JsonObjectBuilder().add("success", user.getProfileURL()).build();
+			}
+			case ForeignGroup group -> {
+				group.storeDependencies(ctx);
+				GroupStorage.putOrUpdateForeignGroup(group);
+				yield new JsonObjectBuilder().add("success", group.getProfileURL()).build();
+			}
+			case NoteOrQuestion post -> {
+				if(post.inReplyTo==null){
 					Post nativePost=post.asNativePost(ctx);
-					return new JsonObjectBuilder().add("success", Config.localURI("/posts/"+posts.get(0).id+"#comment"+nativePost.id).toString()).build();
-				}catch(InterruptedException ignore){
-				}catch(ExecutionException e){
-					LOG.trace("Error fetching remote object", e);
-					Throwable x=e.getCause();
-					String error;
-					if(x instanceof UnsupportedRemoteObjectTypeException)
-						error=lang(req).get("unsupported_remote_object_type");
-					else if(x instanceof ObjectNotFoundException)
-						error=lang(req).get("remote_object_not_found");
-					else if(x instanceof IOException)
-						error=lang(req).get("remote_object_network_error");
-					else
-						error=x.getLocalizedMessage();
-					return new JsonObjectBuilder().add("error", error).build();
-				}catch(TimeoutException e){
-					e.printStackTrace();
-					return "";
+					PostStorage.putForeignWallPost(nativePost);
+					try{
+						ctx.getActivityPubWorker().fetchAllReplies(nativePost).get(30, TimeUnit.SECONDS);
+					}catch(Throwable x){
+						LOG.trace("Error fetching replies", x);
+					}
+					yield new JsonObjectBuilder().add("success", Config.localURI("/posts/"+nativePost.id).toString()).build();
+				}else{
+					Future<List<Post>> future=ctx.getActivityPubWorker().fetchReplyThread(post);
+					try{
+						List<Post> posts=future.get(30, TimeUnit.SECONDS);
+						ctx.getActivityPubWorker().fetchAllReplies(posts.getFirst()).get(30, TimeUnit.SECONDS);
+						Post nativePost=post.asNativePost(ctx);
+						yield new JsonObjectBuilder().add("success", Config.localURI("/posts/"+posts.getFirst().id+"#comment"+nativePost.id).toString()).build();
+					}catch(InterruptedException x){
+						throw new RuntimeException(x);
+					}catch(ExecutionException e){
+						LOG.trace("Error fetching remote object", e);
+						Throwable x=e.getCause();
+						String error=switch(x){
+							case UnsupportedRemoteObjectTypeException ignored -> l.get("unsupported_remote_object_type");
+							case ObjectNotFoundException onfe -> switch(onfe.getCause()){
+								case IOException ignored -> l.get("remote_object_network_error");
+								case null, default -> l.get("remote_object_not_found");
+							};
+							case IOException ignored -> l.get("remote_object_network_error");
+							default -> x.getLocalizedMessage();
+						};
+						yield new JsonObjectBuilder().add("error", error).build();
+					}catch(TimeoutException e){
+						LOG.trace("Remote object fetch timed out", e);
+						yield new JsonObjectBuilder().add("error", l.get("remote_object_loading_error"));
+					}
 				}
 			}
-		}else{
-			return new JsonObjectBuilder().add("error", lang(req).get("unsupported_remote_object_type")).build();
-		}
-		return "";
+			default -> new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
+		};
 	}
 
 	public static Object votePoll(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
