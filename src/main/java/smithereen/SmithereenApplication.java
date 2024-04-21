@@ -92,8 +92,12 @@ public class SmithereenApplication{
 	static{
 		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
 		System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
-		if(Config.DEBUG)
+		if(Config.DEBUG){
 			System.setProperty("org.slf4j.simpleLogger.log.smithereen", "trace");
+		}else{
+			// Gets rid of "The requested route ... has not been mapped in Spark"
+			System.setProperty("org.slf4j.simpleLogger.log.spark.http.matching", "warn");
+		}
 		String addProperties=System.getenv("SMITHEREEN_SET_PROPS");
 		if(addProperties!=null){
 			Arrays.stream(addProperties.split("&")).forEach(s->{
@@ -680,7 +684,11 @@ public class SmithereenApplication{
 			resp.body(model.renderToString());
 		});
 		exception(Exception.class, (exception, req, res) -> {
-			LOG.warn("Exception while processing {} {}", req.requestMethod(), req.raw().getPathInfo(), exception);
+			String path=req.raw().getPathInfo();
+			LOG.warn("Exception while processing {} {}", req.requestMethod(), path, exception);
+			if(req.requestMethod().equals("POST") && (path.equals("/activitypub/sharedInbox") || path.endsWith("/inbox"))){
+				LOG.warn("Failed activity: {}", req.body());
+			}
 			res.status(500);
 			StringWriter sw=new StringWriter();
 			exception.printStackTrace(new PrintWriter(sw));
