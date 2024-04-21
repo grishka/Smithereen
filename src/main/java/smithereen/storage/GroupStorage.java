@@ -35,6 +35,7 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.GroupsController;
 import smithereen.model.ForeignGroup;
@@ -302,6 +303,8 @@ public class GroupStorage{
 		}else{
 			domain="";
 		}
+		if(username.length()>Actor.USERNAME_MAX_LENGTH)
+			username=username.substring(0, Actor.USERNAME_MAX_LENGTH);
 		return new SQLQueryBuilder()
 				.selectFrom("groups")
 				.columns("id")

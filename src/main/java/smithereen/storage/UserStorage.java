@@ -32,6 +32,7 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.Account;
 import smithereen.model.BirthdayReminder;
@@ -188,6 +189,8 @@ public class UserStorage{
 		}else{
 			realUsername=username;
 		}
+		if(realUsername.length()>Actor.USERNAME_MAX_LENGTH)
+			realUsername=realUsername.substring(0, Actor.USERNAME_MAX_LENGTH);
 		return new SQLQueryBuilder()
 				.selectFrom("users")
 				.columns("id")

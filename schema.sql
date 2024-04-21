@@ -267,7 +267,7 @@ CREATE TABLE `group_memberships` (
 CREATE TABLE `groups` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(200) NOT NULL DEFAULT '',
-  `username` varchar(50) NOT NULL DEFAULT '',
+  `username` varchar(64) NOT NULL,
   `domain` varchar(100) NOT NULL DEFAULT '',
   `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   `ap_url` varchar(300) DEFAULT NULL,
@@ -706,7 +706,7 @@ CREATE TABLE `users` (
   `middle_name` varchar(100) DEFAULT NULL,
   `maiden_name` varchar(100) DEFAULT NULL,
   `bdate` date DEFAULT NULL,
-  `username` varchar(50) NOT NULL DEFAULT '',
+  `username` varchar(64) NOT NULL,
   `domain` varchar(100) NOT NULL DEFAULT '',
   `public_key` blob NOT NULL,
   `private_key` blob,
@@ -772,4 +772,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-04-19  5:12:04
+-- Dump completed on 2024-04-21 22:19:11
