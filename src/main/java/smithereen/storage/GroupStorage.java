@@ -556,7 +556,7 @@ public class GroupStorage{
 			if(total==0)
 				return new PaginatedList<>(Collections.emptyList(), 0);
 
-			stmt=conn.prepareStatement("SELECT group_id, ap_id FROM group_memberships JOIN groups ON group_id=id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups`.`access_type`<>2 LIMIT ? OFFSET ?");
+			stmt=conn.prepareStatement("SELECT group_id, ap_id FROM group_memberships JOIN `groups` ON group_id=id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups`.`access_type`<>2 LIMIT ? OFFSET ?");
 			stmt.setInt(1, userID);
 			stmt.setInt(2, count);
 			stmt.setInt(3, offset);
