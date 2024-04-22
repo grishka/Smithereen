@@ -38,6 +38,6 @@ public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuesti
 
 		context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 		context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
-		NotificationUtils.putNotificationsForPost(nativePost, null);
+		NotificationUtils.putNotificationsForPost(nativePost, null, null);
 	}
 }

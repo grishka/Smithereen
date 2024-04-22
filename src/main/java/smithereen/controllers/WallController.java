@@ -244,7 +244,7 @@ public class WallController{
 			}else{
 				context.getActivityPubWorker().sendCreatePostActivity(post);
 			}
-			NotificationUtils.putNotificationsForPost(post, parent);
+			NotificationUtils.putNotificationsForPost(post, parent, null);
 
 			return post;
 		}catch(SQLException x){

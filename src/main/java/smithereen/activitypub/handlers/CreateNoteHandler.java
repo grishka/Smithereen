@@ -6,7 +6,9 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 import smithereen.Config;
 import smithereen.Utils;
@@ -28,8 +30,10 @@ import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.notifications.Notification;
 import smithereen.model.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
+import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import spark.utils.StringUtils;
 
@@ -102,56 +106,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			}
 		}
 
-//		boolean isPublic=false;
 		Post.Privacy privacy=null;
-//		if(post.to==null || post.to.isEmpty()){
-//			if(post.cc==null || post.cc.isEmpty()){
-//				throw new BadRequestException("to or cc are both empty");
-//			}else{
-//				for(LinkOrObject cc:post.cc){
-//					if(cc.link==null)
-//						throw new BadRequestException("post.cc must only contain links");
-//					if(ActivityPub.isPublic(cc.link)){
-//						isPublic=true;
-//						break;
-//					}
-//				}
-//			}
-//		}else{
-//			for(LinkOrObject to:post.to){
-//				if(to.link==null)
-//					throw new BadRequestException("post.to must only contain links");
-//				if(ActivityPub.isPublic(to.link)){
-//					isPublic=true;
-//					break;
-//				}
-//			}
-//			if(!isPublic && post.cc!=null){
-//				for(LinkOrObject cc:post.cc){
-//					if(cc.link==null)
-//						throw new BadRequestException("post.cc must only contain links");
-//					if(ActivityPub.isPublic(cc.link)){
-//						isPublic=true;
-//						break;
-//					}
-//				}
-//			}
-//		}
-//		boolean addressesAnyFollowers=false;
-//		for(LinkOrObject l:post.to){
-//			if(followers.equals(l.link)){
-//				addressesAnyFollowers=true;
-//				break;
-//			}
-//		}
-//		if(!addressesAnyFollowers && post.cc!=null){
-//			for(LinkOrObject l:post.cc){
-//				if(followers.equals(l.link)){
-//					addressesAnyFollowers=true;
-//					break;
-//				}
-//			}
-//		}
 		URI followers=actor.getFollowersURL();
 		URI friends=actor.getFriendsURL();
 		HashSet<URI> recipients=new HashSet<>();
@@ -215,7 +170,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_COMMENTING);
 
 				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
-				NotificationUtils.putNotificationsForPost(nativePost, parent);
+				NotificationUtils.putNotificationsForPost(nativePost, parent, null);
 				if(topLevel.isLocal()){
 					if(!Objects.equals(owner.activityPubID, oaa.author().activityPubID)){
 						context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
@@ -246,9 +201,24 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 		}else{
 			Post nativePost=post.asNativePost(context.appContext);
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
+			URI repostID=post.getQuoteRepostID();
+			Post firstRepost=null;
+			if(repostID!=null){
+				try{
+					List<Post> repostChain=context.appContext.getActivityPubWorker().fetchRepostChain(post).get();
+					if(!repostChain.isEmpty()){
+						firstRepost=repostChain.getFirst();
+						nativePost.setRepostedPost(firstRepost);
+					}
+				}catch(InterruptedException x){
+					throw new RuntimeException(x);
+				}catch(ExecutionException x){
+					LOG.debug("Failed to fetch repost chain for {}", post.activityPubID, x);
+				}
+			}
 
 			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
-			NotificationUtils.putNotificationsForPost(nativePost, null);
+			NotificationUtils.putNotificationsForPost(nativePost, null, firstRepost);
 			if(nativePost.ownerID!=nativePost.authorID){
 				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
 			}else{

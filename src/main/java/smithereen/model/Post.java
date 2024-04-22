@@ -72,6 +72,12 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 		return UriBuilder.local().path("posts", String.valueOf(id)).build();
 	}
 
+	public URI getActivityPubURL(){
+		if(activityPubURL!=null)
+			return activityPubURL;
+		return UriBuilder.local().path("posts", String.valueOf(id)).build();
+	}
+
 	public static Post fromResultSet(ResultSet res) throws SQLException{
 		Post post=new Post();
 
@@ -126,14 +132,6 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 	public int getReplyLevel(){
 		return replyKey.size();
 	}
-
-	// Reply key for posts that reply to this one.
-//	public int[] getReplyKeyForReplies(){
-//		int[] r=new int[replyKey.length+1];
-//		System.arraycopy(replyKey, 0, r, 0, replyKey.length);
-//		r[r.length-1]=id;
-//		return r;
-//	}
 
 	public boolean isDeleted(){
 		return deleted;
@@ -286,7 +284,7 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 		// <p>Quote repost test<br><br>RE: <a href="https://misskey.io/notes/86woec5nlm">https://misskey.io/notes/86woec5nlm</a></p>
 		Element root=Jsoup.parseBodyFragment(text).body();
 		// Find and remove the <a>
-		Elements elements=root.getElementsByAttributeValue("href", post.activityPubURL.toString());
+		Elements elements=root.getElementsByAttributeValue("href", post.getActivityPubURL().toString());
 		if(!elements.isEmpty()){
 			Element el=elements.getLast(); // Post may contain more than one link to this URL
 			// Find and remove the preceding "RE:"

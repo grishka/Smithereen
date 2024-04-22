@@ -341,6 +341,10 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		target=parse(optObject(obj, "target"), parserContext) instanceof ActivityPubCollection apc ? apc : null;
 		replies=tryParseLinkOrObject(obj.get("replies"), parserContext);
 		misskeyQuote=tryParseURL(optString(obj, "_misskey_quote"));
+		if(misskeyQuote==null){
+			// For when there's no "@id" in context
+			misskeyQuote=tryParseURL(optString(obj, JLD.MISSKEY+"_misskey_quote"));
+		}
 
 		return this;
 	}

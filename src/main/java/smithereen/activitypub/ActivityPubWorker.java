@@ -973,7 +973,7 @@ public class ActivityPubWorker{
 				}
 				context.getWallController().loadAndPreprocessRemotePostMentions(p, noq);
 				PostStorage.putForeignWallPost(p);
-				NotificationUtils.putNotificationsForPost(p, parent);
+				NotificationUtils.putNotificationsForPost(p, parent, null);
 				realThread.add(p);
 				parent=p;
 			}
