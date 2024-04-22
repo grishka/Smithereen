@@ -141,6 +141,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		}else if(post.poll!=null){
 			Question q=new Question();
 			q.name=post.poll.question;
+			q.votersCount=post.poll.numVoters;
 			List<ActivityPubObject> opts=post.poll.options.stream().map(opt->{
 				Note n=new Note();
 				n.name=opt.text;
