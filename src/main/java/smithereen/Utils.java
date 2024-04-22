@@ -405,6 +405,7 @@ public class Utils{
 		});
 		doc.getElementsByTag("li").forEach(Element::unwrap);
 		doc.getElementsByClass("smithereenPollQuestion").forEach(Element::remove);
+		doc.getElementsByTag("span").stream().filter(el->el.classNames().isEmpty()).forEach(Element::unwrap);
 		doc.normalise();
 		return cleaner.clean(doc).body().html();
 	}

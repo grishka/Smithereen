@@ -541,7 +541,19 @@ public class SystemRoutes{
 			}
 			case NoteOrQuestion post -> {
 				if(post.inReplyTo==null){
+					URI repostID=post.getQuoteRepostID();
 					Post nativePost=post.asNativePost(ctx);
+					if(repostID!=null){
+						try{
+							List<Post> repostChain=ctx.getActivityPubWorker().fetchRepostChain(post).get();
+							if(!repostChain.isEmpty())
+								nativePost.setRepostedPost(repostChain.getFirst());
+						}catch(InterruptedException x){
+							throw new RuntimeException(x);
+						}catch(ExecutionException x){
+							LOG.trace("Failed to fetch repost chain for {}", post.activityPubID, x);
+						}
+					}
 					PostStorage.putForeignWallPost(nativePost);
 					try{
 						ctx.getActivityPubWorker().fetchAllReplies(nativePost).get(30, TimeUnit.SECONDS);

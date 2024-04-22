@@ -62,6 +62,9 @@ public class JLDProcessor{
 		lc.addProperty("blurhash", "toot:blurhash");
 		lc.addProperty("votersCount", "toot:votersCount");
 
+		// Misskey quote-reposts
+		lc.add("_misskey_quote", idAndTypeObject(JLD.MISSKEY+"_misskey_quote", "@id"));
+
 		// custom aliases
 		lc.addProperty("supportsFriendRequests", "sm:supportsFriendRequests");
 		lc.add("cropRegion", idAndContainerObject("sm:cropRegion", "@list"));

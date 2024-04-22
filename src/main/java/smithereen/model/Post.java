@@ -4,6 +4,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.select.Elements;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -271,6 +277,32 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 	public int getIDForInteractions(){
 		// Mastodon-style repost posts can't be interacted with
 		return flags.contains(Flag.MASTODON_STYLE_REPOST) ? repostOf : id;
+	}
+
+	public void setRepostedPost(Post post){
+		repostOf=post.id;
+
+		// Strip the RE: ... part from text
+		// <p>Quote repost test<br><br>RE: <a href="https://misskey.io/notes/86woec5nlm">https://misskey.io/notes/86woec5nlm</a></p>
+		Element root=Jsoup.parseBodyFragment(text).body();
+		// Find and remove the <a>
+		Elements elements=root.getElementsByAttributeValue("href", post.activityPubURL.toString());
+		if(!elements.isEmpty()){
+			Element el=elements.getLast(); // Post may contain more than one link to this URL
+			// Find and remove the preceding "RE:"
+			if(el.previousSibling() instanceof TextNode tn && tn.text().trim().equalsIgnoreCase("RE:")){
+				Node possiblyBr=tn.previousSibling();
+				// Remove trailing <br>'s before "RE:"
+				while(possiblyBr instanceof Element el1 && el1.tagName().equalsIgnoreCase("br")){
+					Node brSibling=possiblyBr.previousSibling();
+					possiblyBr.remove();
+					possiblyBr=brSibling;
+				}
+				tn.remove();
+			}
+			el.remove();
+			text=root.html();
+		}
 	}
 
 	public enum Privacy{

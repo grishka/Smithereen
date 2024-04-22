@@ -25,6 +25,7 @@ import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.exceptions.BadRequestException;
+import smithereen.jsonld.JLD;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
 import smithereen.util.UriBuilder;
@@ -41,6 +42,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public Boolean sensitive;
 	public ActivityPubCollection target;
 	public URI likes;
+	public URI misskeyQuote;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -338,6 +340,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		sensitive=optBoolean(obj, "sensitive");
 		target=parse(optObject(obj, "target"), parserContext) instanceof ActivityPubCollection apc ? apc : null;
 		replies=tryParseLinkOrObject(obj.get("replies"), parserContext);
+		misskeyQuote=tryParseURL(optString(obj, "_misskey_quote"));
 
 		return this;
 	}
@@ -357,7 +360,18 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			obj.add("target", target.asActivityPubObject(new JsonObject(), serializerContext));
 		if(likes!=null)
 			obj.addProperty("likes", likes.toString());
+		if(misskeyQuote!=null){
+			serializerContext.addType("_misskey_quote", JLD.MISSKEY+"_misskey_quote", "@id");
+			obj.addProperty("_misskey_quote", misskeyQuote.toString());
+		}
 
 		return obj;
+	}
+
+	public URI getQuoteRepostID(){
+		if(misskeyQuote!=null)
+			return misskeyQuote;
+		// TODO also support object links when it becomes clear how they will be implemented in Mastodon
+		return null;
 	}
 }

@@ -91,17 +91,19 @@ public class ActivityPubWorker{
 	 */
 	private static final int MAX_FRIENDS=10_000;
 	private static final int ACTORS_BATCH_SIZE=25;
+	private static final int MAX_REPOST_DEPTH=20;
 
 	private final ExecutorService executor=Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("ActivityPubWorker-", 0).factory());
 	private final ScheduledExecutorService retryExecutor=Executors.newSingleThreadScheduledExecutor();
 	private final Random rand=new Random();
 
 	// These must be accessed from synchronized(this)
-	private HashMap<URI, Future<List<Post>>> fetchingReplyThreads=new HashMap<>();
-	private HashMap<URI, List<Consumer<List<Post>>>> afterFetchReplyThreadActions=new HashMap<>();
-	private HashMap<URI, Future<Post>> fetchingAllReplies=new HashMap<>();
-	private HashSet<URI> fetchingRelationshipCollectionsActors=new HashSet<>();
-	private HashSet<URI> fetchingContentCollectionsActors=new HashSet<>();
+	private final HashMap<URI, Future<List<Post>>> fetchingReplyThreads=new HashMap<>();
+	private final HashMap<URI, List<Consumer<List<Post>>>> afterFetchReplyThreadActions=new HashMap<>();
+	private final HashMap<URI, Future<Post>> fetchingAllReplies=new HashMap<>();
+	private final HashSet<URI> fetchingRelationshipCollectionsActors=new HashSet<>();
+	private final HashSet<URI> fetchingContentCollectionsActors=new HashSet<>();
+	private final HashMap<URI, Future<List<Post>>> fetchingRepostChains=new HashMap<>();
 
 	private final ApplicationContext context;
 
@@ -832,6 +834,10 @@ public class ActivityPubWorker{
 		}
 		fetchingContentCollectionsActors.add(actor.activityPubID);
 		executor.submit(new FetchActorContentCollectionsTask(actor));
+	}
+
+	public synchronized Future<List<Post>> fetchRepostChain(NoteOrQuestion topLevelPost){
+		return fetchingRepostChains.computeIfAbsent(topLevelPost.activityPubID, uri->executor.submit(new FetchRepostChainTask(topLevelPost)));
 	}
 
 	private <T extends Callable<?>> void invokeAll(Collection<T> tasks){
@@ -1573,6 +1579,57 @@ public class ActivityPubWorker{
 
 		public boolean needMoreAttempts(){
 			return attemptNumber<10;
+		}
+	}
+
+	private class FetchRepostChainTask implements Callable<List<Post>>{
+		private final NoteOrQuestion topLevel;
+
+		private FetchRepostChainTask(NoteOrQuestion topLevel){
+			this.topLevel=topLevel;
+		}
+
+		@Override
+		public List<Post> call() throws Exception{
+			LOG.trace("Fetching repost chain for {}", topLevel.activityPubID);
+			try{
+				HashSet<URI> seenPostIDs=new HashSet<>();
+				ArrayList<Post> repostChain=new ArrayList<>();
+				URI nextUri=topLevel.getQuoteRepostID();
+				int depth=1;
+				while(nextUri!=null && !seenPostIDs.contains(nextUri) && depth<MAX_REPOST_DEPTH){
+					try{
+						Post localPost=context.getObjectLinkResolver().resolveLocally(nextUri, Post.class);
+						repostChain.add(localPost);
+						break;
+					}catch(ObjectNotFoundException ignored){}
+					try{
+						seenPostIDs.add(nextUri);
+						NoteOrQuestion post=context.getObjectLinkResolver().resolve(nextUri, NoteOrQuestion.class, true, false, false);
+						nextUri=post.getQuoteRepostID();
+						Post nativePost=post.asNativePost(context);
+						repostChain.add(nativePost);
+					}catch(ObjectNotFoundException x){
+						LOG.debug("Failed to fetch a complete repost chain for {}, failed at {}, stopping at depth {}", topLevel.activityPubID, nextUri, depth, x);
+						break;
+					}
+					depth++;
+				}
+				for(int i=repostChain.size()-1;i>=0;i--){
+					Post post=repostChain.get(i);
+					if(post.id==0)
+						context.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
+					if(i==0)
+						break;
+					Post prevPost=repostChain.get(i-1);
+					prevPost.setRepostedPost(post);
+				}
+				return repostChain;
+			}finally{
+				synchronized(ActivityPubWorker.this){
+					fetchingRepostChains.remove(topLevel.activityPubID);
+				}
+			}
 		}
 	}
 }
