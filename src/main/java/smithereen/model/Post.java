@@ -283,23 +283,30 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 		// Strip the RE: ... part from text
 		// <p>Quote repost test<br><br>RE: <a href="https://misskey.io/notes/86woec5nlm">https://misskey.io/notes/86woec5nlm</a></p>
 		Element root=Jsoup.parseBodyFragment(text).body();
-		// Find and remove the <a>
-		Elements elements=root.getElementsByAttributeValue("href", post.getActivityPubURL().toString());
-		if(!elements.isEmpty()){
-			Element el=elements.getLast(); // Post may contain more than one link to this URL
-			// Find and remove the preceding "RE:"
-			if(el.previousSibling() instanceof TextNode tn && tn.text().trim().equalsIgnoreCase("RE:")){
-				Node possiblyBr=tn.previousSibling();
-				// Remove trailing <br>'s before "RE:"
-				while(possiblyBr instanceof Element el1 && el1.tagName().equalsIgnoreCase("br")){
-					Node brSibling=possiblyBr.previousSibling();
-					possiblyBr.remove();
-					possiblyBr=brSibling;
-				}
-				tn.remove();
-			}
-			el.remove();
+		// Try to find <span class="quote-inline"> first
+		Element spanWithClass=root.selectFirst("span.quote-inline");
+		if(spanWithClass!=null){
+			spanWithClass.remove();
 			text=root.html();
+		}else{
+			// Find and remove the <a>
+			Elements elements=root.getElementsByAttributeValue("href", post.getActivityPubURL().toString());
+			if(!elements.isEmpty()){
+				Element el=elements.getLast(); // Post may contain more than one link to this URL
+				// Find and remove the preceding "RE:"
+				if(el.previousSibling() instanceof TextNode tn && tn.text().trim().equalsIgnoreCase("RE:")){
+					Node possiblyBr=tn.previousSibling();
+					// Remove trailing <br>'s before "RE:"
+					while(possiblyBr instanceof Element el1 && el1.tagName().equalsIgnoreCase("br")){
+						Node brSibling=possiblyBr.previousSibling();
+						possiblyBr.remove();
+						possiblyBr=brSibling;
+					}
+					tn.remove();
+				}
+				el.remove();
+				text=root.html();
+			}
 		}
 	}
 

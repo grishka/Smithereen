@@ -57,6 +57,7 @@ public class JLDProcessor{
 		lc.addProperty("manuallyApprovesFollowers", "as:manuallyApprovesFollowers");
 		lc.add("movedTo", idAndTypeObject("as:movedTo", "@id"));
 		lc.add("alsoKnownAs", idAndTypeObject("as:alsoKnownAs", "@id"));
+		lc.addProperty("quoteUrl", "as:quoteUrl");
 
 		// Mastodon aliases
 		lc.addProperty("blurhash", "toot:blurhash");

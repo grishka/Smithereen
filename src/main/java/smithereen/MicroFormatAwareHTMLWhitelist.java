@@ -19,7 +19,8 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 	private static final List<String> ALLOWED_CLASSES=Arrays.asList(
 			"h-card",
 			"u-url",
-			"mention", "hashtag", "invisible"
+			"mention", "hashtag", "invisible",
+			"quote-inline"
 	);
 	private static final Pattern NON_IDN_CHAR_REGEX=Pattern.compile("[^a-z\\d.:-]", Pattern.CASE_INSENSITIVE);
 

@@ -42,7 +42,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public Boolean sensitive;
 	public ActivityPubCollection target;
 	public URI likes;
-	public URI misskeyQuote;
+	public URI misskeyQuote, quoteUrl;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -346,6 +346,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			// For when there's no "@id" in context
 			misskeyQuote=tryParseURL(optString(obj, JLD.MISSKEY+"_misskey_quote"));
 		}
+		quoteUrl=tryParseURL(optString(obj, "quoteUrl"));
 
 		return this;
 	}
@@ -376,6 +377,8 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public URI getQuoteRepostID(){
 		if(misskeyQuote!=null)
 			return misskeyQuote;
+		if(quoteUrl!=null)
+			return quoteUrl;
 		// TODO also support object links when it becomes clear how they will be implemented in Mastodon
 		return null;
 	}
