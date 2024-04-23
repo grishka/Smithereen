@@ -894,12 +894,12 @@ function loadOlderComments(id:number){
 	return false;
 }
 
-function loadCommentBranch(id:number, offset:number){
+function loadCommentBranch(id:number, offset:number, topLevelRepostID:number){
 	var btn=ge("loadRepliesLink"+id);
 	var loader=ge("repliesLoader"+id);
 	btn.hide();
 	loader.show();
-	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentBranch?offset="+(offset || 0), null, ()=>{
+	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentBranch?offset="+(offset || 0)+(topLevelRepostID ? `&topLevel=${topLevelRepostID}` : ""), null, ()=>{
 		btn.show();
 		loader.hide();
 	});

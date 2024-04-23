@@ -654,6 +654,9 @@ public class PostRoutes{
 		ApplicationContext ctx=context(req);
 
 		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
+		int postID=post.id;
+		if(post.isMastodonStyleRepost())
+			post=ctx.getWallController().getPostOrThrow(post.repostOf);
 		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 		int maxID=parseIntOrDefault(req.queryParams("firstID"), 0);
 		if(maxID==0)
@@ -666,15 +669,17 @@ public class PostRoutes{
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(comments.list, self!=null ? self.user : null);
 		model.with("postInteractions", interactions)
 					.with("preview", true)
-					.with("replyFormID", "wallPostForm_commentReplyPost"+post.id);
-		PostViewModel topLevel=new PostViewModel(post.replyKey.isEmpty() ? post : ctx.getWallController().getPostOrThrow(post.replyKey.get(0)));
+					.with("replyFormID", "wallPostForm_commentReplyPost"+postID);
+		PostViewModel topLevel=new PostViewModel(post.replyKey.isEmpty() ? post : ctx.getWallController().getPostOrThrow(post.replyKey.getFirst()));
 		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
 		model.with("topLevel", topLevel);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
-				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+post.id, model.renderToString())
-				.hide("prevLoader"+post.id);
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+postID, model.renderToString())
+				.hide("prevLoader"+postID);
 		if(comments.total>100){
-			rb.show("loadPrevBtn"+post.id).setAttribute("loadPrevBtn"+post.id, "data-first-id", String.valueOf(comments.list.get(0).post.id));
+			rb.show("loadPrevBtn"+postID).setAttribute("loadPrevBtn"+postID, "data-first-id", String.valueOf(comments.list.getFirst().post.id));
+		}else{
+			rb.remove("prevLoader"+postID, "loadPrevBtn"+postID);
 		}
 		return rb;
 	}
@@ -697,9 +702,22 @@ public class PostRoutes{
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(allReplies, self!=null ? self.user : null);
 		preparePostList(ctx, comments, model);
-		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
-		PostViewModel topLevel=new PostViewModel(post.replyKey.isEmpty() ? post : ctx.getWallController().getPostOrThrow(post.replyKey.get(0)));
+		PostViewModel topLevel=null;
+		if(post.replyKey.isEmpty()){
+			topLevel=new PostViewModel(post);
+		}else{
+			int realTopLevelID=post.replyKey.getFirst();
+			if(req.queryParams("topLevel")!=null){
+				Post topLevelSupposedly=ctx.getWallController().getPostOrThrow(safeParseInt(req.queryParams("topLevel")));
+				if(topLevelSupposedly.isMastodonStyleRepost() && topLevelSupposedly.repostOf==realTopLevelID){
+					topLevel=new PostViewModel(topLevelSupposedly);
+				}
+			}
+			if(topLevel==null)
+				topLevel=new PostViewModel(ctx.getWallController().getPostOrThrow(realTopLevelID));
+		}
 		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
+		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+topLevel.post.id);
 		model.with("topLevel", topLevel);
 		return new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+post.id, model.renderToString())
