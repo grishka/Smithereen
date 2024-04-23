@@ -800,8 +800,9 @@ function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 				if(!resp.content){
 					return;
 				}
+				var popoverPlace=wrap.querySelector(".popoverPlace") as HTMLElement;
 				if(!popover){
-					popover=new Popover(wrap.querySelector(".popoverPlace"));
+					popover=new Popover(popoverPlace);
 					popover.setOnClick(()=>{
 						popover.hide();
 						LayerManager.getInstance().showBoxLoader();
@@ -813,13 +814,13 @@ function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 				popover.setContent(resp.content);
 				btn.customData.altPopoverTitle=resp.altTitle;
 				if(resp.show)
-					popover.show(ev.offsetX, ev.offsetY);
+					popover.show(ev.offsetX, ev.offsetY, btn.qs("span.icon"));
 				for(var i=0;i<resp.actions.length;i++){
 					applyServerCommand(resp.actions[i]);
 				}
 			}, ()=>{
 				if(popover)
-					popover.show(ev.offsetX, ev.offsetY);
+					popover.show(ev.offsetX, ev.offsetY, btn.qs("span.icon"));
 			});
 		}, 500);
 	}else{

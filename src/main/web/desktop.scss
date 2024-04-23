@@ -1415,13 +1415,13 @@ select{
 .popover{
 	position: absolute;
 	font-size: 11px;
+	z-index: 5;
 	.popoverHeader{
 		background: $simpleButton;
 		color: $textOnAccent;
 		text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
 		font-weight: bold;
 		padding: 4px 8px;
-		border-radius: 4px 4px 0 0;
 		border: solid 1px $headerBorderBottomDark;
 		border-bottom: none;
 		a, a:link, a:visited, a:hover, a:visited:hover{
@@ -1433,7 +1433,6 @@ select{
 		background: $bg;
 		padding: 4px 8px;
 		color: $text;
-		border-radius: 0 0 4px 4px;
 		border: solid 1px $darkerGray;
 		border-top: none;
 	}
@@ -1466,32 +1465,52 @@ select{
 	}
 }
 
-.likePopoverWrap .popover{
-	width: 230px;
+.likePopoverWrap .popover, .pollVotersPopoverWrap .popover{
+	width: 225px;
 	right: 0;
 	.popoverArrow{
-		right: 16px;
+		height: 6px;
+		z-index: 6;
+	}
+	&.aboveAnchor .popoverArrow{
+		background: svg-load('img/popover_arrow_btm_black.svg', fill: #4c4c4c);
+	}
+	&.belowAnchor .popoverArrow{
+		background: svg-load('img/popover_arrow_top_black.svg', fill: #4c4c4c);
+	}
+	.popoverContentW{
+		border-radius: 4px;
+		background: rgba(0, 0, 0, 0.7);
+		backdrop-filter: saturate(180%) blur(2px);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+	}
+	.popoverHeader, .popoverContent{
+		background: none;
+		border: none;
+	}
+	.popoverHeader{
+		padding: 8px 10px 0;
+	}
+	.popoverContent{
+		padding: 0 10px;
 	}
 }
 
 .pollVotersPopoverWrap .popover{
-	width: 230px;
 	left: 0;
 	.popoverArrow{
 		left: 16px;
 	}
 }
 
-.likePopoverContent{
-	padding: 4px 0;
+.likePopoverAvatars{
+	padding: 8px 0 10px;
 	overflow-x: hidden;
-	height: 40px;
 	white-space: nowrap;
-	font-size: 0;
+	display: flex;
 	a{
-		margin-right: 4px;
-		display: inline-block;
-		vertical-align: top;
+		margin-right: 5px;
+		flex: none;
 	}
 	a:last-child{
 		margin-right: 0;
@@ -1499,10 +1518,20 @@ select{
 	.self{
 		display: none;
 	}
+	.avaHasImage:after{
+		content: none;
+	}
+	.avaPlaceholder{
+		border: none;
+	}
+	.ava{
+		border-radius: 3px;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+	}
 }
 
 .likeWrap>.liked+.likePopoverWrap .self{
-	display: inline-block;
+	display: block;
 }
 
 .userGrid{

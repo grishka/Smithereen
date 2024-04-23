@@ -12,8 +12,10 @@ class Popover{
 		this.root=wrap.querySelector(".popover");
 		if(!this.root){
 			this.root=ce("div", {className: "popover aboveAnchor"}, [
-				this.header=ce("div", {className: "popoverHeader"}),
-				this.content=ce("div", {className: "popoverContent"}),
+				ce("div", {className: "popoverContentW"}, [
+					this.header=ce("div", {className: "popoverHeader"}),
+					this.content=ce("div", {className: "popoverContent"}),
+				]),
 				this.arrow=ce("div", {className: "popoverArrow"})
 			]);
 			this.root.hide();
@@ -21,7 +23,7 @@ class Popover{
 		}
 	}
 
-	public show(x:number=-1, y:number=-1){
+	public show(x:number=-1, y:number=-1, visualAnchor:HTMLElement=null){
 		this.shown=true;
 		this.root.show();
 		var anchor=this.root.parentElement;
@@ -33,6 +35,14 @@ class Popover{
 		}else{
 			this.root.classList.add("aboveAnchor");
 			this.root.style.top="-"+(this.root.offsetHeight)+"px";
+		}
+		if(visualAnchor){
+			var visualRect=visualAnchor.getBoundingClientRect();
+			this.arrow.style.left="0";
+			var arrowRect=this.arrow.getBoundingClientRect();
+			console.log("visualRect", visualRect);
+			console.log("arrowRect", arrowRect);
+			this.arrow.style.left=Math.round(visualRect.left-arrowRect.left+visualRect.width/2-arrowRect.width/2)+"px";
 		}
 	}
 

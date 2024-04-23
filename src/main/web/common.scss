@@ -241,7 +241,6 @@ a, a:link, /*a:visited,*/ .link{
 }
 
 .ava{
-	border-radius: 2px;
 	display: inline-block;
 }
 
@@ -278,6 +277,7 @@ a, a:link, /*a:visited,*/ .link{
 	background-size: contain;
 	border: solid 1px #ece5d1;
 	box-sizing: border-box;
+	border-radius: 2px;
 	&.inProfile{
 		width: 200px;
 		height: 115px;
