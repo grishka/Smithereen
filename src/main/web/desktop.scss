@@ -309,9 +309,15 @@ small{
 	border-bottom: solid 1px $wallPostSeparator;
 	margin-bottom: 10px;
 	padding-bottom: 10px;
+	display: flex;
 	.postContentWrap{
-		padding-left: 5px;
-		padding-right: 5px;
+		padding-left: 10px;
+		/*padding-right: 10px;*/
+		flex-grow: 1;
+	}
+	.postAvaWrap{
+		width: 50px;
+		flex: none;
 	}
 	.postContent{
 		padding-top: 2px;
@@ -351,8 +357,25 @@ small{
 			}
 		}
 	}
+	.repost{
+		padding-left: 8px;
+		border-left: solid 2px #bac087;
+	}
 	.authorName{
 		line-height: 13px;
+	}
+	&.comment{
+		.postAvaWrap{
+			width: 32px;
+		}
+		.postContentWrap{
+			padding-left: 7px;
+			padding-right: 0;
+		}
+		.treeIndent{
+			width: calc(var(--reply-depth) * 16px);
+			flex: none;
+		}
 	}
 }
 
@@ -770,7 +793,7 @@ small{
 	border-bottom: none;
 	padding-bottom: 5px;
 	margin-bottom: 0;
-	td{
+	>div{
 		border-top: solid 1px $menuItemsSeparator;
 		padding-top: 5px;
 		&.postContentWrap{
@@ -783,7 +806,7 @@ small{
 	&:hover .treeIndent{
 		background: svg-load('img/comments_tree_indent.svg', fill: $wallPostSeparator, stroke: $wallPostSeparator) top 14px left -5px repeat-x;
 	}
-	&.first td{
+	&.first >div{
 		border-top: none;
 		padding-top: 0;
 		&.postContentWrap{

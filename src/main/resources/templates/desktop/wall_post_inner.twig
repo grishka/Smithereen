@@ -19,23 +19,25 @@
 	{{ renderAttachments(realPost.processedAttachments, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
 {% endif %}
 {% if post.repost is not null %}
-<div class="repostHeader">
-	{% set authorID=post.repost.post.post.authorID %}
-	<a href="{{ profileURL(authorID) }}" class="flL avaW"{{ profileRel(authorID) }}>{{ users[authorID] | pictureForAvatar('s', 30) }}</a>
-	<div class="nameW"><span class="repostIcon{{ realPost.mastodonStyleRepost ? ' mastodonStyle' : '' }}"></span><a href="{{ profileURL(authorID) }}" class="name"{{ profileRel(authorID) }}>{{ users[authorID] | name }}</a></div>
-	<div class="ellipsize grayText">
-		{%- if post.repost.post.post.replyLevel>0 -%}
-		{%- if post.repost.topLevel is not null %}
-		{{ L('comment_repost_title', {'time': LD(post.repost.post.post.createdAt), 'postSnippet': post.repost.topLevel.post.shortTitle | default(LD(post.repost.topLevel.post.createdAt))}, {'originalComment': {'href': post.repost.post.post.internalURL, 'class': 'grayText'}, 'topLevelPost': {'href': post.repost.topLevel.post.internalURL} }) }}
-		{%- else -%}
-		{{ L('comment_deleted_repost_title', {'time': LD(post.repost.post.post.createdAt)}, {'originalComment': {'href': post.repost.post.post.internalURL, 'class': 'grayText'} }) }}
-		{%- endif -%}
-		{%- else -%}
-		<a href="{{ post.repost.post.post.internalURL }}" class="grayText">{{ LD(post.repost.post.post.createdAt) }}</a>
-		{%- endif -%}
+<div class="repost">
+	<div class="repostHeader">
+		{% set authorID=post.repost.post.post.authorID %}
+		<a href="{{ profileURL(authorID) }}" class="flL avaW"{{ profileRel(authorID) }}>{{ users[authorID] | pictureForAvatar('s', 30) }}</a>
+		<div class="nameW"><span class="repostIcon{{ realPost.mastodonStyleRepost ? ' mastodonStyle' : '' }}"></span><a href="{{ profileURL(authorID) }}" class="name"{{ profileRel(authorID) }}>{{ users[authorID] | name }}</a></div>
+		<div class="ellipsize grayText">
+			{%- if post.repost.post.post.replyLevel>0 -%}
+			{%- if post.repost.topLevel is not null %}
+			{{ L('comment_repost_title', {'time': LD(post.repost.post.post.createdAt), 'postSnippet': post.repost.topLevel.post.shortTitle | default(LD(post.repost.topLevel.post.createdAt))}, {'originalComment': {'href': post.repost.post.post.internalURL, 'class': 'grayText'}, 'topLevelPost': {'href': post.repost.topLevel.post.internalURL} }) }}
+			{%- else -%}
+			{{ L('comment_deleted_repost_title', {'time': LD(post.repost.post.post.createdAt)}, {'originalComment': {'href': post.repost.post.post.internalURL, 'class': 'grayText'} }) }}
+			{%- endif -%}
+			{%- else -%}
+			<a href="{{ post.repost.post.post.internalURL }}" class="grayText">{{ LD(post.repost.post.post.createdAt) }}</a>
+			{%- endif -%}
+		</div>
 	</div>
+	{% if repostDepth<(maxRepostDepth | default(2)) %}{% include "wall_post_inner" with {'post': post.repost.post, 'repostDepth': repostDepth+1} %}{% endif %}
 </div>
-{% if repostDepth<(maxRepostDepth | default(2)) %}{% include "wall_post_inner" with {'post': post.repost.post, 'repostDepth': repostDepth+1} %}{% endif %}
 {% endif %}
 {% if realPost.hasContentWarning %}
 </div>
