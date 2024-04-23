@@ -42,7 +42,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public Boolean sensitive;
 	public ActivityPubCollection target;
 	public URI likes;
-	public URI misskeyQuote, quoteUrl;
+	public URI quoteRepostID;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -341,12 +341,15 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		sensitive=optBoolean(obj, "sensitive");
 		target=parse(optObject(obj, "target"), parserContext) instanceof ActivityPubCollection apc ? apc : null;
 		replies=tryParseLinkOrObject(obj.get("replies"), parserContext);
-		misskeyQuote=tryParseURL(optString(obj, "_misskey_quote"));
-		if(misskeyQuote==null){
+		quoteRepostID=tryParseURL(optString(obj, "_misskey_quote"));
+		if(quoteRepostID==null){
 			// For when there's no "@id" in context
-			misskeyQuote=tryParseURL(optString(obj, JLD.MISSKEY+"_misskey_quote"));
+			quoteRepostID=tryParseURL(optString(obj, JLD.MISSKEY+"_misskey_quote"));
 		}
-		quoteUrl=tryParseURL(optString(obj, "quoteUrl"));
+		if(quoteRepostID==null){
+			// Pleroma, Akkoma and possibly other "*oma"s
+			quoteRepostID=tryParseURL(optString(obj, "quoteUrl"));
+		}
 
 		return this;
 	}
@@ -366,19 +369,19 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			obj.add("target", target.asActivityPubObject(new JsonObject(), serializerContext));
 		if(likes!=null)
 			obj.addProperty("likes", likes.toString());
-		if(misskeyQuote!=null){
+		if(quoteRepostID!=null){
 			serializerContext.addType("_misskey_quote", JLD.MISSKEY+"_misskey_quote", "@id");
-			obj.addProperty("_misskey_quote", misskeyQuote.toString());
+			obj.addProperty("_misskey_quote", quoteRepostID.toString());
+			serializerContext.addAlias("quoteUrl", "as:quoteUrl");
+			obj.addProperty("quoteUrl", quoteRepostID.toString());
 		}
 
 		return obj;
 	}
 
 	public URI getQuoteRepostID(){
-		if(misskeyQuote!=null)
-			return misskeyQuote;
-		if(quoteUrl!=null)
-			return quoteUrl;
+		if(quoteRepostID!=null)
+			return quoteRepostID;
 		// TODO also support object links when it becomes clear how they will be implemented in Mastodon
 		return null;
 	}
