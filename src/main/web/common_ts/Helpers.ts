@@ -730,7 +730,10 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 	if(!liked){
 		counter.innerText=(count+1).toString();
 		btn.classList.add("liked");
-		if(count==0) counter.show();
+		if(count==0){
+			counter.show();
+			btn.classList.remove("revealOnHover");
+		}
 		if(btn._popover){
 			if(!btn._popover.isShown())
 				btn._popover.show();
@@ -746,6 +749,9 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 			counter.hide();
 			if(btn._popover){
 				btn._popover.hide();
+			}
+			if(btn.classList.contains("commentLike")){
+				btn.classList.add("revealOnHover");
 			}
 		}
 		if(btn._popover){

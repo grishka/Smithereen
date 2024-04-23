@@ -1356,24 +1356,31 @@ select{
 }
 
 .postActions{
-	display: inline-block;
 	float: right;
-	margin-right: -4px;
+	margin-left: 5px;
 	.like .icon{
 		display: inline-block;
 		width: 10px;
 		height: 9px;
-		background: svg-load(img/post_like.svg, fill: $iconColor);
-		vertical-align: middle;
-		margin: -2px 0 0 4px;
-		opacity: .5;
+		background: svg-load(img/like.svg, fill: #91a20b);
+		position: relative;
+		top: 2px;
+		margin-left: 3px;
+	}
+	.icon, .counter{
+		opacity: .4;
 		transition: opacity 0.3s ease;
 	}
-	.like.liked .icon{
+	.like:not(.liked):hover{
+		.icon, .counter{
+			opacity: .6;
+		}
+	}
+	.like.liked .icon, .like.liked .counter{
 		opacity: 1;
 	}
 	a.action, a.action:link, a.action:visited{
-		padding: 4px;
+		padding: 4px 5px;
 		border-radius: 2px;
 		background-color: transparent;
 		&:hover{
@@ -1382,14 +1389,27 @@ select{
 		}
 	}
 	.counter{
-		padding-left: 4px;
+		padding-left: 3px;
 		font-weight: bold;
-		font-size: 9px;
+		font-size: 10px;
 	}
+}
+
+.comment .postActions a.action:hover{
+	background: none;
 }
 
 .popoverPlace{
 	position: relative;
+}
+
+.post .revealOnHover{
+	opacity: 0;
+	transition: opacity 0.15s ease;
+}
+
+.post:hover .revealOnHover{
+	opacity: 1;
 }
 
 .popover{
