@@ -59,13 +59,6 @@ class PostForm{
 	private forceOverrideDirty:boolean=false;
 	private allowedAttachmentTypes:string[]=null;
 	public onSendDone:{(success:boolean):void};
-	private beforeUnloadListener=(ev:BeforeUnloadEvent)=>{
-				if(this.isDirty()){
-					var msg:string=lang("confirm_discard_post_draft");
-					(ev || window.event).returnValue=msg;
-					return msg;
-				}
-			};
 
 	public constructor(el:HTMLElement){
 		this.id=el.dataset.uniqueId;
@@ -138,10 +131,6 @@ class PostForm{
 					this.deleteAttachment(el.customData.aid);
 				};
 			}
-		}
-
-		if(!this.editing){
-			window.addEventListener("beforeunload", this.beforeUnloadListener);
 		}
 
 		if(mobile){
@@ -384,10 +373,6 @@ class PostForm{
 			this.forceOverrideDirty=true;
 		}});
 		return true;
-	}
-
-	public detach(){
-		window.removeEventListener("beforeunload", this.beforeUnloadListener);
 	}
 
 	private resetReply(){
@@ -638,7 +623,7 @@ class PostForm{
 	}
 
 	public isDirty():boolean{
-		if(this.forceOverrideDirty)
+		if(this.forceOverrideDirty || this.editing)
 			return false;
 		return this.input.value.length>0 || this.attachmentIDs.length>0 || this.cwLayout!=null || this.pollLayout!=null;
 	}

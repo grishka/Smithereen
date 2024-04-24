@@ -162,5 +162,14 @@
   "file_size_megabytes": "{amount} MB",
   "file_size_gigabytes": "{amount} GB",
   "file_size_terabytes": "{amount} TB",
-  "remote_object_timeout": "Timeout exceeded while waiting for response from {server}."
+  "remote_object_timeout": "Timeout exceeded while waiting for response from {server}.",
+  "shared_by_X_people": "{count, plural, one {# person} other {# people}} shared this",
+  "share_content": "Share",
+  "share_post_title": "Share post",
+  "share_comment_title": "Share comment",
+  "do_share_post": "Share post",
+  "do_share_comment": "Share comment",
+  "repost_post_done": "This post will appear on your profile and in your friends' and followers' feeds.",
+  "repost_comment_done": "This comment will appear on your profile and in your friends' and followers' feeds.",
+  "repost_your_comment": "Your comment"
 }

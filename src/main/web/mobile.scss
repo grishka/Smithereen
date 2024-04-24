@@ -283,12 +283,6 @@ select{
 	.postContentWrap{
 		padding: 8px 0;
 	}
-	.action{
-		display: block;
-		width: 100%;
-		height: 42px;
-		line-height: 42px;
-	}
 	.postContent pre{
 		overflow-x: auto;
 	}
@@ -312,39 +306,62 @@ select{
 			}
 		}
 	}
+	.postContent:not(:empty)+.repostHeader{
+		padding-top: 8px;
+	}
+	.postActions{
+		border-top: solid 1px $wallCommentSeparator;
+		.like{
+			margin-left: -12px;
+		}
+		.share{
+			margin-right: -12px;
+		}
+	}
 }
 
 .postActions{
+	display: flex;
+	.action{
+		flex: none;
+		height: 42px;
+		line-height: 42px;
+		padding: 0 12px;
+		min-width: 56px;
+		text-align: center;
+		.wideOnly{
+			margin-right: 8px;
+		}
+	}
+	.spacer{
+		flex-grow: 1;
+	}
 	.icon{
 		display: inline-block;
 		vertical-align: middle;
 		opacity: .5;
-	}
-	.like .icon{
+		background: svg-load('img/like_mobile.svg', fill: $iconColor) no-repeat;
 		width: 16px;
-		height: 13px;
-		background: svg-load(img/post_like_mobile.svg, fill: $iconColor);
-		margin: -2px 8px 0 0;
+		height: 16px;
 		transition: opacity 0.3s ease;
+	}
+	.counter{
+		margin-left: 8px;
 	}
 	.like.liked .icon{
 		opacity: 1;
 	}
 	.comment .icon{
-		width: 16px;
-		height: 16px;
-		background: svg-load(img/post_comment_mobile.svg, fill: $iconColor);
-		margin: 0 8px 0 0;
+		background-position: 0 -32px;
+	}
+	.share .icon{
+		background-position: 0 -16px;
 	}
 	&.standaloneLikeBar{
 		height: 42px;
-		.action{
-			display: block;
-			float: left;
-			height: 42px;
-			line-height: 42px;
+		/*.action{
 			padding: 0 16px;
-		}
+		}*/
 		.likeAvatars{
 			font-size: 0;
 			white-space: nowrap;
@@ -720,6 +737,8 @@ select{
 }
 
 .postAttachments{
+	margin: 0 -12px;
+	text-align: center;
 	.aspectWrapper{
 		position: relative;
 		white-space: nowrap;
@@ -751,6 +770,7 @@ select{
 				grid-gap: 2px;
 				width: 100%;
 				height: 100%;
+				margin: auto;
 			}
 		}
 	}
@@ -1802,5 +1822,14 @@ input.searchField{
 			background: $tabBackground;
 			color: #fff;
 		}
+	}
+}
+
+.wallRepostForm{
+	h2{
+		padding: 0;
+		margin: 0 16px 8px;
+		font-size: 17px;
+		border: none;
 	}
 }

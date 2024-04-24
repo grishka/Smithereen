@@ -158,5 +158,14 @@
   "file_size_megabytes": "{amount} Мб",
   "file_size_gigabytes": "{amount} Гб",
   "file_size_terabytes": "{amount} Тб",
-  "remote_object_timeout": "Превышено время ожидания ответа от {server}."
+  "remote_object_timeout": "Превышено время ожидания ответа от {server}.",
+  "shared_by_X_people": "{count, plural, one {Поделился # человек} few {Поделились # человека} other {Поделились # человек}}",
+  "share_content": "Поделиться",
+  "share_post_title": "Отправка записи",
+  "share_comment_title": "Отправка комментария",
+  "do_share_post": "Поделиться записью",
+  "do_share_comment": "Поделиться комментарием",
+  "repost_post_done": "Эта запись появится на вашей странице и в новостях у ваших друзей и подписчиков.",
+  "repost_comment_done": "Этот комментарий появится на вашей странице и в новостях у ваших друзей и подписчиков.",
+  "repost_your_comment": "Ваш комментарий"
 }

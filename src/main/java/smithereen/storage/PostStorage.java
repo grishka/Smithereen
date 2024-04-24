@@ -39,6 +39,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.storage.utils.Pair;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
@@ -54,7 +55,7 @@ import spark.utils.StringUtils;
 public class PostStorage{
 	private static final Logger LOG=LoggerFactory.getLogger(PostStorage.class);
 
-	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, List<Integer> replyKey, List<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
+	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, List<Integer> replyKey, List<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf) throws SQLException{
 		if(ownerUserID<=0 && ownerGroupID<=0)
 			throw new IllegalArgumentException("Need either ownerUserID or ownerGroupID");
 
@@ -72,6 +73,7 @@ public class PostStorage{
 					.value("poll_id", pollID>0 ? pollID : null)
 					.value("source", textSource)
 					.value("source_format", 0)
+					.value("repost_of", repostOf!=0 ? repostOf : null)
 					.executeAndGetID();
 
 			if(replyKey!=null && replyKey.size()>0){
@@ -169,7 +171,7 @@ public class PostStorage{
 							.value("ap_replies", Objects.toString(post.activityPubReplies, null))
 							.value("poll_id", post.poll!=null ? post.poll.id : null)
 							.value("privacy", post.privacy)
-							.value("repost_of", post.repostOf)
+							.value("repost_of", post.repostOf!=0 ? post.repostOf : null)
 							.value("flags", Utils.serializeEnumSet(post.flags))
 							.createStatement(Statement.RETURN_GENERATED_KEYS);
 				}else{
@@ -685,6 +687,14 @@ public class PostStorage{
 					}
 				}
 			}
+
+			new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.selectExpr("repost_of, COUNT(*)")
+					.whereIn("repost_of", postIDs)
+					.groupBy("repost_of")
+					.executeAsStream(res->new Pair<>(res.getInt(1), res.getInt(2)))
+					.forEach(count->result.get(count.first()).repostCount=count.second());
 		}
 
 		return result;
@@ -1104,6 +1114,17 @@ public class PostStorage{
 				}
 			}
 		}
+	}
+
+	public static List<Integer> getRepostedUsers(int postID, int count) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.columns("author_id")
+				.where("repost_of=?", postID)
+				.orderBy("MAX(created_at) DESC")
+				.groupBy("author_id")
+				.limit(count, 0)
+				.executeAndGetIntList();
 	}
 
 	private record DeleteCommentBookmarksRunnable(int postID) implements Runnable{

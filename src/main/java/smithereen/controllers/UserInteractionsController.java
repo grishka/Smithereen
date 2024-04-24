@@ -79,4 +79,15 @@ public class UserInteractionsController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public List<User> getRepostedUsers(Post object, int count){
+		try{
+			if(object.isMastodonStyleRepost()){
+				object=context.getWallController().getPostOrThrow(object.repostOf);
+			}
+			return UserStorage.getByIdAsList(PostStorage.getRepostedUsers(object.id, count));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

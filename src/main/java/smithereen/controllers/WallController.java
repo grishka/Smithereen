@@ -110,7 +110,7 @@ public class WallController{
 	 */
 	public Post createWallPost(@NotNull User author, int authorAccountID, @NotNull Actor wallOwner, int inReplyToID,
 							   @NotNull String textSource, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
-							   @Nullable Poll poll){
+							   @Nullable Poll poll, @Nullable Post repost){
 		try{
 			if(wallOwner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
@@ -142,6 +142,13 @@ public class WallController{
 					parent=getPostOrThrow(parent.repostOf);
 				}
 				context.getPrivacyController().enforcePostPrivacy(author, parent);
+			}
+			if(parent!=null || wallOwner.getLocalID()!=author.id)
+				repost=null;
+
+			if(repost!=null){
+				// Reposted post must be public
+				context.getPrivacyController().enforcePostPrivacy(null, repost);
 			}
 
 			final ArrayList<User> mentionedUsers=new ArrayList<>();
@@ -220,7 +227,7 @@ public class WallController{
 			}else{
 				replyKey=null;
 			}
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, replyKey, mentionedUsers, attachments, contentWarning, pollID);
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0);
 			if(ownerUserID==userID && replyKey==null){
 				context.getNewsfeedController().putFriendsFeedEntry(author, postID, NewsfeedEntry.Type.POST);
 			}
@@ -244,7 +251,7 @@ public class WallController{
 			}else{
 				context.getActivityPubWorker().sendCreatePostActivity(post);
 			}
-			NotificationUtils.putNotificationsForPost(post, parent, null);
+			NotificationUtils.putNotificationsForPost(post, parent, repost);
 
 			return post;
 		}catch(SQLException x){

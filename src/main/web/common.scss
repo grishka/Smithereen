@@ -256,7 +256,7 @@ a, a:link, /*a:visited,*/ .link{
 .avaHasImage::after{
 	content: "";
 	display: inline-block;
-	border: solid 1px rgba(0,0,0,0.13);
+	border: solid 1px rgba(0,0,0,0.05);
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -267,7 +267,6 @@ a, a:link, /*a:visited,*/ .link{
 }
 
 .avaPlaceholder{
-	background: $gray;
 	vertical-align: top;
 	margin: 0;
 	background-color: #fff;

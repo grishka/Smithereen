@@ -60,7 +60,7 @@ public class NotificationUtils{
 		}
 
 		// If this is a quote-repost of a local post, notify its author
-		if(firstRepost!=null && firstRepost.isLocal()){
+		if(firstRepost!=null && firstRepost.isLocal() && post.authorID!=firstRepost.authorID){
 			Notification n=new Notification();
 			n.type=Notification.Type.RETOOT;
 			n.actorID=post.authorID;

@@ -5,7 +5,7 @@
 <a name="comment{{realPost.id}}"></a>
 <div class="post comment{{ first ? ' first' : '' }}" id="post{{realPost.id}}" data-reply-name="{{users[realPost.authorID].nameForReply}}">
 	{%if realPost.replyLevel>1%}
-	<div style="--reply-depth: {{ min(realPost.replyLevel-1, 10) }}" class="treeIndent"></div>
+	<div style="--indent-level: {{ min(realPost.replyLevel-1, 10) }}" class="treeIndent"></div>
 	{%endif%}
 	{%if not(realPost.deleted)%}
 	<div class="postAvaWrap">

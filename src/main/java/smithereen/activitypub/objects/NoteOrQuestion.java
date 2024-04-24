@@ -3,6 +3,10 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.TextNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,16 +26,16 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
+import smithereen.activitypub.SerializerContext;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FederationException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.jsonld.JLD;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
-import smithereen.util.UriBuilder;
 import smithereen.model.User;
-import smithereen.exceptions.FederationException;
-import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
 public abstract sealed class NoteOrQuestion extends ActivityPubObject permits Note, Question, NoteTombstone{
@@ -236,6 +240,39 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 				cc.add(u.activityPubID);
 			}
 		}
+
+		if(post.repostOf!=0){
+			try{
+				Post repost=context.getWallController().getPostOrThrow(post.repostOf);
+				noq.quoteRepostID=repost.getActivityPubID();
+				cc.add(context.getUsersController().getUserOrThrow(repost.authorID).activityPubID);
+
+				Document doc=Jsoup.parseBodyFragment(noq.content);
+				Element root=doc.body();
+				Element parentP;
+				if(root.childrenSize()==0){
+					parentP=doc.createElement("p");
+					root.appendChild(parentP);
+				}else{
+					parentP=root.children().getLast();
+				}
+				parentP.appendChild(
+						doc.createElement("span")
+								.addClass("quote-inline")
+								.appendChildren(List.of(
+										doc.createElement("br"),
+										doc.createElement("br")
+								))
+								.appendText("RE: ")
+								.appendChild(doc.createElement("a")
+										.attr("href", repost.getActivityPubURL().toString())
+										.text(repost.getActivityPubURL().toString())
+								)
+				);
+				noq.content=root.html();
+			}catch(ObjectNotFoundException ignore){}
+		}
+
 		noq.to=to.stream().map(LinkOrObject::new).toList();
 		noq.cc=cc.stream().map(LinkOrObject::new).toList();
 

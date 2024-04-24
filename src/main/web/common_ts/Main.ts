@@ -6,7 +6,6 @@ declare var mobile:boolean;
 
 // Use Cmd instead of Ctrl on Apple devices.
 var isApple:boolean=navigator.platform.indexOf("Mac")==0 || navigator.platform=="iPhone" || navigator.platform=="iPad" || navigator.platform=="iPod touch";
-var postForms:{[key:string]:PostForm}={};
 
 // window.onerror=function(message, source, lineno, colno, error){
 // 	alert("JS error:\n\n"+message);
@@ -46,8 +45,9 @@ document.body.addEventListener("click", function(ev){
 function updatePostForms(){
 	for(var _el of document.querySelectorAll(".wallPostForm").unfuck()){
 		var el=_el as HTMLElement;
-		if(!postForms[el.id])
-			postForms[el.id]=new PostForm(el);
+		if(!el.customData || !el.customData.postFormObj){
+			(el.customData || (el.customData={})).postFormObj=new PostForm(el);
+		}
 	}
 }
 updatePostForms();
@@ -165,3 +165,13 @@ document.addEventListener("mouseout", (ev)=>{
 		hideTooltip(target);
 	}
 }, false);
+
+window.addEventListener("beforeunload", (ev)=>{
+	for(var formEl of document.querySelectorAll(".wallPostForm").unfuck()){
+		if(formEl instanceof HTMLElement && formEl.customData && formEl.customData.postFormObj && formEl.customData.postFormObj.isDirty()){
+			var msg:string=lang("confirm_discard_post_draft");
+			(ev || window.event).returnValue=msg;
+			return msg;
+		}
+	}
+});

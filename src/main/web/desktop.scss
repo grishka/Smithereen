@@ -373,7 +373,7 @@ small{
 			padding-right: 0;
 		}
 		.treeIndent{
-			width: calc(var(--reply-depth) * 16px);
+			width: calc(var(--indent-level) * 16px);
 			flex: none;
 		}
 	}
@@ -769,7 +769,7 @@ small{
 }
 
 .commentsPreviewWrap{
-	padding-left: 55px;
+	padding-left: 60px;
 	.loadPrev{
 		display: block;
 		height: 30px;
@@ -1360,20 +1360,28 @@ select{
 .postActions{
 	float: right;
 	margin-left: 5px;
-	.like .icon{
+	.icon{
 		display: inline-block;
 		width: 10px;
 		height: 9px;
-		background: svg-load(img/like.svg, fill: #91a20b);
+		background: svg-load(img/like.svg, fill: #91a20b) no-repeat;
 		position: relative;
+	}
+	.like .icon{
 		top: 2px;
 		margin-left: 3px;
+	}
+	.share .icon{
+		width: 11px;
+		height: 11px;
+		background-position: 0 -9px;
+		top: 1px;
 	}
 	.icon, .counter{
 		opacity: .4;
 		transition: opacity 0.3s ease;
 	}
-	.like:not(.liked):hover{
+	.like:not(.liked):hover, .share:hover{
 		.icon, .counter{
 			opacity: .6;
 		}
@@ -1467,9 +1475,16 @@ select{
 	}
 }
 
+.likeWrap .popover{
+	right: -35px;
+}
+
+.shareWrap .popover{
+	right: -125px;
+}
+
 .likePopoverWrap .popover, .pollVotersPopoverWrap .popover{
-	width: 225px;
-	right: 0;
+	width: 234px;
 	.popoverArrow{
 		height: 6px;
 		z-index: 6;
@@ -1494,7 +1509,7 @@ select{
 		padding: 8px 10px 0;
 	}
 	.popoverContent{
-		padding: 0 10px;
+		padding: 0 12px;
 	}
 }
 
@@ -1509,9 +1524,10 @@ select{
 	padding: 8px 0 10px;
 	overflow-x: hidden;
 	white-space: nowrap;
+	height: calc(32px + 8px + 10px);
 	display: flex;
 	a{
-		margin-right: 5px;
+		margin-right: 6px;
 		flex: none;
 	}
 	a:last-child{
@@ -1527,8 +1543,10 @@ select{
 		border: none;
 	}
 	.ava{
-		border-radius: 3px;
 		box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+	}
+	.ava, .avaImage{
+		border-radius: 3px;
 	}
 }
 
@@ -2031,7 +2049,7 @@ textarea{
 	display: block;
 	padding-left: 24px;
 	margin-top: -5px;
-	margin-left: 13px;
+	margin-left: 15px;
 	height: 26px;
 	line-height: 26px;
 	background: svg-load('img/load_replies.svg', stroke: color($iconColor alpha(70%))) no-repeat left center;
@@ -3238,5 +3256,18 @@ a.clickableListItem{
 			background: $tabBackground;
 			color: #fff;
 		}
+	}
+}
+
+.noPostFormBackgrounds .wallPostForm{
+	background: none;
+	border: none;
+	padding: 0;
+}
+
+.wallRepostForm{
+	padding: 15px;
+	h2{
+		border: none;
 	}
 }

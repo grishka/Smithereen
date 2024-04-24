@@ -122,6 +122,11 @@ public class WebDeltaResponse{
 		return this;
 	}
 
+	public WebDeltaResponse dismissBox(String id){
+		commands.add(new DismissBoxCommand(id));
+		return this;
+	}
+
 	public String json(){
 		return Utils.gson.toJson(commands);
 	}
@@ -368,6 +373,15 @@ public class WebDeltaResponse{
 		public SetURLCommand(String url){
 			super("setURL");
 			this.url=url;
+		}
+	}
+
+	public static class DismissBoxCommand extends Command{
+		public String id;
+
+		public DismissBoxCommand(String id){
+			super("dismissBox");
+			this.id=id;
 		}
 	}
 }

@@ -607,6 +607,7 @@ function applyServerCommand(cmd:any){
 				cont.id=cmd.i;
 			}
 			cont.innerHTML=cmd.c;
+			cont.customData={box: box};
 			box.setContent(cont);
 			box.show();
 			if(cmd.w){
@@ -681,6 +682,14 @@ function applyServerCommand(cmd:any){
 		case "setURL":
 			history.replaceState(null, "", cmd.url);
 			break;
+		case "dismissBox":
+		{
+			var boxEl=ge(cmd.id);
+			if(boxEl && boxEl.customData && boxEl.customData.box){
+				((boxEl.customData.box) as Box).dismiss();
+			}
+			break;
+		}
 	}
 }
 
@@ -691,7 +700,7 @@ function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveFo
 		var replies=ge("postReplies"+id);
 		replies.insertAdjacentElement("afterbegin", form);
 	}
-	postForms[formID].setupForReplyTo(id);
+	form.customData.postFormObj.setupForReplyTo(id);
 	return false;
 }
 
@@ -700,7 +709,7 @@ function showPostCommentForm(id:number):boolean{
 	var link=ge("postCommentLinkWrap"+id);
 	link.hide();
 	form.show();
-	postForms[form.id].focus();
+	form.customData.postFormObj.focus();
 	return false;
 }
 
@@ -736,7 +745,7 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 		}
 		if(btn._popover){
 			if(!btn._popover.isShown())
-				btn._popover.show();
+				btn._popover.show(-1, -1, btn.qs("span.icon"));
 			var title=btn._popover.getTitle();
 			btn._popover.setTitle(btn.customData.altPopoverTitle);
 			btn.customData.altPopoverTitle=title;
@@ -787,8 +796,6 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 
 function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 	var btn=wrap.querySelector(".popoverButton") as HTMLElement;
-	var objID=btn.getAttribute("data-obj-id");
-	var objType=btn.getAttribute("data-obj-type");
 
 	var ev:MouseEvent=event as MouseEvent;
 	var popover=btn._popover;
@@ -929,7 +936,6 @@ function onPollInputChange(el:HTMLInputElement){
 function doneEditingPost(id:number){
 	var fid="wallPostForm_edit"+id;
 	ge(fid).remove();
-	delete postForms[fid];
 	ge("postEditingLabel"+id).remove();
 }
 
@@ -1133,9 +1139,6 @@ function showMailFormBox(el:HTMLAnchorElement){
 				box.dismiss();
 		};
 		postForm.focus();
-		box.setOnDismissListener(()=>{
-			postForm.detach();
-		});
 	}, (msg)=>{
 		new MessageBox(lang("error"), msg, lang("close")).show();
 	}, "text");

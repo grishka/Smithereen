@@ -16,6 +16,8 @@
 		{% set fieldPlaceholder=L('write_on_X_wall', {'name': wallOwner.firstAndGender}) %}
 	{% elseif replyTo is not null %}
 		{% set fieldPlaceholder=L('comment_placeholder') %}
+	{% elseif repostedPost is not null %}
+		{% set fieldPlaceholder="" %}
 	{% else %}
 		{% set fieldPlaceholder=L('write_on_own_wall') %}
 	{% endif %}
@@ -24,6 +26,9 @@
 		{%if replyTo is not null%}
 		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}" value="{{replyTo.id}}"/>
 		{%endif%}
+		{% if repostedPost is not null %}
+		<input type="hidden" name="repost" value="{{ repostedPost.id }}"/>
+		{% endif %}
 		<input type="hidden" name="formID" value="{{id}}"/>
 		<div id="postFormAttachments_{{id}}">
 			{%set attachIDs=""%}
@@ -57,7 +62,7 @@
 				<button id="postFormSubmit_{{ id }}">{{ L('save') }}</button>
 				<button class="secondary jsRequired" type="button" onclick="history.back()">{{ L('cancel') }}</button>
 				{% else %}
-				<button id="postFormSubmit_{{ id }}">{{ L('send') }}</button>
+				<button id="postFormSubmit_{{ id }}">{{ submitButtonText | default(L('send')) }}</button>
 				{% endif %}
 			</td><td align="right" class="right">
 				<a id="postFormAttachBtn_{{ id }}">{{ L('attach') }}</a>
