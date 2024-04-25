@@ -455,8 +455,17 @@ select{
 	}
 	.bottomBar{
 		margin-top: 8px;
+		display: flex;
+		align-items: center;
+		clear: both;
 		.right{
-			padding-right: 5px;
+			margin: 0 8px;
+		}
+		.left, .right{
+			flex-shrink: 0;
+		}
+		.center{
+			flex-grow: 1;
 		}
 	}
 	.attachment{

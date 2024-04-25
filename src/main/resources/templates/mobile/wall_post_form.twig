@@ -56,18 +56,20 @@
 			{% if poll is not null %}{% include 'poll_form' with {'poll': poll} %}{% endif %}
 		</div>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
-		<table width="100%" cellpadding="0" cellspacing="0" class="bottomBar">
-			<tr><td width="50%" class="left">
+		<div class="bottomBar">
+			<div class="left">
 				{% if isEditing %}
 				<button id="postFormSubmit_{{ id }}">{{ L('save') }}</button>
 				<button class="secondary jsRequired" type="button" onclick="history.back()">{{ L('cancel') }}</button>
 				{% else %}
 				<button id="postFormSubmit_{{ id }}">{{ submitButtonText | default(L('send')) }}</button>
 				{% endif %}
-			</td><td align="right" class="right">
+			</div>
+			<div class="center"></div>
+			<div class="right">
 				<a id="postFormAttachBtn_{{ id }}">{{ L('attach') }}</a>
-			</td></tr>
-		</table>
+			</div>
+		</div>
 	</form>
 	<form action="/system/upload/postPhoto?draft=1&csrf={{csrf}}" method="post" enctype="multipart/form-data" id="attachmentUploadForm_{{id}}">
 		<noscript>
