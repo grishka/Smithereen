@@ -2,7 +2,6 @@
 {# @pebvariable name="realPost" type="smithereen.model.Post" #}
 {# @pebvariable name="topLevel" type="smithereen.model.viewmodel.PostViewModel" #}
 {% set realPost=post.post %}
-<a name="comment{{realPost.id}}"></a>
 <div class="post comment{{ first ? ' first' : '' }}" id="post{{realPost.id}}" data-reply-name="{{users[realPost.authorID].nameForReply}}">
 	{%if realPost.replyLevel>1%}
 	<div style="--indent-level: {{ min(realPost.replyLevel-1, 10) }}" class="treeIndent"></div>
@@ -12,6 +11,7 @@
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
 	</div>
 	<div class="postContentWrap">
+		<a name="comment{{realPost.id}}"></a>
 		<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
 		{%- if realPost.privacy!='PUBLIC' -%}
 		<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID] | name('firstAndGender')}) }}"></span>
@@ -34,8 +34,15 @@
 				{%- set interactions=postInteractions[realPost.id] -%}
 				{%- if interactions is not null -%}
 				<span class="postActions">
+					<span class="shareWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
+						<a href="{{ realPost.internalURL }}/share" class="action share popoverButton{{ interactions.repostCount>0 ? '' : ' revealOnHover' }}" id="shareButtonPost{{ realPost.id }}" data-ajax-box data-popover-url="{{ realPost.internalURL }}/sharePopover" rel="nofollow">
+							<span class="icon">&nbsp;</span><span class="counter" style="{{ interactions.repostCount==0 ? 'display: none' : '' }}">
+							{{- interactions.repostCount -}}
+						</span></a>
+						<span class="popoverPlace likePopoverWrap"></span>
+					</span>
 					<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
-						<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like commentLike{{ interactions.isLiked ? ' liked' : '' }}{{ interactions.likeCount>0 ? '' : ' revealOnHover' }} popoverButton" id="likeButtonPost{{realPost.id}}" data-obj-type="post" data-obj-id="{{realPost.id}}" data-popover-url="{{realPost.internalURL}}/likePopover" onclick="return likeOnClick(this)" title="{{ L('like') }}">
+						<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like commentLike{{ interactions.isLiked ? ' liked' : '' }}{{ interactions.likeCount>0 or interactions.repostCount>0 ? '' : ' revealOnHover' }} popoverButton" id="likeButtonPost{{realPost.id}}" data-obj-type="post" data-obj-id="{{realPost.id}}" data-popover-url="{{realPost.internalURL}}/likePopover" onclick="return likeOnClick(this)" title="{{ L('like') }}">
 							<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{realPost.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
 							{{- interactions.likeCount -}}
 						</span></a>
@@ -62,9 +69,10 @@
 		</div>
 	</div>
 	{%else%}
-	<td class="postContentWrap">
+	<div class="postAvaWrap"></div>
+	<div class="postContentWrap">
 		<i>{{L('deleted_placeholder')}}</i>
-	</td>
+	</div>
 	{%endif%}
 </div>
 <div id="postReplies{{realPost.id}}" class="replies">

@@ -623,6 +623,10 @@ small{
 	margin-top: 5px;
 }
 
+.replies .wallPostForm+.comment{
+	margin-top: -1px;
+}
+
 .profileBlock{
 	border-collapse: collapse;
 	.blockHeader{

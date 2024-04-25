@@ -29,6 +29,7 @@
 			{% if realPost.hasContentWarning %}
 			</div>
 			{% endif %}
+			{%set interactions=postInteractions[realPost.id]%}
 			<div class="postInfo">
 				<a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.id}})" class="postLink">{{LD(realPost.createdAt)}}</a>
 				<div class="actions">
@@ -37,7 +38,12 @@
 							<a href="{{realPost.internalURL}}" onclick="return showPostReplyForm({{realPost.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', false)">{{L('add_reply')}}</a>
 						{%- endif %}
 						{% set options=[] %}
-						{% set _=options.add({'type': 'link', 'href': "#{realPost.internalURL}/likes", 'label': L('likes_title').toString()}) %}
+						{% if interactions is not null and interactions.likeCount>0 %}
+							{% set _=options.add({'type': 'link', 'href': "#{realPost.internalURL}/likes", 'label': L('liked_by_X_people', {'count': interactions.likeCount}).toString()}) %}
+						{% endif %}
+						{% if realPost.privacy=='PUBLIC' %}
+							{% set _=options.add({'type': 'link', 'label': L('share_content').toString(), 'href': "/posts/#{realPost.id}/share", 'ajax': 'box'}) %}
+						{% endif %}
 						{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}
 						    {% set _=options.add({'type': 'confirm', 'label': L('delete').toString(), 'title': 'delete_reply', 'msg': 'delete_reply_confirm', 'url': "#{realPost.internalURL}/delete"}) %}
 						{% endif %}
@@ -55,8 +61,7 @@
 					{% endif %}
 				</div>
 			</div>
-			{%if postInteractions is not null%}
-			{%set interactions=postInteractions[realPost.id]%}
+			{%if interactions is not null%}
 				<div class="postActions">
 					<span class="likeWrap">
 						<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{realPost.id}}" data-obj-type="post" data-obj-id="{{realPost.id}}" data-popover-url="{{realPost.internalURL}}/likePopover" onclick="return likeOnClick(this)">
