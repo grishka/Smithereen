@@ -140,11 +140,11 @@ public class MediaCache{
 		File tmp=File.createTempFile(keyHex, null);
 		try{
 			HttpResponse<Path> resp=ActivityPub.httpClient.send(req, responseInfo->{
-				if(responseInfo.headers().firstValueAsLong("content-length").orElse(Long.MAX_VALUE)>Config.mediaCacheFileSizeLimit)
+				if(responseInfo.statusCode()/100!=2){
 					return new HttpResponse.BodySubscriber<>(){
 						@Override
 						public CompletionStage<Path> getBody(){
-							return CompletableFuture.failedStage(new IOException("File too large"));
+							return CompletableFuture.failedStage(new IOException("Response not successful"));
 						}
 
 						@Override
@@ -159,7 +159,8 @@ public class MediaCache{
 						@Override
 						public void onComplete(){}
 					};
-				return HttpResponse.BodySubscribers.ofFile(tmp.toPath());
+				}
+				return new SizeLimitingBodySubscriber(HttpResponse.BodySubscribers.ofFile(tmp.toPath()));
 			});
 			if(resp.statusCode()/100!=2){
 				return null;
@@ -195,6 +196,9 @@ public class MediaCache{
 						img.release();
 				}
 			}
+		}catch(IOException x){
+			LOG.debug("Exception while downloading external media {}", uri, x);
+			return null;
 		}catch(InterruptedException ignored){
 		}finally{
 			if(tmp.exists())
@@ -203,7 +207,9 @@ public class MediaCache{
 		metaCache.put(key, result);
 
 		ByteArrayOutputStream buf=new ByteArrayOutputStream();
-		result.serialize(new DataOutputStream(buf));
+		try{
+			result.serialize(new DataOutputStream(buf));
+		}catch(IOException ignored){}
 		new SQLQueryBuilder()
 				.insertInto("media_cache")
 				.value("url_hash", key)
@@ -341,6 +347,47 @@ public class MediaCache{
 			}catch(SQLException x){
 				LOG.warn("Exception while deleting from media cache", x);
 			}
+		}
+	}
+
+	private static class SizeLimitingBodySubscriber implements HttpResponse.BodySubscriber<Path>{
+		private final HttpResponse.BodySubscriber<Path> parent;
+		private long size=0;
+
+		private SizeLimitingBodySubscriber(HttpResponse.BodySubscriber<Path> parent){
+			this.parent=parent;
+		}
+
+		@Override
+		public CompletionStage<Path> getBody(){
+			return parent.getBody();
+		}
+
+		@Override
+		public void onSubscribe(Flow.Subscription subscription){
+			parent.onSubscribe(subscription);
+		}
+
+		@Override
+		public void onNext(List<ByteBuffer> item){
+			for(ByteBuffer buf:item){
+				size+=buf.remaining();
+				if(size>Config.mediaCacheMaxSize){
+					parent.onError(new IOException("File too large"));
+					return;
+				}
+			}
+			parent.onNext(item);
+		}
+
+		@Override
+		public void onError(Throwable throwable){
+			parent.onError(throwable);
+		}
+
+		@Override
+		public void onComplete(){
+			parent.onComplete();
 		}
 	}
 }
