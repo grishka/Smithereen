@@ -903,13 +903,18 @@ public class PostRoutes{
 		PaginatedList<PostViewModel> reposts=PostViewModel.wrap(ctx.getWallController().getPostReposts(post, offset, 20));
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, reposts.list, 1);
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list);
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list.stream().filter(p->!p.post.isMastodonStyleRepost()).toList());
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(reposts.list, List.of(new PostViewModel(post))).flatMap(List::stream).toList(), self!=null ? self.user : null);
 		RenderedTemplateResponse model;
 		if(isMobile(req)){
 			model=new RenderedTemplateResponse("content_interactions_reposts", req);
 		}else{
+			for(PostViewModel p:reposts.list){
+				if(p.post.isMastodonStyleRepost()){
+					p.canComment=false;
+				}
+			}
 			model=new RenderedTemplateResponse(isAjax(req) ? "content_interactions_box" : "content_wrap", req);
 		}
 		model.paginate(reposts)
