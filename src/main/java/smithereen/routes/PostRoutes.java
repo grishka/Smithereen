@@ -128,7 +128,7 @@ public class PostRoutes{
 			HashMap<Integer, UserInteractions> interactions=new HashMap<>();
 			interactions.put(post.id, new UserInteractions());
 			PostViewModel pvm=new PostViewModel(post);
-			ctx.getWallController().populateReposts(self.user, List.of(pvm), 1);
+			ctx.getWallController().populateReposts(self.user, List.of(pvm), 2);
 			RenderedTemplateResponse model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post", req).with("post", pvm).with("postInteractions", interactions);
 			if(replyTo!=0){
 				model.with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
@@ -233,7 +233,7 @@ public class PostRoutes{
 				return new WebDeltaResponse(resp).replaceLocation(post.getInternalURL().toString());
 
 			PostViewModel postVM=new PostViewModel(post);
-			ctx.getWallController().populateReposts(self.user, List.of(postVM), 1);
+			ctx.getWallController().populateReposts(self.user, List.of(postVM), 2);
 			RenderedTemplateResponse model=new RenderedTemplateResponse(post.getReplyLevel()>0 ? "wall_reply" : "wall_post", req).with("post", postVM).with("postInteractions", ctx.getWallController().getUserInteractions(List.of(postVM), self.user));
 			model.with("users", Map.of(self.user.id, self.user));
 			return new WebDeltaResponse(resp).setContent("postInner"+post.id, model.renderBlock("postInner"))
@@ -270,7 +270,7 @@ public class PostRoutes{
 
 		List<PostViewModel> feedPosts=ctx.getWallController().getPosts(needPosts).values().stream().map(PostViewModel::new).toList();
 
-		ctx.getWallController().populateReposts(self!=null ? self.user : null, feedPosts, 1);
+		ctx.getWallController().populateReposts(self!=null ? self.user : null, feedPosts, 2);
 		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
 			ctx.getWallController().populateCommentPreviews(self.user, feedPosts);
 		}
@@ -656,7 +656,7 @@ public class PostRoutes{
 
 		int offset=offset(req);
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, owner, ownOnly, offset, 20));
-		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 1);
+		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
 		}
@@ -694,7 +694,7 @@ public class PostRoutes{
 
 		int offset=offset(req);
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallToWallPosts(self!=null ? self.user : null, user, otherUser, offset, 20));
-		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 1);
+		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
 		}
@@ -901,7 +901,7 @@ public class PostRoutes{
 		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 		int offset=offset(req);
 		PaginatedList<PostViewModel> reposts=PostViewModel.wrap(ctx.getWallController().getPostReposts(post, offset, 20));
-		ctx.getWallController().populateReposts(self!=null ? self.user : null, reposts.list, 1);
+		ctx.getWallController().populateReposts(self!=null ? self.user : null, reposts.list, 2);
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list.stream().filter(p->!p.post.isMastodonStyleRepost()).toList());
 		}

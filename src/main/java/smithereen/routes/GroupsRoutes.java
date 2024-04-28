@@ -192,7 +192,7 @@ public class GroupsRoutes{
 			int offset=offset(req);
 			PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, group, false, offset, 20));
 			wallPostsCount=wall.total;
-			ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 1);
+			ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 			if(req.attribute("mobile")==null){
 				ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
 			}
