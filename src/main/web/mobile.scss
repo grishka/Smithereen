@@ -359,9 +359,6 @@ select{
 	}
 	&.standaloneLikeBar{
 		height: 42px;
-		/*.action{
-			padding: 0 16px;
-		}*/
 		.likeAvatars{
 			font-size: 0;
 			white-space: nowrap;
@@ -370,6 +367,7 @@ select{
 			display: block;
 			height: 42px;
 			padding-top: 4px;
+			flex-grow: 1;
 			.ava{
 				margin-right: 4px;
 				display: inline-block;
