@@ -623,8 +623,8 @@ small{
 	margin-top: 5px;
 }
 
-.replies .wallPostForm+.comment{
-	margin-top: -1px;
+.replies .wallPostForm{
+	margin-bottom: -1px;
 }
 
 .profileBlock{
@@ -1085,7 +1085,10 @@ select{
 	min-width: 410px;
 	border-radius: 2px;
 	pointer-events: auto;
-	@include layer-shadow;
+	padding: 10px 0;
+	.boxLayerInner{
+		@include layer-shadow;
+	}
 	&.wide{
 		width: 520px;
 	}
@@ -1127,22 +1130,23 @@ select{
 	line-height: 30px;
 	font-weight: bold;
 	font-size: 13px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	padding-left: 10px;
-	padding-right: 64px;
 	border: solid 1px $headerBorderBottomDark;
 	box-shadow: 0 1px 0 $headerBorderBottomLight inset;
-	position: relative;
+	position: sticky;
+	top: 0;
 	border-radius: 2px 2px 0 0;
+	display: flex;
+	z-index: 2;
+	.title{
+		flex-grow: 1;
+		margin: 0 10px;
+	}
 	.close{
 		display: block;
 		width: 30px;
 		height: 30px;
 		cursor: pointer;
-		position: absolute;
-		right: 0;
-		top: 0;
+		flex: none;
 		background: svg-load("img/box_close.svg", fill: $textOnAccent) no-repeat;
 		background-position: center;
 		background-size: 11px 11px;
@@ -1559,17 +1563,17 @@ select{
 }
 
 .userGrid{
-	padding: 9px;
+	padding: 15px 20px;
 	display: grid;
-	grid-template-columns: repeat(8, 1fr);
-	grid-gap: 9px 8px;
+	grid-template-columns: repeat(5, 100px);
+	grid-gap: 15px 20px;
 }
 
 .userGridItem{
 	overflow-x: hidden;
 	text-align: center;
 	.name{
-		padding-top: 10px;
+		padding-top: 5px;
 		line-height: 13px;
 	}
 }
@@ -2752,7 +2756,6 @@ label.pretendLink{
 	display: flex;
 	align-items: flex-start;
 	justify-content: center;
-	padding: 10px 0;
 	transform-origin: 50% 33%;
 }
 
@@ -3263,6 +3266,12 @@ a.clickableListItem{
 	}
 }
 
+.boxContent .secondaryTabBar{
+	position: sticky;
+	top: 30px;
+	z-index: 2;
+}
+
 .noPostFormBackgrounds .wallPostForm{
 	background: none;
 	border: none;
@@ -3274,4 +3283,31 @@ a.clickableListItem{
 	h2{
 		border: none;
 	}
+}
+
+.tabbedContent{
+	display: flow-root;
+}
+
+.ajaxEndlessPagination{
+	text-align: center;
+	a{
+		display: block;
+		padding: 10px;
+		border-top: solid 1px transparent;
+		&:hover{
+			text-decoration: none;
+			background: $blockBackground;
+			border-top: solid 1px $wallPostSeparator;
+		}
+	}
+	.loader{
+		display: block;
+		width: 100%;
+		height: 34px;
+	}
+}
+
+.userGridW .ajaxEndlessPagination{
+	margin: 0px 20px 15px;
 }

@@ -258,11 +258,7 @@ function ajaxGet(uri:string, onDone:{(r:any):void}, onError:{(msg:string):void},
 		};
 	}
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
-	if(uri.indexOf("?")!=-1)
-		uri+="&_ajax=1";
-	else
-		uri+="?_ajax=1";
-	xhr.open("GET", uri);
+	xhr.open("GET", addParamsToURL(uri, {_ajax: "1"}));
 	xhr.onload=function(){
 		if(Math.floor(xhr.status/100)==2){
 			try{
@@ -295,12 +291,7 @@ function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):
 	var formData=new FormData();
 	formData.append(fieldName, file);
 	var xhr=new XMLHttpRequest();
-	if(uri.indexOf("?")!=-1)
-		uri+="&";
-	else
-		uri+="?";
-	uri+="_ajax=1&csrf="+userConfig.csrf;
-	xhr.open("POST", uri);
+	xhr.open("POST", addParamsToURL(uri, {_ajax: "1", csrf: userConfig.csrf}));
 	xhr.onload=function(){
 		var resp=xhr.response;
 		if(Math.floor(xhr.status/100)!=2){
@@ -1171,5 +1162,74 @@ function expandAllCommentCWs(){
 		if(cbox instanceof HTMLInputElement && !cbox.checked){
 			cbox.checked=true;
 		}
+	}
+}
+
+function addParamsToURL(url:string, params:{[key:string]:string}):string{
+	var paramsParts=[];
+	for(var key in params){
+		var part=encodeURIComponent(key);
+		if(params[key])
+			part+='='+encodeURIComponent(params[key]);
+		paramsParts.push(part);
+	}
+	var fragment="";
+	if(url.indexOf('#')!=-1){
+		var parts=url.split("#", 2);
+		url=parts[0];
+		fragment='#'+parts[1];
+	}
+	return url+(url.indexOf('?')==-1 ? '?' : '&')+paramsParts.join('&')+fragment;
+}
+
+function initTabbedBox(tabBar:HTMLElement, content:HTMLElement){
+	var tabs=tabBar.querySelectorAll("a").unfuck() as HTMLAnchorElement[];
+	var panes=content.children.unfuck();
+	var activeTab=tabBar.qs("a.selected") as HTMLAnchorElement;
+	var loader=tabBar.qs(".loader");
+	var listener=(ev:MouseEvent)=>{
+		ev.preventDefault();
+		if(ev.target==activeTab || !(ev.target instanceof HTMLAnchorElement))
+			return;
+		var newTab=ev.target;
+		var index=tabs.indexOf(newTab);
+		if(index==-1)
+			return;
+		var newPane=panes[index];
+		var oldPane=panes[tabs.indexOf(activeTab)];
+		if(!newPane.customData.loaded){
+			loader.show();
+			setGlobalLoading(true);
+			ajaxGet(addParamsToURL(newTab.href, {fromTab: null}), (r)=>{
+				newPane.innerHTML=r;
+				newPane.customData.loaded=true;
+				initDynamicControls(newPane);
+				loader.hide();
+				newPane.show();
+				oldPane.hide();
+				activeTab.classList.remove("selected");
+				newTab.classList.add("selected");
+				activeTab=newTab;
+				setGlobalLoading(false);
+				LayerManager.getInstance().updateAllTopOffsets();
+			}, (err)=>{
+				LayerManager.getInstance().showSnackbar(err);
+				loader.hide();
+				setGlobalLoading(false);
+			}, "text");
+		}else{
+			activeTab.classList.remove("selected");
+			activeTab=newTab;
+			activeTab.classList.add("selected");
+			newPane.show();
+			oldPane.hide();
+			LayerManager.getInstance().updateAllTopOffsets();
+		}
+	};
+	for(var tab of tabs){
+		tab.addEventListener("click", listener);
+	}
+	for(var pane of panes){
+		pane.customData={loaded: pane.innerHTML.trim().length>0};
 	}
 }

@@ -88,11 +88,10 @@ public class LikeStorage{
 		return new SQLQueryBuilder()
 				.selectFrom("likes")
 				.columns("user_id")
-				.where("object_id=? AND object_type=?", objectID, Like.ObjectType.POST.ordinal())
+				.where("object_id=? AND object_type=? AND user_id<>?", objectID, Like.ObjectType.POST.ordinal(), selfID)
 				.orderBy("id ASC")
-				.limit(count+1, offset)
+				.limit(count, offset)
 				.executeAndGetIntStream()
-				.filter(i->i!=selfID)
 				.boxed().toList();
 	}
 

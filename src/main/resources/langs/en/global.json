@@ -171,5 +171,8 @@
   "do_share_comment": "Share comment",
   "repost_post_done": "This post will appear on your profile and in your friends' and followers' feeds.",
   "repost_comment_done": "This comment will appear on your profile and in your friends' and followers' feeds.",
-  "repost_your_comment": "Your comment"
+  "repost_your_comment": "Your comment",
+  "liked_by_X_people_short": "{count, plural, one {# liked} other {# liked}}",
+  "shared_by_X_people_short": "{count, plural, one {# shared} other {# shared}}",
+  "load_more": "Load more"
 }

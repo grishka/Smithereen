@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -574,24 +575,49 @@ public class PostRoutes{
 	}
 
 	public static Object likeList(Request req, Response resp){
+		ApplicationContext ctx=context(req);
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
-		Post post=context(req).getWallController().getPostOrThrow(postID);
-		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
+		Post post=ctx.getWallController().getPostOrThrow(postID);
+		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self!=null ? self.user : null);
 		int offset=offset(req);
-		PaginatedList<User> likes=context(req).getUserInteractionsController().getLikesForObject(post, null, offset, 100);
-		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req)
-				.paginate(likes, "/posts/"+postID+"/likes?fromPagination&offset=", null)
-				.with("emptyMessage", lang(req).get("likes_empty"))
-				.with("summary", lang(req).get("liked_by_X_people", Map.of("count", likes.total)));
-		if(isAjax(req)){
-			if(req.queryParams("fromPagination")==null)
-				return new WebDeltaResponse(resp).box(lang(req).get("likes_title"), model.renderToString(), "likesList", 474);
-			else
-				return new WebDeltaResponse(resp).setContent("likesList", model.renderToString());
+		PaginatedList<User> likes=ctx.getUserInteractionsController().getLikesForObject(post, null, offset, 100);
+		RenderedTemplateResponse model;
+		if(isMobile(req)){
+			model=new RenderedTemplateResponse("content_interactions_likes", req);
+		}else{
+			model=new RenderedTemplateResponse(isAjax(req) ? "content_interactions_box" : "content_wrap", req);
 		}
-		model.with("contentTemplate", "user_grid").with("title", lang(req).get("likes_title"));
+		model.paginate(likes)
+				.with("emptyMessage", lang(req).get("likes_empty"))
+				.with("interactions", interactions)
+				.with("post", post)
+				.with("tab", "likes");
+		if(isMobile(req))
+			return model.pageTitle(lang(req).get("likes_title"));
+		if(isAjax(req)){
+			String paginationID=req.queryParams("pagination");
+			boolean fromTab=req.queryParams("fromTab")!=null;
+			if(fromTab){
+				return model.renderBlock("likes");
+			}else if(paginationID!=null){
+				WebDeltaResponse r=new WebDeltaResponse(resp)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("likesInner"));
+				if(offset+likes.list.size()<likes.total){
+					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", "/posts/"+postID+"/likes?offset="+(offset+likes.perPage));
+				}else{
+					r.remove("ajaxPagination_"+paginationID);
+				}
+				return r;
+			}else{
+				return new WebDeltaResponse(resp)
+						.box(lang(req).get("likes_title"), model.renderToString(), "likesList", 620)
+						.runScript("initTabbedBox(ge(\"interactionsTabs"+post.id+"\"), ge(\"interactionsContent"+post.id+"\")); initDynamicControls(ge(\"likesList\"));");
+			}
+		}
+		model.with("contentTemplate", "content_interactions_box").with("title", lang(req).get("likes_title"));
 		return model;
 	}
 
@@ -864,5 +890,57 @@ public class PostRoutes{
 					.runScript("updatePostForms();");
 		}
 		return "";
+	}
+
+	public static Object repostList(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
+		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		Post post=ctx.getWallController().getPostOrThrow(postID);
+		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
+		int offset=offset(req);
+		PaginatedList<PostViewModel> reposts=PostViewModel.wrap(ctx.getWallController().getPostReposts(post, offset, 20));
+		ctx.getWallController().populateReposts(self!=null ? self.user : null, reposts.list, 1);
+		if(req.attribute("mobile")==null){
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list);
+		}
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(reposts.list, List.of(new PostViewModel(post))).flatMap(List::stream).toList(), self!=null ? self.user : null);
+		RenderedTemplateResponse model;
+		if(isMobile(req)){
+			model=new RenderedTemplateResponse("content_interactions_reposts", req);
+		}else{
+			model=new RenderedTemplateResponse(isAjax(req) ? "content_interactions_box" : "content_wrap", req);
+		}
+		model.paginate(reposts)
+				.with("interactions", interactions)
+				.with("post", post)
+				.with("tab", "reposts")
+				.with("maxRepostDepth", 0);
+		preparePostList(ctx, reposts.list, model);
+		if(isMobile(req))
+			return model.pageTitle(lang(req).get("likes_title"));
+		if(isAjax(req)){
+			String paginationID=req.queryParams("pagination");
+			boolean fromTab=req.queryParams("fromTab")!=null;
+			if(fromTab){
+				return model.renderBlock("reposts");
+			}else if(paginationID!=null){
+				WebDeltaResponse r=new WebDeltaResponse(resp)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("repostsInner"));
+				if(offset+reposts.list.size()<reposts.total){
+					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", "/posts/"+postID+"/reposts?offset="+(offset+reposts.perPage));
+				}else{
+					r.remove("ajaxPagination_"+paginationID);
+				}
+				return r;
+			}else{
+				return new WebDeltaResponse(resp)
+						.box(lang(req).get("likes_title"), model.renderToString(), "likesList", 620)
+						.runScript("initTabbedBox(ge(\"interactionsTabs"+post.id+"\"), ge(\"interactionsContent"+post.id+"\")); initDynamicControls(ge(\"likesList\"));");
+			}
+		}
+		model.with("contentTemplate", "content_interactions_box").with("title", lang(req).get("likes_title"));
+		return model;
 	}
 }

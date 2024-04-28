@@ -1127,6 +1127,27 @@ public class PostStorage{
 				.executeAndGetIntList();
 	}
 
+	public static PaginatedList<Post> getPostReposts(int postID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.count()
+					.where("repost_of=?", postID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Post> posts=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.allColumns()
+					.where("repost_of=?", postID)
+					.orderBy("created_at DESC")
+					.limit(count, offset)
+					.executeAsStream(Post::fromResultSet)
+					.toList();
+			return new PaginatedList<>(posts, total, offset, count);
+		}
+	}
+
 	private record DeleteCommentBookmarksRunnable(int postID) implements Runnable{
 		@Override
 		public void run(){

@@ -42,15 +42,30 @@ document.body.addEventListener("click", function(ev){
 	}while(el && el.tagName!="BODY");
 }, false);
 
-function updatePostForms(){
-	for(var _el of document.querySelectorAll(".wallPostForm").unfuck()){
+function updatePostForms(root:HTMLElement=null){
+	for(var _el of (root || document).querySelectorAll(".wallPostForm").unfuck()){
 		var el=_el as HTMLElement;
 		if(!el.customData || !el.customData.postFormObj){
 			(el.customData || (el.customData={})).postFormObj=new PostForm(el);
 		}
 	}
 }
-updatePostForms();
+
+function initEndlessPaginations(root:HTMLElement=null){
+	for(var _el of (root || document).querySelectorAll(".ajaxEndlessPagination").unfuck()){
+		var el=_el as HTMLElement;
+		if(!el.customData || !el.customData.paginationObj){
+			(el.customData || (el.customData={})).paginationObj=new EndlessPagination(el);
+		}
+	}
+}
+
+function initDynamicControls(root:HTMLElement=null){
+	updatePostForms(root);
+	initEndlessPaginations(root);
+}
+
+initDynamicControls();
 
 var dragTimeout=-1;
 var dragEventCount=0;

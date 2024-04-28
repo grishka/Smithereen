@@ -567,6 +567,7 @@ public class SmithereenApplication{
 			get("/ajaxCommentBranch", PostRoutes::ajaxCommentBranch);
 			get("/sharePopover", PostRoutes::sharePopover);
 			getLoggedIn("/share", PostRoutes::repostForm);
+			get("/reposts", PostRoutes::repostList);
 
 			getActivityPubCollection("/replies", 50, ActivityPubRoutes::postReplies);
 			getActivityPubCollection("/likes", 50, ActivityPubRoutes::postLikes);

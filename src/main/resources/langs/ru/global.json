@@ -167,5 +167,8 @@
   "do_share_comment": "Поделиться комментарием",
   "repost_post_done": "Эта запись появится на вашей странице и в новостях у ваших друзей и подписчиков.",
   "repost_comment_done": "Этот комментарий появится на вашей странице и в новостях у ваших друзей и подписчиков.",
-  "repost_your_comment": "Ваш комментарий"
+  "repost_your_comment": "Ваш комментарий",
+  "liked_by_X_people_short": "{count, plural, one {# оценил} other {# оценили}}",
+  "shared_by_X_people_short": "{count, plural, one {# поделился} other {# поделились}}",
+  "load_more": "Загрузить ещё"
 }

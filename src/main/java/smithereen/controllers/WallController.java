@@ -780,4 +780,12 @@ public class WallController{
 			nextReposts=tmp;
 		}
 	}
+
+	public PaginatedList<Post> getPostReposts(Post post, int offset, int count){
+		try{
+			return PostStorage.getPostReposts(post.getIDForInteractions(), offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

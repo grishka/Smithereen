@@ -66,5 +66,6 @@
   "expand_all_cws": "Раскрыть все спойлеры",
   "comment_repost_title": "<a id=\"originalComment\">{time}</a> к записи <a id=\"topLevelPost\">{postSnippet}</a>",
   "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> к удалённой записи",
-  "commenting_on_repost_hint": "Вы комментируете изначальную запись {name, inflect, genitive}."
+  "commenting_on_repost_hint": "Вы комментируете изначальную запись {name, inflect, genitive}.",
+  "reposts_empty": "Никто не делился этой записью."
 }

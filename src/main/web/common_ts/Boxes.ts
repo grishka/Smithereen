@@ -145,10 +145,7 @@ class LayerManager{
 	}
 
 	private onWindowResize(ev:Event){
-		this.updateTopOffset(this.boxLoader);
-		if(this.stack.length){
-			this.updateTopOffset(this.stack[this.stack.length-1].getContent());
-		}
+		this.updateAllTopOffsets();
 	}
 
 	public showSnackbar(text:string){
@@ -162,6 +159,13 @@ class LayerManager{
 				snackbar.remove();
 			});
 		}, 2000);
+	}
+	
+	public updateAllTopOffsets(){
+		this.updateTopOffset(this.boxLoader);
+		if(this.stack.length){
+			this.updateTopOffset(this.stack[this.stack.length-1].getContent());
+		}
 	}
 }
 
@@ -230,9 +234,13 @@ class Box extends BaseLayer{
 
 	protected onCreateContentView():HTMLElement{
 		var content:HTMLDivElement=ce("div", {className: "boxLayer"}, [
-			this.titleBar=ce("div", {className: "boxTitleBar", innerText: this.title}),
-			this.contentWrap,
-			this.buttonBar=ce("div", {className: "boxButtonBar"})
+			ce("div", {className: "boxLayerInner"}, [
+				this.titleBar=ce("div", {className: "boxTitleBar"}, [
+					ce("span", {className: "title ellipsize", innerText: this.title})
+				]),
+				this.contentWrap,
+				this.buttonBar=ce("div", {className: "boxButtonBar"})
+			])
 		]);
 		if(!this.title) this.titleBar.hide();
 

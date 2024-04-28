@@ -1,0 +1,31 @@
+{# @pebvariable name="interactions" type="Map<Integer, smithereen.model.UserInteractions>" #}
+{# @pebvariable name="post" type="smithereen.model.Post" #}
+<div class="secondaryTabBar" id="interactionsTabs{{ post.id }}" style="padding: 10px 20px">
+	<a href="/posts/{{ post.id }}/likes" class="{{ tab=='likes' ? "selected" : "" }}">{{ L('liked_by_X_people_short', {'count': interactions[post.getIDForInteractions()].likeCount}) }}</a>
+	<a href="/posts/{{ post.id }}/reposts" class="{{ tab=='reposts' ? "selected" : "" }}">{{ L('shared_by_X_people_short', {'count': interactions[post.getIDForInteractions()].repostCount}) }}</a>
+	<span class="loader" style="display: none"></span>
+</div>
+<div class="tabbedContent" id="interactionsContent{{ post.id }}">
+	<div style="{{ tab=='likes' ? '' : 'display:none' }}" class="userGridW">
+	{% block likes %}
+		{% if tab=='likes' %}
+			{% block likesInner %}{% include "user_grid" with {'hideSummary': true} %}{% endblock %}
+			{% include "pagination_endless" %}
+		{% endif %}
+	{% endblock %}
+	</div>
+	<div class="singleColumn" style="{{ tab=='reposts' ? '' : 'display: none' }}">
+	{% block reposts %}
+	{% if tab=='reposts' %}
+		{% block repostsInner %}
+		{% for post in items %}
+		    <div class="wallRow">{% include "wall_post" %}</div>
+		{% else %}
+			<div class="emptyState">{{ L('reposts_empty') }}</div>
+		{% endfor %}
+		{% endblock %}
+		{% if tab=='reposts' %}{% include "pagination_endless" %}{% endif %}
+	{% endif %}
+	{% endblock %}
+	</div>
+</div>
