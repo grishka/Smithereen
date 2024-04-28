@@ -34,21 +34,19 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -100,6 +98,7 @@ public class ActivityPub{
 
 	public static final HttpClient httpClient;
 	private static LruCache<String, String> domainRedirects=new LruCache<>(100);
+	private static final ZoneId GMT_TIMEZONE=ZoneId.of("GMT");
 
 	static{
 		httpClient=ExtendedHttpClient.newBuilder()
@@ -205,9 +204,7 @@ public class ActivityPub{
 		String host=url.getHost();
 		if(url.getPort()!=-1)
 			host+=":"+url.getPort();
-		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-		String date=dateFormat.format(new Date());
+		String date=DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(GMT_TIMEZONE));
 		String digestHeader;
 		if(body!=null){
 			digestHeader="SHA-256=";
@@ -484,15 +481,14 @@ public class ActivityPub{
 		if(!headers.contains("host"))
 			throw new BadRequestException("host is not in signed headers");
 
-		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-		long unixtime=dateFormat.parse(req.headers("date")).getTime();
-		long now=System.currentTimeMillis();
-		long diff=now-unixtime;
-		if(diff>30000L)
-			throw new BadRequestException("Date is too far in the future (difference: "+diff+"ms)");
-		if(diff<-30000L)
-			throw new BadRequestException("Date is too far in the past (difference: "+diff+"ms)");
+		Instant date=Instant.from(DateTimeFormatter.RFC_1123_DATE_TIME.parse(req.headers("date")));
+		Instant now=Instant.now();
+		Instant minValidDate=now.minus(5, ChronoUnit.MINUTES);
+		Instant maxValidDate=now.plus(5, ChronoUnit.MINUTES);
+		if(date.isAfter(maxValidDate))
+			throw new BadRequestException("Date is too far in the future (difference: "+now.until(date, ChronoUnit.SECONDS)+"s)");
+		if(date.isBefore(minValidDate))
+			throw new BadRequestException("Date is too far in the past (difference: "+now.until(date, ChronoUnit.SECONDS)+"s)");
 
 		URI userID=Utils.userIdFromKeyId(URI.create(keyId));
 		Actor user;
