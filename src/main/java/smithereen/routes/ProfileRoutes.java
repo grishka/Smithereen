@@ -74,7 +74,7 @@ public class ProfileRoutes{
 						.with("canPostOnWall", canPost)
 						.with("canSeeOthersPosts", canSeeOthers)
 						.with("canMessage", canMessage)
-						.paginate(wall);
+						.paginate(wall, "/users/"+user.id+"/wall"+(canSeeOthers ? "" : "/own")+"?offset=", null);
 
 				ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 				if(req.attribute("mobile")==null){

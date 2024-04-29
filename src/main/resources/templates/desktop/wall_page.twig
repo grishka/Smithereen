@@ -6,11 +6,13 @@
 	{% include "pagination" %}
 </div>
 <div class="singleColumn">
+{% block wallInner %}
 {% for post in items %}
 	<div class="wallRow">{% include 'wall_post' %}</div>
 {% else %}
 	<div class="emptyState">{{ L('wall_empty') }}</div>
 {% endfor %}
+{% endblock %}
 </div>
 <div class="bottomSummaryWrap">{% include "pagination" %}</div>
 {% endblock %}

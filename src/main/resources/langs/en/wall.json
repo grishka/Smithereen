@@ -67,5 +67,6 @@
   "comment_repost_title": "<a id=\"originalComment\">{time}</a> on post <a id=\"topLevelPost\">{postSnippet}</a>",
   "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> on a deleted post",
   "commenting_on_repost_hint": "Your comment will appear on {name}''s original post.",
-  "reposts_empty": "No one shared this post."
+  "reposts_empty": "No one shared this post.",
+  "load_older_posts": "Show previous posts"
 }

@@ -673,6 +673,20 @@ public class PostRoutes{
 
 		preparePostList(ctx, wall.list, model);
 
+		if(isAjax(req) && !isMobile(req)){
+			String paginationID=req.queryParams("pagination");
+			if(StringUtils.isNotEmpty(paginationID)){
+				WebDeltaResponse r=new WebDeltaResponse(resp)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("wallInner"));
+				if(wall.offset+wall.perPage>=wall.total){
+					r.remove("ajaxPagination_"+paginationID);
+				}else{
+					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", req.pathInfo()+"?offset="+(wall.offset+wall.perPage));
+				}
+				return r;
+			}
+		}
+
 		if(owner instanceof User user){
 			model.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
 		}else{
