@@ -1233,3 +1233,38 @@ function initTabbedBox(tabBar:HTMLElement, content:HTMLElement){
 		pane.customData={loaded: pane.innerHTML.trim().length>0};
 	}
 }
+
+function initExpandingProfileColumn(wide:HTMLElement, narrow:HTMLElement, container:HTMLElement){
+	var observer=new IntersectionObserver((entries, observer)=>{
+		for(var entry of entries){
+			if(entry.isIntersecting){
+				container.classList.remove("expanded");
+				wide.style.marginTop="";
+			}else{
+				// Find the topmost visible post
+				var els=wide.querySelectorAll(".wallRow").unfuck();
+				var topmostPost:HTMLElement;
+				var topmostPostTop:number;
+				for(var post of els){
+					if(post instanceof HTMLElement){
+						var rect=post.getBoundingClientRect();
+						if(rect.top>=0){
+							topmostPost=post;
+							topmostPostTop=rect.top;
+							break;
+						}
+					}
+				}
+				container.classList.add("expanded");
+				if(topmostPost){
+					var rect=topmostPost.getBoundingClientRect();
+					var offset=topmostPostTop-rect.top;
+					console.log("top: "+topmostPostTop+", "+rect.top+", "+offset);
+					wide.style.marginTop=Math.round(offset)+"px";
+				}
+			}
+		}
+	});
+	observer.observe(narrow);
+}
+

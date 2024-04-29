@@ -657,6 +657,35 @@ small{
 	padding: 10px;
 }
 
+.columnLayout{
+	display: flex;
+	align-items: flex-start;
+	&.leftNarrow{
+		#left{
+			width: 200px;
+			flex: none;
+		}
+		#right{
+			flex-grow: 1;
+		}
+		&.expanded #right{
+			margin-left: -200px;
+		}
+	}
+	&.rightNarrow{
+		#left{
+			flex-grow: 1;
+		}
+		#right{
+			width: 200px;
+			flex: none;
+		}
+		&.expanded #left{
+			margin-right: -200px;
+		}
+	}
+}
+
 .profileBlock td {
 	word-break: break-word;
 }
