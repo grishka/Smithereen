@@ -147,8 +147,25 @@ public class WallController{
 				repost=null;
 
 			if(repost!=null){
+				// If we're reposting a repost, use the original post if it's an Announce or there's no comment
+				if(repost.isMastodonStyleRepost() || Utils.stripHTML(repost.text).trim().isEmpty()){
+					repost=getPostOrThrow(repost.repostOf);
+				}
+				// Can't repost wall posts
+				if(repost.ownerID!=repost.authorID && repost.getReplyLevel()==0)
+					throw new UserActionNotAllowedException();
+				// Can't repost comments on them either
+				if(repost.getReplyLevel()>0){
+					Post topLevel=getPostOrThrow(repost.replyKey.getFirst());
+					if(topLevel.ownerID!=topLevel.authorID)
+						throw new UserActionNotAllowedException();
+				}
 				// Reposted post must be public
 				context.getPrivacyController().enforcePostPrivacy(null, repost);
+				// Author must not be blocked by reposted post author or OP
+				ensureUserNotBlocked(author, context.getUsersController().getUserOrThrow(repost.authorID));
+				if(repost.authorID!=repost.ownerID)
+					ensureUserNotBlocked(author, context.getUsersController().getUserOrThrow(repost.ownerID));
 			}
 
 			final ArrayList<User> mentionedUsers=new ArrayList<>();
@@ -545,6 +562,9 @@ public class WallController{
 					.entrySet()
 					.stream()
 					.collect(Collectors.toMap(Map.Entry::getKey, e->context.getPrivacyController().checkUserPrivacy(self, e.getValue(), UserPrivacySettingKey.WALL_COMMENTING)));
+
+			Map<Integer, PostViewModel> postsByID=posts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity()));
+
 			for(PostViewModel post:posts){
 				int ownerID;
 				if(post.post.isMastodonStyleRepost()){
@@ -561,6 +581,16 @@ public class WallController{
 					post.canComment=false;
 				else
 					post.canComment=canComment.getOrDefault(ownerID, true);
+
+				if(post.post.privacy!=Post.Privacy.PUBLIC){
+					post.canRepost=false;
+				}else if(post.post.ownerID!=post.post.authorID){
+					if(post.post.getReplyLevel()==0){
+						post.canRepost=false; // Wall-to-wall post
+					}else if(postsByID.get(post.post.replyKey.getFirst()) instanceof PostViewModel p && p.post.ownerID!=p.post.authorID){
+						post.canRepost=false; // Comment on a wall-to-wall post
+					}
+				}
 			}
 			return PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
 		}catch(SQLException x){

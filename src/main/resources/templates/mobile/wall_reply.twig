@@ -41,7 +41,7 @@
 						{% if interactions is not null and interactions.likeCount>0 %}
 							{% set _=options.add({'type': 'link', 'href': "#{realPost.internalURL}/likes", 'label': L('liked_by_X_people', {'count': interactions.likeCount}).toString()}) %}
 						{% endif %}
-						{% if realPost.privacy=='PUBLIC' %}
+						{% if post.canRepost %}
 							{% set _=options.add({'type': 'link', 'label': L('share_content').toString(), 'href': "/posts/#{realPost.id}/share", 'ajax': 'box'}) %}
 						{% endif %}
 						{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}

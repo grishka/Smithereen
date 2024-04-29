@@ -15,6 +15,7 @@ public class PostViewModel{
 	private boolean loadedRepliesCountKnown;
 	private int loadedRepliesCount;
 	public boolean canComment=true;
+	public boolean canRepost=true;
 	public Repost repost;
 
 	public PostViewModel(Post post){

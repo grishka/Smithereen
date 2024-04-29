@@ -25,12 +25,14 @@
 			{{ user | pictureForAvatar('s', 34) }}
 		{% endfor %}
 	</a>
+	{% if post.canRepost %}
 	<a href="{{ realPost.internalURL }}/share" class="action share" data-ajax-box>
 		<span class="wideOnly">{{ L('share_content') }}</span>
 		<span class="icon"> </span>{% if interactions.repostCount>0 %}<span class="counter">
 			{{- interactions.repostCount -}}
 		</span>{% endif %}
 	</a>
+	{% endif %}
 </div>
 <ul class="actionList">
 			{%if currentUser is not null and userPermissions is not null and userPermissions.canDeletePost(realPost)%}
