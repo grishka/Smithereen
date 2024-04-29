@@ -670,6 +670,7 @@ small{
 		}
 		&.expanded #right{
 			margin-left: -200px;
+			padding-left: 0;
 		}
 	}
 	&.rightNarrow{
@@ -682,6 +683,7 @@ small{
 		}
 		&.expanded #left{
 			margin-right: -200px;
+			padding-right: 0;
 		}
 	}
 }
