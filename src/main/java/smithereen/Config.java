@@ -48,6 +48,7 @@ public class Config{
 	public static String dbUser;
 	public static String dbPassword;
 	public static String dbName;
+	public static int dbMaxConnections;
 
 	public static String domain;
 
@@ -111,6 +112,7 @@ public class Config{
 		dbUser=props.getProperty("db.user");
 		dbPassword=props.getProperty("db.password");
 		dbName=props.getProperty("db.name");
+		dbMaxConnections=Utils.parseIntOrDefault(props.getProperty("db.max_connections"), 100);
 
 		domain=props.getProperty("domain");
 

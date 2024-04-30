@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.concurrent.Semaphore;
 
 import smithereen.Config;
 
@@ -16,6 +17,7 @@ public class DatabaseConnectionManager{
 	private static final ThreadLocal<DatabaseConnection> currentThreadConnection=new ThreadLocal<>();
 	private static final ArrayList<DatabaseConnection> connectionsInUse=new ArrayList<>();
 	private static final boolean DEBUG_CONNECTION_LEAKS=System.getProperty("smithereen.debugDatabaseConnections")!=null;
+	private static final Semaphore semaphore=new Semaphore(Config.dbMaxConnections);
 
 	public static synchronized DatabaseConnection getConnection() throws SQLException{
 		DatabaseConnection conn;
@@ -36,7 +38,7 @@ public class DatabaseConnectionManager{
 				conn.lastUsed=System.nanoTime();
 			}catch(SQLException x){
 				LOG.debug("Failed to validate database connection, reopening");
-				conn.actualConnection.close();
+				closeConnection(conn);
 				conn=new DatabaseConnection(newConnection());
 			}
 		}
@@ -64,12 +66,24 @@ public class DatabaseConnectionManager{
 	}
 
 	private static Connection newConnection() throws SQLException{
+		try{
+			semaphore.acquire();
+		}catch(InterruptedException x){
+			throw new RuntimeException(x);
+		}
 		LOG.trace("Opening new database connection");
 		Connection conn=DriverManager.getConnection("jdbc:mysql://"+Config.dbHost+"/"+Config.dbName+"?serverTimezone=GMT&connectionTimeZone=GMT&useUnicode=true&characterEncoding=UTF-8&forceConnectionTimeZoneToSession=true&useSSL=false&allowPublicKeyRetrieval=true",
 				Config.dbUser, Config.dbPassword);
 		conn.createStatement().execute("SET @@SQL_MODE = REPLACE(@@SQL_MODE, 'STRICT_TRANS_TABLES', '')");
 		conn.createStatement().execute("SET @@session.time_zone='+00:00'");
 		return conn;
+	}
+
+	private static void closeConnection(DatabaseConnection conn){
+		try{
+			conn.actualConnection.close();
+		}catch(SQLException ignore){}
+		semaphore.release();
 	}
 
 	private static void validateConnection(Connection conn) throws SQLException{
@@ -83,9 +97,7 @@ public class DatabaseConnectionManager{
 			if(System.nanoTime()-conn.lastUsed>5*60_000_000_000L){
 				if(conn.useDepth!=0)
 					throw new IllegalStateException("Connection use depth is "+conn.useDepth+", expected 0");
-				try{
-					conn.actualConnection.close();
-				}catch(SQLException ignore){}
+				closeConnection(conn);
 				return true;
 			}
 			return false;
