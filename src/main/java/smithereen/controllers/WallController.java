@@ -328,7 +328,7 @@ public class WallController{
 		if(parent!=null){
 			// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
 			User parentAuthor=context.getUsersController().getUserOrThrow(parent.authorID);
-			if(parent.replyKey.size()>0 && text.startsWith("<p>"+escapeHTML(parentAuthor.getNameForReply())+", ")){
+			if(parent.replyKey.size()>0 && text.startsWith("<p>"+escapeHTML(parentAuthor.getNameForReply())+",")){
 				text="<p><a href=\""+escapeHTML(parentAuthor.url.toString())+"\" class=\"mention\" data-user-id=\""+parentAuthor.id+"\">"
 						+escapeHTML(parentAuthor.getNameForReply())+"</a>"+text.substring(parentAuthor.getNameForReply().length()+3);
 			}

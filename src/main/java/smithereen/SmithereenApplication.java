@@ -481,6 +481,8 @@ public class SmithereenApplication{
 			postRequiringPermissionWithCSRF("/addStaffNote", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteAdd);
 			getRequiringPermission("/staffNotes/:noteID/confirmDelete", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteConfirmDelete);
 			postRequiringPermissionWithCSRF("/staffNotes/:noteID/delete", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteDelete);
+
+			get("/hoverCard", ProfileRoutes::mentionHoverCard);
 		});
 
 		path("/groups/:id", ()->{

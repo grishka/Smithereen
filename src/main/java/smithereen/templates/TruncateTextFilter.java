@@ -19,6 +19,7 @@ import java.util.Map;
 
 import smithereen.Utils;
 import smithereen.lang.Lang;
+import smithereen.util.Whitelist;
 
 public class TruncateTextFilter implements Filter{
 	@Override
@@ -62,11 +63,10 @@ public class TruncateTextFilter implements Filter{
 						public void head(Node node, int depth){
 							if(len>=500){
 								toRemove.add(node);
-							}else if(node instanceof TextNode){
-								TextNode tn=(TextNode) node;
+							}else if(node instanceof TextNode tn){
 								String text=tn.text();
 								if(len+text.length()>500){
-									tn.text(Utils.truncateOnWordBoundary(text, 500-len));
+									tn.text(truncateOnWordBoundary(text, 500-len));
 								}
 								len+=text.length();
 							}
@@ -101,5 +101,12 @@ public class TruncateTextFilter implements Filter{
 	@Override
 	public List<String> getArgumentNames(){
 		return null;
+	}
+
+	public static String truncateOnWordBoundary(String s, int maxLen){
+		if(s.length()<=maxLen+20)
+			return s;
+		int len=Math.max(0, Math.min(s.indexOf(' ', maxLen), maxLen+20));
+		return s.substring(0, len)+"...";
 	}
 }

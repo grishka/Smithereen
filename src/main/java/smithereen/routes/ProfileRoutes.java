@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static smithereen.Utils.*;
@@ -250,5 +251,22 @@ public class ProfileRoutes{
 		ctx.getActivityPubWorker().fetchActorContentCollections(user);
 		Lang l=lang(req);
 		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
+	}
+
+	public static Object mentionHoverCard(Request req, Response resp){
+		if(isMobile(req))
+			return "";
+		ApplicationContext ctx=context(req);
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		SessionInfo info=sessionInfo(req);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("user_hover_card", req).with("user", user);
+		if(info!=null && info.account!=null){
+			User self=info.account.user;
+			if(self.id!=user.id){
+				PaginatedList<User> friends=ctx.getFriendsController().getMutualFriends(self, user, 0, 6, FriendsController.SortOrder.ID_ASCENDING);
+				model.with("mutualFriends", friends);
+			}
+		}
+		return model;
 	}
 }

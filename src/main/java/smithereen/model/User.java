@@ -343,7 +343,7 @@ public class User extends Actor{
 
 	public String getNameForReply(){
 		if(StringUtils.isNotEmpty(firstName))
-			return firstName;
+			return firstName.trim();
 		return username;
 	}
 

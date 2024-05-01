@@ -10,12 +10,21 @@ $mediumPadding: 10px;
 
 @import "common.scss";
 
-@svg-load popoverArrowTop url(img/popover_arrow_top.svg) {
+@svg-load popoverArrowTopWithHeader url(img/popover_arrow_top.svg) {
 	polygon[fill=red]{
 		fill: $simpleButton;
 	}
 	polygon[fill=lime]{
 		fill: $headerBorderBottomDark;
+	}
+}
+
+@svg-load popoverArrowTop url(img/popover_arrow_top.svg) {
+	polygon[fill=red]{
+		fill: $bg;
+	}
+	polygon[fill=lime]{
+		fill: $darkerGray;
 	}
 }
 
@@ -322,9 +331,11 @@ small{
 	.postContent{
 		padding-top: 2px;
 		line-height: 130%;
-		overflow-x: hidden;
 		pre{
 			overflow-x: auto;
+		}
+		.mention{
+			position: relative;
 		}
 	}
 	&.standalone{
@@ -1480,9 +1491,10 @@ select{
 	}
 	.popoverContent{
 		background: $bg;
-		padding: 4px 8px;
 		color: $text;
 		border: solid 1px $darkerGray;
+	}
+	&.hasHeader .popoverContent{
 		border-top: none;
 	}
 	.popoverFooter{
@@ -1503,6 +1515,9 @@ select{
 			background: svg-inline(popoverArrowTop);
 			top: 0;
 		}
+	}
+	&.hasHeader.belowAnchor .popoverArrow{
+		background: svg-inline(popoverArrowTopWithHeader);
 	}
 	&.aboveAnchor{
 		padding-bottom: 6px;
@@ -3354,3 +3369,21 @@ a.clickableListItem{
 		border: none;
 	}
 }
+
+.userHoverCard{
+	display: flex;
+	width: 350px;
+	padding: 10px;
+	>.ava{
+		flex: none;
+		margin-right: 10px;
+	}
+	.mutuals{
+		display: flex;
+		>.ava{
+			flex: none;
+			margin-right: 5px;
+		}
+	}
+}
+

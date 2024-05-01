@@ -20,6 +20,7 @@ class Popover{
 			]);
 			this.root.hide();
 			wrap.appendChild(this.root);
+			this.header.hide();
 		}
 	}
 
@@ -48,6 +49,8 @@ class Popover{
 
 	public setTitle(title:string){
 		this.header.innerHTML=title;
+		this.header.show();
+		this.root.classList.add("hasHeader");
 	}
 	
 	public setContent(content:string){

@@ -1292,3 +1292,41 @@ function initEmbedPreview(postID:number){
 	};
 }
 
+function showMentionHoverCard(link:HTMLElement, ev:MouseEvent){
+	var popover=link._popover;
+	if(popover){
+		popover.show(ev.offsetX, ev.offsetY, link);
+		return;
+	}
+	if(!link.customData) link.customData={};
+	link.customData.popoverTimeout=setTimeout(()=>{
+		delete link.customData.popoverTimeout;
+		var userID=link.dataset.userId;
+		ajaxGet("/users/"+userID+"/hoverCard", (resp:any)=>{
+			if(!resp){
+				return;
+			}
+			if(!popover){
+				popover=new Popover(link);
+				link._popover=popover;
+			}
+			popover.setContent(resp);
+			popover.show(ev.offsetX, ev.offsetY, link);
+		}, ()=>{
+			if(popover)
+				popover.show(ev.offsetX, ev.offsetY, link);
+		}, "text");
+	}, 500);
+}
+
+function hideMentionHoverCard(link:HTMLElement){
+	var popover=link._popover;
+	// Some versions of Firefox can fire mouseLeave without a corresponding mouseEnter on page refresh
+	if(link.customData && link.customData.popoverTimeout){
+		clearTimeout(link.customData.popoverTimeout);
+		delete link.customData.popoverTimeout;
+	}else if(popover){
+		popover.hide();
+	}
+}
+
