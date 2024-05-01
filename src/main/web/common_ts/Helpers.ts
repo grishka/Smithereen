@@ -1224,13 +1224,18 @@ function initTabbedBox(tabBar:HTMLElement, content:HTMLElement){
 			newPane.show();
 			oldPane.hide();
 			LayerManager.getInstance().updateAllTopOffsets();
+			if(newPane.customData.onShown)
+				newPane.customData.onShown();
 		}
 	};
 	for(var tab of tabs){
 		tab.addEventListener("click", listener);
 	}
 	for(var pane of panes){
-		pane.customData={loaded: pane.innerHTML.trim().length>0};
+		if(!pane.customData){
+			pane.customData={};
+		}
+		pane.customData.loaded=pane.innerHTML.trim().length>0;
 	}
 }
 
@@ -1242,10 +1247,9 @@ function initExpandingProfileColumn(wide:HTMLElement, narrow:HTMLElement, contai
 				wide.style.marginTop="";
 			}else{
 				// Find the topmost visible post
-				var els=wide.querySelectorAll(".wallRow").unfuck();
 				var topmostPost:HTMLElement;
 				var topmostPostTop:number;
-				for(var post of els){
+				for(var post of wide.querySelectorAll(".wallRow").unfuck()){
 					if(post instanceof HTMLElement){
 						var rect=post.getBoundingClientRect();
 						if(rect.top>=0){
@@ -1259,12 +1263,32 @@ function initExpandingProfileColumn(wide:HTMLElement, narrow:HTMLElement, contai
 				if(topmostPost){
 					var rect=topmostPost.getBoundingClientRect();
 					var offset=topmostPostTop-rect.top;
-					console.log("top: "+topmostPostTop+", "+rect.top+", "+offset);
 					wide.style.marginTop=Math.round(offset)+"px";
 				}
 			}
 		}
 	});
 	observer.observe(narrow);
+}
+
+function initEmbedPreview(postID:number){
+	var tab=ge("postEmbedTab"+postID);
+	tab.customData.onShown=()=>{
+		delete tab.customData.onShown;
+		var iframe=ge("embedPreview"+postID) as HTMLIFrameElement;
+		var messageListener=(ev:MessageEvent)=>{
+			if(ev.source!=iframe.contentWindow)
+				return;
+			if(ev.data.act=="setHeight"){
+				iframe.height=ev.data.height;
+				LayerManager.getInstance().updateAllTopOffsets();
+			}
+		};
+		window.addEventListener("message", messageListener);
+		LayerManager.getInstance().getTopLayer().dismissCallbacks.push(()=>{
+			window.removeEventListener("message", messageListener);
+		});
+		iframe.src="/posts/"+postID+"/embed";
+	};
 }
 

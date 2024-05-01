@@ -160,7 +160,7 @@ public class Mailer{
 				"name", firstName,
 				"inviterName", self.user.getFullName(),
 				"serverName", Config.serverDisplayName
-		)));
+		)), true);
 		plaintext+="\n\n"+l.get("email_invite_body_end_plain")+"\n\n"+link;
 		send(email, l.get(isRequest ? "email_invite_subject_approved" : "email_invite_subject", Map.of("serverName", Config.serverDisplayName)), plaintext, "signup_invitation", Map.of(
 				"name", firstName,
@@ -192,9 +192,9 @@ public class Mailer{
 			default -> throw new IllegalArgumentException("Unexpected value: " + banStatus);
 		};
 		String htmlText=text;
-		text=Utils.stripHTML(text);
+		text=Utils.stripHTML(text, true);
 		if(StringUtils.isNotEmpty(banInfo.message())){
-			htmlText+="<br/><br/>"+l.get("message_from_staff")+": "+Utils.stripHTML(banInfo.message());
+			htmlText+="<br/><br/>"+l.get("message_from_staff")+": "+Utils.stripHTML(banInfo.message(), true);
 			text+="\n\n"+l.get("message_from_staff")+": "+banInfo.message();
 		}
 		send(self.email, subject, text, "generic", Map.of("text", htmlText), self.prefs.locale);
@@ -203,7 +203,7 @@ public class Mailer{
 	public void sendActionConfirmationCode(Request req, Account self, String action, String code){
 		LOG.trace("Sending code {} for action {}", code, action);
 		Lang l=Utils.lang(req);
-		String plaintext=Utils.stripHTML(l.get("email_confirmation_code", Map.of("name", self.user.firstName, "action", action)))+"\n\n"+code+"\n\n"+Utils.stripHTML(l.get("email_confirmation_code_info"));
+		String plaintext=Utils.stripHTML(l.get("email_confirmation_code", Map.of("name", self.user.firstName, "action", action)), true)+"\n\n"+code+"\n\n"+Utils.stripHTML(l.get("email_confirmation_code_info"), true);
 		String subject=l.get("email_confirmation_code_subject", Map.of("domain", Config.domain));
 		send(self.email, subject, plaintext, "confirmation_code", Map.of("name", self.user.firstName, "action", action, "code", code), l.getLocale());
 	}

@@ -13,11 +13,12 @@ import smithereen.Utils;
 public class StripHTMLFilter implements Filter{
 	@Override
 	public Object apply(Object input, Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber) throws PebbleException{
-		return Utils.stripHTML(input.toString());
+		Boolean keepLineBreaks=(Boolean) args.get("keepLineBreaks");
+		return Utils.stripHTML(input.toString(), keepLineBreaks==null || keepLineBreaks);
 	}
 
 	@Override
 	public List<String> getArgumentNames(){
-		return null;
+		return List.of("keepLineBreaks");
 	}
 }

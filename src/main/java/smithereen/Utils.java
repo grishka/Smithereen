@@ -576,8 +576,27 @@ public class Utils{
 		return HtmlEscape.escapeHtml4Xml(s);
 	}
 
-	public static String stripHTML(String s){
-		return new Cleaner(Whitelist.none()).clean(Jsoup.parseBodyFragment(s)).body().html();
+	public static String stripHTML(String s, boolean keepLineBreaks){
+		if(keepLineBreaks){
+			Document doc=new Cleaner(new Whitelist().addTags("p", "br")).clean(Jsoup.parseBodyFragment(s));
+			StringBuilder sb=new StringBuilder();
+			doc.body().traverse(new NodeVisitor(){
+				@Override
+				public void head(Node node, int depth){
+					if(node instanceof Element el){
+						if("p".equalsIgnoreCase(el.tagName()) && !sb.isEmpty())
+							sb.append("\n\n");
+						else if("br".equalsIgnoreCase(el.tagName()))
+							sb.append('\n');
+					}else if(node instanceof TextNode tn){
+						sb.append(tn.text());
+					}
+				}
+			});
+			return sb.toString().trim();
+		}else{
+			return new Cleaner(Whitelist.none()).clean(Jsoup.parseBodyFragment(s.replace("</p><", "</p> <"))).body().html();
+		}
 	}
 
 	public static boolean isMobileUserAgent(String ua){
@@ -767,7 +786,7 @@ public class Utils{
 		return newBody.html();
 	}
 
-	public static String postprocessPostHTMLForDisplay(String text){
+	public static String postprocessPostHTMLForDisplay(String text, boolean forceTargetBlank){
 		if(text==null)
 			return "";
 		Document doc=Jsoup.parseBodyFragment(text);
@@ -791,11 +810,14 @@ public class Utils{
 						}
 					}catch(SQLException ignore){}
 				}
+				if(forceTargetBlank){
+					el.attr("target", "_blank");
+				}
 			}else{
 				String href=el.attr("href");
 				try{
 					URI uri=new URI(href);
-					if(uri.isAbsolute() && !Config.isLocal(uri)){
+					if(forceTargetBlank || (uri.isAbsolute() && !Config.isLocal(uri))){
 						el.attr("target", "_blank");
 						el.attr("rel", "noopener ugc");
 					}

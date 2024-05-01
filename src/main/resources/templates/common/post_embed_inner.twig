@@ -1,0 +1,71 @@
+{# @pebvariable name="post" type="smithereen.model.viewmodel.PostViewModel" #}
+{# @pebvariable name="realPost" type="smithereen.model.Post" #}
+{% set realPost=post.post %}
+{% if realPost.hasContentWarning %}
+<input type="checkbox" id="postCW_{{ realPost.id }}" class="cwExpander" style="display: none"/>
+<div class="postCWWrap">
+	<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
+{% endif %}
+{% if realPost.text is not empty %}<div class="postContent">{{ realPost.text | postprocessHTML(true) | truncateText }}</div>{% endif %}
+{% if realPost.attachments is not empty %}
+	{% set afterAttachments=true %}
+	{{ renderAttachments(realPost.processedAttachments, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID], "/posts/#{realPost.id}") }}
+{% endif %}
+{% if realPost.poll is not null %}
+{% set poll=realPost.poll %}
+<div class="poll" id="poll{{ poll.id }}">
+	<div>
+		<div class="grayText" style="float: right">{{ L(poll.anonymous ? 'anonymous_poll' : 'public_poll') }}</div>
+		<h3 class="question">{{ poll.question is empty ? L('poll') : poll.question }}</h3>
+	</div>
+	{% set maxOptionVotes=0 %}
+	{% for opt in poll.options %}
+		{% set maxOptionVotes=max(opt.numVotes, maxOptionVotes) %}
+	{% endfor %}
+	{% for opt in poll.options %}
+		{# @pebvariable name="fraction" type="float" #}
+		{% set fraction=(poll.numVoters==0 ? 0 : (opt.numVotes*1.0)/poll.numVoters) %}
+		<div class="pollResultRow">
+			{{ opt.text }}
+			<div class="pollResultBarW">
+				<div class="pollResultBarBG">
+					<div class="pollResultBarFG" style="transform: scaleX({{ maxOptionVotes>0 ? (opt.numVotes*1.0)/maxOptionVotes : 0 }})"></div>
+					<div class="pollResultNumVotes">{{ opt.numVotes | numberformat("#,###") }}</div>
+				</div>
+				<div class="pollResultPercent">{{ fraction | numberformat("#.#%") }}</div>
+			</div>
+		</div>
+	{% endfor %}
+	{{ L('X_people_voted', {'count': poll.numVoters}) }}
+	{% if poll.endTime is not null %}
+		<br/>{{ L(poll.expired ? 'poll_expired' : 'poll_voting_until', {'date': LD(poll.endTime)}) }}
+	{% endif %}
+</div>
+{% endif %}
+{% if post.repost is not null %}
+	{% set afterAttachments=false %}
+<div class="repost">
+	<div class="repostHeader">
+		{% set authorID=post.repost.post.post.authorID %}
+		<a href="{{ profileURL(authorID) }}" class="avaW" target="_blank">{{ users[authorID] | pictureForAvatar('s', 30) }}</a>
+		<div class="postInfo">
+			<div class="nameW"><span class="repostIcon"></span><a href="{{ profileURL(authorID) }}" class="postName" target="_blank">{{ users[authorID] | name }}</a></div>
+			<div class="ellipsize grayText">
+				{%- if post.repost.post.post.replyLevel>0 -%}
+				{%- if post.repost.topLevel is not null %}
+				{{ L('comment_repost_title', {'time': LD(post.repost.post.post.createdAt), 'postSnippet': post.repost.topLevel.post.shortTitle | default(LD(post.repost.topLevel.post.createdAt))}, {'originalComment': {'href': post.repost.post.post.internalURL, 'class': 'grayText', 'target': '_blank'}, 'topLevelPost': {'href': post.repost.topLevel.post.internalURL, 'target': '_blank'} }) }}
+				{%- else -%}
+				{{ L('comment_deleted_repost_title', {'time': LD(post.repost.post.post.createdAt)}, {'originalComment': {'href': post.repost.post.post.internalURL, 'class': 'grayText', 'target': '_blank'} }) }}
+				{%- endif -%}
+				{%- else -%}
+				<a href="{{ post.repost.post.post.internalURL }}" class="postTime" target="_blank">{{ LD(post.repost.post.post.createdAt) }}</a>
+				{%- endif -%}
+			</div>
+		</div>
+	</div>
+	{% if repostDepth<(maxRepostDepth | default(1)) %}{% include "post_embed_inner" with {'post': post.repost.post, 'repostDepth': repostDepth+1} %}{% endif %}
+</div>
+{% endif %}
+{% if post.post.hasContentWarning %}
+</div>
+{% endif %}

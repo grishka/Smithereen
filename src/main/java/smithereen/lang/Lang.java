@@ -243,6 +243,14 @@ public class Lang{
 		return get("date_time_format", Map.of("date", day, "time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())));
 	}
 
+	public String formatDateFullyAbsolute(Instant date, ZoneId timeZone){
+		ZonedDateTime dt=date.atZone(timeZone);
+		return get("date_time_format", Map.of(
+				"date", get("date_format_other_year", Map.of("day", dt.getDayOfMonth(), "month", get("month_short", Map.of("month", dt.getMonthValue())), "year", dt.getYear())),
+				"time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())
+		));
+	}
+
 	public String formatTime(Instant time, ZoneId timeZone){
 		ZonedDateTime dt=time.atZone(timeZone);
 		return String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute());

@@ -73,6 +73,9 @@ class LayerManager{
 		if(isVisible(layerContent)){
 			layer.onHidden();
 		}
+		for(var callback of layer.dismissCallbacks){
+			callback();
+		}
 		if(i==this.stack.length-1){
 			this.stack.pop();
 			if(this.stack.length){
@@ -117,6 +120,12 @@ class LayerManager{
 		var topLayer=this.stack[this.stack.length-1];
 		if(topLayer.allowDismiss())
 			this.dismiss(topLayer);
+	}
+
+	public getTopLayer():BaseLayer{
+		if(this.stack.length==0)
+			return null;
+		return this.stack[this.stack.length-1];
 	}
 
 	private lockPageScroll(){
@@ -171,6 +180,7 @@ class LayerManager{
 
 abstract class BaseLayer{
 	private content:HTMLElement;
+	public dismissCallbacks:{():void}[]=[];
 
 	protected abstract onCreateContentView():HTMLElement;
 	public show():void{

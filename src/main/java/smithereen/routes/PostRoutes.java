@@ -26,6 +26,9 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.Group;
@@ -47,11 +50,10 @@ import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.viewmodel.PostViewModel;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
+import smithereen.util.JsonObjectBuilder;
+import smithereen.util.UriBuilder;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -896,12 +898,17 @@ public class PostRoutes{
 		if(post.isMastodonStyleRepost())
 			post=ctx.getWallController().getPostOrThrow(post.repostOf);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("repost_form", req);
-		model.with("repostedPost", post);
+		model.with("repostedPost", post)
+				.with("users", ctx.getUsersController().getUsers(Set.of(post.authorID)));
 		Lang l=lang(req);
 		if(isAjax(req)){
-			return new WebDeltaResponse(resp)
+			WebDeltaResponse wdr=new WebDeltaResponse(resp)
 					.box(l.get(post.getReplyLevel()>0 ? "share_comment_title" : "share_post_title"), model.renderToString(), "repostFormBox", isMobile(req) ? 0 : 502)
 					.runScript("updatePostForms();");
+			if(!isMobile(req) && post.isLocal()){
+				wdr.runScript("initTabbedBox(ge(\"repostTabBar"+post.id+"\"), ge(\"repostTabContent"+post.id+"\")); initEmbedPreview("+post.id+");");
+			}
+			return wdr;
 		}
 		return "";
 	}
@@ -960,6 +967,43 @@ public class PostRoutes{
 			}
 		}
 		model.with("contentTemplate", "content_interactions_box").with("title", lang(req).get("likes_title"));
+		return model;
+	}
+
+	public static Object postEmbedURL(Request req, Response resp){
+		resp.header("Access-Control-Allow-Origin", "*");
+		ApplicationContext ctx=context(req);
+		Post post=ctx.getWallController().getLocalPostOrThrow(safeParseInt(req.params(":postID")));
+		ctx.getPrivacyController().enforceObjectPrivacy(null, post);
+		return UriBuilder.local().appendPath("posts").appendPath(String.valueOf(post.id)).appendPath("embed").build().toString();
+	}
+
+	public static Object postEmbed(Request req, Response resp){
+		req.attribute("noPreload", true);
+		ApplicationContext ctx=context(req);
+		Post post=ctx.getWallController().getLocalPostOrThrow(safeParseInt(req.params(":postID")));
+		if(!post.isLocal() || post.privacy!=Post.Privacy.PUBLIC || (post.getReplyLevel()==0 && post.ownerID!=post.authorID)){
+			throw new UserActionNotAllowedException();
+		}
+		PostViewModel pvm=new PostViewModel(post);
+		ctx.getWallController().populateReposts(null, List.of(pvm), 2);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(List.of(pvm), null);
+		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		PostViewModel.collectActorIDs(Set.of(pvm), needUsers, needGroups);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("post_embed", req)
+				.with("post", pvm)
+				.with("users", ctx.getUsersController().getUsers(needUsers))
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
+				.with("interactions", interactions);
+		if(post.getReplyLevel()>0){
+			try{
+				Post topLevel=ctx.getWallController().getPostOrThrow(post.replyKey.getFirst());
+				if(topLevel.privacy!=Post.Privacy.PUBLIC || topLevel.ownerID!=post.authorID){
+					throw new UserActionNotAllowedException();
+				}
+				model.with("topLevelPost", topLevel);
+			}catch(ObjectNotFoundException ignore){}
+		}
 		return model;
 	}
 }

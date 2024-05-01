@@ -68,5 +68,8 @@
   "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> on a deleted post",
   "commenting_on_repost_hint": "Your comment will appear on {name}''s original post.",
   "reposts_empty": "No one shared this post.",
-  "load_older_posts": "Show previous posts"
+  "load_older_posts": "Show previous posts",
+  "embed_post": "Embed",
+  "embed_post_explanation": "Embed this post on your website by copying this code:",
+  "embed_preview": "Preview"
 }

@@ -14,11 +14,11 @@ import smithereen.Utils;
 public class PostprocessHTMLFilter implements Filter{
 	@Override
 	public Object apply(Object input, Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber) throws PebbleException{
-		return new SafeString(Utils.postprocessPostHTMLForDisplay((String)input));
+		return new SafeString(Utils.postprocessPostHTMLForDisplay((String)input, (boolean)args.getOrDefault("forceTargetBlank", Boolean.FALSE)));
 	}
 
 	@Override
 	public List<String> getArgumentNames(){
-		return null;
+		return List.of("forceTargetBlank");
 	}
 }

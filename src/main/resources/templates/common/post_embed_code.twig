@@ -1,0 +1,7 @@
+{# @pebvariable name="post" type="smithereen.model.Post" #}
+{%- set author=users[post.authorID] -%}
+<blockquote class="smithereenPostEmbed" data-domain="{{ serverDomain }}" data-post-id="{{ post.id }}"><a href="https://{{ serverDomain }}/users/{{ post.authorID }}">
+{{- author | name }}</a>:<br/>
+{{- post.text | stripHTML | nl2br -}}
+{%- if post.repostOf!=0 %}<br/><a href="https://{{ serverDomain }}/posts/{{ post.repostOf }}">https://{{ serverDomain }}/posts/{{ post.repostOf }}</a>{% endif %}
+<br/><a href="https://{{ serverDomain }}/posts/{{ post.id }}">{{ LD(post.createdAt, format='fullyAbsolute') }}</a></blockquote><script src="https://{{ serverDomain }}/res/embed.js" async></script>

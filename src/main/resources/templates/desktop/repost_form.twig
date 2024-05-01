@@ -1,0 +1,21 @@
+{# @pebvariable name="repostedPost" type="smithereen.model.Post" #}
+{% if repostedPost.local %}
+<div class="secondaryTabBar" id="repostTabBar{{ repostedPost.id }}">
+	<a href="#" class="selected">{{ L('share_content') }}</a>
+	<a href="#">{{ L('embed_post') }}</a>
+</div>
+<div class="tabbedContent" id="repostTabContent{{ repostedPost.id }}">
+{% endif %}
+	<div class="wallRepostForm noPostFormBackgrounds">
+		<h2 class="marginAfter">{{ L('repost_your_comment') }}</h2>
+		{% include "wall_post_form" with {'id': "repost", 'addClasses': "nonCollapsible", 'submitButtonText': L(repostedPost.replyLevel>0 ? "do_share_comment" : "do_share_post")} %}
+	</div>
+{% if repostedPost.local %}
+	<div class="singleColumn repostBoxEmbed" style="display: none" id="postEmbedTab{{ repostedPost.id }}">
+		<div class="marginAfter">{{ L('embed_post_explanation') }}</div>
+		<textarea readonly onfocus="this.setSelectionRange(0, this.value.length)">{% include "post_embed_code" with {'post': repostedPost} %}</textarea>
+		<h3 class="marginBefore marginAfter">{{ L('embed_preview') }}</h3>
+		<iframe id="embedPreview{{ repostedPost.id }}"></iframe>
+	</div>
+</div>
+{% endif %}

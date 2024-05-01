@@ -605,7 +605,7 @@ public class SettingsAdminRoutes{
 			};
 			return new ViolationReportActionViewModel(a, substituteLinks(mainText, links), switch(a.actionType()){
 				default -> null;
-				case COMMENT -> postprocessPostHTMLForDisplay(a.text());
+				case COMMENT -> postprocessPostHTMLForDisplay(a.text(), false);
 				case RESOLVE_WITH_ACTION -> {
 					User targetUser=users.get(report.targetID);
 					String statusStr=switch(UserBanStatus.valueOf(a.extra().get("status").getAsString())){

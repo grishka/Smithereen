@@ -3342,3 +3342,15 @@ a.clickableListItem{
 .userGridW .ajaxEndlessPagination{
 	margin: 0px 20px 15px;
 }
+
+.repostBoxEmbed{
+	textarea{
+		width: 100%;
+		height: 50px;
+		font-family: monospace;
+	}
+	iframe{
+		width: 100%;
+		border: none;
+	}
+}

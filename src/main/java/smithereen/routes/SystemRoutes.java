@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -87,6 +88,7 @@ import smithereen.util.BlurHash;
 import smithereen.util.CaptchaGenerator;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
+import smithereen.util.UriBuilder;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -802,5 +804,52 @@ public class SystemRoutes{
 		ByteArrayOutputStream out=new ByteArrayOutputStream();
 		ImageIO.write(c.image(), "png", out);
 		return out.toByteArray();
+	}
+
+	public static Object oEmbed(Request req, Response resp){
+		if(!"json".equals(req.queryParamOrDefault("format", "json"))){
+			resp.status(501);
+			return "Unsupported format";
+		}
+		requireQueryParams(req, "url");
+		URI url;
+		try{
+			url=new URI(req.queryParams("url"));
+		}catch(URISyntaxException x){
+			throw new BadRequestException(x);
+		}
+		ApplicationContext ctx=context(req);
+		Post post=ctx.getObjectLinkResolver().resolveLocally(url, Post.class);
+		if(!post.isLocal() || post.privacy!=Post.Privacy.PUBLIC || (post.getReplyLevel()==0 && post.ownerID!=post.authorID)){
+			resp.status(401);
+			return "";
+		}
+		if(post.getReplyLevel()>0){
+			Post topLevel=ctx.getWallController().getPostOrThrow(post.replyKey.getFirst());
+			if(topLevel.privacy!=Post.Privacy.PUBLIC || topLevel.ownerID!=post.authorID){
+				resp.status(401);
+				return "";
+			}
+		}
+		int maxWidth=Math.max(200, safeParseInt(req.queryParamOrDefault("maxwidth", "500")));
+		Map<Integer, User> users=ctx.getUsersController().getUsers(Set.of(post.authorID));
+		User author=users.get(post.authorID);
+		if(author==null)
+			throw new ObjectNotFoundException();
+		resp.type("application/json");
+		RenderedTemplateResponse model=new RenderedTemplateResponse("post_embed_code", req)
+				.with("post", post)
+				.with("users", users);
+		return new JsonObjectBuilder()
+				.add("version", "1.0")
+				.add("type", "rich")
+				.add("width", Math.min(500, maxWidth))
+				.add("height", (String)null)
+				.add("author_name", author.getFullName())
+				.add("author_url", UriBuilder.local().rawPath(author.getFullUsername()).build().toString())
+				.add("provider_name", Config.serverDisplayName)
+				.add("provider_url", "https://"+Config.domain+"/")
+				.add("html", model.renderToString())
+				.build();
 	}
 }

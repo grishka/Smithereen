@@ -68,5 +68,8 @@
   "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> к удалённой записи",
   "commenting_on_repost_hint": "Вы комментируете изначальную запись {name, inflect, genitive}.",
   "reposts_empty": "Никто не делился этой записью.",
-  "load_older_posts": "Показать предыдущие записи"
+  "load_older_posts": "Показать предыдущие записи",
+  "embed_post": "Встроить на сайт",
+  "embed_post_explanation": "Скопируйте этот код, чтобы встроить эту запись на свой сайт:",
+  "embed_preview": "Предварительный просмотр"
 }

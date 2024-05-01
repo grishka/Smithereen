@@ -405,6 +405,8 @@ public class SmithereenApplication{
 			getLoggedIn("/reportForm", SystemRoutes::reportForm);
 			postWithCSRF("/submitReport", SystemRoutes::submitReport);
 			get("/captcha", SystemRoutes::captcha);
+			get("/oembed", SystemRoutes::oEmbed);
+
 			if(Config.DEBUG){
 				path("/debug", ()->{
 					get("/deleteAbandonedFilesNow", (req, resp)->{
@@ -576,6 +578,9 @@ public class SmithereenApplication{
 			get("/pollVoters/:optionID/popover", PostRoutes::pollOptionVotersPopover);
 			getLoggedIn("/edit", PostRoutes::editPostForm);
 			postWithCSRF("/edit", PostRoutes::editPost);
+			get("/embedURL", PostRoutes::postEmbedURL);
+			options("/embedURL", SmithereenApplication::allowCorsPreflight);
+			get("/embed", PostRoutes::postEmbed);
 		});
 
 		get("/robots.txt", (req, resp)->{
@@ -704,7 +709,7 @@ public class SmithereenApplication{
 				long t=(long)l;
 				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
 			}
-			if(req.attribute("isTemplate")!=null && !isAjax(req)){
+			if(req.attribute("isTemplate")!=null && req.attribute("noPreload")==null && !isAjax(req)){
 				String cssName=req.attribute("mobile")!=null ? "mobile.css" : "desktop.css";
 				resp.header("Link", "</res/"+cssName+"?"+Templates.getStaticFileVersion(cssName)+">; rel=preload; as=style, </res/common.js?"+Templates.getStaticFileVersion("common.js")+">; rel=preload; as=script");
 				resp.header("Vary", "User-Agent, Accept-Language");
@@ -834,6 +839,12 @@ public class SmithereenApplication{
 	private static Object methodNotAllowed(Request req, Response resp){
 		resp.status(405);
 		return "";
+	}
+
+	private static Object allowCorsPreflight(Request req, Response resp){
+		resp.status(204);
+		resp.header("Access-Control-Allow-Origin", "*");
+		return resp;
 	}
 
 	private static void setupCustomSerializer(){
