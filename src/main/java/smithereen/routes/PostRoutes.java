@@ -171,7 +171,7 @@ public class PostRoutes{
 		}else{
 			model=new RenderedTemplateResponse("content_wrap", req).with("contentTemplate", "wall_post_form");
 		}
-		model.with("addClasses", "editing").with("isEditing", true).with("id", "edit"+id).with("editingPostID", id);
+		model.with("addClasses", "editing nonCollapsible").with("isEditing", true).with("id", "edit"+id).with("editingPostID", id);
 		model.with("prefilledPostText", ctx.getWallController().getPostSource(post));
 		if(post.hasContentWarning())
 			model.with("contentWarning", post.contentWarning);
@@ -185,7 +185,7 @@ public class PostRoutes{
 					.hide("postInner"+id)
 					.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, "postInner"+id, model.renderToString())
 					.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, "postAuthor"+id, "<span class=\"grayText lowercase\" id=\"postEditingLabel"+id+"\">&nbsp;-&nbsp;"+lang(req).get(post.getReplyLevel()==0 ? "editing_post" : "editing_comment")+"</span>")
-					.runScript("updatePostForms();");
+					.runScript("updatePostForms(); ge(\"postFormText_edit"+id+"\").focus();");
 		}
 		return model.pageTitle(lang(req).get(post.getReplyLevel()>0 ? "editing_comment" : "editing_post"));
 	}
