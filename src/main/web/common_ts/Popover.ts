@@ -29,6 +29,11 @@ class Popover{
 		this.root.show();
 		var anchor=this.root.parentElement;
 		var anchorRect=anchor.getBoundingClientRect();
+		if(x>this.root.offsetWidth){
+			this.root.style.right="0px";
+		}else{
+			this.root.style.right="";
+		}
 		this.root.classList.remove("belowAnchor", "aboveAnchor");
 		if(this.root.offsetHeight>anchorRect.top){
 			this.root.classList.add("belowAnchor");
