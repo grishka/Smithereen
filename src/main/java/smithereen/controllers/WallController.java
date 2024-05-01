@@ -563,7 +563,7 @@ public class WallController{
 					.stream()
 					.collect(Collectors.toMap(Map.Entry::getKey, e->context.getPrivacyController().checkUserPrivacy(self, e.getValue(), UserPrivacySettingKey.WALL_COMMENTING)));
 
-			Map<Integer, PostViewModel> postsByID=posts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity()));
+			Map<Integer, PostViewModel> postsByID=posts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity(), (p1, p2)->p1));
 
 			for(PostViewModel post:posts){
 				int ownerID;
