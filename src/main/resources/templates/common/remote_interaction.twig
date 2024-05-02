@@ -1,0 +1,21 @@
+<div class="remoteInteraction">
+	<div class="marginAfter">{{ L('remote_interaction_explanation') }}</div>
+	<div><label for="remoteInteractionDomain">{{ L('remote_interaction_enter_identity', {'localServerDomain': serverDomain}) }}</label></div>
+	<div id="remoteInteractionErrorMessage" class="settingsMessage" style="display: none"></div>
+	<form data-ajax action="/system/redirectForRemoteInteraction" method="post">
+		<input type="text" placeholder="{{ L('remote_interaction_identity_placeholder', {'exampleDomain': 'example.social', 'exampleUsername': '@vasya@example.social'}) }}" name="domain" id="remoteInteractionDomain" required/>
+		<input type="submit" value="{{ L('remote_interaction_proceed') }} &raquo;"/>
+		<input type="hidden" name="contentURL" value="{{ contentURL }}"/>
+	</form>
+	<div class="services">{{ L('remote_interaction_services_before') }}<img src="/res/remote_interaction_icons.png" srcset="/res/remote_interaction_icons_2x.png 2x, /res/remote_interaction_icons.png" width="79" height="16" alt="Smithereen, Mastodon, Misskey, Pixelfed"/>{{ L('remote_interaction_services_after') }}</div>
+	{% if serverSignupMode=='OPEN' or serverSignupMode=='MANUAL_APPROVAL' %}
+	<div class="marginBefore">
+		{{ L(serverSignupMode=='OPEN' ? 'remote_interaction_signup' : 'remote_interaction_signup_request', {}, {'signup': {'href': '/account/register'} }) }}
+	</div>
+	{% endif %}
+	{% if postToEmbed is not null %}
+	<div class="marginBefore">
+		{{ L(postToEmbed.replyLevel>0 ? 'remote_interaction_embed_comment' : 'remote_interaction_embed_post', {}, {'embed': {'href': postToEmbed.internalURL+"/embedBox", 'data-ajax-box': 1} }) }}
+	</div>
+	{% endif %}
+</div>

@@ -1842,3 +1842,30 @@ input.searchField{
 		border: none;
 	}
 }
+
+.remoteInteraction{
+	padding: 0 16px 16px;
+	line-height: 130%;
+	form{
+		margin-top: 8px;
+		display: flex;
+		flex-direction: column;
+		input[type=text]{
+			flex-grow: 1;
+		}
+		input[type=submit]{
+			flex: none;
+			margin-top: 12px;
+		}
+	}
+	.services{
+		margin-top: 8px;
+		line-height: 16px;
+		opacity: 0.53;
+		img{
+			margin: 0 8px;
+			vertical-align: middle;
+		}
+	}
+}
+

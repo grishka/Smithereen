@@ -29,7 +29,7 @@
 	</div>
 	{% if interactions is not null and not hideButtons %}
 	<div class="postActions">
-		<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{realPost.id}}" data-obj-type="post" data-obj-id="{{realPost.id}}" onclick="return likeOnClick(this)">
+		<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{realPost.id}}" data-obj-type="post" data-obj-id="{{realPost.id}}" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %}>
 			<span class="wideOnly">{{ L('like') }}</span>
 			<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{realPost.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
 				{{- interactions.likeCount -}}

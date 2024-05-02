@@ -23,6 +23,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -374,8 +375,7 @@ public class ActivityPub{
 		return uri.equals(AS_PUBLIC) || ("as".equals(uri.getScheme()) && "Public".equals(uri.getSchemeSpecificPart()));
 	}
 
-	private static URI doWebfingerRequest(String username, String domain, String uriTemplate) throws IOException{
-		String resource="acct:"+username+"@"+domain;
+	private static WebfingerResponse doWebfingerRequest(String resource, String domain, String uriTemplate) throws IOException{
 		URI url;
 		if(StringUtils.isEmpty(uriTemplate)){
 			url=new UriBuilder()
@@ -385,7 +385,7 @@ public class ActivityPub{
 					.queryParam("resource", resource)
 					.build();
 		}else{
-			url=URI.create(uriTemplate.replace("{uri}", resource));
+			url=URI.create(uriTemplate.replace("{uri}", URLEncoder.encode(resource, StandardCharsets.UTF_8)));
 		}
 		HttpRequest req=HttpRequest.newBuilder(url).build();
 		HttpResponse<Reader> resp;
@@ -397,24 +397,26 @@ public class ActivityPub{
 		try(Reader reader=resp.body()){
 			if(resp.statusCode()/100==2){
 				WebfingerResponse wr=Utils.gson.fromJson(reader, WebfingerResponse.class);
-
-				if(!resource.equalsIgnoreCase(wr.subject))
-					throw new IOException("Invalid response");
-				for(WebfingerResponse.Link link:wr.links){
-					if("self".equals(link.rel) && ("application/activity+json".equals(link.type) || CONTENT_TYPE.equals(link.type)) && link.href!=null){
-						LOG.trace("Successfully resolved {}@{} to {}", username, domain, link.href);
-						return link.href;
-					}
-				}
-				throw new IOException("Link not found");
+				return wr;
 			}else if(resp.statusCode()==404){
-				throw new ObjectNotFoundException("User "+username+"@"+domain+" does not exist");
+				throw new ObjectNotFoundException("User "+resource+" does not exist");
 			}else{
-				throw new IOException("Failed to resolve username "+username+"@"+domain);
+				throw new IOException("Failed to resolve username "+resource);
 			}
 		}catch(JsonParseException x){
 			throw new IOException("Response parse failed", x);
 		}
+	}
+
+	private static URI tryGetActorIDFromWebfinger(String username, String domain, String uriTemplate) throws IOException{
+		String resource="acct:"+username+"@"+domain;
+		URI link=doWebfingerRequest(resource, domain, uriTemplate).getActivityPubActorID();
+		if(link!=null){
+			LOG.trace("Successfully resolved {}@{} to {}", username, domain, link);
+			return link;
+		}
+		throw new IOException("Link not found");
+
 	}
 
 	public static URI resolveUsername(String username, String domain) throws IOException{
@@ -430,7 +432,7 @@ public class ActivityPub{
 			redirect=domainRedirects.get(domain);
 		}
 		try{
-			URI uri=doWebfingerRequest(username, domain, redirect);
+			URI uri=tryGetActorIDFromWebfinger(username, domain, redirect);
 			if(redirect==null){
 				synchronized(ActivityPub.class){
 					// Cache an empty string indicating that this domain doesn't have a redirect.
@@ -479,7 +481,7 @@ public class ActivityPub{
 													domainRedirects.put(domain, template);
 												}
 											}
-											return doWebfingerRequest(username, domain, template);
+											return tryGetActorIDFromWebfinger(username, domain, template);
 										}else{
 											throw new ObjectNotFoundException("Malformed URI template '"+template+"' in host-meta domain redirect", x);
 										}
@@ -728,5 +730,37 @@ public class ActivityPub{
 			LOG.warn("Error querying collection {}", collectionID, x);
 			return CollectionQueryResult.empty(collectionID);
 		}
+	}
+
+	public static String resolveRemoteInteractionUriTemplate(String username, String domain){
+		String resource;
+		if(username==null){
+			resource="https://"+domain;
+		}else{
+			resource="acct:"+username+"@"+domain;
+		}
+		try{
+			String redirect;
+			synchronized(ActivityPub.class){
+				redirect=domainRedirects.get(domain);
+			}
+			WebfingerResponse resp=doWebfingerRequest(resource, domain, redirect);
+			for(WebfingerResponse.Link link:resp.links){
+				if("http://ostatus.org/schema/1.0/subscribe".equals(link.rel)){
+					String template=link.template;
+					if(template!=null && template.startsWith("https://") && template.contains("{uri}"))
+						return template;
+				}
+			}
+		}catch(ObjectNotFoundException x){
+			if(username!=null)
+				throw new ObjectNotFoundException("Failed to resolve remote interaction URI", x);
+		}catch(IOException x){
+			throw new ObjectNotFoundException("Failed to resolve remote interaction URI", x);
+		}
+		if(username==null){
+			return "https://"+domain+"/authorize_interaction?uri={uri}";
+		}
+		throw new ObjectNotFoundException("Failed to resolve remote interaction URI");
 	}
 }

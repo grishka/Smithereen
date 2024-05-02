@@ -11,7 +11,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -47,6 +49,7 @@ import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
@@ -851,5 +854,42 @@ public class SystemRoutes{
 				.add("provider_url", "https://"+Config.domain+"/")
 				.add("html", model.renderToString())
 				.build();
+	}
+
+	public static Object redirectForRemoteInteraction(Request req, Response resp){
+		requireQueryParams(req, "contentURL", "domain");
+		String contentURL=req.queryParams("contentURL");
+		String domain=req.queryParams("domain");
+		if(domain.startsWith("@"))
+			domain=domain.substring(1);
+		String realDomain, username;
+		if(domain.startsWith("https://") || domain.startsWith("http://")){
+			URI uri=URI.create(domain);
+			realDomain=uri.getAuthority();
+			username=null;
+		}else if(domain.contains("@")){
+			String[] parts=domain.split("@", 2);
+			realDomain=parts[1];
+			username=parts[0];
+		}else{
+			realDomain=domain;
+			username=null;
+		}
+		try{
+			String uriTemplate=ActivityPub.resolveRemoteInteractionUriTemplate(username, realDomain);
+			Object res=ajaxAwareRedirect(req, resp, uriTemplate.replace("{uri}", URLEncoder.encode(contentURL, StandardCharsets.UTF_8)));
+			if(res instanceof WebDeltaResponse wdr){
+				wdr.runScript("saveRemoteInteractionDomain();");
+			}
+			return res;
+		}catch(ObjectNotFoundException x){
+			LOG.trace("Failed to resolve remote interaction URL for {}", req.queryParams("domain"), x);
+			if(isAjax(req)){
+				return new WebDeltaResponse(resp)
+						.show("remoteInteractionErrorMessage")
+						.setContent("remoteInteractionErrorMessage", lang(req).get("remote_interaction_bad_domain"));
+			}
+			throw new UserErrorException("remote_interaction_bad_domain");
+		}
 	}
 }

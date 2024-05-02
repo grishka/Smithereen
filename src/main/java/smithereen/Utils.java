@@ -149,9 +149,11 @@ public class Utils{
 		if(req.session(false)==null || req.session().attribute("info")==null || ((SessionInfo)req.session().attribute("info")).account==null){
 			String to=req.pathInfo();
 			String query=req.queryString();
-			if(StringUtils.isNotEmpty(query))
-				to+="?"+query;
-			resp.redirect("/account/login?to="+URLEncoder.encode(to));
+			if(resp!=null){
+				if(StringUtils.isNotEmpty(query))
+					to+="?"+query;
+				resp.redirect("/account/login?to="+URLEncoder.encode(to));
+			}
 			return false;
 		}
 		return true;

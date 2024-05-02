@@ -174,5 +174,19 @@
   "repost_your_comment": "Your comment",
   "liked_by_X_people_short": "{count, plural, one {# liked} other {# liked}}",
   "shared_by_X_people_short": "{count, plural, one {# shared} other {# shared}}",
-  "load_more": "Load more"
+  "load_more": "Load more",
+  "remote_like_post_title": "Like post",
+  "remote_like_comment_title": "Like comment",
+  "remote_comment_post_title": "Comment on post",
+  "remote_interaction_enter_identity": "You are viewing this on <b>{localServerDomain}</b>, where you aren't logged in. Enter the address of the server where your account is hosted or your full username:",
+  "remote_interaction_identity_placeholder": "{exampleDomain} or {exampleUsername}",
+  "remote_interaction_proceed": "Proceed",
+  "remote_interaction_explanation": "This website is part of the fediverse, a decentralized social media platform. With an account on just one server, you're able to interact with everyone on the entire network, wherever they are.",
+  "remote_interaction_signup": "If you don't have an account, you can <a id=\"signup\">create one on this server</a>.",
+  "remote_interaction_signup_request": "If you don't have an account, you can <a id=\"signup\">request an account on this server</a>.",
+  "remote_interaction_embed_post": "You can also <a id=\"embed\">embed this post on your website</a>.",
+  "remote_interaction_embed_comment": "You can also <a id=\"embed\">embed this comment on your website</a>.",
+  "remote_interaction_bad_domain": "Unable to find the redirect URL. Please make sure you entered your server address correctly.",
+  "remote_interaction_services_before": "Works with",
+  "remote_interaction_services_after": "...and more!"
 }

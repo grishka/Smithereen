@@ -170,5 +170,19 @@
   "repost_your_comment": "Ваш комментарий",
   "liked_by_X_people_short": "{count, plural, one {# оценил} other {# оценили}}",
   "shared_by_X_people_short": "{count, plural, one {# поделился} other {# поделились}}",
-  "load_more": "Загрузить ещё"
+  "load_more": "Загрузить ещё",
+  "remote_like_post_title": "Оценить запись",
+  "remote_like_comment_title": "Оценить комментарий",
+  "remote_comment_post_title": "Прокомментировать запись",
+  "remote_interaction_enter_identity": "Вы находитесь на <b>{localServerDomain}</b>, и вы не вошли в систему. Введите адрес сервера, на котором находится ваша учётная запись, или ваше полное имя пользователя:",
+  "remote_interaction_identity_placeholder": "{exampleDomain} или {exampleUsername}",
+  "remote_interaction_proceed": "Продолжить",
+  "remote_interaction_explanation": "Этот сайт — часть fediverse, децентрализованной социальной сети. Имея учётную запись на одном сервере, вы можете взаимодействовать с кем угодно, где бы они ни были.",
+  "remote_interaction_signup": "Если у вас нет учётной записи, вы можете <a id=\"signup\">зарегистрироваться на этом сервере</a>.",
+  "remote_interaction_signup_request": "Если у вас нет учётной записи, вы можете <a id=\"signup\">запросить приглашение на этот сервер</a>.",
+  "remote_interaction_embed_post": "Вы также можете <a id=\"embed\">встроить эту запись на свой сайт</a>.",
+  "remote_interaction_embed_comment": "Вы также можете <a id=\"embed\">встроить этот комментарий на свой сайт</a>.",
+  "remote_interaction_bad_domain": "Не удалось найти URL для перенаправления. Проверьте правильность ввода адреса вашего сервера.",
+  "remote_interaction_services_before": "Работает с",
+  "remote_interaction_services_after": "...и не только!"
 }

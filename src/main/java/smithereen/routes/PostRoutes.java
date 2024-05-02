@@ -477,6 +477,18 @@ public class PostRoutes{
 		return "";
 	}
 
+	public static Object like(Request req, Response resp){
+		if(requireAccount(req, null) && verifyCSRF(req, resp)){
+			return like(req, resp, sessionInfo(req).account, context(req));
+		}
+		ApplicationContext ctx=context(req);
+		Lang l=lang(req);
+		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
+		String url=post.getActivityPubURL().toString();
+		String title=l.get(post.getReplyLevel()>0 ? "remote_like_comment_title" : "remote_like_post_title");
+		return remoteInteraction(req, resp, url, title, null);
+	}
+
 	public static Object like(Request req, Response resp, Account self, ApplicationContext ctx){
 		req.attribute("noHistory", true);
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
@@ -893,14 +905,20 @@ public class PostRoutes{
 		return model;
 	}
 
-	public static Object repostForm(Request req, Response resp, Account self, ApplicationContext ctx){
+	public static Object repostForm(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Lang l=lang(req);
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":postID")));
 		if(post.isMastodonStyleRepost())
 			post=ctx.getWallController().getPostOrThrow(post.repostOf);
+		if(!requireAccount(req, null)){
+			String url=post.getActivityPubURL().toString();
+			String title=l.get(post.getReplyLevel()>0 ? "share_comment_title" : "share_post_title");
+			return remoteInteraction(req, resp, url, title, post);
+		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse("repost_form", req);
 		model.with("repostedPost", post)
 				.with("users", ctx.getUsersController().getUsers(Set.of(post.authorID)));
-		Lang l=lang(req);
 		if(isAjax(req)){
 			WebDeltaResponse wdr=new WebDeltaResponse(resp)
 					.box(l.get(post.getReplyLevel()>0 ? "share_comment_title" : "share_post_title"), model.renderToString(), "repostFormBox", isMobile(req) ? 0 : 502)
@@ -1005,5 +1023,53 @@ public class PostRoutes{
 			}catch(ObjectNotFoundException ignore){}
 		}
 		return model;
+	}
+
+	private static Object remoteInteraction(Request req, Response resp, String url, String title, Post postToEmbed){
+		RenderedTemplateResponse model;
+		if(isAjax(req)){
+			if(isMobile(req)){
+				model=new RenderedTemplateResponse("remote_interaction", req);
+			}else{
+				model=new RenderedTemplateResponse("layer_with_title", req).with("contentTemplate", "remote_interaction");
+			}
+		}else{
+			model=new RenderedTemplateResponse("content_wrap", req).with("contentTemplate", "remote_interaction");
+		}
+		model.with("contentURL", url).with("serverSignupMode", Config.signupMode);
+		model.pageTitle(title);
+		if(!isMobile(req) && postToEmbed!=null && postToEmbed.isLocal())
+			model.with("postToEmbed", postToEmbed);
+		if(isAjax(req)){
+			if(isMobile(req)){
+				return new WebDeltaResponse(resp)
+						.box(title, model.renderToString(), null, false)
+						.runScript("restoreRemoteInteractionDomain();");
+			}else{
+				return new WebDeltaResponse(resp)
+						.layer(model.renderToString(), null)
+						.runScript("restoreRemoteInteractionDomain();");
+			}
+		}else{
+			return model;
+		}
+	}
+
+	public static Object embedBox(Request req, Response resp){
+		if(isMobile(req))
+			return "";
+		RenderedTemplateResponse model=new RenderedTemplateResponse("post_embed_form", req);
+		ApplicationContext ctx=context(req);
+		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":postID")));
+		model.with("repostedPost", post)
+				.with("users", ctx.getUsersController().getUsers(Set.of(post.authorID)));
+		if(!isAjax(req)){
+			model.setName("content_wrap");
+			model.with("contentTemplate", "post_embed_form");
+			return model;
+		}
+		return new WebDeltaResponse(resp)
+				.box(lang(req).get("embed_post"), model.renderToString(), null, false)
+				.runScript("actuallyInitEmbedPreview("+post.id+");");
 	}
 }

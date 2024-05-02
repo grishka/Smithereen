@@ -777,3 +777,17 @@ class PhotoViewerLayer extends BaseLayer{
 		document.body.removeEventListener("keydown", this.arrowsKeyListener);
 	}
 }
+
+class SimpleLayer extends BaseLayer{
+	private contentWrap:HTMLElement;
+
+	public constructor(innerHTML:string, addClasses:string=""){
+		super();
+		this.contentWrap=ce("div", {className: ("simpleLayer "+addClasses).trim(), innerHTML: innerHTML});
+	}
+
+	public onCreateContentView():HTMLElement{
+		return this.contentWrap;
+	}
+}
+

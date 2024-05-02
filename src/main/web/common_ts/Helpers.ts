@@ -462,6 +462,12 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 		}
 	}
 	data.csrf=userConfig.csrf;
+	if(location.search){
+		var params=new URLSearchParams(location.search);
+		if(params.has("lang")){
+			data.lang=params.get("lang");
+		}
+	}
 	ajaxPost(form.action, data, function(resp:any){
 		if(extra.onResponseReceived){
 			extra.onResponseReceived(resp);
@@ -531,6 +537,12 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 
 function ajaxGetAndApplyActions(url:string, onDone:{():void}=null, onError:{():void}=null, onBeforeDone:{():void}=null):XMLHttpRequest{
 	setGlobalLoading(true);
+	if(location.search){
+		var params=new URLSearchParams(location.search);
+		if(params.has("lang")){
+			url=addParamsToURL(url, {lang: params.get("lang")});
+		}
+	}
 	return ajaxGet(url, function(resp:any){
 		if(onBeforeDone) onBeforeDone();
 		setGlobalLoading(false);
@@ -681,6 +693,9 @@ function applyServerCommand(cmd:any){
 			}
 			break;
 		}
+		case "layer":
+			new SimpleLayer(cmd.h, cmd.c).show();
+			break;
 	}
 }
 
@@ -1275,21 +1290,25 @@ function initEmbedPreview(postID:number){
 	var tab=ge("postEmbedTab"+postID);
 	tab.customData.onShown=()=>{
 		delete tab.customData.onShown;
-		var iframe=ge("embedPreview"+postID) as HTMLIFrameElement;
-		var messageListener=(ev:MessageEvent)=>{
-			if(ev.source!=iframe.contentWindow)
-				return;
-			if(ev.data.act=="setHeight"){
-				iframe.height=ev.data.height;
-				LayerManager.getInstance().updateAllTopOffsets();
-			}
-		};
-		window.addEventListener("message", messageListener);
-		LayerManager.getInstance().getTopLayer().dismissCallbacks.push(()=>{
-			window.removeEventListener("message", messageListener);
-		});
-		iframe.src="/posts/"+postID+"/embed";
+		actuallyInitEmbedPreview(postID);
 	};
+}
+
+function actuallyInitEmbedPreview(postID:number){
+	var iframe=ge("embedPreview"+postID) as HTMLIFrameElement;
+	var messageListener=(ev:MessageEvent)=>{
+		if(ev.source!=iframe.contentWindow)
+			return;
+		if(ev.data.act=="setHeight"){
+			iframe.height=ev.data.height;
+			LayerManager.getInstance().updateAllTopOffsets();
+		}
+	};
+	window.addEventListener("message", messageListener);
+	LayerManager.getInstance().getTopLayer().dismissCallbacks.push(()=>{
+		window.removeEventListener("message", messageListener);
+	});
+	iframe.src="/posts/"+postID+"/embed";
 }
 
 function showMentionHoverCard(link:HTMLElement, ev:MouseEvent){
@@ -1327,6 +1346,39 @@ function hideMentionHoverCard(link:HTMLElement){
 		delete link.customData.popoverTimeout;
 	}else if(popover){
 		popover.hide();
+	}
+}
+
+function closeTopmostLayer(){
+	var topLayer=LayerManager.getInstance().getTopLayer();
+	if(topLayer)
+		LayerManager.getInstance().dismiss(topLayer);
+}
+
+function saveRemoteInteractionDomain(){
+	var input=ge("remoteInteractionDomain");
+	if(input instanceof HTMLInputElement){
+		try{
+			window.localStorage.setItem("remoteInteractionDomain", input.value);
+		}catch(e){
+			console.log(e);
+		}
+	}
+}
+
+function restoreRemoteInteractionDomain(){
+	var input=ge("remoteInteractionDomain");
+	if(input instanceof HTMLInputElement){
+		try{
+			var savedDomain=window.localStorage.getItem("remoteInteractionDomain");
+			if(savedDomain){
+				input.value=savedDomain;
+			}
+		}catch(e){
+			console.log(e);
+		}
+		if(!mobile)
+			input.focus();
 	}
 }
 

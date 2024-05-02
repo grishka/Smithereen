@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import smithereen.Utils;
@@ -124,6 +125,11 @@ public class WebDeltaResponse{
 
 	public WebDeltaResponse dismissBox(String id){
 		commands.add(new DismissBoxCommand(id));
+		return this;
+	}
+
+	public WebDeltaResponse layer(String innerHTML, Collection<String> classes){
+		commands.add(new LayerCommand(innerHTML, classes));
 		return this;
 	}
 
@@ -382,6 +388,19 @@ public class WebDeltaResponse{
 		public DismissBoxCommand(String id){
 			super("dismissBox");
 			this.id=id;
+		}
+	}
+
+	public static class LayerCommand extends Command{
+		@SerializedName("h")
+		public String innerHTML;
+		@SerializedName("c")
+		public String additionalClasses;
+
+		public LayerCommand(String innerHTML, Collection<String> additionalClasses){
+			super("layer");
+			this.innerHTML=innerHTML;
+			this.additionalClasses=additionalClasses!=null ? String.join(" ", additionalClasses) : null;
 		}
 	}
 }

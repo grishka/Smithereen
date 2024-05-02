@@ -3387,3 +3387,55 @@ a.clickableListItem{
 	}
 }
 
+.simpleLayer{
+	background: $bg;
+	border-radius: 2px;
+	@include layer-shadow;
+}
+
+.layerWithTitle{
+	width: 642px;
+	.layerTitle{
+		height: 46px;
+		display: flex;
+		padding: 0 20px;
+		align-items: center;
+		.title{
+			flex-grow: 1;
+			font-size: 13px;
+			color: $boldHeaders;
+			font-weight: bold;
+			padding-right: 10px;
+		}
+		.close{
+			flex: none;
+		}
+	}
+}
+
+.remoteInteraction{
+	padding: 0 20px 20px;
+	line-height: 130%;
+	form{
+		margin-top: 5px;
+		display: flex;
+		input[type=text]{
+			flex-grow: 1;
+			padding: 0 8px;
+		}
+		input[type=submit]{
+			flex: none;
+			margin-left: 10px;
+		}
+	}
+	.services{
+		margin-top: 8px;
+		line-height: 16px;
+		opacity: 0.53;
+		img{
+			margin: 0 8px;
+			vertical-align: middle;
+		}
+	}
+}
+

@@ -406,6 +406,7 @@ public class SmithereenApplication{
 			postWithCSRF("/submitReport", SystemRoutes::submitReport);
 			get("/captcha", SystemRoutes::captcha);
 			get("/oembed", SystemRoutes::oEmbed);
+			post("/redirectForRemoteInteraction", SystemRoutes::redirectForRemoteInteraction);
 
 			if(Config.DEBUG){
 				path("/debug", ()->{
@@ -563,15 +564,16 @@ public class SmithereenApplication{
 			getLoggedIn("/confirmDelete", PostRoutes::confirmDelete);
 			postWithCSRF("/delete", PostRoutes::delete);
 
-			getWithCSRF("/like", PostRoutes::like);
+			get("/like", PostRoutes::like);
 			getWithCSRF("/unlike", PostRoutes::unlike);
 			get("/likePopover", PostRoutes::likePopover);
 			get("/likes", PostRoutes::likeList);
 			get("/ajaxCommentPreview", PostRoutes::ajaxCommentPreview);
 			get("/ajaxCommentBranch", PostRoutes::ajaxCommentBranch);
 			get("/sharePopover", PostRoutes::sharePopover);
-			getLoggedIn("/share", PostRoutes::repostForm);
+			get("/share", PostRoutes::repostForm);
 			get("/reposts", PostRoutes::repostList);
+			get("/embedBox", PostRoutes::embedBox);
 
 			getActivityPubCollection("/replies", 50, ActivityPubRoutes::postReplies);
 			getActivityPubCollection("/likes", 50, ActivityPubRoutes::postLikes);

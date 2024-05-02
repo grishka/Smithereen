@@ -11,11 +11,6 @@
 		{% include "wall_post_form" with {'id': "repost", 'addClasses': "nonCollapsible", 'submitButtonText': L(repostedPost.replyLevel>0 ? "do_share_comment" : "do_share_post")} %}
 	</div>
 {% if repostedPost.local %}
-	<div class="singleColumn repostBoxEmbed" style="display: none" id="postEmbedTab{{ repostedPost.id }}">
-		<div class="marginAfter">{{ L('embed_post_explanation') }}</div>
-		<textarea readonly onfocus="this.setSelectionRange(0, this.value.length)">{% include "post_embed_code" with {'post': repostedPost} %}</textarea>
-		<h3 class="marginBefore marginAfter">{{ L('embed_preview') }}</h3>
-		<iframe id="embedPreview{{ repostedPost.id }}"></iframe>
-	</div>
+	{% include "post_embed_form" with {'style': "display: none"} %}
 </div>
 {% endif %}
