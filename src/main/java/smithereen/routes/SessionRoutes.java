@@ -80,7 +80,7 @@ public class SessionRoutes{
 		}else if(StringUtils.isNotEmpty(req.queryParams("to"))){
 			model.with("message", Utils.lang(req).get("login_needed"));
 		}
-		model.with("additionalParams", "?"+req.queryString()).with("title", lang(req).get("login_title")+" | "+Config.serverDisplayName);
+		model.with("additionalParams", "?"+req.queryString()).with("title", lang(req).get("login_title")+" | "+Config.serverDisplayName).with("username", req.queryParams("username"));
 		return model;
 	}
 

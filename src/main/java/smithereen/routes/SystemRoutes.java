@@ -2,6 +2,7 @@ package smithereen.routes;
 
 import com.google.gson.JsonObject;
 
+import org.eclipse.jetty.util.UrlEncoded;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -874,6 +875,19 @@ public class SystemRoutes{
 		}else{
 			realDomain=domain;
 			username=null;
+		}
+		if(realDomain.equalsIgnoreCase(Config.domain)){
+			UriBuilder builder=UriBuilder.local().path("account", "login");
+			try{
+				if(Config.isLocal(new URI(contentURL))){
+					builder.queryParam("to", contentURL);
+				}
+			}catch(URISyntaxException x){
+				throw new BadRequestException(x);
+			}
+			if(username!=null)
+				builder.queryParam("username", username);
+			return ajaxAwareRedirect(req, resp, builder.build().toString());
 		}
 		try{
 			String uriTemplate=ActivityPub.resolveRemoteInteractionUriTemplate(username, realDomain);
