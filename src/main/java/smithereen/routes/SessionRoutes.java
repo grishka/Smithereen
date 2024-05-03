@@ -12,7 +12,6 @@ import java.util.Objects;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.LruCache;
 import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.model.Account;
@@ -32,6 +31,7 @@ import smithereen.storage.DatabaseUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.text.TextProcessor;
 import smithereen.util.EmailCodeActionType;
 import smithereen.util.FloodControl;
 import spark.Request;
@@ -373,8 +373,8 @@ public class SessionRoutes{
 		FloodControl.EMAIL_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
 		Mailer.getInstance().sendAccountActivation(req, self);
 		Lang l=lang(req);
-		String msg=l.get("email_confirmation_resent", Map.of("address", escapeHTML(self.getUnconfirmedEmail()))).replace("\n", "<br/>");
-		msg=substituteLinks(msg, Map.of("change", Map.of("href", "/account/changeEmailForm", "data-ajax-box", "")));
+		String msg=l.get("email_confirmation_resent", Map.of("address", TextProcessor.escapeHTML(self.getUnconfirmedEmail()))).replace("\n", "<br/>");
+		msg=TextProcessor.substituteLinks(msg, Map.of("change", Map.of("href", "/account/changeEmailForm", "data-ajax-box", "")));
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).messageBox(l.get("account_activation"), msg, l.get("close"));
 		return new RenderedTemplateResponse("generic_message", req).with("message", new SafeString(msg)).pageTitle(l.get("account_activation"));

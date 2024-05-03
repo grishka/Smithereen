@@ -19,7 +19,6 @@ import java.util.Map;
 
 import smithereen.Utils;
 import smithereen.lang.Lang;
-import smithereen.util.Whitelist;
 
 public class TruncateTextFilter implements Filter{
 	@Override

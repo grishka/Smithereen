@@ -20,6 +20,7 @@ import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.storage.DatabaseUtils;
+import smithereen.text.TextProcessor;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
@@ -79,7 +80,7 @@ public final class MailMessage implements AttachmentHostContentObject, ActivityP
 	}
 
 	public String getTextPreview(){
-		return Utils.truncateOnWordBoundary(text, 100);
+		return TextProcessor.truncateOnWordBoundary(text, 100);
 	}
 
 	public boolean isUnread(){

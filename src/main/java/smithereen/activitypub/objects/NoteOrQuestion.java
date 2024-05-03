@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.nodes.TextNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +23,6 @@ import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.SerializerContext;
@@ -35,6 +33,7 @@ import smithereen.jsonld.JLD;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
 import smithereen.model.User;
+import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
@@ -77,7 +76,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		String text=content;
 		if(hasBogusURL)
 			text=text+"<p><a href=\""+url+"\">"+url+"</a></p>";
-		text=Utils.sanitizeHTML(text);
+		text=TextProcessor.sanitizeHTML(text);
 		post.text=text;
 		post.createdAt=published!=null ? published : Instant.now();
 		post.updatedAt=updated;
@@ -204,7 +203,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		User author=context.getUsersController().getUserOrThrow(post.authorID);
 		noq.content=post.text;
 		if(post.poll!=null && StringUtils.isNotEmpty(post.poll.question)){
-			noq.content+="<p class=\"smithereenPollQuestion\"><i>"+Utils.escapeHTML(post.poll.question)+"</i></p>";
+			noq.content+="<p class=\"smithereenPollQuestion\"><i>"+TextProcessor.escapeHTML(post.poll.question)+"</i></p>";
 		}
 		noq.attributedTo=author.activityPubID;
 		noq.published=post.createdAt;
@@ -325,7 +324,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		msg.activityPubID=activityPubID;
 		User sender=context.getObjectLinkResolver().resolve(attributedTo, User.class, true, true, false);
 		msg.senderID=sender.id;
-		msg.text=Utils.sanitizeHTML(content);
+		msg.text=TextProcessor.sanitizeHTML(content);
 		msg.subject=StringUtils.isNotEmpty(name) ? name : summary;
 		msg.attachments=attachment;
 		msg.createdAt=published!=null ? published : Instant.now();
@@ -401,7 +400,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			obj.addProperty("sensitive", sensitive);
 		serializerContext.addAlias("sensitive", "as:sensitive");
 		if(obj.has("content"))
-			obj.addProperty("content", Utils.postprocessPostHTMLForActivityPub(content));
+			obj.addProperty("content", TextProcessor.postprocessPostHTMLForActivityPub(content));
 		if(target!=null)
 			obj.add("target", target.asActivityPubObject(new JsonObject(), serializerContext));
 		if(likes!=null)

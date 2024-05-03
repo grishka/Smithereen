@@ -19,7 +19,6 @@ import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Collections;
@@ -35,6 +34,7 @@ import smithereen.model.SizedImage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.jsonld.JLD;
 import smithereen.storage.MediaCache;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public abstract class Actor extends ActivityPubObject{
@@ -226,7 +226,7 @@ public abstract class Actor extends ActivityPubObject{
 		}
 
 		if(summary!=null)
-			summary=Utils.sanitizeHTML(summary);
+			summary=TextProcessor.sanitizeHTML(summary);
 
 		return this;
 	}

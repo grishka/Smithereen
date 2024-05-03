@@ -5,18 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Attribute;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.nodes.Node;
-import org.jsoup.nodes.TextNode;
-import org.jsoup.parser.Parser;
-import org.jsoup.safety.Cleaner;
-import org.jsoup.select.NodeVisitor;
 import org.slf4j.Logger;
-import org.unbescape.html.HtmlEscape;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -53,7 +42,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -69,7 +57,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
-import cz.jirutka.unidecode.Unidecode;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.CaptchaInfo;
@@ -77,6 +64,7 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
+import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.WebDeltaResponse;
@@ -94,31 +82,17 @@ import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.LocaleJsonAdapter;
 import smithereen.util.TimeZoneJsonAdapter;
-import smithereen.util.TopLevelDomainList;
-import smithereen.util.Whitelist;
 import spark.Request;
 import spark.Response;
 import spark.Session;
 import spark.utils.MimeParse;
 import spark.utils.StringUtils;
 
-import static spark.Spark.get;
-
 public class Utils{
 
 	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor", "healthz");
-	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
-	private static final Pattern POST_LINE_BREAKS=Pattern.compile("\n+");
-	private static Unidecode unidecode=Unidecode.toAscii();
 	private static Random rand=new Random();
 
-	// https://unicode.org/faq/idn.html#33, mostly
-	private static final String IDN_VALID_CHAR_REGEX="[[\\u00B7\\u0375\\u05F3\\u05F4\\u30FB\\u002D\\u06FD\\u06FE\\u0F0B\\u3007\\u00DF\\u03C2\\u200C\\u200D][^\\p{IsControl}\\p{IsWhite_Space}\\p{gc=S}\\p{IsPunctuation}\\p{gc=Nl}\\p{gc=No}\\p{gc=Me}\\p{blk=Combining_Diacritical_Marks}\\p{blk=Musical_Symbols}\\p{block=Ancient_Greek_Musical_Notation}\\u0640\\u07FA\\u302E\\u302F\\u3031-\\u3035\\u303B]]";
-	// A domain must be at least 2 (possibly IDN) labels
-	private static final String IDN_DOMAIN_REGEX=IDN_VALID_CHAR_REGEX+"+(?:\\."+IDN_VALID_CHAR_REGEX+"+)+";
-	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))*)*)(\\?(?:\\w+(?:=(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
-	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@("+IDN_DOMAIN_REGEX+"))?");
-	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@("+IDN_DOMAIN_REGEX+")");
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([!#$%^'*+\\-.^_`|~0-9A-Za-z]+)=(?:(?:\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\")|([!#$%^'*+\\-.^_`|~0-9A-Za-z]+))\\s*([,;])?\\s*");
 	private static final Pattern NON_ASCII_PATTERN=Pattern.compile("\\P{ASCII}");
 
@@ -241,7 +215,7 @@ public class Utils{
 	public static Object wrapForm(Request req, Response resp, String templateName, String formAction, String title, String buttonKey, String formID, List<String> fieldNames, Function<String, Object> fieldValueGetter, String message, Map<String, Object> extraTemplateArgs){
 		if(isAjax(req) && StringUtils.isNotEmpty(message)){
 			WebDeltaResponse wdr=new WebDeltaResponse(resp);
-			wdr.keepBox().show("formMessage_"+formID).setContent("formMessage_"+formID, escapeHTML(message));
+			wdr.keepBox().show("formMessage_"+formID).setContent("formMessage_"+formID, TextProcessor.escapeHTML(message));
 			return wdr;
 		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse(templateName, req);
@@ -349,67 +323,6 @@ public class Utils{
 			res[i]=(byte)((Character.digit(hex.charAt(i*2), 16) << 4) | (Character.digit(hex.charAt(i*2+1), 16)));
 		}
 		return res;
-	}
-
-	public static String sanitizeHTML(String src){
-		return sanitizeHTML(src, null);
-	}
-
-	public static String sanitizeHTML(String src, URI documentLocation){
-		Cleaner cleaner=new Cleaner(HTML_SANITIZER);
-		Document doc=Parser.parseBodyFragment(src, Objects.toString(documentLocation, ""));
-		doc.body().traverse(new NodeVisitor(){
-			private final LinkedList<ListNodeInfo> listStack=new LinkedList<>();
-
-			@Override
-			public void head(Node node, int depth){
-				if(node instanceof Element el){
-					if("ul".equals(el.tagName()) || "ol".equals(el.tagName())){
-						listStack.push(new ListNodeInfo("ol".equals(el.tagName()), el));
-						el.tagName("p");
-					}else if("li".equals(el.tagName()) && !listStack.isEmpty()){
-						ListNodeInfo info=listStack.peek();
-						String prefix="  ".repeat(listStack.size()-1);
-						if(info.isOrdered){
-							prefix+=info.currentIndex+". ";
-							info.currentIndex++;
-						}else{
-							prefix+="- ";
-						}
-						el.prependText(prefix);
-						if(el.nextSibling()!=null){
-							el.appendChild(doc.createElement("br"));
-						}
-					}else if("blockquote".equals(el.tagName())){
-						el.tagName("p");
-						el.prependText("> ");
-					}
-				}
-			}
-
-			@Override
-			public void tail(Node node, int depth){
-				if(node instanceof Element el && !listStack.isEmpty() && listStack.peek().element==el){
-					listStack.pop();
-				}
-			}
-
-			private static class ListNodeInfo{
-				final boolean isOrdered;
-				final Element element;
-				int currentIndex=1;
-
-				private ListNodeInfo(boolean isOrdered, Element element){
-					this.isOrdered=isOrdered;
-					this.element=element;
-				}
-			}
-		});
-		doc.getElementsByTag("li").forEach(Element::unwrap);
-		doc.getElementsByClass("smithereenPollQuestion").forEach(Element::remove);
-		doc.getElementsByTag("span").stream().filter(el->el.classNames().isEmpty()).forEach(Element::unwrap);
-		doc.normalise();
-		return cleaner.clean(doc).body().html();
 	}
 
 	public static String formatDateAsISO(Instant date){
@@ -550,14 +463,6 @@ public class Utils{
 		return sessionInfo!=null ? sessionInfo.history.last() : "/";
 	}
 
-	public static String truncateOnWordBoundary(String s, int maxLen){
-		s=Jsoup.clean(s, Whitelist.none());
-		if(s.length()<=maxLen+20)
-			return s;
-		int len=Math.max(0, Math.min(s.indexOf(' ', maxLen), maxLen+20));
-		return s.substring(0, len)+"...";
-	}
-
 	public static boolean isAjax(Request req){
 		return req.queryParams("_ajax")!=null;
 	}
@@ -574,294 +479,10 @@ public class Utils{
 		return StringUtils.isNotEmpty(matched);
 	}
 
-	public static String escapeHTML(String s){
-		return HtmlEscape.escapeHtml4Xml(s);
-	}
-
-	public static String stripHTML(String s, boolean keepLineBreaks){
-		if(keepLineBreaks){
-			Document doc=new Cleaner(new Whitelist().addTags("p", "br")).clean(Jsoup.parseBodyFragment(s));
-			StringBuilder sb=new StringBuilder();
-			doc.body().traverse(new NodeVisitor(){
-				@Override
-				public void head(Node node, int depth){
-					if(node instanceof Element el){
-						if("p".equalsIgnoreCase(el.tagName()) && !sb.isEmpty())
-							sb.append("\n\n");
-						else if("br".equalsIgnoreCase(el.tagName()))
-							sb.append('\n');
-					}else if(node instanceof TextNode tn){
-						sb.append(tn.text());
-					}
-				}
-			});
-			return sb.toString().trim();
-		}else{
-			return new Cleaner(Whitelist.none()).clean(Jsoup.parseBodyFragment(s.replace("</p><", "</p> <"))).body().html();
-		}
-	}
-
 	public static boolean isMobileUserAgent(String ua){
 		ua=ua.toLowerCase();
 		return ua.matches("(?i).*((android|bb\\d+|meego).+mobile|avantgo|bada\\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od|ad)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\\.(browser|link)|vodafone|wap|windows ce|xda|xiino).*")
 				|| (ua.length()>4 && ua.substring(0,4).matches("(?i)1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\\-(n|u)|c55\\/|capi|ccwa|cdm\\-|cell|chtm|cldc|cmd\\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\\-s|devi|dica|dmob|do(c|p)o|ds(12|\\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\\-|_)|g1 u|g560|gene|gf\\-5|g\\-mo|go(\\.w|od)|gr(ad|un)|haie|hcit|hd\\-(m|p|t)|hei\\-|hi(pt|ta)|hp( i|ip)|hs\\-c|ht(c(\\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\\-(20|go|ma)|i230|iac( |\\-|\\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\\/)|klon|kpt |kwc\\-|kyo(c|k)|le(no|xi)|lg( g|\\/(k|l|u)|50|54|\\-[a-w])|libw|m1\\-w|m3ga|m50\\/|ma(te|ui|xo)|mc(01|21|ca)|m\\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\\-2|po(ck|rt|se)|prox|psio|pt\\-g|qa\\-a|qc(07|12|21|32|60|\\-[2-7]|i\\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\\-|oo|p\\-)|sdk\\/|se(c(\\-|0|1)|47|mc|nd|ri)|sgh\\-|shar|sie(\\-|m)|sk\\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\\-|v\\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\\-|tdg\\-|tel(i|m)|tim\\-|t\\-mo|to(pl|sh)|ts(70|m\\-|m3|m5)|tx\\-9|up(\\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\\-|your|zeto|zte\\-"));
-	}
-
-	private static void makeLinksAndMentions(Node node, @Nullable MentionCallback mentionCallback){
-		if(node instanceof Element el){
-			if(el.tagName().equalsIgnoreCase("pre")){
-				return;
-			}else if(el.tagName().equalsIgnoreCase("a")){
-				if(el.hasClass("mention") && !el.hasAttr("data-user-id")){
-					User user=mentionCallback==null ? null : mentionCallback.resolveMention(el.attr("href"));
-					if(user==null){
-						el.removeClass("mention");
-					}else{
-						el.attr("href", user.url.toString());
-						el.attr("data-user-id", user.id+"");
-					}
-				}
-				return;
-			}
-			for(int i=0;i<el.childNodeSize();i++){
-				makeLinksAndMentions(el.childNode(i), mentionCallback);
-			}
-		}else if(node instanceof TextNode text){
-			Matcher matcher=URL_PATTERN.matcher(text.text());
-
-			outer:
-			while(matcher.find()){
-				String url=matcher.group();
-
-				// don't make domain.com in a @user@domain.com mention a link
-				if(matcher.start()>0 && text.text().charAt(matcher.start()-1)=='@')
-					continue;
-
-				String scheme=matcher.group(1);
-				String host=matcher.group(2);
-
-				// Additionally validate IPv4 addresses
-				if(host.matches("^[\\d.]+")){
-					Matcher matcher2=Pattern.compile("(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})").matcher(url);
-					if(!matcher2.find())
-						continue;
-					for(int i=1;i<=4;i++){
-						int b=parseIntOrDefault(matcher2.group(i), -1);
-						if(b<0 || b>255)
-							continue outer;
-					}
-				}
-
-				// If there's no scheme, check the domain against the list of actually existing TLDs
-				// Because some people are weird.They write like this.
-				if(StringUtils.isEmpty(scheme)){
-					String tld=host.substring(host.lastIndexOf('.')+1);
-					if(!TopLevelDomainList.contains(tld))
-						continue;
-				}
-
-				TextNode inner=matcher.start()==0 ? text : text.splitText(matcher.start());
-				int len=matcher.end()-matcher.start();
-
-				// Don't include punctuation, if any, following the URL, into it
-				char last=url.charAt(url.length()-1);
-				if(last=='.' || last=='?' || last=='!' || last==':' || last==';'){
-					len--;
-					url=url.substring(0, len);
-				}
-
-				if(len<inner.text().length())
-					inner.splitText(len);
-				String realURL=url;
-				if(StringUtils.isEmpty(scheme)){
-					realURL="http://"+url;
-				}
-				inner.wrap("<a href=\""+escapeHTML(realURL)+"\">");
-				return;
-			}
-
-			matcher=MENTION_PATTERN.matcher(text.text());
-			while(matcher.find()){
-				String u=matcher.group(1);
-				String d=matcher.group(2);
-				if(d!=null && d.equalsIgnoreCase(Config.domain)){
-					d=null;
-				}
-				User mentionedUser=mentionCallback==null ? null : mentionCallback.resolveMention(u, d);
-				if(mentionedUser!=null){
-					TextNode inner=matcher.start()==0 ? text : text.splitText(matcher.start());
-					int len=matcher.end()-matcher.start();
-					if(len<inner.text().length())
-						inner.splitText(len);
-					inner.wrap("<a href=\""+escapeHTML(mentionedUser.url.toString())+"\" class=\"mention\" data-user-id=\""+mentionedUser.id+"\">");
-					return;
-				}
-			}
-		}
-	}
-
-	public static String preprocessPostHTML(String text, MentionCallback mentionCallback){
-		text=text.trim().replace("\r", "");
-
-		Document doc=Jsoup.parseBodyFragment(text);
-		doc=new Cleaner(HTML_SANITIZER).clean(doc);
-		Element body=doc.body();
-		Document newDoc=new Document("");
-		Element newBody=newDoc.body();
-		LinkedList<Element> stack=new LinkedList<>(), tmpStack=new LinkedList<>();
-		stack.add(newBody);
-
-		body.traverse(new NodeVisitor(){
-
-			@Override
-			public void head(@NotNull Node node, int depth){
-				if(depth==0)
-					return;
-				if(node instanceof Element el){
-					Element newEl=newDoc.createElement(el.tagName());
-					for(Attribute attr:el.attributes().asList()){
-						newEl.attr(attr.getKey(), attr.getValue());
-					}
-					String tagName=el.tagName();
-					if(depth==1){
-						if(!tagName.equalsIgnoreCase("p") && !tagName.equalsIgnoreCase("pre")){
-							if(stack.size()==1){
-								Element p=newDoc.createElement("p");
-								newBody.appendChild(p);
-								stack.push(p);
-							}
-						}else if(stack.size()>1){
-							stack.pop();
-						}
-					}
-					Objects.requireNonNull(stack.peek()).appendChild(newEl);
-					stack.push(newEl);
-				}else if(node instanceof TextNode tn){
-					if(depth==1 && stack.size()==1){
-						Element p=newDoc.createElement("p");
-						newBody.appendChild(p);
-						stack.push(p);
-					}
-					String text=tn.getWholeText();
-					if(stack.get(stack.size()-2).tagName().equalsIgnoreCase("pre")){
-						Objects.requireNonNull(stack.peek()).appendText(text);
-					}else{
-						Matcher matcher=POST_LINE_BREAKS.matcher(text);
-						int lastPos=0;
-						while(matcher.find()){
-							Objects.requireNonNull(stack.peek()).appendText(text.substring(lastPos, matcher.start()));
-							lastPos=matcher.end();
-							int length=matcher.end()-matcher.start();
-							if(length==1){
-								// Don't add a <br> as last element inside <p>
-								Element parent=Objects.requireNonNull(stack.peek());
-								if(!parent.tagName().equalsIgnoreCase("p") || lastPos<text.length())
-									parent.appendChild(newDoc.createElement("br"));
-							}else{
-								while(stack.size()>1){
-									tmpStack.push(stack.pop().shallowClone());
-								}
-								while(tmpStack.size()>0){
-									Element el=tmpStack.pop();
-									Objects.requireNonNull(stack.peek()).appendChild(el);
-									stack.push(el);
-								}
-							}
-						}
-						Objects.requireNonNull(stack.peek()).appendText(text.substring(lastPos));
-					}
-				}
-			}
-
-			@Override
-			public void tail(@NotNull Node node, int depth){
-				if(depth>0 && node instanceof Element el){
-					Element stackEl=stack.pop();
-					if(!el.tagName().equals(stackEl.tagName())) // sanity check
-						throw new IllegalStateException();
-				}
-			}
-		});
-
-		makeLinksAndMentions(newBody, mentionCallback);
-
-		return newBody.html();
-	}
-
-	public static String postprocessPostHTMLForDisplay(String text, boolean forceTargetBlank){
-		if(text==null)
-			return "";
-		Document doc=Jsoup.parseBodyFragment(text);
-
-		for(Element el:doc.getElementsByTag("a")){
-			if(el.hasClass("mention") && el.hasAttr("data-user-id")){
-				int uid=parseIntOrDefault(el.attr("data-user-id"), 0);
-				if(uid>0){
-					try{
-						User user=UserStorage.getById(uid);
-						if(user!=null){
-							el.attr("href", "/"+user.getFullUsername());
-							if(user instanceof ForeignUser){
-								el.attr("rel", "nofollow");
-							}
-							el.addClass("u-url");
-							Element parent=el.parent();
-							if(parent==null || !parent.tagName().equalsIgnoreCase("span")){
-								el.wrap("<span class=\"h-card\">");
-							}
-						}
-					}catch(SQLException ignore){}
-				}
-				if(forceTargetBlank){
-					el.attr("target", "_blank");
-				}
-			}else{
-				String href=el.attr("href");
-				try{
-					URI uri=new URI(href);
-					if(forceTargetBlank || (uri.isAbsolute() && !Config.isLocal(uri))){
-						el.attr("target", "_blank");
-						el.attr("rel", "noopener ugc");
-					}
-				}catch(URISyntaxException x){}
-			}
-		}
-
-		return doc.body().html();
-	}
-
-	public static String postprocessPostHTMLForActivityPub(String text){
-		Document doc=Jsoup.parseBodyFragment(text);
-
-		for(Element el:doc.getElementsByTag("a")){
-			el.removeAttr("data-user-id");
-		}
-
-		return doc.body().html();
-	}
-
-	public static String preprocessRemotePostMentions(String text, Map<Integer, User> users){
-		Document doc=Jsoup.parseBodyFragment(text);
-
-		for(Element link:doc.select("a.mention")){
-			URI href=URI.create(link.attr("href"));
-			boolean found=false;
-			for(User user:users.values()){
-				if(href.equals(user.url) || href.equals(user.activityPubID)){
-					link.attr("data-user-id", String.valueOf(user.id));
-					found=true;
-					break;
-				}
-			}
-			if(!found){
-				link.removeClass("mention");
-			}
-			Element parent=link.parent();
-			if(parent!=null && parent.tagName().equalsIgnoreCase("span"))
-				parent.unwrap();
-		}
-
-		return doc.body().html();
 	}
 
 	public static void ensureUserNotBlocked(User self, Actor target) throws SQLException{
@@ -908,21 +529,15 @@ public class Utils{
 		}).collect(Collectors.joining(";"));
 	}
 
-	public static String transliterate(String in){
-		if(in==null)
-			return null;
-		return unidecode.decode(in.trim()).replaceAll(Pattern.quote("[?]"), "");
-	}
-
 	public static boolean isURL(String in){
 		if(in==null)
 			return false;
-		Matcher matcher=URL_PATTERN.matcher(in);
+		Matcher matcher=TextProcessor.URL_PATTERN.matcher(in);
 		return matcher.find() && matcher.start()==0 && matcher.end()==in.length();
 	}
 
 	public static String normalizeURLDomain(String in){
-		Matcher matcher=URL_PATTERN.matcher(in);
+		Matcher matcher=TextProcessor.URL_PATTERN.matcher(in);
 		if(!matcher.find())
 			throw new IllegalStateException("use isURL() first");
 		String host=matcher.group(2);
@@ -936,7 +551,7 @@ public class Utils{
 	public static boolean isUsernameAndDomain(String in){
 		if(in==null)
 			return false;
-		Matcher matcher=USERNAME_DOMAIN_PATTERN.matcher(in);
+		Matcher matcher=TextProcessor.USERNAME_DOMAIN_PATTERN.matcher(in);
 		return matcher.find() && matcher.start()==0 && matcher.end()==in.length();
 	}
 
@@ -1059,30 +674,6 @@ public class Utils{
 			if(StringUtils.isEmpty(req.queryParams(param)))
 				throw new BadRequestException("Required parameter '"+param+"' not present");
 		}
-	}
-
-	public static String substituteLinks(String str, Map<String, Object> links){
-		Element root=Jsoup.parseBodyFragment(str).body();
-		for(String id:links.keySet()){
-			Element link=root.getElementById(id);
-			if(link==null)
-				continue;
-			link.removeAttr("id");
-			//noinspection unchecked
-			Map<String, Object> attrs=(Map<String, Object>) links.get(id);
-			for(String attr:attrs.keySet()){
-				Object value=attrs.get(attr);
-				if(attr.equals("_")){
-					link.tagName(value.toString());
-				}else if(value instanceof Boolean b)
-					link.attr(attr, b);
-				else if(value instanceof String s)
-					link.attr(attr, s);
-				else if(value!=null)
-					link.attr(attr, value.toString());
-			}
-		}
-		return root.html();
 	}
 
 	public static String getRequestPathAndQuery(Request req){
@@ -1293,11 +884,6 @@ public class Utils{
 			throw new UserErrorException("err_wrong_captcha");
 		if(!info.answer().equals(captcha) || System.currentTimeMillis()-info.generatedAt().toEpochMilli()<3000)
 			throw new UserErrorException("err_wrong_captcha");
-	}
-
-	public interface MentionCallback{
-		User resolveMention(String username, String domain);
-		User resolveMention(String uri);
 	}
 
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}

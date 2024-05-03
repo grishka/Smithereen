@@ -36,7 +36,6 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.Account;
 import smithereen.model.BirthdayReminder;
-import smithereen.model.EventReminder;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendRequest;
 import smithereen.model.FriendshipStatus;
@@ -52,6 +51,7 @@ import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public class UserStorage{
@@ -1074,18 +1074,18 @@ public class UserStorage{
 	}
 
 	static String getQSearchStringForUser(User user){
-		StringBuilder sb=new StringBuilder(Utils.transliterate(user.firstName));
+		StringBuilder sb=new StringBuilder(TextProcessor.transliterate(user.firstName));
 		if(user.lastName!=null){
 			sb.append(' ');
-			sb.append(Utils.transliterate(user.lastName));
+			sb.append(TextProcessor.transliterate(user.lastName));
 		}
 		if(user.middleName!=null){
 			sb.append(' ');
-			sb.append(Utils.transliterate(user.middleName));
+			sb.append(TextProcessor.transliterate(user.middleName));
 		}
 		if(user.maidenName!=null){
 			sb.append(' ');
-			sb.append(Utils.transliterate(user.maidenName));
+			sb.append(TextProcessor.transliterate(user.maidenName));
 		}
 		sb.append(' ');
 		sb.append(user.username);

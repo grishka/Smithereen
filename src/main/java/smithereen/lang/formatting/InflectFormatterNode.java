@@ -2,10 +2,10 @@ package smithereen.lang.formatting;
 
 import java.util.Map;
 
-import smithereen.Utils;
 import smithereen.model.User;
 import smithereen.lang.Inflector;
 import smithereen.lang.Lang;
+import smithereen.text.TextProcessor;
 
 public class InflectFormatterNode extends FormatterNode{
 	private final String id;
@@ -33,8 +33,8 @@ public class InflectFormatterNode extends FormatterNode{
 			buf.append("{").append(id).append(" has invalid map format}");
 			return;
 		}
-		String first=Utils.escapeHTML((String) map.get("first"));
-		String last=Utils.escapeHTML((String) map.get("last"));
+		String first=TextProcessor.escapeHTML((String) map.get("first"));
+		String last=TextProcessor.escapeHTML((String) map.get("last"));
 		User.Gender gender=(User.Gender) map.get("gender");
 		lang.inflected(buf, gender, first, last, _case);
 	}

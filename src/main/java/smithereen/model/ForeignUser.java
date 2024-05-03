@@ -24,6 +24,7 @@ import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.jsonld.JLD;
 import smithereen.storage.DatabaseUtils;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
@@ -155,7 +156,7 @@ public class ForeignUser extends User implements ForeignActor{
 			flags|=FLAG_SUPPORTS_FRIEND_REQS;
 		}
 		if(StringUtils.isNotEmpty(summary))
-			summary=Utils.sanitizeHTML(summary);
+			summary=TextProcessor.sanitizeHTML(summary);
 		wall=tryParseURL(optString(obj, "wall"));
 		if(wall==null)
 			wall=tryParseURL(optString(obj, "sm:wall"));

@@ -36,6 +36,7 @@ import smithereen.model.Group;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
+import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
@@ -140,7 +141,7 @@ public class SettingsRoutes{
 		String about=req.queryParams("about");
 		String aboutSource=about;
 		if(StringUtils.isNotEmpty(about))
-			about=preprocessPostHTML(about, null);
+			about=TextProcessor.preprocessPostHTML(about, null);
 		else
 			about=null;
 		User.Gender gender=enumValue(req.queryParamOrDefault("gender", "UNKNOWN"), User.Gender.class);
@@ -531,7 +532,7 @@ public class SettingsRoutes{
 			msg=lang(req).get(x.getMessage());
 		}
 		if(isAjax(req))
-			return new WebDeltaResponse(resp).show("invitesMessage").setContent("invitesMessage", escapeHTML(msg));
+			return new WebDeltaResponse(resp).show("invitesMessage").setContent("invitesMessage", TextProcessor.escapeHTML(msg));
 		req.session().attribute("invites.message", msg);
 		resp.redirect(back(req));
 		return "";

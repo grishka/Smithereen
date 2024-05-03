@@ -1,4 +1,4 @@
-package smithereen;
+package smithereen.text;
 
 import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Element;
@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import smithereen.util.UriBuilder;
-import smithereen.util.Whitelist;
 
 @SuppressWarnings("deprecation")
 public class MicroFormatAwareHTMLWhitelist extends Whitelist{

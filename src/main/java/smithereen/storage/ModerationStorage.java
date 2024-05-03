@@ -35,6 +35,7 @@ import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.IntPair;
+import smithereen.text.TextProcessor;
 import smithereen.util.InetAddressRange;
 import spark.utils.StringUtils;
 
@@ -285,7 +286,7 @@ public class ModerationStorage{
 
 	public static PaginatedList<AdminUserViewModel> getUsers(String q, Boolean localOnly, String emailDomain, InetAddressRange ipRange, int role, int offset, int count) throws SQLException{
 		if(StringUtils.isNotEmpty(q)){
-			q=Arrays.stream(Utils.transliterate(q).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("[ \t]+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
+			q=Arrays.stream(TextProcessor.transliterate(q).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("[ \t]+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
 		}
 		ArrayList<String> whereParts=new ArrayList<>();
 		ArrayList<Object> whereArgs=new ArrayList<>();

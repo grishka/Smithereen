@@ -2,7 +2,6 @@ package smithereen.routes;
 
 import com.google.gson.JsonObject;
 
-import org.eclipse.jetty.util.UrlEncoded;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,6 +87,7 @@ import smithereen.storage.SearchStorage;
 import smithereen.storage.UserStorage;
 import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.text.TextProcessor;
 import smithereen.util.BlurHash;
 import smithereen.util.CaptchaGenerator;
 import smithereen.util.JsonObjectBuilder;
@@ -438,7 +438,7 @@ public class SystemRoutes{
 				}
 			}
 		}else if(isUsernameAndDomain(query)){
-			Matcher matcher=Utils.USERNAME_DOMAIN_PATTERN.matcher(query);
+			Matcher matcher=TextProcessor.USERNAME_DOMAIN_PATTERN.matcher(query);
 			matcher.find();
 			String username=matcher.group(1);
 			String domain=matcher.group(2);
@@ -478,7 +478,7 @@ public class SystemRoutes{
 		Object obj=null;
 		URI uri=null;
 		Lang l=lang(req);
-		Matcher matcher=USERNAME_DOMAIN_PATTERN.matcher(_uri);
+		Matcher matcher=TextProcessor.USERNAME_DOMAIN_PATTERN.matcher(_uri);
 		if(matcher.find() && matcher.start()==0 && matcher.end()==_uri.length()){
 			String username=matcher.group(1);
 			String domain=matcher.group(2);
@@ -531,7 +531,7 @@ public class SystemRoutes{
 			String errMessage=l.get("remote_object_loading_error");
 			String exMessage=x.getMessage();
 			if(StringUtils.isNotEmpty(exMessage)){
-				errMessage+="<br><br>"+Utils.escapeHTML(exMessage);
+				errMessage+="<br><br>"+TextProcessor.escapeHTML(exMessage);
 			}
 			return new JsonObjectBuilder().add("error", errMessage).build();
 		}
@@ -696,7 +696,7 @@ public class SystemRoutes{
 				User postAuthor=ctx.getUsersController().getUserOrThrow(post.authorID);
 				actorForAvatar=postAuthor;
 				title=postAuthor.getCompleteName();
-				subtitle=truncateOnWordBoundary(post.text, 200);
+				subtitle=TextProcessor.truncateOnWordBoundary(post.text, 200);
 				boxTitle=l.get(post.getReplyLevel()>0 ? "report_title_comment" : "report_title_post");
 				textareaPlaceholder=l.get("report_placeholder_content");
 				titleText=l.get(post.getReplyLevel()>0 ? "report_text_comment" : "report_text_post");
@@ -730,7 +730,7 @@ public class SystemRoutes{
 				User user=ctx.getUsersController().getUserOrThrow(msg.senderID);
 				actorForAvatar=user;
 				title=user.getCompleteName();
-				subtitle=truncateOnWordBoundary(msg.text, 200);
+				subtitle=TextProcessor.truncateOnWordBoundary(msg.text, 200);
 				boxTitle=l.get("report_title_message");
 				titleText=l.get("report_text_message");
 				textareaPlaceholder=l.get("report_placeholder_content");

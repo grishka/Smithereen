@@ -12,13 +12,13 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import smithereen.Utils;
 import smithereen.model.Group;
 import smithereen.model.SearchResult;
 import smithereen.model.User;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.text.TextProcessor;
 
 public class SearchStorage{
 
@@ -45,7 +45,7 @@ public class SearchStorage{
 	}
 
 	public static List<SearchResult> search(String query, int selfID, int maxCount) throws SQLException{
-		query=Arrays.stream(Utils.transliterate(query).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("[ \t]+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
+		query=Arrays.stream(TextProcessor.transliterate(query).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("[ \t]+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			ArrayList<SearchResult> results=new ArrayList<>();
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();

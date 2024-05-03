@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
-import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
@@ -63,6 +62,7 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
 
@@ -92,7 +92,7 @@ public class WallController{
 				}
 			}
 			if(!mentionedUsers.isEmpty() && StringUtils.isNotEmpty(post.text)){
-				post.text=Utils.preprocessRemotePostMentions(post.text, mentionedUsers);
+				post.text=TextProcessor.preprocessRemotePostMentions(post.text, mentionedUsers);
 			}
 		}
 	}
@@ -148,7 +148,7 @@ public class WallController{
 
 			if(repost!=null){
 				// If we're reposting a repost, use the original post if it's an Announce or there's no comment
-				if(repost.isMastodonStyleRepost() || Utils.stripHTML(repost.text, false).trim().isEmpty()){
+				if(repost.isMastodonStyleRepost() || TextProcessor.stripHTML(repost.text, false).trim().isEmpty()){
 					repost=getPostOrThrow(repost.repostOf);
 				}
 				// Can't repost wall posts
@@ -277,7 +277,7 @@ public class WallController{
 	}
 
 	private String preparePostText(String textSource, final List<User> mentionedUsers, @Nullable Post parent) throws SQLException{
-		String text=preprocessPostHTML(textSource, new Utils.MentionCallback(){
+		String text=TextProcessor.preprocessPostHTML(textSource, new TextProcessor.MentionCallback(){
 			@Override
 			public User resolveMention(String username, String domain){
 				try{
@@ -328,9 +328,9 @@ public class WallController{
 		if(parent!=null){
 			// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
 			User parentAuthor=context.getUsersController().getUserOrThrow(parent.authorID);
-			if(parent.replyKey.size()>0 && text.startsWith("<p>"+escapeHTML(parentAuthor.getNameForReply())+",")){
-				text="<p><a href=\""+escapeHTML(parentAuthor.url.toString())+"\" class=\"mention\" data-user-id=\""+parentAuthor.id+"\">"
-						+escapeHTML(parentAuthor.getNameForReply())+"</a>"+text.substring(parentAuthor.getNameForReply().length()+3);
+			if(parent.replyKey.size()>0 && text.startsWith("<p>"+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+",")){
+				text="<p><a href=\""+TextProcessor.escapeHTML(parentAuthor.url.toString())+"\" class=\"mention\" data-user-id=\""+parentAuthor.id+"\">"
+						+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+"</a>"+text.substring(parentAuthor.getNameForReply().length()+3);
 			}
 			if(!mentionedUsers.contains(parentAuthor))
 				mentionedUsers.add(parentAuthor);

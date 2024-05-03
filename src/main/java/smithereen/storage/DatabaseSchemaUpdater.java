@@ -33,6 +33,7 @@ import smithereen.model.media.MediaFileType;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.text.TextProcessor;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 
@@ -208,18 +209,18 @@ public class DatabaseSchemaUpdater{
 						String mdname=res.getString("maiden_name");
 						String uname=res.getString("username");
 						String domain=res.getString("domain");
-						StringBuilder sb=new StringBuilder(Utils.transliterate(fname));
+						StringBuilder sb=new StringBuilder(TextProcessor.transliterate(fname));
 						if(lname!=null){
 							sb.append(' ');
-							sb.append(Utils.transliterate(lname));
+							sb.append(TextProcessor.transliterate(lname));
 						}
 						if(mname!=null){
 							sb.append(' ');
-							sb.append(Utils.transliterate(mname));
+							sb.append(TextProcessor.transliterate(mname));
 						}
 						if(mdname!=null){
 							sb.append(' ');
-							sb.append(Utils.transliterate(mdname));
+							sb.append(TextProcessor.transliterate(mdname));
 						}
 						sb.append(' ');
 						sb.append(uname);
@@ -235,7 +236,7 @@ public class DatabaseSchemaUpdater{
 				try(ResultSet res=conn.createStatement().executeQuery("SELECT id, name, username, domain FROM groups")){
 					PreparedStatement stmt=conn.prepareStatement("INSERT INTO qsearch_index (string, group_id) VALUES (?, ?)");
 					while(res.next()){
-						String s=Utils.transliterate(res.getString("name"))+" "+res.getString("username");
+						String s=TextProcessor.transliterate(res.getString("name"))+" "+res.getString("username");
 						String domain=res.getString("domain");
 						if(domain!=null)
 							s+=" "+domain;

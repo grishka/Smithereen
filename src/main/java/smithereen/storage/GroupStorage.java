@@ -50,6 +50,7 @@ import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.IntPair;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public class GroupStorage{
@@ -111,7 +112,7 @@ public class GroupStorage{
 
 				new SQLQueryBuilder(conn)
 						.insertInto("qsearch_index")
-						.value("string", Utils.transliterate(name)+" "+username)
+						.value("string", TextProcessor.transliterate(name)+" "+username)
 						.value("group_id", id)
 						.executeNoResult();
 			}catch(Exception x){
@@ -901,7 +902,7 @@ public class GroupStorage{
 	}
 
 	static String getQSearchStringForGroup(Group group){
-		String s=Utils.transliterate(group.name)+" "+group.username;
+		String s=TextProcessor.transliterate(group.name)+" "+group.username;
 		if(group.domain!=null)
 			s+=" "+group.domain;
 		return s;

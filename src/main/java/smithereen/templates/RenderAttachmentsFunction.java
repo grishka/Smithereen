@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.Group;
 import smithereen.model.SizedImage;
@@ -31,6 +30,7 @@ import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.attachments.SizedAttachment;
 import smithereen.model.attachments.VideoAttachment;
 import smithereen.lang.Lang;
+import smithereen.text.TextProcessor;
 import smithereen.util.BlurHash;
 import spark.utils.StringUtils;
 
@@ -164,7 +164,7 @@ public class RenderAttachmentsFunction implements Function{
 			if(overrideLinks!=null){
 				attrs="target=\"_blank\"";
 			}else{
-				attrs="data-box-title=\""+Utils.escapeHTML(ga.boxTitle)+"\" onclick=\"return showGraffitiBox(this)\"";
+				attrs="data-box-title=\""+TextProcessor.escapeHTML(ga.boxTitle)+"\" onclick=\"return showGraffitiBox(this)\"";
 			}
 			lines.add("<a class=\"graffiti\" href=\""+href+"\" "+attrs+"><img src=\""+full+"\" width=\""+GraffitiAttachment.WIDTH+"\" height=\""+GraffitiAttachment.HEIGHT+"\"/></a>");
 		}else{

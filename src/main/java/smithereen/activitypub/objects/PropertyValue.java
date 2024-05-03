@@ -2,10 +2,10 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 
-import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.jsonld.JLD;
+import smithereen.text.TextProcessor;
 
 public class PropertyValue extends ActivityPubObject{
 
@@ -26,7 +26,7 @@ public class PropertyValue extends ActivityPubObject{
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
-		value=Utils.sanitizeHTML(obj.get("value").getAsString());
+		value=TextProcessor.sanitizeHTML(obj.get("value").getAsString());
 		return this;
 	}
 

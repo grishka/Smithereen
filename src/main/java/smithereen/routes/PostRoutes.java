@@ -52,7 +52,7 @@ import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
-import smithereen.util.JsonObjectBuilder;
+import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import spark.Request;
 import spark.Response;
@@ -405,7 +405,7 @@ public class PostRoutes{
 			meta.put("og:author", author.url.toString());
 			meta.put("profile:username", author.username+"@"+Config.domain);
 			if(StringUtils.isNotEmpty(post.post.text)){
-				String text=Utils.truncateOnWordBoundary(post.post.text, 250);
+				String text=TextProcessor.truncateOnWordBoundary(post.post.text, 250);
 				meta.put("og:description", text);
 				moreMeta.put("description", text);
 			}

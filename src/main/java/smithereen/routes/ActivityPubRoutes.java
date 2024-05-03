@@ -121,6 +121,7 @@ import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.StatsType;
+import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.exceptions.BadRequestException;
@@ -552,7 +553,7 @@ public class ActivityPubRoutes{
 				return x.toString();
 			}
 		}
-		return "Referer: "+Utils.sanitizeHTML(ref)+"<hr/>URL: "+Utils.sanitizeHTML(req.queryParams("uri"))+"<hr/>Object:<br/><pre>"+Utils.sanitizeHTML(remoteObj.toString())+"</pre>";
+		return "Referer: "+TextProcessor.sanitizeHTML(ref)+"<hr/>URL: "+TextProcessor.sanitizeHTML(req.queryParams("uri"))+"<hr/>Object:<br/><pre>"+TextProcessor.sanitizeHTML(remoteObj.toString())+"</pre>";
 	}
 
 	public static Object remoteFollow(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
@@ -870,11 +871,11 @@ public class ActivityPubRoutes{
 				LOG.warn("Rejected incoming {}: {}", getActivityType(activity), x.toString());
 			}
 			resp.status(403);
-			return escapeHTML(x.getMessage());
+			return TextProcessor.escapeHTML(x.getMessage());
 		}catch(BadRequestException x){
 			LOG.debug("Bad request", x);
 			resp.status(400);
-			return escapeHTML(x.getMessage());
+			return TextProcessor.escapeHTML(x.getMessage());
 		}/*catch(Exception x){
 			LOG.warn("Exception while processing an incoming activity", x);
 			throw new BadRequestException(x.toString());

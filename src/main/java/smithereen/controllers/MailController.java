@@ -9,8 +9,6 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,13 +38,12 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.storage.MailStorage;
-import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
+import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
@@ -95,7 +92,7 @@ public class MailController{
 			if(to.isEmpty())
 				throw new UserActionNotAllowedException();
 			if(StringUtils.isNotEmpty(text)){
-				text=Utils.preprocessPostHTML(text, null);
+				text=TextProcessor.preprocessPostHTML(text, null);
 			}
 			int maxAttachments=10;
 			String attachments=null;

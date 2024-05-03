@@ -42,7 +42,8 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
-import smithereen.util.Whitelist;
+import smithereen.text.TextProcessor;
+import smithereen.text.Whitelist;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -773,7 +774,7 @@ public class GroupsRoutes{
 		if(msg==null)
 			msg=lang(req).get("invitation_sent");
 		if(isAjax(req)){
-			return new WebDeltaResponse(resp).setContent("frowActions"+user.id, "<div class=\"settingsMessage\">"+escapeHTML(msg)+"</div>");
+			return new WebDeltaResponse(resp).setContent("frowActions"+user.id, "<div class=\"settingsMessage\">"+TextProcessor.escapeHTML(msg)+"</div>");
 		}
 		return "";
 	}

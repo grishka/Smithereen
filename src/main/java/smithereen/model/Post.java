@@ -27,6 +27,7 @@ import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.PostStorage;
+import smithereen.text.TextProcessor;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
@@ -181,7 +182,7 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 			return contentWarning;
 		}
 		if(StringUtils.isNotEmpty(text)){
-			return Utils.truncateOnWordBoundary(text, maxLen);
+			return TextProcessor.truncateOnWordBoundary(text, maxLen);
 		}
 		return "";
 	}

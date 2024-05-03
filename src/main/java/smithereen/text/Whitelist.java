@@ -1,4 +1,4 @@
-package smithereen.util;
+package smithereen.text;
 
 import org.jsoup.safety.Safelist;
 
