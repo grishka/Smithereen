@@ -1,5 +1,11 @@
 package smithereen.text;
 
+import org.commonmark.Extension;
+import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension;
+import org.commonmark.ext.ins.InsExtension;
+import org.commonmark.node.BlockQuote;
+import org.commonmark.node.FencedCodeBlock;
+import org.commonmark.renderer.html.HtmlRenderer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
@@ -17,8 +23,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +41,7 @@ import spark.utils.StringUtils;
 
 public class TextProcessor{
 	private static final Whitelist HTML_SANITIZER=new MicroFormatAwareHTMLWhitelist();
+	private static final Whitelist HTML_SANITIZER_MARKDOWN=new MicroFormatAwareHTMLWhitelist().addProtocols("a", "href", "acct");
 	private static final Pattern POST_LINE_BREAKS=Pattern.compile("\n+");
 	// https://unicode.org/faq/idn.html#33, mostly
 	private static final String IDN_VALID_CHAR_REGEX="[[\\u00B7\\u0375\\u05F3\\u05F4\\u30FB\\u002D\\u06FD\\u06FE\\u0F0B\\u3007\\u00DF\\u03C2\\u200C\\u200D][^\\p{IsControl}\\p{IsWhite_Space}\\p{gc=S}\\p{IsPunctuation}\\p{gc=Nl}\\p{gc=No}\\p{gc=Me}\\p{blk=Combining_Diacritical_Marks}\\p{blk=Musical_Symbols}\\p{block=Ancient_Greek_Musical_Notation}\\u0640\\u07FA\\u302E\\u302F\\u3031-\\u3035\\u303B]]";
@@ -41,7 +50,18 @@ public class TextProcessor{
 	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@("+IDN_DOMAIN_REGEX+")");
 	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@("+IDN_DOMAIN_REGEX+"))?");
 	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))*)*)(\\?(?:\\w+(?:=(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
-	private static Unidecode unidecode=Unidecode.toAscii();
+	private static final Unidecode unidecode=Unidecode.toAscii();
+
+	private static final List<Extension> markdownExtensions=List.of(StrikethroughExtension.create(), InsExtension.create());
+	private static final org.commonmark.parser.Parser markdownParser=new org.commonmark.parser.Parser.Builder()
+			.enabledBlockTypes(Set.of(BlockQuote.class, FencedCodeBlock.class))
+			.extensions(markdownExtensions)
+			.build();
+	private static final HtmlRenderer markdownHtmlRenderer=new HtmlRenderer.Builder()
+			.softbreak("<br/>")
+			.escapeHtml(true)
+			.extensions(markdownExtensions)
+			.build();
 
 	public static String sanitizeHTML(String src){
 		return sanitizeHTML(src, null);
@@ -56,6 +76,12 @@ public class TextProcessor{
 			@Override
 			public void head(Node node, int depth){
 				if(node instanceof Element el){
+					switch(el.tagName()){
+						case "em" -> el.tagName("i");
+						case "strong" -> el.tagName("b");
+						case "ins" -> el.tagName("u");
+						case "del" -> el.tagName("s");
+					}
 					if("ul".equals(el.tagName()) || "ol".equals(el.tagName())){
 						listStack.push(new ListNodeInfo("ol".equals(el.tagName()), el));
 						el.tagName("p");
@@ -72,9 +98,6 @@ public class TextProcessor{
 						if(el.nextSibling()!=null){
 							el.appendChild(doc.createElement("br"));
 						}
-					}else if("blockquote".equals(el.tagName())){
-						el.tagName("p");
-						el.prependText("> ");
 					}
 				}
 			}
@@ -145,7 +168,18 @@ public class TextProcessor{
 				return;
 			}else if(el.tagName().equalsIgnoreCase("a")){
 				if(el.hasClass("mention") && !el.hasAttr("data-user-id")){
-					User user=mentionCallback==null ? null : mentionCallback.resolveMention(el.attr("href"));
+					User user;
+					if(mentionCallback!=null){
+						String href=el.attr("href");
+						if(href.startsWith("acct:")){
+							String[] parts=href.substring(5).split("@");
+							user=mentionCallback.resolveMention(parts[0], parts[1]);
+						}else{
+							user=mentionCallback.resolveMention(href);
+						}
+					}else{
+						user=null;
+					}
 					if(user==null){
 						el.removeClass("mention");
 					}else{
@@ -233,87 +267,143 @@ public class TextProcessor{
 	}
 
 	public static String preprocessPostHTML(String text, MentionCallback mentionCallback){
+		return preprocessPostText(text, mentionCallback, FormattedTextFormat.HTML);
+	}
+
+	public static String preprocessPostText(String text, MentionCallback mentionCallback, FormattedTextFormat format){
 		text=text.trim().replace("\r", "");
 
+		Whitelist whitelist;
+		if(format==FormattedTextFormat.MARKDOWN){
+			text=markdownHtmlRenderer.render(markdownParser.parse(text));
+			whitelist=HTML_SANITIZER_MARKDOWN;
+		}else{
+			whitelist=HTML_SANITIZER;
+		}
+
 		Document doc=Jsoup.parseBodyFragment(text);
-		doc=new Cleaner(HTML_SANITIZER).clean(doc);
-		Element body=doc.body();
-		Document newDoc=new Document("");
-		Element newBody=newDoc.body();
-		LinkedList<Element> stack=new LinkedList<>(), tmpStack=new LinkedList<>();
-		stack.add(newBody);
+		Element newBody;
+		if(format==FormattedTextFormat.HTML){
+			doc=new Cleaner(whitelist).clean(doc);
+			Element body=doc.body();
+			Document newDoc=new Document("");
+			newBody=newDoc.body();
+			LinkedList<Element> stack=new LinkedList<>(), tmpStack=new LinkedList<>();
+			stack.add(newBody);
 
-		body.traverse(new NodeVisitor(){
+			body.traverse(new NodeVisitor(){
 
-			@Override
-			public void head(@NotNull Node node, int depth){
-				if(depth==0)
-					return;
+				@Override
+				public void head(@NotNull Node node, int depth){
+					if(depth==0)
+						return;
+					if(node instanceof Element el){
+						String tagName=el.tagName();
+						Element newEl=newDoc.createElement(tagName);
+						for(Attribute attr: el.attributes().asList()){
+							newEl.attr(attr.getKey(), attr.getValue());
+						}
+						if(depth==1){
+							if(!tagName.equalsIgnoreCase("p") && !tagName.equalsIgnoreCase("pre") && !tagName.equals("blockquote")){
+								if(stack.size()==1){
+									Element p=newDoc.createElement("p");
+									newBody.appendChild(p);
+									stack.push(p);
+								}
+							}else if(stack.size()>1){
+								stack.pop();
+							}
+						}
+						Objects.requireNonNull(stack.peek()).appendChild(newEl);
+						stack.push(newEl);
+					}else if(node instanceof TextNode tn){
+						if(depth==1 && stack.size()==1){
+							Element p=newDoc.createElement("p");
+							newBody.appendChild(p);
+							stack.push(p);
+						}
+						String text=tn.getWholeText();
+						if(stack.get(stack.size()-2).tagName().equalsIgnoreCase("pre")){
+							Objects.requireNonNull(stack.peek()).appendText(text);
+						}else{
+							Matcher matcher=POST_LINE_BREAKS.matcher(text);
+							int lastPos=0;
+							while(matcher.find()){
+								Objects.requireNonNull(stack.peek()).appendText(text.substring(lastPos, matcher.start()));
+								lastPos=matcher.end();
+								int length=matcher.end()-matcher.start();
+								if(length==1){
+									// Don't add a <br> as last element inside <p>
+									Element parent=Objects.requireNonNull(stack.peek());
+									if(!parent.tagName().equalsIgnoreCase("p") || lastPos<text.length())
+										parent.appendChild(newDoc.createElement("br"));
+								}else{
+									while(stack.size()>1){
+										tmpStack.push(stack.pop().shallowClone());
+									}
+									while(!tmpStack.isEmpty()){
+										Element el=tmpStack.pop();
+										Objects.requireNonNull(stack.peek()).appendChild(el);
+										stack.push(el);
+									}
+								}
+							}
+							Objects.requireNonNull(stack.peek()).appendText(text.substring(lastPos));
+						}
+					}
+				}
+
+				@Override
+				public void tail(@NotNull Node node, int depth){
+					if(depth>0 && node instanceof Element el){
+						Element stackEl=stack.pop();
+						if(!el.tagName().equals(stackEl.tagName())) // sanity check
+							throw new IllegalStateException("Expected tag "+stackEl.tagName()+", got "+el.tagName());
+					}
+				}
+			});
+		}else{
+			Element body=doc.body();
+			body.traverse((node, depth)->{
 				if(node instanceof Element el){
-					Element newEl=newDoc.createElement(el.tagName());
-					for(Attribute attr:el.attributes().asList()){
-						newEl.attr(attr.getKey(), attr.getValue());
-					}
 					String tagName=el.tagName();
-					if(depth==1){
-						if(!tagName.equalsIgnoreCase("p") && !tagName.equalsIgnoreCase("pre")){
-							if(stack.size()==1){
-								Element p=newDoc.createElement("p");
-								newBody.appendChild(p);
-								stack.push(p);
-							}
-						}else if(stack.size()>1){
-							stack.pop();
+					switch(tagName){
+						case "em" -> el.tagName("i");
+						case "strong" -> el.tagName("b");
+						case "ins" -> el.tagName("u");
+						case "del" -> el.tagName("s");
+						case "img" -> {
+							String src=el.attr("src");
+							String alt=el.attr("alt");
+							el.tagName("a");
+							el.removeAttr("src");
+							el.removeAttr("alt");
+							el.attr("href", src);
+							if(StringUtils.isNotEmpty(alt))
+								el.text(alt);
+							else
+								el.text(src);
 						}
-					}
-					Objects.requireNonNull(stack.peek()).appendChild(newEl);
-					stack.push(newEl);
-				}else if(node instanceof TextNode tn){
-					if(depth==1 && stack.size()==1){
-						Element p=newDoc.createElement("p");
-						newBody.appendChild(p);
-						stack.push(p);
-					}
-					String text=tn.getWholeText();
-					if(stack.get(stack.size()-2).tagName().equalsIgnoreCase("pre")){
-						Objects.requireNonNull(stack.peek()).appendText(text);
-					}else{
-						Matcher matcher=POST_LINE_BREAKS.matcher(text);
-						int lastPos=0;
-						while(matcher.find()){
-							Objects.requireNonNull(stack.peek()).appendText(text.substring(lastPos, matcher.start()));
-							lastPos=matcher.end();
-							int length=matcher.end()-matcher.start();
-							if(length==1){
-								// Don't add a <br> as last element inside <p>
-								Element parent=Objects.requireNonNull(stack.peek());
-								if(!parent.tagName().equalsIgnoreCase("p") || lastPos<text.length())
-									parent.appendChild(newDoc.createElement("br"));
-							}else{
-								while(stack.size()>1){
-									tmpStack.push(stack.pop().shallowClone());
-								}
-								while(tmpStack.size()>0){
-									Element el=tmpStack.pop();
-									Objects.requireNonNull(stack.peek()).appendChild(el);
-									stack.push(el);
+						case "a" -> {
+							String href=el.attr("href");
+							if(href.startsWith("@")){ // Mentions with custom text, e.g. "oh hi [Mark](@zuck@threads.net)"
+								Matcher matcher=MENTION_PATTERN.matcher(href);
+								if(matcher.find() && matcher.start()==0 && matcher.end()==href.length()){
+									String username=matcher.group(1), domain=matcher.group(2);
+									String newHref="acct:"+username;
+									if(StringUtils.isNotEmpty(domain))
+										newHref+="@"+domain;
+									el.attr("href", newHref);
+									el.addClass("mention");
 								}
 							}
 						}
-						Objects.requireNonNull(stack.peek()).appendText(text.substring(lastPos));
-					}
+					};
 				}
-			}
-
-			@Override
-			public void tail(@NotNull Node node, int depth){
-				if(depth>0 && node instanceof Element el){
-					Element stackEl=stack.pop();
-					if(!el.tagName().equals(stackEl.tagName())) // sanity check
-						throw new IllegalStateException();
-				}
-			}
-		});
+			});
+			doc=new Cleaner(whitelist).clean(doc);
+			newBody=doc.body();
+		}
 
 		makeLinksAndMentions(newBody, mentionCallback);
 

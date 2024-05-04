@@ -281,6 +281,7 @@ public class SmithereenApplication{
 			getLoggedIn("/privacy/mobileEditSetting", SettingsRoutes::mobileEditPrivacy);
 			getLoggedIn("/deactivateAccountForm", SettingsRoutes::deactivateAccountForm);
 			postWithCSRF("/deactivateAccount", SettingsRoutes::deactivateAccount);
+			postWithCSRF("/updateAppearanceBehavior", SettingsRoutes::saveAppearanceBehaviorSettings);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);

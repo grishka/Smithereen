@@ -99,10 +99,15 @@ public class RenderedTemplateResponse{
 	}
 
 	public RenderedTemplateResponse addMessage(Request req, String messageKeyInSession){
+		addMessage(req, messageKeyInSession, "message");
+		return this;
+	}
+
+	public RenderedTemplateResponse addMessage(Request req, String messageKeyInSession, String templateKey){
 		String msg=req.session().attribute(messageKeyInSession);
 		if(StringUtils.isNotEmpty(msg)){
 			req.session().removeAttribute(messageKeyInSession);
-			with("message", msg);
+			with(templateKey, msg);
 		}
 		return this;
 	}

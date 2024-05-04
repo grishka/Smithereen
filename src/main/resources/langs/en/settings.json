@@ -159,5 +159,8 @@
   "settings_deactivate_account": "You can <a id=\"deactivate\">delete your account</a>.",
   "settings_reactivate_confirm": "Enter your password to reinstate your account and cancel its deletion.",
   "settings_reactivate_title": "Restore account",
-  "err_reg_email_domain_not_allowed": "Signups with e-mail addresses from this provider are not allowed on this server"
+  "err_reg_email_domain_not_allowed": "Signups with e-mail addresses from this provider are not allowed on this server",
+  "settings_appearance_and_behavior": "Appearance & behavior",
+  "settings_text_formatting": "Text formatting",
+  "settings_saved": "Settings were saved"
 }

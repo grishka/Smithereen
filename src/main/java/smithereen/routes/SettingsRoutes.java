@@ -36,6 +36,7 @@ import smithereen.model.Group;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
+import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
@@ -72,25 +73,13 @@ public class SettingsRoutes{
 	public static Object settings(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings", req);
 		model.with("languages", Lang.list).with("selectedLang", Utils.lang(req));
-		Session s=req.session();
-		if(s.attribute("settings.passwordMessage")!=null){
-			model.with("passwordMessage", s.attribute("settings.passwordMessage"));
-			s.removeAttribute("settings.passwordMessage");
-		}
-		if(s.attribute("settings.inviteMessage")!=null){
-			model.with("inviteMessage", s.attribute("settings.inviteMessage"));
-			s.removeAttribute("settings.inviteMessage");
-		}
-		if(s.attribute("settings.profilePicMessage")!=null){
-			model.with("profilePicMessage", s.attribute("settings.profilePicMessage"));
-			s.removeAttribute("settings.profilePicMessage");
-		}
-		if(s.attribute("settings.emailMessage")!=null){
-			model.with("emailMessage", s.attribute("settings.emailMessage"));
-			s.removeAttribute("settings.emailMessage");
-		}
+		model.addMessage(req, "settings.passwordMessage", "passwordMessage")
+				.addMessage(req, "settings.profilePicMessage", "profilePicMessage")
+				.addMessage(req, "settings.emailMessage", "emailMessage")
+				.addMessage(req, "settings.appearanceBehaviorMessage", "appearanceBehaviorMessage");
 		model.with("activationInfo", self.activationInfo);
 		model.with("currentEmailMasked", self.getCurrentEmailMasked());
+		model.with("textFormat", self.prefs.textFormat);
 		model.with("title", lang(req).get("settings"));
 		return model;
 	}
@@ -668,5 +657,21 @@ public class SettingsRoutes{
 		}
 		ctx.getUsersController().selfDeactivateAccount(self);
 		return ajaxAwareRedirect(req, resp, "/feed");
+	}
+
+	public static Object saveAppearanceBehaviorSettings(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "textFormat");
+		self.prefs.textFormat=enumValue(req.queryParams("textFormat"), FormattedTextFormat.class);
+		try{
+			SessionStorage.updatePreferences(self.id, self.prefs);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		String msg=lang(req).get("settings_saved");
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).show("formMessage_appearanceBehavior").setContent("formMessage_appearanceBehavior", msg);
+		req.session().attribute("settings.appearanceBehaviorMessage", msg);
+		resp.redirect(back(req));
+		return "";
 	}
 }

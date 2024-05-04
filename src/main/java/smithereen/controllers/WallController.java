@@ -42,6 +42,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.PostSource;
 import smithereen.model.SessionInfo;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
@@ -62,6 +63,7 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
@@ -109,7 +111,7 @@ public class WallController{
 	 * @return The newly created post.
 	 */
 	public Post createWallPost(@NotNull User author, int authorAccountID, @NotNull Actor wallOwner, int inReplyToID,
-							   @NotNull String textSource, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
+							   @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
 							   @Nullable Poll poll, @Nullable Post repost){
 		try{
 			if(wallOwner instanceof Group group){
@@ -168,8 +170,8 @@ public class WallController{
 					ensureUserNotBlocked(author, context.getUsersController().getUserOrThrow(repost.ownerID));
 			}
 
-			final ArrayList<User> mentionedUsers=new ArrayList<>();
-			String text=preparePostText(textSource, mentionedUsers, parent);
+			final HashSet<User> mentionedUsers=new HashSet<>();
+			String text=preparePostText(textSource, mentionedUsers, parent, sourceFormat);
 			int userID=author.id;
 			int postID;
 			int pollID=0;
@@ -244,7 +246,7 @@ public class WallController{
 			}else{
 				replyKey=null;
 			}
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0);
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0);
 			if(ownerUserID==userID && replyKey==null){
 				context.getNewsfeedController().putFriendsFeedEntry(author, postID, NewsfeedEntry.Type.POST);
 			}
@@ -276,21 +278,20 @@ public class WallController{
 		}
 	}
 
-	private String preparePostText(String textSource, final List<User> mentionedUsers, @Nullable Post parent) throws SQLException{
-		String text=TextProcessor.preprocessPostHTML(textSource, new TextProcessor.MentionCallback(){
+	private String preparePostText(String textSource, final Set<User> mentionedUsers, @Nullable Post parent, @NotNull FormattedTextFormat format) throws SQLException{
+		String text=TextProcessor.preprocessPostText(textSource, new TextProcessor.MentionCallback(){
 			@Override
 			public User resolveMention(String username, String domain){
 				try{
 					if(domain==null){
 						User user=UserStorage.getByUsername(username);
-						if(user!=null && !mentionedUsers.contains(user))
+						if(user!=null)
 							mentionedUsers.add(user);
 						return user;
 					}
 					User user=UserStorage.getByUsername(username+"@"+domain);
 					if(user!=null){
-						if(!mentionedUsers.contains(user))
-							mentionedUsers.add(user);
+						mentionedUsers.add(user);
 						return user;
 					}
 					URI uri=ActivityPub.resolveUsername(username, domain);
@@ -314,8 +315,7 @@ public class WallController{
 					}
 					User user=UserStorage.getUserByActivityPubID(u);
 					if(user!=null){
-						if(!mentionedUsers.contains(user))
-							mentionedUsers.add(user);
+						mentionedUsers.add(user);
 						return user;
 					}
 				}catch(Exception x){
@@ -323,17 +323,16 @@ public class WallController{
 				}
 				return null;
 			}
-		});
+		}, format);
 
 		if(parent!=null){
 			// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
 			User parentAuthor=context.getUsersController().getUserOrThrow(parent.authorID);
-			if(parent.replyKey.size()>0 && text.startsWith("<p>"+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+",")){
+			if(!parent.replyKey.isEmpty() && text.startsWith("<p>"+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+",")){
 				text="<p><a href=\""+TextProcessor.escapeHTML(parentAuthor.url.toString())+"\" class=\"mention\" data-user-id=\""+parentAuthor.id+"\">"
 						+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+"</a>"+text.substring(parentAuthor.getNameForReply().length()+3);
 			}
-			if(!mentionedUsers.contains(parentAuthor))
-				mentionedUsers.add(parentAuthor);
+			mentionedUsers.add(parentAuthor);
 		}
 
 		return text;
@@ -380,7 +379,7 @@ public class WallController{
 	}
 
 	@NotNull
-	public Post editPost(@NotNull User self, @NotNull UserPermissions permissions, int id, @NotNull String textSource, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @Nullable Poll poll){
+	public Post editPost(@NotNull User self, @NotNull UserPermissions permissions, int id, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @Nullable Poll poll){
 		try{
 			Post post=getPostOrThrow(id);
 			if(!permissions.canEditPost(post))
@@ -389,9 +388,9 @@ public class WallController{
 			if(textSource.length()==0 && attachmentIDs.isEmpty() && poll==null)
 				throw new BadRequestException("Empty post");
 
-			ArrayList<User> mentionedUsers=new ArrayList<>();
+			HashSet<User> mentionedUsers=new HashSet<>();
 			Post parent=post.getReplyLevel()>0 ? getPostOrThrow(post.getReplyChainElement(post.getReplyLevel()-1)) : null;
-			String text=preparePostText(textSource, mentionedUsers, parent);
+			String text=preparePostText(textSource, mentionedUsers, parent, sourceFormat);
 
 			int pollID=0;
 			if(poll!=null && !Objects.equals(post.poll, poll)){
@@ -634,7 +633,7 @@ public class WallController{
 		}
 	}
 
-	public String getPostSource(Post post){
+	public PostSource getPostSource(Post post){
 		try{
 			return PostStorage.getPostSource(post.id);
 		}catch(SQLException x){

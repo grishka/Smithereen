@@ -31,6 +31,7 @@
 		<input type="hidden" name="repost" value="{{ repostedPost.id }}"/>
 		{% endif %}
 		<input type="hidden" name="formID" value="{{id}}"/>
+		{% if sourceFormat is not null %}<input type="hidden" name="format" value="{{ sourceFormat }}"/>{% endif %}
 		<div id="postFormAttachments_{{id}}">
 			{%set attachIDs=""%}
 			{%for attachment in draftAttachments%}

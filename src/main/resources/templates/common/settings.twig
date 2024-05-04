@@ -3,6 +3,16 @@
 {%block content%}
 {% include "settings_tabbar" with {'tab': 'general'} %}
 <div class="singleColumn gray narrowForms">
+<form action="/settings/updateAppearanceBehavior?csrf={{ csrf }}" method="post" data-ajax>
+	<h2>{{ L('settings_appearance_and_behavior') }}</h2>
+	{{ form.start("appearanceBehavior", appearanceBehaviorMessage) }}
+		{{ form.radioGroup('textFormat', L('settings_text_formatting'), [
+			{'value': 'MARKDOWN', 'label': "Markdown", 'selected': textFormat=='MARKDOWN'},
+			{'value': 'HTML', 'label': "HTML", 'selected': textFormat=='HTML'}
+		]) }}
+		{{ form.footer(L('save')) }}
+	{{ form.end() }}
+</form>
 <form action="/settings/updatePassword?csrf={{ csrf }}" method="post" data-ajax>
 	<h2>{{L('change_password')}}</h2>
 	{{ form.start("changePassword", passwordMessage) }}

@@ -159,5 +159,8 @@
   "settings_deactivate_account": "Вы можете <a id=\"deactivate\">удалить свою страницу</a>.",
   "settings_reactivate_confirm": "Введите ваш пароль для восстановления своей страницы и отмены её удаления.",
   "settings_reactivate_title": "Восстановление страницы",
-  "err_reg_email_domain_not_allowed": "Регистрации с e-mail этого почтового сервиса запрещены на этом сервере"
+  "err_reg_email_domain_not_allowed": "Регистрации с e-mail этого почтового сервиса запрещены на этом сервере",
+  "settings_appearance_and_behavior": "Оформление и поведение",
+  "settings_text_formatting": "Форматирование текста",
+  "settings_saved": "Настройки сохранены"
 }

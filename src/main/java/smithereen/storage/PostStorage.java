@@ -39,7 +39,9 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.PostSource;
 import smithereen.storage.utils.Pair;
+import smithereen.text.FormattedTextFormat;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
@@ -55,7 +57,7 @@ import spark.utils.StringUtils;
 public class PostStorage{
 	private static final Logger LOG=LoggerFactory.getLogger(PostStorage.class);
 
-	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, List<Integer> replyKey, List<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf) throws SQLException{
+	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, FormattedTextFormat sourceFormat, List<Integer> replyKey, Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf) throws SQLException{
 		if(ownerUserID<=0 && ownerGroupID<=0)
 			throw new IllegalArgumentException("Need either ownerUserID or ownerGroupID");
 
@@ -72,11 +74,11 @@ public class PostStorage{
 					.value("content_warning", contentWarning)
 					.value("poll_id", pollID>0 ? pollID : null)
 					.value("source", textSource)
-					.value("source_format", 0)
+					.value("source_format", sourceFormat)
 					.value("repost_of", repostOf!=0 ? repostOf : null)
 					.executeAndGetID();
 
-			if(replyKey!=null && replyKey.size()>0){
+			if(replyKey!=null && !replyKey.isEmpty()){
 				new SQLQueryBuilder(conn)
 						.update("wall_posts")
 						.valueExpr("reply_count", "reply_count+1")
@@ -90,7 +92,7 @@ public class PostStorage{
 		}
 	}
 
-	public static void updateWallPost(int id, String text, String textSource, List<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
+	public static void updateWallPost(int id, String text, String textSource, Set<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
 		new SQLQueryBuilder()
 				.update("wall_posts")
 				.value("text", text)
@@ -1069,12 +1071,12 @@ public class PostStorage{
 				.executeAndGetInt();
 	}
 
-	public static String getPostSource(int id) throws SQLException{
+	public static PostSource getPostSource(int id) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("wall_posts")
-				.columns("source")
+				.columns("source", "source_format")
 				.where("id=?", id)
-				.executeAndGetSingleObject(r->r.getString(1));
+				.executeAndGetSingleObject(r->new PostSource(r.getString(1), FormattedTextFormat.values()[r.getInt(2)]));
 	}
 
 	public static int getUserPostCount(int id) throws SQLException{

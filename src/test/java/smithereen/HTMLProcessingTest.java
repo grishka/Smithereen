@@ -17,8 +17,9 @@ public class HTMLProcessingTest{
 	@Test
 	public void testFormattingTagsAreKept(){
 		String in="<p>Allowed tags include: <i>italics</i>, <b>bold</b>, <u>underline</u>, <s>strikethrough</s>, and <code>code</code>.</p><p><strong>&lt;strong&gt;</strong> and <em>&lt;em&gt;</em> are also allowed.</p>";
+		String expected="<p>Allowed tags include: <i>italics</i>, <b>bold</b>, <u>underline</u>, <s>strikethrough</s>, and <code>code</code>.</p><p><b>&lt;strong&gt;</b> and <i>&lt;em&gt;</i> are also allowed.</p>";
 		String out=TextProcessor.sanitizeHTML(in).replace("\n", "");
-		assertEquals(in, out);
+		assertEquals(expected, out);
 	}
 
 	@Test

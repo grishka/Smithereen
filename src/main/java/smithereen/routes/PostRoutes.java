@@ -36,6 +36,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.PostSource;
 import smithereen.model.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
@@ -52,6 +53,7 @@ import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
+import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import spark.Request;
@@ -115,7 +117,7 @@ public class PostRoutes{
 		int repostID=safeParseInt(req.queryParams("repost"));
 		Post repost=repostID>0 ? ctx.getWallController().getPostOrThrow(repostID) : null;
 
-		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, replyTo, text, contentWarning, attachments, poll, repost);
+		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, replyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost);
 
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();
@@ -172,7 +174,8 @@ public class PostRoutes{
 			model=new RenderedTemplateResponse("content_wrap", req).with("contentTemplate", "wall_post_form");
 		}
 		model.with("addClasses", "editing nonCollapsible").with("isEditing", true).with("id", "edit"+id).with("editingPostID", id);
-		model.with("prefilledPostText", ctx.getWallController().getPostSource(post));
+		PostSource source=ctx.getWallController().getPostSource(post);
+		model.with("prefilledPostText", source.text()).with("sourceFormat", source.format());
 		if(post.hasContentWarning())
 			model.with("contentWarning", post.contentWarning);
 		if(post.poll!=null)
@@ -229,7 +232,7 @@ public class PostRoutes{
 		else
 			attachments=Collections.emptyList();
 
-		Post post=ctx.getWallController().editPost(self.user, sessionInfo(req).permissions, id, text, contentWarning, attachments, poll);
+		Post post=ctx.getWallController().editPost(self.user, sessionInfo(req).permissions, id, text, enumValue(req.queryParams("format"), FormattedTextFormat.class), contentWarning, attachments, poll);
 		if(isAjax(req)){
 			if(req.attribute("mobile")!=null)
 				return new WebDeltaResponse(resp).replaceLocation(post.getInternalURL().toString());
