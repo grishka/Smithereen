@@ -762,7 +762,7 @@ public class PostStorage{
 					String.join(" UNION ", queryParts)+
 					") AND ap_inbox IS NOT NULL");
 			if(post.isLocal())
-				stmt.setBytes(1, Utils.serializeIntArray(new int[]{post.id}));
+				stmt.setBytes(1, Utils.serializeIntList(post.getReplyKeyForReplies()));
 			try(ResultSet res=stmt.executeQuery()){
 				while(res.next()){
 					URI uri=URI.create(res.getString(1));
