@@ -390,6 +390,12 @@ small{
 	}
 }
 
+/* Safari hack because it hates my SVG abuse */
+_::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
+	background: svg-load('img/repost_icons_safari.svg') no-repeat;
+	background-size: 9px 22px;
+}
+
 .post.comment .authorName{
 	font-weight: normal;
 }
