@@ -1,5 +1,5 @@
 {# @pebvariable name="repostedPost" type="smithereen.model.Post" #}
 <div class="wallRepostForm noPostFormBackgrounds">
 	<h2 class="marginAfter">{{ L('repost_your_comment') }}</h2>
-	{% include "wall_post_form" with {'id': "repost", 'addClasses': "nonCollapsible", 'submitButtonText': L(repostedPost.replyLevel>0 ? "do_share_comment" : "do_share_post")} %}
+	{% include "wall_post_form" with {'id': "repost", 'addClasses': "nonCollapsible", 'submitButtonText': L(repostedPost.replyLevel>0 ? "do_share_comment" : "do_share_post"), 'allowEmpty': true} %}
 </div>

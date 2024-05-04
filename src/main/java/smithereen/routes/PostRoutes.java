@@ -183,6 +183,8 @@ public class PostRoutes{
 		if(post.attachments!=null && !post.attachments.isEmpty()){
 			model.with("draftAttachments", post.attachments);
 		}
+		if(post.repostOf!=0)
+			model.with("allowEmpty", true);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp)
 					.hide("postInner"+id)

@@ -59,10 +59,12 @@ class PostForm{
 	private forceOverrideDirty:boolean=false;
 	private allowedAttachmentTypes:string[]=null;
 	public onSendDone:{(success:boolean):void};
+	private allowEmpty=false;
 
 	public constructor(el:HTMLElement){
 		this.id=el.dataset.uniqueId;
-		this.editing=!!el.dataset.editing;
+		this.editing=el.dataset.editing!=undefined;
+		this.allowEmpty=el.dataset.allowEmpty!=undefined;
 		this.root=el;
 		this.input=ge("postFormText_"+this.id) as HTMLTextAreaElement;
 		this.form=ge("wallPostFormForm_"+this.id);
@@ -329,7 +331,7 @@ class PostForm{
 	}
 
 	public send(onDone:{(success:boolean):void}=null):boolean{
-		if(this.input.value.length==0 && this.attachmentIDs.length==0){
+		if(!this.allowEmpty && this.input.value.length==0 && this.attachmentIDs.length==0){
 			if(this.pollLayout!=null){
 				if(!this.pollQuestionField.reportValidity())
 					return false;

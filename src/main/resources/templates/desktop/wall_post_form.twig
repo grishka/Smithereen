@@ -1,6 +1,6 @@
 {# @pebvariable name="wallOwner" type="smithereen.activitypub.objects.Actor" #}
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
-<div class="wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing="1"' : '' }}>
+<div class="wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing' : '' }}{{ allowEmpty ? ' data-allow-empty' : '' }}>
 	{% if not wallOwner.hasWall and replyTo is null %}
 		<div class="wallPostFormError">
 		{% if isGroup %}

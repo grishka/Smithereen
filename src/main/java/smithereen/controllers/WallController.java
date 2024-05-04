@@ -132,7 +132,7 @@ public class WallController{
 				poll=null;
 			}
 
-			if(textSource.length()==0 && attachmentIDs.isEmpty() && poll==null)
+			if(textSource.isEmpty() && attachmentIDs.isEmpty() && poll==null && repost==null)
 				throw new BadRequestException("Empty post");
 
 			if(!wallOwner.hasWall() && inReplyToID==0)
@@ -209,7 +209,7 @@ public class WallController{
 			}
 
 
-			if(text.length()==0 && StringUtils.isEmpty(attachments) && pollID==0)
+			if(text.isEmpty() && StringUtils.isEmpty(attachments) && pollID==0 && repost==null)
 				throw new BadRequestException("Empty post");
 
 			int ownerUserID=wallOwner instanceof User u ? u.id : 0;
@@ -385,7 +385,7 @@ public class WallController{
 			if(!permissions.canEditPost(post))
 				throw new UserActionNotAllowedException();
 			context.getPrivacyController().enforceObjectPrivacy(self, post);
-			if(textSource.length()==0 && attachmentIDs.isEmpty() && poll==null)
+			if(textSource.isEmpty() && attachmentIDs.isEmpty() && poll==null && post.repostOf==0)
 				throw new BadRequestException("Empty post");
 
 			HashSet<User> mentionedUsers=new HashSet<>();

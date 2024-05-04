@@ -1,5 +1,5 @@
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
-<div class="singleColumn wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing="1"' : '' }}>
+<div class="singleColumn wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing' : '' }}{{ allowEmpty ? ' data-allow-empty' : '' }}>
 	{% if not wallOwner.hasWall %}
 	<div class="wallPostFormError">
 			{% if isGroup %}
