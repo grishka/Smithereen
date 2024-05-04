@@ -55,6 +55,7 @@ a:hover, .link:hover{
 
 .avaHasImage{
 	position: relative;
+	display: inline-block;
 }
 
 .avaHasImage::after{
@@ -110,7 +111,7 @@ a:hover, .link:hover{
 	margin-left: 7px;
 	line-height: 15px;
 }
-.header .ava, .repostHeader .ava{
+.header .avaW, .repostHeader .avaW{
 	flex: none;
 }
 .header .postInfo{
@@ -122,6 +123,7 @@ a:hover, .link:hover{
 	width: 23px;
 	height: 24px;
 	align-self: center;
+	flex: none;
 }
 .postContent{
 	line-height: 130%;
@@ -351,7 +353,7 @@ h3{
 <body>
 <div id="content">
 	<div class="header">
-		<a href="{{ profileURL(realPost.authorID) }}" target="_blank">{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
+		<a href="{{ profileURL(realPost.authorID) }}" target="_blank" class="avaW">{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
 		<div class="postInfo">
 			<div class="ellipsize"><a href="{{ profileURL(realPost.authorID) }}" class="postName" target="_blank">{{ users[realPost.authorID] | name }}</a></div>
 			{% if realPost.replyLevel==0 %}
