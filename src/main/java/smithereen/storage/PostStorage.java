@@ -704,7 +704,7 @@ public class PostStorage{
 
 	public static Set<URI> getInboxesForPostInteractionForwarding(Post post) throws SQLException{
 		// Interaction on a top-level post:
-		// - local: send to everyone who replied + the post's original addressees (followers + mentions if any)
+		// - local: send to everyone who replied + reposted + the post's original addressees (followers + mentions if any)
 		// - remote: send to the owner server only. It forwards as it pleases.
 		// On a comment: do all of the above for the parent top-level post, and
 		// - local: send to any mentioned users
@@ -728,7 +728,8 @@ public class PostStorage{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			ArrayList<String> queryParts=new ArrayList<>();
 			if(post.isLocal()){
-				queryParts.add("SELECT owner_user_id FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)");
+				queryParts.add("SELECT author_id FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)");
+				queryParts.add("SELECT author_id FROM wall_posts WHERE repost_of="+post.id);
 				if(owner instanceof ForeignUser fu)
 					queryParts.add("SELECT "+fu.id);
 				else if(owner instanceof User u)
