@@ -377,6 +377,31 @@ textarea{
 			max-width: 100%;
 		}
 	}
+	blockquote{
+		margin: -2px 0;
+		padding: 2px 0 2px 8px;
+		border-left: solid 2px $textAreaBorder;
+	}
+	blockquote:first-child{
+		margin-top: 0;
+	}
+	blockquote:last-child{
+		margin-bottom: 0;
+	}
+	code{
+		background: $wallCommentSeparator;
+		padding: 2px 4px;
+		border-radius: 2px;
+	}
+	pre{
+		tab-size: 4;
+		background: $wallCommentSeparator;
+		border-radius: 2px;
+	}
+	pre>code{
+		background: none;
+		display: block;
+	}
 }
 
 .postContent{
