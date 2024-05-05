@@ -398,6 +398,8 @@ public class WallController{
 				if(opts.size()>=2){
 					pollID=PostStorage.createPoll(post.ownerID, poll.question, opts, poll.anonymous, poll.multipleChoice, poll.endTime);
 				}
+			}else if(post.poll!=null){
+				pollID=post.poll.id;
 			}
 			if(post.poll!=null && pollID==0){
 				PostStorage.deletePoll(post.poll.id);
