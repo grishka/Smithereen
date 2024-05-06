@@ -10,5 +10,6 @@
   "summary_feed": "Паказаны апошнія навіны",
   "feed_joined_event": "<a id=\"author\">{author}</a> прыме ўдзел у сустрэчы <a id=\"target\">{target}</a>.",
   "feed_created_group": "<a id=\"author\">{author}</a> {gender, select, female {стварыла} other {стварыў}} суполку <a id=\"target\">{target}</a>.",
-  "feed_created_event": "<a id=\"author\">{author}</a> {gender, select, female {стварыла} other {стварыў}} сустрэчу <a id=\"target\">{target}</a>."
+  "feed_created_event": "<a id=\"author\">{author}</a> {gender, select, female {стварыла} other {стварыў}} сустрэчу <a id=\"target\">{target}</a>.",
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> прыме ўдзел у {count, plural, one {# сустрэче} few {# сустрэчах} other {# сустрэчах}}:"
 }
