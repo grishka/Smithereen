@@ -72,5 +72,5 @@
   "embed_post": "Embed",
   "embed_post_explanation": "Embed this post on your website by copying this code:",
   "embed_preview": "Preview",
-  "comment_in_reply_to_user": "{gender, select, other {replied}} to <a id=\"parentComment\">{name}</a>"
+  "comment_in_reply_to_user": "replied to <a id=\"parentComment\">{name}</a>"
 }
