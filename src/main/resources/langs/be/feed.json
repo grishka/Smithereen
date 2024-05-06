@@ -1,0 +1,14 @@
+{
+  "feed_retoot": "<a id=\"author\">{author}</a> {gender, select, female {падзялілася} other {падзяліўся}} записам:",
+  "feed_retoot_comment": "<a id=\"author\">{author}</a> {gender, select, female {падзялілася} other {падзяліўся}} каментаром:",
+  "feed_added_friend": "<a id=\"author\">{author}</a> {gender, select, female {дадала} other {далаў}} да сяброў <a id=\"target\">{target}</a>.",
+  "feed_added_friend_name": "{name, inflect, accusative}",
+  "feed_joined_group": "<a id=\"author\">{author}</a> {gender, select, female {ўступіла} other {уступіў}} у суполку <a id=\"target\">{target}</a>.",
+  "feed_empty": "Абнаўлення ад вашых сяброў з'явяцца тут.",
+  "feed_tab_news": "Навіны",
+  "feed_tab_comments": "Каментарыі",
+  "summary_feed": "Паказаны апошнія навіны",
+  "feed_joined_event": "<a id=\"author\">{author}</a> прыме ўдзел у сустрэчы <a id=\"target\">{target}</a>.",
+  "feed_created_group": "<a id=\"author\">{author}</a> {gender, select, female {стварыла} other {стварыў}} суполку <a id=\"target\">{target}</a>.",
+  "feed_created_event": "<a id=\"author\">{author}</a> {gender, select, female {стварыла} other {стварыў}} сустрэчу <a id=\"target\">{target}</a>."
+}
