@@ -1,1 +1,4 @@
-{}
+{
+  "email_password_reset_subject": "Скід пароля на {domain}",
+  "email_confirm_action_unfreeze": "размарозкі вашай старонкі"
+}
