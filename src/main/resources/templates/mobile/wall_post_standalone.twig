@@ -8,7 +8,7 @@
 	{% endif %}
 {% endblock %}
 {%block content%}
-{% include "wall_post" with {'hideButtons': true} %}
+{% include "wall_post" with {'hideButtons': true, 'standalone': true} %}
 <div class="postActions standaloneLikeBar">
 	{% set interactions=postInteractions[realPost.id] %}
 	<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{realPost.id}}" data-obj-type="post" data-obj-id="{{realPost.id}}" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %}>
