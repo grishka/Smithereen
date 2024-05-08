@@ -586,6 +586,7 @@ public class SmithereenApplication{
 			get("/embedURL", PostRoutes::postEmbedURL);
 			options("/embedURL", SmithereenApplication::allowCorsPreflight);
 			get("/embed", PostRoutes::postEmbed);
+			get("/hoverCard", PostRoutes::commentHoverCard);
 		});
 
 		get("/robots.txt", (req, resp)->{

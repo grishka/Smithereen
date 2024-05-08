@@ -645,18 +645,27 @@ public class WallController{
 
 	public PaginatedList<PostViewModel> getReplies(@Nullable User self, List<Integer> key, int primaryOffset, int primaryCount, int secondaryCount){
 		try{
+			LOG.trace("Getting post replies: priOffset={}, priCount={}, secCount={}, key={}", primaryOffset, primaryCount, secondaryCount, key);
 			PostStorage.ThreadedReplies tr=PostStorage.getRepliesThreaded(key.stream().mapToInt(Integer::intValue).toArray(), primaryOffset, primaryCount, secondaryCount);
 
 			List<PostViewModel> posts=tr.posts().stream().filter(p->context.getPrivacyController().checkPostPrivacy(self, p)).map(PostViewModel::new).toList();
 			List<PostViewModel> replies=tr.replies().stream().filter(p->context.getPrivacyController().checkPostPrivacy(self, p)).map(PostViewModel::new).toList();
 			Map<Integer, PostViewModel> postMap=Stream.of(posts, replies).flatMap(List::stream).collect(Collectors.toMap(p->p.post.id, Function.identity()));
 
+			Post threadParent=PostStorage.getPostByID(key.getLast(), false);
+
 			for(PostViewModel post:replies){
 				if(post.post.getReplyLevel()>key.size()){
-					PostViewModel parent=postMap.get(post.post.replyKey.get(post.post.replyKey.size()-1));
+					PostViewModel parent=postMap.get(post.post.replyKey.getLast());
 					if(parent!=null){
+						post.parentAuthorID=parent.post.authorID;
 						parent.repliesObjects.add(post);
 					}
+				}
+			}
+			if(threadParent!=null){
+				for(PostViewModel post:posts){
+					post.parentAuthorID=threadParent.authorID;
 				}
 			}
 

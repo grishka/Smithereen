@@ -1,7 +1,7 @@
 ///<reference path="./Main.ts"/>
 
 class Popover{
-	
+	private wrap:HTMLElement;
 	private root:HTMLElement;
 	private header:HTMLElement;
 	private content:HTMLElement;
@@ -9,6 +9,7 @@ class Popover{
 	private shown:boolean=false;
 
 	public constructor(wrap:HTMLElement){
+		this.wrap=wrap;
 		this.root=wrap.querySelector(".popover");
 		if(!this.root){
 			this.root=ce("div", {className: "popover aboveAnchor"}, [
@@ -28,23 +29,54 @@ class Popover{
 		this.shown=true;
 		this.root.show();
 		var anchor=this.root.parentElement;
-		var anchorRect=anchor.getBoundingClientRect();
-		if(x>this.root.offsetWidth){
-			this.root.style.right="0px";
-		}else{
-			this.root.style.right="";
-		}
-		this.root.classList.remove("belowAnchor", "aboveAnchor");
-		if(this.root.offsetHeight>anchorRect.top){
-			this.root.classList.add("belowAnchor");
-			this.root.style.top="";
-		}else{
-			this.root.classList.add("aboveAnchor");
-			this.root.style.top="-"+(this.root.offsetHeight)+"px";
-		}
+		this.root.classList.remove("belowAnchor");
+		this.root.classList.add("aboveAnchor"); // For correct height measurement
+
+		this.root.style.top="0";
+		var width=this.root.offsetWidth;
+		var height=this.root.offsetHeight;
+		var below=false;
+		var anchorTop:number, anchorBottom:number;
+
 		if(visualAnchor){
-			this.updateArrowPosition(visualAnchor);
+			var rect=visualAnchor.getBoundingClientRect();
+			anchorTop=rect.top;
+			anchorBottom=rect.bottom;
+			x=rect.left+rect.width/2;
+		}else{
+			// Find the Y bounds of the inline boxes that correspond to mouse X
+			var anchorRects=anchor.getClientRects().unfuck();
+			anchorTop=anchorRects[anchorRects.length-1].bottom;
+			anchorBottom=anchorRects[0].top;
+			for(var rect of anchorRects){
+				if(rect.left<=x && rect.right>x){
+					if(anchorTop>rect.top)
+						anchorTop=rect.top;
+					if(anchorBottom<rect.bottom)
+						anchorBottom=rect.bottom;
+				}
+			}
+			if(anchorTop>anchorBottom){ // Didn't find anything?
+				var rect=anchor.getBoundingClientRect();
+				anchorTop=rect.top;
+				anchorBottom=rect.bottom;
+			}
 		}
+		if(anchorTop<height){
+			this.root.classList.remove("aboveAnchor");
+			this.root.classList.add("belowAnchor");
+			this.root.style.top=anchorBottom+"px";
+		}else{
+			// aboveAnchor class already added
+			this.root.style.top=(anchorTop-height)+"px";
+		}
+		var arrowWidth=this.arrow.offsetWidth;
+		var xOffset=25+arrowWidth/2;
+		if(x-xOffset+width>window.innerWidth){
+			xOffset+=x-xOffset+width-window.innerWidth+10;
+		}
+		this.root.style.left=Math.round(x-xOffset)+"px";
+		this.arrow.style.left=Math.round(xOffset-arrowWidth/2)+"px";
 	}
 
 	public hide(){
@@ -73,12 +105,5 @@ class Popover{
 	public setOnClick(onClick:{():void}):void{
 		this.header.style.cursor="pointer";
 		this.header.onclick=onClick;
-	}
-
-	public updateArrowPosition(visualAnchor:HTMLElement){
-		var visualRect=visualAnchor.getBoundingClientRect();
-		this.arrow.style.left="0";
-		var arrowRect=this.arrow.getBoundingClientRect();
-		this.arrow.style.left=Math.round(visualRect.left-arrowRect.left+visualRect.width/2-arrowRect.width/2)+"px";
 	}
 }

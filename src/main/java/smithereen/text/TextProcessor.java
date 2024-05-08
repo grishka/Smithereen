@@ -173,7 +173,7 @@ public class TextProcessor{
 						String href=el.attr("href");
 						if(href.startsWith("acct:")){
 							String[] parts=href.substring(5).split("@");
-							user=mentionCallback.resolveMention(parts[0], parts[1]);
+							user=mentionCallback.resolveMention(parts[0], parts.length>1 ? parts[1] : null);
 						}else{
 							user=mentionCallback.resolveMention(href);
 						}
@@ -427,9 +427,12 @@ public class TextProcessor{
 								el.attr("rel", "nofollow");
 							}
 							el.addClass("u-url");
+							el.addClass("hoverCardTrigger");
 							Element parent=el.parent();
 							if(parent==null || !parent.tagName().equalsIgnoreCase("span")){
-								el.wrap("<span class=\"h-card\">");
+								el.wrap("<span class=\"h-card hoverCardContainer\">");
+							}else{
+								parent.addClass("hoverCardContainer");
 							}
 						}
 					}catch(SQLException ignore){}

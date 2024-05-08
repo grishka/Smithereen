@@ -64,6 +64,7 @@ import static smithereen.Utils.*;
 
 public class PostRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(PostRoutes.class);
+	private static final int MAX_THREADED_DEPTH=10;
 
 	public static Object createUserWallPost(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
@@ -288,7 +289,7 @@ public class PostRoutes{
 
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(feedPosts, self.user);
 		model.with("posts", feedPosts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity())))
-			.with("users", users).with("groups", groups).with("postInteractions", interactions);
+			.with("users", users).with("groups", groups).with("postInteractions", interactions).with("maxReplyDepth", MAX_THREADED_DEPTH);
 	}
 
 	public static Object feed(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -345,7 +346,7 @@ public class PostRoutes{
 		model.paginate(replies);
 		model.with("post", post);
 		model.with("isGroup", post.post.ownerID<0);
-		model.with("maxRepostDepth", 10);
+		model.with("maxRepostDepth", 10).with("maxReplyDepth", MAX_THREADED_DEPTH);
 		int cwCount=0;
 		for(PostViewModel reply:replies.list){
 			if(reply.post.hasContentWarning())
@@ -663,7 +664,8 @@ public class PostRoutes{
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		PostViewModel.collectActorIDs(wall, needUsers, needGroups);
 		model.with("users", ctx.getUsersController().getUsers(needUsers))
-				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
+				.with("maxReplyDepth", MAX_THREADED_DEPTH);
 	}
 
 	private static Object wall(Request req, Response resp, Actor owner, boolean ownOnly){
@@ -766,7 +768,8 @@ public class PostRoutes{
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(comments.list, self!=null ? self.user : null);
 		model.with("postInteractions", interactions)
 					.with("preview", true)
-					.with("replyFormID", "wallPostForm_commentReplyPost"+postID);
+					.with("replyFormID", "wallPostForm_commentReplyPost"+postID)
+					.with("maxReplyDepth", MAX_THREADED_DEPTH);
 		PostViewModel topLevel=new PostViewModel(post.replyKey.isEmpty() ? post : ctx.getWallController().getPostOrThrow(post.replyKey.getFirst()));
 		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
 		model.with("topLevel", topLevel);
@@ -815,7 +818,7 @@ public class PostRoutes{
 		}
 		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
 		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+topLevel.post.id);
-		model.with("topLevel", topLevel);
+		model.with("topLevel", topLevel).with("maxReplyDepth", MAX_THREADED_DEPTH);
 		return new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+post.id, model.renderToString())
 				.remove("loadRepliesContainer"+post.id);
@@ -1076,5 +1079,29 @@ public class PostRoutes{
 		return new WebDeltaResponse(resp)
 				.box(lang(req).get("embed_post"), model.renderToString(), null, false)
 				.runScript("actuallyInitEmbedPreview("+post.id+");");
+	}
+
+	public static Object commentHoverCard(Request req, Response resp){
+		if(isMobile(req) || !isAjax(req))
+			return "";
+		ApplicationContext ctx=context(req);
+		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
+		if(post.getReplyLevel()==0)
+			return "";
+		User self=null;
+		SessionInfo info=sessionInfo(req);
+		if(info!=null && info.account!=null){
+			self=info.account.user;
+		}
+		ctx.getPrivacyController().enforceObjectPrivacy(self, post);
+		PostViewModel pvm=new PostViewModel(post);
+		pvm.parentAuthorID=ctx.getWallController().getPostOrThrow(post.replyKey.getLast()).authorID;
+		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		PostViewModel.collectActorIDs(Set.of(pvm), needUsers, needGroups);
+		return new RenderedTemplateResponse("wall_reply_hover_card", req)
+				.with("post", pvm)
+				.with("maxReplyDepth", MAX_THREADED_DEPTH)
+				.with("users", ctx.getUsersController().getUsers(needUsers))
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 	}
 }

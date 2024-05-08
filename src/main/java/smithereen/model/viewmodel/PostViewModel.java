@@ -17,6 +17,7 @@ public class PostViewModel{
 	public boolean canComment=true;
 	public boolean canRepost=true;
 	public Repost repost;
+	public int parentAuthorID;
 
 	public PostViewModel(Post post){
 		this.post=post;
@@ -76,6 +77,8 @@ public class PostViewModel{
 				if(pvm.repost.topLevel!=null)
 					collectActorIDs(Set.of(pvm.repost.topLevel), userIDs, groupIDs);
 			}
+			if(pvm.parentAuthorID>0)
+				userIDs.add(pvm.parentAuthorID);
 			collectActorIDs(pvm.repliesObjects, userIDs, groupIDs);
 		}
 	}

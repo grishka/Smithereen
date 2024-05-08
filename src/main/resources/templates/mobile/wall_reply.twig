@@ -5,7 +5,7 @@
 <table width="100%" class="post comment" id="post{{realPost.id}}" data-reply-name="{{ users[realPost.authorID].nameForReply}}" data-replying-name="{{ L('in_reply_to_name', {'name': users[realPost.authorID].firstAndGender}) }}">
 	<tr>
 		{%if realPost.replyLevel>1%}
-		<td width="{{(realPost.replyLevel-1)*8}}" class="treeIndent">&nbsp;</td>
+		<td width="{{ min(realPost.replyLevel-1, maxReplyLevel)*8 }}" class="treeIndent">&nbsp;</td>
 		{%endif%}
 		{%if not(realPost.deleted)%}
 		<td width="40" valign="top">

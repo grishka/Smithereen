@@ -3,9 +3,9 @@
 {# @pebvariable name="topLevel" type="smithereen.model.viewmodel.PostViewModel" #}
 {% set realPost=post.post %}
 <div class="post comment{{ first ? ' first' : '' }}" id="post{{realPost.id}}" data-reply-name="{{users[realPost.authorID].nameForReply}}">
-	{%if realPost.replyLevel>1%}
-	<div style="--indent-level: {{ min(realPost.replyLevel-1, 10) }}" class="treeIndent"></div>
-	{%endif%}
+	{% if realPost.replyLevel>1 and not hideIndent %}
+	<div style="--indent-level: {{ min(realPost.replyLevel-1, maxReplyDepth) }}" class="treeIndent"></div>
+	{% endif %}
 	{%if not(realPost.deleted)%}
 	<div class="postAvaWrap">
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
@@ -15,7 +15,7 @@
 		<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
 		{%- if realPost.privacy!='PUBLIC' -%}
 		<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID] | name('firstAndGender')}) }}"></span>
-		{%- endif %}<br/>
+		{%- endif %}{% if realPost.replyLevel>maxReplyDepth %}<span class="commentInReply grayText hoverCardContainer"> {{ L('comment_in_reply_to_user', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink hoverCardTrigger", 'data-parent-id': realPost.replyKey.last} }) }}</span>{% endif %}<br/>
 		<div id="postInner{{ realPost.id }}">
 			{% block postInner %}
 			{% if realPost.hasContentWarning %}
@@ -52,7 +52,9 @@
 					</span>
 				</span>
 				{%- endif -%}
-				<a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.id}})" class="postLink">{{LD(realPost.createdAt)}}</a>{%if userPermissions is not null and userPermissions.canDeletePost(realPost)%} |
+				<a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.id}})" class="postLink">{{LD(realPost.createdAt)}}</a>
+				{%- if not hideActions %}
+				{%- if userPermissions is not null and userPermissions.canDeletePost(realPost) %} |
 				<a href="{{realPost.internalURL}}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{realPost.internalURL}}/delete')">{{L('delete')}}</a>{%endif%}
 				{% if userPermissions is not null and userPermissions.canEditPost(realPost) %} |
 				<a href="{{ realPost.internalURL }}/edit" data-ajax="1">{{ L('edit') }}</a>
@@ -66,6 +68,7 @@
 				{% if not realPost.local %}
 					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
 				{% endif %}
+				{% endif %}
 			</div>
 			{% endblock %}
 		</div>
@@ -77,16 +80,18 @@
 	</div>
 	{%endif%}
 </div>
+{% if not hideReplies %}
 <div id="postReplies{{realPost.id}}" class="replies">
 	{%for reply in post.repliesObjects%}
 		{% include "wall_reply" with {'post': reply, 'first': false, 'topLevel': topLevel} %}
 		{% set realPost=post.post %}
 	{%endfor%}
 	{% if post.loadableRepliesCount>0 %}
-	<div id="loadRepliesContainer{{ realPost.id }}" class="threadedIndented" style="--indent-level: {{ realPost.replyLevel-1 }}">
+	<div id="loadRepliesContainer{{ realPost.id }}" class="threadedIndented" style="--indent-level: {{ min(realPost.replyLevel-1, maxReplyDepth) }}">
 		<a class="loadRepliesLink" onclick="return loadCommentBranch({{ realPost.id }}, {{ post.repliesObjects | length }}, {{ topLevel.post.isMastodonStyleRepost ? topLevel.post.id : 0 }})" id="loadRepliesLink{{ realPost.id }}">{{ L(post.loadedRepliesCount>0 ? 'comments_show_X_more_replies' : 'comments_show_X_replies', {'count': post.loadableRepliesCount}) }}</a>
 		<div class="loadRepliesLink" id="repliesLoader{{ realPost.id }}" style="display: none;"><span class="loader"></span></div>
 		<div class="depthIndicator"></div>
 	</div>
 	{% endif %}
 </div>
+{% endif %}

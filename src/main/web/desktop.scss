@@ -334,9 +334,6 @@ small{
 		pre{
 			overflow-x: auto;
 		}
-		.mention{
-			position: relative;
-		}
 	}
 	&.standalone{
 		border-bottom: none;
@@ -1482,7 +1479,7 @@ select{
 }
 
 .popover{
-	position: absolute;
+	position: fixed;
 	font-size: 11px;
 	z-index: 5;
 	.popoverHeader{
@@ -1520,7 +1517,7 @@ select{
 	&.belowAnchor{
 		padding-top: 6px;
 		animation: slideFromBottom 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
-		.popoverArrow{
+		>.popoverArrow{
 			background: svg-inline(popoverArrowTop);
 			top: 0;
 		}
@@ -1531,7 +1528,7 @@ select{
 	&.aboveAnchor{
 		padding-bottom: 6px;
 		animation: slideFromTop 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
-		.popoverArrow{
+		>.popoverArrow{
 			background: svg-inline(popoverArrowBottom);
 			bottom: 0;
 		}
@@ -3445,6 +3442,17 @@ a.clickableListItem{
 			margin: 0 8px;
 			vertical-align: middle;
 		}
+	}
+}
+
+.hoverCardContainer{
+	position: relative;
+}
+
+.commentHoverCard{
+	width: 448px;
+	.comment{
+		padding: 10px;
 	}
 }
 

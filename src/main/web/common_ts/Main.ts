@@ -171,9 +171,13 @@ document.addEventListener("mouseover", (ev)=>{
 	if(target.dataset.tooltip){
 		var tooltip=target.dataset.tooltip;
 		showTooltip(target, tooltip);
-	}else if(target.tagName=="A"){
-		if(target.classList.contains("mention") && target.dataset.userId && !mobile){
-			showMentionHoverCard(target, ev);
+	}else if(!mobile){
+		if(target.classList.contains("hoverCardTrigger")){
+			if(target.classList.contains("mention")){
+				showMentionHoverCard(target, ev);
+			}else if(target.classList.contains("parentCommentLink")){
+				showParentCommentHoverCard(target, ev);
+			}
 		}
 	}
 }, false);
@@ -182,10 +186,6 @@ document.addEventListener("mouseout", (ev)=>{
 	var target=ev.target as HTMLElement;
 	if(target.dataset.tooltip){
 		hideTooltip(target);
-	}else if(target.tagName=="A"){
-		if(target.classList.contains("mention") && !mobile){
-			hideMentionHoverCard(target);
-		}
 	}
 }, false);
 

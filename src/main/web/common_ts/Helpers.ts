@@ -65,12 +65,17 @@ HTMLElement.prototype.qs=function(sel:string){
 };
 
 HTMLElement.prototype.hide=function():void{
+	if(this.currentVisibilityAnimation){
+		this.currentVisibilityAnimation.cancel();
+		this.currentVisibilityAnimation=null;
+	}
 	this.style.display="none";
 };
 
 HTMLElement.prototype.hideAnimated=function(animName:AnimationDescription={keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: 200, easing: "ease"}}, onEnd:{():void}=null):void{
 	if(this.currentVisibilityAnimation){
 		this.currentVisibilityAnimation.cancel();
+		this.currentVisibilityAnimation=null;
 	}
 	this.currentVisibilityAnimation=this.anim(animName.keyframes, animName.options, ()=>{
 		this.hide();
@@ -80,6 +85,9 @@ HTMLElement.prototype.hideAnimated=function(animName:AnimationDescription={keyfr
 };
 
 HTMLElement.prototype.show=function():void{
+	if(this.currentVisibilityAnimation){
+		this.currentVisibilityAnimation.cancel();
+	}
 	this.style.display="";
 };
 
@@ -132,6 +140,16 @@ HTMLCollection.prototype.unfuck=function(){
 		arr.push(this[i]);
 	return arr;
 };
+
+interface DOMRectList{
+	unfuck():DOMRect[];
+}
+DOMRectList.prototype.unfuck=function(){
+	var arr:DOMRect[]=[];
+	for(var i=0;i<this.length;i++)
+		arr.push(this[i]);
+	return arr;
+}
 
 interface HTMLTextAreaElement{
 	resizeToFitContent():void;
@@ -827,13 +845,13 @@ function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 				popover.setContent(resp.content);
 				btn.customData.altPopoverTitle=resp.altTitle;
 				if(resp.show)
-					popover.show(ev.offsetX, ev.offsetY, btn.qs("span.icon"));
+					popover.show(ev.clientX, ev.clientY, btn.qs("span.icon"));
 				for(var i=0;i<resp.actions.length;i++){
 					applyServerCommand(resp.actions[i]);
 				}
 			}, ()=>{
 				if(popover)
-					popover.show(ev.offsetX, ev.offsetY, btn.qs("span.icon"));
+					popover.show(ev.clientX, ev.clientY, btn.qs("span.icon"));
 			});
 		}, 500);
 	}else{
@@ -1311,42 +1329,95 @@ function actuallyInitEmbedPreview(postID:number){
 	iframe.src="/posts/"+postID+"/embed";
 }
 
-function showMentionHoverCard(link:HTMLElement, ev:MouseEvent){
+function showAjaxHoverCard(link:HTMLElement, ev:MouseEvent, ajaxURL:string){
 	var popover=link._popover;
+	var container=link.closest(".hoverCardContainer") as HTMLElement;
+	var setupHider=()=>{
+		container.addEventListener("mouseleave", function(ev){
+			link.customData.popoverHideTimeout=setTimeout(()=>{
+				delete link.customData.popoverHideTimeout;
+				popover.hide();
+			}, 100);
+			container.removeEventListener("mouseleave", arguments.callee as any);
+		}, false);
+	};
+	if(link.customData && link.customData.popoverHideTimeout){
+		clearTimeout(link.customData.popoverHideTimeout);
+		delete link.customData.popoverHideTimeout;
+		setupHider();
+		return;
+	}
 	if(popover){
-		popover.show(ev.offsetX, ev.offsetY, link);
+		if(!popover.isShown()){
+			popover.show(ev.clientX, ev.clientY);
+			setupHider();
+		}
 		return;
 	}
 	if(!link.customData) link.customData={};
+
+	// Cancel things if the mouse moves outside of the container before the timeout elapses
+	var timeoutCanceler=(ev:MouseEvent)=>{
+		if(link.customData.popoverTimeout){
+			clearTimeout(link.customData.popoverTimeout);
+			delete link.customData.popoverTimeout;
+		}
+		container.removeEventListener("mouseleave", timeoutCanceler);
+	};
+	container.addEventListener("mouseleave", timeoutCanceler, false);
+	// Track mouse movement for the duration of timeout/ajax to show the popover in a more expected place
+	var moveTracker=(moveEv:MouseEvent)=>{
+		ev=moveEv;
+	};
+	container.addEventListener("mousemove", moveTracker, false);
+
 	link.customData.popoverTimeout=setTimeout(()=>{
+		container.removeEventListener("mouseleave", timeoutCanceler);
 		delete link.customData.popoverTimeout;
-		var userID=link.dataset.userId;
-		ajaxGet("/users/"+userID+"/hoverCard", (resp:any)=>{
+
+		// If the mouse moves outside of the container during the ajax request,
+		// still make the request and initialize the popover, but don't show it
+		var canceled=false;
+		var canceler=(ev:MouseEvent)=>{
+			canceled=true;
+			container.removeEventListener("mouseleave", canceler);
+		};
+		container.addEventListener("mouseleave", canceler, false);
+
+		ajaxGet(ajaxURL, (resp:any)=>{
+			container.removeEventListener("mouseleave", canceler);
+			container.removeEventListener("mousemove", moveTracker);
 			if(!resp){
 				return;
 			}
 			if(!popover){
-				popover=new Popover(link);
+				popover=new Popover(container);
 				link._popover=popover;
 			}
 			popover.setContent(resp);
-			popover.show(ev.offsetX, ev.offsetY, link);
+			if(!canceled){
+				popover.show(ev.clientX, ev.clientY);
+				setupHider();
+			}
 		}, ()=>{
-			if(popover)
-				popover.show(ev.offsetX, ev.offsetY, link);
+			container.removeEventListener("mouseleave", canceler);
+			container.removeEventListener("mousemove", moveTracker);
+			if(popover && !canceled){
+				popover.show(ev.clientX, ev.clientY);
+				setupHider();
+			}
 		}, "text");
-	}, 500);
+	}, 300);
 }
 
-function hideMentionHoverCard(link:HTMLElement){
-	var popover=link._popover;
-	// Some versions of Firefox can fire mouseLeave without a corresponding mouseEnter on page refresh
-	if(link.customData && link.customData.popoverTimeout){
-		clearTimeout(link.customData.popoverTimeout);
-		delete link.customData.popoverTimeout;
-	}else if(popover){
-		popover.hide();
-	}
+function showMentionHoverCard(link:HTMLElement, ev:MouseEvent){
+	var userID=link.dataset.userId;
+	showAjaxHoverCard(link, ev, "/users/"+userID+"/hoverCard");
+}
+
+function showParentCommentHoverCard(link:HTMLElement, ev:MouseEvent){
+	var commentID=link.dataset.parentId;
+	showAjaxHoverCard(link, ev, "/posts/"+commentID+"/hoverCard");
 }
 
 function closeTopmostLayer(){
