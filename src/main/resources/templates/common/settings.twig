@@ -17,8 +17,8 @@
 	<h2>{{L('change_password')}}</h2>
 	{{ form.start("changePassword", passwordMessage) }}
 		{{ form.textInput("current", L('current_password'), "", {'type' : 'password'}) }}
-		{{ form.textInput("new", L('new_password'), "", {'type' : 'password'}) }}
-		{{ form.textInput("new2", L('new_password_confirm'), "", {'type' : 'password'}) }}
+		{{ form.textInput("new", L('new_password'), "", {'type' : 'password', 'autocomplete': 'new-password'}) }}
+		{{ form.textInput("new2", L('new_password_confirm'), "", {'type' : 'password', 'autocomplete': 'new-password'}) }}
 		{{ form.footer(L('change_password')) }}
 	{{ form.end() }}
 </form>

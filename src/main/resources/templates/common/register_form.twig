@@ -10,9 +10,9 @@
 		{{ form.textInput('last_name', L('last_name'), last_name, {'maxlength': 100}) }}
 		{{ form.textInput('website', 'Website (do not fill in)', '') }}
 		{{ form.textInput('email', L('email'), email, {'type': 'email', 'required': true}) }}
-		{{ form.textInput('password', L('password'), password, {'type': 'password', 'required': true, 'minlength': 4}) }}
+		{{ form.textInput('password', L('password'), password, {'type': 'password', 'required': true, 'minlength': 4, 'autocomplete': 'new-password'}) }}
 		{{ form.textInput('passwordConfirm', 'Confirm password (do not fill in)', '', {'type': 'password'}) }}
-		{{ form.textInput('password2', L('password_confirm'), password2, {'type': 'password', 'required': true, 'minlength': 4}) }}
+		{{ form.textInput('password2', L('password_confirm'), password2, {'type': 'password', 'required': true, 'minlength': 4, 'autocomplete': 'new-password'}) }}
 		{% if signupMode!='OPEN' and preFilledInvite is null %}
 			{{ form.textInput('invite', L('invitation_code'), invite, {'maxlength': 32, 'required': true}) }}
 		{% endif %}
