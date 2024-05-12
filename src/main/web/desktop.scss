@@ -634,6 +634,24 @@ _::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
 			}
 		}
 	}
+	.commentReplying{
+		line-height: 16px;
+		color: $auxiliaryGrey;
+		margin: -3px 0 5px;
+		.cancelReply{
+			display: inline-block;
+			width: 16px;
+			height: 16px;
+			background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
+			opacity: .7;
+			transition: opacity .2s ease;
+			margin-left: 2px;
+			vertical-align: top;
+			&:hover{
+				opacity: 1;
+			}
+		}
+	}
 }
 
 .commentsPreview:empty+.wallPostForm{
@@ -866,6 +884,9 @@ _::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
 		&.postContentWrap{
 			padding-top: 2px;
 		}
+	}
+	&.twoLevelIndented{
+		margin-left: 39px;
 	}
 }
 

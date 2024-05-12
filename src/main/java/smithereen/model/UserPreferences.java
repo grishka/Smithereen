@@ -16,4 +16,6 @@ public class UserPreferences{
 	public int lastSeenNotificationID;
 	@SerializedName("tfmt")
 	public FormattedTextFormat textFormat=FormattedTextFormat.MARKDOWN;
+	@SerializedName("cmv")
+	public CommentViewType commentViewType=CommentViewType.THREADED;
 }

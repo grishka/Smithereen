@@ -31,6 +31,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
@@ -64,7 +65,6 @@ import static smithereen.Utils.*;
 
 public class PostRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(PostRoutes.class);
-	private static final int MAX_THREADED_DEPTH=10;
 
 	public static Object createUserWallPost(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
@@ -117,8 +117,14 @@ public class PostRoutes{
 
 		int repostID=safeParseInt(req.queryParams("repost"));
 		Post repost=repostID>0 ? ctx.getWallController().getPostOrThrow(repostID) : null;
+		Post inReplyTo=null;
+		if(replyTo!=0){
+			inReplyTo=ctx.getWallController().getPostOrThrow(replyTo);
+			if(inReplyTo.isMastodonStyleRepost())
+				inReplyTo=ctx.getWallController().getPostOrThrow(inReplyTo.repostOf);
+		}
 
-		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, replyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost);
+		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost);
 
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();
@@ -133,6 +139,8 @@ public class PostRoutes{
 			HashMap<Integer, UserInteractions> interactions=new HashMap<>();
 			interactions.put(post.id, new UserInteractions());
 			PostViewModel pvm=new PostViewModel(post);
+			if(inReplyTo!=null)
+				pvm.parentAuthorID=inReplyTo.authorID;
 			ctx.getWallController().populateReposts(self.user, List.of(pvm), 2);
 			RenderedTemplateResponse model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post", req).with("post", pvm).with("postInteractions", interactions);
 			if(replyTo!=0){
@@ -141,18 +149,25 @@ public class PostRoutes{
 			}
 			model.with("users", Map.of(self.user.id, self.user));
 			model.with("posts", Map.of(post.id, post));
+			model.with("commentViewType", self.prefs.commentViewType).with("maxReplyDepth", getMaxReplyDepth(self));
 			String postHTML=model.renderToString();
 			if(req.attribute("mobile")!=null && replyTo==0){
 				postHTML="<div class=\"card\">"+postHTML+"</div>";
 			}else if(replyTo==0){
+				// TODO correctly handle day headers in feed
 				String cl="feed".equals(formID) ? "feedRow" : "wallRow";
 				postHTML="<div class=\""+cl+"\">"+postHTML+"</div>";
 			}
 			WebDeltaResponse rb;
 			if(replyTo==0)
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
-			else
-				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+replyTo, postHTML).show("postReplies"+replyTo);
+			else{
+				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+switch(self.prefs.commentViewType){
+					case THREADED -> replyTo;
+					case TWO_LEVEL -> post.replyKey.get(Math.min(post.getReplyLevel()-1, 1));
+					case FLAT -> post.replyKey.getFirst();
+				}, postHTML).show("postReplies"+replyTo);
+			}
 			if(req.attribute("mobile")==null && replyTo==0){
 				rb.runScript("updatePostForms();");
 			}
@@ -278,9 +293,9 @@ public class PostRoutes{
 
 		List<PostViewModel> feedPosts=ctx.getWallController().getPosts(needPosts).values().stream().map(PostViewModel::new).toList();
 
-		ctx.getWallController().populateReposts(self!=null ? self.user : null, feedPosts, 2);
+		ctx.getWallController().populateReposts(self.user, feedPosts, 2);
 		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
-			ctx.getWallController().populateCommentPreviews(self.user, feedPosts);
+			ctx.getWallController().populateCommentPreviews(self.user, feedPosts, self.prefs.commentViewType);
 		}
 
 		PostViewModel.collectActorIDs(feedPosts, needUsers, needGroups);
@@ -289,7 +304,8 @@ public class PostRoutes{
 
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(feedPosts, self.user);
 		model.with("posts", feedPosts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity())))
-			.with("users", users).with("groups", groups).with("postInteractions", interactions).with("maxReplyDepth", MAX_THREADED_DEPTH);
+			.with("users", users).with("groups", groups).with("postInteractions", interactions);
+		model.with("maxReplyDepth", getMaxReplyDepth(self)).with("commentViewType", self.prefs.commentViewType);
 	}
 
 	public static Object feed(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -322,13 +338,13 @@ public class PostRoutes{
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone", req);
 		SessionInfo info=Utils.sessionInfo(req);
-		User self=null;
+		Account self=null;
 		if(info!=null && info.account!=null){
 			model.with("draftAttachments", info.postDraftAttachments);
 			if(owner instanceof Group group && post.post.getReplyLevel()==0){
 				model.with("groupAdminLevel", ctx.getGroupsController().getMemberAdminLevel(group, info.account.user));
 			}
-			self=info.account.user;
+			self=info.account;
 		}
 
 		if(post.post.repostOf!=0){
@@ -336,17 +352,19 @@ public class PostRoutes{
 				resp.redirect("/posts/"+post.post.repostOf);
 				return "";
 			}
-			ctx.getWallController().populateReposts(self, List.of(post), 10);
+			ctx.getWallController().populateReposts(self!=null ? self.user : null, List.of(post), 10);
 		}
 
 		User author=ctx.getUsersController().getUserOrThrow(post.post.authorID);
 
 		int offset=offset(req);
-		PaginatedList<PostViewModel> replies=ctx.getWallController().getReplies(self, replyKey, offset, 100, 50);
+		CommentViewType viewType=info!=null && info.account!=null ? info.account.prefs.commentViewType : CommentViewType.THREADED;
+		PaginatedList<PostViewModel> replies=ctx.getWallController().getReplies(self!=null ? self.user : null, replyKey, offset, 100, 50, viewType);
 		model.paginate(replies);
 		model.with("post", post);
 		model.with("isGroup", post.post.ownerID<0);
-		model.with("maxRepostDepth", 10).with("maxReplyDepth", MAX_THREADED_DEPTH);
+		model.with("maxRepostDepth", 10).with("maxReplyDepth", getMaxReplyDepth(self));
+		model.with("commentViewType", viewType);
 		int cwCount=0;
 		for(PostViewModel reply:replies.list){
 			if(reply.post.hasContentWarning())
@@ -372,12 +390,12 @@ public class PostRoutes{
 
 		if(canOverridePrivacy){
 			try{
-				ctx.getPrivacyController().enforceObjectPrivacy(self, post.post);
+				ctx.getPrivacyController().enforceObjectPrivacy(self.user, post.post);
 			}catch(UserActionNotAllowedException x){
 				model.with("privacyOverridden", true);
 			}
 		}else{
-			ctx.getPrivacyController().enforceObjectPrivacy(self, post.post);
+			ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post.post);
 		}
 
 		if(!post.post.replyKey.isEmpty()){
@@ -398,7 +416,7 @@ public class PostRoutes{
 		model.with("users", ctx.getUsersController().getUsers(needUsers))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 
-		model.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self, u, UserPrivacySettingKey.WALL_OTHERS_POSTS));
+		model.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, u, UserPrivacySettingKey.WALL_OTHERS_POSTS));
 
 		if(info==null || info.account==null){
 			HashMap<String, String> moreMeta=new LinkedHashMap<>();
@@ -660,12 +678,12 @@ public class PostRoutes{
 		return wall(req, resp, group, false);
 	}
 
-	private static void preparePostList(ApplicationContext ctx, List<PostViewModel> wall, RenderedTemplateResponse model){
+	private static void preparePostList(ApplicationContext ctx, List<PostViewModel> wall, RenderedTemplateResponse model, Account self){
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		PostViewModel.collectActorIDs(wall, needUsers, needGroups);
 		model.with("users", ctx.getUsersController().getUsers(needUsers))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
-				.with("maxReplyDepth", MAX_THREADED_DEPTH);
+				.with("maxReplyDepth", getMaxReplyDepth(self));
 	}
 
 	private static Object wall(Request req, Response resp, Actor owner, boolean ownOnly){
@@ -679,7 +697,7 @@ public class PostRoutes{
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, owner, ownOnly, offset, 20));
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 
@@ -692,7 +710,7 @@ public class PostRoutes{
 				.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, u, UserPrivacySettingKey.WALL_OTHERS_POSTS))
 				.with("tab", ownOnly ? "own" : "all");
 
-		preparePostList(ctx, wall.list, model);
+		preparePostList(ctx, wall.list, model, self);
 
 		if(isAjax(req) && !isMobile(req)){
 			String paginationID=req.queryParams("pagination");
@@ -731,7 +749,7 @@ public class PostRoutes{
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallToWallPosts(self!=null ? self.user : null, user, otherUser, offset, 20));
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 
@@ -743,7 +761,7 @@ public class PostRoutes{
 				.with("canSeeOthersPosts", ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, user, UserPrivacySettingKey.WALL_OTHERS_POSTS))
 				.with("tab", "wall2wall")
 				.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
-		preparePostList(ctx, wall.list, model);
+		preparePostList(ctx, wall.list, model, self);
 		return model;
 	}
 
@@ -761,23 +779,32 @@ public class PostRoutes{
 		if(maxID==0)
 			throw new BadRequestException();
 
-		PaginatedList<PostViewModel> comments=PostViewModel.wrap(ctx.getWallController().getRepliesExact(self!=null ? self.user : null, List.of(post.id), maxID, 100));
+		CommentViewType viewType=info!=null && info.account!=null ? info.account.prefs.commentViewType : CommentViewType.THREADED;
+		PaginatedList<PostViewModel> comments;
+		if(viewType==CommentViewType.FLAT){
+			comments=ctx.getWallController().getRepliesFlat(self!=null ? self.user : null, List.of(post.id), maxID, 100);
+		}else{
+			comments=PostViewModel.wrap(ctx.getWallController().getRepliesExact(self!=null ? self.user : null, List.of(post.id), maxID, 100));
+		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments.list);
-		preparePostList(ctx, comments.list, model);
+		preparePostList(ctx, comments.list, model, self);
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(comments.list, self!=null ? self.user : null);
 		model.with("postInteractions", interactions)
 					.with("preview", true)
 					.with("replyFormID", "wallPostForm_commentReplyPost"+postID)
-					.with("maxReplyDepth", MAX_THREADED_DEPTH);
+					.with("commentViewType", viewType);
 		PostViewModel topLevel=new PostViewModel(post.replyKey.isEmpty() ? post : ctx.getWallController().getPostOrThrow(post.replyKey.getFirst()));
 		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
 		model.with("topLevel", topLevel);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+postID, model.renderToString())
 				.hide("prevLoader"+postID);
-		if(comments.total>100){
+		if(comments.total>comments.list.size()){
 			rb.show("loadPrevBtn"+postID).setAttribute("loadPrevBtn"+postID, "data-first-id", String.valueOf(comments.list.getFirst().post.id));
+			if(viewType==CommentViewType.FLAT){
+				rb.setContent("loadPrevBtn"+postID, lang(req).get("comments_show_X_more_comments", Map.of("count", comments.total-comments.list.size())));
+			}
 		}else{
 			rb.remove("prevLoader"+postID, "loadPrevBtn"+postID);
 		}
@@ -792,16 +819,17 @@ public class PostRoutes{
 
 		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
 		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
-		List<PostViewModel> comments=ctx.getWallController().getReplies(self!=null ? self.user : null, post.getReplyKeyForReplies(), offset, 100, 50).list;
+		CommentViewType viewType=info!=null && info.account!=null ? info.account.prefs.commentViewType : CommentViewType.THREADED;
+		PaginatedList<PostViewModel> comments=ctx.getWallController().getReplies(self!=null ? self.user : null, post.getReplyKeyForReplies(), offset, 100, 50, viewType);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
-		model.with("comments", comments);
+		model.with("comments", comments.list);
 		ArrayList<PostViewModel> allReplies=new ArrayList<>();
-		for(PostViewModel comment:comments){
+		for(PostViewModel comment:comments.list){
 			allReplies.add(comment);
 			comment.getAllReplies(allReplies);
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(allReplies, self!=null ? self.user : null);
-		preparePostList(ctx, comments, model);
+		preparePostList(ctx, comments.list, model, self);
 		PostViewModel topLevel=null;
 		if(post.replyKey.isEmpty()){
 			topLevel=new PostViewModel(post);
@@ -818,10 +846,19 @@ public class PostRoutes{
 		}
 		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
 		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+topLevel.post.id);
-		model.with("topLevel", topLevel).with("maxReplyDepth", MAX_THREADED_DEPTH);
-		return new WebDeltaResponse(resp)
-				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+post.id, model.renderToString())
-				.remove("loadRepliesContainer"+post.id);
+		model.with("topLevel", topLevel);
+		model.with("commentViewType", viewType);
+		WebDeltaResponse wdr=new WebDeltaResponse(resp)
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "loadRepliesContainer"+post.id, model.renderToString());
+		if(comments.list.size()+offset==comments.total){
+			wdr.remove("loadRepliesContainer"+post.id);
+		}else{
+			wdr.hide("repliesLoader"+post.id)
+					.show("loadRepliesLink"+post.id)
+					.setAttribute("loadRepliesLink"+post.id, "data-offset", String.valueOf(offset+comments.list.size()))
+					.setContent("loadRepliesLink"+post.id, lang(req).get("comments_show_X_more_replies", Map.of("count", comments.total-comments.list.size()-offset)));
+		}
+		return wdr;
 	}
 
 	public static Object pollOptionVoters(Request req, Response resp){
@@ -950,7 +987,7 @@ public class PostRoutes{
 		PaginatedList<PostViewModel> reposts=PostViewModel.wrap(ctx.getWallController().getPostReposts(post, offset, 20));
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, reposts.list, 2);
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list.stream().filter(p->!p.post.isMastodonStyleRepost()).toList());
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list.stream().filter(p->!p.post.isMastodonStyleRepost()).toList(), self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(reposts.list, List.of(new PostViewModel(post))).flatMap(List::stream).toList(), self!=null ? self.user : null);
 		RenderedTemplateResponse model;
@@ -969,7 +1006,7 @@ public class PostRoutes{
 				.with("post", post)
 				.with("tab", "reposts")
 				.with("maxRepostDepth", 0);
-		preparePostList(ctx, reposts.list, model);
+		preparePostList(ctx, reposts.list, model, self);
 		if(isMobile(req))
 			return model.pageTitle(lang(req).get("likes_title"));
 		if(isAjax(req)){
@@ -1088,20 +1125,28 @@ public class PostRoutes{
 		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
 		if(post.getReplyLevel()==0)
 			return "";
-		User self=null;
+		Account self=null;
 		SessionInfo info=sessionInfo(req);
 		if(info!=null && info.account!=null){
-			self=info.account.user;
+			self=info.account;
 		}
-		ctx.getPrivacyController().enforceObjectPrivacy(self, post);
+		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 		PostViewModel pvm=new PostViewModel(post);
 		pvm.parentAuthorID=ctx.getWallController().getPostOrThrow(post.replyKey.getLast()).authorID;
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		PostViewModel.collectActorIDs(Set.of(pvm), needUsers, needGroups);
 		return new RenderedTemplateResponse("wall_reply_hover_card", req)
 				.with("post", pvm)
-				.with("maxReplyDepth", MAX_THREADED_DEPTH)
+				.with("maxReplyDepth", getMaxReplyDepth(self))
 				.with("users", ctx.getUsersController().getUsers(needUsers))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
+	}
+
+	public static int getMaxReplyDepth(@Nullable Account self){
+		return switch(self!=null ? self.prefs.commentViewType : CommentViewType.THREADED){
+			case THREADED -> 10;
+			case TWO_LEVEL -> 2;
+			case FLAT -> 1;
+		};
 	}
 }

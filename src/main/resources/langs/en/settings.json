@@ -162,5 +162,9 @@
   "err_reg_email_domain_not_allowed": "Signups with e-mail addresses from this provider are not allowed on this server",
   "settings_appearance_and_behavior": "Appearance & behavior",
   "settings_text_formatting": "Text formatting",
-  "settings_saved": "Settings were saved"
+  "settings_saved": "Settings were saved",
+  "settings_comment_view": "Comment view",
+  "settings_comments_threaded": "Threaded",
+  "settings_comments_two_level": "Two-level",
+  "settings_comments_flat": "Flat"
 }

@@ -162,5 +162,9 @@
   "err_reg_email_domain_not_allowed": "Регистрации с e-mail этого почтового сервиса запрещены на этом сервере",
   "settings_appearance_and_behavior": "Оформление и поведение",
   "settings_text_formatting": "Форматирование текста",
-  "settings_saved": "Настройки сохранены"
+  "settings_saved": "Настройки сохранены",
+  "settings_comment_view": "Вид комментариев",
+  "settings_comments_threaded": "Древовидные",
+  "settings_comments_two_level": "Двухуровневые",
+  "settings_comments_flat": "Плоские"
 }

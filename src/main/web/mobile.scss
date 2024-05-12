@@ -323,6 +323,25 @@ select{
 	}
 }
 
+.comment{
+	display: flex;
+	.treeIndent{
+		flex: none;
+		width: calc(var(--indent-level) * 8px);
+	}
+	.commentAvaWrap{
+		width: 32px;
+		flex: none;
+		margin-right: 8px;
+	}
+	.commentContentWrap{
+		flex-grow: 1;
+	}
+	&.twoLevelIndented{
+		padding-left: 32px;
+	}
+}
+
 .postActions{
 	display: flex;
 	.action{

@@ -10,6 +10,11 @@
 			{'value': 'MARKDOWN', 'label': "Markdown", 'selected': textFormat=='MARKDOWN'},
 			{'value': 'HTML', 'label': "HTML", 'selected': textFormat=='HTML'}
 		]) }}
+		{{ form.radioGroup('commentView', L('settings_comment_view'), [
+			{'value': 'THREADED', 'label': L('settings_comments_threaded'), 'selected': commentView=='THREADED'},
+			{'value': 'TWO_LEVEL', 'label': L('settings_comments_two_level'), 'selected': commentView=='TWO_LEVEL'},
+			{'value': 'FLAT', 'label': L('settings_comments_flat'), 'selected': commentView=='FLAT'}
+		]) }}
 		{{ form.footer(L('save')) }}
 	{{ form.end() }}
 </form>

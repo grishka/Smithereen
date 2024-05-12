@@ -28,6 +28,7 @@ import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
 import smithereen.model.Account;
 import smithereen.model.ActorWithDescription;
+import smithereen.model.CommentViewType;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
 import smithereen.model.GroupAdmin;
@@ -194,8 +195,9 @@ public class GroupsRoutes{
 			PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, group, false, offset, 20));
 			wallPostsCount=wall.total;
 			ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
+			CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 			if(req.attribute("mobile")==null){
-				ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
+				ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
 			}
 			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 			model.with("postCount", wall.total)
@@ -206,6 +208,7 @@ public class GroupsRoutes{
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
 			model.with("users", ctx.getUsersController().getUsers(needUsers));
+			model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 		}
 
 		if(group instanceof ForeignGroup)

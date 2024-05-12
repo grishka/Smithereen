@@ -188,5 +188,7 @@
   "remote_interaction_embed_comment": "You can also <a id=\"embed\">embed this comment on your website</a>.",
   "remote_interaction_bad_domain": "Unable to find the redirect URL. Please make sure you entered your server address correctly.",
   "remote_interaction_services_before": "Works with",
-  "remote_interaction_services_after": "...and more!"
+  "remote_interaction_services_after": "...and more!",
+  "comments_show_X_more_comments": "Show {count, plural, one {# more comment} other {# more comments}}",
+  "cancel_reply": "Cancel reply"
 }

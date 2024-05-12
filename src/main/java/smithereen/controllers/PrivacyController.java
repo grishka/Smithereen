@@ -36,6 +36,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
 import smithereen.storage.UserStorage;
@@ -304,6 +305,10 @@ public class PrivacyController{
 	public void filterPosts(@Nullable User self, Collection<Post> posts){
 		// TODO optimize this to avoid querying the same friendship states multiple times
 		posts.removeIf(post->!checkPostPrivacy(self, post));
+	}
+
+	public void filterPostViewModels(@Nullable User self, Collection<PostViewModel> posts){
+		posts.removeIf(post->!checkPostPrivacy(self, post.post));
 	}
 
 	public void enforceUserProfileAccess(@Nullable User self, User target){

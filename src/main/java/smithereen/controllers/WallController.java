@@ -33,6 +33,7 @@ import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.NoteOrQuestion;
+import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.Group;
@@ -103,23 +104,23 @@ public class WallController{
 	 * Create a new wall post or comment.
 	 * @param author Post author.
 	 * @param wallOwner Wall owner (user or group). Ignored for comments.
-	 * @param inReplyToID Post ID this is in reply to, 0 for a top-level post.
+	 * @param inReplyTo Post this is in reply to, null for a top-level post.
 	 * @param textSource HTML post text, as entered by the user.
 	 * @param contentWarning Content warning (null for none).
 	 * @param attachmentIDs IDs (hashes) of previously uploaded photo attachments.
 	 * @param poll Poll to attach.
 	 * @return The newly created post.
 	 */
-	public Post createWallPost(@NotNull User author, int authorAccountID, @NotNull Actor wallOwner, int inReplyToID,
+	public Post createWallPost(@NotNull User author, int authorAccountID, @NotNull Actor wallOwner, Post inReplyTo,
 							   @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
 							   @Nullable Poll poll, @Nullable Post repost){
 		try{
 			if(wallOwner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
-				if(inReplyToID==0)
+				if(inReplyTo==null)
 					ensureUserNotBlocked(author, group);
 			}else if(wallOwner instanceof User user){
-				if(inReplyToID==0){
+				if(inReplyTo==null){
 					ensureUserNotBlocked(author, user);
 					if(user.id!=author.id){
 						context.getPrivacyController().enforceUserPrivacy(author, user, UserPrivacySettingKey.WALL_POSTING);
@@ -135,17 +136,16 @@ public class WallController{
 			if(textSource.isEmpty() && attachmentIDs.isEmpty() && poll==null && repost==null)
 				throw new BadRequestException("Empty post");
 
-			if(!wallOwner.hasWall() && inReplyToID==0)
+			if(!wallOwner.hasWall() && inReplyTo==null)
 				throw new BadRequestException("This actor doesn't support wall posts");
 
-			Post parent=inReplyToID!=0 ? getPostOrThrow(inReplyToID) : null;
-			if(parent!=null){
-				if(parent.isMastodonStyleRepost()){
-					parent=getPostOrThrow(parent.repostOf);
+			if(inReplyTo!=null){
+				if(inReplyTo.isMastodonStyleRepost()){
+					inReplyTo=getPostOrThrow(inReplyTo.repostOf);
 				}
-				context.getPrivacyController().enforcePostPrivacy(author, parent);
+				context.getPrivacyController().enforcePostPrivacy(author, inReplyTo);
 			}
-			if(parent!=null || wallOwner.getLocalID()!=author.id)
+			if(inReplyTo!=null || wallOwner.getLocalID()!=author.id)
 				repost=null;
 
 			if(repost!=null){
@@ -171,7 +171,7 @@ public class WallController{
 			}
 
 			final HashSet<User> mentionedUsers=new HashSet<>();
-			String text=preparePostText(textSource, mentionedUsers, parent, sourceFormat);
+			String text=preparePostText(textSource, mentionedUsers, inReplyTo, sourceFormat);
 			int userID=author.id;
 			int postID;
 			int pollID=0;
@@ -183,7 +183,7 @@ public class WallController{
 				}
 			}
 
-			int maxAttachments=inReplyToID!=0 ? 2 : 10;
+			int maxAttachments=inReplyTo!=null ? 2 : 10;
 			int attachmentCount=pollID!=0 ? 1 : 0;
 			String attachments=null;
 			if(!attachmentIDs.isEmpty()){
@@ -204,7 +204,7 @@ public class WallController{
 
 			if(contentWarning!=null){
 				contentWarning=contentWarning.trim();
-				if(contentWarning.length()==0)
+				if(contentWarning.isEmpty())
 					contentWarning=null;
 			}
 
@@ -216,21 +216,20 @@ public class WallController{
 			int ownerGroupID=wallOwner instanceof Group g ? g.id : 0;
 			boolean isTopLevelPostOwn=true;
 			List<Integer> replyKey;
-			if(parent!=null){
-				replyKey=parent.getReplyKeyForReplies();
+			if(inReplyTo!=null){
+				replyKey=inReplyTo.getReplyKeyForReplies();
 				Post topLevel;
-				if(parent.replyKey.size()>0){
-					topLevel=getPostOrThrow(parent.replyKey.get(0));
+				if(!inReplyTo.replyKey.isEmpty()){
+					topLevel=getPostOrThrow(inReplyTo.replyKey.getFirst());
 				}else{
-					topLevel=parent;
+					topLevel=inReplyTo;
 				}
 
 				OwnerAndAuthor topLevelOwnership=getContentAuthorAndOwner(topLevel);
 				Actor topLevelOwner=topLevelOwnership.owner();
 				User topLevelAuthor=topLevelOwnership.author();
 
-				if(!mentionedUsers.contains(topLevelAuthor))
-					mentionedUsers.add(topLevelAuthor);
+				mentionedUsers.add(topLevelAuthor);
 				if(topLevel.isGroupOwner()){
 					ownerGroupID=-topLevel.ownerID;
 					ownerUserID=0;
@@ -270,7 +269,7 @@ public class WallController{
 			}else{
 				context.getActivityPubWorker().sendCreatePostActivity(post);
 			}
-			NotificationUtils.putNotificationsForPost(post, parent, repost);
+			NotificationUtils.putNotificationsForPost(post, inReplyTo, repost);
 
 			return post;
 		}catch(SQLException x){
@@ -519,10 +518,14 @@ public class WallController{
 	 * Add top-level comments to each post.
 	 * @param posts List of posts to add comments to
 	 */
-	public void populateCommentPreviews(@Nullable User self, @NotNull List<PostViewModel> posts){
+	public void populateCommentPreviews(@Nullable User self, @NotNull List<PostViewModel> posts, CommentViewType viewType){
 		try{
 			Set<Integer> postIDs=posts.stream().map(p->p.post.getIDForInteractions()).collect(Collectors.toSet());
-			Map<Integer, PaginatedList<Post>> allComments=PostStorage.getRepliesForFeed(postIDs);
+			Map<Integer, PaginatedList<Post>> allComments=PostStorage.getRepliesForFeed(postIDs, viewType==CommentViewType.FLAT);
+			List<PostViewModel> commentsThatNeedAuthors=null;
+			if(viewType==CommentViewType.FLAT){
+				commentsThatNeedAuthors=new ArrayList<>();
+			}
 			for(PostViewModel post:posts){
 				PaginatedList<Post> comments=allComments.get(post.post.getIDForInteractions());
 				if(comments!=null){
@@ -530,8 +533,14 @@ public class WallController{
 					if(!comments.list.isEmpty()){
 						post.repliesObjects=comments.list.stream().map(PostViewModel::new).toList();
 						post.totalTopLevelComments=comments.total;
+						if(viewType==CommentViewType.FLAT){
+							commentsThatNeedAuthors.addAll(post.repliesObjects);
+						}
 					}
 				}
+			}
+			if(viewType==CommentViewType.FLAT){
+				fillInParentAuthors(commentsThatNeedAuthors, null);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -643,35 +652,85 @@ public class WallController{
 		}
 	}
 
-	public PaginatedList<PostViewModel> getReplies(@Nullable User self, List<Integer> key, int primaryOffset, int primaryCount, int secondaryCount){
+	public PaginatedList<PostViewModel> getReplies(@Nullable User self, List<Integer> key, int primaryOffset, int primaryCount, int secondaryCount, CommentViewType type){
 		try{
-			LOG.trace("Getting post replies: priOffset={}, priCount={}, secCount={}, key={}", primaryOffset, primaryCount, secondaryCount, key);
-			PostStorage.ThreadedReplies tr=PostStorage.getRepliesThreaded(key.stream().mapToInt(Integer::intValue).toArray(), primaryOffset, primaryCount, secondaryCount);
+			LOG.trace("Getting post replies: priOffset={}, priCount={}, secCount={}, key={}, type={}", primaryOffset, primaryCount, secondaryCount, key, type);
+			Post threadParent=PostStorage.getPostByID(key.getLast(), true);
+			if(threadParent==null)
+				throw new ObjectNotFoundException();
+
+			// For two-level and flat, if we're getting replies to a comment, always treat them as a flat list
+			if((type==CommentViewType.TWO_LEVEL && threadParent.getReplyLevel()>0) || type==CommentViewType.FLAT){
+				PaginatedList<PostViewModel> posts=PostViewModel.wrap(PostStorage.getRepliesFlat(key, primaryOffset, primaryCount));
+				context.getPrivacyController().filterPostViewModels(self, posts.list);
+				fillInParentAuthors(posts.list, threadParent);
+				return posts;
+			}
+			PostStorage.ThreadedReplies tr=PostStorage.getRepliesThreaded(key, primaryOffset, primaryCount, secondaryCount, type==CommentViewType.TWO_LEVEL);
 
 			List<PostViewModel> posts=tr.posts().stream().filter(p->context.getPrivacyController().checkPostPrivacy(self, p)).map(PostViewModel::new).toList();
 			List<PostViewModel> replies=tr.replies().stream().filter(p->context.getPrivacyController().checkPostPrivacy(self, p)).map(PostViewModel::new).toList();
 			Map<Integer, PostViewModel> postMap=Stream.of(posts, replies).flatMap(List::stream).collect(Collectors.toMap(p->p.post.id, Function.identity()));
 
-			Post threadParent=PostStorage.getPostByID(key.getLast(), false);
-
 			for(PostViewModel post:replies){
 				if(post.post.getReplyLevel()>key.size()){
-					PostViewModel parent=postMap.get(post.post.replyKey.getLast());
+					PostViewModel parent=switch(type){
+						case THREADED -> postMap.get(post.post.replyKey.getLast());
+						case TWO_LEVEL -> postMap.get(post.post.replyKey.get(1));
+						case FLAT -> throw new IllegalArgumentException();
+					};
 					if(parent!=null){
-						post.parentAuthorID=parent.post.authorID;
+						PostViewModel realParent=postMap.get(post.post.replyKey.getLast());
+						if(realParent!=null)
+							post.parentAuthorID=realParent.post.authorID;
 						parent.repliesObjects.add(post);
 					}
 				}
 			}
-			if(threadParent!=null){
-				for(PostViewModel post:posts){
-					post.parentAuthorID=threadParent.authorID;
-				}
+			for(PostViewModel post:posts){
+				post.parentAuthorID=threadParent.authorID;
 			}
 
 			return new PaginatedList<>(posts, tr.total(), primaryOffset, primaryCount);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<PostViewModel> getRepliesFlat(@Nullable User self, List<Integer> key, int maxID, int count){
+		try{
+			PaginatedList<PostViewModel> posts=PostViewModel.wrap(PostStorage.getRepliesFlatWithMaxID(key, maxID, count));
+			context.getPrivacyController().filterPostViewModels(self, posts.list);
+			fillInParentAuthors(posts.list, null);
+			return posts;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	private void fillInParentAuthors(List<PostViewModel> posts, Post threadParent) throws SQLException{
+		HashMap<Integer, Integer> authorIDs=new HashMap<>();
+		if(threadParent!=null)
+			authorIDs.put(threadParent.id, threadParent.authorID);
+		for(PostViewModel p:posts){
+			authorIDs.put(p.post.id, p.post.authorID);
+		}
+		HashSet<Integer> needAuthors=new HashSet<>();
+		for(PostViewModel p:posts){
+			int author=authorIDs.getOrDefault(p.post.replyKey.getLast(), 0);
+			if(author!=0){
+				p.parentAuthorID=author;
+			}else{
+				needAuthors.add(p.post.replyKey.getLast());
+			}
+		}
+		if(!needAuthors.isEmpty()){
+			Map<Integer, Integer> moreAuthorIDs=PostStorage.getPostAuthors(needAuthors);
+			for(PostViewModel p:posts){
+				if(p.parentAuthorID==0){
+					p.parentAuthorID=moreAuthorIDs.getOrDefault(p.post.replyKey.getLast(), 0);
+				}
+			}
 		}
 	}
 

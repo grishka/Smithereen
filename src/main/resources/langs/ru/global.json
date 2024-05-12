@@ -184,5 +184,7 @@
   "remote_interaction_embed_comment": "Вы также можете <a id=\"embed\">встроить этот комментарий на свой сайт</a>.",
   "remote_interaction_bad_domain": "Не удалось найти URL для перенаправления. Проверьте правильность ввода адреса вашего сервера.",
   "remote_interaction_services_before": "Работает с",
-  "remote_interaction_services_after": "...и не только!"
+  "remote_interaction_services_after": "...и не только!",
+  "comments_show_X_more_comments": "Показать ещё {count, plural, one {# комментарий} few {# комментария} other {# комментариев}}",
+  "cancel_reply": "Не отвечать"
 }

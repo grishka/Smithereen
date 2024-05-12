@@ -11,6 +11,12 @@
 		</div>
 	{% else %}
 	<form action="{{ isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost" }}" id="wallPostFormForm_{{ id }}" method="post">
+		{% if showReplyBar %}
+		<div class="commentReplying" id="commentReplying_{{ id }}" style="display: none">
+			{{- L('in_reply_to_X', {}, {'name': {'_': 'span', 'id': 'replyingName_'+id} }) -}}
+			<a class="cancelReply" id="cancelReply_{{ id }}" aria-label="{{ L('cancel_reply') }}" data-tooltip="{{ L('cancel_reply') }}"></a>
+		</div>
+		{% endif %}
 	{% if replyTo is not null %}
 		{% set fieldPlaceholder=L('comment_placeholder') %}
 	{% elseif isGroup %}

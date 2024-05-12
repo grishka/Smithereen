@@ -32,6 +32,7 @@ import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.Account;
+import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SessionInfo;
@@ -79,7 +80,8 @@ public class SettingsRoutes{
 				.addMessage(req, "settings.appearanceBehaviorMessage", "appearanceBehaviorMessage");
 		model.with("activationInfo", self.activationInfo);
 		model.with("currentEmailMasked", self.getCurrentEmailMasked());
-		model.with("textFormat", self.prefs.textFormat);
+		model.with("textFormat", self.prefs.textFormat)
+				.with("commentView", self.prefs.commentViewType);
 		model.with("title", lang(req).get("settings"));
 		return model;
 	}
@@ -660,8 +662,9 @@ public class SettingsRoutes{
 	}
 
 	public static Object saveAppearanceBehaviorSettings(Request req, Response resp, Account self, ApplicationContext ctx){
-		requireQueryParams(req, "textFormat");
+		requireQueryParams(req, "textFormat", "commentView");
 		self.prefs.textFormat=enumValue(req.queryParams("textFormat"), FormattedTextFormat.class);
+		self.prefs.commentViewType=enumValue(req.queryParams("commentView"), CommentViewType.class);
 		try{
 			SessionStorage.updatePreferences(self.id, self.prefs);
 		}catch(SQLException x){

@@ -520,11 +520,11 @@ public class PostStorage{
 		}
 	}
 
-	public static Map<Integer, PaginatedList<Post>> getRepliesForFeed(Set<Integer> postIDs) throws SQLException{
+	public static Map<Integer, PaginatedList<Post>> getRepliesForFeed(Set<Integer> postIDs, boolean flat) throws SQLException{
 		if(postIDs.isEmpty())
 			return Collections.emptyMap();
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postIDs.size(), "(SELECT * FROM wall_posts WHERE reply_key=? ORDER BY created_at DESC LIMIT 3)")));
+			PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postIDs.size(), "(SELECT * FROM wall_posts WHERE reply_key"+(flat ? " LIKE BINARY bin_prefix(?)" : "=?")+" ORDER BY created_at DESC LIMIT 3)")));
 			int i=0;
 			for(int id: postIDs){
 				stmt.setBytes(i+1, Utils.serializeIntArray(new int[]{id}));
@@ -536,7 +536,7 @@ public class PostStorage{
 				while(res.next()){
 					Post post=Post.fromResultSet(res);
 					List<Post> posts=map.computeIfAbsent(post.getReplyChainElement(0), (k)->new PaginatedList<>(new ArrayList<>(), 0)).list;
-					posts.add(0, post);
+					posts.addFirst(post);
 				}
 			}
 			postprocessPosts(map.values().stream().flatMap(l->l.list.stream()).toList());
@@ -556,10 +556,10 @@ public class PostStorage{
 		}
 	}
 
-	public static ThreadedReplies getRepliesThreaded(int[] prefix, int topLevelOffset, int topLevelLimit, int secondaryLimit) throws SQLException{
+	public static ThreadedReplies getRepliesThreaded(List<Integer> prefix, int topLevelOffset, int topLevelLimit, int secondaryLimit, boolean twoLevel) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 
-			byte[] serializedPrefix=Utils.serializeIntArray(prefix);
+			byte[] serializedPrefix=Utils.serializeIntList(prefix);
 
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
@@ -592,7 +592,7 @@ public class PostStorage{
 			List<Post> replies;
 			if(!whereArgs.isEmpty()){
 				whereArgs.add(secondaryLimit);
-				PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT * FROM wall_posts WHERE "+String.join(" OR ", wheres)+" ORDER BY created_at ASC, LENGTH(reply_key) ASC LIMIT ?",
+				PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT * FROM wall_posts WHERE "+String.join(" OR ", wheres)+" ORDER BY created_at ASC"+(twoLevel ? "" : ", LENGTH(reply_key) ASC")+" LIMIT ?",
 						whereArgs.toArray());
 				replies=DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), Post::fromResultSet, null).toList();
 				postprocessPosts(replies);
@@ -604,12 +604,63 @@ public class PostStorage{
 		}
 	}
 
+	public static PaginatedList<Post> getRepliesFlat(List<Integer> prefix, int offset, int limit) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			byte[] serializedPrefix=Utils.serializeIntList(prefix);
+
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.count()
+					.where("reply_key LIKE BINARY bin_prefix(?)", (Object) serializedPrefix)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(limit);
+
+			List<Post> list=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.allColumns()
+					.where("reply_key LIKE BINARY bin_prefix(?)", (Object) serializedPrefix)
+					.limit(limit, offset)
+					.orderBy("created_at ASC")
+					.executeAsStream(Post::fromResultSet)
+					.toList();
+			postprocessPosts(list);
+			return new PaginatedList<>(list, total, offset, limit);
+		}
+	}
+
+	public static PaginatedList<Post> getRepliesFlatWithMaxID(List<Integer> prefix, int maxID, int limit) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			byte[] serializedPrefix=Utils.serializeIntList(prefix);
+
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.count()
+					.where("reply_key LIKE BINARY bin_prefix(?) AND created_at<=(SELECT `created_at` FROM `wall_posts` WHERE id=?) AND id<>?", (Object) serializedPrefix, maxID, maxID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(limit);
+
+			List<Post> list=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.allColumns()
+					.where("reply_key LIKE BINARY bin_prefix(?) AND created_at<=(SELECT `created_at` FROM `wall_posts` WHERE id=?) AND id<>?", (Object) serializedPrefix, maxID, maxID)
+					.limit(limit, 0)
+					.orderBy("created_at DESC")
+					.executeAsStream(Post::fromResultSet)
+					.toList()
+					.reversed();
+			postprocessPosts(list);
+			return new PaginatedList<>(list, total, 0, limit);
+		}
+	}
+
 	public static PaginatedList<Post> getRepliesExact(int[] replyKey, int maxID, int limit) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
 					.count()
-					.where("reply_key=? AND id<?", Utils.serializeIntArray(replyKey), maxID)
+					.where("reply_key=? AND created_at<=(SELECT `created_at` FROM `wall_posts` WHERE id=?) AND id<>?", Utils.serializeIntArray(replyKey), maxID, maxID)
 					.executeAndGetInt();
 			if(total==0)
 				return PaginatedList.emptyList(limit);
@@ -617,7 +668,7 @@ public class PostStorage{
 			List<Post> posts=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
 					.allColumns()
-					.where("reply_key=? AND id<?", Utils.serializeIntArray(replyKey), maxID)
+					.where("reply_key=? AND created_at<=(SELECT `created_at` FROM `wall_posts` WHERE id=?) AND id<>?", Utils.serializeIntArray(replyKey), maxID, maxID)
 					.limit(limit, 0)
 					.orderBy("created_at ASC")
 					.executeAsStream(Post::fromResultSet)
@@ -1149,6 +1200,15 @@ public class PostStorage{
 					.toList();
 			return new PaginatedList<>(posts, total, offset, count);
 		}
+	}
+
+	public static Map<Integer, Integer> getPostAuthors(Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.columns("id", "author_id")
+				.whereIn("id", ids)
+				.executeAsStream(res->new Pair<Integer, Integer>(res.getInt("id"), res.getInt("author_id")))
+				.collect(Collectors.toMap(Pair::first, Pair::second));
 	}
 
 	private record DeleteCommentBookmarksRunnable(int postID) implements Runnable{

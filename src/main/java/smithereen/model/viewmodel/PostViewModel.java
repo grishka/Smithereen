@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -61,7 +62,7 @@ public class PostViewModel{
 	}
 
 	public static PaginatedList<PostViewModel> wrap(PaginatedList<Post> list){
-		return new PaginatedList<>(list.list.stream().map(PostViewModel::new).toList(), list.total, list.offset, list.perPage);
+		return new PaginatedList<>(list.list.stream().map(PostViewModel::new).collect(Collectors.toCollection(ArrayList::new)), list.total, list.offset, list.perPage);
 	}
 
 	public static void collectActorIDs(Collection<PostViewModel> posts, Set<Integer> userIDs, Set<Integer> groupIDs){

@@ -397,7 +397,7 @@ class PostForm{
 		}
 		this.input.focus();
 		this.input.selectionEnd=this.input.selectionStart=this.input.value.length;
-		if(this.isMobileComment){
+		if(this.replyBar){
 			this.replyBar.show();
 			this.replyName.innerText=postEl.dataset.replyingName;
 		}
@@ -627,7 +627,8 @@ class PostForm{
 	public isDirty():boolean{
 		if(this.forceOverrideDirty || this.editing)
 			return false;
-		return this.input.value.length>0 || this.attachmentIDs.length>0 || this.cwLayout!=null || this.pollLayout!=null;
+		var trimmedValue=this.input.value.trim();
+		return (trimmedValue.length>0 && trimmedValue!=this.currentReplyName.trim()) || this.attachmentIDs.length>0 || this.cwLayout!=null || this.pollLayout!=null;
 	}
 
 	public focus(){

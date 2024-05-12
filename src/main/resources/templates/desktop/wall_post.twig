@@ -67,21 +67,22 @@
 </div>
 {% if not standalone and interactions is not null %}
 <div class="commentsPreviewWrap">
-	{% if post.totalTopLevelComments>post.repliesObjects.size %}
-		<a href="{{ realPost.internalURL }}" onclick="return loadOlderComments({{ realPost.id }})" class="loadPrev" id="loadPrevBtn{{ realPost.id }}" data-first-id="{{ post.repliesObjects[0].post.id }}">{{ L('show_previous_comments') }}</a>
+{% if realPost.mastodonStyleRepost %}{% set replyCount=post.repost.post.post.replyCount %}{% else %}{% set replyCount=realPost.replyCount %}{% endif %}
+	{% if (commentViewType=='FLAT' ? replyCount : post.totalTopLevelComments)>post.repliesObjects.size %}
+		<a href="{{ realPost.internalURL }}" onclick="return loadOlderComments({{ realPost.id }})" class="loadPrev" id="loadPrevBtn{{ realPost.id }}" data-first-id="{{ post.repliesObjects[0].post.id }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': replyCount-post.loadedRepliesCount}) : L('show_previous_comments') }}</a>
 		<div class="prevLoader loader" id="prevLoader{{ realPost.id }}" style="display: none;"></div>
 	{% endif %}
 	<div class="commentsPreview" id="postReplies{{ realPost.id }}" style="{{ post.repliesObjects is empty ? 'display: none;' : '' }}">
 	{%- for reply in post.repliesObjects %}
-		{% include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': "wallPostForm_commentReplyPost#{realPost.id}", 'topLevel': post} %}
+		{% include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': commentViewType=='FLAT' ? "wallPostForm_commentPost#{realPost.id}" : "wallPostForm_commentReplyPost#{realPost.id}", 'topLevel': post} %}
 		{% set realPost=post.post %}{# the included template overwrites this variable #}
 	{% endfor -%}
 	</div>
 	{%set interactions=postInteractions[realPost.getIDForInteractions()]%}
 {% if currentUser is not null and post.canComment %}
 	{% if post.repost is not null and post.repost.post is not null %}{% set origAuthor=users[post.repost.post.post.authorID] %}{% endif %}
-	{% include "wall_post_form" with {'id': "commentPost#{realPost.id}", 'replyTo': realPost, 'replyToModel': post, 'hidden': interactions.commentCount==0, 'originalPostAuthor': origAuthor} %}
-	{% include "wall_post_form" with {'id': "commentReplyPost#{realPost.id}", 'replyTo': realPost, 'hidden': true, 'originalPostAuthor': origAuthor} %}
+	{% include "wall_post_form" with {'id': "commentPost#{realPost.id}", 'replyTo': realPost, 'replyToModel': post, 'hidden': interactions.commentCount==0, 'originalPostAuthor': origAuthor, 'showReplyBar': commentViewType=='FLAT'} %}
+	{% if commentViewType!='FLAT' %}{% include "wall_post_form" with {'id': "commentReplyPost#{realPost.id}", 'replyTo': realPost, 'hidden': true, 'originalPostAuthor': origAuthor} %}{% endif %}
 {% endif %}
 </div>
 {% endif %}

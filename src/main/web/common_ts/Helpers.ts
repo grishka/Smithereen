@@ -717,11 +717,11 @@ function applyServerCommand(cmd:any){
 	}
 }
 
-function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveForm:boolean=true):boolean{
+function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveForm:boolean=true, containerPostID:number=0):boolean{
 	var form=ge(formID);
 	form.show();
 	if(moveForm){
-		var replies=ge("postReplies"+id);
+		var replies=ge("postReplies"+(containerPostID || id));
 		replies.insertAdjacentElement("afterbegin", form);
 	}
 	form.customData.postFormObj.setupForReplyTo(id);
@@ -918,16 +918,20 @@ function loadOlderComments(id:number){
 	btn.hide();
 	loader.show();
 	var firstID=parseInt(btn.dataset.firstId);
-	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentPreview?firstID="+firstID, null, ()=>{
+	var heightBefore=document.body.offsetHeight;
+	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentPreview?firstID="+firstID, ()=>{
+		document.documentElement.scrollTop+=document.body.offsetHeight-heightBefore;
+	}, ()=>{
 		btn.show();
 		loader.hide();
 	});
 	return false;
 }
 
-function loadCommentBranch(id:number, offset:number, topLevelRepostID:number){
+function loadCommentBranch(el:HTMLElement, id:number, topLevelRepostID:number){
 	var btn=ge("loadRepliesLink"+id);
 	var loader=ge("repliesLoader"+id);
+	var offset=parseInt(el.dataset.offset);
 	btn.hide();
 	loader.show();
 	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentBranch?offset="+(offset || 0)+(topLevelRepostID ? `&topLevel=${topLevelRepostID}` : ""), null, ()=>{

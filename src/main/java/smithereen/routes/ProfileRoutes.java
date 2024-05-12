@@ -20,6 +20,7 @@ import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.Account;
+import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.PaginatedList;
@@ -76,12 +77,14 @@ public class ProfileRoutes{
 						.paginate(wall, "/users/"+user.id+"/wall"+(canSeeOthers ? "" : "/own")+"?offset=", null);
 
 				ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
+				CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 				if(req.attribute("mobile")==null){
-					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
+					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
 				}
 
 				Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 				model.with("postInteractions", interactions);
+				model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 
 				PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
 				model.with("users", ctx.getUsersController().getUsers(needUsers));
