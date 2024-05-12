@@ -352,9 +352,9 @@ public class ActivityPub{
 				LOG.debug("Response body: {}", resp.body());
 				if(resp.statusCode()!=403){
 					if(resp.statusCode()/100==5){ // IOException does trigger retrying, FederationException does not. We want retries for 5xx (server) errors.
-						throw new IOException("Response is not successful: "+resp.statusCode());
+						throw new IOException("Response from "+inboxUrl+" is not successful: "+resp.statusCode());
 					}else{
-						throw new FederationException("Response is not successful: "+resp.statusCode());
+						throw new FederationException("Response from "+inboxUrl+" is not successful: "+resp.statusCode());
 					}
 				}
 			}
