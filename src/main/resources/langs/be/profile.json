@@ -1,0 +1,20 @@
+{
+  "write_on_X_wall": "Напісаць на сцяне {name, inflect, genitive}...",
+  "birth_date": "Дата нараджэння",
+  "write_on_own_wall": "Што новага?",
+  "profile_about": "Пра сябе",
+  "X_is_your_friend": "{name} у вас у сябрах",
+  "you_sent_friend_req_to_X": "Вы адправілі {name} заяўку ў сябры",
+  "X_sent_you_friend_req": "{name} {gender, select, female {адправіла} other {адправіў}} вам заяўку ў сябры",
+  "you_are_following_X": "Вы падпісаныя на {name, inflect, accusative}",
+  "X_is_following_you": "{name} {gender, select, female {падпісана} other {падпісаны}} на ваc",
+  "waiting_for_X_to_accept_follow_req": "Вы чакаеце, пакуль {name} прыме запыт на падпіску",
+  "incomplete_profile": "Інфармацыя на гэтай старонцы можа быць няпоўнай.",
+  "this_is_you": "(гэта Вы)",
+  "profile_moved": "{name} цяпер карыстаецца іншай старонкай:",
+  "profile_moved_link": "<b>{name}</b> на {domain}",
+  "profile_deactivated": "Старонка выдаленая яе ўладальнікам.",
+  "profile_hidden": "Прыхаваная старонка",
+  "profile_hidden_info": "Для прагляду гэтай старонкі трэба ўвайсці.",
+  "profile_banned": "Старонка заблакавана адміністрацыяй сервера."
+}

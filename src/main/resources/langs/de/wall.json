@@ -63,5 +63,13 @@
   "post_visible_to_followers": "Dieser Beitrag ist nur für {name}''s Folgende sichtbar",
   "post_visible_to_followers_mentioned": "Dieser Beitrag ist nur für {name}''s Folgende und erwähnte Leute sichtbar",
   "post_visible_to_friends": "Dieser Beitrag ist nur für {name}''s Freunde sichtbar",
-  "expand_all_cws": "Erweitere alle Inhaltswarnungen"
+  "expand_all_cws": "Erweitere alle Inhaltswarnungen",
+  "comment_repost_title": "<a id=\"originalComment\">{time}</a> auf Beitrag <a id=\"topLevelPost\">{postSnippet}</a>",
+  "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> auf einem gelöschten Beitrag",
+  "commenting_on_repost_hint": "Ihr Kommentar wird auf {name}''s ursprünglichen Beitrag angezeigt.",
+  "reposts_empty": "Niemand hat diesen Beitrag geteilt.",
+  "load_older_posts": "Vorherige Meldungen anzeigen",
+  "embed_post": "Einbetten",
+  "embed_post_explanation": "Du kannst diesen Beitrag außerhalb des Fediverse (z. B. auf deiner Website) einbetten, indem du diesen iFrame-Code einfügst.",
+  "embed_preview": "Vorschau"
 }
