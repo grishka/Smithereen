@@ -464,7 +464,7 @@ public class PostStorage{
 			boolean needFullyDelete=true;
 			if(post.getReplyLevel()>0){
 				stmt=conn.prepareStatement("SELECT COUNT(*) FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)");
-				ArrayList<Integer> rk=new ArrayList<>(post.replyKey.size()+1);
+				ArrayList<Integer> rk=new ArrayList<>(post.replyKey);
 				rk.add(post.id);
 				stmt.setBytes(1, Utils.serializeIntList(rk));
 				try(ResultSet res=stmt.executeQuery()){
