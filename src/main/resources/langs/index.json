@@ -53,6 +53,11 @@
       "locale": "fr",
       "name": "French",
       "fallback": "en"
+    },
+    {
+      "locale": "be",
+      "name": "Belarusian",
+      "fallback": "ru"
     }
   ]
 }
