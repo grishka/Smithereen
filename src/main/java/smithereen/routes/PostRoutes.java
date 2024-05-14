@@ -770,7 +770,8 @@ public class PostRoutes{
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
 
-		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
+		Post requestedPost;
+		Post post=requestedPost=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
 		int postID=post.id;
 		if(post.isMastodonStyleRepost())
 			post=ctx.getWallController().getPostOrThrow(post.repostOf);
@@ -782,19 +783,23 @@ public class PostRoutes{
 		CommentViewType viewType=info!=null && info.account!=null ? info.account.prefs.commentViewType : CommentViewType.THREADED;
 		PaginatedList<PostViewModel> comments;
 		if(viewType==CommentViewType.FLAT){
-			comments=ctx.getWallController().getRepliesFlat(self!=null ? self.user : null, List.of(post.id), maxID, 100);
+			comments=ctx.getWallController().getRepliesFlat(self!=null ? self.user : null, post.getReplyKeyForReplies(), maxID, 100);
 		}else{
-			comments=PostViewModel.wrap(ctx.getWallController().getRepliesExact(self!=null ? self.user : null, List.of(post.id), maxID, 100));
+			comments=PostViewModel.wrap(ctx.getWallController().getRepliesExact(self!=null ? self.user : null, post.getReplyKeyForReplies(), maxID, 100));
 		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
-		model.with("comments", comments.list);
+		model.with("comments", comments.list).with("baseReplyLevel", post.getReplyLevel());
 		preparePostList(ctx, comments.list, model, self);
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(comments.list, self!=null ? self.user : null);
 		model.with("postInteractions", interactions)
 					.with("preview", true)
 					.with("replyFormID", "wallPostForm_commentReplyPost"+postID)
 					.with("commentViewType", viewType);
-		PostViewModel topLevel=new PostViewModel(post.replyKey.isEmpty() ? post : ctx.getWallController().getPostOrThrow(post.replyKey.getFirst()));
+		PostViewModel topLevel;
+		if(requestedPost.isMastodonStyleRepost())
+			topLevel=new PostViewModel(requestedPost);
+		else
+			topLevel=new PostViewModel(post.replyKey.isEmpty() ? post : ctx.getWallController().getPostOrThrow(post.replyKey.getFirst()));
 		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
 		model.with("topLevel", topLevel);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
@@ -837,8 +842,9 @@ public class PostRoutes{
 			int realTopLevelID=post.replyKey.getFirst();
 			if(req.queryParams("topLevel")!=null){
 				Post topLevelSupposedly=ctx.getWallController().getPostOrThrow(safeParseInt(req.queryParams("topLevel")));
-				if(topLevelSupposedly.isMastodonStyleRepost() && topLevelSupposedly.repostOf==realTopLevelID){
+				if(topLevelSupposedly.isMastodonStyleRepost() && post.replyKey.contains(topLevelSupposedly.repostOf)){
 					topLevel=new PostViewModel(topLevelSupposedly);
+					model.with("baseReplyLevel", post.getReplyLevel()-1);
 				}
 			}
 			if(topLevel==null)

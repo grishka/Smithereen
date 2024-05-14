@@ -2,10 +2,11 @@
 {# @pebvariable name="realPost" type="smithereen.model.Post" #}
 {# @pebvariable name="topLevel" type="smithereen.model.viewmodel.PostViewModel" #}
 {% set realPost=post.post %}
-<div class="post comment{{ first ? ' first' : '' }}{{ commentViewType=='TWO_LEVEL' and not hideIndent and realPost.replyLevel>1 ? ' twoLevelIndented' : '' }}" id="post{{realPost.id}}" data-reply-name="{{users[realPost.authorID].nameForReply}}" data-replying-name="{{ L('in_reply_to_name', {'name': users[realPost.authorID].firstAndGender}) }}">
-	{% if realPost.replyLevel>1 and not hideIndent %}
+{% set replyLevel=realPost.replyLevel-(baseReplyLevel | default(0)) %}
+<div class="post comment{{ first ? ' first' : '' }}{{ commentViewType=='TWO_LEVEL' and not hideIndent and replyLevel>1 ? ' twoLevelIndented' : '' }}" id="post{{realPost.id}}" data-reply-name="{{users[realPost.authorID].nameForReply}}" data-replying-name="{{ L('in_reply_to_name', {'name': users[realPost.authorID].firstAndGender}) }}">
+	{% if replyLevel>1 and not hideIndent %}
 	{% if commentViewType=='THREADED' %}
-	<div style="--indent-level: {{ min(realPost.replyLevel-1, maxReplyDepth) }}" class="treeIndent"></div>
+	<div style="--indent-level: {{ min(replyLevel-1, maxReplyDepth) }}" class="treeIndent"></div>
 	{% endif %}
 	{% endif %}
 	{%if not(realPost.deleted)%}
@@ -17,7 +18,7 @@
 		<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
 		{%- if realPost.privacy!='PUBLIC' -%}
 		<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID] | name('firstAndGender')}) }}"></span>
-		{%- endif %}{% if realPost.replyLevel>maxReplyDepth %}<span class="commentInReply grayText hoverCardContainer"> {{ L('comment_in_reply_to_user', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink hoverCardTrigger", 'data-parent-id': realPost.replyKey.last} }) }}</span>{% endif %}<br/>
+		{%- endif %}{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText hoverCardContainer"> {{ L('comment_in_reply_to_user', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink hoverCardTrigger", 'data-parent-id': realPost.replyKey.last} }) }}</span>{% endif %}<br/>
 		<div id="postInner{{ realPost.id }}">
 			{% block postInner %}
 			{% if realPost.hasContentWarning %}
@@ -65,7 +66,7 @@
 					| <a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box>{{ L('report') }}</a>
 				{% endif %}
 				{% if not hideReplyLink and topLevel.canComment and currentUser is not null %}
-					| <a href="{{realPost.internalURL}}" onclick="return showPostReplyForm({{realPost.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', {{ commentViewType!='FLAT' }}, {{ commentViewType=='TWO_LEVEL' and realPost.replyLevel>1 ? realPost.replyKey[1] : 0 }})">{{L('add_reply')}}</a>
+					| <a href="{{realPost.internalURL}}" onclick="return showPostReplyForm({{realPost.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', {{ commentViewType!='FLAT' }}, {{ commentViewType=='TWO_LEVEL' and replyLevel>1 ? realPost.replyKey[1] : 0 }})">{{L('add_reply')}}</a>
 				{% endif %}
 				{% if not realPost.local %}
 					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
@@ -82,14 +83,15 @@
 	</div>
 	{%endif%}
 </div>
-{% if not hideReplies and commentViewType!='FLAT' and not (commentViewType=='TWO_LEVEL' and realPost.replyLevel>1) %}
+{% if not hideReplies and commentViewType!='FLAT' and not (commentViewType=='TWO_LEVEL' and replyLevel>1) %}
 <div id="postReplies{{realPost.id}}" class="replies">
 	{%for reply in post.repliesObjects%}
 		{% include "wall_reply" with {'post': reply, 'first': false, 'topLevel': topLevel} %}
 		{% set realPost=post.post %}
+		{% set replyLevel=realPost.replyLevel-(baseReplyLevel | default(0)) %}
 	{%endfor%}
 	{% if post.loadableRepliesCount>0 %}
-	<div id="loadRepliesContainer{{ realPost.id }}" class="threadedIndented" style="--indent-level: {{ min(realPost.replyLevel-1, maxReplyDepth) }}">
+	<div id="loadRepliesContainer{{ realPost.id }}" class="threadedIndented" style="--indent-level: {{ min(replyLevel-1, maxReplyDepth) }}">
 		<a class="loadRepliesLink" onclick="return loadCommentBranch(this, {{ realPost.id }}, {{ topLevel.post.isMastodonStyleRepost ? topLevel.post.id : 0 }})" data-offset="{{ post.repliesObjects | length }}" id="loadRepliesLink{{ realPost.id }}">{{ L(post.loadedRepliesCount>0 ? 'comments_show_X_more_replies' : 'comments_show_X_replies', {'count': post.loadableRepliesCount}) }}</a>
 		<div class="loadRepliesLink" id="repliesLoader{{ realPost.id }}" style="display: none;"><span class="loader"></span></div>
 		<div class="depthIndicator"></div>

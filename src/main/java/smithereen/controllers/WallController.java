@@ -520,7 +520,7 @@ public class WallController{
 	 */
 	public void populateCommentPreviews(@Nullable User self, @NotNull List<PostViewModel> posts, CommentViewType viewType){
 		try{
-			Set<Integer> postIDs=posts.stream().map(p->p.post.getIDForInteractions()).collect(Collectors.toSet());
+			Set<List<Integer>> postIDs=posts.stream().map(PostViewModel::getReplyKeyForInteractions).collect(Collectors.toSet());
 			Map<Integer, PaginatedList<Post>> allComments=PostStorage.getRepliesForFeed(postIDs, viewType==CommentViewType.FLAT);
 			List<PostViewModel> commentsThatNeedAuthors=null;
 			if(viewType==CommentViewType.FLAT){

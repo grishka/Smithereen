@@ -520,22 +520,24 @@ public class PostStorage{
 		}
 	}
 
-	public static Map<Integer, PaginatedList<Post>> getRepliesForFeed(Set<Integer> postIDs, boolean flat) throws SQLException{
-		if(postIDs.isEmpty())
+	public static Map<Integer, PaginatedList<Post>> getRepliesForFeed(Set<List<Integer>> postReplyKeys, boolean flat) throws SQLException{
+		if(postReplyKeys.isEmpty())
 			return Collections.emptyMap();
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postIDs.size(), "(SELECT * FROM wall_posts WHERE reply_key"+(flat ? " LIKE BINARY bin_prefix(?)" : "=?")+" ORDER BY created_at DESC LIMIT 3)")));
+			PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postReplyKeys.size(), "(SELECT *, ? AS `parent_id` FROM wall_posts WHERE reply_key"+(flat ? " LIKE BINARY bin_prefix(?)" : "=?")+" ORDER BY created_at DESC LIMIT 3)")));
 			int i=0;
-			for(int id: postIDs){
-				stmt.setBytes(i+1, Utils.serializeIntArray(new int[]{id}));
-				i++;
+			for(List<Integer> id:postReplyKeys){
+				stmt.setInt(i+1, id.getLast());
+				stmt.setBytes(i+2, Utils.serializeIntList(id));
+				i+=2;
 			}
 			LOG.debug("{}", stmt);
 			HashMap<Integer, PaginatedList<Post>> map=new HashMap<>();
 			try(ResultSet res=stmt.executeQuery()){
 				while(res.next()){
 					Post post=Post.fromResultSet(res);
-					List<Post> posts=map.computeIfAbsent(post.getReplyChainElement(0), (k)->new PaginatedList<>(new ArrayList<>(), 0)).list;
+					int parentID=res.getInt("parent_id");
+					List<Post> posts=map.computeIfAbsent(parentID, (k)->new PaginatedList<>(new ArrayList<>(), 0)).list;
 					posts.addFirst(post);
 				}
 			}
@@ -544,11 +546,11 @@ public class PostStorage{
 					.selectFrom("wall_posts")
 					.selectExpr("count(*), reply_key")
 					.groupBy("reply_key")
-					.whereIn("reply_key", postIDs.stream().map(id->Utils.serializeIntArray(new int[]{id})).collect(Collectors.toList()))
+					.whereIn("reply_key", postReplyKeys.stream().map(Utils::serializeIntList).collect(Collectors.toList()))
 					.createStatement();
 			try(ResultSet res=stmt.executeQuery()){
 				while(res.next()){
-					int id=Utils.deserializeIntArray(res.getBytes(2))[0];
+					int id=Utils.deserializeIntList(res.getBytes(2)).getLast();
 					map.get(id).total=res.getInt(1);
 				}
 			}

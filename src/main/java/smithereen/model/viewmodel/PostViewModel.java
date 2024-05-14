@@ -61,6 +61,12 @@ public class PostViewModel{
 		}
 	}
 
+	public List<Integer> getReplyKeyForInteractions(){
+		if(post.isMastodonStyleRepost() && repost!=null)
+			return repost.post.post.getReplyKeyForReplies();
+		return post.getReplyKeyForReplies();
+	}
+
 	public static PaginatedList<PostViewModel> wrap(PaginatedList<Post> list){
 		return new PaginatedList<>(list.list.stream().map(PostViewModel::new).collect(Collectors.toCollection(ArrayList::new)), list.total, list.offset, list.perPage);
 	}

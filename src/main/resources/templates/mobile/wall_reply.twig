@@ -1,11 +1,12 @@
 {# @pebvariable name="post" type="smithereen.model.viewmodel.PostViewModel" #}
 {# @pebvariable name="realPost" type="smithereen.model.Post" #}
 {% set realPost=post.post %}
+{% set replyLevel=realPost.replyLevel-(baseReplyLevel | default(0)) %}
 <a name="comment{{realPost.id}}"></a>
-<div class="post comment{{ commentViewType=='TWO_LEVEL' and not hideIndent and realPost.replyLevel>1 ? ' twoLevelIndented' : '' }}" id="post{{realPost.id}}" data-reply-name="{{ users[realPost.authorID].nameForReply}}" data-replying-name="{{ L('in_reply_to_name', {'name': users[realPost.authorID].firstAndGender}) }}">
-	{% if realPost.replyLevel>1 and not hideIndent %}
+<div class="post comment{{ commentViewType=='TWO_LEVEL' and not hideIndent and replyLevel>1 ? ' twoLevelIndented' : '' }}" id="post{{realPost.id}}" data-reply-name="{{ users[realPost.authorID].nameForReply}}" data-replying-name="{{ L('in_reply_to_name', {'name': users[realPost.authorID].firstAndGender}) }}">
+	{% if replyLevel>1 and not hideIndent %}
 	{% if commentViewType=='THREADED' %}
-	<div style="--indent-level: {{ min(realPost.replyLevel-1, maxReplyDepth) }}" class="treeIndent"></div>
+	<div style="--indent-level: {{ min(replyLevel-1, maxReplyDepth) }}" class="treeIndent"></div>
 	{% endif %}
 	{% endif %}
 	{%if not(realPost.deleted)%}
@@ -33,7 +34,7 @@
 		{%set interactions=postInteractions[realPost.id]%}
 		<div class="postInfo">
 			<a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.id}})" class="postLink">{{LD(realPost.createdAt)}}</a>
-			{% if realPost.replyLevel>maxReplyDepth %}<span class="commentInReply grayText"> {{ L('comment_in_reply_to_user_short', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink", 'data-parent-id': realPost.replyKey.last, 'onclick': "highlightComment(#{realPost.replyKey.last}); return false;"} }) }}</span>{% endif %}<br/>
+			{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText"> {{ L('comment_in_reply_to_user_short', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink", 'data-parent-id': realPost.replyKey.last, 'onclick': "highlightComment(#{realPost.replyKey.last}); return false;"} }) }}</span>{% endif %}<br/>
 			<div class="actions">
 				{% if currentUser is not null %}
 					{% if not hideReplyLink and topLevel.canComment -%}
@@ -80,13 +81,15 @@
 	</div>
 	{%endif%}
 </div>
-{% if not hideReplies and commentViewType!='FLAT' and not (commentViewType=='TWO_LEVEL' and realPost.replyLevel>1) %}
+{% if not hideReplies and commentViewType!='FLAT' and not (commentViewType=='TWO_LEVEL' and replyLevel>1) %}
 <div id="postReplies{{realPost.id}}" class="replies">
 	{% for reply in post.repliesObjects %}
-	{% include "wall_reply" with {'post': reply, 'topLevel': topLevel} %}
+		{% include "wall_reply" with {'post': reply, 'topLevel': topLevel} %}
+		{% set realPost=post.post %}
+		{% set replyLevel=realPost.replyLevel-(baseReplyLevel | default(0)) %}
 	{% endfor %}
 	{% if post.loadableRepliesCount>0 %}
-	<div id="loadRepliesContainer{{ realPost.id }}" class="threadedIndented" style="--indent-level: {{ min(realPost.replyLevel-1, maxReplyDepth) }}">
+	<div id="loadRepliesContainer{{ realPost.id }}" class="threadedIndented" style="--indent-level: {{ min(replyLevel-1, maxReplyDepth) }}">
 		<a class="loadRepliesLink" onclick="return loadCommentBranch(this, {{ realPost.id }}, {{ topLevel.post.isMastodonStyleRepost ? topLevel.post.id : 0 }})" data-offset="{{ post.repliesObjects | length }}" id="loadRepliesLink{{ realPost.id }}">{{ L(post.loadedRepliesCount>0 ? 'comments_show_X_more_replies' : 'comments_show_X_replies', {'count': post.loadableRepliesCount}) }}</a>
 		<div class="loadRepliesLink" id="repliesLoader{{ realPost.id }}" style="display: none;"><span class="loader"></span></div>
 		<div class="depthIndicator"></div>

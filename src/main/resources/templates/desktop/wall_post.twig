@@ -74,7 +74,7 @@
 	{% endif %}
 	<div class="commentsPreview" id="postReplies{{ realPost.id }}" style="{{ post.repliesObjects is empty ? 'display: none;' : '' }}">
 	{%- for reply in post.repliesObjects %}
-		{% include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': commentViewType=='FLAT' ? "wallPostForm_commentPost#{realPost.id}" : "wallPostForm_commentReplyPost#{realPost.id}", 'topLevel': post} %}
+		{% include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': commentViewType=='FLAT' ? "wallPostForm_commentPost#{realPost.id}" : "wallPostForm_commentReplyPost#{realPost.id}", 'topLevel': post, 'baseReplyLevel': realPost.isMastodonStyleRepost ? post.repost.post.post.replyLevel : 0} %}
 		{% set realPost=post.post %}{# the included template overwrites this variable #}
 	{% endfor -%}
 	</div>
