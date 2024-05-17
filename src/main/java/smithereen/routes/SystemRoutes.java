@@ -501,6 +501,7 @@ public class SystemRoutes{
 							LOG.trace("Failed to fetch repost chain for {}", post.activityPubID, x);
 						}
 					}
+					ctx.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 					PostStorage.putForeignWallPost(nativePost);
 					try{
 						ctx.getActivityPubWorker().fetchAllReplies(nativePost).get(30, TimeUnit.SECONDS);

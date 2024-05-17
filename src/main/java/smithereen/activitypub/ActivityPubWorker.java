@@ -1097,6 +1097,7 @@ public class ActivityPubWorker{
 						seenPosts.add(item.object.activityPubID);
 					}
 					post=noq.asNativePost(context);
+					context.getWallController().loadAndPreprocessRemotePostMentions(post, noq);
 					PostStorage.putForeignWallPost(post);
 					LOG.trace("got post: {}", post);
 					FetchAllRepliesTask subtask=new FetchAllRepliesTask(post, seenPosts);
@@ -1518,6 +1519,7 @@ public class ActivityPubWorker{
 		protected void compute(){
 			try{
 				Post nativePost=post.asNativePost(context);
+				context.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 				context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
 				executor.submit(new FetchAllRepliesTask(nativePost)).get();
 			}catch(Exception x){
@@ -1608,6 +1610,7 @@ public class ActivityPubWorker{
 						NoteOrQuestion post=context.getObjectLinkResolver().resolve(nextUri, NoteOrQuestion.class, true, false, false);
 						nextUri=post.getQuoteRepostID();
 						Post nativePost=post.asNativePost(context);
+						context.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 						repostChain.add(nativePost);
 					}catch(ObjectNotFoundException x){
 						LOG.debug("Failed to fetch a complete repost chain for {}, failed at {}, stopping at depth {}", topLevel.activityPubID, nextUri, depth, x);
