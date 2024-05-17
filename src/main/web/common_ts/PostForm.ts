@@ -40,6 +40,7 @@ class PostForm{
 	private replyName:HTMLElement;
 	private replyCancel:HTMLElement;
 	private submitButton:HTMLElement;
+	private completionsContainer:HTMLElement;
 
 	private pollLayout:HTMLElement;
 	private pollQuestionField:HTMLInputElement;
@@ -60,6 +61,11 @@ class PostForm{
 	private allowedAttachmentTypes:string[]=null;
 	public onSendDone:{(success:boolean):void};
 	private allowEmpty=false;
+	private mentionRegex=/@(\S+)$/gu;
+	private lastSelectionEnd:number;
+	private completionsDebounceTimeout:number;
+	private completionsXHR:XMLHttpRequest;
+	private completionList:CompletionList;
 
 	public constructor(el:HTMLElement){
 		this.id=el.dataset.uniqueId;
@@ -177,6 +183,17 @@ class PostForm{
 		if(this.form.dataset.allowedAttachments){
 			this.allowedAttachmentTypes=this.form.dataset.allowedAttachments.split(",");
 		}
+
+		if(!mobile){
+			this.completionsContainer=el.qs(".completionsContainer");
+			this.input.addEventListener("input", (ev)=>this.updateCompletions());
+			this.input.addEventListener("mouseup", (ev)=>this.updateCompletions());
+			this.input.addEventListener("keyup", (ev)=>this.updateCompletions());
+			this.completionList=new CompletionList(this.input, (el)=>{
+				this.insertMention(el.dataset.username);
+			});
+			this.completionsContainer.appendChild(this.completionList.completionsWrap);
+		}
 	}
 
 	private onFormSubmit(ev:Event):void{
@@ -187,6 +204,10 @@ class PostForm{
 	private onInputKeyDown(ev:KeyboardEvent):void{
 		if(ev.keyCode==13 && (isApple ? ev.metaKey : ev.ctrlKey)){
 			this.send(this.onSendDone);
+		}
+		if(ev.keyCode==9 && this.completionList && this.completionList.selectedCompletion){ // tab
+			ev.preventDefault();
+			this.insertMention(this.completionList.selectedCompletion.dataset.username);
 		}
 	}
 
@@ -665,5 +686,60 @@ class PostForm{
 			box.show();
 		}
 		return false;
+	}
+
+	private updateCompletions(){
+		if(this.input.selectionStart!=this.input.selectionEnd){
+			this.resetCompletions();
+			return;
+		}
+		if(this.input.selectionEnd==this.lastSelectionEnd)
+			return;
+		if(this.completionsDebounceTimeout){
+			clearTimeout(this.completionsDebounceTimeout);
+			this.completionsDebounceTimeout=0;
+		}
+		if(this.completionsXHR){
+			this.completionsXHR.abort();
+			this.completionsXHR=null;
+		}
+		this.lastSelectionEnd=this.input.selectionEnd;
+		var part=this.input.value.substr(0, this.input.selectionEnd);
+		this.mentionRegex.lastIndex=0;
+		var match=this.mentionRegex.exec(part);
+		if(match){
+			var query=match[1];
+			this.completionsDebounceTimeout=setTimeout(()=>{
+				this.completionsDebounceTimeout=0;
+				this.completionsXHR=ajaxGet("/system/mentionCompletions?q="+encodeURIComponent(query), (r)=>{
+					this.completionsXHR=null;
+					this.completionList.completionsList.innerHTML=r;
+					this.completionList.updateCompletions();
+				}, (err)=>{
+					this.completionsXHR=null;
+				}, "text");
+			}, 300);
+		}else{
+			this.resetCompletions();
+		}
+	}
+
+	private insertMention(username:string){
+		var part=this.input.value.substr(0, this.input.selectionEnd);
+		this.mentionRegex.lastIndex=0;
+		var match=this.mentionRegex.exec(part);
+		if(!match)
+			return;
+		var replacement="@"+username+" ";
+		this.input.value=this.input.value.substr(0, match.index)+replacement+this.input.value.substr(this.input.selectionEnd);
+		var newCursorPos=match.index+replacement.length;
+		this.input.setSelectionRange(newCursorPos, newCursorPos);
+		this.input.focus();
+		this.resetCompletions();
+	}
+
+	private resetCompletions(){
+		this.completionList.completionsList.innerHTML="";
+		this.completionList.updateCompletions();
 	}
 }

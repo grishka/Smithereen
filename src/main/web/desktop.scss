@@ -652,6 +652,9 @@ _::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
 			}
 		}
 	}
+	.completionsContainer{
+		margin: -1px 1px 0;
+	}
 }
 
 .commentsPreview:empty+.wallPostForm{
@@ -2895,7 +2898,6 @@ label.pretendLink{
 	display: flex;
 	flex-wrap: wrap;
 	padding: 0 0 2px 0;
-	position: relative;
 	input{
 		border: none;
 		padding: 0;
@@ -2929,6 +2931,10 @@ label.pretendLink{
 			color: $textOnAccent;
 		}
 	}
+}
+
+.completionsContainer, .tokenInput{
+	position: relative;
 	.completionsWW{
 		position: absolute;
 		bottom: 0;
@@ -2973,6 +2979,23 @@ label.pretendLink{
 				color: #FFFFFF;
 				border-color: #2e6200;
 				z-index: 1;
+				b{
+					background: $normalLink;
+				}
+			}
+			&.withAvatar{
+				padding: 5px;
+				line-height: 15px;
+				.ava{
+					float: left;
+					margin-right: 7px;
+				}
+			}
+			.secondaryText{
+				opacity: 0.56;
+			}
+			b{
+				background: $wallPostSeparator;
 			}
 		}
 	}

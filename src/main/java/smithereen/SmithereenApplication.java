@@ -408,6 +408,7 @@ public class SmithereenApplication{
 			get("/captcha", SystemRoutes::captcha);
 			get("/oembed", SystemRoutes::oEmbed);
 			post("/redirectForRemoteInteraction", SystemRoutes::redirectForRemoteInteraction);
+			getLoggedIn("/mentionCompletions", SystemRoutes::mentionCompletions);
 
 			if(Config.DEBUG){
 				path("/debug", ()->{

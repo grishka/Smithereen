@@ -9,6 +9,7 @@ import smithereen.controllers.NewsfeedController;
 import smithereen.controllers.NotificationsController;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.controllers.PrivacyController;
+import smithereen.controllers.SearchController;
 import smithereen.controllers.StatsController;
 import smithereen.controllers.UserInteractionsController;
 import smithereen.controllers.UsersController;
@@ -28,6 +29,7 @@ public class ApplicationContext{
 	private final ModerationController moderationController;
 	private final StatsController statsController;
 	private final MailController mailController;
+	private final SearchController searchController;
 
 	public ApplicationContext(){
 		wallController=new WallController(this);
@@ -43,6 +45,7 @@ public class ApplicationContext{
 		moderationController=new ModerationController(this);
 		statsController=new StatsController(this);
 		mailController=new MailController(this);
+		searchController=new SearchController(this);
 	}
 
 	public WallController getWallController(){
@@ -95,5 +98,9 @@ public class ApplicationContext{
 
 	public MailController getMailController(){
 		return mailController;
+	}
+
+	public SearchController getSearchController(){
+		return searchController;
 	}
 }

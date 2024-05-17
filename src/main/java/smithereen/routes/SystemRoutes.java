@@ -19,14 +19,18 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
@@ -77,6 +81,7 @@ import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.util.QuickSearchResults;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
@@ -90,6 +95,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.TextProcessor;
 import smithereen.util.BlurHash;
 import smithereen.util.CaptchaGenerator;
+import smithereen.util.CharacterRange;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
@@ -399,76 +405,11 @@ public class SystemRoutes{
 		return model;
 	}
 
-	public static Object quickSearch(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object quickSearch(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "q");
 		String query=req.queryParams("q");
-		if(StringUtils.isEmpty(query) || query.length()<2)
-			return "";
-
-		List<User> users=Collections.emptyList();
-		List<Group> groups=Collections.emptyList();
-		List<URI> externalObjects=Collections.emptyList();
-		if(isURL(query)){
-			if(!query.startsWith("http:") && !query.startsWith("https:"))
-				query="https://"+query;
-			query=normalizeURLDomain(query);
-			URI uri=URI.create(query);
-			try{
-				ActivityPubObject obj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, false, false, false);
-				if(obj instanceof User){
-					users=Collections.singletonList((User)obj);
-				}else if(obj instanceof Group){
-					groups=Collections.singletonList((Group)obj);
-				}else{
-					externalObjects=Collections.singletonList(uri);
-				}
-			}catch(ObjectNotFoundException x){
-				if(!Config.isLocal(uri)){
-					try{
-						Actor actor=ctx.getObjectLinkResolver().resolve(uri, Actor.class, false, false, false);
-						if(actor instanceof User){
-							users=Collections.singletonList((User)actor);
-						}else if(actor instanceof Group){
-							groups=Collections.singletonList((Group)actor);
-						}else{
-							throw new AssertionError();
-						}
-					}catch(ObjectNotFoundException|IllegalStateException xx){
-						externalObjects=Collections.singletonList(uri);
-					}
-				}
-			}
-		}else if(isUsernameAndDomain(query)){
-			Matcher matcher=TextProcessor.USERNAME_DOMAIN_PATTERN.matcher(query);
-			matcher.find();
-			String username=matcher.group(1);
-			String domain=matcher.group(2);
-			String full=username;
-			if(domain!=null)
-				full+='@'+domain;
-			User user=UserStorage.getByUsername(full);
-			SearchResult sr;
-			if(user!=null){
-				users=Collections.singletonList(user);
-			}else{
-				Group group=GroupStorage.getByUsername(full);
-				if(group!=null){
-					groups=Collections.singletonList(group);
-				}else{
-					externalObjects=Collections.singletonList(URI.create(full));
-				}
-			}
-		}else{
-			List<SearchResult> results=SearchStorage.search(query, self.user.id, 10);
-			users=new ArrayList<>();
-			groups=new ArrayList<>();
-			for(SearchResult result:results){
-				switch(result.type){
-					case USER -> users.add(result.user);
-					case GROUP -> groups.add(result.group);
-				}
-			}
-		}
-		return new RenderedTemplateResponse("quick_search_results", req).with("users", users).with("groups", groups).with("externalObjects", externalObjects).with("avaSize", req.attribute("mobile")!=null ? 48 : 30);
+		QuickSearchResults res=ctx.getSearchController().quickSearch(query, self.user);
+		return new RenderedTemplateResponse("quick_search_results", req).with("users", res.users()).with("groups", res.groups()).with("externalObjects", res.externalObjects()).with("avaSize", req.attribute("mobile")!=null ? 48 : 30);
 	}
 
 	public static Object loadRemoteObject(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
@@ -905,5 +846,61 @@ public class SystemRoutes{
 			}
 			throw new UserErrorException("remote_interaction_bad_domain");
 		}
+	}
+
+	public static Object mentionCompletions(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "q");
+		String query=req.queryParams("q");
+		List<Pattern> normalizedQueryParts=Arrays.stream(query.toLowerCase(Locale.US).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("\\s+"))
+				.filter(Predicate.not(String::isBlank))
+				.map(s->Pattern.compile("\\b"+Pattern.quote(s), Pattern.CASE_INSENSITIVE))
+				.toList();
+		List<User> results=ctx.getSearchController().searchUsers(query, self.user, 10);
+		HashMap<Integer, String> highlightedNames=new HashMap<>(), highlightedUsernames=new HashMap<>();
+		List<CharacterRange> nameRanges=new ArrayList<>(), usernameRanges=new ArrayList<>();
+		for(User u:results){
+			nameRanges.clear();
+			usernameRanges.clear();
+			String name=TextProcessor.escapeHTML(u.getFullName());
+			String username=TextProcessor.escapeHTML(u.getFullUsername());
+			for(Pattern ptn:normalizedQueryParts){
+				Matcher m=ptn.matcher(name);
+				matcherLoop:
+				while(m.find()){
+					CharacterRange range=new CharacterRange(m.start(), m.end());
+					for(CharacterRange existing:nameRanges){
+						if(existing.intersects(range))
+							continue matcherLoop;
+					}
+					nameRanges.add(range);
+				}
+				m=ptn.matcher(username);
+				matcherLoop:
+				while(m.find()){
+					CharacterRange range=new CharacterRange(m.start(), m.end());
+					for(CharacterRange existing:usernameRanges){
+						if(existing.intersects(range))
+							continue matcherLoop;
+					}
+					usernameRanges.add(range);
+				}
+			}
+			nameRanges.sort(null);
+			Collections.reverse(nameRanges);
+			for(CharacterRange r:nameRanges){
+				name=name.substring(0, r.start())+"<b>"+name.substring(r.start(), r.end())+"</b>"+name.substring(r.end());
+			}
+			usernameRanges.sort(null);
+			Collections.reverse(usernameRanges);
+			for(CharacterRange r:usernameRanges){
+				username=username.substring(0, r.start())+"<b>"+username.substring(r.start(), r.end())+"</b>"+username.substring(r.end());
+			}
+			highlightedNames.put(u.id, name);
+			highlightedUsernames.put(u.id, username);
+		}
+		return new RenderedTemplateResponse("mention_completions", req)
+				.with("users", results)
+				.with("highlightedNames", highlightedNames)
+				.with("highlightedUsernames", highlightedUsernames);
 	}
 }

@@ -44,8 +44,12 @@ public class SearchStorage{
 		}
 	}
 
+	private static String prepareQuery(String query){
+		return Arrays.stream(TextProcessor.transliterate(query).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("\\s+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
+	}
+
 	public static List<SearchResult> search(String query, int selfID, int maxCount) throws SQLException{
-		query=Arrays.stream(TextProcessor.transliterate(query).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("[ \t]+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
+		query=prepareQuery(query);
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			ArrayList<SearchResult> results=new ArrayList<>();
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
@@ -71,6 +75,24 @@ public class SearchStorage{
 				}
 			}
 
+			return results;
+		}
+	}
+
+	public static List<Integer> searchUsers(String query, int selfID, int count) throws SQLException{
+		query=prepareQuery(query);
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			ArrayList<Integer> results=new ArrayList<>();
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND "+
+					"((user_id IN (SELECT followee_id FROM followings WHERE follower_id=?))) LIMIT ?", query, selfID, count);
+			DatabaseUtils.intResultSetToStream(stmt.executeQuery(), null).forEach(results::add);
+			if(results.size()<count){
+				stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IS NOT NULL LIMIT ?", query, count);
+				DatabaseUtils.intResultSetToStream(stmt.executeQuery(), null).forEach(id->{
+					if(!results.contains(id) && results.size()<count)
+						results.add(id);
+				});
+			}
 			return results;
 		}
 	}
