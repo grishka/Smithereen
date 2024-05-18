@@ -1129,7 +1129,9 @@ public class ActivityPubWorker{
 		@Override
 		public Post call() throws Exception{
 			LOG.trace("Fetching remote reply from {}", postID);
-			post=context.getObjectLinkResolver().resolveNative(postID, Post.class, true, false, false, context.getWallController().getContentAuthorAndOwner(parentPost).owner(), true);
+			NoteOrQuestion noq=context.getObjectLinkResolver().resolve(postID, NoteOrQuestion.class, true, false, false, context.getWallController().getContentAuthorAndOwner(parentPost).owner(), true);
+			post=noq.asNativePost(context);
+			context.getWallController().loadAndPreprocessRemotePostMentions(post, noq);
 			PostStorage.putForeignWallPost(post);
 			return super.call();
 		}
