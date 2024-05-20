@@ -283,6 +283,7 @@ function ajaxGet(uri:string, onDone:{(r:any):void}, onError:{(msg:string):void},
 				var parsedResponse=responseType=="json" ? JSON.parse(xhr.response) : xhr.response;
 				onDone(parsedResponse);
 			}catch(e){
+				console.error(e);
 				onError(null);
 			}
 		}else{
@@ -290,6 +291,7 @@ function ajaxGet(uri:string, onDone:{(r:any):void}, onError:{(msg:string):void},
 				try{
 					onDone(JSON.parse(xhr.response));
 				}catch(e){
+					console.error(e);
 					onError(null);
 				}
 			}else{

@@ -186,13 +186,15 @@ class PostForm{
 
 		if(!mobile){
 			this.completionsContainer=el.qs(".completionsContainer");
-			this.input.addEventListener("input", (ev)=>this.updateCompletions());
-			this.input.addEventListener("mouseup", (ev)=>this.updateCompletions());
-			this.input.addEventListener("keyup", (ev)=>this.updateCompletions());
-			this.completionList=new CompletionList(this.input, (el)=>{
-				this.insertMention(el.dataset.username);
-			});
-			this.completionsContainer.appendChild(this.completionList.completionsWrap);
+			if(this.completionsContainer){
+				this.input.addEventListener("input", (ev)=>this.updateCompletions());
+				this.input.addEventListener("mouseup", (ev)=>this.updateCompletions());
+				this.input.addEventListener("keyup", (ev)=>this.updateCompletions());
+				this.completionList=new CompletionList(this.input, (el)=>{
+					this.insertMention(el.dataset.username);
+				});
+				this.completionsContainer.appendChild(this.completionList.completionsWrap);
+			}
 		}
 	}
 
