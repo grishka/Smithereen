@@ -25,6 +25,7 @@ import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 
 import static smithereen.Utils.*;
 
@@ -96,12 +97,21 @@ public class FriendsRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 		model.with("owner", user);
 		model.pageTitle(lang(req).get("friends"));
-		model.paginate(ctx.getFriendsController().getFriends(user, offset(req), 100, FriendsController.SortOrder.ID_ASCENDING));
+		PaginatedList<User> friends;
+		String query=req.queryParams("q");
+		if(StringUtils.isEmpty(query)){
+			friends=ctx.getFriendsController().getFriends(user, offset(req), 100, FriendsController.SortOrder.ID_ASCENDING);
+		}else{
+			friends=ctx.getSearchController().searchFriends(query, user, offset(req), 100);
+		}
+		model.paginate(friends);
 		if(self!=null && user.id!=self.user.id){
 			int mutualCount=ctx.getFriendsController().getMutualFriends(self.user, user, 0, 0, FriendsController.SortOrder.ID_ASCENDING).total;
 			model.with("mutualCount", mutualCount);
 		}
 		model.with("tab", "friends");
+		model.with("urlPath", req.raw().getPathInfo())
+				.with("query", query);
 		@Nullable
 		String act=req.queryParams("act");
 		if("groupInvite".equals(act)){
@@ -121,6 +131,9 @@ public class FriendsRoutes{
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
 		jsLangKey(req, "remove_friend", "yes", "no");
+		if(isAjax(req))
+			return new WebDeltaResponse(resp)
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"));
 		return model;
 	}
 

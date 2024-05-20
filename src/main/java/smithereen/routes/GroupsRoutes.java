@@ -78,11 +78,21 @@ public class GroupsRoutes{
 
 	public static Object userGroups(Request req, Response resp, User user){
 		jsLangKey(req, "cancel", "create");
+		ApplicationContext ctx=context(req);
 		SessionInfo info=sessionInfo(req);
-		context(req).getPrivacyController().enforceUserProfileAccess(info!=null && info.account!=null ? info.account.user : null, user);
+		ctx.getPrivacyController().enforceUserProfileAccess(info!=null && info.account!=null ? info.account.user : null, user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("tab", "groups").with("title", lang(req).get("groups"));
-		model.paginate(context(req).getGroupsController().getUserGroups(user, info!=null && info.account!=null ? info.account.user : null, offset(req), 100));
+		String query=req.queryParams("q");
+		model.with("query", query);
+		if(StringUtils.isNotEmpty(query))
+			model.paginate(ctx.getSearchController().searchGroups(info!=null && info.account!=null ? info.account.user : null, query, false, user, offset(req), 100));
+		else
+			model.paginate(ctx.getGroupsController().getUserGroups(user, info!=null && info.account!=null ? info.account.user : null, offset(req), 100));
 		model.with("owner", user);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"));
+		}
 		return model;
 	}
 
@@ -94,17 +104,26 @@ public class GroupsRoutes{
 	}
 
 	public static Object myEvents(Request req, Response resp, Account self, ApplicationContext ctx){
-		return myEvents(req, resp, self, GroupsController.EventsType.FUTURE);
+		return myEvents(req, resp, self, GroupsController.EventsType.FUTURE, ctx);
 	}
 
 	public static Object myPastEvents(Request req, Response resp, Account self, ApplicationContext ctx){
-		return myEvents(req, resp, self, GroupsController.EventsType.PAST);
+		return myEvents(req, resp, self, GroupsController.EventsType.PAST, ctx);
 	}
 
-	public static Object myEvents(Request req, Response resp, Account self, GroupsController.EventsType type){
+	public static Object myEvents(Request req, Response resp, Account self, GroupsController.EventsType type, ApplicationContext ctx){
 		jsLangKey(req, "cancel", "create");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("events", true).with("tab", type==GroupsController.EventsType.PAST ? "past" : "events").with("owner", self.user).pageTitle(lang(req).get("events"));
-		model.paginate(context(req).getGroupsController().getUserEvents(self.user, type, offset(req), 100));
+		String query=req.queryParams("q");
+		model.with("query", query);
+		if(StringUtils.isNotEmpty(query))
+			model.paginate(ctx.getSearchController().searchGroups(self.user, query, true, self.user, offset(req), 100));
+		else
+			model.paginate(context(req).getGroupsController().getUserEvents(self.user, type, offset(req), 100));
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"));
+		}
 		return model;
 	}
 

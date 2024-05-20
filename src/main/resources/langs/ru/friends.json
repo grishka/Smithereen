@@ -56,5 +56,6 @@
   "select_friends_empty_selection": "Вы можете выбрать друзей в списке слева.",
   "select_friends_button": "Выбрать друзей",
   "X_followers": "{count, plural, =0 {Нет подписчиков} one {# подписчик} few {# подписчика} other {# подписчиков}}",
-  "X_following": "{count, plural, =0 {Нет подписок} one {# подписка} few {# подписки} other {# подписок}}"
+  "X_following": "{count, plural, =0 {Нет подписок} one {# подписка} few {# подписки} other {# подписок}}",
+  "summary_X_friends_found": "{count, plural, =0 {Не найдено ни одного друга} one {Найден # друг} few {Найдено # друга} other {Найдено # друзей}}"
 }

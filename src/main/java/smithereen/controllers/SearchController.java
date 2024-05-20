@@ -13,6 +13,7 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.Group;
+import smithereen.model.PaginatedList;
 import smithereen.model.SearchResult;
 import smithereen.model.User;
 import smithereen.model.util.QuickSearchResults;
@@ -109,6 +110,24 @@ public class SearchController{
 	public List<User> searchUsers(String query, User self, int count){
 		try{
 			return UserStorage.getByIdAsList(SearchStorage.searchUsers(query, self.id, count));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<User> searchFriends(String query, User self, int offset, int count){
+		try{
+			PaginatedList<Integer> ids=SearchStorage.searchFriends(query, self.id, offset, count);
+			return new PaginatedList<>(ids, UserStorage.getByIdAsList(ids.list));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Group> searchGroups(User self, String query, boolean events, User target, int offset, int count){
+		try{
+			PaginatedList<Integer> ids=SearchStorage.searchGroups(query, events, target.id, offset, count, self!=null && self.id==target.id);
+			return new PaginatedList<>(ids, GroupStorage.getByIdAsList(ids.list));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
