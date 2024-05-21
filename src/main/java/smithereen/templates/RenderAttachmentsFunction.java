@@ -61,8 +61,8 @@ public class RenderAttachmentsFunction implements Function{
 			float aspect;
 			TiledLayoutResult tiledLayout;
 			if(sized.size()==1){
-				SizedAttachment sa=sized.get(0);
-				aspect=sa.isSizeKnown() ? Math.max(0.5f, Math.min(2f, (sa.getWidth()/(float)sa.getHeight()))) : 1f;
+				SizedAttachment sa=sized.getFirst();
+				aspect=sa.isSizeKnown() ? Math.max(0.5f, Math.min(3f, (sa.getWidth()/(float)sa.getHeight()))) : 1f;
 				tiledLayout=null;
 			}else{
 				tiledLayout=processThumbs(510, 510, sized);
@@ -91,7 +91,7 @@ public class RenderAttachmentsFunction implements Function{
 					"<div class=\"aspectBox\" style=\"%s\">", pseudoWidth, pseudoHeight, (1f/aspect)*100f, gridStyle));
 
 			if(sized.size()==1){
-				SizedAttachment sa=sized.get(0);
+				SizedAttachment sa=sized.getFirst();
 				if(sa instanceof PhotoAttachment photo){
 					renderPhotoAttachment(photo, lines, 510, overrideLinks);
 				}
