@@ -457,14 +457,14 @@ public class UsersController{
 	public void updateUsername(User self, String username){
 		try{
 			if(!Utils.isValidUsername(username))
-				throw new UserErrorException("err_group_invalid_username");
+				throw new UserErrorException("err_reg_invalid_username");
 			if(Utils.isReservedUsername(username))
-				throw new UserErrorException("err_group_reserved_username");
+				throw new UserErrorException("err_reg_reserved_username");
 			boolean result=DatabaseUtils.runWithUniqueUsername(username, ()->{
 				UserStorage.updateUsername(self, username);
 			});
 			if(!result)
-				throw new UserErrorException("err_group_username_taken");
+				throw new UserErrorException("err_reg_username_taken");
 			self.username=username;
 			context.getActivityPubWorker().sendUpdateUserActivity(self);
 		}catch(SQLException x){

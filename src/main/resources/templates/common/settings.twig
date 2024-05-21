@@ -31,7 +31,7 @@
 	<h2>{{ L('settings_username_title') }}</h2>
 	{{ form.start("changeUsername", usernameMessage) }}
 		{{ form.labeledText(L('settings_user_id'), currentUser.id) }}
-		{{ form.textInput('username', L('settings_username'), currentUser.username, {'prefix': "#{serverDomain}/", 'autocomplete': false, 'addClasses': "wide"}) }}
+		{{ form.textInput('username', L('settings_username'), currentUser.username, {'prefix': "#{serverDomain}/", 'autocomplete': false, 'addClasses': "wide", 'maxlength': 50, 'required': true, 'pattern': '[a-zA-Z][a-zA-Z0-9\._\-]+', 'explanation': L('username_explain')}) }}
 		{{ form.footer(L('settings_change_username')) }}
 	{{ form.end() }}
 </form>
