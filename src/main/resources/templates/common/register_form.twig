@@ -5,7 +5,6 @@
 	{% endif %}
 	<h2>{{L('register')}}</h2>
 	{{ form.start("signup", message) }}
-		{{ form.textInput('username', L('username'), username, {'maxlength': 50, 'required': true, 'pattern': '^[a-zA-Z][a-zA-Z0-9._-]+$', 'explanation': L('username_explain')}) }}
 		{{ form.textInput('first_name', L('first_name'), first_name, {'maxlength': 100, 'required': true}) }}
 		{{ form.textInput('last_name', L('last_name'), last_name, {'maxlength': 100}) }}
 		{{ form.textInput('website', 'Website (do not fill in)', '') }}
