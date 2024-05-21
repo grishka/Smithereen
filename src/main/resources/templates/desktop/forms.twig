@@ -23,10 +23,10 @@
 		</td>
 		<td>
 			{% if options.prefix is not empty %}
-			<div class="prefixedInput control">
+			<div class="prefixedInput control{{ options.addClasses is not empty ? " #{options.addClasses}" : "" }}">
 				<label class="prefix" for="{{ name }}">{{ options.prefix }}</label>
 			{% endif %}
-			<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}" class="{{ options.prefix is empty ?  'control' : '' }}"
+			<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}" class="{{ options.prefix is empty ?  'control' : '' }}{{ options.addClasses is not empty and options.prefix is empty ? " #{options.addClasses}" : "" }}"
 			{%- if options.maxlength is not null %} maxlength="{{options.maxlength}}"{%endif%}
 			{%- if options.minlength is not null %} minlength="{{options.minlength}}"{%endif%}
 			{%- if options.required %} required{%endif%}
@@ -72,7 +72,7 @@
 			<label for="{{name}}">{{label}}</label>:
 		</td>
 		<td>
-			<textarea id="{{name}}" name="{{name}}" rows="3" class="control"{% if options.required %} required{% endif %}>{{value}}</textarea>
+			<textarea id="{{name}}" name="{{name}}" rows="3" class="control{{ options.addClasses is not empty ? " #{options.addClasses}" : "" }}"{% if options.required %} required{% endif %}>{{value}}</textarea>
 			{%if options.explanation is not null%}
 			<br/><span class="formExplanation">{{options.explanation}}</span>
 			{%endif%}
@@ -92,7 +92,7 @@ autoSizeTextArea(ge("{{ name }}"));
 			{% endif %}
 		</td>
 		<td>
-			<select id="{{name}}" name="{{name}}" class="control">
+			<select id="{{name}}" name="{{name}}" class="control{{ options.addClasses is not empty ? " #{options.addClasses}" : "" }}">
 				{%for opt in selectOptions%}
 					<option value="{{opt.value}}"{%if opt.selected%} selected{%endif%}>{{opt.label}}</option>
 				{%endfor%}

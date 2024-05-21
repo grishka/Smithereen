@@ -166,5 +166,10 @@
   "settings_comment_view": "Вид комментариев",
   "settings_comments_threaded": "Древовидные",
   "settings_comments_two_level": "Двухуровневые",
-  "settings_comments_flat": "Плоские"
+  "settings_comments_flat": "Плоские",
+  "settings_username_title": "Адрес вашей страницы",
+  "settings_username": "Адрес страницы",
+  "settings_user_id": "Номер страницы",
+  "settings_change_username": "Сменить адрес",
+  "settings_username_changed": "Вы сменили адрес своей страницы"
 }

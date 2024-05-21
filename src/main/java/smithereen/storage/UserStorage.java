@@ -652,6 +652,18 @@ public class UserStorage{
 		removeBirthdayReminderFromCache(getFriendIDsForUser(user.id));
 	}
 
+	public static void updateUsername(User user, String username) throws SQLException{
+		new SQLQueryBuilder()
+				.update("users")
+				.where("id=?", user.id)
+				.value("username", username)
+				.executeNoResult();
+		synchronized(UserStorage.class){
+			removeFromCache(user);
+		}
+		updateQSearchIndex(getById(user.id));
+	}
+
 	public static int getLocalUserCount() throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("accounts")

@@ -282,6 +282,7 @@ public class SmithereenApplication{
 			getLoggedIn("/deactivateAccountForm", SettingsRoutes::deactivateAccountForm);
 			postWithCSRF("/deactivateAccount", SettingsRoutes::deactivateAccount);
 			postWithCSRF("/updateAppearanceBehavior", SettingsRoutes::saveAppearanceBehaviorSettings);
+			postWithCSRF("/updateUsername", SettingsRoutes::updateUsername);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);

@@ -27,7 +27,14 @@
 		{{ form.footer(L('change_password')) }}
 	{{ form.end() }}
 </form>
-
+<form action="/settings/updateUsername?cstf={{ cstf }}" method="post" data-ajax>
+	<h2>{{ L('settings_username_title') }}</h2>
+	{{ form.start("changeUsername", usernameMessage) }}
+		{{ form.labeledText(L('settings_user_id'), currentUser.id) }}
+		{{ form.textInput('username', L('settings_username'), currentUser.username, {'prefix': "#{serverDomain}/", 'autocomplete': false, 'addClasses': "wide"}) }}
+		{{ form.footer(L('settings_change_username')) }}
+	{{ form.end() }}
+</form>
 <form action="/settings/updateEmail?csrf={{ csrf }}" method="post" data-ajax>
 	<h2>{{ L('change_email') }}</h2>
 	{% if activationInfo is not null %}

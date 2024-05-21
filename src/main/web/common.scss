@@ -328,6 +328,7 @@ input[type=text], input[type=password], input[type=email], input[type=date], inp
 		color: $auxiliaryGrey;
 		padding: 3px 0;
 		cursor: text;
+		flex: none;
 	}
 }
 

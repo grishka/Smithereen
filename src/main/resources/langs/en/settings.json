@@ -166,5 +166,10 @@
   "settings_comment_view": "Comment view",
   "settings_comments_threaded": "Threaded",
   "settings_comments_two_level": "Two-level",
-  "settings_comments_flat": "Flat"
+  "settings_comments_flat": "Flat",
+  "settings_username_title": "Your profile URL",
+  "settings_username": "Profile address",
+  "settings_user_id": "Profile ID number",
+  "settings_change_username": "Change address",
+  "settings_username_changed": "You've successfully changed the URL of your profile"
 }

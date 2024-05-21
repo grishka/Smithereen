@@ -755,6 +755,9 @@ _::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
 		}
 		.control{
 			width: 150px;
+			&.wide{
+				width: 100%;
+			}
 		}
 	}
 }

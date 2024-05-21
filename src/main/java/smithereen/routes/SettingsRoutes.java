@@ -77,7 +77,8 @@ public class SettingsRoutes{
 		model.addMessage(req, "settings.passwordMessage", "passwordMessage")
 				.addMessage(req, "settings.profilePicMessage", "profilePicMessage")
 				.addMessage(req, "settings.emailMessage", "emailMessage")
-				.addMessage(req, "settings.appearanceBehaviorMessage", "appearanceBehaviorMessage");
+				.addMessage(req, "settings.appearanceBehaviorMessage", "appearanceBehaviorMessage")
+				.addMessage(req, "settings.usernameMessage", "changeUsernameMessage");
 		model.with("activationInfo", self.activationInfo);
 		model.with("currentEmailMasked", self.getCurrentEmailMasked());
 		model.with("textFormat", self.prefs.textFormat)
@@ -674,6 +675,29 @@ public class SettingsRoutes{
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).show("formMessage_appearanceBehavior").setContent("formMessage_appearanceBehavior", msg);
 		req.session().attribute("settings.appearanceBehaviorMessage", msg);
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object updateUsername(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "username");
+		String username=req.queryParams("username").trim();
+		String msg;
+		boolean success=false;
+		try{
+			ctx.getUsersController().updateUsername(self.user, username);
+			msg=lang(req).get("settings_username_changed");
+			success=true;
+		}catch(UserErrorException x){
+			msg=lang(req).get(x.getMessage());
+		}
+		if(isAjax(req)){
+			WebDeltaResponse wdr=new WebDeltaResponse(resp).show("formMessage_changeUsername").setContent("formMessage_changeUsername", msg);
+			if(success)
+				wdr.setAttribute("myProfileLink", "href", "/"+username);
+			return wdr;
+		}
+		req.session().attribute("settings.usernameMessage", msg);
 		resp.redirect(back(req));
 		return "";
 	}

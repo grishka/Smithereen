@@ -18,6 +18,7 @@ import smithereen.ApplicationContext;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.Account;
 import smithereen.model.AuditLogEntry;
@@ -39,6 +40,7 @@ import smithereen.model.UserRole;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.storage.DatabaseUtils;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
@@ -449,6 +451,24 @@ public class UsersController{
 			}
 		}catch(SQLException x){
 			LOG.error("Failed to delete accounts", x);
+		}
+	}
+
+	public void updateUsername(User self, String username){
+		try{
+			if(!Utils.isValidUsername(username))
+				throw new UserErrorException("err_group_invalid_username");
+			if(Utils.isReservedUsername(username))
+				throw new UserErrorException("err_group_reserved_username");
+			boolean result=DatabaseUtils.runWithUniqueUsername(username, ()->{
+				UserStorage.updateUsername(self, username);
+			});
+			if(!result)
+				throw new UserErrorException("err_group_username_taken");
+			self.username=username;
+			context.getActivityPubWorker().sendUpdateUserActivity(self);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 }
