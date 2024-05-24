@@ -380,6 +380,11 @@ class Box extends BaseLayer{
 			}
 		}
 	}
+
+	public addButtonBarAuxHTML(html:string){
+		var aux=ce("div", {className: "buttonBarAux", innerHTML: html});
+		this.buttonBar.insertBefore(aux, this.buttonBar.firstChild);
+	}
 }
 
 class BoxWithoutContentPadding extends Box{

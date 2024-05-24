@@ -171,5 +171,14 @@
   "settings_username": "Адрес страницы",
   "settings_user_id": "Номер страницы",
   "settings_change_username": "Сменить адрес",
-  "settings_username_changed": "Вы сменили адрес своей страницы"
+  "settings_username_changed": "Вы сменили адрес своей страницы",
+  "settings_account_security_title": "Безопасность вашей страницы",
+  "settings_last_activity": "Последняя активность",
+  "settings_show_activity_history": "Посмотреть историю активности",
+  "settings_activity_web_short": "{time} ({ip}, браузер {browserName})",
+  "settings_activity_history_explanation": "<b>История активности</b> показывает информацию о том, в какое время и с каких устройств вы входили в свою учётную запись. Если вы подозреваете, что кто-то получил доступ к вашей странице, вы можете в любой момент прекратить эту активность.",
+  "settings_current_session": "текущий сеанс",
+  "settings_end_all_sessions": "Завершить все сеансы",
+  "settings_confirm_end_all_sessions": "Вы действительно хотите завершить все сеансы кроме текущего?",
+  "settings_sessions_ended": "Другие сеансы завершены."
 }

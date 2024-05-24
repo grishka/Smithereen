@@ -46,6 +46,15 @@
 		{{ form.footer(L('save')) }}
 	{{ form.end() }}
 </form>
+<form>
+	<h2>{{ L('settings_account_security_title') }}</h2>
+	{{ form.start('accountActivity', accountActivityMessage) }}
+		{{ form.labeledText(L('settings_last_activity'), lastActivityDescription) }}
+		{{ form.unlabeledRowStart() }}
+		<a href="/settings/sessions"{% if not isMobile %} data-ajax-box{% endif %}>{{ L('settings_show_activity_history') }}</a>
+		{{ form.unlabeledRowEnd() }}
+	{{ form.end() }}
+</form>
 <form action="/settings/setLanguage?csrf={{ csrf }}" method="post">
 	<h2>{{L('language')}}</h2>
 	{{ form.start("language") }}

@@ -171,5 +171,14 @@
   "settings_username": "Profile address",
   "settings_user_id": "Profile ID number",
   "settings_change_username": "Change address",
-  "settings_username_changed": "You've successfully changed the URL of your profile"
+  "settings_username_changed": "You've successfully changed the URL of your profile",
+  "settings_account_security_title": "Security of your account",
+  "settings_last_activity": "Last activity",
+  "settings_show_activity_history": "Show activity history",
+  "settings_activity_web_short": "{time} ({ip}, {browserName} browser)",
+  "settings_activity_history_explanation": "<b>Activity history</b> shows when and from which devices you logged into your account. If you suspect someone else accessed your account, you can end this activity.",
+  "settings_current_session": "current session",
+  "settings_end_all_sessions": "Terminate all sessions",
+  "settings_confirm_end_all_sessions": "Are you sure you want to terminate all sessions except the current one?",
+  "settings_sessions_ended": "Other sessions were terminated."
 }

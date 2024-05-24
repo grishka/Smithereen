@@ -1,0 +1,30 @@
+{# @pebvariable name="sessions" type="smithereen.model.OtherSession[]" #}
+<div class="singleColumn">
+	<div class="settingsInfo extraMarginBottom">{{ L('settings_activity_history_explanation') }}</div>
+	<table class="dataTable" width="100%">
+		<tr>
+			<th>{{ L('settings_activity_access_type') }}</th>
+			<th width="150">{{ L('settings_activity_access_time') }}</th>
+			<th width="120">{{ L('ip_address') }}</th>
+		</tr>
+		{% for session in sessions %}
+		<tr>
+			<td>
+				{%- if session.userAgent is empty %}
+				{{- L('unknown_browser') -}}
+				{%- else %}
+				{{- L('settings_activity_web', {'browserName': session.browserInfo.name, 'browserVersion': session.browserInfo.majorVersion, 'osName': session.browserInfo.os.displayName}) }}
+				{%- endif -%}
+				{%- if arraysEqual(session.fullID, currentSessionID) %}<span class="grayText"> — {{ L('settings_current_session') }}</span>{% endif %}
+			</td>
+			<td>{{ LD(session.lastActive) }}</td>
+			<td>{{ session.ip.hostAddress }}</td>
+		</tr>
+		{% endfor %}
+	</table>
+	{% if not isAjax %}
+	<div class="marginBefore">
+		<a href="/settings/confirmEndOtherSessions" class="button" data-confirm-action="/settings/endOtherSessions" data-confirm-title="{{ L('settings_end_all_sessions') | forceEscape }}" data-confirm-message="{{ L('settings_confirm_end_all_sessions') | forceEscape }}">{{ L('settings_end_all_sessions') }}</a>
+	</div>
+	{% endif %}
+</div>

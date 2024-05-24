@@ -13,6 +13,7 @@ import java.util.Objects;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
+import smithereen.SmithereenApplication;
 import smithereen.Utils;
 import smithereen.model.Account;
 import smithereen.model.EmailCode;
@@ -55,6 +56,7 @@ public class SessionRoutes{
 			}
 		}
 		resp.cookie("/", "psid", psid, 10*365*24*60*60, false);
+		SmithereenApplication.addAccountSession(acc.id, req);
 	}
 
 	public static Object login(Request req, Response resp) throws SQLException{

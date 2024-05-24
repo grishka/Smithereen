@@ -1263,15 +1263,23 @@ select{
 	}
 }
 
-.settingsMessage{
+.settingsMessage, .settingsInfo{
 	margin: 8px;
-	padding: 8px 11px;;
-	border: solid 1px $alertBorder;
-	background: $alertBackground;
+	padding: 8px 11px;
 	color: $text;
 	&.extraMarginBottom{
 		margin-bottom: 15px;
 	}
+}
+
+.settingsMessage{
+	border: solid 1px $alertBorder;
+	background: $alertBackground;
+}
+
+.settingsInfo{
+	border: solid 1px $wallPostSeparator;
+	background: $bgGrey;
 }
 
 .profileBelowAva{

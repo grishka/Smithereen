@@ -207,11 +207,11 @@ public class Lang{
 			timeZone=ZoneId.systemDefault();
 
 		if(!forceAbsolute){
-			if(diff>=0 && diff<60_000){
+			if(diff>=-1000 && diff<60_000){
 				return get("time_just_now");
 			}else if(diff>=60_000 && diff<3600_000){
 				return get("time_X_minutes_ago", Map.of("count", (int) (diff/60_000)));
-			}else if(diff<0 && diff>-3600_000){
+			}else if(diff<-1000 && diff>-3600_000){
 				return get("time_in_X_minutes", Map.of("count", -(int) (diff/60_000)));
 			}
 		}

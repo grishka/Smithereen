@@ -377,6 +377,14 @@ public class UsersController{
 		}
 	}
 
+	public OtherSession getAccountMostRecentSession(Account acc){
+		try{
+			return SessionStorage.getAccountMostRecentSession(acc.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public void changePassword(Account self, String oldPassword, String newPassword){
 		try{
 			if(newPassword.length()<4){

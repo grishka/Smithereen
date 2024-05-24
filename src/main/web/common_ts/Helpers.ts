@@ -633,6 +633,9 @@ function applyServerCommand(cmd:any){
 			cont.customData={box: box};
 			box.setContent(cont);
 			box.show();
+			if(cmd.aux){
+				box.addButtonBarAuxHTML(cmd.aux);
+			}
 			if(cmd.w){
 				(box.getContent().querySelector(".boxLayer") as HTMLElement).style.width=cmd.w+"px";
 				(box.getContent().querySelector(".boxLayer") as HTMLElement).style.minWidth=cmd.w+"px";

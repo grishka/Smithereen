@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +35,7 @@ import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
+import smithereen.model.OtherSession;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
@@ -68,11 +70,14 @@ import spark.Response;
 import spark.Session;
 import spark.utils.StringUtils;
 
+import static smithereen.Utils.*;
+
 public class SettingsRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(SettingsRoutes.class);
 
 	public static Object settings(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings", req);
+		Lang l=lang(req);
 		model.with("languages", Lang.list).with("selectedLang", Utils.lang(req));
 		model.addMessage(req, "settings.passwordMessage", "passwordMessage")
 				.addMessage(req, "settings.profilePicMessage", "profilePicMessage")
@@ -83,7 +88,18 @@ public class SettingsRoutes{
 		model.with("currentEmailMasked", self.getCurrentEmailMasked());
 		model.with("textFormat", self.prefs.textFormat)
 				.with("commentView", self.prefs.commentViewType);
-		model.with("title", lang(req).get("settings"));
+		model.with("title", l.get("settings"));
+		OtherSession session=ctx.getUsersController().getAccountMostRecentSession(self);
+		if(session!=null){
+			model.with("lastActivityDescription", l.get("settings_activity_web_short", Map.of(
+					"time", l.formatDate(session.lastActive(), timeZoneForRequest(req), false),
+					"ip", session.ip().getHostAddress(),
+					"browserName", session.browserInfo().name()
+			)));
+		}
+		if(req.queryParams("sessionsTerminated")!=null){
+			model.with("accountActivityMessage", l.get("settings_sessions_ended"));
+		}
 		return model;
 	}
 
@@ -699,6 +715,37 @@ public class SettingsRoutes{
 		}
 		req.session().attribute("settings.usernameMessage", msg);
 		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object sessions(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "settings_activity_history" : "content_wrap", req);
+		model.with("sessions", ctx.getUsersController().getAccountSessions(info.account))
+				.with("currentSessionID", Base64.getDecoder().decode(req.cookie("psid")))
+				.with("isAjax", isAjax(req));
+		Lang l=lang(req);
+		if(isAjax(req)){
+			String auxLink="<a href=\"/settings/confirmEndOtherSessions\" data-confirm-action=\"/settings/endOtherSessions\" data-confirm-title=\""+
+					TextProcessor.escapeHTML(l.get("settings_end_all_sessions"))+"\" data-confirm-message=\""+
+					TextProcessor.escapeHTML(l.get("settings_confirm_end_all_sessions"))+"\">"+
+					TextProcessor.escapeHTML(l.get("settings_end_all_sessions"))+"</a>";
+			return new WebDeltaResponse(resp)
+					.box(l.get("settings_sessions"), model.renderToString(), "settingsSessions", true, auxLink);
+		}
+		model.with("contentTemplate", "settings_activity_history").pageTitle(l.get("settings_sessions"));
+		return model;
+	}
+
+	public static Object confirmEndOtherSessions(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("settings_end_all_sessions"), l.get("settings_confirm_end_all_sessions"), "/settings/endOtherSessions");
+	}
+
+	public static Object endOtherSessions(Request req, Response resp, Account self, ApplicationContext ctx){
+		ctx.getUsersController().terminateSessionsExcept(self, req.cookie("psid"));
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).replaceLocation("/settings/?sessionsTerminated");
+		resp.redirect("/settings/?sessionsTerminated");
 		return "";
 	}
 }

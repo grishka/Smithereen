@@ -4,7 +4,6 @@ import java.util.Objects;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
-import smithereen.model.Account;
 import smithereen.model.SessionInfo;
 import spark.Request;
 import spark.Response;
@@ -17,8 +16,8 @@ public interface CSRFRoute extends Route{
 		if(!Utils.requireAccount(request, response) || !Utils.verifyCSRF(request, response))
 			return "";
 		SessionInfo info=Objects.requireNonNull(Utils.sessionInfo(request));
-		return handle(request, response, info.account, Utils.context(request));
+		return handle(request, response, info, Utils.context(request));
 	}
 
-	Object handle(Request request, Response response, Account self, ApplicationContext ctx) throws Exception;
+	Object handle(Request request, Response response, SessionInfo info, ApplicationContext ctx) throws Exception;
 }

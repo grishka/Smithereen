@@ -677,6 +677,17 @@ public class SessionStorage{
 		}
 	}
 
+	public static OtherSession getAccountMostRecentSession(int accountID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			try(ResultSet res=SQLQueryBuilder.prepareStatement(conn, "SELECT sessions.*, user_agents.user_agent AS user_agent_str FROM sessions LEFT JOIN user_agents ON sessions.user_agent=user_agents.hash WHERE account_id=? ORDER BY last_active DESC LIMIT 1", accountID)
+					.executeQuery()){
+				if(!res.next())
+					return null;
+				return OtherSession.fromResultSet(res);
+			}
+		}
+	}
+
 	public static void deleteSessionsExcept(int accountID, byte[] sid) throws SQLException{
 		new SQLQueryBuilder()
 				.deleteFrom("sessions")

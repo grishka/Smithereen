@@ -283,6 +283,9 @@ public class SmithereenApplication{
 			postWithCSRF("/deactivateAccount", SettingsRoutes::deactivateAccount);
 			postWithCSRF("/updateAppearanceBehavior", SettingsRoutes::saveAppearanceBehaviorSettings);
 			postWithCSRF("/updateUsername", SettingsRoutes::updateUsername);
+			getLoggedIn("/sessions", SettingsRoutes::sessions);
+			getLoggedIn("/confirmEndOtherSessions", SettingsRoutes::confirmEndOtherSessions);
+			postWithCSRF("/endOtherSessions", SettingsRoutes::endOtherSessions);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);
@@ -919,5 +922,10 @@ public class SmithereenApplication{
 		for(HttpSession session:new HashSet<>(sessions)){
 			session.invalidate();
 		}
+	}
+
+	public static synchronized void addAccountSession(int accountID, Request req){
+		accountIdsBySession.put(req.session().id(), accountID);
+		sessionsByAccount.computeIfAbsent(accountID, HashSet::new).add(req.session().raw());
 	}
 }

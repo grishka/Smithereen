@@ -44,12 +44,22 @@ public class WebDeltaResponse{
 	}
 
 	public WebDeltaResponse box(@NotNull String title, @NotNull String content, @Nullable String id, boolean scrollable){
-		commands.add(new BoxCommand(title, content, id, scrollable, null));
+		commands.add(new BoxCommand(title, content, id, scrollable, null, null));
 		return this;
 	}
 
 	public WebDeltaResponse box(@NotNull String title, @NotNull String content, @Nullable String id, int width){
-		commands.add(new BoxCommand(title, content, id, null, width));
+		commands.add(new BoxCommand(title, content, id, null, width, null));
+		return this;
+	}
+
+	public WebDeltaResponse box(@NotNull String title, @NotNull String content, @Nullable String id, boolean scrollable, String buttonBarAux){
+		commands.add(new BoxCommand(title, content, id, scrollable, null, buttonBarAux));
+		return this;
+	}
+
+	public WebDeltaResponse box(@NotNull String title, @NotNull String content, @Nullable String id, int width, String buttonBarAux){
+		commands.add(new BoxCommand(title, content, id, null, width, buttonBarAux));
 		return this;
 	}
 
@@ -232,14 +242,17 @@ public class WebDeltaResponse{
 		public Boolean scrollable;
 		@SerializedName("w")
 		public Integer width;
+		@SerializedName("aux")
+		public String buttonBarAux;
 
-		public BoxCommand(String title, String content, String id, Boolean scrollable, Integer width){
+		public BoxCommand(String title, String content, String id, Boolean scrollable, Integer width, String buttonBarAux){
 			super("box");
 			this.title=title;
 			this.content=content;
 			this.id=id;
 			this.scrollable=scrollable;
 			this.width=width;
+			this.buttonBarAux=buttonBarAux;
 		}
 	}
 
