@@ -9,6 +9,17 @@
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('s') }}</a>
 	</div>
 	<div class="postContentWrap">
+		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.id }}">
+			{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}
+			<a href="{{ realPost.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{ realPost.internalURL }}/delete')" class="flR postIconAction actionDelete" data-tooltip="{{ L('delete') }}" aria-label="{{ L('delete') }}"></a>
+			{% endif %}
+			{% if userPermissions is not null and userPermissions.canEditPost(realPost) %}
+			<a href="{{ realPost.internalURL }}/edit" data-ajax class="flR postIconAction actionEdit" data-tooltip="{{ L('edit') }}" aria-label="{{ L('edit') }}"></a>
+			{% endif %}
+			{% if userPermissions is not null and userPermissions.canReport(realPost) %}
+			<a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box class="flR postIconAction actionReport" data-tooltip="{{ L('report') }}" aria-label="{{ L('report') }}"></a>
+			{% endif %}
+		</div>
 		<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
 		{%- if realPost.privacy!='PUBLIC' -%}
 		<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID].firstAndGender}) }}"></span>
@@ -42,15 +53,6 @@
 				</span>
 				{%- endif -%}
 				<a href="{{ realPost.internalURL }}" class="postLink">{{ LD(realPost.createdAt) }}</a>
-				{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %} |
-				<a href="{{ realPost.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{ realPost.internalURL }}/delete')">{{ L('delete') }}</a>
-				{% endif %}
-				{% if userPermissions is not null and userPermissions.canEditPost(realPost) %} |
-				<a href="{{ realPost.internalURL }}/edit" data-ajax="1">{{ L('edit') }}</a>
-				{% endif %}
-				{% if userPermissions is not null and userPermissions.canReport(realPost) %} |
-				<a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box>{{ L('report') }}</a>
-				{% endif %}
 				{% if realPost.ownerID!=realPost.authorID and tab!="wall2wall" and realPost.ownerID>0 %} |
 					<a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}">{{ L('wall_to_wall') }}</a>
 				{% endif %}

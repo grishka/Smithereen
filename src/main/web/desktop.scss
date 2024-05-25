@@ -388,6 +388,28 @@ small{
 	code{
 		line-height: 13px;
 	}
+	.postIconAction{
+		display: block;
+		width: 13px;
+		height: 13px;
+		border: solid 1px transparent;
+		background: svg-load('img/post_actions.svg', fill: #91a20b) no-repeat;
+		opacity: .4;
+		transition: opacity 0.3s ease;
+		margin-left: 5px;
+		&:hover{
+			opacity: 1;
+		}
+		&.actionEdit{
+			background-position: 0 -12px;
+		}
+		&.actionReport{
+			background-position: 0 -24px;
+		}
+	}
+	.floatingPostActions{
+		margin: 0 3px 0 5px;
+	}
 }
 
 /* Safari hack because it hates my SVG abuse */

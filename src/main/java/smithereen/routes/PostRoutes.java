@@ -204,6 +204,7 @@ public class PostRoutes{
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp)
 					.hide("postInner"+id)
+					.hide("postFloatingActions"+id)
 					.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, "postInner"+id, model.renderToString())
 					.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, "postAuthor"+id, "<span class=\"grayText lowercase\" id=\"postEditingLabel"+id+"\">&nbsp;-&nbsp;"+lang(req).get(post.getReplyLevel()==0 ? "editing_post" : "editing_comment")+"</span>")
 					.runScript("updatePostForms(); ge(\"postFormText_edit"+id+"\").focus();");
@@ -261,6 +262,7 @@ public class PostRoutes{
 			model.with("users", Map.of(self.user.id, self.user));
 			return new WebDeltaResponse(resp).setContent("postInner"+post.id, model.renderBlock("postInner"))
 					.show("postInner"+post.id)
+					.show("postFloatingActions"+id)
 					.remove("wallPostForm_edit"+post.id, "postEditingLabel"+post.id);
 		}
 		resp.redirect(post.getInternalURL().toString());
