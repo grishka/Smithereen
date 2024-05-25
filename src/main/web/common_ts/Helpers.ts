@@ -975,6 +975,9 @@ function doneEditingPost(id:number){
 function cancelEditingPost(id:number){
 	doneEditingPost(id);
 	ge("postInner"+id).show();
+	var actions=ge("postFloatingActions"+id);
+	if(actions)
+		actions.show();
 }
 
 function copyText(text:string, doneMsg:string){
