@@ -1,1 +1,19 @@
-{}
+{
+  "write_on_X_wall": "Schrijf op {name} zijn muur...",
+  "write_on_own_wall": "Wat is er nieuw?",
+  "profile_about": "Over",
+  "X_is_your_friend": "{name} is jouw vriend",
+  "you_sent_friend_req_to_X": "Je hebt {name} een vriendschapsverzoek gestuurd",
+  "X_sent_you_friend_req": "{name} heeft je een vriendschapsverzoek gestuurd",
+  "you_are_following_X": "Je volgt {name}",
+  "X_is_following_you": "{name} volgt jou",
+  "waiting_for_X_to_accept_follow_req": "Je wacht op acceptatie door {name} van jouw volgverzoek",
+  "incomplete_profile": "Dit profiel zou onvolledig kunnen zijn.",
+  "this_is_you": "(Dit ben jij)",
+  "profile_moved": "{name} gebruikt nu een ander profiel:",
+  "profile_moved_link": "<b>{name}</b> op {domain}",
+  "profile_deactivated": "Dit profiel is verwijderd door de eigenaar.",
+  "profile_hidden": "Verborgen profiel",
+  "profile_hidden_info": "Je moet inloggen om dit profiel te kunnen bekijken.",
+  "profile_banned": "Dit account is verbannen door de server medewerkers."
+}
