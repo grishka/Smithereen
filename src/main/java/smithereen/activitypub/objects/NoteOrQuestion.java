@@ -63,8 +63,8 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			post.ownerID=parent.ownerID;
 		}else if(target!=null && target.attributedTo!=null){
 			Actor owner=context.getObjectLinkResolver().resolve(target.attributedTo, Actor.class, true, true, false);
-			if(!Objects.equals(target.attributedTo, owner.getWallURL()))
-				throw new FederationException("target.attributedTo points to an unknown collection");
+			if(!Objects.equals(target.activityPubID, owner.getWallURL()))
+				throw new FederationException("target.id points to an unknown collection "+target.attributedTo);
 			post.ownerID=owner.getOwnerID();
 		}else{
 			post.ownerID=author.id;
