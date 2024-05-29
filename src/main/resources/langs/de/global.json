@@ -184,5 +184,7 @@
   "remote_interaction_embed_comment": "Du kannst diesen Beitrag auch <a id=\"embed\">auf Deiner Webseite</a> einbetten.",
   "remote_interaction_bad_domain": "Die Umleitungs-URL konnte nicht gefunden werden. Bitte stelle sicher, dass Du Deine Server-Adresse korrekt eingegeben hast.",
   "remote_interaction_services_before": "Funktioniert mit",
-  "remote_interaction_services_after": "... und mehr!"
+  "remote_interaction_services_after": "... und mehr!",
+  "comments_show_X_more_comments": "Zeige {count, plural, one {# weiteren Kommentar} other {# weitere Kommentare}}",
+  "cancel_reply": "Antwort verwerfen"
 }
