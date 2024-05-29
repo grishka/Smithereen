@@ -632,7 +632,7 @@ public class UserStorage{
 				.executeAndGetID();
 	}
 
-	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate bdate, String about, String aboutSource) throws SQLException{
+	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate bdate) throws SQLException{
 		new SQLQueryBuilder()
 				.update("users")
 				.where("id=?", user.id)
@@ -642,14 +642,35 @@ public class UserStorage{
 				.value("bdate", bdate)
 				.value("middle_name", middleName)
 				.value("maiden_name", maidenName)
-				.value("about", about)
-				.value("about_source", aboutSource)
 				.executeNoResult();
 		synchronized(UserStorage.class){
 			removeFromCache(user);
 		}
 		updateQSearchIndex(getById(user.id));
 		removeBirthdayReminderFromCache(getFriendIDsForUser(user.id));
+	}
+
+	public static void updateAbout(User user, String about, String aboutSource) throws SQLException{
+		new SQLQueryBuilder()
+				.update("users")
+				.where("id=?", user.id)
+				.value("about", about)
+				.value("about_source", aboutSource)
+				.executeNoResult();
+		synchronized(UserStorage.class){
+			removeFromCache(user);
+		}
+	}
+
+	public static void updateExtendedFields(User user, String fieldsJson) throws SQLException{
+		new SQLQueryBuilder()
+				.update("users")
+				.where("id=?", user.id)
+				.value("profile_fields", fieldsJson)
+				.executeNoResult();
+		synchronized(UserStorage.class){
+			removeFromCache(user);
+		}
 	}
 
 	public static void updateUsername(User user, String username) throws SQLException{

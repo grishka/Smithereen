@@ -663,6 +663,16 @@ public class Utils{
 		}
 	}
 
+	public static <E extends Enum<E>> E enumValueOpt(String val, Class<E> cls){
+		if(val==null || val.isEmpty())
+			return null;
+		try{
+			return Enum.valueOf(cls, val);
+		}catch(IllegalArgumentException x){
+			return null;
+		}
+	}
+
 	/**
 	 * Ensure that the request has required query parameters to avoid any surprise NPEs.
 	 * @param req The request

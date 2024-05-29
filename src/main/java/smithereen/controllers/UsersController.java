@@ -13,13 +13,17 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import smithereen.ApplicationContext;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
 import smithereen.Utils;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.ForeignUser;
@@ -29,10 +33,6 @@ import smithereen.model.PaginatedList;
 import smithereen.model.SignupInvitation;
 import smithereen.model.SignupRequest;
 import smithereen.model.User;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserErrorException;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
@@ -40,13 +40,14 @@ import smithereen.model.UserRole;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.storage.DatabaseUtils;
-import smithereen.storage.GroupStorage;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
+import smithereen.text.TextProcessor;
 import smithereen.util.FloodControl;
 import spark.Request;
+import spark.utils.StringUtils;
 
 public class UsersController{
 	private static final Logger LOG=LoggerFactory.getLogger(UsersController.class);
@@ -474,6 +475,82 @@ public class UsersController{
 			if(!result)
 				throw new UserErrorException("err_reg_username_taken");
 			self.username=username;
+			context.getActivityPubWorker().sendUpdateUserActivity(self);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	private static String clampString(String str, int maxLength){
+		if(str==null)
+			return null;
+		return str.length()>maxLength ? str.substring(0, maxLength) : str;
+	}
+
+	public void updateBasicProfileInfo(User self, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate birthDate){
+		try{
+			if(firstName.length()<2){
+				throw new UserErrorException("err_name_too_short");
+			}else{
+				UserStorage.changeBasicInfo(self, firstName, lastName, middleName, maidenName, gender, birthDate);
+			}
+			self=getUserOrThrow(self.id);
+			context.getActivityPubWorker().sendUpdateUserActivity(self);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateProfileInterests(User self, String aboutSource, String activities, String interests, String music, String movies, String tv, String books, String games, String quotes){
+		try{
+			boolean anythingChanged=false;
+			String about;
+			if(StringUtils.isNotEmpty(aboutSource))
+				about=TextProcessor.preprocessPostHTML(aboutSource, null);
+			else
+				about=null;
+			if(!Objects.equals(self.summary, about)){
+				UserStorage.updateAbout(self, about, aboutSource);
+				anythingChanged=true;
+			}
+			if(!Objects.equals(activities, self.activities) || !Objects.equals(interests, self.interests) || !Objects.equals(music, self.favoriteMusic) || !Objects.equals(movies, self.favoriteMovies)
+					|| !Objects.equals(tv, self.favoriteTvShows) || !Objects.equals(books, self.favoriteBooks) || !Objects.equals(games, self.favoriteGames) || !Objects.equals(quotes, self.favoriteQuotes)){
+				self.activities=clampString(activities, 1024);
+				self.interests=clampString(interests, 1024);
+				self.favoriteMusic=clampString(music, 1024);
+				self.favoriteMovies=clampString(movies, 1024);
+				self.favoriteTvShows=clampString(tv, 1024);
+				self.favoriteBooks=clampString(books, 1024);
+				self.favoriteGames=clampString(games, 1024);
+				self.favoriteQuotes=clampString(quotes, 1024);
+
+				UserStorage.updateExtendedFields(self, self.serializeProfileFields());
+				anythingChanged=true;
+			}
+			if(anythingChanged){
+				self=getUserOrThrow(self.id);
+				context.getActivityPubWorker().sendUpdateUserActivity(self);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateProfilePersonal(User self, User.PoliticalViews politicalViews, String religion, User.PersonalPriority personalPriority,
+									  User.PeoplePriority peoplePriority, User.HabitsViews smokingViews, User.HabitsViews alcoholViews, String inspiredBy){
+		try{
+			if(self.politicalViews==politicalViews && Objects.equals(self.religion, religion) && self.personalPriority==personalPriority && self.peoplePriority==peoplePriority
+				&& self.smokingViews==smokingViews && self.alcoholViews==alcoholViews && Objects.equals(self.inspiredBy, inspiredBy)){
+				return;
+			}
+			self.politicalViews=politicalViews;
+			self.religion=clampString(religion, 256);
+			self.personalPriority=personalPriority;
+			self.peoplePriority=peoplePriority;
+			self.smokingViews=smokingViews;
+			self.alcoholViews=alcoholViews;
+			self.inspiredBy=clampString(inspiredBy, 256);
+			UserStorage.updateExtendedFields(self, self.serializeProfileFields());
 			context.getActivityPubWorker().sendUpdateUserActivity(self);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

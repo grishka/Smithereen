@@ -241,6 +241,66 @@ public class ForeignUser extends User implements ForeignActor{
 			}
 		}
 
+		activities=optString(obj, "activities");
+		interests=optString(obj, "interests");
+		favoriteMusic=optString(obj, "favoriteMusic");
+		favoriteMovies=optString(obj, "favoriteMovies");
+		favoriteTvShows=optString(obj, "favoriteTvShows");
+		favoriteBooks=optString(obj, "favoriteBooks");
+		favoriteGames=optString(obj, "favoriteGames");
+		favoriteQuotes=optString(obj, "favoriteQuotes");
+
+		politicalViews=switch(optString(obj, "politicalViews")){
+			case "sm:Apathetic" -> PoliticalViews.APATHETIC;
+			case "sm:Communist" -> PoliticalViews.COMMUNIST;
+			case "sm:Socialist" -> PoliticalViews.SOCIALIST;
+			case "sm:Moderate" -> PoliticalViews.MODERATE;
+			case "sm:Liberal" -> PoliticalViews.LIBERAL;
+			case "sm:Conservative" -> PoliticalViews.CONSERVATIVE;
+			case "sm:Monarchist" -> PoliticalViews.MONARCHIST;
+			case "sm:Ultraconservative" -> PoliticalViews.ULTRACONSERVATIVE;
+			case "sm:Libertarian" -> PoliticalViews.LIBERTARIAN;
+			case null, default -> null;
+		};
+		religion=optString(obj, "religion");
+		personalPriority=switch(optString(obj, "personalPriority")){
+			case "sm:FamilyAndChildren" -> PersonalPriority.FAMILY_CHILDREN;
+			case "sm:CareerAndMoney" -> PersonalPriority.CAREER_MONEY;
+			case "sm:EntertainmentAndLeisure" -> PersonalPriority.ENTERTAINMENT_LEISURE;
+			case "sm:ScienceAndResearch" -> PersonalPriority.SCIENCE_RESEARCH;
+			case "sm:ImprovingTheWorld" -> PersonalPriority.IMPROVING_WORLD;
+			case "sm:PersonalDevelopment" -> PersonalPriority.PERSONAL_DEVELOPMENT;
+			case "sm:BeautyAndArt" -> PersonalPriority.BEAUTY_ART;
+			case "sm:FameAndInfluence" -> PersonalPriority.FAME_INFLUENCE;
+			case null, default -> null;
+		};
+		peoplePriority=switch(optString(obj, "peoplePriority")){
+			case "sm:IntellectAndCreativity" -> PeoplePriority.INTELLECT_CREATIVITY;
+			case "sm:KindnessAndHonesty" -> PeoplePriority.KINDNESS_HONESTY;
+			case "sm:HealthAndBeauty" -> PeoplePriority.HEALTH_BEAUTY;
+			case "sm:WealthAndPower" -> PeoplePriority.WEALTH_POWER;
+			case "sm:CourageAndPersistence" -> PeoplePriority.COURAGE_PERSISTENCE;
+			case "sm:HumorAndLoveForLife" -> PeoplePriority.HUMOR_LIFE_LOVE;
+			case null, default -> null;
+		};
+		smokingViews=switch(optString(obj, "smokingViews")){
+			case "sm:VeryNegative" -> HabitsViews.VERY_NEGATIVE;
+			case "sm:Negative" -> HabitsViews.NEGATIVE;
+			case "sm:Tolerant" -> HabitsViews.TOLERANT;
+			case "sm:Neutral" -> HabitsViews.NEUTRAL;
+			case "sm:Positive" -> HabitsViews.POSITIVE;
+			case null, default -> null;
+		};
+		alcoholViews=switch(optString(obj, "alcoholViews")){
+			case "sm:VeryNegative" -> HabitsViews.VERY_NEGATIVE;
+			case "sm:Negative" -> HabitsViews.NEGATIVE;
+			case "sm:Tolerant" -> HabitsViews.TOLERANT;
+			case "sm:Neutral" -> HabitsViews.NEUTRAL;
+			case "sm:Positive" -> HabitsViews.POSITIVE;
+			case null, default -> null;
+		};
+		inspiredBy=optString(obj, "inspiredBy");
+
 		return this;
 	}
 

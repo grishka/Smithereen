@@ -796,6 +796,9 @@ _::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
 		}
 		.control{
 			width: 220px;
+			&.wide{
+				width: 350px;
+			}
 		}
 	}
 }
@@ -920,10 +923,11 @@ _::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
 
 .profileFields{
 	line-height: 140%;
-	padding: 10px 6px 15px;
-	td{
-		padding-top: 3px;
-		vertical-align: top;
+	padding: 10px 0 15px 6px;
+	display: grid;
+	grid-template-columns: 30% auto;
+	grid-gap: 3px;
+	>div{
 		p:first-child{
 			margin-top: 0;
 		}
@@ -931,12 +935,35 @@ _::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
 			margin-bottom: 0;
 		}
 	}
-	tr:first-child td{
-		padding-top: 0;
-	}
 	.label{
 		color: $auxiliaryGrey;
-		width: 30%;
+	}
+	.sectionHeader{
+		grid-column: span 2;
+		display: flex;
+		align-items: center;
+		h4{
+			flex: none;
+			margin-right: 5px;
+		}
+		.line{
+			height: 1px;
+			background: $wallPostSeparator;
+			flex-grow: 1;
+		}
+		a{
+			flex: none;
+			margin-left: 5px;
+			color: $auxiliaryBlockHeader;
+			font-size: 10px;
+			text-transform: lowercase;
+		}
+	}
+	.empty{
+		grid-column: span 2;
+		text-align: center;
+		color: $auxiliaryGrey;
+		padding: 10px;
 	}
 }
 

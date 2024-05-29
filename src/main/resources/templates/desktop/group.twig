@@ -17,14 +17,10 @@
 	<div id="left">
 		<h2>{{ group.name }}</h2>
 		<div class="profileFields">
-		<table class="profileBlock" width="100%">
 			{% for fld in profileFields %}
-			<tr>
-				<td class="label">{{ fld.name }}:</td>
-				<td>{{ fld.value | postprocessHTML }}</td>
-			</tr>
+			<div class="label">{{ fld.name }}:</div>
+			<div>{{ fld.value | postprocessHTML }}</div>
 			{% endfor %}
-		</table>
 		</div>
 		{% if canAccessContent %}
 		{% include "profile_module_wall" with {'wallOwner': group, 'isGroup': true, 'headerTitle': L('wall'), 'headerHref': "/groups/#{group.id}/wall", 'additionalHeader': L('X_posts', {'count': totalItems})} %}

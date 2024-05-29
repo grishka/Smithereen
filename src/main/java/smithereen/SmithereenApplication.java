@@ -247,6 +247,8 @@ public class SmithereenApplication{
 		path("/settings", ()->{
 			path("/profile", ()->{
 				getLoggedIn("/general", SettingsRoutes::profileEditGeneral);
+				getLoggedIn("/interests", SettingsRoutes::profileEditInterests);
+				getLoggedIn("/personal", SettingsRoutes::profileEditPersonal);
 			});
 			getLoggedIn("/", SettingsRoutes::settings);
 			postWithCSRF("/createInvite", SettingsRoutes::createInvite);
@@ -286,6 +288,8 @@ public class SmithereenApplication{
 			getLoggedIn("/sessions", SettingsRoutes::sessions);
 			getLoggedIn("/confirmEndOtherSessions", SettingsRoutes::confirmEndOtherSessions);
 			postWithCSRF("/endOtherSessions", SettingsRoutes::endOtherSessions);
+			postWithCSRF("/updateProfileInterests", SettingsRoutes::updateProfileInterests);
+			postWithCSRF("/updateProfilePersonal", SettingsRoutes::updateProfilePersonal);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);

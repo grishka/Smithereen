@@ -93,6 +93,21 @@ public class JLDProcessor{
 		lc.addProperty("commenting", "sm:commenting");
 		lc.addProperty("groupInvitations", "sm:groupInvitations");
 		lc.addProperty("directMessages", "sm:directMessages");
+		// profile fields
+		lc.addProperty("activities", "sm:activities");
+		lc.addProperty("interests", "sm:interests");
+		lc.addProperty("favoriteMusic", "sm:favoriteMusic");
+		lc.addProperty("favoriteMovies", "sm:favoriteMovies");
+		lc.addProperty("favoriteTvShows", "sm:favoriteTvShows");
+		lc.addProperty("favoriteBooks", "sm:favoriteBooks");
+		lc.addProperty("favoriteQuotes", "sm:favoriteQuotes");
+		lc.add("politicalViews", idAndTypeObject("sm:politicalViews", "@id"));
+		lc.addProperty("religion", "sm:religion");
+		lc.add("personalPriority", idAndTypeObject("sm:personalPriority", "@id"));
+		lc.add("peoplePriority", idAndTypeObject("sm:peoplePriority", "@id"));
+		lc.add("smokingViews", idAndTypeObject("sm:smokingViews", "@id"));
+		lc.add("alcoholViews", idAndTypeObject("sm:alcoholViews", "@id"));
+		lc.addProperty("inspiredBy", "sm:inspiredBy");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

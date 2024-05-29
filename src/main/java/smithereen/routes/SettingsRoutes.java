@@ -141,17 +141,11 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object updateProfileGeneral(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object updateProfileGeneral(Request req, Response resp, Account self, ApplicationContext ctx){
 		String first=req.queryParams("first_name");
 		String last=req.queryParams("last_name");
 		String middle=req.queryParams("middle_name");
 		String maiden=req.queryParams("maiden_name");
-		String about=req.queryParams("about");
-		String aboutSource=about;
-		if(StringUtils.isNotEmpty(about))
-			about=TextProcessor.preprocessPostHTML(about, null);
-		else
-			about=null;
 		User.Gender gender=enumValue(req.queryParamOrDefault("gender", "UNKNOWN"), User.Gender.class);
 		LocalDate bdate=self.user.birthDate;
 		String _bdate=req.queryParams("bdate");
@@ -161,16 +155,13 @@ public class SettingsRoutes{
 			}catch(DateTimeParseException ignore){}
 		}
 		String message;
-		if(first.length()<2){
-			message=Utils.lang(req).get("err_name_too_short");
-		}else{
-			UserStorage.changeBasicInfo(self.user, first, last, middle, maiden, gender, bdate, about, aboutSource);
-			message=Utils.lang(req).get("profile_info_updated");
+		try{
+			ctx.getUsersController().updateBasicProfileInfo(self.user, first, last, middle, maiden, gender, bdate);
+			message=lang(req).get("profile_info_updated");
+		}catch(UserErrorException x){
+			message=lang(req).get(x.getMessage());
 		}
-		self.user=UserStorage.getById(self.user.id);
-		if(self.user==null)
-			throw new IllegalStateException("?!");
-		ctx.getActivityPubWorker().sendUpdateUserActivity(self.user);
+		self.user=ctx.getUsersController().getUserOrThrow(self.user.id);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).show("formMessage_profileEdit").setContent("formMessage_profileEdit", message);
 		}
@@ -746,6 +737,50 @@ public class SettingsRoutes{
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).replaceLocation("/settings/?sessionsTerminated");
 		resp.redirect("/settings/?sessionsTerminated");
+		return "";
+	}
+
+	public static Object profileEditInterests(Request req, Response resp, Account self, ApplicationContext ctx){
+		return new RenderedTemplateResponse("profile_edit_interests", req)
+				.pageTitle(lang(req).get("edit_profile"))
+				.addMessage(req, "settings.profileEditInterestsMessage", "profileInterestsMessage");
+	}
+
+	public static Object updateProfileInterests(Request req, Response resp, Account self, ApplicationContext ctx){
+		ctx.getUsersController().updateProfileInterests(self.user, req.queryParams("about"), req.queryParams("activities"), req.queryParams("interests"), req.queryParams("music"),
+				req.queryParams("movies"), req.queryParams("tv"), req.queryParams("books"), req.queryParams("games"), req.queryParams("quotes"));
+		self.user=ctx.getUsersController().getUserOrThrow(self.user.id);
+		String message=lang(req).get("profile_info_updated");
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).show("formMessage_profileInterests").setContent("formMessage_profileInterests", message);
+		}
+		req.session().attribute("settings.profileEditInterestsMessage", message);
+		resp.redirect("/settings/profile/interests");
+		return "";
+	}
+
+	public static Object profileEditPersonal(Request req, Response resp, Account self, ApplicationContext ctx){
+		return new RenderedTemplateResponse("profile_edit_personal", req)
+				.pageTitle(lang(req).get("edit_profile"))
+				.with("politicalOptions", User.PoliticalViews.values())
+				.with("personalPriorityOptions", User.PersonalPriority.values())
+				.with("peoplePriorityOptions", User.PeoplePriority.values())
+				.with("habitsOptions", User.HabitsViews.values())
+				.addMessage(req, "settings.profileEditPersonalMessage", "profilePersonalMessage");
+	}
+
+	public static Object updateProfilePersonal(Request req, Response resp, Account self, ApplicationContext ctx){
+		ctx.getUsersController().updateProfilePersonal(self.user, enumValueOpt(req.queryParams("politicalViews"), User.PoliticalViews.class),
+				req.queryParams("religion"), enumValueOpt(req.queryParams("personalPriority"), User.PersonalPriority.class),
+				enumValueOpt(req.queryParams("peoplePriority"), User.PeoplePriority.class), enumValueOpt(req.queryParams("smokingViews"), User.HabitsViews.class),
+				enumValueOpt(req.queryParams("alcoholViews"), User.HabitsViews.class), req.queryParams("inspiredBy"));
+		self.user=ctx.getUsersController().getUserOrThrow(self.user.id);
+		String message=lang(req).get("profile_info_updated");
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).show("formMessage_profilePersonal").setContent("formMessage_profilePersonal", message);
+		}
+		req.session().attribute("settings.profileEditPersonalMessage", message);
+		resp.redirect("/settings/profile/personal");
 		return "";
 	}
 }

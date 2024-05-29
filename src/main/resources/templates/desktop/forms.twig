@@ -72,7 +72,7 @@
 			<label for="{{name}}">{{label}}</label>:
 		</td>
 		<td>
-			<textarea id="{{name}}" name="{{name}}" rows="3" class="control{{ options.addClasses is not empty ? " #{options.addClasses}" : "" }}"{% if options.required %} required{% endif %}>{{value}}</textarea>
+			<textarea id="{{name}}" name="{{name}}" rows="3" class="control{{ options.addClasses is not empty ? " #{options.addClasses}" : "" }}"{% if options.required %} required{% endif %}{% if options.maxlength %} maxlength="{{ options.maxlength }}"{% endif %}>{{value}}</textarea>
 			{%if options.explanation is not null%}
 			<br/><span class="formExplanation">{{options.explanation}}</span>
 			{%endif%}

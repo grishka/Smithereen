@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static smithereen.Utils.*;
 
@@ -97,14 +98,57 @@ public class ProfileRoutes{
 					model.with("mutualFriendCount", mutualFriends.total).with("mutualFriends", mutualFriends.list);
 				}
 
-				ArrayList<PropertyValue> profileFields=new ArrayList<>();
+				ArrayList<Map<String, String>> mainFields=new ArrayList<>();
 				if(user.birthDate!=null)
-					profileFields.add(new PropertyValue(l.get("birth_date"), l.formatDay(user.birthDate)));
-				if(StringUtils.isNotEmpty(user.summary))
-					profileFields.add(new PropertyValue(l.get("profile_about"), user.summary));
+					mainFields.add(Map.of("name", l.get("birthday"), "value", l.formatDay(user.birthDate)));
 				if(user.attachment!=null)
-					user.attachment.stream().filter(o->o instanceof PropertyValue).forEach(o->profileFields.add((PropertyValue) o));
-				model.with("profileFields", profileFields);
+					user.attachment.stream()
+							.map(o->o instanceof PropertyValue pv ? pv : null)
+							.filter(Objects::nonNull)
+							.map(pv->Map.of("name", pv.name, "value", pv.value, "html", "true"))
+							.forEach(mainFields::add);
+				model.with("mainFields", mainFields);
+
+				ArrayList<Map<String, String>> contactsFields=new ArrayList<>();
+				model.with("contactsFields", contactsFields);
+
+				ArrayList<Map<String, String>> personalFields=new ArrayList<>();
+				if(user.politicalViews!=null)
+					personalFields.add(Map.of("name", l.get(isMobile(req) ? "profile_political_views" : "profile_political_views_short"), "value", l.get(user.politicalViews.getLangKey())));
+				if(StringUtils.isNotEmpty(user.religion))
+					personalFields.add(Map.of("name", l.get(isMobile(req) ? "profile_religion" : "profile_religion_short"), "value", user.religion));
+				if(user.personalPriority!=null)
+					personalFields.add(Map.of("name", l.get("profile_personal_priority"), "value", l.get(user.personalPriority.getLangKey())));
+				if(user.peoplePriority!=null)
+					personalFields.add(Map.of("name", l.get("profile_people_priority"), "value", l.get(user.peoplePriority.getLangKey())));
+				if(user.smokingViews!=null)
+					personalFields.add(Map.of("name", l.get(isMobile(req) ? "profile_views_on_smoking" : "profile_views_on_smoking_short"), "value", l.get(user.smokingViews.getLangKey())));
+				if(user.alcoholViews!=null)
+					personalFields.add(Map.of("name", l.get(isMobile(req) ? "profile_views_on_alcohol" : "profile_views_on_alcohol_short"), "value", l.get(user.alcoholViews.getLangKey())));
+				if(StringUtils.isNotEmpty(user.inspiredBy))
+					personalFields.add(Map.of("name", l.get("profile_inspired_by"), "value", user.inspiredBy));
+				model.with("personalFields", personalFields);
+
+				ArrayList<Map<String, String>> interestsFields=new ArrayList<>();
+				if(StringUtils.isNotEmpty(user.activities))
+					interestsFields.add(Map.of("name", l.get("profile_activities"), "value", user.activities));
+				if(StringUtils.isNotEmpty(user.interests))
+					interestsFields.add(Map.of("name", l.get("profile_interests"), "value", user.interests));
+				if(StringUtils.isNotEmpty(user.favoriteMusic))
+					interestsFields.add(Map.of("name", l.get("profile_music"), "value", user.favoriteMusic));
+				if(StringUtils.isNotEmpty(user.favoriteMovies))
+					interestsFields.add(Map.of("name", l.get("profile_movies"), "value", user.favoriteMovies));
+				if(StringUtils.isNotEmpty(user.favoriteTvShows))
+					interestsFields.add(Map.of("name", l.get("profile_tv_shows"), "value", user.favoriteTvShows));
+				if(StringUtils.isNotEmpty(user.favoriteBooks))
+					interestsFields.add(Map.of("name", l.get("profile_books"), "value", user.favoriteBooks));
+				if(StringUtils.isNotEmpty(user.favoriteGames))
+					interestsFields.add(Map.of("name", l.get("profile_games"), "value", user.favoriteGames));
+				if(StringUtils.isNotEmpty(user.favoriteQuotes))
+					interestsFields.add(Map.of("name", l.get("profile_quotes"), "value", user.favoriteQuotes));
+				if(StringUtils.isNotEmpty(user.summary))
+					interestsFields.add(Map.of("name", l.get("profile_about"), "value", user.summary, "html", "true"));
+				model.with("interestsFields", interestsFields);
 
 				if(info!=null && self!=null){
 					model.with("draftAttachments", info.postDraftAttachments);

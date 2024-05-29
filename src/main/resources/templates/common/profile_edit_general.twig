@@ -1,6 +1,7 @@
 {%import "forms" as form%}
 {%extends "page"%}
 {%block content%}
+{% include "profile_edit_tabbar" with {'tab': "general"} %}
 <div class="singleColumn gray wideForms">
 	<form action="/settings/updateProfileGeneral" method="post" data-ajax>
 		{{ form.start('profileEdit', profileEditMessage) }}
@@ -14,8 +15,7 @@
 				{'value': 'FEMALE', 'label': L('gender_female'), 'selected': currentUser.gender=='FEMALE'},
 				{'value': 'OTHER', 'label': L('gender_other'), 'selected': currentUser.gender=='OTHER'}
 			]) }}
-        	{{ form.textInput('bdate', L('birth_date'), currentUser.birthDate, {'type': 'date', 'max': todayDate}) }}
-			{{ form.textArea('about', L('profile_about'), currentUser.aboutSource) }}
+        	{{ form.textInput('bdate', L('birthday'), currentUser.birthDate, {'type': 'date', 'max': todayDate}) }}
 			{{ form.footer(L('save')) }}
 		{{ form.end() }}
 		<input type="hidden" name="csrf" value="{{csrf}}"/>

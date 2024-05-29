@@ -1,5 +1,23 @@
 {# @pebvariable name="user" type="smithereen.model.User" #}
 {%extends "page"%}
+{% macro profileSection(_context, title, editURL, fields) %}
+	{% set isSelf=(_context.currentUser is not null and _context.currentUser.id==_context.user.id) %}
+	{% if fields is not empty or isSelf %}
+	{% if title is not empty %}
+	<div class="sectionHeader">
+		<h4>{{ title }}</h4>
+		<div class="line"></div>
+		{% if isSelf %}<a href="{{ editURL }}">{{ L('edit') }}</a>{% endif %}
+	</div>
+	{% endif %}
+	{% for fld in fields %}
+	<div class="label">{{ fld.name }}:</div>
+	<div>{% if fld.html %}{{ fld.value | postprocessHTML }}{% else %}{{ fld.value }}{% endif %}</div>
+	{% else %}
+	<div class="empty">{{ L('profile_no_info') }}</div>
+	{% endfor %}
+	{% endif %}
+{% endmacro %}
 {%block content%}
 {% if movedTo is not null %}
 <div class="marginsAreMessy"></div>
@@ -83,8 +101,6 @@
 			{% endif %}
 		</ul>
 
-
-
 		<div class="profileColumnBorder">
 			<div class="leftColumnBorder"></div>
 		{% if mutualFriends is not empty %}
@@ -102,14 +118,10 @@
 	<div id="right">
 		<h2>{{user | name('complete')}}</h2>
 		<div class="profileFields">
-			<table class="profileBlock" width="100%">
-				{% for fld in profileFields %}
-					<tr>
-						<td class="label">{{ fld.name }}:</td>
-						<td>{{ fld.value | postprocessHTML }}</td>
-					</tr>
-				{% endfor %}
-			</table>
+			{{ profileSection(_context, null, null, mainFields) }}
+			{{ profileSection(_context, L('profile_contacts_title'), "/settings/profile/contacts", contactsFields) }}
+			{{ profileSection(_context, L('profile_personal_title'), "/settings/profile/personal", personalFields) }}
+			{{ profileSection(_context, L('profile_interests_title'), "/settings/profile/interests", interestsFields) }}
 		</div>
 		{% include "profile_module_wall" with {'wallOwner': user, 'headerTitle': L('wall'), 'headerHref': "/users/#{user.id}/wall"+(canSeeOthersPosts ? "" : "/own"), 'additionalHeader': L('X_posts', {'count': totalItems})} %}
 	</div>

@@ -1,0 +1,22 @@
+{# @pebvariable name="currentUser" type="smithereen.model.User" #}
+{% import "forms" as form %}
+{% extends "page" %}
+{% block content %}
+{% include "profile_edit_tabbar" with {'tab': "interests"} %}
+<div class="singleColumn gray wideForms">
+	<form action="/settings/updateProfileInterests" method="post" data-ajax>
+		{{ form.start("profileInterests", profileInterestsMessage) }}
+			{{ form.textArea("activities", L('profile_activities'), currentUser.activities, {'maxlength': 1024, 'addClasses': "wide"}) }}
+			{{ form.textArea("interests", L('profile_interests'), currentUser.interests, {'maxlength': 1024, 'addClasses': "wide"}) }}
+			{{ form.textArea("music", L('profile_music'), currentUser.favoriteMusic, {'maxlength': 1024, 'addClasses': "wide"}) }}
+			{{ form.textArea("movies", L('profile_movies'), currentUser.favoriteMovies, {'maxlength': 1024, 'addClasses': "wide"}) }}
+			{{ form.textArea("tv", L('profile_tv_shows'), currentUser.favoriteTvShows, {'maxlength': 1024, 'addClasses': "wide"}) }}
+			{{ form.textArea("books", L('profile_books'), currentUser.favoriteBooks, {'maxlength': 1024, 'addClasses': "wide"}) }}
+			{{ form.textArea("games", L('profile_games'), currentUser.favoriteGames, {'maxlength': 1024, 'addClasses': "wide"}) }}
+			{{ form.textArea("quotes", L('profile_quotes'), currentUser.favoriteQuotes, {'maxlength': 1024, 'addClasses': "wide"}) }}
+			{{ form.textArea("about", L('profile_edit_about'), currentUser.aboutSource, {'maxlength': 1024, 'addClasses': "wide"}) }}
+			{{ form.footer(L('save')) }}
+		{{ form.end() }}
+	</form>
+</div>
+{% endblock %}
