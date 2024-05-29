@@ -71,5 +71,7 @@
   "load_older_posts": "Vorherige Meldungen anzeigen",
   "embed_post": "Einbetten",
   "embed_post_explanation": "Du kannst diesen Beitrag außerhalb des Fediverse (z. B. auf deiner Website) einbetten, indem du diesen iFrame-Code einfügst.",
-  "embed_preview": "Vorschau"
+  "embed_preview": "Vorschau",
+  "comment_in_reply_to_user": "antwortete auf <a id=\"parentComment\">{name}</a>",
+  "comment_in_reply_to_user_short": "auf <a id=\"parentComment\">{name}</a>"
 }
