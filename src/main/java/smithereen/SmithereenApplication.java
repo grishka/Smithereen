@@ -72,6 +72,7 @@ import smithereen.templates.Templates;
 import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
+import smithereen.util.PublicSuffixList;
 import smithereen.util.TopLevelDomainList;
 import spark.Filter;
 import spark.Request;
@@ -807,6 +808,7 @@ public class SmithereenApplication{
 			}catch(SQLException ignore){}
 			FloodControl.PASSWORD_RESET.gc();
 			TopLevelDomainList.updateIfNeeded();
+			PublicSuffixList.updateIfNeeded();
 		});
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);

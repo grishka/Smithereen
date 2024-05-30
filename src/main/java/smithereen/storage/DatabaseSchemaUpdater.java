@@ -38,7 +38,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=45;
+	public static final int SCHEMA_VERSION=46;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -666,6 +666,7 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("ALTER TABLE `users` CHANGE `username` `username` varchar(64) NOT NULL");
 				conn.createStatement().execute("ALTER TABLE `groups` CHANGE `username` `username` varchar(64) NOT NULL");
 			}
+			case 46 -> conn.createStatement().execute("ALTER TABLE `config` CHANGE `value` `value` mediumtext NOT NULL");
 		}
 	}
 

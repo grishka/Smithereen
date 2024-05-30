@@ -401,7 +401,7 @@ public class ActivityPub{
 			}else if(resp.statusCode()==404){
 				throw new ObjectNotFoundException("User "+resource+" does not exist");
 			}else{
-				throw new IOException("Failed to resolve username "+resource);
+				throw new IOException("Failed to resolve username "+resource+", response code "+resp.statusCode());
 			}
 		}catch(JsonParseException x){
 			throw new IOException("Response parse failed", x);

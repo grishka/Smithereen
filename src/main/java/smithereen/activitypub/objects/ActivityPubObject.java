@@ -45,6 +45,7 @@ import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
+import smithereen.util.PublicSuffixList;
 import smithereen.util.UriBuilder;
 import smithereen.util.JsonArrayBuilder;
 import spark.utils.StringUtils;
@@ -424,8 +425,11 @@ public abstract class ActivityPubObject{
 			URI actualURI=uri;
 			if("bear".equals(uri.getScheme()))
 				actualURI=URI.create(UriBuilder.parseQueryString(uri.getRawQuery()).get("u"));
-			if(!base.getHost().equalsIgnoreCase(actualURI.getHost()))
-				throw new IllegalArgumentException("URI in property '"+property+"' "+uri+" must have the same host as the object ID "+activityPubID);
+			if(!base.getHost().equalsIgnoreCase(actualURI.getHost())){
+				if(!PublicSuffixList.isSameRegisteredDomain(base.getHost(), actualURI.getHost())){
+					throw new IllegalArgumentException("URI in property '"+property+"' "+uri+" must be within the same registered domain as the object ID "+activityPubID);
+				}
+			}
 		}
 	}
 

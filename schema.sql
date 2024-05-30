@@ -138,7 +138,7 @@ CREATE TABLE `blocks_user_user` (
 
 CREATE TABLE `config` (
   `key` varchar(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
-  `value` text NOT NULL,
+  `value` mediumtext NOT NULL,
   PRIMARY KEY (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -772,4 +772,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-04-21 22:19:11
+-- Dump completed on 2024-05-30  5:31:41

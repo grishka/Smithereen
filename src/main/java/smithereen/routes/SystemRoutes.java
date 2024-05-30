@@ -478,6 +478,8 @@ public class SystemRoutes{
 		}
 		return switch(obj){
 			case ForeignUser user -> {
+				if(user.isServiceActor)
+					yield new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
 				UserStorage.putOrUpdateForeignUser(user);
 				yield new JsonObjectBuilder().add("success", user.getProfileURL()).build();
 			}
@@ -533,7 +535,7 @@ public class SystemRoutes{
 						yield new JsonObjectBuilder().add("error", error).build();
 					}catch(TimeoutException e){
 						LOG.trace("Remote object fetch timed out", e);
-						yield new JsonObjectBuilder().add("error", l.get("remote_object_loading_error"));
+						yield new JsonObjectBuilder().add("error", l.get("remote_object_loading_error")).build();
 					}
 				}
 			}
