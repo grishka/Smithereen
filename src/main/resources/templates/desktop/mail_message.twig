@@ -51,7 +51,7 @@
 			</div>
 			{% if message.senderID!=currentUser.id %}
 			<form action="/my/mail/send?inReplyTo={{ message.encodedID }}" method="post" id="wallPostFormForm_mailMessage">
-				{% if replySubject is not empty %}<input type="text" name="subject" value="{{ replySubject }}" placeholder="{{ L('mail_subject') }}" style="width: 100%"/>{% endif %}
+				{% if replySubject is not empty %}<input type="text" name="subject" value="{{ replySubject }}" placeholder="{{ L('mail_subject') }}" style="width: 100%" class="subject"/>{% endif %}
 				{% include "mail_message_form" with {"sendButtonLabel": "add_reply"} %}
 			</form>
 			{% endif %}
