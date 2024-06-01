@@ -3,6 +3,8 @@ package smithereen.util;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import java.util.Map;
+
 public class JsonObjectBuilder{
 	private JsonObject obj=new JsonObject();
 
@@ -33,6 +35,21 @@ public class JsonObjectBuilder{
 
 	public JsonObjectBuilder add(String key, JsonArrayBuilder el){
 		obj.add(key, el.build());
+		return this;
+	}
+
+	public <K, V> JsonObjectBuilder addAll(Map<K, V> map){
+		for(Map.Entry<K, V> e:map.entrySet()){
+			String key=e.getKey().toString();
+			switch(e.getValue()){
+				case JsonElement je -> obj.add(key, je);
+				case String s -> obj.addProperty(key, s);
+				case Number n -> obj.addProperty(key, n);
+				case Boolean b -> obj.addProperty(key, b);
+				case null -> obj.add(key, null);
+				default -> {}
+			}
+		}
 		return this;
 	}
 

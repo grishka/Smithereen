@@ -556,4 +556,21 @@ public class UsersController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public void updateProfileContacts(User self, Map<User.ContactInfoKey, String> contactInfo, String location, String website){
+		try{
+			if(StringUtils.isNotEmpty(website) && !website.startsWith("http://") && !website.startsWith("https://"))
+				website="http://"+website;
+			if(self.contacts.equals(contactInfo) && Objects.equals(self.location, location) && Objects.equals(self.website, website)){
+				return;
+			}
+			self.contacts=contactInfo;
+			self.location=location;
+			self.website=website;
+			UserStorage.updateExtendedFields(self, self.serializeProfileFields());
+			context.getActivityPubWorker().sendUpdateUserActivity(self);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

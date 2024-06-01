@@ -758,6 +758,19 @@ _::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
 
 .singleColumn.gray{
 	padding: 15px;
+	hr{
+		margin: 15px -15px;
+	}
+}
+
+.singleColumn hr{
+	border: solid 1px;
+	border-color: #e0e0e0 none #fff;
+	margin: 15px -10px;
+}
+
+.singleColumn .form+hr, .singleColumn.gray .form+hr{
+	margin-top: 10px;
 }
 
 .narrowForms form{

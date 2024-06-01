@@ -73,5 +73,14 @@
   "profile_habits_negative": "Negative",
   "profile_habits_tolerant": "Tolerant",
   "profile_habits_neutral": "Neutral",
-  "profile_habits_positive": "Positive"
+  "profile_habits_positive": "Positive",
+  "profile_city": "City",
+  "profile_website": "Website",
+  "profile_edit_website": "Personal website",
+  "profile_edit_phone_number": "Phone number",
+  "profile_phone_number": "Phone",
+  "profile_edit_invalid_field": "Invalid format in field {fieldName}.",
+  "profile_edit_invalid_field_multiple": "Invalid format in fields: {fieldList}.",
+  "profile_edit_contact_example_2options": "{example1} or {example2}",
+  "profile_edit_contact_example_3options": "{example1}, {example2} or {example3}"
 }

@@ -38,7 +38,6 @@
   "login_incorrect": "Wrong email/username or password",
   "login_needed": "You need to be logged in to perform this action",
   "edit_profile":"Edit profile",
-  "profile_edit_basic": "Basic info",
   "gender": "Gender",
   "gender_male": "male",
   "gender_female": "female",

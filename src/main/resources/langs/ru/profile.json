@@ -73,5 +73,14 @@
   "profile_habits_negative": "Негативное",
   "profile_habits_tolerant": "Компромиссное",
   "profile_habits_neutral": "Нейтральное",
-  "profile_habits_positive": "Положительное"
+  "profile_habits_positive": "Положительное",
+  "profile_city": "Город",
+  "profile_website": "Сайт",
+  "profile_edit_website": "Личный сайт",
+  "profile_edit_phone_number": "Номер телефона",
+  "profile_phone_number": "Телефон",
+  "profile_edit_invalid_field": "Некорректный формат данных в поле {fieldName}.",
+  "profile_edit_invalid_field_multiple": "Некорректный формат данных в полях {fieldList}.",
+  "profile_edit_contact_example_2options": "{example1} или {example2}",
+  "profile_edit_contact_example_3options": "{example1}, {example2} или {example3}"
 }

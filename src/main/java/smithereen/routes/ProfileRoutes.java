@@ -36,6 +36,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
+import smithereen.text.TextProcessor;
 import smithereen.text.Whitelist;
 import spark.Request;
 import spark.Response;
@@ -110,6 +111,49 @@ public class ProfileRoutes{
 				model.with("mainFields", mainFields);
 
 				ArrayList<Map<String, String>> contactsFields=new ArrayList<>();
+				if(StringUtils.isNotEmpty(user.location))
+					contactsFields.add(Map.of("name", l.get("profile_city"), "value", user.location));
+				if(StringUtils.isNotEmpty(user.website)){
+					String url=TextProcessor.escapeHTML(user.website);
+					contactsFields.add(Map.of("name", l.get("profile_website"), "value", "<a href=\""+url+"\" target=\"_blank\">"+url+"</a>", "html", "true"));
+				}
+				for(User.ContactInfoKey key:User.ContactInfoKey.values()){
+					if(user.contacts.containsKey(key)){
+						HashMap<String, String> field=new HashMap<>();
+						String value=user.contacts.get(key);
+						if(key==User.ContactInfoKey.GIT){
+							field.put("name", switch(URI.create(value).getHost()){
+								case "github.com" -> "GitHub";
+								case "gitlab.com" -> "GitLab";
+								case null, default -> "Git";
+							});
+						}else{
+							field.put("name", key.isLocalizable() ? l.get(key.getLangKey()) : key.getFieldName());
+						}
+						String url=TextProcessor.getContactInfoValueURL(key, value);
+						if(url!=null){
+							if(key==User.ContactInfoKey.GIT){
+								URI uri=URI.create(value);
+								String path=uri.getPath();
+								if(path.length()>1)
+									path=path.substring(1);
+								if(path.indexOf('/')==-1 && ("github.com".equals(uri.getHost()) || "gitlab.com".equals(uri.getHost()))){
+									value=path;
+								}
+							}
+							url=TextProcessor.escapeHTML(url);
+							String v="<a href=\""+url+"\"";
+							if(url.startsWith("http"))
+								v+=" target=\"_blank\"";
+							v+=">"+TextProcessor.escapeHTML(value)+"</a>";
+							field.put("value", v);
+							field.put("html", "true");
+						}else{
+							field.put("value", value);
+						}
+						contactsFields.add(field);
+					}
+				}
 				model.with("contactsFields", contactsFields);
 
 				ArrayList<Map<String, String>> personalFields=new ArrayList<>();

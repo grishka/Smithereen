@@ -14,8 +14,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.Utils;
@@ -26,6 +28,10 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.jsonld.JLD;
 import smithereen.storage.DatabaseUtils;
+import smithereen.storage.utils.Pair;
+import smithereen.text.TextProcessor;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.TranslatableEnum;
 import spark.utils.StringUtils;
 
@@ -59,6 +65,9 @@ public class User extends Actor{
 	public PeoplePriority peoplePriority;
 	public HabitsViews smokingViews, alcoholViews;
 	public String inspiredBy;
+	// "contacts" tab
+	public Map<ContactInfoKey, String> contacts=Map.of();
+	public String website, location;
 
 	public String getFullName(){
 		if(StringUtils.isEmpty(lastName))
@@ -201,6 +210,15 @@ public class User extends Actor{
 			if(o.has("alcohol"))
 				alcoholViews=HabitsViews.values()[o.get("alcohol").getAsInt()];
 			inspiredBy=optString(o, "inspired");
+
+			if(o.has("contacts")){
+				contacts=o.getAsJsonObject("contacts").entrySet()
+						.stream()
+						.map(e->new Pair<>(ContactInfoKey.valueOf(e.getKey()), e.getValue().getAsString()))
+						.collect(Collectors.toMap(Pair::first, Pair::second));
+			}
+			website=optString(o, "web");
+			location=optString(o, "loc");
 		}
 
 		String privacy=res.getString("privacy");
@@ -420,6 +438,34 @@ public class User extends Actor{
 			obj.addProperty("inspiredBy", inspiredBy);
 		}
 
+		if(StringUtils.isNotEmpty(location))
+			obj.addProperty("vcard:Address", location);
+		JsonArrayBuilder attachment=new JsonArrayBuilder();
+		if(StringUtils.isNotEmpty(website)){
+			String url=TextProcessor.escapeHTML(website);
+			PropertyValue pv=new PropertyValue();
+			pv.name="Website";
+			pv.value="<a href=\""+url+"\" rel=\"me\">"+url+"</a>";
+			attachment.add(pv.asActivityPubObject(new JsonObject(), serializerContext));
+		}
+		for(ContactInfoKey key:ContactInfoKey.values()){
+			if(contacts.containsKey(key)){
+				String value=contacts.get(key);
+				String url=TextProcessor.getContactInfoValueURL(key, value);
+				PropertyValue pv=new PropertyValue();
+				pv.name=key.getFieldName();
+				if(url!=null){
+					pv.value="<a href=\""+TextProcessor.escapeHTML(url)+"\" rel=\"me\">"+TextProcessor.escapeHTML(value)+"</a>";
+				}else{
+					pv.value=TextProcessor.escapeHTML(value);
+				}
+				attachment.add(pv.asActivityPubObject(new JsonObject(), serializerContext));
+			}
+		}
+		JsonArray att=attachment.build();
+		if(!att.isEmpty())
+			obj.add("attachment", att);
+
 		return obj;
 	}
 
@@ -498,6 +544,14 @@ public class User extends Actor{
 			o.addProperty("alcohol", alcoholViews.ordinal());
 		if(StringUtils.isNotEmpty(inspiredBy))
 			o.addProperty("inspired", inspiredBy);
+
+		if(!contacts.isEmpty()){
+			o.add("contacts", new JsonObjectBuilder().addAll(contacts).build());
+		}
+		if(StringUtils.isNotEmpty(website))
+			o.addProperty("web", website);
+		if(StringUtils.isNotEmpty(location))
+			o.addProperty("loc", location);
 
 		return o.toString();
 	}
@@ -639,6 +693,77 @@ public class User extends Actor{
 		@Override
 		public String getLangKey(){
 			return "profile_habits_"+toString().toLowerCase();
+		}
+	}
+
+	public enum ContactInfoKey{
+		MATRIX,
+		XMPP,
+		TELEGRAM,
+		SIGNAL,
+		TWITTER,
+		INSTAGRAM,
+		FACEBOOK,
+		VKONTAKTE,
+		SNAPCHAT,
+		DISCORD,
+		GIT,
+		PHONE_NUMBER,
+		EMAIL;
+
+		public String getFieldName(){
+			return switch(this){
+				case MATRIX -> "Matrix";
+				case XMPP -> "XMPP";
+				case TELEGRAM -> "Telegram";
+				case SIGNAL -> "Signal";
+				case TWITTER -> "Twitter";
+				case INSTAGRAM -> "Instagram";
+				case FACEBOOK -> "Facebook";
+				case VKONTAKTE -> "VKontakte";
+				case SNAPCHAT -> "Snapchat";
+				case DISCORD -> "Discord";
+				case GIT -> "Git";
+				case PHONE_NUMBER -> "Phone number";
+				case EMAIL -> "E-mail";
+			};
+		}
+
+		public boolean isLocalizable(){
+			return this==PHONE_NUMBER || this==EMAIL;
+		}
+
+		public String getLangKey(){
+			return switch(this){
+				case PHONE_NUMBER -> "profile_phone_number";
+				case EMAIL -> "email";
+				default -> throw new IllegalStateException("Unexpected value: " + this);
+			};
+		}
+
+		public String getEditLangKey(){
+			return switch(this){
+				case PHONE_NUMBER -> "profile_edit_phone_number";
+				case EMAIL -> "email";
+				default -> throw new IllegalStateException("Unexpected value: " + this);
+			};
+		}
+
+		public List<String> getValueExamples(){
+			return switch(this){
+				case MATRIX -> List.of("@john_appleseed:matrix.org");
+				case XMPP -> List.of("vasya@example.im");
+				case TELEGRAM -> List.of("pavel", "t.me/pavel");
+				case SIGNAL -> List.of("moxie.99", "signal.me/#abcd...");
+				case TWITTER -> List.of("jack", "twitter.com/jack");
+				case INSTAGRAM -> List.of("kevin", "instagram.com/kevin");
+				case FACEBOOK -> List.of("zuck", "www.facebook.com/zuck");
+				case VKONTAKTE -> List.of("durov", "vk.com/durov", "id1");
+				case SNAPCHAT -> List.of("evan", "www.snapchat.com/add/evan");
+				case DISCORD -> List.of("jason");
+				case GIT -> List.of("github.com/octocat", "gitlab.com/gitlab-org");
+				case PHONE_NUMBER, EMAIL -> List.of();
+			};
 		}
 	}
 }

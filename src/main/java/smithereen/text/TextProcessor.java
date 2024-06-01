@@ -50,6 +50,9 @@ public class TextProcessor{
 	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@("+IDN_DOMAIN_REGEX+")");
 	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@("+IDN_DOMAIN_REGEX+"))?");
 	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))*)*)(\\?(?:\\w+(?:=(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
+	private static final Pattern MATRIX_USERNAME_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)[:@]("+IDN_DOMAIN_REGEX+")");
+	private static final Pattern SIGNAL_USERNAME_PATTERN=Pattern.compile("^@?([a-zA-Z0-9._-]+\\.\\d{2})$");
+	private static final Pattern LOCAL_USERNAME_PATTERN=Pattern.compile("^@?([a-zA-Z0-9._-]+)$");
 	private static final Unidecode unidecode=Unidecode.toAscii();
 
 	private static final List<Extension> markdownExtensions=List.of(StrikethroughExtension.create(), InsExtension.create());
@@ -444,9 +447,10 @@ public class TextProcessor{
 				String href=el.attr("href");
 				try{
 					URI uri=new URI(href);
-					if(forceTargetBlank || (uri.isAbsolute() && !Config.isLocal(uri))){
+					if(forceTargetBlank || (uri.isAbsolute() && (uri.getHost()==null || !Config.isLocal(uri)))){
 						el.attr("target", "_blank");
-						el.attr("rel", "noopener ugc");
+						if(!el.hasAttr("rel"))
+							el.attr("rel", "noopener ugc");
 					}
 				}catch(URISyntaxException x){}
 			}
@@ -517,6 +521,94 @@ public class TextProcessor{
 			}
 		}
 		return root.html();
+	}
+
+	private static String normalizeUsernameOrLink(String value, String... allowedDomains){
+		if(Utils.isURL(value)){
+			URI uri=URI.create(value);
+			for(String domain:allowedDomains){
+				if(domain.equalsIgnoreCase(uri.getHost())){
+					return uri.getPath().substring(1);
+				}
+			}
+			return null;
+		}
+		Matcher m=LOCAL_USERNAME_PATTERN.matcher(value);
+		if(m.find())
+			return m.group(1);
+		return null;
+	}
+
+	public static String normalizeContactInfoValue(User.ContactInfoKey key, String value){
+		value=value.trim();
+		return switch(key){
+			case MATRIX -> {
+				Matcher m=MATRIX_USERNAME_PATTERN.matcher(value);
+				if(m.find())
+					yield "@"+m.group(1)+":"+m.group(2);
+				else
+					yield null;
+			}
+			case TELEGRAM -> normalizeUsernameOrLink(value, "t.me");
+			case SIGNAL -> {
+				if(Utils.isURL(value)){
+					URI uri=URI.create(value);
+					if("signal.me".equals(uri.getHost()))
+						yield value;
+					else
+						yield null;
+				}
+				Matcher m=SIGNAL_USERNAME_PATTERN.matcher(value);
+				if(m.find())
+					yield m.group(1);
+				else
+					yield null;
+			}
+			case TWITTER -> normalizeUsernameOrLink(value, "twitter.com", "x.com");
+			case INSTAGRAM -> normalizeUsernameOrLink(value, "instagram.com", "www.instagram.com", "instagr.am");
+			case FACEBOOK -> normalizeUsernameOrLink(value, "facebook.com", "www.facebook.com", "m.facebook.com");
+			case VKONTAKTE -> normalizeUsernameOrLink(value, "vk.com", "m.vk.com");
+			case SNAPCHAT -> {
+				if(Utils.isURL(value)){
+					URI uri=URI.create(value);
+					String path=uri.getPath();
+					if("www.snapchat.com".equals(uri.getHost()) && path.startsWith("/add/"))
+						yield path.substring(path.lastIndexOf('/')+1);
+					yield null;
+				}
+				Matcher m=LOCAL_USERNAME_PATTERN.matcher(value);
+				if(m.find())
+					yield m.group(1);
+				yield null;
+			}
+			case DISCORD -> {
+				Matcher m=LOCAL_USERNAME_PATTERN.matcher(value);
+				if(m.find())
+					yield m.group(1);
+				yield null;
+			}
+			case EMAIL -> Utils.isValidEmail(value) ? value : null;
+			case GIT -> Utils.isURL(value) ? value : null;
+			default -> value;
+		};
+	}
+
+	public static String getContactInfoValueURL(User.ContactInfoKey key, String value){
+		return switch(key){
+			case MATRIX -> "https://matrix.to/#/"+value;
+			case XMPP -> "xmpp:"+value;
+			case TELEGRAM -> "https://t.me/"+value;
+			case SIGNAL -> Utils.isURL(value) ? value : null;
+			case TWITTER -> "https://twitter.com/"+value;
+			case INSTAGRAM -> "https://instagram.com/"+value;
+			case FACEBOOK -> "https://facebook.com/"+value;
+			case VKONTAKTE -> "https://vk.com/"+value;
+			case SNAPCHAT -> "https://www.snapchat.com/add/"+value;
+			case EMAIL -> "mailto:"+value;
+			case PHONE_NUMBER -> "tel:"+value;
+			case GIT -> value;
+			default -> null;
+		};
 	}
 
 	public interface MentionCallback{

@@ -1,0 +1,32 @@
+{# @pebvariable name="currentUser" type="smithereen.model.User" #}
+{# @pebvariable name="contactInfoKeys" type="smithereen.model.User.ContactInfoKey[]" #}
+{% import "forms" as form %}
+{% extends "page" %}
+{% block content %}
+{% include "profile_edit_tabbar" with {'tab': "contacts"} %}
+<div class="singleColumn gray wideForms">
+	<form action="/settings/updateProfileContacts" method="post" data-ajax>
+		{{ form.start("profileContacts", profileContactsMessage) }}
+			{{ form.textInput("location", L('profile_city'), currentUser.location) }}
+		{{ form.end() }}
+		<hr/>
+		{{ form.start("profileContacts2") }}
+			{{ form.textInput("website", L('profile_edit_website'), currentUser.website) }}
+			{% for key in contactInfoKeys %}
+			{%- set examples=key.valueExamples %}
+			{%- if examples is empty %}
+			{%- set placeholder="" %}
+			{%- elseif (examples | length)==1 %}
+			{%- set placeholder=examples[0] %}
+			{%- elseif (examples | length)==2 %}
+			{%- set placeholder=L('profile_edit_contact_example_2options', {'example1': examples[0], 'example2': examples[1]}) %}
+			{%- else %}
+			{%- set placeholder=L('profile_edit_contact_example_3options', {'example1': examples[0], 'example2': examples[1], 'example3': examples[2]}) %}
+			{%- endif %}
+			{{ form.textInput("contactInfo[#{key}]", key.localizable ? L(key.editLangKey) : key.fieldName, currentUser.contacts[key], {'placeholder': placeholder}) }}
+			{% endfor %}
+			{{ form.footer(L('save')) }}
+		{{ form.end() }}
+	</form>
+</div>
+{% endblock %}

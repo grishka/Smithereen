@@ -12,7 +12,9 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -20,6 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletException;
@@ -39,6 +42,7 @@ import smithereen.model.OtherSession;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
+import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
@@ -781,6 +785,53 @@ public class SettingsRoutes{
 		}
 		req.session().attribute("settings.profileEditPersonalMessage", message);
 		resp.redirect("/settings/profile/personal");
+		return "";
+	}
+
+	public static Object profileEditContacts(Request req, Response resp, Account self, ApplicationContext ctx){
+		return new RenderedTemplateResponse("profile_edit_contacts", req)
+				.pageTitle(lang(req).get("edit_profile"))
+				.with("contactInfoKeys", User.ContactInfoKey.values())
+				.addMessage(req, "settings.profileEditContactsMessage", "profileContactsMessage");
+	}
+
+	public static Object updateProfileContacts(Request req, Response resp, Account self, ApplicationContext ctx){
+		Map<User.ContactInfoKey, String> contactInfo=req.queryMap("contactInfo")
+				.toMap()
+				.entrySet()
+				.stream()
+				.filter(e->e.getValue().length>0 && StringUtils.isNotEmpty(e.getValue()[0]))
+				.map(e->{
+					User.ContactInfoKey key=enumValue(e.getKey(), User.ContactInfoKey.class);
+					return new Pair<>(key, TextProcessor.normalizeContactInfoValue(key, e.getValue()[0]));
+				})
+				.collect(HashMap::new, (m,v)->m.put(v.first(), v.second()), HashMap::putAll);
+		String location=req.queryParams("location");
+		String website=req.queryParams("website");
+		Lang l=lang(req);
+		String message;
+		if(contactInfo.containsValue(null)){
+			ArrayList<String> invalidKeyNames=new ArrayList<>();
+			for(User.ContactInfoKey key:User.ContactInfoKey.values()){
+				if(contactInfo.containsKey(key) && contactInfo.get(key)==null){
+					invalidKeyNames.add(key.isLocalizable() ? l.get(key.getLangKey()) : key.getFieldName());
+				}
+			}
+			if(invalidKeyNames.size()==1){
+				message=l.get("profile_edit_invalid_field", Map.of("fieldName", invalidKeyNames.getFirst()));
+			}else{
+				message=l.get("profile_edit_invalid_field_multiple", Map.of("fieldList", String.join(", ")));
+			}
+		}else{
+			ctx.getUsersController().updateProfileContacts(self.user, contactInfo, location, website);
+			self.user=ctx.getUsersController().getUserOrThrow(self.user.id);
+			message=l.get("profile_info_updated");
+		}
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).show("formMessage_profileContacts").setContent("formMessage_profileContacts", message);
+		}
+		req.session().attribute("settings.profileEditContactsMessage", message);
+		resp.redirect("/settings/profile/contacts");
 		return "";
 	}
 }

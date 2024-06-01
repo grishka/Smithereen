@@ -8,10 +8,12 @@ import java.net.URISyntaxException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -21,6 +23,7 @@ import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.jsonld.JLD;
 import smithereen.storage.DatabaseUtils;
@@ -300,6 +303,50 @@ public class ForeignUser extends User implements ForeignActor{
 			case null, default -> null;
 		};
 		inspiredBy=optString(obj, "inspiredBy");
+
+		location=optString(obj, "vcard:Address");
+		if(attachment!=null && !attachment.isEmpty()){
+			ArrayList<ActivityPubObject> filteredAttachment=new ArrayList<>();
+			contacts=new HashMap<>();
+			for(ActivityPubObject att:attachment){
+				if(att instanceof PropertyValue pv && pv.name!=null){
+					// Get rid of Mastodon :emojis: and non-ASCII characters
+					String normalizedName=pv.name.toLowerCase().replaceAll(":[a-z0-9_]{2,}:", "").replaceAll("[^a-z0-9 -]", "").trim();
+					// Match against popular strings people use for these things
+					if(Set.of("website", "web", "blog", "homepage", "www", "site", "personal page", "personal website", "personal blog").contains(normalizedName)){
+						website=TextProcessor.stripHTML(pv.value, false);
+						continue;
+					}
+					ContactInfoKey contactKey=switch(normalizedName){
+						case "matrix" -> ContactInfoKey.MATRIX;
+						case "xmpp", "jabber" -> ContactInfoKey.XMPP;
+						case "telegram", "tg" -> ContactInfoKey.TELEGRAM;
+						case "signal" -> ContactInfoKey.SIGNAL;
+						case "twitter", "x", "xitter", "x.com", "birdsite" -> ContactInfoKey.TWITTER;
+						case "instagram", "insta", "ig" -> ContactInfoKey.INSTAGRAM;
+						case "facebook", "fb" -> ContactInfoKey.FACEBOOK;
+						case "vkontakte", "vk" -> ContactInfoKey.VKONTAKTE;
+						case "snapchat", "snap" -> ContactInfoKey.SNAPCHAT;
+						case "discord" -> ContactInfoKey.DISCORD;
+						case "git", "github", "gitlab", "codeberg", "gitea" -> ContactInfoKey.GIT;
+						case "phone number", "phone", "sms" -> ContactInfoKey.PHONE_NUMBER;
+						case "email", "e-mail" -> ContactInfoKey.EMAIL;
+						default -> null;
+					};
+					if(contactKey!=null){
+						String normalizedValue=TextProcessor.normalizeContactInfoValue(contactKey, TextProcessor.stripHTML(pv.value, false));
+						if(normalizedValue!=null){
+							contacts.put(contactKey, normalizedValue);
+							continue;
+						}
+					}
+					filteredAttachment.add(att);
+				}else{
+					filteredAttachment.add(att);
+				}
+			}
+			attachment=filteredAttachment;
+		}
 
 		return this;
 	}
