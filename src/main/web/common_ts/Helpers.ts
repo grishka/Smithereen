@@ -978,6 +978,9 @@ function cancelEditingPost(id:number){
 	var actions=ge("postFloatingActions"+id);
 	if(actions)
 		actions.show();
+	var inReply=ge("inReplyTo"+id);
+	if(inReply)
+		inReply.show();
 }
 
 function copyText(text:string, doneMsg:string){

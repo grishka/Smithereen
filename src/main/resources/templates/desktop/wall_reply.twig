@@ -31,7 +31,7 @@
 		<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
 		{%- if realPost.privacy!='PUBLIC' -%}
 		<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID] | name('firstAndGender')}) }}"></span>
-		{%- endif %}{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText hoverCardContainer"> {{ L('comment_in_reply_to_user', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink hoverCardTrigger", 'data-parent-id': realPost.replyKey.last} }) }}</span>{% endif %}<br/>
+		{%- endif %}{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText hoverCardContainer" id="inReplyTo{{ realPost.id }}"> {{ L('comment_in_reply_to_user', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink hoverCardTrigger", 'data-parent-id': realPost.replyKey.last} }) }}</span>{% endif %}<br/>
 		<div id="postInner{{ realPost.id }}">
 			{% block postInner %}
 			{% if realPost.hasContentWarning %}

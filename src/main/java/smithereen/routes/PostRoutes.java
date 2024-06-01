@@ -147,7 +147,14 @@ public class PostRoutes{
 				model.with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
 				model.with("topLevel", new PostViewModel(context(req).getWallController().getPostOrThrow(post.replyKey.getFirst())));
 			}
-			model.with("users", Map.of(self.user.id, self.user));
+			Map<Integer, User> users=new HashMap<>();
+			users.put(self.user.id, self.user);
+			if(inReplyTo!=null && inReplyTo.authorID!=self.user.id){
+				try{
+					users.put(inReplyTo.authorID, ctx.getUsersController().getUserOrThrow(inReplyTo.authorID));
+				}catch(ObjectNotFoundException ignore){}
+			}
+			model.with("users", users);
 			model.with("posts", Map.of(post.id, post));
 			model.with("commentViewType", self.prefs.commentViewType).with("maxReplyDepth", getMaxReplyDepth(self));
 			String postHTML=model.renderToString();
@@ -205,6 +212,7 @@ public class PostRoutes{
 			return new WebDeltaResponse(resp)
 					.hide("postInner"+id)
 					.hide("postFloatingActions"+id)
+					.hide("inReplyTo"+id)
 					.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, "postInner"+id, model.renderToString())
 					.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, "postAuthor"+id, "<span class=\"grayText lowercase\" id=\"postEditingLabel"+id+"\">&nbsp;-&nbsp;"+lang(req).get(post.getReplyLevel()==0 ? "editing_post" : "editing_comment")+"</span>")
 					.runScript("updatePostForms(); ge(\"postFormText_edit"+id+"\").focus();");
@@ -260,9 +268,15 @@ public class PostRoutes{
 			ctx.getWallController().populateReposts(self.user, List.of(postVM), 2);
 			RenderedTemplateResponse model=new RenderedTemplateResponse(post.getReplyLevel()>0 ? "wall_reply" : "wall_post", req).with("post", postVM).with("postInteractions", ctx.getWallController().getUserInteractions(List.of(postVM), self.user));
 			model.with("users", Map.of(self.user.id, self.user));
+			if(post.getReplyLevel()>0){
+				try{
+					model.with("topLevel", new PostViewModel(ctx.getWallController().getPostOrThrow(post.replyKey.getFirst())));
+				}catch(ObjectNotFoundException ignore){}
+			}
 			return new WebDeltaResponse(resp).setContent("postInner"+post.id, model.renderBlock("postInner"))
 					.show("postInner"+post.id)
 					.show("postFloatingActions"+id)
+					.show("inReplyTo"+id)
 					.remove("wallPostForm_edit"+post.id, "postEditingLabel"+post.id);
 		}
 		resp.redirect(post.getInternalURL().toString());
