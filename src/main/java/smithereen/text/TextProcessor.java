@@ -107,8 +107,17 @@ public class TextProcessor{
 
 			@Override
 			public void tail(Node node, int depth){
-				if(node instanceof Element el && !listStack.isEmpty() && listStack.peek().element==el){
-					listStack.pop();
+				if(node instanceof Element el){
+					if(!listStack.isEmpty() && listStack.peek().element==el){
+						listStack.pop();
+					}
+					if("img".equals(el.tagName())){
+						String src=el.attr("src");
+						el.tagName("a")
+								.removeAttr("src")
+								.attr("href", src)
+								.text(src);
+					}
 				}
 			}
 
