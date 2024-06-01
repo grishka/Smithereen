@@ -489,6 +489,9 @@ public class UsersController{
 
 	public void updateBasicProfileInfo(User self, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate birthDate){
 		try{
+			if(birthDate!=null && birthDate.isAfter(LocalDate.now().plusDays(1))){
+				birthDate=self.birthDate;
+			}
 			if(firstName.length()<2){
 				throw new UserErrorException("err_name_too_short");
 			}else{

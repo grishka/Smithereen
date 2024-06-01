@@ -755,7 +755,7 @@ public class User extends Actor{
 				case XMPP -> List.of("vasya@example.im");
 				case TELEGRAM -> List.of("pavel", "t.me/pavel");
 				case SIGNAL -> List.of("moxie.99", "signal.me/#abcd...");
-				case TWITTER -> List.of("jack", "twitter.com/jack");
+				case TWITTER -> List.of("jack", "twitter.com/jack", "x.com/elonmusk");
 				case INSTAGRAM -> List.of("kevin", "instagram.com/kevin");
 				case FACEBOOK -> List.of("zuck", "www.facebook.com/zuck");
 				case VKONTAKTE -> List.of("durov", "vk.com/durov", "id1");
