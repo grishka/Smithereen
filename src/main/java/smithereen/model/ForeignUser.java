@@ -333,7 +333,7 @@ public class ForeignUser extends User implements ForeignActor{
 						case "email", "e-mail" -> ContactInfoKey.EMAIL;
 						default -> null;
 					};
-					if(contactKey!=null){
+					if(contactKey!=null && !contacts.containsKey(contactKey)){
 						String normalizedValue=TextProcessor.normalizeContactInfoValue(contactKey, TextProcessor.stripHTML(pv.value, false));
 						if(normalizedValue!=null){
 							contacts.put(contactKey, normalizedValue);
