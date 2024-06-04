@@ -93,7 +93,7 @@ class CompletionList{
 		this.bordersOverlay.style.right=(this.completionsList.offsetWidth-this.completionsList.clientWidth)+"px";
 	}
 
-	private selectCompletion(el:HTMLElement){
+	public selectCompletion(el:HTMLElement){
 		if(this.selectedCompletion)
 			this.selectedCompletion.classList.remove("selected");
 		this.selectedCompletion=el;

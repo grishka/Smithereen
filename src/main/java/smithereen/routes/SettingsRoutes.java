@@ -350,6 +350,21 @@ public class SettingsRoutes{
 		List<User> friends=ctx.getFriendsController().getFriends(self.user, 0, 100, FriendsController.SortOrder.ID_ASCENDING).list;
 		ArrayList<Map<String, Object>> friendList=new ArrayList<>();
 		friendList.add(Map.of("id", 0, "title", lang(req).get("profile_field_none_selected")));
+		if(self.user.relationshipPartnerID!=0){
+			boolean foundCurrentPartner=false;
+			for(User u: friends){
+				if(u.id==self.user.relationshipPartnerID){
+					foundCurrentPartner=true;
+					break;
+				}
+			}
+			if(!foundCurrentPartner){
+				try{
+					User partner=ctx.getUsersController().getUserOrThrow(self.user.relationshipPartnerID);
+					friendList.add(Map.of("id", partner.id, "title", TextProcessor.escapeHTML(partner.getFullName())));
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
 		friendList.addAll(friends.stream().map(u->Map.of("id", (Object)u.id, "title", TextProcessor.escapeHTML(u.getFullName()))).toList());
 		model.with("friendList", friendList);
 		jsLangKey(req, "profile_edit_relationship_partner", "profile_edit_relationship_spouse", "profile_edit_relationship_in_love_partner");

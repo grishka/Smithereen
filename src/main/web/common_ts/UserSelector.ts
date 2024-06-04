@@ -32,7 +32,7 @@ class UserSelector{
 
 		this.list=new CompletionList(input, this.onCompletionSelect.bind(this));
 		input.parentElement.appendChild(ce("div", {className: "completionsContainer"}, [this.list.completionsWrap]));
-		this.setCompletions(defaultOptions);
+		this.setCompletions(defaultOptions, true);
 		this.list.completionsWrap.hide();
 	}
 
@@ -54,8 +54,11 @@ class UserSelector{
 			this.debounceTimeout=setTimeout(()=>{
 				this.debounceTimeout=0;
 				this.searchXHR=ajaxGet("/system/simpleUserCompletions?q="+encodeURIComponent(this.input.value), (r)=>{
+					this.searchXHR=null;
 					this.setCompletions(r as UserSelectorOption[]);
-				}, (err)=>{}, "json");
+				}, (err)=>{
+					this.searchXHR=null;
+				}, "json");
 			}, 300);
 		}
 	}
@@ -84,13 +87,19 @@ class UserSelector{
 		this.input.blur();
 	}
 
-	private setCompletions(completions:UserSelectorOption[]){
+	private setCompletions(completions:UserSelectorOption[], selectCurrent:boolean){
 		this.list.completionsList.innerHTML="";
+		var selected:HTMLElement;
 		for(var compl of completions){
 			var el=ce("div", {className: "completion", innerHTML: compl.title});
 			el.customData={option: compl};
 			this.list.completionsList.appendChild(el);
+			if(selectCurrent && compl.id==this.hiddenField.value){
+				selected=el;
+			}
 		}
 		this.list.updateCompletions();
+		if(selected)
+			this.list.selectCompletion(selected);
 	}
 }
