@@ -493,7 +493,7 @@ public class User extends Actor{
 				case COMPLICATED -> "sm:Complicated";
 				case ACTIVELY_SEARCHING -> "sm:ActivelySearching";
 			});
-			if(relationshipPartnerID!=0)
+			if(relationshipPartnerID!=0 && relationshipPartnerActivityPubID!=null)
 				obj.addProperty("relationshipPartner", relationshipPartnerActivityPubID.toString());
 		}
 
