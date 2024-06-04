@@ -228,6 +228,8 @@ public class User extends Actor{
 			if(o.has("relation")){
 				relationship=RelationshipStatus.values()[o.get("relation").getAsInt()];
 				relationshipPartnerID=optInt(o, "partner");
+				if(relationshipPartnerID==-1)
+					relationshipPartnerID=0;
 				relationshipPartnerActivityPubID=tryParseURL(optString(o, "partnerAP"));
 			}
 		}
@@ -493,7 +495,7 @@ public class User extends Actor{
 				case COMPLICATED -> "sm:Complicated";
 				case ACTIVELY_SEARCHING -> "sm:ActivelySearching";
 			});
-			if(relationshipPartnerID!=0 && relationshipPartnerActivityPubID!=null)
+			if(relationshipPartnerID!=0)
 				obj.addProperty("relationshipPartner", relationshipPartnerActivityPubID.toString());
 		}
 
