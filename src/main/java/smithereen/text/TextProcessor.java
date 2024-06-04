@@ -597,7 +597,14 @@ public class TextProcessor{
 				yield null;
 			}
 			case EMAIL -> Utils.isValidEmail(value) ? value : null;
-			case GIT -> Utils.isURL(value) ? value : null;
+			case GIT -> {
+				if(Utils.isURL(value)){
+					if(!value.startsWith("https://") && !value.startsWith("http://"))
+						yield "https://"+value;
+					yield value;
+				}
+				yield null;
+			}
 			default -> value;
 		};
 	}
