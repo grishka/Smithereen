@@ -301,6 +301,13 @@ public class ObjectLinkResolver{
 					serviceActorCache.put(fu.activityPubID, fu);
 				}else{
 					UserStorage.putOrUpdateForeignUser(fu);
+					if(fu.relationshipPartnerActivityPubID!=null && fu.relationshipPartnerID==0){
+						try{
+							User partner=resolve(fu.relationshipPartnerActivityPubID, User.class, true, true, false);
+							fu.relationshipPartnerID=partner.id;
+							UserStorage.putOrUpdateForeignUser(fu);
+						}catch(ObjectNotFoundException ignore){}
+					}
 				}
 			}else if(o instanceof ForeignGroup fg){
 				fg.storeDependencies(context);

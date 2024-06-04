@@ -1109,12 +1109,13 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	}
 }
 
-select{
+select, .comboBoxW input{
 	background-image: svg-load("img/select_arrow.svg");
 	background-repeat: no-repeat;
 	background-position: center right 4px;
 	padding: 0 16px 0 4px;
 	border-radius: 0;
+	min-height: 21px;
 }
 
 .tabbar{

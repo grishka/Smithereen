@@ -348,6 +348,21 @@ public class ForeignUser extends User implements ForeignActor{
 			attachment=filteredAttachment;
 		}
 
+		hometown=optString(obj, "hometown");
+		relationship=switch(optString(obj, "relationshipStatus")){
+			case "sm:Single" -> RelationshipStatus.SINGLE;
+			case "sm:InRelationship" -> RelationshipStatus.IN_RELATIONSHIP;
+			case "sm:Engaged" -> RelationshipStatus.ENGAGED;
+			case "sm:Married" -> RelationshipStatus.MARRIED;
+			case "sm:InLove" -> RelationshipStatus.IN_LOVE;
+			case "sm:Complicated" -> RelationshipStatus.COMPLICATED;
+			case "sm:ActivelySearching" -> RelationshipStatus.ACTIVELY_SEARCHING;
+			case null, default -> null;
+		};
+		if(relationship!=null && relationship.canHavePartner()){
+			relationshipPartnerActivityPubID=tryParseURL(optString(obj, "relationshipPartner"));
+		}
+
 		return this;
 	}
 

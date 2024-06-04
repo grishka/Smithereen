@@ -108,6 +108,9 @@ public class JLDProcessor{
 		lc.add("smokingViews", idAndTypeObject("sm:smokingViews", "@id"));
 		lc.add("alcoholViews", idAndTypeObject("sm:alcoholViews", "@id"));
 		lc.addProperty("inspiredBy", "sm:inspiredBy");
+		lc.addProperty("hometown", "sm:hometown");
+		lc.add("relationshipStatus", idAndTypeObject("sm:relationshipStatus", "@id"));
+		lc.add("relationshipPartner", idAndTypeObject("sm:relationshipPartner", "@id"));
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

@@ -10,6 +10,16 @@
 {% macro unlabeledRowEnd() %}
 </div>
 {% endmacro %}
+{% macro customControlStart(name) %}
+	<div class="row" id="formRow_{{ name }}">
+		<div class="label">
+{% endmacro %}
+{% macro customControlAfterLabel() %}
+    </div>
+{% endmacro %}
+{% macro customControlEnd() %}
+	</div>
+{% endmacro %}
 
 {%macro textInput(name, label, value, options)%}
 	{%if options is null%}{%set options={}%}{%endif%}

@@ -1685,7 +1685,6 @@ input.searchField{
 	display: flex;
 	flex-wrap: wrap;
 	padding: 0 0 8px 0;
-	position: relative;
 	border-radius: 4px;
 	input{
 		border: none;
@@ -1720,9 +1719,29 @@ input.searchField{
 			color: $textOnAccent;
 		}
 	}
+	.bordersOverlay{
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		pointer-events: none;
+		margin: 0 -1px;
+		border-top: solid 1px #ccc;
+		border-bottom: solid 1px #ccc;
+		opacity: 0.95;
+		&.firstSelected{
+			border-top: solid 1px #2e6200;
+		}
+		&.lastSelected{
+			border-bottom: solid 1px #2e6200;
+		}
+	}
+}
+
+.completionsContainer, .tokenInput{
+	position: relative;
 	.completionsWW{
 		position: absolute;
-		bottom: 0;
 		width: 100%;
 		z-index: 10;
 	}
@@ -1767,23 +1786,14 @@ input.searchField{
 			}
 		}
 	}
-	.bordersOverlay{
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		pointer-events: none;
-		margin: 0 -1px;
-		border-top: solid 1px #ccc;
-		border-bottom: solid 1px #ccc;
-		opacity: 0.95;
-		&.firstSelected{
-			border-top: solid 1px #2e6200;
-		}
-		&.lastSelected{
-			border-bottom: solid 1px #2e6200;
-		}
-	}
+}
+
+.tokenInput .completionsWW{
+	bottom: 0;
+}
+
+.completionsContainer .completionsWW{
+	top: 0;
 }
 
 .fab{

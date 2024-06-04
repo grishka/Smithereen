@@ -1,3 +1,4 @@
+{# @pebvariable name="currentUser" type="smithereen.model.User" #}
 {%import "forms" as form%}
 {%extends "page"%}
 {%block content%}
@@ -16,6 +17,21 @@
 				{'value': 'OTHER', 'label': L('gender_other'), 'selected': currentUser.gender=='OTHER'}
 			]) }}
         	{{ form.textInput('bdate', L('birthday'), currentUser.birthDate, {'type': 'date', 'max': todayDate}) }}
+        	{{ form.textInput('hometown', L('profile_hometown'), currentUser.hometown) }}
+			{%- set options=[{'value': "", 'label': L('profile_field_none_selected'), 'selected': currentUser.relationship is null}] %}
+			{%- for option in relationshipOptions %}
+				{%- set _=options.add({'value': option, 'label': L(option.langKey, {'ownGender': currentUser.gender}), 'selected': currentUser.relationship==option}) %}
+			{%- endfor %}
+			{{ form.select("relationship", L('profile_relationship'), options) }}
+			{{ form.customControlStart("partner") }}
+				<label for="partner"><span id="partnerLabelText">{{ L('profile_edit_relationship_partner') }}</span>:</label>
+			{{ form.customControlAfterLabel() }}
+				<div class="control comboBoxW" id="partnerSelector" style="margin-bottom: 2px">
+					<input type="text" id="partner"/>
+				</div>
+				<input type="hidden" name="partner" value="{{ currentUser.relationshipPartnerID }}" id="partnerID"/>
+				<span class="formExplanation" id="partnerConfirmationNeeded">{{ L('profile_edit_relationship_confirmation_needed') }}</span>
+			{{ form.customControlEnd() }}
 			{{ form.footer(L('save')) }}
 		{{ form.end() }}
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
@@ -32,4 +48,43 @@
 		</form>
 	</noscript>
 </div>
+{% script %}
+var friendList={{ json(friendList) }};
+new UserSelector(ge("partner"), ge("partnerID"), friendList);
+
+var relationDD=ge("relationship");
+var partnerRow=ge("formRow_partner");
+var partnerLabel=ge("partnerLabelText");
+var partnerConfirmation=ge("partnerConfirmationNeeded");
+
+function updatePartnerField(){
+	switch(relationDD.value){
+		case "IN_RELATIONSHIP":
+		case "COMPLICATED":
+		case "ENGAGED":
+		case "COMPLICATED":
+			partnerRow.show();
+			partnerConfirmation.show();
+			partnerLabel.innerText=lang("profile_edit_relationship_partner");
+			break;
+		case "MARRIED":
+			partnerRow.show();
+			partnerConfirmation.show();
+			partnerLabel.innerText=lang("profile_edit_relationship_spouse");
+			break;
+		case "IN_LOVE":
+			partnerRow.show();
+			partnerConfirmation.hide();
+			partnerLabel.innerText=lang("profile_edit_relationship_in_love_partner");
+			break;
+		default:
+			partnerRow.hide();
+			partnerConfirmation.hide();
+			break;
+	}
+}
+
+relationDD.addEventListener("change", function(ev){updatePartnerField();});
+updatePartnerField();
+{% endscript %}
 {%endblock%}

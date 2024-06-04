@@ -420,6 +420,7 @@ public class SmithereenApplication{
 			get("/oembed", SystemRoutes::oEmbed);
 			post("/redirectForRemoteInteraction", SystemRoutes::redirectForRemoteInteraction);
 			getLoggedIn("/mentionCompletions", SystemRoutes::mentionCompletions);
+			getLoggedIn("/simpleUserCompletions", SystemRoutes::simpleUserCompletions);
 
 			if(Config.DEBUG){
 				path("/debug", ()->{

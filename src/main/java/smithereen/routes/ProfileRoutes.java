@@ -44,7 +44,7 @@ import spark.utils.StringUtils;
 
 public class ProfileRoutes{
 	public static Object profile(Request req, Response resp){
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
 		String username=req.params(":username");
@@ -108,6 +108,31 @@ public class ProfileRoutes{
 							.filter(Objects::nonNull)
 							.map(pv->Map.of("name", pv.name, "value", pv.value, "html", "true"))
 							.forEach(mainFields::add);
+				if(StringUtils.isNotEmpty(user.hometown))
+					mainFields.add(Map.of("name", l.get("profile_hometown"), "value", user.hometown));
+				if(user.relationship!=null){
+					User partner=null;
+					if(user.relationshipPartnerID!=0){
+						try{
+							partner=ctx.getUsersController().getUserOrThrow(user.relationshipPartnerID);
+						}catch(ObjectNotFoundException ignore){}
+					}
+					String relationValue;
+					if(partner==null || (user.relationship!=User.RelationshipStatus.IN_LOVE && partner.relationshipPartnerID!=user.id)){
+						relationValue=l.get(user.relationship.getLangKey(), Map.of("ownGender", user.gender));
+					}else{
+						relationValue=l.get(switch(user.relationship){
+							case IN_RELATIONSHIP -> "profile_relationship_in_relationship_with_X";
+							case ENGAGED -> "profile_relationship_engaged_with_X";
+							case MARRIED -> "profile_relationship_married_to_X";
+							case IN_LOVE -> "profile_relationship_in_love_with_X";
+							case COMPLICATED -> "profile_relationship_complicated_with_X";
+							default -> throw new IllegalStateException("Unexpected value: " + user.relationship);
+						}, Map.of("ownGender", user.gender, "partnerGender", partner.gender, "partnerName", partner.getFirstLastAndGender()));
+						relationValue=TextProcessor.substituteLinks(relationValue, Map.of("partner", Map.of("href", partner.getProfileURL())));
+					}
+					mainFields.add(Map.of("name", l.get("profile_relationship"), "value", relationValue, "html", "true"));
+				}
 				model.with("mainFields", mainFields);
 
 				ArrayList<Map<String, String>> contactsFields=new ArrayList<>();
@@ -207,22 +232,22 @@ public class ProfileRoutes{
 						FriendshipStatus status=ctx.getFriendsController().getFriendshipStatus(self.user, user);
 						if(status==FriendshipStatus.FRIENDS){
 							model.with("isFriend", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("X_is_your_friend", Map.of("name", user.firstName)));
+							model.with("friendshipStatusText", lang(req).get("X_is_your_friend", Map.of("name", user.firstName)));
 						}else if(status==FriendshipStatus.REQUEST_SENT){
 							model.with("friendRequestSent", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("you_sent_friend_req_to_X", Map.of("name", user.getFirstAndGender())));
+							model.with("friendshipStatusText", lang(req).get("you_sent_friend_req_to_X", Map.of("name", user.getFirstAndGender())));
 						}else if(status==FriendshipStatus.REQUEST_RECVD){
 							model.with("friendRequestRecvd", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("X_sent_you_friend_req", Map.of("gender", user.gender, "name", user.firstName)));
+							model.with("friendshipStatusText", lang(req).get("X_sent_you_friend_req", Map.of("gender", user.gender, "name", user.firstName)));
 						}else if(status==FriendshipStatus.FOLLOWING){
 							model.with("following", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("you_are_following_X", Map.of("name", user.getFirstAndGender())));
+							model.with("friendshipStatusText", lang(req).get("you_are_following_X", Map.of("name", user.getFirstAndGender())));
 						}else if(status==FriendshipStatus.FOLLOWED_BY){
 							model.with("followedBy", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("X_is_following_you", Map.of("gender", user.gender, "name", user.firstName)));
+							model.with("friendshipStatusText", lang(req).get("X_is_following_you", Map.of("gender", user.gender, "name", user.firstName)));
 						}else if(status==FriendshipStatus.FOLLOW_REQUESTED){
 							model.with("followRequested", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("waiting_for_X_to_accept_follow_req", Map.of("gender", user.gender, "name", user.firstName)));
+							model.with("friendshipStatusText", lang(req).get("waiting_for_X_to_accept_follow_req", Map.of("gender", user.gender, "name", user.firstName)));
 						}
 						model.with("isBlocked", ctx.getUsersController().isUserBlocked(self.user, user));
 						model.with("isSelfBlocked", ctx.getUsersController().isUserBlocked(user, self.user));
@@ -283,15 +308,15 @@ public class ProfileRoutes{
 
 	public static Object confirmBlockUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		User user=getUserOrThrow(req);
-		Lang l=Utils.lang(req);
-		String back=Utils.back(req);
+		Lang l=lang(req);
+		String back=back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_block_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/users/"+user.id+"/block?_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object confirmUnblockUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		User user=getUserOrThrow(req);
-		Lang l=Utils.lang(req);
-		String back=Utils.back(req);
+		Lang l=lang(req);
+		String back=back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/users/"+user.id+"/unblock?_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 

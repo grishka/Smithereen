@@ -35,6 +35,7 @@ import static smithereen.Utils.*;
 import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
@@ -158,9 +159,22 @@ public class SettingsRoutes{
 				bdate=LocalDate.parse(_bdate);
 			}catch(DateTimeParseException ignore){}
 		}
+		String hometown=req.queryParams("hometown");
+		User.RelationshipStatus relation=enumValueOpt(req.queryParams("relationship"), User.RelationshipStatus.class);
+		User partner;
+		if(relation==null || !relation.canHavePartner()){
+			partner=null;
+		}else{
+			int partnerID=safeParseInt(req.queryParams("partner"));
+			if(partnerID!=0){
+				partner=ctx.getUsersController().getUserOrThrow(partnerID);
+			}else{
+				partner=null;
+			}
+		}
 		String message;
 		try{
-			ctx.getUsersController().updateBasicProfileInfo(self.user, first, last, middle, maiden, gender, bdate);
+			ctx.getUsersController().updateBasicProfileInfo(self.user, first, last, middle, maiden, gender, bdate, hometown, relation, partner);
 			message=lang(req).get("profile_info_updated");
 		}catch(UserErrorException x){
 			message=lang(req).get(x.getMessage());
@@ -332,6 +346,13 @@ public class SettingsRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("profile_edit_general", req);
 		model.with("todayDate", new java.sql.Date(System.currentTimeMillis()).toString());
 		model.with("title", lang(req).get("edit_profile"));
+		model.with("relationshipOptions", User.RelationshipStatus.values());
+		List<User> friends=ctx.getFriendsController().getFriends(self.user, 0, 100, FriendsController.SortOrder.ID_ASCENDING).list;
+		ArrayList<Map<String, Object>> friendList=new ArrayList<>();
+		friendList.add(Map.of("id", 0, "title", lang(req).get("profile_field_none_selected")));
+		friendList.addAll(friends.stream().map(u->Map.of("id", (Object)u.id, "title", TextProcessor.escapeHTML(u.getFullName()))).toList());
+		model.with("friendList", friendList);
+		jsLangKey(req, "profile_edit_relationship_partner", "profile_edit_relationship_spouse", "profile_edit_relationship_in_love_partner");
 		Session s=req.session();
 		if(s.attribute("settings.profileEditMessage")!=null){
 			model.with("profileEditMessage", s.attribute("settings.profileEditMessage"));

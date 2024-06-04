@@ -56,6 +56,10 @@ public class User extends Actor{
 
 	// additional profile fields
 	public boolean manuallyApprovesFollowers;
+	public String hometown;
+	public RelationshipStatus relationship;
+	public URI relationshipPartnerActivityPubID;
+	public int relationshipPartnerID;
 	// "interests" tab
 	public String activities, interests, favoriteMusic, favoriteMovies, favoriteTvShows, favoriteBooks, favoriteGames, favoriteQuotes;
 	// "personal views" tab
@@ -219,6 +223,13 @@ public class User extends Actor{
 			}
 			website=optString(o, "web");
 			location=optString(o, "loc");
+
+			hometown=optString(o, "hometown");
+			if(o.has("relation")){
+				relationship=RelationshipStatus.values()[o.get("relation").getAsInt()];
+				relationshipPartnerID=optInt(o, "partner");
+				relationshipPartnerActivityPubID=tryParseURL(optString(o, "partnerAP"));
+			}
 		}
 
 		String privacy=res.getString("privacy");
@@ -466,6 +477,26 @@ public class User extends Actor{
 		if(!att.isEmpty())
 			obj.add("attachment", att);
 
+		if(StringUtils.isNotEmpty(hometown)){
+			serializerContext.addSmAlias("hometown");
+			obj.addProperty("hometown", hometown);
+		}
+		if(relationship!=null){
+			serializerContext.addSmIdType("relationshipStatus");
+			serializerContext.addSmIdType("relationshipPartner");
+			obj.addProperty("relationshipStatus", switch(relationship){
+				case SINGLE -> "sm:Single";
+				case IN_RELATIONSHIP -> "sm:InRelationship";
+				case ENGAGED -> "sm:Engaged";
+				case MARRIED -> "sm:Married";
+				case IN_LOVE -> "sm:InLove";
+				case COMPLICATED -> "sm:Complicated";
+				case ACTIVELY_SEARCHING -> "sm:ActivelySearching";
+			});
+			if(relationshipPartnerID!=0)
+				obj.addProperty("relationshipPartner", relationshipPartnerActivityPubID.toString());
+		}
+
 		return obj;
 	}
 
@@ -552,6 +583,16 @@ public class User extends Actor{
 			o.addProperty("web", website);
 		if(StringUtils.isNotEmpty(location))
 			o.addProperty("loc", location);
+
+		if(relationship!=null){
+			o.addProperty("relation", relationship.ordinal());
+			if(relationshipPartnerID!=0){
+				o.addProperty("partner", relationshipPartnerID);
+				o.addProperty("partnerAP", relationshipPartnerActivityPubID.toString());
+			}
+		}
+		if(StringUtils.isNotEmpty(hometown))
+			o.addProperty("hometown", hometown);
 
 		return o.toString();
 	}
@@ -764,6 +805,25 @@ public class User extends Actor{
 				case GIT -> List.of("github.com/octocat", "gitlab.com/gitlab-org");
 				case PHONE_NUMBER, EMAIL -> List.of();
 			};
+		}
+	}
+
+	public enum RelationshipStatus implements TranslatableEnum<RelationshipStatus>{
+		SINGLE,
+		IN_RELATIONSHIP,
+		ENGAGED,
+		MARRIED,
+		IN_LOVE,
+		COMPLICATED,
+		ACTIVELY_SEARCHING;
+
+		@Override
+		public String getLangKey(){
+			return "profile_relationship_"+toString().toLowerCase();
+		}
+
+		public boolean canHavePartner(){
+			return this!=SINGLE && this!=ACTIVELY_SEARCHING;
 		}
 	}
 }

@@ -96,6 +96,7 @@ import smithereen.text.TextProcessor;
 import smithereen.util.BlurHash;
 import smithereen.util.CaptchaGenerator;
 import smithereen.util.CharacterRange;
+import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
@@ -905,5 +906,41 @@ public class SystemRoutes{
 				.with("users", results)
 				.with("highlightedNames", highlightedNames)
 				.with("highlightedUsernames", highlightedUsernames);
+	}
+
+	public static Object simpleUserCompletions(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "q");
+		String query=req.queryParams("q");
+		List<Pattern> normalizedQueryParts=Arrays.stream(query.toLowerCase(Locale.US).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("\\s+"))
+				.filter(Predicate.not(String::isBlank))
+				.map(s->Pattern.compile("\\b"+Pattern.quote(s), Pattern.CASE_INSENSITIVE))
+				.toList();
+
+		List<User> results=ctx.getSearchController().searchUsers(query, self.user, 10);
+		List<CharacterRange> nameRanges=new ArrayList<>();
+		JsonArrayBuilder arr=new JsonArrayBuilder();
+		for(User u:results){
+			nameRanges.clear();
+			String name=TextProcessor.escapeHTML(u.getFullName());
+			for(Pattern ptn:normalizedQueryParts){
+				Matcher m=ptn.matcher(name);
+				matcherLoop:
+				while(m.find()){
+					CharacterRange range=new CharacterRange(m.start(), m.end());
+					for(CharacterRange existing:nameRanges){
+						if(existing.intersects(range))
+							continue matcherLoop;
+					}
+					nameRanges.add(range);
+				}
+			}
+			nameRanges.sort(null);
+			Collections.reverse(nameRanges);
+			for(CharacterRange r:nameRanges){
+				name=name.substring(0, r.start())+"<b>"+name.substring(r.start(), r.end())+"</b>"+name.substring(r.end());
+			}
+			arr.add(new JsonObjectBuilder().add("id", u.id).add("title", name));
+		}
+		return arr.build();
 	}
 }

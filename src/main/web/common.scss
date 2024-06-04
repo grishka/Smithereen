@@ -960,3 +960,13 @@ small{
 		display: none;
 	}
 }
+
+.comboBoxW{
+	input{
+		width: 100%;
+	}
+	.completionsContainer{
+		margin: -1px 1px 0;
+	}
+}
+

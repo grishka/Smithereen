@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
 import smithereen.Utils;
@@ -475,6 +476,7 @@ public class UsersController{
 			if(!result)
 				throw new UserErrorException("err_reg_username_taken");
 			self.username=username;
+			self.url=Config.localURI(username);
 			context.getActivityPubWorker().sendUpdateUserActivity(self);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -487,7 +489,7 @@ public class UsersController{
 		return str.length()>maxLength ? str.substring(0, maxLength) : str;
 	}
 
-	public void updateBasicProfileInfo(User self, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate birthDate){
+	public void updateBasicProfileInfo(User self, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate birthDate, String hometown, User.RelationshipStatus relation, User partner){
 		try{
 			if(birthDate!=null && birthDate.isAfter(LocalDate.now().plusDays(1))){
 				birthDate=self.birthDate;
@@ -496,6 +498,14 @@ public class UsersController{
 				throw new UserErrorException("err_name_too_short");
 			}else{
 				UserStorage.changeBasicInfo(self, firstName, lastName, middleName, maidenName, gender, birthDate);
+			}
+			int partnerID=partner==null ? 0 : partner.id;
+			if(!Objects.equals(hometown, self.hometown) || self.relationship!=relation || self.relationshipPartnerID!=partnerID){
+				self.hometown=hometown;
+				self.relationship=relation;
+				self.relationshipPartnerID=partnerID;
+				self.relationshipPartnerActivityPubID=partner==null ? null : partner.activityPubID;
+				UserStorage.updateExtendedFields(self, self.serializeProfileFields());
 			}
 			self=getUserOrThrow(self.id);
 			context.getActivityPubWorker().sendUpdateUserActivity(self);
