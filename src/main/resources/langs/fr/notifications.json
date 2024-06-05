@@ -1,1 +1,18 @@
-{}
+{
+  "notification_replied_to_post": "a commenté votre publication",
+  "notification_replied_to_comment": "a répondu à votre commentaire",
+  "notification_mentioned_in_post": "vous a mentionné dans une publication",
+  "notification_mentioned_in_comment": "vous a mentionné dans un commentaire",
+  "notification_liked_post": "a aimé votre publication",
+  "notification_liked_comment": "a aimé votre commentaire",
+  "notification_reposted_post": "a partagé votre publication",
+  "notification_reposted_comment": "a partagé votre commentaire",
+  "notification_posted_on_wall": "a posté sur votre mur",
+  "notification_invite_signup": "inscrit par votre invitation",
+  "notification_follow": "vous suit",
+  "notification_friend_req_accept": "a accepté votre demande d'ami",
+  "no_notifications": "Vous n'avez aucune notification pour le moment",
+  "notifications": "Notifications",
+  "notifications_empty": "Vos notifications apparaîtront ici.",
+  "summary_notifications": "Affichage des dernières notifications"
+}
