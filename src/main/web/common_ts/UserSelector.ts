@@ -49,13 +49,13 @@ class UserSelector{
 			this.searchXHR=null;
 		}
 		if(this.input.value.length==0){
-			this.setCompletions(this.defaultOptions);
+			this.setCompletions(this.defaultOptions, false);
 		}else{
 			this.debounceTimeout=setTimeout(()=>{
 				this.debounceTimeout=0;
 				this.searchXHR=ajaxGet("/system/simpleUserCompletions?q="+encodeURIComponent(this.input.value), (r)=>{
 					this.searchXHR=null;
-					this.setCompletions(r as UserSelectorOption[]);
+					this.setCompletions(r as UserSelectorOption[], false);
 				}, (err)=>{
 					this.searchXHR=null;
 				}, "json");
