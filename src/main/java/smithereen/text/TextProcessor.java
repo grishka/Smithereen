@@ -140,10 +140,21 @@ public class TextProcessor{
 	}
 
 	public static String truncateOnWordBoundary(String s, int maxLen){
-		s=Jsoup.clean(s, Whitelist.none());
+		s=stripHTML(s, false);
 		if(s.length()<=maxLen+20)
 			return s;
-		int len=Math.max(0, Math.min(s.indexOf(' ', maxLen), maxLen+20));
+		int spaceIndex=s.indexOf(' ', maxLen);
+		int len;
+		if(spaceIndex==-1 || spaceIndex>maxLen+20){
+			spaceIndex=s.lastIndexOf(' ', maxLen);
+			if(spaceIndex==-1 || spaceIndex<maxLen-20){
+				len=maxLen;
+			}else{
+				len=spaceIndex;
+			}
+		}else{
+			len=spaceIndex;
+		}
 		return s.substring(0, len)+"...";
 	}
 
@@ -170,7 +181,7 @@ public class TextProcessor{
 			});
 			return sb.toString().trim();
 		}else{
-			return new Cleaner(Whitelist.none()).clean(Jsoup.parseBodyFragment(s.replace("</p><", "</p> <"))).body().html();
+			return new Cleaner(Whitelist.none()).clean(Jsoup.parseBodyFragment(s.replace("</p><", "</p> <").replace("<br>", " "))).body().html();
 		}
 	}
 
