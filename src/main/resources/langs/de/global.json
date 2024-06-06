@@ -186,5 +186,7 @@
   "remote_interaction_services_before": "Funktioniert mit",
   "remote_interaction_services_after": "... und mehr!",
   "comments_show_X_more_comments": "Zeige {count, plural, one {# weiteren Kommentar} other {# weitere Kommentare}}",
-  "cancel_reply": "Antwort verwerfen"
+  "cancel_reply": "Antwort verwerfen",
+  "menu_bookmarks": "Meine Lesezeichen",
+  "X_communities": "{count, plural, one {Eine Gemeinschaft} other {# Gemeinschaften}}"
 }

@@ -1,0 +1,12 @@
+{
+  "bookmarks_title": "Signets",
+  "add_bookmark": "Ajouter un signet",
+  "remove_bookmark": "Supprimer le signet",
+  "bookmarks_people": "Personnes",
+  "bookmarks_communities": "Communautés",
+  "bookmarks_posts": "Publications",
+  "bookmarks_people_empty": "Les personnes que vous ajoutez aux signets apparaîtront ici.",
+  "bookmarks_communities_empty": "Les groupes et les événements que vous ajoutez aux signets apparaîtront ici.",
+  "bookmarks_posts_empty": "Les publications que vous avez aimé apparaîtront ici.",
+  "bookmarks_X_liked_posts": "Vous avez aimé {count, plural, one {# message} other {# messages}}"
+}

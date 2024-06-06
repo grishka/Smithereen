@@ -186,5 +186,7 @@
   "remote_interaction_services_before": "Werkt met",
   "remote_interaction_services_after": "...en meer!",
   "comments_show_X_more_comments": "Toon {count, plural, one {# reactie} other {# meer reacties}}",
-  "cancel_reply": "Annuleer antwoord"
+  "cancel_reply": "Annuleer antwoord",
+  "menu_bookmarks": "Mijn bladwijzers",
+  "X_communities": "{count, plural, one {Één gemeenschap} other {# gemeenschappen}}"
 }

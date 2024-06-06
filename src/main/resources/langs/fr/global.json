@@ -186,5 +186,7 @@
   "remote_interaction_services_before": "Fonctionne avec",
   "remote_interaction_services_after": "... et plus !",
   "comments_show_X_more_comments": "Montrez {count, plural, one {# commentaire de plus} other {# plus de commentaires}}",
-  "cancel_reply": "Annuler la réponse"
+  "cancel_reply": "Annuler la réponse",
+  "menu_bookmarks": "Mes signets",
+  "X_communities": "{count, plural, one {Une communauté} other {# communautés}}"
 }

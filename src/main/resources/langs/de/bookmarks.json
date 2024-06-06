@@ -1,0 +1,12 @@
+{
+  "bookmarks_title": "Lesezeichen",
+  "add_bookmark": "Lesezeichen hinzufügen",
+  "remove_bookmark": "Lesezeichen entfernen",
+  "bookmarks_people": "Leute",
+  "bookmarks_communities": "Gemeinschaften",
+  "bookmarks_posts": "Beiträge",
+  "bookmarks_people_empty": "Personen, die Sie zu Lesezeichen hinzufügen, werden hier erscheinen.",
+  "bookmarks_communities_empty": "Gruppen und Ereignisse, die Sie zu Lesezeichen hinzufügen, erscheinen hier.",
+  "bookmarks_posts_empty": "Beiträge, die du magst, werden hier erscheinen.",
+  "bookmarks_X_liked_posts": "Dir gefällt {count, plural, one {# Beitrag} other {# Beiträge}}"
+}
