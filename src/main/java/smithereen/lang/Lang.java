@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import io.pebbletemplates.pebble.extension.escaper.SafeString;
 import smithereen.Utils;
 import smithereen.lang.formatting.ICUMessageParser;
 import smithereen.lang.formatting.ICUMessageSyntaxException;
@@ -240,7 +241,7 @@ public class Lang{
 			}
 		}
 
-		return get("date_time_format", Map.of("date", day, "time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())));
+		return get("date_time_format", Map.of("date", new SafeString(day), "time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())));
 	}
 
 	public String formatDateFullyAbsolute(Instant date, ZoneId timeZone){
