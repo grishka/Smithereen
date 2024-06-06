@@ -128,4 +128,34 @@ public class SearchStorage{
 			return new PaginatedList<>(list, total, offset, count);
 		}
 	}
+
+	public static PaginatedList<Integer> searchBookmarkedUsers(String query, int selfID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			query=prepareQuery(query);
+			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT COUNT(*) FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IN (SELECT user_id FROM bookmarks_user WHERE owner_id=?)",
+					query, selfID).executeQuery());
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Integer> list=DatabaseUtils.intResultSetToList(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT user_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IN (SELECT user_id FROM bookmarks_user WHERE owner_id=?) LIMIT ? OFFSET ?",
+					query, selfID, count, offset).executeQuery());
+			return new PaginatedList<>(list, total, offset, count);
+		}
+	}
+
+	public static PaginatedList<Integer> searchBookmarkedGroups(String query, int selfID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			query=prepareQuery(query);
+			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT COUNT(*) FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND group_id IN (SELECT group_id FROM bookmarks_group WHERE owner_id=?)",
+					query, selfID).executeQuery());
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Integer> list=DatabaseUtils.intResultSetToList(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT group_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND group_id IN (SELECT group_id FROM bookmarks_group WHERE owner_id=?) LIMIT ? OFFSET ?",
+					query, selfID, count, offset).executeQuery());
+			return new PaginatedList<>(list, total, offset, count);
+		}
+	}
 }

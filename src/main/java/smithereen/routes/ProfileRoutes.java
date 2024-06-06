@@ -251,6 +251,7 @@ public class ProfileRoutes{
 						}
 						model.with("isBlocked", ctx.getUsersController().isUserBlocked(self.user, user));
 						model.with("isSelfBlocked", ctx.getUsersController().isUserBlocked(user, self.user));
+						model.with("isBookmarked", ctx.getBookmarksController().isUserBookmarked(self.user, user));
 						jsLangKey(req, "block", "unblock", "unfollow", "remove_friend");
 					}
 				}else{

@@ -1,0 +1,12 @@
+{
+  "bookmarks_title": "Закладки",
+  "add_bookmark": "Добавить в закладки",
+  "remove_bookmark": "Удалить из закладок",
+  "bookmarks_people": "Люди",
+  "bookmarks_communities": "Сообщества",
+  "bookmarks_posts": "Записи",
+  "bookmarks_people_empty": "Люди, которых вы добавите в закладки, появятся здесь.",
+  "bookmarks_communities_empty": "Группы и встречи, которые вы добавите в закладки, появятся здесь.",
+  "bookmarks_posts_empty": "Записи, которым вы поставите \"Мне нравится\", появятся здесь.",
+  "bookmarks_X_liked_posts": "Вы оценили {count, plural, one {# запись} few {# записи} other {# записей}}"
+}

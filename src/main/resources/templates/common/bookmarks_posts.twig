@@ -1,0 +1,5 @@
+{% extends 'page' %}
+{% block content %}
+{% include 'bookmarks_tabbar' with {'tab': "posts"} %}
+{% include 'post_list' with {'summary': L('bookmarks_X_liked_posts', {'count': totalItems}), 'emptyText': L('bookmarks_posts_empty')} %}
+{% endblock %}

@@ -11,7 +11,8 @@
     "wall.json",
     "email.json",
     "reporting.json",
-    "mail.json"
+    "mail.json",
+    "bookmarks.json"
   ],
   "languages": [
     {

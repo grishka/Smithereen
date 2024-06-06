@@ -694,7 +694,7 @@ public class PostRoutes{
 		return wall(req, resp, group, false);
 	}
 
-	private static void preparePostList(ApplicationContext ctx, List<PostViewModel> wall, RenderedTemplateResponse model, Account self){
+	public static void preparePostList(ApplicationContext ctx, List<PostViewModel> wall, RenderedTemplateResponse model, Account self){
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		PostViewModel.collectActorIDs(wall, needUsers, needGroups);
 		model.with("users", ctx.getUsersController().getUsers(needUsers))

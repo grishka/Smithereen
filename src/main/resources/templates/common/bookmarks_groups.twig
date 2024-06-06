@@ -1,0 +1,18 @@
+{% extends "page" %}
+{% block content %}
+    {% include "bookmarks_tabbar" with {'tab': "groups"} %}
+<div class="gray borderBottom">
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('search') }}" value="{{ query }}" id="groupBookmarksSearch" data-base-url="{{ urlPath }}"/>
+		{% script %}
+		initAjaxSearch("groupBookmarksSearch");
+		{% endscript %}
+	</div>
+</div>
+<div id="ajaxUpdatable">
+{% block ajaxPartialUpdate %}
+    {% include "user_grid" with {'summary': L('X_communities', {'count': totalItems}), 'emptyMessage': L('bookmarks_communities_empty')} %}
+{% endblock %}
+</div>
+{% endblock %}
+

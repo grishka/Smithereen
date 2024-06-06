@@ -186,5 +186,7 @@
   "remote_interaction_services_before": "Работает с",
   "remote_interaction_services_after": "...и не только!",
   "comments_show_X_more_comments": "Показать ещё {count, plural, one {# комментарий} few {# комментария} other {# комментариев}}",
-  "cancel_reply": "Не отвечать"
+  "cancel_reply": "Не отвечать",
+  "menu_bookmarks": "Мои Закладки",
+  "X_communities": "{count, plural, one {# сообщество} few {# сообщества} other {# сообществ}}"
 }

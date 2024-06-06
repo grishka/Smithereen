@@ -1,0 +1,18 @@
+{% extends "page" %}
+{% block content %}
+    {% include "bookmarks_tabbar" with {'tab': "people"} %}
+<div class="gray borderBottom">
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('search') }}" value="{{ query }}" id="userBookmarksSearch" data-base-url="{{ urlPath }}"/>
+		{% script %}
+		initAjaxSearch("userBookmarksSearch");
+		{% endscript %}
+	</div>
+</div>
+<div id="ajaxUpdatable">
+{% block ajaxPartialUpdate %}
+    {% include "user_grid" with {'summary': L('X_people', {'count': totalItems}), 'emptyMessage': L('bookmarks_people_empty')} %}
+{% endblock %}
+</div>
+{% endblock %}
+

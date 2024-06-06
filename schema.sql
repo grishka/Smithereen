@@ -133,6 +133,34 @@ CREATE TABLE `blocks_user_user` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `bookmarks_group`
+--
+
+CREATE TABLE `bookmarks_group` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `owner_id` int unsigned NOT NULL,
+  `group_id` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `owner_id_2` (`owner_id`,`group_id`),
+  KEY `group_id` (`group_id`),
+  CONSTRAINT `bookmarks_group_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `bookmarks_user`
+--
+
+CREATE TABLE `bookmarks_user` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `owner_id` int unsigned NOT NULL,
+  `user_id` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `owner_id` (`owner_id`,`user_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `bookmarks_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `config`
 --
 
@@ -772,4 +800,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-05-30  5:31:41
+-- Dump completed on 2024-06-06 11:51:39

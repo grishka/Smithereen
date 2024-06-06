@@ -1,6 +1,7 @@
 package smithereen;
 
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.controllers.BookmarksController;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.MailController;
@@ -30,6 +31,7 @@ public class ApplicationContext{
 	private final StatsController statsController;
 	private final MailController mailController;
 	private final SearchController searchController;
+	private final BookmarksController bookmarksController;
 
 	public ApplicationContext(){
 		wallController=new WallController(this);
@@ -46,6 +48,7 @@ public class ApplicationContext{
 		statsController=new StatsController(this);
 		mailController=new MailController(this);
 		searchController=new SearchController(this);
+		bookmarksController=new BookmarksController(this);
 	}
 
 	public WallController getWallController(){
@@ -102,5 +105,9 @@ public class ApplicationContext{
 
 	public SearchController getSearchController(){
 		return searchController;
+	}
+
+	public BookmarksController getBookmarksController(){
+		return bookmarksController;
 	}
 }

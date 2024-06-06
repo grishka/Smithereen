@@ -1,0 +1,5 @@
+{% extends 'page' %}
+{% block content %}
+{% include 'wall_tabbar' %}
+{% include 'post_list' with {'summary': L('total_X_posts', {'count': totalItems}), 'emptyText': L('wall_empty')} %}
+{% endblock %}

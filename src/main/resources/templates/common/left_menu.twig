@@ -13,6 +13,7 @@
 	<li><a href="/my/events">{{ L('menu_events') }}{{ menuCounter(userNotifications.newEventInvitationsCount) }}</a></li>
 	<li><a href="/feed">{{L('menu_news')}}</a></li>
 	<li><a href="/my/notifications">{{L('menu_notifications')}}{{ menuCounter(userNotifications.newNotificationsCount) }}</a></li>
+	<li><a href="/my/bookmarks">{{ L('menu_bookmarks') }}</a></li>
 	<li><a href="/settings/">{{L('menu_settings')}}</a></li>
 	{% if userPermissions.role is not null %}
 	<li class="separator"></li>

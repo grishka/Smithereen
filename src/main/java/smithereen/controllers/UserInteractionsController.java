@@ -3,9 +3,12 @@ package smithereen.controllers;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
+import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.OwnerAndAuthor;
@@ -86,6 +89,20 @@ public class UserInteractionsController{
 				object=context.getWallController().getPostOrThrow(object.repostOf);
 			}
 			return UserStorage.getByIdAsList(PostStorage.getRepostedUsers(object.id, count));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Post> getLikedPosts(User self, boolean topLevelOnly, int offset, int count){
+		try{
+			PaginatedList<Integer> ids;
+			if(topLevelOnly)
+				ids=LikeStorage.getLikedPostsTopLevelOnly(self.id, offset, count);
+			else
+				ids=LikeStorage.getLikedObjectIDs(self.id, Like.ObjectType.POST, offset, count);
+			Map<Integer, Post> posts=PostStorage.getPostsByID(ids.list);
+			return new PaginatedList<>(ids, ids.list.stream().map(posts::get).filter(Objects::nonNull).toList());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

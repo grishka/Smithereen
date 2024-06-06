@@ -48,6 +48,7 @@ import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
+import smithereen.routes.BookmarksRoutes;
 import smithereen.routes.FriendsRoutes;
 import smithereen.routes.GroupsRoutes;
 import smithereen.routes.MailRoutes;
@@ -498,6 +499,9 @@ public class SmithereenApplication{
 			postRequiringPermissionWithCSRF("/staffNotes/:noteID/delete", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteDelete);
 
 			get("/hoverCard", ProfileRoutes::mentionHoverCard);
+
+			getWithCSRF("/addBookmark", BookmarksRoutes::addUserBookmark);
+			getWithCSRF("/removeBookmark", BookmarksRoutes::removeUserBookmark);
 		});
 
 		path("/groups/:id", ()->{
@@ -568,6 +572,9 @@ public class SmithereenApplication{
 			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncRelationshipsCollections);
 			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncContentCollections);
 			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncProfile);
+
+			getWithCSRF("/addBookmark", BookmarksRoutes::addGroupBookmark);
+			getWithCSRF("/removeBookmark", BookmarksRoutes::removeGroupBookmark);
 		});
 
 		path("/posts/:postID", ()->{
@@ -649,6 +656,11 @@ public class SmithereenApplication{
 					getWithCSRF("/deleteForEveryone", MailRoutes::deleteForEveryone);
 					getWithCSRF("/restore", MailRoutes::restore);
 				});
+			});
+			path("/bookmarks", ()->{
+				getLoggedIn("", BookmarksRoutes::users);
+				getLoggedIn("/groups", BookmarksRoutes::groups);
+				getLoggedIn("/posts", BookmarksRoutes::posts);
 			});
 		});
 
