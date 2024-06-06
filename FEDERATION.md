@@ -263,3 +263,79 @@ If a user sends a message to someone who can't send **them** messages, the recip
 
 ### Read receipts for direct messages
 When a recipient views a direct message (a `Note` that is only addressed to actors and no collections) for the first time, Smithereen will send a `Read{Note}` activity to its sender.
+
+### User profile fields
+
+Additional profile fields are mostly just custom keys in `Person` actors. Just like many other things in this project, they are mostly copied from VKontakte. Unless otherwise noted, the values are free-form plain (**non-HTML**) strings.
+
+##### "Main" unlabeled section below the name:
+
+- `vcard:bday` — birth date, of the form YYYY-MM-DD
+- `sm:hometown`
+- `sm:relationshipStatus`, possible values:
+  - `sm:Single`
+  - `sm:InRelationship`
+  - `sm:Engaged`
+  - `sm:Married`
+  - `sm:InLove`
+  - `sm:Complicated`
+  - `sm:ActivelySearching`
+- `sm:relationshipPartner` — user's partner, must be an ID of another `Person` actor. Only valid when `sm:relationshipStatus` is present and is other than `sm:Single` or `sm:ActivelySearching`. For the partner to show up in the UI, they also need to set this user as their partner, *unless* the relationship status is `sm:InLove`.
+
+If the actor has any unrecognized `PropertyValue` fields, they are also displayed in this section.
+
+##### "Contacts" section:
+
+- `vcard:Address` — city/location. Pleroma and Misskey had this field before Smithereen.
+
+Other fields (website, Matrix, ...) are Mastodon-compatible `PropertyValue`s with hardcoded English names and HTML links to corresponding services.
+
+##### "Personal"/"philosophy" section:
+
+- `sm:politicalViews`, possible values:
+  - `sm:Apathetic`
+  - `sm:Communist`
+  - `sm:Socialist`
+  - `sm:Moderate`
+  - `sm:Liberal`
+  - `sm:Conservative`
+  - `sm:Monarchist`
+  - `sm:Ultraconservative`
+  - `sm:Libertarian`
+- `sm:religion`
+- `sm:personalPriority`, possible values:
+  - `sm:FamilyAndChildren`
+  - `sm:CareerAndMoney`
+  - `sm:EntertainmentAndLeisure`
+  - `sm:ScienceAndResearch`
+  - `sm:ImprovingTheWorld`
+  - `sm:PersonalDevelopment`
+  - `sm:BeautyAndArt`
+  - `sm:FameAndInfluence`
+- `sm:peoplePriority`, possible values:
+  - `sm:IntellectAndCreativity`
+  - `sm:KindnessAndHonesty`
+  - `sm:HealthAndBeauty`
+  - `sm:WealthAndPower`
+  - `sm:CourageAndPersistence`
+  - `sm:HumorAndLoveForLife`
+- `sm:smokingViews`, possible values:
+  - `sm:VeryNegative`
+  - `sm:Negative`
+  - `sm:Tolerant`
+  - `sm:Neutral`
+  - `sm:Positive`
+- `sm:alcoholViews`, the values are the same as for `sm:smokingViews`
+- `sm:inspiredBy`
+
+##### "Interests" section:
+
+- `sm:activities`
+- `sm:interests`
+- `sm:favoriteMusic`
+- `sm:favoriteMovies`
+- `sm:favoriteTvShows`
+- `sm:favoriteBooks`
+- `sm:favoriteGames`
+- `sm:favoriteQuotes`
+- `summary` — the standard ActivityPub "bio" field, this is an HTML string
