@@ -20,7 +20,7 @@ public class BookmarksStorage{
 				return PaginatedList.emptyList(count);
 			List<Integer> ids=new SQLQueryBuilder(conn)
 					.selectFrom("bookmarks_user")
-					.allColumns()
+					.columns("user_id")
 					.where("owner_id=?", ownerID)
 					.orderBy("id DESC")
 					.limit(count, offset)
@@ -65,7 +65,7 @@ public class BookmarksStorage{
 				return PaginatedList.emptyList(count);
 			List<Integer> ids=new SQLQueryBuilder(conn)
 					.selectFrom("bookmarks_group")
-					.allColumns()
+					.columns("group_id")
 					.where("owner_id=?", ownerID)
 					.orderBy("id DESC")
 					.limit(count, offset)
