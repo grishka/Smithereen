@@ -53,8 +53,6 @@ Friend requests are sent as `Offer{Follow}` activities, where the inner `Follow`
 Accepting a friend request is done by following the sender back, that is, simply sending a `Follow`.
 
 Rejecting a friend request is done by sending a `Reject{Offer{Follow}}` activity.
-### Additional profile fields
-There are separate fields for first and last names, birth date, and gender, all based on schema.org. Those are `firstName`, `lastName`, `birthDate` and `gender`. `firstName` and `lastName` are respectively aliases to `givenName` and `familyName`. Birth date is in the format `YYYY-MM-DD`. Gender can either be `sc:Male` or `sc:Female`.
 ### Non-square profile pictures
 Smithereen uses non-square profile pictures on the profile page. In order to retain compatibility with everything else, `icon` in the actor still points to a square picture. It's extended with the `image` field that contains the full rectangular one, and `sm:cropRegion` with the coordinates of the square version within the rectangular one. The coordinates are in the order `[x1, y1, x2, y2]`, where (x1, y1) are the top-left corner of the square, and (x2, y2) are the bottom-right. The top-left corner of the rectangle is (0, 0), and the bottom-right one is (1, 1).
 
@@ -268,7 +266,21 @@ When a recipient views a direct message (a `Note` that is only addressed to acto
 
 Additional profile fields are mostly just custom keys in `Person` actors. Just like many other things in this project, they are mostly copied from VKontakte. Unless otherwise noted, the values are free-form plain (**non-HTML**) strings.
 
-##### "Main" unlabeled section below the name:
+##### Structured name
+
+- `firstName`, alias to `sc:givenName`
+- `lastName`, alias to `sc:familyName`
+- `middleName`, alias to `sc:additionalName`
+- `sm:maidenName`
+
+##### Gender
+
+`sc:gender`, not displayed anywhere but is used to select pronouns and inflect names, possible values:
+- `sc:Male`, he/him
+- `sc:Female`, she/her
+- `sc:Other`, they/them
+
+##### "Main" unlabeled section below the name
 
 - `vcard:bday` — birth date, of the form YYYY-MM-DD
 - `sm:hometown`
@@ -284,13 +296,13 @@ Additional profile fields are mostly just custom keys in `Person` actors. Just l
 
 If the actor has any unrecognized `PropertyValue` fields, they are also displayed in this section.
 
-##### "Contacts" section:
+##### "Contacts" section
 
 - `vcard:Address` — city/location. Pleroma and Misskey had this field before Smithereen.
 
 Other fields (website, Matrix, ...) are Mastodon-compatible `PropertyValue`s with hardcoded English names and HTML links to corresponding services.
 
-##### "Personal"/"philosophy" section:
+##### "Personal"/"philosophy" section
 
 - `sm:politicalViews`, possible values:
   - `sm:Apathetic`
@@ -328,7 +340,7 @@ Other fields (website, Matrix, ...) are Mastodon-compatible `PropertyValue`s wit
 - `sm:alcoholViews`, the values are the same as for `sm:smokingViews`
 - `sm:inspiredBy`
 
-##### "Interests" section:
+##### "Interests" section
 
 - `sm:activities`
 - `sm:interests`
