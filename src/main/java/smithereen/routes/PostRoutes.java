@@ -731,6 +731,7 @@ public class PostRoutes{
 		if(isAjax(req) && !isMobile(req)){
 			String paginationID=req.queryParams("pagination");
 			if(StringUtils.isNotEmpty(paginationID)){
+				model.setName("post_list");
 				WebDeltaResponse r=new WebDeltaResponse(resp)
 						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("wallInner"));
 				if(wall.offset+wall.perPage>=wall.total){
