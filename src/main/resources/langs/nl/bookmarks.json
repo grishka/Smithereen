@@ -1,1 +1,12 @@
-{}
+{
+  "bookmarks_title": "Bladwijzers",
+  "add_bookmark": "Bladwijzer toevoegen",
+  "remove_bookmark": "Bladwijzer verwijderen",
+  "bookmarks_people": "Mensen",
+  "bookmarks_communities": "Gemeenschappen",
+  "bookmarks_posts": "Berichten",
+  "bookmarks_people_empty": "Mensen die je aan je bladwijzers toevoegt zullen hier verschijnen.",
+  "bookmarks_communities_empty": "Groepen en evenementen die je aan bladwijzers toevoegt verschijnen hier.",
+  "bookmarks_posts_empty": "Berichten die je leuk vindt worden hier weergegeven.",
+  "bookmarks_X_liked_posts": "Je vindt {count, plural, one {# bericht} other {# berichten}} leuk"
+}
