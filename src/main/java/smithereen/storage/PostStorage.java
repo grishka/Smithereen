@@ -416,6 +416,8 @@ public class PostStorage{
 	}
 
 	public static Map<Integer, Post> getPostsByID(Collection<Integer> ids) throws SQLException{
+		if(ids.isEmpty())
+			return Map.of();
 		Map<Integer, Post> posts=new SQLQueryBuilder()
 				.selectFrom("wall_posts")
 				.allColumns()
