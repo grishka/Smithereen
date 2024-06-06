@@ -75,7 +75,7 @@
 				{% endif %}
 			</div>
 			<div class="center grayText">
-			{% if originalPostAuthor is not null %}{{ L('commenting_on_repost_hint', {'name': originalPostAuthor | name('firstAndGender')}) }}{% endif %}
+			{% if originalPostAuthor is not null and replyTo is not null and replyTo.mastodonStyleRepost %}{{ L('commenting_on_repost_hint', {'name': originalPostAuthor | name('firstAndGender')}) }}{% endif %}
 			</div>
 			<div class="right">
 				<div class="popupMenuW">
