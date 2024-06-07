@@ -186,5 +186,7 @@
   "remote_interaction_services_before": "Працуе з",
   "remote_interaction_services_after": "...і не толькі!",
   "comments_show_X_more_comments": "Паказаць яшчэ {count, plural, one {# комментар} few {# каментарыя} other {# каментарыяў}}",
-  "cancel_reply": "Не адказваць"
+  "cancel_reply": "Не адказваць",
+  "menu_bookmarks": "Мае Закладкі",
+  "X_communities": "{count, plural, one {# суполка} few {# суполкі} other {# суполак}}"
 }
