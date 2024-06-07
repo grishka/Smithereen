@@ -391,8 +391,8 @@ public class GroupStorage{
 			}
 		}
 		synchronized(GroupStorage.class){
-			for(int id:ids){
-				putIntoCache(result.get(id));
+			for(Group g:result.values()){
+				putIntoCache(g);
 			}
 		}
 		return result;
