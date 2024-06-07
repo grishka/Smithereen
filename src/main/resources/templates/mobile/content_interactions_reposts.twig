@@ -1,0 +1,12 @@
+{% extends 'page' %}
+{% block content %}
+{% include 'content_interactions_tabbar' %}
+<div class="cardsBackdrop">
+{% for post in items %}
+<div class="card">
+    {% include 'wall_post' %}
+</div>
+{% endfor %}
+{% include "pagination" %}
+</div>
+{% endblock %}

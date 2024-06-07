@@ -4,12 +4,19 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.select.Elements;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
@@ -20,6 +27,7 @@ import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.PostStorage;
+import smithereen.text.TextProcessor;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
@@ -48,6 +56,7 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 	public boolean isReplyToUnknownPost;
 	public boolean deleted;
 	public Privacy privacy=Privacy.PUBLIC;
+	public EnumSet<Flag> flags=EnumSet.noneOf(Flag.class);
 
 	public boolean hasContentWarning(){
 		return contentWarning!=null;
@@ -61,6 +70,12 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 	public URI getActivityPubID(){
 		if(activityPubID!=null)
 			return activityPubID;
+		return UriBuilder.local().path("posts", String.valueOf(id)).build();
+	}
+
+	public URI getActivityPubURL(){
+		if(activityPubURL!=null)
+			return activityPubURL;
 		return UriBuilder.local().path("posts", String.valueOf(id)).build();
 	}
 
@@ -110,6 +125,7 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 			post.poll=PostStorage.getPoll(pollID, post.activityPubID);
 		}
 		post.privacy=Privacy.values()[res.getInt("privacy")];
+		Utils.deserializeEnumSet(post.flags, Flag.class, res.getLong("flags"));
 
 		return post;
 	}
@@ -117,14 +133,6 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 	public int getReplyLevel(){
 		return replyKey.size();
 	}
-
-	// Reply key for posts that reply to this one.
-//	public int[] getReplyKeyForReplies(){
-//		int[] r=new int[replyKey.length+1];
-//		System.arraycopy(replyKey, 0, r, 0, replyKey.length);
-//		r[r.length-1]=id;
-//		return r;
-//	}
 
 	public boolean isDeleted(){
 		return deleted;
@@ -174,7 +182,7 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 			return contentWarning;
 		}
 		if(StringUtils.isNotEmpty(text)){
-			return Utils.truncateOnWordBoundary(text, maxLen);
+			return TextProcessor.truncateOnWordBoundary(text, maxLen);
 		}
 		return "";
 	}
@@ -261,6 +269,48 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 			contentWarning=jo.get("cw").getAsString();
 	}
 
+	public boolean isMastodonStyleRepost(){
+		return flags.contains(Flag.MASTODON_STYLE_REPOST);
+	}
+
+	public int getIDForInteractions(){
+		// Mastodon-style repost posts can't be interacted with
+		return flags.contains(Flag.MASTODON_STYLE_REPOST) ? repostOf : id;
+	}
+
+	public void setRepostedPost(Post post){
+		repostOf=post.id;
+
+		// Strip the RE: ... part from text
+		// <p>Quote repost test<br><br>RE: <a href="https://misskey.io/notes/86woec5nlm">https://misskey.io/notes/86woec5nlm</a></p>
+		Element root=Jsoup.parseBodyFragment(text).body();
+		// Try to find <span class="quote-inline"> first
+		Element spanWithClass=root.selectFirst("span.quote-inline");
+		if(spanWithClass!=null){
+			spanWithClass.remove();
+			text=root.html();
+		}else{
+			// Find and remove the <a>
+			Elements elements=root.getElementsByAttributeValue("href", post.getActivityPubURL().toString());
+			if(!elements.isEmpty()){
+				Element el=elements.getLast(); // Post may contain more than one link to this URL
+				// Find and remove the preceding "RE:"
+				if(el.previousSibling() instanceof TextNode tn && tn.text().trim().equalsIgnoreCase("RE:")){
+					Node possiblyBr=tn.previousSibling();
+					// Remove trailing <br>'s before "RE:"
+					while(possiblyBr instanceof Element el1 && el1.tagName().equalsIgnoreCase("br")){
+						Node brSibling=possiblyBr.previousSibling();
+						possiblyBr.remove();
+						possiblyBr=brSibling;
+					}
+					tn.remove();
+				}
+				el.remove();
+				text=root.html();
+			}
+		}
+	}
+
 	public enum Privacy{
 		PUBLIC(null),
 		FOLLOWERS_AND_MENTIONED("post_visible_to_followers_mentioned"),
@@ -272,5 +322,9 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 		Privacy(String langKey){
 			this.langKey=langKey;
 		}
+	}
+
+	public enum Flag{
+		MASTODON_STYLE_REPOST,
 	}
 }

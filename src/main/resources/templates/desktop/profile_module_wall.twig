@@ -9,6 +9,6 @@
 		{% else %}
 			<div id="wallEmptyState">{{ L('wall_empty') }}</div>
 		{%endfor%}
+		{% include "pagination_endless" with {'paginationLinkText': L('load_older_posts')} %}
 	</div>
-	<div class="bottomSummaryWrap noSidePadding">{% include "pagination" %}</div>
 {% endblock %}

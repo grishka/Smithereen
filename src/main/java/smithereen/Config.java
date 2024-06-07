@@ -26,6 +26,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,6 +41,7 @@ import smithereen.model.UserRole;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
+import smithereen.util.PublicSuffixList;
 import smithereen.util.TopLevelDomainList;
 import spark.utils.StringUtils;
 
@@ -48,6 +50,7 @@ public class Config{
 	public static String dbUser;
 	public static String dbPassword;
 	public static String dbName;
+	public static int dbMaxConnections;
 
 	public static String domain;
 
@@ -111,6 +114,7 @@ public class Config{
 		dbUser=props.getProperty("db.user");
 		dbPassword=props.getProperty("db.password");
 		dbName=props.getProperty("db.name");
+		dbMaxConnections=Utils.parseIntOrDefault(props.getProperty("db.max_connections"), 100);
 
 		domain=props.getProperty("domain");
 
@@ -237,6 +241,11 @@ public class Config{
 			TopLevelDomainList.lastUpdatedTime=Long.parseLong(dbValues.getOrDefault("TLDList_LastUpdated", "0"));
 			if(TopLevelDomainList.lastUpdatedTime>0){
 				TopLevelDomainList.update(dbValues.get("TLDList_Data"));
+			}
+
+			PublicSuffixList.lastUpdatedTime=Long.parseLong(dbValues.getOrDefault("PSList_LastUpdated", "0"));
+			if(PublicSuffixList.lastUpdatedTime>0){
+				PublicSuffixList.update(Arrays.asList(dbValues.get("PSList_Data").split("\n")));
 			}
 		}
 	}

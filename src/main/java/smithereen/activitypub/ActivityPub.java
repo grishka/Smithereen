@@ -23,6 +23,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -34,20 +35,22 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.SignStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -88,6 +91,7 @@ import smithereen.util.UriBuilder;
 import smithereen.util.XmlParser;
 import spark.utils.StringUtils;
 
+import static java.time.temporal.ChronoField.*;
 import static smithereen.Utils.*;
 
 public class ActivityPub{
@@ -99,11 +103,58 @@ public class ActivityPub{
 
 	public static final HttpClient httpClient;
 	private static LruCache<String, String> domainRedirects=new LruCache<>(100);
+	private static final ZoneId GMT_TIMEZONE=ZoneId.of("GMT");
+	private static final DateTimeFormatter HTTP_DATE_FORMATTER;
 
 	static{
 		httpClient=ExtendedHttpClient.newBuilder()
 				.followRedirects(HttpClient.Redirect.NORMAL)
 				.build();
+
+		Map<Long, String> dow = new HashMap<>();
+		dow.put(1L, "Mon");
+		dow.put(2L, "Tue");
+		dow.put(3L, "Wed");
+		dow.put(4L, "Thu");
+		dow.put(5L, "Fri");
+		dow.put(6L, "Sat");
+		dow.put(7L, "Sun");
+		Map<Long, String> moy = new HashMap<>();
+		moy.put(1L, "Jan");
+		moy.put(2L, "Feb");
+		moy.put(3L, "Mar");
+		moy.put(4L, "Apr");
+		moy.put(5L, "May");
+		moy.put(6L, "Jun");
+		moy.put(7L, "Jul");
+		moy.put(8L, "Aug");
+		moy.put(9L, "Sep");
+		moy.put(10L, "Oct");
+		moy.put(11L, "Nov");
+		moy.put(12L, "Dec");
+		HTTP_DATE_FORMATTER = new DateTimeFormatterBuilder()
+				.parseCaseInsensitive()
+				.parseLenient()
+				.optionalStart()
+				.appendText(DAY_OF_WEEK, dow)
+				.appendLiteral(", ")
+				.optionalEnd()
+				.appendValue(DAY_OF_MONTH, 2, 2, SignStyle.NOT_NEGATIVE)
+				.appendLiteral(' ')
+				.appendText(MONTH_OF_YEAR, moy)
+				.appendLiteral(' ')
+				.appendValue(YEAR, 4)  // 2 digit year not handled
+				.appendLiteral(' ')
+				.appendValue(HOUR_OF_DAY, 2)
+				.appendLiteral(':')
+				.appendValue(MINUTE_OF_HOUR, 2)
+				.optionalStart()
+				.appendLiteral(':')
+				.appendValue(SECOND_OF_MINUTE, 2)
+				.optionalEnd()
+				.appendLiteral(' ')
+				.appendOffset("+HHMM", "GMT")  // should handle UT/Z/EST/EDT/CST/CDT/MST/MDT/PST/MDT
+				.toFormatter();
 	}
 
 	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx) throws IOException{
@@ -138,6 +189,7 @@ public class ActivityPub{
 		}
 
 		HttpRequest.Builder builder=HttpRequest.newBuilder(uri)
+				.timeout(Duration.ofSeconds(10))
 				.header("Accept", CONTENT_TYPE);
 		if(token!=null)
 			builder.header("Authorization", "Bearer "+token);
@@ -203,9 +255,7 @@ public class ActivityPub{
 		String host=url.getHost();
 		if(url.getPort()!=-1)
 			host+=":"+url.getPort();
-		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-		String date=dateFormat.format(new Date());
+		String date=HTTP_DATE_FORMATTER.format(ZonedDateTime.now(GMT_TIMEZONE));
 		String digestHeader;
 		if(body!=null){
 			digestHeader="SHA-256=";
@@ -302,9 +352,9 @@ public class ActivityPub{
 				LOG.debug("Response body: {}", resp.body());
 				if(resp.statusCode()!=403){
 					if(resp.statusCode()/100==5){ // IOException does trigger retrying, FederationException does not. We want retries for 5xx (server) errors.
-						throw new IOException("Response is not successful: "+resp.statusCode());
+						throw new IOException("Response from "+inboxUrl+" is not successful: "+resp.statusCode());
 					}else{
-						throw new FederationException("Response is not successful: "+resp.statusCode());
+						throw new FederationException("Response from "+inboxUrl+" is not successful: "+resp.statusCode());
 					}
 				}
 			}
@@ -325,8 +375,7 @@ public class ActivityPub{
 		return uri.equals(AS_PUBLIC) || ("as".equals(uri.getScheme()) && "Public".equals(uri.getSchemeSpecificPart()));
 	}
 
-	private static URI doWebfingerRequest(String username, String domain, String uriTemplate) throws IOException{
-		String resource="acct:"+username+"@"+domain;
+	private static WebfingerResponse doWebfingerRequest(String resource, String domain, String uriTemplate) throws IOException{
 		URI url;
 		if(StringUtils.isEmpty(uriTemplate)){
 			url=new UriBuilder()
@@ -336,7 +385,7 @@ public class ActivityPub{
 					.queryParam("resource", resource)
 					.build();
 		}else{
-			url=URI.create(uriTemplate.replace("{uri}", resource));
+			url=URI.create(uriTemplate.replace("{uri}", URLEncoder.encode(resource, StandardCharsets.UTF_8)));
 		}
 		HttpRequest req=HttpRequest.newBuilder(url).build();
 		HttpResponse<Reader> resp;
@@ -348,24 +397,26 @@ public class ActivityPub{
 		try(Reader reader=resp.body()){
 			if(resp.statusCode()/100==2){
 				WebfingerResponse wr=Utils.gson.fromJson(reader, WebfingerResponse.class);
-
-				if(!resource.equalsIgnoreCase(wr.subject))
-					throw new IOException("Invalid response");
-				for(WebfingerResponse.Link link:wr.links){
-					if("self".equals(link.rel) && ("application/activity+json".equals(link.type) || CONTENT_TYPE.equals(link.type)) && link.href!=null){
-						LOG.trace("Successfully resolved {}@{} to {}", username, domain, link.href);
-						return link.href;
-					}
-				}
-				throw new IOException("Link not found");
+				return wr;
 			}else if(resp.statusCode()==404){
-				throw new ObjectNotFoundException("User "+username+"@"+domain+" does not exist");
+				throw new ObjectNotFoundException("User "+resource+" does not exist");
 			}else{
-				throw new IOException("Failed to resolve username "+username+"@"+domain);
+				throw new IOException("Failed to resolve username "+resource+", response code "+resp.statusCode());
 			}
 		}catch(JsonParseException x){
 			throw new IOException("Response parse failed", x);
 		}
+	}
+
+	private static URI tryGetActorIDFromWebfinger(String username, String domain, String uriTemplate) throws IOException{
+		String resource="acct:"+username+"@"+domain;
+		URI link=doWebfingerRequest(resource, domain, uriTemplate).getActivityPubActorID();
+		if(link!=null){
+			LOG.trace("Successfully resolved {}@{} to {}", username, domain, link);
+			return link;
+		}
+		throw new IOException("Link not found");
+
 	}
 
 	public static URI resolveUsername(String username, String domain) throws IOException{
@@ -381,7 +432,7 @@ public class ActivityPub{
 			redirect=domainRedirects.get(domain);
 		}
 		try{
-			URI uri=doWebfingerRequest(username, domain, redirect);
+			URI uri=tryGetActorIDFromWebfinger(username, domain, redirect);
 			if(redirect==null){
 				synchronized(ActivityPub.class){
 					// Cache an empty string indicating that this domain doesn't have a redirect.
@@ -430,7 +481,7 @@ public class ActivityPub{
 													domainRedirects.put(domain, template);
 												}
 											}
-											return doWebfingerRequest(username, domain, template);
+											return tryGetActorIDFromWebfinger(username, domain, template);
 										}else{
 											throw new ObjectNotFoundException("Malformed URI template '"+template+"' in host-meta domain redirect", x);
 										}
@@ -482,15 +533,14 @@ public class ActivityPub{
 		if(!headers.contains("host"))
 			throw new BadRequestException("host is not in signed headers");
 
-		SimpleDateFormat dateFormat=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-		long unixtime=dateFormat.parse(req.headers("date")).getTime();
-		long now=System.currentTimeMillis();
-		long diff=now-unixtime;
-		if(diff>30000L)
-			throw new BadRequestException("Date is too far in the future (difference: "+diff+"ms)");
-		if(diff<-30000L)
-			throw new BadRequestException("Date is too far in the past (difference: "+diff+"ms)");
+		Instant date=Instant.from(DateTimeFormatter.RFC_1123_DATE_TIME.parse(req.headers("date")));
+		Instant now=Instant.now();
+		Instant minValidDate=now.minus(5, ChronoUnit.MINUTES);
+		Instant maxValidDate=now.plus(5, ChronoUnit.MINUTES);
+		if(date.isAfter(maxValidDate))
+			throw new BadRequestException("Date is too far in the future (difference: "+now.until(date, ChronoUnit.SECONDS)+"s)");
+		if(date.isBefore(minValidDate))
+			throw new BadRequestException("Date is too far in the past (difference: "+now.until(date, ChronoUnit.SECONDS)+"s)");
 
 		URI userID=Utils.userIdFromKeyId(URI.create(keyId));
 		Actor user;
@@ -680,5 +730,37 @@ public class ActivityPub{
 			LOG.warn("Error querying collection {}", collectionID, x);
 			return CollectionQueryResult.empty(collectionID);
 		}
+	}
+
+	public static String resolveRemoteInteractionUriTemplate(String username, String domain){
+		String resource;
+		if(username==null){
+			resource="https://"+domain;
+		}else{
+			resource="acct:"+username+"@"+domain;
+		}
+		try{
+			String redirect;
+			synchronized(ActivityPub.class){
+				redirect=domainRedirects.get(domain);
+			}
+			WebfingerResponse resp=doWebfingerRequest(resource, domain, redirect);
+			for(WebfingerResponse.Link link:resp.links){
+				if("http://ostatus.org/schema/1.0/subscribe".equals(link.rel)){
+					String template=link.template;
+					if(template!=null && template.startsWith("https://") && template.contains("{uri}"))
+						return template;
+				}
+			}
+		}catch(ObjectNotFoundException x){
+			if(username!=null)
+				throw new ObjectNotFoundException("Failed to resolve remote interaction URI", x);
+		}catch(IOException x){
+			throw new ObjectNotFoundException("Failed to resolve remote interaction URI", x);
+		}
+		if(username==null){
+			return "https://"+domain+"/authorize_interaction?uri={uri}";
+		}
+		throw new ObjectNotFoundException("Failed to resolve remote interaction URI");
 	}
 }

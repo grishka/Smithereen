@@ -7,7 +7,7 @@
 	<div>
 		{% for option in poll.options %}
 		<div class="pollOptionW">
-			<input type="text" name="pollOption" autocomplete="off" value="{{ option.name }}"/>
+			<input type="text" name="pollOption" autocomplete="off" value="{{ option.text }}"/>
 			<a class="attachDelete" title="{{ L('create_poll_delete_option') }}"></a>
 		</div>
 		{% endfor %}

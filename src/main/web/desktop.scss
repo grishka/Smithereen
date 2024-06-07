@@ -10,12 +10,21 @@ $mediumPadding: 10px;
 
 @import "common.scss";
 
-@svg-load popoverArrowTop url(img/popover_arrow_top.svg) {
+@svg-load popoverArrowTopWithHeader url(img/popover_arrow_top.svg) {
 	polygon[fill=red]{
 		fill: $simpleButton;
 	}
 	polygon[fill=lime]{
 		fill: $headerBorderBottomDark;
+	}
+}
+
+@svg-load popoverArrowTop url(img/popover_arrow_top.svg) {
+	polygon[fill=red]{
+		fill: $bg;
+	}
+	polygon[fill=lime]{
+		fill: $darkerGray;
 	}
 }
 
@@ -309,14 +318,19 @@ small{
 	border-bottom: solid 1px $wallPostSeparator;
 	margin-bottom: 10px;
 	padding-bottom: 10px;
+	display: flex;
 	.postContentWrap{
-		padding-left: 5px;
-		padding-right: 5px;
+		padding-left: 10px;
+		/*padding-right: 10px;*/
+		flex-grow: 1;
+	}
+	.postAvaWrap{
+		width: 50px;
+		flex: none;
 	}
 	.postContent{
 		padding-top: 2px;
 		line-height: 130%;
-		overflow-x: hidden;
 		pre{
 			overflow-x: auto;
 		}
@@ -326,6 +340,82 @@ small{
 		margin-bottom: 0;
 		padding-bottom: 0;
 	}
+	.repostHeader{
+		margin: 5px 0;
+		.avaW{
+			margin-right: 7px;
+		}
+		.name{
+			font-weight: bold;
+			line-height: 13px;
+		}
+		.nameW{
+			margin-bottom: 4px;
+		}
+		.repostIcon{
+			display: inline-block;
+			width: 9px;
+			height: 11px;
+			margin: 0 3px 0 1px;
+			position: relative;
+			top: 2px;
+			background: svg-load('img/repost_icons.svg') no-repeat;
+			&.mastodonStyle{
+				background-position: 0 -11px;
+			}
+		}
+	}
+	.repost{
+		padding-left: 8px;
+		border-left: solid 2px #bac087;
+	}
+	.authorName{
+		line-height: 13px;
+	}
+	&.comment{
+		.postAvaWrap{
+			width: 32px;
+		}
+		.postContentWrap{
+			padding-left: 7px;
+			padding-right: 0;
+		}
+		.treeIndent{
+			width: calc(var(--indent-level) * 16px);
+			flex: none;
+		}
+	}
+	code{
+		line-height: 13px;
+	}
+	.postIconAction{
+		display: block;
+		width: 13px;
+		height: 13px;
+		border: solid 1px transparent;
+		background: svg-load('img/post_actions.svg', fill: #91a20b) no-repeat;
+		opacity: .4;
+		transition: opacity 0.3s ease;
+		margin-left: 5px;
+		&:hover{
+			opacity: 1;
+		}
+		&.actionEdit{
+			background-position: 0 -12px;
+		}
+		&.actionReport{
+			background-position: 0 -24px;
+		}
+	}
+	.floatingPostActions{
+		margin: 0 3px 0 5px;
+	}
+}
+
+/* Safari hack because it hates my SVG abuse */
+_::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
+	background: svg-load('img/repost_icons_safari.svg') no-repeat;
+	background-size: 9px 22px;
 }
 
 .post.comment .authorName{
@@ -473,6 +563,28 @@ small{
 		background: none;
 		padding: 8px 0 0 0;
 	}
+	.bottomBar{
+		margin-top: 8px;
+		display: flex;
+		align-items: center;
+		clear: both;
+		.center{
+			flex-grow: 1;
+			margin-left: 10px;
+			max-height: 26px;
+			text-overflow: ellipsis;
+			overflow-y: hidden;
+			display: -webkit-box;
+			-webkit-box-orient: vertical;
+			-webkit-line-clamp: 2;
+		}
+		.right{
+			margin: 0 10px;
+		}
+		.left, .right{
+			flex-shrink: 0;
+		}
+	}
 	.attachment{
 		position: relative;
 		float: left;
@@ -544,6 +656,35 @@ small{
 			}
 		}
 	}
+	.commentReplying{
+		line-height: 16px;
+		color: $auxiliaryGrey;
+		margin: -3px 0 5px;
+		.cancelReply{
+			display: inline-block;
+			width: 16px;
+			height: 16px;
+			background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
+			opacity: .7;
+			transition: opacity .2s ease;
+			margin-left: 2px;
+			vertical-align: top;
+			&:hover{
+				opacity: 1;
+			}
+		}
+	}
+	.completionsContainer{
+		margin: -1px 1px 0;
+	}
+}
+
+.commentsPreview:empty+.wallPostForm{
+	margin-top: 5px;
+}
+
+.replies .wallPostForm{
+	margin-bottom: -1px;
 }
 
 .profileBlock{
@@ -576,6 +717,37 @@ small{
 	padding: 10px;
 }
 
+.columnLayout{
+	display: flex;
+	align-items: flex-start;
+	&.leftNarrow{
+		#left{
+			width: 200px;
+			flex: none;
+		}
+		#right{
+			flex-grow: 1;
+		}
+		&.expanded #right{
+			margin-left: -200px;
+			padding-left: 0;
+		}
+	}
+	&.rightNarrow{
+		#left{
+			flex-grow: 1;
+		}
+		#right{
+			width: 200px;
+			flex: none;
+		}
+		&.expanded #left{
+			margin-right: -200px;
+			padding-right: 0;
+		}
+	}
+}
+
 .profileBlock td {
 	word-break: break-word;
 }
@@ -586,6 +758,19 @@ small{
 
 .singleColumn.gray{
 	padding: 15px;
+	hr{
+		margin: 15px -15px;
+	}
+}
+
+.singleColumn hr{
+	border: solid 1px;
+	border-color: #e0e0e0 none #fff;
+	margin: 15px -10px;
+}
+
+.singleColumn .form+hr, .singleColumn.gray .form+hr{
+	margin-top: 10px;
 }
 
 .narrowForms form{
@@ -605,6 +790,9 @@ small{
 		}
 		.control{
 			width: 150px;
+			&.wide{
+				width: 100%;
+			}
 		}
 	}
 }
@@ -621,6 +809,9 @@ small{
 		}
 		.control{
 			width: 220px;
+			&.wide{
+				width: 350px;
+			}
 		}
 	}
 }
@@ -692,7 +883,7 @@ small{
 }
 
 .commentsPreviewWrap{
-	padding-left: 55px;
+	padding-left: 60px;
 	.loadPrev{
 		display: block;
 		height: 30px;
@@ -707,6 +898,7 @@ small{
 	.prevLoader{
 		height: 30px;
 		background-color: $menuItemsSeparator;
+		margin-top: 5px;
 	}
 	>*:first-child{
 		margin-top: 5px;
@@ -717,7 +909,7 @@ small{
 	border-bottom: none;
 	padding-bottom: 5px;
 	margin-bottom: 0;
-	td{
+	>div{
 		border-top: solid 1px $menuItemsSeparator;
 		padding-top: 5px;
 		&.postContentWrap{
@@ -730,21 +922,25 @@ small{
 	&:hover .treeIndent{
 		background: svg-load('img/comments_tree_indent.svg', fill: $wallPostSeparator, stroke: $wallPostSeparator) top 14px left -5px repeat-x;
 	}
-	&.first td{
+	&.first >div{
 		border-top: none;
 		padding-top: 0;
 		&.postContentWrap{
 			padding-top: 2px;
 		}
 	}
+	&.twoLevelIndented{
+		margin-left: 39px;
+	}
 }
 
 .profileFields{
 	line-height: 140%;
-	padding: 10px 6px 15px;
-	td{
-		padding-top: 3px;
-		vertical-align: top;
+	padding: 10px 0 15px 6px;
+	display: grid;
+	grid-template-columns: 30% auto;
+	grid-gap: 3px;
+	>div{
 		p:first-child{
 			margin-top: 0;
 		}
@@ -752,12 +948,35 @@ small{
 			margin-bottom: 0;
 		}
 	}
-	tr:first-child td{
-		padding-top: 0;
-	}
 	.label{
 		color: $auxiliaryGrey;
-		width: 30%;
+	}
+	.sectionHeader{
+		grid-column: span 2;
+		display: flex;
+		align-items: center;
+		h4{
+			flex: none;
+			margin-right: 5px;
+		}
+		.line{
+			height: 1px;
+			background: $wallPostSeparator;
+			flex-grow: 1;
+		}
+		a{
+			flex: none;
+			margin-left: 5px;
+			color: $auxiliaryBlockHeader;
+			font-size: 10px;
+			text-transform: lowercase;
+		}
+	}
+	.empty{
+		grid-column: span 2;
+		text-align: center;
+		color: $auxiliaryGrey;
+		padding: 10px;
 	}
 }
 
@@ -890,12 +1109,13 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	}
 }
 
-select{
-	background-image: svg-load("img/select_arrows.svg");
+select, .comboBoxW input{
+	background-image: svg-load("img/select_arrow.svg");
 	background-repeat: no-repeat;
-	background-position: center right;
+	background-position: center right 4px;
 	padding: 0 16px 0 4px;
 	border-radius: 0;
+	min-height: 21px;
 }
 
 .tabbar{
@@ -1003,7 +1223,10 @@ select{
 	min-width: 410px;
 	border-radius: 2px;
 	pointer-events: auto;
-	@include layer-shadow;
+	padding: 10px 0;
+	.boxLayerInner{
+		@include layer-shadow;
+	}
 	&.wide{
 		width: 520px;
 	}
@@ -1045,22 +1268,23 @@ select{
 	line-height: 30px;
 	font-weight: bold;
 	font-size: 13px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	padding-left: 10px;
-	padding-right: 64px;
 	border: solid 1px $headerBorderBottomDark;
 	box-shadow: 0 1px 0 $headerBorderBottomLight inset;
-	position: relative;
+	position: sticky;
+	top: 0;
 	border-radius: 2px 2px 0 0;
+	display: flex;
+	z-index: 2;
+	.title{
+		flex-grow: 1;
+		margin: 0 10px;
+	}
 	.close{
 		display: block;
 		width: 30px;
 		height: 30px;
 		cursor: pointer;
-		position: absolute;
-		right: 0;
-		top: 0;
+		flex: none;
 		background: svg-load("img/box_close.svg", fill: $textOnAccent) no-repeat;
 		background-position: center;
 		background-size: 11px 11px;
@@ -1102,15 +1326,23 @@ select{
 	}
 }
 
-.settingsMessage{
+.settingsMessage, .settingsInfo{
 	margin: 8px;
-	padding: 8px 11px;;
-	border: solid 1px $alertBorder;
-	background: $alertBackground;
+	padding: 8px 11px;
 	color: $text;
 	&.extraMarginBottom{
 		margin-bottom: 15px;
 	}
+}
+
+.settingsMessage{
+	border: solid 1px $alertBorder;
+	background: $alertBackground;
+}
+
+.settingsInfo{
+	border: solid 1px $wallPostSeparator;
+	background: $bgGrey;
 }
 
 .profileBelowAva{
@@ -1280,24 +1512,39 @@ select{
 }
 
 .postActions{
-	display: inline-block;
 	float: right;
-	margin-right: -4px;
-	.like .icon{
+	margin-left: 5px;
+	.icon{
 		display: inline-block;
 		width: 10px;
 		height: 9px;
-		background: svg-load(img/post_like.svg, fill: $iconColor);
-		vertical-align: middle;
-		margin: -2px 0 0 4px;
-		opacity: .5;
+		background: svg-load(img/like.svg, fill: #91a20b) no-repeat;
+		position: relative;
+	}
+	.like .icon{
+		top: 2px;
+		margin-left: 3px;
+	}
+	.share .icon{
+		width: 11px;
+		height: 11px;
+		background-position: 0 -9px;
+		top: 1px;
+	}
+	.icon, .counter{
+		opacity: .4;
 		transition: opacity 0.3s ease;
 	}
-	.like.liked .icon{
+	.like:not(.liked):hover, .share:hover{
+		.icon, .counter{
+			opacity: .6;
+		}
+	}
+	.like.liked .icon, .like.liked .counter{
 		opacity: 1;
 	}
 	a.action, a.action:link, a.action:visited{
-		padding: 4px;
+		padding: 4px 5px;
 		border-radius: 2px;
 		background-color: transparent;
 		&:hover{
@@ -1306,26 +1553,39 @@ select{
 		}
 	}
 	.counter{
-		padding-left: 4px;
+		padding-left: 3px;
 		font-weight: bold;
-		font-size: 9px;
+		font-size: 10px;
 	}
+}
+
+.comment .postActions a.action:hover{
+	background: none;
 }
 
 .popoverPlace{
 	position: relative;
 }
 
+.post .revealOnHover{
+	opacity: 0;
+	transition: opacity 0.15s ease;
+}
+
+.post:hover .revealOnHover{
+	opacity: 1;
+}
+
 .popover{
-	position: absolute;
+	position: fixed;
 	font-size: 11px;
+	z-index: 5;
 	.popoverHeader{
 		background: $simpleButton;
 		color: $textOnAccent;
 		text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
 		font-weight: bold;
 		padding: 4px 8px;
-		border-radius: 4px 4px 0 0;
 		border: solid 1px $headerBorderBottomDark;
 		border-bottom: none;
 		a, a:link, a:visited, a:hover, a:visited:hover{
@@ -1335,10 +1595,10 @@ select{
 	}
 	.popoverContent{
 		background: $bg;
-		padding: 4px 8px;
 		color: $text;
-		border-radius: 0 0 4px 4px;
 		border: solid 1px $darkerGray;
+	}
+	&.hasHeader .popoverContent{
 		border-top: none;
 	}
 	.popoverFooter{
@@ -1355,47 +1615,78 @@ select{
 	&.belowAnchor{
 		padding-top: 6px;
 		animation: slideFromBottom 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
-		.popoverArrow{
+		>.popoverArrow{
 			background: svg-inline(popoverArrowTop);
 			top: 0;
 		}
 	}
+	&.hasHeader.belowAnchor .popoverArrow{
+		background: svg-inline(popoverArrowTopWithHeader);
+	}
 	&.aboveAnchor{
 		padding-bottom: 6px;
 		animation: slideFromTop 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
-		.popoverArrow{
+		>.popoverArrow{
 			background: svg-inline(popoverArrowBottom);
 			bottom: 0;
 		}
 	}
 }
 
-.likePopoverWrap .popover{
-	width: 230px;
-	right: 0;
+.likeWrap .popover{
+	right: -35px;
+}
+
+.shareWrap .popover{
+	right: -125px;
+}
+
+.likePopoverWrap .popover, .pollVotersPopoverWrap .popover{
+	width: 234px;
 	.popoverArrow{
-		right: 16px;
+		height: 6px;
+		z-index: 6;
+	}
+	&.aboveAnchor .popoverArrow{
+		background: svg-load('img/popover_arrow_btm_black.svg', fill: #4c4c4c);
+	}
+	&.belowAnchor .popoverArrow{
+		background: svg-load('img/popover_arrow_top_black.svg', fill: #4c4c4c);
+	}
+	.popoverContentW{
+		border-radius: 4px;
+		background: rgba(0, 0, 0, 0.7);
+		backdrop-filter: saturate(180%) blur(2px);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+	}
+	.popoverHeader, .popoverContent{
+		background: none;
+		border: none;
+	}
+	.popoverHeader{
+		padding: 8px 10px 0;
+	}
+	.popoverContent{
+		padding: 0 12px;
 	}
 }
 
 .pollVotersPopoverWrap .popover{
-	width: 230px;
 	left: 0;
 	.popoverArrow{
 		left: 16px;
 	}
 }
 
-.likePopoverContent{
-	padding: 4px 0;
+.likePopoverAvatars{
+	padding: 8px 0 10px;
 	overflow-x: hidden;
-	height: 40px;
 	white-space: nowrap;
-	font-size: 0;
+	height: calc(32px + 8px + 10px);
+	display: flex;
 	a{
-		margin-right: 4px;
-		display: inline-block;
-		vertical-align: top;
+		margin-right: 6px;
+		flex: none;
 	}
 	a:last-child{
 		margin-right: 0;
@@ -1403,24 +1694,36 @@ select{
 	.self{
 		display: none;
 	}
+	.avaHasImage:after{
+		content: none;
+	}
+	.avaPlaceholder{
+		border: none;
+	}
+	.ava{
+		box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+	}
+	.ava, .avaImage{
+		border-radius: 3px;
+	}
 }
 
 .likeWrap>.liked+.likePopoverWrap .self{
-	display: inline-block;
+	display: block;
 }
 
 .userGrid{
-	padding: 9px;
+	padding: 15px 20px;
 	display: grid;
-	grid-template-columns: repeat(8, 1fr);
-	grid-gap: 9px 8px;
+	grid-template-columns: repeat(5, 100px);
+	grid-gap: 15px 20px;
 }
 
 .userGridItem{
 	overflow-x: hidden;
 	text-align: center;
 	.name{
-		padding-top: 10px;
+		padding-top: 5px;
 		line-height: 13px;
 	}
 }
@@ -1904,7 +2207,7 @@ textarea{
 	display: block;
 	padding-left: 24px;
 	margin-top: -5px;
-	margin-left: 13px;
+	margin-left: 15px;
 	height: 26px;
 	line-height: 26px;
 	background: svg-load('img/load_replies.svg', stroke: color($iconColor alpha(70%))) no-repeat left center;
@@ -2603,7 +2906,6 @@ label.pretendLink{
 	display: flex;
 	align-items: flex-start;
 	justify-content: center;
-	padding: 10px 0;
 	transform-origin: 50% 33%;
 }
 
@@ -2670,7 +2972,6 @@ label.pretendLink{
 	display: flex;
 	flex-wrap: wrap;
 	padding: 0 0 2px 0;
-	position: relative;
 	input{
 		border: none;
 		padding: 0;
@@ -2704,6 +3005,10 @@ label.pretendLink{
 			color: $textOnAccent;
 		}
 	}
+}
+
+.completionsContainer, .tokenInput{
+	position: relative;
 	.completionsWW{
 		position: absolute;
 		bottom: 0;
@@ -2748,6 +3053,23 @@ label.pretendLink{
 				color: #FFFFFF;
 				border-color: #2e6200;
 				z-index: 1;
+				b{
+					background: $normalLink;
+				}
+			}
+			&.withAvatar{
+				padding: 5px;
+				line-height: 15px;
+				.ava{
+					float: left;
+					margin-right: 7px;
+				}
+			}
+			.secondaryText{
+				opacity: 0.56;
+			}
+			b{
+				background: $wallPostSeparator;
 			}
 		}
 	}
@@ -2941,7 +3263,7 @@ h2, h3, h4{
 			color: $auxiliaryGrey;
 		}
 	}
-	.mailMessageForm{
+	.mailMessageForm, .subject{
 		margin-top: 10px;
 	}
 	.postAttachments{
@@ -3113,3 +3435,142 @@ a.clickableListItem{
 		}
 	}
 }
+
+.boxContent .secondaryTabBar{
+	position: sticky;
+	top: 30px;
+	z-index: 2;
+}
+
+.noPostFormBackgrounds .wallPostForm{
+	background: none;
+	border: none;
+	padding: 0;
+}
+
+.wallRepostForm{
+	padding: 15px;
+	h2{
+		border: none;
+	}
+}
+
+.tabbedContent{
+	display: flow-root;
+}
+
+.ajaxEndlessPagination{
+	text-align: center;
+	a{
+		display: block;
+		padding: 10px;
+		border-top: solid 1px transparent;
+		&:hover{
+			text-decoration: none;
+			background: $blockBackground;
+			border-top: solid 1px $wallPostSeparator;
+		}
+	}
+	.loader{
+		display: block;
+		width: 100%;
+		height: 34px;
+	}
+}
+
+.userGridW .ajaxEndlessPagination{
+	margin: 0px 20px 15px;
+}
+
+.repostBoxEmbed{
+	textarea{
+		width: 100%;
+		height: 50px;
+		font-family: monospace;
+	}
+	iframe{
+		width: 100%;
+		border: none;
+	}
+}
+
+.userHoverCard{
+	display: flex;
+	width: 350px;
+	padding: 10px;
+	>.ava{
+		flex: none;
+		margin-right: 10px;
+	}
+	.mutuals{
+		display: flex;
+		>.ava{
+			flex: none;
+			margin-right: 5px;
+		}
+	}
+}
+
+.simpleLayer{
+	background: $bg;
+	border-radius: 2px;
+	@include layer-shadow;
+}
+
+.layerWithTitle{
+	width: 642px;
+	.layerTitle{
+		height: 46px;
+		display: flex;
+		padding: 0 20px;
+		align-items: center;
+		.title{
+			flex-grow: 1;
+			font-size: 13px;
+			color: $boldHeaders;
+			font-weight: bold;
+			padding-right: 10px;
+		}
+		.close{
+			flex: none;
+		}
+	}
+}
+
+.remoteInteraction{
+	padding: 0 20px 20px;
+	line-height: 130%;
+	form{
+		margin-top: 5px;
+		display: flex;
+		input[type=text]{
+			flex-grow: 1;
+			padding: 0 8px;
+		}
+		input[type=submit]{
+			flex: none;
+			margin-left: 10px;
+		}
+	}
+	.services{
+		margin-top: 8px;
+		line-height: 16px;
+		opacity: 0.53;
+		img{
+			margin: 0 8px;
+			vertical-align: middle;
+		}
+	}
+}
+
+.hoverCardContainer{
+	position: relative;
+}
+
+.commentHoverCard{
+	width: 448px;
+	.comment{
+		padding: 10px;
+	}
+}
+

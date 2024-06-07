@@ -8,12 +8,24 @@
 	<span class="aux"><a href="{{ owner.profileURL }}">{{ L('back_to_profile') }}</a></span>
 </div>
 {% endif %}
+{% if tab!='managed' %}
+<div class="gray borderBottom">
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L(events ? 'events_search_placeholder' : 'groups_search_placeholder') }}" value="{{ query }}" id="groupsSearch" data-base-url="{{ urlPath }}"/>
+		{% script %}
+		initAjaxSearch("groupsSearch");
+		{% endscript %}
+	</div>
+</div>
+{% endif %}
+<div id="ajaxUpdatable">
+{% block ajaxPartialUpdate %}
 <div class="summaryWrap">
 	<div class="summary">
 	{% if events %}
-	{{ L(tab=='past' ? 'summary_X_past_events' : 'summary_X_upcoming_events', {'count': totalItems}) }}
+	{{ query is empty ? L(tab=='past' ? 'summary_X_past_events' : 'summary_X_upcoming_events', {'count': totalItems}) : L('summary_found_X_events', {'count': totalItems}) }}
 	{% elseif currentUser is not null and owner.id==currentUser.id %}
-	{{ L(tab=='managed' ? 'summary_X_managed_groups' : 'summary_own_X_groups', {'numGroups': totalItems}) }}
+	{{ query is empty ? L(tab=='managed' ? 'summary_X_managed_groups' : 'summary_own_X_groups', {'numGroups': totalItems}) : L('summary_found_X_groups', {'count': totalItems}) }}
 	{% else %}
 	{{ L('summary_user_X_groups', {'name': owner.firstAndGender, 'numGroups': totalItems}) }}
 	{% endif %}
@@ -53,8 +65,10 @@
 	</tr>
 </table>
 {% else %}
-<div class="emptyState">{{ L(events ? 'no_events' : 'no_groups') }}</div>
+<div class="emptyState">{{ query is empty ? L(events ? 'no_events' : 'no_groups') : L('nothing_found') }}</div>
 {% endfor %}
 </div>
 <div class="bottomSummaryWrap">{% include "pagination" %}</div>
+</div>
+{% endblock %}
 {% endblock %}

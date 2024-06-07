@@ -3,16 +3,38 @@
 {%block content%}
 {% include "settings_tabbar" with {'tab': 'general'} %}
 <div class="singleColumn gray narrowForms">
+<form action="/settings/updateAppearanceBehavior?csrf={{ csrf }}" method="post" data-ajax>
+	<h2>{{ L('settings_appearance_and_behavior') }}</h2>
+	{{ form.start("appearanceBehavior", appearanceBehaviorMessage) }}
+		{{ form.radioGroup('textFormat', L('settings_text_formatting'), [
+			{'value': 'MARKDOWN', 'label': "Markdown", 'selected': textFormat=='MARKDOWN'},
+			{'value': 'HTML', 'label': "HTML", 'selected': textFormat=='HTML'}
+		]) }}
+		{{ form.radioGroup('commentView', L('settings_comment_view'), [
+			{'value': 'THREADED', 'label': L('settings_comments_threaded'), 'selected': commentView=='THREADED'},
+			{'value': 'TWO_LEVEL', 'label': L('settings_comments_two_level'), 'selected': commentView=='TWO_LEVEL'},
+			{'value': 'FLAT', 'label': L('settings_comments_flat'), 'selected': commentView=='FLAT'}
+		]) }}
+		{{ form.footer(L('save')) }}
+	{{ form.end() }}
+</form>
 <form action="/settings/updatePassword?csrf={{ csrf }}" method="post" data-ajax>
 	<h2>{{L('change_password')}}</h2>
 	{{ form.start("changePassword", passwordMessage) }}
 		{{ form.textInput("current", L('current_password'), "", {'type' : 'password'}) }}
-		{{ form.textInput("new", L('new_password'), "", {'type' : 'password'}) }}
-		{{ form.textInput("new2", L('new_password_confirm'), "", {'type' : 'password'}) }}
+		{{ form.textInput("new", L('new_password'), "", {'type' : 'password', 'autocomplete': 'new-password'}) }}
+		{{ form.textInput("new2", L('new_password_confirm'), "", {'type' : 'password', 'autocomplete': 'new-password'}) }}
 		{{ form.footer(L('change_password')) }}
 	{{ form.end() }}
 </form>
-
+<form action="/settings/updateUsername?cstf={{ cstf }}" method="post" data-ajax>
+	<h2>{{ L('settings_username_title') }}</h2>
+	{{ form.start("changeUsername", usernameMessage) }}
+		{{ form.labeledText(L('settings_user_id'), currentUser.id) }}
+		{{ form.textInput('username', L('settings_username'), currentUser.username, {'prefix': "#{serverDomain}/", 'autocomplete': false, 'addClasses': "wide", 'maxlength': 50, 'required': true, 'pattern': '[a-zA-Z][a-zA-Z0-9\._\-]+', 'explanation': L('username_explain')}) }}
+		{{ form.footer(L('settings_change_username')) }}
+	{{ form.end() }}
+</form>
 <form action="/settings/updateEmail?csrf={{ csrf }}" method="post" data-ajax>
 	<h2>{{ L('change_email') }}</h2>
 	{% if activationInfo is not null %}
@@ -22,6 +44,15 @@
 		{{ form.labeledText(L('current_email'), currentEmailMasked) }}
 		{{ form.textInput('email', L('new_email_address'), '', {'type': 'email'}) }}
 		{{ form.footer(L('save')) }}
+	{{ form.end() }}
+</form>
+<form>
+	<h2>{{ L('settings_account_security_title') }}</h2>
+	{{ form.start('accountActivity', accountActivityMessage) }}
+		{{ form.labeledText(L('settings_last_activity'), lastActivityDescription) }}
+		{{ form.unlabeledRowStart() }}
+		<a href="/settings/sessions"{% if not isMobile %} data-ajax-box{% endif %}>{{ L('settings_show_activity_history') }}</a>
+		{{ form.unlabeledRowEnd() }}
 	{{ form.end() }}
 </form>
 <form action="/settings/setLanguage?csrf={{ csrf }}" method="post">

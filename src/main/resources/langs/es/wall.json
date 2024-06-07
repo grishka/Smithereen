@@ -63,5 +63,10 @@
   "post_visible_to_followers": "Esta publicación solo es visible para los seguidores de {name}",
   "post_visible_to_followers_mentioned": "Esta publicación solo es visible para los seguidores de {name} y para personas mencionadas",
   "post_visible_to_friends": "Esta publicación solo es visible para los amigos de {name}",
-  "expand_all_cws": "Expandir todos los CW"
+  "expand_all_cws": "Expandir todos los CW",
+  "comment_repost_title": "<a id=\"originalComment\">{time}</a> en la publicación <a id=\"topLevelPost\">{postSnippet}</a>",
+  "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> en una publicación eliminada",
+  "commenting_on_repost_hint": "Tu comentario aparecerá en la publicación original de {name}.",
+  "reposts_empty": "Nadie compartió esta publicación.",
+  "load_older_posts": "Mostrar las publicaciones previas"
 }

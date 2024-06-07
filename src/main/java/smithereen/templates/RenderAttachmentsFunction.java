@@ -16,9 +16,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
-import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.Group;
 import smithereen.model.SizedImage;
@@ -30,6 +30,7 @@ import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.attachments.SizedAttachment;
 import smithereen.model.attachments.VideoAttachment;
 import smithereen.lang.Lang;
+import smithereen.text.TextProcessor;
 import smithereen.util.BlurHash;
 import spark.utils.StringUtils;
 
@@ -42,6 +43,7 @@ public class RenderAttachmentsFunction implements Function{
 	@Override
 	public Object execute(Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber){
 		List<Attachment> attachment=(List<Attachment>) args.get("attachments");
+		String overrideLinks=(String) args.get("overrideLinks");
 		for(Attachment a:attachment){
 			if(a instanceof GraffitiAttachment ga){
 				Actor owner=(Actor) args.get("owner");
@@ -59,8 +61,8 @@ public class RenderAttachmentsFunction implements Function{
 			float aspect;
 			TiledLayoutResult tiledLayout;
 			if(sized.size()==1){
-				SizedAttachment sa=sized.get(0);
-				aspect=sa.isSizeKnown() ? Math.max(0.5f, Math.min(2f, (sa.getWidth()/(float)sa.getHeight()))) : 1f;
+				SizedAttachment sa=sized.getFirst();
+				aspect=sa.isSizeKnown() ? Math.max(0.5f, Math.min(3f, (sa.getWidth()/(float)sa.getHeight()))) : 1f;
 				tiledLayout=null;
 			}else{
 				tiledLayout=processThumbs(510, 510, sized);
@@ -89,9 +91,9 @@ public class RenderAttachmentsFunction implements Function{
 					"<div class=\"aspectBox\" style=\"%s\">", pseudoWidth, pseudoHeight, (1f/aspect)*100f, gridStyle));
 
 			if(sized.size()==1){
-				SizedAttachment sa=sized.get(0);
+				SizedAttachment sa=sized.getFirst();
 				if(sa instanceof PhotoAttachment photo){
-					renderPhotoAttachment(photo, lines, 510);
+					renderPhotoAttachment(photo, lines, 510, overrideLinks);
 				}
 			}else{
 				int i=0;
@@ -108,7 +110,7 @@ public class RenderAttachmentsFunction implements Function{
 					}
 					lines.add("<div style=\""+cellStyle+"\">");
 					if(obj instanceof PhotoAttachment photo){
-						renderPhotoAttachment(photo, lines, Math.round(Math.max(tile.width*510, tile.height*510)));
+						renderPhotoAttachment(photo, lines, Math.round(Math.max(tile.width*510, tile.height*510)), overrideLinks);
 					}
 					lines.add("</div>");
 					i++;
@@ -137,10 +139,10 @@ public class RenderAttachmentsFunction implements Function{
 
 	@Override
 	public List<String> getArgumentNames(){
-		return List.of("attachments", "owner");
+		return List.of("attachments", "owner", "overrideLinks");
 	}
 
-	private void renderPhotoAttachment(PhotoAttachment photo, List<String> lines, int size){
+	private void renderPhotoAttachment(PhotoAttachment photo, List<String> lines, int size, String overrideLinks){
 		SizedImage.Type type;
 		if(size<=128){
 			type=SizedImage.Type.XSMALL;
@@ -157,12 +159,25 @@ public class RenderAttachmentsFunction implements Function{
 
 		if(photo instanceof GraffitiAttachment ga){
 			URI full=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.PNG);
-			lines.add("<a class=\"graffiti\" href=\""+full+"\" data-box-title=\""+Utils.escapeHTML(ga.boxTitle)+"\" onclick=\"return showGraffitiBox(this)\"><img src=\""+full+"\" width=\""+GraffitiAttachment.WIDTH+"\" height=\""+GraffitiAttachment.HEIGHT+"\"/></a>");
+			String href=overrideLinks!=null ? overrideLinks : full.toString();
+			String attrs;
+			if(overrideLinks!=null){
+				attrs="target=\"_blank\"";
+			}else{
+				attrs="data-box-title=\""+TextProcessor.escapeHTML(ga.boxTitle)+"\" onclick=\"return showGraffitiBox(this)\"";
+			}
+			lines.add("<a class=\"graffiti\" href=\""+href+"\" "+attrs+"><img src=\""+full+"\" width=\""+GraffitiAttachment.WIDTH+"\" height=\""+GraffitiAttachment.HEIGHT+"\"/></a>");
 		}else{
 			URI jpegFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.JPEG);
 			URI webpFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.WEBP);
-			lines.add("<a class=\"photo\" href=\""+jpegFull+"\" data-full-jpeg=\""+jpegFull+"\" data-full-webp=\""+webpFull+"\" data-size=\""+photo.getWidth()+" "+photo.getHeight()+"\" onclick=\"return openPhotoViewer(this)\">"+
-					photo.image.generateHTML(type, null, styleAttr, 0, 0)+"</a>");
+			String href=overrideLinks!=null ? overrideLinks : Objects.toString(jpegFull);
+			String attrs;
+			if(overrideLinks!=null){
+				attrs="target=\"_blank\"";
+			}else{
+				attrs="data-full-jpeg=\""+jpegFull+"\" data-full-webp=\""+webpFull+"\" data-size=\""+photo.getWidth()+" "+photo.getHeight()+"\" onclick=\"return openPhotoViewer(this)\"";
+			}
+			lines.add("<a class=\"photo\" href=\""+href+"\" "+attrs+">"+photo.image.generateHTML(type, null, styleAttr, 0, 0)+"</a>");
 		}
 	}
 

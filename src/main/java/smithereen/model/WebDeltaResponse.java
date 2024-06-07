@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import smithereen.Utils;
@@ -43,12 +44,22 @@ public class WebDeltaResponse{
 	}
 
 	public WebDeltaResponse box(@NotNull String title, @NotNull String content, @Nullable String id, boolean scrollable){
-		commands.add(new BoxCommand(title, content, id, scrollable, null));
+		commands.add(new BoxCommand(title, content, id, scrollable, null, null));
 		return this;
 	}
 
 	public WebDeltaResponse box(@NotNull String title, @NotNull String content, @Nullable String id, int width){
-		commands.add(new BoxCommand(title, content, id, null, width));
+		commands.add(new BoxCommand(title, content, id, null, width, null));
+		return this;
+	}
+
+	public WebDeltaResponse box(@NotNull String title, @NotNull String content, @Nullable String id, boolean scrollable, String buttonBarAux){
+		commands.add(new BoxCommand(title, content, id, scrollable, null, buttonBarAux));
+		return this;
+	}
+
+	public WebDeltaResponse box(@NotNull String title, @NotNull String content, @Nullable String id, int width, String buttonBarAux){
+		commands.add(new BoxCommand(title, content, id, null, width, buttonBarAux));
 		return this;
 	}
 
@@ -119,6 +130,16 @@ public class WebDeltaResponse{
 
 	public WebDeltaResponse setURL(String url){
 		commands.add(new SetURLCommand(url));
+		return this;
+	}
+
+	public WebDeltaResponse dismissBox(String id){
+		commands.add(new DismissBoxCommand(id));
+		return this;
+	}
+
+	public WebDeltaResponse layer(String innerHTML, Collection<String> classes){
+		commands.add(new LayerCommand(innerHTML, classes));
 		return this;
 	}
 
@@ -221,14 +242,17 @@ public class WebDeltaResponse{
 		public Boolean scrollable;
 		@SerializedName("w")
 		public Integer width;
+		@SerializedName("aux")
+		public String buttonBarAux;
 
-		public BoxCommand(String title, String content, String id, Boolean scrollable, Integer width){
+		public BoxCommand(String title, String content, String id, Boolean scrollable, Integer width, String buttonBarAux){
 			super("box");
 			this.title=title;
 			this.content=content;
 			this.id=id;
 			this.scrollable=scrollable;
 			this.width=width;
+			this.buttonBarAux=buttonBarAux;
 		}
 	}
 
@@ -368,6 +392,28 @@ public class WebDeltaResponse{
 		public SetURLCommand(String url){
 			super("setURL");
 			this.url=url;
+		}
+	}
+
+	public static class DismissBoxCommand extends Command{
+		public String id;
+
+		public DismissBoxCommand(String id){
+			super("dismissBox");
+			this.id=id;
+		}
+	}
+
+	public static class LayerCommand extends Command{
+		@SerializedName("h")
+		public String innerHTML;
+		@SerializedName("c")
+		public String additionalClasses;
+
+		public LayerCommand(String innerHTML, Collection<String> additionalClasses){
+			super("layer");
+			this.innerHTML=innerHTML;
+			this.additionalClasses=additionalClasses!=null ? String.join(" ", additionalClasses) : null;
 		}
 	}
 }

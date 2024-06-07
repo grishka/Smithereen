@@ -1,5 +1,23 @@
 {# @pebvariable name="user" type="smithereen.model.User" #}
 {%extends "page"%}
+{% macro profileSection(_context, title, editURL, fields) %}
+	{% set isSelf=(_context.currentUser is not null and _context.currentUser.id==_context.user.id) %}
+	{% if fields is not empty or isSelf %}
+	{% if title is not empty %}
+	<div class="sectionHeader">
+		<h4>{{ title }}</h4>
+		<div class="line"></div>
+		{% if isSelf %}<a href="{{ editURL }}">{{ L('edit') }}</a>{% endif %}
+	</div>
+	{% endif %}
+	{% for fld in fields %}
+	<div class="label">{{ fld.name }}:</div>
+	<div>{% if fld.html %}{{ fld.value | postprocessHTML }}{% else %}{{ fld.value | nl2br }}{% endif %}</div>
+	{% else %}
+	<div class="empty">{{ L('profile_no_info') }}</div>
+	{% endfor %}
+	{% endif %}
+{% endmacro %}
 {%block content%}
 {% if movedTo is not null %}
 <div class="marginsAreMessy"></div>
@@ -14,106 +32,100 @@
 	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', {'domain': user.domain})}}</a>
 </div>
 {%endif%}
-<table width="100%" cellpadding="0" cellspacing="0" class="columnLayout leftNarrow">
-	<tr valign="top">
-		<!-- left column -->
-		<td width="200" id="left">
-			{%if user.hasAvatar%}
-			{%if currentUser is not null and currentUser.id==user.id%}
-			<div class="selfAvaOverlay">
-				{{user | pictureForAvatar('rl')}}
-				<ul class="selfAvaActions actionList">
-					<li><a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">{{L('update_profile_picture')}}</a></li>
-					<li><a href="/settings/confirmRemoveProfilePicture" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture');">{{L('remove_profile_picture')}}</a></li>
-				</ul>
-			</div>
-			{%else%}
+<div class="columnLayout leftNarrow" id="profileLayout">
+	<!-- left column -->
+	<div id="left">
+		{%if user.hasAvatar%}
+		{%if currentUser is not null and currentUser.id==user.id%}
+		<div class="selfAvaOverlay">
 			{{user | pictureForAvatar('rl')}}
-			{%endif%}
-			{%else%}
-			{%if currentUser is not null and currentUser.id==user.id%}
-			<a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">
-				<span class="ava avaPlaceholder inProfile own"></span><div class="ownProfileAvaPlaceholderLabel">{{L('upload_avatar')}}</div>
-			</a>
-			{%else%}
-			<span class="ava avaPlaceholder inProfile"></span>
-			{%endif%}
-			{%endif%}
-			{% if currentUser is not null and currentUser.id!=user.id and not isSelfBlocked and movedTo is null %}
-			<div class="profileBelowAva">
-				{% if canMessage %}
-				<a href="/my/mail/compose?to={{ user.id }}" class="button withText" onclick="showMailFormBox(this); return false;">{{ L('profile_write_message') }}</a>
-				{% endif %}
-				{%if not(isFriend) and not(following) and not(friendRequestSent) and not(followRequested)%}
-				{%if user.supportsFriendRequests%}
-				{% if friendRequestRecvd %}
-					<a href="/users/{{ user.id }}/respondToFriendRequest?csrf={{csrf}}&accept" class="button" data-ajax="1">{{L("add_friend")}}</a>
-				{% else %}
-					<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button" data-ajax-box="1">{{L("add_friend")}}</a>
-				{% endif %}
-				{%else%}
-				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button" data-ajax="1">{{L("follow")}}</a>
-				{%endif%}
-				{%endif%}
-				{% if friendshipStatusText is not empty %}
-				<div class="friendshipStatus">{{ friendshipStatusText | raw }}</div>
-				{% endif %}
-			</div>
-			{%endif%}
-			<ul class="actionList marginAfter marginBefore">
-				<li><a href="/users/{{ user.id }}/followers">{{L('followers')}}</a></li>
-				<li><a href="/users/{{ user.id }}/following">{{L('following')}}</a></li>
-			{%if currentUser is not null and currentUser.id!=user.id%}
-			{%if isFriend or following or friendRequestSent or followRequested%}
-				<li><a href="/users/{{ user.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.dataset.confirm,'/users/{{ user.id }}/doRemoveFriend')" data-confirm="{{ L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
-			{%endif%}
-				{% if isBlocked %}
-				<li><a href="/users/{{ user.id }}/confirmUnblock" onclick="return ajaxConfirm('unblock', this.dataset.confirm, '/users/{{ user.id }}/unblock')" data-confirm="{{ L('confirm_unblock_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('unblock_user_X', {'name': user.firstAndGender}) }}</a></li>
-				{% else %}
-				<li><a href="/users/{{ user.id }}/confirmBlock" onclick="return ajaxConfirm('block', this.dataset.confirm, '/users/{{ user.id }}/block')" data-confirm="{{ L('confirm_block_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('block_user_X', {'name': user.firstAndGender}) }}</a></li>
-				{% endif %}
-			{%endif%}
-				{% if userPermissions is not null and userPermissions.canReport(user) %}
-					<li><a href="/system/reportForm?type=user&id={{ user.id }}" data-ajax-box>{{ L('report') }}</a></li>
-				{% endif %}
-				{% if currentUser is not null %}
-				{% if userPermissions.hasPermission('MANAGE_USERS') %}
-					<li class="separator"></li>
-					<li><a href="/users/{{ user.id }}/meminfo">{{ L('admin_manage_user') }}</a></li>
-				{% endif %}
-				{% endif %}
+			<ul class="selfAvaActions actionList">
+				<li><a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">{{L('update_profile_picture')}}</a></li>
+				<li><a href="/settings/confirmRemoveProfilePicture" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture');">{{L('remove_profile_picture')}}</a></li>
 			</ul>
-
-
-
-			<div class="profileColumnBorder">
-				<div class="leftColumnBorder"></div>
-			{% if mutualFriends is not empty %}
-				{% include "profile_module_user_grid" with {'users': mutualFriends, 'headerTitle': L('mutual_friends'), 'headerHref': "/users/#{user.id}/friends/mutual", 'subheaderTitle': L('X_mutual_friends', {'count': mutualFriendCount})} %}
+		</div>
+		{%else%}
+		{{user | pictureForAvatar('rl')}}
+		{%endif%}
+		{%else%}
+		{%if currentUser is not null and currentUser.id==user.id%}
+		<a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">
+			<span class="ava avaPlaceholder inProfile own"></span><div class="ownProfileAvaPlaceholderLabel">{{L('upload_avatar')}}</div>
+		</a>
+		{%else%}
+		<span class="ava avaPlaceholder inProfile"></span>
+		{%endif%}
+		{%endif%}
+		{% if currentUser is not null and currentUser.id!=user.id and not isSelfBlocked and movedTo is null %}
+		<div class="profileBelowAva">
+			{% if canMessage %}
+			<a href="/my/mail/compose?to={{ user.id }}" class="button withText" onclick="showMailFormBox(this); return false;">{{ L('profile_write_message') }}</a>
 			{% endif %}
-			{% if friends is not empty %}
-				{% include "profile_module_user_grid" with {'users': friends, 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': friendCount})} %}
+			{%if not(isFriend) and not(following) and not(friendRequestSent) and not(followRequested)%}
+			{%if user.supportsFriendRequests%}
+			{% if friendRequestRecvd %}
+				<a href="/users/{{ user.id }}/respondToFriendRequest?csrf={{csrf}}&accept" class="button" data-ajax="1">{{L("add_friend")}}</a>
+			{% else %}
+				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button" data-ajax-box="1">{{L("add_friend")}}</a>
 			{% endif %}
-			{% if groups is not empty %}
-				{% include "profile_module_groups" with {'groups': groups, 'headerTitle': L('groups'), 'headerHref': "/users/#{user.id}/groups", 'subheaderTitle': L('X_groups', {'count': groups.size})} %}
+			{%else%}
+			<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button" data-ajax="1">{{L("follow")}}</a>
+			{%endif%}
+			{%endif%}
+			{% if friendshipStatusText is not empty %}
+			<div class="friendshipStatus">{{ friendshipStatusText | raw }}</div>
 			{% endif %}
-			</div>
-		</td>
-		<!-- right column -->
-		<td id="right">
-			<h2>{{user | name('complete')}}</h2>
-			<div class="profileFields">
-				<table class="profileBlock" width="100%">
-					{% for fld in profileFields %}
-						<tr>
-							<td class="label">{{ fld.name }}:</td>
-							<td>{{ fld.value | postprocessHTML }}</td>
-						</tr>
-					{% endfor %}
-				</table>
-			</div>
-			{% include "profile_module_wall" with {'wallOwner': user, 'headerTitle': L('wall'), 'headerHref': "/users/#{user.id}/wall"+(canSeeOthersPosts ? "" : "/own"), 'additionalHeader': L('X_posts', {'count': totalItems})} %}
-		</td>
-	</tr>
-</table>
+		</div>
+		{%endif%}
+		<ul class="actionList marginAfter marginBefore">
+			<li><a href="/users/{{ user.id }}/followers">{{L('followers')}}</a></li>
+			<li><a href="/users/{{ user.id }}/following">{{L('following')}}</a></li>
+		{%if currentUser is not null and currentUser.id!=user.id%}
+		{%if isFriend or following or friendRequestSent or followRequested%}
+			<li><a href="/users/{{ user.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.dataset.confirm,'/users/{{ user.id }}/doRemoveFriend')" data-confirm="{{ L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
+		{%endif%}
+			<li><a href="/users/{{ user.id }}/{{ isBookmarked ? "removeBookmark" : "addBookmark" }}?csrf={{ csrf }}" id="profileBookmarkButton" data-ajax data-ajax-show="bookmarkLoader"><span id="profileBookmarkButtonText">{{ L(isBookmarked ? 'remove_bookmark' : 'add_bookmark') }}</span> <span class="inlineLoader" id="bookmarkLoader" style="display: none"></span></a></li>
+			{% if isBlocked %}
+			<li><a href="/users/{{ user.id }}/confirmUnblock" onclick="return ajaxConfirm('unblock', this.dataset.confirm, '/users/{{ user.id }}/unblock')" data-confirm="{{ L('confirm_unblock_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('unblock_user_X', {'name': user.firstAndGender}) }}</a></li>
+			{% else %}
+			<li><a href="/users/{{ user.id }}/confirmBlock" onclick="return ajaxConfirm('block', this.dataset.confirm, '/users/{{ user.id }}/block')" data-confirm="{{ L('confirm_block_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('block_user_X', {'name': user.firstAndGender}) }}</a></li>
+			{% endif %}
+		{%endif%}
+			{% if userPermissions is not null and userPermissions.canReport(user) %}
+				<li><a href="/system/reportForm?type=user&id={{ user.id }}" data-ajax-box>{{ L('report') }}</a></li>
+			{% endif %}
+			{% if currentUser is not null %}
+			{% if userPermissions.hasPermission('MANAGE_USERS') %}
+				<li class="separator"></li>
+				<li><a href="/users/{{ user.id }}/meminfo">{{ L('admin_manage_user') }}</a></li>
+			{% endif %}
+			{% endif %}
+		</ul>
+
+		<div class="profileColumnBorder">
+			<div class="leftColumnBorder"></div>
+		{% if mutualFriends is not empty %}
+			{% include "profile_module_user_grid" with {'users': mutualFriends, 'headerTitle': L('mutual_friends'), 'headerHref': "/users/#{user.id}/friends/mutual", 'subheaderTitle': L('X_mutual_friends', {'count': mutualFriendCount})} %}
+		{% endif %}
+		{% if friends is not empty %}
+			{% include "profile_module_user_grid" with {'users': friends, 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': friendCount})} %}
+		{% endif %}
+		{% if groups is not empty %}
+			{% include "profile_module_groups" with {'groups': groups, 'headerTitle': L('groups'), 'headerHref': "/users/#{user.id}/groups", 'subheaderTitle': L('X_groups', {'count': groups.size})} %}
+		{% endif %}
+		</div>
+	</div>
+	<!-- right column -->
+	<div id="right">
+		<h2>{{user | name('complete')}}</h2>
+		<div class="profileFields">
+			{{ profileSection(_context, null, null, mainFields) }}
+			{{ profileSection(_context, L('profile_contacts_title'), "/settings/profile/contacts", contactsFields) }}
+			{{ profileSection(_context, L('profile_personal_title'), "/settings/profile/personal", personalFields) }}
+			{{ profileSection(_context, L('profile_interests_title'), "/settings/profile/interests", interestsFields) }}
+		</div>
+		{% include "profile_module_wall" with {'wallOwner': user, 'headerTitle': L('wall'), 'headerHref': "/users/#{user.id}/wall"+(canSeeOthersPosts ? "" : "/own"), 'additionalHeader': L('X_posts', {'count': totalItems})} %}
+	</div>
+</div>
+{% script %}initExpandingProfileColumn(ge("right"), ge("left"), ge("profileLayout"));{% endscript %}
 {%endblock%}

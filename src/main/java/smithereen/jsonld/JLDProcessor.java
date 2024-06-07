@@ -57,10 +57,14 @@ public class JLDProcessor{
 		lc.addProperty("manuallyApprovesFollowers", "as:manuallyApprovesFollowers");
 		lc.add("movedTo", idAndTypeObject("as:movedTo", "@id"));
 		lc.add("alsoKnownAs", idAndTypeObject("as:alsoKnownAs", "@id"));
+		lc.addProperty("quoteUrl", "as:quoteUrl");
 
 		// Mastodon aliases
 		lc.addProperty("blurhash", "toot:blurhash");
 		lc.addProperty("votersCount", "toot:votersCount");
+
+		// Misskey quote-reposts
+		lc.add("_misskey_quote", idAndTypeObject(JLD.MISSKEY+"_misskey_quote", "@id"));
 
 		// custom aliases
 		lc.addProperty("supportsFriendRequests", "sm:supportsFriendRequests");
@@ -89,6 +93,24 @@ public class JLDProcessor{
 		lc.addProperty("commenting", "sm:commenting");
 		lc.addProperty("groupInvitations", "sm:groupInvitations");
 		lc.addProperty("directMessages", "sm:directMessages");
+		// profile fields
+		lc.addProperty("activities", "sm:activities");
+		lc.addProperty("interests", "sm:interests");
+		lc.addProperty("favoriteMusic", "sm:favoriteMusic");
+		lc.addProperty("favoriteMovies", "sm:favoriteMovies");
+		lc.addProperty("favoriteTvShows", "sm:favoriteTvShows");
+		lc.addProperty("favoriteBooks", "sm:favoriteBooks");
+		lc.addProperty("favoriteQuotes", "sm:favoriteQuotes");
+		lc.add("politicalViews", idAndTypeObject("sm:politicalViews", "@id"));
+		lc.addProperty("religion", "sm:religion");
+		lc.add("personalPriority", idAndTypeObject("sm:personalPriority", "@id"));
+		lc.add("peoplePriority", idAndTypeObject("sm:peoplePriority", "@id"));
+		lc.add("smokingViews", idAndTypeObject("sm:smokingViews", "@id"));
+		lc.add("alcoholViews", idAndTypeObject("sm:alcoholViews", "@id"));
+		lc.addProperty("inspiredBy", "sm:inspiredBy");
+		lc.addProperty("hometown", "sm:hometown");
+		lc.add("relationshipStatus", idAndTypeObject("sm:relationshipStatus", "@id"));
+		lc.add("relationshipPartner", idAndTypeObject("sm:relationshipPartner", "@id"));
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

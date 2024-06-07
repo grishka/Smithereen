@@ -20,6 +20,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.text.TextProcessor;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -135,7 +136,7 @@ public class MailRoutes{
 			String from=req.queryParams("from");
 			User toUser=toUsers.iterator().next();
 			if("ajaxBox".equals(from)){
-				return new WebDeltaResponse(resp).showSnackbar(Utils.stripHTML(lang(req).get("mail_message_sent", Map.of("name", toUser.getFirstLastAndGender()))));
+				return new WebDeltaResponse(resp).showSnackbar(TextProcessor.stripHTML(lang(req).get("mail_message_sent", Map.of("name", toUser.getFirstLastAndGender())), false));
 			}
 			return new WebDeltaResponse(resp).replaceLocation("/my/mail?fromCompose");
 		}
@@ -209,7 +210,7 @@ public class MailRoutes{
 			origElementID="msgRow"+msg.encodedID;
 		}
 		if(msg.isUnread()){
-			restoreHtml+=Utils.substituteLinks(l.get(msg.to.size()>1 ? "restore_or_delete_for_peer_multi" : "restore_or_delete_for_peer",
+			restoreHtml+=TextProcessor.substituteLinks(l.get(msg.to.size()>1 ? "restore_or_delete_for_peer_multi" : "restore_or_delete_for_peer",
 					Map.of("name", ctx.getUsersController().getUserOrThrow(msg.getFirstRecipientID()).getFirstAndGender())),
 					Map.of(
 							"restore", Map.of("href", restoreHref, "data-ajax", "", "data-ajax-hide", "msgRestore"+msg.encodedID, "data-ajax-show", "msgRestoreLoader"+msg.encodedID),

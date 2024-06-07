@@ -10,4 +10,5 @@ public class UserInteractions{
 	public boolean isLiked;
 	public int commentCount;
 	public List<Integer> pollChoices;
+	public int repostCount;
 }

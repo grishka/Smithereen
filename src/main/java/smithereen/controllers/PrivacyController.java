@@ -30,21 +30,18 @@ import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
-import smithereen.model.SessionInfo;
 import smithereen.model.User;
-import smithereen.model.UserBanStatus;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
 import smithereen.storage.UserStorage;
-import spark.Request;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
-
-import static smithereen.Utils.*;
 
 public class PrivacyController{
 	private static final Logger LOG=LoggerFactory.getLogger(PrivacyController.class);
@@ -256,7 +253,7 @@ public class PrivacyController{
 		}else{
 			try{
 				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, user.domain))
-					throw new UserActionNotAllowedException("HTTP signature is valid, but this object is in a "+group.accessType.toString().toLowerCase()+" group and "+escapeHTML(user.activityPubID.toString())+" is not its member");
+					throw new UserActionNotAllowedException("HTTP signature is valid, but this object is in a "+group.accessType.toString().toLowerCase()+" group and "+TextProcessor.escapeHTML(user.activityPubID.toString())+" is not its member");
 			}catch(SQLException x){
 				throw new InternalServerErrorException(x);
 			}
@@ -308,6 +305,10 @@ public class PrivacyController{
 	public void filterPosts(@Nullable User self, Collection<Post> posts){
 		// TODO optimize this to avoid querying the same friendship states multiple times
 		posts.removeIf(post->!checkPostPrivacy(self, post));
+	}
+
+	public void filterPostViewModels(@Nullable User self, Collection<PostViewModel> posts){
+		posts.removeIf(post->!checkPostPrivacy(self, post.post));
 	}
 
 	public void enforceUserProfileAccess(@Nullable User self, User target){

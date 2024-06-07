@@ -283,48 +283,104 @@ select{
 	.postContentWrap{
 		padding: 8px 0;
 	}
-	.action{
-		display: block;
-		width: 100%;
-		height: 42px;
-		line-height: 42px;
-	}
 	.postContent pre{
 		overflow-x: auto;
+	}
+	.repostHeader{
+		padding-bottom: 8px;
+		.avaW{
+			margin-right: 8px;
+		}
+		.name{
+			font-weight: $mediumWeight;
+		}
+		.repostIcon{
+			display: inline-block;
+			width: 10px;
+			height: 12px;
+			margin-right: 4px;
+			position: relative;
+			background: svg-load('img/repost_icons_mobile.svg', fill: $normalLink) no-repeat;
+			&.mastodonStyle{
+				background-position: 0 -12px;
+			}
+		}
+	}
+	.postContent:not(:empty)+.repostHeader{
+		padding-top: 8px;
+	}
+	.postActions{
+		border-top: solid 1px $wallCommentSeparator;
+		.like{
+			margin-left: -12px;
+		}
+		.share{
+			margin-right: -12px;
+		}
+	}
+	code{
+		line-height: 18px;
+	}
+}
+
+.post.comment{
+	display: flex;
+	.treeIndent{
+		flex: none;
+		width: calc(var(--indent-level) * 8px);
+	}
+	.commentAvaWrap{
+		width: 32px;
+		flex: none;
+		margin-right: 8px;
+	}
+	.commentContentWrap{
+		flex-grow: 1;
+	}
+	&.twoLevelIndented{
+		padding-left: 32px;
 	}
 }
 
 .postActions{
+	display: flex;
+	.action{
+		flex: none;
+		height: 42px;
+		line-height: 42px;
+		padding: 0 12px;
+		min-width: 56px;
+		text-align: center;
+		.wideOnly{
+			margin-right: 8px;
+		}
+	}
+	.spacer{
+		flex-grow: 1;
+	}
 	.icon{
 		display: inline-block;
 		vertical-align: middle;
 		opacity: .5;
-	}
-	.like .icon{
+		background: svg-load('img/like_mobile.svg', fill: $iconColor) no-repeat;
 		width: 16px;
-		height: 13px;
-		background: svg-load(img/post_like_mobile.svg, fill: $iconColor);
-		margin: -2px 8px 0 0;
+		height: 16px;
 		transition: opacity 0.3s ease;
+	}
+	.counter{
+		margin-left: 8px;
 	}
 	.like.liked .icon{
 		opacity: 1;
 	}
 	.comment .icon{
-		width: 16px;
-		height: 16px;
-		background: svg-load(img/post_comment_mobile.svg, fill: $iconColor);
-		margin: 0 8px 0 0;
+		background-position: 0 -32px;
+	}
+	.share .icon{
+		background-position: 0 -16px;
 	}
 	&.standaloneLikeBar{
 		height: 42px;
-		.action{
-			display: block;
-			float: left;
-			height: 42px;
-			line-height: 42px;
-			padding: 0 16px;
-		}
 		.likeAvatars{
 			font-size: 0;
 			white-space: nowrap;
@@ -333,6 +389,7 @@ select{
 			display: block;
 			height: 42px;
 			padding-top: 4px;
+			flex-grow: 1;
 			.ava{
 				margin-right: 4px;
 				display: inline-block;
@@ -415,6 +472,21 @@ select{
 .wallPostForm{
 	textarea:not(.keepBorder){
 		border: none;
+	}
+	.bottomBar{
+		margin-top: 8px;
+		display: flex;
+		align-items: center;
+		clear: both;
+		.right{
+			margin: 0 8px;
+		}
+		.left, .right{
+			flex-shrink: 0;
+		}
+		.center{
+			flex-grow: 1;
+		}
 	}
 	.attachment{
 		margin: 8px 4px;
@@ -613,6 +685,8 @@ select{
 		position: absolute;
 		right: 0;
 		bottom: 0;
+		border: none;
+		margin-right: -12px;
 		.action{
 			height: 24px;
 			line-height: 24px;
@@ -691,9 +765,22 @@ select{
 			margin-bottom: 0;
 		}
 	}
+	.sectionHeader{
+		h4{
+			margin: 0;
+			padding: 0;
+		}
+		a{
+			float: right;
+			margin-left: 8px;
+		}
+		margin-bottom: 12px;
+	}
 }
 
 .postAttachments{
+	margin: 0 -12px;
+	text-align: center;
 	.aspectWrapper{
 		position: relative;
 		white-space: nowrap;
@@ -725,6 +812,7 @@ select{
 				grid-gap: 2px;
 				width: 100%;
 				height: 100%;
+				margin: auto;
 			}
 		}
 	}
@@ -1597,7 +1685,6 @@ input.searchField{
 	display: flex;
 	flex-wrap: wrap;
 	padding: 0 0 8px 0;
-	position: relative;
 	border-radius: 4px;
 	input{
 		border: none;
@@ -1632,9 +1719,29 @@ input.searchField{
 			color: $textOnAccent;
 		}
 	}
+	.bordersOverlay{
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		pointer-events: none;
+		margin: 0 -1px;
+		border-top: solid 1px #ccc;
+		border-bottom: solid 1px #ccc;
+		opacity: 0.95;
+		&.firstSelected{
+			border-top: solid 1px #2e6200;
+		}
+		&.lastSelected{
+			border-bottom: solid 1px #2e6200;
+		}
+	}
+}
+
+.completionsContainer, .tokenInput{
+	position: relative;
 	.completionsWW{
 		position: absolute;
-		bottom: 0;
 		width: 100%;
 		z-index: 10;
 	}
@@ -1679,23 +1786,14 @@ input.searchField{
 			}
 		}
 	}
-	.bordersOverlay{
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		pointer-events: none;
-		margin: 0 -1px;
-		border-top: solid 1px #ccc;
-		border-bottom: solid 1px #ccc;
-		opacity: 0.95;
-		&.firstSelected{
-			border-top: solid 1px #2e6200;
-		}
-		&.lastSelected{
-			border-bottom: solid 1px #2e6200;
-		}
-	}
+}
+
+.tokenInput .completionsWW{
+	bottom: 0;
+}
+
+.completionsContainer .completionsWW{
+	top: 0;
 }
 
 .fab{
@@ -1778,3 +1876,39 @@ input.searchField{
 		}
 	}
 }
+
+.wallRepostForm{
+	h2{
+		padding: 0;
+		margin: 0 16px 8px;
+		font-size: 17px;
+		border: none;
+	}
+}
+
+.remoteInteraction{
+	padding: 0 16px 16px;
+	line-height: 130%;
+	form{
+		margin-top: 8px;
+		display: flex;
+		flex-direction: column;
+		input[type=text]{
+			flex-grow: 1;
+		}
+		input[type=submit]{
+			flex: none;
+			margin-top: 12px;
+		}
+	}
+	.services{
+		margin-top: 8px;
+		line-height: 16px;
+		opacity: 0.53;
+		img{
+			margin: 0 8px;
+			vertical-align: middle;
+		}
+	}
+}
+

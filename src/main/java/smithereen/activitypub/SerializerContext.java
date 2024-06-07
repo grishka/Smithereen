@@ -43,6 +43,18 @@ public class SerializerContext{
 		additionalContext.addProperty(key, value);
 	}
 
+	/**
+	 * Convenience for addAlias(name, "sm:"+name)
+	 * @param name
+	 */
+	public void addSmAlias(String name){
+		addAlias(name, "sm:"+name);
+	}
+
+	public void addSmIdType(String name){
+		addType(name, "sm:"+name, "@id");
+	}
+
 	public void addType(String key, String id, String type){
 		if(additionalContext==null){
 			additionalContext=new JsonObject();

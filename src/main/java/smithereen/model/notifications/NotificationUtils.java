@@ -12,7 +12,7 @@ import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
 
 public class NotificationUtils{
-	public static void putNotificationsForPost(@NotNull Post post, @Nullable Post parent) throws SQLException{
+	public static void putNotificationsForPost(@NotNull Post post, @Nullable Post parent, Post firstRepost) throws SQLException{
 		boolean isReply=post.getReplyLevel()>0;
 		if(isReply && parent==null)
 			throw new IllegalArgumentException("Post is a reply but parent is null");
@@ -57,6 +57,18 @@ public class NotificationUtils{
 			n.objectType=Notification.ObjectType.POST;
 			n.actorID=post.authorID;
 			NotificationsStorage.putNotification(post.ownerID, n);
+		}
+
+		// If this is a quote-repost of a local post, notify its author
+		if(firstRepost!=null && firstRepost.isLocal() && post.authorID!=firstRepost.authorID){
+			Notification n=new Notification();
+			n.type=Notification.Type.RETOOT;
+			n.actorID=post.authorID;
+			n.objectID=firstRepost.id;
+			n.objectType=Notification.ObjectType.POST;
+			n.relatedObjectID=post.id;
+			n.relatedObjectType=Notification.ObjectType.POST;
+			NotificationsStorage.putNotification(firstRepost.authorID, n);
 		}
 	}
 }

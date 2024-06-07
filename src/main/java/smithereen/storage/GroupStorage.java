@@ -35,6 +35,7 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.GroupsController;
 import smithereen.model.ForeignGroup;
@@ -49,6 +50,7 @@ import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.IntPair;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public class GroupStorage{
@@ -110,7 +112,7 @@ public class GroupStorage{
 
 				new SQLQueryBuilder(conn)
 						.insertInto("qsearch_index")
-						.value("string", Utils.transliterate(name)+" "+username)
+						.value("string", TextProcessor.transliterate(name)+" "+username)
 						.value("group_id", id)
 						.executeNoResult();
 			}catch(Exception x){
@@ -150,7 +152,7 @@ public class GroupStorage{
 					.value("event_start_time", group.eventStartTime)
 					.value("event_end_time", group.eventEndTime)
 					.value("type", group.type)
-					.value("flags", Utils.serializeEnumSet(group.capabilities, ForeignGroup.Capability.class))
+					.value("flags", Utils.serializeEnumSet(group.capabilities))
 					.value("access_type", group.accessType)
 					.value("endpoints", group.serializeEndpoints())
 					.value("about", group.summary)
@@ -302,6 +304,8 @@ public class GroupStorage{
 		}else{
 			domain="";
 		}
+		if(username.length()>Actor.USERNAME_MAX_LENGTH)
+			username=username.substring(0, Actor.USERNAME_MAX_LENGTH);
 		return new SQLQueryBuilder()
 				.selectFrom("groups")
 				.columns("id")
@@ -387,8 +391,8 @@ public class GroupStorage{
 			}
 		}
 		synchronized(GroupStorage.class){
-			for(int id:ids){
-				putIntoCache(result.get(id));
+			for(Group g:result.values()){
+				putIntoCache(g);
 			}
 		}
 		return result;
@@ -553,7 +557,7 @@ public class GroupStorage{
 			if(total==0)
 				return new PaginatedList<>(Collections.emptyList(), 0);
 
-			stmt=conn.prepareStatement("SELECT group_id, ap_id FROM group_memberships JOIN groups ON group_id=id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups`.`access_type`<>2 LIMIT ? OFFSET ?");
+			stmt=conn.prepareStatement("SELECT group_id, ap_id FROM group_memberships JOIN `groups` ON group_id=id WHERE user_id=? AND accepted=1 AND `groups`.`type`=0 AND `groups`.`access_type`<>2 LIMIT ? OFFSET ?");
 			stmt.setInt(1, userID);
 			stmt.setInt(2, count);
 			stmt.setInt(3, offset);
@@ -898,7 +902,7 @@ public class GroupStorage{
 	}
 
 	static String getQSearchStringForGroup(Group group){
-		String s=Utils.transliterate(group.name)+" "+group.username;
+		String s=TextProcessor.transliterate(group.name)+" "+group.username;
 		if(group.domain!=null)
 			s+=" "+group.domain;
 		return s;

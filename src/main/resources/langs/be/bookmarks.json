@@ -1,0 +1,12 @@
+{
+  "bookmarks_title": "Закладкі",
+  "add_bookmark": "Дадаць закладку",
+  "remove_bookmark": "Выдаліць закладку",
+  "bookmarks_people": "Людзі",
+  "bookmarks_communities": "Суполкі",
+  "bookmarks_posts": "Запісы",
+  "bookmarks_people_empty": "Людзі, якіх вы дадаcце ў закладкі, з'явяцца тут.",
+  "bookmarks_communities_empty": "Суполкі і сустрэчы, якія вы дадаце ў закладкі, з'явяцца тут.",
+  "bookmarks_posts_empty": "Запісы, якім вы паставіце \"Мне падабаецца\", з'явяцца тут.",
+  "bookmarks_X_liked_posts": "Вам падабаецца {count, plural, one {# запіс} few {# запісі} other {# запісаў}}"
+}

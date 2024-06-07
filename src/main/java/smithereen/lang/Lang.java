@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import io.pebbletemplates.pebble.extension.escaper.SafeString;
 import smithereen.Utils;
 import smithereen.lang.formatting.ICUMessageParser;
 import smithereen.lang.formatting.ICUMessageSyntaxException;
@@ -95,7 +96,7 @@ public class Lang{
 			fallbackLocale=null;
 		}
 		switch(localeID){
-			case "ru" -> {
+			case "ru", "be" -> {
 				pluralRules=new SlavicPluralRules();
 				inflector=new RussianInflector();
 			}
@@ -207,11 +208,11 @@ public class Lang{
 			timeZone=ZoneId.systemDefault();
 
 		if(!forceAbsolute){
-			if(diff>=0 && diff<60_000){
+			if(diff>=-1000 && diff<60_000){
 				return get("time_just_now");
 			}else if(diff>=60_000 && diff<3600_000){
 				return get("time_X_minutes_ago", Map.of("count", (int) (diff/60_000)));
-			}else if(diff<0 && diff>-3600_000){
+			}else if(diff<-1000 && diff>-3600_000){
 				return get("time_in_X_minutes", Map.of("count", -(int) (diff/60_000)));
 			}
 		}
@@ -240,7 +241,15 @@ public class Lang{
 			}
 		}
 
-		return get("date_time_format", Map.of("date", day, "time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())));
+		return get("date_time_format", Map.of("date", new SafeString(day), "time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())));
+	}
+
+	public String formatDateFullyAbsolute(Instant date, ZoneId timeZone){
+		ZonedDateTime dt=date.atZone(timeZone);
+		return get("date_time_format", Map.of(
+				"date", get("date_format_other_year", Map.of("day", dt.getDayOfMonth(), "month", get("month_short", Map.of("month", dt.getMonthValue())), "year", dt.getYear())),
+				"time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())
+		));
 	}
 
 	public String formatTime(Instant time, ZoneId timeZone){

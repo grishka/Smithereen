@@ -66,6 +66,7 @@ import smithereen.storage.ModerationStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.text.TextProcessor;
 import smithereen.util.InetAddressRange;
 import spark.Request;
 import spark.Response;
@@ -603,9 +604,9 @@ public class SettingsAdminRoutes{
 				}
 				case DELETE_CONTENT -> l.get("report_log_deleted_content", langArgs);
 			};
-			return new ViolationReportActionViewModel(a, substituteLinks(mainText, links), switch(a.actionType()){
+			return new ViolationReportActionViewModel(a, TextProcessor.substituteLinks(mainText, links), switch(a.actionType()){
 				default -> null;
-				case COMMENT -> postprocessPostHTMLForDisplay(a.text());
+				case COMMENT -> TextProcessor.postprocessPostHTMLForDisplay(a.text(), false);
 				case RESOLVE_WITH_ACTION -> {
 					User targetUser=users.get(report.targetID);
 					String statusStr=switch(UserBanStatus.valueOf(a.extra().get("status").getAsString())){
@@ -621,7 +622,7 @@ public class SettingsAdminRoutes{
 						case SELF_DEACTIVATED -> null;
 					};
 					if(a.extra().has("message")){
-						statusStr+="<br/>"+l.get("admin_user_ban_message")+": "+escapeHTML(a.extra().get("message").getAsString());
+						statusStr+="<br/>"+l.get("admin_user_ban_message")+": "+TextProcessor.escapeHTML(a.extra().get("message").getAsString());
 					}
 					yield statusStr;
 				}
@@ -1005,7 +1006,7 @@ public class SettingsAdminRoutes{
 					yield sb.toString();
 				}
 
-				case SET_USER_EMAIL -> escapeHTML(le.extra().get("oldEmail").toString())+" &rarr; "+escapeHTML(le.extra().get("newEmail").toString());
+				case SET_USER_EMAIL -> TextProcessor.escapeHTML(le.extra().get("oldEmail").toString())+" &rarr; "+TextProcessor.escapeHTML(le.extra().get("newEmail").toString());
 				case END_USER_SESSION -> l.get("ip_address")+": "+deserializeInetAddress(Base64.getDecoder().decode((String)le.extra().get("ip"))).getHostAddress();
 				case BAN_USER -> {
 					User targetUser=users.get(le.ownerID());
@@ -1022,7 +1023,7 @@ public class SettingsAdminRoutes{
 						case SELF_DEACTIVATED -> null;
 					};
 					if(le.extra().get("message")!=null){
-						statusStr+="<br/>"+l.get("admin_user_ban_message")+": "+escapeHTML((String)le.extra().get("message"));
+						statusStr+="<br/>"+l.get("admin_user_ban_message")+": "+TextProcessor.escapeHTML((String)le.extra().get("message"));
 					}
 					yield statusStr;
 				}
@@ -1051,13 +1052,13 @@ public class SettingsAdminRoutes{
 				case DELETE_SIGNUP_INVITE -> {
 					String r=l.get("invite_signup_count")+": "+((Number)le.extra().get("signups")).intValue();
 					if(le.extra().containsKey("email"))
-						r+="<br/>"+l.get("email")+": "+escapeHTML(le.extra().get("email").toString());
+						r+="<br/>"+l.get("email")+": "+TextProcessor.escapeHTML(le.extra().get("email").toString());
 					if(le.extra().containsKey("name"))
-						r+="<br/>"+l.get("name")+": "+escapeHTML(le.extra().get("name").toString());
+						r+="<br/>"+l.get("name")+": "+TextProcessor.escapeHTML(le.extra().get("name").toString());
 					yield r;
 				}
 			};
-			return new AuditLogEntryViewModel(le, substituteLinks(mainText, links), extraText);
+			return new AuditLogEntryViewModel(le, TextProcessor.substituteLinks(mainText, links), extraText);
 		}).toList();
 		model.pageTitle(lang(req).get("admin_audit_log")).with("toolbarTitle", lang(req).get("menu_admin")).with("users", users).with("groups", groups);
 		model.paginate(new PaginatedList<>(log, viewModels));

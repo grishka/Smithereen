@@ -1,12 +1,10 @@
-{% extends 'page' %}
-{% block content %}
-{% include 'wall_tabbar' %}
 <div class="cardsBackdrop">
 {% for post in items %}
 <div class="card">
     {% include 'wall_post' %}
 </div>
+{% else %}
+<div class="emptyState">{{ emptyText }}</div>
 {% endfor %}
 {% include "pagination" %}
 </div>
-{% endblock %}

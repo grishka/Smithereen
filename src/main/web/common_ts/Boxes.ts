@@ -73,6 +73,9 @@ class LayerManager{
 		if(isVisible(layerContent)){
 			layer.onHidden();
 		}
+		for(var callback of layer.dismissCallbacks){
+			callback();
+		}
 		if(i==this.stack.length-1){
 			this.stack.pop();
 			if(this.stack.length){
@@ -119,6 +122,12 @@ class LayerManager{
 			this.dismiss(topLayer);
 	}
 
+	public getTopLayer():BaseLayer{
+		if(this.stack.length==0)
+			return null;
+		return this.stack[this.stack.length-1];
+	}
+
 	private lockPageScroll(){
 		document.body.style.top = `-${window.scrollY}px`;
 		document.body.style.position="fixed";
@@ -145,10 +154,7 @@ class LayerManager{
 	}
 
 	private onWindowResize(ev:Event){
-		this.updateTopOffset(this.boxLoader);
-		if(this.stack.length){
-			this.updateTopOffset(this.stack[this.stack.length-1].getContent());
-		}
+		this.updateAllTopOffsets();
 	}
 
 	public showSnackbar(text:string){
@@ -163,10 +169,18 @@ class LayerManager{
 			});
 		}, 2000);
 	}
+	
+	public updateAllTopOffsets(){
+		this.updateTopOffset(this.boxLoader);
+		if(this.stack.length){
+			this.updateTopOffset(this.stack[this.stack.length-1].getContent());
+		}
+	}
 }
 
 abstract class BaseLayer{
 	private content:HTMLElement;
+	public dismissCallbacks:{():void}[]=[];
 
 	protected abstract onCreateContentView():HTMLElement;
 	public show():void{
@@ -230,9 +244,13 @@ class Box extends BaseLayer{
 
 	protected onCreateContentView():HTMLElement{
 		var content:HTMLDivElement=ce("div", {className: "boxLayer"}, [
-			this.titleBar=ce("div", {className: "boxTitleBar", innerText: this.title}),
-			this.contentWrap,
-			this.buttonBar=ce("div", {className: "boxButtonBar"})
+			ce("div", {className: "boxLayerInner"}, [
+				this.titleBar=ce("div", {className: "boxTitleBar"}, [
+					ce("span", {className: "title ellipsize", innerText: this.title})
+				]),
+				this.contentWrap,
+				this.buttonBar=ce("div", {className: "boxButtonBar"})
+			])
 		]);
 		if(!this.title) this.titleBar.hide();
 
@@ -361,6 +379,11 @@ class Box extends BaseLayer{
 				this.buttonBarLoader.hide();
 			}
 		}
+	}
+
+	public addButtonBarAuxHTML(html:string){
+		var aux=ce("div", {className: "buttonBarAux", innerHTML: html});
+		this.buttonBar.insertBefore(aux, this.buttonBar.firstChild);
 	}
 }
 
@@ -759,3 +782,17 @@ class PhotoViewerLayer extends BaseLayer{
 		document.body.removeEventListener("keydown", this.arrowsKeyListener);
 	}
 }
+
+class SimpleLayer extends BaseLayer{
+	private contentWrap:HTMLElement;
+
+	public constructor(innerHTML:string, addClasses:string=""){
+		super();
+		this.contentWrap=ce("div", {className: ("simpleLayer "+addClasses).trim(), innerHTML: innerHTML});
+	}
+
+	public onCreateContentView():HTMLElement{
+		return this.contentWrap;
+	}
+}
+

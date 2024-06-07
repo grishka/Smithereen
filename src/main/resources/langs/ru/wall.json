@@ -63,5 +63,15 @@
   "post_visible_to_followers": "Эта запись видна только подписчикам {name, inflect, genitive}",
   "post_visible_to_followers_mentioned": "Эта запись видна только подписчикам {name, inflect, genitive} и упомянутым",
   "post_visible_to_friends": "Эта запись видна только друзьям {name, inflect, genitive}",
-  "expand_all_cws": "Раскрыть все спойлеры"
+  "expand_all_cws": "Раскрыть все спойлеры",
+  "comment_repost_title": "<a id=\"originalComment\">{time}</a> к записи <a id=\"topLevelPost\">{postSnippet}</a>",
+  "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> к удалённой записи",
+  "commenting_on_repost_hint": "Вы комментируете изначальную запись {name, inflect, genitive}.",
+  "reposts_empty": "Никто не делился этой записью.",
+  "load_older_posts": "Показать предыдущие записи",
+  "embed_post": "Встроить на сайт",
+  "embed_post_explanation": "Скопируйте этот код, чтобы встроить эту запись на свой сайт:",
+  "embed_preview": "Предварительный просмотр",
+  "comment_in_reply_to_user": "{gender, select, female {ответила} other {ответил}} <a id=\"parentComment\">{name, inflect, dative}</a>",
+  "comment_in_reply_to_user_short": "<a id=\"parentComment\">{name, inflect, dative}</a>"
 }

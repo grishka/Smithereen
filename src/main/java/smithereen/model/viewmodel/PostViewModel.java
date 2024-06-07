@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -15,6 +16,9 @@ public class PostViewModel{
 	private boolean loadedRepliesCountKnown;
 	private int loadedRepliesCount;
 	public boolean canComment=true;
+	public boolean canRepost=true;
+	public Repost repost;
+	public int parentAuthorID;
 
 	public PostViewModel(Post post){
 		this.post=post;
@@ -57,8 +61,14 @@ public class PostViewModel{
 		}
 	}
 
+	public List<Integer> getReplyKeyForInteractions(){
+		if(post.isMastodonStyleRepost() && repost!=null)
+			return repost.post.post.getReplyKeyForReplies();
+		return post.getReplyKeyForReplies();
+	}
+
 	public static PaginatedList<PostViewModel> wrap(PaginatedList<Post> list){
-		return new PaginatedList<>(list.list.stream().map(PostViewModel::new).toList(), list.total, list.offset, list.perPage);
+		return new PaginatedList<>(list.list.stream().map(PostViewModel::new).collect(Collectors.toCollection(ArrayList::new)), list.total, list.offset, list.perPage);
 	}
 
 	public static void collectActorIDs(Collection<PostViewModel> posts, Set<Integer> userIDs, Set<Integer> groupIDs){
@@ -68,7 +78,17 @@ public class PostViewModel{
 				userIDs.add(pvm.post.ownerID);
 			else
 				groupIDs.add(-pvm.post.ownerID);
+			if(pvm.repost!=null){
+				if(pvm.repost.post!=null)
+					collectActorIDs(Set.of(pvm.repost.post), userIDs, groupIDs);
+				if(pvm.repost.topLevel!=null)
+					collectActorIDs(Set.of(pvm.repost.topLevel), userIDs, groupIDs);
+			}
+			if(pvm.parentAuthorID>0)
+				userIDs.add(pvm.parentAuthorID);
 			collectActorIDs(pvm.repliesObjects, userIDs, groupIDs);
 		}
 	}
+
+	public record Repost(PostViewModel post, PostViewModel topLevel){}
 }

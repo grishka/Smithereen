@@ -1,0 +1,12 @@
+{
+  "bookmarks_title": "Bookmarks",
+  "add_bookmark": "Add bookmark",
+  "remove_bookmark": "Remove bookmark",
+  "bookmarks_people": "People",
+  "bookmarks_communities": "Communities",
+  "bookmarks_posts": "Posts",
+  "bookmarks_people_empty": "People you add to bookmarks will appear here.",
+  "bookmarks_communities_empty": "Groups and events you add to bookmarks will appear here.",
+  "bookmarks_posts_empty": "Posts you've liked will appear here.",
+  "bookmarks_X_liked_posts": "You've liked {count, plural, one {# post} other {# posts}}"
+}

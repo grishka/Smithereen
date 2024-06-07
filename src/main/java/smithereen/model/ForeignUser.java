@@ -8,10 +8,12 @@ import java.net.URISyntaxException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -21,9 +23,11 @@ import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.jsonld.JLD;
 import smithereen.storage.DatabaseUtils;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
@@ -155,7 +159,7 @@ public class ForeignUser extends User implements ForeignActor{
 			flags|=FLAG_SUPPORTS_FRIEND_REQS;
 		}
 		if(StringUtils.isNotEmpty(summary))
-			summary=Utils.sanitizeHTML(summary);
+			summary=TextProcessor.sanitizeHTML(summary);
 		wall=tryParseURL(optString(obj, "wall"));
 		if(wall==null)
 			wall=tryParseURL(optString(obj, "sm:wall"));
@@ -238,6 +242,125 @@ public class ForeignUser extends User implements ForeignActor{
 						.map(l->l.link)
 						.collect(Collectors.toSet());
 			}
+		}
+
+		activities=optString(obj, "activities");
+		interests=optString(obj, "interests");
+		favoriteMusic=optString(obj, "favoriteMusic");
+		favoriteMovies=optString(obj, "favoriteMovies");
+		favoriteTvShows=optString(obj, "favoriteTvShows");
+		favoriteBooks=optString(obj, "favoriteBooks");
+		favoriteGames=optString(obj, "favoriteGames");
+		favoriteQuotes=optString(obj, "favoriteQuotes");
+
+		politicalViews=switch(optString(obj, "politicalViews")){
+			case "sm:Apathetic" -> PoliticalViews.APATHETIC;
+			case "sm:Communist" -> PoliticalViews.COMMUNIST;
+			case "sm:Socialist" -> PoliticalViews.SOCIALIST;
+			case "sm:Moderate" -> PoliticalViews.MODERATE;
+			case "sm:Liberal" -> PoliticalViews.LIBERAL;
+			case "sm:Conservative" -> PoliticalViews.CONSERVATIVE;
+			case "sm:Monarchist" -> PoliticalViews.MONARCHIST;
+			case "sm:Ultraconservative" -> PoliticalViews.ULTRACONSERVATIVE;
+			case "sm:Libertarian" -> PoliticalViews.LIBERTARIAN;
+			case null, default -> null;
+		};
+		religion=optString(obj, "religion");
+		personalPriority=switch(optString(obj, "personalPriority")){
+			case "sm:FamilyAndChildren" -> PersonalPriority.FAMILY_CHILDREN;
+			case "sm:CareerAndMoney" -> PersonalPriority.CAREER_MONEY;
+			case "sm:EntertainmentAndLeisure" -> PersonalPriority.ENTERTAINMENT_LEISURE;
+			case "sm:ScienceAndResearch" -> PersonalPriority.SCIENCE_RESEARCH;
+			case "sm:ImprovingTheWorld" -> PersonalPriority.IMPROVING_WORLD;
+			case "sm:PersonalDevelopment" -> PersonalPriority.PERSONAL_DEVELOPMENT;
+			case "sm:BeautyAndArt" -> PersonalPriority.BEAUTY_ART;
+			case "sm:FameAndInfluence" -> PersonalPriority.FAME_INFLUENCE;
+			case null, default -> null;
+		};
+		peoplePriority=switch(optString(obj, "peoplePriority")){
+			case "sm:IntellectAndCreativity" -> PeoplePriority.INTELLECT_CREATIVITY;
+			case "sm:KindnessAndHonesty" -> PeoplePriority.KINDNESS_HONESTY;
+			case "sm:HealthAndBeauty" -> PeoplePriority.HEALTH_BEAUTY;
+			case "sm:WealthAndPower" -> PeoplePriority.WEALTH_POWER;
+			case "sm:CourageAndPersistence" -> PeoplePriority.COURAGE_PERSISTENCE;
+			case "sm:HumorAndLoveForLife" -> PeoplePriority.HUMOR_LIFE_LOVE;
+			case null, default -> null;
+		};
+		smokingViews=switch(optString(obj, "smokingViews")){
+			case "sm:VeryNegative" -> HabitsViews.VERY_NEGATIVE;
+			case "sm:Negative" -> HabitsViews.NEGATIVE;
+			case "sm:Tolerant" -> HabitsViews.TOLERANT;
+			case "sm:Neutral" -> HabitsViews.NEUTRAL;
+			case "sm:Positive" -> HabitsViews.POSITIVE;
+			case null, default -> null;
+		};
+		alcoholViews=switch(optString(obj, "alcoholViews")){
+			case "sm:VeryNegative" -> HabitsViews.VERY_NEGATIVE;
+			case "sm:Negative" -> HabitsViews.NEGATIVE;
+			case "sm:Tolerant" -> HabitsViews.TOLERANT;
+			case "sm:Neutral" -> HabitsViews.NEUTRAL;
+			case "sm:Positive" -> HabitsViews.POSITIVE;
+			case null, default -> null;
+		};
+		inspiredBy=optString(obj, "inspiredBy");
+
+		location=optString(obj, "vcard:Address");
+		if(attachment!=null && !attachment.isEmpty()){
+			ArrayList<ActivityPubObject> filteredAttachment=new ArrayList<>();
+			contacts=new HashMap<>();
+			for(ActivityPubObject att:attachment){
+				if(att instanceof PropertyValue pv && pv.name!=null){
+					// Get rid of Mastodon :emojis: and non-ASCII characters
+					String normalizedName=pv.name.toLowerCase().replaceAll(":[a-z0-9_]{2,}:", "").replaceAll("[^a-z0-9 -]", "").trim();
+					// Match against popular strings people use for these things
+					if(Set.of("website", "web", "blog", "homepage", "www", "site", "personal page", "personal website", "personal blog").contains(normalizedName)){
+						website=TextProcessor.stripHTML(pv.value, false);
+						continue;
+					}
+					ContactInfoKey contactKey=switch(normalizedName){
+						case "matrix" -> ContactInfoKey.MATRIX;
+						case "xmpp", "jabber" -> ContactInfoKey.XMPP;
+						case "telegram", "tg" -> ContactInfoKey.TELEGRAM;
+						case "signal" -> ContactInfoKey.SIGNAL;
+						case "twitter", "x", "xitter", "x.com", "birdsite" -> ContactInfoKey.TWITTER;
+						case "instagram", "insta", "ig" -> ContactInfoKey.INSTAGRAM;
+						case "facebook", "fb" -> ContactInfoKey.FACEBOOK;
+						case "vkontakte", "vk" -> ContactInfoKey.VKONTAKTE;
+						case "snapchat", "snap" -> ContactInfoKey.SNAPCHAT;
+						case "discord" -> ContactInfoKey.DISCORD;
+						case "git", "github", "gitlab", "codeberg", "gitea" -> ContactInfoKey.GIT;
+						case "phone number", "phone", "sms" -> ContactInfoKey.PHONE_NUMBER;
+						case "email", "e-mail" -> ContactInfoKey.EMAIL;
+						default -> null;
+					};
+					if(contactKey!=null && !contacts.containsKey(contactKey)){
+						String normalizedValue=TextProcessor.normalizeContactInfoValue(contactKey, TextProcessor.stripHTML(pv.value, false));
+						if(normalizedValue!=null){
+							contacts.put(contactKey, normalizedValue);
+							continue;
+						}
+					}
+					filteredAttachment.add(att);
+				}else{
+					filteredAttachment.add(att);
+				}
+			}
+			attachment=filteredAttachment;
+		}
+
+		hometown=optString(obj, "hometown");
+		relationship=switch(optString(obj, "relationshipStatus")){
+			case "sm:Single" -> RelationshipStatus.SINGLE;
+			case "sm:InRelationship" -> RelationshipStatus.IN_RELATIONSHIP;
+			case "sm:Engaged" -> RelationshipStatus.ENGAGED;
+			case "sm:Married" -> RelationshipStatus.MARRIED;
+			case "sm:InLove" -> RelationshipStatus.IN_LOVE;
+			case "sm:Complicated" -> RelationshipStatus.COMPLICATED;
+			case "sm:ActivelySearching" -> RelationshipStatus.ACTIVELY_SEARCHING;
+			case null, default -> null;
+		};
+		if(relationship!=null && relationship.canHavePartner()){
+			relationshipPartnerActivityPubID=tryParseURL(optString(obj, "relationshipPartner"));
 		}
 
 		return this;

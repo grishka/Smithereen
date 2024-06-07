@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import smithereen.Utils;
 import smithereen.lang.Lang;
+import smithereen.text.TextProcessor;
 
 public class LangFunction implements Function{
 
@@ -32,7 +32,7 @@ public class LangFunction implements Function{
 			String formatted=Lang.get(locale).get(key, formatArgs);
 			if(args.get("links") instanceof Map links){
 				//noinspection unchecked
-				return new SafeString(nl2br(Utils.substituteLinks(formatted, links)));
+				return new SafeString(nl2br(TextProcessor.substituteLinks(formatted, links)));
 			}else{
 				return new SafeString(nl2br(formatted));
 			}

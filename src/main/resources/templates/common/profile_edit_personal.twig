@@ -1,0 +1,40 @@
+{# @pebvariable name="currentUser" type="smithereen.model.User" #}
+{% import "forms" as form %}
+{% extends "page" %}
+{% block content %}
+{% include "profile_edit_tabbar" with {'tab': "personal"} %}
+<div class="singleColumn gray wideForms">
+	<form action="/settings/updateProfilePersonal" method="post" data-ajax>
+		{{ form.start("profilePersonal", profilePersonalMessage) }}
+			{%- set options=[{'value': "", 'label': L('profile_field_none_selected'), 'selected': currentUser.politicalViews is null}] %}
+			{%- for option in politicalOptions %}
+				{%- set _=options.add({'value': option, 'label': L(option.langKey), 'selected': currentUser.politicalViews==option}) %}
+			{%- endfor %}
+			{{ form.select("politicalViews", L('profile_political_views'), options) }}
+			{{ form.textInput("religion", L('profile_religion'), currentUser.religion, {'maxlength': 256}) }}
+			{%- set options=[{'value': "", 'label': L('profile_field_none_selected'), 'selected': currentUser.personalPriority is null}] %}
+			{%- for option in personalPriorityOptions %}
+				{%- set _=options.add({'value': option, 'label': L(option.langKey), 'selected': currentUser.personalPriority==option}) %}
+			{%- endfor %}
+			{{ form.select("personalPriority", L('profile_personal_priority'), options) }}
+			{%- set options=[{'value': "", 'label': L('profile_field_none_selected'), 'selected': currentUser.peoplePriority is null}] %}
+			{%- for option in peoplePriorityOptions %}
+				{%- set _=options.add({'value': option, 'label': L(option.langKey), 'selected': currentUser.peoplePriority==option}) %}
+			{%- endfor %}
+			{{ form.select("peoplePriority", L('profile_people_priority'), options) }}
+			{%- set options=[{'value': "", 'label': L('profile_field_none_selected'), 'selected': currentUser.smokingViews is null}] %}
+			{%- for option in habitsOptions %}
+				{%- set _=options.add({'value': option, 'label': L(option.langKey), 'selected': currentUser.smokingViews==option}) %}
+			{%- endfor %}
+			{{ form.select("smokingViews", L('profile_views_on_smoking'), options) }}
+			{%- set options=[{'value': "", 'label': L('profile_field_none_selected'), 'selected': currentUser.alcoholViews is null}] %}
+			{%- for option in habitsOptions %}
+				{%- set _=options.add({'value': option, 'label': L(option.langKey), 'selected': currentUser.alcoholViews==option}) %}
+			{%- endfor %}
+			{{ form.select("alcoholViews", L('profile_views_on_alcohol'), options) }}
+			{{ form.textInput("inspiredBy", L('profile_inspired_by'), currentUser.inspiredBy, {'maxlength': 256}) }}
+			{{ form.footer(L('save')) }}
+		{{ form.end() }}
+	</form>
+</div>
+{% endblock %}

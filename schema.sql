@@ -133,12 +133,40 @@ CREATE TABLE `blocks_user_user` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `bookmarks_group`
+--
+
+CREATE TABLE `bookmarks_group` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `owner_id` int unsigned NOT NULL,
+  `group_id` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `owner_id_2` (`owner_id`,`group_id`),
+  KEY `group_id` (`group_id`),
+  CONSTRAINT `bookmarks_group_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `bookmarks_user`
+--
+
+CREATE TABLE `bookmarks_user` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `owner_id` int unsigned NOT NULL,
+  `user_id` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `owner_id` (`owner_id`,`user_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `bookmarks_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `config`
 --
 
 CREATE TABLE `config` (
   `key` varchar(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
-  `value` text NOT NULL,
+  `value` mediumtext NOT NULL,
   PRIMARY KEY (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -267,7 +295,7 @@ CREATE TABLE `group_memberships` (
 CREATE TABLE `groups` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(200) NOT NULL DEFAULT '',
-  `username` varchar(50) NOT NULL DEFAULT '',
+  `username` varchar(64) NOT NULL,
   `domain` varchar(100) NOT NULL DEFAULT '',
   `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   `ap_url` varchar(300) DEFAULT NULL,
@@ -706,7 +734,7 @@ CREATE TABLE `users` (
   `middle_name` varchar(100) DEFAULT NULL,
   `maiden_name` varchar(100) DEFAULT NULL,
   `bdate` date DEFAULT NULL,
-  `username` varchar(50) NOT NULL DEFAULT '',
+  `username` varchar(64) NOT NULL,
   `domain` varchar(100) NOT NULL DEFAULT '',
   `public_key` blob NOT NULL,
   `private_key` blob,
@@ -757,6 +785,7 @@ CREATE TABLE `wall_posts` (
   `source` text,
   `source_format` tinyint unsigned DEFAULT NULL,
   `privacy` tinyint unsigned NOT NULL DEFAULT '0',
+  `flags` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -766,10 +795,9 @@ CREATE TABLE `wall_posts` (
   KEY `owner_group_id` (`owner_group_id`),
   KEY `poll_id` (`poll_id`),
   CONSTRAINT `wall_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `wall_posts_ibfk_2` FOREIGN KEY (`repost_of`) REFERENCES `wall_posts` (`id`) ON DELETE SET NULL,
   CONSTRAINT `wall_posts_ibfk_4` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-03-23  8:50:17
+-- Dump completed on 2024-06-06 11:51:39

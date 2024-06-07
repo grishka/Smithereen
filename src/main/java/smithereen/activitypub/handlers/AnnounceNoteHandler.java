@@ -3,9 +3,13 @@ package smithereen.activitypub.handlers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
@@ -18,49 +22,66 @@ import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.notifications.Notification;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
+import smithereen.util.UriBuilder;
 
 public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announce, NoteOrQuestion>{
-	private static final Logger LOG=LoggerFactory.getLogger(AnnounceNoteHandler.class);
-
-	private Announce activity;
-	private ForeignUser actor;
 
 	@Override
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Announce activity, NoteOrQuestion post) throws SQLException{
-		this.activity=activity;
-		this.actor=actor;
 		if(post.inReplyTo!=null){
 			Post parent=PostStorage.getPostByID(post.inReplyTo);
 			if(parent!=null){
 				Post nativePost=post.asNativePost(context.appContext);
 				context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
-				doHandle(nativePost, context);
+				doHandle(nativePost, actor, activity, context);
 			}else{
-				context.appContext.getActivityPubWorker().fetchReplyThreadAndThen(post, thread->onReplyThreadDone(thread, context));
+				context.appContext.getActivityPubWorker().fetchReplyThreadAndThen(post, thread->onReplyThreadDone(thread, actor, activity, context));
 			}
 		}else{
 			Post nativePost=post.asNativePost(context.appContext);
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
-			doHandle(nativePost, context);
+			doHandle(nativePost, actor, activity, context);
 			context.appContext.getActivityPubWorker().fetchAllReplies(nativePost);
 		}
 	}
 
-	private void onReplyThreadDone(List<Post> thread, ActivityHandlerContext context){
+	private void onReplyThreadDone(List<Post> thread, ForeignUser actor, Announce activity, ActivityHandlerContext context){
 		try{
-			doHandle(thread.get(thread.size()-1), context);
+			doHandle(thread.get(thread.size()-1), actor, activity, context);
 		}catch(SQLException x){
 			LOG.warn("Error storing retoot", x);
 		}
 	}
 
-	private void doHandle(Post post, ActivityHandlerContext context) throws SQLException{
-		long time=activity.published==null ? System.currentTimeMillis() : activity.published.toEpochMilli();
-		context.appContext.getNewsfeedController().putFriendsFeedEntry(actor, post.id, NewsfeedEntry.Type.RETOOT, Instant.ofEpochMilli(time));
-		User author=context.appContext.getUsersController().getUserOrThrow(post.authorID);
+	private void doHandle(Post post, ForeignUser actor, Announce activity, ActivityHandlerContext context) throws SQLException{
+		Post repost=new Post();
+		repost.authorID=repost.ownerID=actor.id;
+		repost.repostOf=post.id;
+		repost.flags.add(Post.Flag.MASTODON_STYLE_REPOST);
+		repost.createdAt=activity.published==null ? Instant.now() : activity.published;
+		repost.setActivityPubID(activity.activityPubID);
+		repost.privacy=post.privacy;
+		if(activity.url!=null){
+			repost.activityPubURL=activity.url;
+		}else{
+			// Remove "/activity" off the end of the activity ID to get the ID for the "pseudo-post". Mastodon and Misskey don't expose IDs of these pseudo-posts themselves.
+			// I'm very sorry I have to do this.
+			// Mastodon example: https://raspberry.grishka.me/users/grishka/statuses/112293152682340239/activity
+			// Misskey example: https://misskey.io/notes/9s92azzu76fm045q/activity
+			if(activity.activityPubID.getRawPath().endsWith("/activity")){
+				String idStr=activity.activityPubID.toString();
+				repost.activityPubURL=URI.create(idStr.substring(0, idStr.lastIndexOf('/')));
+			}else{
+				// Oh no! Anyway...
+				repost.activityPubURL=activity.activityPubID;
+			}
+		}
+		PostStorage.putForeignWallPost(repost);
+		context.appContext.getNewsfeedController().clearFriendsFeedCache();
 
+		User author=context.appContext.getUsersController().getUserOrThrow(post.authorID);
 		if(!(author instanceof ForeignUser)){
 			Notification n=new Notification();
 			n.type=Notification.Type.RETOOT;

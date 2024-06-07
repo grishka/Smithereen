@@ -1,0 +1,18 @@
+{
+  "notification_replied_to_post": "{gender, select, female {пракаментавала} other {пракаментаваў}} вашу запіс",
+  "notification_replied_to_comment": "{gender, select, female {адказала} other {адказаў}} на ваш каментар",
+  "notification_mentioned_in_post": "{gender, select, female {згадала} other {згадаў}} вас у запісе",
+  "notification_mentioned_in_comment": "{gender, select, female {згадала} other {згадаў}} вас у каментары",
+  "notification_liked_post": "{gender, select, female {ацаніла} other {ацаніў}} вашу запіс",
+  "notification_liked_comment": "{gender, select, female {ацаніла} other {ацаніў}} ваш каментар",
+  "notification_reposted_post": "{gender, select, female {падзялілася} other {падзяліўся}} вашай запісью",
+  "notification_reposted_comment": "{gender, select, female {падзялілася} other {падзяліўся}} каментарам",
+  "notification_posted_on_wall": "{gender, select, female {кінула} other {кінуў}} запіс на вашай сцяне",
+  "notification_invite_signup": "{gender, select, female {зарэгістравалася} other {зарэгістраваўся}} па вашым запрашэнні",
+  "notification_follow": "{gender, select, female {падпісалася} other {падпісаўся}} на ваc",
+  "notification_friend_req_accept": "{gender, select, female {прыняла} other {прыняў}} вашу заяўку ў сябры",
+  "no_notifications": "У вас пакуль няма апавяшчэнняў",
+  "notifications": "Апавяшчэнні",
+  "notifications_empty": "Вашы апавяшчэнні з'явяцца тут.",
+  "summary_notifications": "Паказаны апошнія апавяшчэння"
+}

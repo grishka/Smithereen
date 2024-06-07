@@ -2,7 +2,7 @@
 <h2>{{L('login_title')}}</h2>
 <form action="/account/login{{additionalParams}}" method="post">
 	{{ _form.start('login', message) }}
-		{{ _form.textInput('username', L('email_or_username')) }}
+		{{ _form.textInput('username', L('email_or_username'), username) }}
 		{{ _form.textInput('password', L('password'), '', {'type': 'password'}) }}
 		{{ _form.unlabeledRowStart() }}
 		<a href="/account/resetPassword">{{ L('forgot_password') }}</a>

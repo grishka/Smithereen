@@ -56,5 +56,6 @@
   "select_friends_empty_selection": "Du kannst Freunde in der Liste, hier links auswählen.",
   "select_friends_button": "Wähle Freunde aus",
   "X_followers": "{count, plural, =0 {Keine Folgenden} one {# Folgender} other {# Folgende}}",
-  "X_following": "{count, plural, =0 {Nicht irgendwem folgend} one {# folgend} other {# folgend}}"
+  "X_following": "{count, plural, =0 {Nicht irgendwem folgend} one {# folgend} other {# folgend}}",
+  "summary_X_friends_found": "{count, plural, =0 {Keine Freunde} one {# Freund} other {# Freunde}} gefunden"
 }

@@ -87,6 +87,7 @@ public class RenderedTemplateResponse{
 		HashSet<String> queryKeys=new HashSet<>(req.queryParams());
 		queryKeys.remove("offset");
 		queryKeys.remove("_ajax");
+		queryKeys.remove("pagination");
 		if(!queryKeys.isEmpty()){
 			 pathWithQuery+='?'+queryKeys.stream().map(k->k+'='+URLEncoder.encode(req.queryParams(k), StandardCharsets.UTF_8)).collect(Collectors.joining("&"));
 		}
@@ -98,10 +99,15 @@ public class RenderedTemplateResponse{
 	}
 
 	public RenderedTemplateResponse addMessage(Request req, String messageKeyInSession){
+		addMessage(req, messageKeyInSession, "message");
+		return this;
+	}
+
+	public RenderedTemplateResponse addMessage(Request req, String messageKeyInSession, String templateKey){
 		String msg=req.session().attribute(messageKeyInSession);
 		if(StringUtils.isNotEmpty(msg)){
 			req.session().removeAttribute(messageKeyInSession);
-			with("message", msg);
+			with(templateKey, msg);
 		}
 		return this;
 	}

@@ -37,3 +37,8 @@
 	}
 </script>
 {%endblock%}
+{% block additionalLinks %}
+{% if post.post.local and post.post.privacy=='PUBLIC' %}
+<link rel="alternate" type="application/json+oembed" href="https://{{ serverDomain }}/system/oembed?url={{ "https://#{serverDomain}/posts/#{post.post.id}" | urlencode }}"/>
+{% endif %}
+{% endblock %}

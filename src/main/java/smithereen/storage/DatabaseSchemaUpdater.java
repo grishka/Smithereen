@@ -33,11 +33,12 @@ import smithereen.model.media.MediaFileType;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.text.TextProcessor;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=43;
+	public static final int SCHEMA_VERSION=47;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -208,18 +209,18 @@ public class DatabaseSchemaUpdater{
 						String mdname=res.getString("maiden_name");
 						String uname=res.getString("username");
 						String domain=res.getString("domain");
-						StringBuilder sb=new StringBuilder(Utils.transliterate(fname));
+						StringBuilder sb=new StringBuilder(TextProcessor.transliterate(fname));
 						if(lname!=null){
 							sb.append(' ');
-							sb.append(Utils.transliterate(lname));
+							sb.append(TextProcessor.transliterate(lname));
 						}
 						if(mname!=null){
 							sb.append(' ');
-							sb.append(Utils.transliterate(mname));
+							sb.append(TextProcessor.transliterate(mname));
 						}
 						if(mdname!=null){
 							sb.append(' ');
-							sb.append(Utils.transliterate(mdname));
+							sb.append(TextProcessor.transliterate(mdname));
 						}
 						sb.append(' ');
 						sb.append(uname);
@@ -235,7 +236,7 @@ public class DatabaseSchemaUpdater{
 				try(ResultSet res=conn.createStatement().executeQuery("SELECT id, name, username, domain FROM groups")){
 					PreparedStatement stmt=conn.prepareStatement("INSERT INTO qsearch_index (string, group_id) VALUES (?, ?)");
 					while(res.next()){
-						String s=Utils.transliterate(res.getString("name"))+" "+res.getString("username");
+						String s=TextProcessor.transliterate(res.getString("name"))+" "+res.getString("username");
 						String domain=res.getString("domain");
 						if(domain!=null)
 							s+=" "+domain;
@@ -657,6 +658,36 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("""
 						CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
 						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_'), '%');""");
+			}
+			case 44 -> {
+				conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `flags` bigint unsigned NOT NULL DEFAULT 0, DROP FOREIGN KEY wall_posts_ibfk_2");
+			}
+			case 45 -> {
+				conn.createStatement().execute("ALTER TABLE `users` CHANGE `username` `username` varchar(64) NOT NULL");
+				conn.createStatement().execute("ALTER TABLE `groups` CHANGE `username` `username` varchar(64) NOT NULL");
+			}
+			case 46 -> conn.createStatement().execute("ALTER TABLE `config` CHANGE `value` `value` mediumtext NOT NULL");
+			case 47 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `bookmarks_group` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `owner_id` int unsigned NOT NULL,
+						  `group_id` int unsigned NOT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `owner_id_2` (`owner_id`,`group_id`),
+						  KEY `group_id` (`group_id`),
+						  CONSTRAINT `bookmarks_group_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;""");
+				conn.createStatement().execute("""
+						CREATE TABLE `bookmarks_user` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `owner_id` int unsigned NOT NULL,
+						  `user_id` int unsigned NOT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `owner_id` (`owner_id`,`user_id`),
+						  KEY `user_id` (`user_id`),
+						  CONSTRAINT `bookmarks_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;""");
 			}
 		}
 	}

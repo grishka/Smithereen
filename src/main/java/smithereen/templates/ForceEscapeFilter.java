@@ -9,12 +9,12 @@ import io.pebbletemplates.pebble.template.PebbleTemplate;
 import java.util.List;
 import java.util.Map;
 
-import smithereen.Utils;
+import smithereen.text.TextProcessor;
 
 public class ForceEscapeFilter implements Filter{
 	@Override
 	public Object apply(Object input, Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber) throws PebbleException{
-		return new SafeString(Utils.escapeHTML((String)input));
+		return new SafeString(TextProcessor.escapeHTML((String)input));
 	}
 
 	@Override

@@ -53,8 +53,6 @@ Friend requests are sent as `Offer{Follow}` activities, where the inner `Follow`
 Accepting a friend request is done by following the sender back, that is, simply sending a `Follow`.
 
 Rejecting a friend request is done by sending a `Reject{Offer{Follow}}` activity.
-### Additional profile fields
-There are separate fields for first and last names, birth date, and gender, all based on schema.org. Those are `firstName`, `lastName`, `birthDate` and `gender`. `firstName` and `lastName` are respectively aliases to `givenName` and `familyName`. Birth date is in the format `YYYY-MM-DD`. Gender can either be `sc:Male` or `sc:Female`.
 ### Non-square profile pictures
 Smithereen uses non-square profile pictures on the profile page. In order to retain compatibility with everything else, `icon` in the actor still points to a square picture. It's extended with the `image` field that contains the full rectangular one, and `sm:cropRegion` with the coordinates of the square version within the rectangular one. The coordinates are in the order `[x1, y1, x2, y2]`, where (x1, y1) are the top-left corner of the square, and (x2, y2) are the bottom-right. The top-left corner of the rectangle is (0, 0), and the bottom-right one is (1, 1).
 
@@ -263,3 +261,93 @@ If a user sends a message to someone who can't send **them** messages, the recip
 
 ### Read receipts for direct messages
 When a recipient views a direct message (a `Note` that is only addressed to actors and no collections) for the first time, Smithereen will send a `Read{Note}` activity to its sender.
+
+### User profile fields
+
+Additional profile fields are mostly just custom keys in `Person` actors. Just like many other things in this project, they are mostly copied from VKontakte. Unless otherwise noted, the values are free-form plain (**non-HTML**) strings.
+
+##### Structured name
+
+- `firstName`, alias to `sc:givenName`
+- `lastName`, alias to `sc:familyName`
+- `middleName`, alias to `sc:additionalName`
+- `sm:maidenName`
+
+##### Gender
+
+`sc:gender`, not displayed anywhere but is used to select pronouns and inflect names, possible values:
+- `sc:Male`, he/him
+- `sc:Female`, she/her
+- `sc:Other`, they/them
+
+##### "Main" unlabeled section below the name
+
+- `vcard:bday` — birth date, of the form YYYY-MM-DD
+- `sm:hometown`
+- `sm:relationshipStatus`, possible values:
+  - `sm:Single`
+  - `sm:InRelationship`
+  - `sm:Engaged`
+  - `sm:Married`
+  - `sm:InLove`
+  - `sm:Complicated`
+  - `sm:ActivelySearching`
+- `sm:relationshipPartner` — user's partner, must be an ID of another `Person` actor. Only valid when `sm:relationshipStatus` is present and is other than `sm:Single` or `sm:ActivelySearching`. For the partner to show up in the UI, they also need to set this user as their partner, *unless* the relationship status is `sm:InLove`.
+
+If the actor has any unrecognized `PropertyValue` fields, they are also displayed in this section.
+
+##### "Contacts" section
+
+- `vcard:Address` — city/location. Pleroma and Misskey had this field before Smithereen.
+
+Other fields (website, Matrix, ...) are Mastodon-compatible `PropertyValue`s with hardcoded English names and HTML links to corresponding services.
+
+##### "Personal"/"philosophy" section
+
+- `sm:politicalViews`, possible values:
+  - `sm:Apathetic`
+  - `sm:Communist`
+  - `sm:Socialist`
+  - `sm:Moderate`
+  - `sm:Liberal`
+  - `sm:Conservative`
+  - `sm:Monarchist`
+  - `sm:Ultraconservative`
+  - `sm:Libertarian`
+- `sm:religion`
+- `sm:personalPriority`, possible values:
+  - `sm:FamilyAndChildren`
+  - `sm:CareerAndMoney`
+  - `sm:EntertainmentAndLeisure`
+  - `sm:ScienceAndResearch`
+  - `sm:ImprovingTheWorld`
+  - `sm:PersonalDevelopment`
+  - `sm:BeautyAndArt`
+  - `sm:FameAndInfluence`
+- `sm:peoplePriority`, possible values:
+  - `sm:IntellectAndCreativity`
+  - `sm:KindnessAndHonesty`
+  - `sm:HealthAndBeauty`
+  - `sm:WealthAndPower`
+  - `sm:CourageAndPersistence`
+  - `sm:HumorAndLoveForLife`
+- `sm:smokingViews`, possible values:
+  - `sm:VeryNegative`
+  - `sm:Negative`
+  - `sm:Tolerant`
+  - `sm:Neutral`
+  - `sm:Positive`
+- `sm:alcoholViews`, the values are the same as for `sm:smokingViews`
+- `sm:inspiredBy`
+
+##### "Interests" section
+
+- `sm:activities`
+- `sm:interests`
+- `sm:favoriteMusic`
+- `sm:favoriteMovies`
+- `sm:favoriteTvShows`
+- `sm:favoriteBooks`
+- `sm:favoriteGames`
+- `sm:favoriteQuotes`
+- `summary` — the standard ActivityPub "bio" field, this is an HTML string

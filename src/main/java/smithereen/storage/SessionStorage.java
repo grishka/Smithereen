@@ -3,6 +3,7 @@ package smithereen.storage;
 import com.google.gson.JsonParser;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -177,7 +178,7 @@ public class SessionStorage{
 		}
 	}
 
-	public static SignupResult registerNewAccount(@NotNull String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite) throws SQLException{
+	public static SignupResult registerNewAccount(@Nullable String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite) throws SQLException{
 		SignupResult[] result={SignupResult.SUCCESS};
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			DatabaseUtils.doWithTransaction(conn, ()->{
@@ -208,7 +209,7 @@ public class SessionStorage{
 				stmt=conn.prepareStatement("INSERT INTO `users` (`fname`, `lname`, `username`, `public_key`, `private_key`, gender) VALUES (?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 				stmt.setString(1, firstName);
 				stmt.setString(2, lastName);
-				stmt.setString(3, username);
+				stmt.setString(3, username==null ? Utils.randomAlphanumericString(50) : username);
 				stmt.setBytes(4, pair.getPublic().getEncoded());
 				stmt.setBytes(5, pair.getPrivate().getEncoded());
 				stmt.setInt(6, gender.ordinal());
@@ -217,6 +218,13 @@ public class SessionStorage{
 				try(ResultSet res=stmt.getGeneratedKeys()){
 					res.next();
 					userID=res.getInt(1);
+				}
+				if(username==null){
+					new SQLQueryBuilder(conn)
+							.update("users")
+							.value("username", "id"+userID)
+							.where("id=?", userID)
+							.executeNoResult();
 				}
 
 				byte[] hashedPassword=hashPassword(password);
@@ -268,7 +276,7 @@ public class SessionStorage{
 		return result[0];
 	}
 
-	public static SignupResult registerNewAccount(@NotNull String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender) throws SQLException{
+	public static SignupResult registerNewAccount(@Nullable String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			DatabaseUtils.doWithTransaction(conn, ()->{
 				new SQLQueryBuilder(conn)
@@ -288,7 +296,7 @@ public class SessionStorage{
 				PreparedStatement stmt=conn.prepareStatement("INSERT INTO `users` (`fname`, `lname`, `username`, `public_key`, `private_key`, gender) VALUES (?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 				stmt.setString(1, firstName);
 				stmt.setString(2, lastName);
-				stmt.setString(3, username);
+				stmt.setString(3, username==null ? Utils.randomAlphanumericString(50) : username);
 				stmt.setBytes(4, pair.getPublic().getEncoded());
 				stmt.setBytes(5, pair.getPrivate().getEncoded());
 				stmt.setInt(6, gender.ordinal());
@@ -297,6 +305,13 @@ public class SessionStorage{
 				try(ResultSet res=stmt.getGeneratedKeys()){
 					res.next();
 					userID=res.getInt(1);
+				}
+				if(username==null){
+					new SQLQueryBuilder(conn)
+							.update("users")
+							.value("username", "id"+userID)
+							.where("id=?", userID)
+							.executeNoResult();
 				}
 
 				byte[] hashedPassword=hashPassword(password);
@@ -658,6 +673,17 @@ public class SessionStorage{
 			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT sessions.*, user_agents.user_agent AS user_agent_str FROM sessions LEFT JOIN user_agents ON sessions.user_agent=user_agents.hash WHERE account_id=? ORDER BY last_active DESC", accountID);
 			try(ResultSet res=stmt.executeQuery()){
 				return DatabaseUtils.resultSetToObjectStream(res, OtherSession::fromResultSet, null).toList();
+			}
+		}
+	}
+
+	public static OtherSession getAccountMostRecentSession(int accountID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			try(ResultSet res=SQLQueryBuilder.prepareStatement(conn, "SELECT sessions.*, user_agents.user_agent AS user_agent_str FROM sessions LEFT JOIN user_agents ON sessions.user_agent=user_agents.hash WHERE account_id=? ORDER BY last_active DESC LIMIT 1", accountID)
+					.executeQuery()){
+				if(!res.next())
+					return null;
+				return OtherSession.fromResultSet(res);
 			}
 		}
 	}

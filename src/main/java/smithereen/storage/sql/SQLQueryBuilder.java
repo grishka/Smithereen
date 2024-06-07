@@ -408,14 +408,14 @@ public class SQLQueryBuilder{
 			}
 		}
 
-		if(orderBy!=null){
-			sb.append(" ORDER BY ");
-			sb.append(orderBy);
-		}
-
 		if(groupBy!=null){
 			sb.append(" GROUP BY ");
 			sb.append(groupBy);
+		}
+
+		if(orderBy!=null){
+			sb.append(" ORDER BY ");
+			sb.append(orderBy);
 		}
 
 		if(hasLimit){

@@ -8,7 +8,7 @@
 		{{ form.start('groupEdit', groupEditMessage) }}
 			{{ form.textInput('name', L('group_name'), group.name, {'maxlength': 200, 'required': true}) }}
 			{{ form.textArea('about', L(group.event ? 'about_event' : 'about_group'), group.aboutSource) }}
-			{{ form.textInput('username', L('group_username'), group.username, {'prefix': "#{serverDomain}/", 'autocomplete': false}) }}
+			{{ form.textInput('username', L('group_username'), group.username, {'prefix': "#{serverDomain}/", 'autocomplete': false, 'maxlength': 50, 'required': true, 'pattern': '[a-zA-Z][a-zA-Z0-9\._\-]+', 'explanation': L('username_explain')}) }}
 			{% if group.event %}
 			{{ form.dateTimeInput('event_start', L('event_start_time'), group.eventStartTime) }}
 			{{ form.dateTimeInput('event_end', L('event_end_time'), group.eventEndTime) }}

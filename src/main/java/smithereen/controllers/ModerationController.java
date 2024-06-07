@@ -78,6 +78,7 @@ import smithereen.storage.MediaStorage;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
+import smithereen.text.TextProcessor;
 import smithereen.util.InetAddressRange;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.XTEA;
@@ -550,7 +551,7 @@ public class ModerationController{
 
 	public void addViolationReportComment(ViolationReport report, User self, String commentText){
 		try{
-			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.COMMENT, Utils.preprocessPostHTML(commentText, null), null);
+			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.COMMENT, TextProcessor.preprocessPostHTML(commentText, null), null);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -636,7 +637,7 @@ public class ModerationController{
 
 	public void createUserStaffNote(User self, User target, String text){
 		try{
-			ModerationStorage.createUserStaffNote(target.id, self.id, Utils.preprocessPostHTML(text, null));
+			ModerationStorage.createUserStaffNote(target.id, self.id, TextProcessor.preprocessPostHTML(text, null));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

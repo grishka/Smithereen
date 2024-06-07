@@ -12,8 +12,8 @@ import java.util.Objects;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.LruCache;
 import smithereen.Mailer;
+import smithereen.SmithereenApplication;
 import smithereen.Utils;
 import smithereen.model.Account;
 import smithereen.model.EmailCode;
@@ -32,6 +32,7 @@ import smithereen.storage.DatabaseUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.text.TextProcessor;
 import smithereen.util.EmailCodeActionType;
 import smithereen.util.FloodControl;
 import spark.Request;
@@ -55,6 +56,7 @@ public class SessionRoutes{
 			}
 		}
 		resp.cookie("/", "psid", psid, 10*365*24*60*60, false);
+		SmithereenApplication.addAccountSession(acc.id, req);
 	}
 
 	public static Object login(Request req, Response resp) throws SQLException{
@@ -80,7 +82,7 @@ public class SessionRoutes{
 		}else if(StringUtils.isNotEmpty(req.queryParams("to"))){
 			model.with("message", Utils.lang(req).get("login_needed"));
 		}
-		model.with("additionalParams", "?"+req.queryString()).with("title", lang(req).get("login_title")+" | "+Config.serverDisplayName);
+		model.with("additionalParams", "?"+req.queryString()).with("title", lang(req).get("login_title")+" | "+Config.serverDisplayName).with("username", req.queryParams("username"));
 		return model;
 	}
 
@@ -110,7 +112,6 @@ public class SessionRoutes{
 		Config.SignupMode signupMode=context(req).getModerationController().getEffectiveSignupMode(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("register", req)
 				.with("message", Utils.lang(req).get(errKey))
-				.with("username", req.queryParams("username"))
 				.with("password", req.queryParams("password"))
 				.with("password2", req.queryParams("password2"))
 				.with("email", req.queryParams("email"))
@@ -138,20 +139,7 @@ public class SessionRoutes{
 			throw new UserActionNotAllowedException();
 		}
 
-		String username=req.queryParams("username");
-		if(StringUtils.isEmpty(username) || !Utils.isValidUsername(username))
-			return regError(req, "err_reg_invalid_username");
-		if(Utils.isReservedUsername(username))
-			return regError(req, "err_reg_reserved_username");
-		if(UserStorage.getByUsername(username)!=null)
-			return regError(req, "err_reg_username_taken");
-
-		final Object[] result={null};
-		boolean r=DatabaseUtils.runWithUniqueUsername(username, ()->result[0]=doRegister(req, resp));
-		if(!r){
-			return regError(req, "err_reg_username_taken");
-		}
-		return result[0];
+		return doRegister(req, resp);
 	}
 
 	public static Object doRegister(Request req, Response resp) throws SQLException{
@@ -160,7 +148,7 @@ public class SessionRoutes{
 
 		ApplicationContext ctx=context(req);
 
-		// TODO move all this into UsersController and don't ask/assign username at signup
+		// TODO move all this into UsersController
 		Config.SignupMode signupMode=ctx.getModerationController().getEffectiveSignupMode(req);
 		if(Config.signupFormUseCaptcha && signupMode==Config.SignupMode.OPEN){
 			try{
@@ -170,7 +158,6 @@ public class SessionRoutes{
 			}
 		}
 
-		String username=req.queryParams("username");
 		String password=req.queryParams("password");
 		String password2=req.queryParams("password2");
 		String email=req.queryParams("email");
@@ -213,13 +200,13 @@ public class SessionRoutes{
 					}
 				};
 			}else{
-				res=SessionStorage.registerNewAccount(username, password, email, first, last, gender);
+				res=SessionStorage.registerNewAccount(null, password, email, first, last, gender);
 			}
 		}else{
-			res=SessionStorage.registerNewAccount(username, password, email, first, last, gender, invite);
+			res=SessionStorage.registerNewAccount(null, password, email, first, last, gender, invite);
 		}
 		if(res==SessionStorage.SignupResult.SUCCESS){
-			Account acc=Objects.requireNonNull(SessionStorage.getAccountForUsernameAndPassword(username, password));
+			Account acc=Objects.requireNonNull(SessionStorage.getAccountForUsernameAndPassword(email, password));
 			if(Config.signupConfirmEmail && (invitation==null || StringUtils.isEmpty(invitation.email) || !email.equalsIgnoreCase(invitation.email))){
 				Account.ActivationInfo info=new Account.ActivationInfo();
 				info.emailState=Account.ActivationInfo.EmailConfirmationState.NOT_CONFIRMED;
@@ -373,8 +360,8 @@ public class SessionRoutes{
 		FloodControl.EMAIL_RESEND.incrementOrThrow(self.getUnconfirmedEmail());
 		Mailer.getInstance().sendAccountActivation(req, self);
 		Lang l=lang(req);
-		String msg=l.get("email_confirmation_resent", Map.of("address", escapeHTML(self.getUnconfirmedEmail()))).replace("\n", "<br/>");
-		msg=substituteLinks(msg, Map.of("change", Map.of("href", "/account/changeEmailForm", "data-ajax-box", "")));
+		String msg=l.get("email_confirmation_resent", Map.of("address", TextProcessor.escapeHTML(self.getUnconfirmedEmail()))).replace("\n", "<br/>");
+		msg=TextProcessor.substituteLinks(msg, Map.of("change", Map.of("href", "/account/changeEmailForm", "data-ajax-box", "")));
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).messageBox(l.get("account_activation"), msg, l.get("close"));
 		return new RenderedTemplateResponse("generic_message", req).with("message", new SafeString(msg)).pageTitle(l.get("account_activation"));

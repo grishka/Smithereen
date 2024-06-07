@@ -19,7 +19,6 @@ import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Collections;
@@ -28,15 +27,19 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
+import smithereen.exceptions.FederationException;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.SizedImage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.jsonld.JLD;
 import smithereen.storage.MediaCache;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public abstract class Actor extends ActivityPubObject{
+	public static final int USERNAME_MAX_LENGTH=64;
+
 	public String username;
 	transient public PublicKey publicKey;
 	transient public PrivateKey privateKey;
@@ -171,6 +174,11 @@ public abstract class Actor extends ActivityPubObject{
 		if(username==null){
 			username=Utils.getLastPathSegment(activityPubID);
 		}
+		if(StringUtils.isEmpty(username)){
+			throw new FederationException("Unable to determine actor username: preferredUsername not present and last path segment of ID is blank");
+		}
+		if(username.length()>USERNAME_MAX_LENGTH)
+			username=username.substring(0, USERNAME_MAX_LENGTH);
 		domain=activityPubID.getHost();
 		if(activityPubID.getPort()!=-1)
 			domain+=":"+activityPubID.getPort();
@@ -218,7 +226,7 @@ public abstract class Actor extends ActivityPubObject{
 		}
 
 		if(summary!=null)
-			summary=Utils.sanitizeHTML(summary);
+			summary=TextProcessor.sanitizeHTML(summary);
 
 		return this;
 	}

@@ -10,6 +10,16 @@
 {% macro unlabeledRowEnd() %}
 </div>
 {% endmacro %}
+{% macro customControlStart(name) %}
+	<div class="row" id="formRow_{{ name }}">
+		<div class="label">
+{% endmacro %}
+{% macro customControlAfterLabel() %}
+    </div>
+{% endmacro %}
+{% macro customControlEnd() %}
+	</div>
+{% endmacro %}
 
 {%macro textInput(name, label, value, options)%}
 	{%if options is null%}{%set options={}%}{%endif%}
@@ -25,7 +35,7 @@
 		{%- if options.maxlength is not null %} maxlength="{{options.maxlength}}"{%endif%}
 		{%- if options.minlength is not null %} minlength="{{options.minlength}}"{%endif%}
 		{%- if options.required %} required{%endif%}
-		{%- if options.autocomplete==false %} autocomplete="off"{% endif %}
+		{%- if options.autocomplete==false %} autocomplete="off"{% elseif options.autocomplete is not empty %} autocomplete="{{ options.autocomplete }}"{% endif %}
 		{%- if options.pattern is not empty %} pattern="{{ options.pattern }}"{% endif %}
 		{%- if options.min is not null %} min="{{options.min}}"{%endif%}
 		{%- if options.max is not null %} max="{{ options.max }}"{%endif%}
@@ -45,7 +55,7 @@
 		<div class="label">
 			<label for="{{name}}">{{label}}</label>:
 		</div>
-		<textarea id="{{name}}" name="{{name}}" rows="3"{% if options.required %} required{% endif %}>{{value}}</textarea>
+		<textarea id="{{name}}" name="{{name}}" rows="3"{% if options.required %} required{% endif %}{% if options.maxlength %} maxlength="{{ options.maxlength }}"{% endif %}>{{value}}</textarea>
 		{%if options.explanation is not null%}
 		<br/><span class="formExplanation">{{options.explanation}}</span>
 		{%endif%}

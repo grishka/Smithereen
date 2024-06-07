@@ -1,0 +1,7 @@
+<div class="singleColumn repostBoxEmbed" style="{{ style }}" id="postEmbedTab{{ repostedPost.id }}">
+	<div class="marginAfter">{{ L('embed_post_explanation') }}</div>
+	<textarea readonly onfocus="this.setSelectionRange(0, this.value.length)">{% include "post_embed_code" with {'post': repostedPost} %}</textarea>
+	<h3 class="marginBefore marginAfter">{{ L('embed_preview') }}</h3>
+	<iframe id="embedPreview{{ repostedPost.id }}"></iframe>
+</div>
+{% script %}actuallyInitEmbedPreview({{ repostedPost.id }});{% endscript %}

@@ -14,8 +14,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.Utils;
@@ -26,6 +28,11 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.jsonld.JLD;
 import smithereen.storage.DatabaseUtils;
+import smithereen.storage.utils.Pair;
+import smithereen.text.TextProcessor;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
+import smithereen.util.TranslatableEnum;
 import spark.utils.StringUtils;
 
 public class User extends Actor{
@@ -49,6 +56,22 @@ public class User extends Actor{
 
 	// additional profile fields
 	public boolean manuallyApprovesFollowers;
+	public String hometown;
+	public RelationshipStatus relationship;
+	public URI relationshipPartnerActivityPubID;
+	public int relationshipPartnerID;
+	// "interests" tab
+	public String activities, interests, favoriteMusic, favoriteMovies, favoriteTvShows, favoriteBooks, favoriteGames, favoriteQuotes;
+	// "personal views" tab
+	public PoliticalViews politicalViews;
+	public String religion;
+	public PersonalPriority personalPriority;
+	public PeoplePriority peoplePriority;
+	public HabitsViews smokingViews, alcoholViews;
+	public String inspiredBy;
+	// "contacts" tab
+	public Map<ContactInfoKey, String> contacts=Map.of();
+	public String website, location;
 
 	public String getFullName(){
 		if(StringUtils.isEmpty(lastName))
@@ -169,6 +192,46 @@ public class User extends Actor{
 				long moved=o.get("movedAt").getAsLong();
 				movedAt=Instant.ofEpochSecond(moved);
 			}
+
+			activities=optString(o, "activities");
+			interests=optString(o, "interests");
+			favoriteMusic=optString(o, "music");
+			favoriteMovies=optString(o, "movies");
+			favoriteTvShows=optString(o, "tv");
+			favoriteBooks=optString(o, "books");
+			favoriteGames=optString(o, "games");
+			favoriteQuotes=optString(o, "quotes");
+
+			if(o.has("political"))
+				politicalViews=PoliticalViews.values()[o.get("political").getAsInt()];
+			religion=optString(o, "religion");
+			if(o.has("personalPri"))
+				personalPriority=PersonalPriority.values()[o.get("personalPri").getAsInt()];
+			if(o.has("peoplePri"))
+				peoplePriority=PeoplePriority.values()[o.get("peoplePri").getAsInt()];
+			if(o.has("smoking"))
+				smokingViews=HabitsViews.values()[o.get("smoking").getAsInt()];
+			if(o.has("alcohol"))
+				alcoholViews=HabitsViews.values()[o.get("alcohol").getAsInt()];
+			inspiredBy=optString(o, "inspired");
+
+			if(o.has("contacts")){
+				contacts=o.getAsJsonObject("contacts").entrySet()
+						.stream()
+						.map(e->new Pair<>(ContactInfoKey.valueOf(e.getKey()), e.getValue().getAsString()))
+						.collect(Collectors.toMap(Pair::first, Pair::second));
+			}
+			website=optString(o, "web");
+			location=optString(o, "loc");
+
+			hometown=optString(o, "hometown");
+			if(o.has("relation")){
+				relationship=RelationshipStatus.values()[o.get("relation").getAsInt()];
+				relationshipPartnerID=optInt(o, "partner");
+				if(relationshipPartnerID==-1)
+					relationshipPartnerID=0;
+				relationshipPartnerActivityPubID=tryParseURL(optString(o, "partnerAP"));
+			}
 		}
 
 		String privacy=res.getString("privacy");
@@ -288,6 +351,154 @@ public class User extends Actor{
 		}
 		obj.add("privacySettings", privacy);
 
+		if(StringUtils.isNotEmpty(activities)){
+			serializerContext.addSmAlias("activities");
+			obj.addProperty("activities", activities);
+		}
+		if(StringUtils.isNotEmpty(interests)){
+			serializerContext.addSmAlias("interests");
+			obj.addProperty("interests", interests);
+		}
+		if(StringUtils.isNotEmpty(favoriteMusic)){
+			serializerContext.addSmAlias("favoriteMusic");
+			obj.addProperty("favoriteMusic", favoriteMusic);
+		}
+		if(StringUtils.isNotEmpty(favoriteMovies)){
+			serializerContext.addSmAlias("favoriteMovies");
+			obj.addProperty("favoriteMovies", favoriteMovies);
+		}
+		if(StringUtils.isNotEmpty(favoriteTvShows)){
+			serializerContext.addSmAlias("favoriteTvShows");
+			obj.addProperty("favoriteTvShows", favoriteTvShows);
+		}
+		if(StringUtils.isNotEmpty(favoriteBooks)){
+			serializerContext.addSmAlias("favoriteBooks");
+			obj.addProperty("favoriteBooks", favoriteBooks);
+		}
+		if(StringUtils.isNotEmpty(favoriteGames)){
+			serializerContext.addSmAlias("favoriteGames");
+			obj.addProperty("favoriteGames", favoriteGames);
+		}
+		if(StringUtils.isNotEmpty(favoriteQuotes)){
+			serializerContext.addSmAlias("favoriteQuotes");
+			obj.addProperty("favoriteQuotes", favoriteQuotes);
+		}
+
+		if(politicalViews!=null){
+			serializerContext.addSmIdType("politicalViews");
+			obj.addProperty("politicalViews", "sm:"+switch(politicalViews){
+				case APATHETIC -> "Apathetic";
+				case COMMUNIST -> "Communist";
+				case SOCIALIST -> "Socialist";
+				case MODERATE -> "Moderate";
+				case LIBERAL -> "Liberal";
+				case CONSERVATIVE -> "Conservative";
+				case MONARCHIST -> "Monarchist";
+				case ULTRACONSERVATIVE -> "Ultraconservative";
+				case LIBERTARIAN -> "Libertarian";
+			});
+		}
+		if(StringUtils.isNotEmpty(religion)){
+			serializerContext.addSmAlias("religion");
+			obj.addProperty("religion", religion);
+		}
+		if(personalPriority!=null){
+			serializerContext.addSmIdType("personalPriority");
+			obj.addProperty("personalPriority", "sm:"+switch(personalPriority){
+				case FAMILY_CHILDREN -> "FamilyAndChildren";
+				case CAREER_MONEY -> "CareerAndMoney";
+				case ENTERTAINMENT_LEISURE -> "EntertainmentAndLeisure";
+				case SCIENCE_RESEARCH -> "ScienceAndResearch";
+				case IMPROVING_WORLD -> "ImprovingTheWorld";
+				case PERSONAL_DEVELOPMENT -> "PersonalDevelopment";
+				case BEAUTY_ART -> "BeautyAndArt";
+				case FAME_INFLUENCE -> "FameAndInfluence";
+			});
+		}
+		if(peoplePriority!=null){
+			serializerContext.addSmIdType("peoplePriority");
+			obj.addProperty("peoplePriority", "sm:"+switch(peoplePriority){
+				case INTELLECT_CREATIVITY -> "IntellectAndCreativity";
+				case KINDNESS_HONESTY -> "KindnessAndHonesty";
+				case HEALTH_BEAUTY -> "HealthAndBeauty";
+				case WEALTH_POWER -> "WealthAndPower";
+				case COURAGE_PERSISTENCE -> "CourageAndPersistence";
+				case HUMOR_LIFE_LOVE -> "HumorAndLoveForLife";
+			});
+		}
+		if(smokingViews!=null){
+			serializerContext.addSmIdType("smokingViews");
+			obj.addProperty("smokingViews", "sm:"+switch(smokingViews){
+				case VERY_NEGATIVE -> "VeryNegative";
+				case NEGATIVE -> "Negative";
+				case TOLERANT -> "Tolerant";
+				case NEUTRAL -> "Neutral";
+				case POSITIVE -> "Positive";
+			});
+		}
+		if(alcoholViews!=null){
+			serializerContext.addSmIdType("alcoholViews");
+			obj.addProperty("alcoholViews", "sm:"+switch(alcoholViews){
+				case VERY_NEGATIVE -> "VeryNegative";
+				case NEGATIVE -> "Negative";
+				case TOLERANT -> "Tolerant";
+				case NEUTRAL -> "Neutral";
+				case POSITIVE -> "Positive";
+			});
+		}
+		if(StringUtils.isNotEmpty(inspiredBy)){
+			serializerContext.addSmAlias("inspiredBy");
+			obj.addProperty("inspiredBy", inspiredBy);
+		}
+
+		if(StringUtils.isNotEmpty(location))
+			obj.addProperty("vcard:Address", location);
+		JsonArrayBuilder attachment=new JsonArrayBuilder();
+		if(StringUtils.isNotEmpty(website)){
+			String url=TextProcessor.escapeHTML(website);
+			PropertyValue pv=new PropertyValue();
+			pv.name="Website";
+			pv.value="<a href=\""+url+"\" rel=\"me\">"+url+"</a>";
+			attachment.add(pv.asActivityPubObject(new JsonObject(), serializerContext));
+		}
+		for(ContactInfoKey key:ContactInfoKey.values()){
+			if(contacts.containsKey(key)){
+				String value=contacts.get(key);
+				String url=TextProcessor.getContactInfoValueURL(key, value);
+				PropertyValue pv=new PropertyValue();
+				pv.name=key.getFieldName();
+				if(url!=null){
+					pv.value="<a href=\""+TextProcessor.escapeHTML(url)+"\" rel=\"me\">"+TextProcessor.escapeHTML(value)+"</a>";
+				}else{
+					pv.value=TextProcessor.escapeHTML(value);
+				}
+				attachment.add(pv.asActivityPubObject(new JsonObject(), serializerContext));
+			}
+		}
+		JsonArray att=attachment.build();
+		if(!att.isEmpty())
+			obj.add("attachment", att);
+
+		if(StringUtils.isNotEmpty(hometown)){
+			serializerContext.addSmAlias("hometown");
+			obj.addProperty("hometown", hometown);
+		}
+		if(relationship!=null){
+			serializerContext.addSmIdType("relationshipStatus");
+			serializerContext.addSmIdType("relationshipPartner");
+			obj.addProperty("relationshipStatus", switch(relationship){
+				case SINGLE -> "sm:Single";
+				case IN_RELATIONSHIP -> "sm:InRelationship";
+				case ENGAGED -> "sm:Engaged";
+				case MARRIED -> "sm:Married";
+				case IN_LOVE -> "sm:InLove";
+				case COMPLICATED -> "sm:Complicated";
+				case ACTIVELY_SEARCHING -> "sm:ActivelySearching";
+			});
+			if(relationshipPartnerID!=0)
+				obj.addProperty("relationshipPartner", relationshipPartnerActivityPubID.toString());
+		}
+
 		return obj;
 	}
 
@@ -334,6 +545,57 @@ public class User extends Actor{
 			o.addProperty("movedFrom", movedFrom);
 		if(movedAt!=null)
 			o.addProperty("movedAt", movedAt.getEpochSecond());
+
+		if(StringUtils.isNotEmpty(activities))
+			o.addProperty("activities", activities);
+		if(StringUtils.isNotEmpty(interests))
+			o.addProperty("interests", interests);
+		if(StringUtils.isNotEmpty(favoriteMusic))
+			o.addProperty("music", favoriteMusic);
+		if(StringUtils.isNotEmpty(favoriteMovies))
+			o.addProperty("movies", favoriteMovies);
+		if(StringUtils.isNotEmpty(favoriteTvShows))
+			o.addProperty("tv", favoriteTvShows);
+		if(StringUtils.isNotEmpty(favoriteBooks))
+			o.addProperty("books", favoriteBooks);
+		if(StringUtils.isNotEmpty(favoriteGames))
+			o.addProperty("games", favoriteGames);
+		if(StringUtils.isNotEmpty(favoriteQuotes))
+			o.addProperty("quotes", favoriteQuotes);
+
+		if(politicalViews!=null)
+			o.addProperty("political", politicalViews.ordinal());
+		if(StringUtils.isNotEmpty(religion))
+			o.addProperty("religion", religion);
+		if(personalPriority!=null)
+			o.addProperty("personalPri", personalPriority.ordinal());
+		if(peoplePriority!=null)
+			o.addProperty("peoplePri", peoplePriority.ordinal());
+		if(smokingViews!=null)
+			o.addProperty("smoking", smokingViews.ordinal());
+		if(alcoholViews!=null)
+			o.addProperty("alcohol", alcoholViews.ordinal());
+		if(StringUtils.isNotEmpty(inspiredBy))
+			o.addProperty("inspired", inspiredBy);
+
+		if(!contacts.isEmpty()){
+			o.add("contacts", new JsonObjectBuilder().addAll(contacts).build());
+		}
+		if(StringUtils.isNotEmpty(website))
+			o.addProperty("web", website);
+		if(StringUtils.isNotEmpty(location))
+			o.addProperty("loc", location);
+
+		if(relationship!=null){
+			o.addProperty("relation", relationship.ordinal());
+			if(relationshipPartnerID!=0){
+				o.addProperty("partner", relationshipPartnerID);
+				o.addProperty("partnerAP", relationshipPartnerActivityPubID.toString());
+			}
+		}
+		if(StringUtils.isNotEmpty(hometown))
+			o.addProperty("hometown", hometown);
+
 		return o.toString();
 	}
 
@@ -343,7 +605,7 @@ public class User extends Actor{
 
 	public String getNameForReply(){
 		if(StringUtils.isNotEmpty(firstName))
-			return firstName;
+			return firstName.trim();
 		return username;
 	}
 
@@ -414,6 +676,156 @@ public class User extends Actor{
 				case 3 -> OTHER;
 				default -> throw new IllegalStateException("Unexpected value: "+v);
 			};
+		}
+	}
+
+	public enum PoliticalViews implements TranslatableEnum<PoliticalViews>{
+		APATHETIC,
+		COMMUNIST,
+		SOCIALIST,
+		MODERATE,
+		LIBERAL,
+		CONSERVATIVE,
+		MONARCHIST,
+		ULTRACONSERVATIVE,
+		LIBERTARIAN;
+
+		@Override
+		public String getLangKey(){
+			return "profile_political_"+toString().toLowerCase();
+		}
+	}
+
+	public enum PersonalPriority implements TranslatableEnum<PersonalPriority>{
+		FAMILY_CHILDREN,
+		CAREER_MONEY,
+		ENTERTAINMENT_LEISURE,
+		SCIENCE_RESEARCH,
+		IMPROVING_WORLD,
+		PERSONAL_DEVELOPMENT,
+		BEAUTY_ART,
+		FAME_INFLUENCE;
+
+		@Override
+		public String getLangKey(){
+			return "profile_personal_priority_"+toString().toLowerCase();
+		}
+	}
+
+	public enum PeoplePriority implements TranslatableEnum<PeoplePriority>{
+		INTELLECT_CREATIVITY,
+		KINDNESS_HONESTY,
+		HEALTH_BEAUTY,
+		WEALTH_POWER,
+		COURAGE_PERSISTENCE,
+		HUMOR_LIFE_LOVE;
+
+		@Override
+		public String getLangKey(){
+			return "profile_people_priority_"+toString().toLowerCase();
+		}
+	}
+
+	public enum HabitsViews implements TranslatableEnum<HabitsViews>{
+		VERY_NEGATIVE,
+		NEGATIVE,
+		TOLERANT,
+		NEUTRAL,
+		POSITIVE;
+
+		@Override
+		public String getLangKey(){
+			return "profile_habits_"+toString().toLowerCase();
+		}
+	}
+
+	public enum ContactInfoKey{
+		MATRIX,
+		XMPP,
+		TELEGRAM,
+		SIGNAL,
+		TWITTER,
+		INSTAGRAM,
+		FACEBOOK,
+		VKONTAKTE,
+		SNAPCHAT,
+		DISCORD,
+		GIT,
+		PHONE_NUMBER,
+		EMAIL;
+
+		public String getFieldName(){
+			return switch(this){
+				case MATRIX -> "Matrix";
+				case XMPP -> "XMPP";
+				case TELEGRAM -> "Telegram";
+				case SIGNAL -> "Signal";
+				case TWITTER -> "Twitter";
+				case INSTAGRAM -> "Instagram";
+				case FACEBOOK -> "Facebook";
+				case VKONTAKTE -> "VKontakte";
+				case SNAPCHAT -> "Snapchat";
+				case DISCORD -> "Discord";
+				case GIT -> "Git";
+				case PHONE_NUMBER -> "Phone number";
+				case EMAIL -> "E-mail";
+			};
+		}
+
+		public boolean isLocalizable(){
+			return this==PHONE_NUMBER || this==EMAIL;
+		}
+
+		public String getLangKey(){
+			return switch(this){
+				case PHONE_NUMBER -> "profile_phone_number";
+				case EMAIL -> "email";
+				default -> throw new IllegalStateException("Unexpected value: " + this);
+			};
+		}
+
+		public String getEditLangKey(){
+			return switch(this){
+				case PHONE_NUMBER -> "profile_edit_phone_number";
+				case EMAIL -> "email";
+				default -> throw new IllegalStateException("Unexpected value: " + this);
+			};
+		}
+
+		public List<String> getValueExamples(){
+			return switch(this){
+				case MATRIX -> List.of("@john_appleseed:matrix.org");
+				case XMPP -> List.of("vasya@example.im");
+				case TELEGRAM -> List.of("pavel", "t.me/pavel");
+				case SIGNAL -> List.of("moxie.99", "signal.me/#abcd...");
+				case TWITTER -> List.of("jack", "twitter.com/jack", "x.com/elonmusk");
+				case INSTAGRAM -> List.of("kevin", "instagram.com/kevin");
+				case FACEBOOK -> List.of("zuck", "www.facebook.com/zuck");
+				case VKONTAKTE -> List.of("durov", "vk.com/durov", "id1");
+				case SNAPCHAT -> List.of("evan", "www.snapchat.com/add/evan");
+				case DISCORD -> List.of("jason");
+				case GIT -> List.of("github.com/octocat", "gitlab.com/gitlab-org");
+				case PHONE_NUMBER, EMAIL -> List.of();
+			};
+		}
+	}
+
+	public enum RelationshipStatus implements TranslatableEnum<RelationshipStatus>{
+		SINGLE,
+		IN_RELATIONSHIP,
+		ENGAGED,
+		MARRIED,
+		IN_LOVE,
+		COMPLICATED,
+		ACTIVELY_SEARCHING;
+
+		@Override
+		public String getLangKey(){
+			return "profile_relationship_"+toString().toLowerCase();
+		}
+
+		public boolean canHavePartner(){
+			return this!=SINGLE && this!=ACTIVELY_SEARCHING;
 		}
 	}
 }

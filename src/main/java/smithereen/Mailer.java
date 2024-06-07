@@ -28,6 +28,7 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
 import smithereen.model.Account;
+import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import smithereen.lang.Lang;
 import smithereen.model.UserBanInfo;
@@ -156,11 +157,11 @@ public class Mailer{
 	public void sendSignupInvitation(Request req, Account self, String email, String code, String firstName, boolean isRequest){
 		Lang l=Utils.lang(req);
 		String link=UriBuilder.local().path("account", "register").queryParam("invite", code).build().toString();
-		String plaintext=Utils.stripHTML(l.get(isRequest ? "email_invite_body_start_approved" : "email_invite_body_start", Map.of(
+		String plaintext=TextProcessor.stripHTML(l.get(isRequest ? "email_invite_body_start_approved" : "email_invite_body_start", Map.of(
 				"name", firstName,
 				"inviterName", self.user.getFullName(),
 				"serverName", Config.serverDisplayName
-		)));
+		)), true);
 		plaintext+="\n\n"+l.get("email_invite_body_end_plain")+"\n\n"+link;
 		send(email, l.get(isRequest ? "email_invite_subject_approved" : "email_invite_subject", Map.of("serverName", Config.serverDisplayName)), plaintext, "signup_invitation", Map.of(
 				"name", firstName,
@@ -192,9 +193,9 @@ public class Mailer{
 			default -> throw new IllegalArgumentException("Unexpected value: " + banStatus);
 		};
 		String htmlText=text;
-		text=Utils.stripHTML(text);
+		text=TextProcessor.stripHTML(text, true);
 		if(StringUtils.isNotEmpty(banInfo.message())){
-			htmlText+="<br/><br/>"+l.get("message_from_staff")+": "+Utils.stripHTML(banInfo.message());
+			htmlText+="<br/><br/>"+l.get("message_from_staff")+": "+TextProcessor.stripHTML(banInfo.message(), true);
 			text+="\n\n"+l.get("message_from_staff")+": "+banInfo.message();
 		}
 		send(self.email, subject, text, "generic", Map.of("text", htmlText), self.prefs.locale);
@@ -203,7 +204,7 @@ public class Mailer{
 	public void sendActionConfirmationCode(Request req, Account self, String action, String code){
 		LOG.trace("Sending code {} for action {}", code, action);
 		Lang l=Utils.lang(req);
-		String plaintext=Utils.stripHTML(l.get("email_confirmation_code", Map.of("name", self.user.firstName, "action", action)))+"\n\n"+code+"\n\n"+Utils.stripHTML(l.get("email_confirmation_code_info"));
+		String plaintext=TextProcessor.stripHTML(l.get("email_confirmation_code", Map.of("name", self.user.firstName, "action", action)), true)+"\n\n"+code+"\n\n"+TextProcessor.stripHTML(l.get("email_confirmation_code_info"), true);
 		String subject=l.get("email_confirmation_code_subject", Map.of("domain", Config.domain));
 		send(self.email, subject, plaintext, "confirmation_code", Map.of("name", self.user.firstName, "action", action, "code", code), l.getLocale());
 	}

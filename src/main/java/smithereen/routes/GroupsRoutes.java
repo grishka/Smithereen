@@ -28,6 +28,7 @@ import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
 import smithereen.model.Account;
 import smithereen.model.ActorWithDescription;
+import smithereen.model.CommentViewType;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
 import smithereen.model.GroupAdmin;
@@ -42,7 +43,8 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
-import smithereen.util.Whitelist;
+import smithereen.text.TextProcessor;
+import smithereen.text.Whitelist;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -76,11 +78,21 @@ public class GroupsRoutes{
 
 	public static Object userGroups(Request req, Response resp, User user){
 		jsLangKey(req, "cancel", "create");
+		ApplicationContext ctx=context(req);
 		SessionInfo info=sessionInfo(req);
-		context(req).getPrivacyController().enforceUserProfileAccess(info!=null && info.account!=null ? info.account.user : null, user);
+		ctx.getPrivacyController().enforceUserProfileAccess(info!=null && info.account!=null ? info.account.user : null, user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("tab", "groups").with("title", lang(req).get("groups"));
-		model.paginate(context(req).getGroupsController().getUserGroups(user, info!=null && info.account!=null ? info.account.user : null, offset(req), 100));
+		String query=req.queryParams("q");
+		model.with("query", query);
+		if(StringUtils.isNotEmpty(query))
+			model.paginate(ctx.getSearchController().searchGroups(info!=null && info.account!=null ? info.account.user : null, query, false, user, offset(req), 100));
+		else
+			model.paginate(ctx.getGroupsController().getUserGroups(user, info!=null && info.account!=null ? info.account.user : null, offset(req), 100));
 		model.with("owner", user);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"));
+		}
 		return model;
 	}
 
@@ -92,17 +104,26 @@ public class GroupsRoutes{
 	}
 
 	public static Object myEvents(Request req, Response resp, Account self, ApplicationContext ctx){
-		return myEvents(req, resp, self, GroupsController.EventsType.FUTURE);
+		return myEvents(req, resp, self, GroupsController.EventsType.FUTURE, ctx);
 	}
 
 	public static Object myPastEvents(Request req, Response resp, Account self, ApplicationContext ctx){
-		return myEvents(req, resp, self, GroupsController.EventsType.PAST);
+		return myEvents(req, resp, self, GroupsController.EventsType.PAST, ctx);
 	}
 
-	public static Object myEvents(Request req, Response resp, Account self, GroupsController.EventsType type){
+	public static Object myEvents(Request req, Response resp, Account self, GroupsController.EventsType type, ApplicationContext ctx){
 		jsLangKey(req, "cancel", "create");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("events", true).with("tab", type==GroupsController.EventsType.PAST ? "past" : "events").with("owner", self.user).pageTitle(lang(req).get("events"));
-		model.paginate(context(req).getGroupsController().getUserEvents(self.user, type, offset(req), 100));
+		String query=req.queryParams("q");
+		model.with("query", query);
+		if(StringUtils.isNotEmpty(query))
+			model.paginate(ctx.getSearchController().searchGroups(self.user, query, true, self.user, offset(req), 100));
+		else
+			model.paginate(context(req).getGroupsController().getUserEvents(self.user, type, offset(req), 100));
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"));
+		}
 		return model;
 	}
 
@@ -192,15 +213,21 @@ public class GroupsRoutes{
 			int offset=offset(req);
 			PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, group, false, offset, 20));
 			wallPostsCount=wall.total;
+			ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
+			CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 			if(req.attribute("mobile")==null){
-				ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
+				ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
 			}
 			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
-			model.with("postCount", wall.total).paginate(wall).with("canPostOnWall", self!=null).with("canSeeOthersPosts", true);
+			model.with("postCount", wall.total)
+					.paginate(wall, "/groups/"+group.id+"/wall?offset=", null)
+					.with("canPostOnWall", self!=null)
+					.with("canSeeOthersPosts", true);
 			model.with("postInteractions", interactions);
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
 			model.with("users", ctx.getUsersController().getUsers(needUsers));
+			model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 		}
 
 		if(group instanceof ForeignGroup)
@@ -225,6 +252,7 @@ public class GroupsRoutes{
 			}
 			if(membershipState==Group.MembershipState.REQUESTED)
 				model.with("membershipStateText", l.get("requested_to_join"));
+			model.with("isBookmarked", ctx.getBookmarksController().isGroupBookmarked(self.user, group));
 		}else{
 			HashMap<String, String> meta=new LinkedHashMap<>();
 			meta.put("og:type", "profile");
@@ -769,7 +797,7 @@ public class GroupsRoutes{
 		if(msg==null)
 			msg=lang(req).get("invitation_sent");
 		if(isAjax(req)){
-			return new WebDeltaResponse(resp).setContent("frowActions"+user.id, "<div class=\"settingsMessage\">"+escapeHTML(msg)+"</div>");
+			return new WebDeltaResponse(resp).setContent("frowActions"+user.id, "<div class=\"settingsMessage\">"+TextProcessor.escapeHTML(msg)+"</div>");
 		}
 		return "";
 	}

@@ -166,103 +166,60 @@ public class ObjectLinkResolver{
 
 	@NotNull
 	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
-		try{
-			LOG.debug("Resolving ActivityPub link: {}, expected type: {}, allow storage {}, force refetch {}", _link, expectedType.getName(), allowStorage, forceRefetch);
-			URI link;
-			if("bear".equals(_link.getScheme())){
-				link=URI.create(UriBuilder.parseQueryString(_link.getRawQuery()).get("u"));
+		LOG.debug("Resolving ActivityPub link: {}, expected type: {}, allow storage {}, force refetch {}", _link, expectedType.getName(), allowStorage, forceRefetch);
+		URI link;
+		if("bear".equals(_link.getScheme())){
+			link=URI.create(UriBuilder.parseQueryString(_link.getRawQuery()).get("u"));
+		}else{
+			link=_link;
+		}
+		if(!forceRefetch){
+			if(allowFetching){
+				try{
+					return resolveLocally(link, expectedType);
+				}catch(ObjectNotFoundException ignore){}
 			}else{
-				link=_link;
+				return resolveLocally(link, expectedType);
 			}
-			if(!Config.isLocal(link)){
-				if(!forceRefetch){
-					if(expectedType.isAssignableFrom(ForeignUser.class)){
-						User user=UserStorage.getUserByActivityPubID(link);
-						if(user!=null)
-							return ensureTypeAndCast(user, expectedType);
-						user=serviceActorCache.get(link);
-						if(user!=null)
-							return ensureTypeAndCast(user, expectedType);
+		}
+		if(!Config.isLocal(link)){
+			if(allowFetching){
+				try{
+					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context);
+					if(obj instanceof ForeignGroup fg){
+						fg.resolveDependencies(context, allowFetching, allowStorage);
 					}
-					if(expectedType.isAssignableFrom(ForeignGroup.class)){
-						ForeignGroup group=GroupStorage.getForeignGroupByActivityPubID(link);
-						if(group!=null)
-							return ensureTypeAndCast(group, expectedType);
+					if(obj instanceof ForeignUser fu){
+						if(allowStorage && fu.movedToURL!=null){
+							handleNewlyFetchedMovedUser(fu);
+						}
 					}
-					if(expectedType.isAssignableFrom(Post.class)){
-						Post post=PostStorage.getPostByID(link);
-						if(post!=null)
-							return ensureTypeAndCast(post, expectedType);
+					if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
+						User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
+						if(author.banStatus==UserBanStatus.SUSPENDED)
+							throw new ObjectNotFoundException("Post author is suspended on this server");
+						return ensureTypeAndCast(obj, expectedType);
 					}
-					if(expectedType.isAssignableFrom(MailMessage.class)){
-						List<MailMessage> msgs=MailStorage.getMessages(link);
-						if(!msgs.isEmpty())
-							return ensureTypeAndCast(msgs.get(0), expectedType);
+					T o=convertToNativeObject(obj, expectedType);
+					if(!bypassCollectionCheck && o instanceof Post post && obj.inReplyTo==null){ // TODO make this a generalized interface OwnedObject or something
+						if(post.ownerID!=post.authorID){
+							Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
+							ensureObjectIsInCollection(owner, owner.getWallURL(), post.getActivityPubID());
+						}
 					}
+					if(o instanceof Post post){
+						User author=context.getUsersController().getUserOrThrow(post.authorID);
+						if(author.banStatus==UserBanStatus.SUSPENDED)
+							throw new ObjectNotFoundException("Post author is suspended on this server");
+					}
+					if(allowStorage)
+						storeOrUpdateRemoteObject(o);
+					return o;
+				}catch(IOException x){
+					throw new ObjectNotFoundException("Can't resolve remote object: "+link, x);
 				}
-				if(allowFetching){
-					try{
-						ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context);
-						if(obj instanceof ForeignGroup fg){
-							fg.resolveDependencies(context, allowFetching, allowStorage);
-						}
-						if(obj instanceof ForeignUser fu){
-							if(allowStorage && fu.movedToURL!=null){
-								handleNewlyFetchedMovedUser(fu);
-							}
-						}
-						if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
-							User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
-							if(author.banStatus==UserBanStatus.SUSPENDED)
-								throw new ObjectNotFoundException("Post author is suspended on this server");
-							return ensureTypeAndCast(obj, expectedType);
-						}
-						T o=convertToNativeObject(obj, expectedType);
-						if(!bypassCollectionCheck && o instanceof Post post && obj.inReplyTo==null){ // TODO make this a generalized interface OwnedObject or something
-							if(post.ownerID!=post.authorID){
-								Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
-								ensureObjectIsInCollection(owner, owner.getWallURL(), post.getActivityPubID());
-							}
-						}
-						if(o instanceof Post post){
-							User author=context.getUsersController().getUserOrThrow(post.authorID);
-							if(author.banStatus==UserBanStatus.SUSPENDED)
-								throw new ObjectNotFoundException("Post author is suspended on this server");
-						}
-						if(allowStorage)
-							storeOrUpdateRemoteObject(o);
-						return o;
-					}catch(IOException x){
-						throw new ObjectNotFoundException("Can't resolve remote object: "+link, x);
-					}
-				}
-				throw new ObjectNotFoundException("Can't resolve remote object locally: "+link);
 			}
-
-			Matcher matcher=POSTS.matcher(link.getPath());
-			if(matcher.find()){
-				return ensureTypeAndCast(getPost(matcher.group(1)), expectedType);
-			}
-
-			matcher=USERS.matcher(link.getPath());
-			if(matcher.find()){
-				return ensureTypeAndCast(getUser(matcher.group(1)), expectedType);
-			}
-
-			matcher=GROUPS.matcher(link.getPath());
-			if(matcher.find()){
-				return ensureTypeAndCast(getGroup(matcher.group(1)), expectedType);
-			}
-
-			matcher=MESSAGES.matcher(link.getPath());
-			if(matcher.find()){
-				long id=Utils.decodeLong(matcher.group(1));
-				List<MailMessage> msgs=MailStorage.getMessages(Set.of(id));
-				if(!msgs.isEmpty())
-					return ensureTypeAndCast(msgs.get(0), expectedType);
-			}
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
+			throw new ObjectNotFoundException("Can't resolve remote object locally: "+link);
 		}
 
 		throw new ObjectNotFoundException("Invalid local URI");
@@ -281,6 +238,62 @@ public class ObjectLinkResolver{
 		return convertToActivityPubObject(resolveNative(_link, nativeType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck), expectedType);
 	}
 
+	public <T> T resolveLocally(URI link, Class<T> expectedType){
+		try{
+			if(Config.isLocal(link)){
+				Matcher matcher=POSTS.matcher(link.getPath());
+				if(matcher.find()){
+					return ensureTypeAndCast(getPost(matcher.group(1)), expectedType);
+				}
+
+				matcher=USERS.matcher(link.getPath());
+				if(matcher.find()){
+					return ensureTypeAndCast(getUser(matcher.group(1)), expectedType);
+				}
+
+				matcher=GROUPS.matcher(link.getPath());
+				if(matcher.find()){
+					return ensureTypeAndCast(getGroup(matcher.group(1)), expectedType);
+				}
+
+				matcher=MESSAGES.matcher(link.getPath());
+				if(matcher.find()){
+					long id=Utils.decodeLong(matcher.group(1));
+					List<MailMessage> msgs=MailStorage.getMessages(Set.of(id));
+					if(!msgs.isEmpty())
+						return ensureTypeAndCast(msgs.getFirst(), expectedType);
+				}
+			}else{
+				if(expectedType.isAssignableFrom(ForeignUser.class)){
+					User user=UserStorage.getUserByActivityPubID(link);
+					if(user!=null)
+						return ensureTypeAndCast(user, expectedType);
+					user=serviceActorCache.get(link);
+					if(user!=null)
+						return ensureTypeAndCast(user, expectedType);
+				}
+				if(expectedType.isAssignableFrom(ForeignGroup.class)){
+					ForeignGroup group=GroupStorage.getForeignGroupByActivityPubID(link);
+					if(group!=null)
+						return ensureTypeAndCast(group, expectedType);
+				}
+				if(expectedType.isAssignableFrom(Post.class)){
+					Post post=PostStorage.getPostByID(link);
+					if(post!=null)
+						return ensureTypeAndCast(post, expectedType);
+				}
+				if(expectedType.isAssignableFrom(MailMessage.class)){
+					List<MailMessage> msgs=MailStorage.getMessages(link);
+					if(!msgs.isEmpty())
+						return ensureTypeAndCast(msgs.getFirst(), expectedType);
+				}
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		throw new ObjectNotFoundException("Can't resolve object link locally: "+link);
+	}
+
 	public void storeOrUpdateRemoteObject(Object o){
 		try{
 			if(o instanceof ForeignUser fu){
@@ -288,6 +301,13 @@ public class ObjectLinkResolver{
 					serviceActorCache.put(fu.activityPubID, fu);
 				}else{
 					UserStorage.putOrUpdateForeignUser(fu);
+					if(fu.relationshipPartnerActivityPubID!=null && fu.relationshipPartnerID==0){
+						try{
+							User partner=resolve(fu.relationshipPartnerActivityPubID, User.class, true, true, false);
+							fu.relationshipPartnerID=partner.id;
+							UserStorage.putOrUpdateForeignUser(fu);
+						}catch(ObjectNotFoundException ignore){}
+					}
 				}
 			}else if(o instanceof ForeignGroup fg){
 				fg.storeDependencies(context);

@@ -141,7 +141,7 @@ public class Templates{
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
 		}
-		model.with("locale", Utils.localeForRequest(req)).with("timeZone", tz!=null ? tz : ZoneId.systemDefault()).with("jsConfig", jsConfig.toString())
+		model.with("timeZone", tz!=null ? tz : ZoneId.systemDefault()).with("jsConfig", jsConfig.toString())
 				.with("jsLangKeys", "{"+String.join(",", jsLang)+"}")
 				.with("staticHashes", staticHashes)
 				.with("serverName", Config.getServerDisplayName())

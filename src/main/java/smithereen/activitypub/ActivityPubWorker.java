@@ -21,12 +21,9 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.Future;
-import java.util.concurrent.RecursiveAction;
-import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -60,6 +57,9 @@ import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
+import smithereen.exceptions.FederationException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -70,16 +70,14 @@ import smithereen.model.PollOption;
 import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
-import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.notifications.NotificationUtils;
-import smithereen.exceptions.FederationException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.NoResultCallable;
+import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
 public class ActivityPubWorker{
@@ -93,24 +91,24 @@ public class ActivityPubWorker{
 	 */
 	private static final int MAX_FRIENDS=10_000;
 	private static final int ACTORS_BATCH_SIZE=25;
+	private static final int MAX_REPOST_DEPTH=20;
 
-	private final ForkJoinPool executor;
-	private final ScheduledExecutorService retryExecutor;
+	private final ExecutorService executor=Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("ActivityPubWorker-", 0).factory());
+	private final ScheduledExecutorService retryExecutor=Executors.newSingleThreadScheduledExecutor();
 	private final Random rand=new Random();
 
 	// These must be accessed from synchronized(this)
-	private HashMap<URI, Future<List<Post>>> fetchingReplyThreads=new HashMap<>();
-	private HashMap<URI, List<Consumer<List<Post>>>> afterFetchReplyThreadActions=new HashMap<>();
-	private HashMap<URI, Future<Post>> fetchingAllReplies=new HashMap<>();
-	private HashSet<URI> fetchingRelationshipCollectionsActors=new HashSet<>();
-	private HashSet<URI> fetchingContentCollectionsActors=new HashSet<>();
+	private final HashMap<URI, Future<List<Post>>> fetchingReplyThreads=new HashMap<>();
+	private final HashMap<URI, List<Consumer<List<Post>>>> afterFetchReplyThreadActions=new HashMap<>();
+	private final HashMap<URI, Future<Post>> fetchingAllReplies=new HashMap<>();
+	private final HashSet<URI> fetchingRelationshipCollectionsActors=new HashSet<>();
+	private final HashSet<URI> fetchingContentCollectionsActors=new HashSet<>();
+	private final HashMap<URI, Future<List<Post>>> fetchingRepostChains=new HashMap<>();
 
 	private final ApplicationContext context;
 
 	public ActivityPubWorker(ApplicationContext context){
 		this.context=context;
-		executor=new ForkJoinPool(Runtime.getRuntime().availableProcessors()*2);
-		retryExecutor=Executors.newSingleThreadScheduledExecutor();
 	}
 
 	public void shutDown(){
@@ -838,6 +836,24 @@ public class ActivityPubWorker{
 		executor.submit(new FetchActorContentCollectionsTask(actor));
 	}
 
+	public synchronized Future<List<Post>> fetchRepostChain(NoteOrQuestion topLevelPost){
+		return fetchingRepostChains.computeIfAbsent(topLevelPost.activityPubID, uri->executor.submit(new FetchRepostChainTask(topLevelPost)));
+	}
+
+	private <T extends Callable<?>> void invokeAll(Collection<T> tasks){
+		ArrayList<Future<?>> futures=new ArrayList<>();
+		for(Callable<?> task:tasks){
+			futures.add(executor.submit(task));
+		}
+		for(Future<?> future:futures){
+			try{
+				future.get();
+			}catch(Exception x){
+				LOG.warn("Task execution failed", x);
+			}
+		}
+	}
+
 	private class SendOneActivityRunnable implements Runnable{
 		private Activity activity;
 		private URI destination;
@@ -935,16 +951,16 @@ public class ActivityPubWorker{
 		public List<Post> call() throws Exception{
 			LOG.debug("Started fetching parent thread for post {}", initialPost.activityPubID);
 			seenPosts.add(initialPost.activityPubID);
-			while(thread.get(0).inReplyTo!=null){
-				NoteOrQuestion post=context.getObjectLinkResolver().resolve(thread.get(0).inReplyTo, NoteOrQuestion.class, true, false, false, (JsonObject) null, true);
+			while(thread.getFirst().inReplyTo!=null){
+				NoteOrQuestion post=context.getObjectLinkResolver().resolve(thread.getFirst().inReplyTo, NoteOrQuestion.class, true, false, false, (JsonObject) null, true);
 				if(seenPosts.contains(post.activityPubID)){
 					LOG.warn("Already seen post {} while fetching parent thread for {}", post.activityPubID, initialPost.activityPubID);
 					throw new IllegalStateException("Reply thread contains a loop of links");
 				}
 				seenPosts.add(post.activityPubID);
-				thread.add(0, post);
+				thread.addFirst(post);
 			}
-			NoteOrQuestion topLevel=thread.get(0);
+			NoteOrQuestion topLevel=thread.getFirst();
 			final ArrayList<Post> realThread=new ArrayList<>();
 			Post parent=null;
 			for(NoteOrQuestion noq:thread){
@@ -957,7 +973,7 @@ public class ActivityPubWorker{
 				}
 				context.getWallController().loadAndPreprocessRemotePostMentions(p, noq);
 				PostStorage.putForeignWallPost(p);
-				NotificationUtils.putNotificationsForPost(p, parent);
+				NotificationUtils.putNotificationsForPost(p, parent, null);
 				realThread.add(p);
 				parent=p;
 			}
@@ -975,7 +991,7 @@ public class ActivityPubWorker{
 		}
 	}
 
-	private class FetchAllRepliesTask extends RecursiveTask<Post>{
+	private class FetchAllRepliesTask implements Callable<Post>{
 		protected Post post;
 		/**
 		 * This keeps track of all the posts we've seen in this comment thread, to prevent a DoS via infinite recursion.
@@ -995,64 +1011,51 @@ public class ActivityPubWorker{
 		}
 
 		@Override
-		protected Post compute(){
+		public Post call() throws Exception{
 			LOG.debug("Started fetching full reply tree for post {}", post.getActivityPubID());
-			try{
-				if(post.activityPubReplies==null){
-					if(post.isLocal()){
-//						post.repliesObjects=PostStorage.getRepliesExact(post.getReplyKeyForReplies(), Integer.MAX_VALUE, 1000).list;
-					}else{
-						return post;
-					}
-				}else{
-					Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
+			if(post.activityPubReplies==null){
+				if(!post.isLocal()){
+					return post;
+				}
+			}else{
+				Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
 
-					ActivityPubCollection collection;
-//					if(post.replies.link!=null){
-						collection=context.getObjectLinkResolver().resolve(post.activityPubReplies, ActivityPubCollection.class, true, false, false, owner, true);
-						collection.validate(post.getActivityPubID(), "replies");
-//					}else if(post.replies.object instanceof ActivityPubCollection){
-//						collection=(ActivityPubCollection) post.replies.object;
-//					}else{
-//						LOG.warn("Post {} doesn't have a replies collection", post.activityPubID);
-//						return post;
-//					}
-					LOG.trace("collection: {}", collection);
-					if(collection.first==null){
-						LOG.warn("Post {} doesn't have replies.first", post.getActivityPubID());
-						return post;
-					}
-					CollectionPage page;
-					if(collection.first.link!=null){
-						page=context.getObjectLinkResolver().resolve(collection.first.link, CollectionPage.class, true, false, false, owner, false);
-						page.validate(post.getActivityPubID(), "replies.first");
-					}else if(collection.first.object instanceof CollectionPage){
-						page=(CollectionPage) collection.first.object;
-					}else{
-						LOG.warn("Post {} doesn't have a correct CollectionPage in replies.first", post.getActivityPubID());
-						return post;
-					}
-					LOG.trace("first page: {}", page);
-					if(page.items!=null && !page.items.isEmpty()){
-						doOneCollectionPage(page.items);
-					}
-					while(page.next!=null){
-						LOG.trace("getting next page: {}", page.next);
-						try{
-							page=context.getObjectLinkResolver().resolve(page.next, CollectionPage.class, true, false, false, owner, false);
-							if(page.items==null){ // you're supposed to not return the "next" field when there are no more pages, but mastodon still does...
-								LOG.debug("done fetching replies because page.items is empty");
-								break;
-							}
-							doOneCollectionPage(page.items);
-						}catch(ObjectNotFoundException x){
-							LOG.warn("Failed to get replies collection page for post {}", post.getActivityPubID());
-							return post;
+				ActivityPubCollection collection;
+				collection=context.getObjectLinkResolver().resolve(post.activityPubReplies, ActivityPubCollection.class, true, false, false, owner, true);
+				collection.validate(post.getActivityPubID(), "replies");
+				LOG.trace("collection: {}", collection);
+				if(collection.first==null){
+					LOG.warn("Post {} doesn't have replies.first", post.getActivityPubID());
+					return post;
+				}
+				CollectionPage page;
+				if(collection.first.link!=null){
+					page=context.getObjectLinkResolver().resolve(collection.first.link, CollectionPage.class, true, false, false, owner, false);
+					page.validate(post.getActivityPubID(), "replies.first");
+				}else if(collection.first.object instanceof CollectionPage){
+					page=(CollectionPage) collection.first.object;
+				}else{
+					LOG.warn("Post {} doesn't have a correct CollectionPage in replies.first", post.getActivityPubID());
+					return post;
+				}
+				LOG.trace("first page: {}", page);
+				if(page.items!=null && !page.items.isEmpty()){
+					doOneCollectionPage(page.items);
+				}
+				while(page.next!=null){
+					LOG.trace("getting next page: {}", page.next);
+					try{
+						page=context.getObjectLinkResolver().resolve(page.next, CollectionPage.class, true, false, false, owner, false);
+						if(page.items==null){ // you're supposed to not return the "next" field when there are no more pages, but mastodon still does...
+							LOG.debug("done fetching replies because page.items is empty");
+							break;
 						}
+						doOneCollectionPage(page.items);
+					}catch(ObjectNotFoundException x){
+						LOG.warn("Failed to get replies collection page for post {}", post.getActivityPubID());
+						return post;
 					}
 				}
-			}catch(Exception x){
-				completeExceptionally(x);
 			}
 			if(post.getReplyLevel()==0){
 				synchronized(ActivityPubWorker.this){
@@ -1064,7 +1067,7 @@ public class ActivityPubWorker{
 		}
 
 		private void doOneCollectionPage(List<LinkOrObject> page) throws Exception{
-			ArrayList<FetchAllRepliesTask> subtasks=new ArrayList<>();
+			ArrayList<Future<Post>> subtasks=new ArrayList<>();
 			for(LinkOrObject item:page){
 				Post post;
 				if(item.link!=null){
@@ -1080,8 +1083,7 @@ public class ActivityPubWorker{
 						seenPosts.add(item.link);
 					}
 					FetchPostAndRepliesTask subtask=new FetchPostAndRepliesTask(item.link, this.post, seenPosts);
-					subtasks.add(subtask);
-					subtask.fork();
+					subtasks.add(executor.submit(subtask));
 				}else if(item.object instanceof NoteOrQuestion noq){
 					synchronized(seenPosts){
 						if(seenPosts.contains(item.object.activityPubID)){
@@ -1095,19 +1097,18 @@ public class ActivityPubWorker{
 						seenPosts.add(item.object.activityPubID);
 					}
 					post=noq.asNativePost(context);
+					context.getWallController().loadAndPreprocessRemotePostMentions(post, noq);
 					PostStorage.putForeignWallPost(post);
 					LOG.trace("got post: {}", post);
 					FetchAllRepliesTask subtask=new FetchAllRepliesTask(post, seenPosts);
-					subtasks.add(subtask);
-					subtask.fork();
+					subtasks.add(executor.submit(subtask));
 				}else{
 					LOG.warn("reply object isn't a post: {}", item.object);
 				}
 			}
-			for(FetchAllRepliesTask task:subtasks){
+			for(Future<Post> task:subtasks){
 				try{
-//					post.repliesObjects.add(task.join());
-					task.join();
+					task.get();
 				}catch(Exception x){
 					LOG.warn("error fetching reply", x);
 				}
@@ -1116,8 +1117,8 @@ public class ActivityPubWorker{
 	}
 
 	private class FetchPostAndRepliesTask extends FetchAllRepliesTask{
-		private URI postID;
-		private Post parentPost;
+		private final URI postID;
+		private final Post parentPost;
 
 		public FetchPostAndRepliesTask(URI postID, Post parentPost, Set<URI> seenPosts){
 			super(null, seenPosts);
@@ -1126,21 +1127,17 @@ public class ActivityPubWorker{
 		}
 
 		@Override
-		protected Post compute(){
-			try{
-				LOG.trace("Fetching remote reply from {}", postID);
-				post=context.getObjectLinkResolver().resolveNative(postID, Post.class, true, false, false, context.getWallController().getContentAuthorAndOwner(parentPost).owner(), true);
-//				post.setParent(parentPost);
-//				post.storeDependencies(context);
-				PostStorage.putForeignWallPost(post);
-			}catch(Exception x){
-				completeExceptionally(x);
-			}
-			return super.compute();
+		public Post call() throws Exception{
+			LOG.trace("Fetching remote reply from {}", postID);
+			NoteOrQuestion noq=context.getObjectLinkResolver().resolve(postID, NoteOrQuestion.class, true, false, false, context.getWallController().getContentAuthorAndOwner(parentPost).owner(), true);
+			post=noq.asNativePost(context);
+			context.getWallController().loadAndPreprocessRemotePostMentions(post, noq);
+			PostStorage.putForeignWallPost(post);
+			return super.call();
 		}
 	}
 
-	private class FetchActorRelationshipCollectionsTask extends RecursiveAction{
+	private class FetchActorRelationshipCollectionsTask extends NoResultCallable{
 		private final Actor actor;
 
 		private FetchActorRelationshipCollectionsTask(Actor actor){
@@ -1149,7 +1146,7 @@ public class ActivityPubWorker{
 
 		@Override
 		protected void compute(){
-			List<ForkJoinTask<?>> tasks=new ArrayList<>();
+			List<Callable<?>> tasks=new ArrayList<>();
 			// TODO also sync removed items
 			if(actor instanceof ForeignUser user){
 				if(user.getFriendsURL()!=null){
@@ -1177,7 +1174,7 @@ public class ActivityPubWorker{
 		}
 	}
 
-	private class FetchActorContentCollectionsTask extends RecursiveAction{
+	private class FetchActorContentCollectionsTask extends NoResultCallable{
 		private final Actor actor;
 
 		private FetchActorContentCollectionsTask(Actor actor){
@@ -1186,7 +1183,7 @@ public class ActivityPubWorker{
 
 		@Override
 		protected void compute(){
-			List<ForkJoinTask<?>> tasks=new ArrayList<>();
+			List<Callable<?>> tasks=new ArrayList<>();
 			if(actor.hasWall()){
 				tasks.add(new FetchActorWallTask(actor));
 			}
@@ -1205,7 +1202,7 @@ public class ActivityPubWorker{
 	/**
 	 * Base class for tasks that deal with collections. Handles paginating through a collection.
 	 */
-	private abstract class ForwardPaginatingCollectionTask extends RecursiveAction{
+	private abstract class ForwardPaginatingCollectionTask extends NoResultCallable{
 		protected final URI collectionID;
 		protected ActivityPubCollection collection;
 		protected int totalItems, processedItems;
@@ -1308,7 +1305,7 @@ public class ActivityPubWorker{
 	/**
 	 * Fetches the user's friends and groups by intersecting followers and following
 	 */
-	private class FetchUserFriendsAndGroupsViaFollowsTask extends RecursiveAction{
+	private class FetchUserFriendsAndGroupsViaFollowsTask extends NoResultCallable{
 		private final ForeignUser user;
 
 		private FetchUserFriendsAndGroupsViaFollowsTask(ForeignUser user){
@@ -1316,7 +1313,7 @@ public class ActivityPubWorker{
 		}
 
 		@Override
-		protected void compute(){
+		protected void compute() throws Exception{
 			if(user.followers==null || user.following==null)
 				throw new FederationException("The user must have followers and following collections");
 
@@ -1334,10 +1331,10 @@ public class ActivityPubWorker{
 			}
 
 			Set<URI> first=new HashSet<>();
-			new FetchCollectionIntoSetTask(followers.totalItems>following.totalItems ? following : followers, first).fork().join();
+			executor.submit(new FetchCollectionIntoSetTask(followers.totalItems>following.totalItems ? following : followers, first, MAX_FRIENDS)).get();
 			Set<URI> mutualFollows=new HashSet<>();
-			new FilterCollectionAgainstSetTask(followers.totalItems>following.totalItems ? followers : following, first, mutualFollows).fork().join();
-			List<ForkJoinTask<?>> tasks=new ArrayList<>();
+			executor.submit(new FilterCollectionAgainstSetTask(followers.totalItems>following.totalItems ? followers : following, first, mutualFollows)).get();
+			List<Callable<?>> tasks=new ArrayList<>();
 			for(URI uri:mutualFollows){
 				if(!Config.isLocal(uri)){
 					tasks.add(new FetchAndStoreOneUserFolloweeTask(user, uri, Actor.class));
@@ -1383,9 +1380,10 @@ public class ActivityPubWorker{
 	private class FetchCollectionIntoSetTask extends ForwardPaginatingCollectionTask{
 		private final Set<URI> set;
 
-		private FetchCollectionIntoSetTask(ActivityPubCollection collection, Set<URI> set){
+		private FetchCollectionIntoSetTask(ActivityPubCollection collection, Set<URI> set, int maxItems){
 			super(collection);
 			this.set=set;
+			this.maxItems=maxItems;
 		}
 
 		@Override
@@ -1416,7 +1414,7 @@ public class ActivityPubWorker{
 		}
 	}
 
-	private class FetchAndStoreOneUserFolloweeTask extends RecursiveAction{
+	private class FetchAndStoreOneUserFolloweeTask extends NoResultCallable{
 		private final ForeignUser user;
 		private final URI targetActorID;
 		private final Class<? extends Actor> type;
@@ -1452,7 +1450,7 @@ public class ActivityPubWorker{
 		}
 	}
 
-	private class FetchAndStoreOneGroupMemberTask extends RecursiveAction{
+	private class FetchAndStoreOneGroupMemberTask extends NoResultCallable{
 		private final ForeignGroup group;
 		private final URI userID;
 		private final boolean tentative;
@@ -1506,7 +1504,7 @@ public class ActivityPubWorker{
 		}
 	}
 
-	private class ProcessWallPostTask extends RecursiveAction{
+	private class ProcessWallPostTask extends NoResultCallable{
 		protected NoteOrQuestion post;
 		protected final Actor owner;
 
@@ -1523,8 +1521,9 @@ public class ActivityPubWorker{
 		protected void compute(){
 			try{
 				Post nativePost=post.asNativePost(context);
+				context.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 				context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
-				new FetchAllRepliesTask(nativePost).fork().join();
+				executor.submit(new FetchAllRepliesTask(nativePost)).get();
 			}catch(Exception x){
 				LOG.debug("Error processing post {}", post.activityPubID, x);
 			}
@@ -1584,6 +1583,58 @@ public class ActivityPubWorker{
 
 		public boolean needMoreAttempts(){
 			return attemptNumber<10;
+		}
+	}
+
+	private class FetchRepostChainTask implements Callable<List<Post>>{
+		private final NoteOrQuestion topLevel;
+
+		private FetchRepostChainTask(NoteOrQuestion topLevel){
+			this.topLevel=topLevel;
+		}
+
+		@Override
+		public List<Post> call() throws Exception{
+			LOG.trace("Fetching repost chain for {}", topLevel.activityPubID);
+			try{
+				HashSet<URI> seenPostIDs=new HashSet<>();
+				ArrayList<Post> repostChain=new ArrayList<>();
+				URI nextUri=topLevel.getQuoteRepostID();
+				int depth=1;
+				while(nextUri!=null && !seenPostIDs.contains(nextUri) && depth<MAX_REPOST_DEPTH){
+					try{
+						Post localPost=context.getObjectLinkResolver().resolveLocally(nextUri, Post.class);
+						repostChain.add(localPost);
+						break;
+					}catch(ObjectNotFoundException ignored){}
+					try{
+						seenPostIDs.add(nextUri);
+						NoteOrQuestion post=context.getObjectLinkResolver().resolve(nextUri, NoteOrQuestion.class, true, false, false);
+						nextUri=post.getQuoteRepostID();
+						Post nativePost=post.asNativePost(context);
+						context.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
+						repostChain.add(nativePost);
+					}catch(ObjectNotFoundException x){
+						LOG.debug("Failed to fetch a complete repost chain for {}, failed at {}, stopping at depth {}", topLevel.activityPubID, nextUri, depth, x);
+						break;
+					}
+					depth++;
+				}
+				for(int i=repostChain.size()-1;i>=0;i--){
+					Post post=repostChain.get(i);
+					if(post.id==0)
+						context.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
+					if(i==0)
+						break;
+					Post prevPost=repostChain.get(i-1);
+					prevPost.setRepostedPost(post);
+				}
+				return repostChain;
+			}finally{
+				synchronized(ActivityPubWorker.this){
+					fetchingRepostChains.remove(topLevel.activityPubID);
+				}
+			}
 		}
 	}
 }

@@ -157,5 +157,14 @@
   "file_size_kilobytes": "{amount} KB",
   "file_size_megabytes": "{amount} MB",
   "file_size_gigabytes": "{amount} GB",
-  "file_size_terabytes": "{amount} TB"
+  "file_size_terabytes": "{amount} TB",
+  "share_content": "Compartir",
+  "share_post_title": "Compartir publicación",
+  "share_comment_title": "Compartir comentario",
+  "do_share_post": "Compartir publicación",
+  "do_share_comment": "Compartir comentario",
+  "repost_post_done": "Esta publicación aparecerá en tu perfil y en el feed de tus amigos y seguidores.",
+  "repost_comment_done": "Este comentario aparecerá en tu perfil y en el feed de tus amigos y seguidores.",
+  "repost_your_comment": "Tu comentario",
+  "load_more": "Cargar más"
 }

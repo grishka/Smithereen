@@ -86,7 +86,7 @@
 							<executable>scp</executable>
 							<arguments>
 								<argument>${basedir}/target/smithereen-jar-with-dependencies.jar</argument>
-								<argument>root@${deployHost}:/opt/smithereen/smithereen.jar</argument>
+								<argument>root@${deployHost}:/opt/smithereen/smithereen_new.jar</argument>
 							</arguments>
 						</configuration>
 					</execution>
@@ -100,7 +100,7 @@
 							<executable>ssh</executable>
 							<arguments>
 								<argument>root@${deployHost}</argument>
-								<argument>service smithereen restart</argument>
+								<argument>service smithereen stop; mv /opt/smithereen/smithereen_new.jar /opt/smithereen/smithereen.jar; service smithereen start</argument>
 							</arguments>
 						</configuration>
 					</execution>
@@ -244,6 +244,21 @@
 			<groupId>net.java.dev.jna</groupId>
 			<artifactId>jna</artifactId>
 			<version>5.11.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.commonmark</groupId>
+			<artifactId>commonmark</artifactId>
+			<version>0.22.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.commonmark</groupId>
+			<artifactId>commonmark-ext-gfm-strikethrough</artifactId>
+			<version>0.22.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.commonmark</groupId>
+			<artifactId>commonmark-ext-ins</artifactId>
+			<version>0.22.0</version>
 		</dependency>
 	</dependencies>
 

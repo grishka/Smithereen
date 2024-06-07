@@ -88,11 +88,10 @@ public class LikeStorage{
 		return new SQLQueryBuilder()
 				.selectFrom("likes")
 				.columns("user_id")
-				.where("object_id=? AND object_type=?", objectID, Like.ObjectType.POST.ordinal())
+				.where("object_id=? AND object_type=? AND user_id<>?", objectID, Like.ObjectType.POST.ordinal(), selfID)
 				.orderBy("id ASC")
-				.limit(count+1, offset)
+				.limit(count, offset)
 				.executeAndGetIntStream()
-				.filter(i->i!=selfID)
 				.boxed().toList();
 	}
 
@@ -117,4 +116,36 @@ public class LikeStorage{
 		}
 	}
 
+	public static PaginatedList<Integer> getLikedObjectIDs(int ownerID, Like.ObjectType type, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("likes")
+					.count()
+					.where("user_id=? AND object_type=?", ownerID, type)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Integer> ids=new SQLQueryBuilder(conn)
+					.selectFrom("likes")
+					.columns("object_id")
+					.where("user_id=? AND object_type=?", ownerID, type)
+					.orderBy("id DESC")
+					.limit(count, offset)
+					.executeAndGetIntList();
+			return new PaginatedList<>(ids, total, offset, count);
+		}
+	}
+
+	public static PaginatedList<Integer> getLikedPostsTopLevelOnly(int ownerID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT COUNT(*) FROM likes JOIN wall_posts ON likes.object_id=wall_posts.id WHERE likes.user_id=? AND likes.object_type=0 AND wall_posts.reply_key IS NULL", ownerID).executeQuery());
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Integer> ids=DatabaseUtils.intResultSetToList(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT likes.object_id FROM likes JOIN wall_posts ON likes.object_id=wall_posts.id WHERE likes.user_id=? AND likes.object_type=0 AND wall_posts.reply_key IS NULL ORDER BY likes.id DESC LIMIT ? OFFSET ?",
+					ownerID, count, offset).executeQuery());
+			return new PaginatedList<>(ids, total, offset, count);
+		}
+	}
 }

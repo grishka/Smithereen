@@ -4,11 +4,13 @@
 	<input type="hidden" name="csrf" value="{{csrf}}"/>
 	<div id="postFormAttachments_{{id}}"></div>
 	<input type="hidden" name="attachments"/>
-	<table width="100%" cellpadding="0" cellspacing="0" class="bottomBar">
-		<tr><td width="50%" class="left">
+	<div class="bottomBar">
+		<div class="left">
 			<button id="postFormSubmit_{{ id }}">{{ L(sendButtonLabel | default('send')) }}</button>
-		</td><td align="right" class="right">
+		</div>
+		<div class="center"></div>
+		<div class="right">
 			<a id="postFormAttachBtn_{{ id }}">{{ L('attach') }}</a>
-		</td></tr>
-	</table>
+		</div>
+	</div>
 </div>

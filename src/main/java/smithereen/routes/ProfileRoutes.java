@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static smithereen.Utils.*;
 
@@ -20,13 +21,13 @@ import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.Account;
+import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
-import smithereen.model.UserBanStatus;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.WebDeltaResponse;
@@ -35,14 +36,15 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
-import smithereen.util.Whitelist;
+import smithereen.text.TextProcessor;
+import smithereen.text.Whitelist;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
 
 public class ProfileRoutes{
 	public static Object profile(Request req, Response resp){
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
 		String username=req.params(":username");
@@ -74,14 +76,17 @@ public class ProfileRoutes{
 						.with("canPostOnWall", canPost)
 						.with("canSeeOthersPosts", canSeeOthers)
 						.with("canMessage", canMessage)
-						.paginate(wall);
+						.paginate(wall, "/users/"+user.id+"/wall"+(canSeeOthers ? "" : "/own")+"?offset=", null);
 
+				ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
+				CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 				if(req.attribute("mobile")==null){
-					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list);
+					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
 				}
 
 				Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 				model.with("postInteractions", interactions);
+				model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 
 				PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
 				model.with("users", ctx.getUsersController().getUsers(needUsers));
@@ -94,14 +99,125 @@ public class ProfileRoutes{
 					model.with("mutualFriendCount", mutualFriends.total).with("mutualFriends", mutualFriends.list);
 				}
 
-				ArrayList<PropertyValue> profileFields=new ArrayList<>();
+				ArrayList<Map<String, String>> mainFields=new ArrayList<>();
 				if(user.birthDate!=null)
-					profileFields.add(new PropertyValue(l.get("birth_date"), l.formatDay(user.birthDate)));
-				if(StringUtils.isNotEmpty(user.summary))
-					profileFields.add(new PropertyValue(l.get("profile_about"), user.summary));
+					mainFields.add(Map.of("name", l.get("birthday"), "value", l.formatDay(user.birthDate)));
 				if(user.attachment!=null)
-					user.attachment.stream().filter(o->o instanceof PropertyValue).forEach(o->profileFields.add((PropertyValue) o));
-				model.with("profileFields", profileFields);
+					user.attachment.stream()
+							.map(o->o instanceof PropertyValue pv ? pv : null)
+							.filter(Objects::nonNull)
+							.map(pv->Map.of("name", pv.name, "value", pv.value, "html", "true"))
+							.forEach(mainFields::add);
+				if(StringUtils.isNotEmpty(user.hometown))
+					mainFields.add(Map.of("name", l.get("profile_hometown"), "value", user.hometown));
+				if(user.relationship!=null){
+					User partner=null;
+					if(user.relationshipPartnerID!=0){
+						try{
+							partner=ctx.getUsersController().getUserOrThrow(user.relationshipPartnerID);
+						}catch(ObjectNotFoundException ignore){}
+					}
+					String relationValue;
+					if(partner==null || (user.relationship!=User.RelationshipStatus.IN_LOVE && partner.relationshipPartnerID!=user.id)){
+						relationValue=l.get(user.relationship.getLangKey(), Map.of("ownGender", user.gender));
+					}else{
+						relationValue=l.get(switch(user.relationship){
+							case IN_RELATIONSHIP -> "profile_relationship_in_relationship_with_X";
+							case ENGAGED -> "profile_relationship_engaged_with_X";
+							case MARRIED -> "profile_relationship_married_to_X";
+							case IN_LOVE -> "profile_relationship_in_love_with_X";
+							case COMPLICATED -> "profile_relationship_complicated_with_X";
+							default -> throw new IllegalStateException("Unexpected value: " + user.relationship);
+						}, Map.of("ownGender", user.gender, "partnerGender", partner.gender, "partnerName", partner.getFirstLastAndGender()));
+						relationValue=TextProcessor.substituteLinks(relationValue, Map.of("partner", Map.of("href", partner.getProfileURL())));
+					}
+					mainFields.add(Map.of("name", l.get("profile_relationship"), "value", relationValue, "html", "true"));
+				}
+				model.with("mainFields", mainFields);
+
+				ArrayList<Map<String, String>> contactsFields=new ArrayList<>();
+				if(StringUtils.isNotEmpty(user.location))
+					contactsFields.add(Map.of("name", l.get("profile_city"), "value", user.location));
+				if(StringUtils.isNotEmpty(user.website)){
+					String url=TextProcessor.escapeHTML(user.website);
+					contactsFields.add(Map.of("name", l.get("profile_website"), "value", "<a href=\""+url+"\" target=\"_blank\">"+url+"</a>", "html", "true"));
+				}
+				for(User.ContactInfoKey key:User.ContactInfoKey.values()){
+					if(user.contacts.containsKey(key)){
+						HashMap<String, String> field=new HashMap<>();
+						String value=user.contacts.get(key);
+						if(key==User.ContactInfoKey.GIT){
+							field.put("name", switch(URI.create(value).getHost()){
+								case "github.com" -> "GitHub";
+								case "gitlab.com" -> "GitLab";
+								case null, default -> "Git";
+							});
+						}else{
+							field.put("name", key.isLocalizable() ? l.get(key.getLangKey()) : key.getFieldName());
+						}
+						String url=TextProcessor.getContactInfoValueURL(key, value);
+						if(url!=null){
+							if(key==User.ContactInfoKey.GIT){
+								URI uri=URI.create(value);
+								String path=uri.getPath();
+								if(path.length()>1)
+									path=path.substring(1);
+								if(path.indexOf('/')==-1 && ("github.com".equals(uri.getHost()) || "gitlab.com".equals(uri.getHost()))){
+									value=path;
+								}
+							}
+							url=TextProcessor.escapeHTML(url);
+							String v="<a href=\""+url+"\"";
+							if(url.startsWith("http"))
+								v+=" target=\"_blank\"";
+							v+=">"+TextProcessor.escapeHTML(value)+"</a>";
+							field.put("value", v);
+							field.put("html", "true");
+						}else{
+							field.put("value", value);
+						}
+						contactsFields.add(field);
+					}
+				}
+				model.with("contactsFields", contactsFields);
+
+				ArrayList<Map<String, String>> personalFields=new ArrayList<>();
+				if(user.politicalViews!=null)
+					personalFields.add(Map.of("name", l.get(isMobile(req) ? "profile_political_views" : "profile_political_views_short"), "value", l.get(user.politicalViews.getLangKey())));
+				if(StringUtils.isNotEmpty(user.religion))
+					personalFields.add(Map.of("name", l.get(isMobile(req) ? "profile_religion" : "profile_religion_short"), "value", user.religion));
+				if(user.personalPriority!=null)
+					personalFields.add(Map.of("name", l.get("profile_personal_priority"), "value", l.get(user.personalPriority.getLangKey())));
+				if(user.peoplePriority!=null)
+					personalFields.add(Map.of("name", l.get("profile_people_priority"), "value", l.get(user.peoplePriority.getLangKey())));
+				if(user.smokingViews!=null)
+					personalFields.add(Map.of("name", l.get(isMobile(req) ? "profile_views_on_smoking" : "profile_views_on_smoking_short"), "value", l.get(user.smokingViews.getLangKey())));
+				if(user.alcoholViews!=null)
+					personalFields.add(Map.of("name", l.get(isMobile(req) ? "profile_views_on_alcohol" : "profile_views_on_alcohol_short"), "value", l.get(user.alcoholViews.getLangKey())));
+				if(StringUtils.isNotEmpty(user.inspiredBy))
+					personalFields.add(Map.of("name", l.get("profile_inspired_by"), "value", user.inspiredBy));
+				model.with("personalFields", personalFields);
+
+				ArrayList<Map<String, String>> interestsFields=new ArrayList<>();
+				if(StringUtils.isNotEmpty(user.activities))
+					interestsFields.add(Map.of("name", l.get("profile_activities"), "value", user.activities));
+				if(StringUtils.isNotEmpty(user.interests))
+					interestsFields.add(Map.of("name", l.get("profile_interests"), "value", user.interests));
+				if(StringUtils.isNotEmpty(user.favoriteMusic))
+					interestsFields.add(Map.of("name", l.get("profile_music"), "value", user.favoriteMusic));
+				if(StringUtils.isNotEmpty(user.favoriteMovies))
+					interestsFields.add(Map.of("name", l.get("profile_movies"), "value", user.favoriteMovies));
+				if(StringUtils.isNotEmpty(user.favoriteTvShows))
+					interestsFields.add(Map.of("name", l.get("profile_tv_shows"), "value", user.favoriteTvShows));
+				if(StringUtils.isNotEmpty(user.favoriteBooks))
+					interestsFields.add(Map.of("name", l.get("profile_books"), "value", user.favoriteBooks));
+				if(StringUtils.isNotEmpty(user.favoriteGames))
+					interestsFields.add(Map.of("name", l.get("profile_games"), "value", user.favoriteGames));
+				if(StringUtils.isNotEmpty(user.favoriteQuotes))
+					interestsFields.add(Map.of("name", l.get("profile_quotes"), "value", user.favoriteQuotes));
+				if(StringUtils.isNotEmpty(user.summary))
+					interestsFields.add(Map.of("name", l.get("profile_about"), "value", user.summary, "html", "true"));
+				model.with("interestsFields", interestsFields);
 
 				if(info!=null && self!=null){
 					model.with("draftAttachments", info.postDraftAttachments);
@@ -116,25 +232,26 @@ public class ProfileRoutes{
 						FriendshipStatus status=ctx.getFriendsController().getFriendshipStatus(self.user, user);
 						if(status==FriendshipStatus.FRIENDS){
 							model.with("isFriend", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("X_is_your_friend", Map.of("name", user.firstName)));
+							model.with("friendshipStatusText", lang(req).get("X_is_your_friend", Map.of("name", user.firstName)));
 						}else if(status==FriendshipStatus.REQUEST_SENT){
 							model.with("friendRequestSent", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("you_sent_friend_req_to_X", Map.of("name", user.getFirstAndGender())));
+							model.with("friendshipStatusText", lang(req).get("you_sent_friend_req_to_X", Map.of("name", user.getFirstAndGender())));
 						}else if(status==FriendshipStatus.REQUEST_RECVD){
 							model.with("friendRequestRecvd", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("X_sent_you_friend_req", Map.of("gender", user.gender, "name", user.firstName)));
+							model.with("friendshipStatusText", lang(req).get("X_sent_you_friend_req", Map.of("gender", user.gender, "name", user.firstName)));
 						}else if(status==FriendshipStatus.FOLLOWING){
 							model.with("following", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("you_are_following_X", Map.of("name", user.getFirstAndGender())));
+							model.with("friendshipStatusText", lang(req).get("you_are_following_X", Map.of("name", user.getFirstAndGender())));
 						}else if(status==FriendshipStatus.FOLLOWED_BY){
 							model.with("followedBy", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("X_is_following_you", Map.of("gender", user.gender, "name", user.firstName)));
+							model.with("friendshipStatusText", lang(req).get("X_is_following_you", Map.of("gender", user.gender, "name", user.firstName)));
 						}else if(status==FriendshipStatus.FOLLOW_REQUESTED){
 							model.with("followRequested", true);
-							model.with("friendshipStatusText", Utils.lang(req).get("waiting_for_X_to_accept_follow_req", Map.of("gender", user.gender, "name", user.firstName)));
+							model.with("friendshipStatusText", lang(req).get("waiting_for_X_to_accept_follow_req", Map.of("gender", user.gender, "name", user.firstName)));
 						}
 						model.with("isBlocked", ctx.getUsersController().isUserBlocked(self.user, user));
 						model.with("isSelfBlocked", ctx.getUsersController().isUserBlocked(user, self.user));
+						model.with("isBookmarked", ctx.getBookmarksController().isUserBookmarked(self.user, user));
 						jsLangKey(req, "block", "unblock", "unfollow", "remove_friend");
 					}
 				}else{
@@ -192,15 +309,15 @@ public class ProfileRoutes{
 
 	public static Object confirmBlockUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		User user=getUserOrThrow(req);
-		Lang l=Utils.lang(req);
-		String back=Utils.back(req);
+		Lang l=lang(req);
+		String back=back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_block_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/users/"+user.id+"/block?_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object confirmUnblockUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		User user=getUserOrThrow(req);
-		Lang l=Utils.lang(req);
-		String back=Utils.back(req);
+		Lang l=lang(req);
+		String back=back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/users/"+user.id+"/unblock?_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
@@ -249,5 +366,22 @@ public class ProfileRoutes{
 		ctx.getActivityPubWorker().fetchActorContentCollections(user);
 		Lang l=lang(req);
 		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
+	}
+
+	public static Object mentionHoverCard(Request req, Response resp){
+		if(isMobile(req))
+			return "";
+		ApplicationContext ctx=context(req);
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		SessionInfo info=sessionInfo(req);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("user_hover_card", req).with("user", user);
+		if(info!=null && info.account!=null){
+			User self=info.account.user;
+			if(self.id!=user.id){
+				PaginatedList<User> friends=ctx.getFriendsController().getMutualFriends(self, user, 0, 6, FriendsController.SortOrder.ID_ASCENDING);
+				model.with("mutualFriends", friends);
+			}
+		}
+		return model;
 	}
 }

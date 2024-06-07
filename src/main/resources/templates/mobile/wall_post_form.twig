@@ -1,5 +1,5 @@
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
-<div class="singleColumn wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing="1"' : '' }}>
+<div class="singleColumn wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing' : '' }}{{ allowEmpty ? ' data-allow-empty' : '' }}>
 	{% if not wallOwner.hasWall %}
 	<div class="wallPostFormError">
 			{% if isGroup %}
@@ -16,6 +16,8 @@
 		{% set fieldPlaceholder=L('write_on_X_wall', {'name': wallOwner.firstAndGender}) %}
 	{% elseif replyTo is not null %}
 		{% set fieldPlaceholder=L('comment_placeholder') %}
+	{% elseif repostedPost is not null %}
+		{% set fieldPlaceholder="" %}
 	{% else %}
 		{% set fieldPlaceholder=L('write_on_own_wall') %}
 	{% endif %}
@@ -24,7 +26,11 @@
 		{%if replyTo is not null%}
 		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}" value="{{replyTo.id}}"/>
 		{%endif%}
+		{% if repostedPost is not null %}
+		<input type="hidden" name="repost" value="{{ repostedPost.id }}"/>
+		{% endif %}
 		<input type="hidden" name="formID" value="{{id}}"/>
+		{% if sourceFormat is not null %}<input type="hidden" name="format" value="{{ sourceFormat }}"/>{% endif %}
 		<div id="postFormAttachments_{{id}}">
 			{%set attachIDs=""%}
 			{%for attachment in draftAttachments%}
@@ -51,18 +57,20 @@
 			{% if poll is not null %}{% include 'poll_form' with {'poll': poll} %}{% endif %}
 		</div>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
-		<table width="100%" cellpadding="0" cellspacing="0" class="bottomBar">
-			<tr><td width="50%" class="left">
+		<div class="bottomBar">
+			<div class="left">
 				{% if isEditing %}
 				<button id="postFormSubmit_{{ id }}">{{ L('save') }}</button>
 				<button class="secondary jsRequired" type="button" onclick="history.back()">{{ L('cancel') }}</button>
 				{% else %}
-				<button id="postFormSubmit_{{ id }}">{{ L('send') }}</button>
+				<button id="postFormSubmit_{{ id }}">{{ submitButtonText | default(L('send')) }}</button>
 				{% endif %}
-			</td><td align="right" class="right">
+			</div>
+			<div class="center"></div>
+			<div class="right">
 				<a id="postFormAttachBtn_{{ id }}">{{ L('attach') }}</a>
-			</td></tr>
-		</table>
+			</div>
+		</div>
 	</form>
 	<form action="/system/upload/postPhoto?draft=1&csrf={{csrf}}" method="post" enctype="multipart/form-data" id="attachmentUploadForm_{{id}}">
 		<noscript>

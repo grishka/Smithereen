@@ -48,6 +48,7 @@ import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
+import smithereen.routes.BookmarksRoutes;
 import smithereen.routes.FriendsRoutes;
 import smithereen.routes.GroupsRoutes;
 import smithereen.routes.MailRoutes;
@@ -72,6 +73,7 @@ import smithereen.templates.Templates;
 import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
+import smithereen.util.PublicSuffixList;
 import smithereen.util.TopLevelDomainList;
 import spark.Filter;
 import spark.Request;
@@ -92,8 +94,12 @@ public class SmithereenApplication{
 	static{
 		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
 		System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
-		if(Config.DEBUG)
+		if(Config.DEBUG){
 			System.setProperty("org.slf4j.simpleLogger.log.smithereen", "trace");
+		}else{
+			// Gets rid of "The requested route ... has not been mapped in Spark"
+			System.setProperty("org.slf4j.simpleLogger.log.spark.http.matching", "warn");
+		}
 		String addProperties=System.getenv("SMITHEREEN_SET_PROPS");
 		if(addProperties!=null){
 			Arrays.stream(addProperties.split("&")).forEach(s->{
@@ -243,6 +249,9 @@ public class SmithereenApplication{
 		path("/settings", ()->{
 			path("/profile", ()->{
 				getLoggedIn("/general", SettingsRoutes::profileEditGeneral);
+				getLoggedIn("/interests", SettingsRoutes::profileEditInterests);
+				getLoggedIn("/personal", SettingsRoutes::profileEditPersonal);
+				getLoggedIn("/contacts", SettingsRoutes::profileEditContacts);
 			});
 			getLoggedIn("/", SettingsRoutes::settings);
 			postWithCSRF("/createInvite", SettingsRoutes::createInvite);
@@ -277,6 +286,14 @@ public class SmithereenApplication{
 			getLoggedIn("/privacy/mobileEditSetting", SettingsRoutes::mobileEditPrivacy);
 			getLoggedIn("/deactivateAccountForm", SettingsRoutes::deactivateAccountForm);
 			postWithCSRF("/deactivateAccount", SettingsRoutes::deactivateAccount);
+			postWithCSRF("/updateAppearanceBehavior", SettingsRoutes::saveAppearanceBehaviorSettings);
+			postWithCSRF("/updateUsername", SettingsRoutes::updateUsername);
+			getLoggedIn("/sessions", SettingsRoutes::sessions);
+			getLoggedIn("/confirmEndOtherSessions", SettingsRoutes::confirmEndOtherSessions);
+			postWithCSRF("/endOtherSessions", SettingsRoutes::endOtherSessions);
+			postWithCSRF("/updateProfileInterests", SettingsRoutes::updateProfileInterests);
+			postWithCSRF("/updateProfilePersonal", SettingsRoutes::updateProfilePersonal);
+			postWithCSRF("/updateProfileContacts", SettingsRoutes::updateProfileContacts);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);
@@ -401,6 +418,11 @@ public class SmithereenApplication{
 			getLoggedIn("/reportForm", SystemRoutes::reportForm);
 			postWithCSRF("/submitReport", SystemRoutes::submitReport);
 			get("/captcha", SystemRoutes::captcha);
+			get("/oembed", SystemRoutes::oEmbed);
+			post("/redirectForRemoteInteraction", SystemRoutes::redirectForRemoteInteraction);
+			getLoggedIn("/mentionCompletions", SystemRoutes::mentionCompletions);
+			getLoggedIn("/simpleUserCompletions", SystemRoutes::simpleUserCompletions);
+
 			if(Config.DEBUG){
 				path("/debug", ()->{
 					get("/deleteAbandonedFilesNow", (req, resp)->{
@@ -475,6 +497,11 @@ public class SmithereenApplication{
 			postRequiringPermissionWithCSRF("/addStaffNote", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteAdd);
 			getRequiringPermission("/staffNotes/:noteID/confirmDelete", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteConfirmDelete);
 			postRequiringPermissionWithCSRF("/staffNotes/:noteID/delete", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userStaffNoteDelete);
+
+			get("/hoverCard", ProfileRoutes::mentionHoverCard);
+
+			getWithCSRF("/addBookmark", BookmarksRoutes::addUserBookmark);
+			getWithCSRF("/removeBookmark", BookmarksRoutes::removeUserBookmark);
 		});
 
 		path("/groups/:id", ()->{
@@ -545,6 +572,9 @@ public class SmithereenApplication{
 			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncRelationshipsCollections);
 			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncContentCollections);
 			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncProfile);
+
+			getWithCSRF("/addBookmark", BookmarksRoutes::addGroupBookmark);
+			getWithCSRF("/removeBookmark", BookmarksRoutes::removeGroupBookmark);
 		});
 
 		path("/posts/:postID", ()->{
@@ -555,12 +585,16 @@ public class SmithereenApplication{
 			getLoggedIn("/confirmDelete", PostRoutes::confirmDelete);
 			postWithCSRF("/delete", PostRoutes::delete);
 
-			getWithCSRF("/like", PostRoutes::like);
+			get("/like", PostRoutes::like);
 			getWithCSRF("/unlike", PostRoutes::unlike);
 			get("/likePopover", PostRoutes::likePopover);
 			get("/likes", PostRoutes::likeList);
 			get("/ajaxCommentPreview", PostRoutes::ajaxCommentPreview);
 			get("/ajaxCommentBranch", PostRoutes::ajaxCommentBranch);
+			get("/sharePopover", PostRoutes::sharePopover);
+			get("/share", PostRoutes::repostForm);
+			get("/reposts", PostRoutes::repostList);
+			get("/embedBox", PostRoutes::embedBox);
 
 			getActivityPubCollection("/replies", 50, ActivityPubRoutes::postReplies);
 			getActivityPubCollection("/likes", 50, ActivityPubRoutes::postLikes);
@@ -569,6 +603,10 @@ public class SmithereenApplication{
 			get("/pollVoters/:optionID/popover", PostRoutes::pollOptionVotersPopover);
 			getLoggedIn("/edit", PostRoutes::editPostForm);
 			postWithCSRF("/edit", PostRoutes::editPost);
+			get("/embedURL", PostRoutes::postEmbedURL);
+			options("/embedURL", SmithereenApplication::allowCorsPreflight);
+			get("/embed", PostRoutes::postEmbed);
+			get("/hoverCard", PostRoutes::commentHoverCard);
 		});
 
 		get("/robots.txt", (req, resp)->{
@@ -618,6 +656,11 @@ public class SmithereenApplication{
 					getWithCSRF("/deleteForEveryone", MailRoutes::deleteForEveryone);
 					getWithCSRF("/restore", MailRoutes::restore);
 				});
+			});
+			path("/bookmarks", ()->{
+				getLoggedIn("", BookmarksRoutes::users);
+				getLoggedIn("/groups", BookmarksRoutes::groups);
+				getLoggedIn("/posts", BookmarksRoutes::posts);
 			});
 		});
 
@@ -680,7 +723,11 @@ public class SmithereenApplication{
 			resp.body(model.renderToString());
 		});
 		exception(Exception.class, (exception, req, res) -> {
-			LOG.warn("Exception while processing {} {}", req.requestMethod(), req.raw().getPathInfo(), exception);
+			String path=req.raw().getPathInfo();
+			LOG.warn("Exception while processing {} {}", req.requestMethod(), path, exception);
+			if(req.requestMethod().equals("POST") && (path.equals("/activitypub/sharedInbox") || path.endsWith("/inbox"))){
+				LOG.warn("Failed activity: {}", req.body());
+			}
 			res.status(500);
 			StringWriter sw=new StringWriter();
 			exception.printStackTrace(new PrintWriter(sw));
@@ -693,7 +740,7 @@ public class SmithereenApplication{
 				long t=(long)l;
 				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
 			}
-			if(req.attribute("isTemplate")!=null && !isAjax(req)){
+			if(req.attribute("isTemplate")!=null && req.attribute("noPreload")==null && !isAjax(req)){
 				String cssName=req.attribute("mobile")!=null ? "mobile.css" : "desktop.css";
 				resp.header("Link", "</res/"+cssName+"?"+Templates.getStaticFileVersion(cssName)+">; rel=preload; as=style, </res/common.js?"+Templates.getStaticFileVersion("common.js")+">; rel=preload; as=script");
 				resp.header("Vary", "User-Agent, Accept-Language");
@@ -776,6 +823,7 @@ public class SmithereenApplication{
 			}catch(SQLException ignore){}
 			FloodControl.PASSWORD_RESET.gc();
 			TopLevelDomainList.updateIfNeeded();
+			PublicSuffixList.updateIfNeeded();
 		});
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
@@ -823,6 +871,12 @@ public class SmithereenApplication{
 	private static Object methodNotAllowed(Request req, Response resp){
 		resp.status(405);
 		return "";
+	}
+
+	private static Object allowCorsPreflight(Request req, Response resp){
+		resp.status(204);
+		resp.header("Access-Control-Allow-Origin", "*");
+		return resp;
 	}
 
 	private static void setupCustomSerializer(){
@@ -889,5 +943,10 @@ public class SmithereenApplication{
 		for(HttpSession session:new HashSet<>(sessions)){
 			session.invalidate();
 		}
+	}
+
+	public static synchronized void addAccountSession(int accountID, Request req){
+		accountIdsBySession.put(req.session().id(), accountID);
+		sessionsByAccount.computeIfAbsent(accountID, HashSet::new).add(req.session().raw());
 	}
 }

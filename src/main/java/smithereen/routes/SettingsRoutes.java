@@ -12,6 +12,9 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletException;
@@ -31,11 +35,17 @@ import static smithereen.Utils.*;
 import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
+import smithereen.model.CommentViewType;
 import smithereen.model.Group;
+import smithereen.model.OtherSession;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
+import smithereen.storage.utils.Pair;
+import smithereen.text.FormattedTextFormat;
+import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
@@ -65,32 +75,36 @@ import spark.Response;
 import spark.Session;
 import spark.utils.StringUtils;
 
+import static smithereen.Utils.*;
+
 public class SettingsRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(SettingsRoutes.class);
 
 	public static Object settings(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings", req);
+		Lang l=lang(req);
 		model.with("languages", Lang.list).with("selectedLang", Utils.lang(req));
-		Session s=req.session();
-		if(s.attribute("settings.passwordMessage")!=null){
-			model.with("passwordMessage", s.attribute("settings.passwordMessage"));
-			s.removeAttribute("settings.passwordMessage");
-		}
-		if(s.attribute("settings.inviteMessage")!=null){
-			model.with("inviteMessage", s.attribute("settings.inviteMessage"));
-			s.removeAttribute("settings.inviteMessage");
-		}
-		if(s.attribute("settings.profilePicMessage")!=null){
-			model.with("profilePicMessage", s.attribute("settings.profilePicMessage"));
-			s.removeAttribute("settings.profilePicMessage");
-		}
-		if(s.attribute("settings.emailMessage")!=null){
-			model.with("emailMessage", s.attribute("settings.emailMessage"));
-			s.removeAttribute("settings.emailMessage");
-		}
+		model.addMessage(req, "settings.passwordMessage", "passwordMessage")
+				.addMessage(req, "settings.profilePicMessage", "profilePicMessage")
+				.addMessage(req, "settings.emailMessage", "emailMessage")
+				.addMessage(req, "settings.appearanceBehaviorMessage", "appearanceBehaviorMessage")
+				.addMessage(req, "settings.usernameMessage", "changeUsernameMessage");
 		model.with("activationInfo", self.activationInfo);
 		model.with("currentEmailMasked", self.getCurrentEmailMasked());
-		model.with("title", lang(req).get("settings"));
+		model.with("textFormat", self.prefs.textFormat)
+				.with("commentView", self.prefs.commentViewType);
+		model.with("title", l.get("settings"));
+		OtherSession session=ctx.getUsersController().getAccountMostRecentSession(self);
+		if(session!=null){
+			model.with("lastActivityDescription", l.get("settings_activity_web_short", Map.of(
+					"time", l.formatDate(session.lastActive(), timeZoneForRequest(req), false),
+					"ip", session.ip().getHostAddress(),
+					"browserName", session.browserInfo().name()
+			)));
+		}
+		if(req.queryParams("sessionsTerminated")!=null){
+			model.with("accountActivityMessage", l.get("settings_sessions_ended"));
+		}
 		return model;
 	}
 
@@ -132,17 +146,11 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object updateProfileGeneral(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object updateProfileGeneral(Request req, Response resp, Account self, ApplicationContext ctx){
 		String first=req.queryParams("first_name");
 		String last=req.queryParams("last_name");
 		String middle=req.queryParams("middle_name");
 		String maiden=req.queryParams("maiden_name");
-		String about=req.queryParams("about");
-		String aboutSource=about;
-		if(StringUtils.isNotEmpty(about))
-			about=preprocessPostHTML(about, null);
-		else
-			about=null;
 		User.Gender gender=enumValue(req.queryParamOrDefault("gender", "UNKNOWN"), User.Gender.class);
 		LocalDate bdate=self.user.birthDate;
 		String _bdate=req.queryParams("bdate");
@@ -151,17 +159,27 @@ public class SettingsRoutes{
 				bdate=LocalDate.parse(_bdate);
 			}catch(DateTimeParseException ignore){}
 		}
-		String message;
-		if(first.length()<2){
-			message=Utils.lang(req).get("err_name_too_short");
+		String hometown=req.queryParams("hometown");
+		User.RelationshipStatus relation=enumValueOpt(req.queryParams("relationship"), User.RelationshipStatus.class);
+		User partner;
+		if(relation==null || !relation.canHavePartner()){
+			partner=null;
 		}else{
-			UserStorage.changeBasicInfo(self.user, first, last, middle, maiden, gender, bdate, about, aboutSource);
-			message=Utils.lang(req).get("profile_info_updated");
+			int partnerID=safeParseInt(req.queryParams("partner"));
+			if(partnerID!=0){
+				partner=ctx.getUsersController().getUserOrThrow(partnerID);
+			}else{
+				partner=null;
+			}
 		}
-		self.user=UserStorage.getById(self.user.id);
-		if(self.user==null)
-			throw new IllegalStateException("?!");
-		ctx.getActivityPubWorker().sendUpdateUserActivity(self.user);
+		String message;
+		try{
+			ctx.getUsersController().updateBasicProfileInfo(self.user, first, last, middle, maiden, gender, bdate, hometown, relation, partner);
+			message=lang(req).get("profile_info_updated");
+		}catch(UserErrorException x){
+			message=lang(req).get(x.getMessage());
+		}
+		self.user=ctx.getUsersController().getUserOrThrow(self.user.id);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).show("formMessage_profileEdit").setContent("formMessage_profileEdit", message);
 		}
@@ -328,6 +346,28 @@ public class SettingsRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("profile_edit_general", req);
 		model.with("todayDate", new java.sql.Date(System.currentTimeMillis()).toString());
 		model.with("title", lang(req).get("edit_profile"));
+		model.with("relationshipOptions", User.RelationshipStatus.values());
+		List<User> friends=ctx.getFriendsController().getFriends(self.user, 0, 100, FriendsController.SortOrder.ID_ASCENDING).list;
+		ArrayList<Map<String, Object>> friendList=new ArrayList<>();
+		friendList.add(Map.of("id", 0, "title", lang(req).get("profile_field_none_selected")));
+		if(self.user.relationshipPartnerID!=0){
+			boolean foundCurrentPartner=false;
+			for(User u: friends){
+				if(u.id==self.user.relationshipPartnerID){
+					foundCurrentPartner=true;
+					break;
+				}
+			}
+			if(!foundCurrentPartner){
+				try{
+					User partner=ctx.getUsersController().getUserOrThrow(self.user.relationshipPartnerID);
+					friendList.add(Map.of("id", partner.id, "title", TextProcessor.escapeHTML(partner.getFullName())));
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
+		friendList.addAll(friends.stream().map(u->Map.of("id", (Object)u.id, "title", TextProcessor.escapeHTML(u.getFullName()))).toList());
+		model.with("friendList", friendList);
+		jsLangKey(req, "profile_edit_relationship_partner", "profile_edit_relationship_spouse", "profile_edit_relationship_in_love_partner");
 		Session s=req.session();
 		if(s.attribute("settings.profileEditMessage")!=null){
 			model.with("profileEditMessage", s.attribute("settings.profileEditMessage"));
@@ -531,7 +571,7 @@ public class SettingsRoutes{
 			msg=lang(req).get(x.getMessage());
 		}
 		if(isAjax(req))
-			return new WebDeltaResponse(resp).show("invitesMessage").setContent("invitesMessage", escapeHTML(msg));
+			return new WebDeltaResponse(resp).show("invitesMessage").setContent("invitesMessage", TextProcessor.escapeHTML(msg));
 		req.session().attribute("invites.message", msg);
 		resp.redirect(back(req));
 		return "";
@@ -667,5 +707,167 @@ public class SettingsRoutes{
 		}
 		ctx.getUsersController().selfDeactivateAccount(self);
 		return ajaxAwareRedirect(req, resp, "/feed");
+	}
+
+	public static Object saveAppearanceBehaviorSettings(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "textFormat", "commentView");
+		self.prefs.textFormat=enumValue(req.queryParams("textFormat"), FormattedTextFormat.class);
+		self.prefs.commentViewType=enumValue(req.queryParams("commentView"), CommentViewType.class);
+		try{
+			SessionStorage.updatePreferences(self.id, self.prefs);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		String msg=lang(req).get("settings_saved");
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).show("formMessage_appearanceBehavior").setContent("formMessage_appearanceBehavior", msg);
+		req.session().attribute("settings.appearanceBehaviorMessage", msg);
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object updateUsername(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "username");
+		String username=req.queryParams("username").trim();
+		String msg;
+		boolean success=false;
+		try{
+			ctx.getUsersController().updateUsername(self.user, username);
+			msg=lang(req).get("settings_username_changed");
+			success=true;
+		}catch(UserErrorException x){
+			msg=lang(req).get(x.getMessage());
+		}
+		if(isAjax(req)){
+			WebDeltaResponse wdr=new WebDeltaResponse(resp).show("formMessage_changeUsername").setContent("formMessage_changeUsername", msg);
+			if(success)
+				wdr.setAttribute("myProfileLink", "href", "/"+username);
+			return wdr;
+		}
+		req.session().attribute("settings.usernameMessage", msg);
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object sessions(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "settings_activity_history" : "content_wrap", req);
+		model.with("sessions", ctx.getUsersController().getAccountSessions(info.account))
+				.with("currentSessionID", Base64.getDecoder().decode(req.cookie("psid")))
+				.with("isAjax", isAjax(req));
+		Lang l=lang(req);
+		if(isAjax(req)){
+			String auxLink="<a href=\"/settings/confirmEndOtherSessions\" data-confirm-action=\"/settings/endOtherSessions\" data-confirm-title=\""+
+					TextProcessor.escapeHTML(l.get("settings_end_all_sessions"))+"\" data-confirm-message=\""+
+					TextProcessor.escapeHTML(l.get("settings_confirm_end_all_sessions"))+"\">"+
+					TextProcessor.escapeHTML(l.get("settings_end_all_sessions"))+"</a>";
+			return new WebDeltaResponse(resp)
+					.box(l.get("settings_sessions"), model.renderToString(), "settingsSessions", true, auxLink);
+		}
+		model.with("contentTemplate", "settings_activity_history").pageTitle(l.get("settings_sessions"));
+		return model;
+	}
+
+	public static Object confirmEndOtherSessions(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("settings_end_all_sessions"), l.get("settings_confirm_end_all_sessions"), "/settings/endOtherSessions");
+	}
+
+	public static Object endOtherSessions(Request req, Response resp, Account self, ApplicationContext ctx){
+		ctx.getUsersController().terminateSessionsExcept(self, req.cookie("psid"));
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).replaceLocation("/settings/?sessionsTerminated");
+		resp.redirect("/settings/?sessionsTerminated");
+		return "";
+	}
+
+	public static Object profileEditInterests(Request req, Response resp, Account self, ApplicationContext ctx){
+		return new RenderedTemplateResponse("profile_edit_interests", req)
+				.pageTitle(lang(req).get("edit_profile"))
+				.addMessage(req, "settings.profileEditInterestsMessage", "profileInterestsMessage");
+	}
+
+	public static Object updateProfileInterests(Request req, Response resp, Account self, ApplicationContext ctx){
+		ctx.getUsersController().updateProfileInterests(self.user, req.queryParams("about"), req.queryParams("activities"), req.queryParams("interests"), req.queryParams("music"),
+				req.queryParams("movies"), req.queryParams("tv"), req.queryParams("books"), req.queryParams("games"), req.queryParams("quotes"));
+		self.user=ctx.getUsersController().getUserOrThrow(self.user.id);
+		String message=lang(req).get("profile_info_updated");
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).show("formMessage_profileInterests").setContent("formMessage_profileInterests", message);
+		}
+		req.session().attribute("settings.profileEditInterestsMessage", message);
+		resp.redirect("/settings/profile/interests");
+		return "";
+	}
+
+	public static Object profileEditPersonal(Request req, Response resp, Account self, ApplicationContext ctx){
+		return new RenderedTemplateResponse("profile_edit_personal", req)
+				.pageTitle(lang(req).get("edit_profile"))
+				.with("politicalOptions", User.PoliticalViews.values())
+				.with("personalPriorityOptions", User.PersonalPriority.values())
+				.with("peoplePriorityOptions", User.PeoplePriority.values())
+				.with("habitsOptions", User.HabitsViews.values())
+				.addMessage(req, "settings.profileEditPersonalMessage", "profilePersonalMessage");
+	}
+
+	public static Object updateProfilePersonal(Request req, Response resp, Account self, ApplicationContext ctx){
+		ctx.getUsersController().updateProfilePersonal(self.user, enumValueOpt(req.queryParams("politicalViews"), User.PoliticalViews.class),
+				req.queryParams("religion"), enumValueOpt(req.queryParams("personalPriority"), User.PersonalPriority.class),
+				enumValueOpt(req.queryParams("peoplePriority"), User.PeoplePriority.class), enumValueOpt(req.queryParams("smokingViews"), User.HabitsViews.class),
+				enumValueOpt(req.queryParams("alcoholViews"), User.HabitsViews.class), req.queryParams("inspiredBy"));
+		self.user=ctx.getUsersController().getUserOrThrow(self.user.id);
+		String message=lang(req).get("profile_info_updated");
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).show("formMessage_profilePersonal").setContent("formMessage_profilePersonal", message);
+		}
+		req.session().attribute("settings.profileEditPersonalMessage", message);
+		resp.redirect("/settings/profile/personal");
+		return "";
+	}
+
+	public static Object profileEditContacts(Request req, Response resp, Account self, ApplicationContext ctx){
+		return new RenderedTemplateResponse("profile_edit_contacts", req)
+				.pageTitle(lang(req).get("edit_profile"))
+				.with("contactInfoKeys", User.ContactInfoKey.values())
+				.addMessage(req, "settings.profileEditContactsMessage", "profileContactsMessage");
+	}
+
+	public static Object updateProfileContacts(Request req, Response resp, Account self, ApplicationContext ctx){
+		Map<User.ContactInfoKey, String> contactInfo=req.queryMap("contactInfo")
+				.toMap()
+				.entrySet()
+				.stream()
+				.filter(e->e.getValue().length>0 && StringUtils.isNotEmpty(e.getValue()[0]))
+				.map(e->{
+					User.ContactInfoKey key=enumValue(e.getKey(), User.ContactInfoKey.class);
+					return new Pair<>(key, TextProcessor.normalizeContactInfoValue(key, e.getValue()[0]));
+				})
+				.collect(HashMap::new, (m,v)->m.put(v.first(), v.second()), HashMap::putAll);
+		String location=req.queryParams("location");
+		String website=req.queryParams("website");
+		Lang l=lang(req);
+		String message;
+		if(contactInfo.containsValue(null)){
+			ArrayList<String> invalidKeyNames=new ArrayList<>();
+			for(User.ContactInfoKey key:User.ContactInfoKey.values()){
+				if(contactInfo.containsKey(key) && contactInfo.get(key)==null){
+					invalidKeyNames.add(key.isLocalizable() ? l.get(key.getLangKey()) : key.getFieldName());
+				}
+			}
+			if(invalidKeyNames.size()==1){
+				message=l.get("profile_edit_invalid_field", Map.of("fieldName", invalidKeyNames.getFirst()));
+			}else{
+				message=l.get("profile_edit_invalid_field_multiple", Map.of("fieldList", String.join(", ")));
+			}
+		}else{
+			ctx.getUsersController().updateProfileContacts(self.user, contactInfo, location, website);
+			self.user=ctx.getUsersController().getUserOrThrow(self.user.id);
+			message=l.get("profile_info_updated");
+		}
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).show("formMessage_profileContacts").setContent("formMessage_profileContacts", message);
+		}
+		req.session().attribute("settings.profileEditContactsMessage", message);
+		resp.redirect("/settings/profile/contacts");
+		return "";
 	}
 }

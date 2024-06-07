@@ -1,1 +1,18 @@
-{}
+{
+  "notification_replied_to_post": "heeft een reactie geplaatst op jouw post",
+  "notification_replied_to_comment": "heeft gereageerd op je reactie",
+  "notification_mentioned_in_post": "heeft je genoemd in een bericht",
+  "notification_mentioned_in_comment": "heeft je genoemd in een reactie",
+  "notification_liked_post": "vindt jouw post leuk",
+  "notification_liked_comment": "heeft je reactie leuk gevonden",
+  "notification_reposted_post": "deelde je bericht",
+  "notification_reposted_comment": "deelde je commentaar",
+  "notification_posted_on_wall": "heeft op je prikbord geplaatst",
+  "notification_invite_signup": "ingeschreven met je uitnodiging",
+  "notification_follow": "volgde je",
+  "notification_friend_req_accept": "accepteert je vriendschapsverzoek",
+  "no_notifications": "Je hebt nog geen meldingen",
+  "notifications": "Meldingen",
+  "notifications_empty": "Je meldingen verschijnen hier.",
+  "summary_notifications": "Laatste meldingen worden weergegeven"
+}

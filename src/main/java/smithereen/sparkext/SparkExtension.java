@@ -37,6 +37,14 @@ public class SparkExtension{
 		post(path, route);
 	}
 
+	public static void getWithCSRF(String path, CSRFSimpleRoute route){
+		get(path, route);
+	}
+
+	public static void postWithCSRF(String path, CSRFSimpleRoute route){
+		post(path, route);
+	}
+
 	public static void getRequiringPermission(String path, UserRole.Permission permission, LoggedInRoute route){
 		get(path, new AdminRouteAdapter(route, permission, false));
 	}

@@ -3,6 +3,9 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,17 +23,18 @@ import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
+import smithereen.activitypub.SerializerContext;
 import smithereen.exceptions.BadRequestException;
-import smithereen.model.MailMessage;
-import smithereen.model.Post;
-import smithereen.util.UriBuilder;
-import smithereen.model.User;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.jsonld.JLD;
+import smithereen.model.MailMessage;
+import smithereen.model.Post;
+import smithereen.model.User;
+import smithereen.text.TextProcessor;
+import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
 public abstract sealed class NoteOrQuestion extends ActivityPubObject permits Note, Question, NoteTombstone{
@@ -41,6 +45,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public Boolean sensitive;
 	public ActivityPubCollection target;
 	public URI likes;
+	public URI quoteRepostID;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -58,8 +63,8 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			post.ownerID=parent.ownerID;
 		}else if(target!=null && target.attributedTo!=null){
 			Actor owner=context.getObjectLinkResolver().resolve(target.attributedTo, Actor.class, true, true, false);
-			if(!Objects.equals(target.attributedTo, owner.getWallURL()))
-				throw new FederationException("target.attributedTo points to an unknown collection");
+			if(!Objects.equals(target.activityPubID, owner.getWallURL()))
+				throw new FederationException("target.id points to an unknown collection "+target.attributedTo);
 			post.ownerID=owner.getOwnerID();
 		}else{
 			post.ownerID=author.id;
@@ -71,7 +76,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		String text=content;
 		if(hasBogusURL)
 			text=text+"<p><a href=\""+url+"\">"+url+"</a></p>";
-		text=Utils.sanitizeHTML(text);
+		text=TextProcessor.sanitizeHTML(text);
 		post.text=text;
 		post.createdAt=published!=null ? published : Instant.now();
 		post.updatedAt=updated;
@@ -139,6 +144,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		}else if(post.poll!=null){
 			Question q=new Question();
 			q.name=post.poll.question;
+			q.votersCount=post.poll.numVoters;
 			List<ActivityPubObject> opts=post.poll.options.stream().map(opt->{
 				Note n=new Note();
 				n.name=opt.text;
@@ -197,7 +203,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		User author=context.getUsersController().getUserOrThrow(post.authorID);
 		noq.content=post.text;
 		if(post.poll!=null && StringUtils.isNotEmpty(post.poll.question)){
-			noq.content+="<p class=\"smithereenPollQuestion\"><i>"+Utils.escapeHTML(post.poll.question)+"</i></p>";
+			noq.content+="<p class=\"smithereenPollQuestion\"><i>"+TextProcessor.escapeHTML(post.poll.question)+"</i></p>";
 		}
 		noq.attributedTo=author.activityPubID;
 		noq.published=post.createdAt;
@@ -233,6 +239,39 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 				cc.add(u.activityPubID);
 			}
 		}
+
+		if(post.repostOf!=0){
+			try{
+				Post repost=context.getWallController().getPostOrThrow(post.repostOf);
+				noq.quoteRepostID=repost.getActivityPubID();
+				cc.add(context.getUsersController().getUserOrThrow(repost.authorID).activityPubID);
+
+				Document doc=Jsoup.parseBodyFragment(noq.content);
+				Element root=doc.body();
+				Element parentP;
+				if(root.childrenSize()==0){
+					parentP=doc.createElement("p");
+					root.appendChild(parentP);
+				}else{
+					parentP=root.children().getLast();
+				}
+				parentP.appendChild(
+						doc.createElement("span")
+								.addClass("quote-inline")
+								.appendChildren(List.of(
+										doc.createElement("br"),
+										doc.createElement("br")
+								))
+								.appendText("RE: ")
+								.appendChild(doc.createElement("a")
+										.attr("href", repost.getActivityPubURL().toString())
+										.text(repost.getActivityPubURL().toString())
+								)
+				);
+				noq.content=root.html();
+			}catch(ObjectNotFoundException ignore){}
+		}
+
 		noq.to=to.stream().map(LinkOrObject::new).toList();
 		noq.cc=cc.stream().map(LinkOrObject::new).toList();
 
@@ -285,7 +324,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		msg.activityPubID=activityPubID;
 		User sender=context.getObjectLinkResolver().resolve(attributedTo, User.class, true, true, false);
 		msg.senderID=sender.id;
-		msg.text=Utils.sanitizeHTML(content);
+		msg.text=TextProcessor.sanitizeHTML(content);
 		msg.subject=StringUtils.isNotEmpty(name) ? name : summary;
 		msg.attachments=attachment;
 		msg.createdAt=published!=null ? published : Instant.now();
@@ -338,6 +377,15 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		sensitive=optBoolean(obj, "sensitive");
 		target=parse(optObject(obj, "target"), parserContext) instanceof ActivityPubCollection apc ? apc : null;
 		replies=tryParseLinkOrObject(obj.get("replies"), parserContext);
+		quoteRepostID=tryParseURL(optString(obj, "_misskey_quote"));
+		if(quoteRepostID==null){
+			// For when there's no "@id" in context
+			quoteRepostID=tryParseURL(optString(obj, JLD.MISSKEY+"_misskey_quote"));
+		}
+		if(quoteRepostID==null){
+			// Pleroma, Akkoma and possibly other "*oma"s
+			quoteRepostID=tryParseURL(optString(obj, "quoteUrl"));
+		}
 
 		return this;
 	}
@@ -352,12 +400,25 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			obj.addProperty("sensitive", sensitive);
 		serializerContext.addAlias("sensitive", "as:sensitive");
 		if(obj.has("content"))
-			obj.addProperty("content", Utils.postprocessPostHTMLForActivityPub(content));
+			obj.addProperty("content", TextProcessor.postprocessPostHTMLForActivityPub(content));
 		if(target!=null)
 			obj.add("target", target.asActivityPubObject(new JsonObject(), serializerContext));
 		if(likes!=null)
 			obj.addProperty("likes", likes.toString());
+		if(quoteRepostID!=null){
+			serializerContext.addType("_misskey_quote", JLD.MISSKEY+"_misskey_quote", "@id");
+			obj.addProperty("_misskey_quote", quoteRepostID.toString());
+			serializerContext.addAlias("quoteUrl", "as:quoteUrl");
+			obj.addProperty("quoteUrl", quoteRepostID.toString());
+		}
 
 		return obj;
+	}
+
+	public URI getQuoteRepostID(){
+		if(quoteRepostID!=null)
+			return quoteRepostID;
+		// TODO also support object links when it becomes clear how they will be implemented in Mastodon
+		return null;
 	}
 }

@@ -71,6 +71,7 @@
 			<li><a href="/my/friends?act=groupInvite&group={{ group.id }}">{{ L('invite_friends') }}</a></li>
 			{% endif %}
 			{% endif %}
+			<li><a href="/groups/{{ group.id }}/{{ isBookmarked ? "removeBookmark" : "addBookmark" }}?csrf={{ csrf }}" id="profileBookmarkButton" data-ajax data-ajax-show="bookmarkLoader"><span id="profileBookmarkButtonText">{{ L(isBookmarked ? 'remove_bookmark' : 'add_bookmark') }}</span> <span class="inlineLoader" id="bookmarkLoader" style="display: none"></span></a></li>
 		{% endif %}
 		{% if canEditGroup %}
 			<li><a href="/groups/{{ group.id }}/edit">{{ L(group.event ? 'edit_event' : 'edit_group') }}</a></li>

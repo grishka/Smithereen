@@ -46,6 +46,7 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NotificationsStorage;
+import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
 
@@ -78,7 +79,7 @@ public class GroupsController{
 				throw new BadRequestException("name is empty");
 			if(isEvent && startTime==null)
 				throw new BadRequestException("start time is required for event");
-			int id=GroupStorage.createGroup(name, Utils.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
+			int id=GroupStorage.createGroup(name, TextProcessor.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
 			Group group=Objects.requireNonNull(GroupStorage.getById(id));
 			context.getActivityPubWorker().sendAddToGroupsCollectionActivity(admin, group, false);
 			context.getNewsfeedController().putFriendsFeedEntry(admin, group.id, isEvent ? NewsfeedEntry.Type.CREATE_EVENT : NewsfeedEntry.Type.CREATE_GROUP);
@@ -226,7 +227,7 @@ public class GroupsController{
 	public void updateGroupInfo(@NotNull Group group, @NotNull User admin, String name, String aboutSrc, Instant eventStart, Instant eventEnd, String username, Group.AccessType accessType){
 		try{
 			enforceUserAdminLevel(group, admin, Group.AdminLevel.ADMIN);
-			String about=StringUtils.isNotEmpty(aboutSrc) ? Utils.preprocessPostHTML(aboutSrc, null) : null;
+			String about=StringUtils.isNotEmpty(aboutSrc) ? TextProcessor.preprocessPostHTML(aboutSrc, null) : null;
 			if(!group.username.equals(username)){
 				if(!Utils.isValidUsername(username))
 					throw new BadRequestException("err_group_invalid_username");

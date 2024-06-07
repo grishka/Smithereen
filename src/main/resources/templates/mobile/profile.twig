@@ -1,4 +1,23 @@
 {%extends "page"%}
+{% macro profileSection(_context, title, editURL, fields) %}
+	{% set isSelf=(_context.currentUser is not null and _context.currentUser.id==_context.user.id) %}
+	{% if fields is not empty or isSelf %}
+	<div class="card profileFields">
+	{% if title is not empty %}
+	<div class="sectionHeader">
+		{% if isSelf %}<a href="{{ editURL }}">{{ L('edit') }}</a>{% endif %}
+		<h4>{{ title }}</h4>
+	</div>
+	{% endif %}
+	{% for fld in fields %}
+	<div class="profileFieldName">{{ fld.name }}:</div>
+	<div class="profileFieldValue">{% if fld.html %}{{ fld.value | postprocessHTML }}{% else %}{{ fld.value | nl2br }}{% endif %}</div>
+	{% else %}
+	<div class="emptyState">{{ L('profile_no_info') }}</div>
+	{% endfor %}
+	</div>
+	{% endif %}
+{% endmacro %}
 {%block content%}
 <div class="cardsBackdrop">
 {% if movedTo is not null %}
@@ -60,6 +79,7 @@
 		{%if isFriend or following or friendRequestSent or followRequested%}
 			<li><a href="/users/{{ user.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'/users/{{ user.id }}/doRemoveFriend')" data-confirm="{{ L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
 		{%endif%}
+			<li><a href="/users/{{ user.id }}/{{ isBookmarked ? "removeBookmark" : "addBookmark" }}?csrf={{ csrf }}" id="profileBookmarkButton" data-ajax data-ajax-show="bookmarkLoader"><span id="profileBookmarkButtonText">{{ L(isBookmarked ? 'remove_bookmark' : 'add_bookmark') }}</span> <span class="inlineLoader" id="bookmarkLoader" style="display: none"></span></a></li>
 		{% if isBlocked %}
 			<li><a href="/users/{{ user.id }}/confirmUnblock" onclick="return ajaxConfirm('unblock', this.dataset.confirm, '/users/{{ user.id }}/unblock')" data-confirm="{{ L('confirm_unblock_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('unblock_user_X', {'name': user.firstAndGender}) }}</a></li>
 			{% else %}
@@ -81,12 +101,10 @@
 	</ul>
 </div>
 
-<div class="card profileFields">
-{% for fld in profileFields %}
-	<div class="profileFieldName">{{ fld.name }}</div>
-	<div class="profileFieldValue">{{ fld.value | postprocessHTML }}</div>
-{% endfor %}
-</div>
+{{ profileSection(_context, null, null, mainFields) }}
+{{ profileSection(_context, L('profile_contacts_title'), "/settings/profile/contacts", contactsFields) }}
+{{ profileSection(_context, L('profile_personal_title'), "/settings/profile/personal", personalFields) }}
+{{ profileSection(_context, L('profile_interests_title'), "/settings/profile/interests", interestsFields) }}
 
 {% include "wall_profile_block" with {'wallOwner': user} %}
 </div>

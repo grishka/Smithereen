@@ -32,10 +32,10 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.Account;
 import smithereen.model.BirthdayReminder;
-import smithereen.model.EventReminder;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendRequest;
 import smithereen.model.FriendshipStatus;
@@ -51,6 +51,7 @@ import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public class UserStorage{
@@ -188,6 +189,8 @@ public class UserStorage{
 		}else{
 			realUsername=username;
 		}
+		if(realUsername.length()>Actor.USERNAME_MAX_LENGTH)
+			realUsername=realUsername.substring(0, Actor.USERNAME_MAX_LENGTH);
 		return new SQLQueryBuilder()
 				.selectFrom("users")
 				.columns("id")
@@ -629,7 +632,7 @@ public class UserStorage{
 				.executeAndGetID();
 	}
 
-	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate bdate, String about, String aboutSource) throws SQLException{
+	public static void changeBasicInfo(User user, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate bdate) throws SQLException{
 		new SQLQueryBuilder()
 				.update("users")
 				.where("id=?", user.id)
@@ -639,14 +642,47 @@ public class UserStorage{
 				.value("bdate", bdate)
 				.value("middle_name", middleName)
 				.value("maiden_name", maidenName)
-				.value("about", about)
-				.value("about_source", aboutSource)
 				.executeNoResult();
 		synchronized(UserStorage.class){
 			removeFromCache(user);
 		}
 		updateQSearchIndex(getById(user.id));
 		removeBirthdayReminderFromCache(getFriendIDsForUser(user.id));
+	}
+
+	public static void updateAbout(User user, String about, String aboutSource) throws SQLException{
+		new SQLQueryBuilder()
+				.update("users")
+				.where("id=?", user.id)
+				.value("about", about)
+				.value("about_source", aboutSource)
+				.executeNoResult();
+		synchronized(UserStorage.class){
+			removeFromCache(user);
+		}
+	}
+
+	public static void updateExtendedFields(User user, String fieldsJson) throws SQLException{
+		new SQLQueryBuilder()
+				.update("users")
+				.where("id=?", user.id)
+				.value("profile_fields", fieldsJson)
+				.executeNoResult();
+		synchronized(UserStorage.class){
+			removeFromCache(user);
+		}
+	}
+
+	public static void updateUsername(User user, String username) throws SQLException{
+		new SQLQueryBuilder()
+				.update("users")
+				.where("id=?", user.id)
+				.value("username", username)
+				.executeNoResult();
+		synchronized(UserStorage.class){
+			removeFromCache(user);
+		}
+		updateQSearchIndex(getById(user.id));
 	}
 
 	public static int getLocalUserCount() throws SQLException{
@@ -1071,18 +1107,18 @@ public class UserStorage{
 	}
 
 	static String getQSearchStringForUser(User user){
-		StringBuilder sb=new StringBuilder(Utils.transliterate(user.firstName));
+		StringBuilder sb=new StringBuilder(TextProcessor.transliterate(user.firstName));
 		if(user.lastName!=null){
 			sb.append(' ');
-			sb.append(Utils.transliterate(user.lastName));
+			sb.append(TextProcessor.transliterate(user.lastName));
 		}
 		if(user.middleName!=null){
 			sb.append(' ');
-			sb.append(Utils.transliterate(user.middleName));
+			sb.append(TextProcessor.transliterate(user.middleName));
 		}
 		if(user.maidenName!=null){
 			sb.append(' ');
-			sb.append(Utils.transliterate(user.maidenName));
+			sb.append(TextProcessor.transliterate(user.maidenName));
 		}
 		sb.append(' ');
 		sb.append(user.username);

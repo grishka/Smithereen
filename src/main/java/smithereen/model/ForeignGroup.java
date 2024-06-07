@@ -19,6 +19,7 @@ import smithereen.activitypub.objects.Event;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.exceptions.BadRequestException;
 import smithereen.storage.DatabaseUtils;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public class ForeignGroup extends Group implements ForeignActor{
@@ -60,7 +61,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		if(StringUtils.isNotEmpty(summary))
-			summary=Utils.sanitizeHTML(summary);
+			summary=TextProcessor.sanitizeHTML(summary);
 
 		adminsForActivityPub=new ArrayList<>();
 		JsonElement _attributedTo=obj.get("attributedTo");

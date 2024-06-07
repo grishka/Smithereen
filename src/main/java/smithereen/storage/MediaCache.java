@@ -20,12 +20,17 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import smithereen.Config;
 import smithereen.LruCache;
@@ -40,10 +45,13 @@ public class MediaCache{
 	private static final Logger LOG=LoggerFactory.getLogger(MediaCache.class);
 	private static MediaCache instance=new MediaCache();
 
-	private LruCache<String, Item> metaCache=new LruCache<>(500);
-	private ExecutorService asyncUpdater;
+	private LruCache<byte[], Item> metaCache=new LruCache<>(500);
+	private final ScheduledExecutorService asyncUpdater;
 	private long cacheSize=-1;
 	private final Object cacheSizeLock=new Object();
+	private Set<byte[]> pendingLastAccessUpdates=new HashSet<>();
+	private ScheduledFuture<?> pendingLastAccessUpdateAction;
+	private final Object lastAccessQueueLock=new Object();
 
 	private static final int TYPE_PHOTO=0;
 
@@ -52,7 +60,7 @@ public class MediaCache{
 	}
 
 	private MediaCache(){
-		asyncUpdater=Executors.newFixedThreadPool(1);
+		asyncUpdater=Executors.newSingleThreadScheduledExecutor();
 		try{
 			updateTotalSize();
 		}catch(SQLException x){
@@ -71,10 +79,12 @@ public class MediaCache{
 
 	public Item get(URI uri) throws SQLException{
 		byte[] key=keyForURI(uri);
-		String keyHex=Utils.byteArrayToHexString(key);
-		Item item=metaCache.get(keyHex);
+		Item item;
+		synchronized(this){
+			item=metaCache.get(key);
+		}
 		if(item!=null){
-			asyncUpdater.submit(new LastAccessUpdater(key));
+			updateLastAccess(key);
 			return item;
 		}
 		Item result=new SQLQueryBuilder()
@@ -82,10 +92,21 @@ public class MediaCache{
 				.where("url_hash=?", (Object) key)
 				.executeAndGetSingleObject(this::itemFromResultSet);
 		if(result!=null){
-			metaCache.put(keyHex, result);
-			asyncUpdater.submit(new LastAccessUpdater(key));
+			synchronized(this){
+				metaCache.put(key, result);
+			}
+			updateLastAccess(key);
 		}
 		return result;
+	}
+
+	private void updateLastAccess(byte[] key){
+		synchronized(lastAccessQueueLock){
+			if(pendingLastAccessUpdates.isEmpty()){
+				pendingLastAccessUpdateAction=asyncUpdater.schedule(new LastAccessUpdater(), 10, TimeUnit.SECONDS);
+			}
+			pendingLastAccessUpdates.add(key);
+		}
 	}
 
 	private Item itemFromResultSet(ResultSet res) throws SQLException{
@@ -119,11 +140,11 @@ public class MediaCache{
 		File tmp=File.createTempFile(keyHex, null);
 		try{
 			HttpResponse<Path> resp=ActivityPub.httpClient.send(req, responseInfo->{
-				if(responseInfo.headers().firstValueAsLong("content-length").orElse(Long.MAX_VALUE)>Config.mediaCacheFileSizeLimit)
+				if(responseInfo.statusCode()/100!=2){
 					return new HttpResponse.BodySubscriber<>(){
 						@Override
 						public CompletionStage<Path> getBody(){
-							return CompletableFuture.failedStage(new IOException("File too large"));
+							return CompletableFuture.failedStage(new IOException("Response not successful"));
 						}
 
 						@Override
@@ -138,7 +159,8 @@ public class MediaCache{
 						@Override
 						public void onComplete(){}
 					};
-				return HttpResponse.BodySubscribers.ofFile(tmp.toPath());
+				}
+				return new SizeLimitingBodySubscriber(HttpResponse.BodySubscribers.ofFile(tmp.toPath()));
 			});
 			if(resp.statusCode()/100!=2){
 				return null;
@@ -156,7 +178,6 @@ public class MediaCache{
 					img=new VipsImage(tmp.getAbsolutePath());
 					if((enforcedWidth!=0 && img.getWidth()!=enforcedWidth) || (enforcedHeight!=0 && img.getHeight()!=enforcedHeight))
 						throw new IllegalArgumentException("Invalid image size");
-					//System.out.println(img.getWidth()+"x"+img.getHeight());
 					if(img.hasAlpha()){
 						VipsImage flat=img.flatten(255, 255, 255);
 						img.release();
@@ -168,7 +189,6 @@ public class MediaCache{
 					photo.width=size[0];
 					photo.height=size[1];
 					photo.key=keyHex;
-//					photo.totalSize=MediaStorageUtils.writeResizedImages(img, dimensions, heights, sizes, jpegQuality, webpQuality, keyHex, Config.mediaCachePath, Config.mediaCacheURLPath, photo.sizes);
 				}catch(IOException x){
 					throw new IOException(x);
 				}finally{
@@ -176,16 +196,20 @@ public class MediaCache{
 						img.release();
 				}
 			}
+		}catch(IOException x){
+			LOG.debug("Exception while downloading external media {}", uri, x);
+			return null;
 		}catch(InterruptedException ignored){
 		}finally{
 			if(tmp.exists())
 				tmp.delete();
 		}
-		//System.out.println("Total size: "+result.totalSize);
-		metaCache.put(keyHex, result);
+		metaCache.put(key, result);
 
 		ByteArrayOutputStream buf=new ByteArrayOutputStream();
-		result.serialize(new DataOutputStream(buf));
+		try{
+			result.serialize(new DataOutputStream(buf));
+		}catch(IOException ignored){}
 		new SQLQueryBuilder()
 				.insertInto("media_cache")
 				.value("url_hash", key)
@@ -199,7 +223,15 @@ public class MediaCache{
 		synchronized(cacheSizeLock){
 			cacheSize+=result.totalSize;
 			if(cacheSize>Config.mediaCacheMaxSize){
-				asyncUpdater.submit(new OldFileDeleter());
+				synchronized(lastAccessQueueLock){
+					// Perform pending access time updates right now, if any, to accidentally deleting recently accessed files
+					if(pendingLastAccessUpdateAction!=null){
+						pendingLastAccessUpdateAction.cancel(false);
+						pendingLastAccessUpdateAction=null;
+						asyncUpdater.submit(new LastAccessUpdater());
+					}
+					asyncUpdater.submit(new OldFileDeleter());
+				}
 			}
 		}
 
@@ -259,20 +291,21 @@ public class MediaCache{
 		}
 	}
 
-	private static class LastAccessUpdater implements Runnable{
-		private byte[] key;
-
-		public LastAccessUpdater(byte[] key){
-			this.key=key;
-		}
+	private class LastAccessUpdater implements Runnable{
 
 		@Override
 		public void run(){
+			Set<byte[]> keysToUpdate;
+			synchronized(lastAccessQueueLock){
+				pendingLastAccessUpdateAction=null;
+				keysToUpdate=pendingLastAccessUpdates;
+				pendingLastAccessUpdates=new HashSet<>();
+			}
 			try{
 				new SQLQueryBuilder()
 						.update("media_cache")
 						.valueExpr("last_access", "CURRENT_TIMESTAMP()")
-						.where("url_hash=?", (Object) key)
+						.whereIn("url_hash", keysToUpdate)
 						.executeNoResult();
 			}catch(SQLException x){
 				LOG.warn("Exception while updating last access time", x);
@@ -314,6 +347,47 @@ public class MediaCache{
 			}catch(SQLException x){
 				LOG.warn("Exception while deleting from media cache", x);
 			}
+		}
+	}
+
+	private static class SizeLimitingBodySubscriber implements HttpResponse.BodySubscriber<Path>{
+		private final HttpResponse.BodySubscriber<Path> parent;
+		private long size=0;
+
+		private SizeLimitingBodySubscriber(HttpResponse.BodySubscriber<Path> parent){
+			this.parent=parent;
+		}
+
+		@Override
+		public CompletionStage<Path> getBody(){
+			return parent.getBody();
+		}
+
+		@Override
+		public void onSubscribe(Flow.Subscription subscription){
+			parent.onSubscribe(subscription);
+		}
+
+		@Override
+		public void onNext(List<ByteBuffer> item){
+			for(ByteBuffer buf:item){
+				size+=buf.remaining();
+				if(size>Config.mediaCacheMaxSize){
+					parent.onError(new IOException("File too large"));
+					return;
+				}
+			}
+			parent.onNext(item);
+		}
+
+		@Override
+		public void onError(Throwable throwable){
+			parent.onError(throwable);
+		}
+
+		@Override
+		public void onComplete(){
+			parent.onComplete();
 		}
 	}
 }
