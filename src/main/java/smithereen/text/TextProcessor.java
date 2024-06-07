@@ -433,7 +433,7 @@ public class TextProcessor{
 		return newBody.html();
 	}
 
-	public static String postprocessPostHTMLForDisplay(String text, boolean forceTargetBlank){
+	public static String postprocessPostHTMLForDisplay(String text, boolean forceTargetBlank, boolean keepLinksRel){
 		if(text==null)
 			return "";
 		Document doc=Jsoup.parseBodyFragment(text);
@@ -469,7 +469,7 @@ public class TextProcessor{
 					URI uri=new URI(href);
 					if(forceTargetBlank || (uri.isAbsolute() && (uri.getHost()==null || !Config.isLocal(uri)))){
 						el.attr("target", "_blank");
-						if(!el.hasAttr("rel"))
+						if(!keepLinksRel || !el.hasAttr("rel"))
 							el.attr("rel", "noopener ugc");
 					}
 				}catch(URISyntaxException x){}
