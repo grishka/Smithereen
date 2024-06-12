@@ -140,7 +140,7 @@ public class ProfileRoutes{
 					contactsFields.add(Map.of("name", l.get("profile_city"), "value", user.location));
 				if(StringUtils.isNotEmpty(user.website)){
 					String url=TextProcessor.escapeHTML(user.website);
-					contactsFields.add(Map.of("name", l.get("profile_website"), "value", "<a href=\""+url+"\" target=\"_blank\">"+url+"</a>", "html", "true"));
+					contactsFields.add(Map.of("name", l.get("profile_website"), "value", "<a href=\""+url+"\" rel=\"me noopener ugc\" target=\"_blank\">"+url+"</a>", "html", "true"));
 				}
 				for(User.ContactInfoKey key:User.ContactInfoKey.values()){
 					if(user.contacts.containsKey(key)){
@@ -169,7 +169,7 @@ public class ProfileRoutes{
 							url=TextProcessor.escapeHTML(url);
 							String v="<a href=\""+url+"\"";
 							if(url.startsWith("http"))
-								v+=" target=\"_blank\"";
+								v+=" target=\"_blank\" rel=\"me noopener ugc\"";
 							v+=">"+TextProcessor.escapeHTML(value)+"</a>";
 							field.put("value", v);
 							field.put("html", "true");

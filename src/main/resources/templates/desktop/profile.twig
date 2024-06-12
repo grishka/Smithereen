@@ -12,7 +12,7 @@
 	{% endif %}
 	{% for fld in fields %}
 	<div class="label">{{ fld.name }}:</div>
-	<div>{% if fld.html %}{{ fld.value | postprocessHTML }}{% else %}{{ fld.value | nl2br }}{% endif %}</div>
+	<div>{% if fld.html %}{{ fld.value | postprocessHTML(keepLinksRel=true) }}{% else %}{{ fld.value | nl2br }}{% endif %}</div>
 	{% else %}
 	<div class="empty">{{ L('profile_no_info') }}</div>
 	{% endfor %}
