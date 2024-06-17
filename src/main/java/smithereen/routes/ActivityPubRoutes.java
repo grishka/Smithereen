@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -627,7 +628,10 @@ public class ActivityPubRoutes{
 		nodeInfo.usage.users.total=UserStorage.getLocalUserCount();
 		nodeInfo.usage.users.activeMonth=UserStorage.getActiveLocalUserCount(30*24*60*60*1000L);
 		nodeInfo.usage.users.activeHalfyear=UserStorage.getActiveLocalUserCount(180*24*60*60*1000L);
-		nodeInfo.metadata=Map.of();
+		nodeInfo.metadata=Map.of(
+				"nodeName", Objects.requireNonNull(Config.serverDisplayName, Config.domain),
+				"nodeDescription", TextProcessor.stripHTML(Objects.requireNonNull(Config.serverShortDescription, ""), true)
+		);
 
 		return gson.toJson(nodeInfo);
 	}
