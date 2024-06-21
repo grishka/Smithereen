@@ -332,11 +332,13 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		msg.inReplyTo=inReplyTo;
 
 		msg.to=new HashSet<>();
-		for(LinkOrObject id:to){
-			try{
-				User user=context.getObjectLinkResolver().resolve(id.link, User.class, true, true, false);
-				msg.to.add(user.id);
-			}catch(ObjectNotFoundException ignore){}
+		if(to!=null){
+			for(LinkOrObject id:to){
+				try{
+					User user=context.getObjectLinkResolver().resolve(id.link, User.class, true, true, false);
+					msg.to.add(user.id);
+				}catch(ObjectNotFoundException ignore){}
+			}
 		}
 		if(cc!=null){
 			msg.cc=new HashSet<>();

@@ -321,7 +321,7 @@ public class PostStorage{
 				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`>? AND `reply_key` IS NULL"+condition+" ORDER BY created_at DESC LIMIT "+count);
 				stmt.setInt(2, minID);
 			}else if(maxID>0){
-				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`=<? AND `reply_key` IS NULL"+condition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
+				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`<=? AND `reply_key` IS NULL"+condition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
 				stmt.setInt(2, maxID);
 			}else{
 				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+condition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
