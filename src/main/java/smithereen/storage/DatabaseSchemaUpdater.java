@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.UserRole;
 import smithereen.model.media.ImageMetadata;
@@ -38,7 +39,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=47;
+	public static final int SCHEMA_VERSION=49;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -49,6 +50,7 @@ public class DatabaseSchemaUpdater{
 						CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
 						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_'), '%');""");
 				createMediaRefCountTriggers(conn);
+				createApIdIndexTriggers(conn);
 				insertDefaultRoles(conn);
 			}
 		}else{
@@ -689,6 +691,29 @@ public class DatabaseSchemaUpdater{
 						  CONSTRAINT `bookmarks_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;""");
 			}
+			case 48 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE IF NOT EXISTS `ap_id_index` (
+						  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+						  `object_type` int unsigned NOT NULL,
+						  `object_id` bigint unsigned NOT NULL,
+						  PRIMARY KEY (`ap_id`),
+						  UNIQUE KEY `object_type` (`object_type`,`object_id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				SQLQueryBuilder.prepareStatement(conn,
+						"INSERT IGNORE INTO `ap_id_index` (ap_id, object_type, object_id) SELECT ap_id, ?, id FROM `users` WHERE `domain` IS NOT NULL",
+						ObjectLinkResolver.ObjectType.USER.id).execute();
+				SQLQueryBuilder.prepareStatement(conn,
+						"INSERT IGNORE INTO `ap_id_index` (ap_id, object_type, object_id) SELECT ap_id, ?, id FROM `groups` WHERE `domain` IS NOT NULL",
+						ObjectLinkResolver.ObjectType.GROUP.id).execute();
+				SQLQueryBuilder.prepareStatement(conn,
+						"INSERT IGNORE INTO `ap_id_index` (ap_id, object_type, object_id) SELECT ap_id, ?, id FROM `wall_posts` WHERE `ap_id` IS NOT NULL",
+						ObjectLinkResolver.ObjectType.POST.id).execute();
+				SQLQueryBuilder.prepareStatement(conn,
+						"INSERT IGNORE INTO `ap_id_index` (ap_id, object_type, object_id) SELECT ap_id, ?, id FROM `mail_messages` WHERE `ap_id` IS NOT NULL",
+						ObjectLinkResolver.ObjectType.MESSAGE.id).execute();
+			}
+			case 49 -> createApIdIndexTriggers(conn);
 		}
 	}
 
@@ -719,6 +744,29 @@ public class DatabaseSchemaUpdater{
 				.value("permissions", Utils.serializeEnumSetToBytes(moderatorPermissions))
 				.executeNoResult();
 		Config.reloadRoles();
+	}
+
+	private static void createApIdIndexTriggers(DatabaseConnection conn) throws SQLException{
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_users_to_ap_ids AFTER INSERT ON `users` FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.USER.id).execute();
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_groups_to_ap_ids AFTER INSERT ON `groups` FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.GROUP.id).execute();
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_posts_to_ap_ids AFTER INSERT ON wall_posts FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.POST.id).execute();
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_messages_to_ap_ids AFTER INSERT ON mail_messages FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.MESSAGE.id).execute();
+
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_users_from_ap_ids AFTER DELETE ON `users` FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_groups_from_ap_ids AFTER DELETE ON `groups` FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_posts_from_ap_ids AFTER DELETE ON wall_posts FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
+
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_user_posts_from_ap_ids BEFORE DELETE ON `users` FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id IN (SELECT ap_id FROM wall_posts WHERE owner_user_id=OLD.id AND ap_id IS NOT NULL); END IF; END;");
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_group_posts_from_ap_ids BEFORE DELETE ON `groups` FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id IN (SELECT ap_id FROM wall_posts WHERE owner_group_id=OLD.id AND ap_id IS NOT NULL); END IF; END;");
 	}
 
 	private static void createMediaRefCountTriggers(DatabaseConnection conn) throws SQLException{

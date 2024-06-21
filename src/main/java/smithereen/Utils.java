@@ -896,5 +896,9 @@ public class Utils{
 			throw new UserErrorException("err_wrong_captcha");
 	}
 
+	public static String decodeFourCC(int code){
+		return new String(new char[]{(char)((code >> 24) & 0xFF), (char)((code >> 16) & 0xFF), (char)((code >> 8) & 0xFF), (char)(code & 0xFF)});
+	}
+
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}
 }

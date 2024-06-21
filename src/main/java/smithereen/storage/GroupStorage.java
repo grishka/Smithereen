@@ -38,6 +38,7 @@ import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.GroupsController;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
 import smithereen.model.GroupAdmin;
@@ -235,7 +236,7 @@ public class GroupStorage{
 					throw x;
 				}
 				LOG.info("Deduplicating group rows: username {}@{}, old local ID {}, new AP ID {}", group.username, group.domain, oldID, group.activityPubID);
-				// Assign a temporary random username to this existing user row to get it out of the way
+				// Assign a temporary random username to this existing group row to get it out of the way
 				new SQLQueryBuilder(conn)
 						.update("groups")
 						.value("username", UUID.randomUUID().toString())

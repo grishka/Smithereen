@@ -31,6 +31,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.FederationState;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -257,7 +258,7 @@ public class PostStorage{
 								.valueExpr("reply_count", "reply_count+1")
 								.whereIn("id", post.replyKey)
 								.executeNoResult();
-						BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey.get(0)));
+						BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey.getFirst()));
 					}
 				}else{
 					stmt.execute();

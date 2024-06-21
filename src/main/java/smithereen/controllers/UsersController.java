@@ -303,7 +303,7 @@ public class UsersController{
 
 	public void deleteForeignUser(ForeignUser user){
 		try{
-			UserStorage.deleteUser(user);
+			UserStorage.deleteForeignUser(user);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -34,6 +34,7 @@ import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.Account;
 import smithereen.model.BirthdayReminder;
 import smithereen.model.ForeignUser;
@@ -1289,12 +1290,14 @@ public class UserStorage{
 		}
 	}
 
-	public static void deleteUser(User user) throws SQLException{
-		new SQLQueryBuilder()
-				.deleteFrom("users")
-				.where("id=?", user.id)
-				.executeNoResult();
-		removeFromCache(user);
+	public static void deleteForeignUser(ForeignUser user) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			new SQLQueryBuilder(conn)
+					.deleteFrom("users")
+					.where("id=?", user.id)
+					.executeNoResult();
+			removeFromCache(user);
+		}
 	}
 
 	public static void deleteAccount(Account account) throws SQLException{

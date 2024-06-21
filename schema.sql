@@ -37,6 +37,18 @@ CREATE TABLE `accounts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `ap_id_index`
+--
+
+CREATE TABLE `ap_id_index` (
+  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `object_type` int unsigned NOT NULL,
+  `object_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`ap_id`),
+  UNIQUE KEY `object_type` (`object_type`,`object_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `audit_log`
 --
 
@@ -800,4 +812,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-06-06 11:51:39
+-- Dump completed on 2024-06-17  6:54:09

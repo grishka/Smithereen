@@ -221,7 +221,8 @@ public class MailController{
 			if(message.ownerID!=self.id && message.senderID!=self.id){
 				throw new IllegalArgumentException("This user can't delete this message");
 			}
-			MailStorage.actuallyDeleteMessage(message.id);
+			Set<Long> idsToDelete=new HashSet<>();
+			idsToDelete.add(message.id);
 			if(message.attachments!=null && !message.attachments.isEmpty()){
 				MediaStorage.deleteMediaFileReferences(XTEA.deobfuscateObjectID(message.id, ObfuscatedObjectIDType.MAIL_MESSAGE), MediaFileReferenceType.MAIL_ATTACHMENT);
 			}
@@ -233,7 +234,7 @@ public class MailController{
 			if(deleteRelated && !message.relatedMessageIDs.isEmpty()){
 				for(MailMessage msg:MailStorage.getMessages(message.relatedMessageIDs)){
 					if(msg.isUnread()){
-						MailStorage.actuallyDeleteMessage(msg.id);
+						idsToDelete.add(msg.id);
 						if(message.attachments!=null && !message.attachments.isEmpty()){
 							MediaStorage.deleteMediaFileReferences(XTEA.deobfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE), MediaFileReferenceType.MAIL_ATTACHMENT);
 						}
@@ -243,6 +244,7 @@ public class MailController{
 					}
 				}
 			}
+			MailStorage.actuallyDeleteMessages(idsToDelete, message.activityPubID);
 			if(!(self instanceof ForeignUser) && deleteRelated && message.senderID==self.id){
 				context.getActivityPubWorker().sendDeleteMessageActivity(self, message);
 			}
@@ -269,7 +271,7 @@ public class MailController{
 			List<MailMessage> messages=MailStorage.getRecentlyDeletedMessages(Instant.now().minus(10, ChronoUnit.MINUTES));
 			if(messages.isEmpty())
 				return;
-			MailStorage.actuallyDeleteMessages(messages.stream().map(m->m.id).collect(Collectors.toSet()));
+			MailStorage.actuallyDeleteMessages(messages);
 			for(MailMessage message:messages){
 				if(message.attachments!=null && !message.attachments.isEmpty()){
 					MediaStorage.deleteMediaFileReferences(XTEA.deobfuscateObjectID(message.id, ObfuscatedObjectIDType.MAIL_MESSAGE), MediaFileReferenceType.MAIL_ATTACHMENT);

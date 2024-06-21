@@ -262,6 +262,15 @@ public class SQLQueryBuilder{
 		}
 	}
 
+	public long executeAndGetLong() throws SQLException{
+		try(PreparedStatement stmt=createStatementInternal(0)){
+			long r=DatabaseUtils.oneFieldToLong(stmt.executeQuery());
+			if(needCloseConnection)
+				conn.close();
+			return r;
+		}
+	}
+
 	public List<Integer> executeAndGetIntList() throws SQLException{
 		try(PreparedStatement stmt=createStatementInternal(0)){
 			List<Integer> r=DatabaseUtils.intResultSetToList(stmt.executeQuery());

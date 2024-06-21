@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.EnumSet;
@@ -33,6 +34,7 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
+import smithereen.storage.FederationStorage;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.exceptions.FederationException;
@@ -264,28 +266,37 @@ public class ObjectLinkResolver{
 						return ensureTypeAndCast(msgs.getFirst(), expectedType);
 				}
 			}else{
-				if(expectedType.isAssignableFrom(ForeignUser.class)){
-					User user=UserStorage.getUserByActivityPubID(link);
-					if(user!=null)
-						return ensureTypeAndCast(user, expectedType);
-					user=serviceActorCache.get(link);
-					if(user!=null)
-						return ensureTypeAndCast(user, expectedType);
-				}
-				if(expectedType.isAssignableFrom(ForeignGroup.class)){
-					ForeignGroup group=GroupStorage.getForeignGroupByActivityPubID(link);
-					if(group!=null)
-						return ensureTypeAndCast(group, expectedType);
-				}
-				if(expectedType.isAssignableFrom(Post.class)){
-					Post post=PostStorage.getPostByID(link);
-					if(post!=null)
-						return ensureTypeAndCast(post, expectedType);
-				}
-				if(expectedType.isAssignableFrom(MailMessage.class)){
-					List<MailMessage> msgs=MailStorage.getMessages(link);
-					if(!msgs.isEmpty())
-						return ensureTypeAndCast(msgs.getFirst(), expectedType);
+				ObjectTypeAndID tid=FederationStorage.getObjectTypeAndID(link);
+				if(tid!=null){
+					if(tid.type==ObjectType.USER && expectedType.isAssignableFrom(ForeignUser.class)){
+						User user=UserStorage.getUserByActivityPubID(link);
+						if(user!=null)
+							return ensureTypeAndCast(user, expectedType);
+						user=serviceActorCache.get(link);
+						if(user!=null)
+							return ensureTypeAndCast(user, expectedType);
+					}
+					if(tid.type==ObjectType.GROUP && expectedType.isAssignableFrom(ForeignGroup.class)){
+						ForeignGroup group=GroupStorage.getForeignGroupByActivityPubID(link);
+						if(group!=null)
+							return ensureTypeAndCast(group, expectedType);
+					}
+					if(tid.type==ObjectType.POST && expectedType.isAssignableFrom(Post.class)){
+						Post post=PostStorage.getPostByID(link);
+						if(post!=null)
+							return ensureTypeAndCast(post, expectedType);
+					}
+					if(tid.type==ObjectType.MESSAGE && expectedType.isAssignableFrom(MailMessage.class)){
+						List<MailMessage> msgs=MailStorage.getMessages(link);
+						if(!msgs.isEmpty())
+							return ensureTypeAndCast(msgs.getFirst(), expectedType);
+					}
+				}else{
+					if(expectedType.isAssignableFrom(ForeignUser.class)){
+						User user=serviceActorCache.get(link);
+						if(user!=null)
+							return ensureTypeAndCast(user, expectedType);
+					}
 				}
 			}
 		}catch(SQLException x){
@@ -420,4 +431,37 @@ public class ObjectLinkResolver{
 	}
 
 	public record UsernameResolutionResult(UsernameOwnerType type, int localID){}
+
+	// Types for objects that AP IDs can point to, in "ap_id_index" database table
+	// They are FourCCs for easier extensibility
+	public enum ObjectType{
+		USER('U', 'S', 'E', 'R'),
+		GROUP('G', 'R', 'U', 'P'),
+		POST('P', 'O', 'S', 'T'),
+		MESSAGE('D', 'M', 'S', 'G');
+
+		public final int id;
+
+		ObjectType(char... id){
+			this.id=((int)id[0] << 24) | ((int)id[1] << 16) | ((int)id[2] << 8) | (int)id[3];
+		}
+
+		public static ObjectType fromID(int id){
+			for(ObjectType t:values()){
+				if(t.id==id)
+					return t;
+			}
+			throw new IllegalArgumentException("Unknown object type ID '"+Utils.decodeFourCC(id)+"'");
+		}
+	}
+
+	public record ObjectTypeAndID(ObjectType type, long id){
+		public int idInt(){
+			return (int)id;
+		}
+
+		public static ObjectTypeAndID fromResultSet(ResultSet res) throws SQLException{
+			return new ObjectTypeAndID(ObjectType.fromID(res.getInt("object_type")), res.getLong("object_id"));
+		}
+	}
 }
