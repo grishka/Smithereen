@@ -230,6 +230,8 @@ public class MailStorage{
 				.selectFrom("mail_messages")
 				.where(where, XTEA.deobfuscateObjectID(messageID, ObfuscatedObjectIDType.MAIL_MESSAGE), ownerID)
 				.executeAndGetSingleObject(MailMessage::fromResultSet);
+		if(msg==null)
+			return null;
 		postprocessMessages(Set.of(msg));
 		return msg;
 	}
