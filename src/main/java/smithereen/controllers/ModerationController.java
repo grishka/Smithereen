@@ -74,6 +74,7 @@ import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.UserRoleViewModel;
+import smithereen.storage.FederationStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.SessionStorage;
@@ -215,7 +216,7 @@ public class ModerationController{
 
 	public PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, boolean onlyRestricted, String query){
 		try{
-			return ModerationStorage.getAllServers(offset, count, availability, onlyRestricted, query);
+			return FederationStorage.getAllServers(offset, count, availability, onlyRestricted, query);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -229,7 +230,7 @@ public class ModerationController{
 				return server;
 
 			try{
-				server=ModerationStorage.getServerByDomain(domain);
+				server=FederationStorage.getServerByDomain(domain);
 				if(server==null)
 					throw new ObjectNotFoundException();
 				serversByDomainCache.put(domain, server);
@@ -259,9 +260,9 @@ public class ModerationController{
 				return server;
 
 			try{
-				server=ModerationStorage.getServerByDomain(domain);
+				server=FederationStorage.getServerByDomain(domain);
 				if(server==null){
-					int id=ModerationStorage.addServer(domain);
+					int id=FederationStorage.addServer(domain);
 					server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null);
 				}
 				serversByDomainCache.put(domain, server);
@@ -274,7 +275,7 @@ public class ModerationController{
 
 	public void resetServerAvailability(Server server){
 		try{
-			ModerationStorage.setServerAvailability(server.id(), null, 0, true);
+			FederationStorage.setServerAvailability(server.id(), null, 0, true);
 			synchronized(serversByDomainCache){
 				serversByDomainCache.remove(server.host());
 			}
@@ -289,7 +290,7 @@ public class ModerationController{
 			synchronized(serversByDomainCache){
 				if(!today.equals(server.lastErrorDay())){
 					int dayCount=server.errorDayCount()+1;
-					ModerationStorage.setServerAvailability(server.id(), today, dayCount, dayCount<7);
+					FederationStorage.setServerAvailability(server.id(), today, dayCount, dayCount<7);
 					serversByDomainCache.remove(server.host());
 				}
 			}
