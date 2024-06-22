@@ -73,7 +73,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		// fix for Lemmy (and possibly something else)
 		boolean hasBogusURL=url!=null && !url.getHost().equalsIgnoreCase(activityPubID.getHost()) && !url.getHost().equalsIgnoreCase("www."+activityPubID.getHost());
 
-		String text=content;
+		String text=content==null ? "" : content;
 		if(hasBogusURL)
 			text=text+"<p><a href=\""+url+"\">"+url+"</a></p>";
 		text=TextProcessor.sanitizeHTML(text);
