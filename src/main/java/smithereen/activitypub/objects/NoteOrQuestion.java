@@ -1,7 +1,9 @@
 package smithereen.activitypub.objects;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -363,15 +365,16 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		if(_content!=null && _content.isJsonArray()){
 			content=_content.getAsJsonArray().get(0).getAsString();
 		}else if(obj.has("contentMap")){
-			// Pleroma compatibility workaround
-			// TODO find out why "content" gets dropped during JSON-LD processing
+			// Handle the case when there's a `@language` in the `@context`
 			JsonElement _contentMap=obj.get("contentMap");
 			if(_contentMap.isJsonObject()){
 				JsonObject contentMap=_contentMap.getAsJsonObject();
-				if(contentMap.size()>0){
+				if(!contentMap.isEmpty()){
 					_content=contentMap.get(contentMap.keySet().iterator().next());
-					if(_content!=null && _content.isJsonArray()){
-						content=_content.getAsJsonArray().get(0).getAsString();
+					if(_content instanceof JsonArray ja){
+						content=ja.get(0).getAsString();
+					}else if(_content instanceof JsonPrimitive jp){
+						content=jp.getAsString();
 					}
 				}
 			}
