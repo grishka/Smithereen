@@ -17,6 +17,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -203,10 +204,22 @@ public class ActivityPub{
 			throw new RuntimeException(x);
 		}
 		if(resp.statusCode()/100!=2){
-			try(InputStream in=resp.body()){
-				while(in.skip(8192)>0L);
+			if(Config.DEBUG){
+				StringBuilder sb=new StringBuilder();
+				try(BufferedReader reader=new BufferedReader(new InputStreamReader(resp.body(), StandardCharsets.UTF_8))){
+					char[] buf=new char[1024];
+					int read;
+					while((read=reader.read(buf))>0){
+						sb.append(buf, 0, read);
+					}
+				}
+				LOG.warn("Failed response body: {}", sb);
+			}else{
+				try(InputStream in=resp.body()){
+					while(in.skip(8192)>0L);
+				}
 			}
-			throw new ObjectNotFoundException("Response is not successful: remote server returned "+resp.statusCode());
+			throw new ObjectNotFoundException("Response is not successful: remote server returned "+resp.statusCode()+" for GET "+uri);
 		}
 		HttpContentType contentType=HttpContentType.from(resp.headers());
 		try(InputStream in=resp.body()){
@@ -223,7 +236,7 @@ public class ActivityPub{
 							try{
 								return fetchRemoteObjectInternal(UriBuilder.parseAndEncode(url), signer, actorToken, ctx, false);
 							}catch(URISyntaxException x){
-								throw new ObjectNotFoundException("Failed to parse URL from <link rel=\"alternate\">", x);
+								throw new ObjectNotFoundException("Failed to parse URL from <link rel=\"alternate\"> on HTML page at "+uri, x);
 							}
 						}
 					}
@@ -231,7 +244,7 @@ public class ActivityPub{
 			}
 			// Allow "application/activity+json" or "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""
 			if(!contentType.matches("application/activity+json") && !contentType.matches(EXPECTED_CONTENT_TYPE)){
-				throw new ObjectNotFoundException("Invalid Content-Type: "+contentType);
+				throw new ObjectNotFoundException("Invalid Content-Type for "+uri+": "+contentType);
 			}
 
 			try{

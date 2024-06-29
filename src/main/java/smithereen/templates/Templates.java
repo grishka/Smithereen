@@ -133,7 +133,7 @@ public class Templates{
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
 		}
-		for(String key: List.of("error", "ok", "network_error", "close", "cancel", "yes", "no")){
+		for(String key:List.of("error", "ok", "network_error", "close", "cancel", "yes", "no", "show_technical_details")){
 			jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 		}
 		if(req.attribute("mobile")!=null){

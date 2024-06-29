@@ -459,7 +459,7 @@ public class SystemRoutes{
 			obj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, false, (JsonObject) null, false);
 		}catch(UnsupportedRemoteObjectTypeException x){
 			LOG.debug("Unsupported remote object", x);
-			return new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
+			return new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).add("details", x.getMessage()).build();
 		}catch(ObjectNotFoundException x){
 			LOG.debug("Remote object not found", x);
 			String error=switch(x.getCause()){
@@ -467,15 +467,12 @@ public class SystemRoutes{
 				case IOException ignored -> l.get("remote_object_network_error");
 				case null, default -> l.get("remote_object_not_found");
 			};
-			return new JsonObjectBuilder().add("error", error).build();
+			return new JsonObjectBuilder().add("error", error).add("details", x.getCause() instanceof Exception ? x.getCause().getMessage() : x.getMessage()).build();
 		}catch(Exception x){
 			LOG.debug("Other remote fetch exception", x);
 			String errMessage=l.get("remote_object_loading_error");
 			String exMessage=x.getMessage();
-			if(StringUtils.isNotEmpty(exMessage)){
-				errMessage+="<br><br>"+TextProcessor.escapeHTML(exMessage);
-			}
-			return new JsonObjectBuilder().add("error", errMessage).build();
+			return new JsonObjectBuilder().add("error", errMessage).add("details", exMessage).build();
 		}
 		return switch(obj){
 			case ForeignUser user -> {

@@ -89,10 +89,19 @@ function loadRemoteObject(url:string):void{
 		if(resp.success){
 			window.location.href=resp.success;
 		}else if(resp.error){
-			new MessageBox(lang("error"), resp.error as string, lang("ok")).show();
+			var content=resp.error as string;
+			if(resp.details){
+				content+=`<input type="checkbox" class="toggler" id="errorDetailsExpander"/>
+					<div class="marginBefore toggled">
+						<label for="errorDetailsExpander" class="link hideWhenOn">${lang("show_technical_details")} &raquo;</label>
+						<div class="showWhenOn">${(resp.details as string).escapeHTML()}</div>
+					</div>`;
+			}
+			console.log("HERE?!");
+			new MessageBox(lang("error"), content, lang("close")).show();
 		}
 	}, ()=>{
-		
+		new MessageBox(lang("error"), lang("network_error"), lang("close")).show();
 	});
 }
 

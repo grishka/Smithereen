@@ -192,5 +192,6 @@
   "comments_show_X_more_comments": "Show {count, plural, one {# more comment} other {# more comments}}",
   "cancel_reply": "Cancel reply",
   "menu_bookmarks": "My Bookmarks",
-  "X_communities": "{count, plural, one {One community} other {# communities}}"
+  "X_communities": "{count, plural, one {One community} other {# communities}}",
+  "show_technical_details": "Technical details"
 }
