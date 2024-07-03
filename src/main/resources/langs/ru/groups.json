@@ -136,5 +136,8 @@
   "groups_search_placeholder": "Поиск групп",
   "events_search_placeholder": "Поиск встреч",
   "summary_found_X_groups": "{count, plural, =0 {Не найдено ни одной группы} one {Найдена # группа} few {Найдено # группы} other {Найдено # групп}}",
-  "summary_found_X_events": "{count, plural, =0 {Не найдено ни одной встречи} one {Найдена # встреча} few {Найдено # встречи} other {Найдено # встреч}}"
+  "summary_found_X_events": "{count, plural, =0 {Не найдено ни одной встречи} one {Найдена # встреча} few {Найдено # встречи} other {Найдено # встреч}}",
+  "group_access_level": "Уровень доступа",
+  "group_access_admin": "Администратор",
+  "group_access_moderator": "Модератор"
 }
