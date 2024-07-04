@@ -105,6 +105,14 @@ public class MediaStorage{
 				.executeNoResult();
 	}
 
+	public static void deleteMediaFileReferences(Collection<Long> objectIDs, MediaFileReferenceType type) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("media_file_refs")
+				.whereIn("object_id", objectIDs)
+				.andWhere("object_type=?", type)
+				.executeNoResult();
+	}
+
 	public static List<MediaFileRecord> getUnreferencedMediaFileRecords() throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("media_files")

@@ -2,6 +2,7 @@ package smithereen.model;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.util.Objects;
 import java.util.Set;
 
 public class PrivacySetting{
@@ -21,6 +22,18 @@ public class PrivacySetting{
 				", allowUsers="+allowUsers+
 				", exceptUsers="+exceptUsers+
 				'}';
+	}
+
+	@Override
+	public boolean equals(Object o){
+		if(this==o) return true;
+		if(!(o instanceof PrivacySetting that)) return false;
+		return baseRule==that.baseRule && Objects.equals(allowUsers, that.allowUsers) && Objects.equals(exceptUsers, that.exceptUsers);
+	}
+
+	@Override
+	public int hashCode(){
+		return Objects.hash(baseRule, allowUsers, exceptUsers);
 	}
 
 	public enum Rule{

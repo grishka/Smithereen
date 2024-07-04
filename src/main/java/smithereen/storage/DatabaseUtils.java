@@ -13,7 +13,9 @@ import java.util.Spliterators;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
+import java.util.function.LongConsumer;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -123,6 +125,44 @@ public class DatabaseUtils{
 					try{
 						while(res.next()){
 							action.accept(res.getInt(1));
+						}
+						res.close();
+						if(close!=null)
+							close.run();
+					}catch(SQLException x){
+						throw new UncheckedSQLException(x);
+					}
+				}
+			}, false);
+		}catch(UncheckedSQLException x){
+			throw x.getCause();
+		}
+	}
+
+	public static LongStream longResultSetToStream(ResultSet res, Runnable close) throws SQLException{
+		try{
+			return StreamSupport.longStream(new Spliterators.AbstractLongSpliterator(Long.MAX_VALUE, Spliterator.ORDERED){
+				@Override
+				public boolean tryAdvance(LongConsumer action){
+					try{
+						if(res.next()){
+							action.accept(res.getLong(1));
+							return true;
+						}
+						res.close();
+						if(close!=null)
+							close.run();
+					}catch(SQLException x){
+						throw new UncheckedSQLException(x);
+					}
+					return false;
+				}
+
+				@Override
+				public void forEachRemaining(LongConsumer action){
+					try{
+						while(res.next()){
+							action.accept(res.getLong(1));
 						}
 						res.close();
 						if(close!=null)

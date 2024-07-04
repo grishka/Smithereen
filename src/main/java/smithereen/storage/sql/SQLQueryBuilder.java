@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import smithereen.storage.DatabaseUtils;
@@ -283,6 +284,13 @@ public class SQLQueryBuilder{
 
 	public IntStream executeAndGetIntStream() throws SQLException{
 		return DatabaseUtils.intResultSetToStream(createStatementInternal(0).executeQuery(), ()->{
+			if(needCloseConnection)
+				conn.close();
+		});
+	}
+
+	public LongStream executeAndGetLongStream() throws SQLException{
+		return DatabaseUtils.longResultSetToStream(createStatementInternal(0).executeQuery(), ()->{
 			if(needCloseConnection)
 				conn.close();
 		});

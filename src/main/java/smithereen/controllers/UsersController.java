@@ -438,9 +438,8 @@ public class UsersController{
 		}
 	}
 
-	public static void doPendingAccountDeletions(){
+	public static void doPendingAccountDeletions(ApplicationContext ctx){
 		try{
-			ApplicationContext ctx=new ApplicationContext(); // This is probably gonna bite me in the ass in the future
 			List<User> users=UserStorage.getTerminallyBannedUsers();
 			if(users.isEmpty()){
 				LOG.trace("No users to delete");
