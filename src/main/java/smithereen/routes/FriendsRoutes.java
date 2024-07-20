@@ -6,6 +6,7 @@ import java.net.URLEncoder;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
@@ -286,10 +287,10 @@ public class FriendsRoutes{
 						avaUrls=null;
 					}else{
 						avaUrls=List.of(
-								ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_SMALL, SizedImage.Format.JPEG).toString(),
-								ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_SMALL, SizedImage.Format.WEBP).toString(),
-								ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_MEDIUM, SizedImage.Format.JPEG).toString(),
-								ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_MEDIUM, SizedImage.Format.WEBP).toString()
+								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_SMALL, SizedImage.Format.JPEG)),
+								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_SMALL, SizedImage.Format.WEBP)),
+								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_MEDIUM, SizedImage.Format.JPEG)),
+								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_MEDIUM, SizedImage.Format.WEBP))
 						);
 					}
 					return Arrays.asList(

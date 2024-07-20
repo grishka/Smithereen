@@ -189,5 +189,7 @@
   "cancel_reply": "Не отвечать",
   "menu_bookmarks": "Мои Закладки",
   "X_communities": "{count, plural, one {# сообщество} few {# сообщества} other {# сообществ}}",
-  "show_technical_details": "Технические подробности"
+  "show_technical_details": "Технические подробности",
+  "menu_photos": "Мои Фотографии",
+  "release_files_to_upload": "Отпустите, чтобы начать загрузку"
 }

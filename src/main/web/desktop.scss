@@ -2178,6 +2178,9 @@ input:checked+.postCWWrap{
 textarea{
 	line-height: 13px;
 	min-height: 47px;
+	&.large{
+		min-height: 78px;
+	}
 }
 
 .hasJS .wallPostForm.collapsed textarea{
@@ -2292,7 +2295,7 @@ textarea{
 	padding: 0 10px;
 }
 
-.boxContent .emptyState{
+.boxContent .emptyState, .mediaGridW .emptyState{
 	height: auto;
 	padding: 50px 0;
 	border: none;
@@ -3571,6 +3574,223 @@ a.clickableListItem{
 	width: 448px;
 	.comment{
 		padding: 10px;
+	}
+}
+
+label.largeAccented{
+	color: $boldHeaders;
+	display: block;
+	font-size: 12px;
+	font-weight: bold;
+	margin: 12px 0 6px;
+	&:first-child{
+		margin-top: 0;
+	}
+}
+
+.boxContent .extraPaddingInBox{
+	margin: 1px 6px 8px;
+}
+
+.mediaGridW{
+	padding: 20px 25px 25px;
+	.summaryWrap{
+		padding: 0;
+	}
+}
+
+.photoAlbumsGrid{
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	grid-gap: 20px;
+	padding-top: 13px;
+	--album-height: 185px;
+}
+
+.photoAlbum{
+	background: $blockUnderboxBackground;
+	position: relative;
+	height: var(--album-height);
+	.infoW{
+		position: absolute;
+		width: 100%;
+		top: 0;
+		bottom: 0;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+	}
+	.spacer{
+		flex-basis: calc(var(--album-height) - 22px);
+		flex-shrink: 0;
+		transition: flex-shrink 0.3s ease;
+	}
+	.info{
+		background: rgba(0,0,0,0.5);
+		backdrop-filter: saturate(180%) blur(2px);
+		color: #fff;
+		overflow: hidden;
+		padding: 4px 7px;
+		width: 100%;
+		flex-shrink: 1;
+		transition: flex-shrink 0.3s ease;
+	}
+	.title{
+		font-weight: bold;
+	}
+	.count{
+		font-weight: bold;
+		float: right;
+		margin-left: 5px;
+		.icon{
+			display: inline-block;
+			width: 11px;
+			height: 10px;
+			background: svg-load('img/photo_album_icon.svg') no-repeat;
+			background-position: bottom;
+			margin-right: 2px;
+		}
+	}
+	.description{
+		margin-top: 4px;
+	}
+	&:hover{
+		.spacer{
+			flex-shrink: 1;
+		}
+		.info{
+			flex-shrink: 0;
+		}
+	}
+	&:not(:hover) .title{
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		overflow: hidden;
+	}
+}
+
+.photoGridUpload{
+	background: #f2f1ea;
+	border-bottom: solid 1px $mainHeaderSeparator;
+	height: 65px;
+	font-size: 13px;
+	color: #86844d;
+	user-select: none;
+	.uploadText{
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 100%;
+		cursor: pointer;
+		.icon{
+			width: 26px;
+			height: 22px;
+			background: svg-load('img/photo_upload_icon.svg');
+			margin-right: 8px;
+		}
+	}
+	.uploadDropZone{
+		display: none;
+		padding: 10px;
+		height: 100%;
+		.inner{
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: 100%;
+			background: $bg;
+			border: dashed 1px #86844d;
+		}
+	}
+}
+
+.fileIsBeingDragged .photoGridUpload{
+	.uploadText{
+		display: none;
+	}
+	.uploadDropZone{
+		display: block;
+	}
+}
+
+.photoUploadProgressW{
+	padding: 15px;
+	text-align: center;
+	color: $auxiliaryGrey;
+	.progressBar{
+		margin: 10px auto 0;
+	}
+}
+
+.photoGrid{
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	grid-gap: 19px;
+	padding-top: 13px;
+	.photo{
+		height: 83px;
+	}
+	.ajaxEndlessPagination{
+		grid-column-start: span 4;
+	}
+}
+
+.photoGrid img, .photoAlbum img, .photoAlbumEdit .cover img{
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: top center;
+}
+
+.photoEditRow, .photoUploadError{
+	margin: 0 15px;
+	padding: 18px 10px;
+	border-top: solid 1px $wallCommentSeparator;
+}
+
+.photoEditRow{
+	display: flex;
+	.thumb{
+		width: 130px;
+		margin-right: 15px;
+		flex: none;
+		img{
+			width: 100%;
+			height: auto;
+			max-height: 200px;
+			object-fit: cover;
+			object-position: top center;
+		}
+	}
+	.descriptionW{
+		flex-grow: 1;
+	}
+	textarea{
+		width: 100%;
+	}
+}
+
+.photoAlbumEdit{
+	padding: 15px 25px 20px;
+	.inner{
+		display: flex;
+	}
+	.left{
+		width: 130px;
+		margin-right: 15px;
+		flex: none;
+		padding-top: 20px;
+	}
+	.right{
+		flex-grow: 1;
+	}
+	.cover{
+		height: 83px;
+		overflow: hidden;
+		background: $blockUnderboxBackground;
+	}
+	.settingsMessage{
+		margin-bottom: 15px;
 	}
 }
 

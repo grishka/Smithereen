@@ -190,4 +190,14 @@ public class Templates{
 				"graffiti_clear", "graffiti_undo", "graffiti_clear_confirm", "graffiti_close_confirm", "confirm_title", "graffiti_color", "graffiti_thickness", "graffiti_opacity", "attach"
 			);
 	}
+
+	public static void addJsLangForPrivacySettings(Request req){
+		Utils.jsLangKey(req,
+				"privacy_value_everyone", "privacy_value_friends", "privacy_value_friends_of_friends", "privacy_value_no_one",
+				"privacy_value_only_me", "privacy_value_everyone_except", "privacy_value_certain_friends",
+				"save", "privacy_settings_title", "privacy_allowed_title", "privacy_denied_title", "privacy_allowed_to_X",
+				"privacy_value_to_everyone", "privacy_value_to_friends", "privacy_value_to_friends_of_friends", "privacy_value_to_certain_friends", "delete", "privacy_enter_friend_name",
+				"privacy_settings_value_except", "privacy_settings_value_certain_friends_before", "privacy_settings_value_name_separator",
+				"select_friends_title", "friends_search_placeholder", "friend_list_your_friends", "friends_in_list", "select_friends_empty_selection");
+	}
 }

@@ -20,8 +20,11 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -31,6 +34,7 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.LruCache;
@@ -40,6 +44,7 @@ import smithereen.libvips.VipsImage;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.utils.Pair;
 
 public class MediaCache{
 	private static final Logger LOG=LoggerFactory.getLogger(MediaCache.class);
@@ -100,6 +105,49 @@ public class MediaCache{
 		return result;
 	}
 
+	public Map<URI, Item> get(Collection<URI> uris) throws SQLException{
+		if(uris.isEmpty())
+			return Map.of();
+		if(uris.size()==1){
+			URI uri=uris.iterator().next();
+			return Map.of(uri, get(uri));
+		}
+		HashMap<URI, Item> result=new HashMap<>();
+		Map<byte[], URI> keys=uris.stream().map(uri->new Pair<>(keyForURI(uri), uri)).collect(Collectors.toMap(Pair::first, Pair::second));
+		HashSet<byte[]> remainingKeys=new HashSet<>(keys.keySet()), keysToUpdateAccess=new HashSet<>();
+		synchronized(this){
+			for(Map.Entry<byte[], URI> e:keys.entrySet()){
+				Item item=metaCache.get(e.getKey());
+				if(item!=null){
+					result.put(e.getValue(), item);
+					remainingKeys.remove(e.getKey());
+					keysToUpdateAccess.add(e.getKey());
+				}
+			}
+		}
+		if(!remainingKeys.isEmpty()){
+			List<Item> items=new SQLQueryBuilder()
+					.selectFrom("media_cache")
+					.whereIn("url_hash", remainingKeys)
+					.executeAsStream(this::itemFromResultSet)
+					.toList();
+			synchronized(this){
+				for(Item item:items){
+					metaCache.put(item.urlHash, item);
+				}
+			}
+			for(Item item:items){
+				result.put(keys.get(item.urlHash), item);
+				keysToUpdateAccess.add(item.urlHash);
+			}
+		}
+		if(!keysToUpdateAccess.isEmpty()){
+			updateLastAccess(keysToUpdateAccess);
+		}
+
+		return result;
+	}
+
 	private void updateLastAccess(byte[] key){
 		synchronized(lastAccessQueueLock){
 			if(pendingLastAccessUpdates.isEmpty()){
@@ -109,11 +157,21 @@ public class MediaCache{
 		}
 	}
 
+	private void updateLastAccess(Collection<byte[]> keys){
+		synchronized(lastAccessQueueLock){
+			if(pendingLastAccessUpdates.isEmpty()){
+				pendingLastAccessUpdateAction=asyncUpdater.schedule(new LastAccessUpdater(), 10, TimeUnit.SECONDS);
+			}
+			pendingLastAccessUpdates.addAll(keys);
+		}
+	}
+
 	private Item itemFromResultSet(ResultSet res) throws SQLException{
 		long size=res.getInt("size");
 		byte[] info=res.getBytes("info");
 		int type=res.getInt("type");
-		String keyHex=Utils.byteArrayToHexString(res.getBytes("url_hash"));
+		byte[] urlHash=res.getBytes("url_hash");
+		String keyHex=Utils.byteArrayToHexString(urlHash);
 		Item result;
 		switch(type){
 			case TYPE_PHOTO:
@@ -128,6 +186,7 @@ public class MediaCache{
 			return null;
 		}
 		result.totalSize=size;
+		result.urlHash=urlHash;
 		return result;
 	}
 
@@ -253,6 +312,7 @@ public class MediaCache{
 
 	public static abstract class Item{
 		public long totalSize=0;
+		public byte[] urlHash;
 
 		public abstract int getType();
 		public abstract void serialize(DataOutputStream out) throws IOException;

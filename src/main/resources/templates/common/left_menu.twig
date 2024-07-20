@@ -8,6 +8,7 @@
 	{% if currentUser is not null %}
 	<li class="hasAux"><a href="/{{currentUser.username}}" class="actionMain" id="myProfileLink">{{L('menu_profile')}}</a><a href="/settings/profile/general" class="actionAux">{{L('menu_edit')}}</a></li>
 	<li><a href="/my/friends">{{L('menu_friends')}}{{ menuCounter(userNotifications.newFriendRequestCount) }}</a></li>
+	<li><a href="/my/albums">{{ L('menu_photos') }}</a></li>
 	<li><a href="/my/mail">{{ L('menu_mail') }}{{ menuCounter(userNotifications.unreadMailCount) }}</a></li>
 	<li><a href="/my/groups">{{ L('menu_groups') }}{{ menuCounter(userNotifications.newGroupInvitationsCount) }}</a></li>
 	<li><a href="/my/events">{{ L('menu_events') }}{{ menuCounter(userNotifications.newEventInvitationsCount) }}</a></li>

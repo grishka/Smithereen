@@ -1,22 +1,34 @@
 package smithereen.storage;
 
+import java.net.URI;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
+import smithereen.activitypub.objects.LocalImage;
+import smithereen.model.CachedRemoteImage;
+import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.PrivacySetting;
+import smithereen.model.SizedImage;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoMetadata;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
+import smithereen.text.FormattedTextSource;
 
 public class PhotoStorage{
 	public static List<PhotoAlbum> getAllAlbums(int ownerID) throws SQLException{
@@ -39,17 +51,24 @@ public class PhotoStorage{
 	}
 
 	public static long createUserAlbum(int userID, String title, String description, PrivacySetting viewPrivacy, PrivacySetting commentPrivacy) throws SQLException{
-		return new SQLQueryBuilder()
-				.insertInto("photo_albums")
-				.value("owner_user_id", userID)
-				.value("title", title)
-				.value("description", description)
-				.value("privacy", Utils.gson.toJson(Map.of(
-						"view", viewPrivacy,
-						"comment", commentPrivacy
-				)))
-				.valueExpr("display_order", "(SELECT IFNULL(MAX(display_order), 0)+1 FROM photo_albums WHERE owner_user_id=?)", userID)
-				.executeAndGetIDLong();
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int displayOrder=new SQLQueryBuilder(conn)
+					.selectFrom("photo_albums")
+					.selectExpr("IFNULL(MAX(display_order), 0)+1")
+					.where("owner_user_id=?", userID)
+					.executeAndGetInt();
+			return new SQLQueryBuilder(conn)
+					.insertInto("photo_albums")
+					.value("owner_user_id", userID)
+					.value("title", title)
+					.value("description", description)
+					.value("privacy", Utils.gson.toJson(Map.of(
+							"view", viewPrivacy,
+							"comment", commentPrivacy
+					)))
+					.value("display_order", displayOrder)
+					.executeAndGetIDLong();
+		}
 	}
 
 	public static long createGroupAlbum(int groupID, String title, String description, boolean disableComments, boolean restrictUploads) throws SQLException{
@@ -58,21 +77,40 @@ public class PhotoStorage{
 			flags.add(PhotoAlbum.Flag.GROUP_DISABLE_COMMENTING);
 		if(restrictUploads)
 			flags.add(PhotoAlbum.Flag.GROUP_RESTRICT_UPLOADS);
-		return new SQLQueryBuilder()
-				.insertInto("photo_albums")
-				.value("owner_group_id", groupID)
-				.value("title", title)
-				.value("description", description)
-				.value("flags", Utils.serializeEnumSet(flags))
-				.valueExpr("display_order", "(SELECT IFNULL(MAX(display_order), 0)+1 FROM photo_albums WHERE owner_group_id=?)", groupID)
-				.executeAndGetIDLong();
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int displayOrder=new SQLQueryBuilder(conn)
+					.selectFrom("photo_albums")
+					.selectExpr("IFNULL(MAX(display_order), 0)+1")
+					.where("owner_group_id=?", groupID)
+					.executeAndGetInt();
+			return new SQLQueryBuilder(conn)
+					.insertInto("photo_albums")
+					.value("owner_group_id", groupID)
+					.value("title", title)
+					.value("description", description)
+					.value("flags", Utils.serializeEnumSet(flags))
+					.value("display_order", displayOrder)
+					.executeAndGetIDLong();
+		}
 	}
 
-	public static void deleteAlbum(long id) throws SQLException{
-		new SQLQueryBuilder()
-				.deleteFrom("photo_albums")
-				.where("id=?", id)
-				.executeNoResult();
+	public static void deleteAlbum(long id, int ownerID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int displayOrder=new SQLQueryBuilder(conn)
+					.selectFrom("photo_albums")
+					.columns("display_order")
+					.where("id=?", id)
+					.executeAndGetInt();
+			new SQLQueryBuilder(conn)
+					.update("photo_albums")
+					.valueExpr("display_order", "display_order-1")
+					.where((ownerID>0 ? "owner_user_id" : "owner_group_id")+"=? AND display_order>?", Math.abs(ownerID), displayOrder)
+					.executeNoResult();
+			new SQLQueryBuilder(conn)
+					.deleteFrom("photo_albums")
+					.where("id=?", id)
+					.executeNoResult();
+		}
 	}
 
 	public static void updateUserAlbum(long id, String title, String description, PrivacySetting viewPrivacy, PrivacySetting commentPrivacy) throws SQLException{
@@ -102,12 +140,17 @@ public class PhotoStorage{
 		return new SQLQueryBuilder()
 				.selectFrom("photo_albums")
 				.count()
-				.where("owner_id=?", id)
+				.where(id>0 ? "owner_user_id=?" : "owner_group_id=?", Math.abs(id))
 				.executeAndGetInt();
 	}
 
 	public static long createLocalPhoto(int ownerID, int authorID, long albumID, long fileID, String description, String descriptionSrc, FormattedTextFormat descriptionFormat, PhotoMetadata metadata) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int displayOrder=new SQLQueryBuilder(conn)
+					.selectFrom("photos")
+					.selectExpr("IFNULL(MAX(display_order), 0)+1")
+					.where("album_id=?", albumID)
+					.executeAndGetInt();
 			long id=new SQLQueryBuilder(conn)
 					.insertInto("photos")
 					.value("owner_id", ownerID)
@@ -118,12 +161,13 @@ public class PhotoStorage{
 					.value("description_source", descriptionSrc)
 					.value("description_source_format", descriptionFormat)
 					.value("metadata", metadata==null ? null : Utils.gson.toJson(metadata))
-					.valueExpr("display_order", "(SELECT IFNULL(MAX(display_order), 0)+1 FROM photos WHERE album_id=?)", albumID)
+					.value("display_order", displayOrder)
 					.executeAndGetIDLong();
 			new SQLQueryBuilder(conn)
 					.update("photo_albums")
 					.valueExpr("updated_at", "CURRENT_TIMESTAMP()")
 					.valueExpr("num_photos", "num_photos+1")
+					.where("id=?", albumID)
 					.executeNoResult();
 			return id;
 		}
@@ -167,12 +211,110 @@ public class PhotoStorage{
 	}
 
 	public static List<Photo> getAlbumPhotos(long id, int offset, int count) throws SQLException{
-		return new SQLQueryBuilder()
+		List<Photo> photos=new SQLQueryBuilder()
 				.selectFrom("photos")
 				.where("album_id=?", id)
 				.orderBy("display_order ASC")
 				.limit(count, offset)
 				.executeAsStream(Photo::fromResultSet)
 				.toList();
+		postprocessPhotos(photos);
+		return photos;
+	}
+
+	public static void setAlbumCover(long albumID, long coverID) throws SQLException{
+		new SQLQueryBuilder()
+				.update("photo_albums")
+				.where("id=?", albumID)
+				.value("cover_id", coverID)
+				.executeNoResult();
+	}
+
+	public static long getLastAlbumPhoto(long albumID) throws SQLException{
+		long id=new SQLQueryBuilder()
+				.selectFrom("photos")
+				.columns("id")
+				.where("album_id=?", albumID)
+				.orderBy("display_order DESC")
+				.limit(1, 0)
+				.executeAndGetLong();
+		return id==-1 ? 0 : id;
+	}
+
+	public static void updateAlbumFlags(long albumID, EnumSet<PhotoAlbum.Flag> flags) throws SQLException{
+		new SQLQueryBuilder()
+				.update("photo_albums")
+				.value("flags", Utils.serializeEnumSet(flags))
+				.where("id=?", albumID)
+				.executeNoResult();
+	}
+
+	public static Map<Long, Photo> getPhotos(Collection<Long> ids) throws SQLException{
+		Map<Long, Photo> photos=new SQLQueryBuilder()
+				.selectFrom("photos")
+				.whereIn("id", ids)
+				.executeAsStream(Photo::fromResultSet)
+				.collect(Collectors.toMap(p->p.id, Function.identity()));
+		postprocessPhotos(photos.values());
+		return photos;
+	}
+
+	private static void postprocessPhotos(Collection<Photo> photos) throws SQLException{
+		HashSet<Long> needFileIDs=new HashSet<>();
+		HashSet<URI> needCacheItems=new HashSet<>();
+		ArrayList<Photo> localPhotos=new ArrayList<>();
+		ArrayList<Photo> remotePhotos=new ArrayList<>();
+		for(Photo p:photos){
+			if(p.localFileID!=0){
+				needFileIDs.add(p.localFileID);
+				localPhotos.add(p);
+			}else{
+				needCacheItems.add(p.remoteSrc);
+				remotePhotos.add(p);
+			}
+		}
+		if(!needFileIDs.isEmpty()){
+			Map<Long, MediaFileRecord> mediaFiles=MediaStorage.getMediaFileRecords(needFileIDs);
+			for(Photo p:localPhotos){
+				MediaFileRecord mfr=mediaFiles.get(p.localFileID);
+				LocalImage li=new LocalImage();
+				li.fileID=p.localFileID;
+				if(mfr!=null){
+					li.fillIn(mfr);
+				}
+				p.image=li;
+			}
+		}
+		if(!needCacheItems.isEmpty()){
+			Map<URI, MediaCache.Item> items=MediaCache.getInstance().get(needCacheItems);
+			for(Photo p:remotePhotos){
+				MediaCache.Item item=items.get(p.remoteSrc);
+				if(item instanceof MediaCache.PhotoItem pi){
+					p.image=new CachedRemoteImage(pi);
+				}else{
+					p.image=new NonCachedRemoteImage(new NonCachedRemoteImage.AlbumPhotoArgs(p), new SizedImage.Dimensions(p.metadata.width, p.metadata.height));
+				}
+			}
+		}
+	}
+
+	public static void updatePhotoDescription(long id, String source, String parsed, FormattedTextFormat format) throws SQLException{
+		new SQLQueryBuilder()
+				.update("photos")
+				.where("id=?", id)
+				.value("description_source", source)
+				.value("description", parsed)
+				.value("description_source_format", format)
+				.executeNoResult();
+	}
+
+	public static Map<Long, FormattedTextSource> getDescriptionSources(Collection<Long> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photos")
+				.columns("id", "description_source", "description_source_format")
+				.whereIn("id", ids)
+				.andWhere("description_source IS NOT NULL")
+				.executeAsStream(r->new Pair<>(r.getLong("id"), new FormattedTextSource(r.getString("description_source"), FormattedTextFormat.values()[r.getInt("description_source_format")])))
+				.collect(Collectors.toMap(Pair::first, Pair::second));
 	}
 }

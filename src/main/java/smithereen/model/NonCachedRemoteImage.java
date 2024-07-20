@@ -3,7 +3,9 @@ package smithereen.model;
 import java.net.URI;
 
 import smithereen.Utils;
+import smithereen.model.photos.Photo;
 import smithereen.util.UriBuilder;
+import smithereen.util.XTEA;
 
 public class NonCachedRemoteImage implements SizedImage{
 
@@ -94,6 +96,20 @@ public class NonCachedRemoteImage implements SizedImage{
 			builder.queryParam("type", "message_photo");
 			builder.queryParam("msg_id", Utils.encodeLong(messageID));
 			builder.queryParam("index", index+"");
+		}
+	}
+
+	public static class AlbumPhotoArgs extends Args{
+		private final Photo photo;
+
+		public AlbumPhotoArgs(Photo photo){
+			this.photo=photo;
+		}
+
+		@Override
+		protected void addToUriBuilder(UriBuilder builder){
+			builder.queryParam("type", "album_photo");
+			builder.queryParam("photo_id", Utils.encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)));
 		}
 	}
 }

@@ -1,0 +1,28 @@
+{% extends "page" %}
+{% block headerActionButtons %}
+	{% if userPermissions.canEditPhotoAlbum(album) %}
+	    <a title="{{ L('edit_photo_album') }}" class="actionButton iconEdit" href="{{ album.url }}/edit"></a>
+	{% endif %}
+{% endblock %}
+{% block content %}
+{% if userPermissions.canUploadToPhotoAlbum(album) %}
+<a href="javascript:void(0)" class="fab iconAdd" title="{{ L('add_photos_to_album') }}" id="addPhotosBtn"></a>
+<input type="file" multiple accept="image/*" style="display: none" id="photosFileInput"/>
+{% script %}
+initMobileAlbumUploader("{{ album.url }}/upload");
+{% endscript %}
+{% endif %}
+{% if album.description is not empty %}
+<div class="singleColumn">{{ album.description }}</div>
+{% endif %}
+<div class="photoGrid">
+{% block photosInner %}
+{% for photo in items %}
+    <a href="{{ photo.url }}" class="photo">{{ photo.image | pictureForPhoto('s') }}</a>
+{% else %}
+	<div class="emptyState">{{ L('no_photos_in_album') }}</div>
+{% endfor %}
+{% endblock %}
+{% include "pagination_endless" %}
+</div>
+{% endblock %}

@@ -268,7 +268,7 @@ class PostForm{
 			ce("div", {className: "scrim"}),
 			pbarEl=ce("div", {className: "progressBar small"}),
 			ce("div", {className: "fileName", innerText: name}),
-			del=ce("a", {className: "deleteBtn", title: lang("remove_attachment")}),
+			del=ce("a", {className: "deleteBtn", ariaLabel: lang("remove_attachment")}),
 		]);
 
 		this.attachContainer.appendChild(cont);
@@ -279,6 +279,7 @@ class PostForm{
 			this.uploadQueue.remove(att);
 			cont.parentNode.removeChild(cont);
 		};
+		del.dataset.tooltip=lang("remove_attachment");
 		if(this.currentUploadingAttachment){
 			this.uploadQueue.push(att);
 		}else{

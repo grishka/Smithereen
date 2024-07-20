@@ -1,0 +1,8 @@
+{% extends "page" %}
+{% block content %}
+<div class="singleColumn">
+<form action="/my/albums/create?csrf={{ csrf }}{{ owner.ownerID<0 ? "&owner=#{owner.ownerID}" : "" }}" method="post" data-ajax class="singleColumn">
+{% include "photo_album_form" %}
+</form>
+</div>
+{% endblock %}

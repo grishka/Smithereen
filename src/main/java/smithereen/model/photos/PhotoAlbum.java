@@ -10,8 +10,10 @@ import java.util.EnumSet;
 import java.util.Map;
 
 import smithereen.Utils;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PrivacySetting;
 import smithereen.storage.DatabaseUtils;
+import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
 public class PhotoAlbum{
@@ -59,6 +61,14 @@ public class PhotoAlbum{
 			a.activityPubURL=URI.create(apURL);
 		}
 		return a;
+	}
+
+	public String getURL(){
+		return "/albums/"+Utils.encodeLong(XTEA.obfuscateObjectID(id, ObfuscatedObjectIDType.PHOTO_ALBUM));
+	}
+
+	public boolean hasFlag(String flag){
+		return flags.contains(Flag.valueOf(flag));
 	}
 
 	public enum SystemAlbumType{

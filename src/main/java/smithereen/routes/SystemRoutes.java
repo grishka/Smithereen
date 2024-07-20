@@ -314,79 +314,19 @@ public class SystemRoutes{
 	}
 
 	private static Object uploadPhotoAttachment(Request req, Response resp, Account self, boolean isGraffiti){
-		Lang l=lang(req);
-		try{
-			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
-			Part part=req.raw().getPart("file");
-			if(part.getSize()>10*1024*1024){
-				resp.status(413); // Payload Too Large
-				return l.get("err_file_upload_too_large", Map.of("maxSize", l.formatFileSize(10*1024*1024)));
-			}
-
-			String mime=part.getContentType();
-			if(!mime.startsWith("image/")){
-				resp.status(415); // Unsupported Media Type
-				return l.get("err_file_upload_image_format");
-			}
-
-			File temp=File.createTempFile("SmithereenUpload", null);
-			VipsImage img;
-			try{
-				try(FileOutputStream out=new FileOutputStream(temp)){
-					copyBytes(part.getInputStream(), out);
-				}
-				img=new VipsImage(temp.getAbsolutePath());
-			}catch(IOException x){
-				LOG.warn("VipsImage error", x);
-				resp.status(400);
-				return l.get("err_file_upload_image_format");
-			}
-			if(img.hasAlpha()){
-				VipsImage flat=img.flatten(255, 255, 255);
-				img.release();
-				img=flat;
-			}
-
-			if(isGraffiti && (img.getWidth()!=GraffitiAttachment.WIDTH || img.getHeight()!=GraffitiAttachment.HEIGHT)){
-				LOG.warn("Unexpected graffiti size {}x{}", img.getWidth(), img.getHeight());
-				throw new BadRequestException();
-			}
-
-			LocalImage photo=new LocalImage();
-			int width, height;
-			MediaFileRecord fileRecord;
-			try{
-				File resizedFile=File.createTempFile("SmithereenUploadResized", ".webp");
-				int[] outSize={0,0};
-				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, resizedFile, outSize);
-				MediaFileMetadata meta=new ImageMetadata(width=outSize[0], height=outSize[1], BlurHash.encode(img, 4, 4), null);
-				fileRecord=MediaStorage.createMediaFileRecord(isGraffiti ? MediaFileType.IMAGE_GRAFFITI : MediaFileType.IMAGE_PHOTO, resizedFile.length(), self.user.id, meta);
-				photo.fileID=fileRecord.id().id();
-				photo.fillIn(fileRecord);
-				MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id());
-
-				temp.delete();
-			}finally{
-				img.release();
-			}
-
-			if(isAjax(req)){
-				resp.type("application/json");
-				return new JsonObjectBuilder()
-						.add("id", fileRecord.id().getIDForClient())
-						.add("width", width)
-						.add("height", height)
-						.add("thumbs", new JsonObjectBuilder()
-								.add("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.JPEG).toString())
-								.add("webp", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.WEBP).toString())
-						).build();
-			}
-			resp.redirect(Utils.back(req));
-		}catch(IOException|ServletException|SQLException x){
-			LOG.error("File upload failed", x);
-			resp.status(500);
-			return l.get("err_file_upload");
+		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, self, isGraffiti);
+		if(isAjax(req)){
+			resp.type("application/json");
+			return new JsonObjectBuilder()
+					.add("id", photo.fileRecord.id().getIDForClient())
+					.add("width", photo.width)
+					.add("height", photo.height)
+					.add("thumbs", new JsonObjectBuilder()
+							.add("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.JPEG).toString())
+							.add("webp", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.WEBP).toString())
+					).build();
 		}
+		resp.redirect(Utils.back(req));
 		return "";
 	}
 

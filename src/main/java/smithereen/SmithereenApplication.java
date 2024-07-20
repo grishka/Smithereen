@@ -53,6 +53,7 @@ import smithereen.routes.FriendsRoutes;
 import smithereen.routes.GroupsRoutes;
 import smithereen.routes.MailRoutes;
 import smithereen.routes.NotificationsRoutes;
+import smithereen.routes.PhotosRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
@@ -284,6 +285,7 @@ public class SmithereenApplication{
 			getLoggedIn("/privacy", SettingsRoutes::privacySettings);
 			postWithCSRF("/privacy", SettingsRoutes::savePrivacySettings);
 			getLoggedIn("/privacy/mobileEditSetting", SettingsRoutes::mobileEditPrivacy);
+			getLoggedIn("/privacy/mobileBox", SettingsRoutes::mobilePrivacyBox);
 			getLoggedIn("/deactivateAccountForm", SettingsRoutes::deactivateAccountForm);
 			postWithCSRF("/deactivateAccount", SettingsRoutes::deactivateAccount);
 			postWithCSRF("/updateAppearanceBehavior", SettingsRoutes::saveAppearanceBehaviorSettings);
@@ -502,6 +504,8 @@ public class SmithereenApplication{
 
 			getWithCSRF("/addBookmark", BookmarksRoutes::addUserBookmark);
 			getWithCSRF("/removeBookmark", BookmarksRoutes::removeUserBookmark);
+
+			get("/albums", PhotosRoutes::userAlbums);
 		});
 
 		path("/groups/:id", ()->{
@@ -575,6 +579,8 @@ public class SmithereenApplication{
 
 			getWithCSRF("/addBookmark", BookmarksRoutes::addGroupBookmark);
 			getWithCSRF("/removeBookmark", BookmarksRoutes::removeGroupBookmark);
+
+			get("/albums", PhotosRoutes::groupAlbums);
 		});
 
 		path("/posts/:postID", ()->{
@@ -607,6 +613,19 @@ public class SmithereenApplication{
 			options("/embedURL", SmithereenApplication::allowCorsPreflight);
 			get("/embed", PostRoutes::postEmbed);
 			get("/hoverCard", PostRoutes::commentHoverCard);
+		});
+
+		path("/albums/:id", ()->{
+			get("", PhotosRoutes::album);
+			postWithCSRF("/upload", PhotosRoutes::uploadPhoto);
+			getLoggedIn("/edit", PhotosRoutes::editAlbumForm);
+			postWithCSRF("/edit", PhotosRoutes::editAlbum);
+			getLoggedIn("/confirmDelete", PhotosRoutes::confirmDeleteAlbum);
+			postWithCSRF("/delete", PhotosRoutes::deleteAlbum);
+		});
+
+		path("/photos/:id", ()->{
+			postWithCSRF("/updateDescription", PhotosRoutes::updatePhotoDescription);
 		});
 
 		get("/robots.txt", (req, resp)->{
@@ -662,6 +681,9 @@ public class SmithereenApplication{
 				getLoggedIn("/groups", BookmarksRoutes::groups);
 				getLoggedIn("/posts", BookmarksRoutes::posts);
 			});
+			getLoggedIn("/albums", PhotosRoutes::myAlbums);
+			getLoggedIn("/albums/create", PhotosRoutes::createAlbumForm);
+			postWithCSRF("/albums/create", PhotosRoutes::createAlbum);
 		});
 
 		path("/api/v1", ()->{

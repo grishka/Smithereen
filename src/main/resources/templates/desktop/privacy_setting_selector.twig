@@ -1,0 +1,36 @@
+<input type="hidden" name="{{ key }}" id="{{ key }}_value" value="{{ json(setting) }}"/>
+<span class="popupMenuW">
+	{% if setting.baseRule=='EVERYONE' %}
+		{% set mainRuleKey='privacy_value_everyone' %}
+	{% elseif setting.baseRule=='FRIENDS' %}
+		{% set mainRuleKey='privacy_value_friends' %}
+	{% elseif setting.baseRule=='FRIENDS_OF_FRIENDS' %}
+		{% set mainRuleKey='privacy_value_friends_of_friends' %}
+	{% elseif setting.baseRule=='NONE' %}
+		{% if setting.allowUsers is not empty %}
+			{% set mainRuleKey='privacy_value_certain_friends' %}
+		{% else %}
+			{% set mainRuleKey=isOnlyMe ? 'privacy_value_only_me' : 'privacy_value_no_one' %}
+		{% endif %}
+	{% endif %}
+	<a href="javascript:void(0)" onclick="showPrivacyMenu(this, '{{ key }}', {{ isOnlyMe }})" class="opener">{{ L(mainRuleKey) }}</a><span id="privacyExtended_{{ key }}">
+		{%- if setting.allowUsers is not empty -%}
+		{{- L("privacy_settings_value_certain_friends_before") -}}
+		{%- for id in setting.allowUsers -%}
+			<a href="{{ profileURL(id) }}">{{ users[id] | name }}</a>
+			{%- if not loop.last -%}
+			{{- L("privacy_settings_value_name_separator") -}}
+			{%- endif -%}
+		{%- endfor -%}
+		{%- endif -%}
+		{%- if setting.exceptUsers is not empty -%}
+		{{- L("privacy_settings_value_except") -}}
+		{%- for id in setting.exceptUsers -%}
+			<a href="{{ profileURL(id) }}">{{ L("privacy_settings_value_except_name", {'name': users[id] | name('fullAndGender')}) }}</a>
+			{%- if not loop.last -%}
+			{{- L("privacy_settings_value_name_separator") -}}
+			{%- endif -%}
+		{%- endfor -%}
+		{%- endif -%}
+	</span>
+</span>

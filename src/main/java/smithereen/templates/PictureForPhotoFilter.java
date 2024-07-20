@@ -14,10 +14,10 @@ import smithereen.model.SizedImage;
 public class PictureForPhotoFilter implements Filter{
 	@Override
 	public Object apply(Object input, Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber) throws PebbleException{
-		if(input instanceof SizedImage){
+		if(input instanceof SizedImage img){
 			SizedImage.Type type=SizedImage.Type.fromSuffix(args.get("size").toString());
-			SizedImage.Dimensions size=((SizedImage) input).getDimensionsForSize(type);
-			return new SafeString(((SizedImage) input).generateHTML(type, null, null, size.width, size.height));
+			SizedImage.Dimensions size=img.getDimensionsForSize(type);
+			return new SafeString(img.generateHTML(type, null, null, size.width, size.height));
 		}
 		return null;
 	}

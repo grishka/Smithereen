@@ -14,7 +14,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -22,35 +21,16 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Part;
-
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import static smithereen.Utils.*;
-
 import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.FriendsController;
-import smithereen.model.Account;
-import smithereen.model.CommentViewType;
-import smithereen.model.Group;
-import smithereen.model.OtherSession;
-import smithereen.model.PrivacySetting;
-import smithereen.model.SessionInfo;
-import smithereen.model.SignupInvitation;
-import smithereen.storage.utils.Pair;
-import smithereen.text.FormattedTextFormat;
-import smithereen.text.TextProcessor;
-import smithereen.util.UriBuilder;
-import smithereen.model.User;
-import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.UserRole;
-import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -58,6 +38,17 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
+import smithereen.model.Account;
+import smithereen.model.CommentViewType;
+import smithereen.model.Group;
+import smithereen.model.OtherSession;
+import smithereen.model.PrivacySetting;
+import smithereen.model.SessionInfo;
+import smithereen.model.SignupInvitation;
+import smithereen.model.User;
+import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.UserRole;
+import smithereen.model.WebDeltaResponse;
 import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
@@ -68,8 +59,13 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.storage.media.MediaFileStorageDriver;
+import smithereen.storage.utils.Pair;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.templates.Templates;
+import smithereen.text.FormattedTextFormat;
+import smithereen.text.TextProcessor;
 import smithereen.util.FloodControl;
+import smithereen.util.UriBuilder;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -633,13 +629,7 @@ public class SettingsRoutes{
 		}
 		model.with("users", ctx.getUsersController().getUsers(needUsers));
 
-		jsLangKey(req,
-				"privacy_value_everyone", "privacy_value_friends", "privacy_value_friends_of_friends", "privacy_value_no_one",
-				"privacy_value_only_me", "privacy_value_everyone_except", "privacy_value_certain_friends",
-				"save", "privacy_settings_title", "privacy_allowed_title", "privacy_denied_title", "privacy_allowed_to_X",
-				"privacy_value_to_everyone", "privacy_value_to_friends", "privacy_value_to_friends_of_friends", "privacy_value_to_certain_friends", "delete", "privacy_enter_friend_name",
-				"privacy_settings_value_except", "privacy_settings_value_certain_friends_before", "privacy_settings_value_name_separator",
-				"select_friends_title", "friends_search_placeholder", "friend_list_your_friends", "friends_in_list", "select_friends_empty_selection");
+		Templates.addJsLangForPrivacySettings(req);
 		return model;
 	}
 
@@ -648,19 +638,8 @@ public class SettingsRoutes{
 		for(UserPrivacySettingKey key:UserPrivacySettingKey.values()){
 			if(req.queryParams(key.toString())==null)
 				continue;
-			PrivacySetting ps;
-			try{
-				ps=gson.fromJson(req.queryParams(key.toString()), PrivacySetting.class);
-			}catch(Exception x){
-				throw new BadRequestException(x);
-			}
-			if(ps.baseRule==null)
-				throw new BadRequestException();
-			if(ps.allowUsers==null)
-				ps.allowUsers=Set.of();
-			if(ps.exceptUsers==null)
-				ps.exceptUsers=Set.of();
-			settings.put(key, ps);
+			String json=req.queryParams(key.toString());
+			settings.put(key, PrivacySetting.fromJson(json));
 		}
 		ctx.getPrivacyController().updateUserPrivacySettings(self.user, settings);
 		if(isAjax(req)){
@@ -693,6 +672,21 @@ public class SettingsRoutes{
 				.with("setting", ps)
 				.with("users", ctx.getUsersController().getUsers(needUsers))
 				.pageTitle(lang(req).get("privacy_settings_title"));
+	}
+
+	public static Object mobilePrivacyBox(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(!isMobile(req))
+			return ajaxAwareRedirect(req, resp, back(req));
+		requireQueryParams(req, "value", "onlyMe");
+		PrivacySetting setting=PrivacySetting.fromJson(req.queryParams("value"));
+		boolean onlyMe=Boolean.parseBoolean(req.queryParams("onlyMe"));
+		Set<Integer> needUsers=new HashSet<>();
+		needUsers.addAll(setting.exceptUsers);
+		needUsers.addAll(setting.allowUsers);
+		return new RenderedTemplateResponse("privacy_setting_selector", req)
+				.with("setting", setting)
+				.with("onlyMe", onlyMe)
+				.with("users", ctx.getUsersController().getUsers(needUsers));
 	}
 
 	public static Object deactivateAccountForm(Request req, Response resp, Account self, ApplicationContext ctx){

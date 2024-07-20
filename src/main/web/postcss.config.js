@@ -15,7 +15,7 @@ module.exports={
 					name: "removeAttrs",
 					params: {
 						elemSeparator: "!",
-						attrs: ["svg!clip-rule", "svg!fill-rule", "svg!stroke-miterlimit", "svg!xml:space", "svg!version", "stop!stop-opacity!1"]
+						attrs: ["svg!clip-rule", "svg!stroke-miterlimit", "svg!xml:space", "svg!version", "stop!stop-opacity!1"]
 					}
 				}])
 			}

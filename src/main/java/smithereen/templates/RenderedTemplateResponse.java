@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
@@ -43,6 +44,11 @@ public class RenderedTemplateResponse{
 
 	public RenderedTemplateResponse with(String key, Object value){
 		model.put(key, value);
+		return this;
+	}
+
+	public RenderedTemplateResponse withAll(Map<String, Object> values){
+		model.putAll(values);
 		return this;
 	}
 

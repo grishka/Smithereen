@@ -106,6 +106,8 @@ public class MediaStorage{
 	}
 
 	public static void deleteMediaFileReferences(Collection<Long> objectIDs, MediaFileReferenceType type) throws SQLException{
+		if(objectIDs.isEmpty())
+			return;
 		new SQLQueryBuilder()
 				.deleteFrom("media_file_refs")
 				.whereIn("object_id", objectIDs)
@@ -122,6 +124,8 @@ public class MediaStorage{
 	}
 
 	public static void deleteMediaFileRecords(Collection<Long> ids) throws SQLException{
+		if(ids.isEmpty())
+			return;
 		new SQLQueryBuilder()
 				.deleteFrom("media_files")
 				.whereIn("id", ids)

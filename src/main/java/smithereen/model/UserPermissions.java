@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
+import smithereen.model.photos.PhotoAlbum;
 
 /**
  * A "helper" kind of object passed around everywhere to help determine what a user
@@ -61,6 +62,18 @@ public class UserPermissions{
 		}else{
 			return false;
 		}
+	}
+
+	public boolean canEditPhotoAlbum(PhotoAlbum album){
+		if(album.ownerID>0)
+			return userID==album.ownerID;
+		return managedGroups.getOrDefault(-album.ownerID, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.MODERATOR);
+	}
+
+	public boolean canUploadToPhotoAlbum(PhotoAlbum album){
+		if(album.ownerID>0)
+			return userID==album.ownerID;
+		return !album.flags.contains(PhotoAlbum.Flag.GROUP_RESTRICT_UPLOADS) || managedGroups.getOrDefault(-album.ownerID, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.MODERATOR);
 	}
 
 	public boolean hasPermission(UserRole.Permission permission){

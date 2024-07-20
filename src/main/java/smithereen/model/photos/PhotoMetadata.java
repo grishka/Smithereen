@@ -9,6 +9,8 @@ public class PhotoMetadata{
 	public URI apURL;
 	public float[] avaCropRect;
 	public Rotation rotation;
+	public int width, height;
+	public String blurhash;
 
 	public enum Rotation{
 		@SerializedName("90")

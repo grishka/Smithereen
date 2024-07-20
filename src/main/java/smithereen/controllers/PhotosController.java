@@ -4,9 +4,11 @@ import org.jetbrains.annotations.NotNull;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import smithereen.ApplicationContext;
@@ -26,6 +28,7 @@ import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.text.FormattedTextFormat;
+import smithereen.text.FormattedTextSource;
 import smithereen.text.TextProcessor;
 
 public class PhotosController{
@@ -53,7 +56,7 @@ public class PhotosController{
 				albumListCache.put(owner.getLocalID(), albums);
 			}
 			return switch(owner){
-				case User user when user.id==self.id -> albums;
+				case User user when self!=null && user.id==self.id -> albums;
 				case User user -> albums.stream().filter(a->context.getPrivacyController().checkUserPrivacy(self, user, a.viewPrivacy)).toList();
 				default -> albums;
 			};
@@ -133,12 +136,29 @@ public class PhotosController{
 			throw new UserActionNotAllowedException();
 	}
 
+	public boolean canManagePhoto(User self, @NotNull Photo photo){
+		if(photo.ownerID>0){
+			return photo.ownerID==self.id;
+		}else{
+			Group group=context.getGroupsController().getGroupOrThrow(-photo.ownerID);
+			context.getPrivacyController().enforceUserAccessToGroupContent(self, group);
+			return photo.authorID==self.id || context.getGroupsController().getMemberAdminLevel(group, self).isAtLeast(Group.AdminLevel.MODERATOR);
+		}
+	}
+
+	public void enforcePhotoManagementPermission(User self, Photo photo){
+		if(!canManagePhoto(self, photo))
+			throw new UserActionNotAllowedException();
+	}
+
 	public void deleteAlbum(User self, PhotoAlbum album){
 		enforceAlbumManagementPermission(self, album);
 		try{
 			MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsForAlbum(album.id), MediaFileReferenceType.ALBUM_PHOTO);
-			PhotoStorage.deleteAlbum(album.id);
+			PhotoStorage.deleteAlbum(album.id, album.ownerID);
 			albumListCache.remove(album.ownerID);
+			// TODO delete likes
+			// TODO delete comments
 			// TODO federate
 			// TODO newsfeed
 		}catch(SQLException x){
@@ -228,13 +248,16 @@ public class PhotosController{
 				context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
 		}
 
-		String parsedDescription=TextProcessor.preprocessPostText(descriptionSource, null, descriptionFormat);
+		String parsedDescription=descriptionSource==null ? "" : TextProcessor.preprocessPostText(descriptionSource, null, descriptionFormat);
 		try{
 			long id;
+			boolean needUpdateCover=!album.flags.contains(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
 			synchronized(photoCreationLock){
 				if(PhotoStorage.getAlbumSize(album.id)>=MAX_PHOTOS_PER_ALBUM)
 					throw new UserErrorException("err_too_many_photos_in_album");
 				id=PhotoStorage.createLocalPhoto(album.ownerID, self.id, album.id, fileID, parsedDescription, descriptionSource, descriptionFormat, null);
+				if(needUpdateCover)
+					PhotoStorage.setAlbumCover(album.id, id);
 			}
 			MediaStorage.createMediaFileReference(fileID, id, MediaFileReferenceType.ALBUM_PHOTO, album.ownerID);
 			synchronized(albumCacheLock){
@@ -243,6 +266,8 @@ public class PhotosController{
 					for(PhotoAlbum a:albums){
 						if(a.id==album.id){
 							a.numPhotos++;
+							if(needUpdateCover)
+								a.coverID=id;
 							break;
 						}
 					}
@@ -257,18 +282,22 @@ public class PhotosController{
 	}
 
 	public void deletePhoto(User self, Photo photo){
-		if(photo.ownerID>0){
-			if(photo.ownerID!=self.id)
-				throw new UserActionNotAllowedException();
-		}else{
-			Group group=context.getGroupsController().getGroupOrThrow(-photo.ownerID);
-			context.getPrivacyController().enforceUserAccessToGroupContent(self, group);
-			if(photo.authorID!=self.id)
-				context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
-		}
+		enforcePhotoManagementPermission(self, photo);
 		try{
+			PhotoAlbum album=PhotoStorage.getAlbum(photo.albumID);
+			boolean needUpdateCover=album.coverID==photo.id;
+			long newCoverID=0;
 			synchronized(photoCreationLock){
 				PhotoStorage.deletePhoto(photo.id, photo.albumID);
+				if(needUpdateCover){
+					newCoverID=PhotoStorage.getLastAlbumPhoto(photo.albumID);
+					PhotoStorage.setAlbumCover(photo.albumID, newCoverID);
+					if(album.flags.contains(PhotoAlbum.Flag.COVER_SET_EXPLICITLY)){
+						EnumSet<PhotoAlbum.Flag> flags=EnumSet.copyOf(album.flags);
+						flags.remove(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
+						PhotoStorage.updateAlbumFlags(photo.albumID, flags);
+					}
+				}
 			}
 			if(photo.localFileID!=0){
 				MediaStorage.deleteMediaFileReference(photo.id, MediaFileReferenceType.ALBUM_PHOTO, photo.localFileID);
@@ -279,6 +308,10 @@ public class PhotosController{
 					for(PhotoAlbum a:albums){
 						if(a.id==photo.albumID){
 							a.numPhotos--;
+							if(needUpdateCover){
+								a.coverID=newCoverID;
+								a.flags.remove(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
+							}
 							break;
 						}
 					}
@@ -296,6 +329,49 @@ public class PhotosController{
 	public PaginatedList<Photo> getAlbumPhotos(User self, PhotoAlbum album, int offset, int count){
 		try{
 			return new PaginatedList<>(PhotoStorage.getAlbumPhotos(album.id, offset, count), album.numPhotos, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Long, Photo> getPhotosIgnoringPrivacy(Collection<Long> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			return PhotoStorage.getPhotos(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Photo getPhotoIgnoringPrivacy(long id){
+		try{
+			Map<Long, Photo> m=PhotoStorage.getPhotos(List.of(id));
+			Photo p=m.get(id);
+			if(p==null)
+				throw new ObjectNotFoundException();
+			return p;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updatePhotoDescription(User self, Photo photo, String descriptionSource, FormattedTextFormat format){
+		enforcePhotoManagementPermission(self, photo);
+		try{
+			String parsedDescription=TextProcessor.preprocessPostText(descriptionSource, null, format);
+			PhotoStorage.updatePhotoDescription(photo.id, descriptionSource, parsedDescription, format);
+			// TODO federate
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Long, FormattedTextSource> getPhotoDescriptionSources(Collection<Long> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			return PhotoStorage.getDescriptionSources(ids);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

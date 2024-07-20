@@ -193,5 +193,7 @@
   "cancel_reply": "Cancel reply",
   "menu_bookmarks": "My Bookmarks",
   "X_communities": "{count, plural, one {One community} other {# communities}}",
-  "show_technical_details": "Technical details"
+  "show_technical_details": "Technical details",
+  "menu_photos": "My Photos",
+  "release_files_to_upload": "Release to start upload"
 }

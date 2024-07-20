@@ -487,12 +487,11 @@ class MobilePrivacyFriendChoiceBox extends BaseScrollableBox{
 	}
 }
 
-function initMobilePrivacyForm(){
+function initMobilePrivacyForm(valueField:HTMLInputElement, updateField:boolean=true, onChange:{(s:PrivacySetting):void}=null){
 	var allowedList=ge("allowedFriendsItems");
 	var deniedList=ge("deniedFriendsItems");
 	var allowedListW=ge("allowedFriends");
 	var deniedListW=ge("deniedFriends");
-	var valueField=ge("settingValue") as HTMLInputElement;
 	var currentValue=JSON.parse(valueField.value) as PrivacySetting;
 
 	function makeUserRow(user:any[]):HTMLElement{
@@ -508,7 +507,10 @@ function initMobilePrivacyForm(){
 
 	function setValue(value:PrivacySetting){
 		currentValue=value;
-		valueField.value=JSON.stringify(value);
+		if(updateField)
+			valueField.value=JSON.stringify(value);
+		if(onChange)
+			onChange(value);
 		if(!friendListForPrivacy)
 			return;
 		allowedList.innerHTML="";
@@ -580,3 +582,61 @@ function initMobilePrivacyForm(){
 		new MobilePrivacyFriendChoiceBox(lang("select_friends_title"), false, setValue, currentValue).show();
 	}));
 }
+
+function showMobilePrivacyBox(key:string, value:PrivacySetting, onlyMe:boolean){
+	LayerManager.getInstance().showBoxLoader();
+	var field:HTMLInputElement=ge(key+"_value");
+	var uiValue:HTMLElement=ge(key+"_uiValue");
+	ajaxGet("/settings/privacy/mobileBox?value="+encodeURIComponent(JSON.stringify(value))+"&onlyMe="+onlyMe, (r)=>{
+		var box:Box;
+		var setting=value;
+		box=new Box(lang("privacy_settings_title"), [lang("save"), lang("cancel")], (i)=>{
+			if(i==0){
+				field.value=JSON.stringify(setting);
+				var uiStr:string;
+				switch(setting.r){
+					case "e":
+						uiStr=lang("privacy_value_everyone");
+						break;
+					case "f":
+						uiStr=lang("privacy_value_friends");
+						break;
+					case "ff":
+						uiStr=lang("privacy_value_friends_of_friends");
+						break;
+					case "n":
+						if(setting.au.length){
+							uiStr=lang("privacy_value_certain_friends");
+						}else{
+							uiStr=lang(onlyMe ? "privacy_value_only_me" : "privacy_value_no_one");
+						}
+						break;
+				}
+				if(setting.au.length){
+					uiStr+=lang("privacy_settings_value_certain_friends_before");
+					var names=[];
+					for(var id of setting.au){
+						names.push(getFriendForPrivacy(id)[1]);
+					}
+					uiStr+=names.join(lang("privacy_settings_value_name_separator"));
+				}
+				if(setting.xu.length){
+					uiStr+=lang("privacy_settings_value_except");
+					var names=[];
+					for(var id of setting.xu){
+						names.push(getFriendForPrivacy(id)[3]);
+					}
+					uiStr+=names.join(lang("privacy_settings_value_name_separator"));
+				}
+				uiValue.innerText=uiStr;
+			}
+			box.dismiss();
+		});
+		box.setContent(ce("div", {innerHTML: r as string}));
+		box.show();
+		initMobilePrivacyForm(field, false, (ps)=>setting=ps);
+	}, (msg)=>{
+		new MessageBox(lang("error"), msg, lang("close")).show();
+	}, "text");
+}
+

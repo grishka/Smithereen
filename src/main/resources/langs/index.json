@@ -12,7 +12,8 @@
     "email.json",
     "reporting.json",
     "mail.json",
-    "bookmarks.json"
+    "bookmarks.json",
+    "photos.json"
   ],
   "languages": [
     {

@@ -1,0 +1,19 @@
+{% extends "page" %}
+{% block content %}
+{% if owner.ownerID==currentUser.id %}
+<a href="/my/albums/create" class="fab iconAdd" title="{{ L('create_photo_album') }}"></a>
+{% elseif owner.ownerID<0 and userPermissions.canManageGroup(owner) %}
+<a href="/my/albums/create?owner={{ owner.ownerID }}" class="fab iconAdd">{{ L('create_photo_album') }}</a>
+{% endif %}
+<div class="photoAlbumsGrid">
+{% for album in albums %}
+	<a href="{{ album.url }}" class="{{ album.coverID==0 ? 'empty' : '' }}">
+		{% if covers[album.coverID] is not null %}{{ covers[album.coverID].image | pictureForPhoto('s') }}{% endif %}
+		<div class="infoW">
+			<div class="title ellipsize">{{ album.title }}</div>
+			<div class="count">{{ album.numPhotos | numberformat }}</div>
+		</div>
+	</a>
+{% endfor %}
+</div>
+{% endblock %}
