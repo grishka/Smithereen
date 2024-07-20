@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -50,10 +51,10 @@ public class PhotosController{
 			if(owner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(self, group);
 			}
-			List<PhotoAlbum> albums=albumListCache.get(owner.getLocalID());
+			List<PhotoAlbum> albums=albumListCache.get(owner.getOwnerID());
 			if(albums==null){
-				albums=PhotoStorage.getAllAlbums(owner.getLocalID());
-				albumListCache.put(owner.getLocalID(), albums);
+				albums=PhotoStorage.getAllAlbums(owner.getOwnerID());
+				albumListCache.put(owner.getOwnerID(), albums);
 			}
 			return switch(owner){
 				case User user when self!=null && user.id==self.id -> albums;
@@ -69,6 +70,15 @@ public class PhotosController{
 		List<PhotoAlbum> filteredAlbums=new ArrayList<>(getAllAlbums(owner, self));
 		Collections.shuffle(filteredAlbums);
 		return new PaginatedList<>(filteredAlbums.subList(0, Math.min(filteredAlbums.size(), count)), filteredAlbums.size());
+	}
+
+	public PaginatedList<PhotoAlbum> getMostRecentAlbums(Actor owner, User self, int count, boolean onlyHavingCover){
+		List<PhotoAlbum> filteredAlbums=new ArrayList<>(getAllAlbums(owner, self));
+		int size=filteredAlbums.size();
+		if(onlyHavingCover)
+			filteredAlbums.removeIf(a->a.coverID==0);
+		filteredAlbums.sort(Comparator.comparing(a->a.updatedAt));
+		return new PaginatedList<>(filteredAlbums.subList(0, Math.min(filteredAlbums.size(), count)), size);
 	}
 
 	public PhotoAlbum getAlbum(long id, User self){

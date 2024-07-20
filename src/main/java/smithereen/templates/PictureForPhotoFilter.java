@@ -19,7 +19,7 @@ public class PictureForPhotoFilter implements Filter{
 			SizedImage.Dimensions size=img.getDimensionsForSize(type);
 			return new SafeString(img.generateHTML(type, null, null, size.width, size.height));
 		}
-		return null;
+		throw new IllegalArgumentException("Input is an unknown type: "+input);
 	}
 
 	@Override

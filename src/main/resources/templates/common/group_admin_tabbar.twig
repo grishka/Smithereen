@@ -2,7 +2,7 @@
 {# @pebvariable name="tab" type="String" #}
 <div class="tabbar">
 	{% if adminLevel is null or adminLevel.isAtLeast('ADMIN') %}
-	<a href="/groups/{{ group.id }}/edit" class="{{ tab=='general' ? 'selected' : '' }}">{{ L('profile_edit_basic') }}</a>
+	<a href="/groups/{{ group.id }}/edit" class="{{ tab=='general' ? 'selected' : '' }}">{{ L('profile_edit_general') }}</a>
 	{% endif %}
 	<a href="/groups/{{ group.id }}/editMembers" class="{{ tab=='members' ? 'selected' : '' }}">{{ L('members') }}</a>
 	<a href="/groups/{{ group.id }}/editBlocking" class="{{ tab=='blocking' ? "selected" : "" }}" >{{ L('settings_blocking') }}</a>

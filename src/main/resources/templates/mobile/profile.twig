@@ -101,6 +101,8 @@
 	</ul>
 </div>
 
+{% include "profile_section_thumbs" with {'actor': user} %}
+
 {{ profileSection(_context, null, null, mainFields) }}
 {{ profileSection(_context, L('profile_contacts_title'), "/settings/profile/contacts", contactsFields) }}
 {{ profileSection(_context, L('profile_personal_title'), "/settings/profile/personal", personalFields) }}

@@ -84,6 +84,8 @@
 	</ul>
 </div>
 
+{% include "profile_section_thumbs" with {'actor': group} %}
+
 <div class="card profileFields">
 {% for fld in profileFields %}
 	<div class="profileFieldName">{{ fld.name }}</div>

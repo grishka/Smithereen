@@ -110,6 +110,9 @@
 		{% if friends is not empty %}
 			{% include "profile_module_user_grid" with {'users': friends, 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': friendCount})} %}
 		{% endif %}
+		{% if albums is not empty %}
+			{% include "profile_module_photo_albums" with {'albums': albums, 'headerTitle': L('photo_albums'), 'headerHref': "/users/#{user.id}/albums", 'subheaderTitle': L('X_photo_albums', {'count': photoAlbumCount}), 'ownerID': user.id} %}
+		{% endif %}
 		{% if groups is not empty %}
 			{% include "profile_module_groups" with {'groups': groups, 'headerTitle': L('groups'), 'headerHref': "/users/#{user.id}/groups", 'subheaderTitle': L('X_groups', {'count': groups.size})} %}
 		{% endif %}

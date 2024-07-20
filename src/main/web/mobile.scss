@@ -2001,3 +2001,48 @@ input.searchField{
 	}
 }
 
+.profileSectionThumbs{
+	overflow-x: scroll;
+	overflow-y: hidden;
+	padding: 8px 12px;
+	display: grid;
+	grid-auto-columns: 146px;
+	grid-template-rows: 138px;
+	scrollbar-width: none;
+	&::-webkit-scrollbar{
+		display: none;
+	}
+	a{
+		padding: 0 8px;
+	}
+	.titleW{
+		display: flex;
+		line-height: 40px;
+		font-weight: $mediumWeight;
+		color: $text;
+	}
+	.title{
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		overflow: hidden;
+	}
+	.count{
+		opacity: 0.5;
+		margin-left: 8px;
+		flex: none;
+	}
+	.thumb{
+		width: 130px;
+		height: 86px;
+		background: #eed;
+		border-radius: 3px;
+		overflow: hidden;
+	}
+	.singlePhoto img{
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: top center;
+	}
+}
+

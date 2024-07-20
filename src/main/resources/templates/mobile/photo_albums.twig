@@ -3,8 +3,9 @@
 {% if owner.ownerID==currentUser.id %}
 <a href="/my/albums/create" class="fab iconAdd" title="{{ L('create_photo_album') }}"></a>
 {% elseif owner.ownerID<0 and userPermissions.canManageGroup(owner) %}
-<a href="/my/albums/create?owner={{ owner.ownerID }}" class="fab iconAdd">{{ L('create_photo_album') }}</a>
+<a href="/my/albums/create?owner={{ owner.ownerID }}" class="fab iconAdd" title="{{ L('create_photo_album') }}"></a>
 {% endif %}
+{% if albums is not empty %}
 <div class="photoAlbumsGrid">
 {% for album in albums %}
 	<a href="{{ album.url }}" class="{{ album.coverID==0 ? 'empty' : '' }}">
@@ -16,4 +17,7 @@
 	</a>
 {% endfor %}
 </div>
+{% else %}
+<div class="singleColumn"><div class="emptyState">{{ L('no_photo_albums') }}</div></div>
+{% endif %}
 {% endblock %}

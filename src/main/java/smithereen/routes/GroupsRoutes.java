@@ -38,6 +38,7 @@ import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.exceptions.BadRequestException;
 import smithereen.lang.Lang;
@@ -296,6 +297,16 @@ public class GroupsRoutes{
 				profileFields.add(new PropertyValue(l.get("event_end_time"), l.formatDate(group.eventEndTime, timeZoneForRequest(req), false)));
 		}
 		model.with("profileFields", profileFields);
+
+		PaginatedList<PhotoAlbum> albums;
+		if(isMobile(req))
+			albums=ctx.getPhotosController().getMostRecentAlbums(group, self!=null ? self.user : null, 1, true);
+		else
+			albums=ctx.getPhotosController().getRandomAlbumsForProfile(group, self!=null ? self.user : null, 2);
+		model.with("albums", albums.list)
+				.with("photoAlbumCount", albums.total)
+				.with("covers", ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.list.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet())));
+
 		return model;
 	}
 

@@ -3607,6 +3607,14 @@ label.largeAccented{
 	--album-height: 185px;
 }
 
+.photoAlbumsBlock{
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-gap: 10px;
+	padding: 10px;
+	--album-height: 118px;
+}
+
 .photoAlbum{
 	background: $blockUnderboxBackground;
 	position: relative;
@@ -3634,6 +3642,7 @@ label.largeAccented{
 		width: 100%;
 		flex-shrink: 1;
 		transition: flex-shrink 0.3s ease;
+		max-height: var(--album-height);
 	}
 	.title{
 		font-weight: bold;

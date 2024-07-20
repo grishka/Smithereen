@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static smithereen.Utils.*;
 
@@ -31,6 +32,7 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
@@ -294,6 +296,15 @@ public class ProfileRoutes{
 					User newProfile=ctx.getUsersController().getUserOrThrow(user.movedTo);
 					model.with("movedTo", newProfile);
 				}
+
+				PaginatedList<PhotoAlbum> albums;
+				if(isMobile(req))
+					albums=ctx.getPhotosController().getMostRecentAlbums(user, self!=null ? self.user : null, 1, true);
+				else
+					albums=ctx.getPhotosController().getRandomAlbumsForProfile(user, self!=null ? self.user : null, 2);
+				model.with("albums", albums.list)
+						.with("photoAlbumCount", albums.total)
+						.with("covers", ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.list.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet())));
 
 				model.addNavBarItem(user.getFullName(), null, isSelf ? l.get("this_is_you") : null);
 

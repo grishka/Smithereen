@@ -1,0 +1,24 @@
+{% extends "profile_module" %}
+{% block moduleContent %}
+{% if albums is not empty %}
+<div class="photoAlbumsBlock">
+{% for album in albums %}
+	<a href="{{ album.url }}" class="photoAlbum">
+		{% if covers[album.coverID] is not null %}{{ covers[album.coverID].image | pictureForPhoto('m') }}{% endif %}
+		<div class="infoW">
+			<div class="spacer"></div>
+			<div class="info">
+				<div class="count"><span class="icon"></span>{{ album.numPhotos | numberformat }}</div>
+				<div class="title">{{ album.title }}</div>
+				<div class="description">{{ album.description }}</div>
+			</div>
+		</div>
+	</a>
+{% endfor %}
+</div>
+{% else %}
+<div style="padding: 15px 10px; text-align: center">
+<a href="/my/albums/create{{ ownerID<0 ? "?owner=#{ownerID}" : "" }}" data-ajax-box>{{ L('create_photo_album') }}</a>
+</div>
+{% endif %}
+{% endblock %}
