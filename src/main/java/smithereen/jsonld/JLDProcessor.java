@@ -235,6 +235,9 @@ public class JLDProcessor{
 			case "https://w3id.org/security/v1" -> readResourceFile("w3-security");
 			case "https://w3id.org/identity/v1" -> readResourceFile("w3-identity");
 			case "https://example.com/schemas/litepub-0.1.jsonld" -> readResourceFile("litepub-0.1");
+			case "https://w3id.org/security/data-integrity/v1" -> readResourceFile("w3-data-integrity");
+			case "https://www.w3.org/ns/did/v1" -> readResourceFile("w3-did");
+			case "https://w3id.org/security/multikey/v1" -> readResourceFile("w3-multikey");
 			default -> {
 				if(allowNetworking){
 					remoteContextFetchMutexes.acquire(iri);
@@ -362,7 +365,7 @@ public class JLDProcessor{
 			}
 
 			for(String k:c.keySet()){
-				if(k.equals("@base") || k.equals("@vocab") || k.equals("@language"))
+				if(k.equals("@base") || k.equals("@vocab") || k.equals("@language") || k.equals("@protected"))
 					continue;
 				createTermDefinition(result, c, k, new HashMap<>());
 			}
