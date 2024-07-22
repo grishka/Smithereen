@@ -14,7 +14,6 @@ import java.util.Map;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.Group;
 import smithereen.model.SizedImage;
-import smithereen.model.User;
 
 public class PictureForAvatarFilter implements Filter{
 	@Override
@@ -65,7 +64,7 @@ public class PictureForAvatarFilter implements Filter{
 		if(args.containsKey("classes")){
 			classes.add(args.get("classes").toString());
 		}
-		return new SafeString("<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+(args.containsKey("wrapperClasses") ? (" "+args.get("wrapperClasses")) : "")+"\">"+image.generateHTML(type, classes, null, width, height)+"</span>");
+		return new SafeString("<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+(args.containsKey("wrapperClasses") ? (" "+args.get("wrapperClasses")) : "")+"\">"+image.generateHTML(type, classes, null, width, height, true)+"</span>");
 	}
 
 	@Override

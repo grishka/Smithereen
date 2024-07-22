@@ -35,7 +35,7 @@
 				<div class="feedRowUser">
 					{% set friend=users[ce.objectID] %}
 					<a href="{{ friend.profileURL }}">
-						{{ friend | pictureForAvatar('s') }}
+						{{ friend | pictureForAvatar('a') }}
 						<div class="feedRowUserName">{{ friend | name("first") }}</div>
 						<div class="feedRowUserName">{{ friend | name("last") }}</div>
 					</a>
@@ -44,7 +44,7 @@
 				<div class="feedRowUser">
 					{% set group=groups[ce.objectID] %}
 					<a href="{{ profileURL(-ce.objectID) }}">
-						{{ group | pictureForAvatar('s') }}
+						{{ group | pictureForAvatar('a') }}
 						<div class="feedRowUserName">{{ group | name }}</div>
 					</a>
 				</div>
@@ -52,7 +52,7 @@
 				<div class="feedRowUser">
 					{% set event=groups[ce.objectID] %}
 					<a href="{{ profileURL(-ce.objectID) }}">
-						{{ event | pictureForAvatar('s') }}
+						{{ event | pictureForAvatar('a') }}
 						<div class="feedRowUserName">{{ event | name }}</div>
 					</a>
 				</div>

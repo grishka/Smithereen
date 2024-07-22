@@ -8,7 +8,7 @@
 		<div class="subject">{{ message.subject }}</div>
 		{% endif %}
 		<div class="messageViewHeader">
-			<a href="{{ profileURL(message.senderID) }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('s') }}</a>
+			<a href="{{ profileURL(message.senderID) }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('a') }}</a>
 			<div class="nameAndTime">
 				<div class="name"><a href="{{ profileURL(message.senderID) }}">{{ users[message.senderID] | name('complete') }}</a></div>
 				<div class="time">{{ LD(message.createdAt, true) }}{% if message.updatedAt is not null %} | {{ L('mail_edited_at', {'time': LD(message.updatedAt)}) }}{% endif %}</div>

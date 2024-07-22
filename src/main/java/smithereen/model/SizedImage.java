@@ -1,6 +1,7 @@
 package smithereen.model;
 
 import java.net.URI;
+import java.text.Format;
 import java.util.List;
 
 import smithereen.storage.ImgProxy;
@@ -13,10 +14,10 @@ public interface SizedImage{
 		return size.getResizedDimensions(getOriginalDimensions());
 	}
 
-	default String generateHTML(Type size, List<String> additionalClasses, String styleAttr, int width, int height){
+	default String generateHTML(Type size, List<String> additionalClasses, String styleAttr, int width, int height, boolean add2x){
 		StringBuilder sb=new StringBuilder("<picture>");
-		appendHtmlForFormat(size, Format.WEBP, sb);
-		appendHtmlForFormat(size, Format.JPEG, sb);
+		appendHtmlForFormat(size, Format.WEBP, sb, add2x);
+		appendHtmlForFormat(size, Format.JPEG, sb, add2x);
 		sb.append("<img src=\"");
 		sb.append(getUriForSizeAndFormat(size, Format.JPEG));
 		sb.append('"');
@@ -52,63 +53,70 @@ public interface SizedImage{
 		return sb.toString();
 	}
 
-	private void appendHtmlForFormat(Type size, Format format, StringBuilder sb){
+	private void appendHtmlForFormat(Type size, Format format, StringBuilder sb, boolean add2x){
 		sb.append("<source srcset=\"");
 		sb.append(getUriForSizeAndFormat(size, format));
-		sb.append(", ");
-		sb.append(getUriForSizeAndFormat(size.get2xType(), format));
-		sb.append(" 2x\" type=\"");
+		if(add2x){
+			sb.append(", ");
+			sb.append(getUriForSizeAndFormat(size.get2xType(), format));
+			sb.append(" 2x");
+		}
+		sb.append("\" type=\"");
 		sb.append(format.contentType());
 		sb.append("\"/>");
 	}
 
 	enum Type{
 		/**
-		 * Photos: 256x256
+		 * Photos: 100x100
 		 */
-		SMALL("s", 256, 256, ImgProxy.ResizingType.FIT),
+		PHOTO_THUMB_SMALL("s", 100, 100, ImgProxy.ResizingType.FIT),
 		/**
-		 * Photos: 512x512
+		 * Photos: 320x320
 		 */
-		MEDIUM("m", 512, 512, ImgProxy.ResizingType.FIT),
+		PHOTO_THUMB_MEDIUM("m", 320, 320, ImgProxy.ResizingType.FIT),
 		/**
-		 * Photos: 1024x1024
+		 * Photos: 640x640
 		 */
-		LARGE("l", 1024, 1024, ImgProxy.ResizingType.FIT),
+		PHOTO_SMALL("x", 640, 640, ImgProxy.ResizingType.FIT),
+		/**
+		 * Photos: 800x800
+		 */
+		PHOTO_MEDIUM("y", 800, 800, ImgProxy.ResizingType.FIT),
+		/**
+		 * Photos: 1280x1280
+		 */
+		PHOTO_LARGE("z", 1280, 1280, ImgProxy.ResizingType.FIT),
 		/**
 		 * Photos: 2560x2560
 		 */
-		XLARGE("xl", 2560, 2560, ImgProxy.ResizingType.FIT),
-		/**
-		 * Photos: 128x128
-		 */
-		XSMALL("xs", 128, 128, ImgProxy.ResizingType.FIT),
+		PHOTO_ORIGINAL("w", 2560, 2560, ImgProxy.ResizingType.FIT),
 
 		/**
 		 * Avatars: 200xH
 		 */
-		RECT_LARGE("rl", 200, 2560, ImgProxy.ResizingType.FIT),
+		AVA_RECT("cr", 200, 2560, ImgProxy.ResizingType.FIT),
 		/**
 		 * Avatars: 400xH
 		 */
-		RECT_XLARGE("rxl", 400, 2560, ImgProxy.ResizingType.FIT),
+		AVA_RECT_LARGE("dr", 400, 2560, ImgProxy.ResizingType.FIT),
 
 		/**
 		 * Avatars: 50x50 square
 		 */
-		SQUARE_SMALL("sqs", 50, 50, ImgProxy.ResizingType.FILL),
+		AVA_SQUARE_SMALL("a", 50, 50, ImgProxy.ResizingType.FILL),
 		/**
 		 * Avatars: 100x100 square
 		 */
-		SQUARE_MEDIUM("sqm", 100, 100, ImgProxy.ResizingType.FILL),
+		AVA_SQUARE_MEDIUM("b", 100, 100, ImgProxy.ResizingType.FILL),
 		/**
 		 * Avatars: 200x200 square
 		 */
-		SQUARE_LARGE("sql", 200, 200, ImgProxy.ResizingType.FILL),
+		AVA_SQUARE_LARGE("c", 200, 200, ImgProxy.ResizingType.FILL),
 		/**
 		 * Avatars: 400x400 square
 		 */
-		SQUARE_XLARGE("sqxl", 400, 400, ImgProxy.ResizingType.FILL);
+		AVA_SQUARE_XLARGE("d", 400, 400, ImgProxy.ResizingType.FILL);
 
 		private final String suffix;
 		private final int maxWidth, maxHeight;
@@ -152,35 +160,38 @@ public interface SizedImage{
 
 		public Type get2xType(){
 			return switch(this){
-				case XSMALL -> SMALL;
-				case SMALL -> MEDIUM;
-				case MEDIUM -> LARGE;
-				case LARGE, XLARGE -> XLARGE;
-				case RECT_XLARGE, RECT_LARGE -> RECT_XLARGE;
-				case SQUARE_SMALL -> SQUARE_MEDIUM;
-				case SQUARE_MEDIUM -> SQUARE_LARGE;
-				case SQUARE_LARGE, SQUARE_XLARGE -> SQUARE_XLARGE;
+				case PHOTO_THUMB_SMALL -> PHOTO_THUMB_MEDIUM;
+				case PHOTO_THUMB_MEDIUM -> PHOTO_SMALL;
+				case PHOTO_SMALL -> PHOTO_MEDIUM;
+				case PHOTO_MEDIUM -> PHOTO_LARGE;
+				case PHOTO_LARGE, PHOTO_ORIGINAL -> PHOTO_ORIGINAL;
+
+				case AVA_RECT, AVA_RECT_LARGE -> AVA_RECT_LARGE;
+				case AVA_SQUARE_SMALL -> AVA_SQUARE_MEDIUM;
+				case AVA_SQUARE_MEDIUM -> AVA_SQUARE_LARGE;
+				case AVA_SQUARE_LARGE, AVA_SQUARE_XLARGE -> AVA_SQUARE_XLARGE;
 			};
 		}
 
 		public boolean isRect(){
-			return this==RECT_LARGE || this==RECT_XLARGE;
+			return this==AVA_RECT || this==AVA_RECT_LARGE;
 		}
 
 		public static Type fromSuffix(String s){
 			return switch(s){
-				case "xs" -> XSMALL;
-				case "s" -> SMALL;
-				case "m" -> MEDIUM;
-				case "l" -> LARGE;
-				case "xl" -> XLARGE;
-				case "rl" -> RECT_LARGE;
-				case "rxl" -> RECT_XLARGE;
-				case "sqs" -> SQUARE_SMALL;
-				case "sqm" -> SQUARE_MEDIUM;
-				case "sql" -> SQUARE_LARGE;
-				case "sqxl" -> SQUARE_XLARGE;
-				default -> null;
+				case "s" -> PHOTO_THUMB_SMALL;
+				case "m" -> PHOTO_THUMB_MEDIUM;
+				case "x" -> PHOTO_SMALL;
+				case "y" -> PHOTO_MEDIUM;
+				case "z" -> PHOTO_LARGE;
+				case "w" -> PHOTO_ORIGINAL;
+				case "cr" -> AVA_RECT;
+				case "dr" -> AVA_RECT_LARGE;
+				case "a" -> AVA_SQUARE_SMALL;
+				case "b" -> AVA_SQUARE_MEDIUM;
+				case "c" -> AVA_SQUARE_LARGE;
+				case "d" -> AVA_SQUARE_XLARGE;
+				default -> throw new IllegalArgumentException("Invalid image size '"+s+"'");
 			};
 		}
 	}

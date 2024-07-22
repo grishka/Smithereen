@@ -10,7 +10,7 @@
 			{% else %}
 			<div class="reportFormHeader" style="margin: 0">
 				{% set user=users[to | first] %}
-				<div class="flL">{{ user | pictureForAvatar('s') }}</div>
+				<div class="flL">{{ user | pictureForAvatar('a') }}</div>
 				<div><b>{{ user | name('complete') }}</b></div>
 				{# <div class="ellipsize">{{ reportSubtitle }}</div> #}
 				<div class="clear"></div>

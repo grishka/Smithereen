@@ -1,6 +1,6 @@
 {% for user in users %}
     <div class="completion withAvatar" data-username="{{ user.fullUsername }}">
-    	{{ user | pictureForAvatar('s', 30, wrapperClasses="flL") }}
+    	{{ user | pictureForAvatar('a', 30, wrapperClasses="flL") }}
     	<div class="ellipsize">{{ highlightedNames[user.id] | raw }}</div>
     	<div class="ellipsize secondaryText">@{{ highlightedUsernames[user.id] | raw }}</div>
     </div>

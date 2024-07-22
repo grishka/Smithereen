@@ -32,7 +32,7 @@
 		{% if group.hasAvatar %}
 		{% if canEditGroup %}
 		<div class="selfAvaOverlay">
-			{{ group | pictureForAvatar('rl') }}
+			{{ group | pictureForAvatar('cr') }}
 			{% if canEditGroup %}
 			<ul class="selfAvaActions actionList">
 				<li><a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureBox({{ group.id }}).show(); return false;">{{L('update_profile_picture')}}</a></li>
@@ -41,7 +41,7 @@
 			{% endif %}
 		</div>
 		{% else %}
-		{{ group | pictureForAvatar('rl') }}
+		{{ group | pictureForAvatar('cr') }}
 		{% endif %}
 		{% else %}
 		{% if canEditGroup %}

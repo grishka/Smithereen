@@ -19,7 +19,7 @@
 	{%- else %}
 	{%- set user=users[msg.senderID] %}
 	{%- endif %}
-	{{ user | pictureForAvatar('s') }}
+	{{ user | pictureForAvatar('a') }}
 	<div class="msgContent">
 		<div class="time">{{ LD(msg.createdAt) }}</div>
 		<div class="name ellipsize">{{ user | name }}{% if msg.senderID==currentUser.id and (msg.to | length)>1 %} +{{ (msg.to | length)-1 }}{% endif %}</div>

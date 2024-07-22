@@ -35,7 +35,7 @@
 			{%set attachIDs=""%}
 			{%for attachment in draftAttachments%}
 			<div class="attachment" id="attachment_{{attachment.localID}}" data-id="{{attachment.localID}}">
-				{{ attachment | pictureForPhoto('xs') }}
+				{{ attachment | pictureForPhoto('s') }}
 				{% if isEditing %}
 					<a href="#" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
 					{% else %}

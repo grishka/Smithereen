@@ -287,10 +287,10 @@ public class FriendsRoutes{
 						avaUrls=null;
 					}else{
 						avaUrls=List.of(
-								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_SMALL, SizedImage.Format.JPEG)),
-								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_SMALL, SizedImage.Format.WEBP)),
-								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_MEDIUM, SizedImage.Format.JPEG)),
-								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.SQUARE_MEDIUM, SizedImage.Format.WEBP))
+								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, SizedImage.Format.JPEG)),
+								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, SizedImage.Format.WEBP)),
+								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, SizedImage.Format.JPEG)),
+								Objects.toString(ava.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, SizedImage.Format.WEBP))
 						);
 					}
 					return Arrays.asList(

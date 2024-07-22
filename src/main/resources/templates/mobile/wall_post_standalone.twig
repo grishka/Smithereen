@@ -19,10 +19,10 @@
 	</a>
 	<a href="{{ realPost.internalURL }}/likes" class="likeAvatars likeAvatars{{ realPost.id }}">
 		{% if currentUser is not null %}
-			<span class="currentUserLikeAva" style="{{ interactions.isLiked ? '' : 'display: none' }}">{{ currentUser | pictureForAvatar('s', 34) }}</span>
+			<span class="currentUserLikeAva" style="{{ interactions.isLiked ? '' : 'display: none' }}">{{ currentUser | pictureForAvatar('a', 34) }}</span>
 		{% endif %}
 		{% for user in likedBy %}
-			{{ user | pictureForAvatar('s', 34) }}
+			{{ user | pictureForAvatar('a', 34) }}
 		{% endfor %}
 	</a>
 	{% if post.canRepost %}

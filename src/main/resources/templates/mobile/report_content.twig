@@ -5,7 +5,7 @@
 		{% if contentType=='post' %}
 		{% set post=content %}
 		<div class="messageViewHeader">
-			<a href="{{ profileURL(post.authorID) }}" class="avaW">{{ users[post.authorID] | pictureForAvatar('s') }}</a>
+			<a href="{{ profileURL(post.authorID) }}" class="avaW">{{ users[post.authorID] | pictureForAvatar('a') }}</a>
 			<div class="nameAndTime">
 				<div class="name"><a href="{{ profileURL(post.authorID) }}">{{ users[post.authorID] | name('complete') }}</a></div>
 				<div class="time">{{ LD(post.createdAt, true) }}</div>
@@ -38,7 +38,7 @@
 		{% elseif contentType=='message' %}
 		{% set message=content %}
 		<div class="messageViewHeader">
-			<a href="{{ profileURL(message.senderID) }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('s') }}</a>
+			<a href="{{ profileURL(message.senderID) }}" class="avaW">{{ users[message.senderID] | pictureForAvatar('a') }}</a>
 			<div class="nameAndTime">
 				<div class="name"><a href="{{ profileURL(message.senderID) }}">{{ users[message.senderID] | name('complete') }}</a></div>
 				<div class="time">{{ LD(message.createdAt, true) }}</div>

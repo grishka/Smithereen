@@ -17,13 +17,13 @@ public class PictureForPhotoFilter implements Filter{
 		if(input instanceof SizedImage img){
 			SizedImage.Type type=SizedImage.Type.fromSuffix(args.get("size").toString());
 			SizedImage.Dimensions size=img.getDimensionsForSize(type);
-			return new SafeString(img.generateHTML(type, null, null, size.width, size.height));
+			return new SafeString(img.generateHTML(type, null, null, size.width, size.height, (boolean)args.getOrDefault("add2x", Boolean.TRUE)));
 		}
 		throw new IllegalArgumentException("Input is an unknown type: "+input);
 	}
 
 	@Override
 	public List<String> getArgumentNames(){
-		return List.of("size");
+		return List.of("size", "add2x");
 	}
 }

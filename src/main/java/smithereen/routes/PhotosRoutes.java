@@ -151,12 +151,12 @@ public class PhotosRoutes{
 
 		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, info.account, false);
 		long photoID=ctx.getPhotosController().createPhoto(info.account.user, album, photo.fileID, null, null);
-		SizedImage.Type sizeType=SizedImage.Type.SMALL;
+		SizedImage.Type sizeType=SizedImage.Type.PHOTO_THUMB_SMALL;
 		SizedImage.Dimensions size=photo.getDimensionsForSize(sizeType);
 
 		return new JsonObjectBuilder()
 				.add("id", encodeLong(XTEA.obfuscateObjectID(photoID, ObfuscatedObjectIDType.PHOTO)))
-				.add("html", photo.generateHTML(SizedImage.Type.SMALL, null, null, size.width, size.height))
+				.add("html", photo.generateHTML(SizedImage.Type.PHOTO_THUMB_SMALL, null, null, size.width, size.height, true))
 				.build();
 	}
 

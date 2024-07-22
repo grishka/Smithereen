@@ -453,8 +453,8 @@ public class PostRoutes{
 			if(post.post.attachments!=null && !post.post.attachments.isEmpty()){
 				for(Attachment att : post.post.getProcessedAttachments()){
 					if(att instanceof PhotoAttachment pa){
-						SizedImage.Dimensions size=pa.image.getDimensionsForSize(SizedImage.Type.MEDIUM);
-						meta.put("og:image", pa.image.getUriForSizeAndFormat(SizedImage.Type.MEDIUM, SizedImage.Format.JPEG).toString());
+						SizedImage.Dimensions size=pa.image.getDimensionsForSize(SizedImage.Type.PHOTO_MEDIUM);
+						meta.put("og:image", pa.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_MEDIUM, SizedImage.Format.JPEG).toString());
 						meta.put("og:image:width", String.valueOf(size.width));
 						meta.put("og:image:height", String.valueOf(size.height));
 						meta.put("og:image:type", "image/jpeg");
@@ -467,9 +467,9 @@ public class PostRoutes{
 			if(!hasImage){
 				meta.put("twitter:card", "summary");
 				if(author.hasAvatar()){
-					URI img=author.getAvatar().getUriForSizeAndFormat(SizedImage.Type.SQUARE_XLARGE, SizedImage.Format.JPEG);
+					URI img=author.getAvatar().getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_XLARGE, SizedImage.Format.JPEG);
 					if(img!=null){
-						SizedImage.Dimensions size=author.getAvatar().getDimensionsForSize(SizedImage.Type.SQUARE_XLARGE);
+						SizedImage.Dimensions size=author.getAvatar().getDimensionsForSize(SizedImage.Type.AVA_SQUARE_XLARGE);
 						meta.put("og:image", img.toString());
 						meta.put("og:image:width", String.valueOf(size.width));
 						meta.put("og:image:height", String.valueOf(size.height));

@@ -268,9 +268,9 @@ public class GroupsRoutes{
 				descr+="\n"+Jsoup.clean(group.summary, Whitelist.none());
 			meta.put("og:description", descr);
 			if(group.hasAvatar()){
-				URI img=group.getAvatar().getUriForSizeAndFormat(SizedImage.Type.LARGE, SizedImage.Format.JPEG);
+				URI img=group.getAvatar().getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_XLARGE, SizedImage.Format.JPEG);
 				if(img!=null){
-					SizedImage.Dimensions size=group.getAvatar().getDimensionsForSize(SizedImage.Type.LARGE);
+					SizedImage.Dimensions size=group.getAvatar().getDimensionsForSize(SizedImage.Type.AVA_SQUARE_XLARGE);
 					meta.put("og:image", img.toString());
 					meta.put("og:image:width", size.width+"");
 					meta.put("og:image:height", size.height+"");

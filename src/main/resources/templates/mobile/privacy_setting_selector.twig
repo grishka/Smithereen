@@ -18,7 +18,7 @@
 	<div id="allowedFriendsItems">
 	{% for id in setting.allowUsers %}
 		<div class="compactUserRow" data-uid="{{ id }}" id="userRow{{ id }}">
-			{{ users[id] | pictureForAvatar('s', 32) }}
+			{{ users[id] | pictureForAvatar('a', 32) }}
 			<div class="name ellipsize">{{ users[id] | name }}</div>
 			<a href="javascript:void(0)" title="{{ L('delete') }}" class="remove actionIcon"></a>
 		</div>
@@ -31,7 +31,7 @@
 	<div id="deniedFriendsItems">
 	{% for id in setting.exceptUsers %}
 		<div class="compactUserRow" data-uid="{{ id }}" id="userRow{{ id }}">
-			{{ users[id] | pictureForAvatar('s', 32) }}
+			{{ users[id] | pictureForAvatar('a', 32) }}
 			<div class="name ellipsize">{{ users[id] | name }}</div>
 			<a href="javascript:void(0)" title="{{ L('delete') }}" class="remove actionIcon"></a>
 		</div>

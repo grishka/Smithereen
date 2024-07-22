@@ -11,7 +11,7 @@
 	<table width="100%" class="friendsRow noBorderSpacing">
 		<tr>
 			<td width="100" valign="top">
-				<a href="{{ req.from.profileURL }}">{{req.from | pictureForAvatar('m')}}</a>
+				<a href="{{ req.from.profileURL }}">{{req.from | pictureForAvatar('b')}}</a>
 			</td>
 			<td class="info" valign="top">
 				<div class="infoInner">
@@ -33,7 +33,7 @@
 							</span>
 							<div class="mutualPics">
 									{% for friend in req.mutualFriends %}
-									<a href="{{ friend.profileURL }}" title="{{ friend | name }}">{{ friend | pictureForAvatar('s', 32) }}</a>
+									<a href="{{ friend.profileURL }}" title="{{ friend | name }}">{{ friend | pictureForAvatar('a', 32) }}</a>
 									{% endfor %}
 							</div>
 						</div>

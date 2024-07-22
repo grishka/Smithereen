@@ -5,7 +5,7 @@
 	<div class="settingsMessage" id="albumEditMessage" style="display: none"></div>
 	<div class="inner">
 		<div class="left">
-			<div class="cover">{% if cover is not null %}{{ cover.image | pictureForPhoto('s') }}{% endif %}</div>
+			<div class="cover">{% if cover is not null %}{{ cover.image | pictureForPhoto('m', false) }}{% endif %}</div>
 			<ul class="marginBefore actionList">
 				<li><a href="{{ album.url }}/confirmDelete" data-confirm-message="{{ L('delete_photo_album_confirm') }}" data-confirm-title="{{ L('delete_photo_album') }}" data-confirm-action="{{ album.url }}/delete">{{ L('delete_photo_album') }}</a></li>
 			</ul>
@@ -24,7 +24,7 @@
 </div>
 {% for photo in items %}
     <div class="photoEditRow" data-photo-id="{{ photo.idString }}" data-text-format="{{ descriptionSources[photo.id].format }}"{% if loop.first %} style="border-top: none"{% endif %}>
-    	<div class="thumb">{{ photo.image | pictureForPhoto('s') }}</div>
+    	<div class="thumb">{{ photo.image | pictureForPhoto('m', false) }}</div>
     	<div class="descriptionW">
     		<h4 class="marginAfter">{{ L('photo_description') }}</h4>
     		<textarea>{{ descriptionSources[photo.id].source }}</textarea>

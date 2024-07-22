@@ -1,6 +1,6 @@
 {# @pebvariable name="user" type="smithereen.model.User" #}
 <div class="userHoverCard">
-	{{ user | pictureForAvatar('m') }}
+	{{ user | pictureForAvatar('b') }}
 	<div>
 		<h4>{{ user | name('complete') }}</h4>
 		{% if user.summary is not empty %}
@@ -10,7 +10,7 @@
 		<div class="marginAfter marginBefore">{{ L('X_mutual_friends', {'count': mutualFriends.total}) }}</div>
 		<div class="mutuals">
 		{% for friend in mutualFriends.list %}
-		    {{ friend | pictureForAvatar('s', 30) }}
+		    {{ friend | pictureForAvatar('a', 30) }}
 		{% endfor %}
 		</div>
 		{% endif %}

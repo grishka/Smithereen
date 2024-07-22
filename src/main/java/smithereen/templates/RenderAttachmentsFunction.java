@@ -144,12 +144,12 @@ public class RenderAttachmentsFunction implements Function{
 
 	private void renderPhotoAttachment(PhotoAttachment photo, List<String> lines, int size, String overrideLinks){
 		SizedImage.Type type;
-		if(size<=128){
-			type=SizedImage.Type.XSMALL;
-		}else if(size<=256){
-			type=SizedImage.Type.SMALL;
+		if(size<=100){
+			type=SizedImage.Type.PHOTO_THUMB_SMALL;
+		}else if(size<=320){
+			type=SizedImage.Type.PHOTO_THUMB_MEDIUM;
 		}else{
-			type=SizedImage.Type.MEDIUM;
+			type=SizedImage.Type.PHOTO_SMALL;
 		}
 
 		String styleAttr=null;
@@ -158,7 +158,7 @@ public class RenderAttachmentsFunction implements Function{
 		}
 
 		if(photo instanceof GraffitiAttachment ga){
-			URI full=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.PNG);
+			URI full=photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_ORIGINAL, SizedImage.Format.PNG);
 			String href=overrideLinks!=null ? overrideLinks : full.toString();
 			String attrs;
 			if(overrideLinks!=null){
@@ -168,8 +168,8 @@ public class RenderAttachmentsFunction implements Function{
 			}
 			lines.add("<a class=\"graffiti\" href=\""+href+"\" "+attrs+"><img src=\""+full+"\" width=\""+GraffitiAttachment.WIDTH+"\" height=\""+GraffitiAttachment.HEIGHT+"\"/></a>");
 		}else{
-			URI jpegFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.JPEG);
-			URI webpFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.XLARGE, SizedImage.Format.WEBP);
+			URI jpegFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_ORIGINAL, SizedImage.Format.JPEG);
+			URI webpFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_ORIGINAL, SizedImage.Format.WEBP);
 			String href=overrideLinks!=null ? overrideLinks : Objects.toString(jpegFull);
 			String attrs;
 			if(overrideLinks!=null){
@@ -177,7 +177,7 @@ public class RenderAttachmentsFunction implements Function{
 			}else{
 				attrs="data-full-jpeg=\""+jpegFull+"\" data-full-webp=\""+webpFull+"\" data-size=\""+photo.getWidth()+" "+photo.getHeight()+"\" onclick=\"return openPhotoViewer(this)\"";
 			}
-			lines.add("<a class=\"photo\" href=\""+href+"\" "+attrs+">"+photo.image.generateHTML(type, null, styleAttr, 0, 0)+"</a>");
+			lines.add("<a class=\"photo\" href=\""+href+"\" "+attrs+">"+photo.image.generateHTML(type, null, styleAttr, 0, 0, true)+"</a>");
 		}
 	}
 

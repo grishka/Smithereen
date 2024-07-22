@@ -21,7 +21,7 @@
 				<colgroup><col width="48"/><col width="*"/></colgroup>
 				{% for admin in serverAdmins %}
 					<tr class="oneMemberRow">
-						<td valign="top"><a href="{{ admin.profileURL }}">{{ admin | pictureForAvatar('s', 40) }}</a></td>
+						<td valign="top"><a href="{{ admin.profileURL }}">{{ admin | pictureForAvatar('a', 40) }}</a></td>
 						<td class="nameAndInfo">
 							<div><a href="{{ admin.profileURL }}">{{ admin | name }}</a></div>
 						</td>

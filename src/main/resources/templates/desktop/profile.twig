@@ -38,14 +38,14 @@
 		{%if user.hasAvatar%}
 		{%if currentUser is not null and currentUser.id==user.id%}
 		<div class="selfAvaOverlay">
-			{{user | pictureForAvatar('rl')}}
+			{{user | pictureForAvatar('cr')}}
 			<ul class="selfAvaActions actionList">
 				<li><a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">{{L('update_profile_picture')}}</a></li>
 				<li><a href="/settings/confirmRemoveProfilePicture" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture');">{{L('remove_profile_picture')}}</a></li>
 			</ul>
 		</div>
 		{%else%}
-		{{user | pictureForAvatar('rl')}}
+		{{user | pictureForAvatar('cr')}}
 		{%endif%}
 		{%else%}
 		{%if currentUser is not null and currentUser.id==user.id%}

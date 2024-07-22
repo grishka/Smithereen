@@ -11,7 +11,7 @@
 <div class="singleColumn">
 	{% for note in items %}
 	<div class="listItemWithDivider itemWithAvatar">
-		<div><a href="{{ profileURL(note.authorID) }}">{{ users[note.authorID] | pictureForAvatar('s') }}</a></div>
+		<div><a href="{{ profileURL(note.authorID) }}">{{ users[note.authorID] | pictureForAvatar('a') }}</a></div>
 		<div>
 			<div class="smallVMargin" style="margin-top: 0;"><a href="{{ profileURL(note.authorID) }}">{{ users[note.authorID] | name('complete') }}</a></div>
 			<div class="smallVMargin">{{ note.text | postprocessHTML }}</div>

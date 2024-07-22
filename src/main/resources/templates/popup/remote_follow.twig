@@ -2,7 +2,7 @@
 {%block content%}
 <center>
 	<div class="externalInteractionGraphic">
-		{{currentUser | pictureForAvatar('s')}}<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50" viewBox="0 0 100 50" class="externalInteractionImage">
+		{{currentUser | pictureForAvatar('a')}}<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50" viewBox="0 0 100 50" class="externalInteractionImage">
 			<polygon points="100 25 85 10 85 20 0 20 0 30 85 30 85 40 100 25" class="arrow"/>
 			<g class="iconFollow">
 				<g>
@@ -20,7 +20,7 @@
 					<path d="M62,31a2,2,0,0,1,2,2v2h2a2,2,0,0,1,0,4H64v2a2,2,0,0,1-4,0V39H58a2,2,0,0,1,0-4h2V33a2,2,0,0,1,2-2m0-2a4,4,0,0,0-4,4,4,4,0,0,0,0,8,4,4,0,0,0,8,0,4,4,0,0,0,0-8,4,4,0,0,0-4-4Z" fill="#fff"/>
 				</g>
 			</g>
-		</svg>{{user | pictureForAvatar('s')}}
+		</svg>{{user | pictureForAvatar('a')}}
 	</div>
 	<p class="externalInteractionText">
 		{%if user.supportsFriendRequests%}

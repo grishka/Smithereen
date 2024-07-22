@@ -11,7 +11,7 @@
 	{% endif %}
 	{%if not(realPost.deleted)%}
 	<div class="postAvaWrap">
-		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
+		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a', 32) }}</a>
 	</div>
 	<div class="postContentWrap">
 		<a name="comment{{realPost.id}}"></a>

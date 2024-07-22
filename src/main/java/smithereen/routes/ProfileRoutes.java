@@ -276,9 +276,9 @@ public class ProfileRoutes{
 					else if(user.gender==User.Gender.FEMALE)
 						meta.put("og:gender", "female");
 					if(user.hasAvatar()){
-						URI img=user.getAvatar().getUriForSizeAndFormat(SizedImage.Type.LARGE, SizedImage.Format.JPEG);
+						URI img=user.getAvatar().getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_XLARGE, SizedImage.Format.JPEG);
 						if(img!=null){
-							SizedImage.Dimensions size=user.getAvatar().getDimensionsForSize(SizedImage.Type.LARGE);
+							SizedImage.Dimensions size=user.getAvatar().getDimensionsForSize(SizedImage.Type.AVA_SQUARE_XLARGE);
 							meta.put("og:image", img.toString());
 							meta.put("og:image:width", size.width+"");
 							meta.put("og:image:height", size.height+"");

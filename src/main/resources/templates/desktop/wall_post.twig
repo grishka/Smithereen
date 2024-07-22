@@ -6,7 +6,7 @@
 {% endif %}
 <div class="post{{ standalone ? ' standalone' : '' }}" id="post{{ realPost.id }}">
 	<div class="postAvaWrap">
-		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('s') }}</a>
+		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a') }}</a>
 	</div>
 	<div class="postContentWrap">
 		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.id }}">

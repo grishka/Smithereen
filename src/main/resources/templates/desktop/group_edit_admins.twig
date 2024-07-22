@@ -13,7 +13,7 @@
 			{% for admin in admins %}
 				<div class="reorderableItemWrap">
 					<div class="reorderableItem groupEditMember" data-reorder-id="{{ admin.user.id }}">
-						{{ admin.user | pictureForAvatar('s', 25) }}
+						{{ admin.user | pictureForAvatar('a', 25) }}
 						<div class="ellipsize">
 							<a href="{{ admin.user.profileURL }}" class="name">{{ admin.user | name }}</a>
 							{%- if admin.title is not empty -%}

@@ -322,8 +322,8 @@ public class SystemRoutes{
 					.add("width", photo.width)
 					.add("height", photo.height)
 					.add("thumbs", new JsonObjectBuilder()
-							.add("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.JPEG).toString())
-							.add("webp", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.WEBP).toString())
+							.add("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.JPEG).toString())
+							.add("webp", photo.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.WEBP).toString())
 					).build();
 		}
 		resp.redirect(Utils.back(req));

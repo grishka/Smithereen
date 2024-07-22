@@ -29,7 +29,7 @@
 	{%- set userID=msg.senderID %}
 	{%- endif %}
 	{%- set user=users[userID] %}
-	<a href="{{ profileURL(userID) }}" class="avaW">{{ user | pictureForAvatar('s') }}</a>
+	<a href="{{ profileURL(userID) }}" class="avaW">{{ user | pictureForAvatar('a') }}</a>
 	<a href="/my/mail/messages/{{ msg.encodedID }}" class="msgInfo">
 		<div class="name ellipsize">{{ user | name }}{% if msg.senderID==currentUser.id and (msg.to | length)>1 %} +{{ (msg.to | length)-1 }}{% endif %}</div>
 		<div class="time">{{ LD(msg.createdAt) }}</div>
