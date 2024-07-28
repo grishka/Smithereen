@@ -5,7 +5,7 @@ import java.time.Instant;
 public class NewsfeedEntry{
 	public int id;
 	public Type type;
-	public int objectID;
+	public long objectID;
 	public int authorID;
 	public Instant time;
 

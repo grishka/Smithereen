@@ -291,19 +291,19 @@ public class PostRoutes{
 				GroupedNewsfeedEntry gne=(GroupedNewsfeedEntry) e;
 				if(gne.childEntriesType==NewsfeedEntry.Type.ADD_FRIEND){
 					for(NewsfeedEntry ce:gne.childEntries){
-						needUsers.add(ce.objectID);
+						needUsers.add((int) ce.objectID);
 					}
 				}else if(gne.childEntriesType==NewsfeedEntry.Type.JOIN_GROUP || gne.childEntriesType==NewsfeedEntry.Type.JOIN_EVENT){
 					for(NewsfeedEntry ce:gne.childEntries){
-						needGroups.add(ce.objectID);
+						needGroups.add((int) ce.objectID);
 					}
 				}
 			}else if(e.type==NewsfeedEntry.Type.POST || e.type==NewsfeedEntry.Type.RETOOT){
-				needPosts.add(e.objectID);
+				needPosts.add((int) e.objectID);
 			}else if(e.type==NewsfeedEntry.Type.ADD_FRIEND){
-				needUsers.add(e.objectID);
+				needUsers.add((int) e.objectID);
 			}else if(e.type==NewsfeedEntry.Type.JOIN_GROUP || e.type==NewsfeedEntry.Type.JOIN_EVENT || e.type==NewsfeedEntry.Type.CREATE_GROUP || e.type==NewsfeedEntry.Type.CREATE_EVENT){
-				needGroups.add(e.objectID);
+				needGroups.add((int) e.objectID);
 			}
 		}
 

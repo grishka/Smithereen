@@ -341,7 +341,7 @@ CREATE TABLE `groups` (
 CREATE TABLE `likes` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int unsigned NOT NULL,
-  `object_id` int unsigned NOT NULL,
+  `object_id` bigint unsigned NOT NULL,
   `object_type` int unsigned NOT NULL,
   `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   UNIQUE KEY `user_id` (`user_id`,`object_id`,`object_type`),
@@ -467,7 +467,7 @@ CREATE TABLE `newsfeed` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `type` int unsigned NOT NULL,
   `author_id` int NOT NULL,
-  `object_id` int DEFAULT NULL,
+  `object_id` bigint unsigned DEFAULT NULL,
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `type` (`type`,`object_id`,`author_id`),
@@ -482,7 +482,7 @@ CREATE TABLE `newsfeed` (
 CREATE TABLE `newsfeed_comments` (
   `user_id` int unsigned NOT NULL,
   `object_type` int unsigned NOT NULL,
-  `object_id` int unsigned NOT NULL,
+  `object_id` bigint unsigned NOT NULL,
   `last_comment_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`object_type`,`object_id`,`user_id`),
   KEY `user_id` (`user_id`),
@@ -498,9 +498,9 @@ CREATE TABLE `notifications` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `owner_id` int unsigned NOT NULL,
   `type` smallint unsigned NOT NULL,
-  `object_id` int unsigned DEFAULT NULL,
+  `object_id` bigint unsigned DEFAULT NULL,
   `object_type` smallint unsigned DEFAULT NULL,
-  `related_object_id` int unsigned DEFAULT NULL,
+  `related_object_id` bigint unsigned DEFAULT NULL,
   `related_object_type` smallint unsigned DEFAULT NULL,
   `actor_id` int DEFAULT NULL,
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -870,4 +870,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-07-03 18:32:20
+-- Dump completed on 2024-07-28 22:18:42

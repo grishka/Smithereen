@@ -99,8 +99,10 @@ public class UserInteractionsController{
 			PaginatedList<Integer> ids;
 			if(topLevelOnly)
 				ids=LikeStorage.getLikedPostsTopLevelOnly(self.id, offset, count);
-			else
-				ids=LikeStorage.getLikedObjectIDs(self.id, Like.ObjectType.POST, offset, count);
+			else{
+				PaginatedList<Long> longIDs=LikeStorage.getLikedObjectIDs(self.id, Like.ObjectType.POST, offset, count);
+				ids=new PaginatedList<>(longIDs, longIDs.list.stream().map(Long::intValue).toList());
+			}
 			Map<Integer, Post> posts=PostStorage.getPostsByID(ids.list);
 			return new PaginatedList<>(ids, ids.list.stream().map(posts::get).filter(Objects::nonNull).toList());
 		}catch(SQLException x){

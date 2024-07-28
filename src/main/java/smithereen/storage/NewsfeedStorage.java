@@ -8,7 +8,7 @@ import smithereen.storage.sql.SQLQueryBuilder;
 
 public class NewsfeedStorage{
 
-	public static void putEntry(int userID, int objectID, NewsfeedEntry.Type type, Instant time) throws SQLException{
+	public static void putEntry(int userID, long objectID, NewsfeedEntry.Type type, Instant time) throws SQLException{
 		SQLQueryBuilder b=new SQLQueryBuilder()
 				.insertIgnoreInto("newsfeed")
 				.value("type", type)
@@ -19,7 +19,7 @@ public class NewsfeedStorage{
 		b.executeNoResult();
 	}
 
-	public static void deleteEntry(int userID, int objectID, NewsfeedEntry.Type type) throws SQLException{
+	public static void deleteEntry(int userID, long objectID, NewsfeedEntry.Type type) throws SQLException{
 		new SQLQueryBuilder()
 				.deleteFrom("newsfeed")
 				.where("type=? AND author_id=? AND object_id=?", type.ordinal(), userID, objectID)

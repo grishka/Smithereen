@@ -25,10 +25,10 @@ public class NotificationsRoutes{
 		for(Notification n:notifications.list){
 			needUsers.add(n.actorID);
 			if(n.objectType==Notification.ObjectType.POST){
-				needPosts.add(n.objectID);
+				needPosts.add((int) n.objectID);
 			}
 			if(n.relatedObjectType==Notification.ObjectType.POST){
-				needPosts.add(n.relatedObjectID);
+				needPosts.add((int) n.relatedObjectID);
 			}
 		}
 

@@ -25,14 +25,14 @@ public class NotificationsStorage{
 			stmt.setInt(1, owner);
 			stmt.setInt(2, n.type.ordinal());
 			if(n.objectID!=0){
-				stmt.setInt(3, n.objectID);
+				stmt.setLong(3, n.objectID);
 				stmt.setInt(4, n.objectType.ordinal());
 			}else{
 				stmt.setNull(3, Types.INTEGER);
 				stmt.setNull(4, Types.INTEGER);
 			}
 			if(n.relatedObjectID!=0){
-				stmt.setInt(5, n.relatedObjectID);
+				stmt.setLong(5, n.relatedObjectID);
 				stmt.setInt(6, n.relatedObjectType.ordinal());
 			}else{
 				stmt.setNull(5, Types.INTEGER);

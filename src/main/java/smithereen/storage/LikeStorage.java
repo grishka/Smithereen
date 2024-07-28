@@ -27,7 +27,7 @@ public class LikeStorage{
 			return deleteLike(userID, objectID, Like.ObjectType.POST);
 	}
 
-	private static int putLike(int userID, int objectID, Like.ObjectType type, URI apID) throws SQLException{
+	private static int putLike(int userID, long objectID, Like.ObjectType type, URI apID) throws SQLException{
 		return new SQLQueryBuilder()
 				.insertIgnoreInto("likes")
 				.value("user_id", userID)
@@ -37,7 +37,7 @@ public class LikeStorage{
 				.executeAndGetID();
 	}
 
-	private static int deleteLike(int userID, int objectID, Like.ObjectType type) throws SQLException{
+	private static int deleteLike(int userID, long objectID, Like.ObjectType type) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int id=new SQLQueryBuilder(conn)
 					.selectFrom("likes")
@@ -54,7 +54,7 @@ public class LikeStorage{
 		}
 	}
 
-	public static PaginatedList<Like> getLikes(int objectID, URI objectApID, Like.ObjectType type, int offset, int count) throws SQLException{
+	public static PaginatedList<Like> getLikes(long objectID, URI objectApID, Like.ObjectType type, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT likes.id AS like_id, user_id, likes.ap_id AS like_ap_id, users.ap_id AS user_ap_id FROM likes JOIN users ON users.id=likes.user_id WHERE object_id=? AND object_type=? ORDER BY likes.id ASC LIMIT ?,?",
 					objectID, type, offset, count);
@@ -116,7 +116,7 @@ public class LikeStorage{
 		}
 	}
 
-	public static PaginatedList<Integer> getLikedObjectIDs(int ownerID, Like.ObjectType type, int offset, int count) throws SQLException{
+	public static PaginatedList<Long> getLikedObjectIDs(int ownerID, Like.ObjectType type, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("likes")
@@ -125,13 +125,15 @@ public class LikeStorage{
 					.executeAndGetInt();
 			if(total==0)
 				return PaginatedList.emptyList(count);
-			List<Integer> ids=new SQLQueryBuilder(conn)
+			List<Long> ids=new SQLQueryBuilder(conn)
 					.selectFrom("likes")
 					.columns("object_id")
 					.where("user_id=? AND object_type=?", ownerID, type)
 					.orderBy("id DESC")
 					.limit(count, offset)
-					.executeAndGetIntList();
+					.executeAndGetLongStream()
+					.boxed()
+					.toList();
 			return new PaginatedList<>(ids, total, offset, count);
 		}
 	}

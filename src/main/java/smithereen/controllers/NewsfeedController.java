@@ -77,11 +77,11 @@ public class NewsfeedController{
 					break;
 				}
 
-				Set<Integer> needPosts=newPage.stream().filter(e->e.type==NewsfeedEntry.Type.POST).map(e->e.objectID).collect(Collectors.toSet());
+				Set<Integer> needPosts=newPage.stream().filter(e->e.type==NewsfeedEntry.Type.POST).map(e->(int)e.objectID).collect(Collectors.toSet());
 				if(!needPosts.isEmpty()){
 					Map<Integer, Post> posts=context.getWallController().getPosts(needPosts);
 					Set<Integer> inaccessiblePosts=posts.values().stream().filter(p->!context.getPrivacyController().checkPostPrivacy(self.user, p)).map(p->p.id).collect(Collectors.toSet());
-					newPage.removeIf(e->e.type==NewsfeedEntry.Type.POST && inaccessiblePosts.contains(e.objectID));
+					newPage.removeIf(e->e.type==NewsfeedEntry.Type.POST && inaccessiblePosts.contains((int)e.objectID));
 				}
 
 				int sizeBefore=cache.feed.size();
@@ -111,7 +111,7 @@ public class NewsfeedController{
 		putFriendsFeedEntry(user, objectID, type, null);
 	}
 
-	public void putFriendsFeedEntry(User user, int objectID, NewsfeedEntry.Type type, @Nullable Instant time){
+	public void putFriendsFeedEntry(User user, long objectID, NewsfeedEntry.Type type, @Nullable Instant time){
 		try{
 			friendsNewsFeedCache.evictAll(); // TODO
 			NewsfeedStorage.putEntry(user.id, objectID, type, time);
@@ -120,7 +120,7 @@ public class NewsfeedController{
 		}
 	}
 
-	public void deleteFriendsFeedEntry(User user, int objectID, NewsfeedEntry.Type type){
+	public void deleteFriendsFeedEntry(User user, long objectID, NewsfeedEntry.Type type){
 		try{
 			friendsNewsFeedCache.evictAll(); // TODO
 			NewsfeedStorage.deleteEntry(user.id, objectID, type);

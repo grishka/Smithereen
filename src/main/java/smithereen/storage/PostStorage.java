@@ -293,7 +293,7 @@ public class PostStorage{
 					entry.id=res.getInt(4);
 					entry.time=res.getTimestamp(5).toInstant();
 					entry.authorID=res.getInt(3);
-					entry.objectID=res.getInt(2);
+					entry.objectID=res.getLong(2);
 					posts.add(entry);
 				}
 			}
@@ -1054,7 +1054,7 @@ public class PostStorage{
 					.executeAsStream(res->{
 						Like.ObjectType type=Like.ObjectType.values()[res.getInt(1)];
 						NewsfeedEntry entry=new NewsfeedEntry();
-						entry.objectID=res.getInt(2);
+						entry.objectID=res.getLong(2);
 						entry.type=switch(type){
 							case POST -> NewsfeedEntry.Type.POST;
 						};

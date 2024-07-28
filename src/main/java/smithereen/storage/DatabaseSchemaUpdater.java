@@ -39,7 +39,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=50;
+	public static final int SCHEMA_VERSION=51;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -765,6 +765,12 @@ public class DatabaseSchemaUpdater{
 						  CONSTRAINT `photos_ibfk_1` FOREIGN KEY (`album_id`) REFERENCES `photo_albums` (`id`) ON DELETE CASCADE,
 						  CONSTRAINT `photos_ibfk_2` FOREIGN KEY (`local_file_id`) REFERENCES `media_files` (`id`)
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 51 -> {
+				conn.createStatement().execute("ALTER TABLE newsfeed CHANGE object_id `object_id` bigint unsigned DEFAULT NULL");
+				conn.createStatement().execute("ALTER TABLE newsfeed_comments CHANGE object_id `object_id` bigint unsigned NOT NULL");
+				conn.createStatement().execute("ALTER TABLE notifications CHANGE object_id `object_id` bigint unsigned DEFAULT NULL, CHANGE related_object_id `related_object_id` bigint unsigned DEFAULT NULL");
+				conn.createStatement().execute("ALTER TABLE likes CHANGE object_id `object_id` bigint unsigned NOT NULL");
 			}
 		}
 	}
