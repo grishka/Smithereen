@@ -33,7 +33,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
-public final class Post implements ActivityPubRepresentable, OwnedContentObject, AttachmentHostContentObject, ReportableContentObject{
+public sealed class Post implements ActivityPubRepresentable, OwnedContentObject, AttachmentHostContentObject, ReportableContentObject permits ReportedPost{
 	public int id;
 	public int authorID;
 	// userID or -groupID
@@ -212,6 +212,11 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 	}
 
 	@Override
+	public String getPhotoListID(){
+		return "posts/"+id;
+	}
+
+	@Override
 	public JsonObject serializeForReport(int targetID, Set<Long> outFileIDs){
 		if(authorID!=targetID && ownerID!=targetID)
 			return null;
@@ -240,7 +245,7 @@ public final class Post implements ActivityPubRepresentable, OwnedContentObject,
 	}
 
 	@Override
-	public void fillFromReport(JsonObject jo){
+	public void fillFromReport(int reportID, JsonObject jo){
 		id=jo.get("id").getAsInt();
 		ownerID=jo.get("owner").getAsInt();
 		authorID=jo.get("author").getAsInt();

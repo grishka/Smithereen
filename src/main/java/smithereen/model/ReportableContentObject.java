@@ -13,7 +13,7 @@ import smithereen.util.JsonArrayBuilder;
 
 public sealed interface ReportableContentObject permits Post, MailMessage{
 	JsonObject serializeForReport(int targetID, Set<Long> outFileIDs);
-	void fillFromReport(JsonObject jo);
+	void fillFromReport(int reportID, JsonObject jo);
 
 	static JsonArray serializeMediaAttachments(List<ActivityPubObject> attachments, Set<Long> outFileIDs){
 		JsonArrayBuilder jb=new JsonArrayBuilder();

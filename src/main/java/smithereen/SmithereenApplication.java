@@ -624,8 +624,12 @@ public class SmithereenApplication{
 			postWithCSRF("/delete", PhotosRoutes::deleteAlbum);
 		});
 
-		path("/photos/:id", ()->{
-			postWithCSRF("/updateDescription", PhotosRoutes::updatePhotoDescription);
+		path("/photos", ()->{
+			get("/ajaxViewerInfo", PhotosRoutes::ajaxViewerInfo);
+			getRequiringPermission("/ajaxViewerInfoForReport", UserRole.Permission.MANAGE_REPORTS, PhotosRoutes::ajaxViewerInfoForReport);
+			path("/:id", ()->{
+				postWithCSRF("/updateDescription", PhotosRoutes::updatePhotoDescription);
+			});
 		});
 
 		get("/robots.txt", (req, resp)->{

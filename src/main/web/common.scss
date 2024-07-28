@@ -133,6 +133,7 @@ $likeIconColor: rgb(219, 216, 173);
 	box-sizing: border-box;
 	overflow-wrap: break-word;
 	min-width: 0;
+	min-height: 0;
 }
 
 
@@ -300,6 +301,9 @@ a, a:link, /*a:visited,*/ .link{
 #layerScrim{
 	background-color: rgba(0, 0, 0, .2);
 	z-index: 100;
+	&.darker{
+		background-color: rgba(0, 0, 0, .7);
+	}
 }
 
 #layerContainer{
@@ -716,9 +720,9 @@ ul.actualList{
 	background-size: 32px 8px;
 	min-width: 32px;
 	min-height: 8px;
-	&.white{
-		background: svg-load('img/loading_anim.svg', fill: $textOnAccent) no-repeat center;
-	}
+}
+.loader.white, .inlineLoader.white{
+	background: svg-load('img/loading_anim.svg', fill: $textOnAccent) no-repeat center;
 }
 
 .inlineLoader{

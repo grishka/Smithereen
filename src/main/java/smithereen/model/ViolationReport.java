@@ -41,20 +41,20 @@ public class ViolationReport{
 			JsonArray ja=JsonParser.parseString(content).getAsJsonArray();
 			r.content=new ArrayList<>();
 			for(JsonElement e:ja){
-				r.content.add(deserializeContentObject(e.getAsJsonObject()));
+				r.content.add(deserializeContentObject(r.id, e.getAsJsonObject()));
 			}
 		}
 		return r;
 	}
 
-	private static ReportableContentObject deserializeContentObject(JsonObject jo){
+	private static ReportableContentObject deserializeContentObject(int id, JsonObject jo){
 		String type=jo.get("type").getAsString();
 		ReportableContentObject obj=switch(type){
-			case "post" -> new Post();
-			case "message" -> new MailMessage();
+			case "post" -> new ReportedPost();
+			case "message" -> new ReportedMailMessage();
 			default -> throw new IllegalStateException("Unexpected value: " + type);
 		};
-		obj.fillFromReport(jo);
+		obj.fillFromReport(id, jo);
 		return obj;
 	}
 

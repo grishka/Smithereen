@@ -2,8 +2,11 @@ package smithereen.model;
 
 import java.net.URI;
 import java.text.Format;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
+import smithereen.model.media.SizedImageURLs;
 import smithereen.storage.ImgProxy;
 import spark.utils.StringUtils;
 
@@ -12,6 +15,18 @@ public interface SizedImage{
 	Dimensions getOriginalDimensions();
 	default Dimensions getDimensionsForSize(Type size){
 		return size.getResizedDimensions(getOriginalDimensions());
+	}
+
+	default List<SizedImageURLs> getURLsForPhotoViewer(){
+		ArrayList<SizedImageURLs> urls=new ArrayList<>();
+		Dimensions origSize=getOriginalDimensions();
+		for(Type t:List.of(Type.PHOTO_SMALL, Type.PHOTO_MEDIUM, Type.PHOTO_LARGE, Type.PHOTO_ORIGINAL)){
+			Dimensions size=getDimensionsForSize(t);
+			urls.add(new SizedImageURLs(t.suffix, size.width, size.height, Objects.toString(getUriForSizeAndFormat(t, Format.WEBP)), Objects.toString(getUriForSizeAndFormat(t, Format.JPEG))));
+			if(size.width>=origSize.width && size.height>=origSize.height)
+				break;
+		}
+		return urls;
 	}
 
 	default String generateHTML(Type size, List<String> additionalClasses, String styleAttr, int width, int height, boolean add2x){
@@ -150,10 +165,10 @@ public interface SizedImage{
 				return new Dimensions(maxWidth, maxHeight);
 			}
 			if(maxWidth==maxHeight){
-				float ratio=maxWidth/(float)Math.max(in.width, in.height);
+				float ratio=Math.min(1f, maxWidth/(float)Math.max(in.width, in.height));
 				return new Dimensions(Math.round(in.width*ratio), Math.round(in.height*ratio));
 			}else{
-				float ratio=maxWidth/(float)in.width;
+				float ratio=Math.min(1f, maxWidth/(float)in.width);
 				return new Dimensions(Math.round(in.width*ratio), Math.round(in.height*ratio));
 			}
 		}

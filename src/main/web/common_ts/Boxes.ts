@@ -44,7 +44,8 @@ class LayerManager{
 		var layerContent:HTMLElement=layer.getContent();
 		this.layerContainer.appendChild(layerContent);
 		if(this.stack.length==0){
-			this.scrim.showAnimated();
+			if(layer.wantsScrim())
+				this.scrim.showAnimated();
 			this.layerContainer.show();
 			layerContent.addEventListener("click", (ev:MouseEvent)=>{
 				if(ev.target==layerContent){
@@ -59,10 +60,15 @@ class LayerManager{
 			prevLayer.getContent().hide();
 			prevLayer.onHidden();
 		}
+		if(layer.wantsDarkerScrim()){
+			this.scrim.classList.add("darker")
+		}else{
+			this.scrim.classList.remove("darker")
+		}
 		this.stack.push(layer);
 		layer.onShown();
 		this.boxLoader.hideAnimated();
-		this.updateTopOffset(layerContent);
+		layer.updateTopOffset();
 	}
 
 	public dismiss(layer:BaseLayer):void{
@@ -81,8 +87,13 @@ class LayerManager{
 			if(this.stack.length){
 				var newLayer=this.stack[this.stack.length-1];
 				newLayer.getContent().show();
-				this.updateTopOffset(newLayer.getContent());
+				newLayer.updateTopOffset();
 				newLayer.onShown();
+				if(newLayer.wantsDarkerScrim()){
+					this.scrim.classList.add("darker")
+				}else{
+					this.scrim.classList.remove("darker")
+				}
 			}
 		}else{
 			this.stack.splice(i, 1);
@@ -102,6 +113,7 @@ class LayerManager{
 						this.layerContainer.hide();
 						this.unlockPageScroll();
 					}
+					this.scrim.classList.remove("darker");
 					this.animatingHide=false;
 				});
 			}else{
@@ -154,6 +166,9 @@ class LayerManager{
 	}
 
 	private onWindowResize(ev:Event){
+		for(var layer of this.stack){
+			layer.onWindowResize();
+		}
 		this.updateAllTopOffsets();
 	}
 
@@ -169,11 +184,11 @@ class LayerManager{
 			});
 		}, 2000);
 	}
-	
+
 	public updateAllTopOffsets(){
 		this.updateTopOffset(this.boxLoader);
 		if(this.stack.length){
-			this.updateTopOffset(this.stack[this.stack.length-1].getContent());
+			this.stack[this.stack.length-1].updateTopOffset();
 		}
 	}
 }
@@ -204,8 +219,19 @@ abstract class BaseLayer{
 		return true;
 	}
 
+	public updateTopOffset(){
+		LayerManager.getInstance().updateTopOffset(this.content);
+	}
+
 	public onShown():void{}
 	public onHidden():void{}
+	public onWindowResize():void{}
+	public wantsDarkerScrim():boolean{
+		return false;
+	}
+	public wantsScrim():boolean{
+		return true;
+	}
 	public getCustomDismissAnimation():AnimationDescription{
 		return {keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: 200, easing: "ease"}};
 	}
@@ -706,80 +732,6 @@ class MobileOptionsBox extends Box{
 			}, false);
 		});
 		this.setContent(content);
-	}
-}
-
-interface PhotoInfo{
-	webp:string;
-	jpeg:string;
-	width:number;
-	height:number;
-}
-
-class PhotoViewerLayer extends BaseLayer{
-
-	private photos:PhotoInfo[];
-	private index:number;
-	private contentWrap:HTMLDivElement;
-	private photoImage:HTMLImageElement;
-	private photoPicture:HTMLPictureElement;
-	private photoSourceWebp:HTMLSourceElement;
-
-	private arrowsKeyListener=(ev:KeyboardEvent)=>{
-		if(ev.keyCode==37){
-			this.showPreviousPhoto();
-		}else if(ev.keyCode==39){
-			this.showNextPhoto();
-		}
-	};
-
-	public constructor(photos:PhotoInfo[], index:number){
-		super();
-
-		this.photos=photos;
-		this.contentWrap=ce("div", {className: "photoViewer"}, [
-			ce("a", {className: "photoViewerNavButton buttonPrev", onclick: this.showPreviousPhoto.bind(this)}),
-			ce("div", {className: "photoWrap"}, [
-				this.photoPicture=ce("picture", {}, [
-					this.photoSourceWebp=ce("source", {type: "image/webp"}),
-					this.photoImage=ce("img")
-				])
-			]),
-			ce("a", {className: "photoViewerNavButton buttonNext", onclick: this.showNextPhoto.bind(this)})
-		]);
-		this.setCurrentPhotoIndex(index);
-		this.photoImage.addEventListener("load", (ev:Event)=>{
-			LayerManager.getInstance().updateTopOffset(this.getContent());
-		});
-	}
-
-	public setCurrentPhotoIndex(i:number){
-		this.index=i;
-		var ph=this.photos[this.index];
-		this.photoImage.width=ph.width;
-		this.photoImage.height=ph.height;
-		this.photoSourceWebp.srcset=ph.webp;
-		this.photoImage.src=ph.jpeg;
-	}
-
-	public showNextPhoto(){
-		this.setCurrentPhotoIndex((this.index+1)%this.photos.length);
-	}
-
-	public showPreviousPhoto(){
-		this.setCurrentPhotoIndex(this.index==0 ? this.photos.length-1 : this.index-1);
-	}
-
-	protected onCreateContentView():HTMLElement{
-		return this.contentWrap;
-	}
-
-	public onShown(){
-		document.body.addEventListener("keydown", this.arrowsKeyListener);
-	}
-
-	public onHidden(){
-		document.body.removeEventListener("keydown", this.arrowsKeyListener);
 	}
 }
 

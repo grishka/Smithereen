@@ -170,6 +170,14 @@ public class Utils{
 		return parseIntOrDefault(s, 0);
 	}
 
+	public static long safeParseLong(String s){
+		try{
+			return Long.parseLong(s);
+		}catch(NumberFormatException x){
+			return 0;
+		}
+	}
+
 	public static Object wrapError(Request req, Response resp, String errorKey){
 		return wrapError(req, resp, errorKey, null);
 	}

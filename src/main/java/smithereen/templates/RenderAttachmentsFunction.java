@@ -19,7 +19,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.model.AttachmentHostContentObject;
 import smithereen.model.Group;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
@@ -30,6 +32,7 @@ import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.attachments.SizedAttachment;
 import smithereen.model.attachments.VideoAttachment;
 import smithereen.lang.Lang;
+import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.text.TextProcessor;
 import smithereen.util.BlurHash;
 import spark.utils.StringUtils;
@@ -41,13 +44,16 @@ public class RenderAttachmentsFunction implements Function{
 	public static final float GAP=1.5f;
 
 	@Override
-	public Object execute(Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber){
-		List<Attachment> attachment=(List<Attachment>) args.get("attachments");
+	public Object execute(Map<String, Object> args, PebbleTemplate self, EvaluationContext evaluationContext, int lineNumber){
+		AttachmentHostContentObject obj=(AttachmentHostContentObject) args.get("object");
+		List<Attachment> attachments=obj.getProcessedAttachments();
+		String photoList=obj.getPhotoListID();
 		String overrideLinks=(String) args.get("overrideLinks");
-		for(Attachment a:attachment){
+		String listURL=(String) args.get("listURL");
+		for(Attachment a:attachments){
 			if(a instanceof GraffitiAttachment ga){
 				Actor owner=(Actor) args.get("owner");
-				Lang lang=Lang.get(context.getLocale());
+				Lang lang=Lang.get(evaluationContext.getLocale());
 				if(owner instanceof User u){
 					ga.boxTitle=lang.get("graffiti_on_user_X_wall", Map.of("name", u.getFirstLastAndGender()));
 				}else if(owner instanceof Group g){
@@ -56,7 +62,7 @@ public class RenderAttachmentsFunction implements Function{
 			}
 		}
 		ArrayList<String> lines=new ArrayList<>();
-		List<SizedAttachment> sized=attachment.stream().filter(a->a instanceof SizedAttachment).map(a->(SizedAttachment)a).limit(10).collect(Collectors.toList());
+		List<SizedAttachment> sized=attachments.stream().filter(a->a instanceof SizedAttachment).map(a->(SizedAttachment)a).limit(10).collect(Collectors.toList());
 		if(!sized.isEmpty()){
 			float aspect;
 			TiledLayoutResult tiledLayout;
@@ -93,11 +99,11 @@ public class RenderAttachmentsFunction implements Function{
 			if(sized.size()==1){
 				SizedAttachment sa=sized.getFirst();
 				if(sa instanceof PhotoAttachment photo){
-					renderPhotoAttachment(photo, lines, 510, overrideLinks);
+					renderPhotoAttachment(photo, lines, 510, overrideLinks, 0, photoList, listURL);
 				}
 			}else{
 				int i=0;
-				for(SizedAttachment obj : sized){
+				for(SizedAttachment att : sized){
 					TiledLayoutResult.Tile tile=tiledLayout.tiles[i];
 					String cellStyle="";
 					if(tile!=null){
@@ -109,8 +115,8 @@ public class RenderAttachmentsFunction implements Function{
 						}
 					}
 					lines.add("<div style=\""+cellStyle+"\">");
-					if(obj instanceof PhotoAttachment photo){
-						renderPhotoAttachment(photo, lines, Math.round(Math.max(tile.width*510, tile.height*510)), overrideLinks);
+					if(att instanceof PhotoAttachment photo){
+						renderPhotoAttachment(photo, lines, Math.round(Math.max(tile.width*510, tile.height*510)), overrideLinks, i, photoList, listURL);
 					}
 					lines.add("</div>");
 					i++;
@@ -120,29 +126,29 @@ public class RenderAttachmentsFunction implements Function{
 		}
 
 		// Now do non-sized attachments
-		for(Attachment obj:attachment){
-			if(obj instanceof SizedAttachment)
+		for(Attachment att:attachments){
+			if(att instanceof SizedAttachment)
 				continue;
-			if(obj instanceof VideoAttachment va){
+			if(att instanceof VideoAttachment va){
 				lines.add("<video src=\""+HtmlEscape.escapeHtml4Xml(va.url.toString())+"\" controls></video>");
-			}else if(obj instanceof AudioAttachment aa){
+			}else if(att instanceof AudioAttachment aa){
 				lines.add("<audio src=\""+HtmlEscape.escapeHtml4Xml(aa.url.toString())+"\" preload=\"none\" controls></audio>");
 			}
 		}
 
 		if(!lines.isEmpty()){
 			lines.add("</div>");
-			lines.add(0, "<div class=\"postAttachments\">");
+			lines.addFirst("<div class=\"postAttachments\">");
 		}
 		return new SafeString(String.join("\n", lines));
 	}
 
 	@Override
 	public List<String> getArgumentNames(){
-		return List.of("attachments", "owner", "overrideLinks");
+		return List.of("object", "owner", "overrideLinks", "listURL");
 	}
 
-	private void renderPhotoAttachment(PhotoAttachment photo, List<String> lines, int size, String overrideLinks){
+	private void renderPhotoAttachment(PhotoAttachment photo, List<String> lines, int size, String overrideLinks, int index, String photoList, String listGetURL){
 		SizedImage.Type type;
 		if(size<=100){
 			type=SizedImage.Type.PHOTO_THUMB_SMALL;
@@ -168,14 +174,16 @@ public class RenderAttachmentsFunction implements Function{
 			}
 			lines.add("<a class=\"graffiti\" href=\""+href+"\" "+attrs+"><img src=\""+full+"\" width=\""+GraffitiAttachment.WIDTH+"\" height=\""+GraffitiAttachment.HEIGHT+"\"/></a>");
 		}else{
-			URI jpegFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_ORIGINAL, SizedImage.Format.JPEG);
-			URI webpFull=photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_ORIGINAL, SizedImage.Format.WEBP);
-			String href=overrideLinks!=null ? overrideLinks : Objects.toString(jpegFull);
+			String href=overrideLinks!=null ? overrideLinks : Objects.toString(photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_ORIGINAL, SizedImage.Format.JPEG));
 			String attrs;
 			if(overrideLinks!=null){
 				attrs="target=\"_blank\"";
 			}else{
-				attrs="data-full-jpeg=\""+jpegFull+"\" data-full-webp=\""+webpFull+"\" data-size=\""+photo.getWidth()+" "+photo.getHeight()+"\" onclick=\"return openPhotoViewer(this)\"";
+				PhotoViewerInlineData data=new PhotoViewerInlineData(index, photoList, photo.image.getURLsForPhotoViewer());
+				attrs="onclick=\"return openPhotoViewer(this)\" data-pv=\""+TextProcessor.escapeHTML(Utils.gson.toJson(data))+"\" data-pv-ctx=\""+photoList+"\"";
+				if(listGetURL!=null){
+					attrs+=" data-pv-url=\""+listGetURL+"\"";
+				}
 			}
 			lines.add("<a class=\"photo\" href=\""+href+"\" "+attrs+">"+photo.image.generateHTML(type, null, styleAttr, 0, 0, true)+"</a>");
 		}

@@ -16,7 +16,7 @@
 {% include "poll" with {'poll': realPost.poll, 'interactions': interactions} %}
 {% endif %}
 {% if realPost.attachments is not empty %}
-	{{ renderAttachments(realPost.processedAttachments, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
+	{{ renderAttachments(realPost, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
 {% endif %}
 {% if post.repost is not null %}
 <div class="repost">

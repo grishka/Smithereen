@@ -19,7 +19,7 @@
 	<div class="messageContent">
 	{{ post.text | postprocessHTML }}
 	{% if post.attachments is not empty %}
-		{{ renderAttachments(post.processedAttachments, null) }}
+		{{ renderAttachments(post, listURL="/photos/ajaxViewerInfoForReport") }}
 	{% endif %}
 	{% if post.poll is not null %}
 		<h2>{{ L('poll') }}: {{ post.poll.question }}</h2>
@@ -64,7 +64,7 @@
 	<div class="messageContent">
 	{{ message.text | postprocessHTML }}
 	{% if message.attachments is not empty %}
-		{{ renderAttachments(message.processedAttachments, null) }}
+		{{ renderAttachments(message, listURL="/photos/ajaxViewerInfoForReport") }}
 	{% endif %}
 	</div>
 	{% endif %}

@@ -839,22 +839,6 @@ select{
 	margin-right: -12px;
 }
 
-.photoViewer{
-	display: flex;
-	max-height: 100%;
-	max-width: 100%;
-	.photoViewerNavButton{
-		display: none;
-	}
-
-	.photoWrap img{
-		max-height: 100vh;
-		max-width: 100vw;
-		width: auto;
-		height: auto;
-	}
-}
-
 .feedCaptionWithAva{
 	line-height: 24px;
 	padding: 12px 12px 0;
@@ -1942,6 +1926,7 @@ input.searchField{
 	}
 	img{
 		width: 100%;
+		height: 100%;
 		object-fit: cover;
 		object-position: top center;
 	}
@@ -2043,6 +2028,97 @@ input.searchField{
 		height: 100%;
 		object-fit: cover;
 		object-position: top center;
+	}
+}
+
+.photoViewer{
+	background: #000;
+	width: 100vw;
+	height: 100%;
+	position: relative;
+	.pager{
+		width: 100vw;
+		height: 100%;
+		overflow-x: scroll;
+		display: flex;
+		scroll-snap-type: x mandatory;
+		scroll-snap-stop: always;
+	}
+	.photoW{
+		width: 100vw;
+		height: 100%;
+		flex: none;
+		scroll-snap-align: start;
+		position: relative;
+		overflow: scroll;
+		img{
+			position: absolute;
+			-webkit-touch-callout: none;
+		}
+	}
+}
+
+.pvUIW{
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	pointer-events: none;
+}
+
+.pvUI{
+	position: relative;
+	width: 100%;
+	height: 100%;
+	color: #FFF;
+	.pvTitleBar{
+		width: 100%;
+		height: 88px;
+		padding-bottom: 32px;
+		background: linear-gradient(#000000a0, #00000000);
+		position: absolute;
+		top: 0;
+		left: 0;
+		display: flex;
+		.titleInner{
+			margin: 0 16px;
+			flex-grow: 1;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			text-shadow: 0px 0px 1px rgba(0, 0, 0, 0.40), 0px 1px 3px rgba(0, 0, 0, 0.27), 0px 2px 7px rgba(0, 0, 0, 0.13);
+		}
+		.title{
+			font-size: 20px;
+			font-weight: 500;
+		}
+		.subtitle{
+			font-size: 14px;
+			margin-top: 2px;
+			opacity: 0.8;
+		}
+	}
+	.close{
+		width: 56px;
+		height: 56px;
+		flex: none;
+		background: svg-load('img/material/ic_close.svg', fill: #FFF) no-repeat center;
+		pointer-events: auto;
+	}
+	.pvBottom{
+		padding: 32px 16px 16px;
+		background: linear-gradient(#00000000, #000000a0);
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		width: 100%;
+		p:first-child{
+			margin-top: 0;
+		}
+		p:last-child{
+			margin-bottom: 0;
+		}
 	}
 }
 

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="149" height="8">
+	<rect x="0" y="0" width="17" height="8">
+		<animate attributeName="opacity" values="1;.33;.33" dur="1s" repeatCount="indefinite" keyTimes="0;0.3;1"/>
+	</rect>
+	<rect x="22" y="0" width="17" height="8">
+		<animate attributeName="opacity" values=".33;.33;1;.33;.33" dur="1s" repeatCount="indefinite" keyTimes="0;0.099;0.1;0.4;1"/>
+	</rect>
+	<rect x="44" y="0" width="17" height="8">
+		<animate attributeName="opacity" values=".33;.33;1;.33;.33" dur="1s" repeatCount="indefinite" keyTimes="0;0.199;0.2;0.5;1"/>
+	</rect>
+	<rect x="66" y="0" width="17" height="8">
+		<animate attributeName="opacity" values=".33;.33;1;.33;.33" dur="1s" repeatCount="indefinite" keyTimes="0;0.299;0.3;0.6;1"/>
+	</rect>
+	<rect x="88" y="0" width="17" height="8">
+		<animate attributeName="opacity" values=".33;.33;1;.33;.33" dur="1s" repeatCount="indefinite" keyTimes="0;0.399;0.4;0.7;1"/>
+	</rect>
+	<rect x="110" y="0" width="17" height="8">
+		<animate attributeName="opacity" values=".33;.33;1;.33;.33" dur="1s" repeatCount="indefinite" keyTimes="0;0.499;0.5;0.8;1"/>
+	</rect>
+	<rect x="132" y="0" width="17" height="8">
+		<animate attributeName="opacity" values=".33;.33;1;.33" dur="1s" repeatCount="indefinite" keyTimes="0;0.599;0.6;1"/>
+	</rect>
+</svg>

@@ -64,7 +64,11 @@ public class PhotoAlbum{
 	}
 
 	public String getURL(){
-		return "/albums/"+Utils.encodeLong(XTEA.obfuscateObjectID(id, ObfuscatedObjectIDType.PHOTO_ALBUM));
+		return "/albums/"+getIdString();
+	}
+
+	public String getIdString(){
+		return Utils.encodeLong(XTEA.obfuscateObjectID(id, ObfuscatedObjectIDType.PHOTO_ALBUM));
 	}
 
 	public boolean hasFlag(String flag){

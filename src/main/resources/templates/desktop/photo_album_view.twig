@@ -22,7 +22,7 @@ new PhotoAlbumUploader("{{ album.url }}/upload");
 <div class="photoGrid">
 {% block photosInner %}
 {% for photo in items %}
-    <a href="{{ photo.url }}" class="photo">{{ photo.image | pictureForPhoto('m', false) }}</a>
+    <a href="{{ photo.url }}" class="photo" onclick="return openPhotoViewer(this, {{ album.numPhotos }})" data-pv="{{ json(photoViewerData[photo.id]) }}" data-pv-ctx="{{ photoViewerData[photo.id].context }}">{{ photo.image | pictureForPhoto('m', false) }}</a>
 {% endfor %}
 {% endblock %}
 {% include "pagination_endless" %}

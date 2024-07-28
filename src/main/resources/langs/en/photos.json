@@ -31,5 +31,9 @@
   "uploading_photos": "Uploading photos",
   "you_uploaded_X_photos": "You uploaded {count, plural, one {# photo} other {# photos}}",
   "photo_albums": "Photo albums",
-  "X_photo_albums": "{count, plural, =0 {No albums} one {# album} other {# albums}}"
+  "X_photo_albums": "{count, plural, =0 {No albums} one {# album} other {# albums}}",
+  "photo_X_of_Y": "Photo {current} of {total}",
+  "photo_added_by": "By",
+  "photo_added_at": "Added {date}",
+  "photo_album_label": "Album"
 }

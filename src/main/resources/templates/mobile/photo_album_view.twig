@@ -18,7 +18,7 @@ initMobileAlbumUploader("{{ album.url }}/upload");
 <div class="photoGrid">
 {% block photosInner %}
 {% for photo in items %}
-    <a href="{{ photo.url }}" class="photo">{{ photo.image | pictureForPhoto('s') }}</a>
+    <a href="{{ photo.url }}" class="photo" onclick="return openPhotoViewer(this, {{ album.numPhotos }})" data-pv="{{ json(photoViewerData[photo.id]) }}" data-pv-ctx="{{ photoViewerData[photo.id].context }}">{{ photo.image | pictureForPhoto('s') }}</a>
 {% else %}
 	<div class="emptyState">{{ L('no_photos_in_album') }}</div>
 {% endfor %}

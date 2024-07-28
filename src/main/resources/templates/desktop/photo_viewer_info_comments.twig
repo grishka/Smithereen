@@ -1,0 +1,10 @@
+<div class="pvPhotoInfo">
+	<div class="left">
+		<div class="marginAfter description">{{ description | postprocessHTML }}</div>
+		<div class="grayText">{{ L('photo_added_at', {'date': LD(createdAt)}) }}</div>
+	</div>
+	<div class="right">
+		{% if album is not null %}<div class="grayText marginAfter">{{ L('photo_album_label') }}:<br/><a href="{{ album.url }}">{{ album.title }}</a></div>{% endif %}
+		<div class="grayText">{{ L('photo_added_by') }}:<br/><a href="{{ author.profileURL }}">{{ author | name('full') }}</a></div>
+	</div>
+</div>

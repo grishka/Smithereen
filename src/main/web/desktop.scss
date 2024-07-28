@@ -1861,37 +1861,6 @@ select, .comboBoxW input{
 	padding: 10px 1px;
 }
 
-.photoViewer{
-	pointer-events: auto;
-	display: flex;
-	max-height: 100%;
-	max-width: 100%;
-	.photoViewerNavButton{
-		width: 40px;
-		transition: background-color .5s ease, opacity .5s ease;
-		opacity: .5;
-		background-position: center;
-		background-repeat: no-repeat;
-		&:hover{
-			opacity: 1;
-			background-color: rgba(0,0,0,.3);
-		}
-	}
-	.buttonNext{
-		background-image: svg-load("img/material/ic_arrow_forward.svg", fill: #FFF);
-	}
-	.buttonPrev{
-		background-image: svg-load("img/material/ic_arrow_back.svg", fill: #FFF);
-	}
-
-	.photoWrap img{
-		max-height: calc(100vh - 20px);
-		max-width: calc(100vw - 100px);
-		width: auto;
-		height: auto;
-	}
-}
-
 .feedCaptionWithAva{
 	line-height: 24px;
 	margin-bottom: 10px;
@@ -3800,6 +3769,107 @@ label.largeAccented{
 	}
 	.settingsMessage{
 		margin-bottom: 15px;
+	}
+}
+
+.pvLayer{
+	padding-bottom: 25px;
+	margin: 10px 0 50px;
+	z-index: 1;
+	.layerTitle{
+		height: 44px;
+		display: flex;
+		padding: 0 25px;
+		align-items: center;
+		.title{
+			flex-grow: 1;
+			color: $boldHeaders;
+			font-weight: bold;
+			padding-right: 10px;
+		}
+		.close{
+			flex: none;
+		}
+	}
+}
+
+.photoViewer{
+	.imgW{
+		position: relative;
+		img{
+			display: block;
+			object-fit: scale-down;
+			position: relative; /* for z-index to work so pvLoader is overlaid */
+			z-index: 2;
+			margin: 0 25px 15px;
+			cursor: pointer;
+		}
+	}
+	.pvLoader{
+		background: svg-load('img/loading_anim_large.svg', fill: $normalLink) no-repeat center;
+		position: absolute;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+	}
+	.infoAndComments{
+		width: 604px;
+		margin: auto;
+	}
+	.pvPhotoInfo{
+		display: flex;
+		align-items: flex-start;
+		.left{
+			flex-grow: 1;
+			padding-top: 2px;
+		}
+		.right{
+			width: 190px;
+			flex: none;
+			border-left: solid 1px $wallCommentSeparator;
+			margin-left: 10px;
+			padding: 2px 0 2px 20px;
+		}
+		.description{
+			p:first-child{
+				margin-top: 0;
+			}
+			p:last-child{
+				margin-bottom: 0;
+			}
+		}
+	}
+}
+
+.pvBack, .pvClose{
+	position: fixed;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	cursor: pointer;
+	opacity: 0.4;
+	transition: opacity 0.2s ease;
+	&:hover{
+		opacity: 1;
+	}
+	.icon{
+		background: svg-load('img/photonav.svg') no-repeat;
+		width: 17px;
+		height: 18px;
+		margin: 25px;
+	}
+}
+
+.pvBack .icon{
+	float: left;
+}
+
+.pvClose{
+	right: 0;
+	.icon{
+		background-position: 0 -18px;
+		float: right;
 	}
 }
 

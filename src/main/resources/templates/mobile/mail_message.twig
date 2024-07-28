@@ -37,7 +37,7 @@
 		<div class="messageContent">
 		{{ message.text | postprocessHTML }}
 		{% if message.attachments is not empty %}
-			{{ renderAttachments(message.processedAttachments, null) }}
+			{{ renderAttachments(message, null) }}
 		{% endif %}
 		</div>
 		<div class="" id="msgActions">

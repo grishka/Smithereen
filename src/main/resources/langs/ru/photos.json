@@ -31,5 +31,9 @@
   "uploading_photos": "Загрузка фотографий",
   "you_uploaded_X_photos": "Вы загрузили {count, plural, one {# фотографию} few {# фотографии} other {# фотографий}}",
   "photo_albums": "Фотоальбомы",
-  "X_photo_albums": "{count, plural, =0 {Нет альбомов} one {# альбом} few {# альбома} other {# альбомов}}"
+  "X_photo_albums": "{count, plural, =0 {Нет альбомов} one {# альбом} few {# альбома} other {# альбомов}}",
+  "photo_X_of_Y": "Фотография {current} из {total}",
+  "photo_added_by": "Отправитель",
+  "photo_added_at": "Добавлена {date}",
+  "photo_album_label": "Альбом"
 }

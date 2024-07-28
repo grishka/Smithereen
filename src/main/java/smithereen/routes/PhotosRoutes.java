@@ -1,5 +1,8 @@
 package smithereen.routes;
 
+import java.time.Instant;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -10,23 +13,34 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.AttachmentHostContentObject;
 import smithereen.model.Group;
+import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
+import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
+import smithereen.model.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.model.media.PhotoViewerPhotoInfo;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.FormattedTextFormat;
+import smithereen.text.TextProcessor;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 import spark.Request;
@@ -123,8 +137,17 @@ public class PhotosRoutes{
 		else
 			owner=ctx.getGroupsController().getGroupOrThrow(-album.ownerID);
 		model.with("owner", owner);
-		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset(req), 100);
+		int offset=offset(req);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset, 100);
 		model.paginate(photos);
+
+		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
+		int i=0;
+		for(Photo p:photos.list){
+			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "albums/"+album.getIdString(), p.image.getURLsForPhotoViewer()));
+			i++;
+		}
+		model.with("photoViewerData", pvData);
 
 		if(isAjax(req)){
 			String paginationID=req.queryParams("pagination");
@@ -230,5 +253,134 @@ public class PhotosRoutes{
 		if(album.ownerID>0)
 			return ajaxAwareRedirect(req, resp, "/my/albums");
 		return ajaxAwareRedirect(req, resp, "/groups/"+(-album.ownerID)+"/albums");
+	}
+
+	private static PhotoViewerPhotoInfo makePhotoInfoForAttachment(Request req, PhotoAttachment pa, User author, Instant createdAt){
+		String html;
+		if(isMobile(req)){
+			html=StringUtils.isNotEmpty(pa.description) ? TextProcessor.escapeHTML(pa.description) : "";
+		}else{
+			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_info_comments", req);
+			model.with("description", pa.description)
+					.with("author", author)
+					.with("createdAt", createdAt);
+			html=model.renderToString();
+		}
+		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer());
+	}
+
+	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users){
+		String html;
+		User author=users.get(photo.authorID);
+		if(isMobile(req)){
+			html=StringUtils.isNotEmpty(photo.description) ? TextProcessor.postprocessPostHTMLForDisplay(photo.description, false, false) : "";
+		}else{
+			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_info_comments", req);
+			model.with("description", photo.description)
+					.with("author", author)
+					.with("album", album)
+					.with("createdAt", photo.createdAt);
+			html=model.renderToString();
+		}
+		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
+				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.title,
+				html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), photo.image.getURLsForPhotoViewer());
+	}
+
+	private static PaginatedList<PhotoViewerPhotoInfo> makePhotoInfoForAttachHostObject(Request req, AttachmentHostContentObject obj, User author, Instant createdAt){
+		List<PhotoViewerPhotoInfo> photos=obj.getProcessedAttachments().stream()
+				.map(a->a instanceof PhotoAttachment pa ? makePhotoInfoForAttachment(req, pa, author, createdAt) : null)
+				.filter(Objects::nonNull)
+				.toList();
+		return new PaginatedList<>(photos, photos.size());
+	}
+	
+	public static Object ajaxViewerInfo(Request req, Response resp){
+		User self=sessionInfo(req) instanceof SessionInfo si && si.account!=null ? si.account.user : null;
+		ApplicationContext ctx=context(req);
+		requireQueryParams(req, "list", "offset");
+		String[] listParts=req.queryParams("list").split("/");
+		if(listParts.length<2)
+			throw new BadRequestException();
+		int total;
+		String title;
+		List<PhotoViewerPhotoInfo> photos=switch(listParts[0]){
+			case "posts" -> {
+				int id=safeParseInt(listParts[1]);
+				Post post=ctx.getWallController().getPostOrThrow(id);
+				ctx.getPrivacyController().enforceObjectPrivacy(self, post);
+				User author=ctx.getUsersController().getUserOrThrow(post.authorID);
+
+				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, post, author, post.createdAt);
+				total=info.total;
+				title=null;
+				yield info.list;
+			}
+			case "messages" -> {
+				if(self==null)
+					throw new UserActionNotAllowedException();
+				MailMessage msg=ctx.getMailController().getMessage(self, decodeLong(listParts[1]), false);
+				User author=ctx.getUsersController().getUserOrThrow(msg.senderID);
+
+				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, msg, author, msg.createdAt);
+				total=info.total;
+				title=null;
+				yield info.list;
+			}
+			case "albums" -> {
+				long albumID=XTEA.deobfuscateObjectID(decodeLong(listParts[1]), ObfuscatedObjectIDType.PHOTO_ALBUM);
+				PhotoAlbum album=ctx.getPhotosController().getAlbum(albumID, self);
+				PaginatedList<Photo> _photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset(req), 10);
+				total=_photos.total;
+				title=album.title;
+				Map<Integer, User> users=ctx.getUsersController().getUsers(_photos.list.stream().map(ph->ph.authorID).collect(Collectors.toSet()));
+				yield _photos.list.stream().map(ph->makePhotoInfoForPhoto(req, ph, album, users)).toList();
+			}
+			default -> throw new BadRequestException();
+		};
+		resp.type("application/json");
+		HashMap<String, Object> r=new HashMap<>();
+		r.put("total", total);
+		r.put("photos", photos);
+		if(title!=null)
+			r.put("title", title);
+		return gson.toJson(r);
+	}
+
+	public static Object ajaxViewerInfoForReport(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "list", "offset");
+		String[] listParts=req.queryParams("list").split("/");
+		if(listParts.length<4)
+			throw new BadRequestException();
+		if(!listParts[0].equals("reports"))
+			throw new BadRequestException();
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(safeParseInt(listParts[1]), true);
+		long objID=safeParseLong(listParts[3]);
+		ReportableContentObject obj=switch(listParts[2]){
+			case "posts" -> {
+				for(ReportableContentObject co:report.content){
+					if(co instanceof Post post && post.id==objID)
+						yield co;
+				}
+				throw new ObjectNotFoundException();
+			}
+			case "messages" -> {
+				for(ReportableContentObject co:report.content){
+					if(co instanceof MailMessage msg && msg.id==objID)
+						yield co;
+				}
+				throw new ObjectNotFoundException();
+			}
+			default -> throw new IllegalStateException("Unexpected value: " + listParts[2]);
+		};
+		PaginatedList<PhotoViewerPhotoInfo> info=switch(obj){
+			case Post post -> makePhotoInfoForAttachHostObject(req, post, ctx.getUsersController().getUserOrThrow(post.authorID), post.createdAt);
+			case MailMessage msg -> makePhotoInfoForAttachHostObject(req, msg, ctx.getUsersController().getUserOrThrow(msg.senderID), msg.createdAt);
+		};
+		resp.type("application/json");
+		HashMap<String, Object> r=new HashMap<>();
+		r.put("total", info.total);
+		r.put("photos", info.list);
+		return gson.toJson(r);
 	}
 }

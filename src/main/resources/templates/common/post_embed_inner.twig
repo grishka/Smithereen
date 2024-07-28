@@ -9,7 +9,7 @@
 {% if realPost.text is not empty %}<div class="postContent">{{ realPost.text | postprocessHTML(true) | truncateText }}</div>{% endif %}
 {% if realPost.attachments is not empty %}
 	{% set afterAttachments=true %}
-	{{ renderAttachments(realPost.processedAttachments, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID], "/posts/#{realPost.id}") }}
+	{{ renderAttachments(realPost, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID], "/posts/#{realPost.id}") }}
 {% endif %}
 {% if realPost.poll is not null %}
 {% set poll=realPost.poll %}

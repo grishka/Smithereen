@@ -18,11 +18,13 @@ import smithereen.model.attachments.VideoAttachment;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public interface AttachmentHostContentObject{
 	List<ActivityPubObject> getAttachments();
 	NonCachedRemoteImage.Args getPhotoArgs(int index);
+	String getPhotoListID();
 
 	default List<Attachment> getProcessedAttachments(){
 		ArrayList<Attachment> result=new ArrayList<>();
@@ -31,6 +33,8 @@ public interface AttachmentHostContentObject{
 			String mediaType=o.mediaType==null ? "" : o.mediaType;
 			if(o instanceof Image || mediaType.startsWith("image/")){
 				PhotoAttachment att=o instanceof Image img && img.isGraffiti ? new GraffitiAttachment() : new PhotoAttachment();
+				if(StringUtils.isNotEmpty(o.name))
+					att.description=TextProcessor.escapeHTML(o.name);
 				if(o instanceof LocalImage li){
 					att.image=li;
 				}else{
@@ -76,7 +80,7 @@ public interface AttachmentHostContentObject{
 		List<ActivityPubObject> attachObjects=getAttachments();
 		if(attachObjects!=null && !attachObjects.isEmpty()){
 			if(attachObjects.size()==1){
-				return MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
+				return MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
 			}else{
 				JsonArray ar=new JsonArray();
 				for(ActivityPubObject o:attachObjects){
