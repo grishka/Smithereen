@@ -35,5 +35,7 @@
   "photo_X_of_Y": "Photo {current} of {total}",
   "photo_added_by": "By",
   "photo_added_at": "Added {date}",
-  "photo_album_label": "Album"
+  "photo_album_label": "Album",
+  "delete_photo": "Delete photo",
+  "delete_photo_confirm": "Are you sure you want to delete this photo?"
 }

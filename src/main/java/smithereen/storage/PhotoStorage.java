@@ -175,9 +175,14 @@ public class PhotoStorage{
 
 	public static void deletePhoto(long id, long albumID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int displayOrder=new SQLQueryBuilder(conn)
+					.selectFrom("photos")
+					.columns("display_order")
+					.where("id=?", id)
+					.executeAndGetInt();
 			new SQLQueryBuilder(conn)
 					.update("photos")
-					.where("album_id=? AND display_order>(SELECT display_order FROM photos WHERE id=?)", albumID, id)
+					.where("album_id=? AND display_order>?", albumID, displayOrder)
 					.valueExpr("display_order", "display_order-1")
 					.executeNoResult();
 			new SQLQueryBuilder(conn)
@@ -188,6 +193,7 @@ public class PhotoStorage{
 					.update("photo_albums")
 					.valueExpr("updated_at", "CURRENT_TIMESTAMP()")
 					.valueExpr("num_photos", "num_photos-1")
+					.where("id=?", albumID)
 					.executeNoResult();
 		}
 	}

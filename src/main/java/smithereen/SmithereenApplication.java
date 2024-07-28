@@ -629,6 +629,8 @@ public class SmithereenApplication{
 			getRequiringPermission("/ajaxViewerInfoForReport", UserRole.Permission.MANAGE_REPORTS, PhotosRoutes::ajaxViewerInfoForReport);
 			path("/:id", ()->{
 				postWithCSRF("/updateDescription", PhotosRoutes::updatePhotoDescription);
+				getLoggedIn("/confirmDelete", PhotosRoutes::confirmDeletePhoto);
+				postWithCSRF("/delete", PhotosRoutes::deletePhoto);
 			});
 		});
 

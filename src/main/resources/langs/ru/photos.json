@@ -35,5 +35,7 @@
   "photo_X_of_Y": "Фотография {current} из {total}",
   "photo_added_by": "Отправитель",
   "photo_added_at": "Добавлена {date}",
-  "photo_album_label": "Альбом"
+  "photo_album_label": "Альбом",
+  "delete_photo": "Удалить фотографию",
+  "delete_photo_confirm": "Вы действительно хотите удалить эту фотографию?"
 }

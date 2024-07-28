@@ -255,6 +255,22 @@ public class PhotosRoutes{
 		return ajaxAwareRedirect(req, resp, "/groups/"+(-album.ownerID)+"/albums");
 	}
 
+	public static Object confirmDeletePhoto(Request req, Response resp, Account self, ApplicationContext ctx){
+		return wrapConfirmation(req, resp, lang(req).get("delete_photo"), lang(req).get("delete_photo_confirm"), "/photos/"+req.params(":id")+"/delete");
+	}
+
+	public static Object deletePhoto(Request req, Response resp, Account self, ApplicationContext ctx){
+		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO));
+		ctx.getPhotosController().deletePhoto(self.user, photo);
+		if(isAjax(req)){
+			String from=req.queryParams("from");
+			if("edit".equals(from)){
+				return new WebDeltaResponse(resp).remove("photoEditRow_"+photo.getIdString());
+			}
+		}
+		return ajaxAwareRedirect(req, resp, back(req));
+	}
+
 	private static PhotoViewerPhotoInfo makePhotoInfoForAttachment(Request req, PhotoAttachment pa, User author, Instant createdAt){
 		String html;
 		if(isMobile(req)){
