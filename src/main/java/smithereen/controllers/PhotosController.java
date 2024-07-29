@@ -23,6 +23,7 @@ import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
 import smithereen.model.User;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
@@ -99,6 +100,21 @@ public class PhotosController{
 		}
 	}
 
+	public Map<Long, PhotoAlbum> getAlbumsIgnoringPrivacy(Collection<Long> ids){
+		try{
+			return PhotoStorage.getAlbums(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PhotoAlbum getAlbumIgnoringPrivacy(long id){
+		PhotoAlbum album=getAlbumsIgnoringPrivacy(List.of(id)).get(id);
+		if(album==null)
+			throw new ObjectNotFoundException();
+		return album;
+	}
+
 	public long createAlbum(User self, String title, String description, PrivacySetting viewPrivacy, PrivacySetting commentPrivacy){
 		try{
 			long id;
@@ -170,7 +186,10 @@ public class PhotosController{
 			// TODO delete likes
 			// TODO delete comments
 			// TODO federate
-			// TODO newsfeed
+			if(album.ownerID>0){
+				context.getNewsfeedController().clearFriendsFeedCache();
+			}
+			// TODO groups newsfeed
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -200,7 +219,7 @@ public class PhotosController{
 				}
 			}
 			// TODO federate
-			// TODO newsfeed
+			context.getNewsfeedController().clearFriendsFeedCache();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -284,7 +303,10 @@ public class PhotosController{
 				}
 			}
 			// TODO federate
-			// TODO newsfeed
+			if(album.ownerID>0){
+				context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.ADD_PHOTO);
+			}
+			// TODO groups newsfeed
 			return id;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -329,8 +351,14 @@ public class PhotosController{
 			}
 			// TODO delete likes
 			// TODO delete comments
+			// TODO delete notifications
 			// TODO federate
-			// TODO newsfeed
+			if(album.ownerID>0){
+				context.getNewsfeedController().clearFriendsFeedCache();
+				context.getNewsfeedController().deleteFriendsFeedEntry(self, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
+				// TODO delete tags
+			}
+			// TODO groups newsfeed
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

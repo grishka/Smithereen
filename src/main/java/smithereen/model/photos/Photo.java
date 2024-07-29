@@ -8,11 +8,12 @@ import java.time.Instant;
 import smithereen.Utils;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.SizedImage;
+import smithereen.model.attachments.SizedAttachment;
 import smithereen.storage.DatabaseUtils;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
-public class Photo{
+public class Photo implements SizedAttachment{
 	public long id;
 	public int ownerID;
 	public int authorID;
@@ -53,5 +54,20 @@ public class Photo{
 
 	public String getIdString(){
 		return Utils.encodeLong(XTEA.obfuscateObjectID(id, ObfuscatedObjectIDType.PHOTO));
+	}
+
+	@Override
+	public int getWidth(){
+		return image.getOriginalDimensions().width;
+	}
+
+	@Override
+	public int getHeight(){
+		return image.getOriginalDimensions().height;
+	}
+
+	@Override
+	public boolean isSizeKnown(){
+		return true;
 	}
 }

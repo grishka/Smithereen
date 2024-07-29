@@ -32,6 +32,8 @@ import smithereen.model.User;
 import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.feed.GroupedNewsfeedEntry;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.media.PhotoViewerPhotoInfo;
 import smithereen.model.photos.Photo;
@@ -312,7 +314,8 @@ public class PhotosRoutes{
 	}
 	
 	public static Object ajaxViewerInfo(Request req, Response resp){
-		User self=sessionInfo(req) instanceof SessionInfo si && si.account!=null ? si.account.user : null;
+		Account selfAccount=sessionInfo(req) instanceof SessionInfo si ? si.account : null;
+		User self=selfAccount!=null ? selfAccount.user : null;
 		ApplicationContext ctx=context(req);
 		requireQueryParams(req, "list", "offset");
 		String[] listParts=req.queryParams("list").split("/");
@@ -351,6 +354,46 @@ public class PhotosRoutes{
 				title=album.title;
 				Map<Integer, User> users=ctx.getUsersController().getUsers(_photos.list.stream().map(ph->ph.authorID).collect(Collectors.toSet()));
 				yield _photos.list.stream().map(ph->makePhotoInfoForPhoto(req, ph, album, users)).toList();
+			}
+			case "friendsFeedGrouped" -> {
+				if(self==null)
+					throw new UserActionNotAllowedException();
+				int id=safeParseInt(listParts[1]);
+				PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(selfAccount, timeZoneForRequest(req), id, 0, 100);
+				if(feed.list.isEmpty() || !(feed.list.getFirst() instanceof GroupedNewsfeedEntry gne) || gne.childEntriesType!=NewsfeedEntry.Type.ADD_PHOTO)
+					throw new ObjectNotFoundException();
+				total=gne.childEntries.size();
+				title=null;
+				int offset=offset(req);
+				if(offset>=total)
+					throw new BadRequestException();
+				List<Long> photoIDs=gne.childEntries.subList(offset, Math.min(offset+10, total)).stream().map(e->e.objectID).toList();
+				Map<Long, Photo> _photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs);
+				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(_photos.values().stream().map(p->p.albumID).collect(Collectors.toSet()));
+				Map<Integer, User> users=ctx.getUsersController().getUsers(_photos.values().stream().map(ph->ph.authorID).collect(Collectors.toSet()));
+				yield photoIDs.stream()
+						.map(pid->{
+							Photo p=_photos.get(pid);
+							return makePhotoInfoForPhoto(req, p, albums.get(p.albumID), users);
+						})
+						.toList();
+			}
+			case "friendsFeed" -> {
+				if(self==null)
+					throw new UserActionNotAllowedException();
+				int id=safeParseInt(listParts[1]);
+				List<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(selfAccount, timeZoneForRequest(req), id, 0, 1).list;
+				if(feed.isEmpty())
+					throw new ObjectNotFoundException();
+				NewsfeedEntry e=feed.getFirst();
+				if(e.type!=NewsfeedEntry.Type.ADD_PHOTO)
+					throw new ObjectNotFoundException();
+				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(e.objectID);
+				PhotoAlbum album=ctx.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID);
+				Map<Integer, User> users=ctx.getUsersController().getUsers(Set.of(photo.authorID));
+				total=1;
+				title=null;
+				yield List.of(makePhotoInfoForPhoto(req, photo, album, users));
 			}
 			default -> throw new BadRequestException();
 		};

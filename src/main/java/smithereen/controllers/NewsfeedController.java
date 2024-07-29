@@ -25,6 +25,8 @@ import smithereen.model.User;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.PostStorage;
 
@@ -56,10 +58,19 @@ public class NewsfeedController{
 			int startIndex=-1;
 			if(startFrom>0){
 				int i=0;
+				outer:
 				for(NewsfeedEntry e:cache.feed){
-					if(e.id>=startFrom){
+					if(e.id<=startFrom){
 						startIndex=i;
 						break;
+					}
+					if(e instanceof GroupedNewsfeedEntry gne){
+						for(NewsfeedEntry ce:gne.childEntries){
+							if(ce.id<=startFrom){
+								startIndex=i;
+								break outer;
+							}
+						}
 					}
 					i++;
 				}
@@ -82,6 +93,24 @@ public class NewsfeedController{
 					Map<Integer, Post> posts=context.getWallController().getPosts(needPosts);
 					Set<Integer> inaccessiblePosts=posts.values().stream().filter(p->!context.getPrivacyController().checkPostPrivacy(self.user, p)).map(p->p.id).collect(Collectors.toSet());
 					newPage.removeIf(e->e.type==NewsfeedEntry.Type.POST && inaccessiblePosts.contains((int)e.objectID));
+				}
+
+				Set<Long> needPhotos=newPage.stream().filter(e->e.type==NewsfeedEntry.Type.ADD_PHOTO).map(e->e.objectID).collect(Collectors.toSet());
+				if(!needPhotos.isEmpty()){
+					Map<Long, Photo> photos=context.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+					Set<Long> needAlbums=photos.values().stream().map(p->p.albumID).collect(Collectors.toSet());
+					Map<Long, PhotoAlbum> albums=context.getPhotosController().getAlbumsIgnoringPrivacy(needAlbums);
+					Map<Integer, User> owners=context.getUsersController().getUsers(albums.values().stream().map(a->a.ownerID).filter(id->id>0).collect(Collectors.toSet()));
+					Set<Long> inaccessibleAlbums=albums.values().stream()
+							.filter(a->!context.getPrivacyController().checkUserPrivacy(self.user, owners.get(a.ownerID), a.viewPrivacy))
+							.map(a->a.id)
+							.collect(Collectors.toSet());
+					newPage.removeIf(e->e.type==NewsfeedEntry.Type.ADD_PHOTO && (!photos.containsKey(e.objectID) || inaccessibleAlbums.contains(photos.get(e.objectID).albumID)));
+					for(NewsfeedEntry e:newPage){
+						if(e.type==NewsfeedEntry.Type.ADD_PHOTO){
+							e.extraData=Map.of("album", albums.get(photos.get(e.objectID).albumID));
+						}
+					}
 				}
 
 				int sizeBefore=cache.feed.size();
@@ -107,7 +136,7 @@ public class NewsfeedController{
 		}
 	}
 
-	public void putFriendsFeedEntry(User user, int objectID, NewsfeedEntry.Type type){
+	public void putFriendsFeedEntry(User user, long objectID, NewsfeedEntry.Type type){
 		putFriendsFeedEntry(user, objectID, type, null);
 	}
 

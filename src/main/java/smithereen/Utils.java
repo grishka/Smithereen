@@ -600,7 +600,7 @@ public class Utils{
 		String offset=req.queryParams("offset");
 		if(StringUtils.isEmpty(offset))
 			return 0;
-		return parseIntOrDefault(offset, 0);
+		return Math.max(parseIntOrDefault(offset, 0), 0);
 	}
 
 	@NotNull

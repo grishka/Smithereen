@@ -5,6 +5,7 @@ import io.pebbletemplates.pebble.extension.Extension;
 import io.pebbletemplates.pebble.extension.Filter;
 import io.pebbletemplates.pebble.extension.Function;
 import io.pebbletemplates.pebble.tokenParser.TokenParser;
+import smithereen.templates.functions.RenderPhotoGridFunction;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +28,7 @@ public class SmithereenExtension extends AbstractExtension{
 		f.put("profileURL", new ProfileUrlFunction());
 		f.put("profileRel", new ProfileRelFunction());
 		f.put("arraysEqual", new ArraysEqualFunction());
+		f.put("renderPhotoGrid", new RenderPhotoGridFunction());
 		return f;
 	}
 

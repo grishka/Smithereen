@@ -745,6 +745,12 @@ ul.actualList{
 	&.feedIconEvent{
 		background: svg-load('img/events_s.svg');
 	}
+	&.feedIconPhoto{
+		background: svg-load('img/photos_s.svg');
+	}
+	&.feedIconPhotoTag{
+		background: svg-load('img/tags_s.svg');
+	}
 }
 
 .undecoratedLink{

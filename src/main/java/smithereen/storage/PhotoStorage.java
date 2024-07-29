@@ -19,6 +19,7 @@ import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
@@ -48,6 +49,15 @@ public class PhotoStorage{
 				.allColumns()
 				.where("id=?", id)
 				.executeAndGetSingleObject(PhotoAlbum::fromResultSet);
+	}
+
+	public static Map<Long, PhotoAlbum> getAlbums(Collection<Long> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photo_albums")
+				.allColumns()
+				.whereIn("id", ids)
+				.executeAsStream(PhotoAlbum::fromResultSet)
+				.collect(Collectors.toMap(a->a.id, Function.identity()));
 	}
 
 	public static long createUserAlbum(int userID, String title, String description, PrivacySetting viewPrivacy, PrivacySetting commentPrivacy) throws SQLException{
@@ -96,6 +106,13 @@ public class PhotoStorage{
 
 	public static void deleteAlbum(long id, int ownerID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			if(ownerID>0){
+				new SQLQueryBuilder(conn)
+						.deleteFrom("newsfeed")
+						.where("type=? AND object_id IN (SELECT id FROM photos WHERE album_id=?)", NewsfeedEntry.Type.ADD_PHOTO, id)
+						.executeNoResult();
+				// TODO tags
+			}
 			int displayOrder=new SQLQueryBuilder(conn)
 					.selectFrom("photo_albums")
 					.columns("display_order")

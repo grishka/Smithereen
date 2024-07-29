@@ -322,6 +322,18 @@ public class PostRoutes{
 		model.with("posts", feedPosts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity())))
 			.with("users", users).with("groups", groups).with("postInteractions", interactions);
 		model.with("maxReplyDepth", getMaxReplyDepth(self)).with("commentViewType", self.prefs.commentViewType);
+
+		Set<Long> needPhotos=feed.stream()
+				.filter(e->e.type==NewsfeedEntry.Type.ADD_PHOTO || (e instanceof GroupedNewsfeedEntry gne && gne.childEntriesType==NewsfeedEntry.Type.ADD_PHOTO))
+				.flatMap(e->switch(e){
+					case GroupedNewsfeedEntry gne -> gne.childEntries.stream().map(ce->ce.objectID);
+					default -> Stream.of(e.objectID);
+				})
+				.collect(Collectors.toSet());
+
+		if(!needPhotos.isEmpty()){
+			model.with("photos", ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos));
+		}
 	}
 
 	public static Object feed(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -329,9 +341,10 @@ public class PostRoutes{
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
 		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(self, timeZoneForRequest(req), startFromID, offset, 25);
 		if(!feed.list.isEmpty() && startFromID==0)
-			startFromID=feed.list.get(0).id;
+			startFromID=feed.list.getFirst().id;
 		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel");
 		Templates.addJsLangForNewPostForm(req);
+
 		RenderedTemplateResponse model=new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list)
 				.with("paginationUrlPrefix", "/feed?startFrom="+startFromID+"&offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationPerPage", 25).with("paginationFirstPageUrl", "/feed")
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
