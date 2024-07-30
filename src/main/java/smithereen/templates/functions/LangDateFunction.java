@@ -1,4 +1,4 @@
-package smithereen.templates;
+package smithereen.templates.functions;
 
 import io.pebbletemplates.pebble.extension.Function;
 import io.pebbletemplates.pebble.template.EvaluationContext;
@@ -7,11 +7,8 @@ import io.pebbletemplates.pebble.template.PebbleTemplate;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 
 import smithereen.lang.Lang;
 

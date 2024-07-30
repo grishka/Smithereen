@@ -1,4 +1,4 @@
-package smithereen.templates;
+package smithereen.templates.functions;
 
 import io.pebbletemplates.pebble.extension.Function;
 import io.pebbletemplates.pebble.template.EvaluationContext;
@@ -9,7 +9,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 
 public class FormatTimeFunction implements Function{
 	@Override

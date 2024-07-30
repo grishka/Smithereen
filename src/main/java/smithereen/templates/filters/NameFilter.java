@@ -1,4 +1,4 @@
-package smithereen.templates;
+package smithereen.templates.filters;
 
 import java.util.List;
 import java.util.Map;

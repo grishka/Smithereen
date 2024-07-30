@@ -158,7 +158,7 @@ public class Templates{
 		return engine.getTemplate(name);
 	}
 
-	/*package*/ static int asInt(Object o){
+	public static int asInt(Object o){
 		if(o instanceof Integer)
 			return (Integer)o;
 		if(o instanceof Long)
@@ -166,7 +166,7 @@ public class Templates{
 		throw new IllegalArgumentException("Can't cast "+o+" to int");
 	}
 
-	/*package*/ static <T> T getVariableRegardless(EvaluationContext context, String key){
+	public static <T> T getVariableRegardless(EvaluationContext context, String key){
 		Object result=context.getVariable(key);
 		if(result!=null)
 			return (T)result;

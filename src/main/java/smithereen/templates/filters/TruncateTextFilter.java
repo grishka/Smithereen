@@ -1,4 +1,4 @@
-package smithereen.templates;
+package smithereen.templates.filters;
 
 import io.pebbletemplates.pebble.error.PebbleException;
 import io.pebbletemplates.pebble.extension.Filter;

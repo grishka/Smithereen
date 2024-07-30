@@ -1,4 +1,4 @@
-package smithereen.templates;
+package smithereen.templates.functions;
 
 import io.pebbletemplates.pebble.extension.Function;
 import io.pebbletemplates.pebble.extension.escaper.SafeString;

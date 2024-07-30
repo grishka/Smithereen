@@ -1,4 +1,4 @@
-package smithereen.templates;
+package smithereen.templates.filters;
 
 import io.pebbletemplates.pebble.error.PebbleException;
 import io.pebbletemplates.pebble.extension.Filter;
@@ -14,6 +14,7 @@ import java.util.Map;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.Group;
 import smithereen.model.SizedImage;
+import smithereen.templates.Templates;
 
 public class PictureForAvatarFilter implements Filter{
 	@Override

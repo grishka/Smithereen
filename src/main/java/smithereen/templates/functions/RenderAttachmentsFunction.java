@@ -1,4 +1,4 @@
-package smithereen.templates;
+package smithereen.templates.functions;
 
 import io.pebbletemplates.pebble.extension.Function;
 import io.pebbletemplates.pebble.extension.escaper.SafeString;
@@ -30,6 +30,7 @@ import smithereen.model.attachments.SizedAttachment;
 import smithereen.model.attachments.VideoAttachment;
 import smithereen.lang.Lang;
 import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.templates.MediaLayoutHelper;
 import smithereen.text.TextProcessor;
 import smithereen.util.BlurHash;
 import spark.utils.StringUtils;
