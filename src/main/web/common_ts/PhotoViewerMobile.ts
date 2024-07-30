@@ -20,6 +20,7 @@ class MobilePhotoViewer extends BaseLayer{
 	private hasNext=false;
 	private hasPrev=false;
 	private hasUnloadedAdjacentPhotos=false;
+	private uiVisible=true;
 
 	public constructor(info:PhotoViewerInlineData, listURL:string){
 		super();
@@ -52,6 +53,7 @@ class MobilePhotoViewer extends BaseLayer{
 		this.title.hide();
 		this.subtitle.hide();
 		this.pager.addEventListener("scroll", this.onPagerScroll.bind(this), false);
+		this.pager.addEventListener("click", (ev)=>this.toggleUI(), false);
 
 		this.loadPhotoIntoPage(initialPage, info.urls);
 		this.loadPhotoList(Math.floor(this.currentIndex/10)*10);
@@ -214,6 +216,14 @@ class MobilePhotoViewer extends BaseLayer{
 		this.updateBottomPart();
 		this.maybeLoadMorePhotos();
 	}
+
+	public toggleUI(){
+		this.uiVisible=!this.uiVisible;
+		if(this.uiVisible)
+			this.uiOverlay.showAnimated();
+		else
+			this.uiOverlay.hideAnimated();
+	}
 }
 
 class ZoomPanController{
@@ -336,36 +346,57 @@ class ZoomPanController{
 		if(pt[1]<0){
 			this.transformMatrix.values[5]=0;
 		}
+		// console.log("scroll: ", pt);
 		// let the element grow before setting the scroll offsets, otherwise they won't stick
 		this.img.style.transform=this.transformMatrix.getCSSTransform();
+		var scrollW=this.container.scrollWidth+this.container.offsetWidth;
+		var scrollH=this.container.scrollHeight+this.container.offsetHeight;
+		// console.log("scrollable area: "+scrollW+"x"+scrollH+", "+this.container.scrollWidth);
 		if(pt[0]<0){
 			this.container.scrollLeft+=-pt[0];
 		}
 		if(pt[1]<0){
 			this.container.scrollTop+=-pt[1];
 		}
+		// console.log("actual scroll: "+this.container.scrollLeft+", "+this.container.scrollTop);
 		if(applyLimits){
 			var scale=this.transformMatrix.values[0];
-			if(scale<this.minScale){
-				var winW=window.innerWidth;
-				var winH=window.innerHeight;
-				var scaledW=Math.floor(this.imgW*this.minScale);
-				var scaledH=Math.floor(this.imgH*this.minScale);
-				this.transformMatrix.values[2]-=this.container.scrollLeft;
-				this.transformMatrix.values[5]-=this.container.scrollTop;
+			var targetScale=Math.max(this.minScale, Math.min(this.maxScale, scale));
+			var winW=window.innerWidth;
+			var winH=window.innerHeight;
+			var scaledW=Math.floor(this.imgW*targetScale);
+			var scaledH=Math.floor(this.imgH*targetScale);
+
+			var minTransX, maxTransX, minTransY, maxTransY;
+			var transX=this.transformMatrix.values[2]-this.container.scrollLeft;
+			var transY=this.transformMatrix.values[5]-this.container.scrollTop;
+			if(scaledW<winW){
+				minTransX=maxTransX=Math.round(winW/2-scaledW/2);
+			}else{
+				minTransX=winW-scaledW;
+				maxTransX=0;
+			}
+			if(scaledH<winH){
+				minTransY=maxTransY=Math.round(winH/2-scaledH/2);
+			}else{
+				minTransY=winH-scaledH;
+				maxTransY=0;
+			}
+			// console.log(`${minTransX}, ${transX}, ${maxTransX}; ${minTransY}, ${transY}, ${maxTransY}; ${scaledW} x ${scaledH}; ${winW} x ${winH}`);
+
+			if(scale<this.minScale || scale>this.maxScale || transX<minTransX || transX>maxTransX || transY<minTransY || transY>maxTransY){
+				var offX=this.container.scrollLeft, offY=this.container.scrollTop;
+				this.transformMatrix.values[2]-=offX;
+				this.transformMatrix.values[5]-=offY;
 				this.container.scrollLeft=this.container.scrollTop=0;
 				this.img.style.transform=this.transformMatrix.getCSSTransform();
 
-				this.transformMatrix.reset();
-				this.transformMatrix.postTranslate(this.imgX=Math.round(winW/2-scaledW/2)-this.container.scrollLeft, this.imgY=Math.round(winH/2-scaledH/2));
-				this.transformMatrix.postScale(this.minScale);
-				this.animating=true;
-				this.img.anim([{transform: this.transformMatrix.getCSSTransform()}], {duration: 200, easing: "ease"}, ()=>{
-					this.img.style.transform=this.transformMatrix.getCSSTransform();
-					this.animating=false;
-				});
-			}else if(scale>this.maxScale){
-				this.transformMatrix.postScaleAround(this.maxScale/scale, this.gestureCenterX, this.gestureCenterY);
+				this.transformMatrix.postScaleAround(targetScale/scale, this.gestureCenterX, this.gestureCenterY);
+				transX=this.transformMatrix.values[2];
+				transY=this.transformMatrix.values[5];
+				this.transformMatrix.values[2]=Math.max(minTransX, Math.min(maxTransX, transX));
+				this.transformMatrix.values[5]=Math.max(minTransY, Math.min(maxTransY, transY));
+
 				this.animating=true;
 				this.img.anim([{transform: this.transformMatrix.getCSSTransform()}], {duration: 200, easing: "ease"}, ()=>{
 					this.applyTransformToPosition(false);

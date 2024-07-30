@@ -2051,6 +2051,10 @@ input.searchField{
 		scroll-snap-align: start;
 		position: relative;
 		overflow: scroll;
+		scrollbar-width: none;
+		&::-webkit-scrollbar{
+			display: none;
+		}
 		img{
 			position: absolute;
 			-webkit-touch-callout: none;
