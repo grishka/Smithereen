@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import smithereen.Config;
 import smithereen.model.media.SizedImageURLs;
 import smithereen.storage.ImgProxy;
 import spark.utils.StringUtils;
@@ -206,7 +207,13 @@ public interface SizedImage{
 				case "b" -> AVA_SQUARE_MEDIUM;
 				case "c" -> AVA_SQUARE_LARGE;
 				case "d" -> AVA_SQUARE_XLARGE;
-				default -> throw new IllegalArgumentException("Invalid image size '"+s+"'");
+				default -> {
+					if(Config.DEBUG){
+						throw new IllegalArgumentException("Invalid image size '"+s+"'");
+					}else{
+						yield null;
+					}
+				}
 			};
 		}
 	}
