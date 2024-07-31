@@ -195,9 +195,9 @@ public class SettingsRoutes{
 				}
 			}
 
-			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 5*1024*1024, -1L, 0));
+			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
 			Part part=req.raw().getPart("pic");
-			if(part.getSize()>5*1024*1024){
+			if(part.getSize()>10*1024*1024){
 				throw new IOException("file too large");
 			}
 
