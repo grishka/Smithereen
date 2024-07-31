@@ -20,14 +20,14 @@ import smithereen.storage.sql.SQLQueryBuilder;
 
 public class LikeStorage{
 
-	public static int setPostLiked(int userID, int objectID, boolean liked) throws SQLException{
+	public static int setObjectLiked(int userID, long objectID, Like.ObjectType objectType, boolean liked) throws SQLException{
 		if(liked)
-			return putLike(userID, objectID, Like.ObjectType.POST, null);
+			return putLike(userID, objectID, objectType, null);
 		else
-			return deleteLike(userID, objectID, Like.ObjectType.POST);
+			return deleteLike(userID, objectID, objectType);
 	}
 
-	private static int putLike(int userID, long objectID, Like.ObjectType type, URI apID) throws SQLException{
+	public static int putLike(int userID, long objectID, Like.ObjectType type, URI apID) throws SQLException{
 		return new SQLQueryBuilder()
 				.insertIgnoreInto("likes")
 				.value("user_id", userID)

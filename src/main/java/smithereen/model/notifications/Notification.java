@@ -86,6 +86,7 @@ public class Notification{
 	}
 
 	public enum ObjectType{
-		POST
+		POST,
+		PHOTO
 	}
 }

@@ -1057,6 +1057,7 @@ public class PostStorage{
 						entry.objectID=res.getLong(2);
 						entry.type=switch(type){
 							case POST -> NewsfeedEntry.Type.POST;
+							case PHOTO -> throw new UnsupportedOperationException(); // TODO
 						};
 						return entry;
 					}).toList();

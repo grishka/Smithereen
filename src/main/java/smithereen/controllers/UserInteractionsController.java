@@ -11,6 +11,8 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.LikeableContentObject;
+import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -43,40 +45,44 @@ public class UserInteractionsController{
 		}
 	}
 
-	public void setObjectLiked(Post object, boolean liked, User self){
+	public void setObjectLiked(LikeableContentObject object, boolean liked, User self){
 		try{
-			if(object.isMastodonStyleRepost()){
-				object=context.getWallController().getPostOrThrow(object.repostOf);
+			if(object instanceof Post post && post.isMastodonStyleRepost()){
+				object=context.getWallController().getPostOrThrow(post.repostOf);
 			}
-			context.getPrivacyController().enforceObjectPrivacy(self, object);
-			OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(object);
+			if(!(object instanceof OwnedContentObject contentObject))
+				throw new IllegalArgumentException();
+
+			context.getPrivacyController().enforceObjectPrivacy(self, contentObject);
+			OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(contentObject);
 			if(oaa.owner() instanceof User u)
 				Utils.ensureUserNotBlocked(self, u);
 			else if(oaa.owner() instanceof Group g)
 				Utils.ensureUserNotBlocked(self, g);
 
 			if(liked){
-				int id=LikeStorage.setPostLiked(self.id, object.id, true);
+				int id=LikeStorage.setObjectLiked(self.id, contentObject.getObjectID(), object.getLikeObjectType(), true);
 				if(id==0) // Already liked
 					return;
-				if(!(oaa.author() instanceof ForeignUser) && object.authorID!=self.id){
+				if(!(oaa.author() instanceof ForeignUser) && contentObject.getAuthorID()!=self.id){
 					Notification n=new Notification();
 					n.type=Notification.Type.LIKE;
 					n.actorID=self.id;
-					n.objectID=object.id;
-					n.objectType=Notification.ObjectType.POST;
-					NotificationsStorage.putNotification(object.authorID, n);
+					n.objectID=contentObject.getObjectID();
+					n.objectType=object.getObjectTypeForLikeNotifications();
+					NotificationsStorage.putNotification(contentObject.getAuthorID(), n);
 				}
-				context.getActivityPubWorker().sendLikeActivity(object, self, id);
+				if(object instanceof Post post) // TODO
+					context.getActivityPubWorker().sendLikeActivity(post, self, id);
 			}else{
-				context.getPrivacyController().enforceObjectPrivacy(self, object);
-				int id=LikeStorage.setPostLiked(self.id, object.id, false);
+				int id=LikeStorage.setObjectLiked(self.id, contentObject.getObjectID(), object.getLikeObjectType(), false);
 				if(id==0)
 					return;
-				if(!(oaa.author() instanceof ForeignUser) && object.authorID!=self.id){
-					NotificationsStorage.deleteNotification(Notification.ObjectType.POST, object.id, Notification.Type.LIKE, self.id);
+				if(!(oaa.author() instanceof ForeignUser) && contentObject.getAuthorID()!=self.id){
+					NotificationsStorage.deleteNotification(object.getObjectTypeForLikeNotifications(), contentObject.getObjectID(), Notification.Type.LIKE, self.id);
 				}
-				context.getActivityPubWorker().sendUndoLikeActivity(object, self, id);
+				if(object instanceof Post post) // TODO
+					context.getActivityPubWorker().sendUndoLikeActivity(post, self, id);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

@@ -24,7 +24,7 @@ public class LikeNoteHandler extends ActivityTypeHandler<ForeignUser, Like, Note
 		Utils.ensureUserNotBlocked(actor, oaa.author());
 		Utils.ensureUserNotBlocked(actor, oaa.owner());
 
-		int id=LikeStorage.setPostLiked(actor.id, post.id, true);
+		int id=LikeStorage.putLike(actor.id, post.id, Like.ObjectType.POST, activity.activityPubID);
 		if(id==0)
 			return;
 		if(!(oaa.author() instanceof ForeignUser)){

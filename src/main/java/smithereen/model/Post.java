@@ -25,6 +25,8 @@ import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.activities.Like;
+import smithereen.model.notifications.Notification;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.PostStorage;
 import smithereen.text.TextProcessor;
@@ -33,7 +35,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
-public sealed class Post implements ActivityPubRepresentable, OwnedContentObject, AttachmentHostContentObject, ReportableContentObject permits ReportedPost{
+public sealed class Post implements ActivityPubRepresentable, OwnedContentObject, AttachmentHostContentObject, ReportableContentObject, LikeableContentObject permits ReportedPost{
 	public int id;
 	public int authorID;
 	// userID or -groupID
@@ -197,6 +199,11 @@ public sealed class Post implements ActivityPubRepresentable, OwnedContentObject
 		return authorID;
 	}
 
+	@Override
+	public long getObjectID(){
+		return id;
+	}
+
 	public void setActivityPubID(URI activityPubID){
 		this.activityPubID=activityPubID;
 	}
@@ -314,6 +321,16 @@ public sealed class Post implements ActivityPubRepresentable, OwnedContentObject
 				text=root.html();
 			}
 		}
+	}
+
+	@Override
+	public Like.ObjectType getLikeObjectType(){
+		return Like.ObjectType.POST;
+	}
+
+	@Override
+	public Notification.ObjectType getObjectTypeForLikeNotifications(){
+		return Notification.ObjectType.POST;
 	}
 
 	public enum Privacy{

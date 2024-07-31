@@ -6,14 +6,18 @@ import java.sql.SQLException;
 import java.time.Instant;
 
 import smithereen.Utils;
+import smithereen.activitypub.objects.activities.Like;
+import smithereen.model.LikeableContentObject;
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.OwnedContentObject;
 import smithereen.model.SizedImage;
 import smithereen.model.attachments.SizedAttachment;
+import smithereen.model.notifications.Notification;
 import smithereen.storage.DatabaseUtils;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
-public class Photo implements SizedAttachment{
+public class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject{
 	public long id;
 	public int ownerID;
 	public int authorID;
@@ -69,5 +73,30 @@ public class Photo implements SizedAttachment{
 	@Override
 	public boolean isSizeKnown(){
 		return true;
+	}
+
+	@Override
+	public Like.ObjectType getLikeObjectType(){
+		return Like.ObjectType.PHOTO;
+	}
+
+	@Override
+	public Notification.ObjectType getObjectTypeForLikeNotifications(){
+		return Notification.ObjectType.PHOTO;
+	}
+
+	@Override
+	public int getOwnerID(){
+		return ownerID;
+	}
+
+	@Override
+	public int getAuthorID(){
+		return authorID;
+	}
+
+	@Override
+	public long getObjectID(){
+		return id;
 	}
 }

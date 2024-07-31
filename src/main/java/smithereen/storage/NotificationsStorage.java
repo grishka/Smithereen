@@ -91,11 +91,11 @@ public class NotificationsStorage{
 		}
 	}
 
-	public static void deleteNotification(@NotNull Notification.ObjectType objType, int objID, @NotNull Notification.Type type, int actorID) throws SQLException{
+	public static void deleteNotification(@NotNull Notification.ObjectType objType, long objID, @NotNull Notification.Type type, int actorID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt=conn.prepareStatement("SELECT `owner_id` FROM `notifications` WHERE `object_type`=? AND `object_id`=? AND `type`=? AND `actor_id`=?");
 			stmt.setInt(1, objType.ordinal());
-			stmt.setInt(2, objID);
+			stmt.setLong(2, objID);
 			stmt.setInt(3, type.ordinal());
 			stmt.setInt(4, actorID);
 			try(ResultSet res=stmt.executeQuery()){
@@ -107,7 +107,7 @@ public class NotificationsStorage{
 			}
 			stmt=conn.prepareStatement("DELETE FROM `notifications` WHERE `object_type`=? AND `object_id`=? AND `type`=? AND `actor_id`=?");
 			stmt.setInt(1, objType.ordinal());
-			stmt.setInt(2, objID);
+			stmt.setLong(2, objID);
 			stmt.setInt(3, type.ordinal());
 			stmt.setInt(4, actorID);
 			stmt.execute();

@@ -96,4 +96,9 @@ public class Poll implements OwnedContentObject{
 	public int getAuthorID(){
 		return 0;
 	}
+
+	@Override
+	public long getObjectID(){
+		return id;
+	}
 }

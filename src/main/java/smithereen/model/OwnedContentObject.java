@@ -6,4 +6,5 @@ package smithereen.model;
 public interface OwnedContentObject{
 	int getOwnerID();
 	int getAuthorID();
+	long getObjectID();
 }
