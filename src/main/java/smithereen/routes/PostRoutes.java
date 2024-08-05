@@ -711,17 +711,16 @@ public class PostRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments.list).with("baseReplyLevel", post.getReplyLevel());
 		preparePostList(ctx, comments.list, model, self);
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(comments.list, self!=null ? self.user : null);
-		model.with("postInteractions", interactions)
-					.with("preview", true)
-					.with("replyFormID", "wallPostForm_commentReplyPost"+postID)
-					.with("commentViewType", viewType);
 		PostViewModel topLevel;
 		if(requestedPost.isMastodonStyleRepost())
 			topLevel=new PostViewModel(requestedPost);
 		else
 			topLevel=new PostViewModel(post.replyKey.isEmpty() ? post : ctx.getWallController().getPostOrThrow(post.replyKey.getFirst()));
-//		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(topLevel), comments.list).flatMap(List::stream).toList(), self!=null ? self.user : null);
+		model.with("postInteractions", interactions)
+					.with("preview", true)
+					.with("replyFormID", "wallPostForm_commentReplyPost"+postID)
+					.with("commentViewType", viewType);
 		model.with("topLevel", topLevel);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+postID, model.renderToString())
@@ -754,8 +753,6 @@ public class PostRoutes{
 			allReplies.add(comment);
 			comment.getAllReplies(allReplies);
 		}
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(allReplies, self!=null ? self.user : null);
-		preparePostList(ctx, comments.list, model, self);
 		PostViewModel topLevel=null;
 		if(post.replyKey.isEmpty()){
 			topLevel=new PostViewModel(post);
@@ -771,7 +768,8 @@ public class PostRoutes{
 			if(topLevel==null)
 				topLevel=new PostViewModel(ctx.getWallController().getPostOrThrow(realTopLevelID));
 		}
-//		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(topLevel), allReplies).flatMap(List::stream).toList(), self!=null ? self.user : null);
+		preparePostList(ctx, comments.list, model, self);
 		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+topLevel.post.id);
 		model.with("topLevel", topLevel);
 		model.with("commentViewType", viewType);
