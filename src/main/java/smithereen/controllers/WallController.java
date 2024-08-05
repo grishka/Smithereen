@@ -573,10 +573,16 @@ public class WallController{
 					.stream()
 					.collect(Collectors.toMap(Map.Entry::getKey, e->context.getPrivacyController().checkUserPrivacy(self, e.getValue(), UserPrivacySettingKey.WALL_COMMENTING)));
 
-			Map<Integer, PostViewModel> postsByID=posts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity(), (p1, p2)->p1));
+			List<PostViewModel> allPosts=posts.stream().flatMap(pvm->{
+				ArrayList<PostViewModel> replies=new ArrayList<>();
+				replies.add(pvm);
+				pvm.getAllReplies(replies);
+				return replies.stream();
+			}).toList();
+			Map<Integer, PostViewModel> postsByID=allPosts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity(), (p1, p2)->p1));
 			Map<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
 
-			for(PostViewModel post:posts){
+			for(PostViewModel post:allPosts){
 				UserInteractions ui=interactions.get(post.post.getIDForInteractions());
 				int ownerID;
 				if(post.post.isMastodonStyleRepost()){
