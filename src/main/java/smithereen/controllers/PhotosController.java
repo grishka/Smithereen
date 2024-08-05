@@ -15,6 +15,7 @@ import java.util.Objects;
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.activities.Like;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -27,6 +28,7 @@ import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.text.FormattedTextFormat;
@@ -183,7 +185,6 @@ public class PhotosController{
 			MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsForAlbum(album.id), MediaFileReferenceType.ALBUM_PHOTO);
 			PhotoStorage.deleteAlbum(album.id, album.ownerID);
 			albumListCache.remove(album.ownerID);
-			// TODO delete likes
 			// TODO delete comments
 			// TODO federate
 			if(album.ownerID>0){
@@ -349,7 +350,7 @@ public class PhotosController{
 					}
 				}
 			}
-			// TODO delete likes
+			LikeStorage.deleteAllLikesForObject(photo.id, Like.ObjectType.PHOTO);
 			// TODO delete comments
 			// TODO delete notifications
 			// TODO federate

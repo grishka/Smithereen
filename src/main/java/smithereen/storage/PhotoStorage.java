@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.PrivacySetting;
@@ -113,6 +114,10 @@ public class PhotoStorage{
 						.executeNoResult();
 				// TODO tags
 			}
+			new SQLQueryBuilder(conn)
+					.deleteFrom("likes")
+					.where("object_type=? AND object_id IN (SELECT id FROM photos WHERE album_id=?)", Like.ObjectType.PHOTO, id)
+					.executeNoResult();
 			int displayOrder=new SQLQueryBuilder(conn)
 					.selectFrom("photo_albums")
 					.columns("display_order")

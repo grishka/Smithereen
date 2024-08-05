@@ -56,6 +56,13 @@ public class LikeStorage{
 		}
 	}
 
+	public static void deleteAllLikesForObject(long objectID, Like.ObjectType type) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("likes")
+				.where("object_id=? AND object_type=?", objectID, type)
+				.executeNoResult();
+	}
+
 	public static PaginatedList<Like> getLikes(long objectID, URI objectApID, Like.ObjectType type, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT likes.id AS like_id, user_id, likes.ap_id AS like_ap_id, users.ap_id AS user_ap_id FROM likes JOIN users ON users.id=likes.user_id WHERE object_id=? AND object_type=? ORDER BY likes.id ASC LIMIT ?,?",
