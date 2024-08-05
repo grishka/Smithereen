@@ -1,0 +1,14 @@
+{% extends "page" %}
+{% block content %}
+{% include "bookmarks_tabbar" with {'tab': 'photos'} %}
+<div class="photoGrid">
+{% block photosInner %}
+{% for photo in items %}
+    <a href="{{ photo.url }}" class="photo" onclick="return openPhotoViewer(this)" data-pv="{{ json(photoViewerData[photo.id]) }}">{{ photo.image | pictureForPhoto('s') }}</a>
+{% else %}
+	<div class="emptyState">{{ L('bookmarks_photos_empty') }}</div>
+{% endfor %}
+{% endblock %}
+{% include "pagination_endless" %}
+</div>
+{% endblock %}

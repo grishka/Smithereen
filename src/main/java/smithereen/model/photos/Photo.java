@@ -12,6 +12,7 @@ import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.SizedImage;
 import smithereen.model.attachments.SizedAttachment;
+import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.notifications.Notification;
 import smithereen.storage.DatabaseUtils;
 import smithereen.util.XTEA;
@@ -98,5 +99,9 @@ public class Photo implements SizedAttachment, OwnedContentObject, LikeableConte
 	@Override
 	public long getObjectID(){
 		return id;
+	}
+
+	public PhotoViewerInlineData getSinglePhotoViewerData(){
+		return new PhotoViewerInlineData(0, "single/"+getIdString(), image.getURLsForPhotoViewer());
 	}
 }

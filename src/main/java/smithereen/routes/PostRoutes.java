@@ -531,88 +531,20 @@ public class PostRoutes{
 	}
 
 	public static Object like(Request req, Response resp){
-		if(requireAccount(req, null) && verifyCSRF(req, resp)){
-			return like(req, resp, sessionInfo(req).account, context(req));
-		}
 		ApplicationContext ctx=context(req);
-		Lang l=lang(req);
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		String url=post.getActivityPubURL().toString();
-		String title=l.get(post.getReplyLevel()>0 ? "remote_like_comment_title" : "remote_like_post_title");
-		return remoteInteraction(req, resp, url, title, null);
-	}
-
-	public static Object like(Request req, Response resp, Account self, ApplicationContext ctx){
-		req.attribute("noHistory", true);
-		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		ctx.getUserInteractionsController().setObjectLiked(post, true, self.user);
-		if(isAjax(req)){
-			UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self.user).get(post.getIDForInteractions());
-			return new WebDeltaResponse(resp)
-					.setContent("likeCounterPost"+post.id, String.valueOf(interactions.likeCount))
-					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/unlike?csrf="+requireSession(req).csrfToken);
-		}
-		String back=Utils.back(req);
-		resp.redirect(back);
-		return "";
+		return UserInteractionsRoutes.like(req, resp, post);
 	}
 
 	public static Object unlike(Request req, Response resp, Account self, ApplicationContext ctx){
-		req.attribute("noHistory", true);
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		String back=Utils.back(req);
-		ctx.getUserInteractionsController().setObjectLiked(post, false, self.user);
-		if(isAjax(req)){
-			UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self.user).get(post.getIDForInteractions());
-			WebDeltaResponse b=new WebDeltaResponse(resp)
-					.setContent("likeCounterPost"+post.id, String.valueOf(interactions.likeCount))
-					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/like?csrf="+requireSession(req).csrfToken);
-			if(interactions.likeCount==0)
-				b.hide("likeCounterPost"+post.id);
-			return b;
-		}
-		resp.redirect(back);
-		return "";
-	}
-
-	private static class LikePopoverResponse{
-		public String content;
-		public String title;
-		public String altTitle;
-		public String fullURL;
-		public List<WebDeltaResponse.Command> actions;
-		public boolean show;
+		return UserInteractionsRoutes.setLiked(req, resp, self, ctx, post, false);
 	}
 
 	public static Object likePopover(Request req, Response resp){
-		ApplicationContext ctx=context(req);
 		req.attribute("noHistory", true);
 		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		SessionInfo info=sessionInfo(req);
-		User self=info!=null && info.account!=null ? info.account.user : null;
-		int selfID=self!=null ? self.id : 0;
-		context(req).getPrivacyController().enforceObjectPrivacy(self, post);
-		List<User> users=ctx.getUserInteractionsController().getLikesForObject(post, self, 0, 6).list;
-		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
-		UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self).get(post.getIDForInteractions());
-		WebDeltaResponse b=new WebDeltaResponse(resp)
-				.setContent("likeCounterPost"+post.id, String.valueOf(interactions.likeCount));
-		if(info!=null && info.account!=null){
-			b.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/"+(interactions.isLiked ? "un" : "")+"like?csrf="+info.csrfToken);
-		}
-		if(interactions.likeCount==0)
-			b.hide("likeCounterPost"+post.id);
-		else
-			b.show("likeCounterPost"+post.id);
-
-		LikePopoverResponse o=new LikePopoverResponse();
-		o.content=_content;
-		o.title=lang(req).get("liked_by_X_people", Map.of("count", interactions.likeCount));
-		o.altTitle=selfID==0 ? null : lang(req).get("liked_by_X_people", Map.of("count", interactions.likeCount+(interactions.isLiked ? -1 : 1)));
-		o.actions=b.commands();
-		o.show=interactions.likeCount>0;
-		o.fullURL="/posts/"+post.id+"/likes";
-		return gson.toJson(o);
+		return UserInteractionsRoutes.likePopover(req, resp, post);
 	}
 
 	public static Object sharePopover(Request req, Response resp){
@@ -632,7 +564,7 @@ public class PostRoutes{
 		else
 			b.show("shareCounterPost"+post.id);
 
-		LikePopoverResponse o=new LikePopoverResponse();
+		UserInteractionsRoutes.LikePopoverResponse o=new UserInteractionsRoutes.LikePopoverResponse();
 		o.content=_content;
 		o.title=lang(req).get("shared_by_X_people", Map.of("count", interactions.repostCount));
 		o.actions=b.commands();
@@ -643,49 +575,9 @@ public class PostRoutes{
 
 	public static Object likeList(Request req, Response resp){
 		ApplicationContext ctx=context(req);
-		SessionInfo info=Utils.sessionInfo(req);
-		@Nullable Account self=info!=null ? info.account : null;
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		Post post=ctx.getWallController().getPostOrThrow(postID);
-		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self!=null ? self.user : null);
-		int offset=offset(req);
-		PaginatedList<User> likes=ctx.getUserInteractionsController().getLikesForObject(post, null, offset, 100);
-		RenderedTemplateResponse model;
-		if(isMobile(req)){
-			model=new RenderedTemplateResponse("content_interactions_likes", req);
-		}else{
-			model=new RenderedTemplateResponse(isAjax(req) ? "content_interactions_box" : "content_wrap", req);
-		}
-		model.paginate(likes)
-				.with("emptyMessage", lang(req).get("likes_empty"))
-				.with("interactions", interactions)
-				.with("post", post)
-				.with("tab", "likes");
-		if(isMobile(req))
-			return model.pageTitle(lang(req).get("likes_title"));
-		if(isAjax(req)){
-			String paginationID=req.queryParams("pagination");
-			boolean fromTab=req.queryParams("fromTab")!=null;
-			if(fromTab){
-				return model.renderBlock("likes");
-			}else if(paginationID!=null){
-				WebDeltaResponse r=new WebDeltaResponse(resp)
-						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("likesInner"));
-				if(offset+likes.list.size()<likes.total){
-					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", "/posts/"+postID+"/likes?offset="+(offset+likes.perPage));
-				}else{
-					r.remove("ajaxPagination_"+paginationID);
-				}
-				return r;
-			}else{
-				return new WebDeltaResponse(resp)
-						.box(lang(req).get("likes_title"), model.renderToString(), "likesList", 620)
-						.runScript("initTabbedBox(ge(\"interactionsTabs"+post.id+"\"), ge(\"interactionsContent"+post.id+"\")); initDynamicControls(ge(\"likesList\"));");
-			}
-		}
-		model.with("contentTemplate", "content_interactions_box").with("title", lang(req).get("likes_title"));
-		return model;
+		return UserInteractionsRoutes.likeList(req, resp, post);
 	}
 
 	public static Object userWallAll(Request req, Response resp){
@@ -830,7 +722,7 @@ public class PostRoutes{
 			topLevel=new PostViewModel(requestedPost);
 		else
 			topLevel=new PostViewModel(post.replyKey.isEmpty() ? post : ctx.getWallController().getPostOrThrow(post.replyKey.getFirst()));
-		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
+//		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
 		model.with("topLevel", topLevel);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+postID, model.renderToString())
@@ -880,7 +772,7 @@ public class PostRoutes{
 			if(topLevel==null)
 				topLevel=new PostViewModel(ctx.getWallController().getPostOrThrow(realTopLevelID));
 		}
-		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
+//		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
 		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+topLevel.post.id);
 		model.with("topLevel", topLevel);
 		model.with("commentViewType", viewType);
@@ -963,7 +855,7 @@ public class PostRoutes{
 		List<User> users=ctx.getWallController().getPollOptionVoters(option, 0, 6);
 		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
 
-		LikePopoverResponse r=new LikePopoverResponse();
+		UserInteractionsRoutes.LikePopoverResponse r=new UserInteractionsRoutes.LikePopoverResponse();
 		r.actions=Collections.emptyList();
 		r.title=lang(req).get("X_people_voted_title", Map.of("count", option.numVotes));
 		r.content=_content;
@@ -995,7 +887,7 @@ public class PostRoutes{
 		if(!requireAccount(req, null)){
 			String url=post.getActivityPubURL().toString();
 			String title=l.get(post.getReplyLevel()>0 ? "share_comment_title" : "share_post_title");
-			return remoteInteraction(req, resp, url, title, post);
+			return UserInteractionsRoutes.remoteInteraction(req, resp, url, title, post);
 		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse("repost_form", req);
 		model.with("repostedPost", post)
@@ -1025,14 +917,14 @@ public class PostRoutes{
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list.stream().filter(p->!p.post.isMastodonStyleRepost()).toList(), self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
 		}
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(reposts.list, List.of(new PostViewModel(post))).flatMap(List::stream).toList(), self!=null ? self.user : null);
+		UserInteractions interactions=ctx.getWallController().getUserInteractions(Stream.of(reposts.list, List.of(new PostViewModel(post))).flatMap(List::stream).toList(), self!=null ? self.user : null).get(post.getIDForInteractions());
 		RenderedTemplateResponse model;
 		if(isMobile(req)){
 			model=new RenderedTemplateResponse("content_interactions_reposts", req);
 		}else{
 			for(PostViewModel p:reposts.list){
 				if(p.post.isMastodonStyleRepost()){
-					p.canComment=false;
+//					p.canComment=false;
 				}
 			}
 			model=new RenderedTemplateResponse(isAjax(req) ? "content_interactions_box" : "content_wrap", req);
@@ -1041,6 +933,8 @@ public class PostRoutes{
 				.with("interactions", interactions)
 				.with("post", post)
 				.with("tab", "reposts")
+				.with("url", "/posts/"+post.id)
+				.with("elementID", "Post"+post.id)
 				.with("maxRepostDepth", 0);
 		preparePostList(ctx, reposts.list, model, self);
 		if(isMobile(req))
@@ -1062,7 +956,7 @@ public class PostRoutes{
 			}else{
 				return new WebDeltaResponse(resp)
 						.box(lang(req).get("likes_title"), model.renderToString(), "likesList", 620)
-						.runScript("initTabbedBox(ge(\"interactionsTabs"+post.id+"\"), ge(\"interactionsContent"+post.id+"\")); initDynamicControls(ge(\"likesList\"));");
+						.runScript("initTabbedBox(ge(\"interactionsTabsPost"+post.id+"\"), ge(\"interactionsContentPost"+post.id+"\")); initDynamicControls(ge(\"likesList\"));");
 			}
 		}
 		model.with("contentTemplate", "content_interactions_box").with("title", lang(req).get("likes_title"));
@@ -1104,36 +998,6 @@ public class PostRoutes{
 			}catch(ObjectNotFoundException ignore){}
 		}
 		return model;
-	}
-
-	private static Object remoteInteraction(Request req, Response resp, String url, String title, Post postToEmbed){
-		RenderedTemplateResponse model;
-		if(isAjax(req)){
-			if(isMobile(req)){
-				model=new RenderedTemplateResponse("remote_interaction", req);
-			}else{
-				model=new RenderedTemplateResponse("layer_with_title", req).with("contentTemplate", "remote_interaction");
-			}
-		}else{
-			model=new RenderedTemplateResponse("content_wrap", req).with("contentTemplate", "remote_interaction");
-		}
-		model.with("contentURL", url).with("serverSignupMode", Config.signupMode);
-		model.pageTitle(title);
-		if(!isMobile(req) && postToEmbed!=null && postToEmbed.isLocal())
-			model.with("postToEmbed", postToEmbed);
-		if(isAjax(req)){
-			if(isMobile(req)){
-				return new WebDeltaResponse(resp)
-						.box(title, model.renderToString(), null, false)
-						.runScript("restoreRemoteInteractionDomain();");
-			}else{
-				return new WebDeltaResponse(resp)
-						.layer(model.renderToString(), null)
-						.runScript("restoreRemoteInteractionDomain();");
-			}
-		}else{
-			return model;
-		}
 	}
 
 	public static Object embedBox(Request req, Response resp){

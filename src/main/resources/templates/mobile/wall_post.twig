@@ -42,7 +42,7 @@
 			</span>{% endif %}
 		</a>
 		<div class="spacer"></div>
-		{% if post.canRepost %}
+		{% if interactions.canRepost %}
 		<a href="{{ realPost.internalURL }}/share" class="action share" data-ajax-box>
 			<span class="wideOnly">{{ L('share_content') }}</span>
 			<span class="icon"> </span>{% if interactions.repostCount>0 %}<span class="counter">

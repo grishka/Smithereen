@@ -1,3 +1,6 @@
+{# @pebvariable name="items" type="smithereen.model.notifications.Notification[]" #}
+{# @pebvariable name="posts" type="Map<Integer, smithereen.model.Post>" #}
+{# @pebvariable name="photos" type="Map<Long, smithereen.model.photos.Photo>" #}
 {%extends "page"%}
 {%block content%}
 {%if notifications.empty%}
@@ -11,9 +14,13 @@
 {%for notification in items%}
 {%set actor=users[notification.actorID]%}
 {%if notification.objectID!=0%}
-{%set object=posts[notification.objectID]%}
-{%set isComment=object is not null ? object.replyLevel>0 : false%}
-{% if object is not null %}{% set objectOwner=object.ownerID>0 ? users[object.ownerID] : groups[-object.ownerID] %}{% endif %}
+	{% if notification.objectType=='POST' %}
+		{%set object=posts[notification.objectID]%}
+		{%set isComment=object is not null ? object.replyLevel>0 : false%}
+		{% if object is not null %}{% set objectOwner=object.ownerID>0 ? users[object.ownerID] : groups[-object.ownerID] %}{% endif %}
+	{% elseif notification.objectType=='PHOTO' %}
+		{% set object=photos[notification.objectID] %}
+	{% endif %}
 {%else%}
 {%set object=null%}
 {%endif%}
@@ -58,7 +65,11 @@
 			{%if object.attachment is not null%}{{renderAttachments(object, objectOwner)}}<br/>{%endif%}
 			{%set link=object.internalURL%}
 			{%elseif notification.type=="LIKE"%}
-			{{L(isComment ? 'notification_liked_comment' : 'notification_liked_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle | default(LD(object.createdAt))}}</a>
+				{% if notification.objectType=="POST" %}
+					{{L(isComment ? 'notification_liked_comment' : 'notification_liked_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle | default(LD(object.createdAt))}}</a>
+				{% elseif notification.objectType=="PHOTO" %}
+					{{ L('notification_liked_photo', {'gender': actorGender}, {'photo': {'href': object.url, 'onclick': "return openPhotoViewer(this)", 'data-pv': json(object.singlePhotoViewerData)} }) }}
+				{% endif %}
 			{%elseif notification.type=="RETOOT"%}
 			{{L(isComment ? 'notification_reposted_comment' : 'notification_reposted_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle | default(LD(object.createdAt))}}</a>
 			{%elseif notification.type=="POST_OWN_WALL"%}

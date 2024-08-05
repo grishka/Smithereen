@@ -14,5 +14,6 @@
   "no_notifications": "У ваc пока нет уведомлений",
   "notifications": "Уведомления",
   "notifications_empty": "Ваши уведомления появятся здесь.",
-  "summary_notifications": "Показаны последние уведомления"
+  "summary_notifications": "Показаны последние уведомления",
+  "notification_liked_photo": "{gender, select, female {оценила} other {оценил}} вашу <a id=\"photo\">фотографию</a>"
 }

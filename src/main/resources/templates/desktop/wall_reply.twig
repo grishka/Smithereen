@@ -49,8 +49,8 @@
 			<div class="postInfo">
 				{%- set interactions=postInteractions[realPost.id] -%}
 				{%- if interactions is not null -%}
-				<span class="postActions">
-					{% if post.canRepost %}
+				<span class="postActions contentActions">
+					{% if interactions.canRepost %}
 					<span class="shareWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
 						<a href="{{ realPost.internalURL }}/share" class="action share popoverButton{{ interactions.repostCount>0 ? '' : ' revealOnHover' }}" id="shareButtonPost{{ realPost.id }}" data-ajax-box data-popover-url="{{ realPost.internalURL }}/sharePopover" rel="nofollow">
 							<span class="icon">&nbsp;</span><span class="counter" style="{{ interactions.repostCount==0 ? 'display: none' : '' }}">
@@ -70,7 +70,7 @@
 				{%- endif -%}
 				<a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.id}})" class="postLink">{{LD(realPost.createdAt)}}</a>
 				{%- if not hideActions %}
-				{% if not hideReplyLink and topLevel.canComment and currentUser is not null %}
+				{% if not hideReplyLink and postInteractions[topLevel.post.id].canComment and currentUser is not null %}
 					| <a href="{{realPost.internalURL}}" onclick="return showPostReplyForm({{realPost.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', {{ commentViewType!='FLAT' }}, {{ commentViewType=='TWO_LEVEL' and replyLevel>1 ? realPost.replyKey[1] : 0 }})">{{L('add_reply')}}</a>
 				{% endif %}
 				{% if not realPost.local %}

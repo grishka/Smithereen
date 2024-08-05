@@ -574,8 +574,10 @@ public class WallController{
 					.collect(Collectors.toMap(Map.Entry::getKey, e->context.getPrivacyController().checkUserPrivacy(self, e.getValue(), UserPrivacySettingKey.WALL_COMMENTING)));
 
 			Map<Integer, PostViewModel> postsByID=posts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity(), (p1, p2)->p1));
+			Map<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
 
 			for(PostViewModel post:posts){
+				UserInteractions ui=interactions.get(post.post.getIDForInteractions());
 				int ownerID;
 				if(post.post.isMastodonStyleRepost()){
 					if(post.repost!=null && post.repost.post()!=null){
@@ -588,21 +590,22 @@ public class WallController{
 				}
 				// Can't comment on posts or in threads that don't exist
 				if(post.post.isMastodonStyleRepost() && post.repost!=null && (post.repost.post()==null || (post.repost.post().post.getReplyLevel()>0 && post.repost.topLevel()==null)))
-					post.canComment=false;
+					ui.canComment=false;
 				else
-					post.canComment=canComment.getOrDefault(ownerID, true);
+					ui.canComment=canComment.getOrDefault(ownerID, true);
 
+				ui.canRepost=true;
 				if(post.post.privacy!=Post.Privacy.PUBLIC){
-					post.canRepost=false;
+					ui.canRepost=false;
 				}else if(post.post.ownerID!=post.post.authorID){
 					if(post.post.getReplyLevel()==0){
-						post.canRepost=false; // Wall-to-wall post
+						ui.canRepost=false; // Wall-to-wall post
 					}else if(postsByID.get(post.post.replyKey.getFirst()) instanceof PostViewModel p && p.post.ownerID!=p.post.authorID){
-						post.canRepost=false; // Comment on a wall-to-wall post
+						ui.canRepost=false; // Comment on a wall-to-wall post
 					}
 				}
 			}
-			return PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
+			return interactions;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

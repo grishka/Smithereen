@@ -33,8 +33,8 @@
 			{% endif %}
 			<div class="postInfo">
 				{%- if interactions is not null -%}
-				<span class="postActions">
-					{% if post.canRepost %}
+				<span class="postActions contentActions">
+					{% if interactions.canRepost %}
 					<span class="shareWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
 						<a href="{{ realPost.internalURL }}/share" class="action share popoverButton" id="shareButtonPost{{ realPost.id }}" data-ajax-box data-popover-url="{{ realPost.internalURL }}/sharePopover" rel="nofollow">
 							<span class="icon">&nbsp;</span><span class="counter" style="{{ interactions.repostCount==0 ? 'display: none' : '' }}">
@@ -59,7 +59,7 @@
 				{% if not realPost.local %}
 					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
 				{% endif %}
-				{% if not standalone and currentUser is not null and post.canComment %}
+				{% if not standalone and currentUser is not null and interactions.canComment %}
 					<span id="postCommentLinkWrap{{ realPost.id }}" style="{{ post.repliesObjects is empty ? '' : 'display: none;' }}">| <a href="{{ realPost.internalURL }}" onclick="return showPostCommentForm({{ realPost.id }})">{{ L('add_comment') }}</a></span>
 				{% endif %}
 			</div>
@@ -81,7 +81,7 @@
 	{% endfor -%}
 	</div>
 	{%set interactions=postInteractions[realPost.getIDForInteractions()]%}
-{% if currentUser is not null and post.canComment %}
+{% if currentUser is not null and interactions.canComment %}
 	{% if post.repost is not null and post.repost.post is not null %}{% set origAuthor=users[post.repost.post.post.authorID] %}{% endif %}
 	{% include "wall_post_form" with {'id': "commentPost#{realPost.id}", 'replyTo': realPost, 'replyToModel': post, 'hidden': interactions.commentCount==0, 'originalPostAuthor': origAuthor, 'showReplyBar': commentViewType=='FLAT'} %}
 	{% if commentViewType!='FLAT' %}{% include "wall_post_form" with {'id': "commentReplyPost#{realPost.id}", 'replyTo': realPost, 'hidden': true, 'originalPostAuthor': origAuthor} %}{% endif %}

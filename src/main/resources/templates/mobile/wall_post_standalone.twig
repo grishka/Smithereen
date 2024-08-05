@@ -25,7 +25,7 @@
 			{{ user | pictureForAvatar('a', 34) }}
 		{% endfor %}
 	</a>
-	{% if post.canRepost %}
+	{% if interactions.canRepost %}
 	<a href="{{ realPost.internalURL }}/share" class="action share" data-ajax-box>
 		<span class="wideOnly">{{ L('share_content') }}</span>
 		<span class="icon"> </span>{% if interactions.repostCount>0 %}<span class="counter">
@@ -61,7 +61,7 @@
 	{% endfor %}
 </div>
 {% include "pagination" %}
-{% if currentUser is not null and post.canComment %}
+{% if currentUser is not null and postInteractions[realPost.id].canComment %}
 	{% include "comment_form" with {'id': "commentPost#{realPost.id}", 'replyTo': realPost} %}
 {% endif %}
 {% script %}

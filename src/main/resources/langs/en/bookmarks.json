@@ -8,5 +8,8 @@
   "bookmarks_people_empty": "People you add to bookmarks will appear here.",
   "bookmarks_communities_empty": "Groups and events you add to bookmarks will appear here.",
   "bookmarks_posts_empty": "Posts you've liked will appear here.",
-  "bookmarks_X_liked_posts": "You've liked {count, plural, one {# post} other {# posts}}"
+  "bookmarks_X_liked_posts": "You've liked {count, plural, one {# post} other {# posts}}",
+  "bookmarks_photos": "Photos",
+  "bookmarks_photos_empty": "Photos you've liked will appear here.",
+  "bookmarks_X_liked_photos": "You've liked {count, plural, one {# photo} other {# photos}}"
 }

@@ -15,8 +15,6 @@ public class PostViewModel{
 	public int totalTopLevelComments;
 	private boolean loadedRepliesCountKnown;
 	private int loadedRepliesCount;
-	public boolean canComment=true;
-	public boolean canRepost=true;
 	public Repost repost;
 	public int parentAuthorID;
 

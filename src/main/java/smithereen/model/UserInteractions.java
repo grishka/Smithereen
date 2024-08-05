@@ -9,6 +9,8 @@ public class UserInteractions{
 	public int likeCount;
 	public boolean isLiked;
 	public int commentCount;
+	public boolean canComment;
 	public List<Integer> pollChoices;
 	public int repostCount;
+	public boolean canRepost;
 }

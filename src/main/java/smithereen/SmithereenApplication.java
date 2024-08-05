@@ -631,6 +631,10 @@ public class SmithereenApplication{
 				postWithCSRF("/updateDescription", PhotosRoutes::updatePhotoDescription);
 				getLoggedIn("/confirmDelete", PhotosRoutes::confirmDeletePhoto);
 				postWithCSRF("/delete", PhotosRoutes::deletePhoto);
+				get("/like", PhotosRoutes::like);
+				getWithCSRF("/unlike", PhotosRoutes::unlike);
+				get("/likes", PhotosRoutes::likeList);
+				get("/likePopover", PhotosRoutes::likePopover);
 			});
 		});
 
@@ -686,6 +690,7 @@ public class SmithereenApplication{
 				getLoggedIn("", BookmarksRoutes::users);
 				getLoggedIn("/groups", BookmarksRoutes::groups);
 				getLoggedIn("/posts", BookmarksRoutes::posts);
+				getLoggedIn("/photos", BookmarksRoutes::photos);
 			});
 			getLoggedIn("/albums", PhotosRoutes::myAlbums);
 			getLoggedIn("/albums/create", PhotosRoutes::createAlbumForm);

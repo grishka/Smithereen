@@ -1,7 +1,9 @@
 package smithereen.controllers;
 
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -20,6 +22,7 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.notifications.Notification;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.model.photos.Photo;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
@@ -32,14 +35,14 @@ public class UserInteractionsController{
 		this.context=context;
 	}
 
-	public PaginatedList<User> getLikesForObject(Post object, User self, int offset, int count){
+	public PaginatedList<User> getLikesForObject(LikeableContentObject object, User self, int offset, int count){
 		try{
-			if(object.isMastodonStyleRepost()){
-				object=context.getWallController().getPostOrThrow(object.repostOf);
-			}
-			UserInteractions interactions=PostStorage.getPostInteractions(Collections.singletonList(object.id), 0).get(object.id);
-			List<User> users=UserStorage.getByIdAsList(LikeStorage.getPostLikes(object.id, self!=null ? self.id : 0, offset, count));
-			return new PaginatedList<>(users, interactions.likeCount, offset, count);
+			if(!(object instanceof OwnedContentObject owned))
+				throw new IllegalArgumentException();
+
+			PaginatedList<Integer> likeIDs=LikeStorage.getLikes(owned.getObjectID(), object.getLikeObjectType(), self!=null ? self.id : 0, offset, count);
+			List<User> users=UserStorage.getByIdAsList(likeIDs.list);
+			return new PaginatedList<>(likeIDs, users);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -111,6 +114,39 @@ public class UserInteractionsController{
 			}
 			Map<Integer, Post> posts=PostStorage.getPostsByID(ids.list);
 			return new PaginatedList<>(ids, ids.list.stream().map(posts::get).filter(Objects::nonNull).toList());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public <T extends LikeableContentObject> Map<Long, UserInteractions> getUserInteractions(List<T> objects, User self){
+		if(objects.isEmpty())
+			return Map.of();
+
+		HashMap<Long, UserInteractions> interactions=new HashMap<>();
+		LikeableContentObject first=objects.getFirst();
+		if(first instanceof Post)
+			throw new UnsupportedOperationException();
+
+		for(T obj:objects){
+			OwnedContentObject owned=(OwnedContentObject) obj;
+			interactions.put(owned.getObjectID(), new UserInteractions());
+		}
+
+		try{
+			LikeStorage.fillLikesInInteractions(interactions, first.getLikeObjectType(), self!=null ? self.id : 0);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+
+		// TODO comments
+
+		return interactions;
+	}
+
+	public PaginatedList<Long> getLikedObjects(User self, Like.ObjectType type, int offset, int count){
+		try{
+			return LikeStorage.getLikedObjectIDs(self.id, type, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

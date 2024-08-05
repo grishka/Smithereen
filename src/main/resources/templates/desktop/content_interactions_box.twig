@@ -1,11 +1,10 @@
-{# @pebvariable name="interactions" type="Map<Integer, smithereen.model.UserInteractions>" #}
-{# @pebvariable name="post" type="smithereen.model.Post" #}
-<div class="secondaryTabBar" id="interactionsTabs{{ post.id }}" style="padding: 10px 20px">
-	<a href="/posts/{{ post.id }}/likes" class="{{ tab=='likes' ? "selected" : "" }}">{{ L('liked_by_X_people_short', {'count': interactions[post.getIDForInteractions()].likeCount}) }}</a>
-	<a href="/posts/{{ post.id }}/reposts" class="{{ tab=='reposts' ? "selected" : "" }}">{{ L('shared_by_X_people_short', {'count': interactions[post.getIDForInteractions()].repostCount}) }}</a>
+{# @pebvariable name="interactions" type="smithereen.model.UserInteractions" #}
+<div class="secondaryTabBar" id="interactionsTabs{{ elementID }}" style="padding: 10px 20px">
+	<a href="{{ url }}/likes" class="{{ tab=='likes' ? "selected" : "" }}">{{ L('liked_by_X_people_short', {'count': interactions.likeCount}) }}</a>
+	{% if interactions.repostCount>0 %}<a href="{{ url }}/reposts" class="{{ tab=='reposts' ? "selected" : "" }}">{{ L('shared_by_X_people_short', {'count': interactions.repostCount}) }}</a>{% endif %}
 	<span class="loader" style="display: none"></span>
 </div>
-<div class="tabbedContent" id="interactionsContent{{ post.id }}">
+<div class="tabbedContent" id="interactionsContent{{ elementID }}">
 	<div style="{{ tab=='likes' ? '' : 'display:none' }}" class="userGridW">
 	{% block likes %}
 		{% if tab=='likes' %}

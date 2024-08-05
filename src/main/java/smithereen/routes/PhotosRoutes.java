@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.activitypub.objects.activities.Like;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -29,6 +30,7 @@ import smithereen.model.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.UserInteractions;
 import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.PhotoAttachment;
@@ -52,6 +54,10 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.*;
 
 public class PhotosRoutes{
+	private static Photo getPhotoForRequest(Request req){
+		return context(req).getPhotosController().getPhotoIgnoringPrivacy(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO));
+	}
+
 	public static Object myAlbums(Request req, Response resp, Account self, ApplicationContext ctx){
 		return photoAlbums(req, resp, self.user, self, ctx);
 	}
@@ -262,7 +268,7 @@ public class PhotosRoutes{
 	}
 
 	public static Object deletePhoto(Request req, Response resp, Account self, ApplicationContext ctx){
-		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO));
+		Photo photo=getPhotoForRequest(req);
 		ctx.getPhotosController().deletePhoto(self.user, photo);
 		if(isAjax(req)){
 			String from=req.queryParams("from");
@@ -284,10 +290,10 @@ public class PhotosRoutes{
 					.with("createdAt", createdAt);
 			html=model.renderToString();
 		}
-		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer());
+		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer(), null);
 	}
 
-	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users){
+	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users, Map<Long, UserInteractions> interactions){
 		String html;
 		User author=users.get(photo.authorID);
 		if(isMobile(req)){
@@ -297,12 +303,21 @@ public class PhotosRoutes{
 			model.with("description", photo.description)
 					.with("author", author)
 					.with("album", album)
-					.with("createdAt", photo.createdAt);
+					.with("createdAt", photo.createdAt)
+					.with("interactions", interactions!=null ? interactions.get(photo.id) : null)
+					.with("photo", photo);
 			html=model.renderToString();
+		}
+		PhotoViewerPhotoInfo.Interactions pvInteractions;
+		UserInteractions ui=interactions!=null ? interactions.get(photo.id) : null;
+		if(ui!=null){
+			pvInteractions=new PhotoViewerPhotoInfo.Interactions(ui.likeCount, ui.isLiked);
+		}else{
+			pvInteractions=null;
 		}
 		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
 				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.title,
-				html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), photo.image.getURLsForPhotoViewer());
+				html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), photo.image.getURLsForPhotoViewer(), pvInteractions);
 	}
 
 	private static PaginatedList<PhotoViewerPhotoInfo> makePhotoInfoForAttachHostObject(Request req, AttachmentHostContentObject obj, User author, Instant createdAt){
@@ -353,7 +368,8 @@ public class PhotosRoutes{
 				total=_photos.total;
 				title=album.title;
 				Map<Integer, User> users=ctx.getUsersController().getUsers(_photos.list.stream().map(ph->ph.authorID).collect(Collectors.toSet()));
-				yield _photos.list.stream().map(ph->makePhotoInfoForPhoto(req, ph, album, users)).toList();
+				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(_photos.list, self);
+				yield _photos.list.stream().map(ph->makePhotoInfoForPhoto(req, ph, album, users, interactions)).toList();
 			}
 			case "friendsFeedGrouped" -> {
 				if(self==null)
@@ -371,10 +387,11 @@ public class PhotosRoutes{
 				Map<Long, Photo> _photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs);
 				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(_photos.values().stream().map(p->p.albumID).collect(Collectors.toSet()));
 				Map<Integer, User> users=ctx.getUsersController().getUsers(_photos.values().stream().map(ph->ph.authorID).collect(Collectors.toSet()));
+				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(_photos.values().stream().toList(), self);
 				yield photoIDs.stream()
 						.map(pid->{
 							Photo p=_photos.get(pid);
-							return makePhotoInfoForPhoto(req, p, albums.get(p.albumID), users);
+							return makePhotoInfoForPhoto(req, p, albums.get(p.albumID), users, interactions);
 						})
 						.toList();
 			}
@@ -391,9 +408,35 @@ public class PhotosRoutes{
 				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(e.objectID);
 				PhotoAlbum album=ctx.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID);
 				Map<Integer, User> users=ctx.getUsersController().getUsers(Set.of(photo.authorID));
+				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(List.of(photo), self);
 				total=1;
 				title=null;
-				yield List.of(makePhotoInfoForPhoto(req, photo, album, users));
+				yield List.of(makePhotoInfoForPhoto(req, photo, album, users, interactions));
+			}
+			case "single" -> {
+				long id=XTEA.deobfuscateObjectID(decodeLong(listParts[1]), ObfuscatedObjectIDType.PHOTO);
+				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
+				PhotoAlbum album=ctx.getPhotosController().getAlbum(photo.albumID, self);
+				Map<Integer, User> users=ctx.getUsersController().getUsers(Set.of(photo.authorID));
+				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(List.of(photo), self);
+				total=1;
+				title=null;
+				yield List.of(makePhotoInfoForPhoto(req, photo, album, users, interactions));
+			}
+			case "liked" -> {
+				PaginatedList<Long> photoIDs=ctx.getUserInteractionsController().getLikedObjects(self, Like.ObjectType.PHOTO, offset(req), 100);
+				Map<Long, Photo> photoObjects=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs.list);
+				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(photoObjects.values().stream().map(p->p.albumID).collect(Collectors.toSet()));
+				Map<Integer, User> users=ctx.getUsersController().getUsers(photoObjects.values().stream().map(ph->ph.authorID).collect(Collectors.toSet()));
+				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(photoObjects.values().stream().toList(), self);
+				total=photoIDs.total;
+				title=lang(req).get("bookmarks_title");
+				yield photoIDs.list.stream()
+						.map(pid->{
+							Photo p=photoObjects.get(pid);
+							return makePhotoInfoForPhoto(req, p, albums.get(p.albumID), users, interactions);
+						})
+						.toList();
 			}
 			default -> throw new BadRequestException();
 		};
@@ -441,5 +484,21 @@ public class PhotosRoutes{
 		r.put("total", info.total);
 		r.put("photos", info.list);
 		return gson.toJson(r);
+	}
+
+	public static Object like(Request req, Response resp){
+		return UserInteractionsRoutes.like(req, resp, getPhotoForRequest(req));
+	}
+
+	public static Object unlike(Request req, Response resp, Account self, ApplicationContext ctx){
+		return UserInteractionsRoutes.setLiked(req, resp, self, ctx, getPhotoForRequest(req), false);
+	}
+
+	public static Object likePopover(Request req, Response resp){
+		return UserInteractionsRoutes.likePopover(req, resp, getPhotoForRequest(req));
+	}
+
+	public static Object likeList(Request req, Response resp){
+		return UserInteractionsRoutes.likeList(req, resp, getPhotoForRequest(req));
 	}
 }

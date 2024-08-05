@@ -26,7 +26,7 @@
 	{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.post.id}", 'first': loop.first, 'topLevel': post} %}
 	{% endfor -%}
 </div>
-{% if currentUser is not null and post.canComment %}
+{% if currentUser is not null and interactions.canComment %}
 {% include "wall_post_form" with {'id': "commentReplyPost#{post.post.id}", 'replyTo': post.post, 'hidden': true} %}
 {% include "wall_post_form" with {'id': "commentPost#{post.post.id}", 'replyTo': post.post} %}
 {% endif %}

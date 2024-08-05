@@ -1514,6 +1514,9 @@ select, .comboBoxW input{
 .postActions{
 	float: right;
 	margin-left: 5px;
+}
+
+.contentActions{
 	.icon{
 		display: inline-block;
 		width: 10px;
@@ -1543,7 +1546,7 @@ select, .comboBoxW input{
 	.like.liked .icon, .like.liked .counter{
 		opacity: 1;
 	}
-	a.action, a.action:link, a.action:visited{
+	.action{
 		padding: 4px 5px;
 		border-radius: 2px;
 		background-color: transparent;
@@ -1559,7 +1562,7 @@ select, .comboBoxW input{
 	}
 }
 
-.comment .postActions a.action:hover{
+.comment .postActions .action:hover{
 	background: none;
 }
 
@@ -3884,6 +3887,20 @@ label.largeAccented{
 	.icon{
 		background-position: 0 -18px;
 		float: right;
+	}
+}
+
+.pvLike .like .icon{
+	margin-left: 5px;
+	top: 3px;
+}
+
+.pvLike .action{
+	padding: 0;
+	border-radius: 0;
+	&:hover{
+		background: none;
+		text-decoration: underline;
 	}
 }
 

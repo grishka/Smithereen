@@ -7,6 +7,9 @@ class MobilePhotoViewer extends BaseLayer{
 	private subtitle:HTMLElement;
 	private bottomBar:HTMLElement;
 	private description:HTMLElement;
+	private interactionBar:HTMLElement;
+	private likeBtn:HTMLAnchorElement;
+	private likeCount:HTMLElement;
 
 	private currentIndex:number;
 	private listID:string;
@@ -44,7 +47,14 @@ class MobilePhotoViewer extends BaseLayer{
 						])
 					]),
 					this.bottomBar=ce("div", {className: "pvBottom"}, [
-						this.description=ce("div", {className: "description"})
+						this.description=ce("div", {className: "description"}),
+						this.interactionBar=ce("div", {className: "pvActions"}, [
+							this.likeBtn=ce("a", {className: "action like", onclick: ()=>{return likeOnClick(this.likeBtn)}}, [
+								ce("span", {className: "wideOnly"}, [lang("like")]),
+								ce("span", {className: "icon"}),
+								this.likeCount=ce("span", {className: "counter"})
+							])
+						])
 					])
 				])
 			])
@@ -146,11 +156,32 @@ class MobilePhotoViewer extends BaseLayer{
 
 	private updateBottomPart(){
 		var ph=this.photos[this.currentIndex];
-		if(!ph.html || !ph.html.length){
+		if((!ph.html || !ph.html.length) && !ph.interactions){
 			this.bottomBar.hide();
 		}else{
 			this.bottomBar.show();
 			this.description.innerHTML=ph.html;
+			if(ph.interactions){
+				this.interactionBar.show();
+				this.likeBtn.href=`/photos/${ph.id}/${ph.interactions.isLiked ? 'un' : ''}like?csrf=${userConfig.csrf}`;
+				this.likeBtn.id="likeButtonPhoto"+ph.id;
+				this.likeBtn.dataset.objType="photo";
+				this.likeBtn.dataset.objId=ph.id;
+				if(ph.interactions.isLiked)
+					this.likeBtn.classList.add("liked");
+				else
+					this.likeBtn.classList.remove("liked");
+
+				this.likeCount.id="likeCounterPhoto"+ph.id;
+				if(ph.interactions.likes){
+					this.likeCount.show();
+					this.likeCount.innerText=formatNumber(ph.interactions.likes);
+				}else{
+					this.likeCount.hide();
+				}
+			}else{
+				this.interactionBar.hide();
+			}
 		}
 	}
 

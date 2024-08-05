@@ -8,5 +8,8 @@
   "bookmarks_people_empty": "Люди, которых вы добавите в закладки, появятся здесь.",
   "bookmarks_communities_empty": "Группы и встречи, которые вы добавите в закладки, появятся здесь.",
   "bookmarks_posts_empty": "Записи, которым вы поставите \"Мне нравится\", появятся здесь.",
-  "bookmarks_X_liked_posts": "Вы оценили {count, plural, one {# запись} few {# записи} other {# записей}}"
+  "bookmarks_X_liked_posts": "Вы оценили {count, plural, one {# запись} few {# записи} other {# записей}}",
+  "bookmarks_photos": "Фотографии",
+  "bookmarks_photos_empty": "Фотографии, которым вы поставите \"Мне нравится\", появятся здесь.",
+  "bookmarks_X_liked_photos": "Вы оценили {count, plural, one {# фотографию} few {# фотографии} other {# фотографий}}"
 }

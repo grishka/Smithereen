@@ -36,6 +36,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
@@ -60,13 +61,15 @@ public class PrivacyController{
 				if(post.getReplyLevel()==0){
 					enforceUserPrivacy(self, context.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_OTHERS_POSTS);
 				}else{
-					Post top=context.getWallController().getPostOrThrow(post.replyKey.get(0));
+					Post top=context.getWallController().getPostOrThrow(post.replyKey.getFirst());
 					if(top.ownerID!=top.authorID){
 						enforceUserPrivacy(self, context.getUsersController().getUserOrThrow(top.ownerID), UserPrivacySettingKey.WALL_OTHERS_POSTS);
 					}
 				}
 			}
 			enforcePostPrivacy(self, post);
+		}else if(object instanceof Photo photo){
+			context.getPhotosController().getAlbum(photo.albumID, self); // This also checks privacy
 		}
 	}
 

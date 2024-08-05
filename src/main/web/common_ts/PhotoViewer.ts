@@ -15,6 +15,12 @@ interface PhotoViewerPhoto{
 	html:string; // bottom part of the layer on desktop, description on mobile
 	actions:string[];
 	urls:PhotoViewerSizedImageURLs[];
+	interactions:PhotoViewerPhotoInteractions;
+}
+
+interface PhotoViewerPhotoInteractions{
+	likes:number;
+	isLiked:number;
 }
 
 interface PhotoViewerInfoAjaxResponse{

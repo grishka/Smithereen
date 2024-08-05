@@ -2043,6 +2043,10 @@ input.searchField{
 		display: flex;
 		scroll-snap-type: x mandatory;
 		scroll-snap-stop: always;
+		scrollbar-width: none;
+		&::-webkit-scrollbar{
+			display: none;
+		}
 	}
 	.photoW{
 		width: 100vw;
@@ -2111,17 +2115,73 @@ input.searchField{
 		pointer-events: auto;
 	}
 	.pvBottom{
-		padding: 32px 16px 16px;
+		padding-top: 32px;
 		background: linear-gradient(#00000000, #000000a0);
 		position: absolute;
 		bottom: 0;
 		left: 0;
 		width: 100%;
+		.description{
+			padding: 0 16px 16px;
+		}
 		p:first-child{
 			margin-top: 0;
 		}
 		p:last-child{
 			margin-bottom: 0;
+		}
+	}
+	.pvActions{
+		display: flex;
+		margin: 0 12px;
+		border-top: solid 1px #ffffff44;
+		pointer-events: auto;
+		transition: filter 0.3s ease;
+		.action{
+			flex: none;
+			height: 42px;
+			line-height: 42px;
+			padding: 0 12px;
+			min-width: 56px;
+			text-align: center;
+			color: #fff;
+			.wideOnly{
+				margin-right: 8px;
+			}
+		}
+		.spacer{
+			flex-grow: 1;
+		}
+		.icon{
+			display: inline-block;
+			vertical-align: middle;
+			opacity: .5;
+			background: svg-load('img/like_mobile.svg', fill: #fff) no-repeat;
+			width: 16px;
+			height: 16px;
+			transition: opacity 0.3s ease;
+		}
+		.counter{
+			margin-left: 8px;
+			opacity: .75;
+			transition: color 0.3s ease;
+		}
+		.like.liked{
+			filter: drop-shadow(0 0 8px $headerBorderBottomDark) drop-shadow(0 0 8px $headerBorderBottomDark) drop-shadow(0 0 8px $headerBorderBottomDark);
+			.counter{
+				opacity: 1;
+				color: $likeIconColor;
+			}
+			.icon{
+				opacity: 1;
+				background: svg-load('img/like_mobile.svg', fill: $likeIconColor) no-repeat;
+			}
+		}
+		.comment .icon{
+			background-position: 0 -32px;
+		}
+		.like{
+			margin-left: -12px;
 		}
 	}
 }
