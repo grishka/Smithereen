@@ -2163,12 +2163,14 @@ input.searchField{
 		}
 		.counter{
 			margin-left: 8px;
+		}
+		.counter, .wideOnly{
 			opacity: .75;
 			transition: color 0.3s ease;
 		}
 		.like.liked{
 			filter: drop-shadow(0 0 8px $headerBorderBottomDark) drop-shadow(0 0 8px $headerBorderBottomDark) drop-shadow(0 0 8px $headerBorderBottomDark);
-			.counter{
+			.counter, .wideOnly{
 				opacity: 1;
 				color: $likeIconColor;
 			}
