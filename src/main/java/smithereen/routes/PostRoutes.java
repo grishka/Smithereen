@@ -136,9 +136,8 @@ public class PostRoutes{
 						.setInputValue("postFormText_"+formID, "").setContent("postFormAttachments_"+formID, "")
 						.showSnackbar(lang(req).get(repost.getReplyLevel()>0 ? "repost_comment_done" : "repost_post_done"));
 			}
-			HashMap<Integer, UserInteractions> interactions=new HashMap<>();
-			interactions.put(post.id, new UserInteractions());
 			PostViewModel pvm=new PostViewModel(post);
+			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(List.of(pvm), self.user);
 			if(inReplyTo!=null)
 				pvm.parentAuthorID=inReplyTo.authorID;
 			ctx.getWallController().populateReposts(self.user, List.of(pvm), 2);
