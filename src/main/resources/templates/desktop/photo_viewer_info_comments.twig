@@ -19,6 +19,9 @@
 		{% if album is not null %}<div class="grayText marginAfter">{{ L('photo_album_label') }}:<br/><a href="{{ album.url }}">{{ album.title }}</a></div>{% endif %}
 		<div class="grayText">{{ L('photo_added_by') }}:<br/><a href="{{ author.profileURL }}">{{ author | name('full') }}</a></div>
 		<ul class="actionList">
+			{% if allowedActions contains "SET_AS_COVER" %}
+			<li><a href="{{ photo.url }}/setAsAlbumCover?csrf={{ csrf }}" data-ajax data-ajax-show="photoSetCoverLoader{{ photo.idString }}" data-ajax-hide="photoSetCoverText{{ photo.idString }}"><span id="photoSetCoverText{{ photo.idString }}">{{ L('set_photo_as_album_cover') }}</span> <span class="inlineLoader" id="photoSetCoverLoader{{ photo.idString }}" style="display: none"></span></a></li>
+			{% endif %}
 			{% if allowedActions contains "DELETE" %}
     		<li><a href="{{ photo.url }}/confirmDelete" data-confirm-message="{{ L('delete_photo_confirm') }}" data-confirm-title="{{ L('delete_photo') }}" data-confirm-action="{{ photo.url }}/delete?from=viewer">{{ L('delete') }}</a></li>
 			{% endif %}

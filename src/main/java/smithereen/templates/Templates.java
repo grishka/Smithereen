@@ -22,6 +22,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -137,7 +138,10 @@ public class Templates{
 			jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 		}
 		if(req.attribute("mobile")!=null){
-			for(String key: List.of("search", "qsearch_hint", "more_actions", "photo_open_original", "like", "add_comment", "object_X_of_Y", "delete", "delete_photo", "delete_photo_confirm")){
+			for(String key:List.of("search", "qsearch_hint", "more_actions", "photo_open_original", "like", "add_comment",
+					"object_X_of_Y", "delete", "delete_photo", "delete_photo_confirm", "set_photo_as_album_cover")){
+				if(k!=null && k.contains(key))
+					continue;
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
 		}

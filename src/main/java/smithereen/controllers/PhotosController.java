@@ -415,4 +415,31 @@ public class PhotosController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public void setPhotoAsAlbumCover(User self, PhotoAlbum album, Photo photo){
+		if(photo.albumID!=album.id)
+			throw new UserErrorException("Photo is not in this album");
+		enforceAlbumManagementPermission(self, album);
+		try{
+			PhotoStorage.setAlbumCover(album.id, photo.id);
+			if(!album.flags.contains(PhotoAlbum.Flag.COVER_SET_EXPLICITLY)){
+				album.flags.add(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
+				PhotoStorage.updateAlbumFlags(album.id, album.flags);
+			}
+			synchronized(albumCacheLock){
+				List<PhotoAlbum> albums=albumListCache.get(photo.ownerID);
+				if(albums!=null){
+					for(PhotoAlbum a:albums){
+						if(a.id==photo.albumID){
+							a.coverID=photo.id;
+							a.flags.add(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
+							break;
+						}
+					}
+				}
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

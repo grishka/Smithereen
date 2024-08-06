@@ -635,6 +635,7 @@ public class SmithereenApplication{
 				getWithCSRF("/unlike", PhotosRoutes::unlike);
 				get("/likes", PhotosRoutes::likeList);
 				get("/likePopover", PhotosRoutes::likePopover);
+				getWithCSRF("/setAsAlbumCover", PhotosRoutes::setPhotoAsAlbumCover);
 			});
 		});
 

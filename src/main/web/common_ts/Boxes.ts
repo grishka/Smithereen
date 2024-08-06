@@ -198,6 +198,9 @@ class LayerManager{
 		]);
 		document.body.appendChild(snackbar);
 		this.updateTopOffset(snackbar);
+		if(this.boxLoader){
+			this.boxLoader.hideAnimated();
+		}
 		setTimeout(()=>{
 			snackbar.hideAnimated({keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: 500, easing: "ease"}}, ()=>{
 				snackbar.remove();

@@ -313,6 +313,9 @@ public class PhotosRoutes{
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.DELETE);
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.EDIT_DESCRIPTION);
 		}
+		if(ctx.getPhotosController().canManageAlbum(self, album)){
+			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.SET_AS_COVER);
+		}
 		if(isMobile(req)){
 			html=StringUtils.isNotEmpty(photo.description) ? TextProcessor.postprocessPostHTMLForDisplay(photo.description, false, false) : "";
 			if(ui!=null){
@@ -522,5 +525,16 @@ public class PhotosRoutes{
 
 	public static Object likeList(Request req, Response resp){
 		return UserInteractionsRoutes.likeList(req, resp, getPhotoForRequest(req));
+	}
+
+	public static Object setPhotoAsAlbumCover(Request req, Response resp, Account self, ApplicationContext ctx){
+		Photo photo=getPhotoForRequest(req);
+		PhotoAlbum album=ctx.getPhotosController().getAlbum(photo.albumID, self.user);
+		ctx.getPhotosController().setPhotoAsAlbumCover(self.user, album, photo);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).showSnackbar(lang(req).get("photo_was_set_as_album_cover"));
+		}
+		resp.redirect(back(req));
+		return "";
 	}
 }
