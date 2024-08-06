@@ -1,4 +1,4 @@
-class DesktopPhotoViewer extends BaseLayer{
+class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	private contentWrap:HTMLElement;
 	private titleEl:HTMLElement;
 	private imgWrap:HTMLElement;

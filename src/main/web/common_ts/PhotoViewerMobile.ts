@@ -1,4 +1,4 @@
-class MobilePhotoViewer extends BaseLayer{
+class MobilePhotoViewer extends BaseMediaViewerLayer{
 	private contentWrap:HTMLElement;
 	private pager:HTMLElement;
 	private uiOverlay:HTMLElement;

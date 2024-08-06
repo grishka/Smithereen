@@ -1,10 +1,20 @@
 class LayerManager{
 	private static instance:LayerManager;
+	private static mediaInstance:LayerManager;
+	private static pageScrollLockCount:number=0;
+
 	static getInstance():LayerManager{
 		if(!LayerManager.instance){
-			LayerManager.instance=new LayerManager();
+			LayerManager.instance=new LayerManager(100, true);
 		}
 		return LayerManager.instance;
+	}
+
+	static getMediaInstance():LayerManager{
+		if(!LayerManager.mediaInstance){
+			LayerManager.mediaInstance=new LayerManager(90, false);
+		}
+		return LayerManager.mediaInstance;
 	}
 
 	private scrim:HTMLDivElement;
@@ -19,16 +29,21 @@ class LayerManager{
 	private animatingHide:boolean=false;
 	private hideAnimCanceled:boolean=false;
 
-	private constructor(){
-		this.scrim=ce("div", {id: "layerScrim"});
+	private constructor(baseZIndex:number, isDefaultInstance:boolean){
+		this.scrim=ce("div", {className: "layerScrim"});
+		this.scrim.style.zIndex=baseZIndex.toString();
 		this.scrim.hide();
 		document.body.appendChild(this.scrim);
 
-		this.boxLoader=ce("div", {id: "boxLoader"}, [ce("div")]);
-		this.boxLoader.hide();
-		document.body.appendChild(this.boxLoader);
+		if(isDefaultInstance){
+			this.boxLoader=ce("div", {id: "boxLoader"}, [ce("div")]);
+			this.boxLoader.style.zIndex=baseZIndex.toString();
+			this.boxLoader.hide();
+			document.body.appendChild(this.boxLoader);
+		}
 
-		var container:HTMLDivElement=ce("div", {id: "layerContainer"});
+		var container:HTMLDivElement=ce("div", {className: "layerContainer"});
+		container.style.zIndex=(baseZIndex+1).toString();
 		container.hide();
 		this.layerContainer=container;
 		document.body.appendChild(container);
@@ -67,7 +82,8 @@ class LayerManager{
 		}
 		this.stack.push(layer);
 		layer.onShown();
-		this.boxLoader.hideAnimated();
+		if(this.boxLoader)
+			this.boxLoader.hideAnimated();
 		layer.updateTopOffset();
 	}
 
@@ -141,15 +157,19 @@ class LayerManager{
 	}
 
 	private lockPageScroll(){
-		document.body.style.top = `-${window.scrollY}px`;
-		document.body.style.position="fixed";
+		if(LayerManager.pageScrollLockCount++==0){
+			document.body.style.top = `-${window.scrollY}px`;
+			document.body.style.position="fixed";
+		}
 	}
 
 	private unlockPageScroll(){
-		var scrollY = document.body.style.top;
-		document.body.style.position = '';
-		document.body.style.top = '';
-		window.scrollTo(0, parseInt(scrollY || '0') * -1);
+		if(--LayerManager.pageScrollLockCount==0){
+			var scrollY = document.body.style.top;
+			document.body.style.position = '';
+			document.body.style.top = '';
+			window.scrollTo(0, parseInt(scrollY || '0') * -1);
+		}
 	}
 
 	public showBoxLoader(){
@@ -204,11 +224,11 @@ abstract class BaseLayer{
 			var contentView:HTMLElement=this.onCreateContentView();
 			this.content.appendChild(contentView);
 		}
-		LayerManager.getInstance().show(this);
+		this.getLayerManager().show(this);
 	}
 
 	public dismiss():void{
-		LayerManager.getInstance().dismiss(this);
+		this.getLayerManager().dismiss(this);
 	}
 
 	public getContent():HTMLElement{
@@ -220,7 +240,7 @@ abstract class BaseLayer{
 	}
 
 	public updateTopOffset(){
-		LayerManager.getInstance().updateTopOffset(this.content);
+		this.getLayerManager().updateTopOffset(this.content);
 	}
 
 	public onShown():void{}
@@ -237,6 +257,15 @@ abstract class BaseLayer{
 	}
 	public getCustomAppearAnimation():AnimationDescription{
 		return {keyframes: [{opacity: 0}, {opacity: 1}], options: {duration: 200, easing: "ease"}};
+	}
+	public getLayerManager():LayerManager{
+		return LayerManager.getInstance();
+	}
+}
+
+abstract class BaseMediaViewerLayer extends BaseLayer{
+	public getLayerManager(){
+		return LayerManager.getMediaInstance();
 	}
 }
 
