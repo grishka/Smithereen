@@ -188,6 +188,11 @@ public class S3MediaFileStorageDriver extends MediaFileStorageDriver{
 		return new ImgProxy.UrlBuilder(getObjectURL(id).toString());
 	}
 
+	@Override
+	public URI getFilePublicURL(MediaFileID id){
+		return getObjectURL(id);
+	}
+
 	private URI getObjectURL(MediaFileID id){
 		UriBuilder url=new UriBuilder()
 				.scheme(config.protocol())

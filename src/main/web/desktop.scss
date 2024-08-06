@@ -3847,6 +3847,9 @@ label.largeAccented{
 			border-left: solid 1px $wallCommentSeparator;
 			margin-left: 10px;
 			padding: 2px 0 2px 20px;
+			.actionList{
+				margin: 10px 0 0 -6px;
+			}
 		}
 		.description{
 			p:first-child{

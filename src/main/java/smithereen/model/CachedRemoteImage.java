@@ -11,14 +11,16 @@ public class CachedRemoteImage implements SizedImage{
 	private Dimensions dimensions;
 	private String cacheKey;
 	private float[] cropRegion;
+	private URI originalURI;
 
-	public CachedRemoteImage(MediaCache.PhotoItem item){
+	public CachedRemoteImage(MediaCache.PhotoItem item, URI originalURI){
 		dimensions=new Dimensions(item.width, item.height);
 		cacheKey=item.key;
+		this.originalURI=originalURI;
 	}
 
-	public CachedRemoteImage(MediaCache.PhotoItem item, float[] cropRegion){
-		this(item);
+	public CachedRemoteImage(MediaCache.PhotoItem item, float[] cropRegion, URI originalURI){
+		this(item, originalURI);
 		setCropRegion(cropRegion);
 	}
 
@@ -45,5 +47,10 @@ public class CachedRemoteImage implements SizedImage{
 	@Override
 	public Dimensions getOriginalDimensions(){
 		return dimensions;
+	}
+
+	@Override
+	public URI getOriginalURI(){
+		return originalURI;
 	}
 }

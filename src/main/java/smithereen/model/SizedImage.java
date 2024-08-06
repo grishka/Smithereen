@@ -14,6 +14,7 @@ import spark.utils.StringUtils;
 public interface SizedImage{
 	URI getUriForSizeAndFormat(Type size, Format format);
 	Dimensions getOriginalDimensions();
+	URI getOriginalURI();
 	default Dimensions getDimensionsForSize(Type size){
 		return size.getResizedDimensions(getOriginalDimensions());
 	}

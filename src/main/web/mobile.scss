@@ -2107,12 +2107,17 @@ input.searchField{
 			opacity: 0.8;
 		}
 	}
-	.close{
+	.close, .options{
 		width: 56px;
 		height: 56px;
 		flex: none;
-		background: svg-load('img/material/ic_close.svg', fill: #FFF) no-repeat center;
 		pointer-events: auto;
+	}
+	.close{
+		background: svg-load('img/material/ic_close.svg', fill: #FFF) no-repeat center;
+	}
+	.options{
+		background: svg-load('img/material/ic_more_vert.svg', fill: #FFF) no-repeat center;
 	}
 	.pvBottom{
 		padding-top: 32px;

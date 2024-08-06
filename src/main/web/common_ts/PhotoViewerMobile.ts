@@ -31,7 +31,7 @@ class MobilePhotoViewer extends BaseLayer{
 		this.listID=info.list;
 		this.listURL=listURL;
 
-		var initialPage, closeBtn;
+		var initialPage, closeBtn, optionsBtn;
 		this.contentWrap=ce("div", {className: "photoViewer"}, [
 			this.pager=ce("div", {className: "pager"}, [
 				initialPage=ce("div", {className: "photoW"})
@@ -44,7 +44,8 @@ class MobilePhotoViewer extends BaseLayer{
 							this.titleLoader=ce("div", {className: "loader white"}),
 							this.title=ce("div", {className: "title ellipsize"}),
 							this.subtitle=ce("div", {className: "subtitle ellipsize"})
-						])
+						]),
+						optionsBtn=ce("a", {className: "options", title: lang("more_actions")})
 					]),
 					this.bottomBar=ce("div", {className: "pvBottom"}, [
 						this.description=ce("div", {className: "description"}),
@@ -60,6 +61,7 @@ class MobilePhotoViewer extends BaseLayer{
 			])
 		]);
 		closeBtn.addEventListener("click", (ev)=>this.dismiss(), false);
+		optionsBtn.addEventListener("click", (ev)=>this.showOptions(), false);
 		this.title.hide();
 		this.subtitle.hide();
 		this.pager.addEventListener("scroll", this.onPagerScroll.bind(this), false);
@@ -254,6 +256,13 @@ class MobilePhotoViewer extends BaseLayer{
 			this.uiOverlay.showAnimated();
 		else
 			this.uiOverlay.hideAnimated();
+	}
+
+	private showOptions(){
+		var ph=this.photos[this.currentIndex];
+		var options:any[]=[];
+		options.push({type: "link", href: ph.originalURL, target: "_blank", label: lang("photo_open_original")});
+		new MobileOptionsBox(options).show();
 	}
 }
 

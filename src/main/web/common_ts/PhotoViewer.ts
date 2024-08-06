@@ -16,6 +16,7 @@ interface PhotoViewerPhoto{
 	actions:string[];
 	urls:PhotoViewerSizedImageURLs[];
 	interactions:PhotoViewerPhotoInteractions;
+	originalURL:string;
 }
 
 interface PhotoViewerPhotoInteractions{

@@ -281,23 +281,36 @@ public class PhotosRoutes{
 
 	private static PhotoViewerPhotoInfo makePhotoInfoForAttachment(Request req, PhotoAttachment pa, User author, Instant createdAt){
 		String html;
+		String origURL;
 		if(isMobile(req)){
 			html=StringUtils.isNotEmpty(pa.description) ? TextProcessor.escapeHTML(pa.description) : "";
+			origURL=pa.image.getOriginalURI().toString();
 		}else{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_info_comments", req);
 			model.with("description", pa.description)
 					.with("author", author)
-					.with("createdAt", createdAt);
+					.with("createdAt", createdAt)
+					.with("originalImageURL", pa.image.getOriginalURI());
 			html=model.renderToString();
+			origURL=null;
 		}
-		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer(), null);
+		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer(), null, origURL);
 	}
 
 	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users, Map<Long, UserInteractions> interactions){
 		String html;
 		User author=users.get(photo.authorID);
+		PhotoViewerPhotoInfo.Interactions pvInteractions;
+		UserInteractions ui=interactions!=null ? interactions.get(photo.id) : null;
+		String origURL;
 		if(isMobile(req)){
 			html=StringUtils.isNotEmpty(photo.description) ? TextProcessor.postprocessPostHTMLForDisplay(photo.description, false, false) : "";
+			if(ui!=null){
+				pvInteractions=new PhotoViewerPhotoInfo.Interactions(ui.likeCount, ui.isLiked);
+			}else{
+				pvInteractions=null;
+			}
+			origURL=photo.image.getOriginalURI().toString();
 		}else{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_info_comments", req);
 			model.with("description", photo.description)
@@ -305,19 +318,15 @@ public class PhotosRoutes{
 					.with("album", album)
 					.with("createdAt", photo.createdAt)
 					.with("interactions", interactions!=null ? interactions.get(photo.id) : null)
-					.with("photo", photo);
+					.with("photo", photo)
+					.with("originalImageURL", photo.image.getOriginalURI());
 			html=model.renderToString();
-		}
-		PhotoViewerPhotoInfo.Interactions pvInteractions;
-		UserInteractions ui=interactions!=null ? interactions.get(photo.id) : null;
-		if(ui!=null){
-			pvInteractions=new PhotoViewerPhotoInfo.Interactions(ui.likeCount, ui.isLiked);
-		}else{
 			pvInteractions=null;
+			origURL=null;
 		}
 		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
 				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.title,
-				html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), photo.image.getURLsForPhotoViewer(), pvInteractions);
+				html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), photo.image.getURLsForPhotoViewer(), pvInteractions, origURL);
 	}
 
 	private static PaginatedList<PhotoViewerPhotoInfo> makePhotoInfoForAttachHostObject(Request req, AttachmentHostContentObject obj, User author, Instant createdAt){

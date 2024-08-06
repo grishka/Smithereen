@@ -18,5 +18,8 @@
 	<div class="right">
 		{% if album is not null %}<div class="grayText marginAfter">{{ L('photo_album_label') }}:<br/><a href="{{ album.url }}">{{ album.title }}</a></div>{% endif %}
 		<div class="grayText">{{ L('photo_added_by') }}:<br/><a href="{{ author.profileURL }}">{{ author | name('full') }}</a></div>
+		<ul class="actionList">
+			<li><a href="{{ originalImageURL }}" target="_blank">{{ L('photo_open_original') }}</a></li>
+		</ul>
 	</div>
 </div>

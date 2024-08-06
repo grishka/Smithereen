@@ -258,7 +258,7 @@ public class SystemRoutes{
 				if(mime.startsWith("image/")){
 					if(existing!=null){
 						LOG.debug("downloadExternalMedia: found existing {}", uri);
-						resp.redirect(new CachedRemoteImage((MediaCache.PhotoItem) existing, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
+						resp.redirect(new CachedRemoteImage((MediaCache.PhotoItem) existing, cropRegion, uri).getUriForSizeAndFormat(sizeType, format).toString());
 						return "";
 					}
 					try{
@@ -289,7 +289,7 @@ public class SystemRoutes{
 							resp.redirect(uri.toString());
 						}else{
 							LOG.debug("downloadExternalMedia: download finished {}", uri);
-							resp.redirect(new CachedRemoteImage(item, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
+							resp.redirect(new CachedRemoteImage(item, cropRegion, uri).getUriForSizeAndFormat(sizeType, format).toString());
 						}
 						return "";
 					}catch(IOException x){

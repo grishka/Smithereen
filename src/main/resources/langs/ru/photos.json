@@ -37,5 +37,6 @@
   "photo_added_at": "Добавлена {date}",
   "photo_album_label": "Альбом",
   "delete_photo": "Удалить фотографию",
-  "delete_photo_confirm": "Вы действительно хотите удалить эту фотографию?"
+  "delete_photo_confirm": "Вы действительно хотите удалить эту фотографию?",
+  "photo_open_original": "Открыть оригинал"
 }

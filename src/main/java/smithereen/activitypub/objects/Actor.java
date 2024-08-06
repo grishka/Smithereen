@@ -106,13 +106,13 @@ public abstract class Actor extends ActivityPubObject{
 		try{
 			MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.get(icon.url);
 			if(item!=null){
-				return new CachedRemoteImage(item, getAvatarCropRegion());
+				return new CachedRemoteImage(item, getAvatarCropRegion(), icon.url);
 			}else{
 				SizedImage.Dimensions size=SizedImage.Dimensions.UNKNOWN;
 				if(icon.width>0 && icon.height>0){
 					size=new SizedImage.Dimensions(icon.width, icon.height);
 				}
-				return new NonCachedRemoteImage(getAvatarArgs(), size);
+				return new NonCachedRemoteImage(getAvatarArgs(), size, icon.url);
 			}
 		}catch(SQLException e){
 			e.printStackTrace();

@@ -318,9 +318,9 @@ public class PhotoStorage{
 			for(Photo p:remotePhotos){
 				MediaCache.Item item=items.get(p.remoteSrc);
 				if(item instanceof MediaCache.PhotoItem pi){
-					p.image=new CachedRemoteImage(pi);
+					p.image=new CachedRemoteImage(pi, p.remoteSrc);
 				}else{
-					p.image=new NonCachedRemoteImage(new NonCachedRemoteImage.AlbumPhotoArgs(p), new SizedImage.Dimensions(p.metadata.width, p.metadata.height));
+					p.image=new NonCachedRemoteImage(new NonCachedRemoteImage.AlbumPhotoArgs(p), new SizedImage.Dimensions(p.metadata.width, p.metadata.height), p.remoteSrc);
 				}
 			}
 		}

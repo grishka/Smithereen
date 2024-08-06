@@ -11,10 +11,12 @@ public class NonCachedRemoteImage implements SizedImage{
 
 	private final Args args;
 	private final Dimensions origDimensions;
+	private final URI originalURI;
 
-	public NonCachedRemoteImage(Args args, Dimensions origDimensions){
+	public NonCachedRemoteImage(Args args, Dimensions origDimensions, URI originalURL){
 		this.args=args;
 		this.origDimensions=origDimensions;
+		this.originalURI=originalURL;
 	}
 
 	@Override
@@ -28,6 +30,11 @@ public class NonCachedRemoteImage implements SizedImage{
 	@Override
 	public Dimensions getOriginalDimensions(){
 		return origDimensions;
+	}
+
+	@Override
+	public URI getOriginalURI(){
+		return originalURI;
 	}
 
 	public static abstract class Args{

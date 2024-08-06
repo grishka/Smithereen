@@ -80,6 +80,11 @@ public class LocalImage extends Image implements SizedImage{
 		return size;
 	}
 
+	@Override
+	public URI getOriginalURI(){
+		return MediaFileStorageDriver.getInstance().getFilePublicURL(fileRecord.id());
+	}
+
 	public void fillIn(MediaFileRecord mfr){
 		fileRecord=mfr;
 		width=mfr.metadata().width();

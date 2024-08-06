@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
@@ -42,6 +43,11 @@ public class LocalMediaFileStorageDriver extends MediaFileStorageDriver{
 	public ImgProxy.UrlBuilder getImgProxyURL(MediaFileID id){
 		String url="local://"+Config.imgproxyLocalUploads+"/"+getFilePath(id);
 		return new ImgProxy.UrlBuilder(url);
+	}
+
+	@Override
+	public URI getFilePublicURL(MediaFileID id){
+		return Config.localURI(Config.uploadUrlPath+"/"+getFilePath(id));
 	}
 
 	private String getFilePath(MediaFileID id){

@@ -46,7 +46,7 @@ public interface AttachmentHostContentObject{
 						throw new InternalServerErrorException(x);
 					}
 					if(item!=null){
-						att.image=new CachedRemoteImage(item);
+						att.image=new CachedRemoteImage(item, o.url);
 					}else{
 						SizedImage.Dimensions size=SizedImage.Dimensions.UNKNOWN;
 						if(o instanceof Document im){
@@ -54,7 +54,7 @@ public interface AttachmentHostContentObject{
 								size=new SizedImage.Dimensions(im.width, im.height);
 							}
 						}
-						att.image=new NonCachedRemoteImage(getPhotoArgs(i), size);
+						att.image=new NonCachedRemoteImage(getPhotoArgs(i), size, o.url);
 					}
 				}
 				if(o instanceof Document doc){
