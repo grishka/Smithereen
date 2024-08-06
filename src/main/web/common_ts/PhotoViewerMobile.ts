@@ -261,6 +261,9 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 	private showOptions(){
 		var ph=this.photos[this.currentIndex];
 		var options:any[]=[];
+		if(ph.actions.indexOf("DELETE")!=-1){
+			options.push({type: "confirm", label: lang("delete"), title: lang("delete_photo"), msg: lang("delete_photo_confirm"), url: `/photos/${ph.id}/delete`});
+		}
 		options.push({type: "link", href: ph.originalURL, target: "_blank", label: lang("photo_open_original")});
 		new MobileOptionsBox(options).show();
 	}

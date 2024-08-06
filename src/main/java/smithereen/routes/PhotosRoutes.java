@@ -274,6 +274,10 @@ public class PhotosRoutes{
 			String from=req.queryParams("from");
 			if("edit".equals(from)){
 				return new WebDeltaResponse(resp).remove("photoEditRow_"+photo.getIdString());
+			}else if("viewer".equals(from)){
+				return new WebDeltaResponse(resp)
+						.runScript("LayerManager.getMediaInstance().getTopLayer().dismiss();")
+						.remove("photo"+photo.getIdString());
 			}
 		}
 		return ajaxAwareRedirect(req, resp, back(req));
@@ -297,12 +301,18 @@ public class PhotosRoutes{
 		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer(), null, origURL);
 	}
 
-	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users, Map<Long, UserInteractions> interactions){
+	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users, Map<Long, UserInteractions> interactions, User self){
+		ApplicationContext ctx=context(req);
 		String html;
 		User author=users.get(photo.authorID);
 		PhotoViewerPhotoInfo.Interactions pvInteractions;
 		UserInteractions ui=interactions!=null ? interactions.get(photo.id) : null;
 		String origURL;
+		EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions=EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class);
+		if(ctx.getPhotosController().canManagePhoto(self, photo)){
+			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.DELETE);
+			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.EDIT_DESCRIPTION);
+		}
 		if(isMobile(req)){
 			html=StringUtils.isNotEmpty(photo.description) ? TextProcessor.postprocessPostHTMLForDisplay(photo.description, false, false) : "";
 			if(ui!=null){
@@ -319,14 +329,15 @@ public class PhotosRoutes{
 					.with("createdAt", photo.createdAt)
 					.with("interactions", interactions!=null ? interactions.get(photo.id) : null)
 					.with("photo", photo)
-					.with("originalImageURL", photo.image.getOriginalURI());
+					.with("originalImageURL", photo.image.getOriginalURI())
+					.with("allowedActions", allowedActions.stream().map(Object::toString).collect(Collectors.toSet()));
 			html=model.renderToString();
 			pvInteractions=null;
 			origURL=null;
 		}
 		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
 				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.title,
-				html, EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), photo.image.getURLsForPhotoViewer(), pvInteractions, origURL);
+				html, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL);
 	}
 
 	private static PaginatedList<PhotoViewerPhotoInfo> makePhotoInfoForAttachHostObject(Request req, AttachmentHostContentObject obj, User author, Instant createdAt){
@@ -378,7 +389,7 @@ public class PhotosRoutes{
 				title=album.title;
 				Map<Integer, User> users=ctx.getUsersController().getUsers(_photos.list.stream().map(ph->ph.authorID).collect(Collectors.toSet()));
 				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(_photos.list, self);
-				yield _photos.list.stream().map(ph->makePhotoInfoForPhoto(req, ph, album, users, interactions)).toList();
+				yield _photos.list.stream().map(ph->makePhotoInfoForPhoto(req, ph, album, users, interactions, self)).toList();
 			}
 			case "friendsFeedGrouped" -> {
 				if(self==null)
@@ -400,7 +411,7 @@ public class PhotosRoutes{
 				yield photoIDs.stream()
 						.map(pid->{
 							Photo p=_photos.get(pid);
-							return makePhotoInfoForPhoto(req, p, albums.get(p.albumID), users, interactions);
+							return makePhotoInfoForPhoto(req, p, albums.get(p.albumID), users, interactions, self);
 						})
 						.toList();
 			}
@@ -420,7 +431,7 @@ public class PhotosRoutes{
 				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(List.of(photo), self);
 				total=1;
 				title=null;
-				yield List.of(makePhotoInfoForPhoto(req, photo, album, users, interactions));
+				yield List.of(makePhotoInfoForPhoto(req, photo, album, users, interactions, self));
 			}
 			case "single" -> {
 				long id=XTEA.deobfuscateObjectID(decodeLong(listParts[1]), ObfuscatedObjectIDType.PHOTO);
@@ -430,9 +441,11 @@ public class PhotosRoutes{
 				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(List.of(photo), self);
 				total=1;
 				title=null;
-				yield List.of(makePhotoInfoForPhoto(req, photo, album, users, interactions));
+				yield List.of(makePhotoInfoForPhoto(req, photo, album, users, interactions, self));
 			}
 			case "liked" -> {
+				if(self==null)
+					throw new UserActionNotAllowedException();
 				PaginatedList<Long> photoIDs=ctx.getUserInteractionsController().getLikedObjects(self, Like.ObjectType.PHOTO, offset(req), 100);
 				Map<Long, Photo> photoObjects=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs.list);
 				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(photoObjects.values().stream().map(p->p.albumID).collect(Collectors.toSet()));
@@ -443,7 +456,7 @@ public class PhotosRoutes{
 				yield photoIDs.list.stream()
 						.map(pid->{
 							Photo p=photoObjects.get(pid);
-							return makePhotoInfoForPhoto(req, p, albums.get(p.albumID), users, interactions);
+							return makePhotoInfoForPhoto(req, p, albums.get(p.albumID), users, interactions, self);
 						})
 						.toList();
 			}
