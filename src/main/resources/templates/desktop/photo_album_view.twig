@@ -2,11 +2,13 @@
 {% block content %}
 {% include "photos_tabbar" with {'tab': 'album'} %}
 {% if userPermissions.canUploadToPhotoAlbum(album) %}
-<div class="photoGridUpload" id="photoAlbumUpload">
-	<div class="uploadText"><div class="icon"></div><span id="uploadText">{{ L('add_photos_to_album') }}</span></div>
-	<div class="uploadDropZone"><div class="inner" id="uploadDropText">{{ L('drop_files_here') }}</div></div>
+<div id="photoAlbumUploadW">
+	<div class="photoGridUpload" id="photoAlbumUpload">
+		<div class="uploadText"><div class="icon"></div><span id="uploadText">{{ L('add_photos_to_album') }}</span></div>
+		<div class="uploadDropZone"><div class="inner" id="uploadDropText">{{ L('drop_files_here') }}</div></div>
+	</div>
 </div>
-<div id="uploadResult"></div>
+<div id="uploadResult" style="display: none"><div class="loader" id="uploadResultEmptyLoader"></div></div>
 {% script %}
 new PhotoAlbumUploader("{{ album.url }}/upload");
 {% endscript %}

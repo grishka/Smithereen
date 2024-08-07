@@ -7,6 +7,11 @@ class PhotoAlbumUploader{
 	private progressEl:HTMLElement;
 	private progressBar:ProgressBar;
 	private progressText:HTMLElement;
+	private uploadText:HTMLElement;
+	private uploadTextInner:HTMLElement;
+	private uploadOuterEl:HTMLElement;
+	private resultLoaderEl:HTMLElement;
+	private uploadSummaryText:HTMLElement;
 
 	private initialQueueSize=0;
 	private uploadQueue:File[]=[];
@@ -21,8 +26,12 @@ class PhotoAlbumUploader{
 		this.input.hide();
 		this.uploadEl.appendChild(this.input);
 		this.resultEl=ge("uploadResult");
+		this.uploadTextInner=ge("uploadText");
+		this.uploadText=this.uploadTextInner.parentElement;
+		this.uploadOuterEl=ge("photoAlbumUploadW");
+		this.resultLoaderEl=ge("uploadResultEmptyLoader");
 
-		this.uploadEl.addEventListener("click", (ev)=>this.input.click(), false);
+		this.uploadText.addEventListener("click", (ev)=>this.input.click(), false);
 		var dragCount=0;
 		this.uploadEl.addEventListener("drop", (ev)=>{
 			dragCount=0;
@@ -48,12 +57,24 @@ class PhotoAlbumUploader{
 
 		var progressBarEl;
 		this.progressEl=ce("div", {className: "photoUploadProgressW"}, [
-			this.progressText=ce("div"),
-			progressBarEl=ce("div", {className: "progressBar"})
+			progressBarEl=ce("div", {className: "progressBar medium"}),
+			this.progressText=ce("div")
 		]);
 		this.progressBar=new ProgressBar(progressBarEl);
-		this.resultEl.appendChild(this.progressEl);
+		this.uploadEl.appendChild(this.progressEl);
 		this.progressEl.hide();
+
+		this.uploadSummaryText=ce("div", {className: "photoUploadSummary"});
+		this.uploadSummaryText.hide();
+		this.uploadEl.appendChild(this.uploadSummaryText);
+
+		new IntersectionObserver((entries, observer)=>{
+			if(entries[0].isIntersecting){
+				this.uploadOuterEl.classList.remove("isFloating");
+			}else{
+				this.uploadOuterEl.classList.add("isFloating");
+			}
+		}, {rootMargin: "-1px 0px 0px 0px", threshold: [1]}).observe(this.uploadOuterEl);
 	}
 
 	private handleFiles(files:FileList){
@@ -67,10 +88,12 @@ class PhotoAlbumUploader{
 		if(validFileCount==0)
 			return;
 		ge("uploadHide").hide();
-		this.progressEl.show();
+		this.uploadOuterEl.classList.add("sticky");
+		this.resultEl.show();
+		this.progressEl.showAnimated();
+		this.uploadText.hideAnimated();
 		this.initialQueueSize+=validFileCount;
-		this.progressText.innerText=lang("uploading_photo_X_of_Y", {current: this.initialQueueSize-this.uploadQueue.length+1, total: this.initialQueueSize});
-		ge("uploadText").innerText=lang("add_more_photos");
+		this.progressText.innerHTML=lang("uploading_photo_X_of_Y", {current: this.initialQueueSize-this.uploadQueue.length+1, total: this.initialQueueSize});
 		this.maybeUploadNextFile();
 	}
 
@@ -86,18 +109,27 @@ class PhotoAlbumUploader{
 		formData.append("file", file, file.name);
 		xhr.open("POST", url);
 		xhr.onload=(ev)=>{
+			if(this.resultLoaderEl.parentElement)
+				this.resultLoaderEl.remove();
 			if(Math.floor(xhr.status/100)==2){
 				var resp:any=JSON.parse(xhr.response);
-				var textarea, descriptionHeading;
-				var fileEl=ce("div", {className: "photoEditRow"}, [
+				var textarea, descriptionHeading, deleteLink;
+				var fileEl=ce("div", {className: "photoEditRow", id: "photoEditRow_"+resp.id}, [
 					ce("div", {className: "thumb", innerHTML: resp.html}),
 					ce("div", {className: "descriptionW"}, [
 						descriptionHeading=ce("h4", {innerText: lang("photo_description"), className: "marginAfter"}),
-						textarea=ce("textarea")
+						textarea=ce("textarea"),
+						ce("div", {className: "marginBefore"}, [
+							deleteLink=ce("a", {className: "flR", href: `/photos/${resp.id}/confirmDelete`}, [lang("delete")]),
+							ce("div", {className: "clear"})
+						])
 					])
 				]);
 				this.resultEl.appendChild(fileEl);
 				autoSizeTextArea(textarea);
+				deleteLink.dataset.confirmMessage=lang("delete_photo_confirm");
+				deleteLink.dataset.confirmTitle=lang("delete_photo");
+				deleteLink.dataset.confirmAction=`/photos/${resp.id}/delete?from=edit`;
 				PhotoAlbumUploader.setupPhotoEditRow(textarea, descriptionHeading, resp.id);
 			}else{
 				var fileEl=ce("div", {className: "photoUploadError"}, [
@@ -111,6 +143,8 @@ class PhotoAlbumUploader{
 			this.maybeUploadNextFile();
 		};
 		xhr.onerror=(ev)=>{
+			if(this.resultLoaderEl.parentElement)
+				this.resultLoaderEl.remove();
 			var fileEl=ce("div", {className: "photoUploadError"}, [
 				ce("h4", {innerText: file.name}),
 				ce("div", {className: "marginBefore", innerText: lang("err_network")})
@@ -126,7 +160,7 @@ class PhotoAlbumUploader{
 		};
 		xhr.send(formData);
 		this.progressBar.setProgress(this.uploadedFileCount/this.initialQueueSize);
-		this.progressText.innerText=lang("uploading_photo_X_of_Y", {current: this.initialQueueSize-this.uploadQueue.length, total: this.initialQueueSize});
+		this.progressText.innerHTML=lang("uploading_photo_X_of_Y", {current: this.initialQueueSize-this.uploadQueue.length, total: this.initialQueueSize});
 	}
 
 	private maybeUploadNextFile(){
@@ -135,9 +169,17 @@ class PhotoAlbumUploader{
 		if(this.uploadQueue.length){
 			this.uploadNextFile();
 		}else{
+			this.uploadSummaryText.innerHTML="<span>"+lang("you_uploaded_X_photos", {count: this.uploadedFileCount})+"</span>";
+			this.progressEl.hideAnimated();
+			this.uploadSummaryText.showAnimated();
+			setTimeout(()=>{
+				this.uploadSummaryText.hideAnimated();
+				this.uploadTextInner.innerText=lang("add_more_photos");
+				this.uploadText.showAnimated();
+			}, 2000);
+
 			this.initialQueueSize=0;
 			this.uploadedFileCount=0;
-			this.progressEl.hide();
 		}
 	}
 
@@ -200,7 +242,7 @@ function initMobileAlbumUploader(uploadURL:string){
 	function uploadNextFile(){
 		if(!uploadQueue.length){
 			progressBarEl.hide();
-			progressText.innerText=lang("you_uploaded_X_photos", {count: succeededFileCount});
+			progressText.innerHTML=lang("you_uploaded_X_photos", {count: succeededFileCount});
 			box.setCloseable(true);
 			box.setOnDismissListener(()=>location.reload());
 			box.setButtons([lang("close")], (i)=>box.dismiss());
@@ -240,7 +282,7 @@ function initMobileAlbumUploader(uploadURL:string){
 		};
 		xhr.send(formData);
 		progressBar.setProgress(uploadedFileCount/initialQueueSize);
-		progressText.innerText=lang("uploading_photo_X_of_Y", {current: initialQueueSize-uploadQueue.length, total: initialQueueSize});
+		progressText.innerHTML=lang("uploading_photo_X_of_Y", {current: initialQueueSize-uploadQueue.length, total: initialQueueSize});
 	}
 
 	var btn=ge("addPhotosBtn");

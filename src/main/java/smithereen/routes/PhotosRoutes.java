@@ -171,7 +171,8 @@ public class PhotosRoutes{
 			}
 		}
 
-		jsLangKey(req, "drop_files_here", "release_files_to_upload", "uploading_photo_X_of_Y", "add_more_photos", "photo_description", "photo_description_saved", "uploading_photos", "you_uploaded_X_photos");
+		jsLangKey(req, "drop_files_here", "release_files_to_upload", "uploading_photo_X_of_Y", "add_more_photos", "photo_description", "photo_description_saved", "uploading_photos", "you_uploaded_X_photos",
+				"delete", "delete_photo", "delete_photo_confirm");
 		return model;
 	}
 
