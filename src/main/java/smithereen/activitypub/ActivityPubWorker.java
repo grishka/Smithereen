@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -70,6 +71,7 @@ import smithereen.model.PollOption;
 import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
+import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.notifications.NotificationUtils;
@@ -190,7 +192,10 @@ public class ActivityPubWorker{
 			Set<URI> inboxes=getInboxesForPost(post);
 			LOG.trace("Inboxes: {}", inboxes);
 			for(URI inbox:inboxes){
-				executor.submit(new SendOneActivityRunnable(activity, inbox, actor));
+				SendOneActivityRunnable r=new SendOneActivityRunnable(activity, inbox, actor);
+				if(post.getReplyLevel()==0 && post.authorID!=post.ownerID)
+					r.requireFeature(Server.Feature.WALL_POSTS);
+				executor.submit(r);
 			}
 		}catch(SQLException x){
 			LOG.error("Exception while sending activity for post {}", post.getActivityPubID(), x);
@@ -240,13 +245,6 @@ public class ActivityPubWorker{
 				add.object=new LinkOrObject(post.getActivityPubID());
 				add.actor=new LinkOrObject(oaa.owner().activityPubID);
 				add.to=List.of(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(oaa.owner().getFollowersURL()), new LinkOrObject(oaa.author().activityPubID));
-//				if(!post.mentionedUsers.isEmpty()){
-//					ArrayList<LinkOrObject> cc=new ArrayList<>();
-//					for(User user : post.mentionedUsers){
-//						cc.add(new LinkOrObject(user.activityPubID));
-//					}
-//					add.cc=cc;
-//				}
 				add.cc=note.cc;
 				ActivityPubCollection target=new ActivityPubCollection(false);
 				target.activityPubID=oaa.owner().getWallURL();
@@ -261,19 +259,13 @@ public class ActivityPubWorker{
 					inboxes.addAll(GroupStorage.getGroupMemberInboxes(group.id));
 				}
 
-//				for(User user:context.getUsersController().getUsers(post.mentionedUserIDs).values()){
-//					if(user instanceof ForeignUser){
-//						URI inbox=actorInbox((ForeignUser) user);
-//						inboxes.add(inbox);
-//					}
-//				}
 				if(oaa.author() instanceof ForeignUser fu){
 					URI inbox=actorInbox(fu);
 					inboxes.add(inbox);
 				}
 
 				for(URI inbox:inboxes){
-					executor.submit(new SendOneActivityRunnable(add, inbox, oaa.owner()));
+					executor.submit(new SendOneActivityRunnable(add, inbox, oaa.owner()).requireFeature(Server.Feature.WALL_POSTS));
 				}
 			}catch(SQLException x){
 				LOG.error("Exception while sending wall post {}", post.getActivityPubID(), x);
@@ -859,6 +851,7 @@ public class ActivityPubWorker{
 		private URI destination;
 		private Actor actor;
 		private int retryAttempt;
+		private EnumSet<Server.Feature> requiredServerFeatures;
 
 		public SendOneActivityRunnable(Activity activity, URI destination, Actor actor){
 			this.activity=activity;
@@ -871,10 +864,26 @@ public class ActivityPubWorker{
 			this.retryAttempt=retryAttempt;
 		}
 
+		public SendOneActivityRunnable requireFeature(Server.Feature feature){
+			if(requiredServerFeatures==null)
+				requiredServerFeatures=EnumSet.of(feature);
+			else
+				requiredServerFeatures.add(feature);
+			return this;
+		}
+
+		public SendOneActivityRunnable requireFeatures(Server.Feature... features){
+			if(requiredServerFeatures==null)
+				requiredServerFeatures=EnumSet.copyOf(Arrays.asList(features));
+			else
+				requiredServerFeatures.addAll(Arrays.asList(features));
+			return this;
+		}
+
 		@Override
 		public void run(){
 			try{
-				ActivityPub.postActivity(destination, activity, actor, context, retryAttempt>0);
+				ActivityPub.postActivity(destination, activity, actor, context, retryAttempt>0, requiredServerFeatures);
 			}catch(Exception x){
 				LOG.error("Exception while sending activity", x);
 				if(!(x instanceof FederationException)){
@@ -891,6 +900,7 @@ public class ActivityPubWorker{
 		private List<Activity> activities;
 		private URI destination;
 		private User user;
+		private EnumSet<Server.Feature> requiredServerFeatures;
 
 		public SendActivitySequenceRunnable(List<Activity> activities, URI destination, User user){
 			this.activities=activities;
@@ -898,11 +908,27 @@ public class ActivityPubWorker{
 			this.user=user;
 		}
 
+		public SendActivitySequenceRunnable requireFeature(Server.Feature feature){
+			if(requiredServerFeatures==null)
+				requiredServerFeatures=EnumSet.of(feature);
+			else
+				requiredServerFeatures.add(feature);
+			return this;
+		}
+
+		public SendActivitySequenceRunnable requireFeatures(Server.Feature... features){
+			if(requiredServerFeatures==null)
+				requiredServerFeatures=EnumSet.copyOf(Arrays.asList(features));
+			else
+				requiredServerFeatures.addAll(Arrays.asList(features));
+			return this;
+		}
+
 		@Override
 		public void run(){
 			for(Activity activity:activities){
 				try{
-					ActivityPub.postActivity(destination, activity, user, context, false);
+					ActivityPub.postActivity(destination, activity, user, context, false, requiredServerFeatures);
 				}catch(Exception x){
 					LOG.error("Exception while sending activity", x);
 					if(!(x instanceof FederationException)){
@@ -930,7 +956,7 @@ public class ActivityPubWorker{
 		@Override
 		public void run(){
 			try{
-				ActivityPub.postActivity(destination, activity, user, context);
+				ActivityPub.forwardActivity(destination, activity, user, context);
 			}catch(Exception x){
 				LOG.error("Exception while forwarding activity", x);
 			}

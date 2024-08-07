@@ -689,6 +689,7 @@ CREATE TABLE `servers` (
   `is_up` tinyint unsigned NOT NULL DEFAULT '1',
   `is_restricted` tinyint unsigned NOT NULL DEFAULT '0',
   `restriction` json DEFAULT NULL,
+  `features` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `host` (`host`),
   KEY `is_up` (`is_up`),
@@ -870,4 +871,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-07-28 22:18:42
+-- Dump completed on 2024-08-07  5:19:28

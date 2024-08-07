@@ -137,15 +137,20 @@ public class PostRoutes{
 						.showSnackbar(lang(req).get(repost.getReplyLevel()>0 ? "repost_comment_done" : "repost_post_done"));
 			}
 			PostViewModel pvm=new PostViewModel(post);
-			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(List.of(pvm), self.user);
+			ArrayList<PostViewModel> needInteractions=new ArrayList<>();
+			needInteractions.add(pvm);
 			if(inReplyTo!=null)
 				pvm.parentAuthorID=inReplyTo.authorID;
 			ctx.getWallController().populateReposts(self.user, List.of(pvm), 2);
-			RenderedTemplateResponse model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post", req).with("post", pvm).with("postInteractions", interactions);
+			RenderedTemplateResponse model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post", req).with("post", pvm);
 			if(replyTo!=0){
+				PostViewModel topLevel=new PostViewModel(context(req).getWallController().getPostOrThrow(post.replyKey.getFirst()));
 				model.with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
-				model.with("topLevel", new PostViewModel(context(req).getWallController().getPostOrThrow(post.replyKey.getFirst())));
+				model.with("topLevel", topLevel);
+				needInteractions.add(topLevel);
 			}
+			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(needInteractions, self.user);
+			model.with("postInteractions", interactions);
 			Map<Integer, User> users=new HashMap<>();
 			users.put(self.user.id, self.user);
 			if(inReplyTo!=null && inReplyTo.authorID!=self.user.id){
@@ -265,13 +270,19 @@ public class PostRoutes{
 
 			PostViewModel postVM=new PostViewModel(post);
 			ctx.getWallController().populateReposts(self.user, List.of(postVM), 2);
-			RenderedTemplateResponse model=new RenderedTemplateResponse(post.getReplyLevel()>0 ? "wall_reply" : "wall_post", req).with("post", postVM).with("postInteractions", ctx.getWallController().getUserInteractions(List.of(postVM), self.user));
+			RenderedTemplateResponse model=new RenderedTemplateResponse(post.getReplyLevel()>0 ? "wall_reply" : "wall_post", req).with("post", postVM);
 			model.with("users", Map.of(self.user.id, self.user));
+			ArrayList<PostViewModel> needInteractions=new ArrayList<>();
+			needInteractions.add(postVM);
 			if(post.getReplyLevel()>0){
 				try{
-					model.with("topLevel", new PostViewModel(ctx.getWallController().getPostOrThrow(post.replyKey.getFirst())));
+					PostViewModel topLevel=new PostViewModel(ctx.getWallController().getPostOrThrow(post.replyKey.getFirst()));
+					model.with("topLevel", topLevel);
+					needInteractions.add(topLevel);
 				}catch(ObjectNotFoundException ignore){}
 			}
+			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(needInteractions, self.user);
+			model.with("postInteractions", interactions);
 			return new WebDeltaResponse(resp).setContent("postInner"+post.id, model.renderBlock("postInner"))
 					.show("postInner"+post.id)
 					.show("postFloatingActions"+id)

@@ -39,7 +39,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=51;
+	public static final int SCHEMA_VERSION=52;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -772,6 +772,7 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("ALTER TABLE notifications CHANGE object_id `object_id` bigint unsigned DEFAULT NULL, CHANGE related_object_id `related_object_id` bigint unsigned DEFAULT NULL");
 				conn.createStatement().execute("ALTER TABLE likes CHANGE object_id `object_id` bigint unsigned NOT NULL");
 			}
+			case 52 -> conn.createStatement().execute("ALTER TABLE servers ADD features bigint unsigned NOT NULL DEFAULT 0");
 		}
 	}
 

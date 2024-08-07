@@ -34,6 +34,7 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
+import smithereen.model.Server;
 import smithereen.storage.FederationStorage;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
@@ -312,6 +313,7 @@ public class ObjectLinkResolver{
 					serviceActorCache.put(fu.activityPubID, fu);
 				}else{
 					UserStorage.putOrUpdateForeignUser(fu);
+					maybeUpdateServerFeaturesFromActor(fu);
 					if(fu.relationshipPartnerActivityPubID!=null && fu.relationshipPartnerID==0){
 						try{
 							User partner=resolve(fu.relationshipPartnerActivityPubID, User.class, true, true, false);
@@ -323,11 +325,22 @@ public class ObjectLinkResolver{
 			}else if(o instanceof ForeignGroup fg){
 				fg.storeDependencies(context);
 				GroupStorage.putOrUpdateForeignGroup(fg);
+				maybeUpdateServerFeaturesFromActor(fg);
 			}else if(o instanceof Post p){
 				PostStorage.putForeignWallPost(p);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	private void maybeUpdateServerFeaturesFromActor(Actor actor){
+		EnumSet<Server.Feature> features=EnumSet.noneOf(Server.Feature.class);
+		if(actor.hasWall()){
+			features.add(Server.Feature.WALL_POSTS);
+		}
+		if(!features.isEmpty()){
+			context.getModerationController().addServerFeatures(actor.domain, features);
 		}
 	}
 

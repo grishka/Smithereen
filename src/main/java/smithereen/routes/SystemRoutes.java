@@ -418,7 +418,7 @@ public class SystemRoutes{
 			case ForeignUser user -> {
 				if(user.isServiceActor)
 					yield new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
-				UserStorage.putOrUpdateForeignUser(user);
+				ctx.getObjectLinkResolver().storeOrUpdateRemoteObject(user);
 				yield new JsonObjectBuilder().add("success", user.getProfileURL()).build();
 			}
 			case ForeignGroup group -> {

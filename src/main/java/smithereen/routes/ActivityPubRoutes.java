@@ -505,7 +505,7 @@ public class ActivityPubRoutes{
 		}
 		if(remoteObj instanceof ForeignUser foreignUser){
 			try{
-				UserStorage.putOrUpdateForeignUser(foreignUser);
+				ctx.getObjectLinkResolver().storeOrUpdateRemoteObject(foreignUser);
 				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, foreignUser.id);
 				if(status==FriendshipStatus.REQUEST_SENT){
 					return Utils.wrapError(req, resp, "err_friend_req_already_sent");
@@ -559,11 +559,9 @@ public class ActivityPubRoutes{
 
 	public static Object remoteFollow(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String username=req.params(":username");
-		User _user=UserStorage.getByUsername(username);
-		if(!(_user instanceof ForeignUser)){
+		if(!(ctx.getUsersController().getUserByUsernameOrThrow(username) instanceof ForeignUser user)){
 			return Utils.wrapError(req, resp, "err_user_not_found");
 		}
-		ForeignUser user=(ForeignUser) _user;
 		FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 		if(status==FriendshipStatus.REQUEST_SENT){
 			return Utils.wrapError(req, resp, "err_friend_req_already_sent");
@@ -572,38 +570,14 @@ public class ActivityPubRoutes{
 		}else if(status==FriendshipStatus.FRIENDS){
 			return Utils.wrapError(req, resp, "err_already_friends");
 		}
-		try{
-			String msg=req.queryParams("message");
-			if(user.supportsFriendRequests()){
-				UserStorage.putFriendRequest(self.user.id, user.id, msg, false);
-			}else{
-				UserStorage.followUser(self.user.id, user.id, false, false);
-			}
-			Follow follow=new Follow();
-			follow.actor=new LinkOrObject(self.user.activityPubID);
-			follow.object=new LinkOrObject(user.activityPubID);
-			follow.activityPubID=new URI(self.user.activityPubID.getScheme(), self.user.activityPubID.getSchemeSpecificPart(), "follow"+user.id);
-			ActivityPub.postActivity(user.inbox, follow, self.user, ctx, false);
-			if(user.supportsFriendRequests()){
-				Offer offer=new Offer();
-				offer.actor=new LinkOrObject(self.user.activityPubID);
-				offer.activityPubID=new URI(self.user.activityPubID.getScheme(), self.user.activityPubID.getSchemeSpecificPart(), "friend_request"+user.id);
-				if(StringUtils.isNotEmpty(msg)){
-					offer.content=msg;
-				}
-				Follow revFollow=new Follow();
-				revFollow.actor=new LinkOrObject(user.activityPubID);
-				revFollow.object=new LinkOrObject(self.user.activityPubID);
-				offer.object=new LinkOrObject(revFollow);
-				ActivityPub.postActivity(user.inbox, offer, self.user, ctx, false);
-			}
-			return "Success";
-		}catch(URISyntaxException ignore){
-		}catch(IOException x){
-			x.printStackTrace();
-			return x.toString();
+		String msg=req.queryParams("message");
+		if(user.supportsFriendRequests()){
+			ctx.getFriendsController().sendFriendRequest(self.user, user, msg);
+		}else{
+			ctx.getFriendsController().followUser(self.user, user);
 		}
-		return "";
+		resp.redirect(user.getProfileURL());
+		return "Success";
 	}
 
 	public static Object nodeInfo(Request req, Response resp) throws SQLException{

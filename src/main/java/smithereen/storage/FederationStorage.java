@@ -5,8 +5,10 @@ import org.jetbrains.annotations.Nullable;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.EnumSet;
 import java.util.List;
 
+import smithereen.Utils;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.PaginatedList;
 import smithereen.model.Server;
@@ -87,6 +89,14 @@ public class FederationStorage{
 				.value("last_error_day", lastErrorDay)
 				.value("error_day_count", errorDayCount)
 				.value("is_up", isUp)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static void setServerFeatures(int id, EnumSet<Server.Feature> features) throws SQLException{
+		new SQLQueryBuilder()
+				.update("servers")
+				.value("features", Utils.serializeEnumSet(features))
 				.where("id=?", id)
 				.executeNoResult();
 	}

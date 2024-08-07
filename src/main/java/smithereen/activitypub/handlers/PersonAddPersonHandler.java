@@ -21,7 +21,7 @@ public class PersonAddPersonHandler extends ActivityTypeHandler<ForeignUser, Add
 		URI target=activity.target.link;
 		if(target.equals(actor.getFriendsURL())){
 			if(object instanceof ForeignUser && object.id==0)
-				UserStorage.putOrUpdateForeignUser((ForeignUser) object);
+				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(object);
 
 			context.appContext.getNewsfeedController().putFriendsFeedEntry(actor, object.id, NewsfeedEntry.Type.ADD_FRIEND);
 

@@ -21,7 +21,7 @@ public class GroupAddPersonHandler extends ActivityTypeHandler<ForeignGroup, Add
 		URI target=activity.target.link;
 		if(target.equals(actor.getMembersCollection()) || target.equals(actor.tentativeMembers)){
 			if(object instanceof ForeignUser && object.id==0)
-				UserStorage.putOrUpdateForeignUser((ForeignUser) object);
+				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(object);
 
 			if(object instanceof ForeignUser foreignUser && foreignUser.getGroupsURL()!=null){
 				BackgroundTaskRunner.getInstance().submit(()->{

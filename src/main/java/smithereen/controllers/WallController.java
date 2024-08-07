@@ -264,7 +264,7 @@ public class WallController{
 
 			// Add{Note} is sent for any wall posts & comments on them, for local wall owners.
 			// Create{Note} is sent for anything else.
-			if((ownerGroupID!=0 || ownerUserID!=userID) && !isTopLevelPostOwn && !(wallOwner instanceof ForeignActor)){
+			if(post.ownerID!=post.authorID && (post.getReplyLevel()==0 || (post.getReplyLevel()>0 && !isTopLevelPostOwn))){
 				context.getActivityPubWorker().sendAddPostToWallActivity(post);
 			}else{
 				context.getActivityPubWorker().sendCreatePostActivity(post);

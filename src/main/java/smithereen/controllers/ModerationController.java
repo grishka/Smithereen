@@ -263,10 +263,24 @@ public class ModerationController{
 				server=FederationStorage.getServerByDomain(domain);
 				if(server==null){
 					int id=FederationStorage.addServer(domain);
-					server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null);
+					server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
 				}
 				serversByDomainCache.put(domain, server);
 				return server;
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+	}
+
+	public void addServerFeatures(String domain, EnumSet<Server.Feature> features){
+		Server server=getOrAddServer(domain);
+		if(server.features().containsAll(features))
+			return;
+		synchronized(serversByDomainCache){
+			server.features().addAll(features);
+			try{
+				FederationStorage.setServerFeatures(server.id(), server.features());
 			}catch(SQLException x){
 				throw new InternalServerErrorException(x);
 			}

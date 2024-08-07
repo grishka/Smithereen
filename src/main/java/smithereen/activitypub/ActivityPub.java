@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -306,13 +307,17 @@ public class ActivityPub{
 		return builder;
 	}
 
-	public static void postActivity(URI inboxUrl, Activity activity, Actor actor, ApplicationContext ctx, boolean isRetry) throws IOException{
+	public static void postActivity(URI inboxUrl, Activity activity, Actor actor, ApplicationContext ctx, boolean isRetry, EnumSet<Server.Feature> requiredServerFeatures) throws IOException{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
 			LOG.debug("Not sending {} activity to server {} because it's down", activity.getType(), server.host());
+			return;
+		}
+		if(requiredServerFeatures!=null && !requiredServerFeatures.isEmpty() && !server.features().containsAll(requiredServerFeatures)){
+			LOG.debug("Not sending {} activity to server {} because its feature set {} does not include required features {}", activity.getType(), server.host(), server.features(), requiredServerFeatures);
 			return;
 		}
 		if(server.restriction()!=null){
@@ -328,7 +333,7 @@ public class ActivityPub{
 		postActivityInternal(inboxUrl, body.toString(), actor, server, ctx, isRetry);
 	}
 
-	public static void postActivity(URI inboxUrl, String activityJson, Actor actor, ApplicationContext ctx) throws IOException{
+	public static void forwardActivity(URI inboxUrl, String activityJson, Actor actor, ApplicationContext ctx) throws IOException{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 

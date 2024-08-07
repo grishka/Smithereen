@@ -86,6 +86,17 @@ public class UsersController{
 		}
 	}
 
+	public User getUserByUsernameOrThrow(String username){
+		try{
+			User user=UserStorage.getByUsername(username);
+			if(user==null)
+				throw new ObjectNotFoundException();
+			return user;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public List<User> getFriendsWithBirthdaysWithinTwoDays(User self, LocalDate date){
 		try{
 			ArrayList<Integer> today=new ArrayList<>(), tomorrow=new ArrayList<>();
