@@ -205,9 +205,7 @@ public class ActivityPubWorker{
 			NoteOrQuestion note=NoteOrQuestion.fromNativePost(post, context);
 			User author=context.getUsersController().getUserOrThrow(post.authorID);
 
-			Create create=new Create();
-			create.object=new LinkOrObject(note);
-			create.actor=new LinkOrObject(author.activityPubID);
+			Create create=new Create().withActorLinkAndObject(author, note);
 			create.to=note.to;
 			create.cc=note.cc;
 			create.published=note.published;
@@ -221,9 +219,7 @@ public class ActivityPubWorker{
 			NoteOrQuestion note=NoteOrQuestion.fromNativePost(post, context);
 			User author=context.getUsersController().getUserOrThrow(post.authorID);
 
-			Update update=new Update();
-			update.object=new LinkOrObject(note);
-			update.actor=new LinkOrObject(author.activityPubID);
+			Update update=new Update().withActorLinkAndObject(author, note);
 			update.to=note.to;
 			update.cc=note.cc;
 			update.published=note.updated;
@@ -238,10 +234,8 @@ public class ActivityPubWorker{
 				NoteOrQuestion note=NoteOrQuestion.fromNativePost(post, context);
 				OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(post);
 
-				Add add=new Add();
+				Add add=new Add().withActorAndObjectLinks(oaa.owner(), note);
 				add.activityPubID=UriBuilder.local().path("posts", String.valueOf(post.id), "activityAdd").build();
-				add.object=new LinkOrObject(post.getActivityPubID());
-				add.actor=new LinkOrObject(oaa.owner().activityPubID);
 				add.to=List.of(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(oaa.owner().getFollowersURL()), new LinkOrObject(oaa.author().activityPubID));
 				add.cc=note.cc;
 				ActivityPubCollection target=new ActivityPubCollection(false);
@@ -274,8 +268,6 @@ public class ActivityPubWorker{
 	public void sendDeletePostActivity(final Post post, final User actualActor){
 		executor.submit(()->{
 			Actor actor;
-			Delete delete=new Delete();
-			delete.object=new LinkOrObject(post.getActivityPubID());
 			if(post.authorID==actualActor.id)
 				actor=actualActor;
 			else if(!post.isGroupOwner() && post.ownerID==actualActor.id)
@@ -292,6 +284,7 @@ public class ActivityPubWorker{
 			}
 
 			NoteOrQuestion note=NoteOrQuestion.fromNativePost(post, context);
+			Delete delete=new Delete().withActorAndObjectLinks(actor, note);
 
 			delete.actor=new LinkOrObject(actor.activityPubID);
 			delete.to=note.to;
@@ -305,110 +298,82 @@ public class ActivityPubWorker{
 	public void sendUnfriendActivity(User self, User target){
 		if(!(target instanceof ForeignUser))
 			return;
-		Undo undo=new Undo();
-		undo.activityPubID=new UriBuilder(self.activityPubID).fragment("unfollowUser"+target.id+"_"+rand()).build();
-		undo.actor=new LinkOrObject(self.activityPubID);
 
-		Follow follow=new Follow();
-		follow.actor=new LinkOrObject(self.activityPubID);
-		follow.object=new LinkOrObject(target.activityPubID);
-		follow.activityPubID=new UriBuilder(self.activityPubID).fragment("followUser"+target.id+"_"+rand()).build();
-		undo.object=new LinkOrObject(follow);
+		Follow follow=new Follow()
+				.withActorAndObjectLinks(self, target)
+				.withActorFragmentID("followUser"+target.id+"_"+rand());
+		Undo undo=new Undo()
+				.withActorLinkAndObject(self, follow)
+				.withActorFragmentID("unfollowUser"+target.id+"_"+rand());
 
 		submitActivity(undo, self, target.inbox);
 	}
 
 	public void sendRemoveFromFriendsCollectionActivity(User self, User exFriend){
-		Remove remove=new Remove();
-		remove.activityPubID=new UriBuilder(self.activityPubID).fragment("unfriendUserCollection"+exFriend.id+"_"+rand()).build();
-		remove.actor=new LinkOrObject(self.activityPubID);
-		remove.object=new LinkOrObject(exFriend.activityPubID);
-		remove.target=new LinkOrObject(self.getFriendsURL());
+		Remove remove=new Remove()
+				.withActorAndObjectLinks(self, exFriend)
+				.withActorFragmentID("unfriendUserCollection"+exFriend.id+"_"+rand())
+				.withTarget(self.getFriendsURL());
 		submitActivityForFollowers(remove, self);
 	}
 
 	public void sendAddToFriendsCollectionActivity(User self, User friend){
-		Add add=new Add();
-		add.activityPubID=new UriBuilder(self.activityPubID).fragment("addFriendUserCollection"+friend.id+"_"+rand()).build();
-		add.actor=new LinkOrObject(self.activityPubID);
-		add.object=new LinkOrObject(friend.activityPubID);
-		add.target=new LinkOrObject(self.getFriendsURL());
+		Add add=new Add()
+				.withActorAndObjectLinks(self, friend)
+				.withActorFragmentID("addFriendUserCollection"+friend.id+"_"+rand())
+				.withTarget(self.getFriendsURL());
 		submitActivityForFollowers(add, self);
 	}
 
 	public void sendAddToGroupsCollectionActivity(User self, Group group, boolean tentative){
-		Add add=new Add();
-		add.activityPubID=new UriBuilder(self.activityPubID).fragment("addGroupCollection"+group.id+"_"+rand()).build();
-		add.actor=new LinkOrObject(self.activityPubID);
-		add.object=new LinkOrObject(group.activityPubID);
-		add.target=new LinkOrObject(self.getGroupsURL());
+		Add add=new Add()
+				.withActorAndObjectLinks(self, group)
+				.withActorFragmentID("addGroupCollection"+group.id+"_"+rand())
+				.withTarget(self.getGroupsURL());
 		add.tentative=tentative;
 		submitActivityForFollowers(add, self);
 	}
 
 	public void sendRemoveFromGroupsCollectionActivity(User self, Group group){
-		Remove remove=new Remove();
-		remove.activityPubID=new UriBuilder(self.activityPubID).fragment("removeGroupCollection"+group.id+"_"+rand()).build();
-		remove.actor=new LinkOrObject(self.activityPubID);
-		remove.object=new LinkOrObject(group.activityPubID);
-		remove.target=new LinkOrObject(self.getGroupsURL());
+		Remove remove=new Remove()
+				.withActorAndObjectLinks(self, group)
+				.withActorFragmentID("removeGroupCollection"+group.id+"_"+rand())
+				.withTarget(self.getGroupsURL());
 		submitActivityForFollowers(remove, self);
 	}
 
 	public void sendFollowUserActivity(User self, ForeignUser target){
-		Follow follow=new Follow();
-		follow.actor=new LinkOrObject(self.activityPubID);
-		follow.object=new LinkOrObject(target.activityPubID);
-		follow.activityPubID=new UriBuilder(self.activityPubID).fragment("followUser"+target.id+"_"+rand()).build();
+		Follow follow=new Follow()
+				.withActorAndObjectLinks(self, target)
+				.withActorFragmentID("followUser"+target.id+"_"+rand());
 		submitActivity(follow, self, target.inbox);
 	}
 
 	public void sendJoinGroupActivity(User self, ForeignGroup target, boolean tentative){
-		Activity follow;
-//		if(target.hasCapability(ForeignGroup.Capability.JOIN_LEAVE_ACTIVITIES))
-			follow=new Join(tentative);
-//		else
-//			follow=new Follow();
-		follow.actor=new LinkOrObject(self.activityPubID);
-		follow.object=new LinkOrObject(target.activityPubID);
-		follow.activityPubID=new UriBuilder(self.activityPubID).fragment("joinGroup"+target.id+"_"+rand()).build();
-		submitActivity(follow, self, target.inbox);
+		Join join=new Join(tentative)
+				.withActorAndObjectLinks(self, target)
+				.withActorFragmentID("joinGroup"+target.id+"_"+rand());
+		submitActivity(join, self, target.inbox);
 	}
 
 	public void sendLeaveGroupActivity(User self, ForeignGroup target){
-		Activity undo;
-//		if(target.hasCapability(ForeignGroup.Capability.JOIN_LEAVE_ACTIVITIES)){
-			undo=new Leave();
-			undo.object=new LinkOrObject(target.activityPubID);
-//		}else{
-//			undo=new Undo();
-//			Follow follow=new Follow();
-//			follow.actor=new LinkOrObject(self.activityPubID);
-//			follow.object=new LinkOrObject(target.activityPubID);
-//			follow.activityPubID=new UriBuilder(self.activityPubID).fragment("joinGroup"+target.id+"_"+rand()).build();
-//			undo.object=new LinkOrObject(follow);
-//		}
-		undo.activityPubID=new UriBuilder(self.activityPubID).fragment("leaveGroup"+target.id+"_"+rand()).build();
-		undo.actor=new LinkOrObject(self.activityPubID);
-		submitActivity(undo, self, target.inbox);
+		Leave leave=new Leave()
+				.withActorAndObjectLinks(self, target)
+				.withActorFragmentID("leaveGroup"+target.id+"_"+rand());
+		submitActivity(leave, self, target.inbox);
 	}
 
 	public void sendFriendRequestActivity(User self, ForeignUser target, String message){
-		Follow follow=new Follow();
-		follow.actor=new LinkOrObject(self.activityPubID);
-		follow.object=new LinkOrObject(target.activityPubID);
-		follow.activityPubID=URI.create(self.activityPubID+"#follow"+target.id+"_"+rand());
+		Follow follow=new Follow()
+				.withActorAndObjectLinks(self, target)
+				.withActorFragmentID("follow"+target.id+"_"+rand());
 		if(target.supportsFriendRequests()){
-			Offer offer=new Offer();
-			offer.actor=new LinkOrObject(self.activityPubID);
-			offer.activityPubID=URI.create(self.activityPubID+"#friend_request"+target.id+"_"+rand());
+			Offer offer=new Offer()
+					.withActorLinkAndObject(self, new Follow().withActorAndObjectLinks(target, self))
+					.withActorFragmentID("friendRequest"+target.id+"_"+rand());
 			if(StringUtils.isNotEmpty(message)){
 				offer.content=message;
 			}
-			Follow revFollow=new Follow();
-			revFollow.actor=new LinkOrObject(target.activityPubID);
-			revFollow.object=new LinkOrObject(self.activityPubID);
-			offer.object=new LinkOrObject(revFollow);
 			executor.submit(new SendActivitySequenceRunnable(this, context, List.of(follow, offer), target.inbox, self));
 		}else{
 			submitActivity(follow, self, target.inbox);
@@ -417,83 +382,64 @@ public class ActivityPubWorker{
 
 	public void sendAcceptFollowActivity(ForeignUser actor, Actor self, Follow follow){
 		self.ensureLocal();
-		Accept accept=new Accept();
-		accept.actor=new LinkOrObject(self.activityPubID);
-		accept.object=new LinkOrObject(follow);
-		accept.activityPubID=UriBuilder.local().rawPath(self.getTypeAndIdForURL()).fragment("acceptFollow"+actor.id).build();
+		Accept accept=new Accept()
+				.withActorLinkAndObject(self, follow)
+				.withActorFragmentID("acceptFollow"+actor.id);
 		submitActivity(accept, self, actor.inbox);
 	}
 
 	public void sendRejectFriendRequestActivity(User self, ForeignUser target){
-		Follow follow=new Follow();
-		follow.actor=new LinkOrObject(self.activityPubID);
-		follow.object=new LinkOrObject(target.activityPubID);
-		Offer offer=new Offer();
-		offer.object=new LinkOrObject(follow);
-		offer.actor=new LinkOrObject(target.activityPubID);
-		Reject reject=new Reject();
-		reject.object=new LinkOrObject(offer);
-		reject.actor=new LinkOrObject(self.activityPubID);
-		reject.activityPubID=URI.create(self.activityPubID+"#rejectFriendReq"+target.id);
+		Reject reject=new Reject()
+				.withActorLinkAndObject(self, new Offer().withActorLinkAndObject(target, new Follow().withActorAndObjectLinks(self, target)))
+				.withActorFragmentID("rejectFriendReq"+target.id);
 		submitActivity(reject, self, target.inbox);
 	}
 
 	public void sendUpdateUserActivity(User user){
-		Update update=new Update();
+		Update update=new Update()
+				.withActorLinkAndObject(user, user)
+				.withActorFragmentID("updateProfile"+System.currentTimeMillis());
 		update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
-		update.activityPubID=URI.create(user.activityPubID+"#updateProfile"+System.currentTimeMillis());
-		update.object=new LinkOrObject(user);
-		update.actor=new LinkOrObject(user.activityPubID);
 		submitActivityForFollowers(update, user);
 	}
 
 	public void sendUpdateGroupActivity(Group group){
-		Update update=new Update();
+		Update update=new Update()
+				.withActorLinkAndObject(group, group)
+				.withActorFragmentID("updateProfile"+System.currentTimeMillis());
 		update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
-		update.activityPubID=URI.create(group.activityPubID+"#updateProfile"+System.currentTimeMillis());
-		update.object=new LinkOrObject(group);
-		update.actor=new LinkOrObject(group.activityPubID);
 		submitActivityForMembers(update, group);
 	}
 
 	public void sendLikeActivity(Post post, User user, int likeID) throws SQLException{
-		Like like=new Like();
+		Like like=new Like().withActorAndObjectLinks(user, post);
 		like.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID);
-		like.actor=new LinkOrObject(user.activityPubID);
-		like.object=new LinkOrObject(post.getActivityPubID());
 		submitActivity(like, user, PostStorage.getInboxesForPostInteractionForwarding(post));
 	}
 
 	public void sendUndoLikeActivity(Post post, User user, int likeID) throws SQLException{
-		Like like=new Like();
+		Like like=new Like().withActorAndObjectLinks(user, post);
 		like.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID);
-		like.actor=new LinkOrObject(user.activityPubID);
-		like.object=new LinkOrObject(post.getActivityPubID());
-		Undo undo=new Undo();
+		Undo undo=new Undo().withActorLinkAndObject(user, like);
 		undo.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID+"/undo");
-		undo.object=new LinkOrObject(like);
-		undo.actor=new LinkOrObject(user.activityPubID);
 		ActivityPubCache.putUndoneLike(likeID, undo);
 		submitActivity(undo, user, PostStorage.getInboxesForPostInteractionForwarding(post));
 	}
 
 	public void sendBlockActivity(Actor self, ForeignUser target){
-		Block block=new Block();
-		block.activityPubID=new UriBuilder(self.activityPubID).fragment("blockUser"+target.id+"_"+System.currentTimeMillis()).build();
-		block.actor=new LinkOrObject(self.activityPubID);
-		block.object=new LinkOrObject(target.activityPubID);
+		Block block=new Block()
+				.withActorAndObjectLinks(self, target)
+				.withActorFragmentID("blockUser"+target.id+"_"+System.currentTimeMillis());
 		submitActivity(block, self, target.inbox);
 	}
 
 	public void sendUndoBlockActivity(Actor self, ForeignUser target){
-		Block block=new Block();
-		block.activityPubID=new UriBuilder(self.activityPubID).fragment("blockUser"+target.id+"_"+System.currentTimeMillis()).build();
-		block.actor=new LinkOrObject(self.activityPubID);
-		block.object=new LinkOrObject(target.activityPubID);
-		Undo undo=new Undo();
-		undo.activityPubID=new UriBuilder(self.activityPubID).fragment("undoBlockUser"+target.id+"_"+System.currentTimeMillis()).build();
-		undo.actor=new LinkOrObject(self.activityPubID);
-		undo.object=new LinkOrObject(block);
+		Block block=new Block()
+				.withActorAndObjectLinks(self, target)
+				.withActorFragmentID("blockUser"+target.id+"_"+System.currentTimeMillis());
+		Undo undo=new Undo()
+				.withActorLinkAndObject(self, block)
+				.withActorFragmentID("undoBlockUser"+target.id+"_"+System.currentTimeMillis());
 		submitActivity(undo, self, target.inbox);
 	}
 
@@ -517,12 +463,10 @@ public class ActivityPubWorker{
 			else
 				vote.to=List.of(LinkOrObject.PUBLIC, new LinkOrObject(pollOwner.activityPubID));
 			vote.cc=Collections.emptyList();
-			Create create=new Create();
+			Create create=new Create().withActorLinkAndObject(self, vote);
 			create.activityPubID=new UriBuilder(self.activityPubID).fragment("pollVotes/"+voteID+"/activity").build();
 			create.to=vote.to;
 			create.cc=vote.cc;
-			create.actor=new LinkOrObject(self.activityPubID);
-			create.object=new LinkOrObject(vote);
 			create.published=Instant.now();
 
 			submitActivity(create, self, pollOwner.inbox);
@@ -533,12 +477,10 @@ public class ActivityPubWorker{
 		if(Config.isLocal(group.activityPubID) && Config.isLocal(target.activityPubID))
 			return;
 
-		Invite invite=new Invite();
+		Invite invite=new Invite().withActorAndObjectLinks(self, group);
 		invite.activityPubID=Config.localURI("/activitypub/objects/groupInvites/"+inviteID);
 		invite.to=List.of(new LinkOrObject(target.activityPubID));
 		invite.cc=List.of(new LinkOrObject(group.activityPubID));
-		invite.actor=new LinkOrObject(self.activityPubID);
-		invite.object=new LinkOrObject(group.activityPubID);
 
 		if(!Objects.equals(group.sharedInbox, target.sharedInbox)){
 			if(group instanceof ForeignGroup fg)
@@ -557,25 +499,19 @@ public class ActivityPubWorker{
 		invite.cc=List.of(new LinkOrObject(group.activityPubID));
 		invite.object=new LinkOrObject(group.activityPubID);
 
-		Reject reject=new Reject();
-		reject.activityPubID=new UriBuilder(self.activityPubID).fragment("rejectGroupInvite"+invitationLocalID).build();
+		Reject reject=new Reject()
+				.withActorLinkAndObject(self, invite)
+				.withActorFragmentID("rejectGroupInvite"+invitationLocalID);
 		reject.to=List.of(new LinkOrObject(group.activityPubID));
-		reject.actor=new LinkOrObject(self.activityPubID);
-		reject.object=new LinkOrObject(invite);
 
 		submitActivity(reject, self, group.inbox);
 	}
 
 	public void sendRejectFollowGroup(ForeignUser user, Group group, boolean tentative){
-		Join join=new Join(tentative);
-		join.actor=new LinkOrObject(user.activityPubID);
-		join.object=new LinkOrObject(group.activityPubID);
-
-		Reject reject=new Reject();
-		reject.activityPubID=new UriBuilder(group.activityPubID).fragment("rejectJoin"+user.id+"_"+rand()).build();
+		Reject reject=new Reject()
+				.withActorLinkAndObject(group, new Join(tentative).withActorAndObjectLinks(user, group))
+				.withActorFragmentID("rejectJoin"+user.id+"_"+rand());
 		reject.to=List.of(new LinkOrObject(user.activityPubID));
-		reject.actor=new LinkOrObject(group.activityPubID);
-		reject.object=new LinkOrObject(join);
 
 		submitActivity(reject, group, user.inbox);
 	}
@@ -587,19 +523,19 @@ public class ActivityPubWorker{
 		invite.cc=List.of(new LinkOrObject(group.activityPubID));
 		invite.object=new LinkOrObject(group.activityPubID);
 
-		Undo undo=new Undo();
-		undo.activityPubID=new UriBuilder(group.activityPubID).fragment("undoGroupInvite"+invitationLocalID).build();
+		Undo undo=new Undo()
+				.withActorLinkAndObject(group, invite)
+				.withActorFragmentID("undoGroupInvite"+invitationLocalID);
 		undo.to=List.of(new LinkOrObject(user.activityPubID));
-		undo.actor=new LinkOrObject(group.activityPubID);
-		undo.object=new LinkOrObject(invite);
 
 		submitActivity(undo, group, user.inbox);
 	}
 
 	public void sendAddUserToGroupActivity(User user, Group group, boolean tentative){
 		group.ensureLocal();
-		Add add=new Add();
-		add.activityPubID=Config.localURI("/groups/"+group.id+"#addUser"+user.id+"_"+rand());
+		Add add=new Add()
+				.withActorAndObjectLinks(group, user)
+				.withActorFragmentID("addUser"+user.id+"_"+rand());
 		ActivityPubCollection target=new ActivityPubCollection(false);
 		target.activityPubID=Config.localURI("/groups/"+group.id+"/"+(tentative ? "tentativeMembers" : "members"));
 		target.attributedTo=group.activityPubID;
@@ -609,15 +545,15 @@ public class ActivityPubWorker{
 					new LinkOrObject(Config.localURI("/groups/"+group.id+"/tentativeMembers")));
 		else
 			add.to=List.of(new LinkOrObject(Config.localURI("/groups/"+group.id+"/members")));
-		add.object=new LinkOrObject(user.activityPubID);
 
 		submitActivityForMembers(add, group);
 	}
 
 	public void sendRemoveUserFromGroupActivity(User user, Group group, boolean tentative){
 		group.ensureLocal();
-		Remove remove=new Remove();
-		remove.activityPubID=Config.localURI("/groups/"+group.id+"#removeUser"+user.id+"_"+rand());
+		Remove remove=new Remove()
+				.withActorAndObjectLinks(group, user)
+				.withActorFragmentID("removeUser"+user.id+"_"+rand());
 		ActivityPubCollection target=new ActivityPubCollection(false);
 		target.activityPubID=Config.localURI("/groups/"+group.id+"/"+(tentative ? "tentativeMembers" : "members"));
 		target.attributedTo=group.activityPubID;
@@ -627,7 +563,6 @@ public class ActivityPubWorker{
 					new LinkOrObject(Config.localURI("/groups/"+group.id+"/tentativeMembers")));
 		else
 			remove.to=List.of(new LinkOrObject(Config.localURI("/groups/"+group.id+"/members")));
-		remove.object=new LinkOrObject(user.activityPubID);
 
 		submitActivityForMembers(remove, group);
 	}
@@ -648,9 +583,7 @@ public class ActivityPubWorker{
 		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
 
 		Note note=NoteOrQuestion.fromNativeMessage(msg, context);
-		Create create=new Create();
-		create.actor=new LinkOrObject(self.activityPubID);
-		create.object=new LinkOrObject(note);
+		Create create=new Create().withActorLinkAndObject(self, note);
 		create.to=note.to;
 		create.cc=note.cc;
 		create.activityPubID=new UriBuilder(note.activityPubID).fragment("create").build();
@@ -664,9 +597,7 @@ public class ActivityPubWorker{
 			needUsers.addAll(msg.cc);
 		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
 
-		Delete delete=new Delete();
-		delete.actor=new LinkOrObject(self.activityPubID);
-		delete.object=new LinkOrObject(msg.getActivityPubID());
+		Delete delete=new Delete().withActorAndObjectLinks(self, msg);
 		delete.to=msg.to.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
 		if(msg.cc!=null && !msg.cc.isEmpty())
 			delete.cc=msg.cc.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
@@ -683,9 +614,7 @@ public class ActivityPubWorker{
 			needUsers.addAll(msg.cc);
 		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
 
-		Read read=new Read();
-		read.actor=new LinkOrObject(self.activityPubID);
-		read.object=new LinkOrObject(msg.getActivityPubID());
+		Read read=new Read().withActorAndObjectLinks(self, msg);
 		HashSet<Integer> to=new HashSet<>(msg.to);
 		to.add(msg.senderID);
 		read.to=to.stream().filter(id->id!=self.id).map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
@@ -698,10 +627,9 @@ public class ActivityPubWorker{
 	}
 
 	public void sendUserDeleteSelf(User self) throws SQLException{
-		Delete del=new Delete();
-		del.activityPubID=new UriBuilder(self.activityPubID).fragment("deleteSelf").build();
-		del.actor=new LinkOrObject(self.activityPubID);
-		del.object=new LinkOrObject(self.activityPubID);
+		Delete del=new Delete()
+				.withActorAndObjectLinks(self, self)
+				.withActorFragmentID("deleteSelf");
 		submitActivityForFollowers(del, self);
 	}
 
@@ -799,6 +727,8 @@ public class ActivityPubWorker{
 	}
 
 	public void submitActivity(Activity activity, Actor actor, URI inbox){
+		if(!Objects.equals(actor.activityPubID, activity.actor.link))
+			throw new IllegalArgumentException("Activity "+activity.getType()+" actor ID "+activity.actor.link+" does not match expected "+actor.activityPubID);
 		submitTask(new SendOneActivityRunnable(this, context, activity, inbox, actor));
 	}
 

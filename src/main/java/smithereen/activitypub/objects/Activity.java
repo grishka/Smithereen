@@ -2,11 +2,14 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Objects;
 
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
+import smithereen.model.ActivityPubRepresentable;
+import smithereen.util.UriBuilder;
 
 public abstract class Activity extends ActivityPubObject{
 
@@ -79,5 +82,38 @@ public abstract class Activity extends ActivityPubObject{
 		}
 		sb.append('}');
 		return sb.toString();
+	}
+
+	public <T extends Activity> T withActorAndObjectLinks(Actor actor, ActivityPubObject object){
+		this.actor=new LinkOrObject(actor.activityPubID);
+		this.object=new LinkOrObject(object.activityPubID);
+		//noinspection unchecked
+		return (T) this;
+	}
+
+	public <T extends Activity> T withActorAndObjectLinks(Actor actor, ActivityPubRepresentable object){
+		this.actor=new LinkOrObject(actor.activityPubID);
+		this.object=new LinkOrObject(object.getActivityPubID());
+		//noinspection unchecked
+		return (T) this;
+	}
+
+	public <T extends Activity> T withActorLinkAndObject(Actor actor, ActivityPubObject object){
+		this.actor=new LinkOrObject(actor.activityPubID);
+		this.object=new LinkOrObject(object);
+		//noinspection unchecked
+		return (T) this;
+	}
+
+	public <T extends Activity> T withActorFragmentID(String fragment){
+		activityPubID=new UriBuilder(Objects.requireNonNull(actor.link)).fragment(fragment).build();
+		//noinspection unchecked
+		return (T) this;
+	}
+
+	public <T extends Activity> T withTarget(URI target){
+		this.target=new LinkOrObject(target);
+		//noinspection unchecked
+		return (T) this;
 	}
 }
