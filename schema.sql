@@ -14,6 +14,7 @@ CREATE TABLE `accounts` (
   `user_id` int unsigned NOT NULL,
   `email` varchar(200) NOT NULL DEFAULT '',
   `password` binary(32) DEFAULT NULL,
+  `salt` binary(32) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `invited_by` int unsigned DEFAULT NULL,
   `preferences` text,
