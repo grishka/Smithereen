@@ -36,10 +36,11 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.text.TextProcessor;
 import smithereen.util.JsonObjectBuilder;
+import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=52;
+	public static final int SCHEMA_VERSION=53;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -773,6 +774,29 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("ALTER TABLE likes CHANGE object_id `object_id` bigint unsigned NOT NULL");
 			}
 			case 52 -> conn.createStatement().execute("ALTER TABLE servers ADD features bigint unsigned NOT NULL DEFAULT 0");
+			case 53 -> migratePasswordsToSaltedHashes(conn);
+		}
+	}
+
+	private static void migratePasswordsToSaltedHashes(DatabaseConnection conn) throws SQLException{
+		LOG.info("Started migrating passwords to salted hashes");
+		conn.createStatement().execute("ALTER TABLE `accounts` ADD `salt` binary(32) DEFAULT NULL AFTER `password`");
+		try(ResultSet res=new SQLQueryBuilder(conn)
+				.selectFrom("accounts")
+				.columns("id", "password")
+				.execute()){
+			while(res.next()){
+				int accountID=res.getInt(1);
+				byte[] currentPassword=res.getBytes(2);
+				byte[] salt=Passwords.randomSalt();
+				byte[] newPassword=Passwords.saltedPassword(currentPassword, salt);
+				new SQLQueryBuilder()
+						.update("accounts")
+						.value("password", newPassword)
+						.value("salt", salt)
+						.where("id=?", accountID)
+						.executeUpdate();
+			}
 		}
 	}
 
