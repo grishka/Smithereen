@@ -22,16 +22,20 @@ public class Passwords{
 		return salt;
 	}
 
+	private static byte[] sha256(byte[] input){
+		try{
+			MessageDigest md=MessageDigest.getInstance("SHA-256");
+			return md.digest(input);
+		}catch(NoSuchAlgorithmException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public static byte @NotNull [] saltedPassword(byte @NotNull [] hashedPassword, byte @NotNull [] salt){
 		byte[] passwordAndSalt=new byte[hashedPassword.length+salt.length];
 		System.arraycopy(hashedPassword, 0, passwordAndSalt, 0, hashedPassword.length);
 		System.arraycopy(salt, 0, passwordAndSalt, hashedPassword.length, salt.length);
-		try{
-			MessageDigest md=MessageDigest.getInstance(DEFAULT_HASHING_ALGORITHM);
-			return md.digest(passwordAndSalt);
-		}catch(NoSuchAlgorithmException x){
-			throw new InternalServerErrorException(x);
-		}
+		return sha256(passwordAndSalt);
 	}
 
 	/**
@@ -44,13 +48,6 @@ public class Passwords{
 	 * @return The salted and hashed password.
 	 */
 	public static byte @NotNull [] hashPasswordWithSalt(@NotNull String password, byte @NotNull [] salt){
-		byte[] hashedPassword;
-		try{
-			MessageDigest md=MessageDigest.getInstance(DEFAULT_HASHING_ALGORITHM);
-			hashedPassword=md.digest(password.getBytes(StandardCharsets.UTF_8));
-		}catch(NoSuchAlgorithmException x){
-			throw new InternalServerErrorException(x);
-		}
-		return saltedPassword(hashedPassword, salt);
+		return saltedPassword(sha256(password.getBytes(StandardCharsets.UTF_8)), salt);
 	}
 }
