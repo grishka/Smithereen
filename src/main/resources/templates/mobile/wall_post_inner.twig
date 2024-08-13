@@ -37,6 +37,6 @@
 </div>
 {% if repostDepth<(maxRepostDepth | default(1)) %}{% include "wall_post_inner" with {'post': post.repost.post, 'repostDepth': repostDepth+1} %}{% endif %}
 {% endif %}
-{% if realPost.hasContentWarning %}
+{% if post.post.hasContentWarning %}
 </div>
 {% endif %}

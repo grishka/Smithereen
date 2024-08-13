@@ -970,7 +970,7 @@ select{
 		background-size: 30px 25.5px;
 		margin: 0 -12px;
 	}
-	.postContent, .postAttachments, .poll{
+	.postContent, .postAttachments, .poll, .repostHeader{
 		display: none;
 	}
 }
@@ -980,7 +980,7 @@ input:checked+.postCWWrap{
 		background-image: svg-load('img/flex_arrow_open.svg', fill: color($iconColor alpha(70%)));
 		margin-bottom: 12px;
 	}
-	.postContent, .postAttachments, .poll{
+	.postContent, .postAttachments, .poll, .repostHeader{
 		display: block;
 	}
 }
