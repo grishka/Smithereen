@@ -370,7 +370,7 @@ public abstract class ActivityPubObject{
 		return null;
 	}
 
-	protected JsonArray optArrayCompact(JsonObject obj, String key){
+	public static JsonArray optArrayCompact(JsonObject obj, String key){
 		if(!obj.has(key))
 			return null;
 		JsonElement el=obj.get(key);
@@ -577,6 +577,7 @@ public abstract class ActivityPubObject{
 			case "Relationship" -> new Relationship();
 			case "PropertyValue" -> new PropertyValue();
 			case "Event" -> new Event();
+			case "Photo" -> new ActivityPubPhoto();
 
 			// Collections
 			case "Collection" -> new ActivityPubCollection(false);
@@ -584,6 +585,7 @@ public abstract class ActivityPubObject{
 			case "CollectionPage" -> new CollectionPage(false);
 			case "OrderedCollectionPage" -> new CollectionPage(true);
 			case "CollectionQueryResult" -> new CollectionQueryResult();
+			case "PhotoAlbum" -> new ActivityPubPhotoAlbum();
 
 			// Activities
 			case "Accept" -> new Accept();

@@ -186,6 +186,7 @@ public class PrivacyController{
 		if(serverDomain==null)
 			return false;
 		try{
+			// TODO cache these things
 			HashSet<Integer> friendsAtDomain=new HashSet<>(UserStorage.getFriendIDsWithDomain(owner.id, serverDomain));
 			friendsAtDomain.removeAll(setting.exceptUsers);
 			for(int id:setting.allowUsers){
@@ -213,17 +214,15 @@ public class PrivacyController{
 			enforceGroupContentAccess(req, g);
 		}else if(oaa.owner() instanceof User u){
 			if(obj instanceof Post post && post.ownerID!=post.authorID && post.getReplyLevel()==0){
-				if(!checkUserPrivacyForRemoteServer(getDomainFromRequest(req), u, u.privacySettings.getOrDefault(UserPrivacySettingKey.WALL_OTHERS_POSTS, PrivacySetting.DEFAULT)))
+				if(!checkUserPrivacyForRemoteServer(ActivityPub.getRequesterDomain(req), u, u.privacySettings.getOrDefault(UserPrivacySettingKey.WALL_OTHERS_POSTS, PrivacySetting.DEFAULT)))
 					throw new UserActionNotAllowedException();
+			}else if(obj instanceof PhotoAlbum pa){
+				if(pa.viewPrivacy.baseRule==PrivacySetting.Rule.EVERYONE && pa.viewPrivacy.exceptUsers.isEmpty())
+					return;
+				String domain=ActivityPub.getRequesterDomain(req);
+				if(!checkUserPrivacyForRemoteServer(domain, u, pa.viewPrivacy))
+					throw new UserContentUnavailableException();
 			}
-		}
-	}
-
-	private String getDomainFromRequest(spark.Request req){
-		try{
-			return ActivityPub.verifyHttpSignature(req, null).domain;
-		}catch(Exception x){
-			return null;
 		}
 	}
 

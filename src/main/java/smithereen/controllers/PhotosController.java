@@ -2,6 +2,7 @@ package smithereen.controllers;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -11,9 +12,11 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.exceptions.InternalServerErrorException;
@@ -34,10 +37,11 @@ import smithereen.storage.PhotoStorage;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
 import smithereen.text.TextProcessor;
+import spark.Request;
 
 public class PhotosController{
-	private static final int MAX_ALBUMS_PER_OWNER=70;
-	private static final int MAX_PHOTOS_PER_ALBUM=5000;
+	public static final int MAX_ALBUMS_PER_OWNER=70;
+	public static final int MAX_PHOTOS_PER_ALBUM=5000;
 
 	private final ApplicationContext context;
 	private final Object albumCacheLock=new Object();
@@ -64,6 +68,39 @@ public class PhotosController{
 				case User user -> albums.stream().filter(a->context.getPrivacyController().checkUserPrivacy(self, user, a.viewPrivacy)).toList();
 				default -> albums;
 			};
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<PhotoAlbum> getAllAlbumsIgnoringPrivacy(Actor owner){
+		try{
+			List<PhotoAlbum> albums=albumListCache.get(owner.getOwnerID());
+			if(albums==null){
+				albums=PhotoStorage.getAllAlbums(owner.getOwnerID());
+				albumListCache.put(owner.getOwnerID(), albums);
+			}
+			return albums;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<PhotoAlbum> getAllAlbumsForActivityPub(Actor owner, Request req){
+		try{
+			if(owner instanceof Group group){
+				context.getPrivacyController().enforceGroupContentAccess(req, group);
+			}
+			List<PhotoAlbum> albums=albumListCache.get(owner.getOwnerID());
+			if(albums==null){
+				albums=PhotoStorage.getAllAlbums(owner.getOwnerID());
+				albumListCache.put(owner.getOwnerID(), albums);
+			}
+			if(owner instanceof User user){
+				String domain=ActivityPub.getRequesterDomain(req);
+				albums=albums.stream().filter(a->context.getPrivacyController().checkUserPrivacyForRemoteServer(domain, user, a.viewPrivacy)).toList();
+			}
+			return albums;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -97,6 +134,19 @@ public class PhotosController{
 				context.getPrivacyController().enforceUserAccessToGroupContent(self, owner);
 			}
 			return album;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PhotoAlbum getAlbumForActivityPub(long id, Request req){
+		try{
+			PhotoAlbum album=PhotoStorage.getAlbum(id);
+			if(album==null)
+				throw new ObjectNotFoundException();
+			context.getPrivacyController().enforceContentPrivacyForActivityPub(req, album);
+			return album;
+
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -184,7 +234,9 @@ public class PhotosController{
 		try{
 			MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsForAlbum(album.id), MediaFileReferenceType.ALBUM_PHOTO);
 			PhotoStorage.deleteAlbum(album.id, album.ownerID);
-			albumListCache.remove(album.ownerID);
+			synchronized(this){
+				albumListCache.remove(album.ownerID);
+			}
 			// TODO delete comments
 			// TODO federate
 			if(album.ownerID>0){
@@ -437,6 +489,96 @@ public class PhotosController{
 						}
 					}
 				}
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public long getAlbumIdByActivityPubId(URI activityPubID){
+		try{
+			long id=PhotoStorage.getAlbumIdByActivityPubId(activityPubID);
+			return id==-1 ? 0 : id;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public long getPhotoIdByActivityPubId(URI activityPubID){
+		try{
+			long id=PhotoStorage.getPhotoIdByActivityPubId(activityPubID);
+			return id==-1 ? 0 : id;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void putOrUpdateForeignAlbum(PhotoAlbum album){
+		try{
+			PhotoStorage.putOrUpdateForeignAlbum(album);
+			synchronized(albumCacheLock){
+				albumListCache.remove(album.ownerID);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void putOrUpdateForeignPhoto(Photo photo){
+		try{
+			boolean isNew=photo.id==0;
+			PhotoStorage.putOrUpdateForeignPhoto(photo);
+			if(isNew){
+				synchronized(albumCacheLock){
+					albumListCache.remove(photo.ownerID);
+				}
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteRemoteAlbumsNotInSet(Actor owner, Set<Long> ids){
+		owner.ensureRemote();
+		try{
+			List<PhotoAlbum> albums=getAllAlbumsIgnoringPrivacy(owner)
+					.stream()
+					.filter(a->!ids.contains(a.id))
+					.toList();
+			if(!albums.isEmpty()){
+				for(PhotoAlbum album:albums){
+					MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsForAlbum(album.id), MediaFileReferenceType.ALBUM_PHOTO);
+					PhotoStorage.deleteAlbum(album.id, album.ownerID);
+					// TODO delete comments
+				}
+				synchronized(this){
+					albumListCache.remove(owner.getOwnerID());
+				}
+				if(owner instanceof User){
+					context.getNewsfeedController().clearFriendsFeedCache();
+				}
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteRemotePhotosNotInSet(PhotoAlbum album, Set<Long> ids){
+		if(album.activityPubID==null)
+			throw new IllegalArgumentException("Must be remote");
+		try{
+			Set<Long> idsToDelete=PhotoStorage.getAlbumPhotosNotInSet(album.id, ids);
+			if(idsToDelete.isEmpty())
+				return;
+
+			MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsIn(idsToDelete), MediaFileReferenceType.ALBUM_PHOTO);
+			PhotoStorage.deletePhotos(album.id, idsToDelete);
+
+			synchronized(this){
+				albumListCache.remove(album.ownerID);
+			}
+			if(album.ownerID>0){
+				context.getNewsfeedController().clearFriendsFeedCache();
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

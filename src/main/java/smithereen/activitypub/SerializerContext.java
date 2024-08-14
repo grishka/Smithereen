@@ -48,10 +48,12 @@ public class SerializerContext{
 	 * @param name
 	 */
 	public void addSmAlias(String name){
+		addAlias("sm", JLD.SMITHEREEN);
 		addAlias(name, "sm:"+name);
 	}
 
 	public void addSmIdType(String name){
+		addAlias("sm", JLD.SMITHEREEN);
 		addType(name, "sm:"+name, "@id");
 	}
 

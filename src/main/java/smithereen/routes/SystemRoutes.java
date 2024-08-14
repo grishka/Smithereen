@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -45,12 +46,14 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FederationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.exceptions.UserErrorException;
@@ -65,6 +68,7 @@ import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
@@ -81,6 +85,8 @@ import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.util.QuickSearchResults;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
@@ -100,6 +106,7 @@ import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -131,6 +138,7 @@ public class SystemRoutes{
 
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
 		requireQueryParams(req, "type", "format", "size");
+		ApplicationContext ctx=context(req);
 		MediaCache cache=MediaCache.getInstance();
 		String type=req.queryParams("type");
 		String mime;
@@ -161,92 +169,105 @@ public class SystemRoutes{
 
 		boolean isPostPhoto="post_photo".equals(type);
 
-		if("user_ava".equals(type)){
-			itemType=MediaCache.ItemType.AVATAR;
-			mime="image/jpeg";
-			int userID=Utils.parseIntOrDefault(req.queryParams("user_id"), 0);
-			user=UserStorage.getById(userID);
-			if(user==null || Config.isLocal(user.activityPubID)){
-				LOG.warn("downloading user_ava: user {} not found or is local", userID);
-				return "";
-			}
-			Image im=user.getBestAvatarImage();
-			if(im!=null && im.url!=null){
-				cropRegion=user.getAvatarCropRegion();
-				uri=im.url;
-				if(StringUtils.isNotEmpty(im.mediaType))
-					mime=im.mediaType;
-				else
-					mime="image/jpeg";
-			}
-		}else if("group_ava".equals(type)){
-			itemType=MediaCache.ItemType.AVATAR;
-			mime="image/jpeg";
-			int groupID=Utils.parseIntOrDefault(req.queryParams("group_id"), 0);
-			group=GroupStorage.getById(groupID);
-			if(group==null || Config.isLocal(group.activityPubID)){
-				LOG.warn("downloading group_ava: group {} not found or is local", groupID);
-				return "";
-			}
-			Image im=group.getBestAvatarImage();
-			if(im!=null && im.url!=null){
-				cropRegion=group.getAvatarCropRegion();
-				uri=im.url;
-				if(StringUtils.isNotEmpty(im.mediaType))
-					mime=im.mediaType;
-				else
-					mime="image/jpeg";
-			}
-		}else if("post_photo".equals(type) || "message_photo".equals(type)){
-			itemType=MediaCache.ItemType.PHOTO;
-			ApplicationContext ctx=context(req);
-			SessionInfo sess=sessionInfo(req);
-			Object contentObj=switch(type){
-				case "post_photo" -> {
-					int postID=parseIntOrDefault(req.queryParams("post_id"), 0);
-					yield ctx.getWallController().getPostOrThrow(postID);
-				}
-				case "message_photo" -> {
-					requireQueryParams(req, "msg_id");
-					if(sess==null || sess.account==null)
-						yield null;
-					long msgID=decodeLong(req.queryParams("msg_id"));
-					yield context(req).getMailController().getMessage(sess.account.user, msgID, false);
-				}
-				default -> throw new IllegalStateException("Unexpected value: "+type);
-			};
-
-			if(contentObj instanceof OwnedContentObject oco){
-				ctx.getPrivacyController().enforceObjectPrivacy(sess==null || sess.account==null ? null : sess.account.user, oco);
-			}
-
-			int index=safeParseInt(req.queryParams("index"));
-			ActivityPubObject att=verifyObjectAndGetAttachment(index, type, contentObj);
-			if(att==null)
-				return "";
-
-			if(att.mediaType==null){
-				if(att instanceof Image){
-					mime="image/jpeg";
-				}else{
-					LOG.warn("downloading post_photo: media type is null and attachment type {} isn't Image", att.getClass().getName());
+		switch(type){
+			case "user_ava" -> {
+				itemType=MediaCache.ItemType.AVATAR;
+				mime="image/jpeg";
+				int userID=Utils.parseIntOrDefault(req.queryParams("user_id"), 0);
+				user=UserStorage.getById(userID);
+				if(user==null || Config.isLocal(user.activityPubID)){
+					LOG.warn("downloading user_ava: user {} not found or is local", userID);
 					return "";
 				}
-			}else if(!att.mediaType.startsWith("image/")){
-				LOG.warn("downloading post_photo: attachment media type {} is invalid", att.mediaType);
+				Image im=user.getBestAvatarImage();
+				if(im!=null && im.url!=null){
+					cropRegion=user.getAvatarCropRegion();
+					uri=im.url;
+					if(StringUtils.isNotEmpty(im.mediaType))
+						mime=im.mediaType;
+					else
+						mime="image/jpeg";
+				}
+			}
+			case "group_ava" -> {
+				itemType=MediaCache.ItemType.AVATAR;
+				mime="image/jpeg";
+				int groupID=Utils.parseIntOrDefault(req.queryParams("group_id"), 0);
+				group=GroupStorage.getById(groupID);
+				if(group==null || Config.isLocal(group.activityPubID)){
+					LOG.warn("downloading group_ava: group {} not found or is local", groupID);
+					return "";
+				}
+				Image im=group.getBestAvatarImage();
+				if(im!=null && im.url!=null){
+					cropRegion=group.getAvatarCropRegion();
+					uri=im.url;
+					if(StringUtils.isNotEmpty(im.mediaType))
+						mime=im.mediaType;
+					else
+						mime="image/jpeg";
+				}
+			}
+			case "post_photo", "message_photo" -> {
+				itemType=MediaCache.ItemType.PHOTO;
+				SessionInfo sess=sessionInfo(req);
+				Object contentObj=switch(type){
+					case "post_photo" -> {
+						int postID=parseIntOrDefault(req.queryParams("post_id"), 0);
+						yield ctx.getWallController().getPostOrThrow(postID);
+					}
+					case "message_photo" -> {
+						requireQueryParams(req, "msg_id");
+						if(sess==null || sess.account==null)
+							yield null;
+						long msgID=decodeLong(req.queryParams("msg_id"));
+						yield context(req).getMailController().getMessage(sess.account.user, msgID, false);
+					}
+					default -> throw new IllegalStateException("Unexpected value: "+type);
+				};
+
+				if(contentObj instanceof OwnedContentObject oco){
+					ctx.getPrivacyController().enforceObjectPrivacy(sess==null || sess.account==null ? null : sess.account.user, oco);
+				}
+
+				int index=safeParseInt(req.queryParams("index"));
+				ActivityPubObject att=verifyObjectAndGetAttachment(index, type, contentObj);
+				if(att==null)
+					return "";
+
+				if(att.mediaType==null){
+					if(att instanceof Image){
+						mime="image/jpeg";
+					}else{
+						LOG.warn("downloading post_photo: media type is null and attachment type {} isn't Image", att.getClass().getName());
+						return "";
+					}
+				}else if(!att.mediaType.startsWith("image/")){
+					LOG.warn("downloading post_photo: attachment media type {} is invalid", att.mediaType);
+					return "";
+				}else{
+					mime=att.mediaType;
+				}
+				if(format==SizedImage.Format.PNG && (!(att instanceof Image img) || !img.isGraffiti)){
+					LOG.warn("downloading post_photo: requested png but the attachment is not a graffiti");
+					throw new BadRequestException();
+				}
+				isGraffiti=att instanceof Image img && img.isGraffiti;
+				uri=att.url;
+			}
+			case "album_photo" -> {
+				long id=XTEA.deobfuscateObjectID(decodeLong(req.queryParams("photo_id")), ObfuscatedObjectIDType.PHOTO);
+				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
+				SessionInfo sess=sessionInfo(req);
+				ctx.getPrivacyController().enforceObjectPrivacy(sess!=null && sess.account!=null ? sess.account.user : null, photo);
+				uri=photo.remoteSrc;
+				mime="image/webp";
+				itemType=MediaCache.ItemType.PHOTO;
+			}
+			case null, default -> {
+				LOG.warn("unknown external file type {}", type);
 				return "";
-			}else{
-				mime=att.mediaType;
 			}
-			if(format==SizedImage.Format.PNG && (!(att instanceof Image img) || !img.isGraffiti)){
-				LOG.warn("downloading post_photo: requested png but the attachment is not a graffiti");
-				throw new BadRequestException();
-			}
-			isGraffiti=att instanceof Image img && img.isGraffiti;
-			uri=att.url;
-		}else{
-			LOG.warn("unknown external file type {}", type);
-			return "";
 		}
 
 		if(uri!=null){
@@ -392,6 +413,7 @@ public class SystemRoutes{
 					}
 					yield new JsonObjectBuilder().add("success", "/posts/"+p.id).build();
 				}
+				case PhotoAlbum pa -> new JsonObjectBuilder().add("success", pa.getURL()).build();
 				default -> new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
 			};
 		}catch(ObjectNotFoundException ignore){}
@@ -477,7 +499,22 @@ public class SystemRoutes{
 					}
 				}
 			}
-			default -> new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
+			case ActivityPubPhotoAlbum apAlbum -> {
+				PhotoAlbum album=null;
+				try{
+					album=apAlbum.asNativePhotoAlbum(ctx);
+					ctx.getObjectLinkResolver().storeOrUpdateRemoteObject(album);
+					ctx.getActivityPubWorker().fetchPhotoAlbumContents(apAlbum, album).get(30, TimeUnit.SECONDS);
+					yield new JsonObjectBuilder().add("success", album.getURL()).build();
+				}catch(FederationException|ExecutionException x){
+					yield new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).add("details", x.getMessage()).build();
+				}catch(InterruptedException x){
+					throw new RuntimeException(x);
+				}catch(TimeoutException x){
+					yield new JsonObjectBuilder().add("success", Objects.requireNonNull(album).getURL()).build();
+				}
+			}
+			default -> new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")+(Config.DEBUG ? ("<br/><br/>"+obj.getClass().getName()) : "")).build();
 		};
 	}
 

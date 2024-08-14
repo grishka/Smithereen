@@ -58,6 +58,11 @@ public class Group extends Actor{
 	}
 
 	@Override
+	public URI getPhotoAlbumsURL(){
+		return Config.localURI("/groups/"+id+"/albums");
+	}
+
+	@Override
 	public String getTypeAndIdForURL(){
 		return "/groups/"+id;
 	}
@@ -137,6 +142,9 @@ public class Group extends Actor{
 			endpoints.addProperty("actorToken", userURL+"/actorToken");
 			serializerContext.addAlias("actorToken", "sm:actorToken");
 		}
+
+		serializerContext.addSmIdType("photoAlbums");
+		obj.addProperty("photoAlbums", getPhotoAlbumsURL().toString());
 
 		return obj;
 	}

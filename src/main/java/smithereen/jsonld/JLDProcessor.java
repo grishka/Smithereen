@@ -98,6 +98,14 @@ public class JLDProcessor{
 		lc.addProperty("privacySettings", "sm:privacySettings");
 		lc.addProperty("allowedTo", "sm:allowedTo");
 		lc.addProperty("except", "sm:except");
+		lc.add("photoAlbums", idAndTypeObject("sm:photoAlbums", "@id"));
+		addSmAlias(lc, "PhotoAlbum");
+		addSmAlias(lc, "viewPrivacy");
+		addSmAlias(lc, "commentPrivacy");
+		addSmAlias(lc, "uploadsRestricted");
+		addSmAlias(lc, "commentingDisabled");
+		addSmAlias(lc, "Photo");
+		addSmAlias(lc, "displayOrder");
 		// privacy settings keys
 		lc.addProperty("wallPosting", "sm:wallPosting");
 		lc.addProperty("wallPostVisibility", "sm:wallPostVisibility");
@@ -129,6 +137,10 @@ public class JLDProcessor{
 
 		localContext=updateContext(new JLDContext(), makeArray(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);
+	}
+
+	private static void addSmAlias(JsonObject obj, String key){
+		obj.addProperty(key, "sm:"+key);
 	}
 
 	public static JsonArray expandToArray(JsonElement src){

@@ -108,11 +108,12 @@ public class MediaCache{
 	public Map<URI, Item> get(Collection<URI> uris) throws SQLException{
 		if(uris.isEmpty())
 			return Map.of();
+		HashMap<URI, Item> result=new HashMap<>();
 		if(uris.size()==1){
 			URI uri=uris.iterator().next();
-			return Map.of(uri, get(uri));
+			result.put(uri, get(uri));
+			return result;
 		}
-		HashMap<URI, Item> result=new HashMap<>();
 		Map<byte[], URI> keys=uris.stream().map(uri->new Pair<>(keyForURI(uri), uri)).collect(Collectors.toMap(Pair::first, Pair::second));
 		HashSet<byte[]> remainingKeys=new HashSet<>(keys.keySet()), keysToUpdateAccess=new HashSet<>();
 		synchronized(this){

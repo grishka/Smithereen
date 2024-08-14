@@ -30,6 +30,7 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubCollection;
+import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Note;
@@ -55,6 +56,7 @@ import smithereen.activitypub.objects.activities.Update;
 import smithereen.activitypub.tasks.FetchActorContentCollectionsTask;
 import smithereen.activitypub.tasks.FetchActorRelationshipCollectionsTask;
 import smithereen.activitypub.tasks.FetchAllRepliesTask;
+import smithereen.activitypub.tasks.FetchPhotoAlbumPhotosTask;
 import smithereen.activitypub.tasks.FetchReplyThreadRunnable;
 import smithereen.activitypub.tasks.FetchRepostChainTask;
 import smithereen.activitypub.tasks.ForwardOneActivityRunnable;
@@ -74,6 +76,7 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -104,6 +107,7 @@ public class ActivityPubWorker{
 	private final HashSet<URI> fetchingRelationshipCollectionsActors=new HashSet<>();
 	private final HashSet<URI> fetchingContentCollectionsActors=new HashSet<>();
 	private final HashMap<URI, Future<List<Post>>> fetchingRepostChains=new HashMap<>();
+	private final HashMap<URI, Future<Void>> fetchingPhotoAlbums=new HashMap<>();
 
 	private final ApplicationContext context;
 
@@ -675,11 +679,15 @@ public class ActivityPubWorker{
 			return;
 		}
 		fetchingContentCollectionsActors.add(actor.activityPubID);
-		executor.submit(new FetchActorContentCollectionsTask(this, context, fetchingAllReplies, fetchingContentCollectionsActors, actor));
+		executor.submit(new FetchActorContentCollectionsTask(this, context, fetchingAllReplies, fetchingContentCollectionsActors, actor, fetchingPhotoAlbums));
 	}
 
 	public synchronized Future<List<Post>> fetchRepostChain(NoteOrQuestion topLevelPost){
 		return fetchingRepostChains.computeIfAbsent(topLevelPost.activityPubID, uri->executor.submit(new FetchRepostChainTask(this, context, fetchingRepostChains, topLevelPost)));
+	}
+
+	public synchronized Future<Void> fetchPhotoAlbumContents(ActivityPubPhotoAlbum album, PhotoAlbum nativeAlbum){
+		return fetchingPhotoAlbums.computeIfAbsent(album.activityPubID, uri->executor.submit(new FetchPhotoAlbumPhotosTask(context, album, nativeAlbum, this, fetchingPhotoAlbums)));
 	}
 
 	public <T extends Callable<?>> void invokeAll(Collection<T> tasks){

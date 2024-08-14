@@ -44,6 +44,11 @@ public class ServiceActor extends Actor{
 	}
 
 	@Override
+	public URI getPhotoAlbumsURL(){
+		return null;
+	}
+
+	@Override
 	public String getTypeAndIdForURL(){
 		return null;
 	}

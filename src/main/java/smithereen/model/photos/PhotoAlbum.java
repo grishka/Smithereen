@@ -10,13 +10,16 @@ import java.util.EnumSet;
 import java.util.Map;
 
 import smithereen.Utils;
+import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.OwnedContentObject;
 import smithereen.model.PrivacySetting;
 import smithereen.storage.DatabaseUtils;
+import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
-public class PhotoAlbum{
+public class PhotoAlbum implements ActivityPubRepresentable, OwnedContentObject{
 	public long id;
 	public int ownerID;
 	public String title;
@@ -27,6 +30,7 @@ public class PhotoAlbum{
 	public SystemAlbumType systemType;
 	public long coverID;
 	public EnumSet<Flag> flags;
+	public int displayOrder;
 
 	public URI activityPubID;
 	public URI activityPubURL;
@@ -60,6 +64,7 @@ public class PhotoAlbum{
 			a.activityPubID=URI.create(apID);
 			a.activityPubURL=URI.create(apURL);
 		}
+		a.displayOrder=res.getInt("display_order");
 		return a;
 	}
 
@@ -73,6 +78,26 @@ public class PhotoAlbum{
 
 	public boolean hasFlag(String flag){
 		return flags.contains(Flag.valueOf(flag));
+	}
+
+	@Override
+	public URI getActivityPubID(){
+		return UriBuilder.local().path("albums", getIdString()).build();
+	}
+
+	@Override
+	public int getOwnerID(){
+		return ownerID;
+	}
+
+	@Override
+	public int getAuthorID(){
+		return 0;
+	}
+
+	@Override
+	public long getObjectID(){
+		return id;
 	}
 
 	public enum SystemAlbumType{

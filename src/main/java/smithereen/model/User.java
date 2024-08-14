@@ -306,48 +306,12 @@ public class User extends Actor{
 			String apKey=key.getActivityPubKey();
 			String alias=apKey.substring(apKey.indexOf(':')+1);
 			serializerContext.addAlias(alias, apKey);
-
-			JsonArray allowed=new JsonArray();
-			JsonArray except=new JsonArray();
-
-			if(privacySettings.containsKey(key)){
-				PrivacySetting setting=privacySettings.get(key);
-				switch(setting.baseRule){
-					case EVERYONE -> allowed.add(ActivityPub.AS_PUBLIC.toString());
-					case FRIENDS -> allowed.add(getFriendsURL().toString());
-					case FRIENDS_OF_FRIENDS -> {
-						allowed.add(getFriendsURL().toString());
-						allowed.add("sm:FriendsOfFriends");
-					}
-				}
-				if(!setting.allowUsers.isEmpty() || !setting.exceptUsers.isEmpty()){
-					String domain=serializerContext.getRequesterDomain();
-					if(domain!=null){
-						HashSet<Integer> needUsers=new HashSet<>();
-						needUsers.addAll(setting.allowUsers);
-						needUsers.addAll(setting.exceptUsers);
-						Map<Integer, User> users=serializerContext.appContext.getUsersController().getUsers(needUsers);
-						for(int id:setting.allowUsers){
-							User user=users.get(id);
-							if(user!=null && user.domain.equalsIgnoreCase(domain))
-								allowed.add(user.activityPubID.toString());
-						}
-						for(int id:setting.exceptUsers){
-							User user=users.get(id);
-							if(user!=null && user.domain.equalsIgnoreCase(domain))
-								except.add(user.activityPubID.toString());
-						}
-					}
-				}
-			}else{
-				allowed.add(ActivityPub.AS_PUBLIC.toString());
+			if(!privacySettings.containsKey(key)){
+				privacy.add(alias, new JsonObjectBuilder().add("allowedTo", new JsonArrayBuilder().add(ActivityPub.AS_PUBLIC.toString())).build());
+				continue;
 			}
 
-			JsonObject setting=new JsonObject();
-			setting.add("allowedTo", allowed);
-			if(!except.isEmpty())
-				setting.add("except", except);
-			privacy.add(alias, setting);
+			privacy.add(alias, privacySettings.get(key).serializeForActivityPub(this, serializerContext));
 		}
 		obj.add("privacySettings", privacy);
 
@@ -499,6 +463,9 @@ public class User extends Actor{
 				obj.addProperty("relationshipPartner", relationshipPartnerActivityPubID.toString());
 		}
 
+		serializerContext.addSmIdType("photoAlbums");
+		obj.addProperty("photoAlbums", getPhotoAlbumsURL().toString());
+
 		return obj;
 	}
 
@@ -630,6 +597,11 @@ public class User extends Actor{
 
 	public URI getGroupsURL(){
 		return Config.localURI("/users/"+id+"/groups");
+	}
+
+	@Override
+	public URI getPhotoAlbumsURL(){
+		return Config.localURI("/users/"+id+"/albums");
 	}
 
 	@Override

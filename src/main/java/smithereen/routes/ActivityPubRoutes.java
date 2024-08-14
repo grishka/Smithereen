@@ -80,6 +80,8 @@ import smithereen.activitypub.handlers.UpdatePersonHandler;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.ActivityPubPhoto;
+import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.CollectionQueryResult;
@@ -113,6 +115,7 @@ import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.NodeInfo;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
@@ -122,6 +125,8 @@ import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.StatsType;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
@@ -137,6 +142,7 @@ import smithereen.storage.LikeStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -470,6 +476,29 @@ public class ActivityPubRoutes{
 		if(user==null || user instanceof ForeignUser)
 			throw new ObjectNotFoundException();
 		return ActivityPubCollectionPageResponse.forLinks(GroupStorage.getUserGroupIDs(id, offset, count));
+	}
+
+	public static ActivityPubCollectionPageResponse userAlbums(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		User user=ctx.getUsersController().getLocalUserOrThrow(parseIntOrDefault(req.params(":id"), 0));
+		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbumsForActivityPub(user, req);
+		return ActivityPubCollectionPageResponse.forObjects(albums.stream().map(a->ActivityPubPhotoAlbum.fromNativeAlbum(a, ctx)).toList(), albums.size()).ordered();
+	}
+
+	public static ActivityPubCollectionPageResponse groupAlbums(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(parseIntOrDefault(req.params(":id"), 0));
+		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbumsForActivityPub(group, req);
+		return ActivityPubCollectionPageResponse.forObjects(albums.stream().map(a->ActivityPubPhotoAlbum.fromNativeAlbum(a, ctx)).toList(), albums.size()).ordered();
+	}
+
+	public static ActivityPubCollectionPageResponse photoAlbum(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(XTEA.deobfuscateObjectID(Utils.decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), req);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(null, album, offset, count);
+		return ActivityPubCollectionPageResponse.forObjects(photos.list.stream().map(p->ActivityPubPhoto.fromNativePhoto(p, album, ctx)).toList(), album.numPhotos)
+				.withCustomObject(ActivityPubPhotoAlbum.fromNativeAlbum(album, ctx))
+				.ordered();
 	}
 
 	public static Object externalInteraction(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{

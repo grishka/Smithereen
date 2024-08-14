@@ -6,7 +6,9 @@ import java.sql.SQLException;
 import java.time.Instant;
 
 import smithereen.Utils;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
+import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.LikeableContentObject;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
@@ -15,10 +17,11 @@ import smithereen.model.attachments.SizedAttachment;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.notifications.Notification;
 import smithereen.storage.DatabaseUtils;
+import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
-public class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject{
+public class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject, ActivityPubRepresentable{
 	public long id;
 	public int ownerID;
 	public int authorID;
@@ -29,6 +32,7 @@ public class Photo implements SizedAttachment, OwnedContentObject, LikeableConte
 	public Instant createdAt;
 	public PhotoMetadata metadata;
 	public URI apID;
+	public int displayOrder;
 
 	public SizedImage image;
 
@@ -50,6 +54,7 @@ public class Photo implements SizedAttachment, OwnedContentObject, LikeableConte
 		String apID=res.getString("ap_id");
 		if(apID!=null)
 			p.apID=URI.create(apID);
+		p.displayOrder=res.getInt("display_order");
 		return p;
 	}
 
@@ -99,6 +104,19 @@ public class Photo implements SizedAttachment, OwnedContentObject, LikeableConte
 	@Override
 	public long getObjectID(){
 		return id;
+	}
+
+	@Override
+	public URI getActivityPubID(){
+		if(apID!=null)
+			return apID;
+		return UriBuilder.local().path("photos", getIdString()).build();
+	}
+
+	public String getBlurHash(){
+		if(image instanceof LocalImage li)
+			return li.blurHash;
+		return metadata.blurhash;
 	}
 
 	public PhotoViewerInlineData getSinglePhotoViewerData(){

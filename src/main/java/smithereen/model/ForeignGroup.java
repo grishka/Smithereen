@@ -24,7 +24,7 @@ import spark.utils.StringUtils;
 
 public class ForeignGroup extends Group implements ForeignActor{
 
-	private URI wall;
+	private URI wall, photoAlbums;
 	public URI actorTokenEndpoint;
 	public URI members;
 	public URI tentativeMembers;
@@ -55,6 +55,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 		collectionQueryEndpoint=tryParseURL(ep.collectionQuery);
 		members=tryParseURL(ep.groupMembers);
 		tentativeMembers=tryParseURL(ep.tentativeGroupMembers);
+		photoAlbums=tryParseURL(ep.photoAlbums);
 	}
 
 	@Override
@@ -113,6 +114,8 @@ public class ForeignGroup extends Group implements ForeignActor{
 		ensureHostMatchesID(members, "members");
 		tentativeMembers=tryParseURL(optString(obj, "tentativeMembers"));
 		ensureHostMatchesID(tentativeMembers, "tentativeMembers");
+		photoAlbums=tryParseURL(optString(obj, "photoAlbums"));
+		ensureHostMatchesID(photoAlbums, "photoAlbums");
 
 		return this;
 	}
@@ -155,6 +158,11 @@ public class ForeignGroup extends Group implements ForeignActor{
 	@Override
 	public URI getWallURL(){
 		return wall;
+	}
+
+	@Override
+	public URI getPhotoAlbumsURL(){
+		return photoAlbums;
 	}
 
 	public void resolveDependencies(ApplicationContext context, boolean allowFetching, boolean allowStorage){ // TODO remove this abomination

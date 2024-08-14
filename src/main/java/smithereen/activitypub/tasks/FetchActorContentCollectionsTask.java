@@ -25,13 +25,15 @@ public class FetchActorContentCollectionsTask extends NoResultCallable{
 	private final ApplicationContext context;
 	private final HashMap<URI, Future<Post>> fetchingAllReplies;
 	private final HashSet<URI> fetchingContentCollectionsActors;
+	private final HashMap<URI, Future<Void>> fetchingPhotoAlbums;
 
-	public FetchActorContentCollectionsTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, HashSet<URI> fetchingContentCollectionsActors, Actor actor){
+	public FetchActorContentCollectionsTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, HashSet<URI> fetchingContentCollectionsActors, Actor actor, HashMap<URI, Future<Void>> fetchingPhotoAlbums){
 		this.actor=actor;
 		this.apw=apw;
 		this.context=context;
 		this.fetchingAllReplies=fetchingAllReplies;
 		this.fetchingContentCollectionsActors=fetchingContentCollectionsActors;
+		this.fetchingPhotoAlbums=fetchingPhotoAlbums;
 	}
 
 	@Override
@@ -39,6 +41,9 @@ public class FetchActorContentCollectionsTask extends NoResultCallable{
 		List<Callable<?>> tasks=new ArrayList<>();
 		if(actor.hasWall()){
 			tasks.add(new FetchActorWallTask(apw, context, fetchingAllReplies, actor));
+		}
+		if(actor.hasPhotoAlbums()){
+			tasks.add(new FetchActorPhotoAlbumsTask(apw, context, actor, fetchingPhotoAlbums));
 		}
 		try{
 			apw.invokeAll(tasks);

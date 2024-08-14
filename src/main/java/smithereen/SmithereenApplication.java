@@ -505,6 +505,7 @@ public class SmithereenApplication{
 			getWithCSRF("/addBookmark", BookmarksRoutes::addUserBookmark);
 			getWithCSRF("/removeBookmark", BookmarksRoutes::removeUserBookmark);
 
+			getActivityPubCollection("/albums", 100, ActivityPubRoutes::userAlbums);
 			get("/albums", PhotosRoutes::userAlbums);
 		});
 
@@ -580,6 +581,7 @@ public class SmithereenApplication{
 			getWithCSRF("/addBookmark", BookmarksRoutes::addGroupBookmark);
 			getWithCSRF("/removeBookmark", BookmarksRoutes::removeGroupBookmark);
 
+			getActivityPubCollection("/albums", 100, ActivityPubRoutes::groupAlbums);
 			get("/albums", PhotosRoutes::groupAlbums);
 		});
 
@@ -616,6 +618,7 @@ public class SmithereenApplication{
 		});
 
 		path("/albums/:id", ()->{
+			getActivityPubCollection("", 100, ActivityPubRoutes::photoAlbum);
 			get("", PhotosRoutes::album);
 			postWithCSRF("/upload", PhotosRoutes::uploadPhoto);
 			getLoggedIn("/edit", PhotosRoutes::editAlbumForm);

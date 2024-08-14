@@ -91,6 +91,7 @@ import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import smithereen.util.XmlParser;
+import spark.Request;
 import spark.utils.StringUtils;
 
 import static java.time.temporal.ChronoField.*;
@@ -516,7 +517,7 @@ public class ActivityPub{
 		}
 	}
 
-	public static Actor verifyHttpSignature(spark.Request req, Actor userHint) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, SQLException{
+	public static Actor verifyHttpSignature(spark.Request req, Actor userHint) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException{
 		String sigHeader=req.headers("Signature");
 		if(sigHeader==null)
 			throw new BadRequestException("Request is missing Signature header");
@@ -577,7 +578,7 @@ public class ActivityPub{
 			}
 			sigParts.add(header+": "+value);
 		}
-		String sigStr=String.join("\n", sigParts);
+		String sigStr=java.lang.String.join("\n", sigParts);
 		Signature sig=Signature.getInstance("SHA256withRSA");
 		sig.initVerify(user.publicKey);
 		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
@@ -587,6 +588,17 @@ public class ActivityPub{
 			throw new BadRequestException("Signature failed to verify");
 		}
 		return user;
+	}
+
+	public static String getRequesterDomain(Request req){
+		if(req.headers("signature")==null) // Avoids needlessly polluting logs
+			return null;
+		try{
+			return verifyHttpSignature(req, null).domain;
+		}catch(Exception x){
+			LOG.trace("Failed to verify signature header: {}", req.headers("signature"), x);
+			return null;
+		}
 	}
 
 	private static String generateActorTokenStringToBeSigned(JsonObject obj){

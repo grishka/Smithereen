@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=53;
+	public static final int SCHEMA_VERSION=54;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -52,6 +52,7 @@ public class DatabaseSchemaUpdater{
 						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_'), '%');""");
 				createMediaRefCountTriggers(conn);
 				createApIdIndexTriggers(conn);
+				createApIdIndexTriggersForPhotos(conn);
 				insertDefaultRoles(conn);
 			}
 		}else{
@@ -775,6 +776,7 @@ public class DatabaseSchemaUpdater{
 			}
 			case 52 -> conn.createStatement().execute("ALTER TABLE servers ADD features bigint unsigned NOT NULL DEFAULT 0");
 			case 53 -> migratePasswordsToSaltedHashes(conn);
+			case 54 -> createApIdIndexTriggersForPhotos(conn);
 		}
 	}
 
@@ -850,6 +852,20 @@ public class DatabaseSchemaUpdater{
 				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id IN (SELECT ap_id FROM wall_posts WHERE owner_user_id=OLD.id AND ap_id IS NOT NULL); END IF; END;");
 		conn.createStatement().execute("CREATE TRIGGER delete_foreign_group_posts_from_ap_ids BEFORE DELETE ON `groups` FOR EACH ROW BEGIN " +
 				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id IN (SELECT ap_id FROM wall_posts WHERE owner_group_id=OLD.id AND ap_id IS NOT NULL); END IF; END;");
+	}
+
+	private static void createApIdIndexTriggersForPhotos(DatabaseConnection conn) throws SQLException{
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_photo_albums_to_ap_ids AFTER INSERT ON photo_albums FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.PHOTO_ALBUM.id).execute();
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_photos_to_ap_ids AFTER INSERT ON photos FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.PHOTO.id).execute();
+
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_photo_albums_from_ap_ids BEFORE DELETE ON photo_albums FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF;" +
+				"DELETE FROM ap_id_index WHERE ap_id IN (SELECT ap_id FROM photos WHERE album_id=OLD.id AND ap_id IS NOT NULL);" +
+				"END;");
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_photos_from_ap_ids AFTER DELETE ON photos FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
 	}
 
 	private static void createMediaRefCountTriggers(DatabaseConnection conn) throws SQLException{

@@ -24,6 +24,8 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.ActivityPubPhoto;
+import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.LinkOrObject;
@@ -33,9 +35,13 @@ import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.Post;
 import smithereen.model.Server;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.FederationStorage;
+import smithereen.storage.PhotoStorage;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.exceptions.FederationException;
@@ -46,6 +52,7 @@ import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.XTEA;
 
 import static smithereen.Utils.parseIntOrDefault;
 
@@ -55,6 +62,8 @@ public class ObjectLinkResolver{
 	private static final Pattern USERS=Pattern.compile("^/users/(\\d+)$");
 	private static final Pattern GROUPS=Pattern.compile("^/groups/(\\d+)$");
 	private static final Pattern MESSAGES=Pattern.compile("^/activitypub/objects/messages/([a-zA-Z0-9_-]+)$");
+	private static final Pattern ALBUMS=Pattern.compile("^/albums/([a-zA-Z0-9_-]+)$");
+	private static final Pattern PHOTOS=Pattern.compile("^/photos/([a-zA-Z0-9_-]+)$");
 
 	private static final Logger LOG=LoggerFactory.getLogger(ObjectLinkResolver.class);
 
@@ -266,6 +275,18 @@ public class ObjectLinkResolver{
 					if(!msgs.isEmpty())
 						return ensureTypeAndCast(msgs.getFirst(), expectedType);
 				}
+
+				matcher=ALBUMS.matcher(link.getPath());
+				if(matcher.find()){
+					long id=XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO_ALBUM);
+					return ensureTypeAndCast(context.getPhotosController().getAlbumIgnoringPrivacy(id), expectedType);
+				}
+
+				matcher=PHOTOS.matcher(link.getPath());
+				if(matcher.find()){
+					long id=XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO);
+					return ensureTypeAndCast(context.getPhotosController().getPhotoIgnoringPrivacy(id), expectedType);
+				}
 			}else{
 				ObjectTypeAndID tid=FederationStorage.getObjectTypeAndID(link);
 				if(tid!=null){
@@ -292,6 +313,16 @@ public class ObjectLinkResolver{
 						if(!msgs.isEmpty())
 							return ensureTypeAndCast(msgs.getFirst(), expectedType);
 					}
+					if(tid.type==ObjectType.PHOTO_ALBUM && expectedType.isAssignableFrom(PhotoAlbum.class)){
+						long id=PhotoStorage.getAlbumIdByActivityPubId(link);
+						if(id!=-1)
+							return ensureTypeAndCast(context.getPhotosController().getAlbumIgnoringPrivacy(id), expectedType);
+					}
+					if(tid.type==ObjectType.PHOTO && expectedType.isAssignableFrom(Photo.class)){
+						long id=PhotoStorage.getPhotoIdByActivityPubId(link);
+						if(id!=-1)
+							return ensureTypeAndCast(context.getPhotosController().getPhotoIgnoringPrivacy(id), expectedType);
+					}
 				}else{
 					if(expectedType.isAssignableFrom(ForeignUser.class)){
 						User user=serviceActorCache.get(link);
@@ -308,26 +339,31 @@ public class ObjectLinkResolver{
 
 	public void storeOrUpdateRemoteObject(Object o){
 		try{
-			if(o instanceof ForeignUser fu){
-				if(fu.isServiceActor){
-					serviceActorCache.put(fu.activityPubID, fu);
-				}else{
-					UserStorage.putOrUpdateForeignUser(fu);
-					maybeUpdateServerFeaturesFromActor(fu);
-					if(fu.relationshipPartnerActivityPubID!=null && fu.relationshipPartnerID==0){
-						try{
-							User partner=resolve(fu.relationshipPartnerActivityPubID, User.class, true, true, false);
-							fu.relationshipPartnerID=partner.id;
-							UserStorage.putOrUpdateForeignUser(fu);
-						}catch(ObjectNotFoundException ignore){}
+			switch(o){
+				case ForeignUser fu -> {
+					if(fu.isServiceActor){
+						serviceActorCache.put(fu.activityPubID, fu);
+					}else{
+						UserStorage.putOrUpdateForeignUser(fu);
+						maybeUpdateServerFeaturesFromActor(fu);
+						if(fu.relationshipPartnerActivityPubID!=null && fu.relationshipPartnerID==0){
+							try{
+								User partner=resolve(fu.relationshipPartnerActivityPubID, User.class, true, true, false);
+								fu.relationshipPartnerID=partner.id;
+								UserStorage.putOrUpdateForeignUser(fu);
+							}catch(ObjectNotFoundException ignore){}
+						}
 					}
 				}
-			}else if(o instanceof ForeignGroup fg){
-				fg.storeDependencies(context);
-				GroupStorage.putOrUpdateForeignGroup(fg);
-				maybeUpdateServerFeaturesFromActor(fg);
-			}else if(o instanceof Post p){
-				PostStorage.putForeignWallPost(p);
+				case ForeignGroup fg -> {
+					fg.storeDependencies(context);
+					GroupStorage.putOrUpdateForeignGroup(fg);
+					maybeUpdateServerFeaturesFromActor(fg);
+				}
+				case Post p -> PostStorage.putForeignWallPost(p);
+				case PhotoAlbum pa -> context.getPhotosController().putOrUpdateForeignAlbum(pa);
+				case Photo p -> context.getPhotosController().putOrUpdateForeignPhoto(p);
+				case null, default -> {}
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -338,6 +374,9 @@ public class ObjectLinkResolver{
 		EnumSet<Server.Feature> features=EnumSet.noneOf(Server.Feature.class);
 		if(actor.hasWall()){
 			features.add(Server.Feature.WALL_POSTS);
+		}
+		if(actor.hasPhotoAlbums()){
+			features.add(Server.Feature.PHOTO_ALBUMS);
 		}
 		if(!features.isEmpty()){
 			context.getModerationController().addServerFeatures(actor.domain, features);
@@ -359,12 +398,21 @@ public class ObjectLinkResolver{
 			if(o instanceof MailMessage message)
 				return type.cast(NoteOrQuestion.fromNativeMessage(message, context));
 		}
+		if(type.isAssignableFrom(ActivityPubPhotoAlbum.class) && o instanceof PhotoAlbum pa){
+			return type.cast(ActivityPubPhotoAlbum.fromNativeAlbum(pa, context));
+		}else if(type.isAssignableFrom(ActivityPubPhoto.class) && o instanceof Photo p){
+			return type.cast(ActivityPubPhoto.fromNativePhoto(p, context.getPhotosController().getAlbumIgnoringPrivacy(p.albumID), context));
+		}
 		throw new IllegalStateException("Native type "+o.getClass().getName()+" does not have an ActivityPub representation");
 	}
 
 	public <T> T convertToNativeObject(ActivityPubObject o, Class<T> type){
 		if(o instanceof NoteOrQuestion noq && type.isAssignableFrom(Post.class)){
 			return type.cast(noq.asNativePost(context));
+		}else if(o instanceof ActivityPubPhotoAlbum pa && type.isAssignableFrom(PhotoAlbum.class)){
+			return type.cast(pa.asNativePhotoAlbum(context));
+		}else if(o instanceof ActivityPubPhoto p && type.isAssignableFrom(Photo.class)){
+			return type.cast(p.asNativePhoto(context));
 		}else if(type.isAssignableFrom(o.getClass())){
 			return type.cast(o);
 		}
@@ -451,7 +499,9 @@ public class ObjectLinkResolver{
 		USER('U', 'S', 'E', 'R'),
 		GROUP('G', 'R', 'U', 'P'),
 		POST('P', 'O', 'S', 'T'),
-		MESSAGE('D', 'M', 'S', 'G');
+		MESSAGE('D', 'M', 'S', 'G'),
+		PHOTO_ALBUM('P', 'A', 'L', 'B'),
+		PHOTO('P', 'H', 'T', 'O');
 
 		public final int id;
 

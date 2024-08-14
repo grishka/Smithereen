@@ -233,6 +233,7 @@ public abstract class Actor extends ActivityPubObject{
 
 	public abstract int getLocalID();
 	public abstract URI getWallURL();
+	public abstract URI getPhotoAlbumsURL();
 	public abstract String getTypeAndIdForURL();
 	public abstract String getName();
 
@@ -303,6 +304,10 @@ public abstract class Actor extends ActivityPubObject{
 		return getWallURL()!=null;
 	}
 
+	public boolean hasPhotoAlbums(){
+		return getPhotoAlbumsURL()!=null;
+	}
+
 	public void ensureLocal(){
 		if(StringUtils.isNotEmpty(domain))
 			throw new IllegalArgumentException("Local actor is required here (got "+activityPubID+")");
@@ -340,6 +345,9 @@ public abstract class Actor extends ActivityPubObject{
 			ep.wall=wall.toString();
 		if(collectionQueryEndpoint!=null)
 			ep.collectionQuery=collectionQueryEndpoint.toString();
+		URI photoAlbums=getPhotoAlbumsURL();
+		if(photoAlbums!=null)
+			ep.photoAlbums=photoAlbums.toString();
 		return ep;
 	}
 
@@ -373,5 +381,7 @@ public abstract class Actor extends ActivityPubObject{
 		public String groupMembers;
 		@SerializedName("tm")
 		public String tentativeGroupMembers;
+		@SerializedName("pa")
+		public String photoAlbums;
 	}
 }
