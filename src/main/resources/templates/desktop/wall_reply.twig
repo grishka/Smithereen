@@ -70,7 +70,7 @@
 				{%- endif -%}
 				<a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.id}})" class="postLink">{{LD(realPost.createdAt)}}</a>
 				{%- if not hideActions %}
-				{% if not hideReplyLink and postInteractions[topLevel.post.mastodonStyleRepost ? topLevel.repost.post.post.id : topLevel.post.id].canComment and currentUser is not null %}
+				{% if not hideReplyLink and postInteractions[topLevel.post.IDForInteractions].canComment and currentUser is not null %}
 					| <a href="{{realPost.internalURL}}" onclick="return showPostReplyForm({{realPost.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', {{ commentViewType!='FLAT' }}, {{ commentViewType=='TWO_LEVEL' and replyLevel>1 ? realPost.replyKey[1] : 0 }})">{{L('add_reply')}}</a>
 				{% endif %}
 				{% if not realPost.local %}
