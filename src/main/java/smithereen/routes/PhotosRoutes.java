@@ -84,6 +84,7 @@ public class PhotosRoutes{
 				.with("albums", albums)
 				.with("owner", owner)
 				.with("covers", covers)
+				.headerBack(owner)
 				.pageTitle(switch(owner){
 					case User u when self!=null && u.id==self.user.id -> l.get("my_photo_albums");
 					case User u -> l.get("user_photo_albums", Map.of("name", u.getFirstLastAndGender()));
@@ -144,7 +145,7 @@ public class PhotosRoutes{
 			owner=ctx.getUsersController().getUserOrThrow(album.ownerID);
 		else
 			owner=ctx.getGroupsController().getGroupOrThrow(-album.ownerID);
-		model.with("owner", owner);
+		model.with("owner", owner).headerBack(owner);
 		int offset=offset(req);
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset, 100);
 		model.paginate(photos);

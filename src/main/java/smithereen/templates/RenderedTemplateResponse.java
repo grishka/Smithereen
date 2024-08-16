@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
+import smithereen.activitypub.objects.Actor;
 import smithereen.model.PaginatedList;
 import spark.Request;
 import spark.utils.StringUtils;
@@ -115,6 +116,17 @@ public class RenderedTemplateResponse{
 			req.session().removeAttribute(messageKeyInSession);
 			with(templateKey, msg);
 		}
+		return this;
+	}
+
+	public RenderedTemplateResponse headerBack(String href, String title){
+		with("headerBackHref", href);
+		with("headerBackTitle", title);
+		return this;
+	}
+
+	public RenderedTemplateResponse headerBack(Actor actor){
+		headerBack(actor.getProfileURL(), actor.getName());
 		return this;
 	}
 

@@ -91,12 +91,14 @@ small{
 	color: $textOnAccent;
 	position: absolute;
 	top: 0;
-	left: 12px;
-	right: 12px;
+	left: 0;
+	right: 0;
 	height: $headerHeight;
-	padding-right: 12px;
-	margin: 0 -8px;
+	display: flex;
+	padding: 0 8px 0 4px;
 	.logo{
+		width: 142px;
+		flex: none;
 		img{
 			margin: 0 8px 1px 4px;
 			vertical-align: middle;
@@ -117,23 +119,32 @@ small{
 			}
 		}
 	}
+	#headerNav{
+		flex-grow: 1;
+		flex-shrink: 0;
+		display: flex;
+		justify-content: flex-end;
+	}
 	a.nav{
 		color: $textOnAccent;
 		font-weight: bold;
 		display: inline-block;
 		line-height: $headerHeight;
 		height: $headerHeight;
-		padding: 0 8px;
+		padding: 0 10px;
 		text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
 		vertical-align: top;
 		text-transform: lowercase;
+		&.back{
+			text-transform: none;
+			float: left;
+			padding-left: 25px;
+			background: svg-load('img/backlink.svg', fill: $textOnAccent) no-repeat left center;
+		}
 	}
 	a.nav:hover, a.nav:visited:hover{
 		text-decoration: none;
-		background: rgba(0, 0, 0, .2);
-	}
-	td{
-		vertical-align: top;
+		background-color: rgba(0, 0, 0, .2);
 	}
 	#qsearchWrap{
 		width: 172px;
