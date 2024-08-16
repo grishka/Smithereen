@@ -17,6 +17,7 @@ interface PhotoViewerPhoto{
 	urls:PhotoViewerSizedImageURLs[];
 	interactions:PhotoViewerPhotoInteractions;
 	originalURL:string;
+	historyURL:string;
 }
 
 interface PhotoViewerPhotoInteractions{
@@ -40,11 +41,15 @@ interface PhotoViewerSizedImageURLs{
 
 function openPhotoViewer(el:HTMLElement):boolean{
 	var info:PhotoViewerInlineData=JSON.parse(el.dataset.pv);
-	var url=el.dataset.pvUrl || "/photos/ajaxViewerInfo";
-	if(mobile){
-		new MobilePhotoViewer(info, url).show();
-	}else{
-		new DesktopPhotoViewer(info, url).show();
-	}
+	doOpenPhotoViewer(info, el.dataset.pvUrl);
 	return false;
 }
+
+function doOpenPhotoViewer(info:PhotoViewerInlineData, listURL:string="/photos/ajaxViewerInfo", fromPopState:boolean=false){
+	if(mobile){
+		new MobilePhotoViewer(info, listURL, fromPopState).show();
+	}else{
+		new DesktopPhotoViewer(info, listURL, fromPopState).show();
+	}
+}
+

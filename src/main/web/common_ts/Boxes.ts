@@ -147,7 +147,7 @@ class LayerManager{
 	private maybeDismissTopLayer():void{
 		var topLayer=this.stack[this.stack.length-1];
 		if(topLayer.allowDismiss())
-			this.dismiss(topLayer);
+			topLayer.dismiss();
 	}
 
 	public getTopLayer():BaseLayer{
@@ -267,8 +267,47 @@ abstract class BaseLayer{
 }
 
 abstract class BaseMediaViewerLayer extends BaseLayer{
+	protected historyEntryAdded:boolean;
+	private popStateListener=this.onPopState.bind(this);
+
+	public constructor(historyEntryAdded:boolean){
+		super();
+		this.historyEntryAdded=historyEntryAdded;
+	}
+
 	public getLayerManager(){
 		return LayerManager.getMediaInstance();
+	}
+
+	protected updateHistory(state:any, url:string){
+		if(this.historyEntryAdded){
+			window.history.replaceState(state, "", url);
+		}else{
+			window.history.pushState(state, "", url);
+			this.historyEntryAdded=true;
+		}
+	}
+
+	public onShown(){
+		super.onShown();
+		window.addEventListener("popstate", this.popStateListener, false);
+	}
+
+	public onHidden(){
+		super.onHidden();
+		window.removeEventListener("popstate", this.popStateListener);
+	}
+
+	public dismiss(){
+		super.dismiss();
+		if(this.historyEntryAdded){
+			window.history.back();
+		}
+	}
+
+	private onPopState(ev:PopStateEvent){
+		this.historyEntryAdded=false;
+		this.dismiss();
 	}
 }
 

@@ -25,8 +25,8 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 	private hasUnloadedAdjacentPhotos=false;
 	private uiVisible=true;
 
-	public constructor(info:PhotoViewerInlineData, listURL:string){
-		super();
+	public constructor(info:PhotoViewerInlineData, listURL:string, fromPopState:boolean){
+		super(fromPopState);
 		this.currentIndex=info.index;
 		this.listID=info.list;
 		this.listURL=listURL;
@@ -158,6 +158,9 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 
 	private updateBottomPart(){
 		var ph=this.photos[this.currentIndex];
+		var url=ph.historyURL || `#${this.listID}/${this.currentIndex}`;
+		this.updateHistory({layer: "PhotoViewer", pvInline: this.getCurrentInlineData(), pvListURL: this.listURL}, url);
+
 		if((!ph.html || !ph.html.length) && !ph.interactions){
 			this.bottomBar.hide();
 		}else{
@@ -185,6 +188,14 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 				this.interactionBar.hide();
 			}
 		}
+	}
+
+	private getCurrentInlineData():PhotoViewerInlineData{
+		return {
+			list: this.listID,
+			index: this.currentIndex,
+			urls: this.photos[this.currentIndex].urls
+		};
 	}
 
 	private maintainIllusionOfInfiniteScroll(fromScroll:boolean=true){

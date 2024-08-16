@@ -24,8 +24,8 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	private keyDownListener=this.onKeyDown.bind(this);
 	private wasShown:boolean=false;
 
-	public constructor(info:PhotoViewerInlineData, listURL:string){
-		super();
+	public constructor(info:PhotoViewerInlineData, listURL:string, fromPopState:boolean){
+		super(fromPopState);
 		this.currentIndex=info.index;
 		this.currentURLs=info.urls;
 		this.listID=info.list;
@@ -43,6 +43,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			this.bottomPart=ce("div", {className: "infoAndComments"})
 		]);
 		this.updateImage();
+		this.historyEntryAdded=fromPopState;
 		this.loadPhotoList(Math.floor(this.currentIndex/10)*10);
 	}
 
@@ -179,6 +180,16 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	private updateBottomPart(){
 		var ph=this.photos[this.currentIndex];
 		this.bottomPart.innerHTML=ph.html;
+		var url=ph.historyURL || `#${this.listID}/${this.currentIndex}`;
+		this.updateHistory({layer: "PhotoViewer", pvInline: this.getCurrentInlineData(), pvListURL: this.listURL}, url);
+	}
+
+	private getCurrentInlineData():PhotoViewerInlineData{
+		return {
+			list: this.listID,
+			index: this.currentIndex,
+			urls: this.photos[this.currentIndex].urls
+		};
 	}
 
 	private loadPhotoList(offset:number){
