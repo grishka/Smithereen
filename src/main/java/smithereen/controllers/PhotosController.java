@@ -201,6 +201,8 @@ public class PhotosController{
 	}
 
 	public boolean canManageAlbum(User self, @NotNull PhotoAlbum album){
+		if(self==null)
+			return false;
 		if(album.ownerID>0){
 			return self.id==album.ownerID;
 		}else{
@@ -215,6 +217,8 @@ public class PhotosController{
 	}
 
 	public boolean canManagePhoto(User self, @NotNull Photo photo){
+		if(self==null)
+			return false;
 		if(photo.ownerID>0){
 			return photo.ownerID==self.id;
 		}else{
