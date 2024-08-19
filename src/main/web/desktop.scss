@@ -3916,6 +3916,12 @@ label.largeAccented{
 	}
 }
 
+.pageContent .photoViewer .imgW img{
+	margin: 0 auto 15px;
+	cursor: default;
+	max-width: 100%;
+}
+
 .pvBack, .pvClose{
 	position: fixed;
 	top: 0;

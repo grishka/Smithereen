@@ -150,7 +150,8 @@ public class Templates{
 				.with("staticHashes", staticHashes)
 				.with("serverName", Config.getServerDisplayName())
 				.with("serverDomain", Config.domain)
-				.with("isMobile", req.attribute("mobile")!=null);
+				.with("isMobile", req.attribute("mobile")!=null)
+				.with("isAjax", Utils.isAjax(req));
 	}
 
 	public static PebbleTemplate getTemplate(Request req, String name){

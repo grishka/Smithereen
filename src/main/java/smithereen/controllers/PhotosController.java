@@ -584,4 +584,15 @@ public class PhotosController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public int getPhotoIndexInAlbum(PhotoAlbum album, Photo photo){
+		try{
+			int index=PhotoStorage.getPhotoIndexInAlbum(album.id, photo.id);
+			if(index==-1)
+				throw new ObjectNotFoundException();
+			return index;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

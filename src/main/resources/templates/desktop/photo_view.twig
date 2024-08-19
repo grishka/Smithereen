@@ -1,0 +1,16 @@
+{% extends "page" %}
+{% block content %}
+{% include "photos_tabbar" with {'tab': 'photo'} %}
+<div class="summaryWrap">
+	<div class="summary">{{ L('photo_X_of_Y', {'current': index+1, 'total': album.numPhotos}) }}</div>
+	<div class="auxLinks">
+		<a href="{{ prevURL }}">&nbsp;&larr;&nbsp;</a>
+		<a href="{{ nextURL }}">&nbsp;&rarr;&nbsp;</a>
+	</div>
+</div>
+<div class="photoViewer singleColumn">
+	<div class="imgW">{{ photo.image | pictureForPhoto('x') }}</div>
+	{% include "photo_viewer_info_comments" %}
+</div>
+{% endblock %}
+

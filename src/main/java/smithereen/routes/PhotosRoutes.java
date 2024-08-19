@@ -23,6 +23,7 @@ import smithereen.model.AttachmentHostContentObject;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
@@ -304,13 +305,7 @@ public class PhotosRoutes{
 				EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer(), null, origURL, null);
 	}
 
-	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users, Map<Long, UserInteractions> interactions, User self){
-		ApplicationContext ctx=context(req);
-		String html;
-		User author=users.get(photo.authorID);
-		PhotoViewerPhotoInfo.Interactions pvInteractions;
-		UserInteractions ui=interactions!=null ? interactions.get(photo.id) : null;
-		String origURL;
+	private static EnumSet<PhotoViewerPhotoInfo.AllowedAction> getAllowedActionsForPhoto(ApplicationContext ctx, User self, Photo photo, PhotoAlbum album){
 		EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions=EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class);
 		if(ctx.getPhotosController().canManagePhoto(self, photo)){
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.DELETE);
@@ -319,6 +314,17 @@ public class PhotosRoutes{
 		if(ctx.getPhotosController().canManageAlbum(self, album)){
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.SET_AS_COVER);
 		}
+		return allowedActions;
+	}
+
+	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users, Map<Long, UserInteractions> interactions, User self){
+		ApplicationContext ctx=context(req);
+		String html;
+		User author=users.get(photo.authorID);
+		PhotoViewerPhotoInfo.Interactions pvInteractions;
+		UserInteractions ui=interactions!=null ? interactions.get(photo.id) : null;
+		String origURL;
+		EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions=getAllowedActionsForPhoto(ctx, self, photo, album);
 		if(isMobile(req)){
 			html=StringUtils.isNotEmpty(photo.description) ? TextProcessor.postprocessPostHTMLForDisplay(photo.description, false, false) : "";
 			if(ui!=null){
@@ -539,5 +545,64 @@ public class PhotosRoutes{
 		}
 		resp.redirect(back(req));
 		return "";
+	}
+
+	public static Object photo(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Account self=sessionInfo(req) instanceof SessionInfo si ? si.account : null;
+		Photo photo=getPhotoForRequest(req);
+		PhotoAlbum album=ctx.getPhotosController().getAlbum(photo.albumID, self!=null ? self.user : null);
+		int index=ctx.getPhotosController().getPhotoIndexInAlbum(album, photo);
+		if(req.queryParams("nojs")!=null || isMobile(req)){
+			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_view", req);
+			EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions=getAllowedActionsForPhoto(ctx, self==null ? null : self.user, photo, album);
+			OwnerAndAuthor oaa=ctx.getWallController().getContentAuthorAndOwner(photo);
+			Photo next=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, (index+1)%album.numPhotos, 1).list.getFirst();
+			Photo prev=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, index==0 ? album.numPhotos-1 : index-1, 1).list.getFirst();
+			model.with("description", photo.description)
+					.with("author", oaa.author())
+					.with("owner", oaa.owner())
+					.headerBack(oaa.owner())
+					.with("album", album)
+					.with("createdAt", photo.createdAt)
+					.with("interactions", ctx.getUserInteractionsController().getUserInteractions(List.of(photo), self==null ? null : self.user).get(photo.id))
+					.with("photo", photo)
+					.with("originalImageURL", photo.image.getOriginalURI())
+					.with("allowedActions", allowedActions.stream().map(Object::toString).collect(Collectors.toSet()))
+					.with("index", index)
+					.with("nextURL", next.getURL()+"?nojs")
+					.with("prevURL", prev.getURL()+"?nojs")
+					.pageTitle(album.title);
+
+			if(isMobile(req)){
+				model.with("photoInteractions", ctx.getUserInteractionsController().getUserInteractions(List.of(photo), self==null ? null : self.user));
+			}
+
+			return model;
+		}
+
+		RenderedTemplateResponse model=new RenderedTemplateResponse("photo_album_view", req);
+		model.with("album", album).pageTitle(album.title);
+		Actor owner;
+		if(album.ownerID>0)
+			owner=ctx.getUsersController().getUserOrThrow(album.ownerID);
+		else
+			owner=ctx.getGroupsController().getGroupOrThrow(-album.ownerID);
+		model.with("owner", owner).headerBack(owner);
+		int offset=offset(req);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, offset, 100);
+		model.paginate(photos, album.getURL(), album.getURL());
+
+		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
+		int i=0;
+		for(Photo p:photos.list){
+			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "albums/"+album.getIdString(), p.image.getURLsForPhotoViewer()));
+			i++;
+		}
+		model.with("photoViewerData", pvData);
+		model.with("photoDataToOpenViewer", new PhotoViewerInlineData(index, "albums/"+album.getIdString(), photo.image.getURLsForPhotoViewer()));
+		jsLangKey(req, "drop_files_here", "release_files_to_upload", "uploading_photo_X_of_Y", "add_more_photos", "photo_description", "photo_description_saved", "uploading_photos", "you_uploaded_X_photos",
+				"delete", "delete_photo", "delete_photo_confirm");
+		return model;
 	}
 }

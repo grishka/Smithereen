@@ -1,6 +1,8 @@
 package smithereen.storage;
 
 import java.net.URI;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -491,6 +493,18 @@ public class PhotoStorage{
 					.whereIn("object_id", ids)
 					.where("object_type=?", Like.ObjectType.PHOTO)
 					.executeNoResult();
+		}
+	}
+
+	public static int getPhotoIndexInAlbum(long albumID, long photoID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT id, ROW_NUMBER() OVER(ORDER BY display_order ASC) AS rownum FROM `photos` WHERE album_id=? ORDER BY (id=?) DESC LIMIT 1", albumID, photoID);
+			try(ResultSet res=stmt.executeQuery()){
+				if(res.next() && res.getLong("id")==photoID){
+					return res.getInt("rownum")-1;
+				}
+			}
+			return -1;
 		}
 	}
 }

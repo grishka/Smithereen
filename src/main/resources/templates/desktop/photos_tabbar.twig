@@ -13,6 +13,7 @@
 	</a>
 	{% if album is not null %}<a href="{{ album.url }}" class="{{ tab=='album' ? 'selected' : '' }}">{{ album.title }}</a>{% endif %}
 	{% if tab=='edit' %}<a href="{{ album.url }}/edit" class="selected">{{ L('editing_photo_album') }}</a>{% endif %}
+	{% if tab=='photo' %}<a href="{{ photo.url }}?nojs" class="selected">{{ L('content_type_photo') }}</a>{% endif %}
 	{% if tab!='edit' %}
 	<div class="aux">
 	{% if album is not null %}
