@@ -2128,6 +2128,7 @@ input.searchField{
 		width: 100%;
 		.description{
 			padding: 0 16px 16px;
+			max-height: 124px; /* 6 lines + padding-bottom */
 		}
 		p:first-child{
 			margin-top: 0;
@@ -2215,6 +2216,15 @@ input.searchField{
 	img{
 		width: 100%;
 		height: 100%;
+	}
+}
+
+.photoPageDescription{
+	p:first-child{
+		margin-top: 0;
+	}
+	p:last-child{
+		margin-bottom: 0;
 	}
 }
 

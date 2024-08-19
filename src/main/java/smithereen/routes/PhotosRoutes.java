@@ -290,7 +290,7 @@ public class PhotosRoutes{
 		String html;
 		String origURL;
 		if(isMobile(req)){
-			html=StringUtils.isNotEmpty(pa.description) ? TextProcessor.escapeHTML(pa.description) : "";
+			html=StringUtils.isNotEmpty(pa.description) ? TextProcessor.escapeHTML(pa.description).replace("\n", "<br/>") : "";
 			origURL=pa.image.getOriginalURI().toString();
 		}else{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_info_comments", req);
