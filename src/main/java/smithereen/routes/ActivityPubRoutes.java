@@ -501,6 +501,13 @@ public class ActivityPubRoutes{
 				.ordered();
 	}
 
+	public static Object photo(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO));
+		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(photo.albumID, req);
+		return ActivityPubPhoto.fromNativePhoto(photo, album, ctx);
+	}
+
 	public static Object externalInteraction(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		// ?type=reblog
 		// ?type=favourite
