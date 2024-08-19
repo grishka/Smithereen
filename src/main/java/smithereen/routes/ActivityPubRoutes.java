@@ -639,7 +639,7 @@ public class ActivityPubRoutes{
 		nodeInfo.usage.users.activeMonth=UserStorage.getActiveLocalUserCount(30*24*60*60*1000L);
 		nodeInfo.usage.users.activeHalfyear=UserStorage.getActiveLocalUserCount(180*24*60*60*1000L);
 		nodeInfo.metadata=Map.of(
-				"nodeName", Objects.requireNonNull(Config.serverDisplayName, Config.domain),
+				"nodeName", Objects.requireNonNullElse(Config.serverDisplayName, Config.domain),
 				"nodeDescription", TextProcessor.stripHTML(Objects.requireNonNull(Config.serverShortDescription, ""), true)
 		);
 
