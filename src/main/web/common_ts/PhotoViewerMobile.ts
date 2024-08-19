@@ -48,7 +48,9 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 						optionsBtn=ce("a", {className: "options", title: lang("more_actions")})
 					]),
 					this.bottomBar=ce("div", {className: "pvBottom"}, [
-						this.description=ce("div", {className: "description"}),
+						ce("div", {className: "description"}, [
+							this.description=ce("div")
+						]),
 						this.interactionBar=ce("div", {className: "pvActions"}, [
 							this.likeBtn=ce("a", {className: "action like", onclick: ()=>{return likeOnClick(this.likeBtn)}}, [
 								ce("span", {className: "wideOnly"}, [lang("like")]),

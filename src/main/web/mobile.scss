@@ -2129,6 +2129,13 @@ input.searchField{
 		.description{
 			padding: 0 16px 16px;
 			max-height: 124px; /* 6 lines + padding-bottom */
+			>div{
+				overflow-y: hidden;
+				text-overflow: ellipsis;
+				display: -webkit-box;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: 6;
+			}
 		}
 		p:first-child{
 			margin-top: 0;
