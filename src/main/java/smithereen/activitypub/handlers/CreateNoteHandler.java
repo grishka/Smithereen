@@ -44,6 +44,8 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Create activity, NoteOrQuestion post) throws SQLException{
 		if(!Objects.equals(post.attributedTo, actor.activityPubID))
 			throw new BadRequestException("object.attributedTo and actor.id must match");
+		if(post.activityPubID==null)
+			throw new BadRequestException("id is required");
 		if(PostStorage.getPostByID(post.activityPubID)!=null){
 			// Already exists. Ignore and return 200 OK.
 			return;
