@@ -129,6 +129,7 @@ public class Group extends Actor{
 
 		serializerContext.addAlias("accessType", "sm:accessType");
 		obj.addProperty("accessType", accessType.toString().toLowerCase());
+		serializerContext.addAlias("manuallyApprovesFollowers", "as:manuallyApprovesFollowers");
 		obj.addProperty("manuallyApprovesFollowers", accessType!=AccessType.OPEN);
 
 		capabilities.addProperty("acceptsJoins", true);
