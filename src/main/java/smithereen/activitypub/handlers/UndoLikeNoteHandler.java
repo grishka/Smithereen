@@ -18,7 +18,7 @@ public class UndoLikeNoteHandler extends NestedActivityTypeHandler<ForeignUser, 
 	@Override
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Undo activity, Like nested, NoteOrQuestion _post) throws SQLException{
 		Post post=context.appContext.getWallController().getPostOrThrow(_post.activityPubID);
-		int id=LikeStorage.setObjectLiked(actor.id, post.id, Like.ObjectType.POST, false);
+		int id=LikeStorage.setObjectLiked(actor.id, post.id, Like.ObjectType.POST, false, null);
 		NotificationsStorage.deleteNotification(Notification.ObjectType.POST, post.id, Notification.Type.LIKE, actor.id);
 		if(id==0)
 			return;

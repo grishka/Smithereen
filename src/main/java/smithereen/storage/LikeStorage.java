@@ -22,9 +22,9 @@ import smithereen.storage.sql.SQLQueryBuilder;
 
 public class LikeStorage{
 
-	public static int setObjectLiked(int userID, long objectID, Like.ObjectType objectType, boolean liked) throws SQLException{
+	public static int setObjectLiked(int userID, long objectID, Like.ObjectType objectType, boolean liked, URI apID) throws SQLException{
 		if(liked)
-			return putLike(userID, objectID, objectType, null);
+			return putLike(userID, objectID, objectType, apID);
 		else
 			return deleteLike(userID, objectID, objectType);
 	}

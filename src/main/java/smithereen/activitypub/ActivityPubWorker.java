@@ -30,6 +30,7 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubCollection;
+import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LinkOrObject;
@@ -63,9 +64,12 @@ import smithereen.activitypub.tasks.ForwardOneActivityRunnable;
 import smithereen.activitypub.tasks.RetryActivityRunnable;
 import smithereen.activitypub.tasks.SendActivitySequenceRunnable;
 import smithereen.activitypub.tasks.SendOneActivityRunnable;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.LikeableContentObject;
 import smithereen.model.MailMessage;
 import smithereen.model.OwnerAndAuthor;
 import smithereen.model.Poll;
@@ -76,6 +80,7 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
@@ -149,7 +154,7 @@ public class ActivityPubWorker{
 		return Math.abs(rand.nextLong());
 	}
 
-	public void forwardActivity(String json, User signer, Collection<URI> inboxes, String originatingDomain){
+	public void forwardActivity(String json, Actor signer, Collection<URI> inboxes, String originatingDomain){
 		for(URI inbox:inboxes){
 			if(inbox.getHost().equalsIgnoreCase(originatingDomain))
 				continue;
@@ -415,19 +420,31 @@ public class ActivityPubWorker{
 		submitActivityForMembers(update, group);
 	}
 
-	public void sendLikeActivity(Post post, User user, int likeID) throws SQLException{
-		Like like=new Like().withActorAndObjectLinks(user, post);
+	public void sendLikeActivity(LikeableContentObject object, User user, int likeID) throws SQLException{
+		if(!(object instanceof ActivityPubRepresentable apObject))
+			throw new IllegalArgumentException();
+		Like like=new Like().withActorAndObjectLinks(user, apObject);
 		like.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID);
-		submitActivity(like, user, PostStorage.getInboxesForPostInteractionForwarding(post));
+		switch(object){
+			case Post post -> submitActivity(like, user, PostStorage.getInboxesForPostInteractionForwarding(post));
+			case Photo photo -> sendActivityForPhoto(user, context.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID), like);
+			default -> throw new IllegalStateException("Unexpected value: " + object);
+		}
 	}
 
-	public void sendUndoLikeActivity(Post post, User user, int likeID) throws SQLException{
-		Like like=new Like().withActorAndObjectLinks(user, post);
+	public void sendUndoLikeActivity(LikeableContentObject object, User user, int likeID) throws SQLException{
+		if(!(object instanceof ActivityPubRepresentable apObject))
+			throw new IllegalArgumentException();
+		Like like=new Like().withActorAndObjectLinks(user, apObject);
 		like.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID);
 		Undo undo=new Undo().withActorLinkAndObject(user, like);
 		undo.activityPubID=Config.localURI("/activitypub/objects/likes/"+likeID+"/undo");
 		ActivityPubCache.putUndoneLike(likeID, undo);
-		submitActivity(undo, user, PostStorage.getInboxesForPostInteractionForwarding(post));
+		switch(object){
+			case Post post -> submitActivity(undo, user, PostStorage.getInboxesForPostInteractionForwarding(post));
+			case Photo photo -> sendActivityForPhoto(user, context.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID), undo);
+			default -> throw new IllegalStateException("Unexpected value: " + object);
+		}
 	}
 
 	public void sendBlockActivity(Actor self, ForeignUser target){
@@ -630,11 +647,110 @@ public class ActivityPubWorker{
 		submitActivity(read, self, inboxes);
 	}
 
-	public void sendUserDeleteSelf(User self) throws SQLException{
+	public void sendUserDeleteSelf(User self){
 		Delete del=new Delete()
 				.withActorAndObjectLinks(self, self)
 				.withActorFragmentID("deleteSelf");
 		submitActivityForFollowers(del, self);
+	}
+
+	private void sendActivityForPhotoAlbum(Actor actor, PhotoAlbum album, Activity activity){
+		if(actor instanceof User user){
+			HashSet<URI> inboxes=new HashSet<>();
+			try{
+				getInboxesWithPrivacy(inboxes, user, album.viewPrivacy);
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+			submitActivity(activity, user, inboxes, Server.Feature.PHOTO_ALBUMS);
+		}else if(actor instanceof Group group){
+			submitActivityForMembers(activity, group, Server.Feature.PHOTO_ALBUMS);
+		}
+	}
+
+	private void sendActivityForPhoto(Actor actor, PhotoAlbum album, Activity activity){
+		if(album.ownerID>0){
+			sendActivityForPhotoAlbum(actor, album, activity);
+		}else{
+			Group owner=context.getGroupsController().getGroupOrThrow(-album.ownerID);
+			if(owner instanceof ForeignGroup){
+				submitActivity(activity, actor, actorInbox(owner));
+			}else{
+				try{
+					submitActivity(activity, actor, GroupStorage.getGroupMemberInboxes(owner.id), Server.Feature.PHOTO_ALBUMS);
+				}catch(SQLException x){
+					LOG.error("Error getting group member inboxes for {}", activity.getType(), x);
+				}
+			}
+		}
+	}
+
+	public void sendCreatePhotoAlbum(Actor actor, PhotoAlbum album){
+		Create create=new Create()
+				.withActorLinkAndObject(actor, ActivityPubPhotoAlbum.fromNativeAlbum(album, context));
+		create.activityPubID=new UriBuilder(album.getActivityPubID()).fragment("create").build();
+		sendActivityForPhotoAlbum(actor, album, create);
+	}
+
+	public void sendDeletePhotoAlbum(Actor actor, PhotoAlbum album){
+		Delete delete=new Delete()
+				.withActorAndObjectLinks(actor, album);
+		delete.activityPubID=new UriBuilder(album.getActivityPubID()).fragment("delete").build();
+		sendActivityForPhotoAlbum(actor, album, delete);
+	}
+
+	public void sendUpdatePhotoAlbum(Actor actor, PhotoAlbum album){
+		Update update=new Update()
+				.withActorLinkAndObject(actor, ActivityPubPhotoAlbum.fromNativeAlbum(album, context));
+		update.activityPubID=new UriBuilder(album.getActivityPubID()).fragment("update"+rand()).build();
+		sendActivityForPhotoAlbum(actor, album, update);
+	}
+
+	public void sendAddPhotoToAlbum(Actor actor, Photo photo, PhotoAlbum album){
+		Add add=new Add();
+		if(photo.apID!=null)
+			add.withActorAndObjectLinks(actor, photo);
+		else
+			add.withActorLinkAndObject(actor, ActivityPubPhoto.fromNativePhoto(photo, album, context));
+		add.activityPubID=new UriBuilder(album.getActivityPubID()).fragment("add"+photo.getIdString()).build();
+		ActivityPubPhotoAlbum target=new ActivityPubPhotoAlbum();
+		target.activityPubID=album.getActivityPubID();
+		target.attributedTo=actor.activityPubID;
+		add.target=new LinkOrObject(target);
+		sendActivityForPhotoAlbum(actor, album, add);
+	}
+
+	public void sendCreateAlbumPhoto(User actor, Photo photo, PhotoAlbum album){
+		Create create=new Create()
+				.withActorLinkAndObject(actor, ActivityPubPhoto.fromNativePhoto(photo, album, context));
+		create.activityPubID=new UriBuilder(photo.getActivityPubID()).appendPath("activityCreate").build();
+		ActivityPubPhotoAlbum target=new ActivityPubPhotoAlbum();
+		target.activityPubID=album.getActivityPubID();
+		target.attributedTo=actor.activityPubID;
+		create.target=new LinkOrObject(target);
+		URI inbox=actorInbox(context.getWallController().getContentAuthorAndOwner(album).owner());
+		submitActivity(create, actor, inbox);
+	}
+
+	public void sendUpdateAlbumPhoto(User actor, Photo photo, PhotoAlbum album){
+		Update update=new Update()
+				.withActorLinkAndObject(actor, ActivityPubPhoto.fromNativePhoto(photo, album, context));
+		update.activityPubID=new UriBuilder(photo.getActivityPubID()).fragment("update"+rand()).build();
+		sendActivityForPhoto(actor, album, update);
+	}
+
+	public void sendDeleteAlbumPhoto(User actor, Photo photo, PhotoAlbum album){
+		Delete delete=new Delete()
+				.withActorAndObjectLinks(actor, photo);
+		delete.activityPubID=new UriBuilder(photo.getActivityPubID()).fragment("delete").build();
+		sendActivityForPhoto(actor, album, delete);
+	}
+
+	public void sendRemoveAlbumPhoto(Group actor, Photo photo, PhotoAlbum album){
+		Remove remove=new Remove()
+				.withActorAndObjectLinks(actor, photo)
+				.withActorFragmentID("deletePhoto"+photo.getIdString());
+		sendActivityForPhoto(actor, album, remove);
 	}
 
 	public synchronized Future<List<Post>> fetchReplyThread(NoteOrQuestion post){
@@ -734,15 +850,43 @@ public class ActivityPubWorker{
 		}
 	}
 
+	public void submitActivityForFollowers(Activity activity, User actor, Server.Feature requiredFeature){
+		try{
+			submitActivity(activity, actor, UserStorage.getFollowerInboxes(actor.id), requiredFeature);
+		}catch(SQLException x){
+			LOG.error("Error getting follower inboxes for sending {} on behalf of user {}", activity.getType(), actor.id, x);
+		}
+	}
+
+	public void submitActivityForMembers(Activity activity, Group group, Server.Feature requiredFeature){
+		try{
+			submitActivity(activity, group, GroupStorage.getGroupMemberInboxes(group.id), requiredFeature);
+		}catch(SQLException x){
+			LOG.error("Error getting member inboxes for sending {} on behalf of group {}", activity.getType(), group.id, x);
+		}
+	}
+
 	public void submitActivity(Activity activity, Actor actor, URI inbox){
 		if(!Objects.equals(actor.activityPubID, activity.actor.link))
 			throw new IllegalArgumentException("Activity "+activity.getType()+" actor ID "+activity.actor.link+" does not match expected "+actor.activityPubID);
 		submitTask(new SendOneActivityRunnable(this, context, activity, inbox, actor));
 	}
 
+	public void submitActivity(Activity activity, Actor actor, URI inbox, Server.Feature requiredFeature){
+		if(!Objects.equals(actor.activityPubID, activity.actor.link))
+			throw new IllegalArgumentException("Activity "+activity.getType()+" actor ID "+activity.actor.link+" does not match expected "+actor.activityPubID);
+		submitTask(new SendOneActivityRunnable(this, context, activity, inbox, actor).requireFeature(requiredFeature));
+	}
+
 	public void submitActivity(Activity activity, Actor actor, Collection<URI> inboxes){
 		for(URI inbox:inboxes){
 			submitActivity(activity, actor, inbox);
+		}
+	}
+
+	public void submitActivity(Activity activity, Actor actor, Collection<URI> inboxes, Server.Feature requiredFeature){
+		for(URI inbox:inboxes){
+			submitActivity(activity, actor, inbox, requiredFeature);
 		}
 	}
 }

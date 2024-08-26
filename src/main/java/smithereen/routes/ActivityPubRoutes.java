@@ -40,10 +40,15 @@ import smithereen.activitypub.handlers.AcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.AcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.AddGroupHandler;
 import smithereen.activitypub.handlers.AddNoteHandler;
+import smithereen.activitypub.handlers.AddPhotoHandler;
 import smithereen.activitypub.handlers.AnnounceNoteHandler;
 import smithereen.activitypub.handlers.CreateNoteHandler;
+import smithereen.activitypub.handlers.CreatePhotoAlbumHandler;
+import smithereen.activitypub.handlers.CreatePhotoHandler;
 import smithereen.activitypub.handlers.DeleteNoteHandler;
 import smithereen.activitypub.handlers.DeletePersonHandler;
+import smithereen.activitypub.handlers.DeletePhotoAlbumHandler;
+import smithereen.activitypub.handlers.DeletePhotoHandler;
 import smithereen.activitypub.handlers.FlagHandler;
 import smithereen.activitypub.handlers.FollowGroupHandler;
 import smithereen.activitypub.handlers.FollowPersonHandler;
@@ -54,6 +59,7 @@ import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.InviteGroupHandler;
 import smithereen.activitypub.handlers.LeaveGroupHandler;
 import smithereen.activitypub.handlers.LikeNoteHandler;
+import smithereen.activitypub.handlers.LikePhotoHandler;
 import smithereen.activitypub.handlers.OfferFollowPersonHandler;
 import smithereen.activitypub.handlers.PersonAddPersonHandler;
 import smithereen.activitypub.handlers.PersonBlockPersonHandler;
@@ -67,6 +73,7 @@ import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectInviteGroupHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
+import smithereen.activitypub.handlers.RemovePhotoHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
@@ -74,9 +81,12 @@ import smithereen.activitypub.handlers.UndoFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoInviteGroupHandler;
 import smithereen.activitypub.handlers.UndoLikeNoteHandler;
+import smithereen.activitypub.handlers.UndoLikePhotoHandler;
 import smithereen.activitypub.handlers.UpdateGroupHandler;
 import smithereen.activitypub.handlers.UpdateNoteHandler;
 import smithereen.activitypub.handlers.UpdatePersonHandler;
+import smithereen.activitypub.handlers.UpdatePhotoAlbumHandler;
+import smithereen.activitypub.handlers.UpdatePhotoHandler;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -209,6 +219,18 @@ public class ActivityPubRoutes{
 		registerActivityHandler(Actor.class, Add.class, NoteOrQuestion.class, new AddNoteHandler());
 
 		registerActivityHandler(Flag.class, new FlagHandler());
+
+		// Photo albums
+		registerActivityHandler(Actor.class, Create.class, ActivityPubPhotoAlbum.class, new CreatePhotoAlbumHandler());
+		registerActivityHandler(Actor.class, Delete.class, ActivityPubPhotoAlbum.class, new DeletePhotoAlbumHandler());
+		registerActivityHandler(Actor.class, Update.class, ActivityPubPhotoAlbum.class, new UpdatePhotoAlbumHandler());
+		registerActivityHandler(Actor.class, Add.class, ActivityPubPhoto.class, new AddPhotoHandler());
+		registerActivityHandler(ForeignUser.class, Create.class, ActivityPubPhoto.class, new CreatePhotoHandler());
+		registerActivityHandler(ForeignUser.class, Update.class, ActivityPubPhoto.class, new UpdatePhotoHandler());
+		registerActivityHandler(ForeignUser.class, Delete.class, ActivityPubPhoto.class, new DeletePhotoHandler());
+		registerActivityHandler(ForeignGroup.class, Remove.class, ActivityPubPhoto.class, new RemovePhotoHandler());
+		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubPhoto.class, new LikePhotoHandler());
+		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, ActivityPubPhoto.class, new UndoLikePhotoHandler());
 	}
 
 	@SuppressWarnings("SameParameterValue")

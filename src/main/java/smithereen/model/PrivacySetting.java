@@ -51,6 +51,14 @@ public class PrivacySetting{
 		return Objects.hash(baseRule, allowUsers, exceptUsers);
 	}
 
+	public boolean isFullyPrivate(){
+		return baseRule==Rule.NONE && allowUsers.isEmpty();
+	}
+
+	public boolean isFullyPublic(){
+		return baseRule==Rule.EVERYONE && exceptUsers.isEmpty();
+	}
+
 	public JsonObject serializeForActivityPub(User owner, SerializerContext serializerContext){
 		JsonArray allowed=new JsonArray();
 		JsonArray except=new JsonArray();

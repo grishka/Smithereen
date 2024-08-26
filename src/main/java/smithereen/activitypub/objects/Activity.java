@@ -8,6 +8,7 @@ import java.util.Objects;
 
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
+import smithereen.exceptions.FederationException;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.util.UriBuilder;
 
@@ -43,6 +44,8 @@ public abstract class Activity extends ActivityPubObject{
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		actor=tryParseLinkOrObject(Objects.requireNonNull(obj.get("actor"), "actor must not be null"), parserContext);
+		if(actor.link==null)
+			throw new FederationException("actor must be a link");
 		object=tryParseLinkOrObject(Objects.requireNonNull(obj.get("object"), "object must not be null"), parserContext);
 		target=tryParseLinkOrObject(obj.get("target"), parserContext);
 		result=tryParseArrayOfLinksOrObjects(obj.get("result"), parserContext);

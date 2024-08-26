@@ -23,16 +23,20 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
 import smithereen.model.User;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.notifications.Notification;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaStorage;
+import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
@@ -176,7 +180,8 @@ public class PhotosController{
 				id=PhotoStorage.createUserAlbum(self.id, Objects.requireNonNull(title), description, Objects.requireNonNull(viewPrivacy), Objects.requireNonNull(commentPrivacy));
 			}
 			albumListCache.remove(self.id);
-			// TODO federate
+			if(!viewPrivacy.isFullyPrivate())
+				context.getActivityPubWorker().sendCreatePhotoAlbum(self, getAlbumIgnoringPrivacy(id));
 			return id;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -193,7 +198,7 @@ public class PhotosController{
 				id=PhotoStorage.createGroupAlbum(owner.id, title, description, disableCommenting, restrictUploads);
 			}
 			albumListCache.remove(-owner.id);
-			// TODO federate
+			context.getActivityPubWorker().sendCreatePhotoAlbum(owner, getAlbumIgnoringPrivacy(id));
 			return id;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -235,6 +240,19 @@ public class PhotosController{
 
 	public void deleteAlbum(User self, PhotoAlbum album){
 		enforceAlbumManagementPermission(self, album);
+		deletePhotoAlbumInternal(album);
+		if(!(self instanceof ForeignUser)){
+			context.getActivityPubWorker().sendDeletePhotoAlbum(album.ownerID>0 ? self : context.getGroupsController().getGroupOrThrow(-album.ownerID), album);
+		}
+	}
+
+	public void deleteAlbum(ForeignGroup self, PhotoAlbum album){
+		if(album.ownerID!=-self.id)
+			throw new UserActionNotAllowedException();
+		deletePhotoAlbumInternal(album);
+	}
+
+	private void deletePhotoAlbumInternal(PhotoAlbum album){
 		try{
 			MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsForAlbum(album.id), MediaFileReferenceType.ALBUM_PHOTO);
 			PhotoStorage.deleteAlbum(album.id, album.ownerID);
@@ -242,7 +260,6 @@ public class PhotosController{
 				albumListCache.remove(album.ownerID);
 			}
 			// TODO delete comments
-			// TODO federate
 			if(album.ownerID>0){
 				context.getNewsfeedController().clearFriendsFeedCache();
 			}
@@ -275,8 +292,12 @@ public class PhotosController{
 					}
 				}
 			}
-			// TODO federate
+			album.title=title;
+			album.description=description;
+			album.viewPrivacy=viewPrivacy;
+			album.commentPrivacy=commentPrivacy;
 			context.getNewsfeedController().clearFriendsFeedCache();
+			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -316,7 +337,10 @@ public class PhotosController{
 					}
 				}
 			}
-			// TODO federate
+			album.title=title;
+			album.description=description;
+			album.flags=newFlags;
+			context.getActivityPubWorker().sendUpdatePhotoAlbum(context.getGroupsController().getGroupOrThrow(-album.ownerID), album);
 			// TODO groups newsfeed
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -324,14 +348,18 @@ public class PhotosController{
 	}
 
 	public long createPhoto(User self, @NotNull PhotoAlbum album, long fileID, String descriptionSource, FormattedTextFormat descriptionFormat){
+		self.ensureLocal();
+		Actor owner;
 		if(album.ownerID>0){
 			if(album.ownerID!=self.id)
 				throw new UserActionNotAllowedException();
+			owner=self;
 		}else{
 			Group group=context.getGroupsController().getGroupOrThrow(-album.ownerID);
 			context.getPrivacyController().enforceUserAccessToGroupContent(self, group);
 			if(album.flags.contains(PhotoAlbum.Flag.GROUP_RESTRICT_UPLOADS))
 				context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+			owner=group;
 		}
 
 		String parsedDescription=descriptionSource==null ? "" : TextProcessor.preprocessPostText(descriptionSource, null, descriptionFormat);
@@ -359,9 +387,21 @@ public class PhotosController{
 					}
 				}
 			}
-			// TODO federate
 			if(album.ownerID>0){
 				context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.ADD_PHOTO);
+			}
+
+			if(album.activityPubID!=null){
+				Photo photo=getPhotoIgnoringPrivacy(id);
+				context.getActivityPubWorker().sendCreateAlbumPhoto(self, photo, album);
+			}else if(album.ownerID<0 || !album.viewPrivacy.isFullyPrivate()){
+				Photo photo=getPhotoIgnoringPrivacy(id);
+				context.getActivityPubWorker().sendAddPhotoToAlbum(owner, photo, album);
+			}
+
+			if(needUpdateCover){
+				album.coverID=id;
+				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album);
 			}
 			// TODO groups newsfeed
 			return id;
@@ -372,53 +412,76 @@ public class PhotosController{
 
 	public void deletePhoto(User self, Photo photo){
 		enforcePhotoManagementPermission(self, photo);
+		PhotoAlbum album=getAlbumIgnoringPrivacy(photo.albumID);
 		try{
-			PhotoAlbum album=PhotoStorage.getAlbum(photo.albumID);
-			boolean needUpdateCover=album.coverID==photo.id;
-			long newCoverID=0;
-			synchronized(photoCreationLock){
-				PhotoStorage.deletePhoto(photo.id, photo.albumID);
-				if(needUpdateCover){
-					newCoverID=PhotoStorage.getLastAlbumPhoto(photo.albumID);
-					PhotoStorage.setAlbumCover(photo.albumID, newCoverID);
-					if(album.flags.contains(PhotoAlbum.Flag.COVER_SET_EXPLICITLY)){
-						EnumSet<PhotoAlbum.Flag> flags=EnumSet.copyOf(album.flags);
-						flags.remove(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
-						PhotoStorage.updateAlbumFlags(photo.albumID, flags);
-					}
-				}
-			}
-			if(photo.localFileID!=0){
-				MediaStorage.deleteMediaFileReference(photo.id, MediaFileReferenceType.ALBUM_PHOTO, photo.localFileID);
-			}
-			synchronized(albumCacheLock){
-				List<PhotoAlbum> albums=albumListCache.get(photo.ownerID);
-				if(albums!=null){
-					for(PhotoAlbum a:albums){
-						if(a.id==photo.albumID){
-							a.numPhotos--;
-							if(needUpdateCover){
-								a.coverID=newCoverID;
-								a.flags.remove(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
-							}
-							break;
-						}
-					}
-				}
-			}
-			LikeStorage.deleteAllLikesForObject(photo.id, Like.ObjectType.PHOTO);
-			// TODO delete comments
-			// TODO delete notifications
-			// TODO federate
-			if(album.ownerID>0){
-				context.getNewsfeedController().clearFriendsFeedCache();
-				context.getNewsfeedController().deleteFriendsFeedEntry(self, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
-				// TODO delete tags
-			}
-			// TODO groups newsfeed
+			deletePhotoInternal(photo, album);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+		if(photo.apID==null){
+			if(photo.ownerID==self.id){ // Deleted by author
+				context.getActivityPubWorker().sendDeleteAlbumPhoto(self, photo, album);
+			}else if(photo.ownerID<0){ // Removed by group moderators
+				context.getActivityPubWorker().sendRemoveAlbumPhoto(context.getGroupsController().getGroupOrThrow(-photo.ownerID), photo, album);
+			}else{
+				throw new IllegalStateException();
+			}
+		}
+	}
+
+	public void deletePhoto(Group self, Photo photo){
+		if(photo.ownerID!=self.getOwnerID())
+			throw new UserActionNotAllowedException();
+		PhotoAlbum album=getAlbumIgnoringPrivacy(photo.albumID);
+		try{
+			deletePhotoInternal(photo, album);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	private void deletePhotoInternal(Photo photo, PhotoAlbum album) throws SQLException{
+		boolean needUpdateCover=album.coverID==photo.id;
+		long newCoverID=0;
+		synchronized(photoCreationLock){
+			PhotoStorage.deletePhoto(photo.id, photo.albumID);
+			if(needUpdateCover){
+				newCoverID=PhotoStorage.getLastAlbumPhoto(photo.albumID);
+				PhotoStorage.setAlbumCover(photo.albumID, newCoverID);
+				if(album.flags.contains(PhotoAlbum.Flag.COVER_SET_EXPLICITLY)){
+					EnumSet<PhotoAlbum.Flag> flags=EnumSet.copyOf(album.flags);
+					flags.remove(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
+					PhotoStorage.updateAlbumFlags(photo.albumID, flags);
+				}
+			}
+		}
+		if(photo.localFileID!=0){
+			MediaStorage.deleteMediaFileReference(photo.id, MediaFileReferenceType.ALBUM_PHOTO, photo.localFileID);
+		}
+		synchronized(albumCacheLock){
+			List<PhotoAlbum> albums=albumListCache.get(photo.ownerID);
+			if(albums!=null){
+				for(PhotoAlbum a:albums){
+					if(a.id==photo.albumID){
+						a.numPhotos--;
+						if(needUpdateCover){
+							a.coverID=newCoverID;
+							a.flags.remove(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
+						}
+						break;
+					}
+				}
+			}
+		}
+		LikeStorage.deleteAllLikesForObject(photo.id, Like.ObjectType.PHOTO);
+		// TODO delete comments
+		NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.PHOTO, photo.id);
+		if(album.ownerID>0){
+			context.getNewsfeedController().clearFriendsFeedCache();
+			context.getNewsfeedController().deleteFriendsFeedEntry(context.getUsersController().getUserOrThrow(album.ownerID), photo.id, NewsfeedEntry.Type.ADD_PHOTO);
+			// TODO delete tags
+		}
+		// TODO groups newsfeed
 	}
 
 	public PaginatedList<Photo> getAlbumPhotos(User self, PhotoAlbum album, int offset, int count){
@@ -456,7 +519,8 @@ public class PhotosController{
 		try{
 			String parsedDescription=TextProcessor.preprocessPostText(descriptionSource, null, format);
 			PhotoStorage.updatePhotoDescription(photo.id, descriptionSource, parsedDescription, format);
-			// TODO federate
+			photo.description=parsedDescription;
+			context.getActivityPubWorker().sendUpdateAlbumPhoto(self, photo, getAlbum(photo.albumID, self));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -523,6 +587,9 @@ public class PhotosController{
 			synchronized(albumCacheLock){
 				albumListCache.remove(album.ownerID);
 			}
+			if(album.ownerID>0)
+				context.getNewsfeedController().clearFriendsFeedCache();
+			// TODO groups newsfeed
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -536,6 +603,9 @@ public class PhotosController{
 				synchronized(albumCacheLock){
 					albumListCache.remove(photo.ownerID);
 				}
+				if(photo.ownerID>0)
+					context.getNewsfeedController().clearFriendsFeedCache();
+				// TODO groups newsfeed
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

@@ -65,14 +65,14 @@ public class NotificationsStorage{
 		}
 	}
 
-	public static void deleteNotificationsForObject(@NotNull Notification.ObjectType type, int objID) throws SQLException{
+	public static void deleteNotificationsForObject(@NotNull Notification.ObjectType type, long objID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			conn.createStatement().execute("LOCK TABLES `notifications` WRITE");
 			PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT `owner_id` FROM `notifications` WHERE (`object_type`=? AND `object_id`=?) OR (`related_object_type`=? AND `related_object_id`=?)");
 			stmt.setInt(1, type.ordinal());
 			stmt.setInt(3, type.ordinal());
-			stmt.setInt(2, objID);
-			stmt.setInt(4, objID);
+			stmt.setLong(2, objID);
+			stmt.setLong(4, objID);
 			try(ResultSet res=stmt.executeQuery()){
 				synchronized(NotificationsStorage.class){
 					while(res.next()){
@@ -83,8 +83,8 @@ public class NotificationsStorage{
 			stmt=conn.prepareStatement("DELETE FROM `notifications` WHERE (`object_type`=? AND `object_id`=?) OR (`related_object_type`=? AND `related_object_id`=?)");
 			stmt.setInt(1, type.ordinal());
 			stmt.setInt(3, type.ordinal());
-			stmt.setInt(2, objID);
-			stmt.setInt(4, objID);
+			stmt.setLong(2, objID);
+			stmt.setLong(4, objID);
 			stmt.execute();
 
 			conn.createStatement().execute("UNLOCK TABLES");

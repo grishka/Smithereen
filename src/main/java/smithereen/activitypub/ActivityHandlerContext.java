@@ -20,7 +20,7 @@ public class ActivityHandlerContext{
 		this.httpSignatureOwner=httpSignatureOwner;
 	}
 
-	public void forwardActivity(Collection<URI> inboxes, User signer){
+	public void forwardActivity(Collection<URI> inboxes, Actor signer){
 		if(ldSignatureOwner==null)
 			throw new IllegalStateException("Can't forward an activity without LD-signature");
 		appContext.getActivityPubWorker().forwardActivity(origRequestBody, signer, inboxes, ldSignatureOwner.activityPubID.getHost());

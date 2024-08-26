@@ -1,8 +1,7 @@
 package smithereen.controllers;
 
+import java.net.URI;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +21,6 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.notifications.Notification;
 import smithereen.exceptions.InternalServerErrorException;
-import smithereen.model.photos.Photo;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
@@ -49,6 +47,10 @@ public class UserInteractionsController{
 	}
 
 	public void setObjectLiked(LikeableContentObject object, boolean liked, User self){
+		setObjectLiked(object, liked, self, null);
+	}
+
+	public void setObjectLiked(LikeableContentObject object, boolean liked, User self, URI apID){
 		try{
 			if(object instanceof Post post && post.isMastodonStyleRepost()){
 				object=context.getWallController().getPostOrThrow(post.repostOf);
@@ -64,7 +66,7 @@ public class UserInteractionsController{
 				Utils.ensureUserNotBlocked(self, g);
 
 			if(liked){
-				int id=LikeStorage.setObjectLiked(self.id, contentObject.getObjectID(), object.getLikeObjectType(), true);
+				int id=LikeStorage.setObjectLiked(self.id, contentObject.getObjectID(), object.getLikeObjectType(), true, apID);
 				if(id==0) // Already liked
 					return;
 				if(!(oaa.author() instanceof ForeignUser) && contentObject.getAuthorID()!=self.id){
@@ -75,17 +77,17 @@ public class UserInteractionsController{
 					n.objectType=object.getObjectTypeForLikeNotifications();
 					NotificationsStorage.putNotification(contentObject.getAuthorID(), n);
 				}
-				if(object instanceof Post post) // TODO
-					context.getActivityPubWorker().sendLikeActivity(post, self, id);
+				if(!(self instanceof ForeignUser))
+					context.getActivityPubWorker().sendLikeActivity(object, self, id);
 			}else{
-				int id=LikeStorage.setObjectLiked(self.id, contentObject.getObjectID(), object.getLikeObjectType(), false);
+				int id=LikeStorage.setObjectLiked(self.id, contentObject.getObjectID(), object.getLikeObjectType(), false, apID);
 				if(id==0)
 					return;
 				if(!(oaa.author() instanceof ForeignUser) && contentObject.getAuthorID()!=self.id){
 					NotificationsStorage.deleteNotification(object.getObjectTypeForLikeNotifications(), contentObject.getObjectID(), Notification.Type.LIKE, self.id);
 				}
-				if(object instanceof Post post) // TODO
-					context.getActivityPubWorker().sendUndoLikeActivity(post, self, id);
+				if(!(self instanceof ForeignUser))
+					context.getActivityPubWorker().sendUndoLikeActivity(object, self, id);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

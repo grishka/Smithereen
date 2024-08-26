@@ -72,10 +72,12 @@ public class ActivityPubPhoto extends ActivityPubObject{
 	}
 
 	public Photo asNativePhoto(ApplicationContext context){
+		if(attributedTo==null)
+			throw new FederationException("attributedTo is required");
 		ensureHostMatchesID(attributedTo, "attributedTo");
 		if(!(target instanceof ActivityPubPhotoAlbum album))
 			throw new FederationException("target is required and needs to be a PhotoAlbum");
-		if(image==null || image.isEmpty())
+		if(image==null || image.isEmpty() || image.getFirst()==null)
 			throw new FederationException("image is required");
 
 		Photo p=new Photo();
@@ -90,6 +92,11 @@ public class ActivityPubPhoto extends ActivityPubObject{
 		p.displayOrder=displayOrder;
 
 		Image image=this.image.getFirst();
+		if(image.url==null)
+			throw new FederationException("image.url is required");
+		if(image.width==0 || image.height==0)
+			throw new FederationException("image.width and .height are required");
+
 		p.remoteSrc=image.url;
 		p.metadata=new PhotoMetadata();
 		p.metadata.apURL=url!=null ? url : activityPubID;
