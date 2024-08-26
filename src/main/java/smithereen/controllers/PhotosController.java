@@ -603,8 +603,10 @@ public class PhotosController{
 				synchronized(albumCacheLock){
 					albumListCache.remove(photo.ownerID);
 				}
-				if(photo.ownerID>0)
-					context.getNewsfeedController().clearFriendsFeedCache();
+				if(photo.ownerID>0){
+					User owner=context.getUsersController().getUserOrThrow(photo.ownerID);
+					context.getNewsfeedController().putFriendsFeedEntry(owner, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
+				}
 				// TODO groups newsfeed
 			}
 		}catch(SQLException x){
