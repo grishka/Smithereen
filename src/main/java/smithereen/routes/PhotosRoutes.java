@@ -302,7 +302,7 @@ public class PhotosRoutes{
 			origURL=null;
 		}
 		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html,
-				EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer(), null, origURL, null);
+				EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer(), null, origURL, null, null);
 	}
 
 	private static EnumSet<PhotoViewerPhotoInfo.AllowedAction> getAllowedActionsForPhoto(ApplicationContext ctx, User self, Photo photo, PhotoAlbum album){
@@ -349,7 +349,7 @@ public class PhotosRoutes{
 		}
 		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
 				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.title,
-				html, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL());
+				html, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL(), photo.apID==null ? null : photo.getActivityPubURL().toString());
 	}
 
 	private static PaginatedList<PhotoViewerPhotoInfo> makePhotoInfoForAttachHostObject(Request req, AttachmentHostContentObject obj, User author, Instant createdAt){

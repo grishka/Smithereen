@@ -18,6 +18,7 @@ interface PhotoViewerPhoto{
 	interactions:PhotoViewerPhotoInteractions;
 	originalURL:string;
 	historyURL:string;
+	apURL:string;
 }
 
 interface PhotoViewerPhotoInteractions{

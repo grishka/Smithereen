@@ -113,6 +113,12 @@ public class Photo implements SizedAttachment, OwnedContentObject, LikeableConte
 		return UriBuilder.local().path("photos", getIdString()).build();
 	}
 
+	public URI getActivityPubURL(){
+		if(metadata!=null && metadata.apURL!=null)
+			return metadata.apURL;
+		return apID;
+	}
+
 	public String getBlurHash(){
 		if(image instanceof LocalImage li)
 			return li.blurHash;
