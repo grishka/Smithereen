@@ -566,9 +566,16 @@ public class Utils{
 
 	public static void stopExecutorBlocking(ExecutorService executor, Logger log){
 		executor.shutdown();
+		int attempts=0;
 		try{
 			while(!executor.awaitTermination(1, TimeUnit.SECONDS)){
 				log.info("Still waiting...");
+				attempts++;
+				if(attempts==10){
+					List<Runnable> tasks=executor.shutdownNow();
+					log.warn("Force shutting down executor. Remaining tasks: {}", tasks);
+					return;
+				}
 			}
 		}catch(InterruptedException ignore){}
 	}
