@@ -7,7 +7,9 @@
 		<input type="submit" value="{{ L('remote_interaction_proceed') }} &raquo;"/>
 		<input type="hidden" name="contentURL" value="{{ contentURL }}"/>
 	</form>
+	{% if not hideWorksWith %}
 	<div class="services">{{ L('remote_interaction_services_before') }}<img src="/res/remote_interaction_icons.png" srcset="/res/remote_interaction_icons_2x.png 2x, /res/remote_interaction_icons.png" width="79" height="16" alt="Smithereen, Mastodon, Misskey, Pixelfed"/>{{ L('remote_interaction_services_after') }}</div>
+	{% endif %}
 	{% if serverSignupMode=='OPEN' or serverSignupMode=='MANUAL_APPROVAL' %}
 	<div class="marginBefore">
 		{{ L(serverSignupMode=='OPEN' ? 'remote_interaction_signup' : 'remote_interaction_signup_request', {}, {'signup': {'href': '/account/register'} }) }}

@@ -895,7 +895,7 @@ public class PostRoutes{
 		if(!requireAccount(req, null)){
 			String url=post.getActivityPubURL().toString();
 			String title=l.get(post.getReplyLevel()>0 ? "share_comment_title" : "share_post_title");
-			return UserInteractionsRoutes.remoteInteraction(req, resp, url, title, post);
+			return UserInteractionsRoutes.remoteInteraction(req, resp, url, title, post, false);
 		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse("repost_form", req);
 		model.with("repostedPost", post)

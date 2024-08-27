@@ -192,5 +192,6 @@
   "show_technical_details": "Технические подробности",
   "menu_photos": "Мои Фотографии",
   "release_files_to_upload": "Отпустите, чтобы начать загрузку",
-  "object_X_of_Y": "{current} из {total}"
+  "object_X_of_Y": "{current} из {total}",
+  "remote_like_photo_title": "Оценить фотографию"
 }

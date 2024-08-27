@@ -196,5 +196,6 @@
   "show_technical_details": "Technical details",
   "menu_photos": "My Photos",
   "release_files_to_upload": "Release to start upload",
-  "object_X_of_Y": "{current} of {total}"
+  "object_X_of_Y": "{current} of {total}",
+  "remote_like_photo_title": "Like photo"
 }

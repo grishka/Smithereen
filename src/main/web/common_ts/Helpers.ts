@@ -1419,7 +1419,7 @@ function showParentCommentHoverCard(link:HTMLElement, ev:MouseEvent){
 function closeTopmostLayer(){
 	var topLayer=LayerManager.getInstance().getTopLayer();
 	if(topLayer)
-		LayerManager.getInstance().dismiss(topLayer);
+		topLayer.dismiss();
 }
 
 function saveRemoteInteractionDomain(){

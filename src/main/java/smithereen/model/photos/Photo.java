@@ -116,7 +116,7 @@ public class Photo implements SizedAttachment, OwnedContentObject, LikeableConte
 	public URI getActivityPubURL(){
 		if(metadata!=null && metadata.apURL!=null)
 			return metadata.apURL;
-		return apID;
+		return getActivityPubID();
 	}
 
 	public String getBlurHash(){

@@ -12,6 +12,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.LikeableContentObject;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.PaginatedList;
@@ -112,7 +113,7 @@ public class UserInteractionsRoutes{
 			throw new BadRequestException();
 
 		ApplicationContext ctx=context(req);
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, owned);
 		UserInteractions interactions=obj instanceof Post post ?
@@ -177,16 +178,20 @@ public class UserInteractionsRoutes{
 		if(requireAccount(req, null) && verifyCSRF(req, resp)){
 			return setLiked(req, resp, sessionInfo(req).account, ctx, obj, true);
 		}
-		if(!(obj instanceof Post post))
+		if(!(obj instanceof ActivityPubRepresentable apr))
 			throw new UserErrorException("not implemented yet");
 
 		Lang l=lang(req);
-		String url=post.getActivityPubURL().toString();
-		String title=l.get(post.getReplyLevel()>0 ? "remote_like_comment_title" : "remote_like_post_title");
-		return remoteInteraction(req, resp, url, title, null);
+		String url=apr.getActivityPubURL().toString();
+		String title=switch(obj){
+			case Post post -> l.get(post.getReplyLevel()>0 ? "remote_like_comment_title" : "remote_like_post_title");
+			case Photo photo -> l.get("remote_like_photo_title");
+			default -> throw new IllegalStateException("Unexpected value: " + obj);
+		};
+		return remoteInteraction(req, resp, url, title, null, !(obj instanceof Post));
 	}
 
-	static Object remoteInteraction(Request req, Response resp, String url, String title, Post postToEmbed){
+	static Object remoteInteraction(Request req, Response resp, String url, String title, Post postToEmbed, boolean hideWorksWith){
 		RenderedTemplateResponse model;
 		if(isAjax(req)){
 			if(isMobile(req)){
@@ -197,7 +202,7 @@ public class UserInteractionsRoutes{
 		}else{
 			model=new RenderedTemplateResponse("content_wrap", req).with("contentTemplate", "remote_interaction");
 		}
-		model.with("contentURL", url).with("serverSignupMode", Config.signupMode);
+		model.with("contentURL", url).with("serverSignupMode", Config.signupMode).with("hideWorksWith", hideWorksWith);
 		model.pageTitle(title);
 		if(!isMobile(req) && postToEmbed!=null && postToEmbed.isLocal())
 			model.with("postToEmbed", postToEmbed);
