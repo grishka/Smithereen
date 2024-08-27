@@ -9,6 +9,7 @@ import smithereen.activitypub.objects.activities.Delete;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.Server;
 import smithereen.model.photos.Photo;
 import smithereen.storage.GroupStorage;
 
@@ -20,7 +21,7 @@ public class DeletePhotoHandler extends ActivityTypeHandler<ForeignUser, Delete,
 		if(photo.ownerID<0){
 			Group owner=context.appContext.getGroupsController().getGroupOrThrow(-photo.ownerID);
 			if(!(owner instanceof ForeignGroup)){
-				context.forwardActivity(GroupStorage.getGroupMemberInboxes(owner.id), owner);
+				context.forwardActivity(GroupStorage.getGroupMemberInboxes(owner.id), owner, Server.Feature.PHOTO_ALBUMS);
 			}
 		}
 	}

@@ -2,6 +2,7 @@ package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
 
+import smithereen.activitypub.ActivityForwardingUtils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.ActivityPubPhoto;
@@ -14,5 +15,6 @@ public class LikePhotoHandler extends ActivityTypeHandler<ForeignUser, Like, Act
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Like activity, ActivityPubPhoto object) throws SQLException{
 		Photo photo=object.asNativePhoto(context.appContext);
 		context.appContext.getUserInteractionsController().setObjectLiked(photo, true, actor, activity.activityPubID);
+		ActivityForwardingUtils.forwardPhotoRelatedActivity(context, photo);
 	}
 }

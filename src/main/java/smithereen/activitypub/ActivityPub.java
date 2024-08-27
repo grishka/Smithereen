@@ -334,13 +334,17 @@ public class ActivityPub{
 		postActivityInternal(inboxUrl, body.toString(), actor, server, ctx, isRetry);
 	}
 
-	public static void forwardActivity(URI inboxUrl, String activityJson, Actor actor, ApplicationContext ctx) throws IOException{
+	public static void forwardActivity(URI inboxUrl, String activityJson, Actor actor, ApplicationContext ctx, EnumSet<Server.Feature> requiredServerFeatures) throws IOException{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
 			LOG.debug("Not forwarding activity to server {} because it's down", server.host());
+			return;
+		}
+		if(requiredServerFeatures!=null && !requiredServerFeatures.isEmpty() && !server.features().containsAll(requiredServerFeatures)){
+			LOG.debug("Not forwarding activity to server {} because its feature set {} does not include required features {}", server.host(), server.features(), requiredServerFeatures);
 			return;
 		}
 		if(server.restriction()!=null){

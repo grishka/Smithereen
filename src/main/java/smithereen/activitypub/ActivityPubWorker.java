@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -142,7 +143,7 @@ public class ActivityPubWorker{
 		throw new IllegalArgumentException("Must be a foreign actor");
 	}
 
-	private void getInboxesWithPrivacy(Set<URI> inboxes, User owner, PrivacySetting setting) throws SQLException{
+	public void getInboxesWithPrivacy(Set<URI> inboxes, User owner, PrivacySetting setting) throws SQLException{
 		switch(setting.baseRule){
 			case EVERYONE -> inboxes.addAll(UserStorage.getFollowerInboxes(owner.id, setting.exceptUsers));
 			case FRIENDS, FRIENDS_OF_FRIENDS -> inboxes.addAll(UserStorage.getFriendInboxes(owner.id, setting.exceptUsers));
@@ -154,11 +155,11 @@ public class ActivityPubWorker{
 		return Math.abs(rand.nextLong());
 	}
 
-	public void forwardActivity(String json, Actor signer, Collection<URI> inboxes, String originatingDomain){
+	public void forwardActivity(String json, Actor signer, Collection<URI> inboxes, String originatingDomain, Server.Feature requiredServerFeature){
 		for(URI inbox:inboxes){
 			if(inbox.getHost().equalsIgnoreCase(originatingDomain))
 				continue;
-			executor.submit(new ForwardOneActivityRunnable(context, json, inbox, signer));
+			executor.submit(new ForwardOneActivityRunnable(context, json, inbox, signer, requiredServerFeature!=null ? EnumSet.of(requiredServerFeature) : EnumSet.noneOf(Server.Feature.class)));
 		}
 	}
 
