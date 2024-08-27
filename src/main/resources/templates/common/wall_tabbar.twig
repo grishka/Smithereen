@@ -3,7 +3,7 @@
 {# @pebvariable name="isGroup" type="boolean" #}
 {# @pebvariable name="tab" type="String" #}
 <div class="tabbar">
-	{% if canSeeOthersPosts %}
+	{% if canSeeOthersPosts and (owner.hasWall or isGroup) %}
 	<a href="{{ owner.typeAndIdForURL }}/wall" class="{%if tab=="all"%}selected{%endif%}">{{ L(isGroup ? 'wall_of_group' : 'wall_all_posts') }}</a>
 	{% endif %}
 	{% if not isGroup %}
