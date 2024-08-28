@@ -417,7 +417,7 @@ public class GroupsRoutes{
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
 		if(isAjax(req)){
-			return new WebDeltaResponse(resp).box(lang(req).get(group.isEvent() ? "event_organizers" : "group_admins"), model.renderContentBlock(), null, true);
+			return new WebDeltaResponse(resp).box(lang(req).get(group.isEvent() ? "event_organizers" : "group_admins"), model.renderContentBlock(), null, !isMobile(req));
 		}
 		return model;
 	}
