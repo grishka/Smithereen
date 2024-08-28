@@ -429,7 +429,6 @@ public class ActivityPubWorker{
 		switch(object){
 			case Post post -> submitActivity(like, user, PostStorage.getInboxesForPostInteractionForwarding(post));
 			case Photo photo -> sendActivityForPhoto(user, context.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID), like);
-			default -> throw new IllegalStateException("Unexpected value: " + object);
 		}
 	}
 
@@ -444,7 +443,6 @@ public class ActivityPubWorker{
 		switch(object){
 			case Post post -> submitActivity(undo, user, PostStorage.getInboxesForPostInteractionForwarding(post));
 			case Photo photo -> sendActivityForPhoto(user, context.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID), undo);
-			default -> throw new IllegalStateException("Unexpected value: " + object);
 		}
 	}
 

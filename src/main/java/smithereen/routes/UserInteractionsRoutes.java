@@ -42,12 +42,10 @@ public class UserInteractionsRoutes{
 			String elementID=switch(obj){
 				case Post post -> "Post"+post.id;
 				case Photo photo -> "Photo"+photo.getIdString();
-				default -> throw new IllegalArgumentException();
 			};
 			String url=switch(obj){
 				case Post post -> post.getInternalURL().toString();
 				case Photo photo -> photo.getURL();
-				default -> throw new IllegalArgumentException();
 			};
 			String urlPath=liked ? "unlike" : "like";
 			WebDeltaResponse b=new WebDeltaResponse(resp)
@@ -80,12 +78,10 @@ public class UserInteractionsRoutes{
 		String elementID=switch(obj){
 			case Post post -> "Post"+post.id;
 			case Photo photo -> "Photo"+photo.getIdString();
-			default -> throw new IllegalArgumentException();
 		};
 		String url=switch(obj){
 			case Post post -> post.getInternalURL().toString();
 			case Photo photo -> photo.getURL();
-			default -> throw new IllegalArgumentException();
 		};
 
 		WebDeltaResponse b=new WebDeltaResponse(resp)
@@ -131,12 +127,10 @@ public class UserInteractionsRoutes{
 		String elementID=switch(obj){
 			case Post post -> "Post"+post.id;
 			case Photo photo -> "Photo"+photo.getIdString();
-			default -> throw new IllegalArgumentException();
 		};
 		String url=switch(obj){
 			case Post post -> post.getInternalURL().toString();
 			case Photo photo -> photo.getURL();
-			default -> throw new IllegalArgumentException();
 		};
 
 		model.paginate(likes)
@@ -186,7 +180,6 @@ public class UserInteractionsRoutes{
 		String title=switch(obj){
 			case Post post -> l.get(post.getReplyLevel()>0 ? "remote_like_comment_title" : "remote_like_post_title");
 			case Photo photo -> l.get("remote_like_photo_title");
-			default -> throw new IllegalStateException("Unexpected value: " + obj);
 		};
 		return remoteInteraction(req, resp, url, title, null, !(obj instanceof Post));
 	}

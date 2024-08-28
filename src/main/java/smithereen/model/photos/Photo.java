@@ -21,7 +21,7 @@ import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
-public class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject, ActivityPubRepresentable{
+public final class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject, ActivityPubRepresentable{
 	public long id;
 	public int ownerID;
 	public int authorID;
