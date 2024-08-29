@@ -235,9 +235,6 @@ public class JLDProcessor{
 	}
 
 	private static JsonObject dereferenceContext(String iri, boolean allowNetworking){
-		if(iri.endsWith("/litepub-0.1.jsonld")){ // This avoids caching multiple copies of the same schema for different instances
-			iri="https://example.com/schemas/litepub-0.1.jsonld";
-		}
 		JsonObject obj=schemaCache.get(iri);
 		if(obj!=null)
 			return obj;
@@ -246,10 +243,10 @@ public class JLDProcessor{
 			case "https://www.w3.org/ns/activitystreams" -> readResourceFile("activitystreams");
 			case "https://w3id.org/security/v1" -> readResourceFile("w3-security");
 			case "https://w3id.org/identity/v1" -> readResourceFile("w3-identity");
-			case "https://example.com/schemas/litepub-0.1.jsonld" -> readResourceFile("litepub-0.1");
 			case "https://w3id.org/security/data-integrity/v1" -> readResourceFile("w3-data-integrity");
 			case "https://www.w3.org/ns/did/v1" -> readResourceFile("w3-did");
 			case "https://w3id.org/security/multikey/v1" -> readResourceFile("w3-multikey");
+			case "https://purl.archive.org/socialweb/webfinger" -> readResourceFile("purl-webfinger");
 			default -> {
 				if(allowNetworking){
 					remoteContextFetchMutexes.acquire(iri);
@@ -311,7 +308,9 @@ public class JLDProcessor{
 					throw new JLDException("relative context IRIs are not supported");
 				}
 				if(remoteContexts.contains(c)){
-					throw new JLDException("recursive context inclusion");
+					LOG.warn("Recursive context inclusion of {}", c);
+					continue;
+//					throw new JLDException("recursive context inclusion");
 				}
 				remoteContexts.add(c);
 				JsonObject deref=dereferenceContext(c, !isRecursive);
