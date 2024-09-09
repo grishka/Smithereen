@@ -91,7 +91,7 @@ import spark.utils.StringUtils;
 public class Utils{
 
 	private static final Set<String> RESERVED_USERNAMES=Set.of("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor", "healthz",
-			"albums", "photos", "videos", "audios", "topics", "apps", "docs", "res", "files");
+			"albums", "photos", "videos", "audios", "topics", "apps", "docs", "res", "files", "comments");
 	private static final Random rand=new Random();
 
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([!#$%^'*+\\-.^_`|~0-9A-Za-z]+)=(?:(?:\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\")|([!#$%^'*+\\-.^_`|~0-9A-Za-z]+))\\s*([,;])?\\s*");

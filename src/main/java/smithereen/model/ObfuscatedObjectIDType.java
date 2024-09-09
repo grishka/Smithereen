@@ -4,5 +4,6 @@ public enum ObfuscatedObjectIDType{
 	MAIL_MESSAGE,
 	MEDIA_FILE,
 	PHOTO_ALBUM,
-	PHOTO
+	PHOTO,
+	COMMENT
 }

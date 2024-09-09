@@ -269,6 +269,7 @@ abstract class BaseLayer{
 abstract class BaseMediaViewerLayer extends BaseLayer{
 	protected historyEntryAdded:boolean;
 	private popStateListener=this.onPopState.bind(this);
+	private addListenerTimeout:number;
 
 	public constructor(historyEntryAdded:boolean){
 		super();
@@ -290,11 +291,18 @@ abstract class BaseMediaViewerLayer extends BaseLayer{
 
 	public onShown(){
 		super.onShown();
-		window.addEventListener("popstate", this.popStateListener, false);
+		this.addListenerTimeout=setTimeout(()=>{
+			window.addEventListener("popstate", this.popStateListener, false);
+			this.addListenerTimeout=null;
+		}, 300);
 	}
 
 	public onHidden(){
 		super.onHidden();
+		if(this.addListenerTimeout){
+			clearTimeout(this.addListenerTimeout);
+			this.addListenerTimeout=null;
+		}
 		window.removeEventListener("popstate", this.popStateListener);
 	}
 

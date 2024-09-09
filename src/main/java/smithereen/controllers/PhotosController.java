@@ -34,6 +34,7 @@ import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.storage.CommentStorage;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.NotificationsStorage;
@@ -255,11 +256,11 @@ public class PhotosController{
 	private void deletePhotoAlbumInternal(PhotoAlbum album){
 		try{
 			MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsForAlbum(album.id), MediaFileReferenceType.ALBUM_PHOTO);
+			deleteCommentsForAlbum(album.id);
 			PhotoStorage.deleteAlbum(album.id, album.ownerID);
 			synchronized(this){
 				albumListCache.remove(album.ownerID);
 			}
-			// TODO delete comments
 			if(album.ownerID>0){
 				context.getNewsfeedController().clearFriendsFeedCache();
 			}
@@ -356,6 +357,8 @@ public class PhotosController{
 			owner=self;
 		}else{
 			Group group=context.getGroupsController().getGroupOrThrow(-album.ownerID);
+			if(context.getPrivacyController().isUserBlocked(self, group))
+				throw new UserActionNotAllowedException();
 			context.getPrivacyController().enforceUserAccessToGroupContent(self, group);
 			if(album.flags.contains(PhotoAlbum.Flag.GROUP_RESTRICT_UPLOADS))
 				context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
@@ -598,6 +601,13 @@ public class PhotosController{
 	public void putOrUpdateForeignPhoto(Photo photo){
 		try{
 			boolean isNew=photo.id==0;
+			if(photo.ownerID<0){
+				User self=context.getUsersController().getUserOrThrow(photo.authorID);
+				Group group=context.getGroupsController().getGroupOrThrow(-photo.ownerID);
+				if(context.getPrivacyController().isUserBlocked(self, group))
+					throw new UserActionNotAllowedException();
+			}
+
 			PhotoStorage.putOrUpdateForeignPhoto(photo);
 			if(isNew){
 				synchronized(albumCacheLock){
@@ -624,8 +634,8 @@ public class PhotosController{
 			if(!albums.isEmpty()){
 				for(PhotoAlbum album:albums){
 					MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsForAlbum(album.id), MediaFileReferenceType.ALBUM_PHOTO);
+					deleteCommentsForAlbum(album.id);
 					PhotoStorage.deleteAlbum(album.id, album.ownerID);
-					// TODO delete comments
 				}
 				synchronized(this){
 					albumListCache.remove(owner.getOwnerID());
@@ -669,6 +679,14 @@ public class PhotosController{
 			return index;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	private void deleteCommentsForAlbum(long albumID) throws SQLException{
+		for(Set<Long> commentIDs=CommentStorage.getPhotoAlbumCommentIDsForDeletion(albumID);!commentIDs.isEmpty();commentIDs=CommentStorage.getPhotoAlbumCommentIDsForDeletion(albumID)){
+			MediaStorage.deleteMediaFileReferences(commentIDs, MediaFileReferenceType.COMMENT_ATTACHMENT);
+			// TODO delete likes
+			CommentStorage.deleteComments(commentIDs);
 		}
 	}
 }

@@ -49,8 +49,12 @@ import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.comments.CommentParentObjectID;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.photos.Photo;
+import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
@@ -293,27 +297,32 @@ public class PostRoutes{
 		return "";
 	}
 
-	private static void prepareFeed(ApplicationContext ctx, Request req, Account self, List<NewsfeedEntry> feed, RenderedTemplateResponse model){
+	private static void prepareFeed(ApplicationContext ctx, Request req, Account self, List<NewsfeedEntry> feed, RenderedTemplateResponse model, boolean needNonPostInteractions){
 		Set<Integer> needPosts=new HashSet<>(), needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		for(NewsfeedEntry e:feed){
 			needUsers.add(e.authorID);
-			if(e.type==NewsfeedEntry.Type.GROUPED){
-				GroupedNewsfeedEntry gne=(GroupedNewsfeedEntry) e;
-				if(gne.childEntriesType==NewsfeedEntry.Type.ADD_FRIEND){
-					for(NewsfeedEntry ce:gne.childEntries){
-						needUsers.add((int) ce.objectID);
-					}
-				}else if(gne.childEntriesType==NewsfeedEntry.Type.JOIN_GROUP || gne.childEntriesType==NewsfeedEntry.Type.JOIN_EVENT){
-					for(NewsfeedEntry ce:gne.childEntries){
-						needGroups.add((int) ce.objectID);
+			switch(e.type){
+				case GROUPED -> {
+					GroupedNewsfeedEntry gne=(GroupedNewsfeedEntry) e;
+					switch(gne.childEntriesType){
+						case ADD_FRIEND -> {
+							for(NewsfeedEntry ce: gne.childEntries){
+								needUsers.add((int) ce.objectID);
+							}
+						}
+						case JOIN_GROUP, JOIN_EVENT -> {
+							for(NewsfeedEntry ce: gne.childEntries){
+								needGroups.add((int) ce.objectID);
+							}
+						}
+						case null, default -> {}
 					}
 				}
-			}else if(e.type==NewsfeedEntry.Type.POST || e.type==NewsfeedEntry.Type.RETOOT){
-				needPosts.add((int) e.objectID);
-			}else if(e.type==NewsfeedEntry.Type.ADD_FRIEND){
-				needUsers.add((int) e.objectID);
-			}else if(e.type==NewsfeedEntry.Type.JOIN_GROUP || e.type==NewsfeedEntry.Type.JOIN_EVENT || e.type==NewsfeedEntry.Type.CREATE_GROUP || e.type==NewsfeedEntry.Type.CREATE_EVENT){
-				needGroups.add((int) e.objectID);
+				case POST, RETOOT -> needPosts.add((int) e.objectID);
+				case ADD_FRIEND -> needUsers.add((int) e.objectID);
+				case JOIN_GROUP, JOIN_EVENT, CREATE_GROUP, CREATE_EVENT -> needGroups.add((int) e.objectID);
+
+				case null, default -> {}
 			}
 		}
 
@@ -325,16 +334,9 @@ public class PostRoutes{
 		}
 
 		PostViewModel.collectActorIDs(feedPosts, needUsers, needGroups);
-		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
-		Map<Integer, Group> groups=ctx.getGroupsController().getGroupsByIdAsMap(needGroups);
-
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(feedPosts, self.user);
-		model.with("posts", feedPosts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity())))
-			.with("users", users).with("groups", groups).with("postInteractions", interactions);
-		model.with("maxReplyDepth", getMaxReplyDepth(self)).with("commentViewType", self.prefs.commentViewType);
 
 		Set<Long> needPhotos=feed.stream()
-				.filter(e->e.type==NewsfeedEntry.Type.ADD_PHOTO || (e instanceof GroupedNewsfeedEntry gne && gne.childEntriesType==NewsfeedEntry.Type.ADD_PHOTO))
+				.filter(e->e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO || (e instanceof GroupedNewsfeedEntry gne && gne.childEntriesType==NewsfeedEntry.Type.ADD_PHOTO))
 				.flatMap(e->switch(e){
 					case GroupedNewsfeedEntry gne -> gne.childEntries.stream().map(ce->ce.objectID);
 					default -> Stream.of(e.objectID);
@@ -342,8 +344,32 @@ public class PostRoutes{
 				.collect(Collectors.toSet());
 
 		if(!needPhotos.isEmpty()){
-			model.with("photos", ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos));
+			Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+			model.with("photos", photos);
+			if(needNonPostInteractions)
+				model.with("photosInteractions", ctx.getUserInteractionsController().getUserInteractions(photos.values(), self.user));
 		}
+
+		if(needNonPostInteractions && !needPhotos.isEmpty()){
+			Map<CommentParentObjectID, PaginatedList<CommentViewModel>> comments=ctx.getCommentsController().getCommentsForFeed(needPhotos.stream()
+					.map(id->new CommentParentObjectID(CommentableObjectType.PHOTO, id))
+					.collect(Collectors.toSet()), self.prefs.commentViewType==CommentViewType.FLAT, 3);
+
+			CommentViewModel.collectUserIDs(comments.values().stream().flatMap(pl->pl.list.stream()).toList(), needUsers);
+			// TODO comments interactions
+
+			model.with("photosComments", comments.entrySet().stream()
+					.filter(e->e.getKey().type()==CommentableObjectType.PHOTO)
+					.collect(Collectors.toMap(e->e.getKey().id(), Map.Entry::getValue)));
+		}
+
+		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
+		Map<Integer, Group> groups=ctx.getGroupsController().getGroupsByIdAsMap(needGroups);
+
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(feedPosts, self.user);
+		model.with("posts", feedPosts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity())))
+				.with("users", users).with("groups", groups).with("postInteractions", interactions);
+		model.with("maxReplyDepth", getMaxReplyDepth(self)).with("commentViewType", self.prefs.commentViewType);
 	}
 
 	public static Object feed(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -359,7 +385,7 @@ public class PostRoutes{
 				.with("paginationUrlPrefix", "/feed?startFrom="+startFromID+"&offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationPerPage", 25).with("paginationFirstPageUrl", "/feed")
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
 
-		prepareFeed(ctx, req, self, feed.list, model);
+		prepareFeed(ctx, req, self, feed.list, model, false);
 
 		return model;
 	}
@@ -873,15 +899,20 @@ public class PostRoutes{
 	}
 
 	public static Object commentsFeed(Request req, Response resp, Account self, ApplicationContext ctx){
-		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
+		int offset=offset(req);
 		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getCommentsFeed(self, offset, 25);
-		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel");
+		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "cancel");
 		Templates.addJsLangForNewPostForm(req);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list)
-				.with("paginationUrlPrefix", "/feed/comments?offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationFirstPageUrl", "/feed/comments").with("tab", "comments").with("paginationPerPage", 25)
-				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("feed_comments", req)
+				.pageTitle(Utils.lang(req).get("feed"))
+				.with("feed", feed.list)
+				.with("paginationUrlPrefix", "/feed/comments?offset=")
+				.with("totalItems", feed.total)
+				.with("paginationOffset", offset)
+				.with("paginationFirstPageUrl", "/feed/comments")
+				.with("paginationPerPage", 25);
 
-		prepareFeed(ctx, req, self, feed.list, model);
+		prepareFeed(ctx, req, self, feed.list, model, true);
 
 		return model;
 	}

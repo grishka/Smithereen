@@ -241,6 +241,7 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, res
 				var parsedResponse=responseType=="json" ? JSON.parse(xhr.response) : xhr.response;
 				onDone(parsedResponse);
 			}catch(e){
+				console.error(e);
 				onError(null);
 			}
 		}else{
@@ -733,6 +734,17 @@ function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveFo
 	return false;
 }
 
+function showCommentReplyForm(id:string, formID:string, moveForm:boolean=true, containerPostID:string=null):boolean{
+	var form=ge(formID);
+	form.show();
+	if(moveForm){
+		var replies=ge("commentReplies"+(containerPostID || id));
+		replies.insertAdjacentElement("afterbegin", form);
+	}
+	form.customData.postFormObj.setupForReplyTo(id, "comment");
+	return false;
+}
+
 function showPostCommentForm(id:number):boolean{
 	var form=ge("wallPostForm_commentPost"+id);
 	var link=ge("postCommentLinkWrap"+id);
@@ -898,15 +910,23 @@ function addSendOnCtrlEnter(el:(HTMLTextAreaElement|HTMLInputElement)){
 	});
 }
 
-function loadOlderComments(id:number){
-	var btn=ge("loadPrevBtn"+id);
-	var loader=ge("prevLoader"+id);
+function loadOlderComments(id:(number|string), type:string="wall"){
+	var elId=type=="wall" ? id : "_"+type+"_"+id;
+	var btn=ge("loadPrevBtn"+elId);
+	var loader=ge("prevLoader"+elId);
 	btn.hide();
 	loader.show();
-	var firstID=parseInt(btn.dataset.firstId);
-	var heightBefore=document.body.offsetHeight;
-	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentPreview?firstID="+firstID, ()=>{
-		document.documentElement.scrollTop+=document.body.offsetHeight-heightBefore;
+	var scrollableEl=btn.closest(".layerContent") || document.scrollingElement;
+	var firstID=btn.dataset.firstId;
+	var heightBefore=scrollableEl.scrollHeight;
+	var url;
+	if(type=="wall"){
+		url=`/posts/${id}/ajaxCommentPreview?firstID=${firstID}`;
+	}else{
+		url=`/comments/ajaxCommentPreview?firstID=${firstID}&parentType=${type}&parentID=${id}`;
+	}
+	ajaxGetAndApplyActions(url, ()=>{
+		scrollableEl.scrollTop+=scrollableEl.scrollHeight-heightBefore;
 	}, ()=>{
 		btn.show();
 		loader.hide();
@@ -914,13 +934,22 @@ function loadOlderComments(id:number){
 	return false;
 }
 
-function loadCommentBranch(el:HTMLElement, id:number, topLevelRepostID:number){
+function loadCommentBranch(el:HTMLElement, id:(number|string), topLevelRepostID:number, type:string="wall", parentID:string=null){
 	var btn=ge("loadRepliesLink"+id);
 	var loader=ge("repliesLoader"+id);
 	var offset=parseInt(el.dataset.offset);
 	btn.hide();
 	loader.show();
-	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentBranch?offset="+(offset || 0)+(topLevelRepostID ? `&topLevel=${topLevelRepostID}` : ""), null, ()=>{
+	var url;
+	if(type=="wall"){
+		url=`/posts/${id}/ajaxCommentBranch`;
+	}else{
+		url=`/comments/${id}/ajaxCommentBranch?parentType=${type}&parentID=${parentID}`;
+	}
+	url=addParamsToURL(url, {offset: (offset || 0).toString()});
+	if(topLevelRepostID)
+		url=addParamsToURL(url, {topLevel: topLevelRepostID.toString()});
+	ajaxGetAndApplyActions(url, null, ()=>{
 		btn.show();
 		loader.hide();
 	});
@@ -1413,7 +1442,11 @@ function showMentionHoverCard(link:HTMLElement, ev:MouseEvent){
 
 function showParentCommentHoverCard(link:HTMLElement, ev:MouseEvent){
 	var commentID=link.dataset.parentId;
-	showAjaxHoverCard(link, ev, "/posts/"+commentID+"/hoverCard");
+	if(link.dataset.parentType=="comment"){
+		showAjaxHoverCard(link, ev, "/comments/"+commentID+"/hoverCard");
+	}else{
+		showAjaxHoverCard(link, ev, "/posts/"+commentID+"/hoverCard");
+	}
 }
 
 function closeTopmostLayer(){

@@ -507,4 +507,13 @@ public class PhotoStorage{
 			return -1;
 		}
 	}
+
+	public static Map<Long, Long> getAlbumIDsForPhotos(Collection<Long> photoIDs) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photos")
+				.columns("id", "album_id")
+				.whereIn("id", photoIDs)
+				.executeAsStream(res->new Pair<>(res.getLong(1), res.getLong(2)))
+				.collect(Collectors.toMap(Pair::first, Pair::second));
+	}
 }

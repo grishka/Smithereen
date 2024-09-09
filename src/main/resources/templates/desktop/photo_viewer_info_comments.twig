@@ -1,7 +1,9 @@
+{# @pebvariable name="interactions" type="smithereen.model.UserInteractions" #}
+{# @pebvariable name="photo" type="smithereen.model.photos.Photo" #}
 <div class="pvPhotoInfo">
-	<div class="left">
+	<div class="leftCol">
 		<div class="marginAfter description">{{ description | postprocessHTML }}</div>
-		<div class="grayText">{{ L('photo_added_at', {'date': LD(createdAt)}) }}
+		<div class="grayText marginAfter">{{ L('photo_added_at', {'date': LD(createdAt)}) }}
 		<span class="contentActions pvLike">
 		{% if interactions is not null %}
 			<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">|
@@ -14,8 +16,30 @@
 		{% endif %}
 		</span>
 		</div>
+		{% if interactions is not null %}
+		<div>
+		{% set _interactions=interactions %}
+		<div class="commentsPreviewWrap">
+			{% set replyCount=interactions.commentCount %}
+			{% if (commentViewType=='FLAT' ? replyCount : comments.total)>comments.list.size %}
+				<a href="{{ photo.url }}" onclick="return loadOlderComments('{{ photo.idString }}', 'photo')" class="loadPrev" id="loadPrevBtn_{{ photo.commentParentID.htmlElementID }}" data-first-id="{{ comments.list.first.post.idString }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': replyCount-comments.list.size}) : L('show_previous_comments') }}</a>
+				<div class="prevLoader loader" id="prevLoader_{{ photo.commentParentID.htmlElementID }}" style="display: none;"></div>
+			{% endif %}
+			<div class="commentsPreview" id="comments_{{ photo.commentParentID.htmlElementID }}">
+			{%- for reply in comments.list %}
+				{% include "comment" with {'post': reply, 'preview': true, 'replyFormID': commentViewType=='FLAT' ? "wallPostForm_comment_#{photo.commentParentID.htmlElementID}" : "wallPostForm_commentReply_#{photo.commentParentID.htmlElementID}", 'parentObject': photo, 'baseReplyLevel': 0, 'canComment': _interactions.canComment} %}
+			{% endfor -%}
+			</div>
+			{% set interactions=_interactions %}
+			{% if currentUser is not null and interactions.canComment %}
+				{% include "wall_post_form" with {'id': "comment_#{photo.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=photo&parentID="+photo.idString, 'showReplyBar': commentViewType=='FLAT', 'addClasses': "nonCollapsible", 'isComment': true} %}
+				{% if commentViewType!='FLAT' %}{% include "wall_post_form" with {'id': "commentReply_#{photo.commentParentID.htmlElementID}", 'hidden': true, 'action': "/comments/createComment?parentType=photo&parentID="+photo.idString, 'isComment': true} %}{% endif %}
+			{% endif %}
+		</div>
+		</div>
+		{% endif %}
 	</div>
-	<div class="right">
+	<div class="rightCol">
 		{% if album is not null %}<div class="grayText marginAfter">{{ L('photo_album_label') }}:<br/><a href="{{ album.url }}">{{ album.title }}</a></div>{% endif %}
 		<div class="grayText">{{ L('photo_added_by') }}:<br/><a href="{{ author.profileURL }}">{{ author | name('full') }}</a></div>
 		<ul class="actionList">

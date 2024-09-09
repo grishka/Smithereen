@@ -2,6 +2,7 @@ package smithereen;
 
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.controllers.BookmarksController;
+import smithereen.controllers.CommentsController;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.MailController;
@@ -34,6 +35,7 @@ public class ApplicationContext{
 	private final SearchController searchController;
 	private final BookmarksController bookmarksController;
 	private final PhotosController photosController;
+	private final CommentsController commentsController;
 
 	public ApplicationContext(){
 		wallController=new WallController(this);
@@ -52,6 +54,7 @@ public class ApplicationContext{
 		searchController=new SearchController(this);
 		bookmarksController=new BookmarksController(this);
 		photosController=new PhotosController(this);
+		commentsController=new CommentsController(this);
 	}
 
 	public WallController getWallController(){
@@ -116,5 +119,9 @@ public class ApplicationContext{
 
 	public PhotosController getPhotosController(){
 		return photosController;
+	}
+
+	public CommentsController getCommentsController(){
+		return commentsController;
 	}
 }

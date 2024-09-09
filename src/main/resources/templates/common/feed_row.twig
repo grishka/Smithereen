@@ -2,7 +2,7 @@
 {% set author=users[entry.authorID] %}
 {% if entry.type=="POST" and posts[entry.objectID] is not null %}
 <div class="feedRow feedPostRow" id="postWrap{{ entry.objectID }}">
-		{%include "wall_post" with {'post': posts[entry.objectID]}%}
+	{%include "wall_post" with {'post': posts[entry.objectID]}%}
 </div>
 {% elseif entry.type=="GROUPED" %}
 	{% set langArgs={'author': author | name("complete"), 'gender': author.gender, 'count': entry.childEntries | length} %}

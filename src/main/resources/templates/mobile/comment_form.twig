@@ -18,16 +18,14 @@
 		</div>
 		<div id="postFormAttachments2_{{ id }}"></div>
 	</div>
-	<form action="{{wallOwner.typeAndIdForURL}}/createWallPost" id="wallPostFormForm_{{ id }}" method="post">
+	<form action="{{ action | default(wallOwner.typeAndIdForURL+"/createWallPost") }}" id="wallPostFormForm_{{ id }}" method="post">
 	{% set fieldPlaceholder=L('comment_placeholder') %}
 		<button type="button" title="{{ L('attach') }}" id="postFormAttachBtn_{{ id }}" class="attachBtn"></button>
 		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="3" maxlength="65000" placeholder="{{ fieldPlaceholder }}">{{prefilledPostText}}</textarea>
 		<button type="submit" title="{{ L('send') }}" class="sendBtn" id="postFormSubmit_{{ id }}"></button>
 
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
-		{%if replyTo is not null%}
-		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}" value="{{replyTo.id}}"/>
-		{%endif%}
+		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}" value="{% if replyTo is not null %}{{ replyTo.id }}{% endif %}"/>
 		<input type="hidden" name="formID" value="{{id}}"/>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
 	</form>

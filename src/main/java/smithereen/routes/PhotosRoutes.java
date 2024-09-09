@@ -20,6 +20,7 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.AttachmentHostContentObject;
+import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -35,13 +36,17 @@ import smithereen.model.UserInteractions;
 import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.media.PhotoViewerPhotoInfo;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.storage.MediaStorageUtils;
+import smithereen.storage.utils.Pair;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.FormattedTextFormat;
@@ -317,18 +322,19 @@ public class PhotosRoutes{
 		return allowedActions;
 	}
 
-	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users, Map<Long, UserInteractions> interactions, User self){
+	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users, Map<Long, UserInteractions> interactions,
+															  Account self, PaginatedList<CommentViewModel> comments, Map<Long, UserInteractions> commentsInteractions){
 		ApplicationContext ctx=context(req);
 		String html;
 		User author=users.get(photo.authorID);
 		PhotoViewerPhotoInfo.Interactions pvInteractions;
 		UserInteractions ui=interactions!=null ? interactions.get(photo.id) : null;
 		String origURL;
-		EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions=getAllowedActionsForPhoto(ctx, self, photo, album);
+		EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions=getAllowedActionsForPhoto(ctx, self!=null ? self.user : null, photo, album);
 		if(isMobile(req)){
 			html=StringUtils.isNotEmpty(photo.description) ? TextProcessor.postprocessPostHTMLForDisplay(photo.description, false, false) : "";
 			if(ui!=null){
-				pvInteractions=new PhotoViewerPhotoInfo.Interactions(ui.likeCount, ui.isLiked);
+				pvInteractions=new PhotoViewerPhotoInfo.Interactions(ui.likeCount, ui.isLiked, ui.commentCount);
 			}else{
 				pvInteractions=null;
 			}
@@ -336,6 +342,7 @@ public class PhotosRoutes{
 		}else{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_info_comments", req);
 			model.with("description", photo.description)
+					.with("users", users)
 					.with("author", author)
 					.with("album", album)
 					.with("createdAt", photo.createdAt)
@@ -343,6 +350,12 @@ public class PhotosRoutes{
 					.with("photo", photo)
 					.with("originalImageURL", photo.image.getOriginalURI())
 					.with("allowedActions", allowedActions.stream().map(Object::toString).collect(Collectors.toSet()));
+			if(comments!=null){
+				model.with("comments", comments)
+						.with("commentViewType", self!=null ? self.prefs.commentViewType : CommentViewType.THREADED)
+						.with("commentsInteractions", commentsInteractions)
+						.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1);
+			}
 			html=model.renderToString();
 			pvInteractions=null;
 			origURL=null;
@@ -350,6 +363,32 @@ public class PhotosRoutes{
 		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
 				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.title,
 				html, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL(), photo.apID==null ? null : photo.getActivityPubURL().toString());
+	}
+
+	private static List<PhotoViewerPhotoInfo> makePhotoInfosForPhotoList(Request req, List<Photo> photos, ApplicationContext ctx, Account self, Map<Long, PhotoAlbum> albums){
+		HashSet<Integer> needUsers=new HashSet<>();
+		Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(photos, self!=null ? self.user : null);
+		Map<CommentParentObjectID, PaginatedList<CommentViewModel>> comments;
+		Map<Long, UserInteractions> commentsInteractions=Map.of(); // TODO
+		if(isMobile(req)){
+			comments=Map.of();
+		}else{
+			CommentViewType commentViewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
+			comments=ctx.getCommentsController().getCommentsForFeed(photos.stream().map(Photo::getCommentParentID).collect(Collectors.toSet()), commentViewType==CommentViewType.FLAT, 5);
+			CommentViewModel.collectUserIDs(comments.values().stream().flatMap(l->l.list.stream()).toList(), needUsers);
+		}
+		photos.stream().map(ph->ph.authorID).forEach(needUsers::add);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
+		Set<Long> needAdditionalAlbums=photos.stream().map(p->p.albumID).filter(id->!albums.containsKey(id)).collect(Collectors.toSet());
+		Map<Long, PhotoAlbum> _albums;
+		if(!needAdditionalAlbums.isEmpty()){
+			Map<Long, PhotoAlbum> additionalAlbums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(needAdditionalAlbums);
+			_albums=new HashMap<>(albums);
+			_albums.putAll(additionalAlbums);
+		}else{
+			_albums=albums;
+		}
+		return photos.stream().map(ph->makePhotoInfoForPhoto(req, ph, _albums.get(ph.albumID), users, interactions, self, comments.get(ph.getCommentParentID()), commentsInteractions)).toList();
 	}
 
 	private static PaginatedList<PhotoViewerPhotoInfo> makePhotoInfoForAttachHostObject(Request req, AttachmentHostContentObject obj, User author, Instant createdAt){
@@ -382,6 +421,17 @@ public class PhotosRoutes{
 				title=null;
 				yield info.list;
 			}
+			case "comments" -> {
+				long id=XTEA.decodeObjectID(listParts[1], ObfuscatedObjectIDType.COMMENT);
+				Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(id);
+				ctx.getCommentsController().getCommentParent(self, comment); // enforces privacy
+				User author=ctx.getUsersController().getUserOrThrow(comment.authorID);
+
+				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, comment, author, comment.createdAt);
+				total=info.total;
+				title=null;
+				yield info.list;
+			}
 			case "messages" -> {
 				if(self==null)
 					throw new UserActionNotAllowedException();
@@ -399,9 +449,7 @@ public class PhotosRoutes{
 				PaginatedList<Photo> _photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset(req), 10);
 				total=_photos.total;
 				title=album.title;
-				Map<Integer, User> users=ctx.getUsersController().getUsers(_photos.list.stream().map(ph->ph.authorID).collect(Collectors.toSet()));
-				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(_photos.list, self);
-				yield _photos.list.stream().map(ph->makePhotoInfoForPhoto(req, ph, album, users, interactions, self)).toList();
+				yield makePhotoInfosForPhotoList(req, _photos.list, ctx, selfAccount, Map.of(album.id, album));
 			}
 			case "friendsFeedGrouped" -> {
 				if(self==null)
@@ -418,14 +466,8 @@ public class PhotosRoutes{
 				List<Long> photoIDs=gne.childEntries.subList(offset, Math.min(offset+10, total)).stream().map(e->e.objectID).toList();
 				Map<Long, Photo> _photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs);
 				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(_photos.values().stream().map(p->p.albumID).collect(Collectors.toSet()));
-				Map<Integer, User> users=ctx.getUsersController().getUsers(_photos.values().stream().map(ph->ph.authorID).collect(Collectors.toSet()));
-				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(_photos.values().stream().toList(), self);
-				yield photoIDs.stream()
-						.map(pid->{
-							Photo p=_photos.get(pid);
-							return makePhotoInfoForPhoto(req, p, albums.get(p.albumID), users, interactions, self);
-						})
-						.toList();
+
+				yield makePhotoInfosForPhotoList(req, photoIDs.stream().map(_photos::get).toList(), ctx, selfAccount, albums);
 			}
 			case "friendsFeed" -> {
 				if(self==null)
@@ -439,38 +481,27 @@ public class PhotosRoutes{
 					throw new ObjectNotFoundException();
 				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(e.objectID);
 				PhotoAlbum album=ctx.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID);
-				Map<Integer, User> users=ctx.getUsersController().getUsers(Set.of(photo.authorID));
-				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(List.of(photo), self);
 				total=1;
 				title=null;
-				yield List.of(makePhotoInfoForPhoto(req, photo, album, users, interactions, self));
+				yield makePhotoInfosForPhotoList(req, List.of(photo), ctx, selfAccount, Map.of(album.id, album));
 			}
 			case "single" -> {
 				long id=XTEA.deobfuscateObjectID(decodeLong(listParts[1]), ObfuscatedObjectIDType.PHOTO);
 				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
 				PhotoAlbum album=ctx.getPhotosController().getAlbum(photo.albumID, self);
-				Map<Integer, User> users=ctx.getUsersController().getUsers(Set.of(photo.authorID));
-				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(List.of(photo), self);
 				total=1;
 				title=null;
-				yield List.of(makePhotoInfoForPhoto(req, photo, album, users, interactions, self));
+				yield makePhotoInfosForPhotoList(req, List.of(photo), ctx, selfAccount, Map.of(album.id, album));
 			}
 			case "liked" -> {
 				if(self==null)
 					throw new UserActionNotAllowedException();
-				PaginatedList<Long> photoIDs=ctx.getUserInteractionsController().getLikedObjects(self, Like.ObjectType.PHOTO, offset(req), 100);
+				PaginatedList<Long> photoIDs=ctx.getUserInteractionsController().getLikedObjects(self, Like.ObjectType.PHOTO, offset(req), 10);
 				Map<Long, Photo> photoObjects=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs.list);
 				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(photoObjects.values().stream().map(p->p.albumID).collect(Collectors.toSet()));
-				Map<Integer, User> users=ctx.getUsersController().getUsers(photoObjects.values().stream().map(ph->ph.authorID).collect(Collectors.toSet()));
-				Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(photoObjects.values().stream().toList(), self);
 				total=photoIDs.total;
 				title=lang(req).get("bookmarks_title");
-				yield photoIDs.list.stream()
-						.map(pid->{
-							Photo p=photoObjects.get(pid);
-							return makePhotoInfoForPhoto(req, p, albums.get(p.albumID), users, interactions, self);
-						})
-						.toList();
+				yield makePhotoInfosForPhotoList(req, photoIDs.list.stream().map(photoObjects::get).toList(), ctx, selfAccount, albums);
 			}
 			default -> throw new BadRequestException();
 		};
@@ -559,6 +590,18 @@ public class PhotosRoutes{
 			OwnerAndAuthor oaa=ctx.getWallController().getContentAuthorAndOwner(photo);
 			Photo next=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, (index+1)%album.numPhotos, 1).list.getFirst();
 			Photo prev=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, index==0 ? album.numPhotos-1 : index-1, 1).list.getFirst();
+
+			boolean canComment=switch(oaa.owner()){
+				case User u -> ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, u, album.commentPrivacy);
+				case Group g -> !album.flags.contains(PhotoAlbum.Flag.GROUP_DISABLE_COMMENTING);
+				default -> throw new IllegalStateException("Unexpected value: " + oaa.owner());
+			};
+			CommentViewType commentViewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
+			PaginatedList<CommentViewModel> comments=ctx.getCommentsController().getComments(photo, List.of(), offset(req), 100, 50, commentViewType);
+			HashSet<Integer> needUsers=new HashSet<>();
+			CommentViewModel.collectUserIDs(comments.list, needUsers);
+			// TODO interactions
+
 			model.with("description", photo.description)
 					.with("author", oaa.author())
 					.with("owner", oaa.owner())
@@ -572,6 +615,11 @@ public class PhotosRoutes{
 					.with("index", index)
 					.with("nextURL", next.getURL()+"?nojs")
 					.with("prevURL", prev.getURL()+"?nojs")
+					.paginate(comments)
+					.with("canComment", canComment)
+					.with("users", ctx.getUsersController().getUsers(needUsers))
+					.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self))
+					.with("commentViewType", commentViewType)
 					.pageTitle(album.title);
 
 			if(isMobile(req)){

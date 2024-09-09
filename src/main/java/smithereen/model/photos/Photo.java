@@ -14,6 +14,9 @@ import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.SizedImage;
 import smithereen.model.attachments.SizedAttachment;
+import smithereen.model.comments.CommentParentObjectID;
+import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.notifications.Notification;
 import smithereen.storage.DatabaseUtils;
@@ -21,7 +24,7 @@ import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
-public final class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject, ActivityPubRepresentable{
+public final class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject, ActivityPubRepresentable, CommentableContentObject{
 	public long id;
 	public int ownerID;
 	public int authorID;
@@ -58,6 +61,7 @@ public final class Photo implements SizedAttachment, OwnedContentObject, Likeabl
 		return p;
 	}
 
+	@Override
 	public String getURL(){
 		return "/photos/"+Utils.encodeLong(XTEA.obfuscateObjectID(id, ObfuscatedObjectIDType.PHOTO));
 	}
@@ -127,5 +131,10 @@ public final class Photo implements SizedAttachment, OwnedContentObject, Likeabl
 
 	public PhotoViewerInlineData getSinglePhotoViewerData(){
 		return new PhotoViewerInlineData(0, "single/"+getIdString(), image.getURLsForPhotoViewer());
+	}
+
+	@Override
+	public CommentParentObjectID getCommentParentID(){
+		return new CommentParentObjectID(CommentableObjectType.PHOTO, id);
 	}
 }

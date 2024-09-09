@@ -10,9 +10,11 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 	private interactionBar:HTMLElement;
 	private likeBtn:HTMLAnchorElement;
 	private likeCount:HTMLElement;
+	private commentBtn:HTMLAnchorElement;
+	private commentCount:HTMLElement;
 
 	private currentIndex:number;
-	private listID:string;
+	public listID:string;
 	private total:number;
 	private listURL:string;
 	private photos:PhotoViewerPhoto[]=[];
@@ -56,6 +58,11 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 								ce("span", {className: "wideOnly"}, [lang("like")]),
 								ce("span", {className: "icon"}),
 								this.likeCount=ce("span", {className: "counter"})
+							]),
+							this.commentBtn=ce("a", {className: "action comment"}, [
+								ce("span", {className: "wideOnly"}, [lang("add_comment")]),
+								ce("span", {className: "icon"}),
+								this.commentCount=ce("span", {className: "counter"})
 							])
 						])
 					])
@@ -185,6 +192,14 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 					this.likeCount.innerText=formatNumber(ph.interactions.likes);
 				}else{
 					this.likeCount.hide();
+				}
+
+				this.commentBtn.href="/photos/"+ph.id;
+				if(ph.interactions.comments){
+					this.commentCount.show();
+					this.commentCount.innerText=formatNumber(ph.interactions.comments);
+				}else{
+					this.commentCount.hide();
 				}
 			}else{
 				this.interactionBar.hide();

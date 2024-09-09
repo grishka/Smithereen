@@ -330,6 +330,9 @@ small{
 	margin-bottom: 10px;
 	padding-bottom: 10px;
 	display: flex;
+	.authorName{
+		font-weight: bold;
+	}
 	.postContentWrap{
 		padding-left: 10px;
 		/*padding-right: 10px;*/
@@ -2681,6 +2684,10 @@ label.pretendLink{
 	}
 }
 
+.postContentWrap .feedRowPhotos{
+	padding: 8px 0 0 0;
+}
+
 .graffitiDrawAreaWrap{
 	border: solid 1px $sectionHeaderBorder;
 	background-color: #fff;
@@ -3892,11 +3899,11 @@ label.largeAccented{
 	.pvPhotoInfo{
 		display: flex;
 		align-items: flex-start;
-		.left{
+		>.leftCol{
 			flex-grow: 1;
 			padding-top: 2px;
 		}
-		.right{
+		>.rightCol{
 			width: 190px;
 			flex: none;
 			border-left: solid 1px $wallCommentSeparator;
@@ -3914,6 +3921,9 @@ label.largeAccented{
 				margin-bottom: 0;
 			}
 		}
+	}
+	.commentsPreviewWrap{
+		padding: 0;
 	}
 }
 

@@ -12,7 +12,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	private layerCloseThing:HTMLElement;
 
 	private currentIndex:number;
-	private listID:string;
+	public listID:string;
 	private total:number;
 	private imgW:number;
 	private imgH:number;
@@ -182,6 +182,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		this.bottomPart.innerHTML=ph.html;
 		var url=ph.historyURL || `#${this.listID}/${this.currentIndex}`;
 		this.updateHistory({layer: "PhotoViewer", pvInline: this.getCurrentInlineData(), pvListURL: this.listURL}, url);
+		updatePostForms(this.bottomPart);
 	}
 
 	private getCurrentInlineData():PhotoViewerInlineData{

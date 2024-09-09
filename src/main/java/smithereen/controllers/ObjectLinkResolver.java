@@ -501,7 +501,8 @@ public class ObjectLinkResolver{
 		POST('P', 'O', 'S', 'T'),
 		MESSAGE('D', 'M', 'S', 'G'),
 		PHOTO_ALBUM('P', 'A', 'L', 'B'),
-		PHOTO('P', 'H', 'T', 'O');
+		PHOTO('P', 'H', 'T', 'O'),
+		COMMENT('C', 'M', 'N', 'T');
 
 		public final int id;
 

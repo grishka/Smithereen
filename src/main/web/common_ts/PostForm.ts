@@ -409,9 +409,10 @@ class PostForm{
 		}
 	}
 
-	public setupForReplyTo(id:number):void{
+	public setupForReplyTo(id:(number|string), type:string="post"):void{
 		this.replyToField.value=id+"";
-		var postEl=ge("post"+id);
+		console.log(type, id);
+		var postEl=ge(type+id);
 		var name:string=postEl.dataset.replyName;
 		if(name){
 			if(this.input.value.length==0 || (this.input.value==this.currentReplyName)){

@@ -35,4 +35,13 @@
 	{% endif %}
 	<li><a href="{{ originalImageURL }}" target="_blank">{{ L('photo_open_original') }}</a></li>
 </ul>
+<div id="comments_{{ photo.commentParentID.htmlElementID }}">
+	{% for reply in items %}
+		{% include "comment" with {'post': reply, 'replyFormID': "wallPostForm_comment_#{photo.commentParentID.htmlElementID}", 'parentObject': photo} %}
+	{% endfor %}
+</div>
+{% include "pagination" %}
+{% if currentUser is not null and canComment %}
+	{% include "comment_form" with {'id': "comment_#{photo.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=photo&parentID="+photo.idString} %}
+{% endif %}
 {% endblock %}

@@ -43,6 +43,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.PostLikeObject;
 import smithereen.model.PostSource;
 import smithereen.model.SessionInfo;
 import smithereen.model.User;
@@ -133,7 +134,7 @@ public class WallController{
 				poll=null;
 			}
 
-			if(textSource.isEmpty() && attachmentIDs.isEmpty() && poll==null && repost==null)
+			if(textSource.trim().isEmpty() && attachmentIDs.isEmpty() && poll==null && repost==null)
 				throw new BadRequestException("Empty post");
 
 			if(!wallOwner.hasWall() && inReplyTo==null)
@@ -171,7 +172,7 @@ public class WallController{
 			}
 
 			final HashSet<User> mentionedUsers=new HashSet<>();
-			String text=preparePostText(textSource, mentionedUsers, inReplyTo, sourceFormat);
+			String text=preparePostText(textSource, mentionedUsers, inReplyTo!=null && inReplyTo.getReplyLevel()>1 ? inReplyTo.authorID : 0, sourceFormat);
 			int userID=author.id;
 			int postID;
 			int pollID=0;
@@ -191,7 +192,7 @@ public class WallController{
 				MediaStorageUtils.fillAttachmentObjects(attachObjects, attachmentIDs, attachmentCount, maxAttachments);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
-						attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
+						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
 					}else{
 						JsonArray ar=new JsonArray();
 						for(ActivityPubObject o:attachObjects){
@@ -277,7 +278,7 @@ public class WallController{
 		}
 	}
 
-	private String preparePostText(String textSource, final Set<User> mentionedUsers, @Nullable Post parent, @NotNull FormattedTextFormat format) throws SQLException{
+	public String preparePostText(String textSource, final Set<User> mentionedUsers, int parentAuthorID, @NotNull FormattedTextFormat format) throws SQLException{
 		String text=TextProcessor.preprocessPostText(textSource, new TextProcessor.MentionCallback(){
 			@Override
 			public User resolveMention(String username, String domain){
@@ -324,10 +325,10 @@ public class WallController{
 			}
 		}, format);
 
-		if(parent!=null){
+		if(parentAuthorID>0){
 			// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
-			User parentAuthor=context.getUsersController().getUserOrThrow(parent.authorID);
-			if(!parent.replyKey.isEmpty() && text.startsWith("<p>"+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+",")){
+			User parentAuthor=context.getUsersController().getUserOrThrow(parentAuthorID);
+			if(text.startsWith("<p>"+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+",")){
 				text="<p><a href=\""+TextProcessor.escapeHTML(parentAuthor.url.toString())+"\" class=\"mention\" data-user-id=\""+parentAuthor.id+"\">"
 						+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+"</a>"+text.substring(parentAuthor.getNameForReply().length()+3);
 			}
@@ -389,7 +390,7 @@ public class WallController{
 
 			HashSet<User> mentionedUsers=new HashSet<>();
 			Post parent=post.getReplyLevel()>0 ? getPostOrThrow(post.getReplyChainElement(post.getReplyLevel()-1)) : null;
-			String text=preparePostText(textSource, mentionedUsers, parent, sourceFormat);
+			String text=preparePostText(textSource, mentionedUsers, parent!=null && parent.getReplyLevel()>1 ? parent.authorID : 0, sourceFormat);
 
 			int pollID=0;
 			if(poll!=null && !Objects.equals(post.poll, poll)){
@@ -448,7 +449,7 @@ public class WallController{
 				}
 			}
 
-			PostStorage.updateWallPost(id, text, textSource, mentionedUsers, attachments, contentWarning, pollID);
+			PostStorage.updateWallPost(id, text, textSource, sourceFormat, mentionedUsers, attachments, contentWarning, pollID);
 			if(post.ownerID>0 && post.ownerID==post.authorID){
 				context.getNewsfeedController().clearFriendsFeedCache();
 			}

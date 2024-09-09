@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=54;
+	public static final int SCHEMA_VERSION=55;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -53,6 +53,7 @@ public class DatabaseSchemaUpdater{
 				createMediaRefCountTriggers(conn);
 				createApIdIndexTriggers(conn);
 				createApIdIndexTriggersForPhotos(conn);
+				createApIdIndexTriggersForComments(conn);
 				insertDefaultRoles(conn);
 			}
 		}else{
@@ -777,6 +778,41 @@ public class DatabaseSchemaUpdater{
 			case 52 -> conn.createStatement().execute("ALTER TABLE servers ADD features bigint unsigned NOT NULL DEFAULT 0");
 			case 53 -> migratePasswordsToSaltedHashes(conn);
 			case 54 -> createApIdIndexTriggersForPhotos(conn);
+			case 55 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `comments` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `author_id` int unsigned DEFAULT NULL,
+						  `owner_user_id` int unsigned DEFAULT NULL,
+						  `owner_group_id` int unsigned DEFAULT NULL,
+						  `parent_object_type` int unsigned NOT NULL,
+						  `parent_object_id` bigint unsigned NOT NULL,
+						  `text` text,
+						  `attachments` json DEFAULT NULL,
+						  `ap_url` varchar(300) DEFAULT NULL,
+						  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `content_warning` text,
+						  `updated_at` timestamp NULL DEFAULT NULL,
+						  `reply_key` varbinary(2048) DEFAULT NULL,
+						  `mentions` varbinary(1024) DEFAULT NULL,
+						  `reply_count` int unsigned NOT NULL DEFAULT '0',
+						  `ap_replies` varchar(300) DEFAULT NULL,
+						  `federation_state` tinyint unsigned NOT NULL DEFAULT '0',
+						  `source` text,
+						  `source_format` tinyint unsigned DEFAULT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `ap_id` (`ap_id`),
+						  KEY `owner_user_id` (`owner_user_id`),
+						  KEY `author_id` (`author_id`),
+						  KEY `reply_key` (`reply_key`),
+						  KEY `owner_group_id` (`owner_group_id`),
+						  KEY `parent_object_type` (`parent_object_type`,`parent_object_id`),
+						  CONSTRAINT `comments_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `comments_ibfk_2` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				createApIdIndexTriggersForComments(conn);
+			}
 		}
 	}
 
@@ -865,6 +901,13 @@ public class DatabaseSchemaUpdater{
 				"DELETE FROM ap_id_index WHERE ap_id IN (SELECT ap_id FROM photos WHERE album_id=OLD.id AND ap_id IS NOT NULL);" +
 				"END;");
 		conn.createStatement().execute("CREATE TRIGGER delete_foreign_photos_from_ap_ids AFTER DELETE ON photos FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
+	}
+
+	private static void createApIdIndexTriggersForComments(DatabaseConnection conn) throws SQLException{
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_comments_to_ap_ids AFTER INSERT ON comments FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.COMMENT.id).execute();
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_comments_from_ap_ids AFTER DELETE ON comments FOR EACH ROW BEGIN " +
 				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
 	}
 

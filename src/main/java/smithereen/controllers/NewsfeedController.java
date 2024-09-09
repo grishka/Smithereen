@@ -28,6 +28,7 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.NewsfeedStorage;
+import smithereen.storage.PhotoStorage;
 import smithereen.storage.PostStorage;
 
 public class NewsfeedController{
@@ -164,7 +165,20 @@ public class NewsfeedController{
 
 	public PaginatedList<NewsfeedEntry> getCommentsFeed(Account self, int offset, int count){
 		try{
-			return PostStorage.getCommentsFeed(self.user.id, offset, count);
+			PaginatedList<NewsfeedEntry> feed=PostStorage.getCommentsFeed(self.user.id, offset, count);
+			Set<Long> photoIDs=feed.list.stream().filter(e->e.type==NewsfeedEntry.Type.PHOTO).map(e->e.objectID).collect(Collectors.toSet());
+			if(!photoIDs.isEmpty()){
+				Map<Long, Long> albumsIDs=PhotoStorage.getAlbumIDsForPhotos(photoIDs);
+				Map<Long, PhotoAlbum> albums=context.getPhotosController().getAlbumsIgnoringPrivacy(new HashSet<>(albumsIDs.values()));
+				Map<Integer, User> ownerUsers=context.getUsersController().getUsers(albums.values().stream().map(a->a.ownerID).filter(id->id>0).collect(Collectors.toSet()));
+				Set<Long> accessibleAlbums=albums.values().stream()
+						.filter(a->a.ownerID<0 || context.getPrivacyController().checkUserPrivacy(self.user, ownerUsers.get(a.ownerID), a.viewPrivacy))
+						.map(a->a.id)
+						.collect(Collectors.toSet());
+				feed.list=new ArrayList<>(feed.list);
+				feed.list.removeIf(e->e.type==NewsfeedEntry.Type.PHOTO && !accessibleAlbums.contains(albumsIDs.get(e.objectID)));
+			}
+			return feed;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

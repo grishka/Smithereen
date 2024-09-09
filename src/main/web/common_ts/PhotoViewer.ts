@@ -23,7 +23,8 @@ interface PhotoViewerPhoto{
 
 interface PhotoViewerPhotoInteractions{
 	likes:number;
-	isLiked:number;
+	isLiked:boolean;
+	comments:number;
 }
 
 interface PhotoViewerInfoAjaxResponse{
@@ -47,9 +48,18 @@ function openPhotoViewer(el:HTMLElement):boolean{
 }
 
 function doOpenPhotoViewer(info:PhotoViewerInlineData, listURL:string="/photos/ajaxViewerInfo", fromPopState:boolean=false){
+	var topLayer=LayerManager.getMediaInstance().getTopLayer();
 	if(mobile){
+		if(topLayer instanceof MobilePhotoViewer){
+			if(topLayer.listID==info.list)
+				return;
+		}
 		new MobilePhotoViewer(info, listURL, fromPopState).show();
 	}else{
+		if(topLayer instanceof DesktopPhotoViewer){
+			if(topLayer.listID==info.list)
+				return;
+		}
 		new DesktopPhotoViewer(info, listURL, fromPopState).show();
 	}
 }

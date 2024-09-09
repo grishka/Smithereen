@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -60,6 +61,14 @@ public class LikeStorage{
 		new SQLQueryBuilder()
 				.deleteFrom("likes")
 				.where("object_id=? AND object_type=?", objectID, type)
+				.executeNoResult();
+	}
+
+	public static void deleteAllLikesForObjects(Collection<Long> objectIDs, Like.ObjectType type) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("likes")
+				.whereIn("object_id", objectIDs)
+				.andWhere("object_type=?", type)
 				.executeNoResult();
 	}
 

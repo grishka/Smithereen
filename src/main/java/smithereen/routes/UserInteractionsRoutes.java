@@ -31,14 +31,12 @@ import static smithereen.Utils.*;
 
 public class UserInteractionsRoutes{
 	public static Object setLiked(Request req, Response resp, Account self, ApplicationContext ctx, LikeableContentObject obj, boolean liked){
-		if(!(obj instanceof OwnedContentObject owned))
-			throw new BadRequestException();
 		req.attribute("noHistory", true);
 		ctx.getUserInteractionsController().setObjectLiked(obj, liked, self.user);
 		if(isAjax(req)){
 			UserInteractions interactions=obj instanceof Post post ?
 					ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self.user).get(post.getIDForInteractions())
-					: ctx.getUserInteractionsController().getUserInteractions(List.of(obj), self.user).get(owned.getObjectID());
+					: ctx.getUserInteractionsController().getUserInteractions(List.of(obj), self.user).get(obj.getObjectID());
 			String elementID=switch(obj){
 				case Post post -> "Post"+post.id;
 				case Photo photo -> "Photo"+photo.getIdString();
@@ -62,19 +60,16 @@ public class UserInteractionsRoutes{
 	}
 
 	public static Object likePopover(Request req, Response resp, LikeableContentObject obj){
-		if(!(obj instanceof OwnedContentObject owned))
-			throw new BadRequestException();
-
 		ApplicationContext ctx=context(req);
 		SessionInfo info=sessionInfo(req);
 		User self=info!=null && info.account!=null ? info.account.user : null;
 
-		context(req).getPrivacyController().enforceObjectPrivacy(self, owned);
+		context(req).getPrivacyController().enforceObjectPrivacy(self, obj);
 		List<User> users=ctx.getUserInteractionsController().getLikesForObject(obj, self, 0, 6).list;
 		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
 		UserInteractions interactions=obj instanceof Post post ?
 				ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self).get(post.getIDForInteractions())
-				: ctx.getUserInteractionsController().getUserInteractions(List.of(obj), self).get(owned.getObjectID());
+				: ctx.getUserInteractionsController().getUserInteractions(List.of(obj), self).get(obj.getObjectID());
 		String elementID=switch(obj){
 			case Post post -> "Post"+post.id;
 			case Photo photo -> "Photo"+photo.getIdString();
@@ -105,16 +100,13 @@ public class UserInteractionsRoutes{
 	}
 
 	public static Object likeList(Request req, Response resp, LikeableContentObject obj){
-		if(!(obj instanceof OwnedContentObject owned))
-			throw new BadRequestException();
-
 		ApplicationContext ctx=context(req);
 		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
-		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, owned);
+		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, obj);
 		UserInteractions interactions=obj instanceof Post post ?
 				ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self!=null ? self.user : null).get(post.getIDForInteractions())
-				: ctx.getUserInteractionsController().getUserInteractions(List.of(obj), self!=null ? self.user : null).get(owned.getObjectID());
+				: ctx.getUserInteractionsController().getUserInteractions(List.of(obj), self!=null ? self.user : null).get(obj.getObjectID());
 		int offset=offset(req);
 		PaginatedList<User> likes=ctx.getUserInteractionsController().getLikesForObject(obj, null, offset, 100);
 		RenderedTemplateResponse model;

@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
+import smithereen.model.comments.Comment;
+import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 
 /**
@@ -25,20 +27,20 @@ public class UserPermissions{
 		}
 	}
 
-	public boolean canDeletePost(Post post){
+	public boolean canDeletePost(PostLikeObject post){
 		// Users can always delete their own posts
 		if(post.authorID==userID)
 			return true;
 
 		// Group moderators can delete any post in their group
-		if(post.isGroupOwner())
+		if(post.ownerID<0)
 			return managedGroups.containsKey(-post.ownerID);
 
 		// Users can delete any post on their own wall
 		return post.ownerID>0 && post.ownerID==userID;
 	}
 
-	public boolean canEditPost(Post post){
+	public boolean canEditPost(PostLikeObject post){
 		return post.authorID==userID && System.currentTimeMillis()-post.createdAt.toEpochMilli()<24*3600_000L;
 	}
 
@@ -51,17 +53,15 @@ public class UserPermissions{
 	}
 
 	public boolean canReport(Object obj){
-		if(obj instanceof User u){
-			return u.id!=userID;
-		}else if(obj instanceof Group g){
-			return managedGroups.getOrDefault(g.id, Group.AdminLevel.REGULAR)!=Group.AdminLevel.OWNER;
-		}else if(obj instanceof Post p){
-			return p.authorID!=userID;
-		}else if(obj instanceof MailMessage msg){
-			return msg.senderID!=userID;
-		}else{
-			return false;
-		}
+		return switch(obj){
+			case User u -> u.id!=userID;
+			case Group g -> managedGroups.getOrDefault(g.id, Group.AdminLevel.REGULAR)!=Group.AdminLevel.OWNER;
+			case Post p -> p.authorID!=userID;
+			case MailMessage msg -> msg.senderID!=userID;
+			case Photo ph -> ph.authorID!=userID;
+			case Comment c -> c.authorID!=userID;
+			case null, default -> false;
+		};
 	}
 
 	public boolean canEditPhotoAlbum(PhotoAlbum album){

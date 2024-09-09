@@ -61,5 +61,9 @@ public class NewsfeedEntry{
 		 * Someone added a photo to an album
 		 */
 		ADD_PHOTO,
+		/**
+		 * Photo for the comments newsfeed
+		 */
+		PHOTO,
 	}
 }

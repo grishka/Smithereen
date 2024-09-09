@@ -49,6 +49,7 @@ import smithereen.model.WebDeltaResponse;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
 import smithereen.routes.BookmarksRoutes;
+import smithereen.routes.CommentsRoutes;
 import smithereen.routes.FriendsRoutes;
 import smithereen.routes.GroupsRoutes;
 import smithereen.routes.MailRoutes;
@@ -641,6 +642,19 @@ public class SmithereenApplication{
 				get("/likes", PhotosRoutes::likeList);
 				get("/likePopover", PhotosRoutes::likePopover);
 				getWithCSRF("/setAsAlbumCover", PhotosRoutes::setPhotoAsAlbumCover);
+			});
+		});
+
+		path("/comments", ()->{
+			postWithCSRF("/createComment", CommentsRoutes::createComment);
+			get("/ajaxCommentPreview", CommentsRoutes::ajaxCommentPreview);
+			path("/:id", ()->{
+				get("/ajaxCommentBranch", CommentsRoutes::ajaxCommentBranch);
+				getLoggedIn("/confirmDelete", CommentsRoutes::confirmDeleteComment);
+				postWithCSRF("/delete", CommentsRoutes::deleteComment);
+				getLoggedIn("/edit", CommentsRoutes::editCommentForm);
+				postWithCSRF("/edit", CommentsRoutes::editComment);
+				get("/hoverCard", CommentsRoutes::commentHoverCard);
 			});
 		});
 

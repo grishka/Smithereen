@@ -41,6 +41,7 @@ import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.PostSource;
+import smithereen.model.feed.CommentsNewsfeedObjectType;
 import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.util.UriBuilder;
@@ -86,18 +87,19 @@ public class PostStorage{
 						.whereIn("id", replyKey)
 						.executeNoResult();
 
-				SQLQueryBuilder.prepareStatement(conn, "INSERT INTO newsfeed_comments (user_id, object_type, object_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE object_id=object_id", userID, 0, replyKey.get(0)).execute();
-				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(replyKey.get(0)));
+				SQLQueryBuilder.prepareStatement(conn, "INSERT INTO newsfeed_comments (user_id, object_type, object_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE object_id=object_id", userID, 0, replyKey.getFirst()).execute();
+				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(replyKey.getFirst()));
 			}
 			return id;
 		}
 	}
 
-	public static void updateWallPost(int id, String text, String textSource, Set<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
+	public static void updateWallPost(int id, String text, String textSource, FormattedTextFormat sourceFormat, Set<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
 		new SQLQueryBuilder()
 				.update("wall_posts")
 				.value("text", text)
 				.value("source", textSource)
+				.value("source_format", sourceFormat)
 				.value("mentions", mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(mentionedUsers.stream().mapToInt(u->u.id).toArray()))
 				.value("attachments", attachments)
 				.value("content_warning", contentWarning)
@@ -506,7 +508,7 @@ public class PostStorage{
 				stmt.execute();
 			}else{
 				// (comments don't exist in the feed anyway)
-				stmt=conn.prepareStatement("UPDATE wall_posts SET author_id=NULL, owner_user_id=NULL, owner_group_id=NULL, text=NULL, attachments=NULL, content_warning=NULL, updated_at=NULL, mentions=NULL WHERE id=?");
+				stmt=conn.prepareStatement("UPDATE wall_posts SET author_id=NULL, owner_user_id=NULL, owner_group_id=NULL, text=NULL, attachments=NULL, content_warning=NULL, updated_at=NULL, mentions=NULL, source=NULL WHERE id=?");
 				stmt.setInt(1, id);
 				stmt.execute();
 			}
@@ -1052,12 +1054,12 @@ public class PostStorage{
 					.orderBy("last_comment_time DESC")
 					.limit(count, offset)
 					.executeAsStream(res->{
-						Like.ObjectType type=Like.ObjectType.values()[res.getInt(1)];
+						CommentsNewsfeedObjectType type=CommentsNewsfeedObjectType.values()[res.getInt(1)];
 						NewsfeedEntry entry=new NewsfeedEntry();
 						entry.objectID=res.getLong(2);
 						entry.type=switch(type){
 							case POST -> NewsfeedEntry.Type.POST;
-							case PHOTO -> throw new UnsupportedOperationException(); // TODO
+							case PHOTO -> NewsfeedEntry.Type.PHOTO;
 						};
 						return entry;
 					}).toList();
@@ -1245,13 +1247,13 @@ public class PostStorage{
 					if(ts==null){
 						new SQLQueryBuilder(conn)
 								.deleteFrom("newsfeed_comments")
-								.where("object_type=? AND object_id=?", 0, postID)
+								.where("object_type=? AND object_id=?", CommentsNewsfeedObjectType.POST, postID)
 								.executeNoResult();
 					}else{
 						new SQLQueryBuilder(conn)
 								.update("newsfeed_comments")
 								.value("last_comment_time", ts)
-								.where("object_type=? AND object_id=?", 0, postID)
+								.where("object_type=? AND object_id=?", CommentsNewsfeedObjectType.POST, postID)
 								.executeNoResult();
 					}
 				}

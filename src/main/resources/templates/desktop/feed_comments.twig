@@ -1,0 +1,80 @@
+{# @pebvariable name="feed" type="smithereen.model.feed.NewsfeedEntry[]" #}
+{%extends "page"%}
+{%block content%}
+{% include "feed_tabbar" with {'tab': "comments"} %}
+<div class="summaryWrap">
+	<div class="summary">{{ L('summary_feed') }}</div>
+	{% include "pagination" %}
+</div>
+<div class="singleColumn" id="postList">
+{% set _currentDate='' %}
+{%for entry in feed%}
+	{% if entry.type=='POST' and posts[entry.objectID] is not null %}
+	<div class="feedRow feedPostRow" id="postWrap{{ entry.objectID }}">
+		{% include "wall_post" with {'post': posts[entry.objectID]} %}
+	</div>
+	{% elseif entry.type=="PHOTO" and photos[entry.objectID] is not null %}
+	{% set photo=photos[entry.objectID] %}
+	{% set interactions=photosInteractions[entry.objectID] %}
+	{% set canComment=interactions.canComment %}
+	<div class="feedRow feedPostRow">
+		<div class="post">
+			<div class="postAvaWrap">
+				<a href="{{ profileURL(photo.authorID) }}"{{ profileRel(photo.authorID) }}>{{ users[photo.authorID] | pictureForAvatar('a') }}</a>
+			</div>
+			<div class="postContentWrap">
+				<a href="{{ profileURL(photo.authorID) }}" class="authorName" {{ profileRel(photo.authorID) }}>{{ users[photo.authorID] | name }}</a>
+				<div>{# "postInner" #}
+					<div class="postContent">{{ photo.description | postprocessHTML | truncateText }}</div>
+					<div class="feedRowPhotos">{{ renderPhotoGrid([photo], "single/#{photo.idString}") }}</div>
+				</div>
+				<div class="postInfo">
+					{%- if interactions is not null -%}
+					<span class="postActions contentActions">
+						<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
+							<a href="{{ photo.url }}/{% if interactions.isLiked %}un{% endif %}like?csrf={{ csrf }}" class="action like{% if interactions.isLiked %} liked{% endif %} popoverButton" id="likeButtonPhoto{{ photo.idString }}" data-obj-type="photo" data-obj-id="{{ photo.idString }}" data-popover-url="{{ photo.url }}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} rel="nofollow">
+								{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPhoto{{ photo.idString }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+								{{- interactions.likeCount -}}
+							</span></a>
+							<span class="popoverPlace likePopoverWrap"></span>
+						</span>
+					</span>
+					{%- endif -%}
+					<a href="{{ photo.url }}" class="postLink">{{ LD(photo.createdAt) }}</a>
+{#					{% if not realPost.local %}#}
+{#						| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>#}
+{#					{% endif %}#}
+					{% if currentUser is not null and interactions.canComment %}
+						<span id="postCommentLinkWrap{{ photo.idString }}" style="{{ interactions.commentCount==0 ? '' : 'display: none;' }}">| <a href="{{ photo.url }}" onclick="return showPostCommentForm('{{ photo.idString }}')">{{ L('add_comment') }}</a></span>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+		{% set comments=photosComments[entry.objectID] %}
+		<div class="commentsPreviewWrap">
+			{% set replyCount=interactions.commentCount %}
+			{% if (commentViewType=='FLAT' ? replyCount : comments.total)>comments.list.size %}
+				<a href="{{ photo.url }}" onclick="return loadOlderComments('{{ photo.idString }}', 'photo')" class="loadPrev" id="loadPrevBtn_{{ photo.commentParentID.htmlElementID }}" data-first-id="{{ comments.list.first.post.idString }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': replyCount-comments.list.size}) : L('show_previous_comments') }}</a>
+				<div class="prevLoader loader" id="prevLoader_{{ photo.commentParentID.htmlElementID }}" style="display: none;"></div>
+			{% endif %}
+			<div class="commentsPreview" id="comments_{{ photo.commentParentID.htmlElementID }}">
+			{%- for reply in comments.list %}
+				{% include "comment" with {'post': reply, 'preview': true, 'replyFormID': commentViewType=='FLAT' ? "wallPostForm_comment_#{photo.commentParentID.htmlElementID}" : "wallPostForm_commentReply_#{photo.commentParentID.htmlElementID}", 'parentObject': photo, 'baseReplyLevel': 0} %}
+			{% endfor -%}
+			</div>
+			{% set interactions=photosInteractions[entry.objectID] %}
+			{% if currentUser is not null and interactions.canComment %}
+				{% include "wall_post_form" with {'id': "comment_#{photo.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=photo&parentID="+photo.idString, 'showReplyBar': commentViewType=='FLAT', 'isComment': true} %}
+				{% if commentViewType!='FLAT' %}{% include "wall_post_form" with {'id': "commentReply_#{photo.commentParentID.htmlElementID}", 'hidden': true, 'action': "/comments/createComment?parentType=photo&parentID="+photo.idString, 'isComment': true} %}{% endif %}
+			{% endif %}
+		</div>
+	</div>
+	{% endif %}
+{% else %}
+<div class="emptyState" id="wallEmptyState">{{ L('feed_empty') }}</div>
+{%endfor%}
+</div>
+<div class="bottomSummaryWrap">
+	{% include "pagination" %}
+</div>
+{%endblock%}

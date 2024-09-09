@@ -9,7 +9,7 @@
 	{% endif %}
 	</div>
 	{% else %}
-	<form action="{{ isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost" }}" id="wallPostFormForm_{{ id }}" method="post">
+	<form action="{{ action | default (isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost") }}" id="wallPostFormForm_{{ id }}" method="post">
 	{% if isGroup %}
 		{% set fieldPlaceholder=L(wallOwner.event ? 'write_on_event_wall' : 'write_on_group_wall') %}
 	{% elseif wallOwner.id!=currentUser.id%}

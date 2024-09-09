@@ -274,6 +274,14 @@ select{
 
 .post{
 	padding: 12px 12px 0;
+	.postHeader{
+		display: flex;
+		align-items: center;
+		.avaW{
+			width: 40px;
+			flex: none;
+		}
+	}
 	.headerRight{
 		padding: 0 12px;
 		.authorNameW{
@@ -282,6 +290,9 @@ select{
 		.postLink, .postLink:link, .postLink:visited{
 			color: $grayText;
 		}
+	}
+	.authorName{
+		font-weight: $mediumWeight;
 	}
 	.postContentWrap{
 		padding: 8px 0;
@@ -2215,6 +2226,10 @@ input.searchField{
 			height: 100%;
 		}
 	}
+}
+
+.post .feedRowPhotos{
+	margin-left: 0;
 }
 
 .photoPageImgW{

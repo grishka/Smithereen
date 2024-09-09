@@ -5,21 +5,19 @@
 {% set interactions=postInteractions[realPost.getIDForInteractions()] %}
 {% endif %}
 <div class="post" id="post{{ realPost.id }}">
-	<table width="100%" cellpadding="0" cellspacing="0">
-		<tr>
-			<td width="40" valign="top">
-				<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a', 40) }}</a>
-			</td>
-			<td valign="middle" class="headerRight">
-				<div class="singleLine authorNameW"><a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
-				{%- if realPost.privacy!='PUBLIC' -%}
-				<span class="privatePostLockIcon"></span>
-				{%- endif -%}
-				</div>
-				<div class="singleLine timeW"><a href="{{realPost.internalURL}}" class="postLink">{{LD(realPost.createdAt)}}</a></div>
-			</td>
-		</tr>
-	</table>
+	<div class="postHeader">
+		<div class="avaW">
+			<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a', 40) }}</a>
+		</div>
+		<div class="headerRight">
+			<div class="singleLine authorNameW"><a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
+			{%- if realPost.privacy!='PUBLIC' -%}
+			<span class="privatePostLockIcon"></span>
+			{%- endif -%}
+			</div>
+			<div class="singleLine timeW"><a href="{{realPost.internalURL}}" class="postLink">{{LD(realPost.createdAt)}}</a></div>
+		</div>
+	</div>
 	<div class="postContentWrap">
 		{% include "wall_post_inner" with {'post': post, 'repostDepth': 0} %}
 		{% set realPost=post.post %}{# because included template overwrote it #}
