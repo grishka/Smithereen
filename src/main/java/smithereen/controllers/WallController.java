@@ -43,7 +43,6 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
-import smithereen.model.PostLikeObject;
 import smithereen.model.PostSource;
 import smithereen.model.SessionInfo;
 import smithereen.model.User;
@@ -54,7 +53,6 @@ import smithereen.model.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
-import smithereen.model.notifications.NotificationUtils;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -270,7 +268,7 @@ public class WallController{
 			}else{
 				context.getActivityPubWorker().sendCreatePostActivity(post);
 			}
-			NotificationUtils.putNotificationsForPost(post, inReplyTo, repost);
+			context.getNotificationsController().createNotificationsForObject(post);
 
 			return post;
 		}catch(SQLException x){

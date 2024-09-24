@@ -32,10 +32,7 @@ public class FollowPersonHandler extends ActivityTypeHandler<ForeignUser, Follow
 
 		context.appContext.getActivityPubWorker().sendAcceptFollowActivity(actor, user, activity);
 
-		Notification n=new Notification();
-		n.type=status==FriendshipStatus.REQUEST_RECVD ? Notification.Type.FRIEND_REQ_ACCEPT : Notification.Type.FOLLOW;
-		n.actorID=actor.id;
-		NotificationsStorage.putNotification(user.id, n);
+		context.appContext.getNotificationsController().createNotification(user, status==FriendshipStatus.REQUEST_RECVD ? Notification.Type.FRIEND_REQ_ACCEPT : Notification.Type.FOLLOW, null, null, actor);
 
 		if(status==FriendshipStatus.REQUEST_RECVD || status==FriendshipStatus.FOLLOWED_BY){
 			context.appContext.getActivityPubWorker().sendAddToFriendsCollectionActivity(user, actor);

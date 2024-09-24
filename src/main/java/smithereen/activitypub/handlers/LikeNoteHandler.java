@@ -28,12 +28,7 @@ public class LikeNoteHandler extends ActivityTypeHandler<ForeignUser, Like, Note
 		if(id==0)
 			return;
 		if(!(oaa.author() instanceof ForeignUser)){
-			Notification n=new Notification();
-			n.type=Notification.Type.LIKE;
-			n.actorID=actor.id;
-			n.objectID=post.id;
-			n.objectType=Notification.ObjectType.POST;
-			NotificationsStorage.putNotification(post.authorID, n);
+			context.appContext.getNotificationsController().createNotification(oaa.author(), Notification.Type.LIKE, post, null, actor);
 			if(context.ldSignatureOwner!=null)
 				context.forwardActivity(PostStorage.getInboxesForPostInteractionForwarding(post), oaa.author());
 		}

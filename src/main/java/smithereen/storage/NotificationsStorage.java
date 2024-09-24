@@ -17,33 +17,23 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 
 public class NotificationsStorage{
-	private static LruCache<Integer, UserNotifications> userNotificationsCache=new LruCache<>(500);
+	private static final LruCache<Integer, UserNotifications> userNotificationsCache=new LruCache<>(500);
 
-	public static void putNotification(int owner, @NotNull Notification n) throws SQLException{
-		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement("INSERT INTO `notifications` (`owner_id`, `type`, `object_id`, `object_type`, `related_object_id`, `related_object_type`, `actor_id`) VALUES (?, ?, ?, ?, ?, ?, ?)");
-			stmt.setInt(1, owner);
-			stmt.setInt(2, n.type.ordinal());
-			if(n.objectID!=0){
-				stmt.setLong(3, n.objectID);
-				stmt.setInt(4, n.objectType.ordinal());
-			}else{
-				stmt.setNull(3, Types.INTEGER);
-				stmt.setNull(4, Types.INTEGER);
-			}
-			if(n.relatedObjectID!=0){
-				stmt.setLong(5, n.relatedObjectID);
-				stmt.setInt(6, n.relatedObjectType.ordinal());
-			}else{
-				stmt.setNull(5, Types.INTEGER);
-				stmt.setNull(6, Types.INTEGER);
-			}
-			stmt.setInt(7, n.actorID);
-			stmt.execute();
-			UserNotifications un=getNotificationsFromCache(owner);
-			if(un!=null)
-				un.incNewNotificationsCount(1);
-		}
+	public static void putNotification(int owner, Notification.Type type, Notification.ObjectType objectType, long objectID, Notification.ObjectType relatedObjectType, long relatedObjectID, int actorID) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("notifications")
+				.value("owner_id", owner)
+				.value("type", type)
+				.value("object_type", objectType)
+				.value("object_id", objectType==null ? null : objectID)
+				.value("related_object_type", relatedObjectType)
+				.value("related_object_id", relatedObjectType==null ? null : relatedObjectID)
+				.value("actor_id", actorID)
+				.executeNoResult();
+
+		UserNotifications un=getNotificationsFromCache(owner);
+		if(un!=null)
+			un.incNewNotificationsCount(1);
 	}
 
 	public static PaginatedList<Notification> getNotifications(int owner, int offset, int count) throws SQLException{

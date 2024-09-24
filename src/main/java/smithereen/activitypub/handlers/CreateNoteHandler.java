@@ -30,10 +30,7 @@ import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.notifications.Notification;
-import smithereen.model.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
-import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 import spark.utils.StringUtils;
 
@@ -172,7 +169,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_COMMENTING);
 
 				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
-				NotificationUtils.putNotificationsForPost(nativePost, parent, null);
+				context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 				if(topLevel.isLocal()){
 					if(!Objects.equals(owner.activityPubID, oaa.author().activityPubID)){
 						context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
@@ -220,7 +217,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			}
 
 			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
-			NotificationUtils.putNotificationsForPost(nativePost, null, firstRepost);
+			context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 			if(nativePost.ownerID!=nativePost.authorID){
 				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
 			}else{

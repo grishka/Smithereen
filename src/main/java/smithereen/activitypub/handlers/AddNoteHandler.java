@@ -11,7 +11,6 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Add;
 import smithereen.model.Post;
-import smithereen.model.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
 
 public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuestion>{
@@ -38,6 +37,6 @@ public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuesti
 
 		context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 		context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
-		NotificationUtils.putNotificationsForPost(nativePost, null, null);
+		context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 	}
 }

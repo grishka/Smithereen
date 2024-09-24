@@ -82,13 +82,6 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 		context.appContext.getNewsfeedController().clearFriendsFeedCache();
 
 		User author=context.appContext.getUsersController().getUserOrThrow(post.authorID);
-		if(!(author instanceof ForeignUser)){
-			Notification n=new Notification();
-			n.type=Notification.Type.RETOOT;
-			n.actorID=actor.id;
-			n.objectID=post.id;
-			n.objectType=Notification.ObjectType.POST;
-			NotificationsStorage.putNotification(post.authorID, n);
-		}
+		context.appContext.getNotificationsController().createNotification(author, Notification.Type.RETOOT, post, null, actor);
 	}
 }

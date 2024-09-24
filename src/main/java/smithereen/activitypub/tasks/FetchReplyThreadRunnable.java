@@ -20,8 +20,6 @@ import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.model.Post;
-import smithereen.model.notifications.NotificationUtils;
-import smithereen.storage.PostStorage;
 
 public class FetchReplyThreadRunnable implements Callable<List<Post>>{
 	private static final Logger LOG=LoggerFactory.getLogger(FetchReplyThreadRunnable.class);
@@ -68,8 +66,8 @@ public class FetchReplyThreadRunnable implements Callable<List<Post>>{
 				continue;
 			}
 			context.getWallController().loadAndPreprocessRemotePostMentions(p, noq);
-			PostStorage.putForeignWallPost(p);
-			NotificationUtils.putNotificationsForPost(p, parent, null);
+			context.getObjectLinkResolver().storeOrUpdateRemoteObject(p);
+			context.getNotificationsController().createNotificationsForObject(p);
 			realThread.add(p);
 			parent=p;
 		}

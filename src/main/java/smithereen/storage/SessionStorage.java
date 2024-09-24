@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
@@ -172,7 +173,7 @@ public class SessionStorage{
 				.executeNoResult();
 	}
 
-	public static SignupResult registerNewAccount(@Nullable String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite) throws SQLException{
+	public static SignupResult registerNewAccount(@Nullable String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite, ApplicationContext ctx) throws SQLException{
 		SignupResult[] result={SignupResult.SUCCESS};
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			DatabaseUtils.doWithTransaction(conn, ()->{
@@ -256,10 +257,7 @@ public class SessionStorage{
 				conn.createStatement().execute("COMMIT");
 
 				if(inviterUserID!=0){
-					Notification n=new Notification();
-					n.actorID=userID;
-					n.type=Notification.Type.INVITE_SIGNUP;
-					NotificationsStorage.putNotification(inviterUserID, n);
+					ctx.getNotificationsController().createNotification(UserStorage.getById(inviterUserID), Notification.Type.INVITE_SIGNUP, null, null, UserStorage.getById(userID));
 				}
 
 				new SQLQueryBuilder(conn)

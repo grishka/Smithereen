@@ -71,12 +71,7 @@ public class UserInteractionsController{
 				if(id==0) // Already liked
 					return;
 				if(!(oaa.author() instanceof ForeignUser) && object.getAuthorID()!=self.id){
-					Notification n=new Notification();
-					n.type=Notification.Type.LIKE;
-					n.actorID=self.id;
-					n.objectID=object.getObjectID();
-					n.objectType=object.getObjectTypeForLikeNotifications();
-					NotificationsStorage.putNotification(object.getAuthorID(), n);
+					context.getNotificationsController().createNotification(oaa.author(), Notification.Type.LIKE, object, null, self);
 				}
 				if(!(self instanceof ForeignUser))
 					context.getActivityPubWorker().sendLikeActivity(object, self, id);
