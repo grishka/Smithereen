@@ -63,7 +63,7 @@
 				{% elseif notification.objectType=="PHOTO" %}
 					{{ L('notification_liked_photo', {'gender': actorGender}, {'photo': {'href': object.url, 'onclick': "return openPhotoViewer(this)", 'data-pv': json(object.singlePhotoViewerData)} }) }}
 				{% endif %}
-			{%elseif notification.type=="RETOOT"%}
+			{% elseif notification.type=="RETOOT" or notification.type=="REPOST" %}
 			{{L(isComment ? 'notification_reposted_comment' : 'notification_reposted_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{ object.shortTitle | default(LD(object.createdAt)) }}</a>
 			{%elseif notification.type=="POST_OWN_WALL"%}
 			{{L('notification_posted_on_wall', {'gender': actorGender})}}
