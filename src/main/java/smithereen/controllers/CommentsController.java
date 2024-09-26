@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -113,7 +114,7 @@ public class CommentsController{
 
 			long id=CommentStorage.createComment(self.id, parent.getOwnerID(), parentID, text, new FormattedTextSource(textSource, sourceFormat), replyKey,
 					mentionedUsers.stream().map(u->u.id).collect(Collectors.toSet()), attachments, contentWarning);
-			Comment comment=CommentStorage.getComment(id);
+			Comment comment=Objects.requireNonNull(CommentStorage.getComment(id));
 
 			if(comment.attachments!=null){
 				for(ActivityPubObject att:comment.attachments){
@@ -123,7 +124,7 @@ public class CommentsController{
 				}
 			}
 
-			// TODO notifications
+			context.getNotificationsController().createNotificationsForObject(comment);
 			// TODO federate
 
 			return comment;
@@ -153,6 +154,16 @@ public class CommentsController{
 			if(comment==null)
 				throw new ObjectNotFoundException();
 			return comment;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Long, Comment> getCommentsIgnoringPrivacy(Collection<Long> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			return CommentStorage.getComments(ids);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -227,15 +238,19 @@ public class CommentsController{
 			throw new InternalServerErrorException(x);
 		}
 
-		// TODO delete notifications
+		context.getNotificationsController().deleteNotificationsForObject(comment);
 		// TODO delete likes
 		// TODO federate
 	}
 
-	public CommentableContentObject getCommentParent(User self, Comment comment){
-		CommentableContentObject obj=switch(comment.parentObjectID.type()){
+	public CommentableContentObject getCommentParentIgnoringPrivacy(Comment comment){
+		return switch(comment.parentObjectID.type()){
 			case PHOTO -> context.getPhotosController().getPhotoIgnoringPrivacy(comment.parentObjectID.id());
 		};
+	}
+
+	public CommentableContentObject getCommentParent(User self, Comment comment){
+		CommentableContentObject obj=getCommentParentIgnoringPrivacy(comment);
 		context.getPrivacyController().enforceObjectPrivacy(self, obj);
 		return obj;
 	}

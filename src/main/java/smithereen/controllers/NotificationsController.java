@@ -1,8 +1,12 @@
 package smithereen.controllers;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.sql.SQLException;
+import java.util.HashSet;
 
 import smithereen.ApplicationContext;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.Account;
 import smithereen.model.ForeignUser;
@@ -12,12 +16,12 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.notifications.Notification;
-import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.photos.Photo;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.SessionStorage;
-import smithereen.storage.UserStorage;
 
 public class NotificationsController{
 	private final ApplicationContext context;
@@ -92,7 +96,36 @@ public class NotificationsController{
 				}
 			}
 			case Comment comment -> {
+				CommentableContentObject parent=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+				OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(parent);
+				User commentAuthor=context.getUsersController().getUserOrThrow(comment.authorID);
+				HashSet<Integer> notifiedUsers=new HashSet<>();
+				if(comment.parentObjectID.type()==CommentableObjectType.PHOTO && parent.getAuthorID()!=comment.authorID){
+					// Notify the author of the photo about the new comment
+					createNotification(oaa.author(), Notification.Type.REPLY, comment, parent, commentAuthor);
+					notifiedUsers.add(parent.getAuthorID());
+				}
 
+				// For replies, notify the parent author about the reply
+				if(comment.getReplyLevel()>0){
+					Comment parentComment=context.getCommentsController().getCommentIgnoringPrivacy(comment.replyKey.getLast());
+					if(parentComment.authorID!=comment.authorID && !notifiedUsers.contains(parentComment.authorID)){
+						User parentCommentAuthor=context.getUsersController().getUserOrThrow(parentComment.authorID);
+						createNotification(parentCommentAuthor, Notification.Type.REPLY, comment, parent, commentAuthor);
+						notifiedUsers.add(parentComment.authorID);
+					}
+				}
+
+				// Notify every mentioned local user, except the parent post author, if any
+				for(User user:context.getUsersController().getUsers(comment.mentionedUserIDs).values()){
+					if(user instanceof ForeignUser)
+						continue;
+					if(notifiedUsers.contains(user.id))
+						continue;
+					if(user.id==comment.authorID)
+						continue;
+					createNotification(user, Notification.Type.MENTION, comment, parent, commentAuthor);
+				}
 			}
 			default -> throw new IllegalStateException("Unexpected value: " + obj);
 		}
@@ -111,11 +144,20 @@ public class NotificationsController{
 		}
 	}
 
+	public void deleteNotificationsForObject(@NotNull OwnedContentObject obj){
+		try{
+			NotificationsStorage.deleteNotificationsForObject(getObjectTypeForObject(obj), obj.getObjectID());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	private Notification.ObjectType getObjectTypeForObject(OwnedContentObject obj){
 		return switch(obj){
 			case null -> null;
 			case Post post -> Notification.ObjectType.POST;
 			case Photo photo -> Notification.ObjectType.PHOTO;
+			case Comment comment -> Notification.ObjectType.COMMENT;
 			default -> throw new IllegalStateException("Unexpected value: " + obj);
 		};
 	}

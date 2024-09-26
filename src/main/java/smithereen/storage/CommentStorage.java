@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -92,6 +93,16 @@ public class CommentStorage{
 			return null;
 		postprocessComments(List.of(c));
 		return c;
+	}
+
+	public static Map<Long, Comment> getComments(Collection<Long> ids) throws SQLException{
+		Map<Long, Comment> comments=new SQLQueryBuilder()
+				.selectFrom("comments")
+				.whereIn("id", ids)
+				.executeAsStream(Comment::fromResultSet)
+				.collect(Collectors.toMap(c->c.id, Function.identity()));
+		postprocessComments(comments.values());
+		return comments;
 	}
 
 	public static Map<Long, Integer> getCommentCounts(CommentableObjectType type, Collection<Long> ids) throws SQLException{

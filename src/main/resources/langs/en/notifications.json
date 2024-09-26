@@ -15,5 +15,6 @@
   "notifications": "Notifications",
   "notifications_empty": "Your notifications will appear here.",
   "summary_notifications": "Showing latest notifications",
-  "notification_liked_photo": "liked your <a id=\"photo\">photo</a>"
+  "notification_liked_photo": "liked your <a id=\"photo\">photo</a>",
+  "notification_commented_on_photo": "commented on your <a id=\"photo\">photo</a>"
 }

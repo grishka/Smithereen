@@ -15,5 +15,6 @@
   "notifications": "Уведомления",
   "notifications_empty": "Ваши уведомления появятся здесь.",
   "summary_notifications": "Показаны последние уведомления",
-  "notification_liked_photo": "{gender, select, female {оценила} other {оценил}} вашу <a id=\"photo\">фотографию</a>"
+  "notification_liked_photo": "{gender, select, female {оценила} other {оценил}} вашу <a id=\"photo\">фотографию</a>",
+  "notification_commented_on_photo": "{gender, select, female {прокомментировала} other {прокомментировал}} вашу <a id=\"photo\">фотографию</a>"
 }

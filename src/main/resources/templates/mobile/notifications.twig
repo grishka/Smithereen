@@ -1,6 +1,7 @@
 {# @pebvariable name="items" type="smithereen.model.notifications.Notification[]" #}
 {# @pebvariable name="posts" type="Map<Integer, smithereen.model.Post>" #}
 {# @pebvariable name="photos" type="Map<Long, smithereen.model.photos.Photo>" #}
+{# @pebvariable name="comments" type="Map<Long, smithereen.model.comments.Comment>" #}
 {%extends "page"%}
 {%block content%}
 <div>
@@ -13,16 +14,21 @@
 		{% if object is not null %}{% set objectOwner=object.ownerID>0 ? users[object.ownerID] : groups[-object.ownerID] %}{% endif %}
 	{% elseif notification.objectType=='PHOTO' %}
 		{% set object=photos[notification.objectID] %}
+	{% elseif notification.objectType=='COMMENT' %}
+		{% set object=comments[notification.objectID] %}
+		{% set isComment=true %}
 	{% endif %}
 {%else%}
 {%set object=null%}
 {%endif%}
-{%if notification.relatedObjectID!=0%}
-{%set relatedObject=posts[notification.relatedObjectID]%}
-{%set relatedIsComment=relatedObject is not null ? relatedObject.replyLevel>0 : false%}
-{%else%}
-{%set relatedObject=null%}
-{%endif%}
+{% if notification.relatedObjectType=='POST' %}
+{% set relatedObject=posts[notification.relatedObjectID] %}
+{% set relatedIsComment=relatedObject is not null ? relatedObject.replyLevel>0 : false %}
+{% elseif notification.relatedObjectType=='PHOTO' %}
+{% set relatedObject=photos[notification.relatedObjectID] %}
+{% else %}
+{% set relatedObject=null %}
+{% endif %}
 {%if actor is not null%}
 {%set actorName=actor | name%}
 {%set actorURL=actor.profileURL%}
@@ -44,7 +50,14 @@
 		<td valign="top" class="notificationContentWrap">
 			<a href="{{actorURL}}" class="authorName">{{actorName}}</a>
 			{%if notification.type=="REPLY"%}
-			{{L(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', {'gender': actorGender})}} <a href="{{relatedObject.internalURL}}">{{ relatedObject.shortTitle | default(LD(relatedObject.createdAt)) }}</a>
+			{% if notification.objectType=='COMMENT' and object.replyLevel>0 and comments[object.replyKey.last].authorID==currentUser.id %}
+				{% set parentComment=comments[object.replyKey.last] %}
+				{{ L('notification_replied_to_comment', {'gender': actorGender}) }} <a href="{{ parentComment.internalURL }}">{{ parentComment.shortTitle | default(LD(parentComment.createdAt)) }}</a>
+			{% elseif notification.relatedObjectType=='PHOTO' %}
+				{{ L('notification_commented_on_photo', {'gender': actorGender}, {'photo': {'href': relatedObject.url, 'onclick': "return openPhotoViewer(this)", 'data-pv': json(relatedObject.singlePhotoViewerData)} }) }}
+			{% else %}
+				{{ L(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', {'gender': actorGender}) }} <a href="{{relatedObject.internalURL}}">{{ relatedObject.shortTitle | default(LD(relatedObject.createdAt)) }}</a>
+			{% endif %}
 			<div class="postContent">
 				{{ object.text | postprocessHTML }}
 			</div>
