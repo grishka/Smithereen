@@ -46,7 +46,6 @@ import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.storage.MediaStorageUtils;
-import smithereen.storage.utils.Pair;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.FormattedTextFormat;
@@ -625,6 +624,7 @@ public class PhotosRoutes{
 			if(isMobile(req)){
 				model.with("photoInteractions", ctx.getUserInteractionsController().getUserInteractions(List.of(photo), self==null ? null : self.user));
 			}
+			jsLangKey(req, "yes", "no", "cancel", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw");
 
 			return model;
 		}
