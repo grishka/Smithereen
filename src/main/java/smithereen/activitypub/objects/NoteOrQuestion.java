@@ -142,9 +142,9 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public static NoteOrQuestion fromNativePost(Post post, ApplicationContext context){
 		NoteOrQuestion noq;
 		if(post.isDeleted()){
-			noq=new NoteTombstone();
+			noq=new LocalPostNoteTombstone(post);
 		}else if(post.poll!=null){
-			Question q=new Question();
+			Question q=new LocalPostQuestion(post);
 			q.name=post.poll.question;
 			q.votersCount=post.poll.numVoters;
 			List<ActivityPubObject> opts=post.poll.options.stream().map(opt->{
@@ -176,7 +176,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 
 			noq=q;
 		}else{
-			noq=new Note();
+			noq=new LocalPostNote(post);
 		}
 
 		Set<URI> to=new HashSet<>(), cc=new HashSet<>();
