@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=55;
+	public static final int SCHEMA_VERSION=56;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -813,6 +813,7 @@ public class DatabaseSchemaUpdater{
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 				createApIdIndexTriggersForComments(conn);
 			}
+			case 56 -> conn.createStatement().execute("ALTER TABLE photo_albums ADD `ap_comments` varchar(300) CHARACTER SET ascii DEFAULT NULL");
 		}
 	}
 

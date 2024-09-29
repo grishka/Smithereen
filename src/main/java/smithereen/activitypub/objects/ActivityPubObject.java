@@ -340,7 +340,7 @@ public abstract class ActivityPubObject{
 		return sb.toString();
 	}
 
-	protected String optString(JsonObject obj, String key){
+	protected static String optString(JsonObject obj, String key){
 		if(obj.has(key) && obj.get(key).isJsonPrimitive() && obj.getAsJsonPrimitive(key).isString())
 			return obj.get(key).getAsString();
 		return null;
@@ -572,7 +572,10 @@ public abstract class ActivityPubObject{
 			case "Image" -> new Image();
 			case "_LocalImage" -> parserContext.isLocal ? new LocalImage() : null;
 			case "Document" -> new Document();
-			case "Tombstone" -> new Tombstone();
+			case "Tombstone" -> switch(optString(obj, "formerType")){
+				case "Note", "Question" -> new NoteTombstone();
+				case null, default -> new Tombstone();
+			};
 			case "Mention" -> new Mention();
 			case "Relationship" -> new Relationship();
 			case "PropertyValue" -> new PropertyValue();

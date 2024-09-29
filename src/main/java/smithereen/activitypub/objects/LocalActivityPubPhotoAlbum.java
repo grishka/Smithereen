@@ -30,6 +30,7 @@ public class LocalActivityPubPhotoAlbum extends ActivityPubPhotoAlbum{
 			obj.addProperty("commentingDisabled", disableCommenting);
 		}
 		obj.addProperty("displayOrder", nativeAlbum.displayOrder);
+		obj.addProperty("comments", activityPubComments.toString());
 		return obj;
 	}
 

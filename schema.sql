@@ -566,6 +566,7 @@ CREATE TABLE `photo_albums` (
   `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   `ap_url` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   `display_order` int unsigned NOT NULL DEFAULT '0',
+  `ap_comments` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -908,4 +909,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-08-29 22:04:04
+-- Dump completed on 2024-09-28 21:22:57

@@ -3,6 +3,7 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonObject;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 
 import smithereen.ApplicationContext;
@@ -16,6 +17,7 @@ import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoMetadata;
 import smithereen.text.TextProcessor;
+import smithereen.util.UriBuilder;
 
 public class ActivityPubPhoto extends ActivityPubObject{
 	public ActivityPubObject target;
@@ -61,6 +63,15 @@ public class ActivityPubPhoto extends ActivityPubObject{
 		p.published=photo.createdAt;
 		p.displayOrder=photo.displayOrder;
 
+		ActivityPubCollection replies=new ActivityPubCollection(false);
+		replies.activityPubID=new UriBuilder(p.activityPubID).appendPath("replies").build();
+		CollectionPage repliesPage=new CollectionPage(false);
+		repliesPage.next=new UriBuilder(replies.activityPubID).queryParam("page", "1").build();
+		repliesPage.partOf=replies.activityPubID;
+		repliesPage.items=Collections.emptyList();
+		replies.first=new LinkOrObject(repliesPage);
+		p.replies=new LinkOrObject(replies);
+
 		Image image=new Image();
 		image.url=photo.image.getOriginalURI();
 		image.width=photo.getWidth();
@@ -103,6 +114,12 @@ public class ActivityPubPhoto extends ActivityPubObject{
 		p.metadata.width=image.width;
 		p.metadata.height=image.height;
 		p.metadata.blurhash=image.blurHash;
+		if(replies!=null){
+			if(replies.link!=null)
+				p.metadata.apReplies=replies.link;
+			else
+				p.metadata.apReplies=replies.object.activityPubID;
+		}
 
 		return p;
 	}

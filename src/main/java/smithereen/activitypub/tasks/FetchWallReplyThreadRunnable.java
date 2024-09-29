@@ -21,8 +21,8 @@ import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.model.Post;
 
-public class FetchReplyThreadRunnable implements Callable<List<Post>>{
-	private static final Logger LOG=LoggerFactory.getLogger(FetchReplyThreadRunnable.class);
+public class FetchWallReplyThreadRunnable implements Callable<List<Post>>{
+	private static final Logger LOG=LoggerFactory.getLogger(FetchWallReplyThreadRunnable.class);
 
 	private final LinkedList<NoteOrQuestion> thread=new LinkedList<>();
 	private final Set<URI> seenPosts=new HashSet<>();
@@ -32,7 +32,7 @@ public class FetchReplyThreadRunnable implements Callable<List<Post>>{
 	private final ApplicationContext context;
 	private final HashMap<URI, Future<List<Post>>> fetchingReplyThreads;
 
-	public FetchReplyThreadRunnable(ActivityPubWorker apw, HashMap<URI, List<Consumer<List<Post>>>> afterFetchReplyThreadActions, ApplicationContext context, HashMap<URI, Future<List<Post>>> fetchingReplyThreads, NoteOrQuestion post){
+	public FetchWallReplyThreadRunnable(ActivityPubWorker apw, HashMap<URI, List<Consumer<List<Post>>>> afterFetchReplyThreadActions, ApplicationContext context, HashMap<URI, Future<List<Post>>> fetchingReplyThreads, NoteOrQuestion post){
 		thread.add(post);
 		initialPost=post;
 		this.apw=apw;

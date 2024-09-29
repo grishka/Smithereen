@@ -626,6 +626,7 @@ public class SmithereenApplication{
 			postWithCSRF("/edit", PhotosRoutes::editAlbum);
 			getLoggedIn("/confirmDelete", PhotosRoutes::confirmDeleteAlbum);
 			postWithCSRF("/delete", PhotosRoutes::deleteAlbum);
+			getActivityPubCollection("/comments", 50, ActivityPubRoutes::photoAlbumComments);
 		});
 
 		path("/photos", ()->{
@@ -642,6 +643,7 @@ public class SmithereenApplication{
 				get("/likes", PhotosRoutes::likeList);
 				get("/likePopover", PhotosRoutes::likePopover);
 				getWithCSRF("/setAsAlbumCover", PhotosRoutes::setPhotoAsAlbumCover);
+				getActivityPubCollection("/replies", 50, ActivityPubRoutes::photoComments);
 			});
 		});
 
@@ -649,6 +651,8 @@ public class SmithereenApplication{
 			postWithCSRF("/createComment", CommentsRoutes::createComment);
 			get("/ajaxCommentPreview", CommentsRoutes::ajaxCommentPreview);
 			path("/:id", ()->{
+				getActivityPub("", ActivityPubRoutes::comment);
+				getActivityPubCollection("/replies", 50, ActivityPubRoutes::commentReplies);
 				get("/ajaxCommentBranch", CommentsRoutes::ajaxCommentBranch);
 				getLoggedIn("/confirmDelete", CommentsRoutes::confirmDeleteComment);
 				postWithCSRF("/delete", CommentsRoutes::deleteComment);
@@ -821,6 +825,7 @@ public class SmithereenApplication{
 		setupCustomSerializer();
 
 		responseTypeSerializer(ActivityPubObject.class, (out, obj, req, resp) -> {
+			resp.raw().setCharacterEncoding(null);
 			resp.type(ActivityPub.CONTENT_TYPE);
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
 			gson.toJson(obj.asRootActivityPubObject(context(req), ()->{

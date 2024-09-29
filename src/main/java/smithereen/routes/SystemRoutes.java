@@ -6,8 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -36,9 +34,6 @@ import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
-import jakarta.servlet.MultipartConfigElement;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Part;
 import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
@@ -58,7 +53,6 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
-import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.AttachmentHostContentObject;
@@ -74,32 +68,26 @@ import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.ReportableContentObject;
-import smithereen.model.SearchResult;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.GraffitiAttachment;
-import smithereen.model.media.ImageMetadata;
-import smithereen.model.media.MediaFileMetadata;
-import smithereen.model.media.MediaFileRecord;
-import smithereen.model.media.MediaFileType;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentReplyParent;
+import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.util.QuickSearchResults;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
-import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PostStorage;
-import smithereen.storage.SearchStorage;
 import smithereen.storage.UserStorage;
-import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.TextProcessor;
-import smithereen.util.BlurHash;
 import smithereen.util.CaptchaGenerator;
 import smithereen.util.CharacterRange;
 import smithereen.util.JsonArrayBuilder;
@@ -173,7 +161,7 @@ public class SystemRoutes{
 			case "user_ava" -> {
 				itemType=MediaCache.ItemType.AVATAR;
 				mime="image/jpeg";
-				int userID=Utils.parseIntOrDefault(req.queryParams("user_id"), 0);
+				int userID=parseIntOrDefault(req.queryParams("user_id"), 0);
 				user=UserStorage.getById(userID);
 				if(user==null || Config.isLocal(user.activityPubID)){
 					LOG.warn("downloading user_ava: user {} not found or is local", userID);
@@ -192,7 +180,7 @@ public class SystemRoutes{
 			case "group_ava" -> {
 				itemType=MediaCache.ItemType.AVATAR;
 				mime="image/jpeg";
-				int groupID=Utils.parseIntOrDefault(req.queryParams("group_id"), 0);
+				int groupID=parseIntOrDefault(req.queryParams("group_id"), 0);
 				group=GroupStorage.getById(groupID);
 				if(group==null || Config.isLocal(group.activityPubID)){
 					LOG.warn("downloading group_ava: group {} not found or is local", groupID);
@@ -347,7 +335,7 @@ public class SystemRoutes{
 							.add("webp", photo.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.WEBP).toString())
 					).build();
 		}
-		resp.redirect(Utils.back(req));
+		resp.redirect(back(req));
 		return "";
 	}
 
@@ -414,6 +402,10 @@ public class SystemRoutes{
 					yield new JsonObjectBuilder().add("success", "/posts/"+p.id).build();
 				}
 				case PhotoAlbum pa -> new JsonObjectBuilder().add("success", pa.getURL()).build();
+				case Comment c -> {
+					CommentableContentObject parent=ctx.getCommentsController().getCommentParent(self!=null ? self.user : null, c);
+					yield new JsonObjectBuilder().add("success", parent.getURL()).build();
+				}
 				default -> new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
 			};
 		}catch(ObjectNotFoundException ignore){}
@@ -471,8 +463,8 @@ public class SystemRoutes{
 						LOG.trace("Error fetching replies", x);
 					}
 					yield new JsonObjectBuilder().add("success", Config.localURI("/posts/"+nativePost.id).toString()).build();
-				}else{
-					Future<List<Post>> future=ctx.getActivityPubWorker().fetchReplyThread(post);
+				}else if(post.isWallPostOrComment(ctx)){
+					Future<List<Post>> future=ctx.getActivityPubWorker().fetchWallReplyThread(post);
 					try{
 						List<Post> posts=future.get(30, TimeUnit.SECONDS);
 						ctx.getActivityPubWorker().fetchAllReplies(posts.getFirst()).get(30, TimeUnit.SECONDS);
@@ -495,6 +487,30 @@ public class SystemRoutes{
 						yield new JsonObjectBuilder().add("error", error).build();
 					}catch(TimeoutException e){
 						LOG.trace("Remote object fetch timed out", e);
+						yield new JsonObjectBuilder().add("error", l.get("remote_object_loading_error")).build();
+					}
+				}else{
+					Future<List<CommentReplyParent>> future=ctx.getActivityPubWorker().fetchCommentReplyThread(post);
+					try{
+						List<CommentReplyParent> comments=future.get(30, TimeUnit.SECONDS);
+						yield new JsonObjectBuilder().add("success", ((CommentableContentObject) comments.getFirst()).getURL()).build();
+					}catch(InterruptedException x){
+						throw new RuntimeException(x);
+					}catch(ExecutionException e){
+						LOG.trace("Error fetching remote object", e);
+						Throwable x=e.getCause();
+						String error=switch(x){
+							case UnsupportedRemoteObjectTypeException ignored -> l.get("unsupported_remote_object_type");
+							case ObjectNotFoundException onfe -> switch(onfe.getCause()){
+								case IOException ignored -> l.get("remote_object_network_error");
+								case null, default -> l.get("remote_object_not_found");
+							};
+							case IOException ignored -> l.get("remote_object_network_error");
+							default -> x.getLocalizedMessage();
+						};
+						yield new JsonObjectBuilder().add("error", error).build();
+					}catch(TimeoutException x){
+						LOG.trace("Remote object fetch timed out", x);
 						yield new JsonObjectBuilder().add("error", l.get("remote_object_loading_error")).build();
 					}
 				}

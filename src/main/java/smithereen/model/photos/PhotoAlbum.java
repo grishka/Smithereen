@@ -34,6 +34,7 @@ public class PhotoAlbum implements ActivityPubRepresentable, OwnedContentObject{
 
 	public URI activityPubID;
 	public URI activityPubURL;
+	public URI activityPubComments;
 
 	public static PhotoAlbum fromResultSet(ResultSet res) throws SQLException{
 		PhotoAlbum a=new PhotoAlbum();
@@ -60,9 +61,12 @@ public class PhotoAlbum implements ActivityPubRepresentable, OwnedContentObject{
 		Utils.deserializeEnumSet(a.flags, Flag.class, res.getLong("flags"));
 		String apID=res.getString("ap_id");
 		String apURL=res.getString("ap_url");
+		String apComments=res.getString("ap_comments");
 		if(apID!=null && apURL!=null){
 			a.activityPubID=URI.create(apID);
 			a.activityPubURL=URI.create(apURL);
+			if(apComments!=null)
+				a.activityPubComments=URI.create(apComments);
 		}
 		a.displayOrder=res.getInt("display_order");
 		return a;

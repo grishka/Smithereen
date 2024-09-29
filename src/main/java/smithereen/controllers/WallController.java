@@ -43,6 +43,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.PostLikeObject;
 import smithereen.model.PostSource;
 import smithereen.model.SessionInfo;
 import smithereen.model.User;
@@ -79,7 +80,7 @@ public class WallController{
 		this.context=context;
 	}
 
-	public void loadAndPreprocessRemotePostMentions(Post post, NoteOrQuestion apSource){
+	public void loadAndPreprocessRemotePostMentions(PostLikeObject post, NoteOrQuestion apSource){
 		if(apSource.tag!=null){
 			HashMap<Integer, User> mentionedUsers=new HashMap<>();
 			for(ActivityPubObject tag:apSource.tag){

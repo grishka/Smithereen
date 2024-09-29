@@ -106,6 +106,7 @@ public class JLDProcessor{
 		addSmAlias(lc, "commentingDisabled");
 		addSmAlias(lc, "Photo");
 		addSmAlias(lc, "displayOrder");
+		addSmAlias(lc, "comments");
 		// privacy settings keys
 		lc.addProperty("wallPosting", "sm:wallPosting");
 		lc.addProperty("wallPostVisibility", "sm:wallPostVisibility");

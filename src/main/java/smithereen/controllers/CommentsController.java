@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -42,6 +43,7 @@ import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.storage.CommentStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
+import smithereen.storage.PostStorage;
 import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
@@ -56,13 +58,8 @@ public class CommentsController{
 		this.context=context;
 	}
 
-	public Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
-								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs){
-		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(parent);
-		if(context.getPrivacyController().isUserBlocked(self, oaa.owner()))
-			throw new UserActionNotAllowedException();
-		CommentParentObjectID parentID=parent.getCommentParentID();
-
+	private void enforceCommentCreationPrivacy(User self, CommentableContentObject parent, OwnerAndAuthor oaa){
+		assert parent.getOwnerID()==oaa.owner().getOwnerID() && parent.getAuthorID()==oaa.author().id;
 		switch(parent){
 			case Photo photo -> {
 				PhotoAlbum album=context.getPhotosController().getAlbum(photo.albumID, self);
@@ -72,6 +69,16 @@ public class CommentsController{
 					throw new UserActionNotAllowedException();
 			}
 		}
+	}
+
+	public Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
+								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs){
+		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(parent);
+		if(context.getPrivacyController().isUserBlocked(self, oaa.owner()))
+			throw new UserActionNotAllowedException();
+		CommentParentObjectID parentID=parent.getCommentParentID();
+
+		enforceCommentCreationPrivacy(self, parent, oaa);
 
 		if(inReplyTo!=null && !inReplyTo.parentObjectID.equals(parentID))
 			inReplyTo=null;
@@ -355,6 +362,48 @@ public class CommentsController{
 					p.parentAuthorID=moreAuthorIDs.getOrDefault(p.post.replyKey.getLast(), 0);
 				}
 			}
+		}
+	}
+
+	public PaginatedList<Comment> getPhotoAlbumComments(PhotoAlbum album, int offset, int count){
+		try{
+			return CommentStorage.getPhotoAlbumComments(album.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Comment> getCommentReplies(CommentableContentObject parent, Comment comment, int offset, int count){
+		try{
+			return CommentStorage.getCommentReplies(parent.getCommentParentID(), comment!=null ? comment.getReplyKeyForReplies() : null, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void putOrUpdateForeignComment(Comment comment){
+		User author=context.getUsersController().getUserOrThrow(comment.authorID);
+		CommentableContentObject parent=getCommentParent(author, comment);
+		boolean isNew=false;
+		if(comment.id==0){
+			enforceCommentCreationPrivacy(author, parent, context.getWallController().getContentAuthorAndOwner(parent));
+			isNew=true;
+		}
+		try{
+			CommentStorage.putOrUpdateForeignComment(comment);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		if(isNew)
+			context.getNotificationsController().createNotificationsForObject(comment);
+	}
+
+	public long getCommentIDByActivityPubID(URI id){
+		try{
+			long lid=CommentStorage.getCommentIdByActivityPubId(id);
+			return Math.max(lid, 0);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 }

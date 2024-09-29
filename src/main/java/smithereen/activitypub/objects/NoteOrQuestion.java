@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.SerializerContext;
@@ -35,6 +36,11 @@ import smithereen.jsonld.JLD;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
 import smithereen.model.User;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentReplyParent;
+import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
@@ -355,6 +361,150 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		}
 
 		return msg;
+	}
+
+	public static NoteOrQuestion fromNativeComment(Comment comment, ApplicationContext context){
+		NoteOrQuestion n=comment.isDeleted() ? new LocalCommentNoteTombstone(comment) : new LocalCommentNote(comment);
+
+		User author=context.getUsersController().getUserOrThrow(comment.authorID);
+		CommentableContentObject parent=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+		Actor parentOwner=parent.getOwnerID()>0 ? context.getUsersController().getUserOrThrow(parent.getOwnerID()) : context.getGroupsController().getGroupOrThrow(-parent.getOwnerID());
+
+		n.activityPubID=comment.getActivityPubID();
+
+		if(comment.getReplyLevel()>0){
+			Comment parentComment=context.getCommentsController().getCommentIgnoringPrivacy(comment.replyKey.getLast());
+			n.inReplyTo=parentComment.getActivityPubID();
+		}else{
+			n.inReplyTo=parent.getActivityPubID();
+		}
+
+		ActivityPubCollection replies=new ActivityPubCollection(false);
+		replies.activityPubID=new UriBuilder(comment.getActivityPubID()).appendPath("replies").build();
+		CollectionPage repliesPage=new CollectionPage(false);
+		repliesPage.next=new UriBuilder(replies.activityPubID).queryParam("page", "1").build();
+		repliesPage.partOf=replies.activityPubID;
+		repliesPage.items=Collections.emptyList();
+		replies.first=new LinkOrObject(repliesPage);
+		n.replies=new LinkOrObject(replies);
+
+		ActivityPubCollection target=new ActivityPubCollection(false);
+		target.attributedTo=parentOwner.activityPubID;
+		target.activityPubID=switch(parent){
+			case Photo photo -> new UriBuilder(context.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID).getActivityPubID()).path("comments").build();
+		};
+		n.target=target;
+		n.url=comment.getActivityPubURL();
+
+		if(comment.isDeleted())
+			return n;
+
+		n.attributedTo=author.activityPubID;
+		n.content=comment.text;
+		n.published=comment.createdAt;
+		n.updated=comment.updatedAt;
+		if(comment.hasContentWarning()){
+			n.summary=comment.contentWarning;
+			n.sensitive=true;
+		}else{
+			n.sensitive=false;
+		}
+		n.tag=new ArrayList<>();
+		if(!comment.mentionedUserIDs.isEmpty()){
+			for(User u:context.getUsersController().getUsers(comment.mentionedUserIDs).values()){
+				Mention mention=new Mention();
+				mention.href=u.activityPubID;
+				n.tag.add(mention);
+			}
+		}
+		n.attachment=comment.attachments;
+		n.likes=new UriBuilder(n.activityPubID).appendPath("likes").build();
+
+		return n;
+	}
+
+	public Comment asNativeComment(ApplicationContext context){
+		Comment comment=new Comment();
+
+		if(attributedTo==null)
+			throw new FederationException("attributedTo is required");
+		if(target==null)
+			throw new FederationException("target is required");
+		ensureHostMatchesID(attributedTo, "attributedTo");
+		comment.id=context.getCommentsController().getCommentIDByActivityPubID(activityPubID);
+
+		Actor owner=context.getObjectLinkResolver().resolve(target.attributedTo, Actor.class, true, true, false);
+		User author=context.getObjectLinkResolver().resolve(attributedTo, User.class, true, true, false);
+		comment.authorID=author.id;
+		comment.ownerID=owner.getOwnerID();
+		if(inReplyTo==null)
+			throw new FederationException("inReplyTo is required");
+		CommentReplyParent replyParent=context.getObjectLinkResolver().resolveNative(inReplyTo, CommentReplyParent.class, true, true, false, owner, true);
+		CommentableContentObject parentObj=switch(replyParent){
+			case CommentableContentObject _parentObj -> {
+				comment.replyKey=List.of();
+				comment.parentObjectID=_parentObj.getCommentParentID();
+				yield _parentObj;
+			}
+			case Comment parentComment -> {
+				comment.replyKey=parentComment.getReplyKeyForReplies();
+				comment.parentObjectID=parentComment.parentObjectID;
+				yield context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+			}
+		};
+		if(!Objects.equals(target.activityPubID, parentObj.getCommentCollectionID(context)))
+			throw new FederationException("target.id does not match the expected comment collection ID");
+
+		comment.setActivityPubID(activityPubID);
+		comment.activityPubURL=url==null ? activityPubID : url;
+		ensureHostMatchesID(comment.activityPubURL, "url");
+		if(replies!=null){
+			comment.activityPubReplies=replies.getObjectID();
+			ensureHostMatchesID(comment.activityPubReplies, "replies");
+		}
+
+		comment.text=TextProcessor.sanitizeHTML(content);
+		comment.createdAt=published!=null ? published : Instant.now();
+		comment.updatedAt=updated;
+		if(sensitive!=null && sensitive){
+			if(StringUtils.isNotEmpty(summary))
+				comment.contentWarning=summary;
+			else
+				comment.contentWarning=""; // Will be rendered as a translatable default string
+		}
+
+		if(attachment!=null && attachment.size()>10)
+			comment.attachments=attachment.subList(0, 10);
+		else
+			comment.attachments=attachment;
+
+		if(tag!=null){
+			comment.mentionedUserIDs=new HashSet<>();
+			int mentionCount=0;
+			for(ActivityPubObject obj:tag){
+				if(obj instanceof Mention mention){
+					try{
+						User mentionedUser=context.getObjectLinkResolver().resolve(mention.href, User.class, true, true, false);
+						comment.mentionedUserIDs.add(mentionedUser.id);
+						mentionCount++;
+						if(mentionCount==MAX_MENTIONS)
+							break;
+					}catch(Exception x){
+						LOG.debug("Failed to resolve mention for href={}", mention.href, x);
+					}
+				}
+			}
+		}
+
+		return comment;
+	}
+
+	public boolean isWallPostOrComment(ApplicationContext context){
+		if(target==null)
+			return true;
+
+		Actor owner=context.getObjectLinkResolver().resolveLocally(target.attributedTo, Actor.class);
+		return Objects.equals(owner.getWallURL(), target.activityPubID); // TODO change this when I make wall comments go into their own collection
 	}
 
 	@Override

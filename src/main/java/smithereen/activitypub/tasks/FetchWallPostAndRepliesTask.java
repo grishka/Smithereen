@@ -11,11 +11,11 @@ import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.model.Post;
 import smithereen.storage.PostStorage;
 
-public class FetchPostAndRepliesTask extends FetchAllRepliesTask{
+public class FetchWallPostAndRepliesTask extends FetchAllWallRepliesTask{
 	private final URI postID;
 	private final Post parentPost;
 
-	public FetchPostAndRepliesTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, URI postID, Post parentPost, Set<URI> seenPosts){
+	public FetchWallPostAndRepliesTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, URI postID, Post parentPost, Set<URI> seenPosts){
 		super(apw, context, fetchingAllReplies, null, seenPosts);
 		this.postID=postID;
 		this.parentPost=parentPost;

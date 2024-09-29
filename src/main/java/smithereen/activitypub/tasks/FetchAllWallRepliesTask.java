@@ -23,8 +23,8 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.Post;
 import smithereen.storage.PostStorage;
 
-public class FetchAllRepliesTask implements Callable<Post>{
-	protected static final Logger LOG=LoggerFactory.getLogger(FetchAllRepliesTask.class);
+public class FetchAllWallRepliesTask implements Callable<Post>{
+	protected static final Logger LOG=LoggerFactory.getLogger(FetchAllWallRepliesTask.class);
 
 	private final ActivityPubWorker apw;
 	protected final ApplicationContext context;
@@ -36,7 +36,7 @@ public class FetchAllRepliesTask implements Callable<Post>{
 	 */
 	protected final Set<URI> seenPosts;
 
-	public FetchAllRepliesTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, Post post, Set<URI> seenPosts){
+	public FetchAllWallRepliesTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, Post post, Set<URI> seenPosts){
 		this.post=post;
 		this.seenPosts=seenPosts;
 		this.apw=apw;
@@ -44,7 +44,7 @@ public class FetchAllRepliesTask implements Callable<Post>{
 		this.fetchingAllReplies=fetchingAllReplies;
 	}
 
-	public FetchAllRepliesTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, Post post){
+	public FetchAllWallRepliesTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, Post post){
 		this(apw, context, fetchingAllReplies, post, new HashSet<>());
 		if(post.getReplyLevel()>0)
 			throw new IllegalArgumentException("This constructor is only for top-level posts");
@@ -122,7 +122,7 @@ public class FetchAllRepliesTask implements Callable<Post>{
 					}
 					seenPosts.add(item.link);
 				}
-				FetchPostAndRepliesTask subtask=new FetchPostAndRepliesTask(apw, context, fetchingAllReplies, item.link, this.post, seenPosts);
+				FetchWallPostAndRepliesTask subtask=new FetchWallPostAndRepliesTask(apw, context, fetchingAllReplies, item.link, this.post, seenPosts);
 				subtasks.add(apw.submitTask(subtask));
 			}else if(item.object instanceof NoteOrQuestion noq){
 				synchronized(seenPosts){
@@ -140,7 +140,7 @@ public class FetchAllRepliesTask implements Callable<Post>{
 				context.getWallController().loadAndPreprocessRemotePostMentions(post, noq);
 				PostStorage.putForeignWallPost(post);
 				LOG.trace("got post: {}", post);
-				FetchAllRepliesTask subtask=new FetchAllRepliesTask(apw, context, fetchingAllReplies, post, seenPosts);
+				FetchAllWallRepliesTask subtask=new FetchAllWallRepliesTask(apw, context, fetchingAllReplies, post, seenPosts);
 				subtasks.add(apw.submitTask(subtask));
 			}else{
 				LOG.warn("reply object isn't a post: {}", item.object);
@@ -150,8 +150,13 @@ public class FetchAllRepliesTask implements Callable<Post>{
 			try{
 				task.get();
 			}catch(Exception x){
-				LOG.warn("error fetching reply", x);
+				LOG.warn("error fetching reply via {}", task, x);
 			}
 		}
+	}
+
+	@Override
+	public String toString(){
+		return getClass().getName()+"["+post.getActivityPubID()+"]";
 	}
 }

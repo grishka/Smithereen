@@ -3,10 +3,12 @@ package smithereen.storage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,7 +32,6 @@ import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.feed.CommentsNewsfeedObjectType;
-import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
@@ -344,6 +345,108 @@ public class CommentStorage{
 				.valueExpr("updated_at", "CURRENT_TIMESTAMP()")
 				.where("id=?", id)
 				.executeNoResult();
+	}
+
+	public static PaginatedList<Comment> getPhotoAlbumComments(long albumID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("comments")
+					.count()
+					.where("parent_object_type=? AND parent_object_id IN (SELECT id FROM photos WHERE album_id=?)", CommentableObjectType.PHOTO, albumID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Comment> comments=new SQLQueryBuilder(conn)
+					.selectFrom("comments")
+					.allColumns()
+					.where("parent_object_type=? AND parent_object_id IN (SELECT id FROM photos WHERE album_id=?)", CommentableObjectType.PHOTO, albumID)
+					.orderBy("created_at ASC")
+					.limit(count, offset)
+					.executeAsStream(Comment::fromResultSet)
+					.toList();
+			postprocessComments(comments);
+			return new PaginatedList<>(comments, total, offset, count);
+		}
+	}
+
+	public static PaginatedList<Comment> getCommentReplies(CommentParentObjectID parentID, List<Long> replyKey, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			SQLQueryBuilder b=new SQLQueryBuilder(conn)
+					.selectFrom("comments")
+					.count()
+					.where("parent_object_type=? AND parent_object_id=?", parentID.type(), parentID.id());
+			if(replyKey!=null && !replyKey.isEmpty())
+				b.andWhere("reply_key=?", (Object) Utils.serializeLongCollection(replyKey));
+			else
+				b.andWhere("reply_key IS NULL");
+			int total=b.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			b=new SQLQueryBuilder(conn)
+					.selectFrom("comments")
+					.allColumns()
+					.limit(count, offset)
+					.orderBy("created_at ASC")
+					.where("parent_object_type=? AND parent_object_id=?", parentID.type(), parentID.id());
+			if(replyKey!=null && !replyKey.isEmpty())
+				b.andWhere("reply_key=?", (Object) Utils.serializeLongCollection(replyKey));
+			else
+				b.andWhere("reply_key IS NULL");
+			List<Comment> comments=b.executeAsStream(Comment::fromResultSet)
+					.toList();
+			postprocessComments(comments);
+			return new PaginatedList<>(comments, total, offset, count);
+		}
+	}
+
+	public static void putOrUpdateForeignComment(Comment comment) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			if(comment.id==0){
+				comment.id=new SQLQueryBuilder(conn)
+						.insertInto("comments")
+						.value("author_id", comment.authorID)
+						.value("owner_user_id", comment.ownerID>0 ? comment.ownerID : null)
+						.value("owner_group_id", comment.ownerID<0 ? -comment.ownerID : null)
+						.value("parent_object_type", comment.parentObjectID.type())
+						.value("parent_object_id", comment.parentObjectID.id())
+						.value("text", comment.text)
+						.value("attachments", comment.serializeAttachments())
+						.value("ap_id", comment.getActivityPubID().toASCIIString())
+						.value("ap_url", comment.getActivityPubURL().toASCIIString())
+						.value("created_at", comment.createdAt)
+						.value("content_warning", comment.contentWarning)
+						.value("reply_key", Utils.serializeLongCollection(comment.replyKey))
+						.value("mentions", Utils.serializeIntList(comment.mentionedUserIDs))
+						.value("ap_replies", comment.activityPubReplies==null ? null : comment.activityPubReplies.toASCIIString())
+						.executeAndGetIDLong();
+				if(!comment.replyKey.isEmpty()){
+					new SQLQueryBuilder(conn)
+							.update("comments")
+							.valueExpr("reply_count", "reply_count+1")
+							.whereIn("id", comment.replyKey)
+							.executeNoResult();
+				}
+			}else{
+				new SQLQueryBuilder(conn)
+						.update("comments")
+						.where("id=?", comment.id)
+						.value("text", comment.text)
+						.value("attachments", comment.serializeAttachments())
+						.value("content_warning", comment.contentWarning)
+						.value("mentions", Utils.serializeIntList(comment.mentionedUserIDs))
+						.value("updated_at", comment.updatedAt==null ? Instant.now() : comment.updatedAt)
+						.executeNoResult();
+			}
+		}
+	}
+
+	public static long getCommentIdByActivityPubId(URI activityPubID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("comments")
+				.columns("id")
+				.where("ap_id=?", activityPubID.toString())
+				.executeAndGetLong();
 	}
 
 	private static void postprocessComments(Collection<Comment> posts) throws SQLException{

@@ -5,6 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 
+import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
@@ -115,6 +116,12 @@ public final class Photo implements SizedAttachment, OwnedContentObject, Likeabl
 		if(apID!=null)
 			return apID;
 		return UriBuilder.local().path("photos", getIdString()).build();
+	}
+
+	@Override
+	public URI getCommentCollectionID(ApplicationContext context){
+		PhotoAlbum album=context.getPhotosController().getAlbumIgnoringPrivacy(albumID);
+		return album.activityPubComments!=null ? album.activityPubComments : new UriBuilder(album.getActivityPubID()).appendPath("comments").build();
 	}
 
 	public URI getActivityPubURL(){

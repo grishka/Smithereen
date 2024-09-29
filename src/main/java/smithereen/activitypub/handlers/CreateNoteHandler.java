@@ -195,7 +195,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					LOG.debug("Dropping post {} because its parent isn't known and it doesn't mention local users.", post.activityPubID);
 					return;
 				}
-				context.appContext.getActivityPubWorker().fetchReplyThread(post);
+				context.appContext.getActivityPubWorker().fetchWallReplyThread(post);
 			}
 		}else{
 			Post nativePost=post.asNativePost(context.appContext);

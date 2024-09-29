@@ -29,6 +29,13 @@ public class ActivityPubCollectionPageResponse{
 		return r;
 	}
 
+	public static ActivityPubCollectionPageResponse forLinksOrObjects(List<LinkOrObject> linksOrObjects, int total){
+		ActivityPubCollectionPageResponse r=new ActivityPubCollectionPageResponse();
+		r.items=linksOrObjects;
+		r.totalItems=total;
+		return r;
+	}
+
 	public static ActivityPubCollectionPageResponse forLinks(PaginatedList<URI> lt){
 		return forLinks(lt.list, lt.total);
 	}

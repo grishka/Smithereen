@@ -135,6 +135,8 @@ import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.StatsType;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
@@ -504,23 +506,22 @@ public class ActivityPubRoutes{
 		ApplicationContext ctx=context(req);
 		User user=ctx.getUsersController().getLocalUserOrThrow(parseIntOrDefault(req.params(":id"), 0));
 		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbumsForActivityPub(user, req);
-		return ActivityPubCollectionPageResponse.forObjects(albums.stream().map(a->ActivityPubPhotoAlbum.fromNativeAlbum(a, ctx)).toList(), albums.size()).ordered();
+		return ActivityPubCollectionPageResponse.forObjects(albums.stream().map(a->ActivityPubPhotoAlbum.fromNativeAlbum(a, ctx)).toList(), albums.size());
 	}
 
 	public static ActivityPubCollectionPageResponse groupAlbums(Request req, Response resp, int offset, int count){
 		ApplicationContext ctx=context(req);
 		Group group=ctx.getGroupsController().getLocalGroupOrThrow(parseIntOrDefault(req.params(":id"), 0));
 		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbumsForActivityPub(group, req);
-		return ActivityPubCollectionPageResponse.forObjects(albums.stream().map(a->ActivityPubPhotoAlbum.fromNativeAlbum(a, ctx)).toList(), albums.size()).ordered();
+		return ActivityPubCollectionPageResponse.forObjects(albums.stream().map(a->ActivityPubPhotoAlbum.fromNativeAlbum(a, ctx)).toList(), albums.size());
 	}
 
 	public static ActivityPubCollectionPageResponse photoAlbum(Request req, Response resp, int offset, int count){
 		ApplicationContext ctx=context(req);
 		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(XTEA.deobfuscateObjectID(Utils.decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), req);
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(null, album, offset, count);
-		return ActivityPubCollectionPageResponse.forObjects(photos.list.stream().map(p->ActivityPubPhoto.fromNativePhoto(p, album, ctx)).toList(), album.numPhotos)
-				.withCustomObject(ActivityPubPhotoAlbum.fromNativeAlbum(album, ctx))
-				.ordered();
+		return ActivityPubCollectionPageResponse.forLinksOrObjects(photos.list.stream().map(p->p.apID==null ? new LinkOrObject(ActivityPubPhoto.fromNativePhoto(p, album, ctx)) : new LinkOrObject(p.apID)).toList(), album.numPhotos)
+				.withCustomObject(ActivityPubPhotoAlbum.fromNativeAlbum(album, ctx));
 	}
 
 	public static Object photo(Request req, Response resp){
@@ -528,6 +529,44 @@ public class ActivityPubRoutes{
 		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO));
 		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(photo.albumID, req);
 		return ActivityPubPhoto.fromNativePhoto(photo, album, ctx);
+	}
+
+	public static Object comment(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.COMMENT));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, comment);
+		return NoteOrQuestion.fromNativeComment(comment, ctx);
+	}
+
+	public static ActivityPubCollectionPageResponse commentReplies(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.COMMENT));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, comment);
+		PaginatedList<Comment> comments=ctx.getCommentsController().getCommentReplies(
+				ctx.getCommentsController().getCommentParentIgnoringPrivacy(comment),
+				comment, offset, count
+		);
+		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
+	}
+
+	public static ActivityPubCollectionPageResponse photoComments(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.PHOTO));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, photo);
+		return objectComments(req, resp, photo, offset, count);
+	}
+
+	private static ActivityPubCollectionPageResponse objectComments(Request req, Response resp, CommentableContentObject obj, int offset, int count){
+		ApplicationContext ctx=context(req);
+		PaginatedList<Comment> comments=ctx.getCommentsController().getCommentReplies(obj, null, offset, count);
+		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
+	}
+
+	public static ActivityPubCollectionPageResponse photoAlbumComments(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(XTEA.deobfuscateObjectID(Utils.decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), req);
+		PaginatedList<Comment> comments=ctx.getCommentsController().getPhotoAlbumComments(album, offset, count);
+		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
 	}
 
 	public static Object externalInteraction(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
@@ -588,7 +627,7 @@ public class ActivityPubRoutes{
 				if(post.inReplyTo!=null){
 					Post parent=PostStorage.getPostByID(post.inReplyTo);
 					if(parent==null){
-						List<Post> thread=ctx.getActivityPubWorker().fetchReplyThread(post).get(30, TimeUnit.SECONDS);
+						List<Post> thread=ctx.getActivityPubWorker().fetchWallReplyThread(post).get(30, TimeUnit.SECONDS);
 						topLevelPost=thread.get(0);
 					}else{
 						Post nativePost=post.asNativePost(ctx);

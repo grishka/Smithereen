@@ -2,6 +2,7 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.EnumSet;
 
@@ -19,6 +20,7 @@ public class ActivityPubPhotoAlbum extends ActivityPubCollection{
 	public JsonObject viewPrivacy, commentPrivacy;
 	public boolean disableCommenting, restrictUploads;
 	public int displayOrder;
+	public URI activityPubComments;
 
 	public ActivityPubPhotoAlbum(){
 		super(true);
@@ -32,6 +34,7 @@ public class ActivityPubPhotoAlbum extends ActivityPubCollection{
 	@Override
 	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
 		serializerContext.addSmAlias("PhotoAlbum");
+		serializerContext.addSmAlias("comments");
 		return super.asActivityPubObject(obj, serializerContext);
 	}
 
@@ -43,6 +46,9 @@ public class ActivityPubPhotoAlbum extends ActivityPubCollection{
 		disableCommenting=optBoolean(obj, "commentingDisabled");
 		restrictUploads=optBoolean(obj, "uploadsRestricted");
 		displayOrder=optInt(obj, "displayOrder");
+		activityPubComments=tryParseURL(optString(obj, "comments"));
+		if(activityPubComments!=null)
+			ensureHostMatchesID(activityPubComments, "comments");
 		return this;
 	}
 
@@ -65,6 +71,7 @@ public class ActivityPubPhotoAlbum extends ActivityPubCollection{
 			pa.disableCommenting=album.flags.contains(PhotoAlbum.Flag.GROUP_DISABLE_COMMENTING);
 			pa.restrictUploads=album.flags.contains(PhotoAlbum.Flag.GROUP_RESTRICT_UPLOADS);
 		}
+		pa.activityPubComments=new UriBuilder(pa.activityPubID).appendPath("comments").build();
 		return pa;
 	}
 
@@ -86,6 +93,7 @@ public class ActivityPubPhotoAlbum extends ActivityPubCollection{
 		album.updatedAt=updated!=null ? updated : album.createdAt;
 		album.displayOrder=displayOrder;
 		album.flags=EnumSet.noneOf(PhotoAlbum.Flag.class);
+		album.activityPubComments=activityPubComments;
 		if(preview!=null && preview.link!=null)
 			album.coverID=context.getPhotosController().getPhotoIdByActivityPubId(preview.link);
 		if(owner instanceof User user){

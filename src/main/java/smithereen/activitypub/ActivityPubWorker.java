@@ -57,9 +57,10 @@ import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.activitypub.tasks.FetchActorContentCollectionsTask;
 import smithereen.activitypub.tasks.FetchActorRelationshipCollectionsTask;
-import smithereen.activitypub.tasks.FetchAllRepliesTask;
+import smithereen.activitypub.tasks.FetchAllWallRepliesTask;
+import smithereen.activitypub.tasks.FetchCommentReplyThreadRunnable;
 import smithereen.activitypub.tasks.FetchPhotoAlbumPhotosTask;
-import smithereen.activitypub.tasks.FetchReplyThreadRunnable;
+import smithereen.activitypub.tasks.FetchWallReplyThreadRunnable;
 import smithereen.activitypub.tasks.FetchRepostChainTask;
 import smithereen.activitypub.tasks.ForwardOneActivityRunnable;
 import smithereen.activitypub.tasks.RetryActivityRunnable;
@@ -81,6 +82,7 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.GroupStorage;
@@ -107,9 +109,12 @@ public class ActivityPubWorker{
 	private final Random rand=new Random();
 
 	// These must be accessed from synchronized(this)
-	private final HashMap<URI, Future<List<Post>>> fetchingReplyThreads=new HashMap<>();
-	private final HashMap<URI, List<Consumer<List<Post>>>> afterFetchReplyThreadActions=new HashMap<>();
-	private final HashMap<URI, Future<Post>> fetchingAllReplies=new HashMap<>();
+	private final HashMap<URI, Future<List<Post>>> fetchingWallReplyThreads=new HashMap<>();
+	private final HashMap<URI, List<Consumer<List<Post>>>> afterFetchWallReplyThreadActions=new HashMap<>();
+	private final HashMap<URI, Future<Post>> fetchingAllWallReplies=new HashMap<>();
+	private final HashMap<URI, Future<List<CommentReplyParent>>> fetchingCommentReplyThreads=new HashMap<>();
+	private final HashMap<URI, List<Consumer<List<CommentReplyParent>>>> afterFetchCommentReplyThreadActions=new HashMap<>();
+	private final HashMap<URI, Future<CommentReplyParent>> fetchingAllCommentReplies=new HashMap<>();
 	private final HashSet<URI> fetchingRelationshipCollectionsActors=new HashSet<>();
 	private final HashSet<URI> fetchingContentCollectionsActors=new HashSet<>();
 	private final HashMap<URI, Future<List<Post>>> fetchingRepostChains=new HashMap<>();
@@ -752,17 +757,21 @@ public class ActivityPubWorker{
 		sendActivityForPhoto(actor, album, remove);
 	}
 
-	public synchronized Future<List<Post>> fetchReplyThread(NoteOrQuestion post){
-		return fetchingReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchReplyThreadRunnable(this, afterFetchReplyThreadActions, context, fetchingReplyThreads, post)));
+	public synchronized Future<List<Post>> fetchWallReplyThread(NoteOrQuestion post){
+		return fetchingWallReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchWallReplyThreadRunnable(this, afterFetchWallReplyThreadActions, context, fetchingWallReplyThreads, post)));
 	}
 
-	public synchronized Future<List<Post>> fetchReplyThreadAndThen(NoteOrQuestion post, Consumer<List<Post>> action){
-		afterFetchReplyThreadActions.computeIfAbsent(post.activityPubID, (uri)->new ArrayList<>()).add(action);
-		return fetchReplyThread(post);
+	public synchronized Future<List<Post>> fetchWallReplyThreadAndThen(NoteOrQuestion post, Consumer<List<Post>> action){
+		afterFetchWallReplyThreadActions.computeIfAbsent(post.activityPubID, (uri)->new ArrayList<>()).add(action);
+		return fetchWallReplyThread(post);
 	}
 
 	public synchronized Future<Post> fetchAllReplies(Post post){
-		return fetchingAllReplies.computeIfAbsent(post.getActivityPubID(), (uri)->executor.submit(new FetchAllRepliesTask(this, context, fetchingAllReplies, post)));
+		return fetchingAllWallReplies.computeIfAbsent(post.getActivityPubID(), (uri)->executor.submit(new FetchAllWallRepliesTask(this, context, fetchingAllWallReplies, post)));
+	}
+
+	public synchronized Future<List<CommentReplyParent>> fetchCommentReplyThread(NoteOrQuestion post){
+		return fetchingCommentReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchCommentReplyThreadRunnable(this, afterFetchCommentReplyThreadActions, context, fetchingCommentReplyThreads, post)));
 	}
 
 	/**
@@ -794,7 +803,7 @@ public class ActivityPubWorker{
 			return;
 		}
 		fetchingContentCollectionsActors.add(actor.activityPubID);
-		executor.submit(new FetchActorContentCollectionsTask(this, context, fetchingAllReplies, fetchingContentCollectionsActors, actor, fetchingPhotoAlbums));
+		executor.submit(new FetchActorContentCollectionsTask(this, context, fetchingAllWallReplies, fetchingContentCollectionsActors, actor, fetchingPhotoAlbums));
 	}
 
 	public synchronized Future<List<Post>> fetchRepostChain(NoteOrQuestion topLevelPost){

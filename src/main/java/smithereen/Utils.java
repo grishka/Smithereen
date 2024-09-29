@@ -790,6 +790,8 @@ public class Utils{
 	}
 
 	public static byte[] serializeLongCollection(Collection<Long> a){
+		if(a==null || a.isEmpty())
+			return null;
 		byte[] res=new byte[a.size()*8];
 		int i=0;
 		for(long x:a){

@@ -1,15 +1,9 @@
 package smithereen.activitypub.handlers;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
@@ -18,11 +12,8 @@ import smithereen.activitypub.objects.activities.Announce;
 import smithereen.model.ForeignUser;
 import smithereen.model.Post;
 import smithereen.model.User;
-import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.notifications.Notification;
-import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
-import smithereen.util.UriBuilder;
 
 public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announce, NoteOrQuestion>{
 
@@ -36,7 +27,7 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
 				doHandle(nativePost, actor, activity, context);
 			}else{
-				context.appContext.getActivityPubWorker().fetchReplyThreadAndThen(post, thread->onReplyThreadDone(thread, actor, activity, context));
+				context.appContext.getActivityPubWorker().fetchWallReplyThreadAndThen(post, thread->onReplyThreadDone(thread, actor, activity, context));
 			}
 		}else{
 			Post nativePost=post.asNativePost(context.appContext);

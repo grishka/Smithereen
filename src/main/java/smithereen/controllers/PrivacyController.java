@@ -36,6 +36,8 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
@@ -70,6 +72,9 @@ public class PrivacyController{
 			enforcePostPrivacy(self, post);
 		}else if(object instanceof Photo photo){
 			context.getPhotosController().getAlbum(photo.albumID, self); // This also checks privacy
+		}else if(object instanceof Comment comment){
+			CommentableContentObject parent=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+			enforceObjectPrivacy(self, parent);
 		}
 	}
 
@@ -213,15 +218,24 @@ public class PrivacyController{
 		if(oaa.owner() instanceof Group g){
 			enforceGroupContentAccess(req, g);
 		}else if(oaa.owner() instanceof User u){
-			if(obj instanceof Post post && post.ownerID!=post.authorID && post.getReplyLevel()==0){
-				if(!checkUserPrivacyForRemoteServer(ActivityPub.getRequesterDomain(req), u, u.privacySettings.getOrDefault(UserPrivacySettingKey.WALL_OTHERS_POSTS, PrivacySetting.DEFAULT)))
-					throw new UserActionNotAllowedException();
-			}else if(obj instanceof PhotoAlbum pa){
-				if(pa.viewPrivacy.baseRule==PrivacySetting.Rule.EVERYONE && pa.viewPrivacy.exceptUsers.isEmpty())
-					return;
-				String domain=ActivityPub.getRequesterDomain(req);
-				if(!checkUserPrivacyForRemoteServer(domain, u, pa.viewPrivacy))
-					throw new UserContentUnavailableException();
+			switch(obj){
+				case Post post when post.ownerID!=post.authorID && post.getReplyLevel()==0 -> {
+					if(!checkUserPrivacyForRemoteServer(ActivityPub.getRequesterDomain(req), u, u.privacySettings.getOrDefault(UserPrivacySettingKey.WALL_OTHERS_POSTS, PrivacySetting.DEFAULT)))
+						throw new UserActionNotAllowedException();
+				}
+				case PhotoAlbum pa -> {
+					if(pa.viewPrivacy.baseRule==PrivacySetting.Rule.EVERYONE && pa.viewPrivacy.exceptUsers.isEmpty())
+						return;
+					String domain=ActivityPub.getRequesterDomain(req);
+					if(!checkUserPrivacyForRemoteServer(domain, u, pa.viewPrivacy))
+						throw new UserContentUnavailableException();
+				}
+				case Photo photo -> enforceContentPrivacyForActivityPub(req, context.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID));
+				case Comment comment -> {
+					CommentableContentObject parent=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+					enforceContentPrivacyForActivityPub(req, parent);
+				}
+				default -> {}
 			}
 		}
 	}

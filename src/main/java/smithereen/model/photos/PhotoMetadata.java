@@ -7,6 +7,7 @@ import java.net.URI;
 public class PhotoMetadata{
 	@SerializedName("apUrl")
 	public URI apURL;
+	public URI apReplies;
 	public float[] avaCropRect;
 	public Rotation rotation;
 	public int width, height;

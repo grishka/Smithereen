@@ -38,8 +38,10 @@ import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.Post;
 import smithereen.model.Server;
+import smithereen.model.comments.Comment;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.storage.CommentStorage;
 import smithereen.storage.FederationStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.util.UriBuilder;
@@ -64,6 +66,7 @@ public class ObjectLinkResolver{
 	private static final Pattern MESSAGES=Pattern.compile("^/activitypub/objects/messages/([a-zA-Z0-9_-]+)$");
 	private static final Pattern ALBUMS=Pattern.compile("^/albums/([a-zA-Z0-9_-]+)$");
 	private static final Pattern PHOTOS=Pattern.compile("^/photos/([a-zA-Z0-9_-]+)$");
+	private static final Pattern COMMENTS=Pattern.compile("^/comments/([a-zA-Z0-9_-]+)$");
 
 	private static final Logger LOG=LoggerFactory.getLogger(ObjectLinkResolver.class);
 
@@ -287,6 +290,12 @@ public class ObjectLinkResolver{
 					long id=XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO);
 					return ensureTypeAndCast(context.getPhotosController().getPhotoIgnoringPrivacy(id), expectedType);
 				}
+
+				matcher=COMMENTS.matcher(link.getPath());
+				if(matcher.find()){
+					long id=XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT);
+					return ensureTypeAndCast(context.getCommentsController().getCommentIgnoringPrivacy(id), expectedType);
+				}
 			}else{
 				ObjectTypeAndID tid=FederationStorage.getObjectTypeAndID(link);
 				if(tid!=null){
@@ -322,6 +331,11 @@ public class ObjectLinkResolver{
 						long id=PhotoStorage.getPhotoIdByActivityPubId(link);
 						if(id!=-1)
 							return ensureTypeAndCast(context.getPhotosController().getPhotoIgnoringPrivacy(id), expectedType);
+					}
+					if(tid.type==ObjectType.COMMENT && expectedType.isAssignableFrom(Comment.class)){
+						long id=CommentStorage.getCommentIdByActivityPubId(link);
+						if(id!=-1)
+							return ensureTypeAndCast(context.getCommentsController().getCommentIgnoringPrivacy(id), expectedType);
 					}
 				}else{
 					if(expectedType.isAssignableFrom(ForeignUser.class)){
@@ -363,6 +377,7 @@ public class ObjectLinkResolver{
 				case Post p -> PostStorage.putForeignWallPost(p);
 				case PhotoAlbum pa -> context.getPhotosController().putOrUpdateForeignAlbum(pa);
 				case Photo p -> context.getPhotosController().putOrUpdateForeignPhoto(p);
+				case Comment c -> context.getCommentsController().putOrUpdateForeignComment(c);
 				case null, default -> {}
 			}
 		}catch(SQLException x){
@@ -397,6 +412,8 @@ public class ObjectLinkResolver{
 				return type.cast(NoteOrQuestion.fromNativePost(post, context));
 			if(o instanceof MailMessage message)
 				return type.cast(NoteOrQuestion.fromNativeMessage(message, context));
+			if(o instanceof Comment comment)
+				return type.cast(NoteOrQuestion.fromNativeComment(comment, context));
 		}
 		if(type.isAssignableFrom(ActivityPubPhotoAlbum.class) && o instanceof PhotoAlbum pa){
 			return type.cast(ActivityPubPhotoAlbum.fromNativeAlbum(pa, context));
@@ -407,8 +424,10 @@ public class ObjectLinkResolver{
 	}
 
 	public <T> T convertToNativeObject(ActivityPubObject o, Class<T> type){
-		if(o instanceof NoteOrQuestion noq && type.isAssignableFrom(Post.class)){
+		if(o instanceof NoteOrQuestion noq && noq.isWallPostOrComment(context) && type.isAssignableFrom(Post.class)){
 			return type.cast(noq.asNativePost(context));
+		}else if(o instanceof NoteOrQuestion noq && type.isAssignableFrom(Comment.class)){
+			return type.cast(noq.asNativeComment(context));
 		}else if(o instanceof ActivityPubPhotoAlbum pa && type.isAssignableFrom(PhotoAlbum.class)){
 			return type.cast(pa.asNativePhotoAlbum(context));
 		}else if(o instanceof ActivityPubPhoto p && type.isAssignableFrom(Photo.class)){

@@ -367,8 +367,9 @@ public class PhotoStorage{
 						.value("created_at", album.createdAt)
 						.value("updated_at", album.updatedAt)
 						.value("flags", Utils.serializeEnumSet(album.flags))
-						.value("ap_id", album.activityPubID.toString())
-						.value("ap_url", album.activityPubURL.toString())
+						.value("ap_id", album.activityPubID.toASCIIString())
+						.value("ap_url", album.activityPubURL.toASCIIString())
+						.value("ap_comments", album.activityPubComments==null ? null : album.activityPubComments.toASCIIString())
 						.value("display_order", album.displayOrder)
 						.value("cover_id", album.coverID>0 ? album.coverID : null);
 				if(album.ownerID>0){

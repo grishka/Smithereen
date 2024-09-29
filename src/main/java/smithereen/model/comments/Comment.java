@@ -7,13 +7,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import smithereen.Utils;
+import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PostLikeObject;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 
-public class Comment extends PostLikeObject{
+public non-sealed class Comment extends PostLikeObject implements ActivityPubRepresentable, CommentReplyParent{
 	public long id;
 	public CommentParentObjectID parentObjectID;
 	public List<Long> replyKey=List.of();
@@ -76,5 +77,13 @@ public class Comment extends PostLikeObject{
 		ArrayList<Long> rk=new ArrayList<>(replyKey);
 		rk.add(id);
 		return rk;
+	}
+
+	public URI getActivityPubID(){
+		return activityPubID!=null ? activityPubID : getInternalURL();
+	}
+
+	public URI getActivityPubURL(){
+		return activityPubURL!=null ? activityPubURL : getInternalURL();
 	}
 }
