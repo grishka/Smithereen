@@ -171,7 +171,7 @@ public class WallController{
 			}
 
 			final HashSet<User> mentionedUsers=new HashSet<>();
-			String text=preparePostText(textSource, mentionedUsers, inReplyTo!=null && inReplyTo.getReplyLevel()>1 ? inReplyTo.authorID : 0, sourceFormat);
+			String text=preparePostText(textSource, mentionedUsers, inReplyTo!=null && inReplyTo.getReplyLevel()>0 ? inReplyTo.authorID : 0, sourceFormat);
 			int userID=author.id;
 			int postID;
 			int pollID=0;
@@ -327,9 +327,10 @@ public class WallController{
 		if(parentAuthorID>0){
 			// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
 			User parentAuthor=context.getUsersController().getUserOrThrow(parentAuthorID);
-			if(text.startsWith("<p>"+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+",")){
+			String nameForReply=TextProcessor.escapeHTML(parentAuthor.getNameForReply());
+			if(text.startsWith("<p>"+nameForReply+",")){
 				text="<p><a href=\""+TextProcessor.escapeHTML(parentAuthor.url.toString())+"\" class=\"mention\" data-user-id=\""+parentAuthor.id+"\">"
-						+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+"</a>"+text.substring(parentAuthor.getNameForReply().length()+3);
+						+nameForReply+"</a>"+text.substring(nameForReply.length()+3);
 			}
 			mentionedUsers.add(parentAuthor);
 		}
