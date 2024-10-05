@@ -390,9 +390,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 
 		ActivityPubCollection target=new ActivityPubCollection(false);
 		target.attributedTo=parentOwner.activityPubID;
-		target.activityPubID=switch(parent){
-			case Photo photo -> new UriBuilder(context.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID).getActivityPubID()).path("comments").build();
-		};
+		target.activityPubID=parent.getCommentCollectionID(context);
 		n.target=target;
 		n.url=comment.getActivityPubURL();
 

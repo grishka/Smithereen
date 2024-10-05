@@ -31,6 +31,9 @@ import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.exceptions.BadRequestException;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentReplyParent;
+import smithereen.model.comments.CommentableContentObject;
 import smithereen.storage.PostStorage;
 import spark.utils.StringUtils;
 
@@ -48,14 +51,29 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			return;
 		}
 
-		if(post.attributedTo!=null && !post.attributedTo.equals(actor.activityPubID))
-			throw new BadRequestException("attributedTo must match the actor ID");
-
 		Actor owner=null;
 		if(post.target!=null){
 			if(post.target.attributedTo!=null){
 				owner=context.appContext.getObjectLinkResolver().resolve(post.target.attributedTo, Actor.class, true, true, false);
 				if(!Objects.equals(owner.getWallURL(), post.target.activityPubID)){
+					if(post.inReplyTo!=null && !(owner instanceof ForeignActor)){
+						// Comments always have inReplyTo, and Create{Note} for them is only meant to be sent to the collection owner
+						CommentReplyParent replyParent=context.appContext.getObjectLinkResolver().resolveNative(post.inReplyTo, CommentReplyParent.class, true, true, false, owner, true);
+						CommentableContentObject parent=switch(replyParent){
+							case CommentableContentObject cco -> cco;
+							case Comment comment -> context.appContext.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+						};
+						URI expectedTargetID=parent.getCommentCollectionID(context.appContext);
+						if(!Objects.equals(expectedTargetID, post.target.activityPubID))
+							throw new BadRequestException("Target collection ID does not match expected "+expectedTargetID);
+						Comment comment=post.asNativeComment(context.appContext);
+						if(comment.id!=0)
+							return;
+						context.appContext.getWallController().loadAndPreprocessRemotePostMentions(comment, post);
+						context.appContext.getCommentsController().putOrUpdateForeignComment(comment);
+						context.appContext.getActivityPubWorker().sendAddComment(owner, comment, parent);
+						return;
+					}
 					// Unknown target collection
 					return;
 				}

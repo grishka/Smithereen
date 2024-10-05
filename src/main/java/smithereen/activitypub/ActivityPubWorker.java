@@ -34,6 +34,7 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Note;
 import smithereen.activitypub.objects.NoteOrQuestion;
@@ -82,7 +83,9 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
+import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.GroupStorage;
@@ -190,12 +193,53 @@ public class ActivityPubWorker{
 			}
 		}
 		if(!post.mentionedUserIDs.isEmpty()){
-			for(User user: context.getUsersController().getUsers(post.mentionedUserIDs).values()){
+			for(User user:context.getUsersController().getUsers(post.mentionedUserIDs).values()){
 				if(user instanceof ForeignUser foreignUser){
 					URI inbox=actorInbox(foreignUser);
 					inboxes.add(inbox);
 				}
 			}
+		}
+		return inboxes;
+	}
+
+	public Set<URI> getInboxesForComment(Comment comment, CommentableContentObject parent){
+		Set<URI> inboxes=new HashSet<>();
+		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(parent);
+
+		try{
+			switch(parent){
+				case Photo photo -> {
+					PhotoAlbum album=context.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID);
+					Collection<User> mentionedUsers=context.getUsersController().getUsers(comment.mentionedUserIDs).values();
+					if(oaa.owner() instanceof User user){
+						getInboxesWithPrivacy(inboxes, user, album.viewPrivacy);
+						for(User mentionedUser:mentionedUsers){
+							URI inbox=actorInbox(mentionedUser);
+							if(inboxes.contains(inbox))
+								continue;
+							if(context.getPrivacyController().checkUserPrivacy(mentionedUser, user, album.viewPrivacy))
+								inboxes.add(inbox);
+						}
+					}else if(oaa.owner() instanceof Group group){
+						inboxes.addAll(GroupStorage.getGroupMemberInboxes(group.id));
+						if(group.accessType==Group.AccessType.OPEN){
+							mentionedUsers.stream().map(this::actorInbox).forEach(inboxes::add);
+						}else{
+							for(User mentionedUser:mentionedUsers){
+								URI inbox=actorInbox(mentionedUser);
+								if(inboxes.contains(inbox))
+									continue;
+								Group.MembershipState state=context.getGroupsController().getUserMembershipState(group, mentionedUser);
+								if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER)
+									inboxes.add(inbox);
+							}
+						}
+					}
+				}
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 		return inboxes;
 	}
@@ -658,6 +702,8 @@ public class ActivityPubWorker{
 		submitActivityForFollowers(del, self);
 	}
 
+	// region Photo albums
+
 	private void sendActivityForPhotoAlbum(Actor actor, PhotoAlbum album, Activity activity){
 		if(actor instanceof User user){
 			HashSet<URI> inboxes=new HashSet<>();
@@ -669,23 +715,6 @@ public class ActivityPubWorker{
 			submitActivity(activity, user, inboxes, Server.Feature.PHOTO_ALBUMS);
 		}else if(actor instanceof Group group){
 			submitActivityForMembers(activity, group, Server.Feature.PHOTO_ALBUMS);
-		}
-	}
-
-	private void sendActivityForPhoto(Actor actor, PhotoAlbum album, Activity activity){
-		if(album.ownerID>0){
-			sendActivityForPhotoAlbum(actor, album, activity);
-		}else{
-			Group owner=context.getGroupsController().getGroupOrThrow(-album.ownerID);
-			if(owner instanceof ForeignGroup){
-				submitActivity(activity, actor, actorInbox(owner));
-			}else{
-				try{
-					submitActivity(activity, actor, GroupStorage.getGroupMemberInboxes(owner.id), Server.Feature.PHOTO_ALBUMS);
-				}catch(SQLException x){
-					LOG.error("Error getting group member inboxes for {}", activity.getType(), x);
-				}
-			}
 		}
 	}
 
@@ -708,6 +737,26 @@ public class ActivityPubWorker{
 				.withActorLinkAndObject(actor, ActivityPubPhotoAlbum.fromNativeAlbum(album, context));
 		update.activityPubID=new UriBuilder(album.getActivityPubID()).fragment("update"+rand()).build();
 		sendActivityForPhotoAlbum(actor, album, update);
+	}
+
+	// endregion
+	// region Photos
+
+	private void sendActivityForPhoto(Actor actor, PhotoAlbum album, Activity activity){
+		if(album.ownerID>0){
+			sendActivityForPhotoAlbum(actor, album, activity);
+		}else{
+			Group owner=context.getGroupsController().getGroupOrThrow(-album.ownerID);
+			if(owner instanceof ForeignGroup){
+				submitActivity(activity, actor, actorInbox(owner));
+			}else{
+				try{
+					submitActivity(activity, actor, GroupStorage.getGroupMemberInboxes(owner.id), Server.Feature.PHOTO_ALBUMS);
+				}catch(SQLException x){
+					LOG.error("Error getting group member inboxes for {}", activity.getType(), x);
+				}
+			}
+		}
 	}
 
 	public void sendAddPhotoToAlbum(Actor actor, Photo photo, PhotoAlbum album){
@@ -740,14 +789,26 @@ public class ActivityPubWorker{
 		Update update=new Update()
 				.withActorLinkAndObject(actor, ActivityPubPhoto.fromNativePhoto(photo, album, context));
 		update.activityPubID=new UriBuilder(photo.getActivityPubID()).fragment("update"+rand()).build();
-		sendActivityForPhoto(actor, album, update);
+		Actor owner=context.getWallController().getContentAuthorAndOwner(photo).owner();
+		if(owner instanceof ForeignActor){
+			// The owner will forward it as needed
+			submitActivity(update, actor, actorInbox(owner));
+		}else{
+			sendActivityForPhoto(actor, album, update);
+		}
 	}
 
 	public void sendDeleteAlbumPhoto(User actor, Photo photo, PhotoAlbum album){
 		Delete delete=new Delete()
 				.withActorAndObjectLinks(actor, photo);
 		delete.activityPubID=new UriBuilder(photo.getActivityPubID()).fragment("delete").build();
-		sendActivityForPhoto(actor, album, delete);
+		Actor owner=context.getWallController().getContentAuthorAndOwner(photo).owner();
+		if(owner instanceof ForeignActor){
+			// The owner will forward it as needed
+			submitActivity(delete, actor, actorInbox(owner));
+		}else{
+			sendActivityForPhoto(actor, album, delete);
+		}
 	}
 
 	public void sendRemoveAlbumPhoto(Group actor, Photo photo, PhotoAlbum album){
@@ -756,6 +817,79 @@ public class ActivityPubWorker{
 				.withActorFragmentID("deletePhoto"+photo.getIdString());
 		sendActivityForPhoto(actor, album, remove);
 	}
+
+	// endregion
+	// region Comments
+
+	private void sendActivityForComment(Comment comment, Actor actor, CommentableContentObject parent, Activity activity){
+		Set<URI> inboxes=getInboxesForComment(comment, parent);
+		submitActivity(activity, actor, inboxes, comment.parentObjectID.getRqeuiredServerFeature());
+	}
+
+	public void sendCreateComment(User actor, Comment comment, CommentableContentObject parent){
+		NoteOrQuestion note=NoteOrQuestion.fromNativeComment(comment, context);
+		Create create=new Create()
+				.withActorLinkAndObject(actor, note);
+		create.activityPubID=new UriBuilder(comment.getActivityPubID()).appendPath("activityCreate").build();
+		create.target=new LinkOrObject(note.target);
+		create.to=note.to;
+		create.cc=note.cc;
+		submitActivity(create, actor, actorInbox(context.getWallController().getContentAuthorAndOwner(parent).owner()));
+	}
+
+	public void sendAddComment(Actor actor, Comment comment, CommentableContentObject parent){
+		Add add=new Add();
+		if(comment.isLocal())
+			add.withActorLinkAndObject(actor, NoteOrQuestion.fromNativeComment(comment, context));
+		else
+			add.withActorAndObjectLinks(actor, comment);
+		add.withActorFragmentID("addComment"+comment.getIDString());
+		ActivityPubCollection target=new ActivityPubCollection(false);
+		target.activityPubID=parent.getCommentCollectionID(context);
+		target.attributedTo=actor.activityPubID;
+		add.target=new LinkOrObject(target);
+		sendActivityForComment(comment, actor, parent, add);
+	}
+
+	public void sendUpdateComment(User actor, Comment comment, CommentableContentObject parent){
+		NoteOrQuestion note=NoteOrQuestion.fromNativeComment(comment, context);
+		Update update=new Update()
+				.withActorLinkAndObject(actor, note);
+		update.activityPubID=new UriBuilder(comment.getActivityPubID()).fragment("update"+rand()).build();
+		Actor owner=context.getWallController().getContentAuthorAndOwner(parent).owner();
+		if(owner instanceof ForeignActor){
+			// The owner will forward it as needed
+			submitActivity(update, actor, actorInbox(owner));
+		}else{
+			sendActivityForComment(comment, actor, parent, update);
+		}
+	}
+
+	public void sendDeleteComment(User actor, Comment comment, CommentableContentObject parent){
+		Delete delete=new Delete()
+				.withActorAndObjectLinks(actor, comment)
+				.withObjectFragmentID("delete");
+		Actor owner=context.getWallController().getContentAuthorAndOwner(parent).owner();
+		if(owner instanceof ForeignActor){
+			// The owner will forward it as needed
+			submitActivity(delete, actor, actorInbox(owner));
+		}else{
+			sendActivityForComment(comment, actor, parent, delete);
+		}
+	}
+
+	public void sendRemoveComment(Actor actor, Comment comment, CommentableContentObject parent){
+		Remove remove=new Remove()
+				.withActorAndObjectLinks(actor, comment)
+				.withActorFragmentID("deleteComment"+comment.getIDString());
+		ActivityPubCollection target=new ActivityPubCollection(false);
+		target.activityPubID=parent.getCommentCollectionID(context);
+		target.attributedTo=actor.activityPubID;
+		remove.target=new LinkOrObject(target);
+		sendActivityForComment(comment, actor, parent, remove);
+	}
+
+	// endregion
 
 	public synchronized Future<List<Post>> fetchWallReplyThread(NoteOrQuestion post){
 		return fetchingWallReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchWallReplyThreadRunnable(this, afterFetchWallReplyThreadActions, context, fetchingWallReplyThreads, post)));

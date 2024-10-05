@@ -10,11 +10,15 @@ import java.util.List;
 
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Delete;
 import smithereen.model.ForeignUser;
 import smithereen.model.MailMessage;
+import smithereen.model.OwnerAndAuthor;
 import smithereen.model.Post;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.notifications.Notification;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -38,6 +42,8 @@ public class DeleteNoteHandler extends ActivityTypeHandler<ForeignUser, Delete, 
 			handleForPost(nativePost, actor, context);
 		}else if(nativeObj instanceof MailMessage msg){
 			handleForMessage(msg, actor, context);
+		}else if(nativeObj instanceof Comment comment){
+			handleForComment(comment, actor, context);
 		}
 	}
 
@@ -76,5 +82,14 @@ public class DeleteNoteHandler extends ActivityTypeHandler<ForeignUser, Delete, 
 		allMessages.stream().filter(MailMessage::isUnread).forEach(m->{
 			context.appContext.getMailController().actuallyDeleteMessage(actor, msg, false);
 		});
+	}
+
+	private void handleForComment(Comment comment, ForeignUser actor, ActivityHandlerContext context){
+		context.appContext.getCommentsController().deleteComment(actor, comment);
+		OwnerAndAuthor oaa=context.appContext.getWallController().getContentAuthorAndOwner(comment);
+		if(!(oaa.owner() instanceof ForeignActor) && context.ldSignatureOwner!=null){
+			CommentableContentObject parent=context.appContext.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+			context.forwardActivity(context.appContext.getActivityPubWorker().getInboxesForComment(comment, parent), oaa.owner(), comment.parentObjectID.getRqeuiredServerFeature());
+		}
 	}
 }

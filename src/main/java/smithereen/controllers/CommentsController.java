@@ -22,12 +22,16 @@ import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.CommentViewType;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
@@ -43,7 +47,6 @@ import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.storage.CommentStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
-import smithereen.storage.PostStorage;
 import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
@@ -132,7 +135,12 @@ public class CommentsController{
 			}
 
 			context.getNotificationsController().createNotificationsForObject(comment);
-			// TODO federate
+
+			if(oaa.owner() instanceof ForeignActor){
+				context.getActivityPubWorker().sendCreateComment(self, comment, parent);
+			}else{
+				context.getActivityPubWorker().sendAddComment(oaa.owner(), comment, parent);
+			}
 
 			return comment;
 		}catch(SQLException x){
@@ -230,12 +238,16 @@ public class CommentsController{
 		}
 	}
 
-	public void deleteComment(User self, Comment comment){
-		if(comment.ownerID>0 && self.id!=comment.ownerID && self.id!=comment.authorID)
+	public void deleteComment(Actor self, Comment comment){
+		if(comment.ownerID>0 && self.getOwnerID()!=comment.ownerID && self.getOwnerID()!=comment.authorID)
 			throw new UserActionNotAllowedException();
-		if(comment.ownerID<0 && self.id!=comment.authorID)
-			context.getGroupsController().enforceUserAdminLevel(context.getGroupsController().getGroupOrThrow(-comment.ownerID), self, Group.AdminLevel.MODERATOR);
-		CommentableContentObject parent=getCommentParent(self, comment);
+		if(comment.ownerID<0){
+			if(self instanceof User user)
+				context.getGroupsController().enforceUserAdminLevel(context.getGroupsController().getGroupOrThrow(-comment.ownerID), user, Group.AdminLevel.MODERATOR);
+			else if(self instanceof Group group && group.getOwnerID()!=comment.ownerID)
+				throw new UserActionNotAllowedException();
+		}
+		CommentableContentObject parent=self instanceof User user ? getCommentParent(user, comment) : getCommentParentIgnoringPrivacy(comment);
 		try{
 			CommentStorage.deleteComment(comment);
 			if(comment.isLocal() && comment.attachments!=null){
@@ -247,7 +259,14 @@ public class CommentsController{
 
 		context.getNotificationsController().deleteNotificationsForObject(comment);
 		// TODO delete likes
-		// TODO federate
+
+		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(comment);
+		if(self.getOwnerID()==comment.authorID){ // User deleted their own comment, send as Delete
+			if(!(oaa.author() instanceof ForeignUser))
+				context.getActivityPubWorker().sendDeleteComment(oaa.author(), comment, parent);
+		}else if(!(oaa.owner() instanceof ForeignActor)){ // Owner deleted someone else's comment, send as Remove
+			context.getActivityPubWorker().sendRemoveComment(oaa.owner(), comment, parent);
+		}
 	}
 
 	public CommentableContentObject getCommentParentIgnoringPrivacy(Comment comment){
@@ -328,8 +347,7 @@ public class CommentsController{
 			CommentStorage.updateComment(comment.id, text, textSource, sourceFormat, mentionedUsers, attachments, contentWarning);
 
 			comment=getCommentIgnoringPrivacy(comment.id);
-
-			// TODO federate
+			context.getActivityPubWorker().sendUpdateComment(self, comment, parent);
 
 			return comment;
 		}catch(SQLException x){

@@ -385,6 +385,8 @@ public class PhotoStorage{
 						.value("updated_at", album.updatedAt)
 						.value("display_order", album.displayOrder)
 						.value("cover_id", album.coverID>0 ? album.coverID : null)
+						.value("ap_url", album.activityPubURL.toASCIIString())
+						.value("ap_comments", album.activityPubComments==null ? null : album.activityPubComments.toASCIIString())
 						.value("flags", Utils.serializeEnumSet(album.flags));
 				if(album.ownerID>0){
 					qb.value("privacy", Utils.gson.toJson(Map.of("view", album.viewPrivacy, "comment", album.commentPrivacy)));

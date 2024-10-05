@@ -114,6 +114,12 @@ public abstract class Activity extends ActivityPubObject{
 		return (T) this;
 	}
 
+	public <T extends Activity> T withObjectFragmentID(String fragment){
+		activityPubID=new UriBuilder(Objects.requireNonNull(object.getObjectID())).fragment(fragment).build();
+		//noinspection unchecked
+		return (T) this;
+	}
+
 	public <T extends Activity> T withTarget(URI target){
 		this.target=new LinkOrObject(target);
 		//noinspection unchecked

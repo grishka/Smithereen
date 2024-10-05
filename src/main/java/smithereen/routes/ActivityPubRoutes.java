@@ -73,6 +73,7 @@ import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectInviteGroupHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
+import smithereen.activitypub.handlers.RemoveNoteHandler;
 import smithereen.activitypub.handlers.RemovePhotoHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowPersonHandler;
@@ -219,6 +220,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignGroup.class, Remove.class, User.class, new GroupRemovePersonHandler());
 
 		registerActivityHandler(Actor.class, Add.class, NoteOrQuestion.class, new AddNoteHandler());
+		registerActivityHandler(Actor.class, Remove.class, NoteOrQuestion.class, new RemoveNoteHandler());
 
 		registerActivityHandler(Flag.class, new FlagHandler());
 
@@ -889,7 +891,8 @@ public class ActivityPubRoutes{
 			}else{
 				if(activity instanceof Like || activity instanceof Delete){
 					try{
-						aobj=ctx.getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, false, false, false);
+						Object localObject=ctx.getObjectLinkResolver().resolveLocally(activity.object.link, Object.class);
+						aobj=ctx.getObjectLinkResolver().convertToActivityPubObject(localObject, ActivityPubObject.class);
 					}catch(ObjectNotFoundException x){
 						// Fail silently. Pleroma sends all likes to followers, including for objects they may not have.
 						LOG.debug("Activity object not known for {}: {}", activity.getType(), activity.object.link);
