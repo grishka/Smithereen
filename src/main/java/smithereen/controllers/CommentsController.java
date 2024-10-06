@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -266,6 +267,20 @@ public class CommentsController{
 				context.getActivityPubWorker().sendDeleteComment(oaa.author(), comment, parent);
 		}else if(!(oaa.owner() instanceof ForeignActor)){ // Owner deleted someone else's comment, send as Remove
 			context.getActivityPubWorker().sendRemoveComment(oaa.owner(), comment, parent);
+		}
+	}
+
+	public void deleteCommentsForObject(CommentableContentObject parent){
+		try{
+			CommentParentObjectID parentID=parent.getCommentParentID();
+			for(List<Long> commentIDs=CommentStorage.getCommentIDsForDeletion(parentID);!commentIDs.isEmpty();commentIDs=CommentStorage.getCommentIDsForDeletion(parentID)){
+				MediaStorage.deleteMediaFileReferences(commentIDs, MediaFileReferenceType.COMMENT_ATTACHMENT);
+				// TODO delete likes
+				CommentStorage.deleteComments(commentIDs);
+			}
+			CommentStorage.deleteCommentBookmarks(parentID);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 

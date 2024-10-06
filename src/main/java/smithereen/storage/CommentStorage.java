@@ -449,6 +449,39 @@ public class CommentStorage{
 				.executeAndGetLong();
 	}
 
+	public static List<Long> getCommentIDsForDeletion(CommentParentObjectID parentID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("comments")
+				.columns("id")
+				.limit(500, 0)
+				.where("parent_object_type=? AND parent_object_id=?", parentID.type(), parentID.id())
+				.executeAndGetLongStream()
+				.boxed()
+				.toList();
+	}
+
+	public static void deleteCommentBookmarks(CommentParentObjectID parentID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("newsfeed_comments")
+				.where("object_type=? AND object_id=?", parentID.type().newsfeedType(), parentID.id())
+				.executeNoResult();
+	}
+
+	public static void deleteCommentBookmarks(CommentableObjectType type, Collection<Long> ids) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("newsfeed_comments")
+				.whereIn("object_id", ids)
+				.andWhere("object_type=?", type.newsfeedType())
+				.executeNoResult();
+	}
+
+	public static void deleteCommentBookmarksForPhotoAlbum(long albumID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("newsfeed_comments")
+				.where("object_type=? AND object_id IN (SELECT id FROM photos WHERE album_id=?)", CommentsNewsfeedObjectType.PHOTO, albumID)
+				.executeNoResult();
+	}
+
 	private static void postprocessComments(Collection<Comment> posts) throws SQLException{
 		Set<Long> needFileIDs=posts.stream()
 				.filter(p->p.attachments!=null && !p.attachments.isEmpty())

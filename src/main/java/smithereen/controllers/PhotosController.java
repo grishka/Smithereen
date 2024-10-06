@@ -9,6 +9,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -29,6 +31,7 @@ import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
 import smithereen.model.User;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
@@ -53,6 +56,7 @@ public class PhotosController{
 	private final Object albumCreationLock=new Object();
 	private final Object photoCreationLock=new Object();
 	private final LruCache<Integer, List<PhotoAlbum>> albumListCache=new LruCache<>(500);
+	private final LruCache<Long, PhotoAlbum> albumCache=new LruCache<>(10_000);
 
 	public PhotosController(ApplicationContext context){
 		this.context=context;
@@ -67,6 +71,9 @@ public class PhotosController{
 			if(albums==null){
 				albums=PhotoStorage.getAllAlbums(owner.getOwnerID());
 				albumListCache.put(owner.getOwnerID(), albums);
+			}
+			for(PhotoAlbum album:albums){
+				albumCache.put(album.id, album);
 			}
 			return switch(owner){
 				case User user when self!=null && user.id==self.id -> albums;
@@ -84,6 +91,9 @@ public class PhotosController{
 			if(albums==null){
 				albums=PhotoStorage.getAllAlbums(owner.getOwnerID());
 				albumListCache.put(owner.getOwnerID(), albums);
+			}
+			for(PhotoAlbum album:albums){
+				albumCache.put(album.id, album);
 			}
 			return albums;
 		}catch(SQLException x){
@@ -127,49 +137,70 @@ public class PhotosController{
 	}
 
 	public PhotoAlbum getAlbum(long id, User self){
-		try{
-			PhotoAlbum album=PhotoStorage.getAlbum(id);
-			if(album==null)
-				throw new ObjectNotFoundException();
-			if(album.ownerID>0){
-				User owner=context.getUsersController().getUserOrThrow(album.ownerID);
-				context.getPrivacyController().enforceUserPrivacy(self, owner, album.viewPrivacy, true);
-			}else{
-				Group owner=context.getGroupsController().getGroupOrThrow(-album.ownerID);
-				context.getPrivacyController().enforceUserAccessToGroupContent(self, owner);
-			}
-			return album;
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
+		PhotoAlbum album=getAlbumIgnoringPrivacy(id);
+		if(album.ownerID>0){
+			User owner=context.getUsersController().getUserOrThrow(album.ownerID);
+			context.getPrivacyController().enforceUserPrivacy(self, owner, album.viewPrivacy, true);
+		}else{
+			Group owner=context.getGroupsController().getGroupOrThrow(-album.ownerID);
+			context.getPrivacyController().enforceUserAccessToGroupContent(self, owner);
 		}
+		return album;
 	}
 
 	public PhotoAlbum getAlbumForActivityPub(long id, Request req){
-		try{
-			PhotoAlbum album=PhotoStorage.getAlbum(id);
-			if(album==null)
-				throw new ObjectNotFoundException();
-			context.getPrivacyController().enforceContentPrivacyForActivityPub(req, album);
-			return album;
-
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
+		PhotoAlbum album=getAlbumIgnoringPrivacy(id);
+		context.getPrivacyController().enforceContentPrivacyForActivityPub(req, album);
+		return album;
 	}
 
 	public Map<Long, PhotoAlbum> getAlbumsIgnoringPrivacy(Collection<Long> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		if(ids.size()==1){
+			long id=ids.iterator().next();
+			try{
+				return Map.of(id, getAlbumIgnoringPrivacy(id));
+			}catch(ObjectNotFoundException x){
+				return Map.of();
+			}
+		}
 		try{
-			return PhotoStorage.getAlbums(ids);
+			HashMap<Long, PhotoAlbum> result=new HashMap<>();
+			HashSet<Long> remainingIDs=new HashSet<>();
+			for(long id:ids){
+				PhotoAlbum album=albumCache.get(id);
+				if(album==null)
+					remainingIDs.add(id);
+				else
+					result.put(id, album);
+			}
+			if(!remainingIDs.isEmpty()){
+				Map<Long, PhotoAlbum> extraAlbums=PhotoStorage.getAlbums(remainingIDs);
+				for(PhotoAlbum album:extraAlbums.values())
+					albumCache.put(album.id, album);
+				result.putAll(extraAlbums);
+			}
+			return result;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
 	public PhotoAlbum getAlbumIgnoringPrivacy(long id){
-		PhotoAlbum album=getAlbumsIgnoringPrivacy(List.of(id)).get(id);
-		if(album==null)
-			throw new ObjectNotFoundException();
-		return album;
+		try{
+			PhotoAlbum album=albumCache.get(id);
+			if(album==null){
+				album=PhotoStorage.getAlbum(id);
+				if(album!=null)
+					albumCache.put(id, album);
+			}
+			if(album==null)
+				throw new ObjectNotFoundException();
+			return album;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 
 	public long createAlbum(User self, String title, String description, PrivacySetting viewPrivacy, PrivacySetting commentPrivacy){
@@ -261,6 +292,7 @@ public class PhotosController{
 			synchronized(this){
 				albumListCache.remove(album.ownerID);
 			}
+			albumCache.remove(album.id);
 			if(album.ownerID>0){
 				context.getNewsfeedController().clearFriendsFeedCache();
 			}
@@ -297,6 +329,7 @@ public class PhotosController{
 			album.description=description;
 			album.viewPrivacy=viewPrivacy;
 			album.commentPrivacy=commentPrivacy;
+			albumCache.put(album.id, album);
 			context.getNewsfeedController().clearFriendsFeedCache();
 			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album);
 		}catch(SQLException x){
@@ -341,6 +374,7 @@ public class PhotosController{
 			album.title=title;
 			album.description=description;
 			album.flags=newFlags;
+			albumCache.put(album.id, album);
 			context.getActivityPubWorker().sendUpdatePhotoAlbum(context.getGroupsController().getGroupOrThrow(-album.ownerID), album);
 			// TODO groups newsfeed
 		}catch(SQLException x){
@@ -406,6 +440,7 @@ public class PhotosController{
 				album.coverID=id;
 				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album);
 			}
+			albumCache.put(album.id, album);
 			// TODO groups newsfeed
 			return id;
 		}catch(SQLException x){
@@ -477,13 +512,14 @@ public class PhotosController{
 			}
 		}
 		LikeStorage.deleteAllLikesForObject(photo.id, Like.ObjectType.PHOTO);
-		// TODO delete comments
+		context.getCommentsController().deleteCommentsForObject(photo);
 		NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.PHOTO, photo.id);
 		if(album.ownerID>0){
 			context.getNewsfeedController().clearFriendsFeedCache();
 			context.getNewsfeedController().deleteFriendsFeedEntry(context.getUsersController().getUserOrThrow(album.ownerID), photo.id, NewsfeedEntry.Type.ADD_PHOTO);
 			// TODO delete tags
 		}
+		albumCache.put(album.id, album);
 		// TODO groups newsfeed
 	}
 
@@ -561,6 +597,7 @@ public class PhotosController{
 					}
 				}
 			}
+			albumCache.put(album.id, album);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -592,6 +629,7 @@ public class PhotosController{
 			}
 			if(album.ownerID>0)
 				context.getNewsfeedController().clearFriendsFeedCache();
+			albumCache.put(album.id, album);
 			// TODO groups newsfeed
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -636,6 +674,7 @@ public class PhotosController{
 					MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsForAlbum(album.id), MediaFileReferenceType.ALBUM_PHOTO);
 					deleteCommentsForAlbum(album.id);
 					PhotoStorage.deleteAlbum(album.id, album.ownerID);
+					albumCache.remove(album.id);
 				}
 				synchronized(this){
 					albumListCache.remove(owner.getOwnerID());
@@ -688,5 +727,6 @@ public class PhotosController{
 			// TODO delete likes
 			CommentStorage.deleteComments(commentIDs);
 		}
+		CommentStorage.deleteCommentBookmarksForPhotoAlbum(albumID);
 	}
 }
