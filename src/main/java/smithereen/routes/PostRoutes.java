@@ -345,6 +345,13 @@ public class PostRoutes{
 
 		if(!needPhotos.isEmpty()){
 			Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+			for(Photo photo:photos.values()){
+				if(photo.ownerID>0)
+					needUsers.add(photo.ownerID);
+				else
+					needGroups.add(-photo.ownerID);
+				needUsers.add(photo.authorID);
+			}
 			model.with("photos", photos);
 			if(needNonPostInteractions)
 				model.with("photosInteractions", ctx.getUserInteractionsController().getUserInteractions(photos.values(), self.user));
@@ -356,7 +363,8 @@ public class PostRoutes{
 					.collect(Collectors.toSet()), self.prefs.commentViewType==CommentViewType.FLAT, 3);
 
 			CommentViewModel.collectUserIDs(comments.values().stream().flatMap(pl->pl.list.stream()).toList(), needUsers);
-			// TODO comments interactions
+			Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(comments.values().stream().flatMap(l->l.list.stream().map(cvm->cvm.post)).toList(), self.user);
+			model.with("commentInteractions", interactions);
 
 			model.with("photosComments", comments.entrySet().stream()
 					.filter(e->e.getKey().type()==CommentableObjectType.PHOTO)
