@@ -358,4 +358,18 @@ public class CommentsRoutes{
 	public static Object likeList(Request req, Response resp){
 		return UserInteractionsRoutes.likeList(req, resp, getCommentForRequest(req));
 	}
+
+	public static Object comment(Request req, Response resp){
+		User self=null;
+		SessionInfo info=sessionInfo(req);
+		if(info!=null && info.account!=null){
+			self=info.account.user;
+		}
+		ApplicationContext ctx=context(req);
+		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.COMMENT));
+		CommentableContentObject parent=context(req).getCommentsController().getCommentParent(self, comment);
+		// TODO do this more correctly to make sure the right page of a long comment thread is shown
+		resp.redirect(parent.getURL()+"#comment"+comment.getIDString());
+		return "";
+	}
 }

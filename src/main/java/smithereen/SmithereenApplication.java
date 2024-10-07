@@ -651,6 +651,7 @@ public class SmithereenApplication{
 			postWithCSRF("/createComment", CommentsRoutes::createComment);
 			get("/ajaxCommentPreview", CommentsRoutes::ajaxCommentPreview);
 			path("/:id", ()->{
+				get("", CommentsRoutes::comment);
 				getActivityPub("", ActivityPubRoutes::comment);
 				getActivityPubCollection("/replies", 50, ActivityPubRoutes::commentReplies);
 				get("/ajaxCommentBranch", CommentsRoutes::ajaxCommentBranch);
