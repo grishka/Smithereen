@@ -39,7 +39,7 @@ import smithereen.model.MailMessage;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
-import smithereen.model.ReportableContentObject;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.Server;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;

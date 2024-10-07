@@ -1,4 +1,4 @@
-package smithereen.model;
+package smithereen.model.reports;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -8,6 +8,8 @@ import java.util.Set;
 
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.model.MailMessage;
+import smithereen.model.Post;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.util.JsonArrayBuilder;
 

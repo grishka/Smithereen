@@ -1,8 +1,10 @@
-package smithereen.model;
+package smithereen.model.reports;
 
 import com.google.gson.JsonObject;
 
-public final class ReportedPost extends Post{
+import smithereen.model.MailMessage;
+
+public final class ReportedMailMessage extends MailMessage{
 	public int reportID;
 
 	@Override

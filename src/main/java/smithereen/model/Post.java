@@ -2,7 +2,6 @@ package smithereen.model;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
@@ -26,7 +25,8 @@ import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.notifications.Notification;
-import smithereen.storage.DatabaseUtils;
+import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportedPost;
 import smithereen.storage.PostStorage;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;

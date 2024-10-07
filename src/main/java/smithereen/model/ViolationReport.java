@@ -11,6 +11,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportedMailMessage;
+import smithereen.model.reports.ReportedPost;
 import smithereen.storage.DatabaseUtils;
 import spark.utils.StringUtils;
 

@@ -19,6 +19,8 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportedMailMessage;
 import smithereen.storage.DatabaseUtils;
 import smithereen.text.TextProcessor;
 import smithereen.util.JsonArrayBuilder;
