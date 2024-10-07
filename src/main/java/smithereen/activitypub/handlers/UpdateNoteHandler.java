@@ -3,6 +3,7 @@ package smithereen.activitypub.handlers;
 import java.sql.SQLException;
 import java.util.Objects;
 
+import smithereen.activitypub.ActivityForwardingUtils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.ForeignActor;
@@ -52,11 +53,7 @@ public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, 
 			}
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(updated, post);
 			context.appContext.getCommentsController().putOrUpdateForeignComment(updated);
-			OwnerAndAuthor oaa=context.appContext.getWallController().getContentAuthorAndOwner(updated);
-			if(!(oaa.owner() instanceof ForeignActor) && context.ldSignatureOwner!=null){
-				CommentableContentObject parent=context.appContext.getCommentsController().getCommentParentIgnoringPrivacy(updated);
-				context.forwardActivity(context.appContext.getActivityPubWorker().getInboxesForComment(updated, parent), oaa.owner(), updated.parentObjectID.getRqeuiredServerFeature());
-			}
+			ActivityForwardingUtils.forwardCommentInteraction(context, updated);
 		}
 	}
 }

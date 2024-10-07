@@ -724,7 +724,7 @@ public class PhotosController{
 	private void deleteCommentsForAlbum(long albumID) throws SQLException{
 		for(Set<Long> commentIDs=CommentStorage.getPhotoAlbumCommentIDsForDeletion(albumID);!commentIDs.isEmpty();commentIDs=CommentStorage.getPhotoAlbumCommentIDsForDeletion(albumID)){
 			MediaStorage.deleteMediaFileReferences(commentIDs, MediaFileReferenceType.COMMENT_ATTACHMENT);
-			// TODO delete likes
+			LikeStorage.deleteAllLikesForObjects(commentIDs, Like.ObjectType.COMMENT);
 			CommentStorage.deleteComments(commentIDs);
 		}
 		CommentStorage.deleteCommentBookmarksForPhotoAlbum(albumID);

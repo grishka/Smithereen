@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.util.List;
 
+import smithereen.activitypub.ActivityForwardingUtils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.ForeignActor;
@@ -86,10 +87,6 @@ public class DeleteNoteHandler extends ActivityTypeHandler<ForeignUser, Delete, 
 
 	private void handleForComment(Comment comment, ForeignUser actor, ActivityHandlerContext context){
 		context.appContext.getCommentsController().deleteComment(actor, comment);
-		OwnerAndAuthor oaa=context.appContext.getWallController().getContentAuthorAndOwner(comment);
-		if(!(oaa.owner() instanceof ForeignActor) && context.ldSignatureOwner!=null){
-			CommentableContentObject parent=context.appContext.getCommentsController().getCommentParentIgnoringPrivacy(comment);
-			context.forwardActivity(context.appContext.getActivityPubWorker().getInboxesForComment(comment, parent), oaa.owner(), comment.parentObjectID.getRqeuiredServerFeature());
-		}
+		ActivityForwardingUtils.forwardCommentInteraction(context, comment);
 	}
 }

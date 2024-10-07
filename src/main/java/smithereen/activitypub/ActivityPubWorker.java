@@ -478,6 +478,7 @@ public class ActivityPubWorker{
 		switch(object){
 			case Post post -> submitActivity(like, user, PostStorage.getInboxesForPostInteractionForwarding(post));
 			case Photo photo -> sendActivityForPhoto(user, context.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID), like);
+			case Comment comment -> sendActivityForCommentToBeForwarded(comment, user, context.getCommentsController().getCommentParentIgnoringPrivacy(comment), like);
 		}
 	}
 
@@ -492,6 +493,7 @@ public class ActivityPubWorker{
 		switch(object){
 			case Post post -> submitActivity(undo, user, PostStorage.getInboxesForPostInteractionForwarding(post));
 			case Photo photo -> sendActivityForPhoto(user, context.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID), undo);
+			case Comment comment -> sendActivityForCommentToBeForwarded(comment, user, context.getCommentsController().getCommentParentIgnoringPrivacy(comment), undo);
 		}
 	}
 
@@ -824,6 +826,20 @@ public class ActivityPubWorker{
 	private void sendActivityForComment(Comment comment, Actor actor, CommentableContentObject parent, Activity activity){
 		Set<URI> inboxes=getInboxesForComment(comment, parent);
 		submitActivity(activity, actor, inboxes, comment.parentObjectID.getRqeuiredServerFeature());
+	}
+
+	private void sendActivityForCommentToBeForwarded(Comment comment, Actor actor, CommentableContentObject parent, Activity activity){
+		if(comment.isLocal()){
+			sendActivityForComment(comment, actor, parent, activity);
+		}else{
+			OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(comment);
+			HashSet<URI> inboxes=new HashSet<>();
+			if(oaa.owner() instanceof ForeignActor)
+				inboxes.add(actorInbox(oaa.owner()));
+			if(oaa.author() instanceof ForeignActor)
+				inboxes.add(actorInbox(oaa.author()));
+			submitActivity(activity, actor, inboxes, comment.parentObjectID.getRqeuiredServerFeature());
+		}
 	}
 
 	public void sendCreateComment(User actor, Comment comment, CommentableContentObject parent){

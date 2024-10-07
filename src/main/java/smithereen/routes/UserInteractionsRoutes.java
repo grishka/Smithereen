@@ -21,6 +21,7 @@ import smithereen.model.SessionInfo;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.comments.Comment;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.templates.RenderedTemplateResponse;
@@ -40,10 +41,12 @@ public class UserInteractionsRoutes{
 			String elementID=switch(obj){
 				case Post post -> "Post"+post.id;
 				case Photo photo -> "Photo"+photo.getIdString();
+				case Comment comment -> "Comment"+comment.getIDString();
 			};
 			String url=switch(obj){
 				case Post post -> post.getInternalURL().toString();
 				case Photo photo -> photo.getURL();
+				case Comment comment -> comment.getInternalURL().toString();
 			};
 			String urlPath=liked ? "unlike" : "like";
 			WebDeltaResponse b=new WebDeltaResponse(resp)
@@ -73,10 +76,12 @@ public class UserInteractionsRoutes{
 		String elementID=switch(obj){
 			case Post post -> "Post"+post.id;
 			case Photo photo -> "Photo"+photo.getIdString();
+			case Comment comment -> "Comment"+comment.getIDString();
 		};
 		String url=switch(obj){
 			case Post post -> post.getInternalURL().toString();
 			case Photo photo -> photo.getURL();
+			case Comment comment -> comment.getInternalURL().toString();
 		};
 
 		WebDeltaResponse b=new WebDeltaResponse(resp)
@@ -119,10 +124,12 @@ public class UserInteractionsRoutes{
 		String elementID=switch(obj){
 			case Post post -> "Post"+post.id;
 			case Photo photo -> "Photo"+photo.getIdString();
+			case Comment comment -> "Comment"+comment.getIDString();
 		};
 		String url=switch(obj){
 			case Post post -> post.getInternalURL().toString();
 			case Photo photo -> photo.getURL();
+			case Comment comment -> comment.getInternalURL().toString();
 		};
 
 		model.paginate(likes)
@@ -172,6 +179,7 @@ public class UserInteractionsRoutes{
 		String title=switch(obj){
 			case Post post -> l.get(post.getReplyLevel()>0 ? "remote_like_comment_title" : "remote_like_post_title");
 			case Photo photo -> l.get("remote_like_photo_title");
+			case Comment comment -> l.get("remote_like_comment_title");
 		};
 		return remoteInteraction(req, resp, url, title, null, !(obj instanceof Post));
 	}

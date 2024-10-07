@@ -352,7 +352,7 @@ public class PhotosRoutes{
 			if(comments!=null){
 				model.with("comments", comments)
 						.with("commentViewType", self!=null ? self.prefs.commentViewType : CommentViewType.THREADED)
-						.with("commentsInteractions", commentsInteractions)
+						.with("commentInteractions", commentsInteractions)
 						.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1);
 			}
 			html=model.renderToString();
@@ -368,13 +368,15 @@ public class PhotosRoutes{
 		HashSet<Integer> needUsers=new HashSet<>();
 		Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(photos, self!=null ? self.user : null);
 		Map<CommentParentObjectID, PaginatedList<CommentViewModel>> comments;
-		Map<Long, UserInteractions> commentsInteractions=Map.of(); // TODO
+		Map<Long, UserInteractions> commentsInteractions;
 		if(isMobile(req)){
 			comments=Map.of();
+			commentsInteractions=Map.of();
 		}else{
 			CommentViewType commentViewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 			comments=ctx.getCommentsController().getCommentsForFeed(photos.stream().map(Photo::getCommentParentID).collect(Collectors.toSet()), commentViewType==CommentViewType.FLAT, 5);
 			CommentViewModel.collectUserIDs(comments.values().stream().flatMap(l->l.list.stream()).toList(), needUsers);
+			commentsInteractions=ctx.getUserInteractionsController().getUserInteractions(comments.values().stream().flatMap(l->l.list.stream().map(vm->vm.post)).toList(), self!=null ? self.user : null);
 		}
 		photos.stream().map(ph->ph.authorID).forEach(needUsers::add);
 		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);

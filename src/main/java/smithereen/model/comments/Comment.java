@@ -7,14 +7,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import smithereen.Utils;
+import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.LikeableContentObject;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PostLikeObject;
+import smithereen.model.notifications.Notification;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 
-public non-sealed class Comment extends PostLikeObject implements ActivityPubRepresentable, CommentReplyParent{
+public non-sealed class Comment extends PostLikeObject implements ActivityPubRepresentable, CommentReplyParent, LikeableContentObject{
 	public long id;
 	public CommentParentObjectID parentObjectID;
 	public List<Long> replyKey=List.of();
@@ -85,5 +88,15 @@ public non-sealed class Comment extends PostLikeObject implements ActivityPubRep
 
 	public URI getActivityPubURL(){
 		return activityPubURL!=null ? activityPubURL : getInternalURL();
+	}
+
+	@Override
+	public Like.ObjectType getLikeObjectType(){
+		return Like.ObjectType.COMMENT;
+	}
+
+	@Override
+	public Notification.ObjectType getObjectTypeForLikeNotifications(){
+		return Notification.ObjectType.COMMENT;
 	}
 }

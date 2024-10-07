@@ -17,11 +17,13 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.LikeableContentObject;
+import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
+import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.notifications.Notification;
@@ -71,7 +73,11 @@ public class UserInteractionsController{
 				if(id==0) // Already liked
 					return;
 				if(!(oaa.author() instanceof ForeignUser) && object.getAuthorID()!=self.id){
-					context.getNotificationsController().createNotification(oaa.author(), Notification.Type.LIKE, object, null, self);
+					OwnedContentObject related=null;
+					if(object instanceof Comment comment){
+						related=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+					}
+					context.getNotificationsController().createNotification(oaa.author(), Notification.Type.LIKE, object, related, self);
 				}
 				if(!(self instanceof ForeignUser))
 					context.getActivityPubWorker().sendLikeActivity(object, self, id);

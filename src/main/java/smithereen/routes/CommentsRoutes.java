@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
@@ -23,10 +24,10 @@ import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
-import smithereen.model.Post;
 import smithereen.model.PostSource;
 import smithereen.model.SessionInfo;
 import smithereen.model.User;
+import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
@@ -152,8 +153,8 @@ public class CommentsRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("comment_list", req);
 		model.with("comments", comments.list).with("baseReplyLevel", 0);
 		prepareCommentList(ctx, comments.list, model, self);
-//		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(topLevel), comments.list).flatMap(List::stream).toList(), self!=null ? self.user : null);
-//		model.with("postInteractions", interactions)
+		Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(comments.list.stream().map(cvm->cvm.post).toList(), self!=null ? self.user : null);
+		model.with("commentInteractions", interactions);
 
 		boolean canComment=switch(parent){
 			case Photo p -> ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(p.ownerID), ctx.getPhotosController().getAlbumIgnoringPrivacy(p.albumID).commentPrivacy);
@@ -204,8 +205,8 @@ public class CommentsRoutes{
 			allReplies.add(c);
 			c.getAllReplies(allReplies);
 		}
-//		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(topLevel), allReplies).flatMap(List::stream).toList(), self!=null ? self.user : null);
-//		model.with("postInteractions", interactions);
+		Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(allReplies.stream().map(cvm->cvm.post).toList(), self!=null ? self.user : null);
+		model.with("commentInteractions", interactions);
 		prepareCommentList(ctx, comments.list, model, self);
 		boolean canComment=switch(parent){
 			case Photo p -> ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(p.ownerID), ctx.getPhotosController().getAlbumIgnoringPrivacy(p.albumID).commentPrivacy);
@@ -296,10 +297,7 @@ public class CommentsRoutes{
 					.with("replyFormID", "wallPostForm_commentReply_"+parent.getCommentParentID().getHtmlElementID())
 					.with("canComment", true);
 			model.with("users", Map.of(self.user.id, self.user));
-			ArrayList<PostViewModel> needInteractions=new ArrayList<>();
-//			needInteractions.add(cvm);
-//			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(needInteractions, self.user);
-//			model.with("postInteractions", interactions);
+			model.with("commentInteractions", ctx.getUserInteractionsController().getUserInteractions(List.of(cvm.post), self.user));
 			String id=comment.getIDString();
 			return new WebDeltaResponse(resp).setContent("postInner"+id, model.renderBlock("postInner"))
 					.show("postInner"+id)
@@ -331,5 +329,33 @@ public class CommentsRoutes{
 				.with("post", pvm)
 				.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1)
 				.with("users", ctx.getUsersController().getUsers(needUsers));
+	}
+
+	private static Comment getCommentForRequest(Request req){
+		User self=null;
+		SessionInfo info=sessionInfo(req);
+		if(info!=null && info.account!=null){
+			self=info.account.user;
+		}
+		ApplicationContext ctx=context(req);
+		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.COMMENT));
+		ctx.getPrivacyController().enforceObjectPrivacy(self, comment);
+		return comment;
+	}
+
+	public static Object like(Request req, Response resp){
+		return UserInteractionsRoutes.like(req, resp, getCommentForRequest(req));
+	}
+
+	public static Object unlike(Request req, Response resp, Account self, ApplicationContext ctx){
+		return UserInteractionsRoutes.setLiked(req, resp, self, ctx, getCommentForRequest(req), false);
+	}
+
+	public static Object likePopover(Request req, Response resp){
+		return UserInteractionsRoutes.likePopover(req, resp, getCommentForRequest(req));
+	}
+
+	public static Object likeList(Request req, Response resp){
+		return UserInteractionsRoutes.likeList(req, resp, getCommentForRequest(req));
 	}
 }

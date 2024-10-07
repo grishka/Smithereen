@@ -659,6 +659,10 @@ public class SmithereenApplication{
 				getLoggedIn("/edit", CommentsRoutes::editCommentForm);
 				postWithCSRF("/edit", CommentsRoutes::editComment);
 				get("/hoverCard", CommentsRoutes::commentHoverCard);
+				get("/like", CommentsRoutes::like);
+				getWithCSRF("/unlike", CommentsRoutes::unlike);
+				get("/likes", CommentsRoutes::likeList);
+				get("/likePopover", CommentsRoutes::likePopover);
 			});
 		});
 

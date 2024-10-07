@@ -58,8 +58,7 @@ import smithereen.activitypub.handlers.GroupRemovePersonHandler;
 import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.InviteGroupHandler;
 import smithereen.activitypub.handlers.LeaveGroupHandler;
-import smithereen.activitypub.handlers.LikeNoteHandler;
-import smithereen.activitypub.handlers.LikePhotoHandler;
+import smithereen.activitypub.handlers.LikeObjectHandler;
 import smithereen.activitypub.handlers.OfferFollowPersonHandler;
 import smithereen.activitypub.handlers.PersonAddPersonHandler;
 import smithereen.activitypub.handlers.PersonBlockPersonHandler;
@@ -81,8 +80,7 @@ import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
 import smithereen.activitypub.handlers.UndoFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoInviteGroupHandler;
-import smithereen.activitypub.handlers.UndoLikeNoteHandler;
-import smithereen.activitypub.handlers.UndoLikePhotoHandler;
+import smithereen.activitypub.handlers.UndoLikeObjectHandler;
 import smithereen.activitypub.handlers.UpdateGroupHandler;
 import smithereen.activitypub.handlers.UpdateNoteHandler;
 import smithereen.activitypub.handlers.UpdatePersonHandler;
@@ -178,8 +176,8 @@ public class ActivityPubRoutes{
 
 	public static void registerActivityHandlers(){
 		registerActivityHandler(ForeignUser.class, Create.class, NoteOrQuestion.class, new CreateNoteHandler());
-		registerActivityHandler(ForeignUser.class, Like.class, NoteOrQuestion.class, new LikeNoteHandler());
-		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, NoteOrQuestion.class, new UndoLikeNoteHandler());
+		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubObject.class, new LikeObjectHandler());
+		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, ActivityPubObject.class, new UndoLikeObjectHandler());
 		registerActivityHandler(ForeignUser.class, Announce.class, NoteOrQuestion.class, new AnnounceNoteHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Announce.class, NoteOrQuestion.class, new UndoAnnounceNoteHandler());
 		registerActivityHandler(ForeignUser.class, Update.class, NoteOrQuestion.class, new UpdateNoteHandler());
@@ -233,8 +231,6 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Update.class, ActivityPubPhoto.class, new UpdatePhotoHandler());
 		registerActivityHandler(ForeignUser.class, Delete.class, ActivityPubPhoto.class, new DeletePhotoHandler());
 		registerActivityHandler(ForeignGroup.class, Remove.class, ActivityPubPhoto.class, new RemovePhotoHandler());
-		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubPhoto.class, new LikePhotoHandler());
-		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, ActivityPubPhoto.class, new UndoLikePhotoHandler());
 	}
 
 	@SuppressWarnings("SameParameterValue")

@@ -24,6 +24,7 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
+import smithereen.model.notifications.Notification;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoMetadata;
@@ -119,6 +120,11 @@ public class PhotoStorage{
 			new SQLQueryBuilder(conn)
 					.deleteFrom("likes")
 					.where("object_type=? AND object_id IN (SELECT id FROM photos WHERE album_id=?)", Like.ObjectType.PHOTO, id)
+					.executeNoResult();
+			new SQLQueryBuilder(conn)
+					.deleteFrom("notifications")
+					.where("(object_type=? AND object_id IN (SELECT id FROM photos WHERE album_id=?)) OR " +
+							"(related_object_type=? AND related_object_id IN (SELECT id FROM photos WHERE album_id=?))", Notification.ObjectType.PHOTO, id,  Notification.ObjectType.PHOTO, id)
 					.executeNoResult();
 			int displayOrder=new SQLQueryBuilder(conn)
 					.selectFrom("photo_albums")
