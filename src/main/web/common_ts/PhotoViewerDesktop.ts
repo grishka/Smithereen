@@ -58,6 +58,12 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		this.layerCloseThing.addEventListener("click", (ev)=>this.dismiss(), false);
 		this.layerBackThing.addEventListener("click", (ev)=>this.showPrev(), false);
 		this.layerBackThing.hide();
+		var wheelListener=(ev:WheelEvent)=>{
+			cont.scrollTop+=ev.deltaY;
+			cont.scrollLeft+=ev.deltaX;
+		};
+		this.layerCloseThing.addEventListener("wheel", wheelListener, false);
+		this.layerBackThing.addEventListener("wheel", wheelListener, false);
 		return this.contentWrap;
 	}
 
