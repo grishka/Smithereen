@@ -295,7 +295,7 @@ public class PhotoStorage{
 		return photos;
 	}
 
-	private static void postprocessPhotos(Collection<Photo> photos) throws SQLException{
+	public static void postprocessPhotos(Collection<Photo> photos) throws SQLException{
 		HashSet<Long> needFileIDs=new HashSet<>();
 		HashSet<URI> needCacheItems=new HashSet<>();
 		ArrayList<Photo> localPhotos=new ArrayList<>();

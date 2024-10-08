@@ -52,6 +52,9 @@
 			{% if photo.apID is not null %}
 			<li><a href="{{ photo.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': photo.activityPubURL.host}) }}</a></li>
 			{% endif %}
+			{% if photo is not null and userPermissions is not null and userPermissions.canReport(photo) %}
+			<li><a href="/system/reportForm?type=photo&id={{ photo.idString }}" data-ajax-box>{{ L('report') }}</a></li>
+			{% endif %}
 			<li><a href="{{ originalImageURL }}" target="_blank">{{ L('photo_open_original') }}</a></li>
 		</ul>
 	</div>

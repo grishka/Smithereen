@@ -1,9 +1,12 @@
 package smithereen.model.photos;
 
+import com.google.gson.JsonObject;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Set;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
@@ -20,12 +23,15 @@ import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.notifications.Notification;
+import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportedPhoto;
 import smithereen.storage.DatabaseUtils;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
-public final class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject, ActivityPubRepresentable, CommentableContentObject{
+public sealed class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject, ActivityPubRepresentable, CommentableContentObject, ReportableContentObject permits ReportedPhoto{
 	public long id;
 	public int ownerID;
 	public int authorID;
@@ -136,12 +142,55 @@ public final class Photo implements SizedAttachment, OwnedContentObject, Likeabl
 		return metadata.blurhash;
 	}
 
+	public String getSinglePhotoListID(){
+		return "single/"+getIdString();
+	}
+
 	public PhotoViewerInlineData getSinglePhotoViewerData(){
-		return new PhotoViewerInlineData(0, "single/"+getIdString(), image.getURLsForPhotoViewer());
+		return new PhotoViewerInlineData(0, getSinglePhotoListID(), image.getURLsForPhotoViewer());
 	}
 
 	@Override
 	public CommentParentObjectID getCommentParentID(){
 		return new CommentParentObjectID(CommentableObjectType.PHOTO, id);
+	}
+
+	@Override
+	public JsonObject serializeForReport(int targetID, Set<Long> outFileIDs){
+		if(authorID!=targetID && ownerID!=targetID)
+			return null;
+		JsonObjectBuilder jb=new JsonObjectBuilder()
+				.add("type", "photo")
+				.add("id", id)
+				.add("owner", ownerID)
+				.add("author", authorID)
+				.add("album", albumID)
+				.add("created_at", createdAt.getEpochSecond())
+				.add("description", description)
+				.add("meta", Utils.gson.toJsonTree(metadata));
+		if(localFileID!=0){
+			outFileIDs.add(localFileID);
+			jb.add("file_id", localFileID);
+		}
+		if(remoteSrc!=null){
+			jb.add("remote_src", remoteSrc.toString());
+		}
+		return jb.build();
+	}
+
+	@Override
+	public void fillFromReport(int reportID, JsonObject jo){
+		id=jo.get("id").getAsLong();
+		ownerID=jo.get("owner").getAsInt();
+		authorID=jo.get("author").getAsInt();
+		albumID=jo.get("album").getAsLong();
+		createdAt=Instant.ofEpochSecond(jo.get("created_at").getAsLong());
+		metadata=Utils.gson.fromJson(jo.get("meta"), PhotoMetadata.class);
+		if(jo.has("description"))
+			description=jo.get("description").getAsString();
+		if(jo.has("file_id"))
+			localFileID=jo.get("file_id").getAsLong();
+		if(jo.has("remote_src"))
+			remoteSrc=URI.create(jo.get("remote_src").getAsString());
 	}
 }

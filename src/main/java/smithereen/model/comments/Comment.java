@@ -1,23 +1,37 @@
 package smithereen.model.comments;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 
 import smithereen.Utils;
+import smithereen.activitypub.ParserContext;
+import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.LikeableContentObject;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.Poll;
+import smithereen.model.PollOption;
 import smithereen.model.PostLikeObject;
 import smithereen.model.notifications.Notification;
+import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportedComment;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 
-public non-sealed class Comment extends PostLikeObject implements ActivityPubRepresentable, CommentReplyParent, LikeableContentObject{
+public sealed class Comment extends PostLikeObject implements ActivityPubRepresentable, CommentReplyParent, LikeableContentObject, ReportableContentObject permits ReportedComment{
 	public long id;
 	public CommentParentObjectID parentObjectID;
 	public List<Long> replyKey=List.of();
@@ -98,5 +112,49 @@ public non-sealed class Comment extends PostLikeObject implements ActivityPubRep
 	@Override
 	public Notification.ObjectType getObjectTypeForLikeNotifications(){
 		return Notification.ObjectType.COMMENT;
+	}
+
+	@Override
+	public JsonObject serializeForReport(int targetID, Set<Long> outFileIDs){
+		if(authorID!=targetID && ownerID!=targetID)
+			return null;
+		JsonObjectBuilder jb=new JsonObjectBuilder()
+				.add("type", "comment")
+				.add("id", id)
+				.add("owner", ownerID)
+				.add("author", authorID)
+				.add("created_at", createdAt.getEpochSecond())
+				.add("text", text)
+				.add("parent_type", parentObjectID.type().toString())
+				.add("parent_id", parentObjectID.id());
+		if(getReplyLevel()>0)
+			jb.add("replyKey", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeLongCollection(replyKey)));
+		if(attachments!=null && !attachments.isEmpty())
+			jb.add("attachments", ReportableContentObject.serializeMediaAttachments(attachments, outFileIDs));
+		if(hasContentWarning())
+			jb.add("cw", contentWarning);
+		return jb.build();
+	}
+
+	@Override
+	public void fillFromReport(int reportID, JsonObject jo){
+		id=jo.get("id").getAsInt();
+		ownerID=jo.get("owner").getAsInt();
+		authorID=jo.get("author").getAsInt();
+		createdAt=Instant.ofEpochSecond(jo.get("created_at").getAsLong());
+		parentObjectID=new CommentParentObjectID(CommentableObjectType.valueOf(jo.get("parent_type").getAsString()), jo.get("parent_id").getAsLong());
+		text=jo.get("text").getAsString();
+		if(jo.has("replyKey")){
+			replyKey=new ArrayList<>();
+			Utils.deserializeLongCollection(Base64.getDecoder().decode(jo.get("replyKey").getAsString()), replyKey);
+		}
+		if(jo.has("attachments")){
+			attachments=new ArrayList<>();
+			for(JsonElement jatt:jo.getAsJsonArray("attachments")){
+				attachments.add(ActivityPubObject.parse(jatt.getAsJsonObject(), ParserContext.LOCAL));
+			}
+		}
+		if(jo.has("cw"))
+			contentWarning=jo.get("cw").getAsString();
 	}
 }

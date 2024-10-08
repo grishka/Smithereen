@@ -12,7 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportedComment;
 import smithereen.model.reports.ReportedMailMessage;
+import smithereen.model.reports.ReportedPhoto;
 import smithereen.model.reports.ReportedPost;
 import smithereen.storage.DatabaseUtils;
 import spark.utils.StringUtils;
@@ -55,6 +57,8 @@ public class ViolationReport{
 		ReportableContentObject obj=switch(type){
 			case "post" -> new ReportedPost();
 			case "message" -> new ReportedMailMessage();
+			case "photo" -> new ReportedPhoto();
+			case "comment" -> new ReportedComment();
 			default -> throw new IllegalStateException("Unexpected value: " + type);
 		};
 		obj.fillFromReport(id, jo);

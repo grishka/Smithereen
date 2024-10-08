@@ -670,6 +670,32 @@ public class SystemRoutes{
 				textareaPlaceholder=l.get("report_placeholder_content");
 				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
 			}
+			case "photo" -> {
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.PHOTO);
+				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
+				ctx.getPrivacyController().enforceObjectPrivacy(self.user, photo);
+				User user=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				actorForAvatar=user;
+				title=user.getCompleteName();
+				subtitle=photo.description;
+				boxTitle=l.get("report_title_photo");
+				titleText=l.get("report_text_photo");
+				textareaPlaceholder=l.get("report_placeholder_content");
+				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
+			}
+			case "comment" -> {
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.COMMENT);
+				Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(id);
+				ctx.getPrivacyController().enforceObjectPrivacy(self.user, comment);
+				User user=ctx.getUsersController().getUserOrThrow(comment.authorID);
+				actorForAvatar=user;
+				title=user.getCompleteName();
+				subtitle=TextProcessor.truncateOnWordBoundary(comment.text, 200);
+				boxTitle=l.get("report_title_comment");
+				textareaPlaceholder=l.get("report_placeholder_content");
+				titleText=l.get("report_text_comment");
+				otherServerDomain=Config.isLocal(comment.getActivityPubID()) ? null : comment.getActivityPubID().getHost();
+			}
 			default -> throw new BadRequestException();
 		}
 		model.with("actorForAvatar", actorForAvatar)
@@ -713,6 +739,20 @@ public class SystemRoutes{
 				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 				target=ctx.getUsersController().getUserOrThrow(msg.senderID);
 				content=List.of(msg);
+			}
+			case "photo" -> {
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.PHOTO);
+				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
+				ctx.getPrivacyController().enforceObjectPrivacy(self.user, photo);
+				target=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				content=List.of(photo);
+			}
+			case "comment" -> {
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.COMMENT);
+				Comment commentObj=ctx.getCommentsController().getCommentIgnoringPrivacy(id);
+				ctx.getPrivacyController().enforceObjectPrivacy(self.user, commentObj);
+				content=List.of(commentObj);
+				target=ctx.getUsersController().getUserOrThrow(commentObj.authorID);
 			}
 			default -> throw new BadRequestException("invalid type");
 		}

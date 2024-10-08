@@ -39,6 +39,8 @@ import smithereen.model.MailMessage;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
+import smithereen.model.comments.Comment;
+import smithereen.model.photos.Photo;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.Server;
 import smithereen.model.SessionInfo;
@@ -545,10 +547,10 @@ public class SettingsAdminRoutes{
 
 	public static Object viewReport(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=safeParseInt(req.params(":id"));
-		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, false);
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, true);
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		HashSet<Integer> needPosts=new HashSet<>();
-		HashSet<Long> needMessages=new HashSet<>();
+		HashSet<Long> needMessages=new HashSet<>(), needPhotos=new HashSet<>(), needComments=new HashSet<>();
 
 		if(report.targetID>0)
 			needUsers.add(report.targetID);
@@ -568,6 +570,14 @@ public class SettingsAdminRoutes{
 					needMessages.add(msg.id);
 					contentForTemplate.add(Map.of("type", "message", "id", msg.id, "url", "/settings/admin/reports/"+id+"/content/"+i));
 				}
+				case Photo photo -> {
+					needPhotos.add(photo.id);
+					contentForTemplate.add(Map.of("type", "photo", "id", photo.id, "url", photo.getURL(), "pvData", photo.getSinglePhotoViewerData()));
+				}
+				case Comment comment -> {
+					needComments.add(comment.id);
+					contentForTemplate.add(Map.of("type", "actualComment", "id", comment.id, "url", "/settings/admin/reports/"+id+"/content/"+i));
+				}
 			}
 			i++;
 		}
@@ -576,6 +586,8 @@ public class SettingsAdminRoutes{
 
 		Map<Integer, Post> posts=ctx.getWallController().getPosts(needPosts);
 		Map<Long, MailMessage> messages=ctx.getMailController().getMessagesAsModerator(needMessages);
+		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+		Map<Long, Comment> comments=ctx.getCommentsController().getCommentsIgnoringPrivacy(needComments);
 		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
 		Map<Integer, Group> groups=ctx.getGroupsController().getGroupsByIdAsMap(needGroups);
 
@@ -633,8 +645,8 @@ public class SettingsAdminRoutes{
 		model.pageTitle(lang(req).get("admin_report_title_X", Map.of("id", id)));
 		model.with("report", report);
 		model.with("users", users).with("groups", groups);
-		model.with("posts", posts).with("messages", messages);
-		model.with("canDeleteContent", (!posts.isEmpty() || !messages.isEmpty()) && target!=null);
+		model.with("posts", posts).with("messages", messages).with("photos", photos).with("comments", comments);
+		model.with("canDeleteContent", (!posts.isEmpty() || !messages.isEmpty() || !photos.isEmpty() || !comments.isEmpty()) && target!=null);
 		model.with("actions", actionViewModels);
 		model.with("content", contentForTemplate);
 		model.with("isLocalTarget", target!=null && StringUtils.isEmpty(target.domain));
@@ -708,6 +720,16 @@ public class SettingsAdminRoutes{
 				if(msg.cc!=null)
 					needUsers.addAll(msg.cc);
 				needUsers.add(msg.senderID);
+			}
+			case Photo photo -> throw new ObjectNotFoundException();
+			case Comment comment -> {
+				title=l.get("admin_report_content_comment", Map.of("id", comment.id));
+				model.with("contentType", "comment");
+				needUsers.add(comment.authorID);
+				if(comment.ownerID>0)
+					needUsers.add(comment.ownerID);
+				else
+					needGroups.add(-comment.ownerID);
 			}
 		}
 		model.with("users", ctx.getUsersController().getUsers(needUsers));

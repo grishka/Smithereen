@@ -318,6 +318,9 @@ public class PhotosRoutes{
 		if(ctx.getPhotosController().canManageAlbum(self, album)){
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.SET_AS_COVER);
 		}
+		if(self!=null && photo.authorID!=self.id){
+			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.REPORT);
+		}
 		return allowedActions;
 	}
 
@@ -539,11 +542,27 @@ public class PhotosRoutes{
 				}
 				throw new ObjectNotFoundException();
 			}
+			case "photos" -> {
+				for(ReportableContentObject co:report.content){
+					if(co instanceof Photo photo && photo.getIdString().equals(listParts[3]))
+						yield co;
+				}
+				throw new ObjectNotFoundException();
+			}
+			case "comments" -> {
+				for(ReportableContentObject co:report.content){
+					if(co instanceof Comment comment && comment.id==XTEA.decodeObjectID(listParts[3], ObfuscatedObjectIDType.COMMENT))
+						yield co;
+				}
+				throw new ObjectNotFoundException();
+			}
 			default -> throw new IllegalStateException("Unexpected value: " + listParts[2]);
 		};
 		PaginatedList<PhotoViewerPhotoInfo> info=switch(obj){
 			case Post post -> makePhotoInfoForAttachHostObject(req, post, ctx.getUsersController().getUserOrThrow(post.authorID), post.createdAt);
 			case MailMessage msg -> makePhotoInfoForAttachHostObject(req, msg, ctx.getUsersController().getUserOrThrow(msg.senderID), msg.createdAt);
+			case Photo photo -> new PaginatedList<>(makePhotoInfosForPhotoList(req, List.of(photo), ctx, self, ctx.getPhotosController().getAlbumsIgnoringPrivacy(List.of(photo.albumID))), 1);
+			case Comment comment -> makePhotoInfoForAttachHostObject(req, comment, ctx.getUsersController().getUserOrThrow(comment.authorID), comment.createdAt);
 		};
 		resp.type("application/json");
 		HashMap<String, Object> r=new HashMap<>();

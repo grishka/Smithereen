@@ -298,6 +298,9 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 		if(ph.apURL){
 			options.push({type: "link", href: ph.apURL, target: "_blank", label: lang("open_on_server_X", {domain: new URL(ph.apURL).host})});
 		}
+		if(ph.actions.indexOf("REPORT")!=-1){
+			options.push({type: "link", href: "/system/reportForm?type=photo&id="+ph.id, ajax: "box", label: lang("report")});
+		}
 		options.push({type: "link", href: ph.originalURL, target: "_blank", label: lang("photo_open_original")});
 		new MobileOptionsBox(options).show();
 	}

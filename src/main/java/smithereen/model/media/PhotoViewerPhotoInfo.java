@@ -9,7 +9,8 @@ public record PhotoViewerPhotoInfo(String id, String authorURL, String authorNam
 	public enum AllowedAction{
 		DELETE,
 		EDIT_DESCRIPTION,
-		SET_AS_COVER
+		SET_AS_COVER,
+		REPORT
 	}
 	public record Interactions(int likes, boolean isLiked, int comments){}
 }

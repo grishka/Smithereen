@@ -67,8 +67,18 @@
 			{%- elseif cont.type=='message' %}
 			{%- set langKey='admin_report_content_message' %}
 			{%- set exists=messages contains cont.id %}
+			{%- elseif cont.type=='photo' %}
+			{%- set langKey='admin_report_content_photo' %}
+			{%- set exists=photos contains cont.id %}
+			{%- elseif cont.type=='actualComment' %}
+			{%- set langKey='admin_report_content_comment' %}
+			{%- set exists=comments contains cont.id %}
 			{%- endif %}
+			{%- if cont.type=='photo' %}
+			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" onclick="return openPhotoViewer(this)" data-pv="{{ json(cont.pvData) }}" data-pv-url="/photos/ajaxViewerInfoForReport">{{ L(langKey, {'id': cont.id}) }}</a>
+			{%- else %}
 			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" data-ajax-box>{{ L(langKey, {'id': cont.id}) }}</a>
+			{% endif %}
 		</div>
 		{% endfor %}
 	</div>
