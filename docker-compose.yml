@@ -11,7 +11,7 @@ services:
    - mysql
   volumes:
    - ./config.properties:/usr/local/etc/config.properties
-   - /var/www/smithereen/s:/uploads
+   - /var/www/smithereen/s:/var/www/smithereen/s
   restart: always
  mysql:
   image: mysql:8
@@ -34,13 +34,13 @@ services:
   environment:
    IMGPROXY_PATH_PREFIX: "/i"
    IMGPROXY_ALLOWED_SOURCES: "local://"
-   IMGPROXY_LOCAL_FILESYSTEM_ROOT: "/uploads"
+   IMGPROXY_LOCAL_FILESYSTEM_ROOT: "/var/www/smithereen/s"
    # See README or config_docker.properties for how to generate these.
    # Must match config, otherwise you won't be seeing any memes in the newsfeed.
    IMGPROXY_KEY: GENERATE YOUR OWN
    IMGPROXY_SALT: GENERATE YOUR OWN
   volumes:
-   - /var/www/smithereen/s:/uploads
+   - /var/www/smithereen/s:/var/www/smithereen/s
   restart: always
   networks:
    - external_network
