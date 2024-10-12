@@ -346,7 +346,7 @@ public class SessionStorage{
 		return new SQLQueryBuilder()
 				.update("accounts")
 				.value("password", hashedNew)
-				.value("salt", newPassword)
+				.value("salt", newSalt)
 				.where("id=? AND `password`=?", accountID, hashedOld)
 				.executeUpdate()==1;
 	}
