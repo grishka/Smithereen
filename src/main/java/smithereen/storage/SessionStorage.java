@@ -473,14 +473,11 @@ public class SessionStorage{
 	}
 
 	private static byte @Nullable [] getSaltFromDatabase(int accountID) throws SQLException{
-		try(ResultSet res=new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("accounts")
 				.columns("salt")
 				.where("id=?", accountID)
-				.execute()){
-			if(!res.next()) return null;
-			return res.getBytes(0);
-		}
+				.executeAndGetSingleObject(r->r.getBytes(1));
 	}
 
 	public static boolean checkPassword(int accountID, String password) throws SQLException{
