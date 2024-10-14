@@ -212,7 +212,6 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 					hideTooltip(editW);
 				});
 				for(var el of editW.querySelectorAll(".description, .descriptionPlaceholder").unfuck()){
-					console.log(el);
 					el.addEventListener("click", (ev)=>{
 						if((ev.target as HTMLElement).tagName=="A")
 							return;
