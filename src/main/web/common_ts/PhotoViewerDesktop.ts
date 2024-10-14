@@ -185,40 +185,46 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 
 	private updateBottomPart(){
 		var ph=this.photos[this.currentIndex];
+		var isNew;
 		if(ph.bottomPartEl){
+			isNew=false;
 			for(var child of this.bottomPart.children.unfuck()){
 				child.remove();
 			}
 			this.bottomPart.appendChild(ph.bottomPartEl);
 		}else{
+			isNew=true;
 			this.bottomPart.innerHTML=ph.html;
 			ph.bottomPartEl=this.bottomPart.children[0] as HTMLElement;
 		}
 		var url=ph.historyURL || `#${this.listID}/${this.currentIndex}`;
 		this.updateHistory({layer: "PhotoViewer", pvInline: this.getCurrentInlineData(), pvListURL: this.listURL}, url);
-		updatePostForms(this.bottomPart);
+		if(isNew){
+			updatePostForms(this.bottomPart);
 
-		var editW=this.bottomPart.querySelector(".editableDescriptionW") as HTMLElement;
-		if(editW){
-			var descr=editW.querySelector(".description") as HTMLElement;
-			descr.addEventListener("mouseenter", (ev)=>{
-				showTooltip(editW, lang("photo_edit_description"));
-			});
-			descr.addEventListener("mouseleave", (ev)=>{
-				hideTooltip(editW);
-			});
-			for(var el of editW.querySelectorAll(".description, .descriptionPlaceholder").unfuck()){
-				el.addEventListener("click", (ev)=>{
-					if((ev.target as HTMLElement).tagName=="A")
-						return;
-					var loader=editW.qs(".overlayLoader");
-					loader.show();
-					ajaxGetAndApplyActions(`/photos/${ph.id}/ajaxEditDescription`, ()=>{
-						loader.hide();
-					}, ()=>{
-						loader.hide();
-					});
+			var editW=this.bottomPart.querySelector(".editableDescriptionW") as HTMLElement;
+			if(editW){
+				var descr=editW.querySelector(".description") as HTMLElement;
+				descr.addEventListener("mouseenter", (ev)=>{
+					showTooltip(editW, lang("photo_edit_description"));
 				});
+				descr.addEventListener("mouseleave", (ev)=>{
+					hideTooltip(editW);
+				});
+				for(var el of editW.querySelectorAll(".description, .descriptionPlaceholder").unfuck()){
+					console.log(el);
+					el.addEventListener("click", (ev)=>{
+						if((ev.target as HTMLElement).tagName=="A")
+							return;
+						var loader=editW.qs(".overlayLoader");
+						loader.show();
+						ajaxGetAndApplyActions(`/photos/${ph.id}/ajaxEditDescription`, ()=>{
+							loader.hide();
+						}, ()=>{
+							loader.hide();
+						});
+					});
+				}
 			}
 		}
 
