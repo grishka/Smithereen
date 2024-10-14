@@ -40,5 +40,6 @@
   "delete_photo_confirm": "Вы действительно хотите удалить эту фотографию?",
   "photo_open_original": "Открыть оригинал",
   "set_photo_as_album_cover": "Сделать обложкой альбома",
-  "photo_was_set_as_album_cover": "Фотография установлена обложкой альбома"
+  "photo_was_set_as_album_cover": "Фотография установлена обложкой альбома",
+  "photo_edit_description": "Редактировать описание"
 }

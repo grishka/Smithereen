@@ -40,5 +40,6 @@
   "delete_photo_confirm": "Are you sure you want to delete this photo?",
   "photo_open_original": "Open original",
   "set_photo_as_album_cover": "Set as album cover",
-  "photo_was_set_as_album_cover": "Photo was set as album cover"
+  "photo_was_set_as_album_cover": "Photo was set as album cover",
+  "photo_edit_description": "Edit description"
 }

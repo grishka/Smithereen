@@ -644,6 +644,7 @@ public class SmithereenApplication{
 				get("/likePopover", PhotosRoutes::likePopover);
 				getWithCSRF("/setAsAlbumCover", PhotosRoutes::setPhotoAsAlbumCover);
 				getActivityPubCollection("/replies", 50, ActivityPubRoutes::photoComments);
+				getLoggedIn("/ajaxEditDescription", PhotosRoutes::ajaxEditDescription);
 			});
 		});
 

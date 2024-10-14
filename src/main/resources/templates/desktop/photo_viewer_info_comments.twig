@@ -2,7 +2,15 @@
 {# @pebvariable name="photo" type="smithereen.model.photos.Photo" #}
 <div class="pvPhotoInfo">
 	<div class="leftCol">
+		{% if allowedActions contains "EDIT_DESCRIPTION" %}
+		<div class="editableDescriptionW marginAfter" id="pvEditDescriptionW_{{ photo.idString }}">
+			<div class="description" style="{% if description is empty %}display: none{% endif %}" id="pvDescription_{{ photo.idString }}">{{ description | postprocessHTML }}</div>
+			<div class="descriptionPlaceholder grayText" style="{% if description is not empty %}display: none{% endif %}" id="pvDescriptionPlaceholder_{{ photo.idString }}">{{ L('photo_edit_description') }}</div>
+			<div class="overlayLoader loader" id="pvDescriptionOverlayLoader_{{ photo.idString }}" style="display: none"></div>
+		</div>
+		{% else %}
 		<div class="marginAfter description">{{ description | postprocessHTML }}</div>
+		{% endif %}
 		<div class="grayText marginAfter">{{ L('photo_added_at', {'date': LD(createdAt)}) }}
 		<span class="contentActions pvLike">
 		{% if interactions is not null %}

@@ -28,7 +28,6 @@ import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
-import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
@@ -44,11 +43,13 @@ import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.media.PhotoViewerPhotoInfo;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.FormattedTextFormat;
+import smithereen.text.FormattedTextSource;
 import smithereen.text.TextProcessor;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
@@ -201,6 +202,21 @@ public class PhotosRoutes{
 	public static Object updatePhotoDescription(Request req, Response resp, Account self, ApplicationContext ctx){
 		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO));
 		ctx.getPhotosController().updatePhotoDescription(self.user, photo, req.queryParams("description"), Objects.requireNonNullElse(enumValueOpt(req.queryParams("format"), FormattedTextFormat.class), self.prefs.textFormat));
+		if("viewer".equals(req.queryParams("from")) && !isMobile(req) && isAjax(req)){
+			String idStr=photo.getIdString();
+			WebDeltaResponse r=new WebDeltaResponse(resp)
+					.remove("pvDescriptionForm_"+idStr)
+					.show("pvEditDescriptionW_"+idStr);
+			if(StringUtils.isNotEmpty(photo.description)){
+				r.show("pvDescription_"+idStr)
+						.hide("pvDescriptionPlaceholder_"+idStr)
+						.setContent("pvDescription_"+idStr, TextProcessor.postprocessPostHTMLForDisplay(photo.description, false, false));
+			}else{
+				r.hide("pvDescription_"+idStr)
+						.show("pvDescriptionPlaceholder_"+idStr);
+			}
+			return r;
+		}
 		return "";
 	}
 
@@ -673,5 +689,21 @@ public class PhotosRoutes{
 		jsLangKey(req, "drop_files_here", "release_files_to_upload", "uploading_photo_X_of_Y", "add_more_photos", "photo_description", "photo_description_saved", "uploading_photos", "you_uploaded_X_photos",
 				"delete", "delete_photo", "delete_photo_confirm");
 		return model;
+	}
+
+	public static Object ajaxEditDescription(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(isMobile(req) || !isAjax(req))
+			return "";
+		Photo photo=getPhotoForRequest(req);
+		ctx.getPrivacyController().enforceObjectPrivacy(self.user, photo);
+		FormattedTextSource source=ctx.getPhotosController().getPhotoDescriptionSources(List.of(photo.id)).get(photo.id);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_edit_description", req)
+				.with("photo", photo)
+				.with("source", source);
+		String idStr=photo.getIdString();
+		return new WebDeltaResponse(resp)
+				.hide("pvEditDescriptionW_"+idStr)
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, "pvEditDescriptionW_"+idStr, model.renderToString())
+				.runScript("var ta=ge(\"pvDescriptionTextarea_"+idStr+"\"); autoSizeTextArea(ta); addSendOnCtrlEnter(ta);");
 	}
 }

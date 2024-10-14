@@ -3372,6 +3372,7 @@ h2, h3, h4{
 	margin: auto;
 	width: 1px;
 	pointer-events: none;
+	z-index: 5;
 	.tooltip{
 		position: absolute;
 		bottom: 2px;
@@ -3921,10 +3922,43 @@ label.largeAccented{
 				margin-bottom: 0;
 			}
 		}
+		.editableDescriptionW{
+			position: relative;
+			.description, .descriptionPlaceholder{
+				cursor: pointer;
+				padding: 5px;
+				margin: -5px;
+				border-radius: 3px;
+				&:hover{
+					background: $blockBackground;
+				}
+			}
+			.overlayLoader{
+				position: absolute;
+				left: -5px;
+				top: -5px;
+				right: -5px;
+				bottom: -5px;
+				background-color: #ffffffee;
+			}
+		}
 	}
 	.commentsPreviewWrap{
 		padding: 0;
 	}
+	.pvEditDescription{
+		textarea{
+			width: 100%;
+		}
+		.buttons{
+			display: flex;
+			padding-top: 5px;
+			>*{
+				margin-right: 5px;
+			}
+		}
+	}
+
 }
 
 .pageContent .photoViewer .imgW img{
