@@ -19,6 +19,8 @@ interface PhotoViewerPhoto{
 	originalURL:string;
 	historyURL:string;
 	apURL:string;
+
+	bottomPartEl:HTMLElement; // cached DOM tree of comments and stuff, set at runtime
 }
 
 interface PhotoViewerPhotoInteractions{

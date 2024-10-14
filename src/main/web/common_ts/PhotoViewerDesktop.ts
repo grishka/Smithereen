@@ -185,7 +185,15 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 
 	private updateBottomPart(){
 		var ph=this.photos[this.currentIndex];
-		this.bottomPart.innerHTML=ph.html;
+		if(ph.bottomPartEl){
+			for(var child of this.bottomPart.children.unfuck()){
+				child.remove();
+			}
+			this.bottomPart.appendChild(ph.bottomPartEl);
+		}else{
+			this.bottomPart.innerHTML=ph.html;
+			ph.bottomPartEl=this.bottomPart.children[0] as HTMLElement;
+		}
 		var url=ph.historyURL || `#${this.listID}/${this.currentIndex}`;
 		this.updateHistory({layer: "PhotoViewer", pvInline: this.getCurrentInlineData(), pvListURL: this.listURL}, url);
 		updatePostForms(this.bottomPart);
@@ -211,6 +219,36 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 						loader.hide();
 					});
 				});
+			}
+		}
+
+		// Clean up bottom part DOM trees. Keep current, 10 photos forward and 10 photos backward.
+		if(this.total>21){
+			var startIndex=this.currentIndex-10;
+			var endIndex=this.currentIndex+10;
+			if(endIndex>this.total){
+				endIndex-=this.total;
+			}
+			if(startIndex<0){
+				startIndex=this.total+startIndex;
+			}
+			if(startIndex>endIndex){
+				for(var i=endIndex;i<startIndex;i++){
+					if(this.photos[i] && this.photos[i].bottomPartEl){
+						this.photos[i].bottomPartEl=null;
+					}
+				}
+			}else{
+				for(var i=0;i<startIndex;i++){
+					if(this.photos[i] && this.photos[i].bottomPartEl){
+						this.photos[i].bottomPartEl=null;
+					}
+				}
+				for(var i=endIndex;i<this.total;i++){
+					if(this.photos[i] && this.photos[i].bottomPartEl){
+						this.photos[i].bottomPartEl=null;
+					}
+				}
 			}
 		}
 	}
