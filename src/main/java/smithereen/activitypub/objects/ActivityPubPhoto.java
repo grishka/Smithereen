@@ -18,6 +18,7 @@ import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoMetadata;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
+import spark.utils.StringUtils;
 
 public class ActivityPubPhoto extends ActivityPubObject{
 	public ActivityPubObject target;
@@ -98,7 +99,10 @@ public class ActivityPubPhoto extends ActivityPubObject{
 		PhotoAlbum nAlbum=context.getObjectLinkResolver().resolveNative(album.activityPubID, PhotoAlbum.class, true, true, false, (JsonObject) null, false);
 		p.albumID=nAlbum.id;
 		p.ownerID=nAlbum.ownerID;
-		p.description=TextProcessor.sanitizeHTML(summary);
+		if(StringUtils.isEmpty(summary))
+			p.description="";
+		else
+			p.description=TextProcessor.sanitizeHTML(summary);
 		p.createdAt=published!=null ? published : Instant.now();
 		p.displayOrder=displayOrder;
 

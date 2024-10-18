@@ -1,4 +1,5 @@
 {% extends "page" %}
+{% import "photo_album_title" %}
 {% block content %}
 {% if owner.ownerID==currentUser.id %}
 <a href="/my/albums/create" class="fab iconAdd" title="{{ L('create_photo_album') }}"></a>
@@ -11,7 +12,7 @@
 	<a href="{{ album.url }}" class="{{ album.coverID==0 ? 'empty' : '' }}">
 		{% if covers[album.coverID] is not null %}{{ covers[album.coverID].image | pictureForPhoto('s') }}{% endif %}
 		<div class="infoW">
-			<div class="title ellipsize">{{ album.title }}</div>
+			<div class="title ellipsize">{{ photoAlbumTitle(album) }}</div>
 			<div class="count">{{ album.numPhotos | numberformat }}</div>
 		</div>
 	</a>

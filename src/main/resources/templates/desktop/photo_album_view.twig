@@ -1,7 +1,7 @@
 {% extends "page" %}
 {% block content %}
 {% include "photos_tabbar" with {'tab': 'album'} %}
-{% if userPermissions.canUploadToPhotoAlbum(album) %}
+{% if userPermissions.canUploadToPhotoAlbum(album) and album.systemType is null %}
 <div id="photoAlbumUploadW">
 	<div class="photoGridUpload" id="photoAlbumUpload">
 		<div class="uploadText"><div class="icon"></div><span id="uploadText">{{ L('add_photos_to_album') }}</span></div>

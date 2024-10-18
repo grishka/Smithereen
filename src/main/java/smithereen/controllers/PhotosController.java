@@ -2,6 +2,7 @@ package smithereen.controllers;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -40,6 +41,7 @@ import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.CommentStorage;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaStorage;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.text.FormattedTextFormat;
@@ -62,7 +64,7 @@ public class PhotosController{
 		this.context=context;
 	}
 
-	public List<PhotoAlbum> getAllAlbums(Actor owner, User self){
+	public List<PhotoAlbum> getAllAlbums(Actor owner, User self, boolean needSystem){
 		try{
 			if(owner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(self, group);
@@ -74,6 +76,13 @@ public class PhotosController{
 			}
 			for(PhotoAlbum album:albums){
 				albumCache.put(album.id, album);
+			}
+			if(needSystem){
+				List<PhotoAlbum> systemAlbums=PhotoStorage.getSystemAlbums(owner.getOwnerID());
+				if(!systemAlbums.isEmpty()){
+					albums=new ArrayList<>(albums);
+					albums.addAll(0, systemAlbums);
+				}
 			}
 			return switch(owner){
 				case User user when self!=null && user.id==self.id -> albums;
@@ -115,6 +124,11 @@ public class PhotosController{
 				String domain=ActivityPub.getRequesterDomain(req);
 				albums=albums.stream().filter(a->context.getPrivacyController().checkUserPrivacyForRemoteServer(domain, user, a.viewPrivacy)).toList();
 			}
+			List<PhotoAlbum> systemAlbums=PhotoStorage.getSystemAlbums(owner.getOwnerID());
+			if(!systemAlbums.isEmpty()){
+				albums=new ArrayList<>(albums);
+				albums.addAll(0, systemAlbums);
+			}
 			return albums;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -122,13 +136,13 @@ public class PhotosController{
 	}
 
 	public PaginatedList<PhotoAlbum> getRandomAlbumsForProfile(Actor owner, User self, int count){
-		List<PhotoAlbum> filteredAlbums=new ArrayList<>(getAllAlbums(owner, self));
+		List<PhotoAlbum> filteredAlbums=new ArrayList<>(getAllAlbums(owner, self, false));
 		Collections.shuffle(filteredAlbums);
 		return new PaginatedList<>(filteredAlbums.subList(0, Math.min(filteredAlbums.size(), count)), filteredAlbums.size());
 	}
 
 	public PaginatedList<PhotoAlbum> getMostRecentAlbums(Actor owner, User self, int count, boolean onlyHavingCover){
-		List<PhotoAlbum> filteredAlbums=new ArrayList<>(getAllAlbums(owner, self));
+		List<PhotoAlbum> filteredAlbums=new ArrayList<>(getAllAlbums(owner, self, false));
 		int size=filteredAlbums.size();
 		if(onlyHavingCover)
 			filteredAlbums.removeIf(a->a.coverID==0);
@@ -237,6 +251,43 @@ public class PhotosController{
 		}
 	}
 
+	public PhotoAlbum getSystemAlbum(Actor owner, PhotoAlbum.SystemAlbumType type){
+		List<PhotoAlbum> cachedList=albumListCache.get(owner.getOwnerID());
+		if(cachedList!=null){
+			for(PhotoAlbum pa:cachedList){
+				if(pa.systemType==type)
+					return pa;
+			}
+		}
+		try{
+			PhotoAlbum pa=PhotoStorage.getSystemAlbum(owner.getOwnerID(), type);
+			if(pa==null)
+				throw new ObjectNotFoundException();
+			return pa;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PhotoAlbum getOrCreateSystemAlbum(Actor owner, PhotoAlbum.SystemAlbumType type){
+		try{
+			return getSystemAlbum(owner, type);
+		}catch(ObjectNotFoundException x){
+			try{
+				long id;
+				synchronized(albumCreationLock){
+					id=PhotoStorage.createSystemAlbum(owner.getOwnerID(), type);
+				}
+				albumListCache.remove(owner.getOwnerID());
+				PhotoAlbum album=getAlbumIgnoringPrivacy(id);
+				context.getActivityPubWorker().sendCreatePhotoAlbum(owner, album);
+				return album;
+			}catch(SQLException xx){
+				throw new InternalServerErrorException(xx);
+			}
+		}
+	}
+
 	public boolean canManageAlbum(User self, @NotNull PhotoAlbum album){
 		if(self==null)
 			return false;
@@ -285,6 +336,8 @@ public class PhotosController{
 	}
 
 	private void deletePhotoAlbumInternal(PhotoAlbum album){
+		if(album.systemType!=null)
+			throw new UserActionNotAllowedException();
 		try{
 			MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsForAlbum(album.id), MediaFileReferenceType.ALBUM_PHOTO);
 			deleteCommentsForAlbum(album.id);
@@ -305,6 +358,8 @@ public class PhotosController{
 	public void updateUserAlbum(User self, @NotNull PhotoAlbum album, String title, String description, PrivacySetting viewPrivacy, PrivacySetting commentPrivacy){
 		if(album.ownerID<0)
 			throw new IllegalArgumentException();
+		if(album.systemType!=null)
+			throw new UserActionNotAllowedException();
 		enforceAlbumManagementPermission(self, album);
 		if(Objects.equals(album.title, title) && Objects.equals(album.description, description)
 				&& Objects.equals(album.viewPrivacy, viewPrivacy) && Objects.equals(album.commentPrivacy, commentPrivacy))
@@ -340,6 +395,8 @@ public class PhotosController{
 	public void updateGroupAlbum(User self, @NotNull PhotoAlbum album, String title, String description, boolean disableCommenting, boolean restrictUploads){
 		if(album.ownerID>0)
 			throw new IllegalArgumentException();
+		if(album.systemType!=null)
+			throw new UserActionNotAllowedException();
 		enforceAlbumManagementPermission(self, album);
 		if(Objects.equals(album.title, title) && Objects.equals(album.description, description)
 				&& album.flags.contains(PhotoAlbum.Flag.GROUP_DISABLE_COMMENTING)==disableCommenting
@@ -411,12 +468,14 @@ public class PhotosController{
 					PhotoStorage.setAlbumCover(album.id, id);
 			}
 			MediaStorage.createMediaFileReference(fileID, id, MediaFileReferenceType.ALBUM_PHOTO, album.ownerID);
+			int numPhotos=0;
 			synchronized(albumCacheLock){
 				List<PhotoAlbum> albums=albumListCache.get(album.ownerID);
 				if(albums!=null){
 					for(PhotoAlbum a:albums){
 						if(a.id==album.id){
 							a.numPhotos++;
+							numPhotos=a.numPhotos;
 							if(needUpdateCover)
 								a.coverID=id;
 							break;
@@ -440,6 +499,10 @@ public class PhotosController{
 				album.coverID=id;
 				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album);
 			}
+			if(numPhotos!=0)
+				album.numPhotos=numPhotos;
+			else
+				album.numPhotos++;
 			albumCache.put(album.id, album);
 			// TODO groups newsfeed
 			return id;
@@ -578,6 +641,8 @@ public class PhotosController{
 	public void setPhotoAsAlbumCover(User self, PhotoAlbum album, Photo photo){
 		if(photo.albumID!=album.id)
 			throw new UserErrorException("Photo is not in this album");
+		if(album.systemType!=null)
+			throw new UserActionNotAllowedException();
 		enforceAlbumManagementPermission(self, album);
 		try{
 			PhotoStorage.setAlbumCover(album.id, photo.id);
@@ -728,5 +793,53 @@ public class PhotosController{
 			CommentStorage.deleteComments(commentIDs);
 		}
 		CommentStorage.deleteCommentBookmarksForPhotoAlbum(albumID);
+	}
+
+	public Photo savePhotoToAlbum(User self, Photo photo){
+		if(photo.ownerID==self.id)
+			throw new UserActionNotAllowedException();
+		PhotoAlbum album=getOrCreateSystemAlbum(self, PhotoAlbum.SystemAlbumType.SAVED);
+		long fileID;
+		if(photo.apID!=null){
+			try{
+				fileID=MediaStorageUtils.copyRemoteImageToLocalStorage(self, photo.image).fileID;
+			}catch(SQLException | IOException x){
+				throw new InternalServerErrorException(x);
+			}
+		}else{
+			fileID=photo.localFileID;
+		}
+		long id;
+		try{
+			id=PhotoStorage.createLocalPhoto(self.id, self.id, album.id, fileID, "", null, null, null);
+			PhotoStorage.setAlbumCover(album.id, id);
+			MediaStorage.createMediaFileReference(fileID, id, MediaFileReferenceType.ALBUM_PHOTO, album.ownerID);
+			int numPhotos=0;
+			synchronized(albumCacheLock){
+				List<PhotoAlbum> albums=albumListCache.get(album.ownerID);
+				if(albums!=null){
+					for(PhotoAlbum a:albums){
+						if(a.id==album.id){
+							a.numPhotos++;
+							numPhotos=a.numPhotos;
+							a.coverID=id;
+							break;
+						}
+					}
+				}
+			}
+			album.coverID=id;
+			if(numPhotos!=0)
+				album.numPhotos=numPhotos;
+			else
+				album.numPhotos++;
+			albumCache.put(album.id, album);
+			Photo newPhoto=getPhotoIgnoringPrivacy(id);
+			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album);
+			context.getActivityPubWorker().sendAddPhotoToAlbum(self, newPhoto, album);
+			return photo;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 }

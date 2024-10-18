@@ -41,8 +41,19 @@ public class PhotoStorage{
 		return new SQLQueryBuilder()
 				.selectFrom("photo_albums")
 				.allColumns()
-				.where(ownerField+"=?", Math.abs(ownerID))
+				.where(ownerField+"=? AND system_type IS NULL", Math.abs(ownerID))
 				.orderBy("display_order ASC")
+				.executeAsStream(PhotoAlbum::fromResultSet)
+				.toList();
+	}
+
+	public static List<PhotoAlbum> getSystemAlbums(int ownerID) throws SQLException{
+		String ownerField=ownerID>0 ? "owner_user_id" : "owner_group_id";
+		return new SQLQueryBuilder()
+				.selectFrom("photo_albums")
+				.allColumns()
+				.where(ownerField+"=? AND system_type IS NOT NULL", Math.abs(ownerID))
+				.orderBy("system_type ASC")
 				.executeAsStream(PhotoAlbum::fromResultSet)
 				.toList();
 	}
@@ -52,6 +63,14 @@ public class PhotoStorage{
 				.selectFrom("photo_albums")
 				.allColumns()
 				.where("id=?", id)
+				.executeAndGetSingleObject(PhotoAlbum::fromResultSet);
+	}
+
+	public static PhotoAlbum getSystemAlbum(int ownerID, PhotoAlbum.SystemAlbumType type) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photo_albums")
+				.allColumns()
+				.where((ownerID>0 ? "owner_user_id" : "owner_group_id")+"=? AND system_type=?", Math.abs(ownerID), type)
 				.executeAndGetSingleObject(PhotoAlbum::fromResultSet);
 	}
 
@@ -69,7 +88,7 @@ public class PhotoStorage{
 			int displayOrder=new SQLQueryBuilder(conn)
 					.selectFrom("photo_albums")
 					.selectExpr("IFNULL(MAX(display_order), 0)+1")
-					.where("owner_user_id=?", userID)
+					.where("owner_user_id=? AND system_type IS NULL", userID)
 					.executeAndGetInt();
 			return new SQLQueryBuilder(conn)
 					.insertInto("photo_albums")
@@ -95,7 +114,7 @@ public class PhotoStorage{
 			int displayOrder=new SQLQueryBuilder(conn)
 					.selectFrom("photo_albums")
 					.selectExpr("IFNULL(MAX(display_order), 0)+1")
-					.where("owner_group_id=?", groupID)
+					.where("owner_group_id=? AND system_type IS NULL", groupID)
 					.executeAndGetInt();
 			return new SQLQueryBuilder(conn)
 					.insertInto("photo_albums")
@@ -105,6 +124,29 @@ public class PhotoStorage{
 					.value("flags", Utils.serializeEnumSet(flags))
 					.value("display_order", displayOrder)
 					.executeAndGetIDLong();
+		}
+	}
+
+	public static long createSystemAlbum(int ownerID, PhotoAlbum.SystemAlbumType type) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			long existingID=new SQLQueryBuilder(conn)
+					.selectFrom("photo_albums")
+					.where((ownerID>0 ? "owner_user_id" : "owner_group_id")+"=? AND system_type=?", Math.abs(ownerID), type)
+					.executeAndGetLong();
+			if(existingID!=-1)
+				return existingID;
+			SQLQueryBuilder b=new SQLQueryBuilder(conn)
+					.insertInto("photo_albums")
+					.value(ownerID>0 ? "owner_user_id" : "owner_group_id", Math.abs(ownerID))
+					.value("title", type.getTitle())
+					.value("system_type", type);
+			if(ownerID>0){
+				b.value("privacy", Utils.gson.toJson(Map.of(
+						"view", PrivacySetting.DEFAULT,
+						"comment", PrivacySetting.DEFAULT
+				)));
+			}
+			return b.executeAndGetIDLong();
 		}
 	}
 
@@ -170,7 +212,7 @@ public class PhotoStorage{
 		return new SQLQueryBuilder()
 				.selectFrom("photo_albums")
 				.count()
-				.where(id>0 ? "owner_user_id=?" : "owner_group_id=?", Math.abs(id))
+				.where((id>0 ? "owner_user_id=?" : "owner_group_id=?")+" AND system_type IS NULL", Math.abs(id))
 				.executeAndGetInt();
 	}
 
@@ -365,6 +407,17 @@ public class PhotoStorage{
 	public static void putOrUpdateForeignAlbum(PhotoAlbum album) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			if(album.id==0){
+				if(album.systemType!=null){
+					// Make sure there's only ever one of each type of system album per owner.
+					// This query will not match any rows 99.9999% of the time, but if the other server is doing weird shit, it'll
+					// make the already-existing system album of this type into a regular one. Then it might eventually get deleted
+					// as part of a content collection sync.
+					new SQLQueryBuilder(conn)
+							.update("photo_albums")
+							.where((album.ownerID>0 ? "owner_user_id" : "owner_group_id")+"=? AND system_type=?", Math.abs(album.ownerID), album.systemType)
+							.value("system_type", null)
+							.executeNoResult();
+				}
 				SQLQueryBuilder qb=new SQLQueryBuilder(conn)
 						.insertInto("photo_albums")
 						.value(album.ownerID>0 ? "owner_user_id" : "owner_group_id", Math.abs(album.ownerID))
@@ -377,6 +430,7 @@ public class PhotoStorage{
 						.value("ap_url", album.activityPubURL.toASCIIString())
 						.value("ap_comments", album.activityPubComments==null ? null : album.activityPubComments.toASCIIString())
 						.value("display_order", album.displayOrder)
+						.value("system_type", album.systemType)
 						.value("cover_id", album.coverID>0 ? album.coverID : null);
 				if(album.ownerID>0){
 					qb.value("privacy", Utils.gson.toJson(Map.of("view", album.viewPrivacy, "comment", album.commentPrivacy)));

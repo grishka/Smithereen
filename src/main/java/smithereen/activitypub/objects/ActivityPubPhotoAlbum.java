@@ -21,6 +21,7 @@ public class ActivityPubPhotoAlbum extends ActivityPubCollection{
 	public boolean disableCommenting, restrictUploads;
 	public int displayOrder;
 	public URI activityPubComments;
+	public PhotoAlbum.SystemAlbumType systemType;
 
 	public ActivityPubPhotoAlbum(){
 		super(true);
@@ -49,6 +50,11 @@ public class ActivityPubPhotoAlbum extends ActivityPubCollection{
 		activityPubComments=tryParseURL(optString(obj, "comments"));
 		if(activityPubComments!=null)
 			ensureHostMatchesID(activityPubComments, "comments");
+		systemType=switch(optString(obj, "systemAlbumType")){
+			case "SavedPhotos" -> PhotoAlbum.SystemAlbumType.SAVED;
+			case "ProfilePictures" -> PhotoAlbum.SystemAlbumType.AVATARS;
+			case null, default -> null;
+		};
 		return this;
 	}
 
@@ -72,6 +78,7 @@ public class ActivityPubPhotoAlbum extends ActivityPubCollection{
 			pa.restrictUploads=album.flags.contains(PhotoAlbum.Flag.GROUP_RESTRICT_UPLOADS);
 		}
 		pa.activityPubComments=new UriBuilder(pa.activityPubID).appendPath("comments").build();
+		pa.systemType=album.systemType;
 		return pa;
 	}
 
@@ -109,6 +116,7 @@ public class ActivityPubPhotoAlbum extends ActivityPubCollection{
 			if(restrictUploads)
 				album.flags.add(PhotoAlbum.Flag.GROUP_RESTRICT_UPLOADS);
 		}
+		album.systemType=systemType;
 		return album;
 	}
 }

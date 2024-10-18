@@ -107,6 +107,9 @@ public class JLDProcessor{
 		addSmAlias(lc, "Photo");
 		addSmAlias(lc, "displayOrder");
 		addSmAlias(lc, "comments");
+		lc.add("systemAlbumType", idAndTypeObject("sm:systemAlbumType", "@id"));
+		addSmAlias(lc, "SavedPhotos");
+		addSmAlias(lc, "ProfilePictures");
 		// privacy settings keys
 		lc.addProperty("wallPosting", "sm:wallPosting");
 		lc.addProperty("wallPostVisibility", "sm:wallPostVisibility");

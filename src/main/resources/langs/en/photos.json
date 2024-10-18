@@ -41,5 +41,9 @@
   "photo_open_original": "Open original",
   "set_photo_as_album_cover": "Set as album cover",
   "photo_was_set_as_album_cover": "Photo was set as album cover",
-  "photo_edit_description": "Edit description"
+  "photo_edit_description": "Edit description",
+  "saved_photos_album": "Saved photos",
+  "photo_save_to_album": "Save to album",
+  "photo_saved_to_album": "Photo was saved to your \"Saved photos\" album",
+  "photo_saved_short": "Photo saved"
 }

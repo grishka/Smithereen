@@ -2,6 +2,7 @@ package smithereen.storage;
 
 import com.google.gson.JsonObject;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Part;
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -28,7 +30,11 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
+import smithereen.model.CachedRemoteImage;
+import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.SizedImage;
+import smithereen.model.User;
 import smithereen.model.attachments.GraffitiAttachment;
 import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileID;
@@ -208,5 +214,34 @@ public class MediaStorageUtils{
 			Spark.halt(500, l.get("err_file_upload"));
 			throw new IllegalStateException();
 		}
+	}
+
+	public static LocalImage copyRemoteImageToLocalStorage(@NotNull User self, @NotNull SizedImage image) throws SQLException, IOException{
+		if(image instanceof LocalImage)
+			throw new IllegalArgumentException("The method name literally says it's for REMOTE images. Why would you pass a local image here?");
+		String cacheKey=switch(image){
+			case CachedRemoteImage cri -> cri.cacheKey;
+			case NonCachedRemoteImage nri -> ((MediaCache.PhotoItem)MediaCache.getInstance().downloadAndPut(nri.getOriginalURI(), "image/jpeg", MediaCache.ItemType.PHOTO, false, 0, 0)).key;
+			default -> throw new IllegalStateException("Unexpected value: " + image);
+		};
+		File file=new File(Config.mediaCachePath, cacheKey+".webp");
+		if(!file.exists())
+			throw new IllegalStateException("This file was supposed to exist, but somehow it doesn't");
+		String blurhash;
+		VipsImage img=null;
+		try{
+			img=new VipsImage(file.getAbsolutePath());
+			blurhash=BlurHash.encode(img, 4, 4);
+		}finally{
+			if(img!=null)
+				img.release();
+		}
+		MediaFileMetadata meta=new ImageMetadata(image.getOriginalDimensions().width, image.getOriginalDimensions().height, blurhash, null);
+		MediaFileRecord fileRecord=MediaStorage.createMediaFileRecord(MediaFileType.IMAGE_PHOTO, file.length(), self.id, meta);
+		LocalImage li=new LocalImage();
+		li.fileID=fileRecord.id().id();
+		li.fillIn(fileRecord);
+		MediaFileStorageDriver.getInstance().storeFile(file, fileRecord.id());
+		return li;
 	}
 }

@@ -140,7 +140,7 @@ public class Templates{
 		}
 		if(req.attribute("mobile")!=null){
 			for(String key:List.of("search", "qsearch_hint", "more_actions", "photo_open_original", "like", "add_comment",
-					"object_X_of_Y", "delete", "delete_photo", "delete_photo_confirm", "set_photo_as_album_cover", "open_on_server_X", "report")){
+					"object_X_of_Y", "delete", "delete_photo", "delete_photo_confirm", "set_photo_as_album_cover", "open_on_server_X", "report", "photo_save_to_album")){
 				if(k!=null && k.contains(key))
 					continue;
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));

@@ -41,5 +41,9 @@
   "photo_open_original": "Открыть оригинал",
   "set_photo_as_album_cover": "Сделать обложкой альбома",
   "photo_was_set_as_album_cover": "Фотография установлена обложкой альбома",
-  "photo_edit_description": "Редактировать описание"
+  "photo_edit_description": "Редактировать описание",
+  "saved_photos_album": "Сохранённые фотографии",
+  "photo_save_to_album": "Сохранить в альбом",
+  "photo_saved_to_album": "Фотография сохранена в ваш альбом \"Сохранённые фотографии\"",
+  "photo_saved_short": "Фотография сохранена"
 }

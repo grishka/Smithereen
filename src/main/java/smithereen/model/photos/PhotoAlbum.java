@@ -107,7 +107,15 @@ public class PhotoAlbum implements ActivityPubRepresentable, OwnedContentObject{
 	public enum SystemAlbumType{
 		AVATARS,
 		SAVED,
-		TAGGED
+		TAGGED;
+
+		public String getTitle(){
+			return switch(this){
+				case AVATARS -> "Profile pictures";
+				case SAVED -> "Saved photos";
+				case TAGGED -> throw new IllegalStateException("Tagged photos is not a real album");
+			};
+		}
 	}
 
 	public enum Flag{

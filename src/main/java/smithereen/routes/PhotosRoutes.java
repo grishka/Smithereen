@@ -81,7 +81,7 @@ public class PhotosRoutes{
 	}
 
 	private static Object photoAlbums(Request req, Response resp, Actor owner, Account self, ApplicationContext ctx){
-		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbums(owner, self==null ? null : self.user);
+		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbums(owner, self==null ? null : self.user, true);
 		Templates.addJsLangForPrivacySettings(req);
 		Set<Long> needPhotos=albums.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet());
 		Map<Long, Photo> covers=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
@@ -185,7 +185,7 @@ public class PhotosRoutes{
 
 	public static Object uploadPhoto(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
 		PhotoAlbum album=ctx.getPhotosController().getAlbum(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), info.account.user);
-		if(!info.permissions.canUploadToPhotoAlbum(album))
+		if(album.systemType!=null || !info.permissions.canUploadToPhotoAlbum(album))
 			throw new UserActionNotAllowedException();
 
 		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, info.account, false);
@@ -331,11 +331,12 @@ public class PhotosRoutes{
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.DELETE);
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.EDIT_DESCRIPTION);
 		}
-		if(ctx.getPhotosController().canManageAlbum(self, album)){
+		if(ctx.getPhotosController().canManageAlbum(self, album) && album.systemType==null){
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.SET_AS_COVER);
 		}
 		if(self!=null && photo.authorID!=self.id){
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.REPORT);
+			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.SAVE_TO_ALBUM);
 		}
 		return allowedActions;
 	}
@@ -705,5 +706,25 @@ public class PhotosRoutes{
 				.hide("pvEditDescriptionW_"+idStr)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, "pvEditDescriptionW_"+idStr, model.renderToString())
 				.runScript("var ta=ge(\"pvDescriptionTextarea_"+idStr+"\"); autoSizeTextArea(ta); addSendOnCtrlEnter(ta);");
+	}
+
+	public static Object saveToAlbum(Request req, Response resp, Account self, ApplicationContext ctx){
+		Photo photo=getPhotoForRequest(req);
+		ctx.getPrivacyController().enforceObjectPrivacy(self.user, photo);
+		ctx.getPhotosController().savePhotoToAlbum(self.user, photo);
+		if(!isAjax(req)){
+			resp.redirect(back(req));
+			return "";
+		}
+		Lang l=lang(req);
+		WebDeltaResponse wdr=new WebDeltaResponse(resp)
+				.showSnackbar(l.get("photo_saved_to_album"));
+		if(!isMobile(req)){
+			String contID="photoSave_"+photo.getIdString();
+			wdr.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, contID,
+							"<a class=\"grayText\" style=\"pointer-events: none\">"+l.get("photo_saved_short")+"</a>")
+					.remove(contID);
+		}
+		return wdr;
 	}
 }

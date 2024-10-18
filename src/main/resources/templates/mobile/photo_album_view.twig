@@ -5,7 +5,7 @@
 	{% endif %}
 {% endblock %}
 {% block content %}
-{% if userPermissions.canUploadToPhotoAlbum(album) %}
+{% if userPermissions.canUploadToPhotoAlbum(album) and album.systemType is null %}
 <a href="javascript:void(0)" class="fab iconAdd" title="{{ L('add_photos_to_album') }}" id="addPhotosBtn"></a>
 <input type="file" multiple accept="image/*" style="display: none" id="photosFileInput"/>
 {% script %}

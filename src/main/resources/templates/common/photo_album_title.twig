@@ -1,0 +1,7 @@
+{% macro photoAlbumTitle(album) %}
+{% if album.systemType=='SAVED' %}
+{{ L('saved_photos_album') }}
+{% else %}
+{{ album.title }}
+{% endif %}
+{% endmacro %}

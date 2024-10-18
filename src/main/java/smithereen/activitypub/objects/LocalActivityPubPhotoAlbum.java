@@ -31,6 +31,16 @@ public class LocalActivityPubPhotoAlbum extends ActivityPubPhotoAlbum{
 		}
 		obj.addProperty("displayOrder", nativeAlbum.displayOrder);
 		obj.addProperty("comments", activityPubComments.toString());
+		if(nativeAlbum.systemType!=null){
+			String type=switch(nativeAlbum.systemType){
+				case SAVED -> "SavedPhotos";
+				case AVATARS -> "ProfilePictures";
+				case TAGGED -> throw new IllegalArgumentException();
+			};
+			serializerContext.addSmIdType("systemAlbumType");
+			serializerContext.addSmAlias(type);
+			obj.addProperty("systemAlbumType", type);
+		}
 		return obj;
 	}
 

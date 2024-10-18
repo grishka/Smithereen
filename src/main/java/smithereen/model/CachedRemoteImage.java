@@ -9,7 +9,7 @@ import smithereen.storage.MediaCache;
 public class CachedRemoteImage implements SizedImage{
 
 	private Dimensions dimensions;
-	private String cacheKey;
+	public final String cacheKey;
 	private float[] cropRegion;
 	private URI originalURI;
 
