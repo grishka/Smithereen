@@ -502,7 +502,7 @@ public class PostRoutes{
 			meta.put("og:author", author.url.toString());
 			meta.put("profile:username", author.username+"@"+Config.domain);
 			if(StringUtils.isNotEmpty(post.post.text)){
-				String text=TextProcessor.truncateOnWordBoundary(post.post.text, 250);
+				String text=post.post.hasContentWarning() ? post.post.contentWarning : TextProcessor.truncateOnWordBoundary(post.post.text, 250);
 				meta.put("og:description", text);
 				moreMeta.put("description", text);
 			}
