@@ -267,6 +267,9 @@ public class ActivityPub{
 
 	private static HttpRequest.Builder signRequest(HttpRequest.Builder builder, URI url, Actor actor, byte[] body, String method){
 		String path=url.getPath();
+		String query=url.getRawQuery();
+		if(StringUtils.isNotEmpty(query))
+			path+=query;
 		String host=url.getHost();
 		if(url.getPort()!=-1)
 			host+=":"+url.getPort();
@@ -577,6 +580,9 @@ public class ActivityPub{
 			String value;
 			if(header.equals("(request-target)")){
 				value=req.requestMethod().toLowerCase()+" "+req.pathInfo();
+				String query=req.queryString();
+				if(StringUtils.isNotEmpty(query))
+					value+=query;
 			}else{
 				value=req.headers(header);
 			}
