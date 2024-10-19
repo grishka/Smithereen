@@ -145,13 +145,13 @@ public class PhotosRoutes{
 		ApplicationContext ctx=context(req);
 		PhotoAlbum album=ctx.getPhotosController().getAlbum(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), self);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("photo_album_view", req);
-		model.with("album", album).pageTitle(album.title);
+		model.with("album", album);
 		Actor owner;
 		if(album.ownerID>0)
 			owner=ctx.getUsersController().getUserOrThrow(album.ownerID);
 		else
 			owner=ctx.getGroupsController().getGroupOrThrow(-album.ownerID);
-		model.with("owner", owner).headerBack(owner);
+		model.with("owner", owner).headerBack(owner).pageTitle(album.getLocalizedTitle(lang(req), self, owner));
 		int offset=offset(req);
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset, 100);
 		model.paginate(photos);
@@ -346,6 +346,7 @@ public class PhotosRoutes{
 		ApplicationContext ctx=context(req);
 		String html;
 		User author=users.get(photo.authorID);
+		User owner=photo.ownerID>0 ? users.get(photo.ownerID) : null;
 		PhotoViewerPhotoInfo.Interactions pvInteractions;
 		UserInteractions ui=interactions!=null ? interactions.get(photo.id) : null;
 		String origURL;
@@ -380,7 +381,7 @@ public class PhotosRoutes{
 			origURL=null;
 		}
 		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
-				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.title,
+				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.getLocalizedTitle(lang(req), self!=null ? self.user : null, owner),
 				html, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL(), photo.apID==null ? null : photo.getActivityPubURL().toString());
 	}
 
@@ -469,7 +470,7 @@ public class PhotosRoutes{
 				PhotoAlbum album=ctx.getPhotosController().getAlbum(albumID, self);
 				PaginatedList<Photo> _photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset(req), 10);
 				total=_photos.total;
-				title=album.title;
+				title=album.getLocalizedTitle(lang(req), self, ctx.getWallController().getContentAuthorAndOwner(album).owner());
 				yield makePhotoInfosForPhotoList(req, _photos.list, ctx, selfAccount, Map.of(album.id, album));
 			}
 			case "friendsFeedGrouped" -> {

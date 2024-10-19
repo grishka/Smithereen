@@ -10,10 +10,13 @@ import java.util.EnumSet;
 import java.util.Map;
 
 import smithereen.Utils;
+import smithereen.activitypub.objects.Actor;
+import smithereen.lang.Lang;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.PrivacySetting;
+import smithereen.model.User;
 import smithereen.storage.DatabaseUtils;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
@@ -102,6 +105,13 @@ public class PhotoAlbum implements ActivityPubRepresentable, OwnedContentObject{
 	@Override
 	public long getObjectID(){
 		return id;
+	}
+
+	public String getLocalizedTitle(Lang lang, User self, Actor owner){
+		return switch(systemType){
+			case SAVED -> lang.get("saved_photos_album");
+			case null, default -> title;
+		};
 	}
 
 	public enum SystemAlbumType{
