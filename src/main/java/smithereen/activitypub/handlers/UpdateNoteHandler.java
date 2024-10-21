@@ -39,6 +39,12 @@ public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, 
 				throw new IllegalArgumentException("inReplyTo doesn't match existing");
 			}
 
+			if(existingPost.repostOf!=0){ // Strip the RE: https://... from the new text
+				try{
+					updated.setRepostedPost(context.appContext.getWallController().getPostOrThrow(existingPost.repostOf));
+				}catch(ObjectNotFoundException ignore){}
+			}
+
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(updated, post);
 			PostStorage.putForeignWallPost(updated);
 			if(!updated.isGroupOwner() && updated.ownerID==updated.authorID){
