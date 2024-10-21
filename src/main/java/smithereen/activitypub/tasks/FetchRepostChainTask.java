@@ -51,6 +51,16 @@ public class FetchRepostChainTask implements Callable<List<Post>>{
 					seenPostIDs.add(nextUri);
 					NoteOrQuestion post=context.getObjectLinkResolver().resolve(nextUri, NoteOrQuestion.class, true, false, false);
 					nextUri=post.getQuoteRepostID();
+					if(nextUri==null && post.inReplyTo!=null){
+						try{
+							context.getWallController().getPostOrThrow(post.inReplyTo);
+						}catch(ObjectNotFoundException x){
+							List<Post> thread=context.getActivityPubWorker().fetchWallReplyThread(post).get();
+							if(!thread.isEmpty()){
+								context.getActivityPubWorker().fetchAllReplies(thread.getFirst());
+							}
+						}
+					}
 					Post nativePost=post.asNativePost(context);
 					context.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 					repostChain.add(nativePost);
