@@ -637,6 +637,12 @@ public class ActivityPubRoutes{
 					}
 				}else{
 					Post nativePost=post.asNativePost(ctx);
+					if(post.inReplyTo==null && post.getQuoteRepostID()!=null){
+						List<Post> repostChain=ctx.getActivityPubWorker().fetchRepostChain(post).get();
+						if(!repostChain.isEmpty()){
+							nativePost.setRepostedPost(repostChain.getFirst());
+						}
+					}
 					ctx.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 					topLevelPost=nativePost;
 					PostStorage.putForeignWallPost(nativePost);
