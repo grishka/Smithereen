@@ -4,6 +4,7 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
@@ -31,6 +32,18 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 			}
 		}else{
 			Post nativePost=post.asNativePost(context.appContext);
+			if(post.getQuoteRepostID()!=null){
+				try{
+					List<Post> repostChain=context.appContext.getActivityPubWorker().fetchRepostChain(post).get();
+					if(!repostChain.isEmpty()){
+						nativePost.setRepostedPost(repostChain.getFirst());
+					}
+				}catch(InterruptedException x){
+					throw new RuntimeException(x);
+				}catch(ExecutionException x){
+					LOG.debug("Failed to fetch repost chain for {}", post.activityPubID, x);
+				}
+			}
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
 			doHandle(nativePost, actor, activity, context);

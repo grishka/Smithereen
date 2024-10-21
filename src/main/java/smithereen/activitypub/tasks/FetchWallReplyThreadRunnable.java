@@ -65,6 +65,12 @@ public class FetchWallReplyThreadRunnable implements Callable<List<Post>>{
 				parent=p;
 				continue;
 			}
+			if(noq.inReplyTo==null && noq.getQuoteRepostID()!=null){
+				List<Post> repostChain=context.getActivityPubWorker().fetchRepostChain(noq).get();
+				if(!repostChain.isEmpty()){
+					p.setRepostedPost(repostChain.getFirst());
+				}
+			}
 			context.getWallController().loadAndPreprocessRemotePostMentions(p, noq);
 			context.getObjectLinkResolver().storeOrUpdateRemoteObject(p);
 			context.getNotificationsController().createNotificationsForObject(p);

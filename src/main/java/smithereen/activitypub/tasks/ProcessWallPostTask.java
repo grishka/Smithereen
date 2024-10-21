@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.Future;
 
 import smithereen.ApplicationContext;
@@ -39,6 +40,12 @@ public class ProcessWallPostTask extends NoResultCallable{
 	protected void compute(){
 		try{
 			Post nativePost=post.asNativePost(context);
+			if(post.inReplyTo==null && post.getQuoteRepostID()!=null){
+				List<Post> repostChain=context.getActivityPubWorker().fetchRepostChain(post).get();
+				if(!repostChain.isEmpty()){
+					nativePost.setRepostedPost(repostChain.getFirst());
+				}
+			}
 			context.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 			context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
 			apw.submitTask(new FetchAllWallRepliesTask(apw, context, fetchingAllReplies, nativePost)).get();
