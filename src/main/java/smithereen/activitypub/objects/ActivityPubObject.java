@@ -3,6 +3,7 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -341,9 +342,11 @@ public abstract class ActivityPubObject{
 	}
 
 	protected static String optString(JsonObject obj, String key){
-		if(obj.has(key) && obj.get(key).isJsonPrimitive() && obj.getAsJsonPrimitive(key).isString())
-			return obj.get(key).getAsString();
-		return null;
+		return switch(obj.get(key)){
+			case JsonPrimitive primitive -> primitive.getAsString();
+			case JsonObject jobj when jobj.get("@value") instanceof JsonPrimitive primitive -> primitive.getAsString();
+			case null, default -> null;
+		};
 	}
 
 	protected int optInt(JsonObject obj, String key){
