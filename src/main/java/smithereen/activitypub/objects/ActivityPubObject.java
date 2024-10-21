@@ -572,6 +572,8 @@ public abstract class ActivityPubObject{
 			case "Image" -> new Image();
 			case "_LocalImage" -> parserContext.isLocal ? new LocalImage() : null;
 			case "Document" -> new Document();
+			case "Video" -> new Video();
+			case "Audio" -> new Audio();
 			case "Tombstone" -> switch(optString(obj, "formerType")){
 				case "Note", "Question" -> new NoteTombstone();
 				case null, default -> new Tombstone();

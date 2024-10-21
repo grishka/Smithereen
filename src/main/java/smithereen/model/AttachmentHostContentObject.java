@@ -7,9 +7,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Audio;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.activitypub.objects.Video;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.AudioAttachment;
 import smithereen.model.attachments.GraffitiAttachment;
@@ -62,11 +64,11 @@ public interface AttachmentHostContentObject{
 						att.blurHash=doc.blurHash;
 				}
 				result.add(att);
-			}else if(mediaType.startsWith("video/")){
+			}else if(o instanceof Video || mediaType.startsWith("video/")){
 				VideoAttachment att=new VideoAttachment();
 				att.url=o.url;
 				result.add(att);
-			}else if(mediaType.startsWith("audio/")){
+			}else if(o instanceof Audio || mediaType.startsWith("audio/")){
 				AudioAttachment att=new AudioAttachment();
 				att.url=o.url;
 				result.add(att);
