@@ -27,7 +27,7 @@
 		{% if realPost.hasContentWarning %}
 		</div>
 		{% endif %}
-		{%set interactions=postInteractions[realPost.id]%}
+		{%set interactions=commentInteractions[realPost.id]%}
 		<div class="postInfo">
 			<a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.idString}})" class="postLink">{{LD(realPost.createdAt)}}</a>
 			{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText"> {{ L('comment_in_reply_to_user_short', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink", 'data-parent-id': realPost.replyKey.last, 'onclick': "highlightComment(#{realPost.replyKey.last}); return false;"} }) }}</span>{% endif %}<br/>

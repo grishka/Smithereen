@@ -715,6 +715,7 @@ public class PhotosController{
 			if(isNew){
 				synchronized(albumCacheLock){
 					albumListCache.remove(photo.ownerID);
+					albumCache.remove(photo.albumID);
 				}
 				if(photo.ownerID>0){
 					User owner=context.getUsersController().getUserOrThrow(photo.ownerID);

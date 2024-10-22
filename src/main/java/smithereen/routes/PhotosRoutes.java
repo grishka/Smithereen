@@ -638,7 +638,7 @@ public class PhotosRoutes{
 			PaginatedList<CommentViewModel> comments=ctx.getCommentsController().getComments(photo, List.of(), offset(req), 100, 50, commentViewType);
 			HashSet<Integer> needUsers=new HashSet<>();
 			CommentViewModel.collectUserIDs(comments.list, needUsers);
-			// TODO interactions
+			Map<Long, UserInteractions> commentsInteractions=ctx.getUserInteractionsController().getUserInteractions(comments.list.stream().map(vm->vm.post).toList(), self!=null ? self.user : null);
 
 			model.with("description", photo.description)
 					.with("author", oaa.author())
@@ -658,6 +658,7 @@ public class PhotosRoutes{
 					.with("users", ctx.getUsersController().getUsers(needUsers))
 					.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self))
 					.with("commentViewType", commentViewType)
+					.with("commentInteractions", commentsInteractions)
 					.pageTitle(album.title);
 
 			if(isMobile(req)){
