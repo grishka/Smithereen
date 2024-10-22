@@ -638,7 +638,12 @@ public class PhotosRoutes{
 			PaginatedList<CommentViewModel> comments=ctx.getCommentsController().getComments(photo, List.of(), offset(req), 100, 50, commentViewType);
 			HashSet<Integer> needUsers=new HashSet<>();
 			CommentViewModel.collectUserIDs(comments.list, needUsers);
-			Map<Long, UserInteractions> commentsInteractions=ctx.getUserInteractionsController().getUserInteractions(comments.list.stream().map(vm->vm.post).toList(), self!=null ? self.user : null);
+			List<CommentViewModel> allComments=new ArrayList<>();
+			for(CommentViewModel cvm:comments.list){
+				allComments.add(cvm);
+				cvm.getAllReplies(allComments);
+			}
+			Map<Long, UserInteractions> commentsInteractions=ctx.getUserInteractionsController().getUserInteractions(allComments.stream().map(vm->vm.post).toList(), self!=null ? self.user : null);
 
 			model.with("description", photo.description)
 					.with("author", oaa.author())
