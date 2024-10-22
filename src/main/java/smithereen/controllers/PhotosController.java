@@ -21,6 +21,7 @@ import smithereen.ApplicationContext;
 import smithereen.LruCache;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -31,6 +32,7 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
+import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.feed.NewsfeedEntry;
@@ -799,7 +801,6 @@ public class PhotosController{
 	public Photo savePhotoToAlbum(User self, Photo photo){
 		if(photo.ownerID==self.id)
 			throw new UserActionNotAllowedException();
-		PhotoAlbum album=getOrCreateSystemAlbum(self, PhotoAlbum.SystemAlbumType.SAVED);
 		long fileID;
 		if(photo.apID!=null){
 			try{
@@ -810,6 +811,25 @@ public class PhotosController{
 		}else{
 			fileID=photo.localFileID;
 		}
+		return saveFileToAlbum(self, fileID);
+	}
+
+	public Photo saveImageToAlbum(User self, SizedImage image){
+		long fileID;
+		if(image instanceof LocalImage li){
+			fileID=li.fileID;
+		}else{
+			try{
+				fileID=MediaStorageUtils.copyRemoteImageToLocalStorage(self, image).fileID;
+			}catch(SQLException | IOException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+		return saveFileToAlbum(self, fileID);
+	}
+
+	private Photo saveFileToAlbum(User self, long fileID){
+		PhotoAlbum album=getOrCreateSystemAlbum(self, PhotoAlbum.SystemAlbumType.SAVED);
 		long id;
 		try{
 			id=PhotoStorage.createLocalPhoto(self.id, self.id, album.id, fileID, "", null, null, null);
@@ -836,9 +856,9 @@ public class PhotosController{
 				album.numPhotos++;
 			albumCache.put(album.id, album);
 			Photo newPhoto=getPhotoIgnoringPrivacy(id);
-			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album);
 			context.getActivityPubWorker().sendAddPhotoToAlbum(self, newPhoto, album);
-			return photo;
+			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album);
+			return newPhoto;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

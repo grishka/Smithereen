@@ -83,7 +83,7 @@ public class S3MediaFileStorageDriver extends MediaFileStorageDriver{
 	}
 
 	@Override
-	public void storeFile(File localFile, MediaFileID id) throws IOException{
+	public void storeFile(File localFile, MediaFileID id, boolean keepLocalFile) throws IOException{
 		HttpRequest req=HttpRequest.newBuilder(getApiUrl().appendPath(getObjectName(id)).build())
 				.PUT(HttpRequest.BodyPublishers.ofFile(localFile.toPath()))
 				.header("Content-Type", id.type().getMimeType())
@@ -92,7 +92,8 @@ public class S3MediaFileStorageDriver extends MediaFileStorageDriver{
 			req=signRequest(req, in);
 		}
 		executeRequest(req, HttpResponse.BodyHandlers.ofString());
-		localFile.delete();
+		if(!keepLocalFile)
+			localFile.delete();
 	}
 
 	@Override

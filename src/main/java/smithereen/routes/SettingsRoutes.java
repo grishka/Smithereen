@@ -264,7 +264,7 @@ public class SettingsRoutes{
 				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, resizedFile, size);
 				ImageMetadata meta=new ImageMetadata(size[0], size[1], null, cropRegion);
 				MediaFileRecord fileRecord=MediaStorage.createMediaFileRecord(MediaFileType.IMAGE_PHOTO, resizedFile.length(), group==null ? self.user.id : -group.id, meta);
-				MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id());
+				MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id(), false);
 				LocalImage ava=new LocalImage();
 				ava.fileID=fileRecord.id().id();
 				ava.fillIn(fileRecord);

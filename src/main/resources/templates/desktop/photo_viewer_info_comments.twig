@@ -60,6 +60,8 @@
 			{% endif %}
 			{% if allowedActions contains "SAVE_TO_ALBUM" %}
 			<li><a href="{{ photo.url }}/saveToAlbum?csrf={{ csrf }}" id="photoSave_{{ photo.idString }}" data-ajax data-ajax-show="photoSaveLoader_{{ photo.idString }}" data-ajax-hide="photoSaveText_{{ photo.idString }}"><span id="photoSaveText_{{ photo.idString }}">{{ L('photo_save_to_album') }}</span> <span class="inlineLoader" id="photoSaveLoader_{{ photo.idString }}" style="display: none"></span></a></li>
+			{% elseif saveURL is not empty %}
+			<li><a href="{{ saveURL }}" id="photoSave_{{ saveElementID }}" data-ajax data-ajax-show="photoSaveLoader_{{ saveElementID }}" data-ajax-hide="photoSaveText_{{ saveElementID }}"><span id="photoSaveText_{{ saveElementID }}">{{ L('photo_save_to_album') }}</span> <span class="inlineLoader" id="photoSaveLoader_{{ saveElementID }}" style="display: none"></span></a></li>
 			{% endif %}
 			{% if photo.apID is not null %}
 			<li><a href="{{ photo.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': photo.activityPubURL.host}) }}</a></li>

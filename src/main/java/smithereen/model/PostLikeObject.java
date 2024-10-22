@@ -13,11 +13,12 @@ import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.model.comments.Comment;
 import smithereen.storage.DatabaseUtils;
 import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
-public abstract class PostLikeObject implements OwnedContentObject, AttachmentHostContentObject{
+public abstract sealed class PostLikeObject implements OwnedContentObject, AttachmentHostContentObject permits Post, Comment{
 	public int authorID;
 	// userID or -groupID
 	public int ownerID;

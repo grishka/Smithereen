@@ -23,7 +23,7 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
-public interface AttachmentHostContentObject{
+public sealed interface AttachmentHostContentObject permits MailMessage, PostLikeObject{
 	List<ActivityPubObject> getAttachments();
 	NonCachedRemoteImage.Args getPhotoArgs(int index);
 	String getPhotoListID();

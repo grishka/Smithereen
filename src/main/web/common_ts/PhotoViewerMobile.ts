@@ -291,6 +291,8 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 		var options:any[]=[];
 		if(ph.actions.indexOf("SAVE_TO_ALBUM")!=-1){
 			options.push({type: "link", href: `/photos/${ph.id}/saveToAlbum?csrf=${userConfig.csrf}`, ajax: "box", label: lang("photo_save_to_album")});
+		}else if(ph.saveURL){
+			options.push({type: "link", href: ph.saveURL, ajax: "box", label: lang("photo_save_to_album")});
 		}
 		if(ph.actions.indexOf("SET_AS_COVER")!=-1){
 			options.push({type: "link", href: `/photos/${ph.id}/setAsAlbumCover?csrf=${userConfig.csrf}`, ajax: "box", label: lang("set_photo_as_album_cover")});

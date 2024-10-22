@@ -202,7 +202,7 @@ public class MediaStorageUtils{
 				fileRecord=MediaStorage.createMediaFileRecord(isGraffiti ? MediaFileType.IMAGE_GRAFFITI : MediaFileType.IMAGE_PHOTO, resizedFile.length(), self.user.id, meta);
 				photo.fileID=fileRecord.id().id();
 				photo.fillIn(fileRecord);
-				MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id());
+				MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id(), false);
 
 				temp.delete();
 			}finally{
@@ -241,7 +241,7 @@ public class MediaStorageUtils{
 		LocalImage li=new LocalImage();
 		li.fileID=fileRecord.id().id();
 		li.fillIn(fileRecord);
-		MediaFileStorageDriver.getInstance().storeFile(file, fileRecord.id());
+		MediaFileStorageDriver.getInstance().storeFile(file, fileRecord.id(), true);
 		return li;
 	}
 }

@@ -1,6 +1,7 @@
 package smithereen.routes;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,6 +25,7 @@ import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -34,6 +36,7 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
@@ -52,6 +55,7 @@ import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
 import smithereen.text.TextProcessor;
 import smithereen.util.JsonObjectBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
@@ -306,9 +310,31 @@ public class PhotosRoutes{
 		return ajaxAwareRedirect(req, resp, back(req));
 	}
 
-	private static PhotoViewerPhotoInfo makePhotoInfoForAttachment(Request req, PhotoAttachment pa, User author, Instant createdAt){
+	private static PhotoViewerPhotoInfo makePhotoInfoForAttachment(Request req, PhotoAttachment pa, User self, User author, Instant createdAt, AttachmentHostContentObject parent, int index){
 		String html;
 		String origURL;
+		String saveURL;
+		String saveType, saveID;
+		if(self==null || self.id==author.id){
+			saveURL=saveType=saveID=null;
+		}else{
+			saveURL=UriBuilder.local()
+					.path("photos", "saveAttachmentToAlbum")
+					.queryParam("type", saveType=switch(parent){
+						case Post post -> "post";
+						case Comment comment -> "comment";
+						case MailMessage msg -> "message";
+					})
+					.queryParam("id", saveID=switch(parent){
+						case Post post -> String.valueOf(post.id);
+						case Comment comment -> comment.getIDString();
+						case MailMessage msg -> msg.encodedID;
+					})
+					.queryParam("index", String.valueOf(index))
+					.queryParam("csrf", sessionInfo(req).csrfToken)
+					.build()
+					.toString();
+		}
 		if(isMobile(req)){
 			html=StringUtils.isNotEmpty(pa.description) ? TextProcessor.escapeHTML(pa.description).replace("\n", "<br/>") : "";
 			origURL=pa.image.getOriginalURI().toString();
@@ -318,11 +344,15 @@ public class PhotosRoutes{
 					.with("author", author)
 					.with("createdAt", createdAt)
 					.with("originalImageURL", pa.image.getOriginalURI());
+			if(saveURL!=null){
+				model.with("saveURL", saveURL)
+						.with("saveElementID", saveType+"_"+saveID+"_"+index);
+			}
 			html=model.renderToString();
 			origURL=null;
 		}
 		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html,
-				EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer(), null, origURL, null, null);
+				EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer(), null, origURL, null, null, saveURL);
 	}
 
 	private static EnumSet<PhotoViewerPhotoInfo.AllowedAction> getAllowedActionsForPhoto(ApplicationContext ctx, User self, Photo photo, PhotoAlbum album){
@@ -382,7 +412,7 @@ public class PhotosRoutes{
 		}
 		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
 				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.getLocalizedTitle(lang(req), self!=null ? self.user : null, owner),
-				html, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL(), photo.apID==null ? null : photo.getActivityPubURL().toString());
+				html, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL(), photo.apID==null ? null : photo.getActivityPubURL().toString(), null);
 	}
 
 	private static List<PhotoViewerPhotoInfo> makePhotoInfosForPhotoList(Request req, List<Photo> photos, ApplicationContext ctx, Account self, Map<Long, PhotoAlbum> albums){
@@ -413,11 +443,15 @@ public class PhotosRoutes{
 		return photos.stream().map(ph->makePhotoInfoForPhoto(req, ph, _albums.get(ph.albumID), users, interactions, self, comments.get(ph.getCommentParentID()), commentsInteractions)).toList();
 	}
 
-	private static PaginatedList<PhotoViewerPhotoInfo> makePhotoInfoForAttachHostObject(Request req, AttachmentHostContentObject obj, User author, Instant createdAt){
-		List<PhotoViewerPhotoInfo> photos=obj.getProcessedAttachments().stream()
-				.map(a->a instanceof PhotoAttachment pa ? makePhotoInfoForAttachment(req, pa, author, createdAt) : null)
-				.filter(Objects::nonNull)
-				.toList();
+	private static PaginatedList<PhotoViewerPhotoInfo> makePhotoInfoForAttachHostObject(Request req, AttachmentHostContentObject obj, User author, Instant createdAt, User self){
+		List<PhotoViewerPhotoInfo> photos=new ArrayList<>();
+		int i=0;
+		for(Attachment att:obj.getProcessedAttachments()){
+			if(att instanceof PhotoAttachment pa){
+				photos.add(makePhotoInfoForAttachment(req, pa, self, author, createdAt, obj, i));
+			}
+			i++;
+		}
 		return new PaginatedList<>(photos, photos.size());
 	}
 	
@@ -438,7 +472,7 @@ public class PhotosRoutes{
 				ctx.getPrivacyController().enforceObjectPrivacy(self, post);
 				User author=ctx.getUsersController().getUserOrThrow(post.authorID);
 
-				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, post, author, post.createdAt);
+				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, post, author, post.createdAt, self);
 				total=info.total;
 				title=null;
 				yield info.list;
@@ -449,7 +483,7 @@ public class PhotosRoutes{
 				ctx.getCommentsController().getCommentParent(self, comment); // enforces privacy
 				User author=ctx.getUsersController().getUserOrThrow(comment.authorID);
 
-				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, comment, author, comment.createdAt);
+				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, comment, author, comment.createdAt, self);
 				total=info.total;
 				title=null;
 				yield info.list;
@@ -460,7 +494,7 @@ public class PhotosRoutes{
 				MailMessage msg=ctx.getMailController().getMessage(self, decodeLong(listParts[1]), false);
 				User author=ctx.getUsersController().getUserOrThrow(msg.senderID);
 
-				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, msg, author, msg.createdAt);
+				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, msg, author, msg.createdAt, self);
 				total=info.total;
 				title=null;
 				yield info.list;
@@ -577,10 +611,10 @@ public class PhotosRoutes{
 			default -> throw new IllegalStateException("Unexpected value: " + listParts[2]);
 		};
 		PaginatedList<PhotoViewerPhotoInfo> info=switch(obj){
-			case Post post -> makePhotoInfoForAttachHostObject(req, post, ctx.getUsersController().getUserOrThrow(post.authorID), post.createdAt);
-			case MailMessage msg -> makePhotoInfoForAttachHostObject(req, msg, ctx.getUsersController().getUserOrThrow(msg.senderID), msg.createdAt);
+			case Post post -> makePhotoInfoForAttachHostObject(req, post, ctx.getUsersController().getUserOrThrow(post.authorID), post.createdAt, self.user);
+			case MailMessage msg -> makePhotoInfoForAttachHostObject(req, msg, ctx.getUsersController().getUserOrThrow(msg.senderID), msg.createdAt, self.user);
 			case Photo photo -> new PaginatedList<>(makePhotoInfosForPhotoList(req, List.of(photo), ctx, self, ctx.getPhotosController().getAlbumsIgnoringPrivacy(List.of(photo.albumID))), 1);
-			case Comment comment -> makePhotoInfoForAttachHostObject(req, comment, ctx.getUsersController().getUserOrThrow(comment.authorID), comment.createdAt);
+			case Comment comment -> makePhotoInfoForAttachHostObject(req, comment, ctx.getUsersController().getUserOrThrow(comment.authorID), comment.createdAt, self.user);
 		};
 		resp.type("application/json");
 		HashMap<String, Object> r=new HashMap<>();
@@ -728,6 +762,44 @@ public class PhotosRoutes{
 				.showSnackbar(l.get("photo_saved_to_album"));
 		if(!isMobile(req)){
 			String contID="photoSave_"+photo.getIdString();
+			wdr.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, contID,
+							"<a class=\"grayText\" style=\"pointer-events: none\">"+l.get("photo_saved_short")+"</a>")
+					.remove(contID);
+		}
+		return wdr;
+	}
+
+	public static Object saveAttachmentToAlbum(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "type", "id", "index");
+		String id=req.queryParams("id");
+		String type=req.queryParams("type");
+		int index=safeParseInt(req.queryParams("index"));
+		if(index<0)
+			throw new BadRequestException();
+		AttachmentHostContentObject obj=switch(type){
+			case "post" -> ctx.getWallController().getPostOrThrow(safeParseInt(id));
+			case "message" -> ctx.getMailController().getMessage(self.user, decodeLong(id), false);
+			case "comment" -> ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(id, ObfuscatedObjectIDType.COMMENT));
+			default -> throw new BadRequestException();
+		};
+		if(obj instanceof OwnedContentObject owned)
+			ctx.getPrivacyController().enforceObjectPrivacy(self.user, owned);
+		List<Attachment> attachments=obj.getProcessedAttachments();
+		if(index>=attachments.size())
+			throw new BadRequestException();
+		Attachment att=attachments.get(index);
+		if(!(att instanceof PhotoAttachment photo))
+			throw new BadRequestException();
+		ctx.getPhotosController().saveImageToAlbum(self.user, photo.image);
+		if(!isAjax(req)){
+			resp.redirect(back(req));
+			return "";
+		}
+		Lang l=lang(req);
+		WebDeltaResponse wdr=new WebDeltaResponse(resp)
+				.showSnackbar(l.get("photo_saved_to_album"));
+		if(!isMobile(req)){
+			String contID="photoSave_"+type+"_"+id+"_"+index;
 			wdr.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, contID,
 							"<a class=\"grayText\" style=\"pointer-events: none\">"+l.get("photo_saved_short")+"</a>")
 					.remove(contID);
