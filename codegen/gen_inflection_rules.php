@@ -5,7 +5,7 @@ $rules=json_decode(file_get_contents("inflect_ru.json"));
 $j=[
 	"package smithereen.lang;",
 	"",
-	"import smithereen.data.User;",
+	"import smithereen.model.User;",
 	"",
 	"// Auto-generated, don't edit",
 	"// Сгенерировано из https://github.com/petrovich/petrovich-rules, не редактируйте",
@@ -71,7 +71,16 @@ function generate($key, $method){
 	$j[]="\t\tif(_case==Inflector.Case.NOMINATIVE) return input;";
 	$j[]="\t\tString inputLower=input.toLowerCase();";
 	foreach($all as $gk=>$group){
-		foreach ($group as $ex) {
+		$reorderedGroup=[];
+		foreach($group as $rule){
+			if($rule->gender!="androgynous")
+				$reorderedGroup[]=$rule;
+		}
+		foreach($group as $rule){
+			if($rule->gender=="androgynous")
+				$reorderedGroup[]=$rule;
+		}
+		foreach ($reorderedGroup as $ex) {
 			$and=[];
 			$or=[];
 			if(isset($ex->tags) && array_search("first_word", $ex->tags)!==FALSE){
