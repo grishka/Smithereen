@@ -517,7 +517,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			JsonElement _contentMap=obj.get("contentMap");
 			if(_contentMap.isJsonObject()){
 				JsonObject contentMap=_contentMap.getAsJsonObject();
-				if(!contentMap.isEmpty()){
+				if(contentMap.size()>0){
 					_content=contentMap.get(contentMap.keySet().iterator().next());
 					if(_content instanceof JsonArray ja){
 						content=ja.get(0).getAsString();

@@ -92,21 +92,21 @@ public class HTMLProcessingTest{
 	@Test
 	public void testPreprocessingParagraphsSimple(){
 		String in="This is paragraph 1.\n\nThis is paragraph 2.";
-		String expected="<p>This is paragraph 1.</p>\n<p>This is paragraph 2.</p>";
+		String expected="<p>This is paragraph 1.</p><p>This is paragraph 2.</p>";
 		assertEquals(expected, TextProcessor.preprocessPostHTML(in, null));
 	}
 
 	@Test
 	public void testPreprocessingParagraphsWithTags(){
 		String in="This is <b>paragraph 1.\n\nThis </b>is paragraph 2.";
-		String expected="<p>This is <b>paragraph 1.</b></p>\n<p><b>This </b>is paragraph 2.</p>";
+		String expected="<p>This is <b>paragraph 1.</b></p><p><b>This </b>is paragraph 2.</p>";
 		assertEquals(expected, TextProcessor.preprocessPostHTML(in, null));
 	}
 
 	@Test
 	public void testPreprocessingParagraphsWithTagsWithAttrs(){
 		String in="This is <a href=\"https://example.com\" onclick=\"alert('xss')\">paragraph <i>1.\n\nThis</i> </a>is paragraph 2.";
-		String expected="<p>This is <a href=\"https://example.com\">paragraph <i>1.</i></a></p>\n<p><a href=\"https://example.com\"><i>This</i> </a>is paragraph 2.</p>";
+		String expected="<p>This is <a href=\"https://example.com\">paragraph <i>1.</i></a></p><p><a href=\"https://example.com\"><i>This</i> </a>is paragraph 2.</p>";
 		assertEquals(expected, TextProcessor.preprocessPostHTML(in, null));
 	}
 
@@ -151,7 +151,7 @@ public class HTMLProcessingTest{
 				Test!
 				<p>Test!
 				</p>""";
-		String expected="<p>Test!<br>Test!</p>\n<p><b>Test!<br>Test!</b></p>\n<p>Test!<br>Test!</p>\n<p>Test!</p>";
+		String expected="<p>Test!<br>Test!</p><p><b>Test!<br>Test!</b></p><p>Test!<br>Test!</p><p>Test!</p>";
 		assertEquals(expected, TextProcessor.preprocessPostHTML(in, null));
 	}
 

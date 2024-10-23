@@ -387,12 +387,12 @@ public abstract class ActivityPubObject{
 		attachment=parseSingleObjectOrArray(obj.get("attachment"), parserContext);
 		attributedTo=tryParseURL(optString(obj, "attributedTo"));
 		audience=tryParseURL(optString(obj, "audience"));
-		if(obj.get("contentMap") instanceof JsonObject contentMap && !contentMap.isEmpty()){
+		if(obj.get("contentMap") instanceof JsonObject contentMap && contentMap.size()>0){
 			content=optString(contentMap, contentMap.keySet().iterator().next());
 		}else{
 			content=optString(obj, "content");
 		}
-		if(obj.get("nameMap") instanceof JsonObject nameMap && !nameMap.isEmpty()){
+		if(obj.get("nameMap") instanceof JsonObject nameMap && nameMap.size()>0){
 			name=optString(nameMap, nameMap.keySet().iterator().next());
 		}else{
 			name=optString(obj, "name");
