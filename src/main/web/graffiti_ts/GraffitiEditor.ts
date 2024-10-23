@@ -271,7 +271,7 @@ class DrawingArea{
 	private onMouseUp(ev:MouseEvent){
 		window.removeEventListener("mousemove", this.mouseMoveListener);
 		window.removeEventListener("mouseup", this.mouseUpListener);
-		this.addEvent(ev);
+		this.addEvent(ev, true);
 		this.paths.push(this.currentPath);
 		this.currentPath=null;
 		if(this.paths.length%GRAFFITI_BITMAP_FLUSH_PERIOD==0){
@@ -283,10 +283,23 @@ class DrawingArea{
 		this.addEvent(ev);
 	}
 
-	private addEvent(ev:MouseEvent){
+	private addEvent(ev:MouseEvent, adjust:boolean=false){
 		var rect=this.svg.getBoundingClientRect();
 		var x=ev.clientX-rect.left;
 		var y=ev.clientY-rect.top;
+		if(adjust){
+			// Firefox draws nothing if all points have the same coordinates
+			var allSame=true;
+			for(var i=0;i<this.xs.length;i++){
+				if(this.xs[i]!=x || this.ys[i]!=y){
+					allSame=false;
+					break;
+				}
+			}
+			if(allSame){
+				x+=0.01;
+			}
+		}
 		this.xs.push(x);
 		this.ys.push(y);
 
