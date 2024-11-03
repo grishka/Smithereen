@@ -269,7 +269,7 @@ public class ActivityPub{
 		String path=url.getPath();
 		String query=url.getRawQuery();
 		if(StringUtils.isNotEmpty(query))
-			path+=query;
+			path+="?"+query;
 		String host=url.getHost();
 		if(url.getPort()!=-1)
 			host+=":"+url.getPort();
