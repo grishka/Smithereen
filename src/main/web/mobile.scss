@@ -1165,6 +1165,9 @@ textarea{
 			}
 			&.sendBtn{
 				background-image: svg-load('img/material/ic_send.svg', fill: $iconColor);
+				&.loading{
+					background-image: svg-load('img/ic_loading_circular.svg', stroke: $iconColor);
+				}
 			}
 		}
 		textarea{
