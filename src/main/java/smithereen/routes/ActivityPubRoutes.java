@@ -176,8 +176,6 @@ public class ActivityPubRoutes{
 
 	public static void registerActivityHandlers(){
 		registerActivityHandler(ForeignUser.class, Create.class, NoteOrQuestion.class, new CreateNoteHandler());
-		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubObject.class, new LikeObjectHandler());
-		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, ActivityPubObject.class, new UndoLikeObjectHandler());
 		registerActivityHandler(ForeignUser.class, Announce.class, NoteOrQuestion.class, new AnnounceNoteHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Announce.class, NoteOrQuestion.class, new UndoAnnounceNoteHandler());
 		registerActivityHandler(ForeignUser.class, Update.class, NoteOrQuestion.class, new UpdateNoteHandler());
@@ -231,6 +229,10 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Update.class, ActivityPubPhoto.class, new UpdatePhotoHandler());
 		registerActivityHandler(ForeignUser.class, Delete.class, ActivityPubPhoto.class, new DeletePhotoHandler());
 		registerActivityHandler(ForeignGroup.class, Remove.class, ActivityPubPhoto.class, new RemovePhotoHandler());
+
+		// More general handlers at the end so they match last
+		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubObject.class, new LikeObjectHandler());
+		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, ActivityPubObject.class, new UndoLikeObjectHandler());
 	}
 
 	@SuppressWarnings("SameParameterValue")
