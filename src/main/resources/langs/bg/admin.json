@@ -48,6 +48,5 @@
   "signup_request_deleted": "Заявката е изтрита",
   "menu_reports": "Жалби",
   "reports_tab_open": "Неразрешени",
-  "reports_tab_resolved": "Приключена",
-  "summary_X_reports": ""
+  "reports_tab_resolved": "Приключена"
 }

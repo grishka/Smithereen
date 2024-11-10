@@ -92,7 +92,7 @@
   "invite_friends_title": "Поканете приятели",
   "group_invitations": "Покани",
   "decline_invitation": "Откажете поканата",
-  "summary_X_group_invites": "Вие  сте поканени в{numInvites, plural,one {# група}other {# групи}",
+  "summary_X_group_invites": "Вие сте поканени в {numInvites, plural,one {# група} other {# групи}}",
   "summary_X_event_invites": "Вие  сте поканени в{numInvites, plural,one {# събитие}other {# събития}}",
   "no_group_invites": "Не сте поканен в нито една група",
   "no_event_invites": "Не сте поканен на нито едно събитие",

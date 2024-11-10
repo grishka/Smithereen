@@ -40,7 +40,6 @@
   "create_poll_time_limit": "Ограничи времето за гласуване",
   "poll_option_votes_empty": "Никой не е гласувал за тази опция.",
   "likes_empty": "Няма харесвания.",
-  "X_people_voted_title": "",
   "wall_empty": "Никой не е написал нищо тук... Все още.",
   "wall_post_rejected": "Отдалеченият сървър отхвърли тази публикация.",
   "total_X_posts": "{count, plural,one {# публикация}other {# публикации}} общо",
