@@ -16,5 +16,7 @@
   "report_forward_to_domain": "Anoniem doorsturen naar <b>{domain}</b>",
   "report_submitted": "Jouw rapport is verzonden naar de server medewerkers.",
   "report_title_message": "Rapporteer bericht",
-  "report_text_message": "Wat is er mis met dit bericht?"
+  "report_text_message": "Wat is er mis met dit bericht?",
+  "report_title_photo": "Een afbeelding rapporteren",
+  "report_text_photo": "Wat is er mis met dit afbeelding?"
 }

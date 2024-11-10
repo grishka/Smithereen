@@ -13,5 +13,8 @@
   "feed_created_event": "<a id=\"author\">{author}</a> hat das Ereignis / die Veranstaltung <a id=\"target\">{target}</a> erstellt.",
   "feed_added_multiple_friends": "<a id=\"author\">{author}</a> hat {count, plural, one {# Freund} other {# Freunde}} hinzugefügt:",
   "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> ist {count, plural, one {# Gruppe} other {# Gruppen}} beigetreten:",
-  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> nimmt an {count, plural, one {# Ereignis / Veranstaltung} other {# Ereignissen / Veranstaltungen}} teil:"
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> nimmt an {count, plural, one {# Ereignis / Veranstaltung} other {# Ereignissen / Veranstaltungen}} teil:",
+  "feed_added_photo": "<a id=\"author\">{author}</a> hat ein Foto zu Album <a id=\"target\">{target}</a> hinzugefügt.",
+  "feed_added_multiple_photos": "<a id=\"author\">{author}</a> fügte {count, plural, one {# Foto} other {# Foto's}} zu {albumCount, select, 1 {Album} other {Album}} {albums} hinzu.",
+  "feed_links_separator": ", "
 }

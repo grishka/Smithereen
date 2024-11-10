@@ -188,5 +188,8 @@
   "comments_show_X_more_comments": "Montrez {count, plural, one {# commentaire de plus} other {# plus de commentaires}}",
   "cancel_reply": "Annuler la réponse",
   "menu_bookmarks": "Mes signets",
-  "X_communities": "{count, plural, one {Une communauté} other {# communautés}}"
+  "X_communities": "{count, plural, one {Une communauté} other {# communautés}}",
+  "show_technical_details": "Détails techniques",
+  "menu_photos": "Mes photos",
+  "release_files_to_upload": "Relâcher pour commencer le téléchargement"
 }

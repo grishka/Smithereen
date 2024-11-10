@@ -14,5 +14,6 @@
   "no_notifications": "Todavía no tienes ninguna notificación",
   "notifications": "Notificaciones",
   "notifications_empty": "Tus notificaciones aparecerán aquí.",
-  "summary_notifications": "Mostrando últimas notificaciones"
+  "summary_notifications": "Mostrando últimas notificaciones",
+  "notification_liked_photo": "le gustó tu <a id=\"photo\">foto</a>"
 }

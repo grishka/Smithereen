@@ -1,0 +1,22 @@
+{
+  "report": "Жалба",
+  "report_title_post": "Подай жалба за публикация",
+  "report_title_comment": "Подай жалба за коментар",
+  "report_title_user": "Подай жалба за профил",
+  "report_title_group": "Подай жалба за група",
+  "report_title_event": "Подай жалба за събитие",
+  "report_text_post": "Какво не е наред с публикацията?",
+  "report_text_comment": "Какво не е наред с коментара?",
+  "report_text_user": "Какво не е наред с профила?",
+  "report_text_group": "Какво не е наред с тази група?",
+  "report_text_event": "Какво не е наред с това събитие?",
+  "report_placeholder_profile": "Пример: смущаваща профилна снимка",
+  "report_placeholder_content": "Пример: спам",
+  "report_sent": "Жалбата е изпратена",
+  "report_forward_to_domain": "Анонимно изпрати до <b>{domain}</b>",
+  "report_submitted": "Жалбата бе изпратена до администрацията на сървъра.",
+  "report_title_message": "Подай жалба за съобщение",
+  "report_text_message": "Какво не е наред с това съобщение?",
+  "report_title_photo": "Подай жалба за снимка",
+  "report_text_photo": "Какво не е наред с тази снимка?"
+}

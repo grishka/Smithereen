@@ -31,7 +31,7 @@
   "name": "Naam",
   "close_this_window": "Dit venster sluiten",
   "like": "Vind ik leuk",
-  "liked_by_X_people": "{count, plural, one {# persoon vindt} other {# mensen vinden}} dit",
+  "liked_by_X_people": "{count, plural, one {# persoon vindt} other {# mensen vinden}} dit leuk",
   "open_on_server_X": "Openen op {domain}",
   "likes_title": "Vind ik leuk",
   "more_actions": "Meer...",
@@ -159,7 +159,7 @@
   "file_size_gigabytes": "{amount} GB",
   "file_size_terabytes": "{amount} TB",
   "remote_object_timeout": "Time-out overschreden terwijl u wacht op antwoord van {server}.",
-  "shared_by_X_people": "{count, plural, one {# persoon} other {# mensen}} heeft dit gedeeld",
+  "shared_by_X_people": "{count, plural, one {# persoon heeft} other {# mensen hebben}} dit gedeeld",
   "share_content": "Delen",
   "share_post_title": "Bericht delen",
   "share_comment_title": "Reactie delen",
@@ -188,5 +188,10 @@
   "comments_show_X_more_comments": "Toon {count, plural, one {# reactie} other {# meer reacties}}",
   "cancel_reply": "Annuleer antwoord",
   "menu_bookmarks": "Mijn bladwijzers",
-  "X_communities": "{count, plural, one {Één gemeenschap} other {# gemeenschappen}}"
+  "X_communities": "{count, plural, one {Één gemeenschap} other {# gemeenschappen}}",
+  "show_technical_details": "Technische gegevens",
+  "menu_photos": "Mijn afbeeldingen",
+  "release_files_to_upload": "Loslaten om te beginnen met uploaden",
+  "object_X_of_Y": "{current} van {total}",
+  "remote_like_photo_title": "Vind afbeelding leuk"
 }
