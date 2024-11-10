@@ -13,5 +13,6 @@
   "feed_created_event": "<a id=\"author\">{author}</a> creó el evento <a id=\"target\">{target}</a>.",
   "feed_added_multiple_friends": "<a id=\"author\">{author}</a> añadió {count, plural, one {# amigo} other {# amigos}}:",
   "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> se unió a {count, plural, one {# grupo} other {# grupos}}:",
-  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> está atendiendo {count, plural, one {# evento} other {# eventos}}:"
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> está atendiendo {count, plural, one {# evento} other {# eventos}}:",
+  "feed_links_separator": ", "
 }
