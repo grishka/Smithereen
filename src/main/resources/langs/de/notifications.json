@@ -14,5 +14,7 @@
   "no_notifications": "Es liegen keine Benachrichtigungen vor",
   "notifications": "Benachrichtigungen",
   "notifications_empty": "Deine Benachrichtigung wird hier erscheinen.",
-  "summary_notifications": "Zeige die neuesten Benachrichtigungen"
+  "summary_notifications": "Zeige die neuesten Benachrichtigungen",
+  "notification_liked_photo": "hat Dein <a id=\"photo\">Foto</a> markiert",
+  "notification_commented_on_photo": "kommentierte Dein <a id=\"photo\">Foto</a>"
 }
