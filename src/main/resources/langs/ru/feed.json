@@ -15,5 +15,6 @@
   "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> {gender, select, female {вступила} other {вступил}} в {count, plural, one {# группу} few {# группы} other {# групп}}:",
   "feed_joined_multiple_events": "<a id=\"author\">{author}</a> примет участие в {count, plural, one {# встрече} few {# встречах} other {# встречах}}:",
   "feed_added_photo": "<a id=\"author\">{author}</a> {gender, select, female {добавила} other {добавил}} фотографию в альбом <a id=\"target\">{target}</a>.",
-  "feed_added_multiple_photos": "<a id=\"author\">{author}</a> {gender, select, female {добавила} other {добавил}} {count, plural, one {# фотографию} few {# фотографии} other {# фотографий}} в {albumCount, select, 1 {альбом} other {альбомы}} {albums}."
+  "feed_added_multiple_photos": "<a id=\"author\">{author}</a> {gender, select, female {добавила} other {добавил}} {count, plural, one {# фотографию} few {# фотографии} other {# фотографий}} в {albumCount, select, 1 {альбом} other {альбомы}} {albums}.",
+  "feed_links_separator": ", "
 }
