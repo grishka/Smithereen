@@ -136,5 +136,8 @@
   "groups_search_placeholder": "Rechercher des groupes",
   "events_search_placeholder": "Rechercher des événements",
   "summary_found_X_groups": "{count, plural, =0 {Aucun groupe trouvé} one {# groupe trouvé} other {# groupes trouvés}}",
-  "summary_found_X_events": "{count, plural, =0 {Aucun événement trouvé} one {# événement trouvé} other {# événements trouvés}}"
+  "summary_found_X_events": "{count, plural, =0 {Aucun événement trouvé} one {# événement trouvé} other {# événements trouvés}}",
+  "group_access_level": "Niveau d'accès",
+  "group_access_admin": "Administrateur",
+  "group_access_moderator": "Modérateur"
 }
