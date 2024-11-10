@@ -274,5 +274,6 @@
   "admin_ip_rule_created": "IP-Adress-Regel erstellt",
   "summary_admin_X_signup_invites": "{count, plural, =0 {Keine Einladungen} one {# Einladung} other {# Einladungen}} in Summe auf Deinem Server",
   "admin_audit_log_deleted_invite": "<a id=\"adminUser\">{name}</a> hat <a id=\"targetUser\">{targetName}</a>''s Einladung gelöscht",
-  "signup_invite_deleted": "Einladung gelöscht"
+  "signup_invite_deleted": "Einladung gelöscht",
+  "admin_report_content_photo": "Foto #{id}"
 }
