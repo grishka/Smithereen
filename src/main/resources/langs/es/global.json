@@ -166,5 +166,14 @@
   "repost_post_done": "Esta publicación aparecerá en tu perfil y en el feed de tus amigos y seguidores.",
   "repost_comment_done": "Este comentario aparecerá en tu perfil y en el feed de tus amigos y seguidores.",
   "repost_your_comment": "Tu comentario",
-  "load_more": "Cargar más"
+  "load_more": "Cargar más",
+  "remote_interaction_proceed": "Proceder",
+  "remote_interaction_services_before": "Funciona con",
+  "remote_interaction_services_after": "...¡y más!",
+  "comments_show_X_more_comments": "Mostrar {count, plural, one {# comentario más} other {# comentarios más}}",
+  "cancel_reply": "Cancelar respuesta",
+  "X_communities": "{count, plural, one {1 comunidad} other {# comunidades}}",
+  "show_technical_details": "Detalles técnicos",
+  "menu_photos": "Mis fotos",
+  "object_X_of_Y": "{current} de {total}"
 }
