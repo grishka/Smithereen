@@ -188,5 +188,10 @@
   "comments_show_X_more_comments": "Zeige {count, plural, one {# weiteren Kommentar} other {# weitere Kommentare}}",
   "cancel_reply": "Antwort verwerfen",
   "menu_bookmarks": "Meine Lesezeichen",
-  "X_communities": "{count, plural, one {Eine Gemeinschaft} other {# Gemeinschaften}}"
+  "X_communities": "{count, plural, one {Eine Gemeinschaft} other {# Gemeinschaften}}",
+  "show_technical_details": "Technische Details",
+  "menu_photos": "Meine Foto's",
+  "release_files_to_upload": "Fallen lassen um den Upload zu starten",
+  "object_X_of_Y": "{current} von {total}",
+  "remote_like_photo_title": "Markiere Foto"
 }
