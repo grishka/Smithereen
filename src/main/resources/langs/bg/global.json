@@ -89,7 +89,7 @@
   "remove_attachment": "Премахване на прикачения файл",
   "max_attachment_count_exceeded": "Не можете да прикачите повече от {count, plural,one {# файл}other {# файлове}}.",
   "reminder": "Напомняне",
-  "birthday_reminder": "<a id=\"calendar\">{day, select,today {Днес}tomorrow {Утре}other {}</a> е рожденият ден на {names}.",
+  "birthday_reminder": "<a id=\"calendar\">{day, select, today {Днес} tomorrow {Утре} other {}}</a> е рожденият ден на {names}.",
   "birthday_reminder_name": "{name}",
   "birthday_reminder_separator": ", ",
   "birthday_reminder_separator_last": " и ",
