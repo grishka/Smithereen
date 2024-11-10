@@ -8,5 +8,8 @@
   "bookmarks_people_empty": "Personen, die Sie zu Lesezeichen hinzufügen, werden hier erscheinen.",
   "bookmarks_communities_empty": "Gruppen und Ereignisse, die Sie zu Lesezeichen hinzufügen, erscheinen hier.",
   "bookmarks_posts_empty": "Beiträge, die du magst, werden hier erscheinen.",
-  "bookmarks_X_liked_posts": "Dir gefällt {count, plural, one {# Beitrag} other {# Beiträge}}"
+  "bookmarks_X_liked_posts": "Dir gefällt {count, plural, one {# Beitrag} other {# Beiträge}}",
+  "bookmarks_photos": "Fotos",
+  "bookmarks_photos_empty": "Foto's, die Du markiert hast, werden hier erscheinen.",
+  "bookmarks_X_liked_photos": "Du hast {count, plural, one {# Foto} other {# Foto's}} markiert"
 }
