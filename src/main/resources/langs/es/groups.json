@@ -132,5 +132,12 @@
   "cancel_invitation": "Cancelar invitación",
   "invitation_canceled": "Invitación cancelada",
   "confirm_leave_group": "Esto es un grupo <b>{type, select, CLOSED {cerrado} PRIVATE {privado} other {}}</b>. Si te sales, podría ser difícil volver a entrar.\n\n¿Estás seguro de que quieres salirte de este grupo?",
-  "confirm_leave_event": "Esto es un evento <b>privado</b>. Si te sales, podría ser difícil volver a entrar.\n\n¿Estás seguro de que quieres salirte de este evento?"
+  "confirm_leave_event": "Esto es un evento <b>privado</b>. Si te sales, podría ser difícil volver a entrar.\n\n¿Estás seguro de que quieres salirte de este evento?",
+  "groups_search_placeholder": "Buscar grupos",
+  "events_search_placeholder": "Buscar eventos",
+  "summary_found_X_groups": "{count, plural, =0 {0 grupos} one {# grupo} other {# grupos}} encontrados",
+  "summary_found_X_events": "{count, plural, =0 {0 eventos} one {# evento} other {# eventos}} encontrados",
+  "group_access_level": "Nivel de acceso",
+  "group_access_admin": "Administrador",
+  "group_access_moderator": "Moderador"
 }
