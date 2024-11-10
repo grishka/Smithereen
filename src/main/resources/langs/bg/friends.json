@@ -27,7 +27,7 @@
   "X_mutual_friends_short": "{count} общи",
   "confirm_unfollow_X": "Сигурни ли сте, че искате да престанете да следите <b>{name}</b>?",
   "user_friends": "Приятелите на {name}",
-  "summary_own_X_friends": "Вие имате {numFriends, plural,=0 {# никакви приятели} one {# приятел}}other {# приятели}}",
+  "summary_own_X_friends": "Вие имате {numFriends, plural,=0 {# никакви приятели} one {# приятел} other {# приятели}}",
   "summary_user_X_friends": "{name} има {numFriends, plural,=0 {никакви приятели}one {# приятел} other {# приятели}}",
   "summary_X_friend_requests": "{numRequests, plural,one {# човек Ви изпрати покана за приятелство} other {# души Ви изпратиха покана за приятелство}}",
   "you_and_X_mutual": "Вие и {name} имате {numFriends, plural,=0 {никакви общи приятели} one {# общ приятел} other {# общи приятели}}",
