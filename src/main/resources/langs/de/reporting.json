@@ -16,5 +16,7 @@
   "report_forward_to_domain": "Anonym weitergeleitet an <b>{domain}</b>",
   "report_submitted": "Dein Meldungsbericht wurde an die Serververwalter übermittelt.",
   "report_title_message": "Melde eine Nachricht",
-  "report_text_message": "Was ist falsch an dieser Nachricht?"
+  "report_text_message": "Was ist falsch an dieser Nachricht?",
+  "report_title_photo": "Melde ein Foto",
+  "report_text_photo": "Was ist falsch/anstößig an diesem Foto?"
 }
