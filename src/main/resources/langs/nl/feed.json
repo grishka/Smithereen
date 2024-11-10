@@ -13,5 +13,8 @@
   "feed_created_event": "<a id=\"author\">{author}</a> heeft de gebeurtenis <a id=\"target\">{target}</a> gemaakt.",
   "feed_added_multiple_friends": "<a id=\"author\">{author}</a> heeft {count, plural, one {# vriend} other {# vrienden}} toegevoegd:",
   "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> heeft zich {count, plural, one {# groep} other {# groepen}} aangesloten:",
-  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> is aanwezig bij {count, plural, one {# evenement} other {# evenementen}}:"
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> is aanwezig bij {count, plural, one {# evenement} other {# evenementen}}:",
+  "feed_added_photo": "<a id=\"author\">{author}</a> heeft een afbeelding toegevoegd aan het album <a id=\"target\">{target}</a>.",
+  "feed_added_multiple_photos": "<a id=\"author\">{author}</a> heeft {count, plural, one {# afbeelding} other {# afbeeldingen}} tot {albumCount, select, 1 {album} other {albums}} {albums}.",
+  "feed_links_separator": ", "
 }
