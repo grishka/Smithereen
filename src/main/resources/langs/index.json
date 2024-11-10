@@ -60,6 +60,16 @@
       "locale": "be",
       "name": "Belarusian",
       "fallback": "ru"
+    },
+    {
+      "locale": "bg",
+      "name": "Bulgarian",
+      "fallback": "en"
+    },
+    {
+      "locale": "uk",
+      "name": "Ukrainian",
+      "fallback": "ru"
     }
   ]
 }
