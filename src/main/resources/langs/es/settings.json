@@ -155,5 +155,9 @@
   "settings_deactivate_account": "Puedes <a id=\"deactivate\">eliminar tu cuenta</a>.",
   "settings_reactivate_confirm": "Introduce tu contraseña para restablecer tu cuenta y cancelar su eliminación.",
   "settings_reactivate_title": "Restaurar cuenta",
-  "err_reg_email_domain_not_allowed": "Los registros con direcciones de correo electrónico de este proveedor no están permitidos en este servidor"
+  "err_reg_email_domain_not_allowed": "Los registros con direcciones de correo electrónico de este proveedor no están permitidos en este servidor",
+  "settings_current_session": "sesión actual",
+  "settings_end_all_sessions": "Terminar todas las sesiones",
+  "settings_confirm_end_all_sessions": "¿Estás seguro de que quieres terminar todas las sesiones excepto la actual?",
+  "settings_sessions_ended": "Las otras sesiones fueron terminadas."
 }
