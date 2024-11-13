@@ -71,6 +71,8 @@ public class UserPermissions{
 	}
 
 	public boolean canUploadToPhotoAlbum(PhotoAlbum album){
+		if(album==null)
+			return false;
 		if(album.ownerID>0)
 			return userID==album.ownerID;
 		return !album.flags.contains(PhotoAlbum.Flag.GROUP_RESTRICT_UPLOADS) || managedGroups.getOrDefault(-album.ownerID, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.MODERATOR);

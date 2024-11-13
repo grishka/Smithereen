@@ -33,5 +33,16 @@
 		<div class="emptyState">{{ L('no_photo_albums') }}</div>
 	{% endfor %}
 	</div>
+	{% if items is not empty %}
+	<div class="summaryWrap marginBefore">
+		<div class="summary">{{ L('photos_recent_summary') }}</div>
+	</div>
+	<div class="photoGrid">
+	{% for photo in items %}
+		<a href="{{ photo.url }}{% if not isAjax %}?nojs{% endif %}" class="photo" id="photo{{ photo.idString }}" onclick="return openPhotoViewer(this)" data-pv="{{ json(photoViewerData[photo.id]) }}">{{ photo.image | pictureForPhoto('m', false) }}</a>
+	{% endfor %}
+	{% include "pagination_endless" %}
+	</div>
+	{% endif %}
 </div>
 {% endblock %}

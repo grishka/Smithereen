@@ -6,7 +6,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -20,6 +19,7 @@ import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
+import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
 import smithereen.model.feed.NewsfeedEntry;
@@ -578,5 +578,27 @@ public class PhotoStorage{
 				.whereIn("id", photoIDs)
 				.executeAsStream(res->new Pair<>(res.getLong(1), res.getLong(2)))
 				.collect(Collectors.toMap(Pair::first, Pair::second));
+	}
+
+	public static PaginatedList<Photo> getAllPhotosInAlbums(Collection<Long> albumIDs, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("photos")
+					.count()
+					.whereIn("album_id", albumIDs)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Photo> photos=new SQLQueryBuilder(conn)
+					.selectFrom("photos")
+					.allColumns()
+					.whereIn("album_id", albumIDs)
+					.limit(count, offset)
+					.orderBy("created_at DESC")
+					.executeAsStream(Photo::fromResultSet)
+					.toList();
+			postprocessPhotos(photos);
+			return new PaginatedList<>(photos, total, offset, count);
+		}
 	}
 }

@@ -1,6 +1,7 @@
 package smithereen.controllers;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.URI;
@@ -859,6 +860,18 @@ public class PhotosController{
 			context.getActivityPubWorker().sendAddPhotoToAlbum(self, newPhoto, album);
 			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album);
 			return newPhoto;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Photo> getAllPhotos(Actor owner, @Nullable User self, int offset, int count){
+		List<Long> albumIDs=getAllAlbums(owner, self, true).stream()
+				.filter(a->a.systemType!=PhotoAlbum.SystemAlbumType.SAVED)
+				.map(a->a.id)
+				.toList();
+		try{
+			return PhotoStorage.getAllPhotosInAlbums(albumIDs, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

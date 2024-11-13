@@ -90,7 +90,7 @@ public class PhotosRoutes{
 		Set<Long> needPhotos=albums.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet());
 		Map<Long, Photo> covers=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
 		Lang l=lang(req);
-		return new RenderedTemplateResponse("photo_albums", req)
+		RenderedTemplateResponse model=new RenderedTemplateResponse("photo_albums", req)
 				.with("albums", albums)
 				.with("owner", owner)
 				.with("covers", covers)
@@ -102,6 +102,18 @@ public class PhotosRoutes{
 					case Group g -> l.get("group_photo_albums");
 					default -> throw new IllegalStateException("Unexpected value: " + owner);
 				});
+		if(!isMobile(req)){
+			PaginatedList<Photo> photos=ctx.getPhotosController().getAllPhotos(owner, self==null ? null : self.user, 0, 100);
+			model.paginate(photos, owner.getTypeAndIdForURL()+"/allPhotos?offset=", owner.getTypeAndIdForURL()+"/albums");
+			Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
+			int i=0;
+			for(Photo p:photos.list){
+				pvData.put(p.id, new PhotoViewerInlineData(i, "all/"+owner.getOwnerID(), p.image.getURLsForPhotoViewer()));
+				i++;
+			}
+			model.with("photoViewerData", pvData);
+		}
+		return model;
 	}
 
 	public static Object createAlbumForm(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -559,6 +571,15 @@ public class PhotosRoutes{
 				title=lang(req).get("bookmarks_title");
 				yield makePhotoInfosForPhotoList(req, photoIDs.list.stream().map(photoObjects::get).toList(), ctx, selfAccount, albums);
 			}
+			case "all" -> {
+				int oid=safeParseInt(listParts[1]);
+				Actor owner=oid>0 ? ctx.getUsersController().getUserOrThrow(oid) : ctx.getGroupsController().getGroupOrThrow(-oid);
+				PaginatedList<Photo> allPhotos=ctx.getPhotosController().getAllPhotos(owner, self, offset(req), 10);
+				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(allPhotos.list.stream().map(p->p.albumID).collect(Collectors.toSet()));
+				total=allPhotos.total;
+				title=null;
+				yield makePhotoInfosForPhotoList(req, allPhotos.list, ctx, selfAccount, albums);
+			}
 			default -> throw new BadRequestException();
 		};
 		resp.type("application/json");
@@ -805,5 +826,46 @@ public class PhotosRoutes{
 					.remove(contID);
 		}
 		return wdr;
+	}
+
+	public static Object allUserPhotos(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		return allPhotos(req, resp, ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id"))), ctx);
+	}
+
+	public static Object allGroupPhotos(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		return allPhotos(req, resp, ctx.getGroupsController().getGroupOrThrow(safeParseInt(req.params(":id"))), ctx);
+	}
+
+	private static Object allPhotos(Request req, Response resp, Actor owner, ApplicationContext ctx){
+		if(!isAjax(req))
+			throw new BadRequestException();
+		String paginationID=req.queryParams("pagination");
+		if(StringUtils.isEmpty(paginationID))
+			throw new BadRequestException();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("photo_album_view", req);
+		SessionInfo session=sessionInfo(req);
+		User self=session!=null && session.account!=null ? session.account.user : null;
+		int offset=offset(req);
+
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAllPhotos(owner, self, offset, 100);
+		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
+		int i=0;
+		for(Photo p:photos.list){
+			pvData.put(p.id, new PhotoViewerInlineData(i+offset, "all/"+owner.getOwnerID(), p.image.getURLsForPhotoViewer()));
+			i++;
+		}
+		model.with("photoViewerData", pvData);
+		model.paginate(photos);
+
+		WebDeltaResponse r=new WebDeltaResponse(resp)
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+		if(photos.offset+photos.perPage>=photos.total){
+			r.remove("ajaxPagination_"+paginationID);
+		}else{
+			r.setAttribute("ajaxPaginationLink_"+paginationID, "href", req.pathInfo()+"?offset="+(photos.offset+photos.perPage));
+		}
+		return r;
 	}
 }

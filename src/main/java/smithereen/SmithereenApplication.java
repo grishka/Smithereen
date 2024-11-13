@@ -508,6 +508,7 @@ public class SmithereenApplication{
 
 			getActivityPubCollection("/albums", 100, ActivityPubRoutes::userAlbums);
 			get("/albums", PhotosRoutes::userAlbums);
+			get("/allPhotos", PhotosRoutes::allUserPhotos);
 		});
 
 		path("/groups/:id", ()->{
@@ -584,6 +585,7 @@ public class SmithereenApplication{
 
 			getActivityPubCollection("/albums", 100, ActivityPubRoutes::groupAlbums);
 			get("/albums", PhotosRoutes::groupAlbums);
+			get("/allPhotos", PhotosRoutes::allGroupPhotos);
 		});
 
 		path("/posts/:postID", ()->{

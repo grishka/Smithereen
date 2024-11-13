@@ -45,5 +45,6 @@
   "saved_photos_album": "Сохранённые фотографии",
   "photo_save_to_album": "Сохранить в альбом",
   "photo_saved_to_album": "Фотография сохранена в ваш альбом \"Сохранённые фотографии\"",
-  "photo_saved_short": "Фотография сохранена"
+  "photo_saved_short": "Фотография сохранена",
+  "photos_recent_summary": "Последние загруженные фотографии"
 }

@@ -45,5 +45,6 @@
   "saved_photos_album": "Saved photos",
   "photo_save_to_album": "Save to album",
   "photo_saved_to_album": "Photo was saved to your \"Saved photos\" album",
-  "photo_saved_short": "Photo saved"
+  "photo_saved_short": "Photo saved",
+  "photos_recent_summary": "Recently uploaded photos"
 }
