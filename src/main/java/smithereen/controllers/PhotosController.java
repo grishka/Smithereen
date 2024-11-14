@@ -870,6 +870,8 @@ public class PhotosController{
 				.filter(a->a.systemType!=PhotoAlbum.SystemAlbumType.SAVED)
 				.map(a->a.id)
 				.toList();
+		if(albumIDs.isEmpty())
+			return PaginatedList.emptyList(count);
 		try{
 			return PhotoStorage.getAllPhotosInAlbums(albumIDs, offset, count);
 		}catch(SQLException x){
