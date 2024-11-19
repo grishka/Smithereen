@@ -3,7 +3,7 @@ Here are the non-standard additions to ActivityPub that Smithereen uses in order
 
 The `sm:` JSON-LD namespace is short for `http://smithereen.software/ns#`; in relevant objects, any custom fields within that namespace are aliased in `@context` and thus appear throughout the object without any namespace.
 ### Wall posts
-People can post on other people's walls. Wall posts are part of the `sm:wall` collection, as per [FEP-400e](https://git.activitypub.dev/ActivityPubDev/Fediverse-Enhancement-Proposals/src/commit/f94077e1514928c2d2ae79d86a5953c93874b73d/feps/fep-400e.md). Addressing **must** include `as:Public` and the wall owner.
+People can post on other people's walls. Wall posts are part of the `sm:wall` collection, as per [FEP-400e](https://codeberg.org/fediverse/fep/src/commit/f94077e1514928c2d2ae79d86a5953c93874b73d/feps/fep-400e.md). Addressing **must** include `as:Public` and the wall owner.
 
 Example object:
 ```json
