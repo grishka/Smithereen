@@ -981,17 +981,17 @@ select{
 		background-size: 30px 25.5px;
 		margin: 0 -12px;
 	}
-	.postContent, .postAttachments, .poll, .repostHeader{
+	>.postContent, >.postAttachments, >.poll, >.repostHeader, >.postCWWrap{
 		display: none;
 	}
 }
 
 input:checked+.postCWWrap{
-	.postCWButton{
+	>.postCWButton{
 		background-image: svg-load('img/flex_arrow_open.svg', fill: color($iconColor alpha(70%)));
 		margin-bottom: 12px;
 	}
-	.postContent, .postAttachments, .poll, .repostHeader{
+	>.postContent, >.postAttachments, >.poll, >.repostHeader, >.postCWWrap{
 		display: block;
 	}
 }

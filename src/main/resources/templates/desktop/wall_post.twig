@@ -26,7 +26,7 @@
 		{%- endif %}
 		<div id="postInner{{ realPost.id }}">
 			{% block postInner %}
-			{% include "wall_post_inner" with {'post': post, 'repostDepth': 0} %}
+			{% include "wall_post_inner" with {'post': post, 'repostDepth': 0, 'repostParent': post} %}
 			{% set realPost=post.post %}{# because included template overwrote it #}
 			{% if realPost.federationState=='REJECTED' %}
 			<div class="red">{{ L('wall_post_rejected') }}</div>

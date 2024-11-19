@@ -2100,16 +2100,16 @@ select, .comboBoxW input{
 		padding-left: 23px;
 		background: color($blockBackground alpha(50%)) svg-load('img/flex_arrow_shut.svg', fill: color($iconColor alpha(70%))) no-repeat left center;
 	}
-	.postContent, .postAttachments, .poll, .repost{
+	>.postContent, >.postAttachments, >.poll, >.repost{
 		display: none;
 	}
 }
 
 input:checked+.postCWWrap{
-	.postCWButton{
+	>.postCWButton{
 		background-image: svg-load('img/flex_arrow_open.svg', fill: color($iconColor alpha(70%)));
 	}
-	.postContent, .postAttachments, .poll, .repost{
+	>.postContent, >.postAttachments, >.poll, >.repost{
 		display: block;
 	}
 }
