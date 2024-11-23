@@ -4012,3 +4012,39 @@ label.largeAccented{
 	}
 }
 
+.largeExpandButton{
+	display: block;
+	padding: 10px;
+	border-top: solid 1px transparent;
+	text-align: center;
+	cursor: pointer;
+	color: $normalLink;
+	&:hover{
+		text-decoration: none;
+		background: $blockBackground;
+		border-top: solid 1px $wallPostSeparator;
+	}
+}
+
+#photoAttach{
+	.photoAlbumsGrid{
+		padding-top: 5px;
+	}
+
+	.toggled .photoAlbumsGrid{
+		padding-top: 20px;
+	}
+
+	.largeExpandButton{
+		margin-top:	10px;
+	}
+
+	.photoGrid{
+		padding-top: 20px;
+	}
+}
+
+#photoAttachAlbum .photoGrid{
+	padding-top: 0;
+}
+

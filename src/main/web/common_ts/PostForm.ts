@@ -242,6 +242,7 @@ class PostForm{
 	}
 
 	private handleFiles(files:FileList):void{
+		LayerManager.getInstance().dismissByID("photoAttach");
 		for(var i=0;i<files.length;i++){
 			var f=files[i];
 			if(f.type.indexOf("image/")==0){
@@ -430,7 +431,7 @@ class PostForm{
 
 	private onAttachMenuItemClick(id:string, args:any){
 		if(id=="photo"){
-			this.fileField.click();
+			this.onAttachPhotoClick();
 		}else if(id=="cw"){
 			this.showCWLayout();
 		}else if(id=="poll"){
@@ -454,6 +455,12 @@ class PostForm{
 			}})
 		]);
 		return layout;
+	}
+
+	private onAttachPhotoClick(){
+		//this.fileField.click();
+		LayerManager.getInstance().showBoxLoader();
+		ajaxGetAndApplyActions("/photos/attachBox?id="+this.id);
 	}
 
 	private showCWLayout(){
@@ -636,8 +643,11 @@ class PostForm{
 	private showMobileAttachMenu(){
 		var opts:any[]=[];
 		if(this.canAddAttachment("photo")){
-			opts.push({label: lang("attach_menu_photo"), onclick: ()=>{
+			opts.push({label: lang("attach_menu_photo_upload"), onclick: ()=>{
 				this.fileField.click();
+			}});
+			opts.push({label: lang("attach_menu_photo_from_album"), onclick: ()=>{
+				this.onAttachPhotoClick();
 			}});
 		}
 		if(this.canAddAttachment("poll") && !this.pollLayout && !this.isMobileComment){
@@ -677,7 +687,7 @@ class PostForm{
 			count++;
 		if(this.pollLayout)
 			count++;
-		var maxCount=this.replyToField ? 2 : 10;
+		var maxCount=this.replyToField && this.replyToField.value ? 2 : 10;
 		if(count<maxCount){
 			return true;
 		}
@@ -745,5 +755,72 @@ class PostForm{
 	private resetCompletions(){
 		this.completionList.completionsList.innerHTML="";
 		this.completionList.updateCompletions();
+	}
+
+	private doAttachAlbumPhoto(id:string, urlWebp:string, urlJpeg:string){
+		var ev=event as MouseEvent;
+		if(!(isApple ? ev.metaKey : ev.ctrlKey)){
+			LayerManager.getInstance().dismissByID("photoAttach");
+			LayerManager.getInstance().dismissByID("photoAttachAlbum");
+		}
+		if(!this.checkAttachmentCount())
+			return;
+		if(ge("attachment_photo:"+id))
+			return;
+
+		var img:HTMLElement;
+		var del:HTMLAnchorElement;
+		var cont=ce("div", {className: "attachment", id: "attachment_photo:"+id}, [
+			ce("picture", {}, [
+				ce("source", {srcset: urlWebp, type: "image/webp"}),
+				ce("source", {srcset: urlJpeg, type: "image/jpeg"}),
+				img=ce("img", {src: urlJpeg})
+			]),
+			del=ce("a", {className: "deleteBtn", ariaLabel: lang("remove_attachment")}),
+		]);
+		this.attachContainer.appendChild(cont);
+		this.attachmentIDs.push("photo:"+id);
+		this.attachField.value=this.attachmentIDs.join(",");
+		del.dataset.tooltip=lang("remove_attachment");
+		del.onclick=(ev:Event)=>{
+			ev.preventDefault();
+			this.deleteAttachment("photo:"+id);
+		};
+	}
+
+	public static attachAlbumPhoto(formID:string, link:HTMLElement):boolean{
+		ge("wallPostForm_"+formID).customData.postFormObj.doAttachAlbumPhoto(link.dataset.photoId, link.dataset.photoUrlWebp, link.dataset.photoUrlJpeg);
+		return false;
+	}
+
+	public static initPhotoAttachBox(formID:string){
+		var upload=ge("photoAttachUpload");
+		if(!upload)
+			return;
+
+		var form=ge("wallPostForm_"+formID).customData.postFormObj as PostForm;
+		var dropText=ge("attachUploadDropText");
+		var dragCount=0;
+		upload.addEventListener("click", (ev)=>{
+			form.fileField.click();
+		});
+		upload.addEventListener("drop", (ev)=>{
+			dragCount=0;
+			ev.preventDefault();
+			dropText.innerText=lang("drop_files_here");
+			form.handleFiles(ev.dataTransfer.files);
+		}, false);
+		upload.addEventListener("dragenter", (ev)=>{
+			if(dragCount==0){
+				dropText.innerText=lang("release_files_to_upload");
+			}
+			dragCount++;
+		});
+		upload.addEventListener("dragleave", (ev)=>{
+			dragCount--;
+			if(dragCount==0){
+				dropText.innerText=lang("drop_files_here");
+			}
+		});
 	}
 }

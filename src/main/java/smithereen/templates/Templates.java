@@ -190,11 +190,15 @@ public class Templates{
 	public static void addJsLangForNewPostForm(Request req){
 		Utils.jsLangKey(req,
 				"post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "err_file_upload_too_large", "file_size_kilobytes", "file_size_megabytes", "max_attachment_count_exceeded", "remove_attachment",
+				"drop_files_here", "release_files_to_upload",
 				// polls
 				"create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours",
 				// graffiti
 				"graffiti_clear", "graffiti_undo", "graffiti_clear_confirm", "graffiti_close_confirm", "confirm_title", "graffiti_color", "graffiti_thickness", "graffiti_opacity", "attach"
 			);
+		if(Utils.isMobile(req)){
+			Utils.jsLangKey(req, "attach_menu_photo_upload", "attach_menu_photo_from_album");
+		}
 	}
 
 	public static void addJsLangForPrivacySettings(Request req){

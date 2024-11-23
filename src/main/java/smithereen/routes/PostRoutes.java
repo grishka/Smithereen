@@ -538,6 +538,9 @@ public class PostRoutes{
 			model.with("moreMetaTags", moreMeta);
 		}
 		Utils.jsLangKey(req, "yes", "no", "cancel", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw");
+		if(Utils.isMobile(req)){
+			Utils.jsLangKey(req, "attach_menu_photo_upload", "attach_menu_photo_from_album");
+		}
 		model.with("title", post.post.getShortTitle(50)+" | "+author.getFullName());
 		if(req.attribute("mobile")!=null){
 			model.with("toolbarTitle", lang(req).get("wall_post_title"));

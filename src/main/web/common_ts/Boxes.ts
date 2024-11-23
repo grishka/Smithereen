@@ -214,11 +214,22 @@ class LayerManager{
 			this.stack[this.stack.length-1].updateTopOffset();
 		}
 	}
+
+	public dismissByID(id:string){
+		for(var layer of this.stack){
+			if(layer.id==id){
+				this.dismiss(layer);
+				return true;
+			}
+		}
+		return false;
+	}
 }
 
 abstract class BaseLayer{
 	private content:HTMLElement;
 	public dismissCallbacks:{():void}[]=[];
+	public id:string;
 
 	protected abstract onCreateContentView():HTMLElement;
 	public show():void{
@@ -353,7 +364,7 @@ class Box extends BaseLayer{
 				this.titleBar=ce("div", {className: "boxTitleBar"}, [
 					ce("span", {className: "title ellipsize", innerText: this.title})
 				]),
-				this.contentWrap,
+				this.getRawContentWrap(),
 				this.buttonBar=ce("div", {className: "boxButtonBar"})
 			])
 		]);
@@ -367,6 +378,10 @@ class Box extends BaseLayer{
 		this.boxLayer=content;
 
 		return content;
+	}
+
+	protected getRawContentWrap():HTMLElement{
+		return this.contentWrap;
 	}
 
 	public setContent(content:HTMLElement):void{
@@ -555,8 +570,11 @@ class ScrollableBox extends BaseScrollableBox{
 	protected onCreateContentView():HTMLElement{
 		var cont=super.onCreateContentView();
 		cont.classList.add("scrollable");
+		return cont;
+	}
 
-		return this.wrapScrollableElement(cont);
+	protected getRawContentWrap():HTMLElement{
+		return this.wrapScrollableElement(this.contentWrap);
 	}
 }
 

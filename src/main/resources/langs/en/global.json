@@ -45,6 +45,8 @@
   "back_to_event": "Back to event",
   "edit": "Edit",
   "attach_menu_photo": "Photo",
+  "attach_menu_photo_upload": "Photo from your device",
+  "attach_menu_photo_from_album": "Photo from album",
   "attach_menu_cw": "Content Warning",
   "network_error": "Network error. Please check your connection and try again.",
   "domain": "Domain",

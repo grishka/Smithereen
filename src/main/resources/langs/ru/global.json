@@ -43,6 +43,8 @@
   "back_to_event": "Вернуться к встрече",
   "edit": "Редактировать",
   "attach_menu_photo": "Фотографию",
+  "attach_menu_photo_upload": "Фотографию с устройства",
+  "attach_menu_photo_from_album": "Фотографию из альбома",
   "attach_menu_cw": "Спойлер",
   "network_error": "Ошибка сети. Пожалуйста, проверьте ваше подключение и попробуйте ещё раз.",
   "domain": "Домен",

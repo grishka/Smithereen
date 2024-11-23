@@ -31,6 +31,10 @@ public interface SizedImage{
 		return urls;
 	}
 
+	default String getUrlForSizeAndFormat(String size, String format){
+		return getUriForSizeAndFormat(Type.fromSuffix(size), Format.fromFileExtension(format)).toString();
+	}
+
 	default String generateHTML(Type size, List<String> additionalClasses, String styleAttr, int width, int height, boolean add2x){
 		StringBuilder sb=new StringBuilder("<picture>");
 		appendHtmlForFormat(size, Format.WEBP, sb, add2x);
@@ -240,6 +244,16 @@ public interface SizedImage{
 				case WEBP -> "image/webp";
 				case AVIF -> "image/avif";
 				case PNG -> "image/png";
+			};
+		}
+
+		public static Format fromFileExtension(String ext){
+			return switch(ext){
+				case "jpg", "jpeg" -> JPEG;
+				case "webp" -> WEBP;
+				case "avif" -> AVIF;
+				case "png" -> PNG;
+				default -> throw new IllegalStateException("Unexpected value: "+ext);
 			};
 		}
 	}

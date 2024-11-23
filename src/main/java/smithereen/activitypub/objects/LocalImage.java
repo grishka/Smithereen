@@ -16,12 +16,15 @@ public class LocalImage extends Image implements SizedImage{
 	public Dimensions size=Dimensions.UNKNOWN;
 	public long fileID;
 	public MediaFileRecord fileRecord;
+	public long photoID;
 
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
 		if(obj.has("_fileID"))
 			fileID=obj.get("_fileID").getAsLong();
+		if(obj.has("_photoID"))
+			photoID=obj.get("_photoID").getAsLong();
 		return this;
 	}
 

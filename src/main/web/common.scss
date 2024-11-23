@@ -800,6 +800,12 @@ ul.actualList{
 .toggler:checked+.toggled{
 	.hideWhenOff, .showWhenOn{
 		display: block;
+		&.showAsGrid{
+			display: grid;
+		}
+		&.showAsFlex{
+			display: flex;
+		}
 	}
 	.hideWhenOn, .showWhenOff{
 		display: none;

@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
@@ -218,6 +220,23 @@ public class PhotosController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public Map<Long, PhotoAlbum> getAlbums(Collection<Long> ids, User self){
+		Map<Long, PhotoAlbum> albums=getAlbumsIgnoringPrivacy(ids);
+		if(albums.isEmpty())
+			return Map.of();
+		Map<Integer, User> users=context.getUsersController().getUsers(albums.values().stream().filter(a->a.ownerID>0).map(a->a.ownerID).collect(Collectors.toSet()));
+		Map<Integer, Group> groups=context.getGroupsController().getGroupsByIdAsMap(albums.values().stream().filter(a->a.ownerID<0).map(a->-a.ownerID).collect(Collectors.toSet()));
+		return albums.values().stream()
+				.filter(a->{
+					if(a.ownerID>0){
+						return context.getPrivacyController().checkUserPrivacy(self, users.get(a.ownerID), a.viewPrivacy);
+					}else{
+						return context.getPrivacyController().canUserAccessGroupContent(self, groups.get(-a.ownerID));
+					}
+				})
+				.collect(Collectors.toMap(a->a.id, Function.identity()));
 	}
 
 	public long createAlbum(User self, String title, String description, PrivacySetting viewPrivacy, PrivacySetting commentPrivacy){

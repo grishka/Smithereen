@@ -635,6 +635,9 @@ public class SmithereenApplication{
 			get("/ajaxViewerInfo", PhotosRoutes::ajaxViewerInfo);
 			getRequiringPermission("/ajaxViewerInfoForReport", UserRole.Permission.MANAGE_REPORTS, PhotosRoutes::ajaxViewerInfoForReport);
 			getWithCSRF("/saveAttachmentToAlbum", PhotosRoutes::saveAttachmentToAlbum);
+			getLoggedIn("/attachBox", PhotosRoutes::attachPhotosBox);
+			getLoggedIn("/attachBoxAll", PhotosRoutes::attachPhotosBoxAll);
+			getLoggedIn("/attachBoxAlbum", PhotosRoutes::attachPhotosBoxAlbum);
 			path("/:id", ()->{
 				getActivityPub("", ActivityPubRoutes::photo);
 				get("", PhotosRoutes::photo);

@@ -629,6 +629,7 @@ function applyServerCommand(cmd:any){
 			var cont=ce("div");
 			if(cmd.i){
 				cont.id=cmd.i;
+				box.id=cmd.i;
 			}
 			cont.innerHTML=cmd.c;
 			cont.customData={box: box};

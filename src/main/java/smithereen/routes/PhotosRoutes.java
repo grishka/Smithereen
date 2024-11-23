@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
@@ -455,12 +456,30 @@ public class PhotosRoutes{
 		return photos.stream().map(ph->makePhotoInfoForPhoto(req, ph, _albums.get(ph.albumID), users, interactions, self, comments.get(ph.getCommentParentID()), commentsInteractions)).toList();
 	}
 
-	private static PaginatedList<PhotoViewerPhotoInfo> makePhotoInfoForAttachHostObject(Request req, AttachmentHostContentObject obj, User author, Instant createdAt, User self){
+	private static PaginatedList<PhotoViewerPhotoInfo> makePhotoInfoForAttachHostObject(Request req, AttachmentHostContentObject obj, User author, Instant createdAt, Account self){
+		ApplicationContext ctx=context(req);
 		List<PhotoViewerPhotoInfo> photos=new ArrayList<>();
 		int i=0;
-		for(Attachment att:obj.getProcessedAttachments()){
+		List<Attachment> attachments=obj.getProcessedAttachments();
+		Set<Long> needPhotos=attachments.stream()
+				.map(a->a instanceof PhotoAttachment pa && pa.photoID!=0 ? pa.photoID : null)
+				.filter(Objects::nonNull)
+				.collect(Collectors.toSet());
+		Map<Long, Photo> actualPhotos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+		Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbums(actualPhotos.values().stream().map(p->p.albumID).collect(Collectors.toSet()), self!=null ? self.user : null);
+		Map<Long, PhotoViewerPhotoInfo> photoInfos;
+		if(!albums.isEmpty()){
+			photoInfos=makePhotoInfosForPhotoList(req, new ArrayList<>(actualPhotos.values()), ctx, self, albums).stream().collect(Collectors.toMap(pi->XTEA.decodeObjectID(pi.id(), ObfuscatedObjectIDType.PHOTO), Function.identity()));
+		}else{
+			photoInfos=Map.of();
+		}
+		for(Attachment att:attachments){
 			if(att instanceof PhotoAttachment pa){
-				photos.add(makePhotoInfoForAttachment(req, pa, self, author, createdAt, obj, i));
+				if(pa.photoID!=0 && photoInfos.get(pa.photoID) instanceof PhotoViewerPhotoInfo pi){
+					photos.add(pi);
+				}else{
+					photos.add(makePhotoInfoForAttachment(req, pa, self!=null ? self.user : null, author, createdAt, obj, i));
+				}
 			}
 			i++;
 		}
@@ -484,7 +503,7 @@ public class PhotosRoutes{
 				ctx.getPrivacyController().enforceObjectPrivacy(self, post);
 				User author=ctx.getUsersController().getUserOrThrow(post.authorID);
 
-				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, post, author, post.createdAt, self);
+				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, post, author, post.createdAt, selfAccount);
 				total=info.total;
 				title=null;
 				yield info.list;
@@ -495,7 +514,7 @@ public class PhotosRoutes{
 				ctx.getCommentsController().getCommentParent(self, comment); // enforces privacy
 				User author=ctx.getUsersController().getUserOrThrow(comment.authorID);
 
-				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, comment, author, comment.createdAt, self);
+				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, comment, author, comment.createdAt, selfAccount);
 				total=info.total;
 				title=null;
 				yield info.list;
@@ -506,7 +525,7 @@ public class PhotosRoutes{
 				MailMessage msg=ctx.getMailController().getMessage(self, decodeLong(listParts[1]), false);
 				User author=ctx.getUsersController().getUserOrThrow(msg.senderID);
 
-				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, msg, author, msg.createdAt, self);
+				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, msg, author, msg.createdAt, selfAccount);
 				total=info.total;
 				title=null;
 				yield info.list;
@@ -632,10 +651,10 @@ public class PhotosRoutes{
 			default -> throw new IllegalStateException("Unexpected value: " + listParts[2]);
 		};
 		PaginatedList<PhotoViewerPhotoInfo> info=switch(obj){
-			case Post post -> makePhotoInfoForAttachHostObject(req, post, ctx.getUsersController().getUserOrThrow(post.authorID), post.createdAt, self.user);
-			case MailMessage msg -> makePhotoInfoForAttachHostObject(req, msg, ctx.getUsersController().getUserOrThrow(msg.senderID), msg.createdAt, self.user);
+			case Post post -> makePhotoInfoForAttachHostObject(req, post, ctx.getUsersController().getUserOrThrow(post.authorID), post.createdAt, self);
+			case MailMessage msg -> makePhotoInfoForAttachHostObject(req, msg, ctx.getUsersController().getUserOrThrow(msg.senderID), msg.createdAt, self);
 			case Photo photo -> new PaginatedList<>(makePhotoInfosForPhotoList(req, List.of(photo), ctx, self, ctx.getPhotosController().getAlbumsIgnoringPrivacy(List.of(photo.albumID))), 1);
-			case Comment comment -> makePhotoInfoForAttachHostObject(req, comment, ctx.getUsersController().getUserOrThrow(comment.authorID), comment.createdAt, self.user);
+			case Comment comment -> makePhotoInfoForAttachHostObject(req, comment, ctx.getUsersController().getUserOrThrow(comment.authorID), comment.createdAt, self);
 		};
 		resp.type("application/json");
 		HashMap<String, Object> r=new HashMap<>();
@@ -867,5 +886,99 @@ public class PhotosRoutes{
 			r.setAttribute("ajaxPaginationLink_"+paginationID, "href", req.pathInfo()+"?offset="+(photos.offset+photos.perPage));
 		}
 		return r;
+	}
+	
+	public static Object attachPhotosBox(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(!isAjax(req))
+			return "";
+		requireQueryParams(req, "id");
+		String formID=req.queryParams("id");
+		if(formID.contains("'"))
+			throw new BadRequestException();
+
+		RenderedTemplateResponse model=new RenderedTemplateResponse("attach_photo_box", req);
+		Lang l=lang(req);
+		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbums(self.user, self.user, true);
+		Set<Long> needPhotos=albums.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet());
+		Map<Long, Photo> covers=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+		model.with("albums", albums)
+				.with("covers", covers)
+				.with("formID", formID)
+				.with("showUpload", true);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAllPhotos(self.user, self.user, 0, 100);
+		model.paginate(photos, "/photos/attachBoxAll?id="+formID+"&offset=", "/photos/attachBox");
+		WebDeltaResponse r=new WebDeltaResponse(resp);
+		if(isMobile(req))
+			r.box(l.get("photo_attach_title"), model.renderToString(), "photoAttach", true);
+		else
+			r.box(l.get("photo_attach_title"), model.renderToString(), "photoAttach", 642);
+		return r.runScript("initDynamicControls(ge('photoAttach')); PostForm.initPhotoAttachBox('"+formID+"');");
+	}
+
+	public static Object attachPhotosBoxAll(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(!isAjax(req))
+			return "";
+		requireQueryParams(req, "id");
+		String formID=req.queryParams("id");
+		if(formID.contains("'"))
+			throw new BadRequestException();
+
+		String paginationID=req.queryParams("pagination");
+		if(StringUtils.isEmpty(paginationID))
+			throw new BadRequestException();
+
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAllPhotos(self.user, self.user, offset(req), 100);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("attach_photo_box", req);
+		model.paginate(photos, "/photos/attachBoxAll?id="+formID+"&offset=", "/photos/attachBox")
+				.with("formID", formID);
+
+		WebDeltaResponse r=new WebDeltaResponse(resp)
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+		if(photos.offset+photos.perPage>=photos.total){
+			r.remove("ajaxPagination_"+paginationID);
+		}else{
+			r.setAttribute("ajaxPaginationLink_"+paginationID, "href", req.pathInfo()+"?id="+formID+"&offset="+(photos.offset+photos.perPage));
+		}
+		return r;
+	}
+
+	public static Object attachPhotosBoxAlbum(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(!isAjax(req))
+			return "";
+		requireQueryParams(req, "id", "album");
+		String formID=req.queryParams("id");
+		if(formID.contains("'"))
+			throw new BadRequestException();
+		PhotoAlbum album=ctx.getPhotosController().getAlbum(XTEA.decodeObjectID(req.queryParams("album"), ObfuscatedObjectIDType.PHOTO_ALBUM), self.user);
+		Lang l=lang(req);
+
+		RenderedTemplateResponse model=new RenderedTemplateResponse("attach_photo_box", req);
+		model.with("formID", formID);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self.user, album, offset(req), 100);
+		model.paginate(photos, "/photos/attachBoxAlbum?id="+formID+"&album="+album.getIdString()+"&offset=", "");
+
+		if(req.queryParams("pagination")!=null){
+			String paginationID=req.queryParams("pagination");
+			WebDeltaResponse r=new WebDeltaResponse(resp)
+					.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+			if(photos.offset+photos.perPage>=photos.total){
+				r.remove("ajaxPagination_"+paginationID);
+			}else{
+				r.setAttribute("ajaxPaginationLink_"+paginationID, "href", req.pathInfo()+"?id="+formID+"&album="+album.getIdString()+"&offset="+(photos.offset+photos.perPage));
+			}
+			return r;
+		}
+		Actor owner;
+		if(album.ownerID==self.user.id)
+			owner=self.user;
+		else
+			owner=ctx.getWallController().getContentAuthorAndOwner(album).owner();
+		String boxTitle=l.get("photo_attach_title_album", Map.of("album", album.getLocalizedTitle(l, self.user, owner)));
+		WebDeltaResponse r=new WebDeltaResponse(resp);
+		if(isMobile(req))
+			r.box(boxTitle, model.renderToString(), "photoAttachAlbum", true);
+		else
+			r.box(boxTitle, model.renderToString(), "photoAttachAlbum", 642);
+		return r.runScript("initDynamicControls(ge('photoAttachAlbum'));");
 	}
 }

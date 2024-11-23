@@ -78,14 +78,19 @@ public class PrivacyController{
 		}
 	}
 
-	public void enforceUserAccessToGroupContent(@Nullable User self, @NotNull Group group){
+	public boolean canUserAccessGroupContent(@Nullable User self, @NotNull Group group){
 		if(group.accessType!=Group.AccessType.OPEN){
 			if(self==null)
-				throw new UserActionNotAllowedException();
+				return false;
 			Group.MembershipState state=context.getGroupsController().getUserMembershipState(group, self);
-			if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER)
-				throw new UserActionNotAllowedException();
+			return state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER;
 		}
+		return true;
+	}
+
+	public void enforceUserAccessToGroupContent(@Nullable User self, @NotNull Group group){
+		if(!canUserAccessGroupContent(self, group))
+			throw new UserActionNotAllowedException();
 	}
 
 	public void enforceUserAccessToGroupProfile(@Nullable User self, @NotNull Group group){

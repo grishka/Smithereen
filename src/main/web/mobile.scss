@@ -2253,3 +2253,23 @@ input.searchField{
 	}
 }
 
+.largeExpandButton{
+	display: flex;
+	height: 48px;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	color: $normalLink;
+}
+
+#photoAttach{
+	.toggled .photoAlbumsGrid{
+		padding-top: 4px;
+		margin-bottom: 16px;
+	}
+
+	.toggled .largeExpandButton{
+		margin-bottom: 16px;
+	}
+}
+

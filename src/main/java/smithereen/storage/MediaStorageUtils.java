@@ -21,12 +21,14 @@ import java.util.stream.Collectors;
 import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Part;
+import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
@@ -41,6 +43,7 @@ import smithereen.model.media.MediaFileID;
 import smithereen.model.media.MediaFileMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.photos.Photo;
 import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.util.BlurHash;
 import smithereen.util.JsonObjectBuilder;
@@ -99,38 +102,61 @@ public class MediaStorageUtils{
 
 	public static JsonObject serializeAttachment(ActivityPubObject att){
 		if(att instanceof LocalImage li){
-			return new JsonObjectBuilder()
+			JsonObjectBuilder jb=new JsonObjectBuilder()
 					.add("type", "_LocalImage")
-					.add("_fileID", li.fileID)
-					.build();
+					.add("_fileID", li.fileID);
+			if(li.photoID!=0)
+				jb.add("_photoID", li.photoID);
+			return jb.build();
 		}
-		JsonObject o=att.asActivityPubObject(null, new SerializerContext(null, (String)null));
-		return o;
+		return att.asActivityPubObject(null, new SerializerContext(null, (String)null));
 	}
 
-	public static void fillAttachmentObjects(List<ActivityPubObject> attachObjects, List<String> attachmentIDs, int attachmentCount, int maxAttachments) throws SQLException{
+	public static void fillAttachmentObjects(ApplicationContext context, User self, List<ActivityPubObject> attachObjects, List<String> attachmentIDs, int attachmentCount, int maxAttachments) throws SQLException{
 		for(String id:attachmentIDs){
 			String[] idParts=id.split(":");
 			if(idParts.length!=2)
 				continue;
-			long fileID;
-			byte[] fileRandomID;
-			try{
-				byte[] _fileID=Base64.getUrlDecoder().decode(idParts[0]);
-				fileRandomID=Base64.getUrlDecoder().decode(idParts[1]);
-				if(_fileID.length!=8 || fileRandomID.length!=18)
+
+			if("photo".equals(idParts[0])){
+				long photoID=XTEA.decodeObjectID(idParts[1], ObfuscatedObjectIDType.PHOTO);
+				Photo photo=context.getPhotosController().getPhotoIgnoringPrivacy(photoID);
+				if(photo.localFileID==0){
+					LOG.debug("Not attaching photo {} to {}'s post because it's not local (AP ID {})", photoID, self.username, photo.apID);
 					continue;
-				fileID=XTEA.deobfuscateObjectID(Utils.unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
-			}catch(IllegalArgumentException x){
-				continue;
+				}
+				try{
+					context.getPrivacyController().enforceObjectPrivacy(self, photo);
+				}catch(UserActionNotAllowedException x){
+					LOG.debug("Not attaching photo {} to {}'s post because they can't access it", photoID, self.username);
+					continue;
+				}
+				LocalImage img=new LocalImage();
+				img.fileID=photo.localFileID;
+				img.photoID=photoID;
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(img.fileID);
+				img.fillIn(mfr);
+				attachObjects.add(img);
+			}else{
+				long fileID;
+				byte[] fileRandomID;
+				try{
+					byte[] _fileID=Base64.getUrlDecoder().decode(idParts[0]);
+					fileRandomID=Base64.getUrlDecoder().decode(idParts[1]);
+					if(_fileID.length!=8 || fileRandomID.length!=18)
+						continue;
+					fileID=XTEA.deobfuscateObjectID(Utils.unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
+				}catch(IllegalArgumentException x){
+					continue;
+				}
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(fileID);
+				if(mfr==null || !Arrays.equals(mfr.id().randomID(), fileRandomID))
+					continue;
+				LocalImage img=new LocalImage();
+				img.fileID=fileID;
+				img.fillIn(mfr);
+				attachObjects.add(img);
 			}
-			MediaFileRecord mfr=MediaStorage.getMediaFileRecord(fileID);
-			if(mfr==null || !Arrays.equals(mfr.id().randomID(), fileRandomID))
-				continue;
-			LocalImage img=new LocalImage();
-			img.fileID=fileID;
-			img.fillIn(mfr);
-			attachObjects.add(img);
 			attachmentCount++;
 			if(attachmentCount==maxAttachments)
 				break;

@@ -46,5 +46,9 @@
   "photo_save_to_album": "Сохранить в альбом",
   "photo_saved_to_album": "Фотография сохранена в ваш альбом \"Сохранённые фотографии\"",
   "photo_saved_short": "Фотография сохранена",
-  "photos_recent_summary": "Последние загруженные фотографии"
+  "photos_recent_summary": "Последние загруженные фотографии",
+  "photo_attach_title": "Прикрепление фотографии",
+  "photos_show_X_more_albums": "Показать ещё {count, plural, one {# альбом} few {# альбома} other {# альбомов}}",
+  "photo_attach_title_album": "Прикрепление фотографии из альбома «{album}»",
+  "upload_photo": "Загрузить фотографию"
 }

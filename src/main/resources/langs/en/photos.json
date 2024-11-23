@@ -46,5 +46,9 @@
   "photo_save_to_album": "Save to album",
   "photo_saved_to_album": "Photo was saved to your \"Saved photos\" album",
   "photo_saved_short": "Photo saved",
-  "photos_recent_summary": "Recently uploaded photos"
+  "photos_recent_summary": "Recently uploaded photos",
+  "photo_attach_title": "Attach photo",
+  "photos_show_X_more_albums": "Show {count, plural, one {# more album} other {# more albums}}",
+  "photo_attach_title_album": "Attach photo from album \"{album}\"",
+  "upload_photo": "Upload a photo"
 }

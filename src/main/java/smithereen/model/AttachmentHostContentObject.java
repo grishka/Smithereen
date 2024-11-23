@@ -39,6 +39,7 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 					att.description=TextProcessor.escapeHTML(o.name);
 				if(o instanceof LocalImage li){
 					att.image=li;
+					att.photoID=li.photoID;
 				}else{
 					// TODO make this less ugly
 					MediaCache.PhotoItem item;
