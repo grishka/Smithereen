@@ -41,6 +41,8 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 					att.image=li;
 					att.photoID=li.photoID;
 				}else{
+					if(o.url==null)
+						continue;
 					// TODO make this less ugly
 					MediaCache.PhotoItem item;
 					try{
@@ -66,10 +68,14 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 				}
 				result.add(att);
 			}else if(o instanceof Video || mediaType.startsWith("video/")){
+				if(o.url==null)
+					continue;
 				VideoAttachment att=new VideoAttachment();
 				att.url=o.url;
 				result.add(att);
 			}else if(o instanceof Audio || mediaType.startsWith("audio/")){
+				if(o.url==null)
+					continue;
 				AudioAttachment att=new AudioAttachment();
 				att.url=o.url;
 				result.add(att);
