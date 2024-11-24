@@ -808,6 +808,8 @@ class MobileOptionsBox extends Box{
 					attrs.target=opt.target;
 					attrs.rel="noopener";
 				}
+			}else{
+				attrs.href="javascript:void(0)";
 			}
 			var link:HTMLAnchorElement;
 			list.appendChild(ce("li", {}, [

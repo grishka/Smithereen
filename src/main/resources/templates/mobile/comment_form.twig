@@ -2,7 +2,7 @@
 <div class="wallPostForm mobileCommentForm" id="wallPostForm_{{id}}" data-unique-id="{{id}}">
 	<div class="mobileCommentReplying" id="commentReplying_{{ id }}" style="display: none">
 		{{- L('in_reply_to_X', {}, {'name': {'_': 'span', 'id': 'replyingName_'+id} }) -}}
-		<a class="cancelReply" id="cancelReply_{{ id }}" title="{{ L('cancel_reply') }}"></a>
+		<a class="cancelReply" id="cancelReply_{{ id }}" title="{{ L('cancel_reply') }}" href="javascript:void(0)"></a>
 	</div>
 	<div class="attachmentsWrap" id="postFormAttachWrap_{{ id }}">
 		<div id="postFormAttachments_{{id}}">
