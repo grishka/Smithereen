@@ -7,16 +7,15 @@ import smithereen.model.photos.Photo;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 
-public class NonCachedRemoteImage implements SizedImage{
+public final class NonCachedRemoteImage extends RemoteImage{
 
 	private final Args args;
 	private final Dimensions origDimensions;
-	private final URI originalURI;
 
 	public NonCachedRemoteImage(Args args, Dimensions origDimensions, URI originalURL){
+		super(originalURL);
 		this.args=args;
 		this.origDimensions=origDimensions;
-		this.originalURI=originalURL;
 	}
 
 	@Override
@@ -30,11 +29,6 @@ public class NonCachedRemoteImage implements SizedImage{
 	@Override
 	public Dimensions getOriginalDimensions(){
 		return origDimensions;
-	}
-
-	@Override
-	public URI getOriginalURI(){
-		return originalURI;
 	}
 
 	public static abstract class Args{

@@ -26,6 +26,7 @@ public class FetchAndProcessWallPostTask extends ProcessWallPostTask{
 				return;
 		}catch(Exception x){
 			LOG.debug("Error fetching post {}", postID, x);
+			return;
 		}
 		super.compute();
 	}

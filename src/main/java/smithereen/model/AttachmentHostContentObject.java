@@ -50,8 +50,9 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 					}catch(SQLException x){
 						throw new InternalServerErrorException(x);
 					}
+					RemoteImage image;
 					if(item!=null){
-						att.image=new CachedRemoteImage(item, o.url);
+						image=new CachedRemoteImage(item, o.url);
 					}else{
 						SizedImage.Dimensions size=SizedImage.Dimensions.UNKNOWN;
 						if(o instanceof Document im){
@@ -59,8 +60,12 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 								size=new SizedImage.Dimensions(im.width, im.height);
 							}
 						}
-						att.image=new NonCachedRemoteImage(getPhotoArgs(i), size, o.url);
+						image=new NonCachedRemoteImage(getPhotoArgs(i), size, o.url);
 					}
+					if(o instanceof Image img && img.photoApID!=null){
+						image.photoActivityPubID=img.photoApID;
+					}
+					att.image=image;
 				}
 				if(o instanceof Document doc){
 					if(StringUtils.isNotEmpty(doc.blurHash))

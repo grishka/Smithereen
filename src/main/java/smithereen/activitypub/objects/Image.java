@@ -3,6 +3,8 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import java.net.URI;
+
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.jsonld.JLD;
@@ -11,6 +13,7 @@ public class Image extends Document{
 
 	public float[] cropRegion;
 	public boolean isGraffiti;
+	public URI photoApID;
 
 	@Override
 	public String getType(){
@@ -32,6 +35,10 @@ public class Image extends Document{
 			serializerContext.addAlias("graffiti", "sm:graffiti");
 			obj.addProperty("graffiti", true);
 		}
+		if(photoApID!=null){
+			serializerContext.addSmIdType("photo");
+			obj.addProperty("photo", photoApID.toString());
+		}
 		return obj;
 	}
 
@@ -45,6 +52,7 @@ public class Image extends Document{
 				cropRegion[i]=_cr.get(i).getAsFloat();
 		}
 		isGraffiti=optBoolean(obj, "graffiti");
+		photoApID=tryParseURL(optString(obj, "photo"));
 		return this;
 	}
 }

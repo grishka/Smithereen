@@ -38,7 +38,7 @@ public class FetchActorWallTask extends ForwardPaginatingCollectionTask{
 					tasks.add(new FetchAndProcessWallPostTask(apw, context, fetchingAllReplies, actor, lo.link));
 				}
 			}catch(Exception x){
-				LOG.debug("Error processing post {}", lo);
+				LOG.debug("Error processing post {}", lo, x);
 			}
 		}
 		apw.invokeAll(tasks);

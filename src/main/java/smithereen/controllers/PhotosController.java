@@ -708,6 +708,16 @@ public class PhotosController{
 		}
 	}
 
+	public Map<URI, Long> getPhotoIdsByActivityPubIds(Collection<URI> apIDs){
+		if(apIDs.isEmpty())
+			return Map.of();
+		try{
+			return PhotoStorage.getPhotoIdsByActivityPubIds(apIDs);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public void putOrUpdateForeignAlbum(PhotoAlbum album){
 		try{
 			PhotoStorage.putOrUpdateForeignAlbum(album);

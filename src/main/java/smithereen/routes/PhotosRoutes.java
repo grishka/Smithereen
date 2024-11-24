@@ -1,5 +1,6 @@
 package smithereen.routes;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -31,6 +32,7 @@ import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
+import smithereen.model.RemoteImage;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
@@ -465,6 +467,15 @@ public class PhotosRoutes{
 				.map(a->a instanceof PhotoAttachment pa && pa.photoID!=0 ? pa.photoID : null)
 				.filter(Objects::nonNull)
 				.collect(Collectors.toSet());
+		Set<URI> needRemotePhotos=attachments.stream()
+				.map(a->a instanceof PhotoAttachment pa && pa.image instanceof RemoteImage ri && ri.photoActivityPubID!=null ? ri.photoActivityPubID : null)
+				.filter(Objects::nonNull)
+				.collect(Collectors.toSet());
+		Map<URI, Long> remotePhotoIDs=needRemotePhotos.isEmpty() ? Map.of() : ctx.getPhotosController().getPhotoIdsByActivityPubIds(needRemotePhotos);
+		if(!remotePhotoIDs.isEmpty()){
+			needPhotos=new HashSet<>(needPhotos);
+			needPhotos.addAll(remotePhotoIDs.values());
+		}
 		Map<Long, Photo> actualPhotos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
 		Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbums(actualPhotos.values().stream().map(p->p.albumID).collect(Collectors.toSet()), self!=null ? self.user : null);
 		Map<Long, PhotoViewerPhotoInfo> photoInfos;
@@ -475,7 +486,15 @@ public class PhotosRoutes{
 		}
 		for(Attachment att:attachments){
 			if(att instanceof PhotoAttachment pa){
-				if(pa.photoID!=0 && photoInfos.get(pa.photoID) instanceof PhotoViewerPhotoInfo pi){
+				long photoID;
+				if(pa.photoID!=0)
+					photoID=pa.photoID;
+				else if(pa.image instanceof RemoteImage ri && ri.photoActivityPubID!=null)
+					photoID=remotePhotoIDs.getOrDefault(ri.photoActivityPubID, 0L);
+				else
+					photoID=0;
+
+				if(photoID!=0 && photoInfos.get(photoID) instanceof PhotoViewerPhotoInfo pi){
 					photos.add(pi);
 				}else{
 					photos.add(makePhotoInfoForAttachment(req, pa, self!=null ? self.user : null, author, createdAt, obj, i));

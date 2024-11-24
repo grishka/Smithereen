@@ -464,6 +464,15 @@ public class PhotoStorage{
 				.executeAndGetLong();
 	}
 
+	public static Map<URI, Long> getPhotoIdsByActivityPubIds(Collection<URI> apIDs) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photos")
+				.columns("ap_id", "id")
+				.whereIn("ap_id", apIDs.stream().map(Object::toString).collect(Collectors.toSet()))
+				.executeAsStream(r->new Pair<>(URI.create(r.getString(1)), r.getLong(2)))
+				.collect(Collectors.toMap(Pair::first, Pair::second));
+	}
+
 	public static void putOrUpdateForeignPhoto(Photo photo) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			if(photo.id==0){

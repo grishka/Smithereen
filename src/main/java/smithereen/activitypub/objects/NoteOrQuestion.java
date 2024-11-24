@@ -283,7 +283,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		noq.to=to.stream().map(LinkOrObject::new).toList();
 		noq.cc=cc.stream().map(LinkOrObject::new).toList();
 
-		noq.attachment=post.attachments;
+		noq.attachment=resolveLocalPhotoIDsInAttachments(context, post.attachments);
 		noq.likes=new UriBuilder(noq.activityPubID).appendPath("likes").build();
 
 		return noq;
@@ -300,7 +300,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		n.activityPubID=msg.getActivityPubID();
 		n.content=msg.text;
 		n.name=msg.subject;
-		n.attachment=msg.attachments;
+		n.attachment=resolveLocalPhotoIDsInAttachments(context, msg.attachments);
 		n.published=msg.createdAt;
 		n.updated=msg.updatedAt;
 		n.attributedTo=sender.activityPubID;
@@ -415,7 +415,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 				n.tag.add(mention);
 			}
 		}
-		n.attachment=comment.attachments;
+		n.attachment=resolveLocalPhotoIDsInAttachments(context, comment.attachments);
 		n.likes=new UriBuilder(n.activityPubID).appendPath("likes").build();
 
 		return n;
@@ -573,5 +573,25 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			return quoteRepostID;
 		// TODO also support object links when it becomes clear how they will be implemented in Mastodon
 		return null;
+	}
+
+	private static List<ActivityPubObject> resolveLocalPhotoIDsInAttachments(ApplicationContext ctx, List<ActivityPubObject> attachments){
+		if(attachments==null)
+			return null;
+
+		Set<Long> needPhotos=attachments.stream()
+				.map(a->a instanceof LocalImage li && li.photoID!=0 ? li : null)
+				.filter(Objects::nonNull)
+				.map(li->li.photoID)
+				.collect(Collectors.toSet());
+		if(needPhotos.isEmpty())
+			return attachments;
+		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+		for(ActivityPubObject a:attachments){
+			if(a instanceof LocalImage li && li.photoID!=0 && photos.get(li.photoID) instanceof Photo photo){
+				li.photoApID=photo.getActivityPubID();
+			}
+		}
+		return attachments;
 	}
 }
