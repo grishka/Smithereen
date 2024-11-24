@@ -1,7 +1,6 @@
 package smithereen.model;
 
 import java.net.URI;
-import java.text.Format;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -9,6 +8,7 @@ import java.util.Objects;
 import smithereen.Config;
 import smithereen.model.media.SizedImageURLs;
 import smithereen.storage.ImgProxy;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public interface SizedImage{
@@ -35,7 +35,7 @@ public interface SizedImage{
 		return getUriForSizeAndFormat(Type.fromSuffix(size), Format.fromFileExtension(format)).toString();
 	}
 
-	default String generateHTML(Type size, List<String> additionalClasses, String styleAttr, int width, int height, boolean add2x){
+	default String generateHTML(Type size, List<String> additionalClasses, String styleAttr, int width, int height, boolean add2x, String altText){
 		StringBuilder sb=new StringBuilder("<picture>");
 		appendHtmlForFormat(size, Format.WEBP, sb, add2x);
 		appendHtmlForFormat(size, Format.JPEG, sb, add2x);
@@ -68,6 +68,11 @@ public interface SizedImage{
 		if(height>0){
 			sb.append(" height=\"");
 			sb.append(height);
+			sb.append('"');
+		}
+		if(StringUtils.isNotEmpty(altText)){
+			sb.append(" alt=\"");
+			sb.append(TextProcessor.escapeHTML(altText));
 			sb.append('"');
 		}
 		sb.append("/></picture>");

@@ -68,7 +68,7 @@ public class RenderPhotoGridFunction implements Function{
 			String attrs="onclick=\"return openPhotoViewer(this)\" data-pv=\""+TextProcessor.escapeHTML(Utils.gson.toJson(data))+"\" data-pv-ctx=\""+list+"\"";
 
 			lines.add("<a href=\""+ph.getURL()+"\" style=\""+style+"\" "+attrs+">");
-			lines.add(ph.image.generateHTML(type, null, "", 0, 0, true));
+			lines.add(ph.image.generateHTML(type, null, "", 0, 0, true, null));
 			lines.add("</a>");
 			i++;
 		}

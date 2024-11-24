@@ -214,7 +214,7 @@ public class PhotosRoutes{
 
 		return new JsonObjectBuilder()
 				.add("id", encodeLong(XTEA.obfuscateObjectID(photoID, ObfuscatedObjectIDType.PHOTO)))
-				.add("html", photo.generateHTML(SizedImage.Type.PHOTO_THUMB_SMALL, null, null, size.width, size.height, true))
+				.add("html", photo.generateHTML(SizedImage.Type.PHOTO_THUMB_SMALL, null, null, size.width, size.height, true, null))
 				.build();
 	}
 

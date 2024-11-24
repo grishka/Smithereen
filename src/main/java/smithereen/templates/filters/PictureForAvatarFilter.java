@@ -65,7 +65,7 @@ public class PictureForAvatarFilter implements Filter{
 		if(args.containsKey("classes")){
 			classes.add(args.get("classes").toString());
 		}
-		return new SafeString("<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+(args.containsKey("wrapperClasses") ? (" "+args.get("wrapperClasses")) : "")+"\">"+image.generateHTML(type, classes, null, width, height, true)+"</span>");
+		return new SafeString("<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+(args.containsKey("wrapperClasses") ? (" "+args.get("wrapperClasses")) : "")+"\">"+image.generateHTML(type, classes, null, width, height, true, null)+"</span>");
 	}
 
 	@Override

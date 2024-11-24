@@ -17,7 +17,7 @@ public class PictureForPhotoFilter implements Filter{
 		if(input instanceof SizedImage img){
 			SizedImage.Type type=SizedImage.Type.fromSuffix(args.get("size").toString());
 			SizedImage.Dimensions size=img.getDimensionsForSize(type);
-			return new SafeString(img.generateHTML(type, null, null, size.width, size.height, (boolean)args.getOrDefault("add2x", Boolean.TRUE)));
+			return new SafeString(img.generateHTML(type, null, null, size.width, size.height, (boolean)args.getOrDefault("add2x", Boolean.TRUE), null));
 		}
 		throw new IllegalArgumentException("Input is an unknown type: "+input);
 	}

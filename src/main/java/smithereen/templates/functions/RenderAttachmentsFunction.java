@@ -179,7 +179,7 @@ public class RenderAttachmentsFunction implements Function{
 					attrs+=" data-pv-url=\""+listGetURL+"\"";
 				}
 			}
-			lines.add("<a class=\"photo\" href=\""+href+"\" "+attrs+">"+photo.image.generateHTML(type, null, styleAttr, 0, 0, true)+"</a>");
+			lines.add("<a class=\"photo\" href=\""+href+"\" "+attrs+">"+photo.image.generateHTML(type, null, styleAttr, 0, 0, true, photo.description)+"</a>");
 		}
 	}
 
