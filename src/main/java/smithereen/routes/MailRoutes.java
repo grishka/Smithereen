@@ -1,6 +1,9 @@
 package smithereen.routes;
 
+import com.google.gson.reflect.TypeToken;
+
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +23,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
 import spark.Request;
 import spark.Response;
@@ -79,6 +83,7 @@ public class MailRoutes{
 			model.with("replySubject", subject);
 		}
 		model.with("toolbarTitle", lang(req).get("messages_title"));
+		Templates.addJsLangForNewPostForm(req);
 		if(msg.replyInfo!=null && msg.replyInfo.type()!=MailMessage.ParentObjectType.MESSAGE){
 			switch(msg.replyInfo.type()){
 				case POST -> {
@@ -129,7 +134,25 @@ public class MailRoutes{
 		Set<User> toUsers=new HashSet<>(ctx.getUsersController().getUsers(toUserIDs).values());
 		if(toUsers.isEmpty())
 			throw new BadRequestException();
-		long id=ctx.getMailController().sendMessage(self.user, self.id, toUsers, req.queryParamOrDefault("text", ""), subject, List.of(req.queryParamOrDefault("attachments", "").split(",")), inReplyTo);
+		List<String> attachments;
+		Map<String, String> attachmentAltTexts;
+		if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
+			attachments=Arrays.stream(req.queryParams("attachments").split(",")).collect(Collectors.toList());
+			String altTextsJson=req.queryParams("attachAltTexts");
+			if(StringUtils.isNotEmpty(altTextsJson)){
+				try{
+					attachmentAltTexts=gson.fromJson(altTextsJson, new TypeToken<>(){});
+				}catch(Exception x){
+					attachmentAltTexts=Map.of();
+				}
+			}else{
+				attachmentAltTexts=Map.of();
+			}
+		}else{
+			attachments=Collections.emptyList();
+			attachmentAltTexts=Map.of();
+		}
+		long id=ctx.getMailController().sendMessage(self.user, self.id, toUsers, req.queryParamOrDefault("text", ""), subject, attachments, attachmentAltTexts, inReplyTo);
 		MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 		req.session().attribute("recentMessage", msg);
 		if(isAjax(req)){

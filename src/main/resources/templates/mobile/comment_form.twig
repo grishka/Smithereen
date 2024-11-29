@@ -28,5 +28,6 @@
 		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}" value="{% if replyTo is not null %}{{ replyTo.id }}{% endif %}"/>
 		<input type="hidden" name="formID" value="{{id}}"/>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
+		<input type="hidden" name="attachAltTexts" value="{{ json(attachAltTexts | default({})) }}"/>
 	</form>
 </div>

@@ -1,5 +1,7 @@
 package smithereen.routes;
 
+import com.google.gson.reflect.TypeToken;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -16,6 +18,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -26,6 +29,7 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -38,6 +42,7 @@ import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.PostSource;
+import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
@@ -56,6 +61,7 @@ import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
+import smithereen.storage.utils.Pair;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.FormattedTextFormat;
@@ -114,10 +120,23 @@ public class PostRoutes{
 		int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
 		String contentWarning=req.queryParams("contentWarning");
 		List<String> attachments;
-		if(StringUtils.isNotEmpty(req.queryParams("attachments")))
+		Map<String, String> attachmentAltTexts;
+		if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
 			attachments=Arrays.stream(req.queryParams("attachments").split(",")).collect(Collectors.toList());
-		else
+			String altTextsJson=req.queryParams("attachAltTexts");
+			if(StringUtils.isNotEmpty(altTextsJson)){
+				try{
+					attachmentAltTexts=gson.fromJson(altTextsJson, new TypeToken<>(){});
+				}catch(Exception x){
+					attachmentAltTexts=Map.of();
+				}
+			}else{
+				attachmentAltTexts=Map.of();
+			}
+		}else{
 			attachments=Collections.emptyList();
+			attachmentAltTexts=Map.of();
+		}
 
 		int repostID=safeParseInt(req.queryParams("repost"));
 		Post repost=repostID>0 ? ctx.getWallController().getPostOrThrow(repostID) : null;
@@ -128,7 +147,7 @@ public class PostRoutes{
 				inReplyTo=ctx.getWallController().getPostOrThrow(inReplyTo.repostOf);
 		}
 
-		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost);
+		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost, attachmentAltTexts);
 
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();
@@ -213,6 +232,16 @@ public class PostRoutes{
 			model.with("poll", post.poll);
 		if(post.attachments!=null && !post.attachments.isEmpty()){
 			model.with("draftAttachments", post.attachments);
+			model.with("attachAltTexts", post.attachments.stream()
+					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.fileRecord.id().getIDForClient(), li.name) : null)
+					.filter(Objects::nonNull)
+					.collect(Collectors.toMap(Pair::first, Pair::second))
+			);
+			Map<String, PhotoViewerInlineData> pvData=post.attachments.stream()
+					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(), new PhotoViewerInlineData(0, "rawFile/"+li.getLocalID(), li.getURLsForPhotoViewer())) : null)
+					.filter(Objects::nonNull)
+					.collect(Collectors.toMap(Pair::first, Pair::second, (a, b)->b));
+			model.with("attachPvData", pvData);
 		}
 		if(post.repostOf!=0)
 			model.with("allowEmpty", true);
@@ -262,12 +291,25 @@ public class PostRoutes{
 		}
 		String contentWarning=req.queryParams("contentWarning");
 		List<String> attachments;
-		if(StringUtils.isNotEmpty(req.queryParams("attachments")))
+		Map<String, String> attachmentAltTexts;
+		if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
 			attachments=Arrays.stream(req.queryParams("attachments").split(",")).collect(Collectors.toList());
-		else
+			String altTextsJson=req.queryParams("attachAltTexts");
+			if(StringUtils.isNotEmpty(altTextsJson)){
+				try{
+					attachmentAltTexts=gson.fromJson(altTextsJson, new TypeToken<>(){});
+				}catch(Exception x){
+					attachmentAltTexts=Map.of();
+				}
+			}else{
+				attachmentAltTexts=Map.of();
+			}
+		}else{
 			attachments=Collections.emptyList();
+			attachmentAltTexts=Map.of();
+		}
 
-		Post post=ctx.getWallController().editPost(self.user, sessionInfo(req).permissions, id, text, enumValue(req.queryParams("format"), FormattedTextFormat.class), contentWarning, attachments, poll);
+		Post post=ctx.getWallController().editPost(self.user, sessionInfo(req).permissions, id, text, enumValue(req.queryParams("format"), FormattedTextFormat.class), contentWarning, attachments, poll, attachmentAltTexts);
 		if(isAjax(req)){
 			if(req.attribute("mobile")!=null)
 				return new WebDeltaResponse(resp).replaceLocation(post.getInternalURL().toString());

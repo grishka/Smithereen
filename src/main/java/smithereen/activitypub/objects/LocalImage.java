@@ -6,11 +6,13 @@ import java.net.URI;
 
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.SerializerContext;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.SizedImage;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileType;
 import smithereen.storage.ImgProxy;
 import smithereen.storage.media.MediaFileStorageDriver;
+import smithereen.util.XTEA;
 
 public class LocalImage extends Image implements SizedImage{
 	public Dimensions size=Dimensions.UNKNOWN;
@@ -103,6 +105,8 @@ public class LocalImage extends Image implements SizedImage{
 			LOG.warn("Tried to get a local ID for a LocalImage with fileRecord not set (file ID {})", fileID);
 			return null;
 		}
+		if(photoID!=0)
+			return "photo:"+XTEA.encodeObjectID(photoID, ObfuscatedObjectIDType.PHOTO);
 		return fileRecord.id().getIDForClient();
 	}
 }

@@ -57,6 +57,7 @@
 			{% if poll is not null %}{% include 'poll_form' with {'poll': poll} %}{% endif %}
 		</div>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
+		<input type="hidden" name="attachAltTexts" value="{{ json(attachAltTexts | default({})) }}"/>
 		<div class="bottomBar">
 			<div class="left">
 				{% if isEditing %}

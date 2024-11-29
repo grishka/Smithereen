@@ -1,5 +1,7 @@
 package smithereen.routes;
 
+import com.google.gson.reflect.TypeToken;
+
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -16,6 +18,7 @@ import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -31,9 +34,11 @@ import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
+import smithereen.storage.utils.Pair;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.FormattedTextFormat;
 import smithereen.util.XTEA;
@@ -67,13 +72,26 @@ public class CommentsRoutes{
 		}
 		String contentWarning=req.queryParams("contentWarning");
 		List<String> attachments;
-		if(StringUtils.isNotEmpty(req.queryParams("attachments")))
+		Map<String, String> attachmentAltTexts;
+		if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
 			attachments=Arrays.stream(req.queryParams("attachments").split(",")).collect(Collectors.toList());
-		else
-			attachments=List.of();
+			String altTextsJson=req.queryParams("attachAltTexts");
+			if(StringUtils.isNotEmpty(altTextsJson)){
+				try{
+					attachmentAltTexts=gson.fromJson(altTextsJson, new TypeToken<>(){});
+				}catch(Exception x){
+					attachmentAltTexts=Map.of();
+				}
+			}else{
+				attachmentAltTexts=Map.of();
+			}
+		}else{
+			attachments=Collections.emptyList();
+			attachmentAltTexts=Map.of();
+		}
 
 		Comment inReplyTo=replyTo!=0 ? ctx.getCommentsController().getCommentIgnoringPrivacy(replyTo) : null;
-		Comment comment=ctx.getCommentsController().createComment(self.user, parent, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments);
+		Comment comment=ctx.getCommentsController().createComment(self.user, parent, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, attachmentAltTexts);
 
 		if(isAjax(req)){
 			String formID=req.queryParams("formID");
@@ -83,15 +101,8 @@ public class CommentsRoutes{
 			if(inReplyTo!=null)
 				pvm.parentAuthorID=inReplyTo.authorID;
 			RenderedTemplateResponse model=new RenderedTemplateResponse("comment", req).with("post", pvm);
-//			if(replyTo!=0){
-			//CommentViewModel topLevel=new CommentViewModel(context(req).getCommentsController().getCommentIgnoringPrivacy(comment.replyKey.getFirst()));
 
 			model.with("replyFormID", "wallPostForm_commentReply_"+parent.getCommentParentID().getHtmlElementID());
-//				model.with("topLevel", topLevel);
-//				needInteractions.add(topLevel);
-//			}
-//			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(needInteractions, self.user);
-//			model.with("postInteractions", interactions);
 			Map<Integer, User> users=new HashMap<>();
 			users.put(self.user.id, self.user);
 			if(inReplyTo!=null && inReplyTo.authorID!=self.user.id){
@@ -104,13 +115,6 @@ public class CommentsRoutes{
 			model.with("commentViewType", self.prefs.commentViewType).with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1);
 			model.with("canComment", true).with("parentObject", parent);
 			String postHTML=model.renderToString();
-//			if(req.attribute("mobile")!=null && replyTo==0){
-//				postHTML="<div class=\"card\">"+postHTML+"</div>";
-//			}else if(replyTo==0){
-//				// TODO correctly handle day headers in feed
-//				String cl="feed".equals(formID) ? "feedRow" : "wallRow";
-//				postHTML="<div class=\""+cl+"\">"+postHTML+"</div>";
-//			}
 			WebDeltaResponse rb;
 			if(replyTo==0 || self.prefs.commentViewType==CommentViewType.FLAT){
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "comments_"+parent.getCommentParentID().getHtmlElementID(), postHTML);
@@ -259,6 +263,16 @@ public class CommentsRoutes{
 			model.with("contentWarning", comment.contentWarning);
 		if(comment.attachments!=null && !comment.attachments.isEmpty()){
 			model.with("draftAttachments", comment.attachments);
+			model.with("attachAltTexts", comment.attachments.stream()
+					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.fileRecord.id().getIDForClient(), li.name) : null)
+					.filter(Objects::nonNull)
+					.collect(Collectors.toMap(Pair::first, Pair::second))
+			);
+			Map<String, PhotoViewerInlineData> pvData=comment.attachments.stream()
+					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(), new PhotoViewerInlineData(0, "rawFile/"+li.getLocalID(), li.getURLsForPhotoViewer())) : null)
+					.filter(Objects::nonNull)
+					.collect(Collectors.toMap(Pair::first, Pair::second, (a, b)->b));
+			model.with("attachPvData", pvData);
 		}
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp)
@@ -280,12 +294,25 @@ public class CommentsRoutes{
 		String text=req.queryParams("text");
 		String contentWarning=req.queryParams("contentWarning");
 		List<String> attachments;
-		if(StringUtils.isNotEmpty(req.queryParams("attachments")))
+		Map<String, String> attachmentAltTexts;
+		if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
 			attachments=Arrays.stream(req.queryParams("attachments").split(",")).collect(Collectors.toList());
-		else
+			String altTextsJson=req.queryParams("attachAltTexts");
+			if(StringUtils.isNotEmpty(altTextsJson)){
+				try{
+					attachmentAltTexts=gson.fromJson(altTextsJson, new TypeToken<>(){});
+				}catch(Exception x){
+					attachmentAltTexts=Map.of();
+				}
+			}else{
+				attachmentAltTexts=Map.of();
+			}
+		}else{
 			attachments=Collections.emptyList();
+			attachmentAltTexts=Map.of();
+		}
 
-		comment=ctx.getCommentsController().editComment(self.user, comment, text, enumValue(req.queryParams("format"), FormattedTextFormat.class), contentWarning, attachments);
+		comment=ctx.getCommentsController().editComment(self.user, comment, text, enumValue(req.queryParams("format"), FormattedTextFormat.class), contentWarning, attachments, attachmentAltTexts);
 		if(isAjax(req)){
 			if(req.attribute("mobile")!=null)
 				return new WebDeltaResponse(resp).replaceLocation(parent.getURL());

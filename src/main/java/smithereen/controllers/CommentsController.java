@@ -74,7 +74,7 @@ public class CommentsController{
 	}
 
 	public Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
-								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs){
+								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts){
 		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(parent);
 		if(context.getPrivacyController().isUserBlocked(self, oaa.owner()))
 			throw new UserActionNotAllowedException();
@@ -96,7 +96,7 @@ public class CommentsController{
 			String attachments=null;
 			if(!attachmentIDs.isEmpty()){
 				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
-				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, attachmentIDs, attachmentCount, maxAttachments);
+				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, attachmentIDs, attachAltTexts, attachmentCount, maxAttachments);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
 						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
@@ -303,7 +303,7 @@ public class CommentsController{
 	}
 
 	@NotNull
-	public Comment editComment(@NotNull User self, Comment comment, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs){
+	public Comment editComment(@NotNull User self, Comment comment, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts){
 		try{
 			CommentableContentObject parent=getCommentParent(self, comment);
 			if(textSource.isEmpty() && attachmentIDs.isEmpty())
@@ -328,6 +328,7 @@ public class CommentsController{
 								LOG.debug("Deleting attachment: {}", localID);
 								MediaStorage.deleteMediaFileReference(comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, li.fileID);
 							}else{
+								li.name=attachAltTexts.get(li.getLocalID());
 								attachObjects.add(li);
 							}
 						}else{
@@ -337,7 +338,7 @@ public class CommentsController{
 				}
 
 				if(!newlyAddedAttachments.isEmpty()){
-					MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachmentCount, maxAttachments);
+					MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments);
 					for(ActivityPubObject att:attachObjects){
 						if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
 							MediaStorage.createMediaFileReference(li.fileID, comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, comment.ownerID);

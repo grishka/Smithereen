@@ -41,6 +41,7 @@ class PostForm{
 	private replyCancel:HTMLElement;
 	private submitButton:HTMLElement;
 	private completionsContainer:HTMLElement;
+	private altTextsField:HTMLInputElement;
 
 	private pollLayout:HTMLElement;
 	private pollQuestionField:HTMLInputElement;
@@ -66,6 +67,7 @@ class PostForm{
 	private completionsDebounceTimeout:number;
 	private completionsXHR:XMLHttpRequest;
 	private completionList:CompletionList;
+	private attachmentAltTexts:{[key:string]:string}={};
 
 	public constructor(el:HTMLElement){
 		this.id=el.dataset.uniqueId;
@@ -86,6 +88,7 @@ class PostForm{
 		this.replyName=ge("replyingName_"+this.id);
 		this.replyCancel=ge("cancelReply_"+this.id);
 		this.submitButton=ge("postFormSubmit_"+this.id);
+		this.altTextsField=el.querySelector("input[name=attachAltTexts]") as HTMLInputElement;
 		if(el.classList.contains("nonCollapsible"))
 			this.isCollapsible=false;
 		this.photoUploadURL=el.dataset.photoUploadUrl || "/system/upload/postPhoto";
@@ -138,7 +141,15 @@ class PostForm{
 					ev.preventDefault();
 					this.deleteAttachment(el.customData.aid);
 				};
+				if(!mobile && attach.dataset.pv){
+					attach.addEventListener("click", (ev)=>{
+						var info=JSON.parse(attach.dataset.pv) as PhotoViewerInlineData;
+						this.openDesktopPhotoViewerForAltText(aid, info);
+					});
+					attach.style.cursor="pointer";
+				}
 			}
+			this.attachmentAltTexts=JSON.parse(this.altTextsField.value);
 		}
 
 		if(mobile){
@@ -314,8 +325,16 @@ class PostForm{
 			f.image.outerHTML='<picture><source srcset="'+resp.thumbs.webp+'" type="image/webp"/><source srcset="'+resp.thumbs.jpeg+'" type="image/jpeg"/><img src="'+resp.thumbs.jpeg+'" width="'+resp.width+'" height="'+resp.height+'"/></picture>';
 			f.cancelBtn.onclick=(ev:Event)=>{
 				ev.preventDefault();
+				ev.stopPropagation();
 				this.deleteAttachment(resp.id);
 			};
+			if(!mobile){
+				f.el.addEventListener("click", (ev)=>{
+					var info=resp.pv as PhotoViewerInlineData;
+					this.openDesktopPhotoViewerForAltText(resp.id, info);
+				});
+			}
+			f.el.style.cursor="pointer";
 			f.el.id="attachment_"+resp.id;
 			this.attachmentIDs.push(resp.id);
 			this.attachField.value=this.attachmentIDs.join(",");
@@ -352,7 +371,9 @@ class PostForm{
 		var el=ge("attachment_"+id);
 		el.parentNode.removeChild(el);
 		this.attachmentIDs.remove(id);
+		delete this.attachmentAltTexts[id];
 		this.attachField.value=this.attachmentIDs.join(",");
+		this.updateAltTextsField();
 	}
 
 	public send(onDone:{(success:boolean):void}=null):boolean{
@@ -387,6 +408,7 @@ class PostForm{
 				return;
 			}
 			this.attachmentIDs=[];
+			this.attachmentAltTexts={};
 			this.attachField.value="";
 			this.input.resizeToFitContent();
 			this.hideCWLayout();
@@ -458,7 +480,6 @@ class PostForm{
 	}
 
 	private onAttachPhotoClick(){
-		//this.fileField.click();
 		LayerManager.getInstance().showBoxLoader();
 		ajaxGetAndApplyActions("/photos/attachBox?id="+this.id);
 	}
@@ -822,5 +843,22 @@ class PostForm{
 				dropText.innerText=lang("drop_files_here");
 			}
 		});
+	}
+
+	private updateAltTextsField(){
+		this.altTextsField.value=JSON.stringify(this.attachmentAltTexts);
+	}
+
+	private openDesktopPhotoViewerForAltText(id:string, info:PhotoViewerInlineData){
+		var viewer=doOpenPhotoViewer(info);
+		if(viewer instanceof DesktopPhotoViewer){
+			viewer.bottomPartUpdateCallback=(el)=>{
+				viewer.showLocalDescriptionEditor(this.attachmentAltTexts[id] || "", (description:string)=>{
+					this.attachmentAltTexts[id]=description;
+					viewer.dismiss();
+					this.updateAltTextsField();
+				});
+			};
+		}
 	}
 }

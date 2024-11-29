@@ -51,6 +51,7 @@ import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.Spark;
+import spark.utils.StringUtils;
 
 import static smithereen.Utils.lang;
 
@@ -107,12 +108,14 @@ public class MediaStorageUtils{
 					.add("_fileID", li.fileID);
 			if(li.photoID!=0)
 				jb.add("_photoID", li.photoID);
+			if(StringUtils.isNotEmpty(li.name))
+				jb.add("name", li.name);
 			return jb.build();
 		}
 		return att.asActivityPubObject(null, new SerializerContext(null, (String)null));
 	}
 
-	public static void fillAttachmentObjects(ApplicationContext context, User self, List<ActivityPubObject> attachObjects, List<String> attachmentIDs, int attachmentCount, int maxAttachments) throws SQLException{
+	public static void fillAttachmentObjects(ApplicationContext context, User self, List<ActivityPubObject> attachObjects, List<String> attachmentIDs, Map<String, String> altTexts, int attachmentCount, int maxAttachments) throws SQLException{
 		for(String id:attachmentIDs){
 			String[] idParts=id.split(":");
 			if(idParts.length!=2)
@@ -155,6 +158,7 @@ public class MediaStorageUtils{
 				LocalImage img=new LocalImage();
 				img.fileID=fileID;
 				img.fillIn(mfr);
+				img.name=altTexts.get(id);
 				attachObjects.add(img);
 			}
 			attachmentCount++;

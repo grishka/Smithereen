@@ -38,6 +38,7 @@ import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
 import smithereen.LruCache;
+import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
@@ -66,6 +67,7 @@ import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
@@ -325,6 +327,7 @@ public class SystemRoutes{
 		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, self, isGraffiti);
 		if(isAjax(req)){
 			resp.type("application/json");
+			PhotoViewerInlineData pvData=new PhotoViewerInlineData(0, "rawFile/"+photo.getLocalID(), photo.getURLsForPhotoViewer());
 			return new JsonObjectBuilder()
 					.add("id", photo.fileRecord.id().getIDForClient())
 					.add("width", photo.width)
@@ -332,7 +335,8 @@ public class SystemRoutes{
 					.add("thumbs", new JsonObjectBuilder()
 							.add("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.JPEG).toString())
 							.add("webp", photo.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.WEBP).toString())
-					).build();
+					)
+					.add("pv", gson.toJsonTree(pvData)).build();
 		}
 		resp.redirect(back(req));
 		return "";

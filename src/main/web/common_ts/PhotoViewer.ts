@@ -50,20 +50,24 @@ function openPhotoViewer(el:HTMLElement):boolean{
 	return false;
 }
 
-function doOpenPhotoViewer(info:PhotoViewerInlineData, listURL:string="/photos/ajaxViewerInfo", fromPopState:boolean=false){
+function doOpenPhotoViewer(info:PhotoViewerInlineData, listURL:string="/photos/ajaxViewerInfo", fromPopState:boolean=false):any{
 	var topLayer=LayerManager.getMediaInstance().getTopLayer();
 	if(mobile){
 		if(topLayer instanceof MobilePhotoViewer){
 			if(topLayer.listID==info.list)
 				return;
 		}
-		new MobilePhotoViewer(info, listURL, fromPopState).show();
+		let viewer=new MobilePhotoViewer(info, listURL, fromPopState);
+		viewer.show();
+		return viewer;
 	}else{
 		if(topLayer instanceof DesktopPhotoViewer){
 			if(topLayer.listID==info.list)
 				return;
 		}
-		new DesktopPhotoViewer(info, listURL, fromPopState).show();
+		let viewer=new DesktopPhotoViewer(info, listURL, fromPopState);
+		viewer.show();
+		return viewer;
 	}
 }
 

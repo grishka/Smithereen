@@ -135,7 +135,7 @@ public class Templates{
 			}
 		}
 		for(String key:List.of("error", "ok", "network_error", "close", "cancel", "yes", "no", "show_technical_details", "photo_X_of_Y",
-				"photo_edit_description", "post_form_cw", "post_form_cw_placeholder")){
+				"photo_edit_description", "post_form_cw", "post_form_cw_placeholder", "save", "photo_description")){
 			jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 		}
 		if(req.attribute("mobile")!=null){

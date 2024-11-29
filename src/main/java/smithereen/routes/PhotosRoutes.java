@@ -1,8 +1,11 @@
 package smithereen.routes;
 
 import java.net.URI;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,10 +17,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
@@ -45,12 +50,14 @@ import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.media.PhotoViewerPhotoInfo;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.viewmodel.CommentViewModel;
+import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
@@ -325,12 +332,14 @@ public class PhotosRoutes{
 		return ajaxAwareRedirect(req, resp, back(req));
 	}
 
-	private static PhotoViewerPhotoInfo makePhotoInfoForAttachment(Request req, PhotoAttachment pa, User self, User author, Instant createdAt, AttachmentHostContentObject parent, int index){
+	private static PhotoViewerPhotoInfo makePhotoInfoForAttachment(Request req, PhotoAttachment pa, User self, User author, Instant createdAt, AttachmentHostContentObject parent, int index, EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions){
 		String html;
 		String origURL;
 		String saveURL;
 		String saveType, saveID;
-		if(self==null || self.id==author.id){
+		if(allowedActions==null)
+			allowedActions=EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class);
+		if(self==null || self.id==author.id || parent==null){
 			saveURL=saveType=saveID=null;
 		}else{
 			saveURL=UriBuilder.local()
@@ -358,7 +367,8 @@ public class PhotosRoutes{
 			model.with("description", pa.description==null ? null : pa.description.replace("\n", "<br/>"))
 					.with("author", author)
 					.with("createdAt", createdAt)
-					.with("originalImageURL", pa.image.getOriginalURI());
+					.with("originalImageURL", pa.image.getOriginalURI())
+					.with("allowedActions", allowedActions.stream().map(Object::toString).collect(Collectors.toSet()));
 			if(saveURL!=null){
 				model.with("saveURL", saveURL)
 						.with("saveElementID", saveType+"_"+saveID+"_"+index);
@@ -367,7 +377,7 @@ public class PhotosRoutes{
 			origURL=null;
 		}
 		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html,
-				EnumSet.noneOf(PhotoViewerPhotoInfo.AllowedAction.class), pa.image.getURLsForPhotoViewer(), null, origURL, null, null, saveURL);
+				allowedActions, pa.image.getURLsForPhotoViewer(), null, origURL, null, null, saveURL);
 	}
 
 	private static EnumSet<PhotoViewerPhotoInfo.AllowedAction> getAllowedActionsForPhoto(ApplicationContext ctx, User self, Photo photo, PhotoAlbum album){
@@ -497,7 +507,7 @@ public class PhotosRoutes{
 				if(photoID!=0 && photoInfos.get(photoID) instanceof PhotoViewerPhotoInfo pi){
 					photos.add(pi);
 				}else{
-					photos.add(makePhotoInfoForAttachment(req, pa, self!=null ? self.user : null, author, createdAt, obj, i));
+					photos.add(makePhotoInfoForAttachment(req, pa, self!=null ? self.user : null, author, createdAt, obj, i, null));
 				}
 			}
 			i++;
@@ -617,6 +627,41 @@ public class PhotosRoutes{
 				total=allPhotos.total;
 				title=null;
 				yield makePhotoInfosForPhotoList(req, allPhotos.list, ctx, selfAccount, albums);
+			}
+			case "rawFile" -> {
+				title=null;
+				total=1;
+
+				String[] idParts=listParts[1].split(":");
+				if(idParts.length!=2)
+					throw new BadRequestException();
+
+				long fileID;
+				byte[] fileRandomID;
+				try{
+					byte[] _fileID=Base64.getUrlDecoder().decode(idParts[0]);
+					fileRandomID=Base64.getUrlDecoder().decode(idParts[1]);
+					if(_fileID.length!=8 || fileRandomID.length!=18)
+						throw new BadRequestException();
+					fileID=XTEA.deobfuscateObjectID(Utils.unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
+				}catch(IllegalArgumentException x){
+					throw new BadRequestException();
+				}
+				MediaFileRecord mfr;
+				try{
+					mfr=MediaStorage.getMediaFileRecord(fileID);
+				}catch(SQLException x){
+					throw new InternalServerErrorException(x);
+				}
+				if(mfr==null || !Arrays.equals(mfr.id().randomID(), fileRandomID))
+					throw new ObjectNotFoundException();
+				LocalImage img=new LocalImage();
+				img.fileID=fileID;
+				img.fillIn(mfr);
+				PhotoAttachment fakeAttachment=new PhotoAttachment();
+				fakeAttachment.image=img;
+				fakeAttachment.blurHash=img.blurHash;
+				yield List.of(makePhotoInfoForAttachment(req, fakeAttachment, self, self, Instant.now(), null, 0, EnumSet.of(PhotoViewerPhotoInfo.AllowedAction.EDIT_DESCRIPTION)));
 			}
 			default -> throw new BadRequestException();
 		};

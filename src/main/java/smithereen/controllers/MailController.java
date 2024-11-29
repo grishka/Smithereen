@@ -84,7 +84,7 @@ public class MailController{
 		}
 	}
 
-	public long sendMessage(User self, int selfAccountID, Set<User> _to, String text, String subject, List<String> attachmentIDs, MailMessage inReplyTo){
+	public long sendMessage(User self, int selfAccountID, Set<User> _to, String text, String subject, List<String> attachmentIDs, Map<String, String> attachAltTexts, MailMessage inReplyTo){
 		try{
 			if(StringUtils.isEmpty(text) && attachmentIDs.isEmpty())
 				throw new BadRequestException();
@@ -98,7 +98,7 @@ public class MailController{
 			String attachments=null;
 			ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
 			if(!attachmentIDs.isEmpty()){
-				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, attachmentIDs, 0, maxAttachments);
+				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, attachmentIDs, attachAltTexts, 0, maxAttachments);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
 						attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();

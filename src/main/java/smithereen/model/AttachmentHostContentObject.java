@@ -36,7 +36,7 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 			if(o instanceof Image || mediaType.startsWith("image/")){
 				PhotoAttachment att=o instanceof Image img && img.isGraffiti ? new GraffitiAttachment() : new PhotoAttachment();
 				if(StringUtils.isNotEmpty(o.name))
-					att.description=TextProcessor.escapeHTML(o.name);
+					att.description=o.name;
 				if(o instanceof LocalImage li){
 					att.image=li;
 					att.photoID=li.photoID;

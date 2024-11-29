@@ -113,7 +113,7 @@ public class WallController{
 	 */
 	public Post createWallPost(@NotNull User author, int authorAccountID, @NotNull Actor wallOwner, Post inReplyTo,
 							   @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
-							   @Nullable Poll poll, @Nullable Post repost){
+							   @Nullable Poll poll, @Nullable Post repost, @NotNull Map<String, String> attachAltTexts){
 		try{
 			if(wallOwner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
@@ -188,7 +188,7 @@ public class WallController{
 			String attachments=null;
 			if(!attachmentIDs.isEmpty()){
 				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
-				MediaStorageUtils.fillAttachmentObjects(context, author, attachObjects, attachmentIDs, attachmentCount, maxAttachments);
+				MediaStorageUtils.fillAttachmentObjects(context, author, attachObjects, attachmentIDs, attachAltTexts, attachmentCount, maxAttachments);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
 						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
@@ -379,7 +379,8 @@ public class WallController{
 	}
 
 	@NotNull
-	public Post editPost(@NotNull User self, @NotNull UserPermissions permissions, int id, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @Nullable Poll poll){
+	public Post editPost(@NotNull User self, @NotNull UserPermissions permissions, int id, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning,
+						 @NotNull List<String> attachmentIDs, @Nullable Poll poll, @NotNull Map<String, String> attachAltTexts){
 		try{
 			Post post=getPostOrThrow(id);
 			if(!permissions.canEditPost(post))
@@ -415,11 +416,12 @@ public class WallController{
 				if(post.attachments!=null){
 					for(ActivityPubObject att:post.attachments){
 						if(att instanceof LocalImage li){
-							String localID=li.fileRecord.id().getIDForClient();
+							String localID=li.getLocalID();
 							if(!newlyAddedAttachments.remove(localID)){
 								LOG.debug("Deleting attachment: {}", localID);
 								MediaStorage.deleteMediaFileReference(post.id, MediaFileReferenceType.WALL_ATTACHMENT, li.fileID);
 							}else{
+								li.name=attachAltTexts.get(li.getLocalID());
 								attachObjects.add(li);
 							}
 						}else{
@@ -429,7 +431,7 @@ public class WallController{
 				}
 
 				if(!newlyAddedAttachments.isEmpty()){
-					MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachmentCount, maxAttachments);
+					MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments);
 					for(ActivityPubObject att:attachObjects){
 						if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
 							MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.ownerID);
@@ -438,7 +440,7 @@ public class WallController{
 				}
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
-						attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
+						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
 					}else{
 						JsonArray ar=new JsonArray();
 						for(ActivityPubObject o:attachObjects){

@@ -40,10 +40,10 @@
 		<div id="postFormAttachments_{{id}}">
 			{%set attachIDs=""%}
 			{%for attachment in draftAttachments%}
-			<div class="attachment" id="attachment_{{attachment.localID}}" data-id="{{attachment.localID}}">
+			<div class="attachment" id="attachment_{{attachment.localID}}" data-id="{{attachment.localID}}"{% if attachPvData contains attachment.localID %} data-pv="{{ json(attachPvData[attachment.localID]) }}"{% endif %}>
 				{{ attachment | pictureForPhoto('s') }}
 				{% if isEditing %}
-				<a href="#" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
+				<a href="#" class="deleteBtn" aria-label="{{ L('remove_attachment') }}" data-tooltip="{{ L('remove_attachment') }}"></a>
 				{% else %}
 				<a href="/system/deleteDraftAttachment?id={{attachment.localID}}&csrf={{csrf}}" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
 				{% endif %}
@@ -63,6 +63,7 @@
 			{% if poll is not null %}{% include 'poll_form' with {'poll': poll} %}{% endif %}
 		</div>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
+		<input type="hidden" name="attachAltTexts" value="{{ json(attachAltTexts | default({})) }}"/>
 		<div class="bottomBar">
 			<div class="left">
 				{% if isEditing %}

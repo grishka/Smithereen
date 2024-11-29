@@ -23,6 +23,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	private loading:boolean=false;
 	private keyDownListener=this.onKeyDown.bind(this);
 	private wasShown:boolean=false;
+	public bottomPartUpdateCallback:{(el:HTMLElement):void};
 
 	public constructor(info:PhotoViewerInlineData, listURL:string, fromPopState:boolean){
 		super(fromPopState);
@@ -256,6 +257,9 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 				}
 			}
 		}
+
+		if(this.bottomPartUpdateCallback)
+			this.bottomPartUpdateCallback(ph.bottomPartEl);
 	}
 
 	private getCurrentInlineData():PhotoViewerInlineData{
@@ -339,5 +343,23 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		}else if(ev.keyCode==39){ // right arrow
 			this.showNext();
 		}
+	}
+
+	public showLocalDescriptionEditor(description:string, onDone:{(newDescription:string):void}){
+		var textarea:HTMLTextAreaElement;
+		var editEl=ce("div", {className: "pvEditDescription marginAfter"}, [
+			textarea=ce("textarea", {placeholder: lang("photo_description"), value: description}),
+			ce("div", {className: "buttons"}, [
+				ce("input", {type: "button", value: lang("save"), onclick: (ev)=>onDone(textarea.value)})
+			])
+		]);
+		var editW=ge("pvEditDescriptionW_");
+		editW.hide();
+		editW.insertAdjacentElement("afterend", editEl);
+		textarea.addEventListener("keydown", (ev:KeyboardEvent)=>{
+			if(ev.keyCode==13 && (isApple ? ev.metaKey : ev.ctrlKey)){
+				onDone(textarea.value);
+			}
+		});
 	}
 }
