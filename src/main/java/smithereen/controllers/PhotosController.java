@@ -364,9 +364,7 @@ public class PhotosController{
 			MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsForAlbum(album.id), MediaFileReferenceType.ALBUM_PHOTO);
 			deleteCommentsForAlbum(album.id);
 			PhotoStorage.deleteAlbum(album.id, album.ownerID);
-			synchronized(this){
-				albumListCache.remove(album.ownerID);
-			}
+			albumListCache.remove(album.ownerID);
 			albumCache.remove(album.id);
 			if(album.ownerID>0){
 				context.getNewsfeedController().clearFriendsFeedCache();
@@ -774,9 +772,7 @@ public class PhotosController{
 					PhotoStorage.deleteAlbum(album.id, album.ownerID);
 					albumCache.remove(album.id);
 				}
-				synchronized(this){
-					albumListCache.remove(owner.getOwnerID());
-				}
+				albumListCache.remove(owner.getOwnerID());
 				if(owner instanceof User){
 					context.getNewsfeedController().clearFriendsFeedCache();
 				}
@@ -797,9 +793,7 @@ public class PhotosController{
 			MediaStorage.deleteMediaFileReferences(PhotoStorage.getLocalPhotoIDsIn(idsToDelete), MediaFileReferenceType.ALBUM_PHOTO);
 			PhotoStorage.deletePhotos(album.id, idsToDelete);
 
-			synchronized(this){
-				albumListCache.remove(album.ownerID);
-			}
+			albumListCache.remove(album.ownerID);
 			if(album.ownerID>0){
 				context.getNewsfeedController().clearFriendsFeedCache();
 			}

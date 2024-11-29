@@ -94,8 +94,6 @@ public class ModerationController{
 
 	private final ApplicationContext context;
 	private final LruCache<String, Server> serversByDomainCache=new LruCache<>(500);
-	private final Object emailRulesLock=new Object();
-	private final Object ipRulesLock=new Object();
 	private List<EmailDomainBlockRule> emailDomainRules;
 	private List<IPBlockRule> ipRules;
 
@@ -236,29 +234,25 @@ public class ModerationController{
 
 	public Server getServerByDomain(String domain){
 		domain=domain.toLowerCase();
-		synchronized(serversByDomainCache){
-			Server server=serversByDomainCache.get(domain);
-			if(server!=null)
-				return server;
+		Server server=serversByDomainCache.get(domain);
+		if(server!=null)
+			return server;
 
-			try{
-				server=FederationStorage.getServerByDomain(domain);
-				if(server==null)
-					throw new ObjectNotFoundException();
-				serversByDomainCache.put(domain, server);
-				return server;
-			}catch(SQLException x){
-				throw new InternalServerErrorException(x);
-			}
+		try{
+			server=FederationStorage.getServerByDomain(domain);
+			if(server==null)
+				throw new ObjectNotFoundException();
+			serversByDomainCache.put(domain, server);
+			return server;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 
 	public void setServerRestriction(Server server, FederationRestriction restriction){
 		try{
 			ModerationStorage.setServerRestriction(server.id(), restriction!=null ? Utils.gson.toJson(restriction) : null);
-			synchronized(serversByDomainCache){
-				serversByDomainCache.remove(server.host());
-			}
+			serversByDomainCache.remove(server.host());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -266,22 +260,20 @@ public class ModerationController{
 
 	public Server getOrAddServer(String domain){
 		domain=domain.toLowerCase();
-		synchronized(serversByDomainCache){
-			Server server=serversByDomainCache.get(domain);
-			if(server!=null)
-				return server;
+		Server server=serversByDomainCache.get(domain);
+		if(server!=null)
+			return server;
 
-			try{
-				server=FederationStorage.getServerByDomain(domain);
-				if(server==null){
-					int id=FederationStorage.addServer(domain);
-					server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
-				}
-				serversByDomainCache.put(domain, server);
-				return server;
-			}catch(SQLException x){
-				throw new InternalServerErrorException(x);
+		try{
+			server=FederationStorage.getServerByDomain(domain);
+			if(server==null){
+				int id=FederationStorage.addServer(domain);
+				server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
 			}
+			serversByDomainCache.put(domain, server);
+			return server;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 
@@ -289,22 +281,18 @@ public class ModerationController{
 		Server server=getOrAddServer(domain);
 		if(server.features().containsAll(features))
 			return;
-		synchronized(serversByDomainCache){
-			server.features().addAll(features);
-			try{
-				FederationStorage.setServerFeatures(server.id(), server.features());
-			}catch(SQLException x){
-				throw new InternalServerErrorException(x);
-			}
+		server.features().addAll(features);
+		try{
+			FederationStorage.setServerFeatures(server.id(), server.features());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 
 	public void resetServerAvailability(Server server){
 		try{
 			FederationStorage.setServerAvailability(server.id(), null, 0, true);
-			synchronized(serversByDomainCache){
-				serversByDomainCache.remove(server.host());
-			}
+			serversByDomainCache.remove(server.host());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -313,12 +301,10 @@ public class ModerationController{
 	public void recordFederationFailure(Server server){
 		try{
 			LocalDate today=LocalDate.now(ZoneId.systemDefault());
-			synchronized(serversByDomainCache){
-				if(!today.equals(server.lastErrorDay())){
-					int dayCount=server.errorDayCount()+1;
-					FederationStorage.setServerAvailability(server.id(), today, dayCount, dayCount<7);
-					serversByDomainCache.remove(server.host());
-				}
+			if(!today.equals(server.lastErrorDay())){
+				int dayCount=server.errorDayCount()+1;
+				FederationStorage.setServerAvailability(server.id(), today, dayCount, dayCount<7);
+				serversByDomainCache.remove(server.host());
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -699,21 +685,17 @@ public class ModerationController{
 
 	public List<EmailDomainBlockRule> getEmailDomainBlockRules(){
 		try{
-			synchronized(emailRulesLock){
-				if(emailDomainRules!=null)
-					return emailDomainRules;
-				emailDomainRules=Collections.unmodifiableList(ModerationStorage.getEmailDomainBlockRules());
+			if(emailDomainRules!=null)
 				return emailDomainRules;
-			}
+			emailDomainRules=Collections.unmodifiableList(ModerationStorage.getEmailDomainBlockRules());
+			return emailDomainRules;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
 	private void reloadEmailDomainBlockCache() throws SQLException{
-		synchronized(emailRulesLock){
-			emailDomainRules=Collections.unmodifiableList(ModerationStorage.getEmailDomainBlockRules());
-		}
+		emailDomainRules=Collections.unmodifiableList(ModerationStorage.getEmailDomainBlockRules());
 	}
 
 	private String normalizeDomain(String domain){
@@ -792,21 +774,17 @@ public class ModerationController{
 
 	public List<IPBlockRule> getIPBlockRules(){
 		try{
-			synchronized(ipRulesLock){
-				if(ipRules!=null)
-					return ipRules;
-				ipRules=Collections.unmodifiableList(ModerationStorage.getIPBlockRules());
+			if(ipRules!=null)
 				return ipRules;
-			}
+			ipRules=Collections.unmodifiableList(ModerationStorage.getIPBlockRules());
+			return ipRules;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
 	private void reloadIpBlockCache() throws SQLException{
-		synchronized(ipRulesLock){
-			ipRules=Collections.unmodifiableList(ModerationStorage.getIPBlockRules());
-		}
+		ipRules=Collections.unmodifiableList(ModerationStorage.getIPBlockRules());
 	}
 
 	public void createIPBlockRule(User self, InetAddressRange addressRange, IPBlockRule.Action action, int expiryMinutes, String note){

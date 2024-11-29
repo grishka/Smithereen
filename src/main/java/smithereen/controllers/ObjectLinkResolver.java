@@ -31,6 +31,9 @@ import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.ServiceActor;
+import smithereen.exceptions.FederationException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -38,22 +41,20 @@ import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.Post;
 import smithereen.model.Server;
+import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.comments.Comment;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.CommentStorage;
 import smithereen.storage.FederationStorage;
-import smithereen.storage.PhotoStorage;
-import smithereen.util.UriBuilder;
-import smithereen.model.User;
-import smithereen.exceptions.FederationException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.model.UserBanStatus;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
+import smithereen.storage.PhotoStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.NamedMutexCollection;
+import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 
 import static smithereen.Utils.parseIntOrDefault;
@@ -71,7 +72,7 @@ public class ObjectLinkResolver{
 	private static final Logger LOG=LoggerFactory.getLogger(ObjectLinkResolver.class);
 
 	private final HashMap<URI, ActorToken> actorTokensCache=new HashMap<>();
-	private final HashMap<URI, Object> actorTokenLocks=new HashMap<>();
+	private final NamedMutexCollection actorTokenMutexes=new NamedMutexCollection();
 	private final LruCache<URI, ForeignUser> serviceActorCache=new LruCache<>(200);
 
 	private final ApplicationContext context;
@@ -114,45 +115,19 @@ public class ObjectLinkResolver{
 		}else if(fg.actorTokenEndpoint==null){
 			return null;
 		}
-		boolean needWait;
-		Object lock;
-		synchronized(actorTokensCache){
-			ActorToken token=actorTokensCache.get(group.activityPubID);
-			if(token!=null && token.isValid())
-				return token.token;
-			if(!actorTokenLocks.containsKey(group.activityPubID)){
-				// This thread will request the token, other threads will wait
-				lock=new Object();
-				actorTokenLocks.put(group.activityPubID, lock);
-				needWait=false;
-			}else{
-				// Other thread is already requesting the token, we'll wait for it to do that
-				lock=actorTokenLocks.get(group.activityPubID);
-				needWait=true;
-			}
-		}
-		if(needWait){
-			synchronized(lock){
-				while(actorTokenLocks.containsKey(group.activityPubID)){
-					try{
-						lock.wait();
-					}catch(InterruptedException ignore){}
-				}
-				synchronized(actorTokensCache){
-					return actorTokensCache.get(group.activityPubID).token;
-				}
-			}
-		}else{
-			JsonObject token=ActivityPub.fetchActorToken(context, actor, fg);
-			synchronized(actorTokensCache){
-				if(token!=null)
-					actorTokensCache.put(group.activityPubID, new ActorToken(token, Utils.parseISODate(token.getAsJsonPrimitive("validUntil").getAsString())));
-			}
-			synchronized(lock){
-				actorTokenLocks.remove(group.activityPubID);
-				lock.notifyAll();
-				return token;
-			}
+		String mutexName=group.activityPubID.toString();
+		actorTokenMutexes.acquire(mutexName);
+		try{
+			return actorTokensCache.computeIfAbsent(group.activityPubID, id->{
+				JsonObject token=ActivityPub.fetchActorToken(context, actor, fg);
+				if(token==null)
+					throw new FederationException();
+				return new ActorToken(token, Utils.parseISODate(token.getAsJsonPrimitive("validUntil").getAsString()));
+			}).token();
+		}catch(FederationException x){
+			return null;
+		}finally{
+			actorTokenMutexes.release(mutexName);
 		}
 	}
 
