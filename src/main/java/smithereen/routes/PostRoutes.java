@@ -233,7 +233,7 @@ public class PostRoutes{
 		if(post.attachments!=null && !post.attachments.isEmpty()){
 			model.with("draftAttachments", post.attachments);
 			model.with("attachAltTexts", post.attachments.stream()
-					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.fileRecord.id().getIDForClient(), li.name) : null)
+					.map(att->att instanceof LocalImage li && li.photoID==0 && li.name!=null ? new Pair<>(li.fileRecord.id().getIDForClient(), li.name) : null)
 					.filter(Objects::nonNull)
 					.collect(Collectors.toMap(Pair::first, Pair::second))
 			);
