@@ -148,6 +148,8 @@ public class CommentsController{
 	}
 
 	public Map<CommentParentObjectID, PaginatedList<CommentViewModel>> getCommentsForFeed(Collection<CommentParentObjectID> ids, boolean flat, int limit){
+		if(ids.isEmpty())
+			return Map.of();
 		try{
 			Map<CommentParentObjectID, PaginatedList<CommentViewModel>> comments=CommentStorage.getCommentsForFeed(ids, flat, limit)
 					.entrySet()
