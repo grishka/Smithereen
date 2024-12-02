@@ -298,16 +298,16 @@ small{
 	list-style-type: none;
 	margin: 0;
 	padding: 0;
-	a{
+	>li>a, >li.nonLink{
 		display: block;
 		padding: 4px 6px;
 	}
-	a:hover, a:visited:hover{
+	>li>a:hover{
 		text-decoration: none;
 		background: $blockBackground;
 		box-shadow: 0 1px 0 $blockBorderTop inset;
 	}
-	li.hasAux{
+	>li.hasAux{
 		display: table;
 		a{
 			display: table-cell;
@@ -319,7 +319,7 @@ small{
 			}
 		}
 	}
-	li.separator{
+	>li.separator{
 		border-bottom: solid 1px $menuItemsSeparator;
 		margin: 3px 0;
 	}
@@ -3812,12 +3812,18 @@ label.largeAccented{
 		width: 130px;
 		margin-right: 15px;
 		flex: none;
+		position: relative;
+		overflow: hidden;
 		img{
 			width: 100%;
 			height: auto;
 			max-height: 200px;
 			object-fit: cover;
 			object-position: top center;
+			display: block;
+		}
+		&:hover .rotateButtons{
+			transform: translateY(0);
 		}
 	}
 	.descriptionW{
@@ -3825,6 +3831,35 @@ label.largeAccented{
 	}
 	textarea{
 		width: 100%;
+	}
+	.rotateButtons, .thumb .loader{
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 24px;
+		background-color: rgba(0,0,0,0.5);
+		backdrop-filter: saturate(180%) blur(2px);
+	}
+	.rotateButtons{
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transform: translateY(100%);
+		transition: transform 0.2s ease;
+		a{
+			width: 20px;
+			height: 20px;
+			background: svg-load('img/photorot.svg', fill: #fff);
+			opacity: 0.5;
+			transition: opacity 0.2s ease;
+			&:hover{
+				opacity: 1;
+			}
+			&.rotateCCW{
+				background-position: -20px 0;
+			}
+		}
 	}
 }
 
@@ -3958,7 +3993,25 @@ label.largeAccented{
 			}
 		}
 	}
-
+	.rotateBtn{
+		display: inline-block;
+		width: 20px;
+		height: 20px;
+		margin: -7px 0 -5px;
+		padding: 0;
+		background: svg-load('img/photorot.svg', fill: $tabBackground);
+		opacity: 0.3;
+		transition: opacity 0.2s ease;
+		&:hover{
+			opacity: 1;
+		}
+		&.rotateCCW{
+			background-position: -20px 0;
+		}
+	}
+	.pvRotate .label{
+		margin-right: 5px;
+	}
 }
 
 .pageContent .photoViewer .imgW img{

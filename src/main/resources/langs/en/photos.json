@@ -50,5 +50,8 @@
   "photo_attach_title": "Attach photo",
   "photos_show_X_more_albums": "Show {count, plural, one {# more album} other {# more albums}}",
   "photo_attach_title_album": "Attach photo from album \"{album}\"",
-  "upload_photo": "Upload a photo"
+  "upload_photo": "Upload a photo",
+  "rotate_photo": "Rotate:",
+  "rotate_photo_cw": "Clockwise",
+  "rotate_photo_ccw": "Counterclockwise"
 }

@@ -245,6 +245,14 @@ public class PhotoStorage{
 		}
 	}
 
+	public static void updatePhotoMetadata(long photoID, PhotoMetadata metadata) throws SQLException{
+		new SQLQueryBuilder()
+				.update("photos")
+				.value("metadata", metadata==null ? null : Utils.gson.toJson(metadata))
+				.where("id=?", photoID)
+				.executeNoResult();
+	}
+
 	public static void deletePhoto(long id, long albumID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int displayOrder=new SQLQueryBuilder(conn)
@@ -360,6 +368,8 @@ public class PhotoStorage{
 				if(mfr!=null){
 					li.fillIn(mfr);
 				}
+				if(p.metadata!=null)
+					li.rotation=p.metadata.rotation;
 				p.image=li;
 			}
 		}

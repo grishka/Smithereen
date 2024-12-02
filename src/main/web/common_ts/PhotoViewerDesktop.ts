@@ -203,9 +203,9 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		if(isNew){
 			updatePostForms(this.bottomPart);
 
-			var editW=this.bottomPart.querySelector(".editableDescriptionW") as HTMLElement;
+			var editW=this.bottomPart.qs(".editableDescriptionW");
 			if(editW){
-				var descr=editW.querySelector(".description") as HTMLElement;
+				var descr=editW.qs(".description");
 				descr.addEventListener("mouseenter", (ev)=>{
 					showTooltip(editW, lang("photo_edit_description"));
 				});
@@ -225,6 +225,33 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 						});
 					});
 				}
+			}
+
+			var rotateW=this.bottomPart.qs(".pvRotate");
+			if(rotateW){
+				var buttons=rotateW.qs(".pvRotateButtons");
+				var loader=rotateW.qs(".inlineLoader");
+				buttons.addEventListener("click", (ev)=>{
+					var target=ev.target;
+					if(!(target instanceof HTMLAnchorElement))
+						return;
+					ev.preventDefault();
+					buttons.hide();
+					loader.show();
+					ajaxGet(target.href, (r)=>{
+						buttons.show();
+						loader.hide();
+						var urls=r as PhotoViewerSizedImageURLs[];
+						this.photos[this.currentIndex].urls=urls;
+						this.currentURLs=urls;
+						this.updateSize();
+						this.updateImageURLs();
+					}, (err)=>{
+						new MessageBox(lang("error"), err || lang("network_error"), lang("close")).show();
+						buttons.show();
+						loader.hide();
+					}, "json");
+				});
 			}
 		}
 

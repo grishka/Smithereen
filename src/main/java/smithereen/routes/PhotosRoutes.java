@@ -221,7 +221,7 @@ public class PhotosRoutes{
 
 		return new JsonObjectBuilder()
 				.add("id", encodeLong(XTEA.obfuscateObjectID(photoID, ObfuscatedObjectIDType.PHOTO)))
-				.add("html", photo.generateHTML(SizedImage.Type.PHOTO_THUMB_SMALL, null, null, size.width, size.height, true, null))
+				.add("html", photo.generateHTML(SizedImage.Type.PHOTO_THUMB_MEDIUM, null, null, size.width, size.height, true, null))
 				.build();
 	}
 
@@ -385,6 +385,7 @@ public class PhotosRoutes{
 		if(ctx.getPhotosController().canManagePhoto(self, photo)){
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.DELETE);
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.EDIT_DESCRIPTION);
+			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.ROTATE);
 		}
 		if(ctx.getPhotosController().canManageAlbum(self, album) && album.systemType==null){
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.SET_AS_COVER);
@@ -1044,5 +1045,30 @@ public class PhotosRoutes{
 		else
 			r.box(boxTitle, model.renderToString(), "photoAttachAlbum", 642);
 		return r.runScript("initDynamicControls(ge('photoAttachAlbum'));");
+	}
+
+	public static Object rotatePhoto(Request req, Response resp, Account self, ApplicationContext ctx){
+		Photo photo=getPhotoForRequest(req);
+		SizedImage.Rotation rotation=photo.metadata!=null && photo.metadata.rotation!=null ? photo.metadata.rotation : SizedImage.Rotation._0;
+		SizedImage.Rotation newRotation;
+		if(req.queryParams("cw")!=null)
+			newRotation=rotation.cw();
+		else if(req.queryParams("ccw")!=null)
+			newRotation=rotation.ccw();
+		else
+			throw new BadRequestException();
+		ctx.getPhotosController().setPhotoRotation(self.user, photo, newRotation);
+		if(isAjax(req)){
+			String from=req.queryParams("from");
+			if("viewer".equals(from)){
+				resp.type("application/json");
+				return gson.toJson(photo.image.getURLsForPhotoViewer());
+			}else if("edit".equals(from)){
+				return new WebDeltaResponse(resp)
+						.setContent("photoEditThumb_"+photo.getIdString(), photo.image.generateHTML(SizedImage.Type.PHOTO_THUMB_MEDIUM, null, null, photo.getWidth(), photo.getHeight(), true, null));
+			}
+		}
+		resp.redirect(back(req));
+		return "";
 	}
 }

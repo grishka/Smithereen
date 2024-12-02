@@ -11,7 +11,8 @@ public record PhotoViewerPhotoInfo(String id, String authorURL, String authorNam
 		EDIT_DESCRIPTION,
 		SET_AS_COVER,
 		REPORT,
-		SAVE_TO_ALBUM
+		SAVE_TO_ALBUM,
+		ROTATE
 	}
 	public record Interactions(int likes, boolean isLiked, int comments){}
 }

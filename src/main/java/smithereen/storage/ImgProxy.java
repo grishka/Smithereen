@@ -80,6 +80,12 @@ public class ImgProxy{
 			return this;
 		}
 
+		public UrlBuilder rotate(SizedImage.Rotation rotation){
+			if(rotation!=null && rotation!=SizedImage.Rotation._0)
+				options.add("rot:"+rotation.value());
+			return this;
+		}
+
 		public URI build(){
 			if(format==null){
 				throw new IllegalArgumentException("Output file format not set");

@@ -24,7 +24,14 @@
 </div>
 {% for photo in items %}
     <div class="photoEditRow" id="photoEditRow_{{ photo.idString }}" data-photo-id="{{ photo.idString }}" data-text-format="{{ descriptionSources[photo.id].format }}"{% if loop.first %} style="border-top: none"{% endif %}>
-    	<div class="thumb">{{ photo.image | pictureForPhoto('m', false) }}</div>
+    	<div class="thumb">
+    		<div id="photoEditThumb_{{ photo.idString }}">{{ photo.image | pictureForPhoto('m', false) }}</div>
+    		<div class="rotateButtons" id="photoRotateButtons_{{ photo.idString }}">
+    			<a href="{{ photo.url }}/rotate?cw&from=edit&csrf={{ csrf }}" data-ajax data-ajax-hide="photoRotateButtons_{{ photo.idString }}" data-ajax-show="photoRotateLoader_{{ photo.idString }}" class="rotateCW"></a>
+    			<a href="{{ photo.url }}/rotate?ccw&from=edit&csrf={{ csrf }}" data-ajax data-ajax-hide="photoRotateButtons_{{ photo.idString }}" data-ajax-show="photoRotateLoader_{{ photo.idString }}" class="rotateCCW"></a>
+    		</div>
+    		<div class="loader white" id="photoRotateLoader_{{ photo.idString }}" style="display: none"></div>
+    	</div>
     	<div class="descriptionW">
     		<h4 class="marginAfter">{{ L('photo_description') }}</h4>
     		<textarea>{{ descriptionSources[photo.id].source }}</textarea>

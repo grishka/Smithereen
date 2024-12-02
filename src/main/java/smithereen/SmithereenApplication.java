@@ -652,6 +652,7 @@ public class SmithereenApplication{
 				getActivityPubCollection("/replies", 50, ActivityPubRoutes::photoComments);
 				getLoggedIn("/ajaxEditDescription", PhotosRoutes::ajaxEditDescription);
 				getWithCSRF("/saveToAlbum", PhotosRoutes::saveToAlbum);
+				getWithCSRF("/rotate", PhotosRoutes::rotatePhoto);
 			});
 		});
 

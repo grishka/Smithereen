@@ -70,6 +70,9 @@
 			<li><a href="/system/reportForm?type=photo&id={{ photo.idString }}" data-ajax-box>{{ L('report') }}</a></li>
 			{% endif %}
 			<li><a href="{{ originalImageURL }}" target="_blank">{{ L('photo_open_original') }}</a></li>
+			{% if allowedActions contains "ROTATE" %}
+			<li class="grayText nonLink pvRotate"><span class="label">{{ L('rotate_photo') }}</span><span class="pvRotateButtons"><a href="{{ photo.url }}/rotate?cw&from=viewer&csrf={{ csrf }}" class="rotateBtn rotateCW" data-tooltip="{{ L('rotate_photo_cw') }}" aria-label="{{ L('rotate_photo_cw') }}"></a><a href="{{ photo.url }}/rotate?ccw&from=viewer&csrf={{ csrf }}" class="rotateBtn rotateCCW" data-tooltip="{{ L('rotate_photo_ccw') }}" aria-label="{{ L('rotate_photo_ccw') }}"></a></span><span class="inlineLoader" style="display: none"></span></li>
+			{% endif %}
 		</ul>
 	</div>
 </div>

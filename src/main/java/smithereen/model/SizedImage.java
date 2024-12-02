@@ -1,5 +1,7 @@
 package smithereen.model;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -271,6 +273,54 @@ public interface SizedImage{
 		public Dimensions(int width, int height){
 			this.width=width;
 			this.height=height;
+		}
+	}
+
+	enum Rotation{
+		@SerializedName("0")
+		_0,
+		@SerializedName("90")
+		_90,
+		@SerializedName("180")
+		_180,
+		@SerializedName("270")
+		_270;
+
+		public Rotation cw(){
+			return switch(this){
+				case _0 -> _90;
+				case _90 -> _180;
+				case _180 -> _270;
+				case _270 -> _0;
+			};
+		}
+
+		public Rotation ccw(){
+			return switch(this){
+				case _0 -> _270;
+				case _90 -> _0;
+				case _180 -> _90;
+				case _270 -> _180;
+			};
+		}
+
+		public int value(){
+			return switch(this){
+				case _0 -> 0;
+				case _90 -> 90;
+				case _180 -> 180;
+				case _270 -> 270;
+			};
+		}
+
+		public static Rotation valueOf(int rotation){
+			return switch(rotation){
+				case 0 -> _0;
+				case 90 -> _90;
+				case 180 -> _180;
+				case 270 -> _270;
+				default -> throw new IllegalArgumentException("Unexpected value: " + rotation);
+			};
 		}
 	}
 }

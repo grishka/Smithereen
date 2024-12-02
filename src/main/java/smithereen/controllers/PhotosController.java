@@ -2,6 +2,8 @@ package smithereen.controllers;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -43,6 +45,7 @@ import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.model.photos.PhotoMetadata;
 import smithereen.storage.CommentStorage;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaStorage;
@@ -55,6 +58,8 @@ import smithereen.text.TextProcessor;
 import spark.Request;
 
 public class PhotosController{
+	private static final Logger LOG=LoggerFactory.getLogger(PhotosController.class);
+
 	public static final int MAX_ALBUMS_PER_OWNER=70;
 	public static final int MAX_PHOTOS_PER_ALBUM=5000;
 
@@ -897,6 +902,23 @@ public class PhotosController{
 			return PaginatedList.emptyList(count);
 		try{
 			return PhotoStorage.getAllPhotosInAlbums(albumIDs, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setPhotoRotation(User self, Photo photo, SizedImage.Rotation rotation){
+		enforcePhotoManagementPermission(self, photo);
+		if(photo.apID!=null)
+			throw new IllegalArgumentException("Can only rotate local photos");
+		try{
+			if(photo.metadata==null)
+				photo.metadata=new PhotoMetadata();
+			photo.metadata.rotation=rotation;
+			if(photo.image instanceof LocalImage li)
+				li.rotation=rotation;
+			PhotoStorage.updatePhotoMetadata(photo.id, photo.metadata);
+			context.getActivityPubWorker().sendUpdateAlbumPhoto(self, photo, getAlbum(photo.albumID, self));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

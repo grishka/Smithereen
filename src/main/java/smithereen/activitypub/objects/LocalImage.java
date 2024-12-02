@@ -19,6 +19,7 @@ public class LocalImage extends Image implements SizedImage{
 	public long fileID;
 	public MediaFileRecord fileRecord;
 	public long photoID;
+	public Rotation rotation;
 
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
@@ -27,6 +28,8 @@ public class LocalImage extends Image implements SizedImage{
 			fileID=obj.get("_fileID").getAsLong();
 		if(obj.has("_photoID"))
 			photoID=obj.get("_photoID").getAsLong();
+		if(obj.has("_rot"))
+			rotation=Rotation.valueOf(obj.get("_rot").getAsInt());
 		return this;
 	}
 
@@ -38,7 +41,8 @@ public class LocalImage extends Image implements SizedImage{
 			return obj;
 		}
 		ImgProxy.UrlBuilder builder=MediaFileStorageDriver.getInstance().getImgProxyURL(fileRecord.id())
-				.format(isGraffiti ? SizedImage.Format.PNG : SizedImage.Format.JPEG);
+				.format(isGraffiti ? SizedImage.Format.PNG : SizedImage.Format.JPEG)
+				.rotate(rotation);
 		int croppedWidth=width, croppedHeight=height;
 		if(cropRegion!=null){
 			int x=Math.round(cropRegion[0]*width);
@@ -71,7 +75,8 @@ public class LocalImage extends Image implements SizedImage{
 		}
 		ImgProxy.UrlBuilder builder=MediaFileStorageDriver.getInstance().getImgProxyURL(fileRecord.id())
 				.format(format)
-				.resize(size.getResizingType(), size.getMaxWidth(), size.getMaxHeight(), false, false);
+				.resize(size.getResizingType(), size.getMaxWidth(), size.getMaxHeight(), false, false)
+				.rotate(rotation);
 		if(cropRegion!=null && size.getResizingType()==ImgProxy.ResizingType.FILL){
 			int x=Math.round(cropRegion[0]*width);
 			int y=Math.round(cropRegion[1]*height);

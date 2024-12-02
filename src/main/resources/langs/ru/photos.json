@@ -50,5 +50,8 @@
   "photo_attach_title": "Прикрепление фотографии",
   "photos_show_X_more_albums": "Показать ещё {count, plural, one {# альбом} few {# альбома} other {# альбомов}}",
   "photo_attach_title_album": "Прикрепление фотографии из альбома «{album}»",
-  "upload_photo": "Загрузить фотографию"
+  "upload_photo": "Загрузить фотографию",
+  "rotate_photo": "Повернуть:",
+  "rotate_photo_cw": "По часовой стрелке",
+  "rotate_photo_ccw": "Против часовой стрелки"
 }

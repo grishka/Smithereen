@@ -113,9 +113,13 @@ class PhotoAlbumUploader{
 				this.resultLoaderEl.remove();
 			if(Math.floor(xhr.status/100)==2){
 				var resp:any=JSON.parse(xhr.response);
-				var textarea, descriptionHeading, deleteLink;
+				var textarea, descriptionHeading, deleteLink, rotateLoader;
 				var fileEl=ce("div", {className: "photoEditRow", id: "photoEditRow_"+resp.id}, [
-					ce("div", {className: "thumb", innerHTML: resp.html}),
+					ce("div", {className: "thumb"}, [
+						ce("div", {innerHTML: resp.html, id: "photoEditThumb_"+resp.id}),
+						ce("div", {className: "rotateButtons", id: "photoRotateButtons_"+resp.id, innerHTML: `<a href="/photos/${resp.id}/rotate?cw&from=edit&csrf=${userConfig.csrf}" data-ajax data-ajax-hide="photoRotateButtons_${resp.id}" data-ajax-show="photoRotateLoader_${resp.id}" class="rotateCW"></a><a href="/photos/${resp.id}/rotate?ccw&from=edit&csrf=${userConfig.csrf}" data-ajax data-ajax-hide="photoRotateButtons_${resp.id}" data-ajax-show="photoRotateLoader_${resp.id}" class="rotateCCW"></a>`}),
+						rotateLoader=ce("div", {id: "photoRotateLoader_"+resp.id, className: "loader white"})
+					]),
 					ce("div", {className: "descriptionW"}, [
 						descriptionHeading=ce("h4", {innerText: lang("photo_description"), className: "marginAfter"}),
 						textarea=ce("textarea"),
@@ -125,6 +129,7 @@ class PhotoAlbumUploader{
 						])
 					])
 				]);
+				rotateLoader.hide();
 				this.resultEl.appendChild(fileEl);
 				autoSizeTextArea(textarea);
 				deleteLink.dataset.confirmMessage=lang("delete_photo_confirm");

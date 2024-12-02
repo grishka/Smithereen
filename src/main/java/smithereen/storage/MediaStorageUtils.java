@@ -108,6 +108,8 @@ public class MediaStorageUtils{
 					.add("_fileID", li.fileID);
 			if(li.photoID!=0)
 				jb.add("_photoID", li.photoID);
+			if(li.rotation!=null && li.rotation!=SizedImage.Rotation._0)
+				jb.add("_rot", li.rotation.value());
 			if(StringUtils.isNotEmpty(li.name))
 				jb.add("name", li.name);
 			return jb.build();
@@ -137,6 +139,8 @@ public class MediaStorageUtils{
 				LocalImage img=new LocalImage();
 				img.fileID=photo.localFileID;
 				img.photoID=photoID;
+				if(photo.metadata!=null)
+					img.rotation=photo.metadata.rotation;
 				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(img.fileID);
 				img.fillIn(mfr);
 				attachObjects.add(img);
