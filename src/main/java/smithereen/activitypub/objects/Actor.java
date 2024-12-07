@@ -67,18 +67,18 @@ public abstract class Actor extends ActivityPubObject{
 	}
 
 	public Image getBestAvatarImage(){
-		Image icon=this.icon!=null ? this.icon.get(0) : null;
+		Image icon=this.icon!=null ? this.icon.getFirst() : null;
 		if(icon==null)
 			return null;
 		if(icon instanceof LocalImage)
 			return icon;
-		if(icon.image!=null && !icon.image.isEmpty() && icon.image.get(0).width>0 && icon.image.get(0).height>0)
-			return icon.image.get(0);
+		if(icon.image!=null && !icon.image.isEmpty() && icon.image.getFirst().width>0 && icon.image.getFirst().height>0)
+			return icon.image.getFirst();
 		return icon;
 	}
 
 	public float[] getAvatarCropRegion(){
-		Image icon=this.icon!=null ? this.icon.get(0) : null;
+		Image icon=this.icon!=null ? this.icon.getFirst() : null;
 		if(icon==null)
 			return null;
 		return icon.cropRegion;

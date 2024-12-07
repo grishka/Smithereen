@@ -35,8 +35,8 @@
 			{{ group | pictureForAvatar('cr') }}
 			{% if canEditGroup %}
 			<ul class="selfAvaActions actionList">
-				<li><a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureBox({{ group.id }}).show(); return false;">{{L('update_profile_picture')}}</a></li>
-				<li><a href="/settings/confirmRemoveProfilePicture?group={{ group.id }}" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture?group={{ group.id }}');">{{L('remove_profile_picture')}}</a></li>
+				<li><a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureLayer({{ group.id }}).show(); return false;">{{L('update_profile_picture')}}</a></li>
+				<li><a href="/settings/confirmRemoveProfilePicture?group={{ group.id }}" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture_group', '/settings/removeProfilePicture?group={{ group.id }}');">{{L('remove_profile_picture')}}</a></li>
 			</ul>
 			{% endif %}
 		</div>
@@ -45,7 +45,7 @@
 		{% endif %}
 		{% else %}
 		{% if canEditGroup %}
-		<a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureBox({{ group.id }}).show(); return false;">
+		<a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureLayer({{ group.id }}).show(); return false;">
 			<span class="ava avaPlaceholder inProfile group own"></span><div class="ownProfileAvaPlaceholderLabel">{{L('upload_avatar')}}</div>
 		</a>
 		{%else%}

@@ -1483,3 +1483,18 @@ function restoreRemoteInteractionDomain(){
 	}
 }
 
+function chooseFileAndUpload(url:string, fieldName:string, accept:string){
+	var fileField=ce("input", {type: "file", accept: accept});
+	fileField.addEventListener("change", ()=>{
+		var files=fileField.files;
+		if(files.length){
+			var file=files[0];
+		}
+		if(!file || file.type.split("/")[0]!="image")
+			return;
+		LayerManager.getInstance().showBoxLoader();
+		ajaxUpload(url, fieldName, file);
+	});
+	fileField.click();
+}
+

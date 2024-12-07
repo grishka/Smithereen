@@ -53,5 +53,22 @@
   "upload_photo": "Upload a photo",
   "rotate_photo": "Rotate:",
   "rotate_photo_cw": "Clockwise",
-  "rotate_photo_ccw": "Counterclockwise"
+  "rotate_photo_ccw": "Counterclockwise",
+  "update_avatar_title": "Upload new photo",
+  "update_avatar_intro": "Upload a real photo of yourself so that friends can easily recognize you.",
+  "update_avatar_intro_group": "A good picture will make your community more recognizable.",
+  "update_avatar_formats": "You can upload an image in JPG, GIF, PNG, WEBP or HEIC/HEIF format.",
+  "update_avatar_footer": "If you're having any problems with your upload, try using a smaller photo.",
+  "update_avatar_crop_title": "Your profile photo",
+  "update_avatar_crop_explanation1": "Please select an area for your profile picture.",
+  "update_avatar_crop_explanation2": "You can rotate the image to position it properly.",
+  "update_avatar_crop_title_group": "Logo picture",
+  "update_avatar_crop_explanation1_group": "Please select an area for your logo picture.",
+  "update_avatar_thumb_title": "Create thumbnail",
+  "update_avatar_thumb_explanation1": "Crop the image to create a thumbnail.",
+  "update_avatar_thumb_explanation2": "The thumbnail will appear next to your posts, private messages and comments.",
+  "update_avatar_thumb_explanation2_group": "The thumbnail will appear in lists of communities.",
+  "avatars_album_own": "My profile pictures",
+  "avatars_album_user": "{name}'s profile pictures",
+  "avatars_album_group": "Community logo pictures"
 }

@@ -44,10 +44,10 @@
 	<ul class="actionList">
 		{% if canEditGroup %}
 			{% if group.hasAvatar %}
-				<li><a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureBox({{ group.id }}).show(); return false;">{{L('update_profile_picture')}}</a></li>
-				<li><a href="/settings/confirmRemoveProfilePicture?group={{ group.id }}" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture?group={{ group.id }}');">{{L('remove_profile_picture')}}</a></li>
+				<li><a href="/groups/{{ group.id }}/edit" onclick="chooseFileAndUpload('/settings/updateProfilePicture?group={{ group.id }}', 'file', 'image/*'); return false;">{{L('update_profile_picture')}}</a></li>
+				<li><a href="/settings/confirmRemoveProfilePicture?group={{ group.id }}" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture_group', '/settings/removeProfilePicture?group={{ group.id }}');">{{L('remove_profile_picture')}}</a></li>
 			{% else %}
-				<li><a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureBox({{ group.id }}).show(); return false;">{{L('upload_avatar')}}</a></li>
+				<li><a href="/groups/{{ group.id }}/edit" onclick="chooseFileAndUpload('/settings/updateProfilePicture?group={{ group.id }}', 'file', 'image/*'); return false;">{{L('upload_avatar')}}</a></li>
 			{% endif %}
 			<li class="separator"></li>
 		{%endif%}

@@ -6,7 +6,7 @@
 			<div class="spacer"></div>
 			<div class="info">
 				<div class="count"><span class="icon"></span>{{ album.numPhotos | numberformat }}</div>
-				<div class="title">{{ photoAlbumTitle(album) }}</div>
+				<div class="title">{{ photoAlbumTitle(_context, album) }}</div>
 				<div class="description">{{ album.description }}</div>
 			</div>
 		</div>

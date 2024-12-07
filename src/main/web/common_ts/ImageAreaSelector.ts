@@ -31,6 +31,8 @@ class ImageAreaSelector{
 	private downSelectedW:number;
 	private downSelectedH:number;
 	private trackedTouchID:number;
+	private minAspect:number;
+	private maxAspect:number;
 
 	private mouseUpListener:any;
 	private mouseMoveListener:any;
@@ -39,6 +41,9 @@ class ImageAreaSelector{
 
 	private square:boolean;
 	private enabled:boolean=true;
+	public onUpdate:{():void};
+	public onStartDrag:{():void};
+	public onEndDrag:{():void};
 
 	public constructor(parentEl:HTMLElement, square:boolean=false){
 		this.parentEl=parentEl;
@@ -80,6 +85,10 @@ class ImageAreaSelector{
 			markerCont.appendChild(this.edgeBottom=this.makeDiv("edge bottom"));
 			markerCont.appendChild(this.edgeLeft=this.makeDiv("edge left"));
 			markerCont.appendChild(this.edgeRight=this.makeDiv("edge right"));
+			markerCont.appendChild(this.makeDiv("marker top"));
+			markerCont.appendChild(this.makeDiv("marker bottom"));
+			markerCont.appendChild(this.makeDiv("marker left"));
+			markerCont.appendChild(this.makeDiv("marker right"));
 		}
 		this.square=square;
 	}
@@ -89,7 +98,7 @@ class ImageAreaSelector{
 		el.className=cls;
 		return el;
 	}
-	
+
 	public setSelectedArea(x:number, y:number, w:number, h:number){
 		this.curX=x;
 		this.curY=y;
@@ -104,6 +113,11 @@ class ImageAreaSelector{
 
 	public setEnabled(enabled:boolean):void{
 		this.enabled=enabled;
+	}
+
+	public setAspectRatioLimits(min:number, max:number){
+		this.minAspect=min;
+		this.maxAspect=max;
 	}
 
 	private updateStyles():void{
@@ -126,7 +140,7 @@ class ImageAreaSelector{
 		this.scrimTop.style.height=y+"px";
 		this.scrimBottom.style.left=x+"px";
 		this.scrimBottom.style.width=w+"px";
-		this.scrimBottom.style.height=(contH-y-h+1)+"px";
+		this.scrimBottom.style.height=(contH-y-h)+"px";
 		this.scrimLeft.style.width=x+"px";
 		this.scrimRight.style.width=(contW-x-w)+"px";
 	}
@@ -148,7 +162,7 @@ class ImageAreaSelector{
 		for(var i=0;i<ev.touches.length;i++){
 			var touch=ev.touches[i];
 			if(touch.identifier==this.trackedTouchID){
-				this.onPointerMove(Math.round(touch.clientX), Math.round(touch.clientY));
+				this.onPointerMove(Math.round(touch.clientX), Math.round(touch.clientY), ev);
 				break;
 			}
 		}
@@ -182,9 +196,8 @@ class ImageAreaSelector{
 	}
 
 	private onMouseMove(ev:MouseEvent):void{
-		this.onPointerMove(ev.clientX, ev.clientY);
+		this.onPointerMove(ev.clientX, ev.clientY, ev);
 	}
-
 
 	private onPointerDown(x:number, y:number, target:HTMLElement):void{
 		if(!this.enabled) return;
@@ -195,15 +208,35 @@ class ImageAreaSelector{
 		this.downSelectedY=this.curY;
 		this.downSelectedW=this.curW;
 		this.downSelectedH=this.curH;
+		this.container.classList.add("moving");
+		if(this.onStartDrag)
+			this.onStartDrag();
 	}
 
 	private onPointerUp():void{
 		this.curTarget=null;
+		this.container.classList.remove("moving");
+		if(this.onEndDrag)
+			this.onEndDrag();
 	}
 
-	private onPointerMove(x:number, y:number):void{
+	private enforceAspectRatio(){
+		if(this.square){
+			this.curW=this.curH=Math.min(this.curH, this.curW);
+		}else{
+			var aspect=this.curW/this.curH;
+			if(this.maxAspect && aspect>this.maxAspect){
+				this.curH=this.curW/this.maxAspect;
+			}else if(this.minAspect && aspect<this.minAspect){
+				this.curW=this.curH*this.minAspect;
+			}
+		}
+	}
+
+	private onPointerMove(x:number, y:number, ev:Event):void{
 		if(!this.curTarget)
 			return;
+		ev.stopPropagation();
 		var dX=x-this.downX;
 		var dY=y-this.downY;
 		var contW=this.container.clientWidth;
@@ -214,25 +247,27 @@ class ImageAreaSelector{
 			this.updateStyles();
 		}else if(this.curTarget==this.edgeRight){
 			this.curW=Math.max(30, Math.min(this.downSelectedW+dX, contW-this.curX));
+			this.enforceAspectRatio();
 			this.updateStyles();
 		}else if(this.curTarget==this.edgeBottom){
 			this.curH=Math.max(30, Math.min(this.downSelectedH+dY, contH-this.curY));
+			this.enforceAspectRatio();
 			this.updateStyles();
 		}else if(this.curTarget==this.markerBR){
 			this.curW=Math.max(30, Math.min(this.downSelectedW+dX, contW-this.curX));
 			this.curH=Math.max(30, Math.min(this.downSelectedH+dY, contH-this.curY));
-			if(this.square){
-				this.curW=this.curH=Math.min(this.curH, this.curW);
-			}
+			this.enforceAspectRatio();
 			this.updateStyles();
 		}else if(this.curTarget==this.edgeTop){
 			var prevH=this.curH;
 			this.curH=Math.max(30, Math.min(this.downSelectedH-dY, this.curY+this.curH));
+			this.enforceAspectRatio();
 			this.curY+=prevH-this.curH;
 			this.updateStyles();
 		}else if(this.curTarget==this.edgeLeft){
 			var prevW=this.curW;
 			this.curW=Math.max(30, Math.min(this.downSelectedW-dX, this.curX+this.curW));
+			this.enforceAspectRatio();
 			this.curX+=prevW-this.curW;
 			this.updateStyles();
 		}else if(this.curTarget==this.markerTL){
@@ -240,9 +275,7 @@ class ImageAreaSelector{
 			this.curW=Math.max(30, Math.min(this.downSelectedW-dX, this.curX+this.curW));
 			var prevH=this.curH;
 			this.curH=Math.max(30, Math.min(this.downSelectedH-dY, this.curY+this.curH));
-			if(this.square){
-				this.curW=this.curH=Math.min(this.curH, this.curW);
-			}
+			this.enforceAspectRatio();
 			this.curX+=prevW-this.curW;
 			this.curY+=prevH-this.curH;
 			this.updateStyles();
@@ -250,20 +283,18 @@ class ImageAreaSelector{
 			this.curW=Math.max(30, Math.min(this.downSelectedW+dX, contW-this.curX));
 			var prevH=this.curH;
 			this.curH=Math.max(30, Math.min(this.downSelectedH-dY, this.curY+this.curH));
-			if(this.square){
-				this.curW=this.curH=Math.min(this.curH, this.curW);
-			}
+			this.enforceAspectRatio();
 			this.curY+=prevH-this.curH;
 			this.updateStyles();
 		}else if(this.curTarget==this.markerBL){
 			this.curH=Math.max(30, Math.min(this.downSelectedH+dY, contH-this.curY));
 			var prevW=this.curW;
 			this.curW=Math.max(30, Math.min(this.downSelectedW-dX, this.curX+this.curW));
-			if(this.square){
-				this.curW=this.curH=Math.min(this.curH, this.curW);
-			}
+			this.enforceAspectRatio();
 			this.curX+=prevW-this.curW;
 			this.updateStyles();
 		}
+		if(this.onUpdate)
+			this.onUpdate();
 	}
 }

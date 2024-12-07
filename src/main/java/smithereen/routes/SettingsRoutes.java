@@ -29,6 +29,7 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.Utils;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.FriendsController;
 import smithereen.exceptions.BadRequestException;
@@ -45,6 +46,7 @@ import smithereen.model.OtherSession;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
+import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
@@ -53,6 +55,8 @@ import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.photos.AvatarCropRects;
+import smithereen.model.photos.ImageRect;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
@@ -184,123 +188,69 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object updateProfilePicture(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
-		try{
-			int groupID=parseIntOrDefault(req.queryParams("group"), 0);
-			Group group=null;
-			if(groupID!=0){
-				group=GroupStorage.getById(groupID);
-				if(group==null || !GroupStorage.getGroupMemberAdminLevel(groupID, self.user.id).isAtLeast(Group.AdminLevel.ADMIN)){
-					throw new UserActionNotAllowedException();
-				}
-			}
+	public static Object updateProfilePicture(Request req, Response resp, Account self, ApplicationContext ctx){
+		int groupID=parseIntOrDefault(req.queryParams("group"), 0);
+		Group group=null;
+		if(groupID!=0){
+			group=ctx.getGroupsController().getGroupOrThrow(groupID);
+			ctx.getGroupsController().enforceUserAdminLevel(group, self.user, Group.AdminLevel.ADMIN);
+		}
 
-			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
-			Part part=req.raw().getPart("pic");
-			if(part.getSize()>10*1024*1024){
-				throw new IOException("file too large");
-			}
-
-			String mime=part.getContentType();
-			if(!mime.startsWith("image/"))
-				throw new IOException("incorrect mime type");
-
-			File temp=File.createTempFile("SmithereenUpload", null);
-			try{
-				try(FileOutputStream out=new FileOutputStream(temp)){
-					copyBytes(part.getInputStream(), out);
-				}
-			}catch(IOException x){
-				throw new BadRequestException(x.getMessage(), x);
-			}
-			VipsImage img=new VipsImage(temp.getAbsolutePath());
-			if(img.hasAlpha())
-				img=img.flatten(1, 1, 1);
-			float ratio=(float)img.getWidth()/(float)img.getHeight();
-			boolean ratioIsValid=ratio<=2.5f && ratio>=0.25f;
-			float[] cropRegion=null;
-			if(ratioIsValid){
+		AvatarCropRects cropRects=null;
+		String _crop=req.queryParams("crop");
+		if(_crop!=null){
+			String[] parts=_crop.split(",");
+			if(parts.length==8){
+				float[] crop=new float[8];
 				try{
-					String _x1=req.queryParams("x1"),
-							_x2=req.queryParams("x2"),
-							_y1=req.queryParams("y1"),
-							_y2=req.queryParams("y2");
-					if(_x1!=null && _x2!=null && _y1!=null && _y2!=null){
-						float x1=Float.parseFloat(_x1);
-						float x2=Float.parseFloat(_x2);
-						float y1=Float.parseFloat(_y1);
-						float y2=Float.parseFloat(_y2);
-						if(x1 >= 0f && x1<=1f && y1 >= 0f && y1<=1f && x2 >= 0f && x2<=1f && y2 >= 0f && y2<=1f && x1<x2 && y1<y2){
-							float iw=img.getWidth();
-							float ih=img.getHeight();
-							int x=Math.round(iw*x1);
-							int y=Math.round(ih*y1);
-							int size=Math.round(((x2-x1)*iw+(y2-y1)*ih)/2f);
-							cropRegion=new float[]{x1, y1, x2, y2};
+					for(int i=0;i<8;i++){
+						float coord=Float.parseFloat(parts[i]);
+						if(coord<0 || coord>1){
+							crop=null;
+							break;
 						}
+						crop[i]=coord;
 					}
-				}catch(NumberFormatException ignore){}
-			}
-			if(cropRegion==null && img.getWidth()!=img.getHeight()){
-				int cropSize, cropX=0;
-				if(img.getHeight()>img.getWidth()){
-					cropSize=img.getWidth();
-					cropRegion=new float[]{0f, 0f, 1f, (float)img.getWidth()/(float)img.getHeight()};
-				}else{
-					cropSize=img.getHeight();
-					cropX=img.getWidth()/2-img.getHeight()/2;
-					cropRegion=new float[]{(float)cropX/(float)img.getWidth(), 0f, (float)(cropX+img.getHeight())/(float)img.getWidth(), 1f};
+				}catch(NumberFormatException x){
+					crop=null;
 				}
-				if(!ratioIsValid){
-					VipsImage cropped=img.crop(cropX, 0, cropSize, cropSize);
-					img.release();
-					img=cropped;
+				if(crop!=null && crop[0]<crop[2] && crop[1]<crop[3] && crop[4]<crop[6] && crop[5]<crop[7]){
+					cropRects=new AvatarCropRects(
+							new ImageRect(crop[0], crop[1], crop[2], crop[3]),
+							new ImageRect(crop[4], crop[5], crop[6], crop[7])
+					);
 				}
 			}
+		}
 
-			try{
-				int[] size={0, 0};
-				File resizedFile=File.createTempFile("SmithereenUploadResized", ".webp");
-				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, 93, resizedFile, size);
-				ImageMetadata meta=new ImageMetadata(size[0], size[1], null, cropRegion);
-				MediaFileRecord fileRecord=MediaStorage.createMediaFileRecord(MediaFileType.IMAGE_PHOTO, resizedFile.length(), group==null ? self.user.id : -group.id, meta);
-				MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id(), false);
-				LocalImage ava=new LocalImage();
-				ava.fileID=fileRecord.id().id();
-				ava.fillIn(fileRecord);
+		SizedImage.Rotation rotation;
+		try{
+			rotation=SizedImage.Rotation.valueOf(safeParseInt(req.queryParams("rotation")));
+		}catch(IllegalArgumentException x){
+			rotation=null;
+		}
 
-				if(group==null){
-					MediaStorage.deleteMediaFileReferences(self.user.id, MediaFileReferenceType.USER_AVATAR);
-					UserStorage.updateProfilePicture(self.user, MediaStorageUtils.serializeAttachment(ava).toString());
-					MediaStorage.createMediaFileReference(fileRecord.id().id(), self.user.id, MediaFileReferenceType.USER_AVATAR, self.user.id);
-					self.user=UserStorage.getById(self.user.id);
-					ctx.getActivityPubWorker().sendUpdateUserActivity(self.user);
-				}else{
-					MediaStorage.deleteMediaFileReferences(group.id, MediaFileReferenceType.GROUP_AVATAR);
-					GroupStorage.updateProfilePicture(group, MediaStorageUtils.serializeAttachment(ava).toString());
-					MediaStorage.createMediaFileReference(fileRecord.id().id(), group.id, MediaFileReferenceType.GROUP_AVATAR, -group.id);
-					group=GroupStorage.getById(group.id);
-					ctx.getActivityPubWorker().sendUpdateGroupActivity(group);
-				}
-				temp.delete();
-			}finally{
-				img.release();
-			}
-			if(isAjax(req))
-				return new WebDeltaResponse(resp).refresh();
-
-			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("avatar_updated"));
-			resp.redirect("/settings/");
-		}catch(IOException|ServletException|IllegalStateException x){
+		LocalImage img=MediaStorageUtils.saveUploadedImage(req, resp, self, false);
+		img.rotation=rotation;
+		try{
+			ctx.getPhotosController().updateAvatar(self, group, img, cropRects);
+		}catch(UserErrorException x){
 			LOG.error("Exception while processing a profile picture upload", x);
 			if(isAjax(req)){
 				Lang l=lang(req);
-				return new WebDeltaResponse(resp).messageBox(l.get("error"), l.get("image_upload_error")+"<br/>"+x.getMessage(), l.get("ok"));
+				return new WebDeltaResponse(resp).messageBox(l.get("error"), l.get("image_upload_error"), l.get("close"));
 			}
 
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("image_upload_error"));
 			resp.redirect("/settings/");
+			return "";
 		}
+
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+
+		req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("avatar_updated"));
+		resp.redirect("/settings/");
 		return "";
 	}
 
@@ -379,27 +329,22 @@ public class SettingsRoutes{
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", Utils.lang(req).get("confirm_remove_profile_picture")).with("formAction", Config.localURI("/settings/removeProfilePicture?_redir="+URLEncoder.encode(back)+groupParam)).with("back", back);
 	}
 
-	public static Object removeProfilePicture(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object removeProfilePicture(Request req, Response resp, Account self, ApplicationContext ctx){
 		int groupID=parseIntOrDefault(req.queryParams("group"), 0);
-		Group group=null;
+		Actor owner=self.user;
 		if(groupID!=0){
-			group=GroupStorage.getById(groupID);
-			if(group==null || !GroupStorage.getGroupMemberAdminLevel(groupID, self.user.id).isAtLeast(Group.AdminLevel.ADMIN)){
-				throw new UserActionNotAllowedException();
-			}
+			Group group=ctx.getGroupsController().getGroupOrThrow(groupID);
+			ctx.getGroupsController().enforceUserAdminLevel(group, self.user, Group.AdminLevel.ADMIN);
+			owner=group;
 		}
 
-		MediaStorage.deleteMediaFileReferences(group!=null ? group.id : self.user.id, group!=null ? MediaFileReferenceType.GROUP_AVATAR : MediaFileReferenceType.USER_AVATAR);
-
-		if(group!=null){
-			GroupStorage.updateProfilePicture(group, null);
-			group=GroupStorage.getById(groupID);
-			ctx.getActivityPubWorker().sendUpdateGroupActivity(group);
-		}else{
-			UserStorage.updateProfilePicture(self.user, null);
-			self.user=UserStorage.getById(self.user.id);
-			ctx.getActivityPubWorker().sendUpdateUserActivity(self.user);
+		if(owner.getAvatar() instanceof LocalImage li){
+			if(li.photoID!=0)
+				ctx.getPhotosController().deletePhoto(self.user, ctx.getPhotosController().getPhotoIgnoringPrivacy(li.photoID));
+			else
+				ctx.getPhotosController().deleteAvatar(owner);
 		}
+
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect("/settings/");

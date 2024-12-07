@@ -10,7 +10,7 @@ public class PhotoMetadata{
 	@SerializedName("apUrl")
 	public URI apURL;
 	public URI apReplies;
-	public float[] avaCropRect;
+	public AvatarCropRects cropRects;
 	public SizedImage.Rotation rotation;
 	public int width, height;
 	public String blurhash;

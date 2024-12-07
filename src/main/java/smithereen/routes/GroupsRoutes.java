@@ -241,9 +241,9 @@ public class GroupsRoutes{
 			model.with("membershipState", membershipState);
 			model.with("groupAdminLevel", level);
 			if(level.isAtLeast(Group.AdminLevel.ADMIN)){
-				jsLangKey(req, "update_profile_picture", "save", "profile_pic_select_square_version", "drag_or_choose_file", "choose_file",
-						"drop_files_here", "picture_too_wide", "picture_too_narrow", "ok", "error", "error_loading_picture",
-						"remove_profile_picture", "confirm_remove_profile_picture", "choose_file_mobile");
+				jsLangKey(req, "update_avatar_title", "update_avatar_intro_group", "update_avatar_formats", "update_avatar_footer", "update_avatar_crop_title_group", "update_avatar_crop_explanation1_group",
+						"update_avatar_crop_explanation2", "update_avatar_thumb_title", "update_avatar_thumb_explanation1", "update_avatar_thumb_explanation2_group", "choose_file", "save_and_continue", "go_back",
+						"remove_profile_picture", "confirm_remove_profile_picture_group");
 			}
 			if(group.isEvent()){
 				if(membershipState==Group.MembershipState.MEMBER)

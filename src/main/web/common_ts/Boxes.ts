@@ -642,19 +642,68 @@ class FormBox extends Box{
 	}
 }
 
-abstract class FileUploadBox extends Box{
+class SimpleLayer extends BaseLayer{
+	protected contentWrap:HTMLElement;
 
+	public constructor(innerHTML:string="", addClasses:string=""){
+		super();
+		this.contentWrap=ce("div", {className: ("simpleLayer "+addClasses).trim(), innerHTML: innerHTML});
+	}
+
+	public onCreateContentView():HTMLElement{
+		return this.contentWrap;
+	}
+}
+
+abstract class FileUploadLayer extends BaseLayer{
+	protected contentWrap:HTMLElement;
 	protected fileField:HTMLInputElement;
 	protected dragOverlay:HTMLElement;
 	protected acceptMultiple:boolean=false;
+	protected layerContent:HTMLElement;
+	protected titleEl:HTMLElement;
+	protected message:string;
 
 	public constructor(title:string, message:string=null){
-		super(title, [lang("cancel")], function(idx:number){
-			this.dismiss();
-		});
+		super();
+		this.contentWrap=ce("div", {className: "layerWithTitle simpleLayer"}, [
+			ce("div", {className: "layerTitle"}, [
+				this.titleEl=ce("div", {className: "title ellipsize", innerText: title}),
+				ce("a", {className: "close", href: "#", onclick: ()=>{this.dismiss(); return false;}, innerText: lang("close")})
+			])
+		]);
 		if(!message) message=lang(mobile ? "choose_file_mobile" : "drag_or_choose_file");
+		this.message=message;
+		this.resetContent();
+	}
+
+	public onCreateContentView():HTMLElement{
+		return this.contentWrap;
+	}
+
+	protected abstract handleFile(file:File):void;
+
+	protected handleFiles(files:FileList):void{
+		for(var i=0;i<files.length;i++){
+			var f=files[i];
+			if(f.type.indexOf("image/")==0){
+				this.handleFile(f);
+				if(!this.acceptMultiple)
+					return;
+			}
+		}
+	}
+
+	public setContent(content:HTMLElement){
+		if(this.layerContent)
+			this.layerContent.remove();
+		this.layerContent=content;
+		this.contentWrap.appendChild(content);
+	}
+
+	public resetContent(){
 		var content:HTMLDivElement=ce("div", {className: "fileUploadBoxContent", innerHTML:
-			`<div class="inner">${message}<br/>
+			`<div class="inner">${this.message}<br/>
 				<form>
 					<input type="file" id="fileUploadBoxInput" accept="image/*"/>
 					<label for="fileUploadBoxInput" class="button">${lang("choose_file")}</label>
@@ -679,117 +728,14 @@ abstract class FileUploadBox extends Box{
 			}.bind(this), false);
 		}
 
-		this.setContent(content);
+		this.contentWrap.appendChild(content);
 		this.fileField=content.qs("input[type=file]");
 
 		this.fileField.addEventListener("change", (ev:Event)=>{
 			this.handleFiles(this.fileField.files);
 			this.fileField.form.reset();
 		});
-	}
-
-	protected abstract handleFile(file:File):void;
-
-	protected handleFiles(files:FileList):void{
-		for(var i=0;i<files.length;i++){
-			var f=files[i];
-			if(f.type.indexOf("image/")==0){
-				this.handleFile(f);
-				if(!this.acceptMultiple)
-					return;
-			}
-		}
-	}
-
-	protected onCreateContentView():HTMLElement{
-		var cont=super.onCreateContentView();
-		cont.classList.add("wide");
-		return cont;
-	}
-}
-
-class ProfilePictureBox extends FileUploadBox{
-
-	private file:File=null;
-	private areaSelector:ImageAreaSelector=null;
-	private groupID:number=null;
-
-	public constructor(groupID:number=null){
-		super(lang("update_profile_picture"));
-		if(mobile)
-			this.noPrimaryButton=true;
-		this.groupID=groupID;
-	}
-
-	protected handleFile(file:File):void{
-		this.file=file;
-		var objURL=URL.createObjectURL(file);
-
-		var img=ce("img");
-		img.onload=()=>{
-			var ratio:number=img.naturalWidth/img.naturalHeight;
-			if(ratio>2.5){
-				new MessageBox(lang("error"), lang("picture_too_wide"), lang("ok")).show();
-				return;
-			}else if(ratio<0.25){
-				new MessageBox(lang("error"), lang("picture_too_narrow"), lang("ok")).show();
-				return;
-			}
-			var content=ce("div");
-			content.innerText=lang("profile_pic_select_square_version");
-			content.align="center";
-			var imgWrap=ce("div");
-			imgWrap.className="profilePictureBoxImgWrap";
-			imgWrap.appendChild(img);
-			content.appendChild(ce("br"));
-			content.appendChild(imgWrap);
-			this.setContent(content);
-			if(mobile)
-				this.noPrimaryButton=false;
-			this.setButtons([lang("save"), lang("cancel")], (idx:number)=>{
-				if(idx==1){
-					this.dismiss();
-					return;
-				}
-				var area=this.areaSelector.getSelectedArea();
-				var contW=imgWrap.clientWidth;
-				var contH=imgWrap.clientHeight;
-				var x1=area.x/contW;
-				var y1=area.y/contH;
-				var x2=(area.x+area.w)/contW;
-				var y2=(area.y+area.h)/contH;
-				this.areaSelector.setEnabled(false);
-
-				this.upload(x1, y1, x2, y2);
-			});
-
-			this.areaSelector=new ImageAreaSelector(imgWrap, true);
-			var w=imgWrap.clientWidth;
-			var h=imgWrap.clientHeight;
-			if(w>h){
-				this.areaSelector.setSelectedArea(Math.round(w/2-h/2), 0, h, h);
-			}else{
-				this.areaSelector.setSelectedArea(0, 0, w, w);
-			}
-		};
-		img.onerror=function(){
-			new MessageBox(lang("error"), lang("error_loading_picture"), lang("ok")).show();
-		};
-		img.src=objURL;
-	}
-
-	private upload(x1:number, y1:number, x2:number, y2:number):void{
-		var btn=this.getButton(0);
-		btn.setAttribute("disabled", "");
-		this.getButton(1).setAttribute("disabled", "");
-		btn.classList.add("loading");
-		setGlobalLoading(true);
-
-		ajaxUpload("/settings/updateProfilePicture?x1="+x1+"&y1="+y1+"&x2="+x2+"&y2="+y2+(this.groupID ? ("&group="+this.groupID) : ""), "pic", this.file, (resp:any)=>{
-			this.dismiss();
-			setGlobalLoading(false);
-			return false;
-		});
+		this.setContent(content);
 	}
 }
 
@@ -831,19 +777,6 @@ class MobileOptionsBox extends Box{
 			}, false);
 		});
 		this.setContent(content);
-	}
-}
-
-class SimpleLayer extends BaseLayer{
-	private contentWrap:HTMLElement;
-
-	public constructor(innerHTML:string, addClasses:string=""){
-		super();
-		this.contentWrap=ce("div", {className: ("simpleLayer "+addClasses).trim(), innerHTML: innerHTML});
-	}
-
-	public onCreateContentView():HTMLElement{
-		return this.contentWrap;
 	}
 }
 

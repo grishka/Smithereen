@@ -49,7 +49,7 @@
 		{% endif %}
 	</div>
 	<div class="rightCol">
-		{% if album is not null %}<div class="grayText marginAfter">{{ L('photo_album_label') }}:<br/><a href="{{ album.url }}">{{ photoAlbumTitle(album) }}</a></div>{% endif %}
+		{% if album is not null %}<div class="grayText marginAfter">{{ L('photo_album_label') }}:<br/><a href="{{ album.url }}">{{ photoAlbumTitle(_context, album) }}</a></div>{% endif %}
 		<div class="grayText">{{ L('photo_added_by') }}:<br/><a href="{{ author.profileURL }}">{{ author | name('full') }}</a></div>
 		<ul class="actionList">
 			{% if allowedActions contains "SET_AS_COVER" %}

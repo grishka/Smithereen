@@ -1,5 +1,5 @@
 $imgAreaSelectorMarkerSize: 10px;
-$imgAreaSelectorMarkerBorderRadius: 2px;
+$imgAreaSelectorMarkerBorderRadius: 0;
 $mobile: false;
 $siteWidthWide: 1280px;
 $siteWidthNarrow: 791px;
@@ -4099,5 +4099,67 @@ label.largeAccented{
 
 #photoAttachAlbum .photoGrid{
 	padding-top: 0;
+}
+
+.avatarCropLayerContent{
+	padding: 0 20px;
+	line-height: 130%;
+}
+
+.avatarCropImgWrap{
+	margin-top: 15px;
+	position: relative;
+	display: inline-flex;
+	>svg{
+		max-width: 100%;
+		max-height: 800px;
+		width: auto;
+		height: auto;
+		user-select: none;
+	}
+	.rotateButtons{
+		position: absolute;
+		right: 5px;
+		bottom: 5px;
+		display: flex;
+		a{
+			width: 20px;
+			height: 20px;
+			background: svg-load("img/photorot.svg", fill: #fff);
+			filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+			opacity: 0.5;
+			transition: opacity 0.2s ease;
+			&.rotateCCW{
+				background-position: -20px 0;
+			}
+			&:hover{
+				opacity: 1;
+			}
+		}
+	}
+}
+
+.avatarThumbSelectW{
+	display: grid;
+	margin-top: 15px;
+	grid-template-columns: 200px 100px;
+	grid-template-rows: 100px auto;
+	grid-gap: 20px;
+	align-items: start;
+	justify-items: start;
+	justify-content: center;
+	.avatarCropImgWrap{
+		margin: 0;
+		grid-row: span 2;
+	}
+}
+
+.layerButtons{
+	padding: 20px 0;
+	display: flex;
+	justify-content: center;
+	button:not(:last-child){
+		margin-right: 10px;
+	}
 }
 

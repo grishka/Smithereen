@@ -66,10 +66,10 @@
 	<ul class="actionList">
 		{%if currentUser is not null and currentUser.id==user.id%}
 			{%if currentUser.hasAvatar%}
-				<li><a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">{{L('update_profile_picture')}}</a></li>
+				<li><a href="/settings/profile/general" onclick="chooseFileAndUpload('/settings/updateProfilePicture', 'file', 'image/*'); return false;">{{L('update_profile_picture')}}</a></li>
 				<li><a href="/settings/confirmRemoveProfilePicture" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture');">{{L('remove_profile_picture')}}</a></li>
 			{%else%}
-				<li><a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">{{L('upload_avatar')}}</a></li>
+				<li><a href="/settings/profile/general" onclick="chooseFileAndUpload('/settings/updateProfilePicture', 'file', 'image/*'); return false;">{{L('upload_avatar')}}</a></li>
 			{%endif%}
 			<li class="separator"></li>
 		{%endif%}

@@ -110,6 +110,8 @@ public class MediaStorageUtils{
 				jb.add("_photoID", li.photoID);
 			if(li.rotation!=null && li.rotation!=SizedImage.Rotation._0)
 				jb.add("_rot", li.rotation.value());
+			if(li.avaCropRects!=null)
+				jb.add("_crop", Utils.gson.toJsonTree(li.avaCropRects));
 			if(StringUtils.isNotEmpty(li.name))
 				jb.add("name", li.name);
 			return jb.build();
@@ -192,6 +194,8 @@ public class MediaStorageUtils{
 		try{
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
 			Part part=req.raw().getPart("file");
+			if(part==null)
+				throw new BadRequestException();
 			if(part.getSize()>10*1024*1024){
 				// Payload Too Large
 				Spark.halt(413, l.get("err_file_upload_too_large", Map.of("maxSize", l.formatFileSize(10*1024*1024))));
@@ -237,9 +241,8 @@ public class MediaStorageUtils{
 				photo.fileID=fileRecord.id().id();
 				photo.fillIn(fileRecord);
 				MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id(), false);
-
-				temp.delete();
 			}finally{
+				temp.delete();
 				img.release();
 			}
 			return photo;

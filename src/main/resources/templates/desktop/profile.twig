@@ -40,7 +40,7 @@
 		<div class="selfAvaOverlay">
 			{{user | pictureForAvatar('cr')}}
 			<ul class="selfAvaActions actionList">
-				<li><a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">{{L('update_profile_picture')}}</a></li>
+				<li><a href="/settings/profile/general" onclick="new ProfilePictureLayer().show(); return false;">{{L('update_profile_picture')}}</a></li>
 				<li><a href="/settings/confirmRemoveProfilePicture" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture');">{{L('remove_profile_picture')}}</a></li>
 			</ul>
 		</div>
@@ -49,7 +49,7 @@
 		{%endif%}
 		{%else%}
 		{%if currentUser is not null and currentUser.id==user.id%}
-		<a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">
+		<a href="/settings/profile/general" onclick="new ProfilePictureLayer().show(); return false;">
 			<span class="ava avaPlaceholder inProfile own"></span><div class="ownProfileAvaPlaceholderLabel">{{L('upload_avatar')}}</div>
 		</a>
 		{%else%}

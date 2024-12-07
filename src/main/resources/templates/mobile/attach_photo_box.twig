@@ -3,7 +3,7 @@
 	<a href="/photos/attachBoxAlbum?album={{ album.idString }}&id={{ _context.formID }}" class="{{ album.coverID==0 ? 'empty' : '' }}" data-ajax-box>
 		{% if _context.covers[album.coverID] is not null %}{{ _context.covers[album.coverID].image | pictureForPhoto('s') }}{% endif %}
 		<div class="infoW">
-			<div class="title ellipsize">{{ photoAlbumTitle(album) }}</div>
+			<div class="title ellipsize">{{ photoAlbumTitle(_context, album) }}</div>
 			<div class="count">{{ album.numPhotos | numberformat }}</div>
 		</div>
 	</a>

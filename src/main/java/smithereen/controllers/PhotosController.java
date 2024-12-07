@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
@@ -32,26 +33,38 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.libvips.VipsImage;
+import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.media.ImageMetadata;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.media.MediaFileType;
 import smithereen.model.notifications.Notification;
+import smithereen.model.photos.AbsoluteImageRect;
+import smithereen.model.photos.AvatarCropRects;
+import smithereen.model.photos.ImageRect;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoMetadata;
 import smithereen.storage.CommentStorage;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PhotoStorage;
+import smithereen.storage.UserStorage;
+import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
 import smithereen.text.TextProcessor;
@@ -480,7 +493,10 @@ public class PhotosController{
 				context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
 			owner=group;
 		}
+		return createPhotoInternal(self, owner, album, fileID, descriptionSource, descriptionFormat, null);
+	}
 
+	private long createPhotoInternal(User self, Actor owner, @NotNull PhotoAlbum album, long fileID, String descriptionSource, FormattedTextFormat descriptionFormat, PhotoMetadata metadata){
 		String parsedDescription=descriptionSource==null ? "" : TextProcessor.preprocessPostText(descriptionSource, null, descriptionFormat);
 		try{
 			long id;
@@ -488,7 +504,7 @@ public class PhotosController{
 			synchronized(photoCreationLock){
 				if(PhotoStorage.getAlbumSize(album.id)>=MAX_PHOTOS_PER_ALBUM)
 					throw new UserErrorException("err_too_many_photos_in_album");
-				id=PhotoStorage.createLocalPhoto(album.ownerID, self.id, album.id, fileID, parsedDescription, descriptionSource, descriptionFormat, null);
+				id=PhotoStorage.createLocalPhoto(album.ownerID, self.id, album.id, fileID, parsedDescription, descriptionSource, descriptionFormat, metadata);
 				if(needUpdateCover)
 					PhotoStorage.setAlbumCover(album.id, id);
 			}
@@ -508,7 +524,7 @@ public class PhotosController{
 					}
 				}
 			}
-			if(album.ownerID>0){
+			if(album.ownerID>0 && album.systemType==null){
 				context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.ADD_PHOTO);
 			}
 
@@ -567,6 +583,7 @@ public class PhotosController{
 	}
 
 	private void deletePhotoInternal(Photo photo, PhotoAlbum album) throws SQLException{
+		Actor owner=context.getWallController().getContentAuthorAndOwner(photo).owner();
 		boolean needUpdateCover=album.coverID==photo.id;
 		long newCoverID=0;
 		synchronized(photoCreationLock){
@@ -584,12 +601,14 @@ public class PhotosController{
 		if(photo.localFileID!=0){
 			MediaStorage.deleteMediaFileReference(photo.id, MediaFileReferenceType.ALBUM_PHOTO, photo.localFileID);
 		}
+		int numPhotos=Integer.MAX_VALUE;
 		synchronized(albumCacheLock){
 			List<PhotoAlbum> albums=albumListCache.get(photo.ownerID);
 			if(albums!=null){
 				for(PhotoAlbum a:albums){
 					if(a.id==photo.albumID){
 						a.numPhotos--;
+						numPhotos=a.numPhotos;
 						if(needUpdateCover){
 							a.coverID=newCoverID;
 							a.flags.remove(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
@@ -599,6 +618,10 @@ public class PhotosController{
 				}
 			}
 		}
+		if(numPhotos!=Integer.MAX_VALUE)
+			album.numPhotos=numPhotos;
+		else
+			album.numPhotos--;
 		LikeStorage.deleteAllLikesForObject(photo.id, Like.ObjectType.PHOTO);
 		context.getCommentsController().deleteCommentsForObject(photo);
 		NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.PHOTO, photo.id);
@@ -609,6 +632,22 @@ public class PhotosController{
 		}
 		albumCache.put(album.id, album);
 		// TODO groups newsfeed
+
+		// If they deleted their current avatar, find the newest photo in the avatars album and set it as the avatar
+		if(owner.icon!=null && !owner.icon.isEmpty() && owner.icon.getFirst() instanceof LocalImage li && li.photoID==photo.id){
+			if(album.systemType!=PhotoAlbum.SystemAlbumType.AVATARS)
+				throw new InternalServerErrorException("Huh?!");
+			try{
+				if(album.numPhotos>0){
+					Photo newAva=getPhotoIgnoringPrivacy(PhotoStorage.getLastAlbumPhoto(album.id));
+					setPhotoToAvatar(owner, newAva);
+				}else{
+					deleteAvatar(owner);
+				}
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
 	}
 
 	public PaginatedList<Photo> getAlbumPhotos(User self, PhotoAlbum album, int offset, int count){
@@ -914,11 +953,126 @@ public class PhotosController{
 		try{
 			if(photo.metadata==null)
 				photo.metadata=new PhotoMetadata();
+			SizedImage.Rotation prevRotation=photo.metadata.rotation;
+			if(prevRotation==null)
+				prevRotation=SizedImage.Rotation._0;
+			if(rotation==prevRotation)
+				return;
+
+			if(photo.metadata.cropRects!=null){
+				int diffDeg=rotation.value()-prevRotation.value();
+				if(diffDeg<0)
+					diffDeg=360+diffDeg;
+				SizedImage.Rotation diff=SizedImage.Rotation.valueOf(diffDeg);
+				AbsoluteImageRect profileCrop=photo.metadata.cropRects.profile().makeAbsolute(photo.getWidth(), photo.getHeight());
+				AbsoluteImageRect thumbCrop=photo.metadata.cropRects.thumb().makeAbsolute(profileCrop.getWidth(), profileCrop.getHeight());
+				photo.metadata.cropRects=new AvatarCropRects(
+						profileCrop.rotate(diff).makeRelative(),
+						thumbCrop.rotate(diff).makeRelative()
+				);
+			}
+
 			photo.metadata.rotation=rotation;
 			if(photo.image instanceof LocalImage li)
 				li.rotation=rotation;
 			PhotoStorage.updatePhotoMetadata(photo.id, photo.metadata);
+			// TODO rotate tags
 			context.getActivityPubWorker().sendUpdateAlbumPhoto(self, photo, getAlbum(photo.albumID, self));
+
+			Actor owner=context.getWallController().getContentAuthorAndOwner(photo).owner();
+			if(owner.getAvatar() instanceof LocalImage li && li.photoID==photo.id){
+				setPhotoToAvatar(owner, photo);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateAvatar(Account self, @Nullable Group group, LocalImage img, AvatarCropRects crop){
+		if(group!=null)
+			context.getGroupsController().enforceUserAdminLevel(group, self.user, Group.AdminLevel.ADMIN);
+
+		Actor owner=group==null ? self.user : group;
+		int imgW, imgH;
+		if(img.rotation==SizedImage.Rotation._90 || img.rotation==SizedImage.Rotation._270){
+			imgW=img.height;
+			imgH=img.width;
+		}else{
+			imgW=img.width;
+			imgH=img.height;
+		}
+
+		if(crop==null){
+			AbsoluteImageRect thumbRect;
+			if(imgW>imgH){ // Pick the square out of the center
+				thumbRect=new AbsoluteImageRect(imgW/2-imgH/2, 0, imgW/2+imgH/2, imgH, imgW, imgH);
+			}else{ // Pick the square form the top
+				thumbRect=new AbsoluteImageRect(0, 0, imgW, imgW, imgW, imgH);
+			}
+			crop=new AvatarCropRects(new ImageRect(0, 0, 1, 1), thumbRect.makeRelative());
+		}
+
+		AbsoluteImageRect profileCrop=crop.profile().makeAbsolute(imgW, imgH);
+		float ratio=profileCrop.getWidth()/(float)profileCrop.getHeight();
+		if(ratio>2.5f){ // too wide
+			crop=new AvatarCropRects(new AbsoluteImageRect(profileCrop.x1(), profileCrop.y1(), Math.round(profileCrop.x1()+profileCrop.getHeight()*2.5f), profileCrop.y2(), imgW, imgH).makeRelative(), crop.thumb());
+		}else if(ratio<0.25f){ // too tall
+			crop=new AvatarCropRects(new AbsoluteImageRect(profileCrop.x1(), profileCrop.y1(), profileCrop.x2(), Math.round(profileCrop.y1()+profileCrop.getWidth()/0.25f), imgW, imgH).makeRelative(), crop.thumb());
+		}
+
+		PhotoAlbum album=getOrCreateSystemAlbum(owner, PhotoAlbum.SystemAlbumType.AVATARS);
+		PhotoMetadata meta=new PhotoMetadata();
+		meta.cropRects=crop;
+		meta.rotation=img.rotation;
+		long id=createPhotoInternal(self.user, owner, album, img.fileID, null, null, meta);
+		Photo photo=getPhotoIgnoringPrivacy(id);
+		setPhotoToAvatar(owner, photo);
+
+		if(group==null){
+			// TODO create post
+		}
+	}
+
+	public void setPhotoToAvatar(Actor owner, Photo photo){
+		try{
+			if(!(photo.image instanceof LocalImage li))
+				throw new IllegalArgumentException();
+			LocalImage ava=new LocalImage();
+			ava.fileID=li.fileID;
+			ava.fillIn(li.fileRecord);
+			ava.rotation=li.rotation;
+			ava.photoID=photo.id;
+			ava.avaCropRects=photo.metadata.cropRects;
+			String serializedAva=MediaStorageUtils.serializeAttachment(ava).toString();
+
+			MediaStorage.deleteMediaFileReferences(owner.getLocalID(), owner instanceof Group ? MediaFileReferenceType.GROUP_AVATAR : MediaFileReferenceType.USER_AVATAR);
+
+			if(owner instanceof User user){
+				UserStorage.updateProfilePicture(user, serializedAva);
+				user=UserStorage.getById(user.id);
+				context.getActivityPubWorker().sendUpdateUserActivity(user);
+			}else if(owner instanceof Group group){
+				GroupStorage.updateProfilePicture(group, serializedAva);
+				group=GroupStorage.getById(group.id);
+				context.getActivityPubWorker().sendUpdateGroupActivity(group);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteAvatar(Actor owner){
+		try{
+			MediaStorage.deleteMediaFileReferences(owner.getLocalID(), owner instanceof Group ? MediaFileReferenceType.GROUP_AVATAR : MediaFileReferenceType.USER_AVATAR);
+			if(owner instanceof User user){
+				UserStorage.updateProfilePicture(user, null);
+				user=UserStorage.getById(user.id);
+				context.getActivityPubWorker().sendUpdateUserActivity(user);
+			}else if(owner instanceof Group group){
+				GroupStorage.updateProfilePicture(group, null);
+				group=GroupStorage.getById(group.id);
+				context.getActivityPubWorker().sendUpdateGroupActivity(group);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

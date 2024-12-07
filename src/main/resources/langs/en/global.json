@@ -200,5 +200,6 @@
   "release_files_to_upload": "Release to start upload",
   "object_X_of_Y": "{current} of {total}",
   "remote_like_photo_title": "Like photo",
-  "main_menu": "Main menu"
+  "main_menu": "Main menu",
+  "save_and_continue": "Save and continue"
 }

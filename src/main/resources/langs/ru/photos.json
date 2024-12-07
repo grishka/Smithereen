@@ -53,5 +53,22 @@
   "upload_photo": "Загрузить фотографию",
   "rotate_photo": "Повернуть:",
   "rotate_photo_cw": "По часовой стрелке",
-  "rotate_photo_ccw": "Против часовой стрелки"
+  "rotate_photo_ccw": "Против часовой стрелки",
+  "update_avatar_title": "Загрузка новой фотографии",
+  "update_avatar_intro": "Друзьям будет проще узнать вас, если вы загрузите свою настоящую фотографию.",
+  "update_avatar_intro_group": "Хорошая фотография сделает ваше сообщество более узнаваемым.",
+  "update_avatar_formats": "Вы можете загрузить изображение в формате JPG, GIF, PNG, WEBP или HEIC/HEIF.",
+  "update_avatar_footer": "Если у вас возникают проблемы с загрузкой, попробуйте выбрать фотографию меньшего размера.",
+  "update_avatar_crop_title": "Фотография на вашей странице",
+  "update_avatar_crop_explanation1": "Выбранная область будет показываться на вашей странице.",
+  "update_avatar_crop_explanation2": "Если изображение ориентировано неправильно, фотографию можно повернуть.",
+  "update_avatar_crop_title_group": "Фотография на странице сообщества",
+  "update_avatar_crop_explanation1_group": "Выбранная область будет выводиться на странице сообщества.",
+  "update_avatar_thumb_title": "Выбор миниатюры",
+  "update_avatar_thumb_explanation1": "Осталось выбрать квадратную область для маленьких фотографий.",
+  "update_avatar_thumb_explanation2": "Выбранная миниатюра будет использоваться в новостях, личных сообщениях и комментариях.",
+  "update_avatar_thumb_explanation2_group": "Выбранная миниатюра будет использоваться в списках сообществ.",
+  "avatars_album_own": "Фотографии с моей страницы",
+  "avatars_album_user": "Фотографии со страницы {name, inflect, genitive}",
+  "avatars_album_group": "Фотографии со страницы сообщества"
 }
