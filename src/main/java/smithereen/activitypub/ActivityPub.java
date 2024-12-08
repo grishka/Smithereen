@@ -112,6 +112,7 @@ public class ActivityPub{
 	static{
 		httpClient=ExtendedHttpClient.newBuilder()
 				.followRedirects(HttpClient.Redirect.NORMAL)
+				.connectTimeout(Duration.ofSeconds(15))
 				.build();
 
 		Map<Long, String> dow = new HashMap<>();
@@ -370,6 +371,7 @@ public class ActivityPub{
 						.header("Content-Type", CONTENT_TYPE)
 						.POST(HttpRequest.BodyPublishers.ofByteArray(body)),
 				inboxUrl, actor, body, "post")
+				.timeout(Duration.ofSeconds(30))
 				.build();
 		try{
 			HttpResponse<String> resp=httpClient.send(req, HttpResponse.BodyHandlers.ofString());
@@ -413,7 +415,7 @@ public class ActivityPub{
 		}else{
 			url=URI.create(uriTemplate.replace("{uri}", URLEncoder.encode(resource, StandardCharsets.UTF_8)));
 		}
-		HttpRequest req=HttpRequest.newBuilder(url).build();
+		HttpRequest req=HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(10)).build();
 		HttpResponse<Reader> resp;
 		try{
 			resp=httpClient.send(req, new ReaderBodyHandler());
@@ -471,6 +473,7 @@ public class ActivityPub{
 			if(redirect==null){
 				HttpRequest req=HttpRequest.newBuilder(new UriBuilder().scheme(Config.useHTTP ? "http" : "https").authority(domain).path(".well-known", "host-meta").build())
 						.header("Accept", "application/xrd+xml")
+						.timeout(Duration.ofSeconds(10))
 						.build();
 				HttpResponse<InputStream> resp;
 				try{
@@ -712,7 +715,7 @@ public class ActivityPub{
 
 	public static JsonObject fetchActorToken(@NotNull ApplicationContext context, @NotNull Actor actor, @NotNull ForeignGroup group){
 		String url=Objects.requireNonNull(group.actorTokenEndpoint).toString();
-		HttpRequest.Builder builder=HttpRequest.newBuilder(URI.create(url));
+		HttpRequest.Builder builder=HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10));
 		signRequest(builder, group.actorTokenEndpoint, actor, null, "get");
 		try{
 			HttpResponse<Reader> resp=httpClient.send(builder.build(), new ReaderBodyHandler());
@@ -739,7 +742,7 @@ public class ActivityPub{
 			throw new IllegalArgumentException("Collection ID and actor ID hostnames don't match");
 		if(query.isEmpty())
 			throw new IllegalArgumentException("Query is empty");
-		HttpRequest.Builder builder=HttpRequest.newBuilder(actor.collectionQueryEndpoint);
+		HttpRequest.Builder builder=HttpRequest.newBuilder(actor.collectionQueryEndpoint).timeout(Duration.ofSeconds(10));
 		FormBodyPublisherBuilder body=new FormBodyPublisherBuilder().add("collection", collectionID.toString());
 		for(URI uri:query)
 			body.add("item", uri.toString());

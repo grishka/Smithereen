@@ -19,6 +19,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -195,7 +196,7 @@ public class MediaCache{
 		byte[] key=keyForURI(uri);
 		String keyHex=Utils.byteArrayToHexString(key);
 
-		HttpRequest req=HttpRequest.newBuilder(uri).build();
+		HttpRequest req=HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30)).build();
 		Item result=null;
 		File tmp=File.createTempFile(keyHex, null);
 		try{

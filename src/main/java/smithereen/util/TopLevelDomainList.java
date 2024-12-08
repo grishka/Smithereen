@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
@@ -29,6 +30,7 @@ public class TopLevelDomainList{
 			BackgroundTaskRunner.getInstance().submit(()->{
 				try{
 					HttpRequest req=HttpRequest.newBuilder(URI.create("https://data.iana.org/TLD/tlds-alpha-by-domain.txt"))
+							.timeout(Duration.ofSeconds(30))
 							.build();
 					HttpResponse<String> resp=ActivityPub.httpClient.send(req, HttpResponse.BodyHandlers.ofString());
 					if(resp.statusCode()/100==2){

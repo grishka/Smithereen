@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -87,6 +88,7 @@ public class S3MediaFileStorageDriver extends MediaFileStorageDriver{
 		HttpRequest req=HttpRequest.newBuilder(getApiUrl().appendPath(getObjectName(id)).build())
 				.PUT(HttpRequest.BodyPublishers.ofFile(localFile.toPath()))
 				.header("Content-Type", id.type().getMimeType())
+				.timeout(Duration.ofSeconds(60))
 				.build();
 		try(FileInputStream in=new FileInputStream(localFile)){
 			req=signRequest(req, in);
@@ -98,7 +100,7 @@ public class S3MediaFileStorageDriver extends MediaFileStorageDriver{
 
 	@Override
 	public InputStream openStream(MediaFileID id) throws IOException{
-		HttpRequest req=HttpRequest.newBuilder(getObjectURL(id)).build();
+		HttpRequest req=HttpRequest.newBuilder(getObjectURL(id)).timeout(Duration.ofSeconds(60)).build();
 		return executeRequest(req, HttpResponse.BodyHandlers.ofInputStream()).body();
 	}
 
@@ -106,6 +108,7 @@ public class S3MediaFileStorageDriver extends MediaFileStorageDriver{
 	public void deleteFile(MediaFileID id) throws IOException{
 		HttpRequest req=HttpRequest.newBuilder(getApiUrl().appendPath(getObjectName(id)).build())
 				.DELETE()
+				.timeout(Duration.ofSeconds(60))
 				.build();
 		req=signRequest(req, null);
 		executeRequest(req, HttpResponse.BodyHandlers.ofString());
@@ -144,6 +147,7 @@ public class S3MediaFileStorageDriver extends MediaFileStorageDriver{
 		HttpRequest req=HttpRequest.newBuilder(getApiUrl().queryParam("delete", "").build())
 				.POST(HttpRequest.BodyPublishers.ofString(xmlStr))
 				.header("Content-MD5", md5Base64(xmlStr))
+				.timeout(Duration.ofSeconds(60))
 				.build();
 		try{
 			req=signRequest(req, xmlStr);

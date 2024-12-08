@@ -19,6 +19,7 @@ import java.net.URISyntaxException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -228,12 +229,12 @@ public class JLDProcessor{
 	private static JsonObject loadRemoteContext(String url){
 		LOG.debug("Dereferencing remote context from '{}'", url);
 		try{
-			HttpRequest req=HttpRequest.newBuilder(new URI(url)).build();
+			HttpRequest req=HttpRequest.newBuilder(new URI(url)).timeout(Duration.ofSeconds(10)).build();
 			HttpResponse<Reader> resp=ActivityPub.httpClient.send(req, new ReaderBodyHandler());
 			try(Reader reader=resp.body()){
 				return JsonParser.parseReader(reader).getAsJsonObject();
 			}
-		}catch(IOException|IllegalStateException|InterruptedException|URISyntaxException x){
+		}catch(Exception x){
 			LOG.warn("Failed to load remote context from '{}'", url, x);
 			return null;
 		}
