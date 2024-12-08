@@ -13,6 +13,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.lang.Lang;
 import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.PrivacySetting;
@@ -110,6 +111,12 @@ public class PhotoAlbum implements ActivityPubRepresentable, OwnedContentObject{
 	public String getLocalizedTitle(Lang lang, User self, Actor owner){
 		return switch(systemType){
 			case SAVED -> lang.get("saved_photos_album");
+			case AVATARS -> {
+				if(owner instanceof User user)
+					yield self!=null && user.id==self.id ? lang.get("avatars_album_own") : lang.get("avatars_album_user", Map.of("name", user.getFirstAndGender()));
+				else
+					yield lang.get("avatars_album_group");
+			}
 			case null, default -> title;
 		};
 	}

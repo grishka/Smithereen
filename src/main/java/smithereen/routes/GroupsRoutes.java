@@ -24,20 +24,25 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.Account;
 import smithereen.model.ActorWithDescription;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
 import smithereen.model.GroupAdmin;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.exceptions.BadRequestException;
@@ -46,6 +51,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
 import smithereen.text.Whitelist;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -306,6 +312,14 @@ public class GroupsRoutes{
 		model.with("albums", albums.list)
 				.with("photoAlbumCount", albums.total)
 				.with("covers", ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.list.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet())));
+
+		if(group.getAvatar() instanceof LocalImage li && li.photoID!=0){
+			try{
+				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(li.photoID);
+				model.with("avatarPvInfo", new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(photo.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), photo.image.getURLsForPhotoViewer()))
+						.with("avatarPhoto", photo);
+			}catch(ObjectNotFoundException ignore){}
+		}
 
 		return model;
 	}

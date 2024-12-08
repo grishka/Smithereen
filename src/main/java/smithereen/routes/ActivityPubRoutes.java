@@ -519,7 +519,7 @@ public class ActivityPubRoutes{
 	public static ActivityPubCollectionPageResponse photoAlbum(Request req, Response resp, int offset, int count){
 		ApplicationContext ctx=context(req);
 		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(XTEA.deobfuscateObjectID(Utils.decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), req);
-		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(null, album, offset, count);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(null, album, offset, count, false);
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(photos.list.stream().map(p->p.apID==null ? new LinkOrObject(ActivityPubPhoto.fromNativePhoto(p, album, ctx)) : new LinkOrObject(p.apID)).toList(), album.numPhotos)
 				.withCustomObject(ActivityPubPhotoAlbum.fromNativeAlbum(album, ctx));
 	}

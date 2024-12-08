@@ -35,7 +35,16 @@
 	<table width="100%" cellpadding="0" cellspacing="0" border="0" class="profileHeader">
 		<tr>
 			<td width="100">
+				{% if currentUser is not null and currentUser.id==user.id %}
+				<a href="javascript:void(0)" onclick="new MobileOptionsBox([
+				{%- if avatarPvInfo is not null %}{label: '{{ L('avatar_open') }}', onclick: function(){doOpenPhotoViewer({{ json(avatarPvInfo) }});} },{% endif -%}
+				{label: '{{ L('update_profile_picture') }}', onclick: function(){chooseFileAndUpload('/settings/updateProfilePicture', 'file', 'image/*');} }
+				{%- if user.hasAvatar %},{label: '{{ L('remove_profile_picture') }}', type: 'confirm', title: 'remove_profile_picture', msg: 'confirm_remove_profile_picture', url: '/settings/removeProfilePicture'}{% endif -%}]).show(); return false;">{{ user | pictureForAvatar('b') }}</a>
+				{% elseif avatarPvInfo is not null %}
+				<a href="{{ avatarPhoto.url }}" data-pv="{{ json(avatarPvInfo) }}" onclick="return openPhotoViewer(this)">{{ user | pictureForAvatar('b') }}</a>
+				{% else %}
 				{{ user | pictureForAvatar('b') }}
+				{% endif %}
 			</td>
 			<td class="profileNameW">
 				<h2 class="profileName">{{ user | name('complete') }}</h2>
@@ -64,15 +73,6 @@
 		</div>
 	{%endif%}
 	<ul class="actionList">
-		{%if currentUser is not null and currentUser.id==user.id%}
-			{%if currentUser.hasAvatar%}
-				<li><a href="/settings/profile/general" onclick="chooseFileAndUpload('/settings/updateProfilePicture', 'file', 'image/*'); return false;">{{L('update_profile_picture')}}</a></li>
-				<li><a href="/settings/confirmRemoveProfilePicture" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture');">{{L('remove_profile_picture')}}</a></li>
-			{%else%}
-				<li><a href="/settings/profile/general" onclick="chooseFileAndUpload('/settings/updateProfilePicture', 'file', 'image/*'); return false;">{{L('upload_avatar')}}</a></li>
-			{%endif%}
-			<li class="separator"></li>
-		{%endif%}
 		<li><a href="/users/{{ user.id }}/friends">{{ L('X_friends', {'count': friendCount}) }}</a></li>
 		<li class="separator"></li>
 		{%if currentUser is not null and currentUser.id!=user.id%}

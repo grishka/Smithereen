@@ -653,6 +653,7 @@ public class SmithereenApplication{
 				getLoggedIn("/ajaxEditDescription", PhotosRoutes::ajaxEditDescription);
 				getWithCSRF("/saveToAlbum", PhotosRoutes::saveToAlbum);
 				getWithCSRF("/rotate", PhotosRoutes::rotatePhoto);
+				postWithCSRF("/updateAvatarCrop", PhotosRoutes::updateAvatarCrop);
 			});
 		});
 

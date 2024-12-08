@@ -70,5 +70,7 @@
   "update_avatar_thumb_explanation2_group": "The thumbnail will appear in lists of communities.",
   "avatars_album_own": "My profile pictures",
   "avatars_album_user": "{name}'s profile pictures",
-  "avatars_album_group": "Community logo pictures"
+  "avatars_album_group": "Community logo pictures",
+  "avatar_edit_thumbnail": "Edit thumbnail",
+  "avatar_open": "Open photo"
 }

@@ -270,6 +270,22 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, res
 	return xhr;
 }
 
+function ajaxPostAndApplyActions(uri:string, params:any, onDone:{():void}=null, onError:{():void}=null){
+	params.csrf=userConfig.csrf;
+	ajaxPost(uri, params, (resp:any)=>{
+		if(resp instanceof Array){
+			for(var i=0;i<resp.length;i++){
+				applyServerCommand(resp[i]);
+			}
+		}
+	}, ()=>{
+		if(onError)
+			onError();
+		else
+			new MessageBox(lang("error"), lang("network_error"), lang("close")).show();
+	});
+}
+
 function ajaxGet(uri:string, onDone:{(r:any):void}, onError:{(msg:string):void}, responseType:XMLHttpRequestResponseType="json"):XMLHttpRequest{
 	if(!onError){
 		onError=(msg)=>{

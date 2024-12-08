@@ -1,3 +1,15 @@
+interface ImageRect{
+	x1:number;
+	y1:number;
+	x2:number;
+	y2:number;
+}
+
+interface AvatarCropRects{
+	profile:ImageRect;
+	thumb:ImageRect;
+}
+
 class ProfilePictureLayer extends FileUploadLayer{
 	private file:File=null;
 	private areaSelector:ImageAreaSelector=null;
@@ -8,10 +20,39 @@ class ProfilePictureLayer extends FileUploadLayer{
 	private fullSizeSvg:SVGSVGElement;
 	private fullSizeSvgImage:SVGImageElement;
 
-	public constructor(groupID:number=null){
+	private existingPhotoID:string;
+	private existingPhotoURL:string;
+	private existingPhotoCrop:AvatarCropRects;
+
+	public constructor(groupID:number=null, existingPhotoID:string=null, existingPhotoURL:string=null, existingPhotoCrop:AvatarCropRects=null){
 		super(lang("update_avatar_title"), lang(groupID ? "update_avatar_intro_group" : "update_avatar_intro")+"<br/>"+lang("update_avatar_formats"));
-		this.contentWrap.qs(".inner").append(lang("update_avatar_footer"));
 		this.groupID=groupID;
+		this.existingPhotoID=existingPhotoID;
+		this.existingPhotoURL=existingPhotoURL;
+		this.existingPhotoCrop=existingPhotoCrop;
+		if(!this.existingPhotoID){
+			this.contentWrap.qs(".inner").append(lang("update_avatar_footer"));
+		}else{
+			this.crop=[existingPhotoCrop.profile.x1, existingPhotoCrop.profile.y1, existingPhotoCrop.profile.x2, existingPhotoCrop.profile.y2];
+		}
+	}
+
+	public show(){
+		if(this.existingPhotoID){
+			LayerManager.getInstance().showBoxLoader();
+			var img=ce("img");
+			this.fullSizeImage=img;
+			img.onload=()=>{
+				super.show();
+				this.showCropForProfile();
+			};
+			img.onerror=()=>{
+				new MessageBox(lang("error"), lang("error_loading_picture"), lang("close")).show();
+			};
+			img.src=this.existingPhotoURL;
+		}else{
+			super.show();
+		}
 	}
 
 	protected handleFile(file:File):void{
@@ -41,7 +82,7 @@ class ProfilePictureLayer extends FileUploadLayer{
 	private showCropForProfile(){
 		var iw=this.fullSizeImage.naturalWidth;
 		var ih=this.fullSizeImage.naturalHeight;
-		var imgWrap=ce("div", {className: "avatarCropImgWrap"}, [/*this.fullSizeImage*/]);
+		var imgWrap=ce("div", {className: "avatarCropImgWrap"}, []);
 		var imgSvg=document.createElementNS("http://www.w3.org/2000/svg", "svg");
 		imgSvg.setAttribute("width", iw+"");
 		imgSvg.setAttribute("height", ih+"");
@@ -54,6 +95,7 @@ class ProfilePictureLayer extends FileUploadLayer{
 		imgWrap.appendChild(imgSvg);
 		this.fullSizeSvg=imgSvg;
 		this.fullSizeSvgImage=imgSvgImage;
+		var backBtn;
 		var content=ce("div", {className: "avatarCropLayerContent"}, [
 			lang(this.groupID ? "update_avatar_crop_explanation1_group" : "update_avatar_crop_explanation1"), ce("br"), lang("update_avatar_crop_explanation2"),
 			ce("div", {align: "center"}, [imgWrap]),
@@ -65,9 +107,11 @@ class ProfilePictureLayer extends FileUploadLayer{
 					this.crop=[area.x/contW, area.y/contH, (area.x+area.w)/contW, (area.y+area.h)/contH];
 					this.showCropForThumb();
 				}}, [lang("save_and_continue")]),
-				ce("button", {className: "tertiary", onclick: ()=>this.showIntro()}, [lang("go_back")])
+				backBtn=ce("button", {className: "tertiary", onclick: ()=>this.showIntro()}, [lang("go_back")])
 			])
 		]);
+		if(this.existingPhotoID)
+			backBtn.hide();
 		this.titleEl.innerText=lang(this.groupID ? "update_avatar_crop_title_group" : "update_avatar_crop_title");
 		this.setContent(content);
 		this.updateRotation(imgSvg, imgSvgImage);
@@ -206,10 +250,16 @@ class ProfilePictureLayer extends FileUploadLayer{
 		this.areaSelector=new ImageAreaSelector(imgWrap, true);
 		var w=imgWrap.clientWidth;
 		var h=imgWrap.clientHeight;
-		if(w>h){
-			this.areaSelector.setSelectedArea(w/2-h/2, 0, h, h);
+		if(this.existingPhotoCrop){
+			var rect=this.existingPhotoCrop.thumb;
+			var size=Math.min((rect.x2-rect.x1)*w, (rect.y2-rect.y1)*h);
+			this.areaSelector.setSelectedArea(rect.x1*w, rect.y1*h, size, size);
 		}else{
-			this.areaSelector.setSelectedArea(0, 0, w, w);
+			if(w>h){
+				this.areaSelector.setSelectedArea(w/2-h/2, 0, h, h);
+			}else{
+				this.areaSelector.setSelectedArea(0, 0, w, w);
+			}
 		}
 		this.areaSelector.onUpdate=()=>{
 			var x=this.crop[0]*iw;
@@ -229,11 +279,15 @@ class ProfilePictureLayer extends FileUploadLayer{
 
 	private upload(profileCrop:number[], squareCrop:number[]):void{
 		setGlobalLoading(true);
-		ajaxUpload("/settings/updateProfilePicture?rotation="+this.rotation+"&crop="+profileCrop.join(",")+","+squareCrop.join(",")+(this.groupID ? ("&group="+this.groupID) : ""), "file", this.file, (resp:any)=>{
-			this.dismiss();
-			setGlobalLoading(false);
-			return false;
-		});
+		if(this.existingPhotoID){
+			ajaxPostAndApplyActions("/photos/"+this.existingPhotoID+"/updateAvatarCrop", {crop: profileCrop.join(",")+","+squareCrop.join(","), rotation: this.rotation});
+		}else{
+			ajaxUpload("/settings/updateProfilePicture?rotation="+this.rotation+"&crop="+profileCrop.join(",")+","+squareCrop.join(",")+(this.groupID ? ("&group="+this.groupID) : ""), "file", this.file, (resp:any)=>{
+				this.dismiss();
+				setGlobalLoading(false);
+				return false;
+			});
+		}
 	}
 }
 

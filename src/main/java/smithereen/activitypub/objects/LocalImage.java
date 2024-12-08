@@ -39,8 +39,10 @@ public class LocalImage extends Image implements SizedImage{
 		if(obj.has("_rot")){
 			rotation=Rotation.valueOf(obj.get("_rot").getAsInt());
 		}
-		if(obj.has("_crop"))
+		if(obj.has("_crop")){
 			avaCropRects=Utils.gson.fromJson(obj.get("_crop"), AvatarCropRects.class);
+			cropRegion=new float[]{avaCropRects.thumb().x1(), avaCropRects.thumb().y1(), avaCropRects.thumb().x2(), avaCropRects.thumb().y2()};
+		}
 		return this;
 	}
 

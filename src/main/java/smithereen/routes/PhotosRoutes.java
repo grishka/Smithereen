@@ -53,6 +53,7 @@ import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.media.PhotoViewerPhotoInfo;
+import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.reports.ReportableContentObject;
@@ -179,7 +180,7 @@ public class PhotosRoutes{
 			owner=ctx.getGroupsController().getGroupOrThrow(-album.ownerID);
 		model.with("owner", owner).headerBack(owner).pageTitle(album.getLocalizedTitle(lang(req), self, owner));
 		int offset=offset(req);
-		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset, 100);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset, 100, false);
 		model.paginate(photos);
 
 		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
@@ -265,7 +266,7 @@ public class PhotosRoutes{
 		Templates.addJsLangForPrivacySettings(req);
 		jsLangKey(req, "photo_description", "photo_description_saved");
 
-		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(info.account.user, album, offset(req), 100);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(info.account.user, album, offset(req), 100, false);
 		model.paginate(photos);
 		model.with("descriptionSources", ctx.getPhotosController().getPhotoDescriptionSources(photos.list.stream().map(p->p.id).collect(Collectors.toSet())));
 
@@ -563,7 +564,7 @@ public class PhotosRoutes{
 			case "albums" -> {
 				long albumID=XTEA.deobfuscateObjectID(decodeLong(listParts[1]), ObfuscatedObjectIDType.PHOTO_ALBUM);
 				PhotoAlbum album=ctx.getPhotosController().getAlbum(albumID, self);
-				PaginatedList<Photo> _photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset(req), 10);
+				PaginatedList<Photo> _photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset(req), 10, false);
 				total=_photos.total;
 				title=album.getLocalizedTitle(lang(req), self, ctx.getWallController().getContentAuthorAndOwner(album).owner());
 				yield makePhotoInfosForPhotoList(req, _photos.list, ctx, selfAccount, Map.of(album.id, album));
@@ -765,8 +766,8 @@ public class PhotosRoutes{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_view", req);
 			EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions=getAllowedActionsForPhoto(ctx, self==null ? null : self.user, photo, album);
 			OwnerAndAuthor oaa=ctx.getWallController().getContentAuthorAndOwner(photo);
-			Photo next=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, (index+1)%album.numPhotos, 1).list.getFirst();
-			Photo prev=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, index==0 ? album.numPhotos-1 : index-1, 1).list.getFirst();
+			Photo next=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, (index+1)%album.numPhotos, 1, false).list.getFirst();
+			Photo prev=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, index==0 ? album.numPhotos-1 : index-1, 1, false).list.getFirst();
 
 			boolean canComment=switch(oaa.owner()){
 				case User u -> ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, u, album.commentPrivacy);
@@ -822,7 +823,7 @@ public class PhotosRoutes{
 			owner=ctx.getGroupsController().getGroupOrThrow(-album.ownerID);
 		model.with("owner", owner).headerBack(owner);
 		int offset=offset(req);
-		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, offset, 100);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, offset, 100, false);
 		model.paginate(photos, album.getURL(), album.getURL());
 
 		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
@@ -1019,7 +1020,7 @@ public class PhotosRoutes{
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse("attach_photo_box", req);
 		model.with("formID", formID);
-		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self.user, album, offset(req), 100);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self.user, album, offset(req), 100, false);
 		model.paginate(photos, "/photos/attachBoxAlbum?id="+formID+"&album="+album.getIdString()+"&offset=", "");
 
 		if(req.queryParams("pagination")!=null){
@@ -1068,6 +1069,26 @@ public class PhotosRoutes{
 						.setContent("photoEditThumb_"+photo.getIdString(), photo.image.generateHTML(SizedImage.Type.PHOTO_THUMB_MEDIUM, null, null, photo.getWidth(), photo.getHeight(), true, null));
 			}
 		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object updateAvatarCrop(Request req, Response resp, Account self, ApplicationContext ctx){
+		Photo photo=getPhotoForRequest(req);
+		AvatarCropRects cropRects=AvatarCropRects.fromString(req.queryParams("crop"));
+		if(cropRects==null)
+			throw new BadRequestException();
+		SizedImage.Rotation rotation;
+		try{
+			rotation=SizedImage.Rotation.valueOf(safeParseInt(req.queryParams("rotation")));
+		}catch(IllegalArgumentException x){
+			throw new BadRequestException();
+		}
+
+		ctx.getPhotosController().updateAvatarCrop(self.user, photo, cropRects, rotation);
+
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
 	}

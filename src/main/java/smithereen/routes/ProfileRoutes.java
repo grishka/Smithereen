@@ -18,6 +18,7 @@ import static smithereen.Utils.*;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.ObjectLinkResolver;
@@ -25,6 +26,7 @@ import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
@@ -32,6 +34,8 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -40,6 +44,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
 import smithereen.text.Whitelist;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -312,6 +317,15 @@ public class ProfileRoutes{
 				jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete",
 						"mail_tab_compose", "send");
 				Templates.addJsLangForNewPostForm(req);
+
+				if(user.getAvatar() instanceof LocalImage li && li.photoID!=0){
+					try{
+						Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(li.photoID);
+						model.with("avatarPvInfo", new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(photo.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), photo.image.getURLsForPhotoViewer()))
+								.with("avatarPhoto", photo);
+					}catch(ObjectNotFoundException ignore){}
+				}
+
 				yield model;
 			}
 			case GROUP -> GroupsRoutes.groupProfile(req, resp, ctx.getGroupsController().getGroupOrThrow(ur.localID()));

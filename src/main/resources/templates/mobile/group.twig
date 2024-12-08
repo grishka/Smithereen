@@ -18,7 +18,16 @@
 				<h2 class="profileName">{{ group.name }}</h2>
 			</td>
 			<td width="100">
+				{% if canEditGroup %}
+				<a href="javascript:void(0)" onclick="new MobileOptionsBox([
+				{%- if avatarPvInfo is not null %}{label: '{{ L('avatar_open') }}', onclick: function(){doOpenPhotoViewer({{ json(avatarPvInfo) }});} },{% endif -%}
+				{label: '{{ L('update_profile_picture') }}', onclick: function(){chooseFileAndUpload('/settings/updateProfilePicture?group={{ group.id }}', 'file', 'image/*');} }
+				{%- if group.hasAvatar %},{label: '{{ L('remove_profile_picture') }}', type: 'confirm', title: 'remove_profile_picture', msg: 'confirm_remove_profile_picture_group', url: '/settings/removeProfilePicture?group={{ group.id }}'}{% endif -%}]).show(); return false;">{{ group | pictureForAvatar('b') }}</a>
+				{% elseif avatarPvInfo is not null %}
+				<a href="{{ avatarPhoto.url }}" data-pv="{{ json(avatarPvInfo) }}" onclick="return openPhotoViewer(this)">{{ group | pictureForAvatar('b') }}</a>
+				{% else %}
 				{{ group | pictureForAvatar('b') }}
+				{% endif %}
 			</td>
 		</tr>
 	</table>
@@ -42,15 +51,6 @@
 	</div>
 	{% endif %}
 	<ul class="actionList">
-		{% if canEditGroup %}
-			{% if group.hasAvatar %}
-				<li><a href="/groups/{{ group.id }}/edit" onclick="chooseFileAndUpload('/settings/updateProfilePicture?group={{ group.id }}', 'file', 'image/*'); return false;">{{L('update_profile_picture')}}</a></li>
-				<li><a href="/settings/confirmRemoveProfilePicture?group={{ group.id }}" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture_group', '/settings/removeProfilePicture?group={{ group.id }}');">{{L('remove_profile_picture')}}</a></li>
-			{% else %}
-				<li><a href="/groups/{{ group.id }}/edit" onclick="chooseFileAndUpload('/settings/updateProfilePicture?group={{ group.id }}', 'file', 'image/*'); return false;">{{L('upload_avatar')}}</a></li>
-			{% endif %}
-			<li class="separator"></li>
-		{%endif%}
 		<li><a href="/groups/{{ group.id }}/members">{{ L('X_members', {'count': group.memberCount}) }}</a></li>
 		{% if group.tentativeMemberCount>0 %}
 		<li><a href="/groups/{{ group.id }}/tentativeMembers">{{ L('X_tentative_members', {'count': group.tentativeMemberCount}) }}</a></li>

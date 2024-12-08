@@ -70,5 +70,7 @@
   "update_avatar_thumb_explanation2_group": "Выбранная миниатюра будет использоваться в списках сообществ.",
   "avatars_album_own": "Фотографии с моей страницы",
   "avatars_album_user": "Фотографии со страницы {name, inflect, genitive}",
-  "avatars_album_group": "Фотографии со страницы сообщества"
+  "avatars_album_group": "Фотографии со страницы сообщества",
+  "avatar_edit_thumbnail": "Изменить миниатюру",
+  "avatar_open": "Открыть фотографию"
 }

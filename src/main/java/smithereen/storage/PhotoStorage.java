@@ -296,11 +296,11 @@ public class PhotoStorage{
 				.collect(Collectors.toSet());
 	}
 
-	public static List<Photo> getAlbumPhotos(long id, int offset, int count) throws SQLException{
+	public static List<Photo> getAlbumPhotos(long id, int offset, int count, boolean reverseOrder) throws SQLException{
 		List<Photo> photos=new SQLQueryBuilder()
 				.selectFrom("photos")
 				.where("album_id=?", id)
-				.orderBy("display_order ASC")
+				.orderBy("display_order "+(reverseOrder ? "DESC" : "ASC"))
 				.limit(count, offset)
 				.executeAsStream(Photo::fromResultSet)
 				.toList();

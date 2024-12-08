@@ -38,14 +38,27 @@
 		{%if user.hasAvatar%}
 		{%if currentUser is not null and currentUser.id==user.id%}
 		<div class="selfAvaOverlay">
+			{% if avatarPvInfo is not null %}
+			<a href="{{ avatarPhoto.url }}" data-pv="{{ json(avatarPvInfo) }}" onclick="return openPhotoViewer(this)">{{user | pictureForAvatar('cr')}}</a>
+			{% else %}
 			{{user | pictureForAvatar('cr')}}
-			<ul class="selfAvaActions actionList">
-				<li><a href="/settings/profile/general" onclick="new ProfilePictureLayer().show(); return false;">{{L('update_profile_picture')}}</a></li>
-				<li><a href="/settings/confirmRemoveProfilePicture" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture');">{{L('remove_profile_picture')}}</a></li>
-			</ul>
+			{% endif %}
+			<div class="selfAvaActionsW">
+				<ul class="selfAvaActions actionList">
+					<li><a href="/settings/profile/general" class="ellipsize" onclick="new ProfilePictureLayer().show(); return false;"><span class="icon"></span>{{L('update_profile_picture')}}</a></li>
+					{% if user.avatar.photoID!=0 %}<li><a href="javascript:void(0)" onclick="new ProfilePictureLayer(null, '{{ avatarPhoto.idString }}', '{{ avatarPhoto.image.getUrlForSizeAndFormat('w', 'jpg') }}', {{ json(avatarPhoto.metadata.cropRects) }}).show(); return false;" class="ellipsize"><span class="icon thumb"></span>{{ L('avatar_edit_thumbnail') }}</a></li>{% endif %}
+				</ul>
+			</div>
+			<div class="deleteButtonW">
+				<a href="/settings/confirmRemoveProfilePicture" class="deleteButton" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture');" data-tooltip="{{ L('remove_profile_picture') }}" aria-label="{{ L('remove_profile_picture') }}"></a>
+			</div>
 		</div>
 		{%else%}
+		{% if avatarPvInfo is not null %}
+		<a href="{{ avatarPhoto.url }}" data-pv="{{ json(avatarPvInfo) }}" onclick="return openPhotoViewer(this)">{{user | pictureForAvatar('cr')}}</a>
+		{% else %}
 		{{user | pictureForAvatar('cr')}}
+		{% endif %}
 		{%endif%}
 		{%else%}
 		{%if currentUser is not null and currentUser.id==user.id%}

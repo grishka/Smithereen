@@ -32,16 +32,27 @@
 		{% if group.hasAvatar %}
 		{% if canEditGroup %}
 		<div class="selfAvaOverlay">
+			{% if avatarPvInfo is not null %}
+			<a href="{{ avatarPhoto.url }}" data-pv="{{ json(avatarPvInfo) }}" onclick="return openPhotoViewer(this)">{{ group | pictureForAvatar('cr') }}</a>
+			{% else %}
 			{{ group | pictureForAvatar('cr') }}
-			{% if canEditGroup %}
-			<ul class="selfAvaActions actionList">
-				<li><a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureLayer({{ group.id }}).show(); return false;">{{L('update_profile_picture')}}</a></li>
-				<li><a href="/settings/confirmRemoveProfilePicture?group={{ group.id }}" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture_group', '/settings/removeProfilePicture?group={{ group.id }}');">{{L('remove_profile_picture')}}</a></li>
-			</ul>
 			{% endif %}
+			<div class="selfAvaActionsW">
+				<ul class="selfAvaActions actionList">
+					<li><a href="/groups/{{ group.id }}/edit" class="ellipsize" onclick="new ProfilePictureLayer({{ group.id }}).show(); return false;"><span class="icon"></span>{{L('update_profile_picture')}}</a></li>
+					{% if user.avatar.photoID!=0 %}<li><a href="javascript:void(0)" onclick="new ProfilePictureLayer({{ group.id }}, '{{ avatarPhoto.idString }}', '{{ avatarPhoto.image.getUrlForSizeAndFormat('w', 'jpg') }}', {{ json(avatarPhoto.metadata.cropRects) }}).show(); return false;" class="ellipsize"><span class="icon thumb"></span>{{ L('avatar_edit_thumbnail') }}</a></li>{% endif %}
+				</ul>
+			</div>
+			<div class="deleteButtonW">
+				<a href="/settings/confirmRemoveProfilePicture?group={{ group.id }}" class="deleteButton" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture_group', '/settings/removeProfilePicture?group={{ group.id }}');" data-tooltip="{{ L('remove_profile_picture') }}" aria-label="{{ L('remove_profile_picture') }}"></a>
+			</div>
 		</div>
 		{% else %}
+		{% if avatarPvInfo is not null %}
+		<a href="{{ avatarPhoto.url }}" data-pv="{{ json(avatarPvInfo) }}" onclick="return openPhotoViewer(this)">{{ group | pictureForAvatar('cr') }}</a>
+		{% else %}
 		{{ group | pictureForAvatar('cr') }}
+		{% endif %}
 		{% endif %}
 		{% else %}
 		{% if canEditGroup %}

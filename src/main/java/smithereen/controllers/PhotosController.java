@@ -5,7 +5,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
@@ -33,22 +32,16 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
-import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
-import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
-import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.feed.NewsfeedEntry;
-import smithereen.model.media.ImageMetadata;
-import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
-import smithereen.model.media.MediaFileType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.photos.AbsoluteImageRect;
 import smithereen.model.photos.AvatarCropRects;
@@ -64,7 +57,6 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.storage.UserStorage;
-import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
 import smithereen.text.TextProcessor;
@@ -650,9 +642,11 @@ public class PhotosController{
 		}
 	}
 
-	public PaginatedList<Photo> getAlbumPhotos(User self, PhotoAlbum album, int offset, int count){
+	public PaginatedList<Photo> getAlbumPhotos(User self, PhotoAlbum album, int offset, int count, boolean reverseOrder){
 		try{
-			return new PaginatedList<>(PhotoStorage.getAlbumPhotos(album.id, offset, count), album.numPhotos, offset, count);
+			if(album.systemType==PhotoAlbum.SystemAlbumType.AVATARS)
+				reverseOrder=!reverseOrder; // Avatars are always sorted newest to oldest by default
+			return new PaginatedList<>(PhotoStorage.getAlbumPhotos(album.id, offset, count, reverseOrder), album.numPhotos, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -1076,5 +1070,28 @@ public class PhotosController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public void updateAvatarCrop(User self, Photo photo, AvatarCropRects crop, SizedImage.Rotation rotation){
+		enforcePhotoManagementPermission(self, photo);
+		PhotoAlbum album=getAlbumIgnoringPrivacy(photo.albumID);
+		if(album.systemType!=PhotoAlbum.SystemAlbumType.AVATARS)
+			throw new IllegalArgumentException();
+
+		PhotoMetadata meta=photo.metadata==null ? new PhotoMetadata() : photo.metadata;
+		rotation=SizedImage.Rotation.valueOf(((meta.rotation==null ? SizedImage.Rotation._0 : meta.rotation).value()+rotation.value())%360);
+		meta.cropRects=crop;
+		meta.rotation=rotation;
+		if(photo.image instanceof LocalImage li)
+			li.rotation=rotation;
+		photo.metadata=meta;
+		try{
+			PhotoStorage.updatePhotoMetadata(photo.id, meta);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		Actor owner=context.getWallController().getContentAuthorAndOwner(photo).owner();
+		if(owner.getAvatar() instanceof LocalImage li && li.photoID==photo.id)
+			setPhotoToAvatar(owner, photo);
 	}
 }
