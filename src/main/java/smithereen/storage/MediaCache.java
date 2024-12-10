@@ -133,7 +133,7 @@ public class MediaCache{
 		if(!remainingKeys.isEmpty()){
 			List<Item> items=new SQLQueryBuilder()
 					.selectFrom("media_cache")
-					.whereIn("url_hash", remainingKeys)
+					.whereIn("url_hash", remainingKeys.stream().map(CacheKey::value).toList())
 					.executeAsStream(this::itemFromResultSet)
 					.toList();
 			synchronized(this){
