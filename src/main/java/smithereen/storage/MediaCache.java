@@ -21,15 +21,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.ScheduledExecutorService;
@@ -49,13 +50,13 @@ import smithereen.storage.utils.Pair;
 
 public class MediaCache{
 	private static final Logger LOG=LoggerFactory.getLogger(MediaCache.class);
-	private static MediaCache instance=new MediaCache();
+	private static final MediaCache instance=new MediaCache();
 
-	private LruCache<byte[], Item> metaCache=new LruCache<>(500);
+	private final LruCache<CacheKey, Item> metaCache=new LruCache<>(500);
 	private final ScheduledExecutorService asyncUpdater;
 	private long cacheSize=-1;
 	private final Object cacheSizeLock=new Object();
-	private Set<byte[]> pendingLastAccessUpdates=new HashSet<>();
+	private Set<CacheKey> pendingLastAccessUpdates=new HashSet<>();
 	private ScheduledFuture<?> pendingLastAccessUpdateAction;
 	private final Object lastAccessQueueLock=new Object();
 
@@ -86,7 +87,7 @@ public class MediaCache{
 	}
 
 	public Item get(URI uri) throws SQLException{
-		byte[] key=keyForURI(uri);
+		CacheKey key=keyForURI(uri);
 		Item item;
 		synchronized(this){
 			item=metaCache.get(key);
@@ -97,7 +98,7 @@ public class MediaCache{
 		}
 		Item result=new SQLQueryBuilder()
 				.selectFrom("media_cache")
-				.where("url_hash=?", (Object) key)
+				.where("url_hash=?", (Object) key.value)
 				.executeAndGetSingleObject(this::itemFromResultSet);
 		if(result!=null){
 			synchronized(this){
@@ -117,10 +118,10 @@ public class MediaCache{
 			result.put(uri, get(uri));
 			return result;
 		}
-		Map<byte[], URI> keys=uris.stream().map(uri->new Pair<>(keyForURI(uri), uri)).collect(Collectors.toMap(Pair::first, Pair::second));
-		HashSet<byte[]> remainingKeys=new HashSet<>(keys.keySet()), keysToUpdateAccess=new HashSet<>();
+		Map<CacheKey, URI> keys=uris.stream().map(uri->new Pair<>(keyForURI(uri), uri)).collect(Collectors.toMap(Pair::first, Pair::second));
+		HashSet<CacheKey> remainingKeys=new HashSet<>(keys.keySet()), keysToUpdateAccess=new HashSet<>();
 		synchronized(this){
-			for(Map.Entry<byte[], URI> e:keys.entrySet()){
+			for(Map.Entry<CacheKey, URI> e:keys.entrySet()){
 				Item item=metaCache.get(e.getKey());
 				if(item!=null){
 					result.put(e.getValue(), item);
@@ -152,7 +153,7 @@ public class MediaCache{
 		return result;
 	}
 
-	private void updateLastAccess(byte[] key){
+	private void updateLastAccess(CacheKey key){
 		synchronized(lastAccessQueueLock){
 			if(pendingLastAccessUpdates.isEmpty()){
 				pendingLastAccessUpdateAction=asyncUpdater.schedule(new LastAccessUpdater(), 10, TimeUnit.SECONDS);
@@ -161,7 +162,7 @@ public class MediaCache{
 		}
 	}
 
-	private void updateLastAccess(Collection<byte[]> keys){
+	private void updateLastAccess(Collection<CacheKey> keys){
 		synchronized(lastAccessQueueLock){
 			if(pendingLastAccessUpdates.isEmpty()){
 				pendingLastAccessUpdateAction=asyncUpdater.schedule(new LastAccessUpdater(), 10, TimeUnit.SECONDS);
@@ -174,8 +175,8 @@ public class MediaCache{
 		long size=res.getInt("size");
 		byte[] info=res.getBytes("info");
 		int type=res.getInt("type");
-		byte[] urlHash=res.getBytes("url_hash");
-		String keyHex=Utils.byteArrayToHexString(urlHash);
+		CacheKey urlHash=new CacheKey(res.getBytes("url_hash"));
+		String keyHex=Utils.byteArrayToHexString(urlHash.value);
 		Item result;
 		switch(type){
 			case TYPE_PHOTO:
@@ -195,8 +196,8 @@ public class MediaCache{
 	}
 
 	public Item downloadAndPut(URI uri, String mime, ItemType type, boolean lossless, int enforcedWidth, int enforcedHeight) throws IOException, SQLException{
-		byte[] key=keyForURI(uri);
-		String keyHex=Utils.byteArrayToHexString(key);
+		CacheKey key=keyForURI(uri);
+		String keyHex=Utils.byteArrayToHexString(key.value);
 
 		HttpRequest req=HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30)).build();
 		Item result=null;
@@ -301,9 +302,9 @@ public class MediaCache{
 		return result;
 	}
 
-	private byte[] keyForURI(URI uri){
+	private CacheKey keyForURI(URI uri){
 		try{
-			return MessageDigest.getInstance("MD5").digest(uri.toString().getBytes(StandardCharsets.UTF_8));
+			return new CacheKey(MessageDigest.getInstance("MD5").digest(uri.toString().getBytes(StandardCharsets.UTF_8)));
 		}catch(NoSuchAlgorithmException x){
 			throw new RuntimeException(x);
 		}
@@ -316,7 +317,7 @@ public class MediaCache{
 
 	public static abstract class Item{
 		public long totalSize=0;
-		public byte[] urlHash;
+		public CacheKey urlHash;
 
 		public abstract int getType();
 		public abstract void serialize(DataOutputStream out) throws IOException;
@@ -359,7 +360,7 @@ public class MediaCache{
 
 		@Override
 		public void run(){
-			Set<byte[]> keysToUpdate;
+			Set<CacheKey> keysToUpdate;
 			synchronized(lastAccessQueueLock){
 				pendingLastAccessUpdateAction=null;
 				keysToUpdate=pendingLastAccessUpdates;
@@ -369,7 +370,7 @@ public class MediaCache{
 				new SQLQueryBuilder()
 						.update("media_cache")
 						.valueExpr("last_access", "CURRENT_TIMESTAMP()")
-						.whereIn("url_hash", keysToUpdate)
+						.whereIn("url_hash", keysToUpdate.stream().map(CacheKey::value).toList())
 						.executeNoResult();
 			}catch(SQLException x){
 				LOG.warn("Exception while updating last access time", x);
@@ -452,6 +453,19 @@ public class MediaCache{
 		@Override
 		public void onComplete(){
 			parent.onComplete();
+		}
+	}
+
+	private record CacheKey(byte[] value){
+		@Override
+		public boolean equals(Object o){
+			if(!(o instanceof CacheKey(byte[] v))) return false;
+			return Objects.deepEquals(value, v);
+		}
+
+		@Override
+		public int hashCode(){
+			return Arrays.hashCode(value);
 		}
 	}
 }
