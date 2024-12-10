@@ -204,7 +204,8 @@ public class MediaCache{
 		File tmp=File.createTempFile(keyHex, null);
 		try{
 			HttpResponse<Path> resp=ActivityPub.httpClient.send(req, responseInfo->{
-				if(responseInfo.statusCode()/100!=2){
+				int status=responseInfo.statusCode()/100;
+				if(status==4 || status==5){
 					return new HttpResponse.BodySubscriber<>(){
 						@Override
 						public CompletionStage<Path> getBody(){
