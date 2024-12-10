@@ -64,10 +64,8 @@ public class NotificationsStorage{
 			stmt.setLong(2, objID);
 			stmt.setLong(4, objID);
 			try(ResultSet res=stmt.executeQuery()){
-				synchronized(NotificationsStorage.class){
-					while(res.next()){
-						userNotificationsCache.remove(res.getInt(1));
-					}
+				while(res.next()){
+					userNotificationsCache.remove(res.getInt(1));
 				}
 			}
 			stmt=conn.prepareStatement("DELETE FROM `notifications` WHERE (`object_type`=? AND `object_id`=?) OR (`related_object_type`=? AND `related_object_id`=?)");
@@ -91,9 +89,7 @@ public class NotificationsStorage{
 			try(ResultSet res=stmt.executeQuery()){
 				if(!res.next())
 					return;
-				synchronized(NotificationsStorage.class){
-					userNotificationsCache.remove(res.getInt(1));
-				}
+				userNotificationsCache.remove(res.getInt(1));
 			}
 			stmt=conn.prepareStatement("DELETE FROM `notifications` WHERE `object_type`=? AND `object_id`=? AND `type`=? AND `actor_id`=?");
 			stmt.setInt(1, objType.ordinal());
@@ -104,7 +100,7 @@ public class NotificationsStorage{
 		}
 	}
 
-	public static synchronized UserNotifications getNotificationsForUser(int userID, int lastSeenID) throws SQLException{
+	public static UserNotifications getNotificationsForUser(int userID, int lastSeenID) throws SQLException{
 		UserNotifications res=userNotificationsCache.get(userID);
 		if(res!=null)
 			return res;
@@ -138,7 +134,7 @@ public class NotificationsStorage{
 		}
 	}
 
-	public static synchronized UserNotifications getNotificationsFromCache(int userID){
+	public static UserNotifications getNotificationsFromCache(int userID){
 		return userNotificationsCache.get(userID);
 	}
 }

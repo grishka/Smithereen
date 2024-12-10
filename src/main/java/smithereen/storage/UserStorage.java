@@ -53,6 +53,7 @@ import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.text.TextProcessor;
+import smithereen.util.NamedMutexCollection;
 import spark.utils.StringUtils;
 
 public class UserStorage{
@@ -63,8 +64,9 @@ public class UserStorage{
 	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
 	private static LruCache<Integer, Account> accountCache=new LruCache<>(500);
 	private static final LruCache<Integer, BirthdayReminder> birthdayReminderCache=new LruCache<>(500);
+	private static final NamedMutexCollection foreignUserUpdateLocks=new NamedMutexCollection();
 
-	public static synchronized User getById(int id) throws SQLException{
+	public static User getById(int id) throws SQLException{
 		User user=cache.get(id);
 		if(user!=null)
 			return user;
@@ -103,15 +105,13 @@ public class UserStorage{
 		}
 		Set<Integer> ids=new HashSet<>(_ids);
 		Map<Integer, User> result=new HashMap<>(ids.size());
-		synchronized(UserStorage.class){
-			Iterator<Integer> itr=ids.iterator();
-			while(itr.hasNext()){
-				Integer id=itr.next();
-				User user=cache.get(id);
-				if(user!=null){
-					itr.remove();
-					result.put(id, user);
-				}
+		Iterator<Integer> itr=ids.iterator();
+		while(itr.hasNext()){
+			Integer id=itr.next();
+			User user=cache.get(id);
+			if(user!=null){
+				itr.remove();
+				result.put(id, user);
 			}
 		}
 		if(ids.isEmpty()){
@@ -139,18 +139,16 @@ public class UserStorage{
 					}
 				}
 			}
-			synchronized(UserStorage.class){
-				for(int id:ids){
-					User u=result.get(id);
-					if(u!=null)
-						putIntoCache(u);
-				}
+			for(int id:ids){
+				User u=result.get(id);
+				if(u!=null)
+					putIntoCache(u);
 			}
 			return result;
 		}
 	}
 
-	public static synchronized User getByUsername(@NotNull String username) throws SQLException{
+	public static User getByUsername(@NotNull String username) throws SQLException{
 		username=username.toLowerCase();
 		User user=cacheByUsername.get(username);
 		if(user!=null)
@@ -305,11 +303,9 @@ public class UserStorage{
 							.value("accepted", followAccepted)
 							.executeNoResult();
 				}
-				synchronized(NotificationsStorage.class){
-					UserNotifications res=NotificationsStorage.getNotificationsFromCache(targetUserID);
-					if(res!=null)
-						res.incNewFriendRequestCount(1);
-				}
+				UserNotifications res=NotificationsStorage.getNotificationsFromCache(targetUserID);
+				if(res!=null)
+					res.incNewFriendRequestCount(1);
 			});
 		}
 	}
@@ -516,11 +512,9 @@ public class UserStorage{
 					result[0]=false;
 					return;
 				}
-				synchronized(NotificationsStorage.class){
-					UserNotifications n=NotificationsStorage.getNotificationsFromCache(userID);
-					if(n!=null)
-						n.incNewFriendRequestCount(-1);
-				}
+				UserNotifications n=NotificationsStorage.getNotificationsFromCache(userID);
+				if(n!=null)
+					n.incNewFriendRequestCount(-1);
 				removeBirthdayReminderFromCache(List.of(userID, targetUserID));
 			});
 		}
@@ -532,11 +526,9 @@ public class UserStorage{
 				.deleteFrom("friend_requests")
 				.where("from_user_id=? AND to_user_id=?", targetUserID, userID)
 				.executeUpdate();
-		synchronized(NotificationsStorage.class){
-			UserNotifications n=NotificationsStorage.getNotificationsFromCache(userID);
-			if(n!=null)
-				n.incNewFriendRequestCount(-rows);
-		}
+		UserNotifications n=NotificationsStorage.getNotificationsFromCache(userID);
+		if(n!=null)
+			n.incNewFriendRequestCount(-rows);
 	}
 
 	public static void unfriendUser(int userID, int targetUserID) throws SQLException{
@@ -644,9 +636,7 @@ public class UserStorage{
 				.value("middle_name", middleName)
 				.value("maiden_name", maidenName)
 				.executeNoResult();
-		synchronized(UserStorage.class){
-			removeFromCache(user);
-		}
+		removeFromCache(user);
 		updateQSearchIndex(getById(user.id));
 		removeBirthdayReminderFromCache(getFriendIDsForUser(user.id));
 	}
@@ -658,9 +648,7 @@ public class UserStorage{
 				.value("about", about)
 				.value("about_source", aboutSource)
 				.executeNoResult();
-		synchronized(UserStorage.class){
-			removeFromCache(user);
-		}
+		removeFromCache(user);
 	}
 
 	public static void updateExtendedFields(User user, String fieldsJson) throws SQLException{
@@ -669,9 +657,7 @@ public class UserStorage{
 				.where("id=?", user.id)
 				.value("profile_fields", fieldsJson)
 				.executeNoResult();
-		synchronized(UserStorage.class){
-			removeFromCache(user);
-		}
+		removeFromCache(user);
 	}
 
 	public static void updateUsername(User user, String username) throws SQLException{
@@ -680,9 +666,7 @@ public class UserStorage{
 				.where("id=?", user.id)
 				.value("username", username)
 				.executeNoResult();
-		synchronized(UserStorage.class){
-			removeFromCache(user);
-		}
+		removeFromCache(user);
 		updateQSearchIndex(getById(user.id));
 	}
 
@@ -707,16 +691,16 @@ public class UserStorage{
 				.value("avatar", serializedPic)
 				.where("id=?", user.id)
 				.executeNoResult();
-		synchronized(UserStorage.class){
-			removeFromCache(user);
-		}
+		removeFromCache(user);
 	}
 
-	public static synchronized int putOrUpdateForeignUser(ForeignUser user) throws SQLException{
+	public static int putOrUpdateForeignUser(ForeignUser user) throws SQLException{
 		if(user.isServiceActor)
 			throw new IllegalArgumentException("Can't store a service actor as a user");
 
+		String key=user.activityPubID.toString().toLowerCase();
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			foreignUserUpdateLocks.acquire(key);
 			int existingUserID=new SQLQueryBuilder(conn)
 					.selectFrom("users")
 					.columns("id")
@@ -793,6 +777,8 @@ public class UserStorage{
 				// Try again
 				return putOrUpdateForeignUser(user);
 			}
+		}finally{
+			foreignUserUpdateLocks.release(key);
 		}
 	}
 
@@ -808,7 +794,7 @@ public class UserStorage{
 		return getForeignUserByActivityPubID(apID);
 	}
 
-	public static synchronized ForeignUser getForeignUserByActivityPubID(URI apID) throws SQLException{
+	public static ForeignUser getForeignUserByActivityPubID(URI apID) throws SQLException{
 		ForeignUser user=cacheByActivityPubID.get(apID);
 		if(user!=null)
 			return user;
@@ -924,7 +910,7 @@ public class UserStorage{
 		}
 	}
 
-	public static synchronized Account getAccount(int id) throws SQLException{
+	public static Account getAccount(int id) throws SQLException{
 		Account acc=accountCache.get(id);
 		if(acc!=null)
 			return acc;
@@ -958,13 +944,11 @@ public class UserStorage{
 				.value("promoted_by", promotedBy>0 ? promotedBy : null)
 				.where("id=?", account.id)
 				.executeNoResult();
-		synchronized(UserStorage.class){
-			accountCache.remove(account.id);
-		}
+		accountCache.remove(account.id);
 		SessionStorage.removeFromUserPermissionsCache(account.user.id);
 	}
 
-	public static synchronized void resetAccountsCache(){
+	public static void resetAccountsCache(){
 		accountCache.evictAll();
 	}
 
@@ -1102,9 +1086,7 @@ public class UserStorage{
 				.value("ban_info", banInfo!=null ? Utils.gson.toJson(banInfo) : null)
 				.where("id=?", accountID)
 				.executeNoResult();
-		synchronized(UserStorage.class){
-			accountCache.remove(accountID);
-		}
+		accountCache.remove(accountID);
 	}
 
 	static String getQSearchStringForUser(User user){
@@ -1139,10 +1121,8 @@ public class UserStorage{
 	}
 
 	public static void removeBirthdayReminderFromCache(List<Integer> userIDs){
-		synchronized(birthdayReminderCache){
-			for(Integer id:userIDs){
-				birthdayReminderCache.remove(id);
-			}
+		for(Integer id:userIDs){
+			birthdayReminderCache.remove(id);
 		}
 	}
 
@@ -1170,15 +1150,13 @@ public class UserStorage{
 	}
 
 	public static BirthdayReminder getBirthdayReminderForUser(int userID, LocalDate date) throws SQLException{
-		synchronized(birthdayReminderCache){
-			BirthdayReminder r=birthdayReminderCache.get(userID);
-			if(r!=null && r.forDay.equals(date))
-				return r;
-		}
+		BirthdayReminder r=birthdayReminderCache.get(userID);
+		if(r!=null && r.forDay.equals(date))
+			return r;
 		LocalDate nextDay=date.plusDays(1);
 		ArrayList<Integer> today=new ArrayList<>(), tomorrow=new ArrayList<>();
 		getFriendIdsWithBirthdaysTodayAndTomorrow(userID, date, today, tomorrow);
-		BirthdayReminder r=new BirthdayReminder();
+		r=new BirthdayReminder();
 		r.forDay=date;
 		if(!today.isEmpty()){
 			r.day=date;
@@ -1189,10 +1167,8 @@ public class UserStorage{
 		}else{
 			r.userIDs=Collections.emptyList();
 		}
-		synchronized(birthdayReminderCache){
-			birthdayReminderCache.put(userID, r);
-			return r;
-		}
+		birthdayReminderCache.put(userID, r);
+		return r;
 	}
 
 	public static List<Integer> getFriendsWithBirthdaysInMonth(int userID, int month) throws SQLException{

@@ -75,11 +75,13 @@ public class MediaCache{
 	}
 
 	private void updateTotalSize() throws SQLException{
-		synchronized(cacheSizeLock){
-			cacheSize=new SQLQueryBuilder()
-					.selectFrom("media_cache")
-					.selectExpr("sum(`size`)")
-					.executeAndGetInt();
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			synchronized(cacheSizeLock){
+				cacheSize=new SQLQueryBuilder(conn)
+						.selectFrom("media_cache")
+						.selectExpr("sum(`size`)")
+						.executeAndGetInt();
+			}
 		}
 	}
 

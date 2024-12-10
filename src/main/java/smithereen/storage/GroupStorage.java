@@ -52,6 +52,7 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.IntPair;
 import smithereen.text.TextProcessor;
+import smithereen.util.NamedMutexCollection;
 import spark.utils.StringUtils;
 
 public class GroupStorage{
@@ -62,6 +63,7 @@ public class GroupStorage{
 	private static final LruCache<URI, ForeignGroup> cacheByActivityPubID=new LruCache<>(500);
 
 	private static final Object adminUpdateLock=new Object();
+	private static final NamedMutexCollection foreignGroupUpdateLocks=new NamedMutexCollection();
 
 	public static int createGroup(String name, String description, String descriptionSrc, int userID, boolean isEvent, Instant eventStart, Instant eventEnd) throws SQLException{
 		int id;
@@ -74,29 +76,27 @@ public class GroupStorage{
 				KeyPair pair=kpg.generateKeyPair();
 
 				String username;
-				synchronized(GroupStorage.class){
-					id=new SQLQueryBuilder(conn)
-							.insertInto("groups")
-							.value("name", name)
-							.value("username", "__tmp"+System.currentTimeMillis())
-							.value("public_key", pair.getPublic().getEncoded())
-							.value("private_key", pair.getPrivate().getEncoded())
-							.value("member_count", 1)
-							.value("about", description)
-							.value("about_source", descriptionSrc)
-							.value("event_start_time", eventStart)
-							.value("event_end_time", eventEnd)
-							.value("type", isEvent ? Group.Type.EVENT : Group.Type.GROUP)
-							.executeAndGetID();
+				id=new SQLQueryBuilder(conn)
+						.insertInto("groups")
+						.value("name", name)
+						.value("username", "__tmp"+System.currentTimeMillis())
+						.value("public_key", pair.getPublic().getEncoded())
+						.value("private_key", pair.getPrivate().getEncoded())
+						.value("member_count", 1)
+						.value("about", description)
+						.value("about_source", descriptionSrc)
+						.value("event_start_time", eventStart)
+						.value("event_end_time", eventEnd)
+						.value("type", isEvent ? Group.Type.EVENT : Group.Type.GROUP)
+						.executeAndGetID();
 
-					username=(isEvent ? "event" : "club")+id;
+				username=(isEvent ? "event" : "club")+id;
 
-					new SQLQueryBuilder(conn)
-							.update("groups")
-							.value("username", username)
-							.where("id=?", id)
-							.executeNoResult();
-				}
+				new SQLQueryBuilder(conn)
+						.update("groups")
+						.value("username", username)
+						.where("id=?", id)
+						.executeNoResult();
 
 				new SQLQueryBuilder(conn)
 						.insertInto("group_memberships")
@@ -126,8 +126,10 @@ public class GroupStorage{
 		return id;
 	}
 
-	public static synchronized void putOrUpdateForeignGroup(ForeignGroup group) throws SQLException{
+	public static void putOrUpdateForeignGroup(ForeignGroup group) throws SQLException{
+		String key=group.activityPubID.toString().toLowerCase();
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			foreignGroupUpdateLocks.acquire(key);
 			int existingGroupID=new SQLQueryBuilder(conn)
 					.selectFrom("groups")
 					.columns("id")
@@ -245,10 +247,12 @@ public class GroupStorage{
 				// Try again
 				putOrUpdateForeignGroup(group);
 			}
+		}finally{
+			foreignGroupUpdateLocks.release(key);
 		}
 	}
 
-	public static synchronized Group getById(int id) throws SQLException{
+	public static Group getById(int id) throws SQLException{
 		Group g=cacheByID.get(id);
 		if(g!=null)
 			return g;
@@ -268,7 +272,7 @@ public class GroupStorage{
 		return g;
 	}
 
-	public static synchronized Group getByUsername(String username) throws SQLException{
+	public static Group getByUsername(String username) throws SQLException{
 		Group g=cacheByUsername.get(username.toLowerCase());
 		if(g!=null)
 			return g;
@@ -314,7 +318,7 @@ public class GroupStorage{
 				.executeAndGetInt();
 	}
 
-	public static synchronized ForeignGroup getForeignGroupByActivityPubID(URI id) throws SQLException{
+	public static ForeignGroup getForeignGroupByActivityPubID(URI id) throws SQLException{
 		ForeignGroup g=cacheByActivityPubID.get(id);
 		if(g!=null)
 			return g;
@@ -349,15 +353,13 @@ public class GroupStorage{
 		}
 		Set<Integer> ids=new HashSet<>(_ids);
 		Map<Integer, Group> result=new HashMap<>(ids.size());
-		synchronized(GroupStorage.class){
-			Iterator<Integer> itr=ids.iterator();
-			while(itr.hasNext()){
-				Integer id=itr.next();
-				Group group=cacheByID.get(id);
-				if(group!=null){
-					itr.remove();
-					result.put(id, group);
-				}
+		Iterator<Integer> itr=ids.iterator();
+		while(itr.hasNext()){
+			Integer id=itr.next();
+			Group group=cacheByID.get(id);
+			if(group!=null){
+				itr.remove();
+				result.put(id, group);
 			}
 		}
 		if(ids.isEmpty())
@@ -391,10 +393,8 @@ public class GroupStorage{
 				}
 			}
 		}
-		synchronized(GroupStorage.class){
-			for(Group g:result.values()){
-				putIntoCache(g);
-			}
+		for(Group g:result.values()){
+			putIntoCache(g);
 		}
 		return result;
 	}
@@ -684,8 +684,8 @@ public class GroupStorage{
 	}
 
 	public static void addOrUpdateGroupAdmin(int groupID, int userID, String title, @Nullable Group.AdminLevel level) throws SQLException{
-		synchronized(adminUpdateLock){
-			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			synchronized(adminUpdateLock){
 				GroupAdmin existing=getGroupAdmin(groupID, userID);
 				if(existing!=null){
 					SQLQueryBuilder b=new SQLQueryBuilder(conn)
@@ -717,8 +717,8 @@ public class GroupStorage{
 	}
 
 	public static void removeGroupAdmin(int groupID, int userID) throws SQLException{
-		synchronized(adminUpdateLock){
-			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			synchronized(adminUpdateLock){
 				int order=new SQLQueryBuilder(conn)
 						.selectFrom("group_admins")
 						.columns("display_order")
@@ -741,8 +741,8 @@ public class GroupStorage{
 	}
 
 	public static void setGroupAdminOrder(int groupID, int userID, int newOrder) throws SQLException{
-		synchronized(adminUpdateLock){
-			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			synchronized(adminUpdateLock){
 				int order=new SQLQueryBuilder(conn)
 						.selectFrom("group_admins")
 						.columns("display_order")
@@ -781,9 +781,7 @@ public class GroupStorage{
 				.value("avatar", serializedPic)
 				.where("id=?", group.id)
 				.executeNoResult();
-		synchronized(GroupStorage.class){
-			removeFromCache(group);
-		}
+		removeFromCache(group);
 	}
 
 	public static void updateGroupGeneralInfo(Group group, String name, String username, String aboutSrc, String about, Instant eventStart, Instant eventEnd, Group.AccessType accessType) throws SQLException{
@@ -806,9 +804,7 @@ public class GroupStorage{
 				.where("group_id=?", group.id)
 				.executeNoResult();
 
-		synchronized(GroupStorage.class){
-			removeFromCache(group);
-		}
+		removeFromCache(group);
 	}
 
 	public static boolean isUserBlocked(int ownerID, int targetID) throws SQLException{

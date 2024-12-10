@@ -138,32 +138,30 @@ public class UsersController{
 		try{
 			if(!Utils.isValidEmail(email))
 				throw new UserErrorException("err_invalid_email");
-			DatabaseUtils.runWithUniqueUsername(()->{
-				if(SessionStorage.getAccountByEmail(email)!=null){
-					throw new UserErrorException("err_reg_email_taken");
+			if(SessionStorage.getAccountByEmail(email)!=null){
+				throw new UserErrorException("err_reg_email_taken");
+			}
+			if(SessionStorage.isEmailInvited(email)){
+				throw new UserErrorException("err_email_already_invited");
+			}
+			UserPermissions permissions=SessionStorage.getUserPermissions(self);
+			if(!permissions.hasPermission(UserRole.Permission.MANAGE_INVITES)){
+				FloodControl.EMAIL_INVITE.incrementOrThrow(self);
+			}
+			int requestID=_requestID;
+			if(requestID==0){
+				SignupRequest sr=SessionStorage.getInviteRequestByEmail(email);
+				if(sr!=null){
+					requestID=sr.id;
 				}
-				if(SessionStorage.isEmailInvited(email)){
-					throw new UserErrorException("err_email_already_invited");
-				}
-				UserPermissions permissions=SessionStorage.getUserPermissions(self);
-				if(!permissions.hasPermission(UserRole.Permission.MANAGE_INVITES)){
-					FloodControl.EMAIL_INVITE.incrementOrThrow(self);
-				}
-				int requestID=_requestID;
-				if(requestID==0){
-					SignupRequest sr=SessionStorage.getInviteRequestByEmail(email);
-					if(sr!=null){
-						requestID=sr.id;
-					}
-				}
-				byte[] code=Utils.randomBytes(16);
-				String codeStr=Utils.byteArrayToHexString(code);
-				UserStorage.putInvite(self.id, code, 1, email, SignupInvitation.getExtra(!addFriend, firstName, lastName, requestID>0));
-				Mailer.getInstance().sendSignupInvitation(req, self, email, codeStr, firstName, requestID>0);
-				if(requestID>0){
-					deleteSignupInviteRequest(requestID);
-				}
-			});
+			}
+			byte[] code=Utils.randomBytes(16);
+			String codeStr=Utils.byteArrayToHexString(code);
+			UserStorage.putInvite(self.id, code, 1, email, SignupInvitation.getExtra(!addFriend, firstName, lastName, requestID>0));
+			Mailer.getInstance().sendSignupInvitation(req, self, email, codeStr, firstName, requestID>0);
+			if(requestID>0){
+				deleteSignupInviteRequest(requestID);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -236,12 +234,10 @@ public class UsersController{
 
 	public void requestSignupInvite(Request req, String firstName, String lastName, String email, String reason){
 		try{
-			DatabaseUtils.runWithUniqueUsername(()->{
-				if(SessionStorage.getAccountByEmail(email)!=null || SessionStorage.isThereInviteRequestWithEmail(email) || SessionStorage.isEmailInvited(email))
-					throw new UserErrorException("err_reg_email_taken");
-				FloodControl.OPEN_SIGNUP_OR_INVITE_REQUEST.incrementOrThrow(Utils.getRequestIP(req));
-				SessionStorage.putInviteRequest(email, firstName, lastName, reason);
-			});
+			if(SessionStorage.getAccountByEmail(email)!=null || SessionStorage.isThereInviteRequestWithEmail(email) || SessionStorage.isEmailInvited(email))
+				throw new UserErrorException("err_reg_email_taken");
+			FloodControl.OPEN_SIGNUP_OR_INVITE_REQUEST.incrementOrThrow(Utils.getRequestIP(req));
+			SessionStorage.putInviteRequest(email, firstName, lastName, reason);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

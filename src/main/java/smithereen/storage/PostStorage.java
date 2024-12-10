@@ -44,6 +44,7 @@ import smithereen.model.PostSource;
 import smithereen.model.feed.CommentsNewsfeedObjectType;
 import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
+import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
@@ -58,6 +59,9 @@ import spark.utils.StringUtils;
 
 public class PostStorage{
 	private static final Logger LOG=LoggerFactory.getLogger(PostStorage.class);
+
+	private static final NamedMutexCollection foreignPostUpdateLocks=new NamedMutexCollection();
+	private static final NamedMutexCollection pollVoteLocks=new NamedMutexCollection();
 
 	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, FormattedTextFormat sourceFormat, List<Integer> replyKey,
 									 Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf, Post.Action action) throws SQLException{
@@ -148,10 +152,12 @@ public class PostStorage{
 		return pollID;
 	}
 
-	public static synchronized void putForeignWallPost(Post post) throws SQLException{
+	public static void putForeignWallPost(Post post) throws SQLException{
 		if(post.isReplyToUnknownPost){
 			throw new IllegalArgumentException("This post needs its parent thread to be fetched first");
 		}
+		String key=post.getActivityPubID().toString().toLowerCase();
+		foreignPostUpdateLocks.acquire(key);
 		Post existing=getPostByID(post.getActivityPubID());
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			DatabaseUtils.doWithTransaction(conn, ()->{
@@ -270,6 +276,8 @@ public class PostStorage{
 					post.id=existing.id;
 				}
 			});
+		}finally{
+			foreignPostUpdateLocks.release(key);
 		}
 	}
 
@@ -880,8 +888,10 @@ public class PostStorage{
 		}
 	}
 
-	public static synchronized int[] voteInPoll(int userID, int pollID, int[] optionIDs) throws SQLException{
+	public static int[] voteInPoll(int userID, int pollID, int[] optionIDs) throws SQLException{
+		String key=userID+"|"+pollID;
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			pollVoteLocks.acquire(key);
 			int count=new SQLQueryBuilder(conn)
 					.selectFrom("poll_votes")
 					.count()
@@ -926,12 +936,16 @@ public class PostStorage{
 					.executeNoResult();
 
 			return voteIDs;
+		}finally{
+			pollVoteLocks.release(key);
 		}
 	}
 
 	// This is called once for each choice in a multiple-choice poll
-	public static synchronized int voteInPoll(int userID, int pollID, int optionID, URI voteID, boolean allowMultiple) throws SQLException{
+	public static int voteInPoll(int userID, int pollID, int optionID, URI voteID, boolean allowMultiple) throws SQLException{
+		String key=userID+"|"+pollID;
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			pollVoteLocks.acquire(key);
 			PreparedStatement stmt=new SQLQueryBuilder(conn)
 					.selectFrom("poll_votes")
 					.columns("option_id")
@@ -973,6 +987,8 @@ public class PostStorage{
 			}
 
 			return rVoteID;
+		}finally{
+			pollVoteLocks.release(key);
 		}
 	}
 

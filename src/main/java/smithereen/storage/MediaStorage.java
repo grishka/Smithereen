@@ -21,7 +21,7 @@ import smithereen.storage.sql.SQLQueryBuilder;
 public class MediaStorage{
 	private static final LruCache<Long, MediaFileRecord> recordCache=new LruCache<>(5000);
 
-	public static synchronized Map<Long, MediaFileRecord> getMediaFileRecords(Collection<Long> ids) throws SQLException{
+	public static Map<Long, MediaFileRecord> getMediaFileRecords(Collection<Long> ids) throws SQLException{
 		if(ids.isEmpty())
 			return Map.of();
 		HashMap<Long, MediaFileRecord> res=new HashMap<>();
@@ -47,7 +47,7 @@ public class MediaStorage{
 		return res;
 	}
 
-	public static synchronized MediaFileRecord getMediaFileRecord(long id) throws SQLException{
+	public static MediaFileRecord getMediaFileRecord(long id) throws SQLException{
 		MediaFileRecord r=recordCache.get(id);
 		if(r!=null)
 			return r;
@@ -75,9 +75,7 @@ public class MediaStorage{
 				new MediaFileID(id, randomID, ownerID, type),
 				fileSize, Instant.now(), metadata
 		);
-		synchronized(MediaStorage.class){
-			recordCache.put(id, mfr);
-		}
+		recordCache.put(id, mfr);
 		return mfr;
 	}
 

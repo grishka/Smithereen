@@ -528,15 +528,15 @@ public class SessionStorage{
 //		}
 //	}
 
-	public static synchronized void removeFromUserPermissionsCache(int userID){
+	public static void removeFromUserPermissionsCache(int userID){
 		permissionsCache.remove(userID);
 	}
 
-	public static synchronized void resetPermissionsCache(){
+	public static void resetPermissionsCache(){
 		permissionsCache.evictAll();
 	}
 
-	public static synchronized UserPermissions getUserPermissions(Account account) throws SQLException{
+	public static UserPermissions getUserPermissions(Account account) throws SQLException{
 		UserPermissions r=permissionsCache.get(account.user.id);
 		if(r!=null)
 			return r;
