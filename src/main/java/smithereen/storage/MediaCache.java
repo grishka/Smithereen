@@ -276,7 +276,7 @@ public class MediaCache{
 		}catch(IOException ignored){}
 		new SQLQueryBuilder()
 				.insertInto("media_cache")
-				.value("url_hash", key)
+				.value("url_hash", key.value)
 				.value("size", result.totalSize)
 				.value("info", buf.toByteArray())
 				.value("type", result.getType())
