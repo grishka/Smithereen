@@ -416,18 +416,18 @@ public class PhotoStorage{
 
 	public static void putOrUpdateForeignAlbum(PhotoAlbum album) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			if(album.systemType!=null){
+				// Make sure there's only ever one of each type of system album per owner.
+				// This query will not match any rows 99.9999% of the time, but if the other server is doing weird shit, it'll
+				// make the already-existing system album of this type into a regular one. Then it might eventually get deleted
+				// as part of a content collection sync.
+				new SQLQueryBuilder(conn)
+						.update("photo_albums")
+						.where((album.ownerID>0 ? "owner_user_id" : "owner_group_id")+"=? AND system_type=? AND id<>?", Math.abs(album.ownerID), album.systemType, album.id)
+						.value("system_type", null)
+						.executeNoResult();
+			}
 			if(album.id==0){
-				if(album.systemType!=null){
-					// Make sure there's only ever one of each type of system album per owner.
-					// This query will not match any rows 99.9999% of the time, but if the other server is doing weird shit, it'll
-					// make the already-existing system album of this type into a regular one. Then it might eventually get deleted
-					// as part of a content collection sync.
-					new SQLQueryBuilder(conn)
-							.update("photo_albums")
-							.where((album.ownerID>0 ? "owner_user_id" : "owner_group_id")+"=? AND system_type=?", Math.abs(album.ownerID), album.systemType)
-							.value("system_type", null)
-							.executeNoResult();
-				}
 				SQLQueryBuilder qb=new SQLQueryBuilder(conn)
 						.insertInto("photo_albums")
 						.value(album.ownerID>0 ? "owner_user_id" : "owner_group_id", Math.abs(album.ownerID))
@@ -457,6 +457,7 @@ public class PhotoStorage{
 						.value("cover_id", album.coverID>0 ? album.coverID : null)
 						.value("ap_url", album.activityPubURL.toASCIIString())
 						.value("ap_comments", album.activityPubComments==null ? null : album.activityPubComments.toASCIIString())
+						.value("system_type", album.systemType)
 						.value("flags", Utils.serializeEnumSet(album.flags));
 				if(album.ownerID>0){
 					qb.value("privacy", Utils.gson.toJson(Map.of("view", album.viewPrivacy, "comment", album.commentPrivacy)));

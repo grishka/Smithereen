@@ -769,6 +769,7 @@ public class PhotosController{
 			}
 			if(album.ownerID>0)
 				context.getNewsfeedController().clearFriendsFeedCache();
+			album.numPhotos=PhotoStorage.getAlbumSize(album.id);
 			albumCache.put(album.id, album);
 			// TODO groups newsfeed
 		}catch(SQLException x){
