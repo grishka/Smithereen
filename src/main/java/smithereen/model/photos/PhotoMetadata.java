@@ -14,4 +14,9 @@ public class PhotoMetadata{
 	public SizedImage.Rotation rotation;
 	public int width, height;
 	public String blurhash;
+	/**
+	 * For user avatars, the ID of the AVATAR_UPDATE post for this avatar
+	 */
+	@SerializedName("post")
+	public int correspondingPostID;
 }

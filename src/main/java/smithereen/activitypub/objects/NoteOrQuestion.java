@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -33,6 +34,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.jsonld.JLD;
+import smithereen.lang.Lang;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
 import smithereen.model.User;
@@ -54,6 +56,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public ActivityPubCollection target;
 	public URI likes;
 	public URI quoteRepostID;
+	public String action;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -140,6 +143,14 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 
 		if(post.privacy!=Post.Privacy.PUBLIC && post.ownerID!=post.authorID && post.getReplyLevel()==0){
 			throw new BadRequestException("Wall-to-wall posts can't be private. Wall owner controls their visibility instead");
+		}
+
+		if("AvatarUpdate".equals(action)){
+			// Must have exactly one photo attached
+			if(post.attachments!=null && post.attachments.size()==1 && post.attachments.getFirst() instanceof Image img && img.photoApID!=null){
+				post.text="";
+				post.action=Post.Action.AVATAR_UPDATE;
+			}
 		}
 
 		return post;
@@ -278,6 +289,15 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 				);
 				noq.content=root.html();
 			}catch(ObjectNotFoundException ignore){}
+		}
+
+		if(post.action!=null){
+			switch(post.action){
+				case AVATAR_UPDATE -> {
+					noq.action="AvatarUpdate";
+					noq.content+="<p class=\"smithereenAvatarUpdate\"><i>"+Lang.get(Locale.US).get("post_action_updated_avatar", Map.of("gender", author.gender))+"</i></p>";
+				}
+			}
 		}
 
 		noq.to=to.stream().map(LinkOrObject::new).toList();
@@ -539,6 +559,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			// Pleroma, Akkoma and possibly other "*oma"s
 			quoteRepostID=tryParseURL(optString(obj, "quoteUrl"));
 		}
+		action=optString(obj, "action");
 
 		return this;
 	}
@@ -563,6 +584,11 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			obj.addProperty("_misskey_quote", quoteRepostID.toString());
 			serializerContext.addAlias("quoteUrl", "as:quoteUrl");
 			obj.addProperty("quoteUrl", quoteRepostID.toString());
+		}
+		if(action!=null){
+			serializerContext.addSmIdType("action");
+			serializerContext.addSmAlias(action);
+			obj.addProperty("action", action);
 		}
 
 		return obj;

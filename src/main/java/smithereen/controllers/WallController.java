@@ -102,18 +102,20 @@ public class WallController{
 
 	/**
 	 * Create a new wall post or comment.
-	 * @param author Post author.
-	 * @param wallOwner Wall owner (user or group). Ignored for comments.
-	 * @param inReplyTo Post this is in reply to, null for a top-level post.
-	 * @param textSource HTML post text, as entered by the user.
+	 *
+	 * @param author         Post author.
+	 * @param wallOwner      Wall owner (user or group). Ignored for comments.
+	 * @param inReplyTo      Post this is in reply to, null for a top-level post.
+	 * @param textSource     HTML post text, as entered by the user.
 	 * @param contentWarning Content warning (null for none).
-	 * @param attachmentIDs IDs (hashes) of previously uploaded photo attachments.
-	 * @param poll Poll to attach.
+	 * @param attachmentIDs  IDs (hashes) of previously uploaded photo attachments.
+	 * @param poll           Poll to attach.
+	 * @param action
 	 * @return The newly created post.
 	 */
 	public Post createWallPost(@NotNull User author, int authorAccountID, @NotNull Actor wallOwner, Post inReplyTo,
 							   @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
-							   @Nullable Poll poll, @Nullable Post repost, @NotNull Map<String, String> attachAltTexts){
+							   @Nullable Poll poll, @Nullable Post repost, @NotNull Map<String, String> attachAltTexts, Post.@Nullable Action action){
 		try{
 			if(wallOwner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
@@ -245,7 +247,7 @@ public class WallController{
 			}else{
 				replyKey=null;
 			}
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0);
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0, action);
 			if(ownerUserID==userID && replyKey==null){
 				context.getNewsfeedController().putFriendsFeedEntry(author, postID, NewsfeedEntry.Type.POST);
 			}
@@ -757,29 +759,32 @@ public class WallController{
 		}
 	}
 
-	public void deletePost(@NotNull SessionInfo info, Post post){
-		deletePostInternal(info, post, false);
+	public void deletePost(@NotNull User self, Post post){
+		deletePostInternal(self, post, false);
 	}
 
-	public void deletePostAsServerModerator(@NotNull SessionInfo info, Post post){
-		deletePostInternal(info, post, true);
+	public void deletePostAsServerModerator(@NotNull User self, Post post){
+		deletePostInternal(self, post, true);
 	}
 
-	private void deletePostInternal(@NotNull SessionInfo info, Post post, boolean ignorePermissions){
+	private void deletePostInternal(@NotNull User self, Post post, boolean ignorePermissions){
 		try{
+			OwnerAndAuthor oaa=getContentAuthorAndOwner(post);
 			if(!ignorePermissions){
-				context.getPrivacyController().enforceObjectPrivacy(info.account.user, post);
-				if(!info.permissions.canDeletePost(post)){
-					throw new UserActionNotAllowedException();
+				context.getPrivacyController().enforceObjectPrivacy(self, post);
+				if(post.ownerID!=self.id && post.authorID!=self.id){ // Can always delete own posts and others' posts on own wall
+					if(post.ownerID>0) // Can't delete posts not made of owned oneself
+						throw new UserActionNotAllowedException();
+					else // Must be at least a moderator to delete others' posts in groups
+						context.getGroupsController().enforceUserAdminLevel((Group)oaa.owner(), self, Group.AdminLevel.MODERATOR);
 				}
 			}
 			PostStorage.deletePost(post.id);
 			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
 			context.getNewsfeedController().clearFriendsFeedCache();
-			User deleteActor=info.account.user;
-			OwnerAndAuthor oaa=getContentAuthorAndOwner(post);
+			User deleteActor=self;
 			// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
-			if(ignorePermissions && oaa.author().id!=info.account.user.id && !post.isGroupOwner() && post.ownerID!=info.account.user.id && !(oaa.author() instanceof ForeignUser)){
+			if(ignorePermissions && oaa.author().id!=self.id && !post.isGroupOwner() && post.ownerID!=self.id && !(oaa.author() instanceof ForeignUser)){
 				deleteActor=oaa.author();
 			}
 			context.getActivityPubWorker().sendDeletePostActivity(post, deleteActor);

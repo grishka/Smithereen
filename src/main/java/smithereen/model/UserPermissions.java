@@ -41,7 +41,7 @@ public class UserPermissions{
 	}
 
 	public boolean canEditPost(PostLikeObject post){
-		return post.authorID==userID && System.currentTimeMillis()-post.createdAt.toEpochMilli()<24*3600_000L;
+		return post.authorID==userID && System.currentTimeMillis()-post.createdAt.toEpochMilli()<24*3600_000L && (!(post instanceof Post p) || p.action==null);
 	}
 
 	public boolean canEditGroup(Group group){

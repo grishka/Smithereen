@@ -8,6 +8,7 @@
 <div class="postCWWrap">
 	<label for="postCW_{{ repostParent.post.id }}_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
 {% endif %}
+{% if realPost.action=='AVATAR_UPDATE' %}<span class="grayText">{{ L('post_action_updated_avatar', {'gener': users[realPost.authorID].gender}) }}</span>{% endif %}
 {% if standalone %}
 <div class="postContent">{{ realPost.text | postprocessHTML }}</div>
 {% else %}

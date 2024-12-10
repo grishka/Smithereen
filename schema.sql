@@ -895,6 +895,7 @@ CREATE TABLE `wall_posts` (
   `source_format` tinyint unsigned DEFAULT NULL,
   `privacy` tinyint unsigned NOT NULL DEFAULT '0',
   `flags` bigint unsigned NOT NULL DEFAULT '0',
+  `action` tinyint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -909,4 +910,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-09-28 21:22:57
+-- Dump completed on 2024-12-10  4:04:45

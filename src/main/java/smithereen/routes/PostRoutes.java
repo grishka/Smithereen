@@ -147,7 +147,7 @@ public class PostRoutes{
 				inReplyTo=ctx.getWallController().getPostOrThrow(inReplyTo.repostOf);
 		}
 
-		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost, attachmentAltTexts);
+		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost, attachmentAltTexts, null);
 
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();
@@ -610,7 +610,7 @@ public class PostRoutes{
 
 	public static Object delete(Request req, Response resp, Account self, ApplicationContext ctx){
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		ctx.getWallController().deletePost(requireSession(req), post);
+		ctx.getWallController().deletePost(self.user, post);
 		if(isAjax(req)){
 			resp.type("application/json");
 			return new WebDeltaResponse().remove("post"+post.id);

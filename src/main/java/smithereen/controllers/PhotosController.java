@@ -37,6 +37,7 @@ import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
+import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
@@ -576,6 +577,12 @@ public class PhotosController{
 
 	private void deletePhotoInternal(Photo photo, PhotoAlbum album) throws SQLException{
 		Actor owner=context.getWallController().getContentAuthorAndOwner(photo).owner();
+		if(photo.metadata!=null && photo.metadata.correspondingPostID!=0){
+			try{
+				Post post=context.getWallController().getPostOrThrow(photo.metadata.correspondingPostID);
+				context.getWallController().deletePost((User) owner, post);
+			}catch(ObjectNotFoundException ignore){}
+		}
 		boolean needUpdateCover=album.coverID==photo.id;
 		long newCoverID=0;
 		synchronized(photoCreationLock){
@@ -1023,7 +1030,13 @@ public class PhotosController{
 		setPhotoToAvatar(owner, photo);
 
 		if(group==null){
-			// TODO create post
+			Post post=context.getWallController().createWallPost(self.user, self.id, self.user, null, "", self.prefs.textFormat, null, List.of("photo:"+photo.getIdString()), null, null, Map.of(), Post.Action.AVATAR_UPDATE);
+			photo.metadata.correspondingPostID=post.id;
+			try{
+				PhotoStorage.updatePhotoMetadata(photo.id, photo.metadata);
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
 		}
 	}
 

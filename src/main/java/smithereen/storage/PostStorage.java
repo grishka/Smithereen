@@ -59,7 +59,8 @@ import spark.utils.StringUtils;
 public class PostStorage{
 	private static final Logger LOG=LoggerFactory.getLogger(PostStorage.class);
 
-	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, FormattedTextFormat sourceFormat, List<Integer> replyKey, Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf) throws SQLException{
+	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, FormattedTextFormat sourceFormat, List<Integer> replyKey,
+									 Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf, Post.Action action) throws SQLException{
 		if(ownerUserID<=0 && ownerGroupID<=0)
 			throw new IllegalArgumentException("Need either ownerUserID or ownerGroupID");
 
@@ -78,6 +79,7 @@ public class PostStorage{
 					.value("source", textSource)
 					.value("source_format", sourceFormat)
 					.value("repost_of", repostOf!=0 ? repostOf : null)
+					.value("action", action)
 					.executeAndGetID();
 
 			if(replyKey!=null && !replyKey.isEmpty()){
@@ -178,6 +180,7 @@ public class PostStorage{
 							.value("privacy", post.privacy)
 							.value("repost_of", post.repostOf!=0 ? post.repostOf : null)
 							.value("flags", Utils.serializeEnumSet(post.flags))
+							.value("action", post.action)
 							.createStatement(Statement.RETURN_GENERATED_KEYS);
 				}else{
 					if(post.poll!=null && Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts

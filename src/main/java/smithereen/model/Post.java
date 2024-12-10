@@ -41,6 +41,7 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 	public boolean isReplyToUnknownPost;
 	public Privacy privacy=Privacy.PUBLIC;
 	public EnumSet<Flag> flags=EnumSet.noneOf(Flag.class);
+	public Action action;
 
 	@Override
 	public URI getActivityPubID(){
@@ -79,6 +80,9 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 		}
 		privacy=Privacy.values()[res.getInt("privacy")];
 		Utils.deserializeEnumSet(flags, Flag.class, res.getLong("flags"));
+		int _action=res.getInt("action");
+		if(!res.wasNull())
+			action=Action.values()[_action];
 	}
 
 	@Override
@@ -252,5 +256,9 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 
 	public enum Flag{
 		MASTODON_STYLE_REPOST,
+	}
+
+	public enum Action{
+		AVATAR_UPDATE,
 	}
 }

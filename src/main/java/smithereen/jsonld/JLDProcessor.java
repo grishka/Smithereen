@@ -112,6 +112,8 @@ public class JLDProcessor{
 		addSmAlias(lc, "SavedPhotos");
 		addSmAlias(lc, "ProfilePictures");
 		lc.add("photo", idAndTypeObject("sm:photo", "@id"));
+		lc.add("action", idAndTypeObject("sm:action", "@id"));
+		addSmAlias(lc, "AvatarUpdate");
 		// privacy settings keys
 		lc.addProperty("wallPosting", "sm:wallPosting");
 		lc.addProperty("wallPostVisibility", "sm:wallPostVisibility");

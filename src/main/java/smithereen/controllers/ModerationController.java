@@ -606,7 +606,7 @@ public class ModerationController{
 							LOG.debug("Post {} already deleted", post.id);
 							continue;
 						}
-						context.getWallController().deletePostAsServerModerator(session, post);
+						context.getWallController().deletePostAsServerModerator(session.account.user, post);
 					}
 					case MailMessage msg -> {
 						if(context.getMailController().getMessagesAsModerator(Set.of(XTEA.obfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE))).isEmpty()){

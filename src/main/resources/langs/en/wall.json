@@ -73,5 +73,6 @@
   "embed_post_explanation": "Embed this post on your website by copying this code:",
   "embed_preview": "Preview",
   "comment_in_reply_to_user": "replied to <a id=\"parentComment\">{name}</a>",
-  "comment_in_reply_to_user_short": "to <a id=\"parentComment\">{name}</a>"
+  "comment_in_reply_to_user_short": "to <a id=\"parentComment\">{name}</a>",
+  "post_action_updated_avatar": "updated {gender, select, male {his} female {her} other {their}} profile picture:"
 }
