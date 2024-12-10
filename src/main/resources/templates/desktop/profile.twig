@@ -46,7 +46,7 @@
 			<div class="selfAvaActionsW">
 				<ul class="selfAvaActions actionList">
 					<li><a href="/settings/profile/general" class="ellipsize" onclick="new ProfilePictureLayer().show(); return false;"><span class="icon"></span>{{L('update_profile_picture')}}</a></li>
-					{% if user.avatar.photoID!=0 %}<li><a href="javascript:void(0)" onclick="new ProfilePictureLayer(null, '{{ avatarPhoto.idString }}', '{{ avatarPhoto.image.getUrlForSizeAndFormat('w', 'jpg') }}', {{ json(avatarPhoto.metadata.cropRects) }}).show(); return false;" class="ellipsize"><span class="icon thumb"></span>{{ L('avatar_edit_thumbnail') }}</a></li>{% endif %}
+					{% if avatarPhoto is not null %}<li><a href="javascript:void(0)" onclick="new ProfilePictureLayer(null, '{{ avatarPhoto.idString }}', '{{ avatarPhoto.image.getUrlForSizeAndFormat('w', 'jpg') }}', {{ json(avatarPhoto.metadata.cropRects) }}).show(); return false;" class="ellipsize"><span class="icon thumb"></span>{{ L('avatar_edit_thumbnail') }}</a></li>{% endif %}
 				</ul>
 			</div>
 			<div class="deleteButtonW">

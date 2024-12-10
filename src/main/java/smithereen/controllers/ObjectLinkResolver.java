@@ -28,6 +28,7 @@ import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionQueryResult;
+import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.ServiceActor;

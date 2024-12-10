@@ -159,7 +159,8 @@ public class LocalImage extends Image implements SizedImage{
 		width=mfr.metadata().width();
 		height=mfr.metadata().height();
 		size=new Dimensions(width, height);
-		cropRegion=mfr.metadata().cropRegion();
+		if(cropRegion==null)
+			cropRegion=mfr.metadata().cropRegion();
 		blurHash=mfr.metadata().blurhash();
 		isGraffiti=mfr.id().type()==MediaFileType.IMAGE_GRAFFITI;
 	}

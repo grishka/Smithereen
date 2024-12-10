@@ -66,6 +66,12 @@ public abstract class Actor extends ActivityPubObject{
 		return icon!=null;
 	}
 
+	public Image getAvatarImage(){
+		if(icon!=null && !icon.isEmpty())
+			return icon.getFirst();
+		return null;
+	}
+
 	public Image getBestAvatarImage(){
 		Image icon=this.icon!=null ? this.icon.getFirst() : null;
 		if(icon==null)

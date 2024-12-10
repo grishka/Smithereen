@@ -24,6 +24,7 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
@@ -313,13 +314,17 @@ public class GroupsRoutes{
 				.with("photoAlbumCount", albums.total)
 				.with("covers", ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.list.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet())));
 
-		if(group.getAvatar() instanceof LocalImage li && li.photoID!=0){
-			try{
-				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(li.photoID);
+		try{
+			Photo photo=switch(group.getAvatarImage()){
+				case LocalImage li when li.photoID!=0 -> ctx.getPhotosController().getPhotoIgnoringPrivacy(li.photoID);
+				case Image img when img.photoApID!=null -> ctx.getObjectLinkResolver().resolveLocally(img.photoApID, Photo.class);
+				case null, default -> null;
+			};
+			if(photo!=null){
 				model.with("avatarPvInfo", new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(photo.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), photo.image.getURLsForPhotoViewer()))
 						.with("avatarPhoto", photo);
-			}catch(ObjectNotFoundException ignore){}
-		}
+			}
+		}catch(ObjectNotFoundException ignore){}
 
 		return model;
 	}
