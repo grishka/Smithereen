@@ -147,9 +147,12 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 
 		if("AvatarUpdate".equals(action)){
 			// Must have exactly one photo attached
-			if(post.attachments!=null && post.attachments.size()==1 && post.attachments.getFirst() instanceof Image img && img.photoApID!=null){
-				post.text="";
-				post.action=Post.Action.AVATAR_UPDATE;
+			if(post.attachments!=null && post.attachments.size()==1 && post.attachments.getFirst() instanceof Image img && img.photoApID!=null && post.ownerID==post.authorID){
+				try{
+					context.getObjectLinkResolver().resolveNative(img.photoApID, Photo.class, true, true, false, author, false);
+					post.text="";
+					post.action=Post.Action.AVATAR_UPDATE;
+				}catch(ObjectNotFoundException ignore){}
 			}
 		}
 

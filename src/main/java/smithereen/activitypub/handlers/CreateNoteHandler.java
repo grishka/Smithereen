@@ -18,6 +18,7 @@ import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.NoteOrQuestion;
@@ -34,6 +35,9 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoMetadata;
+import smithereen.storage.PhotoStorage;
 import smithereen.storage.PostStorage;
 import spark.utils.StringUtils;
 
@@ -240,6 +244,14 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
 			}else{
 				context.appContext.getNewsfeedController().clearFriendsFeedCache();
+			}
+
+			if(nativePost.action==Post.Action.AVATAR_UPDATE && nativePost.attachments.getFirst() instanceof Image img){
+				Photo photo=context.appContext.getObjectLinkResolver().resolveLocally(img.photoApID, Photo.class);
+				if(photo.metadata==null)
+					photo.metadata=new PhotoMetadata();
+				photo.metadata.correspondingPostID=nativePost.id;
+				PhotoStorage.updatePhotoMetadata(photo.id, photo.metadata);
 			}
 		}
 	}
