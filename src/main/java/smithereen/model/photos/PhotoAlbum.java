@@ -90,6 +90,8 @@ public class PhotoAlbum implements ActivityPubRepresentable, OwnedContentObject{
 
 	@Override
 	public URI getActivityPubID(){
+		if(activityPubID!=null)
+			return activityPubID;
 		return UriBuilder.local().path("albums", getIdString()).build();
 	}
 

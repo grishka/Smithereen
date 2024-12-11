@@ -117,6 +117,8 @@ import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
+import smithereen.exceptions.RemoteObjectFetchException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
@@ -139,6 +141,7 @@ import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.exceptions.BadRequestException;
@@ -569,95 +572,49 @@ public class ActivityPubRoutes{
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
 	}
 
-	public static Object externalInteraction(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object externalInteraction(Request req, Response resp, Account self, ApplicationContext ctx){
 		// ?type=reblog
 		// ?type=favourite
 		// ?type=reply
 		// user/remote_follow
 		requireQueryParams(req, "uri");
-		String ref=req.headers("referer");
-		ActivityPubObject remoteObj;
+		String uri=req.queryParams("uri");
+//		String ref=req.headers("referer");
+
+		Lang l=lang(req);
 		try{
-			URI uri=UriBuilder.parseAndEncode(req.queryParams("uri"));
-			if(!"https".equals(uri.getScheme()) && !(Config.useHTTP && "http".equals(uri.getScheme()))){
-				// try parsing as "username@domain" or "acct:username@domain"
-				String rawUri=uri.getSchemeSpecificPart();
-				if(rawUri.matches("^[^@\\s]+@[^@\\s]{4,}$")){
-					String[] parts=rawUri.split("@");
-					uri=ActivityPub.resolveUsername(parts[0], parts[1]);
-					if(!"https".equals(uri.getScheme()) && !(Config.useHTTP && "http".equals(uri.getScheme()))){
-						return "Failed to resolve object URI via webfinger";
-					}
-				}else{
-					return "Invalid remote object URI";
-				}
-			}
-			remoteObj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, true);
-			if(remoteObj.activityPubID.getHost()==null || uri.getHost()==null || !remoteObj.activityPubID.getHost().equals(uri.getHost())){
-				return "Object ID host doesn't match URI host";
-			}
-		}catch(IOException|JsonParseException|URISyntaxException x){
-			LOG.debug("Error fetching remote object", x);
-			return x.getMessage();
-		}
-		if(remoteObj instanceof ForeignUser foreignUser){
-			try{
-				ctx.getObjectLinkResolver().storeOrUpdateRemoteObject(foreignUser);
-				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, foreignUser.id);
-				if(status==FriendshipStatus.REQUEST_SENT){
-					return Utils.wrapError(req, resp, "err_friend_req_already_sent");
-				}else if(status==FriendshipStatus.FOLLOWING){
-					return Utils.wrapError(req, resp, "err_already_following");
-				}else if(status==FriendshipStatus.FRIENDS){
-					return Utils.wrapError(req, resp, "err_already_friends");
-				}
-				return new RenderedTemplateResponse("remote_follow", req).with("user", foreignUser).with("title", Config.serverDisplayName);
-			}catch(Exception x){
-				x.printStackTrace();
-				return x.toString();
-			}
-		}else if(remoteObj instanceof ForeignGroup group){
-			group.storeDependencies(ctx);
-			GroupStorage.putOrUpdateForeignGroup(group);
-			resp.redirect(Config.localURI("/"+group.getFullUsername()).toString());
+			resp.redirect(switch(ctx.getSearchController().loadRemoteObject(self.user, uri)){
+				case Post post when post.getReplyLevel()>0 -> Config.localURI("/posts/"+post.replyKey.getFirst()+"#comment"+post.id).toString();
+				case Post post -> post.getInternalURL().toString();
+				case Actor actor -> actor.getProfileURL();
+				case PhotoAlbum album -> album.getURL();
+				case Photo photo -> photo.getURL();
+				case Comment comment -> ctx.getCommentsController().getCommentParent(self.user, comment).getURL();
+				default -> throw new RemoteObjectFetchException(RemoteObjectFetchException.ErrorType.UNSUPPORTED_OBJECT_TYPE, null);
+			});
 			return "";
-		}else if(remoteObj instanceof NoteOrQuestion post){
-			try{
-				Post topLevelPost;
-				if(post.inReplyTo!=null){
-					Post parent=PostStorage.getPostByID(post.inReplyTo);
-					if(parent==null){
-						List<Post> thread=ctx.getActivityPubWorker().fetchWallReplyThread(post).get(30, TimeUnit.SECONDS);
-						topLevelPost=thread.get(0);
-					}else{
-						Post nativePost=post.asNativePost(ctx);
-						ctx.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-						PostStorage.putForeignWallPost(nativePost);
-						topLevelPost=PostStorage.getPostByID(parent.getReplyChainElement(0), false);
-						if(topLevelPost==null)
-							throw new BadRequestException("Top-level post is not available");
-					}
-				}else{
-					Post nativePost=post.asNativePost(ctx);
-					if(post.inReplyTo==null && post.getQuoteRepostID()!=null){
-						List<Post> repostChain=ctx.getActivityPubWorker().fetchRepostChain(post).get();
-						if(!repostChain.isEmpty()){
-							nativePost.setRepostedPost(repostChain.getFirst());
-						}
-					}
-					ctx.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-					topLevelPost=nativePost;
-					PostStorage.putForeignWallPost(nativePost);
+		}catch(RemoteObjectFetchException x){
+			Object err=switch(x.error){
+				case UNSUPPORTED_OBJECT_TYPE -> wrapError(req, resp, "unsupported_remote_object_type");
+				case TIMEOUT -> {
+					if(x.uri!=null)
+						yield wrapError(req, resp, "remote_object_timeout", Map.of("server", x.uri.getHost()));
+					else
+						yield wrapError(req, resp, "remote_object_loading_error");
 				}
-				ctx.getActivityPubWorker().fetchAllReplies(topLevelPost);
-				resp.redirect("/posts/"+topLevelPost.id);
-				return "";
-			}catch(Exception x){
-				x.printStackTrace();
-				return x.toString();
+				case NETWORK_ERROR -> wrapError(req, resp, "remote_object_network_error");
+				case NOT_FOUND -> wrapError(req, resp, "remote_object_not_found");
+				case OTHER_ERROR -> wrapError(req, resp, "remote_object_loading_error");
+			};
+			if(err instanceof RenderedTemplateResponse model){
+				if(x.getCause()!=null){
+					model.with("details", x.getCause().getMessage());
+				}else if(StringUtils.isNotEmpty(x.getMessage())){
+					model.with("details", x.getMessage());
+				}
 			}
+			return err;
 		}
-		return "Referer: "+TextProcessor.sanitizeHTML(ref)+"<hr/>URL: "+TextProcessor.sanitizeHTML(req.queryParams("uri"))+"<hr/>Object:<br/><pre>"+TextProcessor.sanitizeHTML(remoteObj.toString())+"</pre>";
 	}
 
 	public static Object remoteFollow(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
