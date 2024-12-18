@@ -1,0 +1,8 @@
+{# @pebvariable name="friends" type="smithereen.model.User[]" #}
+<a href="javascript:void(0)" data-user-id="{{ currentUser.id }}">{{ L('photo_tag_myself') }}</a>
+{% for friend in friends %}
+{%- set supported=friend.domain is empty or friend.taggedPhotosURL is not null %}
+<a href="javascript:void(0)" data-user-id="{{ friend.id }}"{% if not supported %} data-tooltip="{{ L('photo_add_tag_unsupported_server', {'name': friend.firstAndGender}) }}" data-tooltip-fixed{% endif %}>
+	{%- if supported %}{{ friend | name('full') }}{% else %}<span class="unsupported">{{ friend | name('full') }}</span>{% endif -%}
+</a>
+{% endfor %}

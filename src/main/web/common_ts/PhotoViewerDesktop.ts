@@ -11,6 +11,15 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	private layerBackThing:HTMLElement;
 	private layerCloseThing:HTMLElement;
 
+	private tagsWrap:HTMLElement;
+	private tagTopBar:HTMLElement;
+	private tagFriendListPopup:HTMLElement;
+	private tagFriendListSubmit:HTMLElement;
+	private tagHighlight:HTMLElement;
+	private tagHighlightSvg:SVGSVGElement;
+	private tagHighlightBorder:HTMLElement;
+	private tagHighlightSvgRect:SVGRectElement;
+
 	private currentIndex:number;
 	public listID:string;
 	private total:number;
@@ -24,6 +33,8 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	private keyDownListener=this.onKeyDown.bind(this);
 	private wasShown:boolean=false;
 	public bottomPartUpdateCallback:{(el:HTMLElement):void};
+	private tagging:boolean=false;
+	private tagAreaSelector:ImageAreaSelector;
 
 	public constructor(info:PhotoViewerInlineData, listURL:string, fromPopState:boolean){
 		super(fromPopState);
@@ -39,13 +50,31 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 				ce("a", {className: "close", innerText: lang("close"), onclick: ()=>this.dismiss()})
 			]),
 			this.imgWrap=ce("div", {className: "imgW"}, [
-				this.imgLoader=ce("div", {className: "pvLoader"})
+				this.imgLoader=ce("div", {className: "pvLoader"}),
+				this.tagsWrap=ce("div", {className: "tagsW"}, [
+					this.tagHighlight=ce("div", {className: "tagHighlight"}, [
+						this.tagHighlightBorder=ce("div", {className: "tagHighlightBorder"})
+					])
+				])
 			]),
 			this.bottomPart=ce("div", {className: "infoAndComments"})
 		]);
 		this.updateImage();
 		this.historyEntryAdded=fromPopState;
 		this.loadPhotoList(Math.floor(this.currentIndex/10)*10);
+		this.tagsWrap.hide();
+
+		this.tagHighlightSvg=document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		this.tagHighlightSvg.innerHTML=`<defs>
+			<mask id="tagMask">
+				<rect x="0" y="0" width="100%" height="100%" fill="white"/>
+				<rect x="50" y="50" width="100" height="100" fill="black" id="maskRect"/>
+			</mask>
+			</defs>
+			<rect x="0" y="0" width="100%" height="100%" fill="black" fill-opacity="0.75" mask="url(#tagMask)"/>`;
+		this.tagHighlight.insertAdjacentElement("afterbegin", this.tagHighlightSvg);
+		this.tagHighlightSvgRect=this.tagHighlightSvg.getElementById("maskRect") as SVGRectElement;
+		this.tagHighlight.hide();
 	}
 
 	public onCreateContentView():HTMLElement{
@@ -56,7 +85,12 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		cont.appendChild(this.layerBackThing=ce("div", {className: "pvBack"}, [
 			ce("div", {className: "icon"})
 		]));
-		this.layerCloseThing.addEventListener("click", (ev)=>this.dismiss(), false);
+		this.layerCloseThing.addEventListener("click", (ev)=>{
+			if(this.tagging)
+				this.doneTagging();
+			else
+				this.dismiss();
+		}, false);
 		this.layerBackThing.addEventListener("click", (ev)=>this.showPrev(), false);
 		this.layerBackThing.hide();
 		var wheelListener=(ev:WheelEvent)=>{
@@ -94,7 +128,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	public updateTopOffset(){
 		// no-op
 	}
-	
+
 	public onShown(){
 		super.onShown();
 		window.addEventListener("keydown", this.keyDownListener, false);
@@ -133,7 +167,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		if(h<453){
 			h=453;
 		}
-		
+
 		var c=phW>w ? (w/phW) : 1;
 		if(phH*c>h){
 			c=h/phH;
@@ -147,6 +181,13 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		this.imgH=h;
 
 		this.layerBackThing.style.width=Math.round(viewportW/2-this.contentWrap.offsetWidth/2)+"px";
+
+		var tagOverlayW=Math.min(w, phW);
+		var tagOverlayH=Math.min(h, phH);
+		this.tagsWrap.style.width=tagOverlayW+"px";
+		this.tagsWrap.style.left=(this.contentWrap.offsetWidth-tagOverlayW)/2+"px";
+		this.tagsWrap.style.height=tagOverlayH+"px";
+		this.tagsWrap.style.top=(h-tagOverlayH)/2+"px";
 	}
 
 	private updateImage(){
@@ -253,6 +294,27 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 					}, "json");
 				});
 			}
+
+			var addTagBtn=this.bottomPart.qs(".pvAddTag");
+			if(addTagBtn){
+				addTagBtn.addEventListener("click", (ev)=>{
+					this.startTagging();
+				});
+			}
+
+			var tagsCont=this.bottomPart.qs(".pvTagsCont");
+			if(tagsCont){
+				tagsCont.addEventListener("mouseover", (ev)=>{
+					var target=ev.target as HTMLElement;
+					if(target.dataset.rect)
+						this.highlightTag(target.dataset.rect);
+				});
+				tagsCont.addEventListener("mouseout", (ev)=>{
+					var target=ev.target as HTMLElement;
+					if(target.dataset.rect)
+						this.hideTagHighlight();
+				});
+			}
 		}
 
 		// Clean up bottom part DOM trees. Keep current, 10 photos forward and 10 photos backward.
@@ -355,10 +417,14 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	}
 
 	public showNext(){
+		if(this.tagging)
+			return;
 		this.setCurrentPhoto(this.currentIndex<this.total-1 ? this.currentIndex+1 : 0);
 	}
 
 	public showPrev(){
+		if(this.tagging)
+			return;
 		this.setCurrentPhoto(this.currentIndex>0 ? this.currentIndex-1 : this.total-1);
 	}
 
@@ -387,6 +453,128 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			if(ev.keyCode==13 && (isApple ? ev.metaKey : ev.ctrlKey)){
 				onDone(textarea.value);
 			}
+		});
+	}
+
+	private startTagging(){
+		if(this.tagging)
+			return;
+		this.tagging=true;
+		this.imgWrap.insertAdjacentElement("beforebegin", this.tagTopBar=ce("div", {className: "settingsMessage pvTaggingTopBar"}, [
+			lang("photo_tagging_info"),
+			ce("a", {href: "javascript:void(0)", className: "flR", innerHTML: lang("photo_tagging_done"), onclick: ()=>this.doneTagging()})
+		]));
+		this.bottomPart.qs(".actionList").hide();
+		this.tagsWrap.show();
+
+		if(!this.tagAreaSelector){
+			this.tagAreaSelector=new ImageAreaSelector(this.tagsWrap);
+			var listLoader;
+			var list:HTMLElement;
+			var input:HTMLInputElement;
+			this.tagFriendListPopup=ce("div", {className: "pvTagFriendListPopup"}, [
+				ce("div", {className: "boxTitleBar"}, [
+					ce("div", {className: "title", innerHTML: lang("photo_tag_select_friend")}),
+					ce("a", {className: "close", href: "javascript:void(0)", onclick: this.resetCurrentTag.bind(this)})
+				]),
+				ce("div", {className: "searchBar"}, [
+					input=ce("input", {type: "text", placeholder: lang("photo_tag_name_search")})
+				]),
+				list=ce("div", {className: "list"}, [
+					listLoader=ce("div", {className: "loader"})
+				]),
+				ce("div", {className: "boxButtonBar"}, [
+					this.tagFriendListSubmit=ce("button", {onclick: ()=>{
+						if(!input.value)
+							return;
+						this.addTag(null, input.value);
+					}}, [lang("photo_add_tag_submit")]),
+					ce("button", {className: "secondary", onclick: this.resetCurrentTag.bind(this)}, [lang("cancel")])
+				])
+			]);
+			listLoader.style.marginTop="15px";
+			this.imgWrap.appendChild(this.tagFriendListPopup);
+			this.tagAreaSelector.onStartDrag=()=>{
+				this.tagFriendListPopup.hideAnimated();
+			};
+			this.tagAreaSelector.onEndDrag=()=>{
+				var area=this.tagAreaSelector.getSelectedArea();
+				this.tagFriendListPopup.style.left=(this.tagsWrap.offsetLeft+area.x+area.w)+"px";
+				this.tagFriendListPopup.style.top=(this.tagsWrap.offsetTop+area.y)+"px";
+				this.tagFriendListPopup.showAnimated();
+			};
+			list.addEventListener("click", (ev)=>{
+				var target=ev.target as HTMLElement;
+				if(target.qs(".unsupported"))
+					return;
+				this.addTag(target.dataset.userId, null);
+			});
+			ajaxGet("/photos/friendListForTagging", (r)=>{
+				list.innerHTML=r;
+			}, (err)=>new MessageBox(lang("error"), err, lang("close")).show(), "text");
+		}
+		this.tagAreaSelector.reset();
+		this.tagFriendListPopup.hide();
+		this.layerBackThing.hide();
+	}
+
+	private doneTagging(){
+		if(!this.tagging)
+			return;
+		this.tagging=false;
+		this.tagTopBar.remove();
+		this.tagTopBar=null;
+		this.bottomPart.qs(".actionList").show();
+		this.tagsWrap.hide();
+		if(this.photos.length>1)
+			this.layerBackThing.show();
+	}
+
+	private resetCurrentTag(){
+		this.tagAreaSelector.reset();
+		this.tagFriendListPopup.hideAnimated();
+	}
+
+	private addTag(userID:string, name:string){
+		var area=this.tagAreaSelector.getSelectedArea();
+		var w=this.tagsWrap.offsetWidth;
+		var h=this.tagsWrap.offsetHeight;
+		var rect=[area.x/w, area.y/h, (area.x+area.w)/w, (area.y+area.h)/h];
+		this.tagFriendListSubmit.classList.add("loading");
+		ajaxGetAndApplyActions(`/photos/${this.photos[this.currentIndex].id}/addTag?csrf=${userConfig.csrf}&rect=${rect.join(',')}&`+(userID ? `user=${userID}` : `name=${encodeURIComponent(name)}`), ()=>{
+			this.tagFriendListSubmit.classList.remove("loading");
+			this.resetCurrentTag();
+		}, ()=>{
+			this.tagFriendListSubmit.classList.remove("loading");
+		});
+	}
+
+	private highlightTag(_rect:string){
+		this.tagsWrap.show();
+		this.tagHighlight.showAnimated();
+		var w=this.tagsWrap.offsetWidth;
+		var h=this.tagsWrap.offsetHeight;
+		var rect=_rect.split(",");
+		var x=Math.round(parseFloat(rect[0])*w);
+		var y=Math.round(parseFloat(rect[1])*h);
+		var tw=Math.round(parseFloat(rect[2])*w)-x;
+		var th=Math.round(parseFloat(rect[3])*h)-y;
+
+		this.tagHighlightSvgRect.setAttribute("x", x.toString());
+		this.tagHighlightSvgRect.setAttribute("y", y.toString());
+		this.tagHighlightSvgRect.setAttribute("width", tw.toString());
+		this.tagHighlightSvgRect.setAttribute("height", th.toString());
+
+		this.tagHighlightBorder.style.left=x+"px";
+		this.tagHighlightBorder.style.top=y+"px";
+		this.tagHighlightBorder.style.width=(tw+2)+"px";
+		this.tagHighlightBorder.style.height=(th+2)+"px";
+	}
+
+	private hideTagHighlight(){
+		this.tagHighlight.hideAnimated({keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: 200, easing: "ease"}}, ()=>{
+			if(!this.tagging)
+				this.tagsWrap.hide();
 		});
 	}
 }

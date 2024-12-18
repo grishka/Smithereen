@@ -389,5 +389,7 @@ public abstract class Actor extends ActivityPubObject{
 		public String tentativeGroupMembers;
 		@SerializedName("pa")
 		public String photoAlbums;
+		@SerializedName("tp")
+		public String taggedPhotos;
 	}
 }

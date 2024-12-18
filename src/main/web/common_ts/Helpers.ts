@@ -1220,7 +1220,13 @@ function showTooltip(el:HTMLElement, text:string){
 				ce("div", {className: "tooltipInner"}, [text])
 			])
 		]);
+		if(el.offsetWidth>50){
+			ttEl.classList.add("alignLeft");
+		}
 		el.insertAdjacentElement("afterbegin", ttEl);
+	}
+	if(el.dataset.tooltipFixed!=undefined){
+		ttEl.style.position="fixed";
 	}
 	ttEl.showAnimated();
 }

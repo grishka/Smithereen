@@ -12,7 +12,9 @@ public record PhotoViewerPhotoInfo(String id, String authorURL, String authorNam
 		SET_AS_COVER,
 		REPORT,
 		SAVE_TO_ALBUM,
-		ROTATE
+		ROTATE,
+		ADD_TAGS,
+		MANAGE_TAGS
 	}
 	public record Interactions(int likes, boolean isLiked, int comments){}
 }

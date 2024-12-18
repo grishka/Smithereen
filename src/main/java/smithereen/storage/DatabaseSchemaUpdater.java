@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=57;
+	public static final int SCHEMA_VERSION=58;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -815,6 +815,28 @@ public class DatabaseSchemaUpdater{
 			}
 			case 56 -> conn.createStatement().execute("ALTER TABLE photo_albums ADD `ap_comments` varchar(300) CHARACTER SET ascii DEFAULT NULL");
 			case 57 -> conn.createStatement().execute("ALTER TABLE wall_posts ADD action tinyint unsigned DEFAULT NULL");
+			case 58 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `photo_tags` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `photo_id` bigint unsigned NOT NULL,
+						  `placer_id` int unsigned NOT NULL,
+						  `user_id` int unsigned DEFAULT NULL,
+						  `name` varchar(300) NOT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `approved` tinyint unsigned NOT NULL DEFAULT '0',
+						  `x1` float NOT NULL,
+						  `y1` float NOT NULL,
+						  `x2` float NOT NULL,
+						  `y2` float NOT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `photo_id` (`photo_id`,`user_id`),
+						  KEY `user_id` (`user_id`),
+						  KEY `approved` (`approved`),
+						  CONSTRAINT `photo_tags_ibfk_1` FOREIGN KEY (`photo_id`) REFERENCES `photos` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `photo_tags_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+						) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4;""");
+			}
 		}
 	}
 

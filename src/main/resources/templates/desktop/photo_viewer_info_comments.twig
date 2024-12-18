@@ -12,6 +12,16 @@
 		{% else %}
 		<div class="marginAfter description">{{ description | postprocessHTML }}</div>
 		{% endif %}
+		{% if photo is not null %}
+		<div class="marginAfter pvTagsCont" id="pvTagsCont_{{ photo.idString }}" style="{% if tags is empty %}display: none{% endif %}"><span class="grayText">{{ L('photo_tags') }}</span> <span id="pvTags_{{ photo.idString }}">
+		{%- for tag in tags -%}<span id="pvTag_{{ photo.idString }}_{{ tag.id }}">
+		{%- set rect="#{tag.rect.x1},#{tag.rect.y1},#{tag.rect.x2},#{tag.rect.y2}" %}
+		{%- if tag.userID!=0 %}<a href="{{ profileURL(tag.userID) }}" data-rect="{{ rect }}">{{ users[tag.userID] | name('full') }}</a>{% else %}<span data-rect="{{ rect }}">{{ tag.name }}</span>{% endif -%}
+		{%- if allowedActions contains "MANAGE_TAGS" or tag.placerID==currentUser.id or tag.userID==currentUser.id %}<a href="javascript:void(0)" class="pvTagDelete" data-tooltip="{{ L('photo_delete_tag') }}" aria-label="{{ L('photo_delete_tag') }}" data-confirm-message="{{ L('photo_tag_delete_confirm') }}" data-confirm-title="{{ L('photo_delete_tag') }}" data-confirm-action="{{ photo.url }}/deleteTag?id={{ tag.id }}"></a>{% endif -%}
+		{% if not loop.last %}, {% endif %}</span>
+		{%- endfor -%}
+		</span></div>
+		{% endif %}
 		<div class="grayText marginAfter">{{ L('photo_added_at', {'date': LD(createdAt)}) }}
 		<span class="contentActions pvLike">
 		{% if interactions is not null %}
@@ -52,6 +62,9 @@
 		{% if album is not null %}<div class="grayText marginAfter">{{ L('photo_album_label') }}:<br/><a href="{{ album.url }}">{{ photoAlbumTitle(_context, album) }}</a></div>{% endif %}
 		<div class="grayText">{{ L('photo_added_by') }}:<br/><a href="{{ author.profileURL }}">{{ author | name('full') }}</a></div>
 		<ul class="actionList">
+			{% if allowedActions contains "ADD_TAGS" %}
+			<li><a href="javascript:void(0)" class="pvAddTag">{{ L('photo_add_tag') }}</a></li>
+			{% endif %}
 			{% if allowedActions contains "SET_AS_COVER" %}
 			<li><a href="{{ photo.url }}/setAsAlbumCover?csrf={{ csrf }}" data-ajax data-ajax-show="photoSetCoverLoader{{ photo.idString }}" data-ajax-hide="photoSetCoverText{{ photo.idString }}"><span id="photoSetCoverText{{ photo.idString }}">{{ L('set_photo_as_album_cover') }}</span> <span class="inlineLoader" id="photoSetCoverLoader{{ photo.idString }}" style="display: none"></span></a></li>
 			{% endif %}

@@ -42,6 +42,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -145,9 +146,9 @@ public class Utils{
 	}
 
 	public static void jsLangKey(Request req, String... keys){
-		ArrayList<String> k=req.attribute("jsLang");
+		Set<String> k=req.attribute("jsLang");
 		if(k==null)
-			req.attribute("jsLang", k=new ArrayList<>());
+			req.attribute("jsLang", k=new HashSet<>());
 		Collections.addAll(k, keys);
 	}
 

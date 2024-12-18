@@ -25,9 +25,11 @@ import smithereen.model.SizedImage;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.notifications.Notification;
+import smithereen.model.photos.ImageRect;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoMetadata;
+import smithereen.model.photos.PhotoTag;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -619,6 +621,112 @@ public class PhotoStorage{
 					.toList();
 			postprocessPhotos(photos);
 			return new PaginatedList<>(photos, total, offset, count);
+		}
+	}
+
+	public static long createPhotoTag(long photoID, int placerID, int userID, String name, boolean approved, ImageRect rect) throws SQLException{
+		return new SQLQueryBuilder()
+				.insertInto("photo_tags")
+				.value("photo_id", photoID)
+				.value("placer_id", placerID)
+				.value("user_id", userID!=0 ? userID : null)
+				.value("name", name)
+				.value("approved", approved)
+				.value("x1", rect.x1())
+				.value("y1", rect.y1())
+				.value("x2", rect.x2())
+				.value("y2", rect.y2())
+				.executeAndGetIDLong();
+	}
+
+	public static List<PhotoTag> getPhotoTags(long photoID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photo_tags")
+				.where("photo_id=?", photoID)
+				.orderBy("created_at ASC")
+				.executeAsStream(PhotoTag::fromResultSet)
+				.toList();
+	}
+
+	public static Map<Long, List<PhotoTag>> getPhotoTags(Collection<Long> photoIDs) throws SQLException{
+		if(photoIDs.isEmpty())
+			return Map.of();
+		return new SQLQueryBuilder()
+				.selectFrom("photo_tags")
+				.whereIn("photo_id", photoIDs)
+				.orderBy("created_at ASC")
+				.executeAsStream(PhotoTag::fromResultSet)
+				.collect(Collectors.groupingBy(PhotoTag::photoID));
+	}
+
+	public static PhotoTag getPhotoTag(long photoID, long tagID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photo_tags")
+				.where("id=? AND photo_id=?", tagID, photoID)
+				.executeAndGetSingleObject(PhotoTag::fromResultSet);
+	}
+
+	public static void approvePhotoTag(long photoID, long tagID) throws SQLException{
+		new SQLQueryBuilder()
+				.update("photo_tags")
+				.where("id=? AND photo_id=?", tagID, photoID)
+				.value("approved", 1)
+				.executeNoResult();
+	}
+
+	public static void deletePhotoTag(long photoID, long tagID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("photo_tags")
+				.where("id=? AND photo_id=?", tagID, photoID)
+				.executeNoResult();
+	}
+
+	public static PaginatedList<Long> getUserTaggedPhotos(int userID, int offset, int count, boolean approved) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("photo_tags")
+					.count()
+					.where("user_id=? AND approved=?", userID, approved)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Long> ids=new SQLQueryBuilder(conn)
+					.selectFrom("photo_tags")
+					.columns("photo_id")
+					.where("user_id=? AND approved-?", userID, approved)
+					.orderBy("created_at DESC")
+					.limit(count, offset)
+					.executeAndGetLongStream()
+					.boxed()
+					.toList();
+			return new PaginatedList<>(ids, total, offset, count);
+		}
+	}
+
+	public static Set<Long> getUserTaggedPhotosInCollection(int userID, Collection<Long> photoIDs) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photo_tags")
+				.columns("photo_id")
+				.whereIn("photo_id", photoIDs)
+				.andWhere("user_id=? AND approved=1", userID)
+				.executeAndGetLongStream()
+				.boxed()
+				.collect(Collectors.toSet());
+	}
+
+	public static void updatePhotoTagsRects(long photoID, Map<Long, ImageRect> rects) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			for(Map.Entry<Long, ImageRect> e:rects.entrySet()){
+				ImageRect rect=e.getValue();
+				new SQLQueryBuilder(conn)
+						.update("photo_tags")
+						.where("id=? AND photo_id=?", e.getKey(), photoID)
+						.value("x1", rect.x1())
+						.value("y1", rect.y1())
+						.value("x2", rect.x2())
+						.value("y2", rect.y2())
+						.executeNoResult();
+			}
 		}
 	}
 }

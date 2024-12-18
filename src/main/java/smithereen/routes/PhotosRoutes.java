@@ -21,6 +21,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
+import smithereen.controllers.FriendsController;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -54,8 +55,10 @@ import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.media.PhotoViewerPhotoInfo;
 import smithereen.model.photos.AvatarCropRects;
+import smithereen.model.photos.ImageRect;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.model.photos.PhotoTag;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.storage.MediaStorage;
@@ -387,6 +390,10 @@ public class PhotosRoutes{
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.DELETE);
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.EDIT_DESCRIPTION);
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.ROTATE);
+			if(photo.apID==null){
+				allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.ADD_TAGS);
+				allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.MANAGE_TAGS);
+			}
 		}
 		if(ctx.getPhotosController().canManageAlbum(self, album) && album.systemType==null){
 			allowedActions.add(PhotoViewerPhotoInfo.AllowedAction.SET_AS_COVER);
@@ -399,7 +406,7 @@ public class PhotosRoutes{
 	}
 
 	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users, Map<Long, UserInteractions> interactions,
-															  Account self, PaginatedList<CommentViewModel> comments, Map<Long, UserInteractions> commentsInteractions){
+															  Account self, PaginatedList<CommentViewModel> comments, Map<Long, UserInteractions> commentsInteractions, Map<Long, List<PhotoTag>> tags){
 		ApplicationContext ctx=context(req);
 		String html;
 		User author=users.get(photo.authorID);
@@ -426,7 +433,8 @@ public class PhotosRoutes{
 					.with("interactions", interactions!=null ? interactions.get(photo.id) : null)
 					.with("photo", photo)
 					.with("originalImageURL", photo.image.getOriginalURI())
-					.with("allowedActions", allowedActions.stream().map(Object::toString).collect(Collectors.toSet()));
+					.with("allowedActions", allowedActions.stream().map(Object::toString).collect(Collectors.toSet()))
+					.with("tags", tags.getOrDefault(photo.id, List.of()));
 			if(comments!=null){
 				model.with("comments", comments)
 						.with("commentViewType", self!=null ? self.prefs.commentViewType : CommentViewType.THREADED)
@@ -457,6 +465,13 @@ public class PhotosRoutes{
 			commentsInteractions=ctx.getUserInteractionsController().getUserInteractions(comments.values().stream().flatMap(l->l.list.stream().map(vm->vm.post)).toList(), self!=null ? self.user : null);
 		}
 		photos.stream().map(ph->ph.authorID).forEach(needUsers::add);
+		Map<Long, List<PhotoTag>> tags=ctx.getPhotosController().getTagsForPhotos(photos.stream().map(p->p.id).collect(Collectors.toSet()));
+		tags.values()
+				.stream()
+				.flatMap(List::stream)
+				.map(PhotoTag::userID)
+				.filter(id->id!=0)
+				.forEach(needUsers::add);
 		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
 		Set<Long> needAdditionalAlbums=photos.stream().map(p->p.albumID).filter(id->!albums.containsKey(id)).collect(Collectors.toSet());
 		Map<Long, PhotoAlbum> _albums;
@@ -467,7 +482,7 @@ public class PhotosRoutes{
 		}else{
 			_albums=albums;
 		}
-		return photos.stream().map(ph->makePhotoInfoForPhoto(req, ph, _albums.get(ph.albumID), users, interactions, self, comments.get(ph.getCommentParentID()), commentsInteractions)).toList();
+		return photos.stream().map(ph->makePhotoInfoForPhoto(req, ph, _albums.get(ph.albumID), users, interactions, self, comments.get(ph.getCommentParentID()), commentsInteractions, tags)).toList();
 	}
 
 	private static PaginatedList<PhotoViewerPhotoInfo> makePhotoInfoForAttachHostObject(Request req, AttachmentHostContentObject obj, User author, Instant createdAt, Account self){
@@ -1091,5 +1106,78 @@ public class PhotosRoutes{
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
+	}
+
+	public static Object getFriendsForTagging(Request req, Response resp, Account self, ApplicationContext ctx){
+		List<User> friends=ctx.getFriendsController().getFriends(self.user, 0, 10_000, FriendsController.SortOrder.ID_ASCENDING).list;
+		return new RenderedTemplateResponse("photo_viewer_tag_friends", req)
+				.with("friends", friends);
+	}
+
+	public static Object addTag(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(!isAjax(req))
+			throw new BadRequestException();
+		requireQueryParams(req, "rect");
+		String[] rectStr=req.queryParams("rect").split(",");
+		if(rectStr.length!=4)
+			throw new BadRequestException();
+		float[] rectArr=new float[4];
+		for(int i=0;i<4;i++){
+			try{
+				float v=Float.parseFloat(rectStr[i]);
+				if(v<0 || v>1)
+					throw new BadRequestException();
+				rectArr[i]=v;
+			}catch(NumberFormatException x){
+				throw new BadRequestException();
+			}
+		}
+		if(rectArr[0]>rectArr[2] || rectArr[1]>rectArr[3])
+			throw new BadRequestException();
+		ImageRect rect=new ImageRect(rectArr[0], rectArr[1], rectArr[2], rectArr[3]);
+
+		Photo photo=getPhotoForRequest(req);
+		User user;
+		String name;
+		if(req.queryParams("user")!=null){
+			user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.queryParams("user")));
+			name=null;
+		}else{
+			user=null;
+			requireQueryParams(req, "name");
+			name=req.queryParams("name");
+		}
+		List<PhotoTag> existingTags=ctx.getPhotosController().getTagsForPhoto(photo.id);
+		long tagID=ctx.getPhotosController().createPhotoTag(self.user, photo, user, name, rect);
+
+		Lang l=lang(req);
+		String tagHTML="<span id=\"pvTag_"+photo.getIdString()+"_"+tagID+"\">";
+		if(!existingTags.isEmpty())
+			tagHTML+=", ";
+		if(user!=null)
+			tagHTML+="<a href=\""+user.getProfileURL()+"\" ";
+		else
+			tagHTML+="<span ";
+		tagHTML+="data-rect=\""+String.join(",", rectStr)+"\">"+TextProcessor.escapeHTML(user!=null ? user.getFullName() : name);
+		if(user!=null)
+			tagHTML+="</a>";
+		else
+			tagHTML+="</span>";
+		tagHTML+="<a href=\"javascript:void(0)\" class=\"pvTagDelete\" data-tooltip=\""+l.get("photo_delete_tag")+"\" aria-label=\""+l.get("photo_delete_tag")
+				+"\" data-confirm-message=\""+l.get("photo_tag_delete_confirm")+"\" data-confirm-title=\""+l.get("photo_delete_tag")+"\" data-confirm-action=\"/photos/"+photo.getIdString()+"/deleteTag?id="+tagID+"\"></a>";
+		tagHTML+="</span>";
+		return new WebDeltaResponse(resp)
+				.show("pvTagsCont_"+photo.getIdString())
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "pvTags_"+photo.getIdString(), tagHTML);
+	}
+
+	public static Object deleteTag(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(!isAjax(req))
+			throw new BadRequestException();
+		requireQueryParams(req, "id");
+		int tagID=safeParseInt(req.queryParams("id"));
+		Photo photo=getPhotoForRequest(req);
+		ctx.getPhotosController().deletePhotoTag(self.user, photo, tagID);
+		return new WebDeltaResponse(resp).remove("pvTag_"+photo.getIdString()+"_"+tagID);
 	}
 }

@@ -72,5 +72,19 @@
   "avatars_album_user": "Фотографии со страницы {name, inflect, genitive}",
   "avatars_album_group": "Фотографии со страницы сообщества",
   "avatar_edit_thumbnail": "Изменить миниатюру",
-  "avatar_open": "Открыть фотографию"
+  "avatar_open": "Открыть фотографию",
+  "photo_add_tag": "Отметить человека",
+  "photo_tagging_info": "Выделите область, где изображён человек, и он будет подписан на фотографии.",
+  "photo_tagging_done": "Готово",
+  "photo_tag_myself": "Я",
+  "photo_tag_select_friend": "Выберите друга",
+  "photo_tag_not_found": "Не найдено ни одного друга. Отметить \"<a id=\"link\">{name}</a>\"?",
+  "photo_delete_tag": "Удалить отметку",
+  "photo_tags": "На этой фотографии:",
+  "photo_add_tag_submit": "Добавить",
+  "photo_add_tag_unsupported_server": "Сервер {name, inflect, genitive} не поддерживает отметки",
+  "photo_err_too_many_tags": "На фотографии отмечено максимально допустимое количество людей",
+  "photo_err_user_already_tagged": "Этот пользователь уже отмечен на этой фотографии",
+  "photo_tag_name_search": "Поиск или имя",
+  "photo_tag_delete_confirm": "Вы действительно хотите удалить эту отметку?"
 }

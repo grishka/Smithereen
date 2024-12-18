@@ -3422,6 +3422,9 @@ h2, h3, h4{
 	width: 1px;
 	pointer-events: none;
 	z-index: 5;
+	&.alignLeft{
+		margin: 0 0 0 10px;
+	}
 	.tooltip{
 		position: absolute;
 		bottom: 2px;
@@ -3968,6 +3971,28 @@ label.largeAccented{
 			margin: 0 25px 15px;
 			cursor: pointer;
 		}
+		.tagsW{
+			z-index: 3;
+			position: absolute;
+		}
+		.tagHighlight{
+			position: relative;
+			width: 100%;
+			height: 100%;
+			svg{
+				width: 100%;
+				height: 100%;
+				position: absolute;
+				left: 0;
+				top: 0;
+			}
+			.tagHighlightBorder{
+				position: absolute;
+				border: solid 3px #dcdcdc;
+				border-radius: 2px;
+				margin: -1px 0 0 -1px;
+			}
+		}
 	}
 	.pvLoader{
 		background: svg-load('img/loading_anim_large.svg', fill: $normalLink) no-repeat center;
@@ -4212,3 +4237,51 @@ label.largeAccented{
 	}
 }
 
+.pvTaggingTopBar{
+	margin: 5px 25px 15px;
+}
+
+.pvTagFriendListPopup{
+	position: absolute;
+	width: 190px;
+	margin: 0 20px;
+	z-index: 4;
+	@include medium-shadow;
+	.searchBar{
+		background: $gray;
+		padding: 10px;
+		border-bottom: solid 1px $blockBorderBottom;
+		input{
+			width: 100%;
+		}
+	}
+	.list{
+		background: #fff;
+		height: 194px;
+		overflow-y: auto;
+		padding: 5px;
+		a{
+			display: block;
+			padding: 5px;
+			&:hover{
+				text-decoration: none;
+				background: $blockBackground;
+			}
+			*{
+				pointer-events: none;
+			}
+			.unsupported{
+				opacity: 0.5;
+			}
+		}
+	}
+}
+
+.pvTagDelete{
+	display: inline-block;
+	width: 14px;
+	height: 12px;
+	margin-left: 2px;
+	vertical-align: middle;
+	background: svg-load('img/tag_remove.svg') center no-repeat;
+}

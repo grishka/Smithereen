@@ -72,5 +72,19 @@
   "avatars_album_user": "{name}'s profile pictures",
   "avatars_album_group": "Community logo pictures",
   "avatar_edit_thumbnail": "Edit thumbnail",
-  "avatar_open": "Open photo"
+  "avatar_open": "Open photo",
+  "photo_add_tag": "Tag a person",
+  "photo_tagging_info": "Select the area where the person is to tag them.",
+  "photo_tagging_done": "Done",
+  "photo_tag_myself": "Myself",
+  "photo_tag_select_friend": "Choose a friend",
+  "photo_tag_not_found": "No friends found. Tag \"<a id=\"link\">{name}</a>\"?",
+  "photo_delete_tag": "Delete tag",
+  "photo_tags": "In this photo:",
+  "photo_add_tag_submit": "Add",
+  "photo_add_tag_unsupported_server": "{name}'s server doesn't support tagging",
+  "photo_err_too_many_tags": "Maximum allowed number of tagged people reached for this photo",
+  "photo_err_user_already_tagged": "This person is already tagged in this photo",
+  "photo_tag_name_search": "Search or enter name",
+  "photo_tag_delete_confirm": "Are you sure you want to delete this tag?"
 }

@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -125,7 +126,7 @@ public class Templates{
 		}
 		jsConfig.addProperty("timeZone", tz!=null ? tz.getId() : null);
 		ArrayList<String> jsLang=new ArrayList<>();
-		ArrayList<String> k=req.attribute("jsLang");
+		Set<String> k=req.attribute("jsLang");
 		Lang lang=Utils.lang(req);
 		jsConfig.addProperty("locale", lang.getLocale().toLanguageTag());
 		jsConfig.addProperty("langPluralRulesName", lang.getPluralRulesName());
@@ -136,11 +137,19 @@ public class Templates{
 		}
 		for(String key:List.of("error", "ok", "network_error", "close", "cancel", "yes", "no", "show_technical_details", "photo_X_of_Y",
 				"photo_edit_description", "post_form_cw", "post_form_cw_placeholder", "save", "photo_description")){
+			if(k!=null && k.contains(key))
+				continue;
 			jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 		}
 		if(req.attribute("mobile")!=null){
 			for(String key:List.of("search", "qsearch_hint", "more_actions", "photo_open_original", "like", "add_comment",
 					"object_X_of_Y", "delete", "delete_photo", "delete_photo_confirm", "set_photo_as_album_cover", "open_on_server_X", "report", "photo_save_to_album")){
+				if(k!=null && k.contains(key))
+					continue;
+				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
+			}
+		}else{
+			for(String key:List.of("photo_tagging_info", "photo_tagging_done", "photo_tag_myself", "photo_tag_select_friend", "photo_tag_not_found", "photo_delete_tag", "photo_add_tag_submit", "photo_tag_name_search")){
 				if(k!=null && k.contains(key))
 					continue;
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));

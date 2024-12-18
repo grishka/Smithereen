@@ -25,7 +25,7 @@ import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
 
-	private URI wall, friends, groups, photoAlbums;
+	private URI wall, friends, groups, photoAlbums, taggedPhotos;
 	public URI movedToURL;
 	public boolean isServiceActor;
 
@@ -60,6 +60,7 @@ public class ForeignUser extends User implements ForeignActor{
 		groups=tryParseURL(ep.groups);
 		collectionQueryEndpoint=tryParseURL(ep.collectionQuery);
 		photoAlbums=tryParseURL(ep.photoAlbums);
+		taggedPhotos=tryParseURL(ep.taggedPhotos);
 	}
 
 	@Override
@@ -345,6 +346,11 @@ public class ForeignUser extends User implements ForeignActor{
 	@Override
 	public URI getPhotoAlbumsURL(){
 		return photoAlbums;
+	}
+
+	@Override
+	public URI getTaggedPhotosURL(){
+		return taggedPhotos;
 	}
 
 	@Override

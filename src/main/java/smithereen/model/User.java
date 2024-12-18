@@ -607,6 +607,10 @@ public class User extends Actor{
 		return Config.localURI("/users/"+id+"/albums");
 	}
 
+	public URI getTaggedPhotosURL(){
+		return Config.localURI("/users/"+id+"/tagged");
+	}
+
 	@Override
 	public String getTypeAndIdForURL(){
 		return "/users/"+id;

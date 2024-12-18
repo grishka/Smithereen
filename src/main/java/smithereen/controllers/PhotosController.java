@@ -35,6 +35,7 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
+import smithereen.model.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -50,6 +51,7 @@ import smithereen.model.photos.ImageRect;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoMetadata;
+import smithereen.model.photos.PhotoTag;
 import smithereen.storage.CommentStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
@@ -58,6 +60,7 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.storage.UserStorage;
+import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
 import smithereen.text.TextProcessor;
@@ -68,6 +71,7 @@ public class PhotosController{
 
 	public static final int MAX_ALBUMS_PER_OWNER=70;
 	public static final int MAX_PHOTOS_PER_ALBUM=5000;
+	public static final int MAX_TAGS_PER_PHOTO=50;
 
 	private final ApplicationContext context;
 	private final Object albumCacheLock=new Object();
@@ -961,11 +965,11 @@ public class PhotosController{
 			if(rotation==prevRotation)
 				return;
 
+			int diffDeg=rotation.value()-prevRotation.value();
+			if(diffDeg<0)
+				diffDeg=360+diffDeg;
+			SizedImage.Rotation diff=SizedImage.Rotation.valueOf(diffDeg);
 			if(photo.metadata.cropRects!=null){
-				int diffDeg=rotation.value()-prevRotation.value();
-				if(diffDeg<0)
-					diffDeg=360+diffDeg;
-				SizedImage.Rotation diff=SizedImage.Rotation.valueOf(diffDeg);
 				AbsoluteImageRect profileCrop=photo.metadata.cropRects.profile().makeAbsolute(photo.getWidth(), photo.getHeight());
 				AbsoluteImageRect thumbCrop=photo.metadata.cropRects.thumb().makeAbsolute(profileCrop.getWidth(), profileCrop.getHeight());
 				photo.metadata.cropRects=new AvatarCropRects(
@@ -974,11 +978,18 @@ public class PhotosController{
 				);
 			}
 
+			List<PhotoTag> tags=PhotoStorage.getPhotoTags(photo.id);
+			if(!tags.isEmpty()){
+				Map<Long, ImageRect> rotatedRects=tags.stream()
+						.map(t->new Pair<>(t.id(), t.rect().makeAbsolute(photo.getWidth(), photo.getHeight()).rotate(diff).makeRelative()))
+						.collect(Collectors.toMap(Pair::first, Pair::second));
+				PhotoStorage.updatePhotoTagsRects(photo.id, rotatedRects);
+			}
+
 			photo.metadata.rotation=rotation;
 			if(photo.image instanceof LocalImage li)
 				li.rotation=rotation;
 			PhotoStorage.updatePhotoMetadata(photo.id, photo.metadata);
-			// TODO rotate tags
 			context.getActivityPubWorker().sendUpdateAlbumPhoto(self, photo, getAlbum(photo.albumID, self));
 
 			Actor owner=context.getWallController().getContentAuthorAndOwner(photo).owner();
@@ -1107,5 +1118,104 @@ public class PhotosController{
 		Actor owner=context.getWallController().getContentAuthorAndOwner(photo).owner();
 		if(owner.getAvatar() instanceof LocalImage li && li.photoID==photo.id)
 			setPhotoToAvatar(owner, photo);
+	}
+
+	public long createPhotoTag(User self, Photo photo, User user, String name, ImageRect rect){
+		// maybe reconsider this in the future (VK allows one's friends to add tags to their photos)
+		enforcePhotoManagementPermission(self, photo);
+
+		try{
+			if(user!=null){
+				if(user.id!=self.id){
+					if(context.getFriendsController().getSimpleFriendshipStatus(self, user)!=FriendshipStatus.FRIENDS)
+						throw new UserActionNotAllowedException();
+					// TODO privacy
+				}
+				List<PhotoTag> existingTags=PhotoStorage.getPhotoTags(photo.id);
+				if(existingTags.size()>=MAX_TAGS_PER_PHOTO)
+					throw new UserErrorException("photo_err_too_many_tags");
+				for(PhotoTag tag:existingTags){
+					if(tag.userID()==user.id)
+						throw new UserErrorException("photo_err_user_already_tagged");
+				}
+				name=user.getFullName();
+			}
+			long id=PhotoStorage.createPhotoTag(photo.id, self.id, user!=null ? user.id : 0, name, user!=null && user.id==self.id, rect);
+			// TODO notify
+			// TODO federate
+			// TODO newsfeed for self tags
+			return id;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<PhotoTag> getTagsForPhoto(long id){
+		try{
+			return PhotoStorage.getPhotoTags(id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Long, List<PhotoTag>> getTagsForPhotos(Collection<Long> ids){
+		try{
+			return PhotoStorage.getPhotoTags(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deletePhotoTag(User self, Photo photo, long tagID){
+		try{
+			PhotoTag tag=PhotoStorage.getPhotoTag(photo.id, tagID);
+			if(tag==null)
+				throw new ObjectNotFoundException();
+			if(tag.placerID()!=self.id && tag.userID()!=self.id)
+				enforcePhotoManagementPermission(self, photo);
+			PhotoStorage.deletePhotoTag(photo.id, tagID);
+			// TODO delete notification
+			// TODO federate
+			// TODO newsfeed
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Photo> getUserTaggedPhotos(User self, User user, int offset, int count){
+		try{
+			// TODO privacy
+			PaginatedList<Long> ids=PhotoStorage.getUserTaggedPhotos(user.id, offset, count, true);
+			Map<Long, Photo> photos=getPhotosIgnoringPrivacy(ids.list);
+			return new PaginatedList<>(ids, ids.list.stream().map(photos::get).toList());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Photo> getUserUnapprovedTaggedPhotos(User self, int offset, int count){
+		try{
+			PaginatedList<Long> ids=PhotoStorage.getUserTaggedPhotos(self.id, offset, count, false);
+			Map<Long, Photo> photos=getPhotosIgnoringPrivacy(ids.list);
+			return new PaginatedList<>(ids, ids.list.stream().map(photos::get).toList());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void approvePhotoTag(User self, Photo photo, long tagID){
+		try{
+			PhotoTag tag=PhotoStorage.getPhotoTag(photo.id, tagID);
+			if(tag==null)
+				throw new ObjectNotFoundException();
+			if(tag.userID()!=self.id || tag.approved())
+				throw new UserActionNotAllowedException();
+			PhotoStorage.approvePhotoTag(photo.id, tagID);
+			// TODO delete notification
+			// TODO federate
+			// TODO newsfeed
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 }

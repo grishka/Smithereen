@@ -22,6 +22,7 @@ class ImageAreaSelector{
 	private curY:number;
 	private curW:number;
 	private curH:number;
+	private hasArea:boolean=false;
 
 	private curTarget:HTMLElement=null;
 	private downX:number;
@@ -91,6 +92,13 @@ class ImageAreaSelector{
 			markerCont.appendChild(this.makeDiv("marker right"));
 		}
 		this.square=square;
+		this.updateStyles();
+	}
+
+	public reset(){
+		this.hasArea=false;
+		this.curW=this.curH=0;
+		this.updateStyles();
 	}
 
 	private makeDiv(cls:string):HTMLElement{
@@ -104,6 +112,7 @@ class ImageAreaSelector{
 		this.curY=y;
 		this.curW=w;
 		this.curH=h;
+		this.hasArea=true;
 		this.updateStyles();
 	}
 
@@ -130,19 +139,40 @@ class ImageAreaSelector{
 		var w=Math.round(this.curW);
 		var h=Math.round(this.curH);
 
-		this.selected.style.left=x+"px";
-		this.selected.style.top=y+"px";
-		this.selected.style.width=w+"px";
-		this.selected.style.height=h+"px";
+		if(this.hasArea || (this.curW>0 && this.curH>0)){
+			if(this.hasArea){
+				this.selected.show();
+				this.container.style.cursor="";
+			}else{
+				this.selected.hide();
+				this.container.style.cursor="crosshair";
+			}
+			this.scrimTop.show();
+			this.scrimBottom.show();
+			this.scrimLeft.show();
+			this.scrimRight.show();
 
-		this.scrimTop.style.left=x+"px";
-		this.scrimTop.style.width=w+"px";
-		this.scrimTop.style.height=y+"px";
-		this.scrimBottom.style.left=x+"px";
-		this.scrimBottom.style.width=w+"px";
-		this.scrimBottom.style.height=(contH-y-h)+"px";
-		this.scrimLeft.style.width=x+"px";
-		this.scrimRight.style.width=(contW-x-w)+"px";
+			this.selected.style.left=x+"px";
+			this.selected.style.top=y+"px";
+			this.selected.style.width=w+"px";
+			this.selected.style.height=h+"px";
+
+			this.scrimTop.style.left=x+"px";
+			this.scrimTop.style.width=w+"px";
+			this.scrimTop.style.height=y+"px";
+			this.scrimBottom.style.left=x+"px";
+			this.scrimBottom.style.width=w+"px";
+			this.scrimBottom.style.height=(contH-y-h)+"px";
+			this.scrimLeft.style.width=x+"px";
+			this.scrimRight.style.width=(contW-x-w)+"px";
+		}else{
+			this.container.style.cursor="crosshair";
+			this.selected.hide();
+			this.scrimTop.hide();
+			this.scrimBottom.hide();
+			this.scrimLeft.hide();
+			this.scrimRight.hide();
+		}
 	}
 
 	private onTouchDown(ev:TouchEvent):void{
@@ -184,7 +214,8 @@ class ImageAreaSelector{
 	}
 
 	private onMouseDown(ev:MouseEvent):void{
-		this.onPointerDown(ev.clientX, ev.clientY, ev.target as HTMLElement);
+		var rect=this.container.getBoundingClientRect();
+		this.onPointerDown(ev.clientX-rect.left, ev.clientY-rect.top, ev.target as HTMLElement);
 		window.addEventListener("mouseup", this.mouseUpListener=this.onMouseUp.bind(this), false);
 		window.addEventListener("mousemove", this.mouseMoveListener=this.onMouseMove.bind(this), false);
 	}
@@ -196,7 +227,8 @@ class ImageAreaSelector{
 	}
 
 	private onMouseMove(ev:MouseEvent):void{
-		this.onPointerMove(ev.clientX, ev.clientY, ev);
+		var rect=this.container.getBoundingClientRect();
+		this.onPointerMove(ev.clientX-rect.left, ev.clientY-rect.top, ev);
 	}
 
 	private onPointerDown(x:number, y:number, target:HTMLElement):void{
@@ -209,6 +241,7 @@ class ImageAreaSelector{
 		this.downSelectedW=this.curW;
 		this.downSelectedH=this.curH;
 		this.container.classList.add("moving");
+		document.body.style.userSelect="none";
 		if(this.onStartDrag)
 			this.onStartDrag();
 	}
@@ -216,6 +249,11 @@ class ImageAreaSelector{
 	private onPointerUp():void{
 		this.curTarget=null;
 		this.container.classList.remove("moving");
+		document.body.style.userSelect="";
+		if(!this.hasArea && this.curW>0 && this.curH>0){
+			this.hasArea=true;
+			this.updateStyles();
+		}
 		if(this.onEndDrag)
 			this.onEndDrag();
 	}
@@ -292,6 +330,26 @@ class ImageAreaSelector{
 			this.curW=Math.max(30, Math.min(this.downSelectedW-dX, this.curX+this.curW));
 			this.enforceAspectRatio();
 			this.curX+=prevW-this.curW;
+			this.updateStyles();
+		}else if(!this.hasArea){
+			if(dX==0)
+				dX=1;
+			if(dY==0)
+				dY=1;
+			if(dX>0){
+				this.curX=this.downX;
+				this.curW=Math.min(dX, contW-this.downX);
+			}else{
+				this.curX=Math.max(0, this.downX+dX);
+				this.curW=this.downX-this.curX;
+			}
+			if(dY>0){
+				this.curY=this.downY;
+				this.curH=Math.min(dY, contH-this.downY);
+			}else{
+				this.curY=Math.max(0, this.downY+dY);
+				this.curH=this.downY-this.curY;
+			}
 			this.updateStyles();
 		}
 		if(this.onUpdate)
