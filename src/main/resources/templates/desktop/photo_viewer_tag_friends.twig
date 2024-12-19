@@ -6,3 +6,4 @@
 	{%- if supported %}{{ friend | name('full') }}{% else %}<span class="unsupported">{{ friend | name('full') }}</span>{% endif -%}
 </a>
 {% endfor %}
+<div class="noResults grayText" style="display: none">{{ L('photo_tag_not_found', {'name': ""}, {'link': {'class': "noResultsLink", 'href': "javascript:void(0)"} }) }}</div>

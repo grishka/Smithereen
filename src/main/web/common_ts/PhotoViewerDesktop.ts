@@ -472,6 +472,8 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			var listLoader;
 			var list:HTMLElement;
 			var input:HTMLInputElement;
+			var noResults:HTMLElement;
+			var noResultsLink:HTMLElement;
 			this.tagFriendListPopup=ce("div", {className: "pvTagFriendListPopup"}, [
 				ce("div", {className: "boxTitleBar"}, [
 					ce("div", {className: "title", innerHTML: lang("photo_tag_select_friend")}),
@@ -505,12 +507,43 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			};
 			list.addEventListener("click", (ev)=>{
 				var target=ev.target as HTMLElement;
-				if(target.qs(".unsupported"))
+				if(target.qs(".unsupported") || !target.dataset.userId)
 					return;
 				this.addTag(target.dataset.userId, null);
 			});
+			input.addEventListener("input", (ev)=>{
+				if(!noResults)
+					return;
+				var q=input.value.toLowerCase();
+				var allLinks=list.querySelectorAll("a[data-user-id]").unfuck() as HTMLElement[];
+				if(!q.length){
+					for(var l of allLinks){
+						l.show();
+					}
+				}else{
+					var numFound=0;
+					for(var l of allLinks){
+						var text=l.innerText.toLowerCase();
+						if(text.indexOf(q)!=-1){
+							l.show();
+							numFound++;
+						}else{
+							l.hide();
+						}
+					}
+					if(!numFound){
+						noResultsLink.innerText=input.value;
+						noResults.show();
+					}else{
+						noResults.hide();
+					}
+				}
+			});
 			ajaxGet("/photos/friendListForTagging", (r)=>{
 				list.innerHTML=r;
+				noResults=list.qs(".noResults");
+				noResultsLink=list.qs(".noResultsLink");
+				noResultsLink.addEventListener("click", (ev)=>this.addTag(null, input.value));
 			}, (err)=>new MessageBox(lang("error"), err, lang("close")).show(), "text");
 		}
 		this.tagAreaSelector.reset();
@@ -526,6 +559,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		this.tagTopBar=null;
 		this.bottomPart.qs(".actionList").show();
 		this.tagsWrap.hide();
+		this.tagFriendListPopup.hide();
 		if(this.photos.length>1)
 			this.layerBackThing.show();
 	}

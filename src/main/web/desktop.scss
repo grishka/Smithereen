@@ -4260,7 +4260,7 @@ label.largeAccented{
 		height: 194px;
 		overflow-y: auto;
 		padding: 5px;
-		a{
+		>a{
 			display: block;
 			padding: 5px;
 			&:hover{
@@ -4273,6 +4273,10 @@ label.largeAccented{
 			.unsupported{
 				opacity: 0.5;
 			}
+		}
+		.noResults{
+			padding: 5px;
+			text-align: center;
 		}
 	}
 }
