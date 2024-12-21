@@ -416,7 +416,14 @@ public class PhotosRoutes{
 		String origURL;
 		EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions=getAllowedActionsForPhoto(ctx, self!=null ? self.user : null, photo, album);
 		if(isMobile(req)){
-			html=StringUtils.isNotEmpty(photo.description) ? TextProcessor.postprocessPostHTMLForDisplay(photo.description, false, false) : "";
+			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_bottom", req);
+			model.with("description", photo.description)
+					.with("users", users)
+					.with("author", author)
+					.with("album", album)
+					.with("photo", photo)
+					.with("tags", tags.getOrDefault(photo.id, List.of()));
+			html=model.renderToString();
 			if(ui!=null){
 				pvInteractions=new PhotoViewerPhotoInfo.Interactions(ui.likeCount, ui.isLiked, ui.commentCount);
 			}else{

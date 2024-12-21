@@ -2074,8 +2074,30 @@ input.searchField{
 		&::-webkit-scrollbar{
 			display: none;
 		}
-		img{
+		.photo{
 			position: absolute;
+		}
+		.photoInner{
+			position: relative;
+		}
+		.overlayW{
+			position: absolute;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+		}
+		.overlayTag{
+			position: absolute;
+			border: solid 2px #fff;
+			border-radius: 4px;
+			transform: scale(calc(1.0/var(--zoom-scale)));
+			transform-origin: 0 0;
+			box-shadow: 0 0 6px rgba(0,0,0,0.75), 0 0 6px rgba(0,0,0,0.75) inset;
+			width: calc(var(--tag-width)*var(--zoom-scale));
+			height: calc(var(--tag-height)*var(--zoom-scale));
+		}
+		img{
 			-webkit-touch-callout: none;
 		}
 	}
@@ -2144,7 +2166,7 @@ input.searchField{
 		.description{
 			padding: 0 16px 16px;
 			max-height: 124px; /* 6 lines + padding-bottom */
-			>div{
+			.pvBottomDescription{
 				overflow-y: hidden;
 				text-overflow: ellipsis;
 				display: -webkit-box;
@@ -2196,7 +2218,7 @@ input.searchField{
 			opacity: .75;
 			transition: color 0.3s ease;
 		}
-		.like.liked{
+		.like.liked, .tag.active{
 			filter: drop-shadow(0 0 8px $headerBorderBottomDark) drop-shadow(0 0 8px $headerBorderBottomDark) drop-shadow(0 0 8px $headerBorderBottomDark);
 			.counter, .wideOnly{
 				opacity: 1;
@@ -2204,7 +2226,7 @@ input.searchField{
 			}
 			.icon{
 				opacity: 1;
-				background: svg-load('img/like_mobile.svg', fill: $likeIconColor) no-repeat;
+				background-image: svg-load('img/like_mobile.svg', fill: $likeIconColor);
 			}
 		}
 		.comment .icon{
@@ -2212,6 +2234,41 @@ input.searchField{
 		}
 		.like{
 			margin-left: -12px;
+		}
+		.tag .icon{
+			background-position: 0 -48px;
+		}
+	}
+	.pvBottomTags{
+		pointer-events: all;
+		margin: 0 -16px -16px;
+		overflow-x: scroll;
+		scroll-snap-type: x mandatory;
+		scroll-snap-stop: always;
+		scrollbar-width: none;
+		padding: 16px 24px;
+		display: flex;
+		&::-webkit-scrollbar{
+			display: none;
+		}
+		.tag{
+			width: calc(100vw - 64px);
+			height: 48px;
+			flex: none;
+			padding: 8px;
+			color: #fff;
+			background: rgba(0,0,0,.75);
+			border-radius: 5px;
+			backdrop-filter: saturate(180%) blur(3px);
+			box-shadow: 0 2px 7px #333;
+			margin: 0 8px;
+			display: flex;
+			align-items: center;
+			scroll-snap-align: center;
+			-webkit-touch-callout: none;
+			img{
+				margin-right: 12px;
+			}
 		}
 	}
 }

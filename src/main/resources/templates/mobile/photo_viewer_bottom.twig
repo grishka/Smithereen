@@ -1,0 +1,16 @@
+<div class="pvBottomDescription">{{ description | postprocessHTML }}</div>
+{% if tags is not empty %}
+<div class="pvBottomTags" style="display: none">
+{% for tag in tags %}
+{%- set rect="#{tag.rect.x1},#{tag.rect.y1},#{tag.rect.x2},#{tag.rect.y2}" %}
+{% if tag.userID!=0 and ((currentUser is not null and tag.userID==currentUser.id) or tag.approved or allowedActions contains "MANAGE_TAGS") %}
+	<a href="{{ profileURL(tag.userID) }}" class="tag" data-rect="{{ rect }}">
+		{{ users[tag.userID] | pictureForAvatar('a', 32) }}
+		{{ users[tag.userID] | name('full') }}
+	</a>
+{% else %}
+	<div class="tag" data-rect="{{ rect }}">{{ tag.name }}</div>
+{% endif %}
+{% endfor %}
+</div>
+{% endif %}

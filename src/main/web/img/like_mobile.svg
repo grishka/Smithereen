@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="16px" height="48px" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <rect id="like_mobile" x="0" y="0" width="16" height="48" style="fill:none;"/>
-    <g>
-        <path d="M5,44L5,48L9.8,44L14,44C15.104,44 16,43.104 16,42L16,34C16,32.896 15.104,32 14,32L2,32C0.896,32 0,32.896 0,34L0,42C0,43.104 0.896,44 2,44L5,44Z"/>
-        <path d="M10.836,20C12.357,16.851 16,16 16,16L16,30C16,30 12.357,29.149 10.836,26L7,26L7,31.273C7,31.674 6.681,32 6.28,32L5.455,32C4.652,32 4,31.348 4,30.545L4,27.273C4,26.473 3.358,26.005 2.56,26L1.455,26C0.652,26 0,25.166 0,24.364L0,21.455C0,20.652 0.652,20 1.455,20L10.836,20Z"/>
-        <path d="M8,3.974C8.014,1.778 9.801,0 12,0C14.208,0 16,1.792 16,4C16,8.933 8,14.4 8,14.4C8,14.4 0,8.933 0,4L0,3.974C0.014,1.778 1.801,0 4,0C6.208,0 8,1.792 8,4L8,3.974Z"/>
+<svg width="16px" height="64px" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <rect id="like_mobile" x="0" y="0" width="16" height="64" style="fill:none;"/>
+    <clipPath id="_clip1">
+        <rect x="0" y="0" width="16" height="64"/>
+    </clipPath>
+    <g clip-path="url(#_clip1)">
+        <g>
+            <path d="M5,44L5,48L9.8,44L14,44C15.104,44 16,43.104 16,42L16,34C16,32.896 15.104,32 14,32L2,32C0.896,32 0,32.896 0,34L0,42C0,43.104 0.896,44 2,44L5,44Z"/>
+            <path d="M5.964,62L8,64.036L10.036,62L13,62C14.104,62 15,61.104 15,60L15,50C15,48.896 14.104,48 13,48L3,48C1.896,48 1,48.896 1,50L1,60C1,61.104 1.896,62 3,62L5.964,62ZM13,59L3,59C3,57.344 5.24,56 8,56C10.76,56 13,57.344 13,59ZM8,51C9.104,51 10,51.896 10,53C10,54.104 9.104,55 8,55C6.896,55 6,54.104 6,53C6,51.896 6.896,51 8,51Z"/>
+            <path d="M10.836,20C12.357,16.851 16,16 16,16L16,30C16,30 12.357,29.149 10.836,26L7,26L7,31.273C7,31.674 6.681,32 6.28,32L5.455,32C4.652,32 4,31.348 4,30.545L4,27.273C4,26.473 3.358,26.005 2.56,26L1.455,26C0.652,26 0,25.166 0,24.364L0,21.455C0,20.652 0.652,20 1.455,20L10.836,20Z"/>
+            <path d="M8,3.974C8.014,1.778 9.801,0 12,0C14.208,0 16,1.792 16,4C16,8.933 8,14.4 8,14.4C8,14.4 0,8.933 0,4L0,3.974C0.014,1.778 1.801,0 4,0C6.208,0 8,1.792 8,4L8,3.974Z"/>
+        </g>
     </g>
 </svg>

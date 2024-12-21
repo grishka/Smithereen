@@ -12,6 +12,8 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 	private likeCount:HTMLElement;
 	private commentBtn:HTMLAnchorElement;
 	private commentCount:HTMLElement;
+	private tagBtn:HTMLAnchorElement;
+	private tagCount:HTMLElement;
 
 	private currentIndex:number;
 	public listID:string;
@@ -26,6 +28,7 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 	private hasPrev=false;
 	private hasUnloadedAdjacentPhotos=false;
 	private uiVisible=true;
+	private tagsVisible=false;
 
 	public constructor(info:PhotoViewerInlineData, listURL:string, fromPopState:boolean){
 		super(fromPopState);
@@ -63,6 +66,11 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 								ce("span", {className: "wideOnly"}, [lang("add_comment")]),
 								ce("span", {className: "icon"}),
 								this.commentCount=ce("span", {className: "counter"})
+							]),
+							this.tagBtn=ce("a", {className: "action tag", href: "javascript:void(0)", onclick: ()=>{return this.toggleTags()}}, [
+								ce("span", {className: "wideOnly"}, [lang("photo_tags")]),
+								ce("span", {className: "icon"}),
+								this.tagCount=ce("span", {className: "counter"})
 							])
 						])
 					])
@@ -76,7 +84,7 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 		this.pager.addEventListener("scroll", this.onPagerScroll.bind(this), false);
 		this.pager.addEventListener("click", (ev)=>this.toggleUI(), false);
 
-		this.loadPhotoIntoPage(initialPage, info.urls);
+		this.loadPhotoIntoPage(initialPage, info.urls, info.index);
 		this.loadPhotoList(Math.floor(this.currentIndex/10)*10);
 	}
 
@@ -104,17 +112,27 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 		}
 	}
 
-	private loadPhotoIntoPage(el:HTMLElement, urls:PhotoViewerSizedImageURLs[]){
-		var pictureEl, sourceWebp, sourceJpeg, imgEl;
+	private loadPhotoIntoPage(el:HTMLElement, urls:PhotoViewerSizedImageURLs[], index:number){
+		var pictureEl, sourceWebp, sourceJpeg, imgEl, photoInner;
 		var lastURL=urls[urls.length-1];
-		pictureEl=ce("picture", {}, [
-			sourceWebp=ce("source", {type: "image/webp", src: lastURL.webp}),
-			sourceJpeg=ce("source", {type: "image/jpeg", src: lastURL.jpeg}),
-			imgEl=ce("img", {src: lastURL.jpeg})
+		var overlayTag;
+		photoInner=ce("div", {className: "photo"}, [
+			ce("div", {className: "photoInner"}, [
+				pictureEl=ce("picture", {}, [
+					sourceWebp=ce("source", {type: "image/webp", src: lastURL.webp}),
+					sourceJpeg=ce("source", {type: "image/jpeg", src: lastURL.jpeg}),
+					imgEl=ce("img", {src: lastURL.jpeg})
+				]),
+				ce("div", {className: "overlayW"}, [
+					overlayTag=ce("div", {className: "overlayTag"})
+				])
+			])
 		]);
-		el.appendChild(pictureEl);
+		overlayTag.hide();
+		el.appendChild(photoInner);
 		el.customData={
-			zp: new ZoomPanController(el, imgEl, lastURL.width, lastURL.height)
+			zp: new ZoomPanController(el, photoInner, lastURL.width, lastURL.height),
+			index: index
 		};
 	}
 
@@ -169,6 +187,8 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 		var ph=this.photos[this.currentIndex];
 		var url=ph.historyURL || `#${this.listID}/${this.currentIndex}`;
 		this.updateHistory({layer: "PhotoViewer", pvInline: this.getCurrentInlineData(), pvListURL: this.listURL}, url);
+		this.tagsVisible=false;
+		this.tagBtn.classList.remove("active");
 
 		if((!ph.html || !ph.html.length) && !ph.interactions){
 			this.bottomBar.hide();
@@ -201,6 +221,52 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 				}else{
 					this.commentCount.hide();
 				}
+
+				var tagsEl=this.bottomBar.qs(".pvBottomTags");
+				if(tagsEl){
+					this.tagBtn.show();
+					this.tagCount.innerText=formatNumber(tagsEl.children.length);
+
+					var currentHighlightedTag:HTMLElement;
+					var observer=new IntersectionObserver((entries, observer)=>{
+						var overlayTag:HTMLElement;
+						for(var page of this.pager.children.unfuck()){
+							if(page.customData.index==this.currentIndex){
+								overlayTag=page.qs(".overlayTag");
+								break;
+							}
+						}
+						for(var entry of entries){
+							var target=entry.target as HTMLElement;
+							if(target==currentHighlightedTag && entry.intersectionRatio<=0.75){
+								currentHighlightedTag=null;
+								overlayTag.hideAnimated();
+							}else if(target!=currentHighlightedTag && entry.intersectionRatio>=0.75){
+								currentHighlightedTag=target;
+								var rect=target.dataset.rect.split(",");
+								var lastURL=ph.urls[ph.urls.length-1];
+								var x=parseFloat(rect[0])*lastURL.width;
+								var y=parseFloat(rect[1])*lastURL.height;
+								var w=parseFloat(rect[2])*lastURL.width-x;
+								var h=parseFloat(rect[3])*lastURL.height-y;
+								overlayTag.style.left=x+"px";
+								overlayTag.style.top=y+"px";
+								overlayTag.style.setProperty("--tag-width", Math.round(w)+"px");
+								overlayTag.style.setProperty("--tag-height", Math.round(h)+"px");
+								overlayTag.showAnimated();
+							}
+						}
+					}, {
+						root: tagsEl,
+						rootMargin: "0px 24px",
+						threshold: [0.25, 0.75]
+					});
+					for(var tag of tagsEl.children.unfuck()){
+						observer.observe(tag);
+					}
+				}else{
+					this.tagBtn.hide();
+				}
 			}else{
 				this.interactionBar.hide();
 			}
@@ -222,13 +288,13 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 		this.pager.innerHTML="";
 		var current=ce("div", {className: "photoW"});
 		this.hasPrev=false;
-		this.loadPhotoIntoPage(current, this.photos[this.currentIndex].urls);
+		this.loadPhotoIntoPage(current, this.photos[this.currentIndex].urls, this.currentIndex);
 		this.hasUnloadedAdjacentPhotos=false;
 		if(this.currentIndex>0){
 			if(this.photos[this.currentIndex-1]){
 				this.hasPrev=true;
 				var prev=ce("div", {className: "photoW"});
-				this.loadPhotoIntoPage(prev, this.photos[this.currentIndex-1].urls);
+				this.loadPhotoIntoPage(prev, this.photos[this.currentIndex-1].urls, this.currentIndex-1);
 				this.pager.appendChild(prev);
 			}else{
 				this.hasUnloadedAdjacentPhotos=true;
@@ -240,7 +306,7 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 			if(this.photos[this.currentIndex+1]){
 				this.hasNext=true;
 				var next=ce("div", {className: "photoW"});
-				this.loadPhotoIntoPage(next, this.photos[this.currentIndex+1].urls);
+				this.loadPhotoIntoPage(next, this.photos[this.currentIndex+1].urls, this.currentIndex+1);
 				this.pager.appendChild(next);
 			}else{
 				this.hasUnloadedAdjacentPhotos=true;
@@ -284,6 +350,21 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 			this.uiOverlay.showAnimated();
 		else
 			this.uiOverlay.hideAnimated();
+	}
+
+	public toggleTags(){
+		this.tagsVisible=!this.tagsVisible;
+		var tagsEl=this.bottomBar.qs(".pvBottomTags");
+		var descrEl=this.bottomBar.qs(".pvBottomDescription");
+		if(this.tagsVisible){
+			this.tagBtn.classList.add("active");
+			tagsEl.show();
+			descrEl.hide();
+		}else{
+			this.tagBtn.classList.remove("active");
+			tagsEl.hide();
+			descrEl.show();
+		}
 	}
 
 	private showOptions(){
@@ -363,6 +444,7 @@ class ZoomPanController{
 		this.transformMatrix.postTranslate(this.imgX=Math.round(winW/2-scaledW/2), this.imgY=Math.round(winH/2-scaledH/2));
 		this.transformMatrix.postScale(scale);
 		this.img.style.transform=this.transformMatrix.getCSSTransform();
+		this.updateScaleProperty();
 
 	}
 
@@ -380,7 +462,7 @@ class ZoomPanController{
 			var unmapped=this.transformMatrix.unmapPoint(center[0]+this.container.scrollLeft, center[1]+this.container.scrollTop);
 			this.gestureCenterX=unmapped[0];
 			this.gestureCenterY=unmapped[1];
-			
+
 			if(this.container.scrollWidth>0 || this.container.scrollHeight>0){
 				var scrollW=this.container.scrollWidth+this.container.offsetWidth;
 				var scrollH=this.container.scrollHeight+this.container.offsetHeight;
@@ -406,6 +488,7 @@ class ZoomPanController{
 				this.transformMatrix.postScaleAround(scale, this.gestureCenterX, this.gestureCenterY);
 				this.img.style.transform=this.transformMatrix.getCSSTransform();
 				this.gestureScale=scale;
+				this.updateScaleProperty();
 			}
 		}
 	}
@@ -431,19 +514,16 @@ class ZoomPanController{
 		if(pt[1]<0){
 			this.transformMatrix.values[5]=0;
 		}
-		// console.log("scroll: ", pt);
 		// let the element grow before setting the scroll offsets, otherwise they won't stick
 		this.img.style.transform=this.transformMatrix.getCSSTransform();
 		var scrollW=this.container.scrollWidth+this.container.offsetWidth;
 		var scrollH=this.container.scrollHeight+this.container.offsetHeight;
-		// console.log("scrollable area: "+scrollW+"x"+scrollH+", "+this.container.scrollWidth);
 		if(pt[0]<0){
 			this.container.scrollLeft+=-pt[0];
 		}
 		if(pt[1]<0){
 			this.container.scrollTop+=-pt[1];
 		}
-		// console.log("actual scroll: "+this.container.scrollLeft+", "+this.container.scrollTop);
 		if(applyLimits){
 			var scale=this.transformMatrix.values[0];
 			var targetScale=Math.max(this.minScale, Math.min(this.maxScale, scale));
@@ -467,7 +547,6 @@ class ZoomPanController{
 				minTransY=winH-scaledH;
 				maxTransY=0;
 			}
-			// console.log(`${minTransX}, ${transX}, ${maxTransX}; ${minTransY}, ${transY}, ${maxTransY}; ${scaledW} x ${scaledH}; ${winW} x ${winH}`);
 
 			if(scale<this.minScale || scale>this.maxScale || transX<minTransX || transX>maxTransX || transY<minTransY || transY>maxTransY){
 				var offX=this.container.scrollLeft, offY=this.container.scrollTop;
@@ -486,10 +565,23 @@ class ZoomPanController{
 				this.img.anim([{transform: this.transformMatrix.getCSSTransform()}], {duration: 200, easing: "ease"}, ()=>{
 					this.applyTransformToPosition(false);
 					this.animating=false;
+					this.updateScaleProperty();
 				});
+				var animCallback:{(time:DOMHighResTimeStamp):void}=(time:DOMHighResTimeStamp)=>{
+					var scale=this.img.offsetWidth/this.imgW;
+					this.updateScaleProperty();
+					if(this.animating)
+						window.requestAnimationFrame(animCallback);
+				};
+				window.requestAnimationFrame(animCallback);
 			}
 			this.scrollHolder.remove();
 		}
+	}
+
+	private updateScaleProperty(){
+		var scale=this.img.getBoundingClientRect().width/this.imgW;
+		this.img.style.setProperty("--zoom-scale", scale.toString());
 	}
 }
 

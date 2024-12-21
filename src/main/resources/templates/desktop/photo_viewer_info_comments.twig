@@ -16,7 +16,7 @@
 		<div class="marginAfter pvTagsCont" id="pvTagsCont_{{ photo.idString }}" style="{% if tags is empty %}display: none{% endif %}"><span class="grayText">{{ L('photo_tags') }}</span> <span id="pvTags_{{ photo.idString }}">
 		{%- for tag in tags -%}<span id="pvTag_{{ photo.idString }}_{{ tag.id }}">
 		{%- set rect="#{tag.rect.x1},#{tag.rect.y1},#{tag.rect.x2},#{tag.rect.y2}" %}
-		{%- if tag.userID!=0 %}<a href="{{ profileURL(tag.userID) }}" data-rect="{{ rect }}">{{ users[tag.userID] | name('full') }}</a>{% else %}<span data-rect="{{ rect }}">{{ tag.name }}</span>{% endif -%}
+		{%- if tag.userID!=0 and ((currentUser is not null and tag.userID==currentUser.id) or tag.approved or allowedActions contains "MANAGE_TAGS") %}<a href="{{ profileURL(tag.userID) }}" data-rect="{{ rect }}">{{ users[tag.userID] | name('full') }}</a>{% else %}<span data-rect="{{ rect }}">{{ tag.name }}</span>{% endif -%}
 		{%- if allowedActions contains "MANAGE_TAGS" or tag.placerID==currentUser.id or tag.userID==currentUser.id %}<a href="javascript:void(0)" class="pvTagDelete" data-tooltip="{{ L('photo_delete_tag') }}" aria-label="{{ L('photo_delete_tag') }}" data-confirm-message="{{ L('photo_tag_delete_confirm') }}" data-confirm-title="{{ L('photo_delete_tag') }}" data-confirm-action="{{ photo.url }}/deleteTag?id={{ tag.id }}"></a>{% endif -%}
 		{% if not loop.last %}, {% endif %}</span>
 		{%- endfor -%}
