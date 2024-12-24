@@ -13,6 +13,7 @@ interface PhotoViewerPhoto{
 	albumID:string;
 	albumTitle:string;
 	html:string; // bottom part of the layer on desktop, description on mobile
+	topHTML:string;
 	actions:string[];
 	urls:PhotoViewerSizedImageURLs[];
 	interactions:PhotoViewerPhotoInteractions;

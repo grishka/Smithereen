@@ -2,6 +2,15 @@
 {% extends "page" %}
 {% import "photo_album_title" %}
 {% block content %}
+{% if unapprovedTag is not null %}
+<div style="padding: 16px">
+	<div style="margin-bottom: 8px">{{ L('user_tagged_you_in_photo', {'name': users[unapprovedTag.placerID] | name('full'), 'gender': users[unapprovedTag.placerID].gender}, {'user': {'href': profileURL(unapprovedTag.placerID)} }) }}</div>
+	<div>
+		<a href="{{ photo.url }}/approveTag?csrf={{ csrf }}" class="button" data-ajax>{{ L('photo_confirm_tag') }}</a>
+		<a href="{{ photo.url }}/deleteTag?id={{ unapprovedTag.id }}&csrf={{ csrf }}" class="button secondary" data-ajax>{{ L('photo_delete_tag') }}</a>
+	</div>
+</div>
+{% endif %}
 <div class="photoPageImgW" style="aspect-ratio: {{ photo.width }}/{{ photo.height }}">
 	{{ photo.image | pictureForPhoto('x') }}
 </div>
@@ -24,6 +33,13 @@
 	</a>
 </div>
 <div class="singleColumn">
+	{% if tags is not empty %}<div class="marginAfter">
+		<div class="grayText">{{ L('photo_tags') }}</div>
+		{%- for tag in tags -%}
+		{%- if tag.userID!=0 and ((currentUser is not null and tag.userID==currentUser.id) or tag.approved or allowedActions contains "MANAGE_TAGS") %}<a href="{{ profileURL(tag.userID) }}">{{ users[tag.userID] | name('full') }}</a>{% else %}{{ tag.name }}{% endif -%}
+		{% if not loop.last %}, {% endif %}
+		{%- endfor -%}
+	</div>{% endif %}
 	{% if album is not null %}<div class="grayText marginAfter">{{ L('photo_album_label') }}:<br/><a href="{{ album.url }}">{{ photoAlbumTitle(_context, album) }}</a></div>{% endif %}
 	<div class="grayText">{{ L('photo_added_by') }}:<br/><a href="{{ author.profileURL }}">{{ author | name('full') }}</a></div>
 </div>

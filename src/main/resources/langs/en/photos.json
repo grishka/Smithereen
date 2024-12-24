@@ -86,5 +86,10 @@
   "photo_err_too_many_tags": "Maximum allowed number of tagged people reached for this photo",
   "photo_err_user_already_tagged": "This person is already tagged in this photo",
   "photo_tag_name_search": "Search or enter name",
-  "photo_tag_delete_confirm": "Are you sure you want to delete this tag?"
+  "photo_tag_delete_confirm": "Are you sure you want to delete this tag?",
+  "new_photos_of_me": "New photos of me",
+  "no_new_tagged_photos": "No new photo tags",
+  "user_tagged_you_in_photo": "<a id=\"user\">{name}</a> tagged you in this photo.",
+  "photo_confirm_tag": "Confirm",
+  "X_new_photo_tags": "{count, plural, one {# new photo tag} other {# new photo tags}}"
 }

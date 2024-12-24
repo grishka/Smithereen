@@ -4289,3 +4289,16 @@ label.largeAccented{
 	vertical-align: middle;
 	background: svg-load('img/tag_remove.svg') center no-repeat;
 }
+
+.pvConfirmTag{
+	padding: 0 25px 10px;
+	display: flex;
+	align-items: center;
+	.text{
+		flex-grow: 1;
+	}
+	.button{
+		flex: none;
+		margin-left: 5px;
+	}
+}

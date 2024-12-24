@@ -42,6 +42,7 @@ import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.UserNotifications;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
@@ -1141,7 +1142,11 @@ public class PhotosController{
 				name=user.getFullName();
 			}
 			long id=PhotoStorage.createPhotoTag(photo.id, self.id, user!=null ? user.id : 0, name, user!=null && user.id==self.id, rect);
-			// TODO notify
+			if(user!=null && !(user instanceof ForeignUser) && user.id!=self.id){
+				UserNotifications un=NotificationsStorage.getNotificationsFromCache(user.id);
+				if(un!=null)
+					un.incNewPhotoTagCount(1);
+			}
 			// TODO federate
 			// TODO newsfeed for self tags
 			return id;
@@ -1174,7 +1179,11 @@ public class PhotosController{
 			if(tag.placerID()!=self.id && tag.userID()!=self.id)
 				enforcePhotoManagementPermission(self, photo);
 			PhotoStorage.deletePhotoTag(photo.id, tagID);
-			// TODO delete notification
+			if(tag.userID()!=0 && !tag.approved()){
+				UserNotifications un=NotificationsStorage.getNotificationsFromCache(tag.userID());
+				if(un!=null)
+					un.incNewPhotoTagCount(-1);
+			}
 			// TODO federate
 			// TODO newsfeed
 		}catch(SQLException x){
@@ -1211,7 +1220,9 @@ public class PhotosController{
 			if(tag.userID()!=self.id || tag.approved())
 				throw new UserActionNotAllowedException();
 			PhotoStorage.approvePhotoTag(photo.id, tagID);
-			// TODO delete notification
+			UserNotifications un=NotificationsStorage.getNotificationsFromCache(self.id);
+			if(un!=null)
+				un.incNewPhotoTagCount(-1);
 			// TODO federate
 			// TODO newsfeed
 		}catch(SQLException x){

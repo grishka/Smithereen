@@ -129,6 +129,11 @@ public class NotificationsStorage{
 				}
 			}
 			res.incUnreadMailCount(MailStorage.getUnreadMessagesCount(userID));
+			res.incNewPhotoTagCount(new SQLQueryBuilder(conn)
+					.selectFrom("photo_tags")
+					.count()
+					.where("user_id=? AND approved=0", userID)
+					.executeAndGetInt());
 			userNotificationsCache.put(userID, res);
 			return res;
 		}

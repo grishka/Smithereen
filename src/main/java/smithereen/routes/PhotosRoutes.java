@@ -1,5 +1,8 @@
 package smithereen.routes;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -78,6 +81,8 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.*;
 
 public class PhotosRoutes{
+	private static final Logger LOG=LoggerFactory.getLogger(PhotosRoutes.class);
+
 	private static Photo getPhotoForRequest(Request req){
 		return context(req).getPhotosController().getPhotoIgnoringPrivacy(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO));
 	}
@@ -380,7 +385,7 @@ public class PhotosRoutes{
 			html=model.renderToString();
 			origURL=null;
 		}
-		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html,
+		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html, null,
 				allowedActions, pa.image.getURLsForPhotoViewer(), null, origURL, null, null, saveURL);
 	}
 
@@ -406,7 +411,7 @@ public class PhotosRoutes{
 	}
 
 	private static PhotoViewerPhotoInfo makePhotoInfoForPhoto(Request req, Photo photo, PhotoAlbum album, Map<Integer, User> users, Map<Long, UserInteractions> interactions,
-															  Account self, PaginatedList<CommentViewModel> comments, Map<Long, UserInteractions> commentsInteractions, Map<Long, List<PhotoTag>> tags){
+															  Account self, PaginatedList<CommentViewModel> comments, Map<Long, UserInteractions> commentsInteractions, Map<Long, List<PhotoTag>> allTags){
 		ApplicationContext ctx=context(req);
 		String html;
 		User author=users.get(photo.authorID);
@@ -415,6 +420,8 @@ public class PhotosRoutes{
 		UserInteractions ui=interactions!=null ? interactions.get(photo.id) : null;
 		String origURL;
 		EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions=getAllowedActionsForPhoto(ctx, self!=null ? self.user : null, photo, album);
+		String topHTML=null;
+		List<PhotoTag> tags=allTags.getOrDefault(photo.id, List.of());
 		if(isMobile(req)){
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_bottom", req);
 			model.with("description", photo.description)
@@ -422,7 +429,7 @@ public class PhotosRoutes{
 					.with("author", author)
 					.with("album", album)
 					.with("photo", photo)
-					.with("tags", tags.getOrDefault(photo.id, List.of()));
+					.with("tags", tags);
 			html=model.renderToString();
 			if(ui!=null){
 				pvInteractions=new PhotoViewerPhotoInfo.Interactions(ui.likeCount, ui.isLiked, ui.commentCount);
@@ -441,7 +448,7 @@ public class PhotosRoutes{
 					.with("photo", photo)
 					.with("originalImageURL", photo.image.getOriginalURI())
 					.with("allowedActions", allowedActions.stream().map(Object::toString).collect(Collectors.toSet()))
-					.with("tags", tags.getOrDefault(photo.id, List.of()));
+					.with("tags", tags);
 			if(comments!=null){
 				model.with("comments", comments)
 						.with("commentViewType", self!=null ? self.prefs.commentViewType : CommentViewType.THREADED)
@@ -451,10 +458,22 @@ public class PhotosRoutes{
 			html=model.renderToString();
 			pvInteractions=null;
 			origURL=null;
+			if(self!=null){
+				for(PhotoTag tag:tags){
+					if(tag.userID()==self.id && !tag.approved()){
+						topHTML=new RenderedTemplateResponse("photo_new_tag_confirm", req)
+								.with("placer", users.get(tag.placerID()))
+								.with("photo", photo)
+								.with("tagID", tag.id())
+								.renderToString();
+						break;
+					}
+				}
+			}
 		}
 		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
 				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.getLocalizedTitle(lang(req), self!=null ? self.user : null, owner),
-				html, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL(), photo.apID==null ? null : photo.getActivityPubURL().toString(), null);
+				html, topHTML, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL(), photo.apID==null ? null : photo.getActivityPubURL().toString(), null);
 	}
 
 	private static List<PhotoViewerPhotoInfo> makePhotoInfosForPhotoList(Request req, List<Photo> photos, ApplicationContext ctx, Account self, Map<Long, PhotoAlbum> albums){
@@ -479,6 +498,14 @@ public class PhotosRoutes{
 				.map(PhotoTag::userID)
 				.filter(id->id!=0)
 				.forEach(needUsers::add);
+		if(self!=null){
+			tags.values()
+					.stream()
+					.flatMap(List::stream)
+					.filter(t->!t.approved() && t.userID()==self.id)
+					.map(PhotoTag::placerID)
+					.forEach(needUsers::add);
+		}
 		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
 		Set<Long> needAdditionalAlbums=photos.stream().map(p->p.albumID).filter(id->!albums.containsKey(id)).collect(Collectors.toSet());
 		Map<Long, PhotoAlbum> _albums;
@@ -687,7 +714,19 @@ public class PhotosRoutes{
 				fakeAttachment.blurHash=img.blurHash;
 				yield List.of(makePhotoInfoForAttachment(req, fakeAttachment, self, self, Instant.now(), null, 0, EnumSet.of(PhotoViewerPhotoInfo.AllowedAction.EDIT_DESCRIPTION)));
 			}
-			default -> throw new BadRequestException();
+			case "newTags" -> {
+				if(self==null)
+					throw new UserActionNotAllowedException();
+				PaginatedList<Photo> allPhotos=ctx.getPhotosController().getUserUnapprovedTaggedPhotos(self, offset(req), 10);
+				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(allPhotos.list.stream().map(p->p.albumID).collect(Collectors.toSet()));
+				total=allPhotos.total;
+				title=null;
+				yield makePhotoInfosForPhotoList(req, allPhotos.list, ctx, selfAccount, albums);
+			}
+			default -> {
+				LOG.debug("Unknown photo list {}", req.queryParams("list"));
+				throw new BadRequestException();
+			}
 		};
 		resp.type("application/json");
 		HashMap<String, Object> r=new HashMap<>();
@@ -807,6 +846,16 @@ public class PhotosRoutes{
 			}
 			Map<Long, UserInteractions> commentsInteractions=ctx.getUserInteractionsController().getUserInteractions(allComments.stream().map(vm->vm.post).toList(), self!=null ? self.user : null);
 
+			List<PhotoTag> tags=ctx.getPhotosController().getTagsForPhoto(photo.id);
+			PhotoTag unapprovedTag=null;
+			for(PhotoTag tag:tags){
+				if(self!=null && tag.userID()==self.user.id && !tag.approved()){
+					unapprovedTag=tag;
+					needUsers.add(tag.placerID());
+				}
+				needUsers.add(tag.userID());
+			}
+
 			model.with("description", photo.description)
 					.with("author", oaa.author())
 					.with("owner", oaa.owner())
@@ -826,6 +875,8 @@ public class PhotosRoutes{
 					.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self))
 					.with("commentViewType", commentViewType)
 					.with("commentInteractions", commentsInteractions)
+					.with("tags", tags)
+					.with("unapprovedTag", unapprovedTag)
 					.pageTitle(album.title);
 
 			if(isMobile(req)){
@@ -1186,5 +1237,62 @@ public class PhotosRoutes{
 		Photo photo=getPhotoForRequest(req);
 		ctx.getPhotosController().deletePhotoTag(self.user, photo, tagID);
 		return new WebDeltaResponse(resp).remove("pvTag_"+photo.getIdString()+"_"+tagID);
+	}
+	
+	public static Object newTags(Request req, Response resp, Account self, ApplicationContext ctx){
+		int offset=offset(req);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getUserUnapprovedTaggedPhotos(self.user, offset, 100);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("photo_new_tags", req)
+				.with("owner", self.user)
+				.pageTitle(lang(req).get("new_photos_of_me"))
+				.paginate(photos);
+
+		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
+		int i=0;
+		for(Photo p:photos.list){
+			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "newTags/1", p.image.getURLsForPhotoViewer()));
+			i++;
+		}
+		model.with("photoViewerData", pvData);
+
+		if(isAjax(req)){
+			String paginationID=req.queryParams("pagination");
+			if(StringUtils.isNotEmpty(paginationID)){
+				WebDeltaResponse r=new WebDeltaResponse(resp)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+				if(photos.offset+photos.perPage>=photos.total){
+					r.remove("ajaxPagination_"+paginationID);
+				}else{
+					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", req.pathInfo()+"?offset="+(photos.offset+photos.perPage));
+				}
+				return r;
+			}
+		}
+		return model;
+	}
+
+	public static Object approveTag(Request req, Response resp, Account self, ApplicationContext ctx){
+		Photo photo=getPhotoForRequest(req);
+		List<PhotoTag> tags=ctx.getPhotosController().getTagsForPhoto(photo.id);
+		PhotoTag myTag=null;
+		for(PhotoTag tag:tags){
+			if(tag.userID()==self.user.id){
+				myTag=tag;
+				break;
+			}
+		}
+		if(myTag==null)
+			throw new BadRequestException("You aren't tagged in this photo");
+		if(!myTag.approved()){
+			ctx.getPhotosController().approvePhotoTag(self.user, photo, myTag.id());
+		}
+		if(!isAjax(req)){
+			resp.redirect(back(req));
+			return "";
+		}
+		if(isMobile(req))
+			return new WebDeltaResponse(resp).refresh();
+		return new WebDeltaResponse(resp)
+				.remove("pvConfirmTag_"+photo.getIdString(), "photoNewTag"+photo.getIdString());
 	}
 }

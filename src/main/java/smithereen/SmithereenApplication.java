@@ -639,6 +639,7 @@ public class SmithereenApplication{
 			getLoggedIn("/attachBoxAll", PhotosRoutes::attachPhotosBoxAll);
 			getLoggedIn("/attachBoxAlbum", PhotosRoutes::attachPhotosBoxAlbum);
 			getLoggedIn("/friendListForTagging", PhotosRoutes::getFriendsForTagging);
+			getLoggedIn("/newTags", PhotosRoutes::newTags);
 			path("/:id", ()->{
 				getActivityPub("", ActivityPubRoutes::photo);
 				get("", PhotosRoutes::photo);
@@ -657,6 +658,8 @@ public class SmithereenApplication{
 				postWithCSRF("/updateAvatarCrop", PhotosRoutes::updateAvatarCrop);
 				getWithCSRF("/addTag", PhotosRoutes::addTag);
 				postWithCSRF("/deleteTag", PhotosRoutes::deleteTag);
+				getWithCSRF("/deleteTag", PhotosRoutes::approveTag);
+				getWithCSRF("/approveTag", PhotosRoutes::approveTag);
 			});
 		});
 

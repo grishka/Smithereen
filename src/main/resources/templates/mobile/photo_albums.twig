@@ -3,6 +3,11 @@
 {% block content %}
 {% if owner.ownerID==currentUser.id %}
 <a href="/my/albums/create" class="fab iconAdd" title="{{ L('create_photo_album') }}"></a>
+{% if userNotifications.newPhotoTagCount>0 %}
+<ul class="actionList marginAfter">
+<li><a href="/photos/newTags">{{ L('X_new_photo_tags', {'count': userNotifications.newPhotoTagCount}) }} &raquo;</a></li>
+</ul>
+{% endif %}
 {% elseif owner.ownerID<0 and userPermissions.canManageGroup(owner) %}
 <a href="/my/albums/create?owner={{ owner.ownerID }}" class="fab iconAdd" title="{{ L('create_photo_album') }}"></a>
 {% endif %}

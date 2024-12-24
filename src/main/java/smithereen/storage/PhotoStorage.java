@@ -693,7 +693,7 @@ public class PhotoStorage{
 			List<Long> ids=new SQLQueryBuilder(conn)
 					.selectFrom("photo_tags")
 					.columns("photo_id")
-					.where("user_id=? AND approved-?", userID, approved)
+					.where("user_id=? AND approved=?", userID, approved)
 					.orderBy("created_at DESC")
 					.limit(count, offset)
 					.executeAndGetLongStream()

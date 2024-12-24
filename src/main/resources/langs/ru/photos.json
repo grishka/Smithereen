@@ -86,5 +86,10 @@
   "photo_err_too_many_tags": "На фотографии отмечено максимально допустимое количество людей",
   "photo_err_user_already_tagged": "Этот пользователь уже отмечен на этой фотографии",
   "photo_tag_name_search": "Поиск или имя",
-  "photo_tag_delete_confirm": "Вы действительно хотите удалить эту отметку?"
+  "photo_tag_delete_confirm": "Вы действительно хотите удалить эту отметку?",
+  "new_photos_of_me": "Новые фотографии со мной",
+  "no_new_tagged_photos": "Нет новых отметок на фотографиях",
+  "user_tagged_you_in_photo": "<a id=\"user\">{name}</a> {gender, select, female {отметила} other {отметил}} вас на этой фотографии.",
+  "photo_confirm_tag": "Подтвердить",
+  "X_new_photo_tags": "{count, plural, one {# новая отметка на фотографии} few {# новых отметки на фотографиях} other {# новых отметок на фотографиях}}"
 }

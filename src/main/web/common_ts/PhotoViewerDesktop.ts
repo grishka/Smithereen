@@ -10,6 +10,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	private pictureEl:HTMLElement;
 	private layerBackThing:HTMLElement;
 	private layerCloseThing:HTMLElement;
+	private topHtmlW:HTMLElement;
 
 	private tagsWrap:HTMLElement;
 	private tagTopBar:HTMLElement;
@@ -49,6 +50,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 				]),
 				ce("a", {className: "close", innerText: lang("close"), onclick: ()=>this.dismiss()})
 			]),
+			this.topHtmlW=ce("div"),
 			this.imgWrap=ce("div", {className: "imgW"}, [
 				this.imgLoader=ce("div", {className: "pvLoader"}),
 				this.tagsWrap=ce("div", {className: "tagsW"}, [
@@ -221,8 +223,13 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 				break;
 		}
 		this.imgEl.src=size.jpeg;
-		this.sourceWebp.srcset=`${size.webp}, ${x2size.webp} 2x`;
-		this.sourceJpeg.srcset=`${size.jpeg}, ${x2size.jpeg} 2x`;
+		if(size!=x2size){
+			this.sourceWebp.srcset=`${size.webp}, ${x2size.webp} 2x`;
+			this.sourceJpeg.srcset=`${size.jpeg}, ${x2size.jpeg} 2x`;
+		}else{
+			this.sourceWebp.srcset=size.webp;
+			this.sourceJpeg.srcset=size.jpeg;
+		}
 	}
 
 	private updateBottomPart(){
@@ -241,6 +248,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		}
 		var url=ph.historyURL || `#${this.listID}/${this.currentIndex}`;
 		this.updateHistory({layer: "PhotoViewer", pvInline: this.getCurrentInlineData(), pvListURL: this.listURL}, url);
+		this.topHtmlW.innerHTML=ph.topHTML || "";
 		if(isNew){
 			updatePostForms(this.bottomPart);
 

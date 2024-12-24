@@ -1,0 +1,13 @@
+{% extends "page" %}
+{% block content %}
+<div class="photoGrid">
+{% block photosInner %}
+{% for photo in items %}
+    <a href="{{ photo.url }}" class="photo" id="photo{{ photo.idString }}">{{ photo.image | pictureForPhoto('s') }}</a>
+{% else %}
+	<div class="emptyState">{{ L('no_new_tagged_photos') }}</div>
+{% endfor %}
+{% endblock %}
+{% include "pagination_endless" %}
+</div>
+{% endblock %}
