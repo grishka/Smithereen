@@ -25,13 +25,22 @@
 		    {% set _=albumLinks.add('<a href="'+album.url+'">'+(album.title | forceEscape)+"</a>") %}
 		{% endfor %}
 		{% set _=langArgs.put('albums', albumLinks | join(L('feed_links_separator').toString()) | raw) %}
+	{% elseif entry.childEntriesType=="PHOTO_TAG" %}
+		{% set icon="Photo" %}
+		{% set langKey="tagged_in_multiple_photos" %}
+		{% set _=langArgs.put('albumCount', entry.extraData['albums'] | length) %}
+		{% set albumLinks=[] %}
+		{% for album in entry.extraData['albums'] %}
+		    {% set _=albumLinks.add('<a href="'+album.url+'">'+(album.title | forceEscape)+"</a>") %}
+		{% endfor %}
+		{% set _=langArgs.put('albums', albumLinks | join(L('feed_links_separator').toString()) | raw) %}
 	{% endif %}
 <div class="feedRow">
 	<div class="feedIcon feedIcon{{ icon }}"></div>
 	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 	<div class="feedRowContent">
 		{{ L("feed_#{langKey}", langArgs, langLinks) }}
-		{% if entry.childEntriesType=="ADD_PHOTO" %}
+		{% if entry.childEntriesType=="ADD_PHOTO" or entry.childEntriesType=="PHOTO_TAG" %}
 		<div class="feedRowPhotos">
 		{% set entryPhotos=[] %}
 		{% for ce in entry.mostRecentEntries %}
@@ -98,13 +107,19 @@
 	{% set langKey="added_photo" %}
 	{% set targetHref=album.url %}
 	{% set targetName=album.title %}
+{% elseif entry.type=="PHOTO_TAG" %}
+	{% set album=entry.extraData['album'] %}
+	{% set icon="PhotoTag" %}
+	{% set langKey="tagged_in_photo" %}
+	{% set targetHref=album.url %}
+	{% set targetName=album.title %}
 {% endif %}
 <div class="feedRow">
 	<div class="feedIcon feedIcon{{ icon }}"></div>
 	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 	<div class="feedRowContent">
 		{{ L("feed_#{langKey}", {'author': author | name('complete'), 'target': targetName, 'gender': author.gender}, {'author': {'href': profileURL(entry.authorID)}, 'target': {'href': targetHref} }) }}
-		{% if entry.type=="ADD_PHOTO" %}
+		{% if entry.type=="ADD_PHOTO" or entry.type=="PHOTO_TAG" %}
 		<div class="feedRowPhotos">{{ renderPhotoGrid([photos[entry.objectID]], "friendsFeed/#{entry.id}") }}</div>
 		{% endif %}
 	</div>

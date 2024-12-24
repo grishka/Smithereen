@@ -632,7 +632,7 @@ public class PhotosController{
 		if(album.ownerID>0){
 			context.getNewsfeedController().clearFriendsFeedCache();
 			context.getNewsfeedController().deleteFriendsFeedEntry(context.getUsersController().getUserOrThrow(album.ownerID), photo.id, NewsfeedEntry.Type.ADD_PHOTO);
-			// TODO delete tags
+			context.getNewsfeedController().deleteFriendsFeedEntriesForObject(photo.id, NewsfeedEntry.Type.PHOTO_TAG);
 		}
 		albumCache.put(album.id, album);
 		// TODO groups newsfeed
@@ -1148,7 +1148,9 @@ public class PhotosController{
 					un.incNewPhotoTagCount(1);
 			}
 			// TODO federate
-			// TODO newsfeed for self tags
+			if(user!=null && user.id==self.id){
+				context.getNewsfeedController().putFriendsFeedEntry(self, photo.id, NewsfeedEntry.Type.PHOTO_TAG);
+			}
 			return id;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -1185,7 +1187,12 @@ public class PhotosController{
 					un.incNewPhotoTagCount(-1);
 			}
 			// TODO federate
-			// TODO newsfeed
+			if(tag.userID()!=0 && tag.approved()){
+				try{
+					User user=context.getUsersController().getUserOrThrow(tag.userID());
+					context.getNewsfeedController().deleteFriendsFeedEntry(user, photo.id, NewsfeedEntry.Type.PHOTO_TAG);
+				}catch(ObjectNotFoundException ignore){}
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -1224,7 +1231,7 @@ public class PhotosController{
 			if(un!=null)
 				un.incNewPhotoTagCount(-1);
 			// TODO federate
-			// TODO newsfeed
+			context.getNewsfeedController().putFriendsFeedEntry(self, photo.id, NewsfeedEntry.Type.PHOTO_TAG);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -378,7 +378,8 @@ public class PostRoutes{
 		PostViewModel.collectActorIDs(feedPosts, needUsers, needGroups);
 
 		Set<Long> needPhotos=feed.stream()
-				.filter(e->e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO || (e instanceof GroupedNewsfeedEntry gne && gne.childEntriesType==NewsfeedEntry.Type.ADD_PHOTO))
+				.filter(e->e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO || e.type==NewsfeedEntry.Type.PHOTO_TAG ||
+						(e instanceof GroupedNewsfeedEntry gne && (gne.childEntriesType==NewsfeedEntry.Type.ADD_PHOTO || gne.childEntriesType==NewsfeedEntry.Type.PHOTO_TAG)))
 				.flatMap(e->switch(e){
 					case GroupedNewsfeedEntry gne -> gne.childEntries.stream().map(ce->ce.objectID);
 					default -> Stream.of(e.objectID);

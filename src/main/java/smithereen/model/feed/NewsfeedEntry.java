@@ -27,7 +27,7 @@ public class NewsfeedEntry{
 	}
 
 	public boolean canBeGrouped(){
-		return type==Type.ADD_FRIEND || type==Type.JOIN_GROUP || type==Type.JOIN_EVENT || type==Type.ADD_PHOTO;
+		return type==Type.ADD_FRIEND || type==Type.JOIN_GROUP || type==Type.JOIN_EVENT || type==Type.ADD_PHOTO || type==Type.PHOTO_TAG;
 	}
 
 	public enum Type{
@@ -65,5 +65,9 @@ public class NewsfeedEntry{
 		 * Photo for the comments newsfeed
 		 */
 		PHOTO,
+		/**
+		 * Someone was tagged in a photo
+		 */
+		PHOTO_TAG,
 	}
 }

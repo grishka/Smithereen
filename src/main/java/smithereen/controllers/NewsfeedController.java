@@ -96,7 +96,7 @@ public class NewsfeedController{
 					newPage.removeIf(e->e.type==NewsfeedEntry.Type.POST && inaccessiblePosts.contains((int)e.objectID));
 				}
 
-				Set<Long> needPhotos=newPage.stream().filter(e->e.type==NewsfeedEntry.Type.ADD_PHOTO).map(e->e.objectID).collect(Collectors.toSet());
+				Set<Long> needPhotos=newPage.stream().filter(e->e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO_TAG).map(e->e.objectID).collect(Collectors.toSet());
 				if(!needPhotos.isEmpty()){
 					Map<Long, Photo> photos=context.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
 					Set<Long> needAlbums=photos.values().stream().map(p->p.albumID).collect(Collectors.toSet());
@@ -106,9 +106,9 @@ public class NewsfeedController{
 							.filter(a->!context.getPrivacyController().checkUserPrivacy(self.user, owners.get(a.ownerID), a.viewPrivacy))
 							.map(a->a.id)
 							.collect(Collectors.toSet());
-					newPage.removeIf(e->e.type==NewsfeedEntry.Type.ADD_PHOTO && (!photos.containsKey(e.objectID) || inaccessibleAlbums.contains(photos.get(e.objectID).albumID)));
+					newPage.removeIf(e->(e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO_TAG) && (!photos.containsKey(e.objectID) || inaccessibleAlbums.contains(photos.get(e.objectID).albumID)));
 					for(NewsfeedEntry e:newPage){
-						if(e.type==NewsfeedEntry.Type.ADD_PHOTO){
+						if(e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO_TAG){
 							e.extraData=Map.of("album", albums.get(photos.get(e.objectID).albumID));
 						}
 					}
@@ -154,6 +154,15 @@ public class NewsfeedController{
 		try{
 			friendsNewsFeedCache.evictAll(); // TODO
 			NewsfeedStorage.deleteEntry(user.id, objectID, type);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteFriendsFeedEntriesForObject(long objectID, NewsfeedEntry.Type type){
+		try{
+			friendsNewsFeedCache.evictAll(); // TODO
+			NewsfeedStorage.deleteAllEntriesForObject(objectID, type);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

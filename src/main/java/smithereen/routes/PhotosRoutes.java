@@ -623,7 +623,7 @@ public class PhotosRoutes{
 					throw new UserActionNotAllowedException();
 				int id=safeParseInt(listParts[1]);
 				PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(selfAccount, timeZoneForRequest(req), id, 0, 100);
-				if(feed.list.isEmpty() || !(feed.list.getFirst() instanceof GroupedNewsfeedEntry gne) || gne.childEntriesType!=NewsfeedEntry.Type.ADD_PHOTO)
+				if(feed.list.isEmpty() || !(feed.list.getFirst() instanceof GroupedNewsfeedEntry gne) || (gne.childEntriesType!=NewsfeedEntry.Type.ADD_PHOTO && gne.childEntriesType!=NewsfeedEntry.Type.PHOTO_TAG))
 					throw new ObjectNotFoundException();
 				total=gne.childEntries.size();
 				title=null;
@@ -644,7 +644,7 @@ public class PhotosRoutes{
 				if(feed.isEmpty())
 					throw new ObjectNotFoundException();
 				NewsfeedEntry e=feed.getFirst();
-				if(e.type!=NewsfeedEntry.Type.ADD_PHOTO)
+				if(e.type!=NewsfeedEntry.Type.ADD_PHOTO && e.type!=NewsfeedEntry.Type.PHOTO_TAG)
 					throw new ObjectNotFoundException();
 				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(e.objectID);
 				PhotoAlbum album=ctx.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID);
@@ -1236,7 +1236,7 @@ public class PhotosRoutes{
 		int tagID=safeParseInt(req.queryParams("id"));
 		Photo photo=getPhotoForRequest(req);
 		ctx.getPhotosController().deletePhotoTag(self.user, photo, tagID);
-		return new WebDeltaResponse(resp).remove("pvTag_"+photo.getIdString()+"_"+tagID);
+		return new WebDeltaResponse(resp).remove("pvTag_"+photo.getIdString()+"_"+tagID, "pvConfirmTag_"+photo.getIdString(), "photoNewTag"+photo.getIdString());
 	}
 	
 	public static Object newTags(Request req, Response resp, Account self, ApplicationContext ctx){

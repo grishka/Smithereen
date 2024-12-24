@@ -25,4 +25,11 @@ public class NewsfeedStorage{
 				.where("type=? AND author_id=? AND object_id=?", type.ordinal(), userID, objectID)
 				.executeNoResult();
 	}
+
+	public static void deleteAllEntriesForObject(long objectID, NewsfeedEntry.Type type) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("newsfeed")
+				.where("type=? AND object_id=?", type.ordinal(), objectID)
+				.executeNoResult();
+	}
 }

@@ -21,7 +21,7 @@ public class GroupedNewsfeedEntry extends NewsfeedEntry{
 		NewsfeedEntry first=entries.iterator().next();
 		childEntriesType=first.type;
 		authorID=first.authorID;
-		if(childEntriesType==Type.ADD_PHOTO){
+		if(childEntriesType==Type.ADD_PHOTO || childEntriesType==Type.PHOTO_TAG){
 			extraData=new HashMap<>();
 		}
 		addChildEntries(entries);
@@ -40,7 +40,7 @@ public class GroupedNewsfeedEntry extends NewsfeedEntry{
 				time=e.time;
 		}
 		childEntries.addAll(entries);
-		if(childEntriesType==Type.ADD_PHOTO){
+		if(childEntriesType==Type.ADD_PHOTO || childEntriesType==Type.PHOTO_TAG){
 			List<PhotoAlbum> albums=(List<PhotoAlbum>) extraData.computeIfAbsent("albums", s->new ArrayList<PhotoAlbum>());
 			Set<Long> albumsAlreadyPresent=albums.stream().map(a->a.id).collect(Collectors.toSet());
 			for(NewsfeedEntry e:entries){

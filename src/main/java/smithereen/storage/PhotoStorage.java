@@ -157,9 +157,8 @@ public class PhotoStorage{
 			if(ownerID>0){
 				new SQLQueryBuilder(conn)
 						.deleteFrom("newsfeed")
-						.where("type=? AND object_id IN (SELECT id FROM photos WHERE album_id=?)", NewsfeedEntry.Type.ADD_PHOTO, id)
+						.where("type IN (?, ?) AND object_id IN (SELECT id FROM photos WHERE album_id=?)", NewsfeedEntry.Type.ADD_PHOTO, NewsfeedEntry.Type.PHOTO_TAG, id)
 						.executeNoResult();
-				// TODO tags
 			}
 			new SQLQueryBuilder(conn)
 					.deleteFrom("likes")

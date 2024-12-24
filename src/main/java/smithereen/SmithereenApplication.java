@@ -658,7 +658,7 @@ public class SmithereenApplication{
 				postWithCSRF("/updateAvatarCrop", PhotosRoutes::updateAvatarCrop);
 				getWithCSRF("/addTag", PhotosRoutes::addTag);
 				postWithCSRF("/deleteTag", PhotosRoutes::deleteTag);
-				getWithCSRF("/deleteTag", PhotosRoutes::approveTag);
+				getWithCSRF("/deleteTag", PhotosRoutes::deleteTag);
 				getWithCSRF("/approveTag", PhotosRoutes::approveTag);
 			});
 		});
