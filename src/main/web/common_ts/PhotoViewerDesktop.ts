@@ -121,6 +121,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	public onWindowResize(){
 		super.onWindowResize();
 		this.updateSize();
+		this.updateImageURLs();
 	}
 
 	public wantsDarkerScrim(){
@@ -184,12 +185,36 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 
 		this.layerBackThing.style.width=Math.round(viewportW/2-this.contentWrap.offsetWidth/2)+"px";
 
-		var tagOverlayW=Math.min(w, phW);
-		var tagOverlayH=Math.min(h, phH);
+		var prevTagOverlayW=this.tagsWrap.offsetWidth;
+		var tagOverlayW:number, tagOverlayH:number;
+		if(phW<w && phH<h){
+			tagOverlayW=phW;
+			tagOverlayH=phH;
+		}else{
+			var pRatio=phW/phH;
+			var iRatio=w/h;
+			if(pRatio<iRatio){
+				tagOverlayH=h;
+				tagOverlayW=h*pRatio;
+			}else{
+				tagOverlayW=w;
+				tagOverlayH=w/pRatio;
+			}
+		}
 		this.tagsWrap.style.width=tagOverlayW+"px";
 		this.tagsWrap.style.left=(this.contentWrap.offsetWidth-tagOverlayW)/2+"px";
 		this.tagsWrap.style.height=tagOverlayH+"px";
 		this.tagsWrap.style.top=(h-tagOverlayH)/2+"px";
+		if(this.tagAreaSelector){
+			var area=this.tagAreaSelector.getSelectedArea();
+			if(area){
+				var scaleFactor=tagOverlayW/prevTagOverlayW;
+				this.tagAreaSelector.setSelectedArea(area.x*scaleFactor, area.y*scaleFactor, area.w*scaleFactor, area.h*scaleFactor);
+				area=this.tagAreaSelector.getSelectedArea();
+				this.tagFriendListPopup.style.left=(this.tagsWrap.offsetLeft+area.x+area.w)+"px";
+				this.tagFriendListPopup.style.top=(this.tagsWrap.offsetTop+area.y)+"px";
+			}
+		}
 	}
 
 	private updateImage(){
@@ -204,6 +229,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		]);
 		this.imgEl.addEventListener("load", (ev)=>{
 			this.imgLoader.hide();
+			this.updateSize();
 		});
 		this.imgEl.addEventListener("click", (ev)=>{
 			if(this.total==1)
@@ -218,14 +244,15 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		var size=this.currentURLs[0], x2size=this.currentURLs[0];
 		for(var i=0;i<this.currentURLs.length;i++){
 			size=this.currentURLs[i];
-			x2size=this.currentURLs[Math.min(i+1, this.currentURLs.length-1)];
+			x2size=i<this.currentURLs.length-1 ? this.currentURLs[i+1] : null;
 			if(size.width>=this.imgW && size.height>=this.imgH)
 				break;
 		}
 		this.imgEl.src=size.jpeg;
-		if(size!=x2size){
-			this.sourceWebp.srcset=`${size.webp}, ${x2size.webp} 2x`;
-			this.sourceJpeg.srcset=`${size.jpeg}, ${x2size.jpeg} 2x`;
+		if(x2size){
+			var multiplier=x2size.width/size.width; // Might not actually be 2x. Will cause misalignment on retina displays if you still put "2x" there.
+			this.sourceWebp.srcset=`${size.webp}, ${x2size.webp} ${multiplier}x`;
+			this.sourceJpeg.srcset=`${size.jpeg}, ${x2size.jpeg} ${multiplier}x`;
 		}else{
 			this.sourceWebp.srcset=size.webp;
 			this.sourceJpeg.srcset=size.jpeg;

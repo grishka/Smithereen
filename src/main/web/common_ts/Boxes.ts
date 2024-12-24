@@ -209,7 +209,9 @@ class LayerManager{
 	}
 
 	public updateAllTopOffsets(){
-		this.updateTopOffset(this.boxLoader);
+		if(this.boxLoader){
+			this.updateTopOffset(this.boxLoader);
+		}
 		if(this.stack.length){
 			this.stack[this.stack.length-1].updateTopOffset();
 		}
