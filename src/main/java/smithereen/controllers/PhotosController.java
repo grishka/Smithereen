@@ -53,6 +53,7 @@ import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoMetadata;
 import smithereen.model.photos.PhotoTag;
+import smithereen.model.photos.TaggedPhotosPseudoAlbum;
 import smithereen.storage.CommentStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
@@ -85,7 +86,7 @@ public class PhotosController{
 		this.context=context;
 	}
 
-	public List<PhotoAlbum> getAllAlbums(Actor owner, User self, boolean needSystem){
+	public List<PhotoAlbum> getAllAlbums(Actor owner, User self, boolean needSystem, boolean needTagged){
 		try{
 			if(owner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(self, group);
@@ -98,10 +99,17 @@ public class PhotosController{
 			for(PhotoAlbum album:albums){
 				albumCache.put(album.id, album);
 			}
+			albums=new ArrayList<>(albums);
+			if(needTagged && owner instanceof User user){
+				try{
+					PhotoAlbum album=getUserTaggedPhotosPseudoAlbum(self, user);
+					if(album!=null)
+						albums.addFirst(album);
+				}catch(UserActionNotAllowedException ignore){}
+			}
 			if(needSystem){
 				List<PhotoAlbum> systemAlbums=PhotoStorage.getSystemAlbums(owner.getOwnerID());
 				if(!systemAlbums.isEmpty()){
-					albums=new ArrayList<>(albums);
 					albums.addAll(0, systemAlbums);
 				}
 			}
@@ -113,6 +121,21 @@ public class PhotosController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public PhotoAlbum getUserTaggedPhotosPseudoAlbum(User self, User user){
+		PaginatedList<Photo> taggedPhotos=getUserTaggedPhotos(self, user, 0, 1);
+		if(taggedPhotos.total>0){
+			PhotoAlbum pseudoAlbum=new TaggedPhotosPseudoAlbum();
+			pseudoAlbum.ownerID=user.id;
+			pseudoAlbum.systemType=PhotoAlbum.SystemAlbumType.TAGGED;
+			pseudoAlbum.coverID=taggedPhotos.list.getFirst().id;
+			pseudoAlbum.numPhotos=taggedPhotos.total;
+			pseudoAlbum.title="Tagged photos";
+			pseudoAlbum.viewPrivacy=PrivacySetting.DEFAULT;
+			return pseudoAlbum;
+		}
+		return null;
 	}
 
 	public List<PhotoAlbum> getAllAlbumsIgnoringPrivacy(Actor owner){
@@ -157,13 +180,13 @@ public class PhotosController{
 	}
 
 	public PaginatedList<PhotoAlbum> getRandomAlbumsForProfile(Actor owner, User self, int count){
-		List<PhotoAlbum> filteredAlbums=new ArrayList<>(getAllAlbums(owner, self, false));
+		List<PhotoAlbum> filteredAlbums=new ArrayList<>(getAllAlbums(owner, self, false, false));
 		Collections.shuffle(filteredAlbums);
 		return new PaginatedList<>(filteredAlbums.subList(0, Math.min(filteredAlbums.size(), count)), filteredAlbums.size());
 	}
 
 	public PaginatedList<PhotoAlbum> getMostRecentAlbums(Actor owner, User self, int count, boolean onlyHavingCover){
-		List<PhotoAlbum> filteredAlbums=new ArrayList<>(getAllAlbums(owner, self, false));
+		List<PhotoAlbum> filteredAlbums=new ArrayList<>(getAllAlbums(owner, self, false, false));
 		int size=filteredAlbums.size();
 		if(onlyHavingCover)
 			filteredAlbums.removeIf(a->a.coverID==0);
@@ -940,7 +963,7 @@ public class PhotosController{
 	}
 
 	public PaginatedList<Photo> getAllPhotos(Actor owner, @Nullable User self, int offset, int count){
-		List<Long> albumIDs=getAllAlbums(owner, self, true).stream()
+		List<Long> albumIDs=getAllAlbums(owner, self, true, false).stream()
 				.filter(a->a.systemType!=PhotoAlbum.SystemAlbumType.SAVED)
 				.map(a->a.id)
 				.toList();

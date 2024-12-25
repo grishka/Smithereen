@@ -16,7 +16,13 @@ new PhotoAlbumUploader("{{ album.url }}/upload");
 <div id="uploadHide">
 <div class="mediaGridW">
 <div class="summaryWrap">
-	<div class="summary">{{ L('summary_album_X_photos', {'count': totalItems}) }}</div>
+	<div class="summary">
+	{%- if album.systemType=="TAGGED" %}
+	{{- currentUser is not null and currentUser.id==album.ownerID ? L('summary_X_photos_of_me', {'count': totalItems}) : L('summary_X_photos_of_user', {'count': totalItems, 'name': owner.firstAndGender}) }}
+	{%- else %}
+	{{- L('summary_album_X_photos', {'count': totalItems}) }}
+	{%- endif %}
+	</div>
 </div>
 {% if items is empty %}
 <div class="singleColumn"><div class="emptyState">{{ L('no_photos_in_album') }}</div></div>

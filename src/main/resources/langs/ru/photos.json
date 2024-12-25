@@ -91,5 +91,9 @@
   "no_new_tagged_photos": "Нет новых отметок на фотографиях",
   "user_tagged_you_in_photo": "<a id=\"user\">{name}</a> {gender, select, female {отметила} other {отметил}} вас на этой фотографии.",
   "photo_confirm_tag": "Подтвердить",
-  "X_new_photo_tags": "{count, plural, one {# новая отметка на фотографии} few {# новых отметки на фотографиях} other {# новых отметок на фотографиях}}"
+  "X_new_photo_tags": "{count, plural, one {# новая отметка на фотографии} few {# новых отметки на фотографиях} other {# новых отметок на фотографиях}}",
+  "photos_of_me": "Фотографии со мной",
+  "photos_of_user": "Фотографии с {name, inflect, instrumental}",
+  "summary_X_photos_of_me": "{count, plural, one {# фотография} few {# фотографии} other {# фотографий}} с вами",
+  "summary_X_photos_of_user": "{count, plural, one {# фотография} few {# фотографии} other {# фотографий}} с {name, inflect, instrumental}"
 }

@@ -509,6 +509,7 @@ public class SmithereenApplication{
 			getActivityPubCollection("/albums", 100, ActivityPubRoutes::userAlbums);
 			get("/albums", PhotosRoutes::userAlbums);
 			get("/allPhotos", PhotosRoutes::allUserPhotos);
+			get("/tagged", PhotosRoutes::userTaggedPhotos);
 		});
 
 		path("/groups/:id", ()->{

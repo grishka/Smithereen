@@ -91,5 +91,9 @@
   "no_new_tagged_photos": "No new photo tags",
   "user_tagged_you_in_photo": "<a id=\"user\">{name}</a> tagged you in this photo.",
   "photo_confirm_tag": "Confirm",
-  "X_new_photo_tags": "{count, plural, one {# new photo tag} other {# new photo tags}}"
+  "X_new_photo_tags": "{count, plural, one {# new photo tag} other {# new photo tags}}",
+  "photos_of_me": "Photos of me",
+  "photos_of_user": "Photos of {name}",
+  "summary_X_photos_of_me": "{count, plural, one {# photo} other {# photos}} of you",
+  "summary_X_photos_of_user": "{count, plural, one {# photo} other {# photos}} of {name}"
 }

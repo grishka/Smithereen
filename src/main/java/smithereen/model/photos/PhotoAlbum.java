@@ -119,7 +119,8 @@ public class PhotoAlbum implements ActivityPubRepresentable, OwnedContentObject{
 				else
 					yield lang.get("avatars_album_group");
 			}
-			case null, default -> title;
+			case TAGGED -> self!=null && self.id==owner.getOwnerID() ? lang.get("photos_of_me") : lang.get("photos_of_user", Map.of("name", ((User)owner).getFirstAndGender()));
+			case null -> title;
 		};
 	}
 

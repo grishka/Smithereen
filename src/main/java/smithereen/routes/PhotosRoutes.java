@@ -104,7 +104,7 @@ public class PhotosRoutes{
 	}
 
 	private static Object photoAlbums(Request req, Response resp, Actor owner, Account self, ApplicationContext ctx){
-		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbums(owner, self==null ? null : self.user, true);
+		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbums(owner, self==null ? null : self.user, true, true);
 		Templates.addJsLangForPrivacySettings(req);
 		Set<Long> needPhotos=albums.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet());
 		Map<Long, Photo> covers=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
@@ -723,6 +723,15 @@ public class PhotosRoutes{
 				title=null;
 				yield makePhotoInfosForPhotoList(req, allPhotos.list, ctx, selfAccount, albums);
 			}
+			case "tagged" -> {
+				int uid=safeParseInt(listParts[1]);
+				User user=ctx.getUsersController().getUserOrThrow(uid);
+				PaginatedList<Photo> allPhotos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset(req), 10);
+				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(allPhotos.list.stream().map(p->p.albumID).collect(Collectors.toSet()));
+				total=allPhotos.total;
+				title=null;
+				yield makePhotoInfosForPhotoList(req, allPhotos.list, ctx, selfAccount, albums);
+			}
 			default -> {
 				LOG.debug("Unknown photo list {}", req.queryParams("list"));
 				throw new BadRequestException();
@@ -1037,7 +1046,7 @@ public class PhotosRoutes{
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse("attach_photo_box", req);
 		Lang l=lang(req);
-		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbums(self.user, self.user, true);
+		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbums(self.user, self.user, true, false);
 		Set<Long> needPhotos=albums.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet());
 		Map<Long, Photo> covers=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
 		model.with("albums", albums)
@@ -1294,5 +1303,48 @@ public class PhotosRoutes{
 			return new WebDeltaResponse(resp).refresh();
 		return new WebDeltaResponse(resp)
 				.remove("pvConfirmTag_"+photo.getIdString(), "photoNewTag"+photo.getIdString());
+	}
+
+	public static Object userTaggedPhotos(Request req, Response resp){
+		SessionInfo session=sessionInfo(req);
+		User self=session!=null && session.account!=null ? session.account.user : null;
+		ApplicationContext ctx=context(req);
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		PhotoAlbum album=ctx.getPhotosController().getUserTaggedPhotosPseudoAlbum(self, user);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("photo_album_view", req);
+		model.with("album", album);
+		Actor owner;
+		if(album.ownerID>0)
+			owner=ctx.getUsersController().getUserOrThrow(album.ownerID);
+		else
+			owner=ctx.getGroupsController().getGroupOrThrow(-album.ownerID);
+		model.with("owner", owner).headerBack(owner).pageTitle(album.getLocalizedTitle(lang(req), self, owner));
+		int offset=offset(req);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset, 100);
+		model.paginate(photos);
+
+		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
+		int i=0;
+		for(Photo p:photos.list){
+			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "tagged/"+user.id, p.image.getURLsForPhotoViewer()));
+			i++;
+		}
+		model.with("photoViewerData", pvData);
+
+		if(isAjax(req)){
+			String paginationID=req.queryParams("pagination");
+			if(StringUtils.isNotEmpty(paginationID)){
+				WebDeltaResponse r=new WebDeltaResponse(resp)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+				if(photos.offset+photos.perPage>=photos.total){
+					r.remove("ajaxPagination_"+paginationID);
+				}else{
+					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", req.pathInfo()+"?offset="+(photos.offset+photos.perPage));
+				}
+				return r;
+			}
+		}
+
+		return model;
 	}
 }

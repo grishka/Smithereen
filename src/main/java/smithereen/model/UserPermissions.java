@@ -66,7 +66,7 @@ public class UserPermissions{
 
 	public boolean canEditPhotoAlbum(PhotoAlbum album){
 		if(album.ownerID>0)
-			return userID==album.ownerID;
+			return userID==album.ownerID && album.systemType!=PhotoAlbum.SystemAlbumType.TAGGED;
 		return managedGroups.getOrDefault(-album.ownerID, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.MODERATOR);
 	}
 
