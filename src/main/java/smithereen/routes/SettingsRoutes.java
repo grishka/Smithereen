@@ -538,7 +538,7 @@ public class SettingsRoutes{
 		HashMap<UserPrivacySettingKey, PrivacySetting> settings=new HashMap<>(self.user.privacySettings);
 		for(UserPrivacySettingKey key:UserPrivacySettingKey.values()){
 			if(!settings.containsKey(key)){
-				settings.put(key, new PrivacySetting());
+				settings.put(key, key.getDefaultValue());
 			}
 		}
 		model.with("privacySettings", settings);

@@ -178,5 +178,8 @@
   "settings_current_session": "current session",
   "settings_end_all_sessions": "Terminate all sessions",
   "settings_confirm_end_all_sessions": "Are you sure you want to terminate all sessions except the current one?",
-  "settings_sessions_ended": "Other sessions were terminated."
+  "settings_sessions_ended": "Other sessions were terminated.",
+  "privacy_photo_tagging": "Who can <b>tag me in photos</b>",
+  "privacy_photo_tag_list": "Who sees <b>photos I'm tagged in</b>",
+  "privacy_value_friends_except": "All friends, except..."
 }

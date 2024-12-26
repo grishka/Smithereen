@@ -178,5 +178,8 @@
   "settings_current_session": "текущий сеанс",
   "settings_end_all_sessions": "Завершить все сеансы",
   "settings_confirm_end_all_sessions": "Вы действительно хотите завершить все сеансы кроме текущего?",
-  "settings_sessions_ended": "Другие сеансы завершены."
+  "settings_sessions_ended": "Другие сеансы завершены.",
+  "privacy_photo_tagging": "Кто может <b>отмечать меня на фотографиях</b>",
+  "privacy_photo_tag_list": "Кто видит <b>фотографии, на которых меня отметили</b>",
+  "privacy_value_friends_except": "Все друзья, кроме..."
 }

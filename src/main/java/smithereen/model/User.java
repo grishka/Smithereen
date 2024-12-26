@@ -622,7 +622,7 @@ public class User extends Actor{
 	}
 
 	public PrivacySetting getPrivacySetting(UserPrivacySettingKey key){
-		return privacySettings.getOrDefault(key, PrivacySetting.DEFAULT);
+		return privacySettings.getOrDefault(key, key.getDefaultValue());
 	}
 
 	// for templates

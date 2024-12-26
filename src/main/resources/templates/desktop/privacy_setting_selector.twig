@@ -13,7 +13,7 @@
 			{% set mainRuleKey=isOnlyMe ? 'privacy_value_only_me' : 'privacy_value_no_one' %}
 		{% endif %}
 	{% endif %}
-	<a href="javascript:void(0)" onclick="showPrivacyMenu(this, '{{ key }}', {{ isOnlyMe }})" class="opener">{{ L(mainRuleKey) }}</a><span id="privacyExtended_{{ key }}">
+	<a href="javascript:void(0)" onclick="showPrivacyMenu(this, '{{ key }}', {{ isOnlyMe }}, {{ isFriendsOnly | default(false) }})" class="opener">{{ L(mainRuleKey) }}</a><span id="privacyExtended_{{ key }}">
 		{%- if setting.allowUsers is not empty -%}
 		{{- L("privacy_settings_value_certain_friends_before") -}}
 		{%- for id in setting.allowUsers -%}

@@ -9,7 +9,7 @@
 			<div class="settingLabel">{{ L(key.descriptionLangKey) }}</div>
 			{% set setting=privacySettings[key] %}
 			<div class="settingValue">
-				{% include "privacy_setting_selector" with {'setting': setting, 'key': key, 'isOnlyMe': key.isOnlyMe} %}
+				{% include "privacy_setting_selector" with {'setting': setting, 'key': key, 'isOnlyMe': key.isOnlyMe, 'isFriendsOnly': key.isFriendsOnly} %}
 			</div>
 		{% endfor %}
 			<div></div>

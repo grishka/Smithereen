@@ -22,6 +22,11 @@ import smithereen.jsonld.JLD;
 
 public class PrivacySetting{
 	public static final PrivacySetting DEFAULT=new PrivacySetting();
+	public static final PrivacySetting DEFAULT_FRIENDS_ONLY=new PrivacySetting();
+
+	static{
+		DEFAULT_FRIENDS_ONLY.baseRule=Rule.FRIENDS;
+	}
 
 	@SerializedName("r")
 	public Rule baseRule=Rule.EVERYONE;

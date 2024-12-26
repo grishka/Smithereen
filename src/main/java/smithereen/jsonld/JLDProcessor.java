@@ -138,6 +138,8 @@ public class JLDProcessor{
 		lc.addProperty("hometown", "sm:hometown");
 		lc.add("relationshipStatus", idAndTypeObject("sm:relationshipStatus", "@id"));
 		lc.add("relationshipPartner", idAndTypeObject("sm:relationshipPartner", "@id"));
+		addSmAlias(lc, "photoTagging");
+		addSmAlias(lc, "photoTagList");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

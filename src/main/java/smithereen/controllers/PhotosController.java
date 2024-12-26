@@ -43,6 +43,7 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserNotifications;
+import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
@@ -1153,7 +1154,7 @@ public class PhotosController{
 				if(user.id!=self.id){
 					if(context.getFriendsController().getSimpleFriendshipStatus(self, user)!=FriendshipStatus.FRIENDS)
 						throw new UserActionNotAllowedException();
-					// TODO privacy
+					context.getPrivacyController().enforceUserPrivacy(self, user, UserPrivacySettingKey.PHOTO_TAG);
 				}
 				List<PhotoTag> existingTags=PhotoStorage.getPhotoTags(photo.id);
 				if(existingTags.size()>=MAX_TAGS_PER_PHOTO)
@@ -1223,7 +1224,7 @@ public class PhotosController{
 
 	public PaginatedList<Photo> getUserTaggedPhotos(User self, User user, int offset, int count){
 		try{
-			// TODO privacy
+			context.getPrivacyController().enforceUserPrivacy(self, user, UserPrivacySettingKey.PHOTO_TAG_LIST);
 			PaginatedList<Long> ids=PhotoStorage.getUserTaggedPhotos(user.id, offset, count, true);
 			Map<Long, Photo> photos=getPhotosIgnoringPrivacy(ids.list);
 			return new PaginatedList<>(ids, ids.list.stream().map(photos::get).toList());

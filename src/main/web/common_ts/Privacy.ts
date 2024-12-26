@@ -14,7 +14,7 @@ function getFriendForPrivacy(id:number){
 	return [id, "DELETED", "/id"+id, "DELETED", null];
 }
 
-function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean){
+function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyFriends:boolean){
 	if(!el.customData)
 		el.customData={};
 	var menuEl=el.customData.menuEl || (el.customData.menuEl=ce("div", {"className": "popupMenu compact"}, [
@@ -24,7 +24,13 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean){
 	el.insertAdjacentElement("afterend", menuEl);
 	var menuList=menuEl.querySelector("ul");
 	if(!menuList.children.length){
-		for(var opt of ["everyone", "friends", "friends_of_friends", onlyMe ? "only_me" : "no_one", "everyone_except", "certain_friends"]){
+		var opts:string[];
+		if(onlyFriends){
+			opts=["friends", onlyMe ? "only_me" : "no_one", "friends_except", "certain_friends"];
+		}else{
+			opts=["everyone", "friends", "friends_of_friends", onlyMe ? "only_me" : "no_one", "everyone_except", "certain_friends"];
+		}
+		for(var opt of opts){
 			var li;
 			menuList.appendChild(li=ce("li", {}, [lang("privacy_value_"+opt)]));
 			li.dataset.act=opt;
@@ -82,9 +88,9 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean){
 			loadFriendsForBoxes(()=>{
 				new PrivacyFriendChoiceBox(lang("select_friends_title"), setValue.bind(this), previousValue).show();
 			});
-		}else if(id=="everyone_except"){
+		}else if(id=="everyone_except" || id=="friends_except"){
 			loadFriendsForBoxes(()=>{
-				new ExtendedPrivacyBox(setValue.bind(this), previousValue).show();
+				new ExtendedPrivacyBox(setValue.bind(this), previousValue, onlyFriends).show();
 			});
 		}else{
 			var rule:string;
@@ -112,7 +118,7 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean){
 	}
 	var selectedItem:string;
 	if(previousValue.xu.length){
-		selectedItem="everyone_except";
+		selectedItem=onlyFriends ? "friends_except" : "everyone_except";
 	}else{
 		switch(previousValue.r){
 			case "e":
@@ -162,7 +168,7 @@ class ExtendedPrivacyBox extends Box{
 	private denyFriendsField:HTMLElement;
 	private rule:string;
 
-	public constructor(callback:{(v:PrivacySetting):void}, currentValue:PrivacySetting){
+	public constructor(callback:{(v:PrivacySetting):void}, currentValue:PrivacySetting, onlyFriends:boolean){
 		super(lang("privacy_settings_title"), [lang("save"), lang("cancel")], (idx)=>{
 			if(idx==0){
 				var allow:number[]=[];
@@ -203,12 +209,19 @@ class ExtendedPrivacyBox extends Box{
 		this.allowedLink.onclick=(ev)=>{
 			this.menu.show();
 		};
-		this.menu.addItems([
-			{id: "e", title: lang("privacy_value_to_everyone")},
-			{id: "f", title: lang("privacy_value_to_friends")},
-			{id: "ff", title: lang("privacy_value_to_friends_of_friends")},
-			{id: "n", title: lang("privacy_value_to_certain_friends")}
-		]);
+		if(onlyFriends){
+			this.menu.addItems([
+				{id: "f", title: lang("privacy_value_to_friends")},
+				{id: "n", title: lang("privacy_value_to_certain_friends")}
+			]);
+		}else{
+			this.menu.addItems([
+				{id: "e", title: lang("privacy_value_to_everyone")},
+				{id: "f", title: lang("privacy_value_to_friends")},
+				{id: "ff", title: lang("privacy_value_to_friends_of_friends")},
+				{id: "n", title: lang("privacy_value_to_certain_friends")}
+			]);
+		}
 
 		for(var friend of friendListForPrivacy){
 			this.friends.push({
