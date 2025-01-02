@@ -228,12 +228,12 @@ public class SearchController{
 			case ForeignUser user -> {
 				if(user.isServiceActor)
 					throw new RemoteObjectFetchException(RemoteObjectFetchException.ErrorType.UNSUPPORTED_OBJECT_TYPE, uri);
-				context.getObjectLinkResolver().storeOrUpdateRemoteObject(user);
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(user, user);
 				yield user;
 			}
 			case ForeignGroup group -> {
 				group.storeDependencies(context);
-				context.getObjectLinkResolver().storeOrUpdateRemoteObject(group);
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(group, group);
 				yield group;
 			}
 			case NoteOrQuestion post -> {
@@ -252,7 +252,7 @@ public class SearchController{
 						}
 					}
 					context.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-					context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
+					context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
 					try{
 						context.getActivityPubWorker().fetchAllReplies(nativePost).get(30, TimeUnit.SECONDS);
 					}catch(Throwable x){
@@ -320,7 +320,7 @@ public class SearchController{
 				PhotoAlbum album=null;
 				try{
 					album=apAlbum.asNativePhotoAlbum(context);
-					context.getObjectLinkResolver().storeOrUpdateRemoteObject(album);
+					context.getObjectLinkResolver().storeOrUpdateRemoteObject(album, apAlbum);
 					context.getActivityPubWorker().fetchPhotoAlbumContents(apAlbum, album).get(30, TimeUnit.SECONDS);
 					yield album;
 				}catch(FederationException | ExecutionException x){

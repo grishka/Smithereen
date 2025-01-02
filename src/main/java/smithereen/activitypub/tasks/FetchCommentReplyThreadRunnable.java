@@ -70,7 +70,7 @@ public class FetchCommentReplyThreadRunnable implements Callable<List<CommentRep
 			}
 			if(p instanceof Comment comment)
 				context.getWallController().loadAndPreprocessRemotePostMentions(comment, (NoteOrQuestion) obj);
-			context.getObjectLinkResolver().storeOrUpdateRemoteObject(p);
+			context.getObjectLinkResolver().storeOrUpdateRemoteObject(p, obj);
 			realThread.add(p);
 		}
 		LOG.debug("Done fetching parent thread for object {}", topLevel.activityPubID);

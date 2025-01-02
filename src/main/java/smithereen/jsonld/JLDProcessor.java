@@ -114,12 +114,17 @@ public class JLDProcessor{
 		lc.add("photo", idAndTypeObject("sm:photo", "@id"));
 		lc.add("action", idAndTypeObject("sm:action", "@id"));
 		addSmAlias(lc, "AvatarUpdate");
+		addSmAlias(lc, "TaggedPerson");
+		lc.add("rect", idAndContainerObject("sm:rect", "@list"));
+		addSmAlias(lc, "approved");
 		// privacy settings keys
 		lc.addProperty("wallPosting", "sm:wallPosting");
 		lc.addProperty("wallPostVisibility", "sm:wallPostVisibility");
 		lc.addProperty("commenting", "sm:commenting");
 		lc.addProperty("groupInvitations", "sm:groupInvitations");
 		lc.addProperty("directMessages", "sm:directMessages");
+		addSmAlias(lc, "photoTagging");
+		addSmAlias(lc, "photoTagList");
 		// profile fields
 		lc.addProperty("activities", "sm:activities");
 		lc.addProperty("interests", "sm:interests");
@@ -138,8 +143,7 @@ public class JLDProcessor{
 		lc.addProperty("hometown", "sm:hometown");
 		lc.add("relationshipStatus", idAndTypeObject("sm:relationshipStatus", "@id"));
 		lc.add("relationshipPartner", idAndTypeObject("sm:relationshipPartner", "@id"));
-		addSmAlias(lc, "photoTagging");
-		addSmAlias(lc, "photoTagList");
+		lc.add("taggedPhotos", idAndTypeObject("sm:taggedPhotos", "@id"));
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

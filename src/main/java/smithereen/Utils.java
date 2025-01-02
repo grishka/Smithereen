@@ -66,6 +66,7 @@ import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
 import smithereen.text.TextProcessor;
+import smithereen.util.PublicSuffixList;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.WebDeltaResponse;
@@ -917,6 +918,10 @@ public class Utils{
 
 	public static String decodeFourCC(int code){
 		return new String(new char[]{(char)((code >> 24) & 0xFF), (char)((code >> 16) & 0xFF), (char)((code >> 8) & 0xFF), (char)(code & 0xFF)});
+	}
+
+	public static boolean uriHostMatches(URI a, URI b){
+		return a.getHost().equalsIgnoreCase(b.getHost()) || PublicSuffixList.isSameRegisteredDomain(a.getHost(), b.getHost());
 	}
 
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}

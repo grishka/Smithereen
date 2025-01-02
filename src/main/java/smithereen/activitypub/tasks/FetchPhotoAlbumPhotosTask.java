@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -18,6 +19,7 @@ import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.controllers.PhotosController;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.storage.utils.Pair;
 
 public class FetchPhotoAlbumPhotosTask extends ForwardPaginatingCollectionTask{
 	private static final Logger LOG=LoggerFactory.getLogger(FetchPhotoAlbumPhotosTask.class);
@@ -43,7 +45,7 @@ public class FetchPhotoAlbumPhotosTask extends ForwardPaginatingCollectionTask{
 			long newCoverID=context.getPhotosController().getPhotoIdByActivityPubId(album.preview.link);
 			if(newCoverID!=0 && newCoverID!=nativeAlbum.coverID){
 				nativeAlbum.coverID=newCoverID;
-				context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativeAlbum);
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativeAlbum, album);
 			}
 		}
 		PhotoAlbum finalAlbum=context.getPhotosController().getAlbumIgnoringPrivacy(nativeAlbum.id);
@@ -58,6 +60,7 @@ public class FetchPhotoAlbumPhotosTask extends ForwardPaginatingCollectionTask{
 	@Override
 	protected void doOneCollectionPage(CollectionPage page){
 		try{
+			ArrayList<Pair<Photo, ActivityPubPhoto>> photos=new ArrayList<>();
 			for(LinkOrObject lo:page.items){
 				ActivityPubPhoto photo;
 				if(lo.link!=null){
@@ -69,8 +72,11 @@ public class FetchPhotoAlbumPhotosTask extends ForwardPaginatingCollectionTask{
 					continue;
 				}
 				Photo nPhoto=photo.asNativePhoto(context);
-				context.getObjectLinkResolver().storeOrUpdateRemoteObject(nPhoto);
+				photos.add(new Pair<>(nPhoto, photo));
 				seenPhotos.add(nPhoto.id);
+			}
+			if(!photos.isEmpty()){
+				context.getPhotosController().putOrUpdateForeignPhotos(photos);
 			}
 		}catch(Exception x){
 			LOG.warn("Error processing photo album page", x);

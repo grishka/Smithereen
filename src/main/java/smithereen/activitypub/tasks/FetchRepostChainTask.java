@@ -38,6 +38,7 @@ public class FetchRepostChainTask implements Callable<List<Post>>{
 		try{
 			HashSet<URI> seenPostIDs=new HashSet<>();
 			ArrayList<Post> repostChain=new ArrayList<>();
+			HashMap<URI, NoteOrQuestion> origObjects=new HashMap<>();
 			URI nextUri=topLevel.getQuoteRepostID();
 			int depth=1;
 			while(nextUri!=null && !seenPostIDs.contains(nextUri) && depth<ActivityPubWorker.MAX_REPOST_DEPTH){
@@ -64,6 +65,7 @@ public class FetchRepostChainTask implements Callable<List<Post>>{
 					Post nativePost=post.asNativePost(context);
 					context.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 					repostChain.add(nativePost);
+					origObjects.put(post.activityPubID, post);
 				}catch(ObjectNotFoundException x){
 					LOG.debug("Failed to fetch a complete repost chain for {}, failed at {}, stopping at depth {}", topLevel.activityPubID, nextUri, depth, x);
 					break;
@@ -73,7 +75,7 @@ public class FetchRepostChainTask implements Callable<List<Post>>{
 			for(int i=repostChain.size()-1;i>=0;i--){
 				Post post=repostChain.get(i);
 				if(post.id==0)
-					context.getObjectLinkResolver().storeOrUpdateRemoteObject(post);
+					context.getObjectLinkResolver().storeOrUpdateRemoteObject(post, origObjects.get(post.getActivityPubID()));
 				if(i==0)
 					break;
 				Post prevPost=repostChain.get(i-1);

@@ -45,6 +45,7 @@ import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
+import spark.Request;
 import spark.utils.StringUtils;
 
 public class PrivacyController{
@@ -216,6 +217,17 @@ public class PrivacyController{
 			throw new InternalServerErrorException(x);
 		}
 		return false;
+	}
+
+	public void enforceUserPrivacyForRemoteServer(Request req, User owner, PrivacySetting setting){
+		if(setting.isFullyPublic())
+			return;
+		if(setting.isFullyPrivate())
+			throw new UserActionNotAllowedException();
+
+		String domain=ActivityPub.getRequesterDomain(req);
+		if(!checkUserPrivacyForRemoteServer(domain, owner, setting))
+			throw new UserActionNotAllowedException();
 	}
 
 	public void enforceContentPrivacyForActivityPub(spark.Request req, OwnedContentObject obj){

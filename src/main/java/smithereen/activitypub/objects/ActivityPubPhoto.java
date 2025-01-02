@@ -3,8 +3,12 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonObject;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -16,6 +20,7 @@ import smithereen.model.User;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoMetadata;
+import smithereen.model.photos.PhotoTag;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
@@ -79,6 +84,37 @@ public class ActivityPubPhoto extends ActivityPubObject{
 		image.height=photo.getHeight();
 		image.blurHash=photo.getBlurHash();
 		p.image=List.of(image);
+
+		List<PhotoTag> tags=context.getPhotosController().getTagsForPhoto(photo.id);
+		if(!tags.isEmpty()){
+			HashSet<Integer> needUsers=new HashSet<>();
+			for(PhotoTag pt:tags){
+				needUsers.add(pt.placerID());
+				if(pt.userID()!=0 && pt.approved()){
+					needUsers.add(pt.userID());
+				}
+			}
+			Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
+			p.tag=new ArrayList<>();
+			for(PhotoTag pt:tags){
+				if(!users.containsKey(pt.placerID()))
+					continue;
+				ActivityPubTaggedPerson tag=new ActivityPubTaggedPerson();
+				tag.name=pt.name();
+				tag.published=pt.createdAt();
+				tag.rect=pt.rect();
+				tag.approved=pt.approved();
+				tag.attributedTo=users.get(pt.placerID()).activityPubID;
+				if(pt.userID()!=0 && pt.approved() && users.containsKey(pt.userID())){
+					tag.href=users.get(pt.userID()).activityPubID;
+				}
+				if(pt.apID()!=null)
+					tag.activityPubID=pt.apID();
+				else
+					tag.activityPubID=new UriBuilder(p.activityPubID).fragment("tag"+pt.id()).build();
+				p.tag.add(tag);
+			}
+		}
 
 		return p;
 	}

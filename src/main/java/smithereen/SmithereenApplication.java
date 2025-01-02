@@ -509,6 +509,7 @@ public class SmithereenApplication{
 			getActivityPubCollection("/albums", 100, ActivityPubRoutes::userAlbums);
 			get("/albums", PhotosRoutes::userAlbums);
 			get("/allPhotos", PhotosRoutes::allUserPhotos);
+			getActivityPubCollection("/tagged", 100, ActivityPubRoutes::userTaggedPhotos);
 			get("/tagged", PhotosRoutes::userTaggedPhotos);
 		});
 
@@ -854,7 +855,7 @@ public class SmithereenApplication{
 				if(req.headers("signature")!=null){
 					try{
 						Actor requester=ActivityPub.verifyHttpSignature(req, null);
-						context(req).getObjectLinkResolver().storeOrUpdateRemoteObject(requester);
+						context(req).getObjectLinkResolver().storeOrUpdateRemoteObject(requester, requester);
 						String requesterDomain=requester.domain;
 						LOG.trace("Requester domain for {} is {}", req.pathInfo(), requesterDomain);
 						return requesterDomain;

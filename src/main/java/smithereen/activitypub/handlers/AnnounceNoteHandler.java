@@ -25,7 +25,7 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 			if(parent!=null){
 				Post nativePost=post.asNativePost(context.appContext);
 				context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
+				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
 				doHandle(nativePost, actor, activity, context);
 			}else{
 				context.appContext.getActivityPubWorker().fetchWallReplyThreadAndThen(post, thread->onReplyThreadDone(thread, actor, activity, context));
@@ -45,7 +45,7 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 				}
 			}
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
+			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
 			doHandle(nativePost, actor, activity, context);
 			context.appContext.getActivityPubWorker().fetchAllReplies(nativePost);
 		}

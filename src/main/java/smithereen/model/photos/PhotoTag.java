@@ -1,13 +1,15 @@
 package smithereen.model.photos;
 
+import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 
 import smithereen.storage.DatabaseUtils;
 
-public record PhotoTag(long id, long photoID, int placerID, int userID, String name, Instant createdAt, boolean approved, ImageRect rect){
+public record PhotoTag(long id, long photoID, int placerID, int userID, String name, Instant createdAt, boolean approved, ImageRect rect, URI apID){
 	public static PhotoTag fromResultSet(ResultSet res) throws SQLException{
+		String apID=res.getString("ap_id");
 		return new PhotoTag(
 				res.getLong("id"),
 				res.getLong("photo_id"),
@@ -21,7 +23,8 @@ public record PhotoTag(long id, long photoID, int placerID, int userID, String n
 						res.getFloat("y1"),
 						res.getFloat("x2"),
 						res.getFloat("y2")
-				)
+				),
+				apID==null ? null : URI.create(apID)
 		);
 	}
 }

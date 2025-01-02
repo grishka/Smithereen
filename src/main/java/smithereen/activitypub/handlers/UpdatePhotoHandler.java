@@ -27,7 +27,7 @@ public class UpdatePhotoHandler extends ActivityTypeHandler<ForeignUser, Update,
 					throw new BadRequestException("Use Move{Photo} to move photos between albums");
 			}catch(ObjectNotFoundException ignore){}
 		}
-		context.appContext.getPhotosController().putOrUpdateForeignPhoto(photo);
+		context.appContext.getPhotosController().putOrUpdateForeignPhoto(photo, object);
 		if(photo.ownerID<0){
 			Group owner=context.appContext.getGroupsController().getGroupOrThrow(-photo.ownerID);
 			if(!(owner instanceof ForeignGroup)){

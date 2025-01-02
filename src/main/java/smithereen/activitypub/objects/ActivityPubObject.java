@@ -594,6 +594,7 @@ public abstract class ActivityPubObject{
 			case "PropertyValue" -> new PropertyValue();
 			case "Event" -> new Event();
 			case "Photo" -> new ActivityPubPhoto();
+			case "TaggedPerson" -> new ActivityPubTaggedPerson();
 
 			// Collections
 			case "Collection" -> new ActivityPubCollection(false);

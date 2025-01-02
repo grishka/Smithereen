@@ -309,6 +309,8 @@ public class ForeignUser extends User implements ForeignActor{
 
 		photoAlbums=tryParseURL(optString(obj, "photoAlbums"));
 		ensureHostMatchesID(photoAlbums, "photoAlbums");
+		taggedPhotos=tryParseURL(optString(obj, "taggedPhotos"));
+		ensureHostMatchesID(taggedPhotos, "taggedPhotos");
 
 		return this;
 	}

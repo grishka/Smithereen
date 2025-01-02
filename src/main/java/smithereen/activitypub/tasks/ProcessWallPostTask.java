@@ -47,7 +47,7 @@ public class ProcessWallPostTask extends NoResultCallable{
 				}
 			}
 			context.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-			context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
+			context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
 			apw.submitTask(new FetchAllWallRepliesTask(apw, context, fetchingAllReplies, nativePost)).get();
 		}catch(Exception x){
 			LOG.debug("Error processing post {}", post.activityPubID, x);

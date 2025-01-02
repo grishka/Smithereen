@@ -37,6 +37,6 @@ public class AddPhotoHandler extends ActivityTypeHandler<Actor, Add, ActivityPub
 			throw new BadRequestException("User-owned albums can only contain photos attributedTo their owners");
 
 		Photo photo=object.asNativePhoto(context.appContext);
-		context.appContext.getPhotosController().putOrUpdateForeignPhoto(photo);
+		context.appContext.getPhotosController().putOrUpdateForeignPhoto(photo, object);
 	}
 }

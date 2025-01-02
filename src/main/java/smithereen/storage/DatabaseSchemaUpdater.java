@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=58;
+	public static final int SCHEMA_VERSION=59;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -837,6 +837,7 @@ public class DatabaseSchemaUpdater{
 						  CONSTRAINT `photo_tags_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 						) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4;""");
 			}
+			case 59 -> conn.createStatement().execute("ALTER TABLE photo_tags ADD ap_id varchar(300) CHARACTER SET ascii DEFAULT NULL, ADD UNIQUE KEY ap_id (ap_id)");
 		}
 	}
 

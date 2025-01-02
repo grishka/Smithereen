@@ -72,7 +72,7 @@ public class FetchWallReplyThreadRunnable implements Callable<List<Post>>{
 				}
 			}
 			context.getWallController().loadAndPreprocessRemotePostMentions(p, noq);
-			context.getObjectLinkResolver().storeOrUpdateRemoteObject(p);
+			context.getObjectLinkResolver().storeOrUpdateRemoteObject(p, noq);
 			context.getNotificationsController().createNotificationsForObject(p);
 			realThread.add(p);
 			parent=p;

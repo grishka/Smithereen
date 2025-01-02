@@ -469,6 +469,9 @@ public class User extends Actor{
 		serializerContext.addAlias("manuallyApprovesFollowers", "as:manuallyApprovesFollowers");
 		obj.addProperty("manuallyApprovesFollowers", false);
 
+		serializerContext.addSmIdType("taggedPhotos");
+		obj.addProperty("taggedPhotos", getTaggedPhotosURL().toString());
+
 		return obj;
 	}
 

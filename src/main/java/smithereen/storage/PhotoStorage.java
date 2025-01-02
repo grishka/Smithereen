@@ -623,7 +623,7 @@ public class PhotoStorage{
 		}
 	}
 
-	public static long createPhotoTag(long photoID, int placerID, int userID, String name, boolean approved, ImageRect rect) throws SQLException{
+	public static long createPhotoTag(long photoID, int placerID, int userID, String name, boolean approved, ImageRect rect, URI apID) throws SQLException{
 		return new SQLQueryBuilder()
 				.insertInto("photo_tags")
 				.value("photo_id", photoID)
@@ -635,6 +635,7 @@ public class PhotoStorage{
 				.value("y1", rect.y1())
 				.value("x2", rect.x2())
 				.value("y2", rect.y2())
+				.value("ap_id", apID==null ? null : apID.toString())
 				.executeAndGetIDLong();
 	}
 
@@ -677,6 +678,14 @@ public class PhotoStorage{
 		new SQLQueryBuilder()
 				.deleteFrom("photo_tags")
 				.where("id=? AND photo_id=?", tagID, photoID)
+				.executeNoResult();
+	}
+
+	public static void deletePhotoTags(long photoID, Collection<Long> tagIDs) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("photo_tags")
+				.whereIn("id", tagIDs)
+				.andWhere("photo_id=?", photoID)
 				.executeNoResult();
 	}
 
@@ -727,5 +736,16 @@ public class PhotoStorage{
 						.executeNoResult();
 			}
 		}
+	}
+
+	public static Set<Long> getUserTaggedPhotosInSet(int userID, Set<Long> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photo_tags")
+				.columns("photo_id")
+				.whereIn("photo_id", ids)
+				.andWhere("user_id=? AND approved=1", userID)
+				.executeAndGetLongStream()
+				.boxed()
+				.collect(Collectors.toSet());
 	}
 }

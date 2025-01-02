@@ -40,7 +40,7 @@ public class CreatePhotoHandler extends ActivityTypeHandler<ForeignUser, Create,
 			throw new UserActionNotAllowedException("Uploads to this album are restricted to group staff");
 		Photo photo=object.asNativePhoto(context.appContext);
 		boolean wasNew=photo.id==0;
-		context.appContext.getPhotosController().putOrUpdateForeignPhoto(photo);
+		context.appContext.getPhotosController().putOrUpdateForeignPhoto(photo, object);
 		if(wasNew){
 			context.appContext.getActivityPubWorker().sendAddPhotoToAlbum(group, photo, album);
 		}

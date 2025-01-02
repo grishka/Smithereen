@@ -24,7 +24,7 @@ public class FlagHandler extends ActivityTypeHandler<Actor, Flag, ActivityPubObj
 		User reporter;
 		if(actor instanceof ForeignUser fu && !fu.isServiceActor){
 			if(fu.id==0){
-				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(fu);
+				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(fu, fu);
 			}
 			reporter=fu;
 		}else{

@@ -33,7 +33,7 @@ public class FetchAndStoreOneGroupMemberTask extends NoResultCallable{
 			if(user.getGroupsURL()!=null)
 				context.getObjectLinkResolver().ensureObjectIsInCollection(user, user.getGroupsURL(), group.activityPubID);
 			if(user.id==0)
-				context.getObjectLinkResolver().storeOrUpdateRemoteObject(user);
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(user, user);
 			context.getGroupsController().joinGroup(group, user, tentative, true);
 		}catch(Exception x){
 			LOG.debug("Error fetching remote user {}", userID, x);

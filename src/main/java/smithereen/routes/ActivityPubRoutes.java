@@ -136,6 +136,7 @@ import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.StatsType;
+import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
@@ -975,6 +976,15 @@ public class ActivityPubRoutes{
 		return groupMembers(req, resp, offset, count, true);
 	}
 
+	public static ActivityPubCollectionPageResponse userTaggedPhotos(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		User user=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		ctx.getPrivacyController().enforceUserPrivacyForRemoteServer(req, user, user.getPrivacySetting(UserPrivacySettingKey.PHOTO_TAG_LIST));
+		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotosIgnoringPrivacy(user, offset, count);
+		Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(photos.list.stream().map(p->p.albumID).collect(Collectors.toSet()));
+		return ActivityPubCollectionPageResponse.forLinksOrObjects(photos.list.stream().map(p->p.apID==null ? new LinkOrObject(ActivityPubPhoto.fromNativePhoto(p, albums.get(p.albumID), ctx)) : new LinkOrObject(p.apID)).toList(), photos.total);
+	}
+
 	public static Object serviceActor(Request req, Response resp){
 		resp.type(ActivityPub.CONTENT_TYPE);
 		return ServiceActor.getInstance().asRootActivityPubObject(context(req), (String)null);
@@ -1063,6 +1073,13 @@ public class ActivityPubRoutes{
 					throw new BadRequestException("Unknown collection ID");
 				}
 			}
+			case "/tagged" -> {
+				if(owner instanceof User u){
+					yield queryUserTaggedPhotosCollection(req, u, items);
+				}else{
+					throw new BadRequestException("Unknown collection ID");
+				}
+			}
 
 			case "/following", "/followers" -> throw new BadRequestException("Querying this collection is not supported");
 			default -> throw new BadRequestException("Unknown collection ID");
@@ -1091,6 +1108,10 @@ public class ActivityPubRoutes{
 
 	private static Collection<URI> queryUserGroupsCollection(Request req, User owner, List<URI> query){
 		return context(req).getGroupsController().getUserGroupsByActivityPubIDs(owner, query).keySet();
+	}
+
+	private static Collection<URI> queryUserTaggedPhotosCollection(Request req, User owner, List<URI> query){
+		return context(req).getPhotosController().getUserTaggedPhotosActivityPubIDs(owner, query);
 	}
 
 	private static boolean verifyHttpDigest(String digestHeader, byte[] bodyData){

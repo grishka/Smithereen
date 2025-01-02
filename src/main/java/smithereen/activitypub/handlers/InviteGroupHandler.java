@@ -33,7 +33,7 @@ public class InviteGroupHandler extends ActivityTypeHandler<ForeignUser, Invite,
 		Utils.ensureUserNotBlocked(actor, user);
 		context.appContext.getPrivacyController().enforceUserPrivacy(actor, user, UserPrivacySettingKey.GROUP_INVITE);
 		if(object.id==0)
-			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(object);
+			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(object, object);
 		context.appContext.getGroupsController().runLocked(()->{
 			Group.MembershipState state=context.appContext.getGroupsController().getUserMembershipState(object, user);
 			if(state!=Group.MembershipState.NONE)

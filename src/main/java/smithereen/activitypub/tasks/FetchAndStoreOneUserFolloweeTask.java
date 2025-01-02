@@ -35,7 +35,7 @@ public class FetchAndStoreOneUserFolloweeTask extends NoResultCallable{
 				if(targetUser.getFriendsURL()!=null)
 					context.getObjectLinkResolver().ensureObjectIsInCollection(targetUser, targetUser.getFriendsURL(), user.activityPubID);
 				if(targetUser.id==0)
-					context.getObjectLinkResolver().storeOrUpdateRemoteObject(targetUser);
+					context.getObjectLinkResolver().storeOrUpdateRemoteObject(targetUser, targetUser);
 				context.getFriendsController().storeFriendship(user, targetUser);
 			}else if(target instanceof ForeignGroup targetGroup){
 				if(targetGroup.isEvent())
@@ -43,7 +43,7 @@ public class FetchAndStoreOneUserFolloweeTask extends NoResultCallable{
 				if(targetGroup.members!=null)
 					context.getObjectLinkResolver().ensureObjectIsInCollection(targetGroup, targetGroup.members, user.activityPubID);
 				if(targetGroup.id==0)
-					context.getObjectLinkResolver().storeOrUpdateRemoteObject(targetGroup);
+					context.getObjectLinkResolver().storeOrUpdateRemoteObject(targetGroup, targetGroup);
 				context.getGroupsController().joinGroup(targetGroup, user, false, true);
 			}
 		}catch(Exception x){

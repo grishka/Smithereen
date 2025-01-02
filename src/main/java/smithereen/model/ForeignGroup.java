@@ -174,7 +174,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 	public void storeDependencies(ApplicationContext context){
 		for(GroupAdmin adm:adminsForActivityPub){
 			if(adm.user instanceof ForeignUser && adm.user.id==0){
-				context.getObjectLinkResolver().storeOrUpdateRemoteObject(adm.user);
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(adm.user, adm.user);
 			}
 		}
 	}

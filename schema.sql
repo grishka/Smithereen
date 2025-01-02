@@ -592,8 +592,10 @@ CREATE TABLE `photo_tags` (
   `y1` float NOT NULL,
   `x2` float NOT NULL,
   `y2` float NOT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `photo_id` (`photo_id`,`user_id`),
+  UNIQUE KEY `ap_id` (`ap_id`),
   KEY `user_id` (`user_id`),
   KEY `approved` (`approved`),
   CONSTRAINT `photo_tags_ibfk_1` FOREIGN KEY (`photo_id`) REFERENCES `photos` (`id`) ON DELETE CASCADE,
@@ -934,4 +936,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-12-18  8:57:07
+-- Dump completed on 2024-12-30  7:31:06

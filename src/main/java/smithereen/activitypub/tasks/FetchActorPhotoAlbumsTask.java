@@ -49,7 +49,7 @@ public class FetchActorPhotoAlbumsTask extends ForwardPaginatingCollectionTask{
 			for(LinkOrObject lo:page.items){
 				if(lo.object instanceof ActivityPubPhotoAlbum album){
 					PhotoAlbum nativeAlbum=album.asNativePhotoAlbum(context);
-					context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativeAlbum);
+					context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativeAlbum, album);
 					seenAlbums.add(nativeAlbum.id);
 					apw.fetchPhotoAlbumContents(album, nativeAlbum).get();
 					i++;

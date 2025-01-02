@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,9 +27,9 @@ import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
+import smithereen.activitypub.objects.ActivityPubTaggedPerson;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionQueryResult;
-import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.ServiceActor;
@@ -192,8 +193,8 @@ public class ObjectLinkResolver{
 						return ensureTypeAndCast(obj, expectedType);
 					}
 					T o=convertToNativeObject(obj, expectedType);
-					if(!bypassCollectionCheck && o instanceof Post post && obj.inReplyTo==null){ // TODO make this a generalized interface OwnedObject or something
-						if(post.ownerID!=post.authorID){
+					if(!bypassCollectionCheck){ // TODO make this a generalized interface OwnedObject or something
+						if(o instanceof Post post && obj.inReplyTo==null && post.ownerID!=post.authorID){
 							Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
 							ensureObjectIsInCollection(owner, owner.getWallURL(), post.getActivityPubID());
 						}
@@ -204,7 +205,7 @@ public class ObjectLinkResolver{
 							throw new ObjectNotFoundException("Post author is suspended on this server");
 					}
 					if(allowStorage)
-						storeOrUpdateRemoteObject(o);
+						storeOrUpdateRemoteObject(o, obj);
 					return o;
 				}catch(IOException x){
 					throw new ObjectNotFoundException("Can't resolve remote object: "+link, x);
@@ -327,7 +328,7 @@ public class ObjectLinkResolver{
 		throw new ObjectNotFoundException("Can't resolve object link locally: "+link);
 	}
 
-	public void storeOrUpdateRemoteObject(Object o){
+	public void storeOrUpdateRemoteObject(Object o, ActivityPubObject origObj){
 		try{
 			switch(o){
 				case ForeignUser fu -> {
@@ -352,7 +353,7 @@ public class ObjectLinkResolver{
 				}
 				case Post p -> PostStorage.putForeignWallPost(p);
 				case PhotoAlbum pa -> context.getPhotosController().putOrUpdateForeignAlbum(pa);
-				case Photo p -> context.getPhotosController().putOrUpdateForeignPhoto(p);
+				case Photo p -> context.getPhotosController().putOrUpdateForeignPhoto(p, (ActivityPubPhoto) origObj);
 				case Comment c -> context.getCommentsController().putOrUpdateForeignComment(c);
 				case null, default -> {}
 			}
@@ -418,15 +419,19 @@ public class ObjectLinkResolver{
 		LOG.debug("Checking whether object {} belongs to collection {} owned by {}", objectID, collectionID, collectionOwner.activityPubID);
 		if(Config.isLocal(collectionID))
 			throw new FederationException(collectionID+" is a local collection. Must submit this object with a Create activity first.");
-		if(collectionOwner.collectionQueryEndpoint==null)
-			return; // There's nothing we can do anyway
-		if(collectionID.getHost().equals(objectID.getHost()))
-			return; // This collection is on the same server as the object. We trust that that server is sane.
-		CollectionQueryResult cqr=ActivityPub.performCollectionQuery(collectionOwner, collectionID, List.of(objectID));
-		List<LinkOrObject> res=cqr.items;
-		if(res.isEmpty() || !objectID.equals(res.get(0).link))
+		if(!performCollectionQuery(collectionOwner, collectionID, objectID))
 			throw new FederationException("Object "+objectID+" is not in collection "+collectionID);
 		LOG.debug("Object {} was confirmed to be contained in {}", objectID, collectionID);
+	}
+
+	public boolean performCollectionQuery(@NotNull Actor collectionOwner, @NotNull URI collectionID, @NotNull URI objectID){
+		if(collectionOwner.collectionQueryEndpoint==null)
+			return true; // There's nothing we can do anyway
+		if(Utils.uriHostMatches(collectionID, objectID))
+			return true; // This collection is on the same server as the object. We trust that that server is sane.
+		CollectionQueryResult cqr=ActivityPub.performCollectionQuery(collectionOwner, collectionID, List.of(objectID));
+		List<LinkOrObject> res=cqr.items;
+		return !res.isEmpty() && objectID.equals(res.getFirst().link);
 	}
 
 	public UsernameResolutionResult resolveUsernameLocally(String username){
@@ -473,6 +478,49 @@ public class ObjectLinkResolver{
 		}catch(ObjectNotFoundException x){
 			LOG.warn("User {} moved to {} but the new URL can't be fetched", user.activityPubID, user.movedToURL, x);
 		}
+	}
+
+	public static ObjectTypeAndID getObjectIdFromLocalURL(URI uri){
+		if(!Config.isLocal(uri))
+			throw new IllegalArgumentException("Not a local URL");
+
+		String path=uri.getPath();
+		Matcher matcher=POSTS.matcher(path);
+		if(matcher.find()){
+			return new ObjectTypeAndID(ObjectType.POST, Integer.parseInt(matcher.group(1)));
+		}
+
+		matcher=USERS.matcher(path);
+		if(matcher.find()){
+			return new ObjectTypeAndID(ObjectType.USER, Integer.parseInt(matcher.group(1)));
+		}
+
+		matcher=GROUPS.matcher(path);
+		if(matcher.find()){
+			return new ObjectTypeAndID(ObjectType.GROUP, Integer.parseInt(matcher.group(1)));
+		}
+
+		matcher=MESSAGES.matcher(path);
+		if(matcher.find()){
+			return new ObjectTypeAndID(ObjectType.MESSAGE, Utils.decodeLong(matcher.group(1)));
+		}
+
+		matcher=ALBUMS.matcher(path);
+		if(matcher.find()){
+			return new ObjectTypeAndID(ObjectType.PHOTO_ALBUM, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO_ALBUM));
+		}
+
+		matcher=PHOTOS.matcher(path);
+		if(matcher.find()){
+			return new ObjectTypeAndID(ObjectType.PHOTO, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO));
+		}
+
+		matcher=COMMENTS.matcher(path);
+		if(matcher.find()){
+			return new ObjectTypeAndID(ObjectType.COMMENT, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT));
+		}
+
+		return null;
 	}
 
 	private record ActorToken(JsonObject token, Instant validUntil){
