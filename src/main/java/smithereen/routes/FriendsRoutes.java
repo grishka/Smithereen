@@ -15,6 +15,7 @@ import smithereen.Utils;
 import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
 import smithereen.model.ForeignUser;
+import smithereen.model.FriendRequest;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -269,8 +270,17 @@ public class FriendsRoutes{
 
 	public static Object incomingFriendRequests(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friend_requests", req);
-		model.paginate(ctx.getFriendsController().getIncomingFriendRequests(self.user, offset(req), 20));
+		PaginatedList<FriendRequest> requests=ctx.getFriendsController().getIncomingFriendRequests(self.user, offset(req), 20);
+		model.paginate(requests);
 		model.with("title", lang(req).get("friend_requests")).with("toolbarTitle", lang(req).get("friends")).with("owner", self.user);
+		if(!isMobile(req)){
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(requests.list.stream().map(r->r.from).toList());
+			model.with("avatarPhotos", userPhotos)
+					.with("avatarPvInfos", userPhotos.values()
+							.stream()
+							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
+					);
+		}
 		return model;
 	}
 

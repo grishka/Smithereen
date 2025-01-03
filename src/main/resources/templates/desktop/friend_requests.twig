@@ -11,7 +11,14 @@
 	<table width="100%" class="friendsRow noBorderSpacing">
 		<tr>
 			<td width="100" valign="top">
-				<a href="{{ req.from.profileURL }}">{{req.from | pictureForAvatar('b')}}</a>
+				{% if avatarPhotos contains req.from.id %}
+				<div class="avaZoomableW">
+					<a href="{{req.from.profileURL}}"{{ profileRel(req.from) }}>{{req.from | pictureForAvatar('b')}}</a>
+					<a href="{{ avatarPhotos[req.from.id].url }}" class="avaZoom ellipsize" data-pv="{{ json(avatarPvInfos[req.from.id]) }}" onclick="return openPhotoViewer(this)"><span class="icon"></span><span>{{ L('view_user_profile_photos') }}</span></a>
+				</div>
+				{% else %}
+				<a href="{{req.from.profileURL}}"{{ profileRel(req.from) }}>{{req.from | pictureForAvatar('b')}}</a>
+				{% endif %}
 			</td>
 			<td class="info" valign="top">
 				<div class="infoInner">
