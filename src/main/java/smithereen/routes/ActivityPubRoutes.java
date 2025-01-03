@@ -1106,6 +1106,8 @@ public class ActivityPubRoutes{
 				}
 			}else if(ObjectLinkResolver.getObjectIdFromLocalURL(collectionID) instanceof ObjectLinkResolver.ObjectTypeAndID(ObjectLinkResolver.ObjectType type, long id)){
 				if(type==ObjectLinkResolver.ObjectType.PHOTO_ALBUM){
+					if(!(owner instanceof Group))
+						throw new BadRequestException("Querying this collection is not supported");
 					PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(id, req);
 					if(album.activityPubID!=null)
 						throw new ObjectNotFoundException();
