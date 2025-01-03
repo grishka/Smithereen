@@ -88,6 +88,7 @@ import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.model.photos.PhotoTag;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -817,7 +818,68 @@ public class ActivityPubWorker{
 		Remove remove=new Remove()
 				.withActorAndObjectLinks(actor, photo)
 				.withActorFragmentID("deletePhoto"+photo.getIdString());
+		ActivityPubPhotoAlbum target=new ActivityPubPhotoAlbum();
+		target.activityPubID=album.getActivityPubID();
+		target.attributedTo=actor.activityPubID;
+		remove.target=new LinkOrObject(target);
 		sendActivityForPhoto(actor, album, remove);
+	}
+
+	public void sendApprovePhotoTag(User self, Photo photo, PhotoAlbum album, PhotoTag tag, User placer, Actor photoOwner){
+		Add add=new Add();
+		if(photo.apID!=null)
+			add.withActorAndObjectLinks(self, photo);
+		else
+			add.withActorLinkAndObject(self, ActivityPubPhoto.fromNativePhoto(photo, album, context));
+		add.activityPubID=new UriBuilder(self.activityPubID).fragment("acceptPhotoTag"+tag.id()).build();
+		ActivityPubCollection target=new ActivityPubCollection(false);
+		target.activityPubID=self.getTaggedPhotosURL();
+		target.attributedTo=self.activityPubID;
+		add.target=new LinkOrObject(target);
+		HashSet<URI> extraInboxes=new HashSet<>();
+		if(placer instanceof ForeignUser)
+			extraInboxes.add(actorInbox(placer));
+		if(photoOwner instanceof ForeignUser || photoOwner instanceof ForeignGroup)
+			extraInboxes.add(actorInbox(photoOwner));
+		submitActivityForFollowers(add, self, Server.Feature.PHOTO_ALBUMS, extraInboxes);
+	}
+
+	public void sendRejectPhotoTag(User self, Photo photo, PhotoAlbum album, PhotoTag tag, User placer, Actor photoOwner){
+		Reject reject=new Reject();
+		if(photo.apID!=null)
+			reject.withActorAndObjectLinks(self, photo);
+		else
+			reject.withActorLinkAndObject(self, ActivityPubPhoto.fromNativePhoto(photo, album, context));
+		reject.activityPubID=new UriBuilder(self.activityPubID).fragment("rejectPhotoTag"+tag.id()).build();
+		ActivityPubCollection target=new ActivityPubCollection(false);
+		target.activityPubID=self.getTaggedPhotosURL();
+		target.attributedTo=self.activityPubID;
+		reject.target=new LinkOrObject(target);
+		HashSet<URI> inboxes=new HashSet<>();
+		if(placer instanceof ForeignUser)
+			inboxes.add(actorInbox(placer));
+		if(photoOwner instanceof ForeignUser || photoOwner instanceof ForeignGroup)
+			inboxes.add(actorInbox(photoOwner));
+		submitActivity(reject, self, inboxes);
+	}
+
+	public void sendDeletePhotoTag(User self, Photo photo, PhotoAlbum album, PhotoTag tag, User placer, Actor photoOwner){
+		Remove remove=new Remove();
+		if(photo.apID!=null)
+			remove.withActorAndObjectLinks(self, photo);
+		else
+			remove.withActorLinkAndObject(self, ActivityPubPhoto.fromNativePhoto(photo, album, context));
+		remove.activityPubID=new UriBuilder(self.activityPubID).fragment("deletePhotoTag"+tag.id()).build();
+		ActivityPubCollection target=new ActivityPubCollection(false);
+		target.activityPubID=self.getTaggedPhotosURL();
+		target.attributedTo=self.activityPubID;
+		remove.target=new LinkOrObject(target);
+		HashSet<URI> extraInboxes=new HashSet<>();
+		if(placer instanceof ForeignUser)
+			extraInboxes.add(actorInbox(placer));
+		if(photoOwner instanceof ForeignUser || photoOwner instanceof ForeignGroup)
+			extraInboxes.add(actorInbox(photoOwner));
+		submitActivityForFollowers(remove, self, Server.Feature.PHOTO_ALBUMS, extraInboxes);
 	}
 
 	// endregion
@@ -1008,9 +1070,12 @@ public class ActivityPubWorker{
 		}
 	}
 
-	public void submitActivityForFollowers(Activity activity, User actor, Server.Feature requiredFeature){
+	public void submitActivityForFollowers(Activity activity, User actor, Server.Feature requiredFeature, Set<URI> extraInboxes){
 		try{
-			submitActivity(activity, actor, UserStorage.getFollowerInboxes(actor.id), requiredFeature);
+			HashSet<URI> inboxes=new HashSet<>();
+			inboxes.addAll(UserStorage.getFollowerInboxes(actor.id));
+			inboxes.addAll(extraInboxes);
+			submitActivity(activity, actor, inboxes, requiredFeature);
 		}catch(SQLException x){
 			LOG.error("Error getting follower inboxes for sending {} on behalf of user {}", activity.getType(), actor.id, x);
 		}

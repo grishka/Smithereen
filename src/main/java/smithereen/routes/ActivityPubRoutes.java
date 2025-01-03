@@ -1,7 +1,6 @@
 package smithereen.routes;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
 import org.jetbrains.annotations.NotNull;
@@ -9,7 +8,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.MessageDigest;
@@ -23,7 +21,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
@@ -71,9 +68,10 @@ import smithereen.activitypub.handlers.RejectFollowGroupHandler;
 import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectInviteGroupHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
+import smithereen.activitypub.handlers.RejectPhotoHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
 import smithereen.activitypub.handlers.RemoveNoteHandler;
-import smithereen.activitypub.handlers.RemovePhotoHandler;
+import smithereen.activitypub.handlers.GroupRemovePhotoHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
@@ -86,6 +84,7 @@ import smithereen.activitypub.handlers.UpdateNoteHandler;
 import smithereen.activitypub.handlers.UpdatePersonHandler;
 import smithereen.activitypub.handlers.UpdatePhotoAlbumHandler;
 import smithereen.activitypub.handlers.UpdatePhotoHandler;
+import smithereen.activitypub.handlers.UserRemovePhotoHandler;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -142,7 +141,6 @@ import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
-import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.exceptions.BadRequestException;
@@ -232,7 +230,9 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Create.class, ActivityPubPhoto.class, new CreatePhotoHandler());
 		registerActivityHandler(ForeignUser.class, Update.class, ActivityPubPhoto.class, new UpdatePhotoHandler());
 		registerActivityHandler(ForeignUser.class, Delete.class, ActivityPubPhoto.class, new DeletePhotoHandler());
-		registerActivityHandler(ForeignGroup.class, Remove.class, ActivityPubPhoto.class, new RemovePhotoHandler());
+		registerActivityHandler(ForeignGroup.class, Remove.class, ActivityPubPhoto.class, new GroupRemovePhotoHandler());
+		registerActivityHandler(ForeignUser.class, Remove.class, ActivityPubPhoto.class, new UserRemovePhotoHandler());
+		registerActivityHandler(ForeignUser.class, Reject.class, ActivityPubPhoto.class, new RejectPhotoHandler());
 
 		// More general handlers at the end so they match last
 		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubObject.class, new LikeObjectHandler());

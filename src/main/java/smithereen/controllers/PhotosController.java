@@ -1302,7 +1302,7 @@ public class PhotosController{
 				if(un!=null)
 					un.incNewPhotoTagCount(1);
 			}
-			// TODO federate
+			context.getActivityPubWorker().sendUpdateAlbumPhoto(context.getWallController().getContentAuthorAndOwner(photo).author(), photo, getAlbumIgnoringPrivacy(photo.albumID));
 			if(user!=null && user.id==self.id){
 				context.getNewsfeedController().putFriendsFeedEntry(self, photo.id, NewsfeedEntry.Type.PHOTO_TAG);
 			}
@@ -1341,7 +1341,15 @@ public class PhotosController{
 				if(un!=null)
 					un.incNewPhotoTagCount(-1);
 			}
-			// TODO federate
+			User placer=context.getUsersController().getUserOrThrow(tag.placerID());
+			if(tag.approved()){
+				// Tell followers that this photo was removed from the tagged photos collection
+				context.getActivityPubWorker().sendDeletePhotoTag(self, photo, getAlbumIgnoringPrivacy(photo.albumID), tag, placer, context.getWallController().getContentAuthorAndOwner(photo).owner());
+			}else{
+				// This photo wasn't in the tagged photos collection, so just tell the owner and placer that we rejected the tag
+				if(photo.apID!=null)
+					context.getActivityPubWorker().sendRejectPhotoTag(self, photo, getAlbumIgnoringPrivacy(photo.albumID), tag, placer, context.getWallController().getContentAuthorAndOwner(photo).owner());
+			}
 			if(tag.userID()!=0 && tag.approved()){
 				try{
 					User user=context.getUsersController().getUserOrThrow(tag.userID());
@@ -1415,7 +1423,9 @@ public class PhotosController{
 			UserNotifications un=NotificationsStorage.getNotificationsFromCache(self.id);
 			if(un!=null)
 				un.incNewPhotoTagCount(-1);
-			// TODO federate
+			User placer=context.getUsersController().getUserOrThrow(tag.placerID());
+			if(photo.apID!=null)
+				context.getActivityPubWorker().sendApprovePhotoTag(self, photo, getAlbumIgnoringPrivacy(photo.albumID), tag, placer, context.getWallController().getContentAuthorAndOwner(photo).owner());
 			context.getNewsfeedController().putFriendsFeedEntry(self, photo.id, NewsfeedEntry.Type.PHOTO_TAG);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
