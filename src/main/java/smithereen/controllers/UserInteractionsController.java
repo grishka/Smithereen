@@ -47,7 +47,10 @@ public class UserInteractionsController{
 
 	public PaginatedList<User> getLikesForObject(LikeableContentObject object, User self, int offset, int count){
 		try{
-			PaginatedList<Integer> likeIDs=LikeStorage.getLikes(object.getObjectID(), object.getLikeObjectType(), self!=null ? self.id : 0, offset, count);
+			long id=object.getObjectID();
+			if(object instanceof Post post)
+				id=post.getIDForInteractions();
+			PaginatedList<Integer> likeIDs=LikeStorage.getLikes(id, object.getLikeObjectType(), self!=null ? self.id : 0, offset, count);
 			List<User> users=UserStorage.getByIdAsList(likeIDs.list);
 			return new PaginatedList<>(likeIDs, users);
 		}catch(SQLException x){
