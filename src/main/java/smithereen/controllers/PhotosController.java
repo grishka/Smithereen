@@ -1431,4 +1431,30 @@ public class PhotosController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public Set<URI> getAlbumPhotosActivityPubIDs(PhotoAlbum album, Collection<URI> ids){
+		Map<Long, URI> photoIDs=new HashMap<>();
+		ids.stream()
+				.filter(Config::isLocal)
+				.map(id->new Pair<>(id, ObjectLinkResolver.getObjectIdFromLocalURL(id)))
+				.filter(oi->oi.second()!=null && oi.second().type()==ObjectLinkResolver.ObjectType.PHOTO)
+				.forEach(p->photoIDs.put(p.second().id(), p.first()));
+		Set<URI> foreignPhotoIDs=ids.stream()
+				.filter(u->!Config.isLocal(u))
+				.collect(Collectors.toSet());
+		if(!foreignPhotoIDs.isEmpty()){
+			getPhotoIdsByActivityPubIds(foreignPhotoIDs)
+					.forEach((key, value)->photoIDs.put(value, key));
+		}
+		if(photoIDs.isEmpty())
+			return Set.of();
+		try{
+			return PhotoStorage.getAlbumPhotosInSet(album.id, photoIDs.keySet())
+					.stream()
+					.map(photoIDs::get)
+					.collect(Collectors.toSet());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

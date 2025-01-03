@@ -369,6 +369,27 @@ public class CommentStorage{
 		}
 	}
 
+	public static Set<URI> getPhotoAlbumForeignComments(long albumID, Set<URI> filter) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("comments")
+				.columns("ap_id")
+				.whereIn("ap_id", filter.stream().map(Object::toString).collect(Collectors.toSet()))
+				.andWhere("parent_object_type=? AND parent_object_id IN (SELECT id FROM photos WHERE album_id=?)", CommentableObjectType.PHOTO, albumID)
+				.executeAsStream(r->URI.create(r.getString(1)))
+				.collect(Collectors.toSet());
+	}
+
+	public static Set<Long> getPhotoAlbumLocalComments(long albumID, Set<Long> filter) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("comments")
+				.columns("id")
+				.whereIn("id", filter)
+				.andWhere("parent_object_type=? AND parent_object_id IN (SELECT id FROM photos WHERE album_id=?)", CommentableObjectType.PHOTO, albumID)
+				.executeAndGetLongStream()
+				.boxed()
+				.collect(Collectors.toSet());
+	}
+
 	public static PaginatedList<Comment> getCommentReplies(CommentParentObjectID parentID, List<Long> replyKey, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			SQLQueryBuilder b=new SQLQueryBuilder(conn)

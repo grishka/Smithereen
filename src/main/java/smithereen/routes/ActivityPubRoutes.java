@@ -116,6 +116,7 @@ import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.RemoteObjectFetchException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
@@ -1018,6 +1019,7 @@ public class ActivityPubRoutes{
 	}
 
 	private static Object collectionQuery(Actor owner, Request req, Response resp){
+		ApplicationContext ctx=context(req);
 		URI collectionID;
 		try{
 			String _id=req.queryParams("collection");
@@ -1032,8 +1034,6 @@ public class ActivityPubRoutes{
 			throw new BadRequestException("Collection ID has wrong hostname, expected "+Config.domain);
 		String path=collectionID.getPath();
 		String actorPrefix=owner.getTypeAndIdForURL();
-		if(!path.startsWith(actorPrefix))
-			throw new BadRequestException("Collection path must start with actor prefix ("+actorPrefix+")");
 
 		if(req.queryParams("item")==null)
 			throw new BadRequestException("At least one `item` is required");
@@ -1049,41 +1049,76 @@ public class ActivityPubRoutes{
 			}
 		}).limit(100).toList();
 
-		String collectionPath=path.substring(actorPrefix.length());
-		Collection<URI> filteredItems=switch(collectionPath){
-			case "/wall" -> queryWallCollection(req, owner, items);
-			case "/friends" -> {
-				if(owner instanceof User u){
-					yield queryUserFriendsCollection(req, u, items);
-				}else{
-					throw new BadRequestException("Unknown collection ID");
+		Collection<URI> filteredItems;
+		if(path.startsWith(actorPrefix)){
+			String collectionPath=path.substring(actorPrefix.length());
+			filteredItems=switch(collectionPath){
+				case "/wall" -> queryWallCollection(req, owner, items);
+				case "/friends" -> {
+					if(owner instanceof User u){
+						yield queryUserFriendsCollection(req, u, items);
+					}else{
+						throw new BadRequestException("Unknown collection ID");
+					}
 				}
-			}
-			case "/groups" -> {
-				if(owner instanceof User u){
-					yield queryUserGroupsCollection(req, u, items);
-				}else{
-					throw new BadRequestException("Unknown collection ID");
+				case "/groups" -> {
+					if(owner instanceof User u){
+						yield queryUserGroupsCollection(req, u, items);
+					}else{
+						throw new BadRequestException("Unknown collection ID");
+					}
 				}
-			}
-			case "/members", "/tentativeMembers" -> {
-				if(owner instanceof Group g){
-					yield queryGroupMembersCollection(req, g, items, "/tentativeMembers".equals(collectionPath));
-				}else{
-					throw new BadRequestException("Unknown collection ID");
+				case "/members", "/tentativeMembers" -> {
+					if(owner instanceof Group g){
+						yield queryGroupMembersCollection(req, g, items, "/tentativeMembers".equals(collectionPath));
+					}else{
+						throw new BadRequestException("Unknown collection ID");
+					}
 				}
-			}
-			case "/tagged" -> {
-				if(owner instanceof User u){
-					yield queryUserTaggedPhotosCollection(req, u, items);
-				}else{
-					throw new BadRequestException("Unknown collection ID");
+				case "/tagged" -> {
+					if(owner instanceof User u){
+						yield queryUserTaggedPhotosCollection(req, u, items);
+					}else{
+						throw new BadRequestException("Unknown collection ID");
+					}
 				}
-			}
 
-			case "/following", "/followers" -> throw new BadRequestException("Querying this collection is not supported");
-			default -> throw new BadRequestException("Unknown collection ID");
-		};
+				case "/following", "/followers" -> throw new BadRequestException("Querying this collection is not supported");
+				default -> throw new BadRequestException("Unknown collection ID");
+			};
+		}else{
+			if(path.endsWith("/comments")){
+				URI parentObjectID=new UriBuilder(collectionID).rawPath(path.substring(0, path.lastIndexOf('/')).substring(1)).build();
+				if(ObjectLinkResolver.getObjectIdFromLocalURL(parentObjectID) instanceof ObjectLinkResolver.ObjectTypeAndID(ObjectLinkResolver.ObjectType type, long id)){
+					filteredItems=switch(type){
+						case PHOTO_ALBUM -> {
+							PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(id, req);
+							if(album.activityPubID!=null)
+								throw new ObjectNotFoundException();
+							if(album.ownerID!=owner.getOwnerID())
+								throw new BadRequestException("This photo album is not owned by this actor");
+							yield ctx.getCommentsController().getPhotoAlbumCommentIDs(album, items);
+						}
+						default -> throw new BadRequestException("Unknown collection ID");
+					};
+				}else{
+					throw new BadRequestException("Unknown collection ID");
+				}
+			}else if(ObjectLinkResolver.getObjectIdFromLocalURL(collectionID) instanceof ObjectLinkResolver.ObjectTypeAndID(ObjectLinkResolver.ObjectType type, long id)){
+				if(type==ObjectLinkResolver.ObjectType.PHOTO_ALBUM){
+					PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(id, req);
+					if(album.activityPubID!=null)
+						throw new ObjectNotFoundException();
+					if(album.ownerID!=owner.getOwnerID())
+						throw new BadRequestException("This photo album is not owned by this actor");
+					filteredItems=ctx.getPhotosController().getAlbumPhotosActivityPubIDs(album, items);
+				}else{
+					throw new BadRequestException("Unknown collection ID");
+				}
+			}else{
+				throw new BadRequestException("Unknown collection ID");
+			}
+		}
 
 		resp.type(ActivityPub.CONTENT_TYPE);
 		CollectionQueryResult res=new CollectionQueryResult();

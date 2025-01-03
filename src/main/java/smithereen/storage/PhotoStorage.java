@@ -711,17 +711,6 @@ public class PhotoStorage{
 		}
 	}
 
-	public static Set<Long> getUserTaggedPhotosInCollection(int userID, Collection<Long> photoIDs) throws SQLException{
-		return new SQLQueryBuilder()
-				.selectFrom("photo_tags")
-				.columns("photo_id")
-				.whereIn("photo_id", photoIDs)
-				.andWhere("user_id=? AND approved=1", userID)
-				.executeAndGetLongStream()
-				.boxed()
-				.collect(Collectors.toSet());
-	}
-
 	public static void updatePhotoTagsRects(long photoID, Map<Long, ImageRect> rects) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			for(Map.Entry<Long, ImageRect> e:rects.entrySet()){
@@ -744,6 +733,17 @@ public class PhotoStorage{
 				.columns("photo_id")
 				.whereIn("photo_id", ids)
 				.andWhere("user_id=? AND approved=1", userID)
+				.executeAndGetLongStream()
+				.boxed()
+				.collect(Collectors.toSet());
+	}
+
+	public static Set<Long> getAlbumPhotosInSet(long albumID, Set<Long> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photos")
+				.columns("id")
+				.whereIn("id", ids)
+				.andWhere("album_id=?", albumID)
 				.executeAndGetLongStream()
 				.boxed()
 				.collect(Collectors.toSet());

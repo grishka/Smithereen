@@ -16,11 +16,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
@@ -32,6 +34,7 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.PostSource;
@@ -49,6 +52,7 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
+import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
 public class CommentsController{
@@ -402,6 +406,33 @@ public class CommentsController{
 	public PaginatedList<Comment> getPhotoAlbumComments(PhotoAlbum album, int offset, int count){
 		try{
 			return CommentStorage.getPhotoAlbumComments(album.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Set<URI> getPhotoAlbumCommentIDs(PhotoAlbum album, Collection<URI> filter){
+		if(filter.isEmpty())
+			return Set.of();
+		try{
+			Set<URI> foreignIDs=filter.stream().filter(id->!Config.isLocal(id)).collect(Collectors.toSet());
+			Set<Long> localIDs=filter.stream()
+					.filter(Config::isLocal)
+					.map(ObjectLinkResolver::getObjectIdFromLocalURL)
+					.filter(id->id!=null && id.type()==ObjectLinkResolver.ObjectType.COMMENT)
+					.map(ObjectLinkResolver.ObjectTypeAndID::id)
+					.collect(Collectors.toSet());
+			HashSet<URI> res=new HashSet<>();
+			if(!foreignIDs.isEmpty()){
+				res.addAll(CommentStorage.getPhotoAlbumForeignComments(album.id, foreignIDs));
+			}
+			if(!localIDs.isEmpty()){
+				CommentStorage.getPhotoAlbumLocalComments(album.id, localIDs)
+						.stream()
+						.map(id->Config.localURI("/comments/"+XTEA.encodeObjectID(id, ObfuscatedObjectIDType.COMMENT)))
+						.forEach(res::add);
+			}
+			return res;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
