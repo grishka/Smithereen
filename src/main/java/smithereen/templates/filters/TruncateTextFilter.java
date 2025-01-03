@@ -37,8 +37,7 @@ public class TruncateTextFilter implements Filter{
 			Node el=doc.body().childNode(i);
 
 			String elText;
-			if(el instanceof Element){
-				Element e=(Element)el;
+			if(el instanceof Element e){
 				elText=e.text();
 				if("br".equals(e.tagName()))
 					totalLen+=50;
@@ -68,6 +67,8 @@ public class TruncateTextFilter implements Filter{
 									tn.text(truncateOnWordBoundary(text, 500-len));
 								}
 								len+=text.length();
+							}else if(node instanceof Element el && "br".equals(el.tagName())){
+								len+=50;
 							}
 						}
 
