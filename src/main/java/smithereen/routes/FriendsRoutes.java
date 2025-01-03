@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
@@ -15,6 +17,7 @@ import smithereen.model.Account;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.Group;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
@@ -23,7 +26,10 @@ import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
+import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.model.photos.Photo;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -132,6 +138,14 @@ public class FriendsRoutes{
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
 		jsLangKey(req, "remove_friend", "yes", "no");
+		if(!isMobile(req)){
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(friends.list);
+			model.with("avatarPhotos", userPhotos)
+					.with("avatarPvInfos", userPhotos.values()
+							.stream()
+							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
+					);
+		}
 		if(isAjax(req))
 			return new WebDeltaResponse(resp)
 					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"));
@@ -164,6 +178,14 @@ public class FriendsRoutes{
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
 		jsLangKey(req, "remove_friend", "yes", "no");
+		if(!isMobile(req)){
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(friends.list);
+			model.with("avatarPhotos", userPhotos)
+					.with("avatarPvInfos", userPhotos.values()
+							.stream()
+							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
+					);
+		}
 		return model;
 	}
 
@@ -185,7 +207,8 @@ public class FriendsRoutes{
 		ctx.getPrivacyController().enforceUserProfileAccess(self!=null ? self.user : null, user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 		model.with("title", lang(req).get("followers")).with("toolbarTitle", lang(req).get("friends"));
-		model.paginate(context(req).getFriendsController().getFollowers(user, offset(req), 100));
+		PaginatedList<User> followers=context(req).getFriendsController().getFollowers(user, offset(req), 100);
+		model.paginate(followers);
 		model.with("owner", user).with("followers", true).with("tab", "followers");
 		if(self!=null && user.id!=self.user.id){
 			int mutualCount=ctx.getFriendsController().getMutualFriends(self.user, user, 0, 0, FriendsController.SortOrder.ID_ASCENDING).total;
@@ -193,6 +216,14 @@ public class FriendsRoutes{
 		}
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
+		if(!isMobile(req)){
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(followers.list);
+			model.with("avatarPhotos", userPhotos)
+					.with("avatarPvInfos", userPhotos.values()
+							.stream()
+							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
+					);
+		}
 		return model;
 	}
 
@@ -215,7 +246,8 @@ public class FriendsRoutes{
 		ctx.getPrivacyController().enforceUserProfileAccess(self!=null ? self.user : null, user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 		model.with("title", lang(req).get("following")).with("toolbarTitle", lang(req).get("friends"));
-		model.paginate(context(req).getFriendsController().getFollows(user, offset(req), 100));
+		PaginatedList<User> follows=context(req).getFriendsController().getFollows(user, offset(req), 100);
+		model.paginate(follows);
 		model.with("owner", user).with("following", true).with("tab", "following");
 		if(self!=null && user.id!=self.user.id){
 			int mutualCount=ctx.getFriendsController().getMutualFriendsCount(self.user, user);
@@ -224,6 +256,14 @@ public class FriendsRoutes{
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
 		jsLangKey(req, "unfollow", "yes", "no");
+		if(!isMobile(req)){
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(follows.list);
+			model.with("avatarPhotos", userPhotos)
+					.with("avatarPvInfos", userPhotos.values()
+							.stream()
+							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
+					);
+		}
 		return model;
 	}
 

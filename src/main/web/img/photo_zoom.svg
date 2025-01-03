@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="14px" height="15px" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <rect id="photo_zoom" x="0" y="0" width="14" height="15" style="fill:none;"/>
+    <g id="photo_zoom1" serif:id="photo_zoom">
+        <path d="M3,5L5,5L5,3L6,3L6,5L8,5L8,6L6,6L6,8L5,8L5,6L3,6L3,5Z" style="fill:#fff;"/>
+        <path d="M5.5,0C8.536,0 11,2.464 11,5.5C11,8.536 8.536,11 5.5,11C2.464,11 0,8.536 0,5.5C0,2.464 2.464,0 5.5,0ZM5.5,2C7.432,2 9,3.568 9,5.5C9,7.432 7.432,9 5.5,9C3.568,9 2,7.432 2,5.5C2,3.568 3.568,2 5.5,2Z" style="fill:#fff;"/>
+        <path d="M12.5,14L14,12.5L11.5,10L9,9L10,11.5L12.5,14Z" style="fill:#fff;"/>
+    </g>
+</svg>

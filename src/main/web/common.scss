@@ -229,7 +229,7 @@ table{
 	}
 }
 
-a, a:link, /*a:visited,*/ .link{
+a, /*a:link, a:visited,*/ .link{
 	color: $normalLink;
 	text-decoration: none;
 	cursor: pointer;

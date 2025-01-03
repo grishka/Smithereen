@@ -4,6 +4,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -14,6 +15,7 @@ import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.LikeableContentObject;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -22,9 +24,11 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.comments.Comment;
+import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 
@@ -139,6 +143,16 @@ public class UserInteractionsRoutes{
 				.with("tab", "likes")
 				.with("url", url)
 				.with("elementID", elementID);
+
+		if(!isMobile(req)){
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(likes.list);
+			model.with("avatarPhotos", userPhotos)
+					.with("avatarPvInfos", userPhotos.values()
+							.stream()
+							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
+					);
+		}
+
 		if(isMobile(req))
 			return model.pageTitle(lang(req).get("likes_title"));
 

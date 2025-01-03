@@ -416,14 +416,24 @@ public class GroupsRoutes{
 		Group group=getGroup(req);
 		if(tentative && !group.isEvent())
 			throw new BadRequestException();
+		ApplicationContext ctx=context(req);
 		SessionInfo info=sessionInfo(req);
-		context(req).getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
+		ctx.getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
-		model.paginate(context(req).getGroupsController().getMembers(group, offset(req), 100, tentative));
+		PaginatedList<User> members=context(req).getGroupsController().getMembers(group, offset(req), 100, tentative);
+		model.paginate(members);
 		model.with("summary", lang(req).get(tentative ? "summary_event_X_tentative_members" : (group.isEvent() ? "summary_event_X_members" : "summary_group_X_members"), Map.of("count", tentative ? group.tentativeMemberCount : group.memberCount)));
 		model.with("contentTemplate", "user_grid").with("title", group.name);
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
+		if(!isMobile(req)){
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(members.list);
+			model.with("avatarPhotos", userPhotos)
+					.with("avatarPvInfos", userPhotos.values()
+							.stream()
+							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
+					);
+		}
 		return model;
 	}
 

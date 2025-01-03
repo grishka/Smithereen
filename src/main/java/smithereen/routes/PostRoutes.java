@@ -37,6 +37,7 @@ import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
@@ -67,6 +68,7 @@ import smithereen.templates.Templates;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -906,6 +908,14 @@ public class PostRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
 		model.paginate(new PaginatedList<>(users, option.numVotes, offset, 100), "/posts/"+postID+"/pollVoters/"+option.id+"?fromPagination&offset=", null);
 		model.with("emptyMessage", lang(req).get("poll_option_votes_empty")).with("summary", lang(req).get("X_people_voted_title", Map.of("count", option.numVotes)));
+		if(!isMobile(req)){
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(users);
+			model.with("avatarPhotos", userPhotos)
+					.with("avatarPvInfos", userPhotos.values()
+							.stream()
+							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
+					);
+		}
 		if(isAjax(req)){
 			if(req.queryParams("fromPagination")==null)
 				return new WebDeltaResponse(resp).box(option.text, model.renderToString(), "likesList", 610);

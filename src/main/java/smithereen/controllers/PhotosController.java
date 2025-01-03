@@ -32,6 +32,7 @@ import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubTaggedPerson;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionQueryResult;
+import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
@@ -1456,5 +1457,24 @@ public class PhotosController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public Map<Integer, Photo> getUserProfilePhotos(Collection<User> users){
+		Set<Long> needPhotos=users.stream()
+				.map(u->u.getAvatarImage() instanceof LocalImage li && li.photoID!=0 ? li.photoID : null)
+				.filter(Objects::nonNull)
+				.collect(Collectors.toSet());
+		Set<URI> needForeignPhotos=users.stream()
+				.map(u->u.getAvatarImage() instanceof Image img && !(img instanceof LocalImage) && img.photoApID!=null ? img.photoApID : null)
+				.filter(Objects::nonNull)
+				.collect(Collectors.toSet());
+		if(!needForeignPhotos.isEmpty()){
+			needPhotos=new HashSet<>(needPhotos);
+			needPhotos.addAll(getPhotoIdsByActivityPubIds(needForeignPhotos).values());
+		}
+		if(needPhotos.isEmpty())
+			return Map.of();
+
+		return getPhotosIgnoringPrivacy(needPhotos).values().stream().collect(Collectors.toMap(ph->ph.ownerID, Function.identity()));
 	}
 }

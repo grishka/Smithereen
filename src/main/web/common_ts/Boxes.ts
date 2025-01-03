@@ -21,13 +21,16 @@ class LayerManager{
 	private layerContainer:HTMLDivElement;
 	private stack:BaseLayer[]=[];
 	private escapeKeyListener=(ev:KeyboardEvent)=>{
-		if(ev.keyCode==27){
+		if(ev.keyCode==27 && !this.hiddenTemporarily){
+			this.lastEscKeyEvent=ev;
 			this.maybeDismissTopLayer();
 		}
 	};
 	private boxLoader:HTMLDivElement;
 	private animatingHide:boolean=false;
 	private hideAnimCanceled:boolean=false;
+	private hiddenTemporarily:boolean=false;
+	private lastEscKeyEvent:KeyboardEvent;
 
 	private constructor(baseZIndex:number, isDefaultInstance:boolean){
 		this.scrim=ce("div", {className: "layerScrim"});
@@ -55,6 +58,10 @@ class LayerManager{
 		if(this.animatingHide){
 			this.hideAnimCanceled=true;
 			this.layerContainer.innerHTML="";
+		}
+		if(this.hiddenTemporarily){
+			this.unhide();
+			layer.hideContainerAfterDismiss=true;
 		}
 		var layerContent:HTMLElement=layer.getContent();
 		this.layerContainer.appendChild(layerContent);
@@ -85,6 +92,9 @@ class LayerManager{
 		if(this.boxLoader)
 			this.boxLoader.hideAnimated();
 		layer.updateTopOffset();
+		if(this==LayerManager.mediaInstance && LayerManager.instance && LayerManager.instance.stack.length){
+			LayerManager.instance.hideTemporarily();
+		}
 	}
 
 	public dismiss(layer:BaseLayer):void{
@@ -139,12 +149,37 @@ class LayerManager{
 				this.unlockPageScroll();
 			}
 			this.scrim.hideAnimated({keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: duration, easing: "ease"}});
+			if(this==LayerManager.mediaInstance && LayerManager.instance && LayerManager.instance.stack.length){
+				LayerManager.instance.unhide();
+
+			}
 		}else{
 			this.layerContainer.removeChild(layerContent);
 		}
+		if(layer.hideContainerAfterDismiss){
+			this.hideTemporarily();
+		}
+	}
+
+	private hideTemporarily(){
+		if(this.hiddenTemporarily)
+			return;
+		this.layerContainer.hideAnimated();
+		this.scrim.hideAnimated();
+		this.hiddenTemporarily=true;
+	}
+
+	private unhide(){
+		if(!this.hiddenTemporarily)
+			return;
+		this.layerContainer.showAnimated();
+		this.scrim.showAnimated();
+		this.hiddenTemporarily=false;
 	}
 
 	private maybeDismissTopLayer():void{
+		if(this==LayerManager.mediaInstance && LayerManager.instance && LayerManager.instance.stack.length && (!LayerManager.instance.hiddenTemporarily || LayerManager.instance.lastEscKeyEvent==this.lastEscKeyEvent))
+			return;
 		var topLayer=this.stack[this.stack.length-1];
 		if(topLayer.allowDismiss())
 			topLayer.dismiss();
@@ -232,6 +267,7 @@ abstract class BaseLayer{
 	private content:HTMLElement;
 	public dismissCallbacks:{():void}[]=[];
 	public id:string;
+	public hideContainerAfterDismiss:boolean=false;
 
 	protected abstract onCreateContentView():HTMLElement;
 	public show():void{

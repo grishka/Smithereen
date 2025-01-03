@@ -95,5 +95,6 @@
   "photos_of_me": "Фотографии со мной",
   "photos_of_user": "Фотографии с {name, inflect, instrumental}",
   "summary_X_photos_of_me": "{count, plural, one {# фотография} few {# фотографии} other {# фотографий}} с вами",
-  "summary_X_photos_of_user": "{count, plural, one {# фотография} few {# фотографии} other {# фотографий}} с {name, inflect, instrumental}"
+  "summary_X_photos_of_user": "{count, plural, one {# фотография} few {# фотографии} other {# фотографий}} с {name, inflect, instrumental}",
+  "view_user_profile_photos": "Увеличить"
 }
