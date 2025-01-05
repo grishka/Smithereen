@@ -620,7 +620,7 @@ public class PostStorage{
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
 					.count()
-					.where("reply_key LIKE BINARY bin_prefix(?)", (Object) serializedPrefix)
+					.where("reply_key LIKE BINARY bin_prefix(?) AND author_id IS NOT NULL", (Object) serializedPrefix)
 					.executeAndGetInt();
 			if(total==0)
 				return PaginatedList.emptyList(limit);
@@ -628,7 +628,7 @@ public class PostStorage{
 			List<Post> list=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
 					.allColumns()
-					.where("reply_key LIKE BINARY bin_prefix(?)", (Object) serializedPrefix)
+					.where("reply_key LIKE BINARY bin_prefix(?) AND author_id IS NOT NULL", (Object) serializedPrefix)
 					.limit(limit, offset)
 					.orderBy("created_at ASC")
 					.executeAsStream(Post::fromResultSet)

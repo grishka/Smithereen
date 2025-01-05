@@ -39,6 +39,7 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 		ownerID=res.getInt("owner_user_id");
 		if(res.wasNull())
 			ownerID=-res.getInt("owner_group_id");
+		replyCount=res.getInt("reply_count");
 
 		authorID=res.getInt("author_id");
 		if(res.wasNull()){
@@ -65,7 +66,6 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 		contentWarning=res.getString("content_warning");
 		updatedAt=DatabaseUtils.getInstant(res, "updated_at");
 		mentionedUserIDs=Utils.deserializeIntSet(res.getBytes("mentions"));
-		replyCount=res.getInt("reply_count");
 		String replies=res.getString("ap_replies");
 		if(replies!=null)
 			activityPubReplies=URI.create(replies);
