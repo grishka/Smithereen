@@ -24,7 +24,9 @@
 	<div class="repostHeader">
 		{% set authorID=post.repost.post.post.authorID %}
 		<a href="{{ profileURL(authorID) }}" class="flL avaW"{{ profileRel(authorID) }}>{{ users[authorID] | pictureForAvatar('a', 30) }}</a>
-		<div class="nameW ellipsize"><span class="repostIcon{{ realPost.mastodonStyleRepost ? ' mastodonStyle' : '' }}"></span><a href="{{ profileURL(authorID) }}" class="name"{{ profileRel(authorID) }}>{{ users[authorID] | name }}</a></div>
+		<div class="nameW ellipsize"><span class="repostIcon{{ realPost.mastodonStyleRepost ? ' mastodonStyle' : '' }}"></span><a href="{{ profileURL(authorID) }}" class="name"{{ profileRel(authorID) }}>{{ users[authorID] | name }}</a>
+		{%- if post.repost.post.post.action=='AVATAR_UPDATE' %} <span class="grayText">{{ L('post_action_updated_avatar', {'gender': users[realPost.authorID].gender}) }}</span>{% endif -%}
+		</div>
 		<div class="ellipsize grayText">
 			{%- if post.repost.post.post.replyLevel>0 -%}
 			{%- if post.repost.topLevel is not null %}

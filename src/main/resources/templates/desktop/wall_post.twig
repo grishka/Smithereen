@@ -24,7 +24,7 @@
 		{%- if realPost.privacy!='PUBLIC' -%}
 		<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID].firstAndGender}) }}"></span>
 		{%- endif %}
-		{%- if realPost.action=='AVATAR_UPDATE' %} <span class="grayText">{{ L('post_action_updated_avatar', {'gener': users[realPost.authorID].gender}) }}</span>{% endif %}
+		{%- if realPost.action=='AVATAR_UPDATE' %} <span class="grayText">{{ L('post_action_updated_avatar', {'gender': users[realPost.authorID].gender}) }}</span>{% endif %}
 		<div id="postInner{{ realPost.id }}">
 			{% block postInner %}
 			{% include "wall_post_inner" with {'post': post, 'repostDepth': 0, 'repostParent': post} %}
