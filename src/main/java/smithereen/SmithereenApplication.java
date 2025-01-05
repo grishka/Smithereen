@@ -224,6 +224,8 @@ public class SmithereenApplication{
 		path("/feed", ()->{
 			getLoggedIn("", PostRoutes::feed);
 			getLoggedIn("/comments", PostRoutes::commentsFeed);
+			postWithCSRF("/setFilters", PostRoutes::setFeedFilters);
+			postWithCSRF("/comments/setFilters", PostRoutes::setCommentsFeedFilters);
 		});
 
 		path("/account", ()->{

@@ -1520,3 +1520,42 @@ function chooseFileAndUpload(url:string, fieldName:string, accept:string){
 	fileField.click();
 }
 
+function updateFeedFilters(){
+	var form=ge("feedFilters") as HTMLFormElement;
+	ge("feedFiltersLoader").show();
+	var pagination=ge("feedTopSummary").qs(".pagination");
+	if(pagination)
+		pagination.hide();
+	ajaxSubmitForm(form);
+}
+
+function showMobileFeedFilters(filters:{title:string, icon:string, value:string, selected:boolean}[], postUrl:string){
+	var boxCont=ce("div");
+	var checkboxes:HTMLInputElement[]=[];
+	for(var filter of filters){
+		var icon, checkbox;
+		var row=ce("label", {className: "radioButtonWrap feedFilterRow"}, [
+			checkbox=ce("input", {type: "checkbox", name: filter.value, checked: filter.selected}),
+			icon=ce("span", {className: "feedIcon feedIcon"+filter.icon}),
+			filter.title
+		]);
+		checkboxes.push(checkbox);
+		boxCont.appendChild(row);
+	}
+	var box=new ScrollableBox(lang("feed_filters"), [lang("save"), lang("cancel")], (btn)=>{
+		if(btn==0){
+			box.showButtonLoading(0, true);
+			var params:any={};
+			for(var cb of checkboxes){
+				if(cb.checked)
+					params[cb.name]="on";
+			}
+			ajaxPostAndApplyActions(postUrl, params);
+		}else{
+			box.dismiss();
+		}
+	});
+	box.setContent(boxCont);
+	box.show();
+}
+

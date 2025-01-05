@@ -1,6 +1,4 @@
 {
-  "feed_retoot": "<a id=\"author\">{author}</a> shared a post:",
-  "feed_retoot_comment": "<a id=\"author\">{author}</a> shared a comment:",
   "feed_added_friend": "<a id=\"author\">{author}</a> added <a id=\"target\">{target}</a> as a friend.",
   "feed_added_friend_name": "{name}",
   "feed_joined_group": "<a id=\"author\">{author}</a> joined the group <a id=\"target\">{target}</a>.",
@@ -18,5 +16,14 @@
   "feed_added_multiple_photos": "<a id=\"author\">{author}</a> added {count, plural, one {# photo} other {# photos}} to {albumCount, select, 1 {album} other {albums}} {albums}.",
   "feed_links_separator": ", ",
   "feed_tagged_in_photo": "<a id=\"author\">{author}</a> was tagged in a photo in album <a id=\"target\">{target}</a>.",
-  "feed_tagged_in_multiple_photos": "<a id=\"author\">{author}</a> was tagged in {count, plural, one {# photo} other {# photos}} in {albumCount, select, 1 {album} other {albums}} {albums}."
+  "feed_tagged_in_multiple_photos": "<a id=\"author\">{author}</a> was tagged in {count, plural, one {# photo} other {# photos}} in {albumCount, select, 1 {album} other {albums}} {albums}.",
+  "feed_type_posts": "Posts",
+  "feed_type_photos": "Photos",
+  "feed_type_friends": "Friends",
+  "feed_type_groups": "Groups",
+  "feed_type_events": "Events",
+  "feed_type_tags": "Photo tags",
+  "feed_type_personal": "Personal info",
+  "feed_filters": "Filters",
+  "feed_empty_comments": "Comment threads you participated in will appear here."
 }

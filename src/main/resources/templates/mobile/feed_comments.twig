@@ -1,4 +1,10 @@
 {%extends "page"%}
+{% block headerActionButtons %}
+	<button title="{{ L('feed_filters') }}" class="actionButton iconFilterList" onclick="showMobileFeedFilters({{ json([
+		{'title': L('feed_type_posts').toString(), 'icon': 'Status', 'value': 'POST', 'selected': feedFilter contains 'POST'},
+		{'title': L('feed_type_photos').toString(), 'icon': 'Photo', 'value': 'PHOTO', 'selected': feedFilter contains 'PHOTO'}
+	]) }}, '/feed/comments/setFilters')"></button>
+{% endblock %}
 {%block content%}
 {% include "feed_tabbar" with {'tab': "comments"} %}
 	<div class="cardsBackdrop">

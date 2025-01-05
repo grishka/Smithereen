@@ -9,27 +9,33 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.Account;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.User;
+import smithereen.model.feed.CommentsNewsfeedObjectType;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.NewsfeedEntry;
-import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.storage.PostStorage;
+import smithereen.storage.SessionStorage;
 
 public class NewsfeedController{
 	private static final Logger LOG=LoggerFactory.getLogger(NewsfeedController.class);
@@ -41,17 +47,18 @@ public class NewsfeedController{
 		this.context=context;
 	}
 
-	public PaginatedList<NewsfeedEntry> getFriendsFeed(Account self, ZoneId timeZone, int startFrom, int offset, int count){
+	public PaginatedList<NewsfeedEntry> getFriendsFeed(Account self, EnumSet<FriendsNewsfeedTypeFilter> filter, ZoneId timeZone, int startFrom, int offset, int count){
 		try{
 			CachedFeed cache;
 			synchronized(this){
 				cache=friendsNewsFeedCache.get(self.user.id);
-				if(cache!=null && !cache.timeZone.equals(timeZone))
+				if(cache!=null && (!cache.timeZone.equals(timeZone) || !Objects.equals(filter, cache.filter)))
 					cache=null;
 
 				if(cache==null){
 					cache=new CachedFeed();
 					cache.timeZone=timeZone;
+					cache.filter=EnumSet.copyOf(filter);
 					friendsNewsFeedCache.put(self.user.id, cache);
 				}
 			}
@@ -79,11 +86,23 @@ public class NewsfeedController{
 				startIndex=0;
 			}
 
+			EnumSet<NewsfeedEntry.Type> actualFilter=filter.stream()
+					.flatMap(f->switch(f){
+						case POSTS -> Stream.of(NewsfeedEntry.Type.POST);
+						case PHOTOS -> Stream.of(NewsfeedEntry.Type.ADD_PHOTO);
+						case FRIENDS -> Stream.of(NewsfeedEntry.Type.ADD_FRIEND);
+						case GROUPS -> Stream.of(NewsfeedEntry.Type.JOIN_GROUP, NewsfeedEntry.Type.CREATE_GROUP);
+						case EVENTS -> Stream.of(NewsfeedEntry.Type.JOIN_EVENT, NewsfeedEntry.Type.CREATE_EVENT);
+						case PHOTO_TAGS -> Stream.of(NewsfeedEntry.Type.PHOTO_TAG);
+						case PERSONAL_INFO -> Stream.of(); // TODO
+					})
+					.collect(Collectors.toCollection(()->EnumSet.noneOf(NewsfeedEntry.Type.class)));
+
 			while(startIndex==-1 || startIndex+offset+count>=cache.feed.size()){
-				LOG.debug("Getting new feed page from database: userID={}, startFrom={}, offset={}, realOffset={}, count={}", self.user.id, startFrom, offset, cache.realOffset, count);
-				int[] total={0};
-				List<NewsfeedEntry> newPage=PostStorage.getFeed(self.user.id, 0, cache.realOffset, 100, total);
-				cache.total=total[0];
+				LOG.debug("Getting new feed page from database: userID={}, startFrom={}, offset={}, realOffset={}, count={}, filter={}", self.user.id, startFrom, offset, cache.realOffset, count, actualFilter);
+				PaginatedList<NewsfeedEntry> page=PostStorage.getFeed(self.user.id, 0, cache.realOffset, 100, actualFilter);
+				ArrayList<NewsfeedEntry> newPage=new ArrayList<>(page.list);
+				cache.total=page.total;
 				cache.realOffset+=newPage.size();
 				if(newPage.isEmpty()){
 					break;
@@ -106,7 +125,7 @@ public class NewsfeedController{
 							.filter(a->!context.getPrivacyController().checkUserPrivacy(self.user, owners.get(a.ownerID), a.viewPrivacy))
 							.map(a->a.id)
 							.collect(Collectors.toSet());
-					newPage.removeIf(e->(e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO_TAG) && (!photos.containsKey(e.objectID) || inaccessibleAlbums.contains(photos.get(e.objectID).albumID)));
+					newPage.removeIf(e->(e.type==NewsfeedEntry.Type.ADD_PHOTO) && (!photos.containsKey(e.objectID) || inaccessibleAlbums.contains(photos.get(e.objectID).albumID)));
 					for(NewsfeedEntry e:newPage){
 						if(e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO_TAG){
 							e.extraData=Map.of("album", albums.get(photos.get(e.objectID).albumID));
@@ -132,6 +151,20 @@ public class NewsfeedController{
 
 			LOG.warn("Returning an empty feed for user {}", self.user.id);
 			return new PaginatedList<>(List.of(), cache.total, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setFriendsFeedFilters(Account self, EnumSet<FriendsNewsfeedTypeFilter> filter){
+		if(filter.equals(EnumSet.allOf(FriendsNewsfeedTypeFilter.class)))
+			self.prefs.friendFeedFilter=null;
+		else
+			self.prefs.friendFeedFilter=filter;
+
+		try{
+			SessionStorage.updatePreferences(self.id, self.prefs);
+			friendsNewsFeedCache.remove(self.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -172,9 +205,9 @@ public class NewsfeedController{
 		friendsNewsFeedCache.evictAll();
 	}
 
-	public PaginatedList<NewsfeedEntry> getCommentsFeed(Account self, int offset, int count){
+	public PaginatedList<NewsfeedEntry> getCommentsFeed(Account self, int offset, int count, EnumSet<CommentsNewsfeedObjectType> filter){
 		try{
-			PaginatedList<NewsfeedEntry> feed=PostStorage.getCommentsFeed(self.user.id, offset, count);
+			PaginatedList<NewsfeedEntry> feed=PostStorage.getCommentsFeed(self.user.id, offset, count, filter);
 			Set<Long> photoIDs=feed.list.stream().filter(e->e.type==NewsfeedEntry.Type.PHOTO).map(e->e.objectID).collect(Collectors.toSet());
 			if(!photoIDs.isEmpty()){
 				Map<Long, Long> albumsIDs=PhotoStorage.getAlbumIDsForPhotos(photoIDs);
@@ -193,6 +226,19 @@ public class NewsfeedController{
 		}
 	}
 
+	public void setCommentsFeedFilters(Account self, EnumSet<CommentsNewsfeedObjectType> filter){
+		if(filter.equals(EnumSet.allOf(CommentsNewsfeedObjectType.class)))
+			self.prefs.commentsFeedFilter=null;
+		else
+			self.prefs.commentsFeedFilter=filter;
+
+		try{
+			SessionStorage.updatePreferences(self.id, self.prefs);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	private static class CachedFeed{
 		public ZoneId timeZone;
 		public ArrayList<NewsfeedEntry> feed=new ArrayList<>();
@@ -200,6 +246,7 @@ public class NewsfeedController{
 		public int total;
 		public HashMap<GroupedEntriesKey, GroupedNewsfeedEntry> existingGroupedEntries=new HashMap<>();
 		public HashMap<GroupedEntriesKey, NewsfeedEntry> groupableEntries=new HashMap<>();
+		public EnumSet<FriendsNewsfeedTypeFilter> filter;
 
 		public void add(List<NewsfeedEntry> entries){
 			for(NewsfeedEntry e:entries){

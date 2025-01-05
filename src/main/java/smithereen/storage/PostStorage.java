@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -281,36 +282,26 @@ public class PostStorage{
 		}
 	}
 
-	public static List<NewsfeedEntry> getFeed(int userID, int startFromID, int offset, int count, int[] total) throws SQLException{
+	public static PaginatedList<NewsfeedEntry> getFeed(int userID, int startFromID, int offset, int count, EnumSet<NewsfeedEntry.Type> types) throws SQLException{
+		if(types.isEmpty())
+			return PaginatedList.emptyList(count);
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt;
-			if(total!=null){
-				stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `newsfeed` WHERE (`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY)",
-						userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID);
-				try(ResultSet res=stmt.executeQuery()){
-					res.next();
-					total[0]=res.getInt(1);
-				}
-			}
-			stmt=conn.prepareStatement("SELECT `type`, `object_id`, `author_id`, `id`, `time` FROM `newsfeed` WHERE (`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=? ORDER BY `time` DESC LIMIT ?,"+count);
-			stmt.setInt(1, userID);
-			stmt.setInt(2, userID);
-			stmt.setInt(3, startFromID==0 ? Integer.MAX_VALUE : startFromID);
-			stmt.setInt(4, offset);
-			ArrayList<NewsfeedEntry> posts=new ArrayList<>();
-			try(ResultSet res=stmt.executeQuery()){
-				while(res.next()){
-					NewsfeedEntry.Type type=NewsfeedEntry.Type.values()[res.getInt(1)];
-					NewsfeedEntry entry=new NewsfeedEntry();
-					entry.type=type;
-					entry.id=res.getInt(4);
-					entry.time=res.getTimestamp(5).toInstant();
-					entry.authorID=res.getInt(3);
-					entry.objectID=res.getLong(2);
-					posts.add(entry);
-				}
-			}
-			return posts;
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("newsfeed")
+					.count()
+					.whereIn("type", types)
+					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY))", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
+					.executeAndGetInt();
+			List<NewsfeedEntry> feed=new SQLQueryBuilder(conn)
+					.selectFrom("newsfeed")
+					.columns("type", "object_id", "author_id", "id", "time")
+					.whereIn("type", types)
+					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=?)", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
+					.orderBy("time DESC")
+					.limit(count, offset)
+					.executeAsStream(NewsfeedEntry::fromResultSet)
+					.toList();
+			return new PaginatedList<>(feed, total, offset, count);
 		}
 	}
 
@@ -1055,12 +1046,15 @@ public class PostStorage{
 				.executeNoResult();
 	}
 
-	public static PaginatedList<NewsfeedEntry> getCommentsFeed(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<NewsfeedEntry> getCommentsFeed(int userID, int offset, int count, EnumSet<CommentsNewsfeedObjectType> filter) throws SQLException{
+		if(filter.isEmpty())
+			return PaginatedList.emptyList(count);
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("newsfeed_comments")
 					.count()
-					.where("user_id=?", userID)
+					.whereIn("object_type", filter)
+					.andWhere("user_id=?", userID)
 					.executeAndGetInt();
 
 			if(total==0)
@@ -1069,7 +1063,8 @@ public class PostStorage{
 			List<NewsfeedEntry> entries=new SQLQueryBuilder(conn)
 					.selectFrom("newsfeed_comments")
 					.columns("object_type", "object_id")
-					.where("user_id=?", userID)
+					.whereIn("object_type", filter)
+					.andWhere("user_id=?", userID)
 					.orderBy("last_comment_time DESC")
 					.limit(count, offset)
 					.executeAsStream(res->{

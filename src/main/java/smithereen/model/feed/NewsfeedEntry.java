@@ -1,7 +1,11 @@
 package smithereen.model.feed;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Map;
+
+import smithereen.storage.DatabaseUtils;
 
 public class NewsfeedEntry{
 	public int id;
@@ -10,6 +14,16 @@ public class NewsfeedEntry{
 	public int authorID;
 	public Instant time;
 	public Map<String, Object> extraData=Map.of();
+
+	public static NewsfeedEntry fromResultSet(ResultSet res) throws SQLException{
+		NewsfeedEntry e=new NewsfeedEntry();
+		e.id=res.getInt("id");
+		e.type=Type.values()[res.getInt("type")];
+		e.objectID=res.getLong("object_id");
+		e.authorID=res.getInt("author_id");
+		e.time=DatabaseUtils.getInstant(res, "time");
+		return e;
+	}
 
 	@Override
 	public String toString(){

@@ -58,23 +58,21 @@ public class RenderAttachmentsFunction implements Function{
 		ArrayList<String> lines=new ArrayList<>();
 		List<SizedAttachment> sized=attachments.stream().filter(a->a instanceof SizedAttachment).map(a->(SizedAttachment)a).limit(10).collect(Collectors.toList());
 		if(!sized.isEmpty()){
-			float aspect;
 			MediaLayoutHelper.TiledLayoutResult tiledLayout;
+			int totalW, totalH;
 			if(sized.size()==1){
 				SizedAttachment sa=sized.getFirst();
-				aspect=sa.isSizeKnown() ? Math.max(0.5f, Math.min(3f, (sa.getWidth()/(float)sa.getHeight()))) : 1f;
+				if(sa.isSizeKnown()){
+					totalW=sa.getWidth();
+					totalH=sa.getHeight();
+				}else{
+					totalW=totalH=1;
+				}
 				tiledLayout=null;
 			}else{
 				tiledLayout=MediaLayoutHelper.makeLayout(sized);
-				aspect=tiledLayout.width/(float)tiledLayout.height;
-			}
-			int pseudoWidth, pseudoHeight;
-			if(aspect>1f){
-				pseudoWidth=1000;
-				pseudoHeight=Math.round(1000f/aspect);
-			}else{
-				pseudoWidth=Math.round(1000f*aspect);
-				pseudoHeight=1000;
+				totalW=tiledLayout.width;
+				totalH=tiledLayout.height;
 			}
 
 			String gridStyle="";
@@ -83,12 +81,7 @@ public class RenderAttachmentsFunction implements Function{
 						+" / "+Arrays.stream(tiledLayout.columnSizes).mapToObj(sz->(sz+"fr")).collect(Collectors.joining(" "))+";";
 			}
 
-			lines.add(String.format(Locale.US, "<span class=\"aspectWrapper\">" +
-					"<svg class=\"pseudoImage\" width=\"%d\" height=\"%d\"></svg>" +
-					"<div class=\"positioner\">" +
-					"<div style=\"padding-top: %.2f%%\">" +
-					"<div class=\"safariSucks\">" +
-					"<div class=\"aspectBox\" style=\"%s\">", pseudoWidth, pseudoHeight, (1f/aspect)*100f, gridStyle));
+			lines.add("<div class=\"aspectBoxW\"><div class=\"aspectBox\" style=\"aspect-ratio: "+totalW+"/"+totalH+";"+gridStyle+"\">");
 
 			if(sized.size()==1){
 				SizedAttachment sa=sized.getFirst();
@@ -116,7 +109,7 @@ public class RenderAttachmentsFunction implements Function{
 					i++;
 				}
 			}
-			lines.add("</div></div></div></div></span>");
+			lines.add("</div></div>");
 		}
 
 		// Now do non-sized attachments
@@ -124,7 +117,7 @@ public class RenderAttachmentsFunction implements Function{
 			if(att instanceof SizedAttachment)
 				continue;
 			if(att instanceof VideoAttachment va){
-				lines.add("<video src=\""+HtmlEscape.escapeHtml4Xml(va.url.toString())+"\" controls></video>");
+				lines.add("<video src=\""+HtmlEscape.escapeHtml4Xml(va.url.toString())+"\" controls playsinline></video>");
 			}else if(att instanceof AudioAttachment aa){
 				lines.add("<audio src=\""+HtmlEscape.escapeHtml4Xml(aa.url.toString())+"\" preload=\"none\" controls></audio>");
 			}

@@ -52,6 +52,7 @@ import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
@@ -622,7 +623,7 @@ public class PhotosRoutes{
 				if(self==null)
 					throw new UserActionNotAllowedException();
 				int id=safeParseInt(listParts[1]);
-				PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(selfAccount, timeZoneForRequest(req), id, 0, 100);
+				PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 100);
 				if(feed.list.isEmpty() || !(feed.list.getFirst() instanceof GroupedNewsfeedEntry gne) || (gne.childEntriesType!=NewsfeedEntry.Type.ADD_PHOTO && gne.childEntriesType!=NewsfeedEntry.Type.PHOTO_TAG))
 					throw new ObjectNotFoundException();
 				total=gne.childEntries.size();
@@ -640,7 +641,7 @@ public class PhotosRoutes{
 				if(self==null)
 					throw new UserActionNotAllowedException();
 				int id=safeParseInt(listParts[1]);
-				List<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(selfAccount, timeZoneForRequest(req), id, 0, 1).list;
+				List<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 1).list;
 				if(feed.isEmpty())
 					throw new ObjectNotFoundException();
 				NewsfeedEntry e=feed.getFirst();

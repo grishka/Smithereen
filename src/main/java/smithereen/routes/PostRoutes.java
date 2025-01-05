@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -43,6 +44,8 @@ import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.PostSource;
+import smithereen.model.feed.CommentsNewsfeedObjectType;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
@@ -428,19 +431,41 @@ public class PostRoutes{
 	public static Object feed(Request req, Response resp, Account self, ApplicationContext ctx){
 		int startFromID=parseIntOrDefault(req.queryParams("startFrom"), 0);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(self, timeZoneForRequest(req), startFromID, offset, 25);
+		EnumSet<FriendsNewsfeedTypeFilter> filter=self.prefs.friendFeedFilter;
+		if(filter==null)
+			filter=EnumSet.allOf(FriendsNewsfeedTypeFilter.class);
+		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(self, filter, timeZoneForRequest(req), startFromID, offset, 25);
 		if(!feed.list.isEmpty() && startFromID==0)
 			startFromID=feed.list.getFirst().id;
-		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel");
+		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "feed_filters");
 		Templates.addJsLangForNewPostForm(req);
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list)
 				.with("paginationUrlPrefix", "/feed?startFrom="+startFromID+"&offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationPerPage", 25).with("paginationFirstPageUrl", "/feed")
-				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
+				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments)
+				.with("feedFilter", filter.stream().map(Object::toString).collect(Collectors.toSet()));
 
 		prepareFeed(ctx, req, self, feed.list, model, false);
 
 		return model;
+	}
+
+	public static Object setFeedFilters(Request req, Response resp, Account self, ApplicationContext ctx){
+		EnumSet<FriendsNewsfeedTypeFilter> filter=EnumSet.noneOf(FriendsNewsfeedTypeFilter.class);
+		for(FriendsNewsfeedTypeFilter type:FriendsNewsfeedTypeFilter.values()){
+			if(req.queryParams(type.toString())!=null)
+				filter.add(type);
+		}
+		ctx.getNewsfeedController().setFriendsFeedFilters(self, filter);
+		if(isMobile(req)){
+			return new WebDeltaResponse(resp).refresh();
+		}else{
+			RenderedTemplateResponse model=(RenderedTemplateResponse) feed(req, resp, self, ctx);
+			return new WebDeltaResponse(resp)
+					.setContent("feedContent", model.renderBlock("feedContent"))
+					.setContent("feedTopSummary", model.renderBlock("topSummary"))
+					.setContent("feedBottomSummary", model.renderBlock("bottomSummary"));
+		}
 	}
 
 	public static Object standalonePost(Request req, Response resp){
@@ -964,8 +989,9 @@ public class PostRoutes{
 
 	public static Object commentsFeed(Request req, Response resp, Account self, ApplicationContext ctx){
 		int offset=offset(req);
-		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getCommentsFeed(self, offset, 25);
-		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "cancel");
+		EnumSet<CommentsNewsfeedObjectType> filter=self.prefs.commentsFeedFilter!=null ? self.prefs.commentsFeedFilter : EnumSet.allOf(CommentsNewsfeedObjectType.class);
+		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getCommentsFeed(self, offset, 25, filter);
+		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "cancel", "feed_filters");
 		Templates.addJsLangForNewPostForm(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("feed_comments", req)
 				.pageTitle(Utils.lang(req).get("feed"))
@@ -974,11 +1000,30 @@ public class PostRoutes{
 				.with("totalItems", feed.total)
 				.with("paginationOffset", offset)
 				.with("paginationFirstPageUrl", "/feed/comments")
-				.with("paginationPerPage", 25);
+				.with("paginationPerPage", 25)
+				.with("feedFilter", filter.stream().map(Object::toString).collect(Collectors.toSet()));
 
 		prepareFeed(ctx, req, self, feed.list, model, true);
 
 		return model;
+	}
+
+	public static Object setCommentsFeedFilters(Request req, Response resp, Account self, ApplicationContext ctx){
+		EnumSet<CommentsNewsfeedObjectType> filter=EnumSet.noneOf(CommentsNewsfeedObjectType.class);
+		for(CommentsNewsfeedObjectType type:CommentsNewsfeedObjectType.values()){
+			if(req.queryParams(type.toString())!=null)
+				filter.add(type);
+		}
+		ctx.getNewsfeedController().setCommentsFeedFilters(self, filter);
+		if(isMobile(req)){
+			return new WebDeltaResponse(resp).refresh();
+		}else{
+			RenderedTemplateResponse model=(RenderedTemplateResponse) commentsFeed(req, resp, self, ctx);
+			return new WebDeltaResponse(resp)
+					.setContent("feedContent", model.renderBlock("feedContent"))
+					.setContent("feedTopSummary", model.renderBlock("topSummary"))
+					.setContent("feedBottomSummary", model.renderBlock("bottomSummary"));
+		}
 	}
 
 	public static Object repostForm(Request req, Response resp){

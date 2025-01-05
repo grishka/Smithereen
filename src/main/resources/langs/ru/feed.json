@@ -1,6 +1,4 @@
 {
-  "feed_retoot": "<a id=\"author\">{author}</a> {gender, select, female {поделилась} other {поделился}} записью:",
-  "feed_retoot_comment": "<a id=\"author\">{author}</a> {gender, select, female {поделилась} other {поделился}} комментарием:",
   "feed_added_friend": "<a id=\"author\">{author}</a> {gender, select, female {добавила} other {добавил}} в друзья <a id=\"target\">{target}</a>.",
   "feed_added_friend_name": "{name, inflect, accusative}",
   "feed_joined_group": "<a id=\"author\">{author}</a> {gender, select, female {вступила} other {вступил}} в группу <a id=\"target\">{target}</a>.",
@@ -18,5 +16,14 @@
   "feed_added_multiple_photos": "<a id=\"author\">{author}</a> {gender, select, female {добавила} other {добавил}} {count, plural, one {# фотографию} few {# фотографии} other {# фотографий}} в {albumCount, select, 1 {альбом} other {альбомы}} {albums}.",
   "feed_links_separator": ", ",
   "feed_tagged_in_photo": "<a id=\"author\">{author}</a> {gender, select, female {была отмечена} other {был отмечен}} на фотографии в альбоме <a id=\"target\">{target}</a>.",
-  "feed_tagged_in_multiple_photos": "<a id=\"author\">{author}</a> {gender, select, female {была отмечена} other {был отмечен}} на {count, plural, one {# фотографии} few {# фотографиях} other {# фотографиях}} в {albumCount, select, 1 {альбоме} other {альбомах}} {albums}."
+  "feed_tagged_in_multiple_photos": "<a id=\"author\">{author}</a> {gender, select, female {была отмечена} other {был отмечен}} на {count, plural, one {# фотографии} few {# фотографиях} other {# фотографиях}} в {albumCount, select, 1 {альбоме} other {альбомах}} {albums}.",
+  "feed_type_posts": "Записи",
+  "feed_type_photos": "Фотографии",
+  "feed_type_friends": "Друзья",
+  "feed_type_groups": "Группы",
+  "feed_type_events": "Встречи",
+  "feed_type_tags": "Отметки",
+  "feed_type_personal": "Личные данные",
+  "feed_filters": "Фильтры",
+  "feed_empty_comments": "Обсуждения, в которых вы участвовали, появятся здесь."
 }

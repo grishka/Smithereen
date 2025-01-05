@@ -377,12 +377,6 @@ textarea{
 	p:last-child{
 		margin-bottom: 0;
 	}
-
-	.postContentWrap{
-		video{
-			max-width: 100%;
-		}
-	}
 	blockquote{
 		margin: -2px 0;
 		padding: 2px 0 2px 8px;
@@ -762,6 +756,9 @@ ul.actualList{
 	}
 	&.feedIconPhotoTag{
 		background: svg-load('img/tags_s.svg');
+	}
+	&.feedIconPersonal{
+		background: svg-load('img/pages_s.svg');
 	}
 }
 

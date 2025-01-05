@@ -1,4 +1,15 @@
 {%extends "page"%}
+{% block headerActionButtons %}
+	<button title="{{ L('feed_filters') }}" class="actionButton iconFilterList" onclick="showMobileFeedFilters({{ json([
+		{'title': L('feed_type_posts').toString(), 'icon': 'Status', 'value': 'POSTS', 'selected': feedFilter contains 'POSTS'},
+		{'title': L('feed_type_photos').toString(), 'icon': 'Photo', 'value': 'PHOTOS', 'selected': feedFilter contains 'PHOTOS'},
+		{'title': L('feed_type_friends').toString(), 'icon': 'Add', 'value': 'FRIENDS', 'selected': feedFilter contains 'FRIENDS'},
+		{'title': L('feed_type_groups').toString(), 'icon': 'Group', 'value': 'GROUPS', 'selected': feedFilter contains 'GROUPS'},
+		{'title': L('feed_type_events').toString(), 'icon': 'Event', 'value': 'EVENTS', 'selected': feedFilter contains 'EVENTS'},
+		{'title': L('feed_type_tags').toString(), 'icon': 'PhotoTag', 'value': 'PHOTO_TAGS', 'selected': feedFilter contains 'PHOTO_TAGS'},
+		{'title': L('feed_type_personal').toString(), 'icon': 'Personal', 'value': 'PERSONAL_INFO', 'selected': feedFilter contains 'PERSONAL_INFO'}
+	]) }}, '/feed/setFilters')"></button>
+{% endblock %}
 {%block content%}
 {% include "feed_tabbar" with {'tab': tab | default('news')} %}
 	<div class="cardsBackdrop">

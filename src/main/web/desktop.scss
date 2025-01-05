@@ -333,6 +333,7 @@ small{
 	display: flex;
 	.authorName{
 		font-weight: bold;
+		line-height: 13px;
 	}
 	.postContentWrap{
 		padding-left: 10px;
@@ -357,6 +358,7 @@ small{
 	}
 	.repostHeader{
 		margin: 5px 0;
+		line-height: 13px;
 		.avaW{
 			margin-right: 7px;
 		}
@@ -383,9 +385,6 @@ small{
 	.repost{
 		padding-left: 8px;
 		border-left: solid 2px #bac087;
-	}
-	.authorName{
-		line-height: 13px;
 	}
 	&.comment{
 		.postAvaWrap{
@@ -450,6 +449,13 @@ _::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
 		border: none;
 		margin: 0;
 		padding: 5px 0 0 0;
+		display: block;
+		.postAvaWrap{
+			float: left;
+		}
+		.postContentWrap{
+			margin-left: 50px;
+		}
 	}
 	.feedIcon{
 		margin-left: 5px;
@@ -573,6 +579,7 @@ _::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
 	background: $bgGrey;
 	border-top: solid 1px $wallPostSeparator;
 	border-bottom: solid 1px $wallPostSeparator;
+	display: flow-root;
 	&.editing{
 		border: none;
 		background: none;
@@ -1825,39 +1832,14 @@ select, .comboBoxW input{
 }
 
 .postAttachments{
-	.aspectWrapper{
-		position: relative;
-		white-space: nowrap;
-		font-size: 0;
-		.pseudoImage{
-			width: auto;
-			height: auto;
-			max-width: 510px;
-			max-height: 510px;
-			vertical-align: bottom;
-		}
-		.positioner{
-			position: absolute;
-			bottom: 0;
-			left: 0;
-			right: 0;
-			.safariSucks{
-				position: absolute;
-				top: 0;
-				left: 0;
-				right: 0;
-				bottom: 0;
-			}
-			.aspectBox{
-				white-space: normal;
-				font-size: 11px;
-				overflow: hidden;
-				display: grid;
-				grid-gap: 2px;
-				width: 100%;
-				height: 100%;
-			}
-		}
+	.aspectBox{
+		display: grid;
+		grid-gap: 2px;
+		max-height: 510px;
+	}
+	.aspectBoxW{
+		overflow: hidden;
+		max-width: 510px;
 	}
 	.aspectBox img{
 		object-fit: cover;
@@ -1870,7 +1852,8 @@ select, .comboBoxW input{
 		min-height: 0;
 	}
 	video{
-		max-width: 100%;
+		max-width: 510px;
+		max-height: 510px;
 	}
 }
 
@@ -1913,14 +1896,16 @@ select, .comboBoxW input{
 	}
 }
 
-.narrowWall, .comment, .mailMessageView{
-	.postAttachments .aspectWrapper .pseudoImage{
-		max-width: 330px;
-		max-width: min(330px, 100%);
+.comment, .mailMessageView{
+	.postAttachments{
+		.aspectBoxW{
+			max-width: 330px;
+			max-width: min(330px, 100%);
+		}
 	}
 }
 
-.mailMessageView .postAttachments .aspectWrapper .pseudoImage{
+.mailMessageView .postAttachments .aspectBoxW{
 	max-width: 100%;
 }
 
@@ -2683,7 +2668,7 @@ label.pretendLink{
 	font-weight: bold;
 	color: $auxiliaryGrey;
 	border-bottom: solid 1px $sectionHeaderBorder;
-	&:first-child{
+	&.first{
 		margin-top: -10px;
 	}
 }
@@ -2694,6 +2679,48 @@ label.pretendLink{
 
 .feedDateHeader+.feedPostRow>.post:first-child{
 	padding-top: 0;
+}
+
+.feedFilters{
+	float: right;
+	margin: -10px -10px 10px 10px;
+	background-color: $bgGrey;
+	border-bottom: solid 1px $sectionHeaderBorder;
+	width: 170px;
+	padding: 10px;
+	label{
+		display: flex;
+		cursor: pointer;
+		height: 23px;
+		align-items: center;
+	}
+	.feedIcon{
+		float: none;
+		margin: 0 9px;
+	}
+	input, .feedIcon{
+		flex: none;
+	}
+}
+
+.feedFiltersOverlay{
+	float: right;
+	position: relative;
+	.feedFilters{
+		float: none;
+	}
+	>label{
+		margin: -10px -10px 0 0;
+		padding: 0 8px;
+		line-height: 20px;
+		text-transform: lowercase;
+	}
+	.feedFilters, >label{
+		position: absolute;
+		top: 0;
+		right: 0;
+		z-index: 2;
+	}
 }
 
 .feedRowUsers{
@@ -4349,3 +4376,4 @@ label.largeAccented{
 	transform: translateY(0);
 	opacity: 1;
 }
+

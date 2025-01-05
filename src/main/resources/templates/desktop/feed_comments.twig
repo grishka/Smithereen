@@ -2,11 +2,30 @@
 {%extends "page"%}
 {%block content%}
 {% include "feed_tabbar" with {'tab': "comments"} %}
-<div class="summaryWrap">
+<div class="summaryWrap" id="feedTopSummary">
+	{% block topSummary %}
 	<div class="summary">{{ L('summary_feed') }}</div>
+	<span class="loader flR" id="feedFiltersLoader" style="display: none"></span>
 	{% include "pagination" %}
+	{% endblock %}
 </div>
 <div class="singleColumn" id="postList">
+<div class="feedFilters">
+	<form id="feedFilters" method="post" action="/feed/comments/setFilters?csrf={{ csrf }}">
+		<label>
+			<input type="checkbox" onchange="updateFeedFilters()" name="POST"{{ feedFilter contains "POST" ? ' checked' : '' }}/>
+			<span class="feedIcon feedIconStatus"></span>
+			<span class="ellipsize">{{ L('feed_type_posts') }}</span>
+		</label>
+		<label>
+			<input type="checkbox" onchange="updateFeedFilters()" name="PHOTO"{{ feedFilter contains "PHOTO" ? ' checked' : '' }}/>
+			<span class="feedIcon feedIconPhoto"></span>
+			<span class="ellipsize">{{ L('feed_type_photos') }}</span>
+		</label>
+	</form>
+</div>
+<div id="feedContent">
+{% block feedContent %}
 {% set _currentDate='' %}
 {%for entry in feed%}
 	{% if entry.type=='POST' and posts[entry.objectID] is not null %}
@@ -71,10 +90,12 @@
 	</div>
 	{% endif %}
 {% else %}
-<div class="emptyState" id="wallEmptyState">{{ L('feed_empty') }}</div>
+<div class="emptyState" id="wallEmptyState">{{ L('feed_empty_comments') }}</div>
 {%endfor%}
+{% endblock %}
 </div>
-<div class="bottomSummaryWrap">
-	{% include "pagination" %}
+</div>
+<div class="bottomSummaryWrap" id="feedBottomSummary">
+	{% block bottomSummary %}{% include "pagination" %}{% endblock %}
 </div>
 {%endblock%}
