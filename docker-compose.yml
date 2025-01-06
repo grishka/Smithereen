@@ -1,4 +1,3 @@
-version: "3"
 services:
  web:
   build: .
@@ -28,7 +27,7 @@ services:
    - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
   restart: always
  imgproxy:
-  image: darthsim/imgproxy:latest
+  image: ghcr.io/imgproxy/imgproxy:latest
   ports:
    - '4560:8080'
   environment:
