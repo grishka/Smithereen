@@ -383,6 +383,11 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			msg.cc=Set.of();
 		}
 
+		if(msg.to.isEmpty() && !msg.cc.isEmpty()){ // Some servers would omit `to` and put all recipients into `cc` instead.
+			msg.to.addAll(msg.cc);
+			msg.cc=Set.of();
+		}
+
 		return msg;
 	}
 
