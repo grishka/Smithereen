@@ -1852,7 +1852,7 @@ select, .comboBoxW input{
 		min-height: 0;
 	}
 	video{
-		max-width: 510px;
+		max-width: min(100%, 510px);
 		max-height: 510px;
 	}
 }
