@@ -1854,6 +1854,11 @@ select, .comboBoxW input{
 	video{
 		max-width: 510px;
 		max-height: 510px;
+		object-fit: cover;
+		width: 100%;
+		height: 100%;
+		display: block;
+		
 	}
 }
 
