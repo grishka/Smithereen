@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="15" height="14" viewBox="0 0 15 14" shape-rendering="crispEdges">
+  <title>checkbox_on</title>
+  <g>
+    <g>
+      <polygon points="3 9.5 3 7.5 6.5 10 13.5 3 15 2.5 15 4.5 6.5 13 3 9.5" opacity="0.2"/>
+      <polygon points="3 7.5 4.5 6 6.5 8 13.5 1 15 2.5 6.5 11 3 7.5"/>
+    </g>
+  </g>
+</svg>

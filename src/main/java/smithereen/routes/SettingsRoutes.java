@@ -14,6 +14,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -51,6 +52,7 @@ import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
@@ -548,6 +550,7 @@ public class SettingsRoutes{
 			needUsers.addAll(ps.allowUsers);
 		}
 		model.with("users", ctx.getUsersController().getUsers(needUsers));
+		model.with("allFeedTypes", EnumSet.complementOf(EnumSet.of(FriendsNewsfeedTypeFilter.POSTS)));
 
 		Templates.addJsLangForPrivacySettings(req);
 		return model;
@@ -561,7 +564,23 @@ public class SettingsRoutes{
 			String json=req.queryParams(key.toString());
 			settings.put(key, PrivacySetting.fromJson(json));
 		}
-		ctx.getPrivacyController().updateUserPrivacySettings(self.user, settings);
+		EnumSet<FriendsNewsfeedTypeFilter> feedTypes;
+		if(req.queryParams("needUpdateFeedTypes")!=null){
+			if(StringUtils.isNotEmpty(req.queryParams("allFeedTypes"))){
+				feedTypes=null;
+			}else{
+				feedTypes=EnumSet.noneOf(FriendsNewsfeedTypeFilter.class);
+				for(FriendsNewsfeedTypeFilter type:FriendsNewsfeedTypeFilter.values()){
+					if(type==FriendsNewsfeedTypeFilter.POSTS)
+						continue;
+					if(req.queryParams("feedType_"+type)!=null)
+						feedTypes.add(type);
+				}
+			}
+		}else{
+			feedTypes=self.user.newsTypesToShow;
+		}
+		ctx.getPrivacyController().updateUserPrivacySettings(self.user, settings, feedTypes);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).show("formMessage_privacy").setContent("formMessage_privacy", lang(req).get("privacy_settings_saved"));
 		}
@@ -591,6 +610,16 @@ public class SettingsRoutes{
 				.with("key", key)
 				.with("setting", ps)
 				.with("users", ctx.getUsersController().getUsers(needUsers))
+				.pageTitle(lang(req).get("privacy_settings_title"));
+	}
+
+	public static Object mobileFeedTypes(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(!isMobile(req)){
+			resp.redirect("/settings/privacy");
+			return "";
+		}
+		return new RenderedTemplateResponse("settings_privacy_feed_types", req)
+				.with("allFeedTypes", EnumSet.complementOf(EnumSet.of(FriendsNewsfeedTypeFilter.POSTS)))
 				.pageTitle(lang(req).get("privacy_settings_title"));
 	}
 

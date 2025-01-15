@@ -181,5 +181,9 @@
   "settings_sessions_ended": "Other sessions were terminated.",
   "privacy_photo_tagging": "Who can <b>tag me in photos</b>",
   "privacy_photo_tag_list": "Who sees <b>photos I'm tagged in</b>",
-  "privacy_value_friends_except": "All friends, except..."
+  "privacy_value_friends_except": "All friends, except...",
+  "privacy_feed_types": "Which of my updates appear <b>in the friends' news feeds</b>",
+  "privacy_feed_all_types": "All updates",
+  "privacy_feed_select_types": "Certain updates",
+  "privacy_feed_no_types": "No updates"
 }

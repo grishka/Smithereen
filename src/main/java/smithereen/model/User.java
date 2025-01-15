@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +28,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.jsonld.JLD;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
@@ -53,6 +55,7 @@ public class User extends Actor{
 	public Set<URI> alsoKnownAs=new HashSet<>();
 	public UserBanStatus banStatus=UserBanStatus.NONE;
 	public UserBanInfo banInfo;
+	public EnumSet<FriendsNewsfeedTypeFilter> newsTypesToShow;
 
 	// additional profile fields
 	public boolean manuallyApprovesFollowers;
@@ -231,6 +234,10 @@ public class User extends Actor{
 				if(relationshipPartnerID==-1)
 					relationshipPartnerID=0;
 				relationshipPartnerActivityPubID=tryParseURL(optString(o, "partnerAP"));
+			}
+
+			if(o.has("feedTypes")){
+				newsTypesToShow=Utils.gson.fromJson(o.get("feedTypes"), new TypeToken<>(){});
 			}
 		}
 
@@ -568,6 +575,9 @@ public class User extends Actor{
 		}
 		if(StringUtils.isNotEmpty(hometown))
 			o.addProperty("hometown", hometown);
+
+		if(newsTypesToShow!=null)
+			o.add("feedTypes", Utils.gson.toJsonTree(newsTypesToShow));
 
 		return o.toString();
 	}

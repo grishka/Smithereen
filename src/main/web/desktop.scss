@@ -2014,17 +2014,17 @@ select, .comboBoxW input{
 			list-style-type: none;
 			margin: 0;
 			padding: 0;
-
-			li{
+			li:not(.hasSubmenu), li.hasSubmenu .itemContent{
 				height: 26px;
 				line-height: 26px;
 				padding-right: 10px;
 				white-space: nowrap;
-				&:hover:not(.forceUnselected), &.selected{
-					background-color: $blockBackground;
-					.ddIcon{
-						visibility: visible;
-					}
+			}
+			li:not(.hasSubmenu):hover:not(.forceUnselected), li:not(.hasSubmenu).selected,
+				li.hasSubmenu:hover:not(.forceUnselected) .itemContent, li.hasSubmenu.selected .itemContent{
+				background-color: $blockBackground;
+				.ddIcon{
+					visibility: visible;
 				}
 			}
 		}
@@ -2060,12 +2060,18 @@ select, .comboBoxW input{
 				height: 19px;
 				line-height: 19px;
 			}
-			li{
+			li:not(.hasSubmenu), li.hasSubmenu .itemContent{
 				height: 19px;
 				line-height: 19px;
 				padding: 0 6px;
 				margin: 0 -1px;
-				&:hover:not(.forceUnselected), &.selected{
+			}
+			.submenu li{
+				margin: 0;
+			}
+			>ul{
+				>li:not(.hasSubmenu):hover:not(.forceUnselected), >li.hasSubmenu:hover:not(.forceUnselected) .itemContent,
+					>li:not(.hasSubmenu).selected, >li.hasSubmenu.selected .itemContent{
 					background-color: $buttonBorder;
 					border: solid 1px $headerBorderBottomDark;
 					line-height: 17px;
@@ -2073,11 +2079,16 @@ select, .comboBoxW input{
 					color: $textOnAccent;
 				}
 			}
-			&.hasDdIcons li{
-				padding-right: 21px;
-				&:hover:not(.forceUnselected), &.selected{
+			&.hasDdIcons{
+				li:not(.hasSubmenu), li.hasSubmenu .itemContent{
+					padding-right: 21px;
+				}
+				li:not(.hasSubmenu):hover:not(.forceUnselected), li:not(.hasSubmenu).selected, li.hasSubmenu:hover:not(.forceUnselected) .itemContent, li.hasSubmenu.selected .itemContent{
 					padding-right: 20px;
 				}
+			}
+			.submenu{
+				padding-bottom: 1px;
 			}
 		}
 		.ddIcon{
@@ -2095,6 +2106,30 @@ select, .comboBoxW input{
 			visibility: hidden;
 			&.iconPlus{
 				background-position: 0 -32px;
+			}
+		}
+		&.popupDown .ddIcon.iconSubmenu{
+			background-position: 0 -15px;
+		}
+		&.popupUp .ddIcon.iconSubmenu{
+			background-position: 0 -57px;
+		}
+		.submenu{
+			display: none;
+		}
+		.hasSubmenu:hover > .submenu, .hasSubmenu.selected > .submenu{
+			display: block;
+		}
+		label{
+			display: block;
+			cursor: pointer;
+		}
+		input{
+			float: left;
+			background-image: none;
+			margin: 2px 4px 0 -5px;
+			&:checked, &:hover:checked{
+				background-image: svg-load('img/check.svg', fill: $buttonBorder)
 			}
 		}
 	}

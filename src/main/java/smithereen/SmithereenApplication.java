@@ -289,6 +289,7 @@ public class SmithereenApplication{
 			postWithCSRF("/privacy", SettingsRoutes::savePrivacySettings);
 			getLoggedIn("/privacy/mobileEditSetting", SettingsRoutes::mobileEditPrivacy);
 			getLoggedIn("/privacy/mobileBox", SettingsRoutes::mobilePrivacyBox);
+			getLoggedIn("/privacy/mobileFeedTypes", SettingsRoutes::mobileFeedTypes);
 			getLoggedIn("/deactivateAccountForm", SettingsRoutes::deactivateAccountForm);
 			postWithCSRF("/deactivateAccount", SettingsRoutes::deactivateAccount);
 			postWithCSRF("/updateAppearanceBehavior", SettingsRoutes::saveAppearanceBehaviorSettings);

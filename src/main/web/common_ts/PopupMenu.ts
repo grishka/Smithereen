@@ -9,14 +9,15 @@ class PopupMenu{
 	private menu:HTMLElement;
 	private actualMenu:HTMLElement;
 	private title:HTMLElement;
-	private listener:{(id:string, args:any):void};
+	private listener:{(id:string, args:any):boolean};
 	private prepareCallback:{():void};
 	private isPopupDown=true;
 	private opener:HTMLElement;
 	private titleValue:HTMLElement;
 	private isVisible:boolean=false;
+	private lastClickEventTimestamp:number;
 
-	public constructor(el:HTMLElement, listener:{(id:string):void}, useMouseOver:boolean=true, dropdownArrow:boolean=false){
+	public constructor(el:HTMLElement, listener:{(id:string):boolean}, useMouseOver:boolean=true, dropdownArrow:boolean=false){
 		this.root=el;
 		this.listener=listener;
 		if(useMouseOver){
@@ -75,7 +76,23 @@ class PopupMenu{
 			var items=this.actualMenu.children.unfuck();
 			this.actualMenu.innerHTML="";
 			for(var i=items.length-1;i>=0;i--){
-				this.actualMenu.appendChild(items[i]);
+				var item=items[i];
+				this.actualMenu.appendChild(item);
+				if(item.classList.contains("hasSubmenu")){
+					var submenuContent=item.children.unfuck();
+					item.innerHTML="";
+					for(var j=submenuContent.length-1;j>=0;j--){
+						var subEl=submenuContent[j];
+						item.appendChild(subEl);
+						if(subEl.tagName=="UL"){
+							var subItems=subEl.children.unfuck();
+							subEl.innerHTML="";
+							for(var k=subItems.length-1;k>=0;k--){
+								subEl.appendChild(subItems[k]);
+							}
+						}
+					}
+				}
 			}
 			this.menu.insertAdjacentElement(newDown ? "afterbegin" : "beforeend", this.title);
 			this.menu.classList.remove(newDown ? "popupUp" : "popupDown");
@@ -96,17 +113,20 @@ class PopupMenu{
 	}
 
 	private onItemClick(ev:MouseEvent){
+		if(this.lastClickEventTimestamp==ev.timeStamp)
+			return;
+		this.lastClickEventTimestamp=ev.timeStamp;
 		var t=ev.target as HTMLElement;
-		var li=t.tagName=="LI" ? t : t.parentElement;
-		li.classList.add("forceUnselected");
-		setTimeout(()=>{
-			li.classList.remove("forceUnselected");
-		}, 50);
-		setTimeout(()=>{
-			this.hide();
-		}, 100);
-
-		this.listener(li.dataset.act, li.dataset.args ? JSON.parse(li.dataset.args) : {});
+		var li=t.closest("li");
+		if(!this.listener(li.dataset.act, li.dataset.args ? JSON.parse(li.dataset.args) : {})){
+			li.classList.add("forceUnselected");
+			setTimeout(()=>{
+				li.classList.remove("forceUnselected");
+			}, 50);
+			setTimeout(()=>{
+				this.hide();
+			}, 100);
+		}
 	}
 
 	public setItemVisibility(act:string, visible:boolean){

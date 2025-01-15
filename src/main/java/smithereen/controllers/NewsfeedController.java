@@ -86,17 +86,8 @@ public class NewsfeedController{
 				startIndex=0;
 			}
 
-			EnumSet<NewsfeedEntry.Type> actualFilter=filter.stream()
-					.flatMap(f->switch(f){
-						case POSTS -> Stream.of(NewsfeedEntry.Type.POST);
-						case PHOTOS -> Stream.of(NewsfeedEntry.Type.ADD_PHOTO);
-						case FRIENDS -> Stream.of(NewsfeedEntry.Type.ADD_FRIEND);
-						case GROUPS -> Stream.of(NewsfeedEntry.Type.JOIN_GROUP, NewsfeedEntry.Type.CREATE_GROUP);
-						case EVENTS -> Stream.of(NewsfeedEntry.Type.JOIN_EVENT, NewsfeedEntry.Type.CREATE_EVENT);
-						case PHOTO_TAGS -> Stream.of(NewsfeedEntry.Type.PHOTO_TAG);
-						case PERSONAL_INFO -> Stream.of(); // TODO
-					})
-					.collect(Collectors.toCollection(()->EnumSet.noneOf(NewsfeedEntry.Type.class)));
+			EnumSet<NewsfeedEntry.Type> actualFilter=getFriendsFeedTypesForFilter(filter);
+			HashMap<Integer, EnumSet<NewsfeedEntry.Type>> userTypeFilters=new HashMap<>();
 
 			while(startIndex==-1 || startIndex+offset+count>=cache.feed.size()){
 				LOG.debug("Getting new feed page from database: userID={}, startFrom={}, offset={}, realOffset={}, count={}, filter={}", self.user.id, startFrom, offset, cache.realOffset, count, actualFilter);
@@ -114,6 +105,30 @@ public class NewsfeedController{
 					Set<Integer> inaccessiblePosts=posts.values().stream().filter(p->!context.getPrivacyController().checkPostPrivacy(self.user, p)).map(p->p.id).collect(Collectors.toSet());
 					newPage.removeIf(e->e.type==NewsfeedEntry.Type.POST && inaccessiblePosts.contains((int)e.objectID));
 				}
+
+				Set<Integer> needUsersForPrivacy=newPage.stream()
+						.filter(e->e.type!=NewsfeedEntry.Type.POST)
+						.map(e->e.authorID)
+						.filter(id->!userTypeFilters.containsKey(id))
+						.collect(Collectors.toSet());
+
+				if(!needUsersForPrivacy.isEmpty()){
+					for(User u:context.getUsersController().getUsers(needUsersForPrivacy).values()){
+						EnumSet<NewsfeedEntry.Type> userFilter;
+						if(u.newsTypesToShow!=null){
+							userFilter=getFriendsFeedTypesForFilter(u.newsTypesToShow);
+							userFilter.add(NewsfeedEntry.Type.POST); // Posts are always shown
+						}else{
+							userFilter=EnumSet.allOf(NewsfeedEntry.Type.class);
+						}
+						userTypeFilters.put(u.id, userFilter);
+					}
+				}
+
+				newPage.removeIf(e->{
+					EnumSet<NewsfeedEntry.Type> userFilter=userTypeFilters.get(e.authorID);
+					return userFilter!=null && !userFilter.contains(e.type);
+				});
 
 				Set<Long> needPhotos=newPage.stream().filter(e->e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO_TAG).map(e->e.objectID).collect(Collectors.toSet());
 				if(!needPhotos.isEmpty()){
@@ -154,6 +169,20 @@ public class NewsfeedController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	private static EnumSet<NewsfeedEntry.Type> getFriendsFeedTypesForFilter(EnumSet<FriendsNewsfeedTypeFilter> filter){
+		return filter.stream()
+				.flatMap(f->switch(f){
+					case POSTS -> Stream.of(NewsfeedEntry.Type.POST);
+					case PHOTOS -> Stream.of(NewsfeedEntry.Type.ADD_PHOTO);
+					case FRIENDS -> Stream.of(NewsfeedEntry.Type.ADD_FRIEND);
+					case GROUPS -> Stream.of(NewsfeedEntry.Type.JOIN_GROUP, NewsfeedEntry.Type.CREATE_GROUP);
+					case EVENTS -> Stream.of(NewsfeedEntry.Type.JOIN_EVENT, NewsfeedEntry.Type.CREATE_EVENT);
+					case PHOTO_TAGS -> Stream.of(NewsfeedEntry.Type.PHOTO_TAG);
+					case PERSONAL_INFO -> Stream.of(); // TODO
+				})
+				.collect(Collectors.toCollection(()->EnumSet.noneOf(NewsfeedEntry.Type.class)));
 	}
 
 	public void setFriendsFeedFilters(Account self, EnumSet<FriendsNewsfeedTypeFilter> filter){

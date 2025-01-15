@@ -11,8 +11,10 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -38,6 +40,7 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
@@ -106,7 +109,7 @@ public class PrivacyController{
 		}
 	}
 
-	public void updateUserPrivacySettings(@NotNull User self, @NotNull Map<UserPrivacySettingKey, PrivacySetting> settings){
+	public void updateUserPrivacySettings(@NotNull User self, @NotNull Map<UserPrivacySettingKey, PrivacySetting> settings, @Nullable EnumSet<FriendsNewsfeedTypeFilter> feedTypes){
 		try{
 			// Collect user IDs to check their friendship statuses
 			Set<Integer> friendIDs=new HashSet<>();
@@ -126,6 +129,14 @@ public class PrivacyController{
 			// TODO check if settings actually changed
 			UserStorage.setPrivacySettings(self, settings);
 			self.privacySettings=settings;
+			if(feedTypes!=null && feedTypes.equals(EnumSet.complementOf(EnumSet.of(FriendsNewsfeedTypeFilter.POSTS)))){
+				feedTypes=null;
+			}
+			if(!Objects.equals(self.newsTypesToShow, feedTypes)){
+				self.newsTypesToShow=feedTypes;
+				UserStorage.updateExtendedFields(self, self.serializeProfileFields());
+				context.getNewsfeedController().clearFriendsFeedCache();
+			}
 			context.getActivityPubWorker().sendUpdateUserActivity(self);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

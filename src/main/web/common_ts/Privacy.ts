@@ -111,6 +111,7 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 			}
 			setValue({r: rule, au: [], xu: []});
 		}
+		return false;
 	}, false, true));
 	var curSel=menuList.qs(".selected");
 	if(curSel){
@@ -205,6 +206,7 @@ class ExtendedPrivacyBox extends Box{
 		this.setRule(currentValue.r);
 		this.menu=new PopupMenu(menuWrap, (id)=>{
 			this.setRule(id);
+			return false;
 		}, false, true);
 		this.allowedLink.onclick=(ev)=>{
 			this.menu.show();

@@ -461,6 +461,7 @@ class PostForm{
 		}else if(id=="graffiti"){
 			this.showGraffitiEditor(args);
 		}
+		return false;
 	}
 
 	private onPrepareAttachMenu(){

@@ -6,4 +6,19 @@
 		{% include "privacy_setting_inner" with {'setting': privacySettings[key], 'label': L(key.descriptionLangKey), 'isOnlyMe': key.onlyMe} %}
 	</a>
 {% endfor %}
+<a href="/settings/privacy/mobileFeedTypes" class="privacySettingRow">
+	<div class="settingLabel">{{ L('privacy_feed_types') }}</div>
+	<div class="settingValue">
+	{% if currentUser.newsTypesToShow is null %}
+	{{ L('privacy_feed_all_types') }}
+	{% elseif currentUser.newsTypesToShow is empty %}
+	{{ L('privacy_feed_no_types') }}
+	{% else %}
+	{{ L('privacy_feed_select_types') }}:
+	{% for type in currentUser.newsTypesToShow %}
+	    {{ L(type.langKey) }}{% if not loop.last %}, {% endif %}
+	{% endfor %}
+	{% endif %}
+	</div>
+</a>
 {% endblock %}
