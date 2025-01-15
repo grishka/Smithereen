@@ -45,7 +45,6 @@ import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.PostLikeObject;
 import smithereen.model.PostSource;
-import smithereen.model.SessionInfo;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPermissions;
@@ -348,10 +347,23 @@ public class WallController{
 	 */
 	@NotNull
 	public Post getPostOrThrow(int id){
+		return getPostOrThrow(id, false);
+	}
+
+	/**
+	 * Get a post by ID.
+	 *
+	 * @param id          Post ID
+	 * @param wantDeleted whether to return the post even if it was deleted
+	 * @return The post
+	 * @throws ObjectNotFoundException if the post does not exist or was deleted
+	 */
+	@NotNull
+	public Post getPostOrThrow(int id, boolean wantDeleted){
 		if(id<=0)
 			throw new ObjectNotFoundException("err_post_not_found");
 		try{
-			Post post=PostStorage.getPostByID(id, false);
+			Post post=PostStorage.getPostByID(id, wantDeleted);
 			if(post==null)
 				throw new ObjectNotFoundException("err_post_not_found");
 			return post;

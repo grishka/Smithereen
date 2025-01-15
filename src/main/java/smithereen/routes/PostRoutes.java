@@ -860,7 +860,7 @@ public class PostRoutes{
 		ApplicationContext ctx=context(req);
 		int offset=offset(req);
 
-		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
+		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
 		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 		CommentViewType viewType=info!=null && info.account!=null ? info.account.prefs.commentViewType : CommentViewType.THREADED;
 		PaginatedList<PostViewModel> comments=ctx.getWallController().getReplies(self!=null ? self.user : null, post.getReplyKeyForReplies(), offset, 100, 50, viewType);
