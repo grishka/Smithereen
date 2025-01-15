@@ -26,22 +26,25 @@ public class DatabaseConnectionManager{
 			conn.useDepth++;
 			return conn;
 		}
-		if(pool.isEmpty()){
+		synchronized(pool){
+			conn=pool.isEmpty() ? null : pool.removeLast();
+		}
+		if(conn==null){
 			if(DEBUG_CONNECTION_LEAKS)
 				conn=new DebugDatabaseConnection(newConnection());
 			else
 				conn=new DatabaseConnection(newConnection());
 		}else{
-			synchronized(pool){
-				conn=pool.removeLast();
-			}
 			try{
 				validateConnection(conn.actualConnection);
 				conn.lastUsed=System.nanoTime();
 			}catch(SQLException x){
 				LOG.debug("Failed to validate database connection, reopening");
 				closeConnection(conn);
-				conn=new DatabaseConnection(newConnection());
+				if(DEBUG_CONNECTION_LEAKS)
+					conn=new DebugDatabaseConnection(newConnection());
+				else
+					conn=new DatabaseConnection(newConnection());
 			}
 		}
 
