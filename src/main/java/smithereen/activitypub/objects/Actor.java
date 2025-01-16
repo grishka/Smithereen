@@ -164,6 +164,9 @@ public abstract class Actor extends ActivityPubObject{
 		}
 		serializerContext.addAlias("collectionSimpleQuery", "sm:collectionSimpleQuery");
 		serializerContext.addAlias("sm", JLD.SMITHEREEN);
+		serializerContext.addAlias("toot", JLD.MASTODON);
+		serializerContext.addAlias("discoverable", "toot:discoverable");
+		obj.addProperty("discoverable", true);
 
 		serializerContext.addSchema(JLD.W3_SECURITY);
 
