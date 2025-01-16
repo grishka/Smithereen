@@ -193,16 +193,19 @@ class LayerManager{
 
 	private lockPageScroll(){
 		if(LayerManager.pageScrollLockCount++==0){
+			var scrollbarW=window.innerWidth-document.body.clientWidth;
 			document.body.style.top = `-${window.scrollY}px`;
 			document.body.style.position="fixed";
+			document.body.style.paddingRight=scrollbarW+"px";
 		}
 	}
 
 	private unlockPageScroll(){
 		if(--LayerManager.pageScrollLockCount==0){
-			var scrollY = document.body.style.top;
-			document.body.style.position = '';
-			document.body.style.top = '';
+			var scrollY=document.body.style.top;
+			document.body.style.position="";
+			document.body.style.top="";
+			document.body.style.paddingRight="";
 			window.scrollTo(0, parseInt(scrollY || '0') * -1);
 		}
 	}

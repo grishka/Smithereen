@@ -215,6 +215,9 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 				this.tagFriendListPopup.style.top=(this.tagsWrap.offsetTop+area.y)+"px";
 			}
 		}
+
+		var scrollbarW=window.innerWidth-this.getContent().clientWidth;
+		this.layerCloseThing.style.right=scrollbarW+"px";
 	}
 
 	private updateImage(){
