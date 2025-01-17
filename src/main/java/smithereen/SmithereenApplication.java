@@ -53,6 +53,7 @@ import smithereen.routes.CommentsRoutes;
 import smithereen.routes.FriendsRoutes;
 import smithereen.routes.GroupsRoutes;
 import smithereen.routes.MailRoutes;
+import smithereen.routes.NewsfeedRoutes;
 import smithereen.routes.NotificationsRoutes;
 import smithereen.routes.PhotosRoutes;
 import smithereen.routes.PostRoutes;
@@ -222,10 +223,12 @@ public class SmithereenApplication{
 		get("/", SmithereenApplication::indexPage);
 
 		path("/feed", ()->{
-			getLoggedIn("", PostRoutes::feed);
-			getLoggedIn("/comments", PostRoutes::commentsFeed);
-			postWithCSRF("/setFilters", PostRoutes::setFeedFilters);
-			postWithCSRF("/comments/setFilters", PostRoutes::setCommentsFeedFilters);
+			getLoggedIn("", NewsfeedRoutes::feed);
+			getLoggedIn("/comments", NewsfeedRoutes::commentsFeed);
+			getLoggedIn("/groups", NewsfeedRoutes::groupsFeed);
+			postWithCSRF("/setFilters", NewsfeedRoutes::setFeedFilters);
+			postWithCSRF("/groups/setFilters", NewsfeedRoutes::setGroupsFeedFilters);
+			postWithCSRF("/comments/setFilters", NewsfeedRoutes::setCommentsFeedFilters);
 		});
 
 		path("/account", ()->{

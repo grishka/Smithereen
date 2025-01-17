@@ -369,18 +369,6 @@ small{
 		.nameW{
 			margin-bottom: 4px;
 		}
-		.repostIcon{
-			display: inline-block;
-			width: 9px;
-			height: 11px;
-			margin: 0 3px 0 1px;
-			position: relative;
-			top: 2px;
-			background: svg-load('img/repost_icons.svg') no-repeat;
-			&.mastodonStyle{
-				background-position: 0 -11px;
-			}
-		}
 	}
 	.repost{
 		padding-left: 8px;
@@ -424,12 +412,28 @@ small{
 	.floatingPostActions{
 		margin: 0 3px 0 5px;
 	}
+	.repostIcon, .postOwnerArrowIcon{
+		display: inline-block;
+		width: 9px;
+		height: 11px;
+		margin: 0 3px 0 1px;
+		position: relative;
+		top: 2px;
+		background: svg-load('img/repost_icons.svg') no-repeat;
+	}
+	.repostIcon.mastodonStyle{
+		background-position: 0 -11px;
+	}
+	.postOwnerArrowIcon{
+		background-position: 0 -22px;
+		margin: 0 4px;
+	}
 }
 
 /* Safari hack because it hates my SVG abuse */
-_::-webkit-full-page-media, _:future, :root .post .repostHeader .repostIcon{
-	background: svg-load('img/repost_icons_safari.svg') no-repeat;
-	background-size: 9px 22px;
+_::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .postOwnerArrowIcon{
+	background-image: svg-load('img/repost_icons_safari.svg');
+	background-size: 9px 33px;
 }
 
 .post.comment .authorName{

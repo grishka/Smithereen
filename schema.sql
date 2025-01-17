@@ -528,6 +528,22 @@ CREATE TABLE `newsfeed_comments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `newsfeed_groups`
+--
+
+CREATE TABLE `newsfeed_groups` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `type` int unsigned NOT NULL,
+  `object_id` bigint unsigned DEFAULT NULL,
+  `group_id` int unsigned NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `type` (`type`,`group_id`,`object_id`),
+  KEY `time` (`time`),
+  KEY `group_id` (`group_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `notifications`
 --
 
@@ -936,4 +952,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-12-30  7:31:06
+-- Dump completed on 2025-01-17  6:58:44

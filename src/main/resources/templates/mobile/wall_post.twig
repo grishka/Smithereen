@@ -14,6 +14,7 @@
 			{%- if realPost.privacy!='PUBLIC' -%}
 			<span class="privatePostLockIcon"></span>
 			{%- endif -%}
+			{%- if showOwner and realPost.ownerID!=realPost.authorID %}<span class="postOwnerArrowIcon"></span><a href="{{ profileURL(realPost.ownerID) }}" class="authorName">{{ (realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) | name }}</a>{% endif %}
 			</div>
 			<div class="singleLine timeW"><a href="{{realPost.internalURL}}" class="postLink">{{LD(realPost.createdAt)}}</a></div>
 		</div>

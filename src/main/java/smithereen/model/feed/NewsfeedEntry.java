@@ -25,6 +25,16 @@ public class NewsfeedEntry{
 		return e;
 	}
 
+	public static NewsfeedEntry fromGroupsResultSet(ResultSet res) throws SQLException{
+		NewsfeedEntry e=new NewsfeedEntry();
+		e.id=res.getInt("id");
+		e.type=Type.values()[res.getInt("type")];
+		e.objectID=res.getLong("object_id");
+		e.authorID=-res.getInt("group_id");
+		e.time=DatabaseUtils.getInstant(res, "time");
+		return e;
+	}
+
 	@Override
 	public String toString(){
 		return "NewsfeedEntry{"+

@@ -31,8 +31,6 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.activitypub.objects.activities.Like;
-import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.FederationState;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -282,29 +280,6 @@ public class PostStorage{
 		}
 	}
 
-	public static PaginatedList<NewsfeedEntry> getFeed(int userID, int startFromID, int offset, int count, EnumSet<NewsfeedEntry.Type> types) throws SQLException{
-		if(types.isEmpty())
-			return PaginatedList.emptyList(count);
-		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			int total=new SQLQueryBuilder(conn)
-					.selectFrom("newsfeed")
-					.count()
-					.whereIn("type", types)
-					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY))", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
-					.executeAndGetInt();
-			List<NewsfeedEntry> feed=new SQLQueryBuilder(conn)
-					.selectFrom("newsfeed")
-					.columns("type", "object_id", "author_id", "id", "time")
-					.whereIn("type", types)
-					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=?)", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
-					.orderBy("time DESC")
-					.limit(count, offset)
-					.executeAsStream(NewsfeedEntry::fromResultSet)
-					.toList();
-			return new PaginatedList<>(feed, total, offset, count);
-		}
-	}
-
 	public static List<Post> getWallPosts(int ownerID, boolean isGroup, int minID, int maxID, int offset, int count, int[] total, boolean ownOnly, Set<Post.Privacy> allowedPrivacy) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt;
@@ -517,6 +492,10 @@ public class PostStorage{
 			stmt=conn.prepareStatement("DELETE FROM `newsfeed` WHERE (`type`=0 OR `type`=1) AND `object_id`=?");
 			stmt.setInt(1, id);
 			stmt.execute();
+			new SQLQueryBuilder(conn)
+					.deleteFrom("newsfeed_groups")
+					.where("type=? AND object_id=?", NewsfeedEntry.Type.POST, id)
+					.executeNoResult();
 
 			if(post.getReplyLevel()>0){
 				conn.createStatement().execute("UPDATE wall_posts SET reply_count=GREATEST(1, reply_count)-1 WHERE id IN ("+post.replyKey.stream().map(String::valueOf).collect(Collectors.joining(","))+")");

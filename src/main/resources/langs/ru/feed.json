@@ -25,5 +25,8 @@
   "feed_type_tags": "Отметки",
   "feed_type_personal": "Личные данные",
   "feed_filters": "Фильтры",
-  "feed_empty_comments": "Обсуждения, в которых вы участвовали, появятся здесь."
+  "feed_empty_comments": "Обсуждения, в которых вы участвовали, появятся здесь.",
+  "feed_empty_groups": "Обновления из групп, в которых вы состоите, появятся здесь.",
+  "feed_group_added_photo": "В группе \"<a id=\"author\">{author}</a>\" добавлена фотография в альбом <a id=\"target\">{target}</a>.",
+  "feed_group_added_multiple_photos": "В группе \"<a id=\"author\">{author}</a>\" {count, plural, one {добавлена # фотография} few {добавлено # фотографии} other {добавлено # фотографий}} в {albumCount, select, 1 {альбом} other {альбомы}} {albums}."
 }

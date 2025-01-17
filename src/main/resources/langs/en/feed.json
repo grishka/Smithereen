@@ -25,5 +25,8 @@
   "feed_type_tags": "Photo tags",
   "feed_type_personal": "Personal info",
   "feed_filters": "Filters",
-  "feed_empty_comments": "Comment threads you participated in will appear here."
+  "feed_empty_comments": "Comment threads you participated in will appear here.",
+  "feed_empty_groups": "Updates from groups you've joined will appear here.",
+  "feed_group_added_photo": "In group \"<a id=\"author\">{author}</a>\", a photo has been added to album <a id=\"target\">{target}</a>.",
+  "feed_group_added_multiple_photos": "In group \"<a id=\"author\">{author}</a>\", {count, plural, one {# photo has} other {# photos have}} been added to {albumCount, select, 1 {album} other {albums}} {albums}."
 }

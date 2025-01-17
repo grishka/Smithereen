@@ -1,5 +1,5 @@
 {# @pebvariable name="entry" type="smithereen.model.feed.NewsfeedEntry" #}
-{% set author=users[entry.authorID] %}
+{% set author=entry.authorID>0 ? users[entry.authorID] : groups[-entry.authorID] %}
 {% if entry.type=="POST" and posts[entry.objectID] is not null %}
 <div class="feedRow feedPostRow" id="postWrap{{ entry.objectID }}">
 	{%include "wall_post" with {'post': posts[entry.objectID]}%}
@@ -18,7 +18,7 @@
 		{% set langKey="joined_multiple_events" %}
 	{% elseif entry.childEntriesType=="ADD_PHOTO" %}
 		{% set icon="Photo" %}
-		{% set langKey="added_multiple_photos" %}
+		{% set langKey=entry.authorID>0 ? "added_multiple_photos" : "group_added_multiple_photos" %}
 		{% set _=langArgs.put('albumCount', entry.extraData['albums'] | length) %}
 		{% set albumLinks=[] %}
 		{% for album in entry.extraData['albums'] %}
@@ -46,7 +46,7 @@
 		{% for ce in entry.mostRecentEntries %}
 		    {% set _=entryPhotos.add(photos[ce.objectID]) %}
 		{% endfor %}
-		{{ renderPhotoGrid(entryPhotos, "friendsFeedGrouped/#{entry.childEntries.first.id}") }}
+		{{ renderPhotoGrid(entryPhotos, "#{groupedPhotosList | default('friendsFeedGrouped')}/#{entry.childEntries.first.id}") }}
 		</div>
 		{% else %}
 		<div class="feedRowUsers">
@@ -104,7 +104,7 @@
 {% elseif entry.type=="ADD_PHOTO" %}
 	{% set album=entry.extraData['album'] %}
 	{% set icon="Photo" %}
-	{% set langKey="added_photo" %}
+	{% set langKey=entry.authorID>0 ? "added_photo" : "group_added_photo" %}
 	{% set targetHref=album.url %}
 	{% set targetName=album.title %}
 {% elseif entry.type=="PHOTO_TAG" %}
@@ -120,7 +120,7 @@
 	<div class="feedRowContent">
 		{{ L("feed_#{langKey}", {'author': author | name('complete'), 'target': targetName, 'gender': author.gender}, {'author': {'href': profileURL(entry.authorID)}, 'target': {'href': targetHref} }) }}
 		{% if entry.type=="ADD_PHOTO" or entry.type=="PHOTO_TAG" %}
-		<div class="feedRowPhotos">{{ renderPhotoGrid([photos[entry.objectID]], "friendsFeed/#{entry.id}") }}</div>
+		<div class="feedRowPhotos">{{ renderPhotoGrid([photos[entry.objectID]], "#{photosList | default('friendsFeed')}/#{entry.id}") }}</div>
 		{% endif %}
 	</div>
 </div>

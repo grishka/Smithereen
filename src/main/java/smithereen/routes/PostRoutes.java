@@ -13,7 +13,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -21,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,8 +42,6 @@ import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.PostSource;
-import smithereen.model.feed.CommentsNewsfeedObjectType;
-import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
@@ -58,16 +54,10 @@ import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
-import smithereen.model.comments.CommentParentObjectID;
-import smithereen.model.comments.CommentableObjectType;
-import smithereen.model.feed.GroupedNewsfeedEntry;
-import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.photos.Photo;
-import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.utils.Pair;
 import smithereen.templates.RenderedTemplateResponse;
-import smithereen.templates.Templates;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
@@ -342,130 +332,6 @@ public class PostRoutes{
 		}
 		resp.redirect(post.getInternalURL().toString());
 		return "";
-	}
-
-	private static void prepareFeed(ApplicationContext ctx, Request req, Account self, List<NewsfeedEntry> feed, RenderedTemplateResponse model, boolean needNonPostInteractions){
-		Set<Integer> needPosts=new HashSet<>(), needUsers=new HashSet<>(), needGroups=new HashSet<>();
-		for(NewsfeedEntry e:feed){
-			needUsers.add(e.authorID);
-			switch(e.type){
-				case GROUPED -> {
-					GroupedNewsfeedEntry gne=(GroupedNewsfeedEntry) e;
-					switch(gne.childEntriesType){
-						case ADD_FRIEND -> {
-							for(NewsfeedEntry ce: gne.childEntries){
-								needUsers.add((int) ce.objectID);
-							}
-						}
-						case JOIN_GROUP, JOIN_EVENT -> {
-							for(NewsfeedEntry ce: gne.childEntries){
-								needGroups.add((int) ce.objectID);
-							}
-						}
-						case null, default -> {}
-					}
-				}
-				case POST, RETOOT -> needPosts.add((int) e.objectID);
-				case ADD_FRIEND -> needUsers.add((int) e.objectID);
-				case JOIN_GROUP, JOIN_EVENT, CREATE_GROUP, CREATE_EVENT -> needGroups.add((int) e.objectID);
-
-				case null, default -> {}
-			}
-		}
-
-		List<PostViewModel> feedPosts=ctx.getWallController().getPosts(needPosts).values().stream().map(PostViewModel::new).toList();
-
-		ctx.getWallController().populateReposts(self.user, feedPosts, 2);
-		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
-			ctx.getWallController().populateCommentPreviews(self.user, feedPosts, self.prefs.commentViewType);
-		}
-
-		PostViewModel.collectActorIDs(feedPosts, needUsers, needGroups);
-
-		Set<Long> needPhotos=feed.stream()
-				.filter(e->e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO || e.type==NewsfeedEntry.Type.PHOTO_TAG ||
-						(e instanceof GroupedNewsfeedEntry gne && (gne.childEntriesType==NewsfeedEntry.Type.ADD_PHOTO || gne.childEntriesType==NewsfeedEntry.Type.PHOTO_TAG)))
-				.flatMap(e->switch(e){
-					case GroupedNewsfeedEntry gne -> gne.childEntries.stream().map(ce->ce.objectID);
-					default -> Stream.of(e.objectID);
-				})
-				.collect(Collectors.toSet());
-
-		if(!needPhotos.isEmpty()){
-			Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
-			for(Photo photo:photos.values()){
-				if(photo.ownerID>0)
-					needUsers.add(photo.ownerID);
-				else
-					needGroups.add(-photo.ownerID);
-				needUsers.add(photo.authorID);
-			}
-			model.with("photos", photos);
-			if(needNonPostInteractions)
-				model.with("photosInteractions", ctx.getUserInteractionsController().getUserInteractions(photos.values(), self.user));
-		}
-
-		if(needNonPostInteractions && !needPhotos.isEmpty()){
-			Map<CommentParentObjectID, PaginatedList<CommentViewModel>> comments=ctx.getCommentsController().getCommentsForFeed(needPhotos.stream()
-					.map(id->new CommentParentObjectID(CommentableObjectType.PHOTO, id))
-					.collect(Collectors.toSet()), self.prefs.commentViewType==CommentViewType.FLAT, 3);
-
-			CommentViewModel.collectUserIDs(comments.values().stream().flatMap(pl->pl.list.stream()).toList(), needUsers);
-			Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(comments.values().stream().flatMap(l->l.list.stream().map(cvm->cvm.post)).toList(), self.user);
-			model.with("commentInteractions", interactions);
-
-			model.with("photosComments", comments.entrySet().stream()
-					.filter(e->e.getKey().type()==CommentableObjectType.PHOTO)
-					.collect(Collectors.toMap(e->e.getKey().id(), Map.Entry::getValue)));
-		}
-
-		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
-		Map<Integer, Group> groups=ctx.getGroupsController().getGroupsByIdAsMap(needGroups);
-
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(feedPosts, self.user);
-		model.with("posts", feedPosts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity())))
-				.with("users", users).with("groups", groups).with("postInteractions", interactions);
-		model.with("maxReplyDepth", getMaxReplyDepth(self)).with("commentViewType", self.prefs.commentViewType);
-	}
-
-	public static Object feed(Request req, Response resp, Account self, ApplicationContext ctx){
-		int startFromID=parseIntOrDefault(req.queryParams("startFrom"), 0);
-		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		EnumSet<FriendsNewsfeedTypeFilter> filter=self.prefs.friendFeedFilter;
-		if(filter==null)
-			filter=EnumSet.allOf(FriendsNewsfeedTypeFilter.class);
-		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(self, filter, timeZoneForRequest(req), startFromID, offset, 25);
-		if(!feed.list.isEmpty() && startFromID==0)
-			startFromID=feed.list.getFirst().id;
-		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "feed_filters");
-		Templates.addJsLangForNewPostForm(req);
-
-		RenderedTemplateResponse model=new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list)
-				.with("paginationUrlPrefix", "/feed?startFrom="+startFromID+"&offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationPerPage", 25).with("paginationFirstPageUrl", "/feed")
-				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments)
-				.with("feedFilter", filter.stream().map(Object::toString).collect(Collectors.toSet()));
-
-		prepareFeed(ctx, req, self, feed.list, model, false);
-
-		return model;
-	}
-
-	public static Object setFeedFilters(Request req, Response resp, Account self, ApplicationContext ctx){
-		EnumSet<FriendsNewsfeedTypeFilter> filter=EnumSet.noneOf(FriendsNewsfeedTypeFilter.class);
-		for(FriendsNewsfeedTypeFilter type:FriendsNewsfeedTypeFilter.values()){
-			if(req.queryParams(type.toString())!=null)
-				filter.add(type);
-		}
-		ctx.getNewsfeedController().setFriendsFeedFilters(self, filter);
-		if(isMobile(req)){
-			return new WebDeltaResponse(resp).refresh();
-		}else{
-			RenderedTemplateResponse model=(RenderedTemplateResponse) feed(req, resp, self, ctx);
-			return new WebDeltaResponse(resp)
-					.setContent("feedContent", model.renderBlock("feedContent"))
-					.setContent("feedTopSummary", model.renderBlock("topSummary"))
-					.setContent("feedBottomSummary", model.renderBlock("bottomSummary"));
-		}
 	}
 
 	public static Object standalonePost(Request req, Response resp){
@@ -985,45 +851,6 @@ public class PostRoutes{
 		r.show=true;
 		r.fullURL="/posts/"+postID+"/pollVoters/"+optionID;
 		return gson.toJson(r);
-	}
-
-	public static Object commentsFeed(Request req, Response resp, Account self, ApplicationContext ctx){
-		int offset=offset(req);
-		EnumSet<CommentsNewsfeedObjectType> filter=self.prefs.commentsFeedFilter!=null ? self.prefs.commentsFeedFilter : EnumSet.allOf(CommentsNewsfeedObjectType.class);
-		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getCommentsFeed(self, offset, 25, filter);
-		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "cancel", "feed_filters");
-		Templates.addJsLangForNewPostForm(req);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("feed_comments", req)
-				.pageTitle(Utils.lang(req).get("feed"))
-				.with("feed", feed.list)
-				.with("paginationUrlPrefix", "/feed/comments?offset=")
-				.with("totalItems", feed.total)
-				.with("paginationOffset", offset)
-				.with("paginationFirstPageUrl", "/feed/comments")
-				.with("paginationPerPage", 25)
-				.with("feedFilter", filter.stream().map(Object::toString).collect(Collectors.toSet()));
-
-		prepareFeed(ctx, req, self, feed.list, model, true);
-
-		return model;
-	}
-
-	public static Object setCommentsFeedFilters(Request req, Response resp, Account self, ApplicationContext ctx){
-		EnumSet<CommentsNewsfeedObjectType> filter=EnumSet.noneOf(CommentsNewsfeedObjectType.class);
-		for(CommentsNewsfeedObjectType type:CommentsNewsfeedObjectType.values()){
-			if(req.queryParams(type.toString())!=null)
-				filter.add(type);
-		}
-		ctx.getNewsfeedController().setCommentsFeedFilters(self, filter);
-		if(isMobile(req)){
-			return new WebDeltaResponse(resp).refresh();
-		}else{
-			RenderedTemplateResponse model=(RenderedTemplateResponse) commentsFeed(req, resp, self, ctx);
-			return new WebDeltaResponse(resp)
-					.setContent("feedContent", model.renderBlock("feedContent"))
-					.setContent("feedTopSummary", model.renderBlock("topSummary"))
-					.setContent("feedBottomSummary", model.renderBlock("bottomSummary"));
-		}
 	}
 
 	public static Object repostForm(Request req, Response resp){

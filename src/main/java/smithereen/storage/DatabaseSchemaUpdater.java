@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=59;
+	public static final int SCHEMA_VERSION=60;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -838,6 +838,20 @@ public class DatabaseSchemaUpdater{
 						) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4;""");
 			}
 			case 59 -> conn.createStatement().execute("ALTER TABLE photo_tags ADD ap_id varchar(300) CHARACTER SET ascii DEFAULT NULL, ADD UNIQUE KEY ap_id (ap_id)");
+			case 60 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `newsfeed_groups` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `type` int unsigned NOT NULL,
+						  `object_id` bigint unsigned DEFAULT NULL,
+						  `group_id` int unsigned NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `type` (`type`,`group_id`,`object_id`),
+						  KEY `time` (`time`),
+						  KEY `group_id` (`group_id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
 		}
 	}
 

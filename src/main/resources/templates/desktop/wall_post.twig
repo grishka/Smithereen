@@ -24,6 +24,7 @@
 		{%- if realPost.privacy!='PUBLIC' -%}
 		<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID].firstAndGender}) }}"></span>
 		{%- endif %}
+		{%- if showOwner and realPost.ownerID!=realPost.authorID %}<span class="postOwnerArrowIcon"></span><a href="{{ profileURL(realPost.ownerID) }}" class="authorName">{{ (realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) | name }}</a>{% endif %}
 		{%- if realPost.action=='AVATAR_UPDATE' %} <span class="grayText">{{ L('post_action_updated_avatar', {'gender': users[realPost.authorID].gender}) }}</span>{% endif %}
 		<div id="postInner{{ realPost.id }}">
 			{% block postInner %}

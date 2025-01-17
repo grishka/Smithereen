@@ -159,6 +159,11 @@ public class PhotoStorage{
 						.deleteFrom("newsfeed")
 						.where("type IN (?, ?) AND object_id IN (SELECT id FROM photos WHERE album_id=?)", NewsfeedEntry.Type.ADD_PHOTO, NewsfeedEntry.Type.PHOTO_TAG, id)
 						.executeNoResult();
+			}else{
+				new SQLQueryBuilder(conn)
+						.deleteFrom("newsfeed_groups")
+						.where("type=? AND object_id IN (SELECT id FROM photos WHERE album_id=?)", NewsfeedEntry.Type.ADD_PHOTO, id)
+						.executeNoResult();
 			}
 			new SQLQueryBuilder(conn)
 					.deleteFrom("likes")

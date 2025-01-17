@@ -249,6 +249,8 @@ public class WallController{
 			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0, action);
 			if(ownerUserID==userID && replyKey==null){
 				context.getNewsfeedController().putFriendsFeedEntry(author, postID, NewsfeedEntry.Type.POST);
+			}else if(wallOwner instanceof Group g && replyKey==null){
+				context.getNewsfeedController().putGroupsFeedEntry(g, postID, NewsfeedEntry.Type.POST);
 			}
 
 			Post post=PostStorage.getPostByID(postID, false);
@@ -794,6 +796,9 @@ public class WallController{
 			PostStorage.deletePost(post.id);
 			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
 			context.getNewsfeedController().clearFriendsFeedCache();
+			if(post.ownerID<0 && post.getReplyLevel()==0){
+				context.getNewsfeedController().clearGroupsFeedCache();
+			}
 			User deleteActor=self;
 			// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
 			if(ignorePermissions && oaa.author().id!=self.id && !post.isGroupOwner() && post.ownerID!=self.id && !(oaa.author() instanceof ForeignUser)){

@@ -417,8 +417,9 @@ public class PhotosController{
 			albumCache.remove(album.id);
 			if(album.ownerID>0){
 				context.getNewsfeedController().clearFriendsFeedCache();
+			}else{
+				context.getNewsfeedController().clearGroupsFeedCache();
 			}
-			// TODO groups newsfeed
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -501,8 +502,8 @@ public class PhotosController{
 			album.description=description;
 			album.flags=newFlags;
 			albumCache.put(album.id, album);
+			context.getNewsfeedController().clearGroupsFeedCache();
 			context.getActivityPubWorker().sendUpdatePhotoAlbum(context.getGroupsController().getGroupOrThrow(-album.ownerID), album);
-			// TODO groups newsfeed
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -555,8 +556,12 @@ public class PhotosController{
 					}
 				}
 			}
-			if(album.ownerID>0 && album.systemType==null){
-				context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.ADD_PHOTO);
+			if(album.systemType==null){
+				if(album.ownerID>0){
+					context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.ADD_PHOTO);
+				}else{
+					context.getNewsfeedController().putGroupsFeedEntry((Group) owner, id, NewsfeedEntry.Type.ADD_PHOTO);
+				}
 			}
 
 			if(album.activityPubID!=null){
@@ -576,7 +581,6 @@ public class PhotosController{
 			else
 				album.numPhotos++;
 			albumCache.put(album.id, album);
-			// TODO groups newsfeed
 			return id;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -663,12 +667,12 @@ public class PhotosController{
 		context.getCommentsController().deleteCommentsForObject(photo);
 		NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.PHOTO, photo.id);
 		if(album.ownerID>0){
-			context.getNewsfeedController().clearFriendsFeedCache();
 			context.getNewsfeedController().deleteFriendsFeedEntry(context.getUsersController().getUserOrThrow(album.ownerID), photo.id, NewsfeedEntry.Type.ADD_PHOTO);
 			context.getNewsfeedController().deleteFriendsFeedEntriesForObject(photo.id, NewsfeedEntry.Type.PHOTO_TAG);
+		}else{
+			context.getNewsfeedController().deleteGroupsFeedEntry(context.getGroupsController().getGroupOrThrow(-album.ownerID), photo.id, NewsfeedEntry.Type.ADD_PHOTO);
 		}
 		albumCache.put(album.id, album);
-		// TODO groups newsfeed
 
 		// If they deleted their current avatar, find the newest photo in the avatars album and set it as the avatar
 		if(owner.icon!=null && !owner.icon.isEmpty() && owner.icon.getFirst() instanceof LocalImage li && li.photoID==photo.id){
@@ -807,9 +811,10 @@ public class PhotosController{
 			}
 			if(album.ownerID>0)
 				context.getNewsfeedController().clearFriendsFeedCache();
+			else
+				context.getNewsfeedController().clearGroupsFeedCache();
 			album.numPhotos=PhotoStorage.getAlbumSize(album.id);
 			albumCache.put(album.id, album);
-			// TODO groups newsfeed
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -848,8 +853,10 @@ public class PhotosController{
 					if(photo.ownerID>0){
 						User owner=context.getUsersController().getUserOrThrow(photo.ownerID);
 						context.getNewsfeedController().putFriendsFeedEntry(owner, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
+					}else{
+						Group owner=context.getGroupsController().getGroupOrThrow(-photo.ownerID);
+						context.getNewsfeedController().putGroupsFeedEntry(owner, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
 					}
-					// TODO groups newsfeed
 				}else{
 					existingTags=PhotoStorage.getPhotoTags(photo.id);
 				}

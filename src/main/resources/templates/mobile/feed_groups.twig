@@ -1,0 +1,22 @@
+{%extends "page"%}
+{% block headerActionButtons %}
+	<button title="{{ L('feed_filters') }}" class="actionButton iconFilterList" onclick="showMobileFeedFilters({{ json([
+		{'title': L('feed_type_posts').toString(), 'icon': 'Status', 'value': 'POSTS', 'selected': feedFilter contains 'POSTS'},
+		{'title': L('feed_type_photos').toString(), 'icon': 'Photo', 'value': 'PHOTOS', 'selected': feedFilter contains 'PHOTOS'}
+	]) }}, '/feed/groups/setFilters')"></button>
+{% endblock %}
+{%block content%}
+{% include "feed_tabbar" with {'tab': 'groups'} %}
+	<div class="cardsBackdrop">
+<div id="postList">
+{%for entry in feed%}
+<div class="card">
+	{% include "feed_row" with {'entry': entry, 'showOwner': true} %}
+</div>
+{% else %}
+<div class="emptyState" id="wallEmptyState">{{ L('feed_empty_groups') }}</div>
+{%endfor%}
+	{% include "pagination" %}
+</div>
+	</div>
+{%endblock%}

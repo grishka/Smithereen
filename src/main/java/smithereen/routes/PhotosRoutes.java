@@ -54,6 +54,7 @@ import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupedNewsfeedEntry;
+import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.PhotoViewerInlineData;
@@ -619,11 +620,15 @@ public class PhotosRoutes{
 				title=album.getLocalizedTitle(lang(req), self, ctx.getWallController().getContentAuthorAndOwner(album).owner());
 				yield makePhotoInfosForPhotoList(req, _photos.list, ctx, selfAccount, Map.of(album.id, album));
 			}
-			case "friendsFeedGrouped" -> {
+			case "friendsFeedGrouped", "groupsFeedGrouped" -> {
 				if(self==null)
 					throw new UserActionNotAllowedException();
 				int id=safeParseInt(listParts[1]);
-				PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 100);
+				PaginatedList<NewsfeedEntry> feed=switch(listParts[0]){
+					case "friendsFeedGrouped" -> ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 100);
+					case "groupsFeedGrouped" -> ctx.getNewsfeedController().getGroupsFeed(selfAccount, EnumSet.allOf(GroupsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 100);
+					default -> throw new IllegalStateException("Unexpected value: " + listParts[0]);
+				};
 				if(feed.list.isEmpty() || !(feed.list.getFirst() instanceof GroupedNewsfeedEntry gne) || (gne.childEntriesType!=NewsfeedEntry.Type.ADD_PHOTO && gne.childEntriesType!=NewsfeedEntry.Type.PHOTO_TAG))
 					throw new ObjectNotFoundException();
 				total=gne.childEntries.size();
@@ -637,11 +642,15 @@ public class PhotosRoutes{
 
 				yield makePhotoInfosForPhotoList(req, photoIDs.stream().map(_photos::get).toList(), ctx, selfAccount, albums);
 			}
-			case "friendsFeed" -> {
+			case "friendsFeed", "groupsFeed" -> {
 				if(self==null)
 					throw new UserActionNotAllowedException();
 				int id=safeParseInt(listParts[1]);
-				List<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 1).list;
+				List<NewsfeedEntry> feed=switch(listParts[0]){
+					case "friendsFeed" -> ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 1).list;
+					case "groupsFeed" -> ctx.getNewsfeedController().getGroupsFeed(selfAccount, EnumSet.allOf(GroupsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 1).list;
+					default -> throw new IllegalStateException("Unexpected value: " + listParts[0]);
+				};
 				if(feed.isEmpty())
 					throw new ObjectNotFoundException();
 				NewsfeedEntry e=feed.getFirst();
@@ -695,7 +704,7 @@ public class PhotosRoutes{
 					fileRandomID=Base64.getUrlDecoder().decode(idParts[1]);
 					if(_fileID.length!=8 || fileRandomID.length!=18)
 						throw new BadRequestException();
-					fileID=XTEA.deobfuscateObjectID(Utils.unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
+					fileID=XTEA.deobfuscateObjectID(unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
 				}catch(IllegalArgumentException x){
 					throw new BadRequestException();
 				}

@@ -1,0 +1,51 @@
+{# @pebvariable name="feed" type="smithereen.model.feed.NewsfeedEntry[]" #}
+{%extends "page"%}
+{%block content%}
+{% include "feed_tabbar" with {'tab': 'groups'} %}
+<div class="summaryWrap" id="feedTopSummary">
+	{% block topSummary %}
+	<div class="summary">{{ L('summary_feed') }}</div>
+	<span class="loader flR" id="feedFiltersLoader" style="display: none"></span>
+	{% include "pagination" %}
+	{% endblock %}
+</div>
+<div class="singleColumn" id="postList">
+<input type="checkbox" class="toggler" id="feedFiltersToggler"/>
+<div class="feedFiltersOverlay toggled">
+	<label for="feedFiltersToggler" class="link hideWhenOn" tabindex="0">{{ L('feed_filters') }}</label>
+	<div class="feedFilters showWhenOn" onmouseleave="ge('feedFiltersToggler').checked=false">
+		<form id="feedFilters" action="/feed/groups/setFilters?csrf={{ csrf }}" method="post">
+			<label>
+				<input type="checkbox" onchange="updateFeedFilters()" name="POSTS"{{ feedFilter contains "POSTS" ? ' checked' : '' }}/>
+				<span class="feedIcon feedIconStatus"></span>
+				<span class="ellipsize">{{ L('feed_type_posts') }}</span>
+			</label>
+			<label>
+				<input type="checkbox" onchange="updateFeedFilters()" name="PHOTOS"{{ feedFilter contains "PHOTOS" ? ' checked' : '' }}/>
+				<span class="feedIcon feedIconPhoto"></span>
+				<span class="ellipsize">{{ L('feed_type_photos') }}</span>
+			</label>
+			<noscript><input type="submit" value="{{ L('save') }}"/></noscript>
+		</form>
+	</div>
+</div>
+<div id="feedContent">
+{% block feedContent %}
+{% set _currentDate='' %}
+{%for entry in feed%}
+{% set _entryDate=getDate(entry.time) %}
+{% if _entryDate!=_currentDate %}
+<div class="feedDateHeader{% if _currentDate is empty %} first{% endif %}">{{ LD(_entryDate) }}</div>
+{% set _currentDate=_entryDate %}
+{% endif %}
+{% include "feed_row" with {'entry': entry, 'showOwner': true} %}
+{% else %}
+<div class="emptyState" id="wallEmptyState">{{ L('feed_empty_groups') }}</div>
+{%endfor%}
+</div>
+{% endblock %}
+</div>
+<div class="bottomSummaryWrap" id="feedBottomSummary">
+	{% block bottomSummary %}{% include "pagination" %}{% endblock %}
+</div>
+{%endblock%}
