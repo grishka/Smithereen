@@ -209,7 +209,7 @@ public class MediaCache{
 					return new HttpResponse.BodySubscriber<>(){
 						@Override
 						public CompletionStage<Path> getBody(){
-							return CompletableFuture.failedStage(new IOException("Response not successful"));
+							return CompletableFuture.failedStage(new IOException("Response not successful: "+responseInfo.statusCode()));
 						}
 
 						@Override
