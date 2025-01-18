@@ -125,6 +125,7 @@ public class JLDProcessor{
 		lc.addProperty("directMessages", "sm:directMessages");
 		addSmAlias(lc, "photoTagging");
 		addSmAlias(lc, "photoTagList");
+		lc.add("newsfeedUpdatesPrivacy", idAndTypeObject("sm:newsfeedUpdatesPrivacy", "@id"));
 		// profile fields
 		lc.addProperty("activities", "sm:activities");
 		lc.addProperty("interests", "sm:interests");

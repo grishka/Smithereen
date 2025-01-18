@@ -479,6 +479,25 @@ public class User extends Actor{
 		serializerContext.addSmIdType("taggedPhotos");
 		obj.addProperty("taggedPhotos", getTaggedPhotosURL().toString());
 
+		if(newsTypesToShow!=null){
+			serializerContext.addSmIdType("newsfeedUpdatesPrivacy");
+			JsonArrayBuilder jb=new JsonArrayBuilder();
+			for(FriendsNewsfeedTypeFilter type:newsTypesToShow){
+				if(type==FriendsNewsfeedTypeFilter.POSTS)
+					continue;
+				jb.add(switch(type){
+					case POSTS -> null;
+					case PHOTOS -> "sm:Photos";
+					case FRIENDS -> "sm:Friends";
+					case GROUPS -> "sm:Groups";
+					case EVENTS -> "sm:Events";
+					case PHOTO_TAGS -> "sm:PhotoTags";
+					case PERSONAL_INFO -> "sm:PersonalInfo";
+				});
+			}
+			obj.add("newsfeedUpdatesPrivacy", jb.build());
+		}
+
 		return obj;
 	}
 
