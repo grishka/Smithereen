@@ -153,6 +153,15 @@ public class NewsfeedController{
 						}
 					}
 
+					for(NewsfeedEntry e:newPage){
+						if(e.type==NewsfeedEntry.Type.RELATIONSHIP_STATUS){
+							e.extraData=Map.of(
+									"relationship", User.RelationshipStatus.values()[(int)(e.objectID >> 56)],
+									"partnerID", (int)e.objectID
+							);
+						}
+					}
+
 					int sizeBefore=cache.feed.size();
 					cache.add(newPage);
 					int i=0;
@@ -186,7 +195,7 @@ public class NewsfeedController{
 					case GROUPS -> Stream.of(NewsfeedEntry.Type.JOIN_GROUP, NewsfeedEntry.Type.CREATE_GROUP);
 					case EVENTS -> Stream.of(NewsfeedEntry.Type.JOIN_EVENT, NewsfeedEntry.Type.CREATE_EVENT);
 					case PHOTO_TAGS -> Stream.of(NewsfeedEntry.Type.PHOTO_TAG);
-					case PERSONAL_INFO -> Stream.of(); // TODO
+					case PERSONAL_INFO -> Stream.of(NewsfeedEntry.Type.RELATIONSHIP_STATUS);
 				})
 				.collect(Collectors.toCollection(()->EnumSet.noneOf(NewsfeedEntry.Type.class)));
 	}

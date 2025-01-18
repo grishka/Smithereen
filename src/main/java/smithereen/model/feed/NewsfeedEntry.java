@@ -93,5 +93,9 @@ public class NewsfeedEntry{
 		 * Someone was tagged in a photo
 		 */
 		PHOTO_TAG,
+		/**
+		 * Someone updated their relationship status
+		 */
+		RELATIONSHIP_STATUS,
 	}
 }

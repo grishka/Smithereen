@@ -28,5 +28,17 @@
   "feed_empty_comments": "Обсуждения, в которых вы участвовали, появятся здесь.",
   "feed_empty_groups": "Обновления из групп, в которых вы состоите, появятся здесь.",
   "feed_group_added_photo": "В группе \"<a id=\"author\">{author}</a>\" добавлена фотография в альбом <a id=\"target\">{target}</a>.",
-  "feed_group_added_multiple_photos": "В группе \"<a id=\"author\">{author}</a>\" {count, plural, one {добавлена # фотография} few {добавлено # фотографии} other {добавлено # фотографий}} в {albumCount, select, 1 {альбом} other {альбомы}} {albums}."
+  "feed_group_added_multiple_photos": "В группе \"<a id=\"author\">{author}</a>\" {count, plural, one {добавлена # фотография} few {добавлено # фотографии} other {добавлено # фотографий}} в {albumCount, select, 1 {альбом} other {альбомы}} {albums}.",
+  "feed_relationship_single": "<a id=\"author\">{author}</a> без пары.",
+  "feed_relationship_in_relationship": "<a id=\"author\">{author}</a> {gender, select, female {начала} other {начал}} с кем-то встречаться.",
+  "feed_relationship_in_relationship_with": "<a id=\"author\">{author}</a> {gender, select, female {начала} other {начал}} встречаться с <a id=\"target\">{target, inflect, instrumental}</a>.",
+  "feed_relationship_engaged": "<a id=\"author\">{author}</a> {gender, select, female {помолвлена} other {помолвлен}}.",
+  "feed_relationship_engaged_with": "<a id=\"author\">{author}</a> {gender, select, female {помолвлена} other {помолвлен}} с <a id=\"target\">{target, inflect, instrumental}</a>.",
+  "feed_relationship_married": "<a id=\"author\">{author}</a> в браке.",
+  "feed_relationship_married_to": "<a id=\"author\">{author}</a> {targetGender, select, female {{gender, select, female {жената на} other {женат на}}} male {замужем за} other {в браке с}} <a id=\"target\">{targetGender, select, female {{target, inflect, prepositional}} other {{target, inflect, instrumental}}}</a>.",
+  "feed_relationship_in_love": "<a id=\"author\">{author}</a> в кого-то {gender, select, female {влюбилась} other {влюбился}}.",
+  "feed_relationship_in_love_with": "<a id=\"author\">{author}</a> {gender, select, female {влюбилась} other {влюбился}} в <a id=\"target\">{target, inflect, accusative}</a>.",
+  "feed_relationship_complicated": "<a id=\"author\">{author}</a> {gender, select, female {запуталась} other {запутался}} в своих отношениях.",
+  "feed_relationship_complicated_with": "<a id=\"author\">{author}</a> {gender, select, female {запуталась} other {запутался}} в своих отношениях с <a id=\"target\">{target, inflect, instrumental}</a>.",
+  "feed_relationship_searching": "<a id=\"author\">{author}</a> в активном поиске."
 }

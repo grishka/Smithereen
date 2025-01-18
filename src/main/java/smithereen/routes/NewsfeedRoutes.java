@@ -63,6 +63,11 @@ public class NewsfeedRoutes{
 				case POST, RETOOT -> needPosts.add((int) e.objectID);
 				case ADD_FRIEND -> needUsers.add((int) e.objectID);
 				case JOIN_GROUP, JOIN_EVENT, CREATE_GROUP, CREATE_EVENT -> needGroups.add((int) e.objectID);
+				case RELATIONSHIP_STATUS -> {
+					int partner=(int)e.extraData.get("partnerID");
+					if(partner!=0)
+						needUsers.add(partner);
+				}
 
 				case null, default -> {}
 			}

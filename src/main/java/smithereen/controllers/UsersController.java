@@ -38,6 +38,7 @@ import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserRole;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.storage.DatabaseUtils;
@@ -507,6 +508,9 @@ public class UsersController{
 			}
 			int partnerID=partner==null ? 0 : partner.id;
 			if(!Objects.equals(hometown, self.hometown) || self.relationship!=relation || self.relationshipPartnerID!=partnerID){
+				if(self.relationship!=relation || self.relationshipPartnerID!=partnerID){
+					maybeCreateRelationshipStatusNewsfeedEntry(self, relation, partner);
+				}
 				self.hometown=hometown;
 				self.relationship=relation;
 				self.relationshipPartnerID=partnerID;
@@ -591,5 +595,24 @@ public class UsersController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public void maybeCreateRelationshipStatusNewsfeedEntry(User self, User.RelationshipStatus newStatus, User newPartner){
+		int partnerID=newPartner==null || !newStatus.canHavePartner() ? 0 : newPartner.id;
+		if(self.relationship==newStatus && self.relationshipPartnerID==partnerID)
+			return;
+		if(newPartner!=null && newStatus.needsPartnerApproval()){
+			if(newPartner.relationshipPartnerID==self.id){
+				// If the partner already has this user set as *their* partner, create a newsfeed entry for them too
+				if(self.relationshipPartnerID!=partnerID){
+					long id=((long)newPartner.relationship.ordinal()) << 56 | (((System.currentTimeMillis()/1000L) & 0xFFFFFFL) << 32) | self.id;
+					context.getNewsfeedController().putFriendsFeedEntry(newPartner, id, NewsfeedEntry.Type.RELATIONSHIP_STATUS);
+				}
+			}else{
+				partnerID=0;
+			}
+		}
+		long id=((long)newStatus.ordinal()) << 56 | (((System.currentTimeMillis()/1000L) & 0xFFFFFFL) << 32) | partnerID;
+		context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.RELATIONSHIP_STATUS);
 	}
 }

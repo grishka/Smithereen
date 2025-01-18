@@ -816,8 +816,24 @@ public class User extends Actor{
 			return "profile_relationship_"+toString().toLowerCase();
 		}
 
+		public String getLangKeyForFeed(boolean withPartner){
+			return "relationship_"+switch(this){
+				case SINGLE -> "single";
+				case IN_RELATIONSHIP -> withPartner ? "in_relationship_with" : "in_relationship";
+				case ENGAGED -> withPartner ? "engaged_with" : "engaged";
+				case MARRIED -> withPartner ? "married_to" : "married";
+				case IN_LOVE -> withPartner ? "in_love_with" : "in_love";
+				case COMPLICATED -> withPartner ? "complicated_with" : "complicated";
+				case ACTIVELY_SEARCHING -> "searching";
+			};
+		}
+
 		public boolean canHavePartner(){
 			return this!=SINGLE && this!=ACTIVELY_SEARCHING;
+		}
+
+		public boolean needsPartnerApproval(){
+			return canHavePartner() && this!=IN_LOVE;
 		}
 	}
 }

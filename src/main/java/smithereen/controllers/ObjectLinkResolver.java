@@ -335,14 +335,22 @@ public class ObjectLinkResolver{
 					if(fu.isServiceActor){
 						serviceActorCache.put(fu.activityPubID, fu);
 					}else{
+						User existing=null;
+						if(fu.id!=0){
+							existing=UserStorage.getById(fu.id);
+						}
 						UserStorage.putOrUpdateForeignUser(fu);
 						maybeUpdateServerFeaturesFromActor(fu);
+						User partner=null;
 						if(fu.relationshipPartnerActivityPubID!=null && fu.relationshipPartnerID==0){
 							try{
-								User partner=resolve(fu.relationshipPartnerActivityPubID, User.class, true, true, false);
+								partner=resolve(fu.relationshipPartnerActivityPubID, User.class, true, true, false);
 								fu.relationshipPartnerID=partner.id;
 								UserStorage.putOrUpdateForeignUser(fu);
 							}catch(ObjectNotFoundException ignore){}
+						}
+						if(existing!=null && fu.relationship!=null){
+							context.getUsersController().maybeCreateRelationshipStatusNewsfeedEntry(existing, fu.relationship, partner);
 						}
 					}
 				}

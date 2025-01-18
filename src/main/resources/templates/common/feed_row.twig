@@ -113,12 +113,22 @@
 	{% set langKey="tagged_in_photo" %}
 	{% set targetHref=album.url %}
 	{% set targetName=album.title %}
+{% elseif entry.type=="RELATIONSHIP_STATUS" %}
+	{% set icon="Personal" %}
+	{% set langKey=entry.extraData['relationship'].getLangKeyForFeed(entry.extraData['partnerID']!=0) %}
+	{% if entry.extraData['partnerID']!=0 %}
+		{% set targetHref=profileURL(entry.extraData['partnerID']) %}
+		{% set targetName=users[entry.extraData['partnerID']] | name('fullAndGender') %}
+		{% set extraLangArgs={'targetGender': users[entry.extraData['partnerID']].gender} %}
+	{% endif %}
 {% endif %}
 <div class="feedRow">
 	<div class="feedIcon feedIcon{{ icon }}"></div>
 	<div class="feedRowTime">{{ formatTime(entry.time) }}</div>
 	<div class="feedRowContent">
-		{{ L("feed_#{langKey}", {'author': author | name('complete'), 'target': targetName, 'gender': author.gender}, {'author': {'href': profileURL(entry.authorID)}, 'target': {'href': targetHref} }) }}
+		{% set langArgs={'author': author | name('complete'), 'target': targetName, 'gender': author.gender} %}
+		{% if extraLangArgs is not empty %}{% set _=langArgs.putAll(extraLangArgs) %}{% endif %}
+		{{ L("feed_#{langKey}", langArgs, {'author': {'href': profileURL(entry.authorID)}, 'target': {'href': targetHref} }) }}
 		{% if entry.type=="ADD_PHOTO" or entry.type=="PHOTO_TAG" %}
 		<div class="feedRowPhotos">{{ renderPhotoGrid([photos[entry.objectID]], "#{photosList | default('friendsFeed')}/#{entry.id}") }}</div>
 		{% endif %}

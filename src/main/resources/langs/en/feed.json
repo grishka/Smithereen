@@ -28,5 +28,17 @@
   "feed_empty_comments": "Comment threads you participated in will appear here.",
   "feed_empty_groups": "Updates from groups you've joined will appear here.",
   "feed_group_added_photo": "In group \"<a id=\"author\">{author}</a>\", a photo has been added to album <a id=\"target\">{target}</a>.",
-  "feed_group_added_multiple_photos": "In group \"<a id=\"author\">{author}</a>\", {count, plural, one {# photo has} other {# photos have}} been added to {albumCount, select, 1 {album} other {albums}} {albums}."
+  "feed_group_added_multiple_photos": "In group \"<a id=\"author\">{author}</a>\", {count, plural, one {# photo has} other {# photos have}} been added to {albumCount, select, 1 {album} other {albums}} {albums}.",
+  "feed_relationship_single": "<a id=\"author\">{author}</a> is single.",
+  "feed_relationship_in_relationship": "<a id=\"author\">{author}</a> is in a relationship.",
+  "feed_relationship_in_relationship_with": "<a id=\"author\">{author}</a> is in a relationship with <a id=\"target\">{target}</a>.",
+  "feed_relationship_engaged": "<a id=\"author\">{author}</a> is engaged.",
+  "feed_relationship_engaged_with": "<a id=\"author\">{author}</a> is engaged with <a id=\"target\">{target}</a>.",
+  "feed_relationship_married": "<a id=\"author\">{author}</a> got married.",
+  "feed_relationship_married_to": "<a id=\"author\">{author}</a> got married to <a id=\"target\">{target}</a>.",
+  "feed_relationship_in_love": "<a id=\"author\">{author}</a> is in love.",
+  "feed_relationship_in_love_with": "<a id=\"author\">{author}</a> is in love with <a id=\"target\">{target}</a>.",
+  "feed_relationship_complicated": "<a id=\"author\">{author}</a>'s relationship is complicated.",
+  "feed_relationship_complicated_with": "<a id=\"author\">{author}</a>'s relationship with <a id=\"target\">{target}</a> is complicated.",
+  "feed_relationship_searching": "<a id=\"author\">{author}</a> is actively searching."
 }

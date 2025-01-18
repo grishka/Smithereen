@@ -126,7 +126,7 @@ public class ProfileRoutes{
 						}catch(ObjectNotFoundException ignore){}
 					}
 					String relationValue;
-					if(partner==null || (user.relationship!=User.RelationshipStatus.IN_LOVE && partner.relationshipPartnerID!=user.id)){
+					if(partner==null || (user.relationship.needsPartnerApproval() && partner.relationshipPartnerID!=user.id)){
 						relationValue=l.get(user.relationship.getLangKey(), Map.of("ownGender", user.gender));
 					}else{
 						relationValue=l.get(switch(user.relationship){
