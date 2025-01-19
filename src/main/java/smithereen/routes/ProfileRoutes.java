@@ -23,6 +23,7 @@ import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
@@ -330,6 +331,19 @@ public class ProfileRoutes{
 								.with("avatarPhoto", photo);
 					}
 				}catch(ObjectNotFoundException ignore){}
+
+				PaginatedList<User> following=ctx.getFriendsController().getFollows(user, 0, 6);
+				PaginatedList<User> followers=ctx.getFriendsController().getFollowers(user, 0, 6);
+				model.with("followees", following)
+						.with("followers", followers);
+
+				if(!isMobile(req)){
+					try{
+						PhotoAlbum taggedPhotos=ctx.getPhotosController().getUserTaggedPhotosPseudoAlbum(self!=null ? self.user : null, user);
+						if(taggedPhotos!=null)
+							model.with("taggedPhotoCount", taggedPhotos.numPhotos);
+					}catch(UserActionNotAllowedException ignore){}
+				}
 
 				yield model;
 			}

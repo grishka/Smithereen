@@ -16,7 +16,7 @@
   "view_friends_of": "View friends",
   "you_are_about_to_follow": "You're about to follow:",
   "you_are_about_to_send_friend_req": "You're about to send a friend request to:",
-  "following": "Follows",
+  "following": "Following",
   "followers": "Followers",
   "unfollow": "Unfollow",
   "X_friends": "{count, plural, =0 {No friends} one {# friend} other {# friends}}",
