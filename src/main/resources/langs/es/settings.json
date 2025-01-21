@@ -44,11 +44,7 @@
   "profile_pic_select_square_version": "Selecciona una versión cuadrada de tu foto para que aparezca junto a tus publicaciones y comentarios.",
   "drag_or_choose_file": "Elija un archivo o arrástrelo a esta ventana",
   "choose_file": "Elegir un archivo",
-  "picture_too_wide": "Tu foto es demasiado ancha.",
-  "picture_too_narrow": "Tu imagen es demasiado estrecha.",
   "error_loading_picture": "Error al cargar la imagen.",
-  "remove_profile_picture": "Eliminar la foto de perfil",
-  "confirm_remove_profile_picture": "¿Estás seguro de que quieres eliminar tu foto de perfil?",
   "choose_file_mobile": "Elije un archivo de tu dispositivo",
   "middle_name_or_nickname": "Segundo nombre o apodo",
   "maiden_name": "Segundo nombre",
@@ -155,5 +151,9 @@
   "settings_deactivate_account": "Puedes <a id=\"deactivate\">eliminar tu cuenta</a>.",
   "settings_reactivate_confirm": "Introduce tu contraseña para restablecer tu cuenta y cancelar su eliminación.",
   "settings_reactivate_title": "Restaurar cuenta",
-  "err_reg_email_domain_not_allowed": "Los registros con direcciones de correo electrónico de este proveedor no están permitidos en este servidor"
+  "err_reg_email_domain_not_allowed": "Los registros con direcciones de correo electrónico de este proveedor no están permitidos en este servidor",
+  "settings_current_session": "sesión actual",
+  "settings_end_all_sessions": "Terminar todas las sesiones",
+  "settings_confirm_end_all_sessions": "¿Estás seguro de que quieres terminar todas las sesiones excepto la actual?",
+  "settings_sessions_ended": "Las otras sesiones fueron terminadas."
 }

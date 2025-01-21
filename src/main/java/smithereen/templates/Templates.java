@@ -22,10 +22,12 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -124,7 +126,7 @@ public class Templates{
 		}
 		jsConfig.addProperty("timeZone", tz!=null ? tz.getId() : null);
 		ArrayList<String> jsLang=new ArrayList<>();
-		ArrayList<String> k=req.attribute("jsLang");
+		Set<String> k=req.attribute("jsLang");
 		Lang lang=Utils.lang(req);
 		jsConfig.addProperty("locale", lang.getLocale().toLanguageTag());
 		jsConfig.addProperty("langPluralRulesName", lang.getPluralRulesName());
@@ -133,11 +135,23 @@ public class Templates{
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
 		}
-		for(String key: List.of("error", "ok", "network_error", "close", "cancel", "yes", "no")){
+		for(String key:List.of("error", "ok", "network_error", "close", "cancel", "yes", "no", "show_technical_details", "photo_X_of_Y",
+				"photo_edit_description", "post_form_cw", "post_form_cw_placeholder", "save", "photo_description")){
+			if(k!=null && k.contains(key))
+				continue;
 			jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 		}
 		if(req.attribute("mobile")!=null){
-			for(String key: List.of("search", "qsearch_hint")){
+			for(String key:List.of("search", "qsearch_hint", "more_actions", "photo_open_original", "like", "add_comment",
+					"object_X_of_Y", "delete", "delete_photo", "delete_photo_confirm", "set_photo_as_album_cover", "open_on_server_X", "report", "photo_save_to_album")){
+				if(k!=null && k.contains(key))
+					continue;
+				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
+			}
+		}else{
+			for(String key:List.of("photo_tagging_info", "photo_tagging_done", "photo_tag_myself", "photo_tag_select_friend", "photo_tag_not_found", "photo_delete_tag", "photo_add_tag_submit", "photo_tag_name_search")){
+				if(k!=null && k.contains(key))
+					continue;
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
 		}
@@ -146,7 +160,8 @@ public class Templates{
 				.with("staticHashes", staticHashes)
 				.with("serverName", Config.getServerDisplayName())
 				.with("serverDomain", Config.domain)
-				.with("isMobile", req.attribute("mobile")!=null);
+				.with("isMobile", req.attribute("mobile")!=null)
+				.with("isAjax", Utils.isAjax(req));
 	}
 
 	public static PebbleTemplate getTemplate(Request req, String name){
@@ -158,7 +173,7 @@ public class Templates{
 		return engine.getTemplate(name);
 	}
 
-	/*package*/ static int asInt(Object o){
+	public static int asInt(Object o){
 		if(o instanceof Integer)
 			return (Integer)o;
 		if(o instanceof Long)
@@ -166,7 +181,7 @@ public class Templates{
 		throw new IllegalArgumentException("Can't cast "+o+" to int");
 	}
 
-	/*package*/ static <T> T getVariableRegardless(EvaluationContext context, String key){
+	public static <T> T getVariableRegardless(EvaluationContext context, String key){
 		Object result=context.getVariable(key);
 		if(result!=null)
 			return (T)result;
@@ -184,10 +199,24 @@ public class Templates{
 	public static void addJsLangForNewPostForm(Request req){
 		Utils.jsLangKey(req,
 				"post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw", "attach_menu_poll", "err_file_upload_too_large", "file_size_kilobytes", "file_size_megabytes", "max_attachment_count_exceeded", "remove_attachment",
+				"drop_files_here", "release_files_to_upload",
 				// polls
 				"create_poll_question", "create_poll_options", "create_poll_add_option", "create_poll_delete_option", "create_poll_multi_choice", "create_poll_anonymous", "create_poll_time_limit", "X_days", "X_hours",
 				// graffiti
 				"graffiti_clear", "graffiti_undo", "graffiti_clear_confirm", "graffiti_close_confirm", "confirm_title", "graffiti_color", "graffiti_thickness", "graffiti_opacity", "attach"
 			);
+		if(Utils.isMobile(req)){
+			Utils.jsLangKey(req, "attach_menu_photo_upload", "attach_menu_photo_from_album");
+		}
+	}
+
+	public static void addJsLangForPrivacySettings(Request req){
+		Utils.jsLangKey(req,
+				"privacy_value_everyone", "privacy_value_friends", "privacy_value_friends_of_friends", "privacy_value_no_one",
+				"privacy_value_only_me", "privacy_value_everyone_except", "privacy_value_certain_friends", "privacy_value_friends_except",
+				"save", "privacy_settings_title", "privacy_allowed_title", "privacy_denied_title", "privacy_allowed_to_X",
+				"privacy_value_to_everyone", "privacy_value_to_friends", "privacy_value_to_friends_of_friends", "privacy_value_to_certain_friends", "delete", "privacy_enter_friend_name",
+				"privacy_settings_value_except", "privacy_settings_value_certain_friends_before", "privacy_settings_value_name_separator",
+				"select_friends_title", "friends_search_placeholder", "friend_list_your_friends", "friends_in_list", "select_friends_empty_selection");
 	}
 }

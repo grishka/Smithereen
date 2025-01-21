@@ -12,23 +12,35 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
+
+import smithereen.LruCache;
+import smithereen.Utils;
+import smithereen.activitypub.ActivityPub;
+import smithereen.http.ExtendedHttpClient;
+import smithereen.http.ReaderBodyHandler;
+import smithereen.util.NamedMutexCollection;
 
 public class JLDProcessor{
 	private static final Logger LOG=LoggerFactory.getLogger(JLDProcessor.class);
 
-	private static HashMap<String, JsonObject> schemaCache=new HashMap<>();
+	private static final LruCache<String, JsonObject> schemaCache=new LruCache<>(100);
 	private static final JsonObject inverseLocalContext;
 	private static final JLDContext localContext;
+	private static final NamedMutexCollection remoteContextFetchMutexes=new NamedMutexCollection();
 
 	private static final Comparator<String> SHORTEST_LEAST=(o1, o2)->{
 		if(o1.length()!=o2.length())
@@ -87,12 +99,33 @@ public class JLDProcessor{
 		lc.addProperty("privacySettings", "sm:privacySettings");
 		lc.addProperty("allowedTo", "sm:allowedTo");
 		lc.addProperty("except", "sm:except");
+		lc.add("photoAlbums", idAndTypeObject("sm:photoAlbums", "@id"));
+		addSmAlias(lc, "PhotoAlbum");
+		addSmAlias(lc, "viewPrivacy");
+		addSmAlias(lc, "commentPrivacy");
+		addSmAlias(lc, "uploadsRestricted");
+		addSmAlias(lc, "commentingDisabled");
+		addSmAlias(lc, "Photo");
+		addSmAlias(lc, "displayOrder");
+		addSmAlias(lc, "comments");
+		lc.add("systemAlbumType", idAndTypeObject("sm:systemAlbumType", "@id"));
+		addSmAlias(lc, "SavedPhotos");
+		addSmAlias(lc, "ProfilePictures");
+		lc.add("photo", idAndTypeObject("sm:photo", "@id"));
+		lc.add("action", idAndTypeObject("sm:action", "@id"));
+		addSmAlias(lc, "AvatarUpdate");
+		addSmAlias(lc, "TaggedPerson");
+		lc.add("rect", idAndContainerObject("sm:rect", "@list"));
+		addSmAlias(lc, "approved");
 		// privacy settings keys
 		lc.addProperty("wallPosting", "sm:wallPosting");
 		lc.addProperty("wallPostVisibility", "sm:wallPostVisibility");
 		lc.addProperty("commenting", "sm:commenting");
 		lc.addProperty("groupInvitations", "sm:groupInvitations");
 		lc.addProperty("directMessages", "sm:directMessages");
+		addSmAlias(lc, "photoTagging");
+		addSmAlias(lc, "photoTagList");
+		lc.add("newsfeedUpdatesPrivacy", idAndTypeObject("sm:newsfeedUpdatesPrivacy", "@id"));
 		// profile fields
 		lc.addProperty("activities", "sm:activities");
 		lc.addProperty("interests", "sm:interests");
@@ -111,6 +144,7 @@ public class JLDProcessor{
 		lc.addProperty("hometown", "sm:hometown");
 		lc.add("relationshipStatus", idAndTypeObject("sm:relationshipStatus", "@id"));
 		lc.add("relationshipPartner", idAndTypeObject("sm:relationshipPartner", "@id"));
+		lc.add("taggedPhotos", idAndTypeObject("sm:taggedPhotos", "@id"));
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");
@@ -118,6 +152,10 @@ public class JLDProcessor{
 
 		localContext=updateContext(new JLDContext(), makeArray(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);
+	}
+
+	private static void addSmAlias(JsonObject obj, String key){
+		obj.addProperty(key, "sm:"+key);
 	}
 
 	public static JsonArray expandToArray(JsonElement src){
@@ -186,41 +224,74 @@ public class JLDProcessor{
 		return o;
 	}
 
-	private static String readResourceFile(String name){
-		try{
-			return new String(Objects.requireNonNull(JLDProcessor.class.getResourceAsStream("/jsonld-schemas/"+name+".jsonld")).readAllBytes(), StandardCharsets.UTF_8);
-		}catch(IOException x){
+	private static JsonObject readResourceFile(String name){
+		try(InputStream in=JLDProcessor.class.getResourceAsStream("/jsonld-schemas/"+name+".jsonld")){
+			if(in==null)
+				return null;
+			return JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
+		}catch(IOException|IllegalStateException x){
+			LOG.error("Failed to read JLD schema '{}'", name, x);
 			return null;
 		}
 	}
 
-	private static JsonObject dereferenceContext(String iri){
-		if(iri.endsWith("/litepub-0.1.jsonld")){ // This avoids caching multiple copies of the same schema for different instances
-			iri="https://example.com/schemas/litepub-0.1.jsonld";
+	private static JsonObject loadRemoteContext(String url){
+		LOG.debug("Dereferencing remote context from '{}'", url);
+		try{
+			HttpRequest req=HttpRequest.newBuilder(new URI(url)).timeout(Duration.ofSeconds(10)).build();
+			HttpResponse<Reader> resp=ActivityPub.httpClient.send(req, new ReaderBodyHandler());
+			try(Reader reader=resp.body()){
+				return JsonParser.parseReader(reader).getAsJsonObject();
+			}
+		}catch(Exception x){
+			LOG.warn("Failed to load remote context from '{}'", url, x);
+			return null;
 		}
-		if(schemaCache.containsKey(iri))
-			return schemaCache.get(iri);
-		String file=switch(iri){
+	}
+
+	private static JsonObject dereferenceContext(String iri, boolean allowNetworking){
+		JsonObject obj=schemaCache.get(iri);
+		if(obj!=null)
+			return obj;
+		boolean needReleaseMutex=false;
+		obj=switch(iri){
 			case "https://www.w3.org/ns/activitystreams" -> readResourceFile("activitystreams");
 			case "https://w3id.org/security/v1" -> readResourceFile("w3-security");
 			case "https://w3id.org/identity/v1" -> readResourceFile("w3-identity");
-			case "https://example.com/schemas/litepub-0.1.jsonld" -> readResourceFile("litepub-0.1");
+			case "https://w3id.org/security/data-integrity/v1" -> readResourceFile("w3-data-integrity");
+			case "https://www.w3.org/ns/did/v1" -> readResourceFile("w3-did");
+			case "https://w3id.org/security/multikey/v1" -> readResourceFile("w3-multikey");
+			case "https://purl.archive.org/socialweb/webfinger" -> readResourceFile("purl-webfinger");
 			default -> {
+				if(allowNetworking){
+					remoteContextFetchMutexes.acquire(iri);
+					needReleaseMutex=true;
+					JsonObject alreadyLoaded=schemaCache.get(iri); // In case we waited for the mutex and another thread loaded it
+					if(alreadyLoaded!=null)
+						yield alreadyLoaded;
+					yield loadRemoteContext(iri);
+				}
 				LOG.warn("Can't dereference remote context '{}'", iri);
 				yield null;
 			}
-
-			//throw new JLDException("loading remote context failed");
 		};
-		if(file!=null){
-			JsonObject obj=JsonParser.parseString(file).getAsJsonObject();
-			schemaCache.put(iri, obj);
-			return obj;
+		try{
+			if(obj!=null){
+				schemaCache.put(iri, obj);
+				return obj;
+			}
+		}finally{
+			if(needReleaseMutex)
+				remoteContextFetchMutexes.release(iri);
 		}
 		return null;
 	}
 
 	private static JLDContext updateContext(JLDContext activeContext, JsonElement _localContext, ArrayList<String> remoteContexts, URI baseURI){
+		return updateContext(activeContext, _localContext, remoteContexts, baseURI, false);
+	}
+
+	private static JLDContext updateContext(JLDContext activeContext, JsonElement _localContext, ArrayList<String> remoteContexts, URI baseURI, boolean isRecursive){
 		JLDContext result=activeContext.clone();
 		result.baseIRI=baseURI;
 		result.originalBaseIRI=baseURI;
@@ -252,12 +323,14 @@ public class JLDProcessor{
 					throw new JLDException("relative context IRIs are not supported");
 				}
 				if(remoteContexts.contains(c)){
-					throw new JLDException("recursive context inclusion");
+					LOG.warn("Recursive context inclusion of {}", c);
+					continue;
+//					throw new JLDException("recursive context inclusion");
 				}
 				remoteContexts.add(c);
-				JsonObject deref=dereferenceContext(c);
+				JsonObject deref=dereferenceContext(c, !isRecursive);
 				if(deref!=null){
-					result=updateContext(result, deref.get("@context"), remoteContexts, baseURI);
+					result=updateContext(result, deref.get("@context"), remoteContexts, baseURI, true);
 				}else{
 					System.err.println("Failed to dereference "+c);
 				}
@@ -318,7 +391,7 @@ public class JLDProcessor{
 			}
 
 			for(String k:c.keySet()){
-				if(k.equals("@base") || k.equals("@vocab") || k.equals("@language"))
+				if(k.equals("@base") || k.equals("@vocab") || k.equals("@language") || k.equals("@protected"))
 					continue;
 				createTermDefinition(result, c, k, new HashMap<>());
 			}

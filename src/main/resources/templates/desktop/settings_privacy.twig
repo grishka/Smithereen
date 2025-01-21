@@ -9,46 +9,129 @@
 			<div class="settingLabel">{{ L(key.descriptionLangKey) }}</div>
 			{% set setting=privacySettings[key] %}
 			<div class="settingValue">
-				<input type="hidden" name="{{ key }}" id="{{ key }}_value" value="{{ json(setting) }}"/>
-				<span class="popupMenuW">
-					{% if setting.baseRule=='EVERYONE' %}
-						{% set mainRuleKey='privacy_value_everyone' %}
-					{% elseif setting.baseRule=='FRIENDS' %}
-						{% set mainRuleKey='privacy_value_friends' %}
-					{% elseif setting.baseRule=='FRIENDS_OF_FRIENDS' %}
-						{% set mainRuleKey='privacy_value_friends_of_friends' %}
-					{% elseif setting.baseRule=='NONE' %}
-						{% if setting.allowUsers is not empty %}
-							{% set mainRuleKey='privacy_value_certain_friends' %}
-						{% else %}
-							{% set mainRuleKey=key.isOnlyMe ? 'privacy_value_only_me' : 'privacy_value_no_one' %}
-						{% endif %}
-					{% endif %}
-					<a href="javascript:void(0)" onclick="showPrivacyMenu(this, '{{ key }}', {{ key.isOnlyMe }})" class="opener">{{ L(mainRuleKey) }}</a><span id="privacyExtended_{{ key }}">
-						{%- if setting.allowUsers is not empty -%}
-						{{- L("privacy_settings_value_certain_friends_before") -}}
-						{%- for id in setting.allowUsers -%}
-							<a href="{{ profileURL(id) }}">{{ users[id] | name }}</a>
-							{%- if not loop.last -%}
-							{{- L("privacy_settings_value_name_separator") -}}
-							{%- endif -%}
-						{%- endfor -%}
-						{%- endif -%}
-						{%- if setting.exceptUsers is not empty -%}
-						{{- L("privacy_settings_value_except") -}}
-						{%- for id in setting.exceptUsers -%}
-							<a href="{{ profileURL(id) }}">{{ L("privacy_settings_value_except_name", {'name': users[id] | name('fullAndGender')}) }}</a>
-							{%- if not loop.last -%}
-							{{- L("privacy_settings_value_name_separator") -}}
-							{%- endif -%}
-						{%- endfor -%}
-						{%- endif -%}
-					</span>
-				</span>
+				{% include "privacy_setting_selector" with {'setting': setting, 'key': key, 'isOnlyMe': key.isOnlyMe, 'isFriendsOnly': key.isFriendsOnly} %}
 			</div>
 		{% endfor %}
+			<div class="settingLabel">{{ L('privacy_feed_types') }}</div>
+			<div class="settingValue">
+				<div class="popupMenuW">
+					<a href="javascript:void(0)" onclick="showFeedTypesMenu(this)" class="opener">{{ L(currentUser.newsTypesToShow is null ? 'privacy_feed_all_types' : (currentUser.newsTypesToShow is empty ? 'privacy_feed_no_types' : 'privacy_feed_select_types')) }}</a><span id="feedTypes">
+					{%- if currentUser.newsTypesToShow is not empty %}:
+					{% for type in currentUser.newsTypesToShow -%}
+					    <span class="friendListLabel l{{ type.ordinal%8 }}">{{ L(type.langKey) }}</span>{% if not loop.last %}, {% endif %}
+					{%- endfor %}
+					{%- endif -%}
+					</span>
+				</div>
+				<input type="checkbox" name="allFeedTypes" id="allFeedTypes" style="display: none"{% if currentUser.newsTypesToShow is null %} checked{% endif %}/>
+				<input type="hidden" name="needUpdateFeedTypes" value="1"/>
+			</div>
 			<div></div>
 			<div style="margin-top: 12px;"><input type="submit" value="{{ L('save') }}"/></div>
 	</div>
 </form>
+{% script %}
+var feedTypesCheckboxes=[];
+
+function showFeedTypesMenu(el){
+	if(!el.customData)
+		el.customData={};
+	var menuEl=el.customData.menuEl || (el.customData.menuEl=ce("div", {"className": "popupMenu compact"}, [
+		ce("ul", {"className": "privacyMenu"})
+	]));
+	menuEl.hide();
+	el.insertAdjacentElement("afterend", menuEl);
+	var menuList=menuEl.querySelector("ul");
+	if(!menuList.children.length){
+		var li;
+		menuList.appendChild(li=ce("li", {innerHTML: "{{ L('privacy_feed_all_types') }}", id: "feedTypesAll"}));
+		li.dataset.act="all";
+		var sublist;
+		menuList.appendChild(li=ce("li", {className: "hasSubmenu", id: "feedTypesSelect"}, [
+			ce("div", {className: "itemContent"}, [
+				ce("span", {innerHTML: "{{ L('privacy_feed_select_types') }}"}),
+				ce("div", {className: "ddIcon iconSubmenu"})
+			]),
+			sublist=ce("ul", {className: "submenu"})
+		]));
+		li.dataset.act="select";
+		var si;
+		var checkbox;
+
+		{% for type in allFeedTypes %}
+		si=ce("li", {}, [
+			ce("label", {}, [
+				checkbox=ce("input", {type: "checkbox", name: "feedType_{{ type }}", id: "feedType_{{ type }}", checked: {{ currentUser.newsTypesToShow is null or currentUser.newsTypesToShow contains type }}}),
+				ce("span", {innerHTML: "{{ L(type.langKey) }}"})
+			])
+		]);
+		si.dataset.act="type";
+		checkbox.customData={};
+		checkbox.customData.option={type: "{{ type }}", index: {{ type.ordinal }}, label: "{{ L(type.langKey) }}"};
+		feedTypesCheckboxes.push(checkbox);
+		sublist.appendChild(si);
+		{% endfor %}
+
+		sublist.addEventListener("change", function(ev){
+			var allChecked=true;
+			var allUnchecked=true;
+			for(var cb of feedTypesCheckboxes){
+				if(!cb.checked){
+					allChecked=false;
+				}else{
+					allUnchecked=false;
+				}
+			}
+			var descrEl=ge("feedTypes");
+			if(allChecked){
+				descrEl.innerHTML="";
+				el.innerHTML="{{ L('privacy_feed_all_types') }}";
+				ge("allFeedTypes").checked=true;
+				return;
+			}
+			ge("allFeedTypes").checked=false;
+			if(allUnchecked){
+				descrEl.innerHTML="";
+				el.innerHTML="{{ L('privacy_feed_no_types') }}";
+				return;
+			}
+			el.innerHTML="{{ L('privacy_feed_select_types') }}";
+			descrEl.innerHTML=": ";
+			var first=true;
+			for(var cb of feedTypesCheckboxes){
+				if(cb.checked){
+					if(first){
+						first=false;
+					}else{
+						descrEl.appendChild(document.createTextNode(", "));
+					}
+					var opt=cb.customData.option;
+					descrEl.appendChild(ce("span", {className: "friendListLabel l"+(opt.index%8), innerHTML: opt.label}));
+				}
+			}
+		});
+	}
+	var checkboxes=menuList.querySelectorAll("input[type=checkbox]").unfuck();
+	var menu=el.customData.menu || (el.customData.menu=new PopupMenu(el.parentElement, function(id, args){
+		if(id=="all"){
+			ge("allFeedTypes").checked=true;
+			for(var cb of feedTypesCheckboxes){
+				cb.checked=true;
+			}
+			ge("feedTypes").innerHTML="";
+			el.innerHTML="{{ L('privacy_feed_all_types') }}";
+			return false;
+		}
+		return true;
+	}, false, true));
+	if(ge("allFeedTypes").checked){
+		ge("feedTypesAll").classList.add("selected");
+		ge("feedTypesSelect").classList.remove("selected");
+	}else{
+		ge("feedTypesSelect").classList.add("selected");
+		ge("feedTypesAll").classList.remove("selected");
+	}
+	menu.show();
+}
+{% endscript %}
 {% endblock %}

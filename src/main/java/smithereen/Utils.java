@@ -42,6 +42,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -65,6 +66,7 @@ import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
 import smithereen.text.TextProcessor;
+import smithereen.util.PublicSuffixList;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.WebDeltaResponse;
@@ -90,8 +92,9 @@ import spark.utils.StringUtils;
 
 public class Utils{
 
-	private static final List<String> RESERVED_USERNAMES=Arrays.asList("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor", "healthz");
-	private static Random rand=new Random();
+	private static final Set<String> RESERVED_USERNAMES=Set.of("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor", "healthz",
+			"albums", "photos", "videos", "audios", "topics", "apps", "docs", "res", "files", "comments");
+	private static final Random rand=new Random();
 
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([!#$%^'*+\\-.^_`|~0-9A-Za-z]+)=(?:(?:\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\")|([!#$%^'*+\\-.^_`|~0-9A-Za-z]+))\\s*([,;])?\\s*");
 	private static final Pattern NON_ASCII_PATTERN=Pattern.compile("\\P{ASCII}");
@@ -144,9 +147,9 @@ public class Utils{
 	}
 
 	public static void jsLangKey(Request req, String... keys){
-		ArrayList<String> k=req.attribute("jsLang");
+		Set<String> k=req.attribute("jsLang");
 		if(k==null)
-			req.attribute("jsLang", k=new ArrayList<>());
+			req.attribute("jsLang", k=new HashSet<>());
 		Collections.addAll(k, keys);
 	}
 
@@ -167,6 +170,14 @@ public class Utils{
 	 */
 	public static int safeParseInt(String s){
 		return parseIntOrDefault(s, 0);
+	}
+
+	public static long safeParseLong(String s){
+		try{
+			return Long.parseLong(s);
+		}catch(NumberFormatException x){
+			return 0;
+		}
 	}
 
 	public static Object wrapError(Request req, Response resp, String errorKey){
@@ -557,9 +568,16 @@ public class Utils{
 
 	public static void stopExecutorBlocking(ExecutorService executor, Logger log){
 		executor.shutdown();
+		int attempts=0;
 		try{
 			while(!executor.awaitTermination(1, TimeUnit.SECONDS)){
 				log.info("Still waiting...");
+				attempts++;
+				if(attempts==10){
+					List<Runnable> tasks=executor.shutdownNow();
+					log.warn("Force shutting down executor. Remaining tasks: {}", tasks);
+					return;
+				}
 			}
 		}catch(InterruptedException ignore){}
 	}
@@ -591,7 +609,7 @@ public class Utils{
 		String offset=req.queryParams("offset");
 		if(StringUtils.isEmpty(offset))
 			return 0;
-		return parseIntOrDefault(offset, 0);
+		return Math.max(parseIntOrDefault(offset, 0), 0);
 	}
 
 	@NotNull
@@ -774,6 +792,8 @@ public class Utils{
 	}
 
 	public static byte[] serializeLongCollection(Collection<Long> a){
+		if(a==null || a.isEmpty())
+			return null;
 		byte[] res=new byte[a.size()*8];
 		int i=0;
 		for(long x:a){
@@ -894,6 +914,14 @@ public class Utils{
 			throw new UserErrorException("err_wrong_captcha");
 		if(!info.answer().equals(captcha) || System.currentTimeMillis()-info.generatedAt().toEpochMilli()<3000)
 			throw new UserErrorException("err_wrong_captcha");
+	}
+
+	public static String decodeFourCC(int code){
+		return new String(new char[]{(char)((code >> 24) & 0xFF), (char)((code >> 16) & 0xFF), (char)((code >> 8) & 0xFF), (char)(code & 0xFF)});
+	}
+
+	public static boolean uriHostMatches(URI a, URI b){
+		return a.getHost().equalsIgnoreCase(b.getHost()) || PublicSuffixList.isSameRegisteredDomain(a.getHost(), b.getHost());
 	}
 
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}

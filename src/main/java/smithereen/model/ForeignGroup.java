@@ -24,7 +24,7 @@ import spark.utils.StringUtils;
 
 public class ForeignGroup extends Group implements ForeignActor{
 
-	private URI wall;
+	private URI wall, photoAlbums;
 	public URI actorTokenEndpoint;
 	public URI members;
 	public URI tentativeMembers;
@@ -55,6 +55,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 		collectionQueryEndpoint=tryParseURL(ep.collectionQuery);
 		members=tryParseURL(ep.groupMembers);
 		tentativeMembers=tryParseURL(ep.tentativeGroupMembers);
+		photoAlbums=tryParseURL(ep.photoAlbums);
 	}
 
 	@Override
@@ -113,6 +114,8 @@ public class ForeignGroup extends Group implements ForeignActor{
 		ensureHostMatchesID(members, "members");
 		tentativeMembers=tryParseURL(optString(obj, "tentativeMembers"));
 		ensureHostMatchesID(tentativeMembers, "tentativeMembers");
+		photoAlbums=tryParseURL(optString(obj, "photoAlbums"));
+		ensureHostMatchesID(photoAlbums, "photoAlbums");
 
 		return this;
 	}
@@ -157,6 +160,11 @@ public class ForeignGroup extends Group implements ForeignActor{
 		return wall;
 	}
 
+	@Override
+	public URI getPhotoAlbumsURL(){
+		return photoAlbums;
+	}
+
 	public void resolveDependencies(ApplicationContext context, boolean allowFetching, boolean allowStorage){ // TODO remove this abomination
 		for(GroupAdmin adm:adminsForActivityPub){
 			adm.user=context.getObjectLinkResolver().resolve(adm.activityPubUserID, User.class, allowFetching, allowStorage, false);
@@ -166,7 +174,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 	public void storeDependencies(ApplicationContext context){
 		for(GroupAdmin adm:adminsForActivityPub){
 			if(adm.user instanceof ForeignUser && adm.user.id==0){
-				context.getObjectLinkResolver().storeOrUpdateRemoteObject(adm.user);
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(adm.user, adm.user);
 			}
 		}
 	}

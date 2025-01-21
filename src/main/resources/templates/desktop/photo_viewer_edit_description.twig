@@ -1,0 +1,10 @@
+{# @pebvariable name="photo" type="smithereen.model.photos.Photo" #}
+{# @pebvariable name="source" type="smithereen.text.FormattedTextSource" #}
+<form action="/photos/{{ photo.idString }}/updateDescription?from=viewer&csrf={{ csrf }}" method="post" id="pvDescriptionForm_{{ photo.idString }}" class="pvEditDescription marginAfter" data-ajax>
+	<textarea name="description" placeholder="{{ L('photo_description') }}" id="pvDescriptionTextarea_{{ photo.idString }}">{{ source.source }}</textarea>
+	<input type="hidden" name="format" value="{{ source.format }}"/>
+	<div class="buttons">
+		<input type="submit" value="{{ L('save') }}"/>
+		<input type="button" value="{{ L('cancel') }}" class="secondary" onclick="ge('pvDescriptionForm_{{ photo.idString }}').remove(); ge('pvEditDescriptionW_{{ photo.idString }}').show();"/>
+	</div>
+</form>

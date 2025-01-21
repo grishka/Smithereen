@@ -1,10 +1,31 @@
 package smithereen.templates;
 
 import io.pebbletemplates.pebble.extension.AbstractExtension;
-import io.pebbletemplates.pebble.extension.Extension;
 import io.pebbletemplates.pebble.extension.Filter;
 import io.pebbletemplates.pebble.extension.Function;
 import io.pebbletemplates.pebble.tokenParser.TokenParser;
+import smithereen.templates.filters.ForceEscapeFilter;
+import smithereen.templates.filters.NameFilter;
+import smithereen.templates.filters.Nl2brFilter;
+import smithereen.templates.filters.PictureForAvatarFilter;
+import smithereen.templates.filters.PictureForPhotoFilter;
+import smithereen.templates.filters.PostprocessHTMLFilter;
+import smithereen.templates.filters.StripHTMLFilter;
+import smithereen.templates.filters.TruncateTextFilter;
+import smithereen.templates.functions.AddQueryParamsFunction;
+import smithereen.templates.functions.ArraysEqualFunction;
+import smithereen.templates.functions.DescribeAttachmentsFunction;
+import smithereen.templates.functions.FormatTimeFunction;
+import smithereen.templates.functions.InstantToDateFunction;
+import smithereen.templates.functions.InstantToTimeFunction;
+import smithereen.templates.functions.JsonFunction;
+import smithereen.templates.functions.LangDateFunction;
+import smithereen.templates.functions.LangFunction;
+import smithereen.templates.functions.ProfileRelFunction;
+import smithereen.templates.functions.ProfileUrlFunction;
+import smithereen.templates.functions.RandomStringFunction;
+import smithereen.templates.functions.RenderAttachmentsFunction;
+import smithereen.templates.functions.RenderPhotoGridFunction;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +48,7 @@ public class SmithereenExtension extends AbstractExtension{
 		f.put("profileURL", new ProfileUrlFunction());
 		f.put("profileRel", new ProfileRelFunction());
 		f.put("arraysEqual", new ArraysEqualFunction());
+		f.put("renderPhotoGrid", new RenderPhotoGridFunction());
 		return f;
 	}
 

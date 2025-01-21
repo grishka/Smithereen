@@ -189,10 +189,7 @@ public class FriendsController{
 			}else{
 				if(!UserStorage.acceptFriendRequest(self.id, user.id, true))
 					return;
-				Notification n=new Notification();
-				n.type=Notification.Type.FRIEND_REQ_ACCEPT;
-				n.actorID=self.id;
-				NotificationsStorage.putNotification(user.id, n);
+				ctx.getNotificationsController().createNotification(user, Notification.Type.FRIEND_REQ_ACCEPT, null, null, self);
 				ctx.getActivityPubWorker().sendAddToFriendsCollectionActivity(self, user);
 				ctx.getNewsfeedController().putFriendsFeedEntry(user, self.id, NewsfeedEntry.Type.ADD_FRIEND);
 			}

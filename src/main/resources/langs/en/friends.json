@@ -16,15 +16,17 @@
   "view_friends_of": "View friends",
   "you_are_about_to_follow": "You're about to follow:",
   "you_are_about_to_send_friend_req": "You're about to send a friend request to:",
-  "following": "Follows",
+  "following": "Following",
   "followers": "Followers",
   "unfollow": "Unfollow",
   "X_friends": "{count, plural, =0 {No friends} one {# friend} other {# friends}}",
+  "X_friends_bold": "{count, plural, one {<b>#</b> friend} other {<b>#</b> friends}}",
   "external_X_follow_X": "<b>{ownName}</b>, you're about to follow <b>{name}</b> at <b>{domain}</b>.",
   "external_X_send_friend_req_to_X": "<b>{ownName}</b>, you're about to send a friend request to <b>{name}</b> at <b>{domain}</b>.",
   "mutual_friends": "Mutual friends",
   "X_mutual_friends": "{count, plural, one {# mutual friend} other {# mutual friends}}",
   "X_mutual_friends_short": "{count} mutual",
+  "X_mutual_friends_short_bold": "<b>{count}</b> mutual",
   "confirm_unfollow_X": "Are you sure you want to unfollow <b>{name}</b>?",
   "user_friends": "{name}'s friends",
   "summary_own_X_friends": "You have {numFriends, plural, =0 {no friends} one {# friend} other {# friends}}",
@@ -57,5 +59,6 @@
   "select_friends_button": "Select friends",
   "X_followers": "{count, plural, =0 {No followers} one {# follower} other {# followers}}",
   "X_following": "{count, plural, =0 {Not following anyone} one {# following} other {# following}}",
-  "summary_X_friends_found": "{count, plural, =0 {No friends} one {# friend} other {# friends}} found"
+  "summary_X_friends_found": "{count, plural, =0 {No friends} one {# friend} other {# friends}} found",
+  "X_followers_bold": "{count, plural, one {<b>#</b> follower} other {<b>#</b> followers}}"
 }

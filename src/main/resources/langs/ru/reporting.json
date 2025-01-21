@@ -1,5 +1,5 @@
 {
-  "report": "Жалоба",
+  "report": "Пожаловаться",
   "report_title_post": "Жалоба на запись",
   "report_title_comment": "Жалоба на комментарий",
   "report_title_user": "Жалоба на страницу",
@@ -16,5 +16,7 @@
   "report_forward_to_domain": "Переслать на сервер <b>{domain}</b> (анонимно)",
   "report_submitted": "Ваша жалоба отправлена администрации сервера.",
   "report_title_message": "Жалоба на сообщение",
-  "report_text_message": "Что вам кажется недопустимым в этом сообщении?"
+  "report_text_message": "Что вам кажется недопустимым в этом сообщении?",
+  "report_title_photo": "Жалоба на фотографию",
+  "report_text_photo": "Что вам кажется недопустимым на этой фотографии?"
 }

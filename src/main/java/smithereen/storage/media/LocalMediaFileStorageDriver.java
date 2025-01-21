@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
@@ -13,19 +14,21 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.media.MediaFileID;
-import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.ImgProxy;
 import smithereen.util.XTEA;
 
 public class LocalMediaFileStorageDriver extends MediaFileStorageDriver{
 	@Override
-	public void storeFile(File localFile, MediaFileID id) throws IOException{
+	public void storeFile(File localFile, MediaFileID id, boolean keepLocalFile) throws IOException{
 		int oid=Math.abs(id.originalOwnerID());
 		File dir=new File(Config.uploadPath, String.format(Locale.US, "%02d/%02d/%02d", oid%100, oid/100%100, oid/10000%100));
 		if(!dir.exists() && !dir.mkdirs())
 			throw new IOException("Failed to create directories");
 		File targetFile=new File(Config.uploadPath, getFilePath(id));
-		Files.move(localFile.toPath(), targetFile.toPath());
+		if(keepLocalFile)
+			Files.copy(localFile.toPath(), targetFile.toPath());
+		else
+			Files.move(localFile.toPath(), targetFile.toPath());
 	}
 
 	@Override
@@ -42,6 +45,11 @@ public class LocalMediaFileStorageDriver extends MediaFileStorageDriver{
 	public ImgProxy.UrlBuilder getImgProxyURL(MediaFileID id){
 		String url="local://"+Config.imgproxyLocalUploads+"/"+getFilePath(id);
 		return new ImgProxy.UrlBuilder(url);
+	}
+
+	@Override
+	public URI getFilePublicURL(MediaFileID id){
+		return Config.localURI(Config.uploadUrlPath+"/"+getFilePath(id));
 	}
 
 	private String getFilePath(MediaFileID id){

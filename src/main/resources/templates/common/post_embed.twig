@@ -353,7 +353,7 @@ h3{
 <body>
 <div id="content">
 	<div class="header">
-		<a href="{{ profileURL(realPost.authorID) }}" target="_blank" class="avaW">{{ users[realPost.authorID] | pictureForAvatar('s', 32) }}</a>
+		<a href="{{ profileURL(realPost.authorID) }}" target="_blank" class="avaW">{{ users[realPost.authorID] | pictureForAvatar('a', 32) }}</a>
 		<div class="postInfo">
 			<div class="ellipsize"><a href="{{ profileURL(realPost.authorID) }}" class="postName" target="_blank">{{ users[realPost.authorID] | name }}</a></div>
 			{% if realPost.replyLevel==0 %}

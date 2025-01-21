@@ -1,0 +1,57 @@
+{% import "photo_album_title" %}
+{% macro renderAlbum(_context, album) %}
+	<a href="/photos/attachBoxAlbum?album={{ album.idString }}&id={{ _context.formID }}" class="photoAlbum" data-ajax-box>
+		{% if _context.covers[album.coverID] is not null %}{{ _context.covers[album.coverID].image | pictureForPhoto('m') }}{% endif %}
+		<div class="infoW">
+			<div class="spacer"></div>
+			<div class="info">
+				<div class="count"><span class="icon"></span>{{ album.numPhotos | numberformat }}</div>
+				<div class="title">{{ photoAlbumTitle(_context, album) }}</div>
+				<div class="description">{{ album.description }}</div>
+			</div>
+		</div>
+	</a>
+{% endmacro %}
+{% if showUpload %}
+<div id="photoAlbumUploadW">
+	<div class="photoGridUpload" id="photoAttachUpload">
+		<div class="uploadText"><div class="icon"></div><span id="uploadText">{{ L('upload_photo') }}</span></div>
+		<div class="uploadDropZone"><div class="inner" id="attachUploadDropText">{{ L('drop_files_here') }}</div></div>
+	</div>
+</div>
+{% endif %}
+<div class="mediaGridW">
+	{% if albums is empty %}
+	{% if albums is not null %}<div class="emptyState">{{ L('no_photo_albums') }}</div>{% endif %}
+	{% else %}
+	{% if albums | length>2 %}
+	<div class="photoAlbumsGrid">
+		{{ renderAlbum(_context, albums[0]) }}
+		{{ renderAlbum(_context, albums[1]) }}
+	</div>
+	<input type="checkbox" class="toggler" id="allAlbumsToggler"/>
+	<div class="toggled">
+		<label for="allAlbumsToggler" class="hideWhenOn largeExpandButton">{{ L('photos_show_X_more_albums', {'count': (albums | length)-2}) }}</label>
+		<div class="photoAlbumsGrid showWhenOn showAsGrid">
+			{% for album in albums %}
+			{% if loop.index>1 %}{{ renderAlbum(_context, album) }}{% endif %}
+			{% endfor %}
+		</div>
+	</div>
+	{% else %}
+	<div class="photoAlbumsGrid">
+		{% for album in albums %}
+		{{ renderAlbum(_context, album) }}
+		{% endfor %}
+	</div>
+	{% endif %}
+	{% endif %}
+	<div class="photoGrid">
+	{% block photosInner %}
+	{% for photo in items %}
+		<a href="javascript:void(0)" class="photo" id="photo{{ photo.idString }}" onclick="return PostForm.attachAlbumPhoto('{{ formID }}', this)" data-photo-id="{{ photo.idString }}" data-photo-url-webp="{{ photo.image.getUrlForSizeAndFormat('s', 'webp') }}" data-photo-url-jpeg="{{ photo.image.getUrlForSizeAndFormat('s', 'jpeg') }}">{{ photo.image | pictureForPhoto('m', false) }}</a>
+	{% endfor %}
+	{% endblock %}
+	{% include "pagination_endless" %}
+	</div>
+</div>

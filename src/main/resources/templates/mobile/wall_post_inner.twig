@@ -1,19 +1,21 @@
 {# @pebvariable name="post" type="smithereen.model.viewmodel.PostViewModel" #}
+{# @pebvariable name="repostParent" type="smithereen.model.viewmodel.PostViewModel" #}
 {# @pebvariable name="realPost" type="smithereen.model.Post" #}
 {# @pebvariable name="repostDepth" type="int" #}
 {% set realPost=post.post %}
 {% if realPost.hasContentWarning %}
-	<input type="checkbox" id="postCW_{{ realPost.id }}" style="display: none"/>
+<input type="checkbox" id="postCW_{{ repostParent.post.id }}_{{ realPost.id }}" style="display: none"/>
 <div class="postCWWrap">
-	<label for="postCW_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
+	<label for="postCW_{{ repostParent.post.id }}_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
 {% endif %}
+{% if realPost.action=='AVATAR_UPDATE' %}<span class="grayText">{{ L('post_action_updated_avatar', {'gener': users[realPost.authorID].gender}) }}</span>{% endif %}
 {% if standalone %}
 <div class="postContent">{{ realPost.text | postprocessHTML }}</div>
 {% else %}
 <div class="postContent">{{ realPost.text | postprocessHTML | truncateText }}</div>
 {% endif %}
 {% if realPost.attachments is not empty %}
-{{ renderAttachments(realPost.processedAttachments, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
+{{ renderAttachments(realPost, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
 {% endif %}
 {% if realPost.poll is not null %}
 {% include "poll" with {'poll': realPost.poll, 'interactions': interactions} %}
@@ -21,8 +23,8 @@
 {% if post.repost is not null %}
 <div class="repostHeader">
 	{% set authorID=post.repost.post.post.authorID %}
-	<a href="{{ profileURL(authorID) }}" class="flL avaW"{{ profileRel(authorID) }}>{{ users[authorID] | pictureForAvatar('s', 32) }}</a>
-	<div class="nameW"><span class="repostIcon{{ realPost.mastodonStyleRepost ? ' mastodonStyle' : '' }}"></span><a href="{{ profileURL(authorID) }}" class="name"{{ profileRel(authorID) }}>{{ users[authorID] | name }}</a></div>
+	<a href="{{ profileURL(authorID) }}" class="flL avaW"{{ profileRel(authorID) }}>{{ users[authorID] | pictureForAvatar('a', 32) }}</a>
+	<div class="nameW ellipsize"><span class="repostIcon{{ realPost.mastodonStyleRepost ? ' mastodonStyle' : '' }}"></span><a href="{{ profileURL(authorID) }}" class="name"{{ profileRel(authorID) }}>{{ users[authorID] | name }}</a></div>
 	<div class="ellipsize grayText">
 		{%- if post.repost.post.post.replyLevel>0 -%}
 		{%- if post.repost.topLevel is not null %}
@@ -37,6 +39,6 @@
 </div>
 {% if repostDepth<(maxRepostDepth | default(1)) %}{% include "wall_post_inner" with {'post': post.repost.post, 'repostDepth': repostDepth+1} %}{% endif %}
 {% endif %}
-{% if realPost.hasContentWarning %}
+{% if post.post.hasContentWarning %}
 </div>
 {% endif %}

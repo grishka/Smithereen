@@ -1,0 +1,91 @@
+{# @pebvariable name="interactions" type="smithereen.model.UserInteractions" #}
+{# @pebvariable name="photo" type="smithereen.model.photos.Photo" #}
+{% import "photo_album_title" %}
+<div class="pvPhotoInfo">
+	<div class="leftCol">
+		{% if allowedActions contains "EDIT_DESCRIPTION" %}
+		<div class="editableDescriptionW marginAfter" id="pvEditDescriptionW_{{ photo.idString }}">
+			<div class="description" style="{% if description is empty %}display: none{% endif %}" id="pvDescription_{{ photo.idString }}">{{ description | postprocessHTML }}</div>
+			<div class="descriptionPlaceholder grayText" style="{% if description is not empty %}display: none{% endif %}" id="pvDescriptionPlaceholder_{{ photo.idString }}">{{ L('photo_edit_description') }}</div>
+			<div class="overlayLoader loader" id="pvDescriptionOverlayLoader_{{ photo.idString }}" style="display: none"></div>
+		</div>
+		{% else %}
+		<div class="marginAfter description">{{ description | postprocessHTML }}</div>
+		{% endif %}
+		{% if photo is not null %}
+		<div class="marginAfter pvTagsCont" id="pvTagsCont_{{ photo.idString }}" style="{% if tags is empty %}display: none{% endif %}"><span class="grayText">{{ L('photo_tags') }}</span> <span id="pvTags_{{ photo.idString }}">
+		{%- for tag in tags -%}<span id="pvTag_{{ photo.idString }}_{{ tag.id }}">
+		{%- set rect="#{tag.rect.x1},#{tag.rect.y1},#{tag.rect.x2},#{tag.rect.y2}" %}
+		{%- if tag.userID!=0 and ((currentUser is not null and tag.userID==currentUser.id) or tag.approved or allowedActions contains "MANAGE_TAGS") %}<a href="{{ profileURL(tag.userID) }}" data-rect="{{ rect }}">{{ users[tag.userID] | name('full') }}</a>{% else %}<span data-rect="{{ rect }}">{{ tag.name }}</span>{% endif -%}
+		{%- if allowedActions contains "MANAGE_TAGS" or tag.placerID==currentUser.id or tag.userID==currentUser.id %}<a href="javascript:void(0)" class="pvTagDelete" data-tooltip="{{ L('photo_delete_tag') }}" aria-label="{{ L('photo_delete_tag') }}" data-confirm-message="{{ L('photo_tag_delete_confirm') }}" data-confirm-title="{{ L('photo_delete_tag') }}" data-confirm-action="{{ photo.url }}/deleteTag?id={{ tag.id }}"></a>{% endif -%}
+		{% if not loop.last %}, {% endif %}</span>
+		{%- endfor -%}
+		</span></div>
+		{% endif %}
+		<div class="grayText marginAfter">{{ L('photo_added_at', {'date': LD(createdAt)}) }}
+		<span class="contentActions pvLike">
+		{% if interactions is not null %}
+			<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">|
+				<a href="{{ photo.url }}/{% if interactions.isLiked %}un{% endif %}like?csrf={{ csrf }}" class="action like{% if interactions.isLiked %} liked{% endif %} popoverButton" id="likeButtonPhoto{{ photo.idString }}" data-obj-type="photo" data-obj-id="{{ photo.idString }}" data-popover-url="{{ photo.url }}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} rel="nofollow">
+					{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPhoto{{ photo.idString }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+					{{- interactions.likeCount -}}
+				</span></a>
+				<span class="popoverPlace likePopoverWrap"></span>
+			</span>
+		{% endif %}
+		</span>
+		</div>
+		{% if interactions is not null %}
+		<div>
+		{% set _interactions=interactions %}
+		<div class="commentsPreviewWrap">
+			{% set replyCount=interactions.commentCount %}
+			{% if (commentViewType=='FLAT' ? replyCount : comments.total)>comments.list.size %}
+				<a href="{{ photo.url }}" onclick="return loadOlderComments('{{ photo.idString }}', 'photo')" class="loadPrev" id="loadPrevBtn_{{ photo.commentParentID.htmlElementID }}" data-first-id="{{ comments.list.first.post.idString }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': replyCount-comments.list.size}) : L('show_previous_comments') }}</a>
+				<div class="prevLoader loader" id="prevLoader_{{ photo.commentParentID.htmlElementID }}" style="display: none;"></div>
+			{% endif %}
+			<div class="commentsPreview" id="comments_{{ photo.commentParentID.htmlElementID }}">
+			{%- for reply in comments.list %}
+				{% include "comment" with {'post': reply, 'preview': true, 'replyFormID': commentViewType=='FLAT' ? "wallPostForm_comment_#{photo.commentParentID.htmlElementID}" : "wallPostForm_commentReply_#{photo.commentParentID.htmlElementID}", 'parentObject': photo, 'baseReplyLevel': 0, 'canComment': _interactions.canComment} %}
+			{% endfor -%}
+			</div>
+			{% set interactions=_interactions %}
+			{% if currentUser is not null and interactions.canComment %}
+				{% include "wall_post_form" with {'id': "comment_#{photo.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=photo&parentID="+photo.idString, 'showReplyBar': commentViewType=='FLAT', 'addClasses': "nonCollapsible", 'isComment': true} %}
+				{% if commentViewType!='FLAT' %}{% include "wall_post_form" with {'id': "commentReply_#{photo.commentParentID.htmlElementID}", 'hidden': true, 'action': "/comments/createComment?parentType=photo&parentID="+photo.idString, 'isComment': true} %}{% endif %}
+			{% endif %}
+		</div>
+		</div>
+		{% endif %}
+	</div>
+	<div class="rightCol">
+		{% if album is not null %}<div class="grayText marginAfter">{{ L('photo_album_label') }}:<br/><a href="{{ album.url }}">{{ photoAlbumTitle(_context, album) }}</a></div>{% endif %}
+		<div class="grayText">{{ L('photo_added_by') }}:<br/><a href="{{ author.profileURL }}">{{ author | name('full') }}</a></div>
+		<ul class="actionList">
+			{% if allowedActions contains "ADD_TAGS" %}
+			<li><a href="javascript:void(0)" class="pvAddTag">{{ L('photo_add_tag') }}</a></li>
+			{% endif %}
+			{% if allowedActions contains "SET_AS_COVER" %}
+			<li><a href="{{ photo.url }}/setAsAlbumCover?csrf={{ csrf }}" data-ajax data-ajax-show="photoSetCoverLoader{{ photo.idString }}" data-ajax-hide="photoSetCoverText{{ photo.idString }}"><span id="photoSetCoverText{{ photo.idString }}">{{ L('set_photo_as_album_cover') }}</span> <span class="inlineLoader" id="photoSetCoverLoader{{ photo.idString }}" style="display: none"></span></a></li>
+			{% endif %}
+			{% if allowedActions contains "DELETE" %}
+    		<li><a href="{{ photo.url }}/confirmDelete" data-confirm-message="{{ L('delete_photo_confirm') }}" data-confirm-title="{{ L('delete_photo') }}" data-confirm-action="{{ photo.url }}/delete?from=viewer">{{ L('delete') }}</a></li>
+			{% endif %}
+			{% if allowedActions contains "SAVE_TO_ALBUM" %}
+			<li><a href="{{ photo.url }}/saveToAlbum?csrf={{ csrf }}" id="photoSave_{{ photo.idString }}" data-ajax data-ajax-show="photoSaveLoader_{{ photo.idString }}" data-ajax-hide="photoSaveText_{{ photo.idString }}"><span id="photoSaveText_{{ photo.idString }}">{{ L('photo_save_to_album') }}</span> <span class="inlineLoader" id="photoSaveLoader_{{ photo.idString }}" style="display: none"></span></a></li>
+			{% elseif saveURL is not empty %}
+			<li><a href="{{ saveURL }}" id="photoSave_{{ saveElementID }}" data-ajax data-ajax-show="photoSaveLoader_{{ saveElementID }}" data-ajax-hide="photoSaveText_{{ saveElementID }}"><span id="photoSaveText_{{ saveElementID }}">{{ L('photo_save_to_album') }}</span> <span class="inlineLoader" id="photoSaveLoader_{{ saveElementID }}" style="display: none"></span></a></li>
+			{% endif %}
+			{% if photo.apID is not null %}
+			<li><a href="{{ photo.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': photo.activityPubURL.host}) }}</a></li>
+			{% endif %}
+			{% if photo is not null and userPermissions is not null and userPermissions.canReport(photo) %}
+			<li><a href="/system/reportForm?type=photo&id={{ photo.idString }}" data-ajax-box>{{ L('report') }}</a></li>
+			{% endif %}
+			<li><a href="{{ originalImageURL }}" target="_blank">{{ L('photo_open_original') }}</a></li>
+			{% if allowedActions contains "ROTATE" %}
+			<li class="grayText nonLink pvRotate"><span class="label">{{ L('rotate_photo') }}</span><span class="pvRotateButtons"><a href="{{ photo.url }}/rotate?cw&from=viewer&csrf={{ csrf }}" class="rotateBtn rotateCW" data-tooltip="{{ L('rotate_photo_cw') }}" aria-label="{{ L('rotate_photo_cw') }}"></a><a href="{{ photo.url }}/rotate?ccw&from=viewer&csrf={{ csrf }}" class="rotateBtn rotateCCW" data-tooltip="{{ L('rotate_photo_ccw') }}" aria-label="{{ L('rotate_photo_ccw') }}"></a></span><span class="inlineLoader" style="display: none"></span></li>
+			{% endif %}
+		</ul>
+	</div>
+</div>

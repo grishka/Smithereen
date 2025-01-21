@@ -6,19 +6,20 @@ import smithereen.Config;
 import smithereen.storage.ImgProxy;
 import smithereen.storage.MediaCache;
 
-public class CachedRemoteImage implements SizedImage{
+public final class CachedRemoteImage extends RemoteImage{
 
 	private Dimensions dimensions;
-	private String cacheKey;
+	public final String cacheKey;
 	private float[] cropRegion;
 
-	public CachedRemoteImage(MediaCache.PhotoItem item){
+	public CachedRemoteImage(MediaCache.PhotoItem item, URI originalURI){
+		super(originalURI);
 		dimensions=new Dimensions(item.width, item.height);
 		cacheKey=item.key;
 	}
 
-	public CachedRemoteImage(MediaCache.PhotoItem item, float[] cropRegion){
-		this(item);
+	public CachedRemoteImage(MediaCache.PhotoItem item, float[] cropRegion, URI originalURI){
+		this(item, originalURI);
 		setCropRegion(cropRegion);
 	}
 

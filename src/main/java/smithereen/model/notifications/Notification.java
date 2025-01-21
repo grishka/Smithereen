@@ -10,9 +10,9 @@ public class Notification{
 	public int id;
 	public Type type;
 	public ObjectType objectType;
-	public int objectID;
+	public long objectID;
 	public ObjectType relatedObjectType;
-	public int relatedObjectID;
+	public long relatedObjectID;
 	public int actorID;
 	public Instant time;
 
@@ -20,10 +20,10 @@ public class Notification{
 		Notification n=new Notification();
 		n.id=res.getInt("id");
 		n.type=Type.values()[res.getInt("type")];
-		n.objectID=res.getInt("object_id");
+		n.objectID=res.getLong("object_id");
 		if(!res.wasNull())
 			n.objectType=ObjectType.values()[res.getInt("object_type")];
-		n.relatedObjectID=res.getInt("related_object_id");
+		n.relatedObjectID=res.getLong("related_object_id");
 		if(!res.wasNull())
 			n.relatedObjectType=ObjectType.values()[res.getInt("related_object_type")];
 		n.actorID=res.getInt("actor_id");
@@ -86,6 +86,8 @@ public class Notification{
 	}
 
 	public enum ObjectType{
-		POST
+		POST,
+		PHOTO,
+		COMMENT
 	}
 }

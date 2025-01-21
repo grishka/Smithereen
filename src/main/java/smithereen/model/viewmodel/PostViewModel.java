@@ -9,49 +9,11 @@ import java.util.stream.Collectors;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 
-public class PostViewModel{
-	public Post post;
-	public List<PostViewModel> repliesObjects=new ArrayList<>();
-	public int totalTopLevelComments;
-	private boolean loadedRepliesCountKnown;
-	private int loadedRepliesCount;
-	public boolean canComment=true;
-	public boolean canRepost=true;
+public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
 	public Repost repost;
-	public int parentAuthorID;
 
 	public PostViewModel(Post post){
 		this.post=post;
-	}
-
-	public int getMissingRepliesCount(){
-		return post.replyCount-getLoadedRepliesCount();
-	}
-
-	public int getLoadedRepliesCount(){
-		if(loadedRepliesCountKnown)
-			return loadedRepliesCount;
-		loadedRepliesCount=0;
-		for(PostViewModel reply:repliesObjects){
-			loadedRepliesCount+=reply.getLoadedRepliesCount()+1;
-		}
-		loadedRepliesCountKnown=true;
-		return loadedRepliesCount;
-	}
-
-	public int getLoadableRepliesCount(){
-		int count=post.replyCount;
-		for(PostViewModel reply:repliesObjects){
-			count-=reply.post.replyCount+1;
-		}
-		return count;
-	}
-
-	public void getAllReplies(List<PostViewModel> replies){
-		replies.addAll(repliesObjects);
-		for(PostViewModel reply:repliesObjects){
-			reply.getAllReplies(replies);
-		}
 	}
 
 	public void getAllReplyIDs(Collection<Integer> out){

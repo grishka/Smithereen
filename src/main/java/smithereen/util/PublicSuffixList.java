@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -33,6 +34,7 @@ public class PublicSuffixList{
 			BackgroundTaskRunner.getInstance().submit(()->{
 				try{
 					HttpRequest req=HttpRequest.newBuilder(URI.create("https://publicsuffix.org/list/public_suffix_list.dat"))
+							.timeout(Duration.ofSeconds(30))
 							.build();
 					HttpResponse<Stream<String>> resp=ActivityPub.httpClient.send(req, HttpResponse.BodyHandlers.ofLines());
 					if(resp.statusCode()/100==2){

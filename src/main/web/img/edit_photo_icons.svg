@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="16px" height="44px" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/">
+    <rect id="edit_photo_icons" x="-0" y="-0" width="16" height="44" style="fill:none;"/>
+    <path d="M3,11L3,10.5L7.5,6L8.5,6L13,10.5L13,11L11,11L11,16L5,16L5,11L3,11Z" style="fill:#fff;"/>
+    <path d="M14,34L14,39L9,39L9,37L12,37L12,34L14,34ZM7,39L2,39L2,34L4,34L4,37L7,37L7,39ZM2,32L2,27L7,27L7,29L4,29L4,32L2,32ZM9,27L14,27L14,32L12,32L12,29L9,29L9,27Z" style="fill:#fff;"/>
+</svg>

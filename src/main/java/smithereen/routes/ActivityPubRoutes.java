@@ -1,7 +1,6 @@
 package smithereen.routes;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
 import org.jetbrains.annotations.NotNull;
@@ -9,7 +8,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.MessageDigest;
@@ -22,7 +20,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
@@ -39,10 +37,15 @@ import smithereen.activitypub.handlers.AcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.AcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.AddGroupHandler;
 import smithereen.activitypub.handlers.AddNoteHandler;
+import smithereen.activitypub.handlers.AddPhotoHandler;
 import smithereen.activitypub.handlers.AnnounceNoteHandler;
 import smithereen.activitypub.handlers.CreateNoteHandler;
+import smithereen.activitypub.handlers.CreatePhotoAlbumHandler;
+import smithereen.activitypub.handlers.CreatePhotoHandler;
 import smithereen.activitypub.handlers.DeleteNoteHandler;
 import smithereen.activitypub.handlers.DeletePersonHandler;
+import smithereen.activitypub.handlers.DeletePhotoAlbumHandler;
+import smithereen.activitypub.handlers.DeletePhotoHandler;
 import smithereen.activitypub.handlers.FlagHandler;
 import smithereen.activitypub.handlers.FollowGroupHandler;
 import smithereen.activitypub.handlers.FollowPersonHandler;
@@ -52,7 +55,7 @@ import smithereen.activitypub.handlers.GroupRemovePersonHandler;
 import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.InviteGroupHandler;
 import smithereen.activitypub.handlers.LeaveGroupHandler;
-import smithereen.activitypub.handlers.LikeNoteHandler;
+import smithereen.activitypub.handlers.LikeObjectHandler;
 import smithereen.activitypub.handlers.OfferFollowPersonHandler;
 import smithereen.activitypub.handlers.PersonAddPersonHandler;
 import smithereen.activitypub.handlers.PersonBlockPersonHandler;
@@ -65,20 +68,28 @@ import smithereen.activitypub.handlers.RejectFollowGroupHandler;
 import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectInviteGroupHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
+import smithereen.activitypub.handlers.RejectPhotoHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
+import smithereen.activitypub.handlers.RemoveNoteHandler;
+import smithereen.activitypub.handlers.GroupRemovePhotoHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
 import smithereen.activitypub.handlers.UndoFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoInviteGroupHandler;
-import smithereen.activitypub.handlers.UndoLikeNoteHandler;
+import smithereen.activitypub.handlers.UndoLikeObjectHandler;
 import smithereen.activitypub.handlers.UpdateGroupHandler;
 import smithereen.activitypub.handlers.UpdateNoteHandler;
 import smithereen.activitypub.handlers.UpdatePersonHandler;
+import smithereen.activitypub.handlers.UpdatePhotoAlbumHandler;
+import smithereen.activitypub.handlers.UpdatePhotoHandler;
+import smithereen.activitypub.handlers.UserRemovePhotoHandler;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.ActivityPubPhoto;
+import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.CollectionQueryResult;
@@ -105,6 +116,9 @@ import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
+import smithereen.controllers.ObjectLinkResolver;
+import smithereen.exceptions.RemoteObjectFetchException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
@@ -112,6 +126,7 @@ import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.NodeInfo;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
@@ -121,6 +136,11 @@ import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.StatsType;
+import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
@@ -136,6 +156,7 @@ import smithereen.storage.LikeStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -158,8 +179,6 @@ public class ActivityPubRoutes{
 
 	public static void registerActivityHandlers(){
 		registerActivityHandler(ForeignUser.class, Create.class, NoteOrQuestion.class, new CreateNoteHandler());
-		registerActivityHandler(ForeignUser.class, Like.class, NoteOrQuestion.class, new LikeNoteHandler());
-		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, NoteOrQuestion.class, new UndoLikeNoteHandler());
 		registerActivityHandler(ForeignUser.class, Announce.class, NoteOrQuestion.class, new AnnounceNoteHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Announce.class, NoteOrQuestion.class, new UndoAnnounceNoteHandler());
 		registerActivityHandler(ForeignUser.class, Update.class, NoteOrQuestion.class, new UpdateNoteHandler());
@@ -200,8 +219,25 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignGroup.class, Remove.class, User.class, new GroupRemovePersonHandler());
 
 		registerActivityHandler(Actor.class, Add.class, NoteOrQuestion.class, new AddNoteHandler());
+		registerActivityHandler(Actor.class, Remove.class, NoteOrQuestion.class, new RemoveNoteHandler());
 
 		registerActivityHandler(Flag.class, new FlagHandler());
+
+		// Photo albums
+		registerActivityHandler(Actor.class, Create.class, ActivityPubPhotoAlbum.class, new CreatePhotoAlbumHandler());
+		registerActivityHandler(Actor.class, Delete.class, ActivityPubPhotoAlbum.class, new DeletePhotoAlbumHandler());
+		registerActivityHandler(Actor.class, Update.class, ActivityPubPhotoAlbum.class, new UpdatePhotoAlbumHandler());
+		registerActivityHandler(Actor.class, Add.class, ActivityPubPhoto.class, new AddPhotoHandler());
+		registerActivityHandler(ForeignUser.class, Create.class, ActivityPubPhoto.class, new CreatePhotoHandler());
+		registerActivityHandler(ForeignUser.class, Update.class, ActivityPubPhoto.class, new UpdatePhotoHandler());
+		registerActivityHandler(ForeignUser.class, Delete.class, ActivityPubPhoto.class, new DeletePhotoHandler());
+		registerActivityHandler(ForeignGroup.class, Remove.class, ActivityPubPhoto.class, new GroupRemovePhotoHandler());
+		registerActivityHandler(ForeignUser.class, Remove.class, ActivityPubPhoto.class, new UserRemovePhotoHandler());
+		registerActivityHandler(ForeignUser.class, Reject.class, ActivityPubPhoto.class, new RejectPhotoHandler());
+
+		// More general handlers at the end so they match last
+		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubObject.class, new LikeObjectHandler());
+		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, ActivityPubObject.class, new UndoLikeObjectHandler());
 	}
 
 	@SuppressWarnings("SameParameterValue")
@@ -471,98 +507,123 @@ public class ActivityPubRoutes{
 		return ActivityPubCollectionPageResponse.forLinks(GroupStorage.getUserGroupIDs(id, offset, count));
 	}
 
-	public static Object externalInteraction(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static ActivityPubCollectionPageResponse userAlbums(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		User user=ctx.getUsersController().getLocalUserOrThrow(parseIntOrDefault(req.params(":id"), 0));
+		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbumsForActivityPub(user, req);
+		return ActivityPubCollectionPageResponse.forObjects(albums.stream().map(a->ActivityPubPhotoAlbum.fromNativeAlbum(a, ctx)).toList(), albums.size());
+	}
+
+	public static ActivityPubCollectionPageResponse groupAlbums(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(parseIntOrDefault(req.params(":id"), 0));
+		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbumsForActivityPub(group, req);
+		return ActivityPubCollectionPageResponse.forObjects(albums.stream().map(a->ActivityPubPhotoAlbum.fromNativeAlbum(a, ctx)).toList(), albums.size());
+	}
+
+	public static ActivityPubCollectionPageResponse photoAlbum(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(XTEA.deobfuscateObjectID(Utils.decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), req);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(null, album, offset, count, false);
+		return ActivityPubCollectionPageResponse.forLinksOrObjects(photos.list.stream().map(p->p.apID==null ? new LinkOrObject(ActivityPubPhoto.fromNativePhoto(p, album, ctx)) : new LinkOrObject(p.apID)).toList(), album.numPhotos)
+				.withCustomObject(ActivityPubPhotoAlbum.fromNativeAlbum(album, ctx));
+	}
+
+	public static Object photo(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO));
+		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(photo.albumID, req);
+		return ActivityPubPhoto.fromNativePhoto(photo, album, ctx);
+	}
+
+	public static Object comment(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.COMMENT));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, comment);
+		return NoteOrQuestion.fromNativeComment(comment, ctx);
+	}
+
+	public static ActivityPubCollectionPageResponse commentReplies(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.COMMENT));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, comment);
+		PaginatedList<Comment> comments=ctx.getCommentsController().getCommentReplies(
+				ctx.getCommentsController().getCommentParentIgnoringPrivacy(comment),
+				comment, offset, count
+		);
+		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
+	}
+
+	public static ActivityPubCollectionPageResponse photoComments(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.PHOTO));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, photo);
+		return objectComments(req, resp, photo, offset, count);
+	}
+
+	private static ActivityPubCollectionPageResponse objectComments(Request req, Response resp, CommentableContentObject obj, int offset, int count){
+		ApplicationContext ctx=context(req);
+		PaginatedList<Comment> comments=ctx.getCommentsController().getCommentReplies(obj, null, offset, count);
+		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
+	}
+
+	public static ActivityPubCollectionPageResponse photoAlbumComments(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(XTEA.deobfuscateObjectID(Utils.decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), req);
+		PaginatedList<Comment> comments=ctx.getCommentsController().getPhotoAlbumComments(album, offset, count);
+		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
+	}
+
+	public static Object externalInteraction(Request req, Response resp, Account self, ApplicationContext ctx){
 		// ?type=reblog
 		// ?type=favourite
 		// ?type=reply
 		// user/remote_follow
 		requireQueryParams(req, "uri");
-		String ref=req.headers("referer");
-		ActivityPubObject remoteObj;
+		String uri=req.queryParams("uri");
+//		String ref=req.headers("referer");
+
+		Lang l=lang(req);
 		try{
-			URI uri=UriBuilder.parseAndEncode(req.queryParams("uri"));
-			if(!"https".equals(uri.getScheme()) && !(Config.useHTTP && "http".equals(uri.getScheme()))){
-				// try parsing as "username@domain" or "acct:username@domain"
-				String rawUri=uri.getSchemeSpecificPart();
-				if(rawUri.matches("^[^@\\s]+@[^@\\s]{4,}$")){
-					String[] parts=rawUri.split("@");
-					uri=ActivityPub.resolveUsername(parts[0], parts[1]);
-					if(!"https".equals(uri.getScheme()) && !(Config.useHTTP && "http".equals(uri.getScheme()))){
-						return "Failed to resolve object URI via webfinger";
-					}
-				}else{
-					return "Invalid remote object URI";
-				}
-			}
-			remoteObj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, true);
-			if(remoteObj.activityPubID.getHost()==null || uri.getHost()==null || !remoteObj.activityPubID.getHost().equals(uri.getHost())){
-				return "Object ID host doesn't match URI host";
-			}
-		}catch(IOException|JsonParseException|URISyntaxException x){
-			LOG.debug("Error fetching remote object", x);
-			return x.getMessage();
-		}
-		if(remoteObj instanceof ForeignUser foreignUser){
-			try{
-				UserStorage.putOrUpdateForeignUser(foreignUser);
-				FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, foreignUser.id);
-				if(status==FriendshipStatus.REQUEST_SENT){
-					return Utils.wrapError(req, resp, "err_friend_req_already_sent");
-				}else if(status==FriendshipStatus.FOLLOWING){
-					return Utils.wrapError(req, resp, "err_already_following");
-				}else if(status==FriendshipStatus.FRIENDS){
-					return Utils.wrapError(req, resp, "err_already_friends");
-				}
-				return new RenderedTemplateResponse("remote_follow", req).with("user", foreignUser).with("title", Config.serverDisplayName);
-			}catch(Exception x){
-				x.printStackTrace();
-				return x.toString();
-			}
-		}else if(remoteObj instanceof ForeignGroup group){
-			group.storeDependencies(ctx);
-			GroupStorage.putOrUpdateForeignGroup(group);
-			resp.redirect(Config.localURI("/"+group.getFullUsername()).toString());
+			resp.redirect(switch(ctx.getSearchController().loadRemoteObject(self.user, uri)){
+				case Post post when post.getReplyLevel()>0 -> Config.localURI("/posts/"+post.replyKey.getFirst()+"#comment"+post.id).toString();
+				case Post post -> post.getInternalURL().toString();
+				case Actor actor -> actor.getProfileURL();
+				case PhotoAlbum album -> album.getURL();
+				case Photo photo -> photo.getURL();
+				case Comment comment -> ctx.getCommentsController().getCommentParent(self.user, comment).getURL();
+				default -> throw new RemoteObjectFetchException(RemoteObjectFetchException.ErrorType.UNSUPPORTED_OBJECT_TYPE, null);
+			});
 			return "";
-		}else if(remoteObj instanceof NoteOrQuestion post){
-			try{
-				Post topLevelPost;
-				if(post.inReplyTo!=null){
-					Post parent=PostStorage.getPostByID(post.inReplyTo);
-					if(parent==null){
-						List<Post> thread=ctx.getActivityPubWorker().fetchReplyThread(post).get(30, TimeUnit.SECONDS);
-						topLevelPost=thread.get(0);
-					}else{
-						Post nativePost=post.asNativePost(ctx);
-						ctx.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-						PostStorage.putForeignWallPost(nativePost);
-						topLevelPost=PostStorage.getPostByID(parent.getReplyChainElement(0), false);
-						if(topLevelPost==null)
-							throw new BadRequestException("Top-level post is not available");
-					}
-				}else{
-					Post nativePost=post.asNativePost(ctx);
-					ctx.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-					topLevelPost=nativePost;
-					PostStorage.putForeignWallPost(nativePost);
+		}catch(RemoteObjectFetchException x){
+			Object err=switch(x.error){
+				case UNSUPPORTED_OBJECT_TYPE -> wrapError(req, resp, "unsupported_remote_object_type");
+				case TIMEOUT -> {
+					if(x.uri!=null)
+						yield wrapError(req, resp, "remote_object_timeout", Map.of("server", x.uri.getHost()));
+					else
+						yield wrapError(req, resp, "remote_object_loading_error");
 				}
-				ctx.getActivityPubWorker().fetchAllReplies(topLevelPost);
-				resp.redirect("/posts/"+topLevelPost.id);
-				return "";
-			}catch(Exception x){
-				x.printStackTrace();
-				return x.toString();
+				case NETWORK_ERROR -> wrapError(req, resp, "remote_object_network_error");
+				case NOT_FOUND -> wrapError(req, resp, "remote_object_not_found");
+				case OTHER_ERROR -> wrapError(req, resp, "remote_object_loading_error");
+			};
+			if(err instanceof RenderedTemplateResponse model){
+				if(x.getCause()!=null){
+					model.with("details", x.getCause().getMessage());
+				}else if(StringUtils.isNotEmpty(x.getMessage())){
+					model.with("details", x.getMessage());
+				}
 			}
+			return err;
 		}
-		return "Referer: "+TextProcessor.sanitizeHTML(ref)+"<hr/>URL: "+TextProcessor.sanitizeHTML(req.queryParams("uri"))+"<hr/>Object:<br/><pre>"+TextProcessor.sanitizeHTML(remoteObj.toString())+"</pre>";
 	}
 
 	public static Object remoteFollow(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
 		String username=req.params(":username");
-		User _user=UserStorage.getByUsername(username);
-		if(!(_user instanceof ForeignUser)){
+		if(!(ctx.getUsersController().getUserByUsernameOrThrow(username) instanceof ForeignUser user)){
 			return Utils.wrapError(req, resp, "err_user_not_found");
 		}
-		ForeignUser user=(ForeignUser) _user;
 		FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
 		if(status==FriendshipStatus.REQUEST_SENT){
 			return Utils.wrapError(req, resp, "err_friend_req_already_sent");
@@ -571,38 +632,14 @@ public class ActivityPubRoutes{
 		}else if(status==FriendshipStatus.FRIENDS){
 			return Utils.wrapError(req, resp, "err_already_friends");
 		}
-		try{
-			String msg=req.queryParams("message");
-			if(user.supportsFriendRequests()){
-				UserStorage.putFriendRequest(self.user.id, user.id, msg, false);
-			}else{
-				UserStorage.followUser(self.user.id, user.id, false, false);
-			}
-			Follow follow=new Follow();
-			follow.actor=new LinkOrObject(self.user.activityPubID);
-			follow.object=new LinkOrObject(user.activityPubID);
-			follow.activityPubID=new URI(self.user.activityPubID.getScheme(), self.user.activityPubID.getSchemeSpecificPart(), "follow"+user.id);
-			ActivityPub.postActivity(user.inbox, follow, self.user, ctx, false);
-			if(user.supportsFriendRequests()){
-				Offer offer=new Offer();
-				offer.actor=new LinkOrObject(self.user.activityPubID);
-				offer.activityPubID=new URI(self.user.activityPubID.getScheme(), self.user.activityPubID.getSchemeSpecificPart(), "friend_request"+user.id);
-				if(StringUtils.isNotEmpty(msg)){
-					offer.content=msg;
-				}
-				Follow revFollow=new Follow();
-				revFollow.actor=new LinkOrObject(user.activityPubID);
-				revFollow.object=new LinkOrObject(self.user.activityPubID);
-				offer.object=new LinkOrObject(revFollow);
-				ActivityPub.postActivity(user.inbox, offer, self.user, ctx, false);
-			}
-			return "Success";
-		}catch(URISyntaxException ignore){
-		}catch(IOException x){
-			x.printStackTrace();
-			return x.toString();
+		String msg=req.queryParams("message");
+		if(user.supportsFriendRequests()){
+			ctx.getFriendsController().sendFriendRequest(self.user, user, msg);
+		}else{
+			ctx.getFriendsController().followUser(self.user, user);
 		}
-		return "";
+		resp.redirect(user.getProfileURL());
+		return "Success";
 	}
 
 	public static Object nodeInfo(Request req, Response resp) throws SQLException{
@@ -627,7 +664,10 @@ public class ActivityPubRoutes{
 		nodeInfo.usage.users.total=UserStorage.getLocalUserCount();
 		nodeInfo.usage.users.activeMonth=UserStorage.getActiveLocalUserCount(30*24*60*60*1000L);
 		nodeInfo.usage.users.activeHalfyear=UserStorage.getActiveLocalUserCount(180*24*60*60*1000L);
-		nodeInfo.metadata=Map.of();
+		nodeInfo.metadata=Map.of(
+				"nodeName", Objects.requireNonNullElse(Config.serverDisplayName, Config.domain),
+				"nodeDescription", TextProcessor.stripHTML(Objects.requireNonNull(Config.serverShortDescription, ""), true)
+		);
 
 		return gson.toJson(nodeInfo);
 	}
@@ -814,7 +854,8 @@ public class ActivityPubRoutes{
 			}else{
 				if(activity instanceof Like || activity instanceof Delete){
 					try{
-						aobj=ctx.getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, false, false, false);
+						Object localObject=ctx.getObjectLinkResolver().resolveLocally(activity.object.link, Object.class);
+						aobj=ctx.getObjectLinkResolver().convertToActivityPubObject(localObject, ActivityPubObject.class);
 					}catch(ObjectNotFoundException x){
 						// Fail silently. Pleroma sends all likes to followers, including for objects they may not have.
 						LOG.debug("Activity object not known for {}: {}", activity.getType(), activity.object.link);
@@ -936,6 +977,15 @@ public class ActivityPubRoutes{
 		return groupMembers(req, resp, offset, count, true);
 	}
 
+	public static ActivityPubCollectionPageResponse userTaggedPhotos(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		User user=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		ctx.getPrivacyController().enforceUserPrivacyForRemoteServer(req, user, user.getPrivacySetting(UserPrivacySettingKey.PHOTO_TAG_LIST));
+		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotosIgnoringPrivacy(user, offset, count);
+		Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(photos.list.stream().map(p->p.albumID).collect(Collectors.toSet()));
+		return ActivityPubCollectionPageResponse.forLinksOrObjects(photos.list.stream().map(p->p.apID==null ? new LinkOrObject(ActivityPubPhoto.fromNativePhoto(p, albums.get(p.albumID), ctx)) : new LinkOrObject(p.apID)).toList(), photos.total);
+	}
+
 	public static Object serviceActor(Request req, Response resp){
 		resp.type(ActivityPub.CONTENT_TYPE);
 		return ServiceActor.getInstance().asRootActivityPubObject(context(req), (String)null);
@@ -969,6 +1019,7 @@ public class ActivityPubRoutes{
 	}
 
 	private static Object collectionQuery(Actor owner, Request req, Response resp){
+		ApplicationContext ctx=context(req);
 		URI collectionID;
 		try{
 			String _id=req.queryParams("collection");
@@ -983,8 +1034,6 @@ public class ActivityPubRoutes{
 			throw new BadRequestException("Collection ID has wrong hostname, expected "+Config.domain);
 		String path=collectionID.getPath();
 		String actorPrefix=owner.getTypeAndIdForURL();
-		if(!path.startsWith(actorPrefix))
-			throw new BadRequestException("Collection path must start with actor prefix ("+actorPrefix+")");
 
 		if(req.queryParams("item")==null)
 			throw new BadRequestException("At least one `item` is required");
@@ -1000,34 +1049,78 @@ public class ActivityPubRoutes{
 			}
 		}).limit(100).toList();
 
-		String collectionPath=path.substring(actorPrefix.length());
-		Collection<URI> filteredItems=switch(collectionPath){
-			case "/wall" -> queryWallCollection(req, owner, items);
-			case "/friends" -> {
-				if(owner instanceof User u){
-					yield queryUserFriendsCollection(req, u, items);
-				}else{
-					throw new BadRequestException("Unknown collection ID");
+		Collection<URI> filteredItems;
+		if(path.startsWith(actorPrefix)){
+			String collectionPath=path.substring(actorPrefix.length());
+			filteredItems=switch(collectionPath){
+				case "/wall" -> queryWallCollection(req, owner, items);
+				case "/friends" -> {
+					if(owner instanceof User u){
+						yield queryUserFriendsCollection(req, u, items);
+					}else{
+						throw new BadRequestException("Unknown collection ID");
+					}
 				}
-			}
-			case "/groups" -> {
-				if(owner instanceof User u){
-					yield queryUserGroupsCollection(req, u, items);
-				}else{
-					throw new BadRequestException("Unknown collection ID");
+				case "/groups" -> {
+					if(owner instanceof User u){
+						yield queryUserGroupsCollection(req, u, items);
+					}else{
+						throw new BadRequestException("Unknown collection ID");
+					}
 				}
-			}
-			case "/members", "/tentativeMembers" -> {
-				if(owner instanceof Group g){
-					yield queryGroupMembersCollection(req, g, items, "/tentativeMembers".equals(collectionPath));
-				}else{
-					throw new BadRequestException("Unknown collection ID");
+				case "/members", "/tentativeMembers" -> {
+					if(owner instanceof Group g){
+						yield queryGroupMembersCollection(req, g, items, "/tentativeMembers".equals(collectionPath));
+					}else{
+						throw new BadRequestException("Unknown collection ID");
+					}
 				}
-			}
+				case "/tagged" -> {
+					if(owner instanceof User u){
+						yield queryUserTaggedPhotosCollection(req, u, items);
+					}else{
+						throw new BadRequestException("Unknown collection ID");
+					}
+				}
 
-			case "/following", "/followers" -> throw new BadRequestException("Querying this collection is not supported");
-			default -> throw new BadRequestException("Unknown collection ID");
-		};
+				case "/following", "/followers" -> throw new BadRequestException("Querying this collection is not supported");
+				default -> throw new BadRequestException("Unknown collection ID");
+			};
+		}else{
+			if(path.endsWith("/comments")){
+				URI parentObjectID=new UriBuilder(collectionID).rawPath(path.substring(0, path.lastIndexOf('/')).substring(1)).build();
+				if(ObjectLinkResolver.getObjectIdFromLocalURL(parentObjectID) instanceof ObjectLinkResolver.ObjectTypeAndID(ObjectLinkResolver.ObjectType type, long id)){
+					filteredItems=switch(type){
+						case PHOTO_ALBUM -> {
+							PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(id, req);
+							if(album.activityPubID!=null)
+								throw new ObjectNotFoundException();
+							if(album.ownerID!=owner.getOwnerID())
+								throw new BadRequestException("This photo album is not owned by this actor");
+							yield ctx.getCommentsController().getPhotoAlbumCommentIDs(album, items);
+						}
+						default -> throw new BadRequestException("Unknown collection ID");
+					};
+				}else{
+					throw new BadRequestException("Unknown collection ID");
+				}
+			}else if(ObjectLinkResolver.getObjectIdFromLocalURL(collectionID) instanceof ObjectLinkResolver.ObjectTypeAndID(ObjectLinkResolver.ObjectType type, long id)){
+				if(type==ObjectLinkResolver.ObjectType.PHOTO_ALBUM){
+					if(!(owner instanceof Group))
+						throw new BadRequestException("Querying this collection is not supported");
+					PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(id, req);
+					if(album.activityPubID!=null)
+						throw new ObjectNotFoundException();
+					if(album.ownerID!=owner.getOwnerID())
+						throw new BadRequestException("This photo album is not owned by this actor");
+					filteredItems=ctx.getPhotosController().getAlbumPhotosActivityPubIDs(album, items);
+				}else{
+					throw new BadRequestException("Unknown collection ID");
+				}
+			}else{
+				throw new BadRequestException("Unknown collection ID");
+			}
+		}
 
 		resp.type(ActivityPub.CONTENT_TYPE);
 		CollectionQueryResult res=new CollectionQueryResult();
@@ -1052,6 +1145,10 @@ public class ActivityPubRoutes{
 
 	private static Collection<URI> queryUserGroupsCollection(Request req, User owner, List<URI> query){
 		return context(req).getGroupsController().getUserGroupsByActivityPubIDs(owner, query).keySet();
+	}
+
+	private static Collection<URI> queryUserTaggedPhotosCollection(Request req, User owner, List<URI> query){
+		return context(req).getPhotosController().getUserTaggedPhotosActivityPubIDs(owner, query);
 	}
 
 	private static boolean verifyHttpDigest(String digestHeader, byte[] bodyData){

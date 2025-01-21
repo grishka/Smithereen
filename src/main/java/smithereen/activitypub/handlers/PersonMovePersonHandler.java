@@ -56,8 +56,8 @@ public class PersonMovePersonHandler extends ActivityTypeHandler<ForeignUser, Mo
 			actor.movedTo=newUser.id;
 			actor.movedAt=Instant.now();
 			newUser.movedFrom=actor.id;
-			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(actor);
-			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(newUser);
+			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(actor, actor);
+			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(newUser, newUser);
 
 			success=true;
 			BackgroundTaskRunner.getInstance().submit(()->performMove(context.appContext, actor, newUser));

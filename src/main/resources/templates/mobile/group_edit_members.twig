@@ -9,7 +9,7 @@
 	<div class="groupEditMemberList">
 		{% for member in items %}
 			<div class="groupEditMember nonReorderable">
-				{{ member | pictureForAvatar('s') }}
+				{{ member | pictureForAvatar('a') }}
 				{% set options=[] %}
 				{% if memberActions is not empty %}
 					{% for action in memberActions %}

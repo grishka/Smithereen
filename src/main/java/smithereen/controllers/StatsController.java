@@ -13,6 +13,7 @@ import smithereen.model.StatsPoint;
 import smithereen.model.StatsType;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.storage.StatsStorage;
+import smithereen.util.BackgroundTaskRunner;
 
 public class StatsController{
 	private static final Logger LOG=LoggerFactory.getLogger(StatsController.class);
@@ -24,11 +25,15 @@ public class StatsController{
 	}
 
 	public void incrementDaily(StatsType type, int objectID){
-		try{
-			StatsStorage.incrementDaily(type, objectID, LocalDate.now(ZoneId.systemDefault()));
-		}catch(SQLException x){
-			LOG.error("Error incrementing stats {} object {}", type, objectID, x);
-		}
+		// TODO batch stats events somehow? Flush them to the DB every N minutes in one query?
+		LocalDate now=LocalDate.now(ZoneId.systemDefault());
+		BackgroundTaskRunner.getInstance().submit(()->{
+			try{
+				StatsStorage.incrementDaily(type, objectID, now);
+			}catch(SQLException x){
+				LOG.error("Error incrementing stats {} object {}", type, objectID, x);
+			}
+		});
 	}
 
 	public List<StatsPoint> getDaily(StatsType type, int objectID){

@@ -18,6 +18,7 @@ import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.NoteOrQuestion;
@@ -30,10 +31,13 @@ import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.notifications.Notification;
-import smithereen.model.notifications.NotificationUtils;
 import smithereen.exceptions.BadRequestException;
-import smithereen.storage.NotificationsStorage;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentReplyParent;
+import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoMetadata;
+import smithereen.storage.PhotoStorage;
 import smithereen.storage.PostStorage;
 import spark.utils.StringUtils;
 
@@ -44,19 +48,36 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 	public void handle(ActivityHandlerContext context, ForeignUser actor, Create activity, NoteOrQuestion post) throws SQLException{
 		if(!Objects.equals(post.attributedTo, actor.activityPubID))
 			throw new BadRequestException("object.attributedTo and actor.id must match");
+		if(post.activityPubID==null)
+			throw new BadRequestException("id is required");
 		if(PostStorage.getPostByID(post.activityPubID)!=null){
 			// Already exists. Ignore and return 200 OK.
 			return;
 		}
-
-		if(post.attributedTo!=null && !post.attributedTo.equals(actor.activityPubID))
-			throw new BadRequestException("attributedTo must match the actor ID");
 
 		Actor owner=null;
 		if(post.target!=null){
 			if(post.target.attributedTo!=null){
 				owner=context.appContext.getObjectLinkResolver().resolve(post.target.attributedTo, Actor.class, true, true, false);
 				if(!Objects.equals(owner.getWallURL(), post.target.activityPubID)){
+					if(post.inReplyTo!=null && !(owner instanceof ForeignActor)){
+						// Comments always have inReplyTo, and Create{Note} for them is only meant to be sent to the collection owner
+						CommentReplyParent replyParent=context.appContext.getObjectLinkResolver().resolveNative(post.inReplyTo, CommentReplyParent.class, true, true, false, owner, true);
+						CommentableContentObject parent=switch(replyParent){
+							case CommentableContentObject cco -> cco;
+							case Comment comment -> context.appContext.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+						};
+						URI expectedTargetID=parent.getCommentCollectionID(context.appContext);
+						if(!Objects.equals(expectedTargetID, post.target.activityPubID))
+							throw new BadRequestException("Target collection ID does not match expected "+expectedTargetID);
+						Comment comment=post.asNativeComment(context.appContext);
+						if(comment.id!=0)
+							return;
+						context.appContext.getWallController().loadAndPreprocessRemotePostMentions(comment, post);
+						context.appContext.getCommentsController().putOrUpdateForeignComment(comment);
+						context.appContext.getActivityPubWorker().sendAddComment(owner, comment, parent);
+						return;
+					}
 					// Unknown target collection
 					return;
 				}
@@ -169,8 +190,8 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				if(owner instanceof User u)
 					context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_COMMENTING);
 
-				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
-				NotificationUtils.putNotificationsForPost(nativePost, parent, null);
+				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
+				context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 				if(topLevel.isLocal()){
 					if(!Objects.equals(owner.activityPubID, oaa.author().activityPubID)){
 						context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
@@ -196,7 +217,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 					LOG.debug("Dropping post {} because its parent isn't known and it doesn't mention local users.", post.activityPubID);
 					return;
 				}
-				context.appContext.getActivityPubWorker().fetchReplyThread(post);
+				context.appContext.getActivityPubWorker().fetchWallReplyThread(post);
 			}
 		}else{
 			Post nativePost=post.asNativePost(context.appContext);
@@ -217,12 +238,20 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				}
 			}
 
-			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
-			NotificationUtils.putNotificationsForPost(nativePost, null, firstRepost);
+			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
+			context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 			if(nativePost.ownerID!=nativePost.authorID){
 				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
 			}else{
 				context.appContext.getNewsfeedController().clearFriendsFeedCache();
+			}
+
+			if(nativePost.action==Post.Action.AVATAR_UPDATE && nativePost.attachments.getFirst() instanceof Image img){
+				Photo photo=context.appContext.getObjectLinkResolver().resolveLocally(img.photoApID, Photo.class);
+				if(photo.metadata==null)
+					photo.metadata=new PhotoMetadata();
+				photo.metadata.correspondingPostID=nativePost.id;
+				PhotoStorage.updatePhotoMetadata(photo.id, photo.metadata);
 			}
 		}
 	}

@@ -49,10 +49,13 @@ import smithereen.model.WebDeltaResponse;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
 import smithereen.routes.BookmarksRoutes;
+import smithereen.routes.CommentsRoutes;
 import smithereen.routes.FriendsRoutes;
 import smithereen.routes.GroupsRoutes;
 import smithereen.routes.MailRoutes;
+import smithereen.routes.NewsfeedRoutes;
 import smithereen.routes.NotificationsRoutes;
+import smithereen.routes.PhotosRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
@@ -220,8 +223,12 @@ public class SmithereenApplication{
 		get("/", SmithereenApplication::indexPage);
 
 		path("/feed", ()->{
-			getLoggedIn("", PostRoutes::feed);
-			getLoggedIn("/comments", PostRoutes::commentsFeed);
+			getLoggedIn("", NewsfeedRoutes::feed);
+			getLoggedIn("/comments", NewsfeedRoutes::commentsFeed);
+			getLoggedIn("/groups", NewsfeedRoutes::groupsFeed);
+			postWithCSRF("/setFilters", NewsfeedRoutes::setFeedFilters);
+			postWithCSRF("/groups/setFilters", NewsfeedRoutes::setGroupsFeedFilters);
+			postWithCSRF("/comments/setFilters", NewsfeedRoutes::setCommentsFeedFilters);
 		});
 
 		path("/account", ()->{
@@ -284,6 +291,8 @@ public class SmithereenApplication{
 			getLoggedIn("/privacy", SettingsRoutes::privacySettings);
 			postWithCSRF("/privacy", SettingsRoutes::savePrivacySettings);
 			getLoggedIn("/privacy/mobileEditSetting", SettingsRoutes::mobileEditPrivacy);
+			getLoggedIn("/privacy/mobileBox", SettingsRoutes::mobilePrivacyBox);
+			getLoggedIn("/privacy/mobileFeedTypes", SettingsRoutes::mobileFeedTypes);
 			getLoggedIn("/deactivateAccountForm", SettingsRoutes::deactivateAccountForm);
 			postWithCSRF("/deactivateAccount", SettingsRoutes::deactivateAccount);
 			postWithCSRF("/updateAppearanceBehavior", SettingsRoutes::saveAppearanceBehaviorSettings);
@@ -502,6 +511,12 @@ public class SmithereenApplication{
 
 			getWithCSRF("/addBookmark", BookmarksRoutes::addUserBookmark);
 			getWithCSRF("/removeBookmark", BookmarksRoutes::removeUserBookmark);
+
+			getActivityPubCollection("/albums", 100, ActivityPubRoutes::userAlbums);
+			get("/albums", PhotosRoutes::userAlbums);
+			get("/allPhotos", PhotosRoutes::allUserPhotos);
+			getActivityPubCollection("/tagged", 100, ActivityPubRoutes::userTaggedPhotos);
+			get("/tagged", PhotosRoutes::userTaggedPhotos);
 		});
 
 		path("/groups/:id", ()->{
@@ -575,6 +590,10 @@ public class SmithereenApplication{
 
 			getWithCSRF("/addBookmark", BookmarksRoutes::addGroupBookmark);
 			getWithCSRF("/removeBookmark", BookmarksRoutes::removeGroupBookmark);
+
+			getActivityPubCollection("/albums", 100, ActivityPubRoutes::groupAlbums);
+			get("/albums", PhotosRoutes::groupAlbums);
+			get("/allPhotos", PhotosRoutes::allGroupPhotos);
 		});
 
 		path("/posts/:postID", ()->{
@@ -607,6 +626,69 @@ public class SmithereenApplication{
 			options("/embedURL", SmithereenApplication::allowCorsPreflight);
 			get("/embed", PostRoutes::postEmbed);
 			get("/hoverCard", PostRoutes::commentHoverCard);
+		});
+
+		path("/albums/:id", ()->{
+			getActivityPubCollection("", 100, ActivityPubRoutes::photoAlbum);
+			get("", PhotosRoutes::album);
+			postWithCSRF("/upload", PhotosRoutes::uploadPhoto);
+			getLoggedIn("/edit", PhotosRoutes::editAlbumForm);
+			postWithCSRF("/edit", PhotosRoutes::editAlbum);
+			getLoggedIn("/confirmDelete", PhotosRoutes::confirmDeleteAlbum);
+			postWithCSRF("/delete", PhotosRoutes::deleteAlbum);
+			getActivityPubCollection("/comments", 50, ActivityPubRoutes::photoAlbumComments);
+		});
+
+		path("/photos", ()->{
+			get("/ajaxViewerInfo", PhotosRoutes::ajaxViewerInfo);
+			getRequiringPermission("/ajaxViewerInfoForReport", UserRole.Permission.MANAGE_REPORTS, PhotosRoutes::ajaxViewerInfoForReport);
+			getWithCSRF("/saveAttachmentToAlbum", PhotosRoutes::saveAttachmentToAlbum);
+			getLoggedIn("/attachBox", PhotosRoutes::attachPhotosBox);
+			getLoggedIn("/attachBoxAll", PhotosRoutes::attachPhotosBoxAll);
+			getLoggedIn("/attachBoxAlbum", PhotosRoutes::attachPhotosBoxAlbum);
+			getLoggedIn("/friendListForTagging", PhotosRoutes::getFriendsForTagging);
+			getLoggedIn("/newTags", PhotosRoutes::newTags);
+			path("/:id", ()->{
+				getActivityPub("", ActivityPubRoutes::photo);
+				get("", PhotosRoutes::photo);
+				postWithCSRF("/updateDescription", PhotosRoutes::updatePhotoDescription);
+				getLoggedIn("/confirmDelete", PhotosRoutes::confirmDeletePhoto);
+				postWithCSRF("/delete", PhotosRoutes::deletePhoto);
+				get("/like", PhotosRoutes::like);
+				getWithCSRF("/unlike", PhotosRoutes::unlike);
+				get("/likes", PhotosRoutes::likeList);
+				get("/likePopover", PhotosRoutes::likePopover);
+				getWithCSRF("/setAsAlbumCover", PhotosRoutes::setPhotoAsAlbumCover);
+				getActivityPubCollection("/replies", 50, ActivityPubRoutes::photoComments);
+				getLoggedIn("/ajaxEditDescription", PhotosRoutes::ajaxEditDescription);
+				getWithCSRF("/saveToAlbum", PhotosRoutes::saveToAlbum);
+				getWithCSRF("/rotate", PhotosRoutes::rotatePhoto);
+				postWithCSRF("/updateAvatarCrop", PhotosRoutes::updateAvatarCrop);
+				getWithCSRF("/addTag", PhotosRoutes::addTag);
+				postWithCSRF("/deleteTag", PhotosRoutes::deleteTag);
+				getWithCSRF("/deleteTag", PhotosRoutes::deleteTag);
+				getWithCSRF("/approveTag", PhotosRoutes::approveTag);
+			});
+		});
+
+		path("/comments", ()->{
+			postWithCSRF("/createComment", CommentsRoutes::createComment);
+			get("/ajaxCommentPreview", CommentsRoutes::ajaxCommentPreview);
+			path("/:id", ()->{
+				get("", CommentsRoutes::comment);
+				getActivityPub("", ActivityPubRoutes::comment);
+				getActivityPubCollection("/replies", 50, ActivityPubRoutes::commentReplies);
+				get("/ajaxCommentBranch", CommentsRoutes::ajaxCommentBranch);
+				getLoggedIn("/confirmDelete", CommentsRoutes::confirmDeleteComment);
+				postWithCSRF("/delete", CommentsRoutes::deleteComment);
+				getLoggedIn("/edit", CommentsRoutes::editCommentForm);
+				postWithCSRF("/edit", CommentsRoutes::editComment);
+				get("/hoverCard", CommentsRoutes::commentHoverCard);
+				get("/like", CommentsRoutes::like);
+				getWithCSRF("/unlike", CommentsRoutes::unlike);
+				get("/likes", CommentsRoutes::likeList);
+				get("/likePopover", CommentsRoutes::likePopover);
+			});
 		});
 
 		get("/robots.txt", (req, resp)->{
@@ -661,7 +743,11 @@ public class SmithereenApplication{
 				getLoggedIn("", BookmarksRoutes::users);
 				getLoggedIn("/groups", BookmarksRoutes::groups);
 				getLoggedIn("/posts", BookmarksRoutes::posts);
+				getLoggedIn("/photos", BookmarksRoutes::photos);
 			});
+			getLoggedIn("/albums", PhotosRoutes::myAlbums);
+			getLoggedIn("/albums/create", PhotosRoutes::createAlbumForm);
+			postWithCSRF("/albums/create", PhotosRoutes::createAlbum);
 		});
 
 		path("/api/v1", ()->{
@@ -768,13 +854,14 @@ public class SmithereenApplication{
 		setupCustomSerializer();
 
 		responseTypeSerializer(ActivityPubObject.class, (out, obj, req, resp) -> {
+			resp.raw().setCharacterEncoding(null);
 			resp.type(ActivityPub.CONTENT_TYPE);
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
 			gson.toJson(obj.asRootActivityPubObject(context(req), ()->{
 				if(req.headers("signature")!=null){
 					try{
 						Actor requester=ActivityPub.verifyHttpSignature(req, null);
-						context(req).getObjectLinkResolver().storeOrUpdateRemoteObject(requester);
+						context(req).getObjectLinkResolver().storeOrUpdateRemoteObject(requester, requester);
 						String requesterDomain=requester.domain;
 						LOG.trace("Requester domain for {} is {}", req.pathInfo(), requesterDomain);
 						return requesterDomain;
@@ -828,7 +915,7 @@ public class SmithereenApplication{
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(MediaStorageUtils::deleteAbandonedFiles, 1, TimeUnit.HOURS);
-		MaintenanceScheduler.runPeriodically(UsersController::doPendingAccountDeletions, 1, TimeUnit.DAYS);
+		MaintenanceScheduler.runPeriodically(()->UsersController.doPendingAccountDeletions(context), 1, TimeUnit.DAYS);
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
 			LOG.info("Stopping Spark");

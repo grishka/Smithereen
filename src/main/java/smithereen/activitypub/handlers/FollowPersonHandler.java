@@ -23,17 +23,16 @@ public class FollowPersonHandler extends ActivityTypeHandler<ForeignUser, Follow
 		Utils.ensureUserNotBlocked(actor, user);
 		FriendshipStatus status=UserStorage.getFriendshipStatus(actor.id, user.id);
 		if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.REQUEST_SENT || status==FriendshipStatus.FOLLOWING){
-			throw new BadRequestException("Already following");
+			LOG.debug("{} already follows {}, resending Accept{Follow} for {}", actor.activityPubID, user.activityPubID, activity.activityPubID);
+			context.appContext.getActivityPubWorker().sendAcceptFollowActivity(actor, user, activity);
+			return;
 		}
 		UserStorage.followUser(actor.id, user.id, true, false);
 		UserStorage.deleteFriendRequest(actor.id, user.id);
 
 		context.appContext.getActivityPubWorker().sendAcceptFollowActivity(actor, user, activity);
 
-		Notification n=new Notification();
-		n.type=status==FriendshipStatus.REQUEST_RECVD ? Notification.Type.FRIEND_REQ_ACCEPT : Notification.Type.FOLLOW;
-		n.actorID=actor.id;
-		NotificationsStorage.putNotification(user.id, n);
+		context.appContext.getNotificationsController().createNotification(user, status==FriendshipStatus.REQUEST_RECVD ? Notification.Type.FRIEND_REQ_ACCEPT : Notification.Type.FOLLOW, null, null, actor);
 
 		if(status==FriendshipStatus.REQUEST_RECVD || status==FriendshipStatus.FOLLOWED_BY){
 			context.appContext.getActivityPubWorker().sendAddToFriendsCollectionActivity(user, actor);

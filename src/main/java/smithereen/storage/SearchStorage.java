@@ -46,7 +46,7 @@ public class SearchStorage{
 	}
 
 	private static String prepareQuery(String query){
-		return Arrays.stream(TextProcessor.transliterate(query).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("\\s+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
+		return Arrays.stream(TextProcessor.transliterate(query).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("\\s+")).filter(Predicate.not(String::isBlank)).map(s->"+(>"+s+" <("+s+"*))").collect(Collectors.joining(" "));
 	}
 
 	public static List<SearchResult> search(String query, int selfID, int maxCount) throws SQLException{

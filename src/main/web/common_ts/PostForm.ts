@@ -41,6 +41,7 @@ class PostForm{
 	private replyCancel:HTMLElement;
 	private submitButton:HTMLElement;
 	private completionsContainer:HTMLElement;
+	private altTextsField:HTMLInputElement;
 
 	private pollLayout:HTMLElement;
 	private pollQuestionField:HTMLInputElement;
@@ -66,6 +67,7 @@ class PostForm{
 	private completionsDebounceTimeout:number;
 	private completionsXHR:XMLHttpRequest;
 	private completionList:CompletionList;
+	private attachmentAltTexts:{[key:string]:string}={};
 
 	public constructor(el:HTMLElement){
 		this.id=el.dataset.uniqueId;
@@ -86,6 +88,7 @@ class PostForm{
 		this.replyName=ge("replyingName_"+this.id);
 		this.replyCancel=ge("cancelReply_"+this.id);
 		this.submitButton=ge("postFormSubmit_"+this.id);
+		this.altTextsField=el.querySelector("input[name=attachAltTexts]") as HTMLInputElement;
 		if(el.classList.contains("nonCollapsible"))
 			this.isCollapsible=false;
 		this.photoUploadURL=el.dataset.photoUploadUrl || "/system/upload/postPhoto";
@@ -138,7 +141,15 @@ class PostForm{
 					ev.preventDefault();
 					this.deleteAttachment(el.customData.aid);
 				};
+				if(!mobile && attach.dataset.pv){
+					attach.addEventListener("click", (ev)=>{
+						var info=JSON.parse(attach.dataset.pv) as PhotoViewerInlineData;
+						this.openDesktopPhotoViewerForAltText(aid, info);
+					});
+					attach.style.cursor="pointer";
+				}
 			}
+			this.attachmentAltTexts=JSON.parse(this.altTextsField.value);
 		}
 
 		if(mobile){
@@ -242,6 +253,7 @@ class PostForm{
 	}
 
 	private handleFiles(files:FileList):void{
+		LayerManager.getInstance().dismissByID("photoAttach");
 		for(var i=0;i<files.length;i++){
 			var f=files[i];
 			if(f.type.indexOf("image/")==0){
@@ -268,7 +280,7 @@ class PostForm{
 			ce("div", {className: "scrim"}),
 			pbarEl=ce("div", {className: "progressBar small"}),
 			ce("div", {className: "fileName", innerText: name}),
-			del=ce("a", {className: "deleteBtn", title: lang("remove_attachment")}),
+			del=ce("a", {className: "deleteBtn", ariaLabel: lang("remove_attachment")}),
 		]);
 
 		this.attachContainer.appendChild(cont);
@@ -279,6 +291,7 @@ class PostForm{
 			this.uploadQueue.remove(att);
 			cont.parentNode.removeChild(cont);
 		};
+		del.dataset.tooltip=lang("remove_attachment");
 		if(this.currentUploadingAttachment){
 			this.uploadQueue.push(att);
 		}else{
@@ -312,8 +325,16 @@ class PostForm{
 			f.image.outerHTML='<picture><source srcset="'+resp.thumbs.webp+'" type="image/webp"/><source srcset="'+resp.thumbs.jpeg+'" type="image/jpeg"/><img src="'+resp.thumbs.jpeg+'" width="'+resp.width+'" height="'+resp.height+'"/></picture>';
 			f.cancelBtn.onclick=(ev:Event)=>{
 				ev.preventDefault();
+				ev.stopPropagation();
 				this.deleteAttachment(resp.id);
 			};
+			if(!mobile){
+				f.el.addEventListener("click", (ev)=>{
+					var info=resp.pv as PhotoViewerInlineData;
+					this.openDesktopPhotoViewerForAltText(resp.id, info);
+				});
+			}
+			f.el.style.cursor="pointer";
 			f.el.id="attachment_"+resp.id;
 			this.attachmentIDs.push(resp.id);
 			this.attachField.value=this.attachmentIDs.join(",");
@@ -350,7 +371,9 @@ class PostForm{
 		var el=ge("attachment_"+id);
 		el.parentNode.removeChild(el);
 		this.attachmentIDs.remove(id);
+		delete this.attachmentAltTexts[id];
 		this.attachField.value=this.attachmentIDs.join(",");
+		this.updateAltTextsField();
 	}
 
 	public send(onDone:{(success:boolean):void}=null):boolean{
@@ -385,6 +408,7 @@ class PostForm{
 				return;
 			}
 			this.attachmentIDs=[];
+			this.attachmentAltTexts={};
 			this.attachField.value="";
 			this.input.resizeToFitContent();
 			this.hideCWLayout();
@@ -408,9 +432,10 @@ class PostForm{
 		}
 	}
 
-	public setupForReplyTo(id:number):void{
+	public setupForReplyTo(id:(number|string), type:string="post"):void{
 		this.replyToField.value=id+"";
-		var postEl=ge("post"+id);
+		console.log(type, id);
+		var postEl=ge(type+id);
 		var name:string=postEl.dataset.replyName;
 		if(name){
 			if(this.input.value.length==0 || (this.input.value==this.currentReplyName)){
@@ -428,7 +453,7 @@ class PostForm{
 
 	private onAttachMenuItemClick(id:string, args:any){
 		if(id=="photo"){
-			this.fileField.click();
+			this.onAttachPhotoClick();
 		}else if(id=="cw"){
 			this.showCWLayout();
 		}else if(id=="poll"){
@@ -436,6 +461,7 @@ class PostForm{
 		}else if(id=="graffiti"){
 			this.showGraffitiEditor(args);
 		}
+		return false;
 	}
 
 	private onPrepareAttachMenu(){
@@ -452,6 +478,11 @@ class PostForm{
 			}})
 		]);
 		return layout;
+	}
+
+	private onAttachPhotoClick(){
+		LayerManager.getInstance().showBoxLoader();
+		ajaxGetAndApplyActions("/photos/attachBox?id="+this.id);
 	}
 
 	private showCWLayout(){
@@ -634,8 +665,11 @@ class PostForm{
 	private showMobileAttachMenu(){
 		var opts:any[]=[];
 		if(this.canAddAttachment("photo")){
-			opts.push({label: lang("attach_menu_photo"), onclick: ()=>{
+			opts.push({label: lang("attach_menu_photo_upload"), onclick: ()=>{
 				this.fileField.click();
+			}});
+			opts.push({label: lang("attach_menu_photo_from_album"), onclick: ()=>{
+				this.onAttachPhotoClick();
 			}});
 		}
 		if(this.canAddAttachment("poll") && !this.pollLayout && !this.isMobileComment){
@@ -675,7 +709,7 @@ class PostForm{
 			count++;
 		if(this.pollLayout)
 			count++;
-		var maxCount=this.replyToField ? 2 : 10;
+		var maxCount=this.replyToField && this.replyToField.value ? 2 : 10;
 		if(count<maxCount){
 			return true;
 		}
@@ -743,5 +777,89 @@ class PostForm{
 	private resetCompletions(){
 		this.completionList.completionsList.innerHTML="";
 		this.completionList.updateCompletions();
+	}
+
+	private doAttachAlbumPhoto(id:string, urlWebp:string, urlJpeg:string){
+		var ev=event as MouseEvent;
+		if(!(isApple ? ev.metaKey : ev.ctrlKey)){
+			LayerManager.getInstance().dismissByID("photoAttach");
+			LayerManager.getInstance().dismissByID("photoAttachAlbum");
+		}
+		if(!this.checkAttachmentCount())
+			return;
+		if(ge("attachment_photo:"+id))
+			return;
+
+		var img:HTMLElement;
+		var del:HTMLAnchorElement;
+		var cont=ce("div", {className: "attachment", id: "attachment_photo:"+id}, [
+			ce("picture", {}, [
+				ce("source", {srcset: urlWebp, type: "image/webp"}),
+				ce("source", {srcset: urlJpeg, type: "image/jpeg"}),
+				img=ce("img", {src: urlJpeg})
+			]),
+			del=ce("a", {className: "deleteBtn", ariaLabel: lang("remove_attachment")}),
+		]);
+		this.attachContainer.appendChild(cont);
+		this.attachmentIDs.push("photo:"+id);
+		this.attachField.value=this.attachmentIDs.join(",");
+		del.dataset.tooltip=lang("remove_attachment");
+		del.onclick=(ev:Event)=>{
+			ev.preventDefault();
+			this.deleteAttachment("photo:"+id);
+		};
+	}
+
+	public static attachAlbumPhoto(formID:string, link:HTMLElement):boolean{
+		ge("wallPostForm_"+formID).customData.postFormObj.doAttachAlbumPhoto(link.dataset.photoId, link.dataset.photoUrlWebp, link.dataset.photoUrlJpeg);
+		return false;
+	}
+
+	public static initPhotoAttachBox(formID:string){
+		var upload=ge("photoAttachUpload");
+		if(!upload)
+			return;
+
+		var form=ge("wallPostForm_"+formID).customData.postFormObj as PostForm;
+		var dropText=ge("attachUploadDropText");
+		var dragCount=0;
+		upload.addEventListener("click", (ev)=>{
+			form.fileField.click();
+		});
+		upload.addEventListener("drop", (ev)=>{
+			dragCount=0;
+			ev.preventDefault();
+			dropText.innerText=lang("drop_files_here");
+			form.handleFiles(ev.dataTransfer.files);
+		}, false);
+		upload.addEventListener("dragenter", (ev)=>{
+			if(dragCount==0){
+				dropText.innerText=lang("release_files_to_upload");
+			}
+			dragCount++;
+		});
+		upload.addEventListener("dragleave", (ev)=>{
+			dragCount--;
+			if(dragCount==0){
+				dropText.innerText=lang("drop_files_here");
+			}
+		});
+	}
+
+	private updateAltTextsField(){
+		this.altTextsField.value=JSON.stringify(this.attachmentAltTexts);
+	}
+
+	private openDesktopPhotoViewerForAltText(id:string, info:PhotoViewerInlineData){
+		var viewer=doOpenPhotoViewer(info);
+		if(viewer instanceof DesktopPhotoViewer){
+			viewer.bottomPartUpdateCallback=(el)=>{
+				viewer.showLocalDescriptionEditor(this.attachmentAltTexts[id] || "", (description:string)=>{
+					this.attachmentAltTexts[id]=description;
+					viewer.dismiss();
+					this.updateAltTextsField();
+				});
+			};
+		}
 	}
 }

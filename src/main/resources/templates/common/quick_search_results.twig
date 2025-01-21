@@ -6,7 +6,7 @@
 <div class="qsearchSection ellipsize">{{ L('search_people') }}</div>
 {% for user in users %}
 <a class="qsearchResult" href="{{ user.profileURL }}">
-	{{ user | pictureForAvatar('s', avaSize) }}
+	{{ user | pictureForAvatar('a', avaSize) }}
 	<div class="qsearchName ellipsize">{{ user | name('full') }}</div>
 </a>
 {% endfor %}
@@ -15,7 +15,7 @@
 <div class="qsearchSection ellipsize">{{ L('search_groups') }}</div>
 {% for group in groups %}
 <a class="qsearchResult" href="{{ group.profileURL }}">
-	{{ group | pictureForAvatar('s', avaSize) }}
+	{{ group | pictureForAvatar('a', avaSize) }}
 	<div class="qsearchName ellipsize">{{ group.name }}</div>
 </a>
 {% endfor %}

@@ -43,6 +43,8 @@
   "back_to_event": "Вернуться к встрече",
   "edit": "Редактировать",
   "attach_menu_photo": "Фотографию",
+  "attach_menu_photo_upload": "Фотографию с устройства",
+  "attach_menu_photo_from_album": "Фотографию из альбома",
   "attach_menu_cw": "Спойлер",
   "network_error": "Ошибка сети. Пожалуйста, проверьте ваше подключение и попробуйте ещё раз.",
   "domain": "Домен",
@@ -76,7 +78,7 @@
   "search": "Поиск",
   "qsearch_hint": "Начните набирать имя или вставьте ссылку",
   "unsupported_remote_object_type": "Тип этого объекта не поддерживается.",
-  "remote_object_not_found": "Удалённый объект не найден. Возможно, он был удалён, или вы указали неверную ссылку.",
+  "remote_object_not_found": "Объект не найден на другом сервере. Возможно, он был удалён, или вы указали неверную ссылку.",
   "remote_object_network_error": "Ошибка сети при получении объекта с удалённого сервера.",
   "search_people": "Люди",
   "search_groups": "Группы",
@@ -188,5 +190,12 @@
   "comments_show_X_more_comments": "Показать ещё {count, plural, one {# комментарий} few {# комментария} other {# комментариев}}",
   "cancel_reply": "Не отвечать",
   "menu_bookmarks": "Мои Закладки",
-  "X_communities": "{count, plural, one {# сообщество} few {# сообщества} other {# сообществ}}"
+  "X_communities": "{count, plural, one {# сообщество} few {# сообщества} other {# сообществ}}",
+  "show_technical_details": "Технические подробности",
+  "menu_photos": "Мои Фотографии",
+  "release_files_to_upload": "Отпустите, чтобы начать загрузку",
+  "object_X_of_Y": "{current} из {total}",
+  "remote_like_photo_title": "Оценить фотографию",
+  "main_menu": "Главное меню",
+  "save_and_continue": "Сохранить и продолжить"
 }

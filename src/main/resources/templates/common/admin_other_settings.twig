@@ -13,8 +13,7 @@
 			{{ form.textInput('smtp_password', L('password'), smtpPassword, {'type': 'password', 'autocomplete': false, 'explanation': L('admin_email_auth_explain')}) }}
 			{{ form.unlabeledRowStart() }}
 			<div class="radioButtonWrap">
-				<input type="checkbox" name="smtp_use_tls" id="smtp_use_tls"{{ smtpUseTLS ? ' checked' : '' }}/>
-				<label for="smtp_use_tls">{{ L('admin_email_smtp_use_tls') }}</label>
+				<label><input type="checkbox" name="smtp_use_tls"{{ smtpUseTLS ? ' checked' : '' }}/>{{ L('admin_email_smtp_use_tls') }}</label>
 			</div>
 			{{ form.unlabeledRowEnd() }}
 			{{ form.footer(L('save')) }}

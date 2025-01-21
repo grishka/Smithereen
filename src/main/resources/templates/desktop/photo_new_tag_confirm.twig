@@ -1,0 +1,5 @@
+<div class="pvConfirmTag" id="pvConfirmTag_{{ photo.idString }}">
+	<div class="text">{{ L('user_tagged_you_in_photo', {'name': placer | name('full'), 'gender': placer.gender}, {'user': {'href': placer.profileURL} }) }}</div>
+	<a href="{{ photo.url }}/approveTag?csrf={{ csrf }}" class="button" data-ajax>{{ L('photo_confirm_tag') }}</a>
+	<a href="{{ photo.url }}/deleteTag?id={{ tagID }}&csrf={{ csrf }}" class="button secondary" data-ajax>{{ L('photo_delete_tag') }}</a>
+</div>

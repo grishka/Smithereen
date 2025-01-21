@@ -59,7 +59,9 @@ import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
-import smithereen.model.ReportableContentObject;
+import smithereen.model.comments.Comment;
+import smithereen.model.photos.Photo;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.Server;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
@@ -74,8 +76,10 @@ import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.UserRoleViewModel;
+import smithereen.storage.FederationStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.ModerationStorage;
+import smithereen.storage.PhotoStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
@@ -90,8 +94,6 @@ public class ModerationController{
 
 	private final ApplicationContext context;
 	private final LruCache<String, Server> serversByDomainCache=new LruCache<>(500);
-	private final Object emailRulesLock=new Object();
-	private final Object ipRulesLock=new Object();
 	private List<EmailDomainBlockRule> emailDomainRules;
 	private List<IPBlockRule> ipRules;
 
@@ -184,10 +186,16 @@ public class ModerationController{
 				throw new ObjectNotFoundException();
 			if(needFiles && !report.content.isEmpty()){
 				HashSet<LocalImage> localImages=new HashSet<>();
+				List<Photo> photos=new ArrayList<>();
 				for(ReportableContentObject rco: report.content){
 					List<ActivityPubObject> attachments=switch(rco){
 						case Post p -> p.getAttachments();
 						case MailMessage m -> m.getAttachments();
+						case Photo p -> {
+							photos.add(p);
+							yield null;
+						}
+						case Comment c -> c.getAttachments();
 					};
 					if(attachments==null)
 						continue;
@@ -206,6 +214,9 @@ public class ModerationController{
 							li.fillIn(mfr);
 					}
 				}
+				if(!photos.isEmpty()){
+					PhotoStorage.postprocessPhotos(photos);
+				}
 			}
 			return report;
 		}catch(SQLException x){
@@ -215,7 +226,7 @@ public class ModerationController{
 
 	public PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, boolean onlyRestricted, String query){
 		try{
-			return ModerationStorage.getAllServers(offset, count, availability, onlyRestricted, query);
+			return FederationStorage.getAllServers(offset, count, availability, onlyRestricted, query);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -223,29 +234,25 @@ public class ModerationController{
 
 	public Server getServerByDomain(String domain){
 		domain=domain.toLowerCase();
-		synchronized(serversByDomainCache){
-			Server server=serversByDomainCache.get(domain);
-			if(server!=null)
-				return server;
+		Server server=serversByDomainCache.get(domain);
+		if(server!=null)
+			return server;
 
-			try{
-				server=ModerationStorage.getServerByDomain(domain);
-				if(server==null)
-					throw new ObjectNotFoundException();
-				serversByDomainCache.put(domain, server);
-				return server;
-			}catch(SQLException x){
-				throw new InternalServerErrorException(x);
-			}
+		try{
+			server=FederationStorage.getServerByDomain(domain);
+			if(server==null)
+				throw new ObjectNotFoundException();
+			serversByDomainCache.put(domain, server);
+			return server;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 
 	public void setServerRestriction(Server server, FederationRestriction restriction){
 		try{
 			ModerationStorage.setServerRestriction(server.id(), restriction!=null ? Utils.gson.toJson(restriction) : null);
-			synchronized(serversByDomainCache){
-				serversByDomainCache.remove(server.host());
-			}
+			serversByDomainCache.remove(server.host());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -253,31 +260,39 @@ public class ModerationController{
 
 	public Server getOrAddServer(String domain){
 		domain=domain.toLowerCase();
-		synchronized(serversByDomainCache){
-			Server server=serversByDomainCache.get(domain);
-			if(server!=null)
-				return server;
+		Server server=serversByDomainCache.get(domain);
+		if(server!=null)
+			return server;
 
-			try{
-				server=ModerationStorage.getServerByDomain(domain);
-				if(server==null){
-					int id=ModerationStorage.addServer(domain);
-					server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null);
-				}
-				serversByDomainCache.put(domain, server);
-				return server;
-			}catch(SQLException x){
-				throw new InternalServerErrorException(x);
+		try{
+			server=FederationStorage.getServerByDomain(domain);
+			if(server==null){
+				int id=FederationStorage.addServer(domain);
+				server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
 			}
+			serversByDomainCache.put(domain, server);
+			return server;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void addServerFeatures(String domain, EnumSet<Server.Feature> features){
+		Server server=getOrAddServer(domain);
+		if(server.features().containsAll(features))
+			return;
+		server.features().addAll(features);
+		try{
+			FederationStorage.setServerFeatures(server.id(), server.features());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 
 	public void resetServerAvailability(Server server){
 		try{
-			ModerationStorage.setServerAvailability(server.id(), null, 0, true);
-			synchronized(serversByDomainCache){
-				serversByDomainCache.remove(server.host());
-			}
+			FederationStorage.setServerAvailability(server.id(), null, 0, true);
+			serversByDomainCache.remove(server.host());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -286,12 +301,10 @@ public class ModerationController{
 	public void recordFederationFailure(Server server){
 		try{
 			LocalDate today=LocalDate.now(ZoneId.systemDefault());
-			synchronized(serversByDomainCache){
-				if(!today.equals(server.lastErrorDay())){
-					int dayCount=server.errorDayCount()+1;
-					ModerationStorage.setServerAvailability(server.id(), today, dayCount, dayCount<7);
-					serversByDomainCache.remove(server.host());
-				}
+			if(!today.equals(server.lastErrorDay())){
+				int dayCount=server.errorDayCount()+1;
+				FederationStorage.setServerAvailability(server.id(), today, dayCount, dayCount<7);
+				serversByDomainCache.remove(server.host());
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -593,7 +606,7 @@ public class ModerationController{
 							LOG.debug("Post {} already deleted", post.id);
 							continue;
 						}
-						context.getWallController().deletePostAsServerModerator(session, post);
+						context.getWallController().deletePostAsServerModerator(session.account.user, post);
 					}
 					case MailMessage msg -> {
 						if(context.getMailController().getMessagesAsModerator(Set.of(XTEA.obfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE))).isEmpty()){
@@ -603,6 +616,14 @@ public class ModerationController{
 						User sender=context.getUsersController().getUserOrThrow(msg.senderID);
 						context.getMailController().actuallyDeleteMessage(sender, msg, true);
 					}
+					case Photo photo -> {
+						if(photo.ownerID>0){
+							context.getPhotosController().deletePhoto(context.getUsersController().getUserOrThrow(photo.ownerID), photo);
+						}else{
+							context.getPhotosController().deletePhoto(context.getGroupsController().getGroupOrThrow(-photo.ownerID), photo);
+						}
+					}
+					case Comment comment -> context.getCommentsController().deleteComment(context.getWallController().getContentAuthorAndOwner(comment).owner(), comment);
 				}
 				actuallyDeletedAnything=true;
 			}
@@ -664,21 +685,17 @@ public class ModerationController{
 
 	public List<EmailDomainBlockRule> getEmailDomainBlockRules(){
 		try{
-			synchronized(emailRulesLock){
-				if(emailDomainRules!=null)
-					return emailDomainRules;
-				emailDomainRules=Collections.unmodifiableList(ModerationStorage.getEmailDomainBlockRules());
+			if(emailDomainRules!=null)
 				return emailDomainRules;
-			}
+			emailDomainRules=Collections.unmodifiableList(ModerationStorage.getEmailDomainBlockRules());
+			return emailDomainRules;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
 	private void reloadEmailDomainBlockCache() throws SQLException{
-		synchronized(emailRulesLock){
-			emailDomainRules=Collections.unmodifiableList(ModerationStorage.getEmailDomainBlockRules());
-		}
+		emailDomainRules=Collections.unmodifiableList(ModerationStorage.getEmailDomainBlockRules());
 	}
 
 	private String normalizeDomain(String domain){
@@ -757,21 +774,17 @@ public class ModerationController{
 
 	public List<IPBlockRule> getIPBlockRules(){
 		try{
-			synchronized(ipRulesLock){
-				if(ipRules!=null)
-					return ipRules;
-				ipRules=Collections.unmodifiableList(ModerationStorage.getIPBlockRules());
+			if(ipRules!=null)
 				return ipRules;
-			}
+			ipRules=Collections.unmodifiableList(ModerationStorage.getIPBlockRules());
+			return ipRules;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
 	private void reloadIpBlockCache() throws SQLException{
-		synchronized(ipRulesLock){
-			ipRules=Collections.unmodifiableList(ModerationStorage.getIPBlockRules());
-		}
+		ipRules=Collections.unmodifiableList(ModerationStorage.getIPBlockRules());
 	}
 
 	public void createIPBlockRule(User self, InetAddressRange addressRange, IPBlockRule.Action action, int expiryMinutes, String note){

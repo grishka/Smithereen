@@ -66,19 +66,25 @@ public abstract class Actor extends ActivityPubObject{
 		return icon!=null;
 	}
 
+	public Image getAvatarImage(){
+		if(icon!=null && !icon.isEmpty())
+			return icon.getFirst();
+		return null;
+	}
+
 	public Image getBestAvatarImage(){
-		Image icon=this.icon!=null ? this.icon.get(0) : null;
+		Image icon=this.icon!=null ? this.icon.getFirst() : null;
 		if(icon==null)
 			return null;
 		if(icon instanceof LocalImage)
 			return icon;
-		if(icon.image!=null && !icon.image.isEmpty() && icon.image.get(0).width>0 && icon.image.get(0).height>0)
-			return icon.image.get(0);
+		if(icon.image!=null && !icon.image.isEmpty() && icon.image.getFirst().width>0 && icon.image.getFirst().height>0)
+			return icon.image.getFirst();
 		return icon;
 	}
 
 	public float[] getAvatarCropRegion(){
-		Image icon=this.icon!=null ? this.icon.get(0) : null;
+		Image icon=this.icon!=null ? this.icon.getFirst() : null;
 		if(icon==null)
 			return null;
 		return icon.cropRegion;
@@ -106,13 +112,13 @@ public abstract class Actor extends ActivityPubObject{
 		try{
 			MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.get(icon.url);
 			if(item!=null){
-				return new CachedRemoteImage(item, getAvatarCropRegion());
+				return new CachedRemoteImage(item, getAvatarCropRegion(), icon.url);
 			}else{
 				SizedImage.Dimensions size=SizedImage.Dimensions.UNKNOWN;
 				if(icon.width>0 && icon.height>0){
 					size=new SizedImage.Dimensions(icon.width, icon.height);
 				}
-				return new NonCachedRemoteImage(getAvatarArgs(), size);
+				return new NonCachedRemoteImage(getAvatarArgs(), size, icon.url);
 			}
 		}catch(SQLException e){
 			e.printStackTrace();
@@ -158,6 +164,9 @@ public abstract class Actor extends ActivityPubObject{
 		}
 		serializerContext.addAlias("collectionSimpleQuery", "sm:collectionSimpleQuery");
 		serializerContext.addAlias("sm", JLD.SMITHEREEN);
+		serializerContext.addAlias("toot", JLD.MASTODON);
+		serializerContext.addAlias("discoverable", "toot:discoverable");
+		obj.addProperty("discoverable", true);
 
 		serializerContext.addSchema(JLD.W3_SECURITY);
 
@@ -233,6 +242,7 @@ public abstract class Actor extends ActivityPubObject{
 
 	public abstract int getLocalID();
 	public abstract URI getWallURL();
+	public abstract URI getPhotoAlbumsURL();
 	public abstract String getTypeAndIdForURL();
 	public abstract String getName();
 
@@ -303,6 +313,10 @@ public abstract class Actor extends ActivityPubObject{
 		return getWallURL()!=null;
 	}
 
+	public boolean hasPhotoAlbums(){
+		return getPhotoAlbumsURL()!=null;
+	}
+
 	public void ensureLocal(){
 		if(StringUtils.isNotEmpty(domain))
 			throw new IllegalArgumentException("Local actor is required here (got "+activityPubID+")");
@@ -340,6 +354,9 @@ public abstract class Actor extends ActivityPubObject{
 			ep.wall=wall.toString();
 		if(collectionQueryEndpoint!=null)
 			ep.collectionQuery=collectionQueryEndpoint.toString();
+		URI photoAlbums=getPhotoAlbumsURL();
+		if(photoAlbums!=null)
+			ep.photoAlbums=photoAlbums.toString();
 		return ep;
 	}
 
@@ -373,5 +390,9 @@ public abstract class Actor extends ActivityPubObject{
 		public String groupMembers;
 		@SerializedName("tm")
 		public String tentativeGroupMembers;
+		@SerializedName("pa")
+		public String photoAlbums;
+		@SerializedName("tp")
+		public String taggedPhotos;
 	}
 }

@@ -131,10 +131,12 @@
   "summary_event_X_invites": "{count, plural, =0 {Niemand is} one {# persoon is} other {# mensen zijn}} uitgenodigd voor deze evenement",
   "cancel_invitation": "Annuleer uitnodiging",
   "invitation_canceled": "Uitnodiging verwijderd",
-  "confirm_leave_group": "Dit is een <b>{type, select, CLOSED {gesloten} PRIVATE {privaat} other {}}</b> groep. Als je weggaat, kan het moeilijk zijn om je opnieuw aan te sluiten.\n\nWeet je zeker dat je deze groep wilt verlaten?",
   "confirm_leave_event": "Dit is een <b>privé</b> evenement. Als je het verlaat, is het mogelijk moeilijk om je opnieuw aan te sluiten.\n\nWeet je zeker dat je deze gebeurtenis wilt verlaten?",
   "groups_search_placeholder": "Groepen zoeken",
   "events_search_placeholder": "Evenementen zoeken",
   "summary_found_X_groups": "{count, plural, =0 {Geen groepen} one {# groep} other {# groepen}} gevonden",
-  "summary_found_X_events": "{count, plural, =0 {Geen evenementen} one {# evenement} other {# evenementen}} gevonden"
+  "summary_found_X_events": "{count, plural, =0 {Geen evenementen} one {# evenement} other {# evenementen}} gevonden",
+  "group_access_level": "Toegangsniveau",
+  "group_access_admin": "Beheerder",
+  "group_access_moderator": "Moderator"
 }

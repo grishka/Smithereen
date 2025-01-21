@@ -13,7 +13,9 @@ import java.util.Spliterators;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
+import java.util.function.LongConsumer;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -21,10 +23,11 @@ import smithereen.Utils;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.util.NamedMutexCollection;
 
 public class DatabaseUtils{
 
-	private static final Object UNIQUE_USERNAME_LOCK=new Object();
+	private static final NamedMutexCollection usernameMutexes=new NamedMutexCollection();
 
 	public static ArrayList<Integer> intResultSetToList(ResultSet res) throws SQLException{
 		ArrayList<Integer> list=new ArrayList<>();
@@ -63,31 +66,27 @@ public class DatabaseUtils{
 			return false;
 		if(Utils.isReservedUsername(username))
 			return false;
-		synchronized(UNIQUE_USERNAME_LOCK){
-			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-				int userCount=new SQLQueryBuilder(conn)
-						.selectFrom("users")
-						.count()
-						.where("username=? AND domain=''", username)
-						.executeAndGetInt();
-				if(userCount>0)
-					return false;
-				int groupCount=new SQLQueryBuilder(conn)
-						.selectFrom("groups")
-						.count()
-						.where("username=? AND domain=''", username)
-						.executeAndGetInt();
-				if(groupCount>0)
-					return false;
-				action.run();
-				return true;
-			}
-		}
-	}
-
-	public static void runWithUniqueUsername(DatabaseRunnable action) throws SQLException{
-		synchronized(UNIQUE_USERNAME_LOCK){
+		String key=username.toLowerCase();
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			usernameMutexes.acquire(key);
+			int userCount=new SQLQueryBuilder(conn)
+					.selectFrom("users")
+					.count()
+					.where("username=? AND domain=''", username)
+					.executeAndGetInt();
+			if(userCount>0)
+				return false;
+			int groupCount=new SQLQueryBuilder(conn)
+					.selectFrom("groups")
+					.count()
+					.where("username=? AND domain=''", username)
+					.executeAndGetInt();
+			if(groupCount>0)
+				return false;
 			action.run();
+			return true;
+		}finally{
+			usernameMutexes.release(key);
 		}
 	}
 
@@ -123,6 +122,44 @@ public class DatabaseUtils{
 					try{
 						while(res.next()){
 							action.accept(res.getInt(1));
+						}
+						res.close();
+						if(close!=null)
+							close.run();
+					}catch(SQLException x){
+						throw new UncheckedSQLException(x);
+					}
+				}
+			}, false);
+		}catch(UncheckedSQLException x){
+			throw x.getCause();
+		}
+	}
+
+	public static LongStream longResultSetToStream(ResultSet res, Runnable close) throws SQLException{
+		try{
+			return StreamSupport.longStream(new Spliterators.AbstractLongSpliterator(Long.MAX_VALUE, Spliterator.ORDERED){
+				@Override
+				public boolean tryAdvance(LongConsumer action){
+					try{
+						if(res.next()){
+							action.accept(res.getLong(1));
+							return true;
+						}
+						res.close();
+						if(close!=null)
+							close.run();
+					}catch(SQLException x){
+						throw new UncheckedSQLException(x);
+					}
+					return false;
+				}
+
+				@Override
+				public void forEachRemaining(LongConsumer action){
+					try{
+						while(res.next()){
+							action.accept(res.getLong(1));
 						}
 						res.close();
 						if(close!=null)
@@ -208,7 +245,7 @@ public class DatabaseUtils{
 		}
 
 		@Override
-		public synchronized SQLException getCause(){
+		public SQLException getCause(){
 			return (SQLException) super.getCause();
 		}
 	}

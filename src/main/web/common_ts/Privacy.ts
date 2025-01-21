@@ -14,7 +14,7 @@ function getFriendForPrivacy(id:number){
 	return [id, "DELETED", "/id"+id, "DELETED", null];
 }
 
-function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean){
+function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyFriends:boolean){
 	if(!el.customData)
 		el.customData={};
 	var menuEl=el.customData.menuEl || (el.customData.menuEl=ce("div", {"className": "popupMenu compact"}, [
@@ -24,7 +24,13 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean){
 	el.insertAdjacentElement("afterend", menuEl);
 	var menuList=menuEl.querySelector("ul");
 	if(!menuList.children.length){
-		for(var opt of ["everyone", "friends", "friends_of_friends", onlyMe ? "only_me" : "no_one", "everyone_except", "certain_friends"]){
+		var opts:string[];
+		if(onlyFriends){
+			opts=["friends", onlyMe ? "only_me" : "no_one", "friends_except", "certain_friends"];
+		}else{
+			opts=["everyone", "friends", "friends_of_friends", onlyMe ? "only_me" : "no_one", "everyone_except", "certain_friends"];
+		}
+		for(var opt of opts){
 			var li;
 			menuList.appendChild(li=ce("li", {}, [lang("privacy_value_"+opt)]));
 			li.dataset.act=opt;
@@ -82,9 +88,9 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean){
 			loadFriendsForBoxes(()=>{
 				new PrivacyFriendChoiceBox(lang("select_friends_title"), setValue.bind(this), previousValue).show();
 			});
-		}else if(id=="everyone_except"){
+		}else if(id=="everyone_except" || id=="friends_except"){
 			loadFriendsForBoxes(()=>{
-				new ExtendedPrivacyBox(setValue.bind(this), previousValue).show();
+				new ExtendedPrivacyBox(setValue.bind(this), previousValue, onlyFriends).show();
 			});
 		}else{
 			var rule:string;
@@ -105,6 +111,7 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean){
 			}
 			setValue({r: rule, au: [], xu: []});
 		}
+		return false;
 	}, false, true));
 	var curSel=menuList.qs(".selected");
 	if(curSel){
@@ -112,7 +119,7 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean){
 	}
 	var selectedItem:string;
 	if(previousValue.xu.length){
-		selectedItem="everyone_except";
+		selectedItem=onlyFriends ? "friends_except" : "everyone_except";
 	}else{
 		switch(previousValue.r){
 			case "e":
@@ -162,7 +169,7 @@ class ExtendedPrivacyBox extends Box{
 	private denyFriendsField:HTMLElement;
 	private rule:string;
 
-	public constructor(callback:{(v:PrivacySetting):void}, currentValue:PrivacySetting){
+	public constructor(callback:{(v:PrivacySetting):void}, currentValue:PrivacySetting, onlyFriends:boolean){
 		super(lang("privacy_settings_title"), [lang("save"), lang("cancel")], (idx)=>{
 			if(idx==0){
 				var allow:number[]=[];
@@ -199,16 +206,24 @@ class ExtendedPrivacyBox extends Box{
 		this.setRule(currentValue.r);
 		this.menu=new PopupMenu(menuWrap, (id)=>{
 			this.setRule(id);
+			return false;
 		}, false, true);
 		this.allowedLink.onclick=(ev)=>{
 			this.menu.show();
 		};
-		this.menu.addItems([
-			{id: "e", title: lang("privacy_value_to_everyone")},
-			{id: "f", title: lang("privacy_value_to_friends")},
-			{id: "ff", title: lang("privacy_value_to_friends_of_friends")},
-			{id: "n", title: lang("privacy_value_to_certain_friends")}
-		]);
+		if(onlyFriends){
+			this.menu.addItems([
+				{id: "f", title: lang("privacy_value_to_friends")},
+				{id: "n", title: lang("privacy_value_to_certain_friends")}
+			]);
+		}else{
+			this.menu.addItems([
+				{id: "e", title: lang("privacy_value_to_everyone")},
+				{id: "f", title: lang("privacy_value_to_friends")},
+				{id: "ff", title: lang("privacy_value_to_friends_of_friends")},
+				{id: "n", title: lang("privacy_value_to_certain_friends")}
+			]);
+		}
 
 		for(var friend of friendListForPrivacy){
 			this.friends.push({
@@ -487,12 +502,11 @@ class MobilePrivacyFriendChoiceBox extends BaseScrollableBox{
 	}
 }
 
-function initMobilePrivacyForm(){
+function initMobilePrivacyForm(valueField:HTMLInputElement, updateField:boolean=true, onChange:{(s:PrivacySetting):void}=null){
 	var allowedList=ge("allowedFriendsItems");
 	var deniedList=ge("deniedFriendsItems");
 	var allowedListW=ge("allowedFriends");
 	var deniedListW=ge("deniedFriends");
-	var valueField=ge("settingValue") as HTMLInputElement;
 	var currentValue=JSON.parse(valueField.value) as PrivacySetting;
 
 	function makeUserRow(user:any[]):HTMLElement{
@@ -508,7 +522,10 @@ function initMobilePrivacyForm(){
 
 	function setValue(value:PrivacySetting){
 		currentValue=value;
-		valueField.value=JSON.stringify(value);
+		if(updateField)
+			valueField.value=JSON.stringify(value);
+		if(onChange)
+			onChange(value);
 		if(!friendListForPrivacy)
 			return;
 		allowedList.innerHTML="";
@@ -580,3 +597,61 @@ function initMobilePrivacyForm(){
 		new MobilePrivacyFriendChoiceBox(lang("select_friends_title"), false, setValue, currentValue).show();
 	}));
 }
+
+function showMobilePrivacyBox(key:string, value:PrivacySetting, onlyMe:boolean){
+	LayerManager.getInstance().showBoxLoader();
+	var field:HTMLInputElement=ge(key+"_value");
+	var uiValue:HTMLElement=ge(key+"_uiValue");
+	ajaxGet("/settings/privacy/mobileBox?value="+encodeURIComponent(JSON.stringify(value))+"&onlyMe="+onlyMe, (r)=>{
+		var box:Box;
+		var setting=value;
+		box=new Box(lang("privacy_settings_title"), [lang("save"), lang("cancel")], (i)=>{
+			if(i==0){
+				field.value=JSON.stringify(setting);
+				var uiStr:string;
+				switch(setting.r){
+					case "e":
+						uiStr=lang("privacy_value_everyone");
+						break;
+					case "f":
+						uiStr=lang("privacy_value_friends");
+						break;
+					case "ff":
+						uiStr=lang("privacy_value_friends_of_friends");
+						break;
+					case "n":
+						if(setting.au.length){
+							uiStr=lang("privacy_value_certain_friends");
+						}else{
+							uiStr=lang(onlyMe ? "privacy_value_only_me" : "privacy_value_no_one");
+						}
+						break;
+				}
+				if(setting.au.length){
+					uiStr+=lang("privacy_settings_value_certain_friends_before");
+					var names=[];
+					for(var id of setting.au){
+						names.push(getFriendForPrivacy(id)[1]);
+					}
+					uiStr+=names.join(lang("privacy_settings_value_name_separator"));
+				}
+				if(setting.xu.length){
+					uiStr+=lang("privacy_settings_value_except");
+					var names=[];
+					for(var id of setting.xu){
+						names.push(getFriendForPrivacy(id)[3]);
+					}
+					uiStr+=names.join(lang("privacy_settings_value_name_separator"));
+				}
+				uiValue.innerText=uiStr;
+			}
+			box.dismiss();
+		});
+		box.setContent(ce("div", {innerHTML: r as string}));
+		box.show();
+		initMobilePrivacyForm(field, false, (ps)=>setting=ps);
+	}, (msg)=>{
+		new MessageBox(lang("error"), msg, lang("close")).show();
+	}, "text");
+}
+

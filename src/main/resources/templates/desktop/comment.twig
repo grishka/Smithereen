@@ -1,0 +1,95 @@
+{# @pebvariable name="post" type="smithereen.model.viewmodel.CommentViewModel" #}
+{# @pebvariable name="realPost" type="smithereen.model.comments.Comment" #}
+{# @pebvariable name="parentObject" type="smithereen.model.comments.CommentableContentObject" #}
+{% set realPost=post.post %}
+{% set replyLevel=realPost.replyLevel-(baseReplyLevel | default(0)) %}
+<div class="post comment{{ first ? ' first' : '' }}{{ commentViewType=='TWO_LEVEL' and not hideIndent and replyLevel>0 ? ' twoLevelIndented' : '' }}" id="comment{{realPost.idString}}" data-reply-name="{{users[realPost.authorID].nameForReply}}" data-replying-name="{{ L('in_reply_to_name', {'name': users[realPost.authorID].firstAndGender}) }}">
+	{% if replyLevel>0 and not hideIndent %}
+	{% if commentViewType=='THREADED' %}
+	<div style="--indent-level: {{ min(replyLevel, maxReplyDepth) }}" class="treeIndent"></div>
+	{% endif %}
+	{% endif %}
+	{%if not(realPost.deleted)%}
+	<div class="postAvaWrap">
+		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a', 32) }}</a>
+	</div>
+	<div class="postContentWrap">
+		<a name="comment{{realPost.idString}}"></a>
+		{% if not hideActions %}
+		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.idString }}">
+			{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}
+			<a href="{{ realPost.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{ realPost.internalURL }}/delete')" class="flR postIconAction actionDelete" data-tooltip="{{ L('delete') }}" aria-label="{{ L('delete') }}"></a>
+			{% endif %}
+			{% if userPermissions is not null and userPermissions.canEditPost(realPost) %}
+			<a href="{{ realPost.internalURL }}/edit" data-ajax class="flR postIconAction actionEdit" data-tooltip="{{ L('edit') }}" aria-label="{{ L('edit') }}"></a>
+			{% endif %}
+			{% if userPermissions is not null and userPermissions.canReport(realPost) %}
+			<a href="/system/reportForm?type=comment&id={{ realPost.idString }}" data-ajax-box class="flR postIconAction actionReport" data-tooltip="{{ L('report') }}" aria-label="{{ L('report') }}"></a>
+			{% endif %}
+		</div>
+		{% endif %}
+		<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.idString }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
+		{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText hoverCardContainer" id="inReplyTo{{ realPost.idString }}"> {{ L('comment_in_reply_to_user', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink hoverCardTrigger", 'data-parent-id': realPost.replyParentID, 'data-parent-type': 'comment'} }) }}</span>{% endif %}<br/>
+		<div id="postInner{{ realPost.idString }}">
+			{% block postInner %}
+			{% if realPost.hasContentWarning %}
+			<input type="checkbox" id="postCW_{{ realPost.idString }}" class="commentCWCheckbox" style="display: none"/>
+			<div class="postCWWrap">
+				<label for="postCW_{{ realPost.idString }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
+			{% endif %}
+			<div class="postContent">{{ realPost.text | postprocessHTML | truncateText }}</div>
+			{% if realPost.attachments is not empty %}
+			{{ renderAttachments(realPost, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
+			{% endif %}
+			{% if realPost.hasContentWarning %}
+			</div>
+			{% endif %}
+			<div class="postInfo">
+				{%- set interactions=commentInteractions[realPost.id] -%}
+				{%- if interactions is not null -%}
+				<span class="postActions contentActions">
+					<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
+						<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like commentLike{{ interactions.isLiked ? ' liked' : '' }}{{ interactions.likeCount>0 or interactions.repostCount>0 ? '' : ' revealOnHover' }} popoverButton" id="likeButtonPost{{realPost.idString}}" data-obj-type="post" data-obj-id="{{realPost.idString}}" data-popover-url="{{realPost.internalURL}}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} title="{{ L('like') }}">
+							<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{realPost.idString}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+							{{- interactions.likeCount -}}
+						</span></a>
+						<span class="popoverPlace likePopoverWrap"></span>
+					</span>
+				</span>
+				{%- endif -%}
+				<a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.idString}})" class="postLink">{{LD(realPost.createdAt)}}</a>
+				{%- if not hideActions %}
+				{% if not hideReplyLink and canComment and currentUser is not null %}
+					| <a href="{{realPost.internalURL}}" onclick="return showCommentReplyForm('{{realPost.idString}}', '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', {{ commentViewType!='FLAT' }}, {{ commentViewType=='TWO_LEVEL' and replyLevel>1 ? realPost.replyKey[1] : 0 }})">{{L('add_reply')}}</a>
+				{% endif %}
+				{% if not realPost.local %}
+					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+				{% endif %}
+				{% endif %}
+			</div>
+			{% endblock %}
+		</div>
+	</div>
+	{%else%}
+	<div class="postAvaWrap"></div>
+	<div class="postContentWrap">
+		<i>{{L('deleted_placeholder')}}</i>
+	</div>
+	{%endif%}
+</div>
+{% if not hideReplies and commentViewType!='FLAT' and not (commentViewType=='TWO_LEVEL' and replyLevel>0) %}
+<div id="commentReplies{{realPost.idString}}" class="replies">
+	{%for reply in post.repliesObjects%}
+		{% include "comment" with {'post': reply, 'first': false, 'parentObject': parentObject} %}
+		{% set realPost=post.post %}
+		{% set replyLevel=realPost.replyLevel-(baseReplyLevel | default(0)) %}
+	{%endfor%}
+	{% if post.loadableRepliesCount>0 %}
+	<div id="loadRepliesContainer{{ realPost.idString }}" class="threadedIndented" style="--indent-level: {{ min(replyLevel-1, maxReplyDepth) }}">
+		<a class="loadRepliesLink" onclick="return loadCommentBranch(this, '{{ realPost.idString }}', 0, '{{ parentObject.commentParentID.type | lower }}', '{{ parentObject.idString }}')" data-offset="{{ post.repliesObjects | length }}" id="loadRepliesLink{{ realPost.idString }}">{{ L(post.loadedRepliesCount>0 ? 'comments_show_X_more_replies' : 'comments_show_X_replies', {'count': post.loadableRepliesCount}) }}</a>
+		<div class="loadRepliesLink" id="repliesLoader{{ realPost.idString }}" style="display: none;"><span class="loader"></span></div>
+		<div class="depthIndicator"></div>
+	</div>
+	{% endif %}
+</div>
+{% endif %}

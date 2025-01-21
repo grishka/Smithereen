@@ -23,7 +23,7 @@
 		{% for user in items %}
 			<div class="listItemWithDivider adminInfoGrid">
 				<div class="spanAll avaAndName">
-					<div class="avaW">{{ users[user.userID] | pictureForAvatar('s', 30) }}</div>
+					<div class="avaW">{{ users[user.userID] | pictureForAvatar('a', 30) }}</div>
 					<div><a href="/users/{{ user.userID }}/meminfo"><b>{{ users[user.userID] | name("complete") }}</b></a></div>
 					<div class="grayText">@{{ users[user.userID].fullUsername }}, ID {{ user.userID }}</div>
 				</div>

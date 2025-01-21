@@ -1,0 +1,49 @@
+{% extends "page" %}
+{% block content %}
+{% include "photos_tabbar" with {'tab': 'edit'} %}
+<div class="gray{% if items is not empty %} borderBottom{% endif %} photoAlbumEdit">
+	<div class="settingsMessage" id="albumEditMessage" style="display: none"></div>
+	<div class="inner">
+		<div class="left">
+			<div class="cover">{% if cover is not null %}{{ cover.image | pictureForPhoto('m', false) }}{% endif %}</div>
+			<ul class="marginBefore actionList">
+				<li><a href="{{ album.url }}/confirmDelete" data-confirm-message="{{ L('delete_photo_album_confirm') }}" data-confirm-title="{{ L('delete_photo_album') }}" data-confirm-action="{{ album.url }}/delete">{{ L('delete_photo_album') }}</a></li>
+			</ul>
+		</div>
+		<form class="right" action="{{ album.url }}/edit?csrf={{ csrf }}" method="post" data-ajax>
+			{% include "photo_album_create_form" %}
+			{% script %}autoSizeTextArea(ge("descriptionField"));{% endscript %}
+			<input type="submit" value="{{ L('save') }}" style="margin-top: 15px;"/>
+		</form>
+	</div>
+</div>
+{% if items is not empty %}
+<div class="summaryWrap">
+	<div class="summary">{{ L('edit_photos') }}</div>
+	{% include "pagination" %}
+</div>
+{% for photo in items %}
+    <div class="photoEditRow" id="photoEditRow_{{ photo.idString }}" data-photo-id="{{ photo.idString }}" data-text-format="{{ descriptionSources[photo.id].format }}"{% if loop.first %} style="border-top: none"{% endif %}>
+    	<div class="thumb">
+    		<div id="photoEditThumb_{{ photo.idString }}">{{ photo.image | pictureForPhoto('m', false) }}</div>
+    		<div class="rotateButtons" id="photoRotateButtons_{{ photo.idString }}">
+    			<a href="{{ photo.url }}/rotate?cw&from=edit&csrf={{ csrf }}" data-ajax data-ajax-hide="photoRotateButtons_{{ photo.idString }}" data-ajax-show="photoRotateLoader_{{ photo.idString }}" class="rotateCW"></a>
+    			<a href="{{ photo.url }}/rotate?ccw&from=edit&csrf={{ csrf }}" data-ajax data-ajax-hide="photoRotateButtons_{{ photo.idString }}" data-ajax-show="photoRotateLoader_{{ photo.idString }}" class="rotateCCW"></a>
+    		</div>
+    		<div class="loader white" id="photoRotateLoader_{{ photo.idString }}" style="display: none"></div>
+    	</div>
+    	<div class="descriptionW">
+    		<h4 class="marginAfter">{{ L('photo_description') }}</h4>
+    		<textarea>{{ descriptionSources[photo.id].source }}</textarea>
+    		<div class="marginBefore">
+    			<a class="flR" href="{{ photo.url }}/confirmDelete" data-confirm-message="{{ L('delete_photo_confirm') }}" data-confirm-title="{{ L('delete_photo') }}" data-confirm-action="{{ photo.url }}/delete?from=edit">{{ L('delete') }}</a>
+    			<div class="clear"></div>
+    		</div>
+		</div>
+    </div>
+{% endfor %}
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% script %}PhotoAlbumUploader.setupServerRenderedRows();{% endscript %}
+{% endif %}
+{% endblock %}
+

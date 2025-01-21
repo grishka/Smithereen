@@ -1,34 +1,52 @@
 class LayerManager{
 	private static instance:LayerManager;
+	private static mediaInstance:LayerManager;
+	private static pageScrollLockCount:number=0;
+
 	static getInstance():LayerManager{
 		if(!LayerManager.instance){
-			LayerManager.instance=new LayerManager();
+			LayerManager.instance=new LayerManager(100, true);
 		}
 		return LayerManager.instance;
+	}
+
+	static getMediaInstance():LayerManager{
+		if(!LayerManager.mediaInstance){
+			LayerManager.mediaInstance=new LayerManager(90, false);
+		}
+		return LayerManager.mediaInstance;
 	}
 
 	private scrim:HTMLDivElement;
 	private layerContainer:HTMLDivElement;
 	private stack:BaseLayer[]=[];
 	private escapeKeyListener=(ev:KeyboardEvent)=>{
-		if(ev.keyCode==27){
+		if(ev.keyCode==27 && !this.hiddenTemporarily){
+			this.lastEscKeyEvent=ev;
 			this.maybeDismissTopLayer();
 		}
 	};
 	private boxLoader:HTMLDivElement;
 	private animatingHide:boolean=false;
 	private hideAnimCanceled:boolean=false;
+	private hiddenTemporarily:boolean=false;
+	private lastEscKeyEvent:KeyboardEvent;
 
-	private constructor(){
-		this.scrim=ce("div", {id: "layerScrim"});
+	private constructor(baseZIndex:number, isDefaultInstance:boolean){
+		this.scrim=ce("div", {className: "layerScrim"});
+		this.scrim.style.zIndex=baseZIndex.toString();
 		this.scrim.hide();
 		document.body.appendChild(this.scrim);
 
-		this.boxLoader=ce("div", {id: "boxLoader"}, [ce("div")]);
-		this.boxLoader.hide();
-		document.body.appendChild(this.boxLoader);
+		if(isDefaultInstance){
+			this.boxLoader=ce("div", {id: "boxLoader"}, [ce("div")]);
+			this.boxLoader.style.zIndex=baseZIndex.toString();
+			this.boxLoader.hide();
+			document.body.appendChild(this.boxLoader);
+		}
 
-		var container:HTMLDivElement=ce("div", {id: "layerContainer"});
+		var container:HTMLDivElement=ce("div", {className: "layerContainer"});
+		container.style.zIndex=(baseZIndex+1).toString();
 		container.hide();
 		this.layerContainer=container;
 		document.body.appendChild(container);
@@ -41,10 +59,15 @@ class LayerManager{
 			this.hideAnimCanceled=true;
 			this.layerContainer.innerHTML="";
 		}
+		if(this.hiddenTemporarily){
+			this.unhide();
+			layer.hideContainerAfterDismiss=true;
+		}
 		var layerContent:HTMLElement=layer.getContent();
 		this.layerContainer.appendChild(layerContent);
 		if(this.stack.length==0){
-			this.scrim.showAnimated();
+			if(layer.wantsScrim())
+				this.scrim.showAnimated();
 			this.layerContainer.show();
 			layerContent.addEventListener("click", (ev:MouseEvent)=>{
 				if(ev.target==layerContent){
@@ -59,10 +82,19 @@ class LayerManager{
 			prevLayer.getContent().hide();
 			prevLayer.onHidden();
 		}
+		if(layer.wantsDarkerScrim()){
+			this.scrim.classList.add("darker")
+		}else{
+			this.scrim.classList.remove("darker")
+		}
 		this.stack.push(layer);
 		layer.onShown();
-		this.boxLoader.hideAnimated();
-		this.updateTopOffset(layerContent);
+		if(this.boxLoader)
+			this.boxLoader.hideAnimated();
+		layer.updateTopOffset();
+		if(this==LayerManager.mediaInstance && LayerManager.instance && LayerManager.instance.stack.length){
+			LayerManager.instance.hideTemporarily();
+		}
 	}
 
 	public dismiss(layer:BaseLayer):void{
@@ -81,8 +113,13 @@ class LayerManager{
 			if(this.stack.length){
 				var newLayer=this.stack[this.stack.length-1];
 				newLayer.getContent().show();
-				this.updateTopOffset(newLayer.getContent());
+				newLayer.updateTopOffset();
 				newLayer.onShown();
+				if(newLayer.wantsDarkerScrim()){
+					this.scrim.classList.add("darker")
+				}else{
+					this.scrim.classList.remove("darker")
+				}
 			}
 		}else{
 			this.stack.splice(i, 1);
@@ -102,6 +139,7 @@ class LayerManager{
 						this.layerContainer.hide();
 						this.unlockPageScroll();
 					}
+					this.scrim.classList.remove("darker");
 					this.animatingHide=false;
 				});
 			}else{
@@ -111,15 +149,40 @@ class LayerManager{
 				this.unlockPageScroll();
 			}
 			this.scrim.hideAnimated({keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: duration, easing: "ease"}});
+			if(this==LayerManager.mediaInstance && LayerManager.instance && LayerManager.instance.stack.length){
+				LayerManager.instance.unhide();
+
+			}
 		}else{
 			this.layerContainer.removeChild(layerContent);
 		}
+		if(layer.hideContainerAfterDismiss){
+			this.hideTemporarily();
+		}
+	}
+
+	private hideTemporarily(){
+		if(this.hiddenTemporarily)
+			return;
+		this.layerContainer.hideAnimated();
+		this.scrim.hideAnimated();
+		this.hiddenTemporarily=true;
+	}
+
+	private unhide(){
+		if(!this.hiddenTemporarily)
+			return;
+		this.layerContainer.showAnimated();
+		this.scrim.showAnimated();
+		this.hiddenTemporarily=false;
 	}
 
 	private maybeDismissTopLayer():void{
+		if(this==LayerManager.mediaInstance && LayerManager.instance && LayerManager.instance.stack.length && (!LayerManager.instance.hiddenTemporarily || LayerManager.instance.lastEscKeyEvent==this.lastEscKeyEvent))
+			return;
 		var topLayer=this.stack[this.stack.length-1];
 		if(topLayer.allowDismiss())
-			this.dismiss(topLayer);
+			topLayer.dismiss();
 	}
 
 	public getTopLayer():BaseLayer{
@@ -129,15 +192,22 @@ class LayerManager{
 	}
 
 	private lockPageScroll(){
-		document.body.style.top = `-${window.scrollY}px`;
-		document.body.style.position="fixed";
+		if(LayerManager.pageScrollLockCount++==0){
+			var scrollbarW=window.innerWidth-document.body.clientWidth;
+			document.body.style.top = `-${window.scrollY}px`;
+			document.body.style.position="fixed";
+			document.body.style.paddingRight=scrollbarW+"px";
+		}
 	}
 
 	private unlockPageScroll(){
-		var scrollY = document.body.style.top;
-		document.body.style.position = '';
-		document.body.style.top = '';
-		window.scrollTo(0, parseInt(scrollY || '0') * -1);
+		if(--LayerManager.pageScrollLockCount==0){
+			var scrollY=document.body.style.top;
+			document.body.style.position="";
+			document.body.style.top="";
+			document.body.style.paddingRight="";
+			window.scrollTo(0, parseInt(scrollY || '0') * -1);
+		}
 	}
 
 	public showBoxLoader(){
@@ -154,33 +224,53 @@ class LayerManager{
 	}
 
 	private onWindowResize(ev:Event){
+		for(var layer of this.stack){
+			layer.onWindowResize();
+		}
 		this.updateAllTopOffsets();
 	}
 
 	public showSnackbar(text:string){
 		var snackbar=ce("div", {className: "snackbarWrap"}, [
-			ce("div", {className: "snackbar"}, [text])
+			ce("div", {className: "snackbar", innerHTML: text})
 		]);
 		document.body.appendChild(snackbar);
 		this.updateTopOffset(snackbar);
+		if(this.boxLoader){
+			this.boxLoader.hideAnimated();
+		}
 		setTimeout(()=>{
 			snackbar.hideAnimated({keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: 500, easing: "ease"}}, ()=>{
 				snackbar.remove();
 			});
 		}, 2000);
 	}
-	
+
 	public updateAllTopOffsets(){
-		this.updateTopOffset(this.boxLoader);
-		if(this.stack.length){
-			this.updateTopOffset(this.stack[this.stack.length-1].getContent());
+		if(this.boxLoader){
+			this.updateTopOffset(this.boxLoader);
 		}
+		if(this.stack.length){
+			this.stack[this.stack.length-1].updateTopOffset();
+		}
+	}
+
+	public dismissByID(id:string){
+		for(var layer of this.stack){
+			if(layer.id==id){
+				this.dismiss(layer);
+				return true;
+			}
+		}
+		return false;
 	}
 }
 
 abstract class BaseLayer{
 	private content:HTMLElement;
 	public dismissCallbacks:{():void}[]=[];
+	public id:string;
+	public hideContainerAfterDismiss:boolean=false;
 
 	protected abstract onCreateContentView():HTMLElement;
 	public show():void{
@@ -189,11 +279,11 @@ abstract class BaseLayer{
 			var contentView:HTMLElement=this.onCreateContentView();
 			this.content.appendChild(contentView);
 		}
-		LayerManager.getInstance().show(this);
+		this.getLayerManager().show(this);
 	}
 
 	public dismiss():void{
-		LayerManager.getInstance().dismiss(this);
+		this.getLayerManager().dismiss(this);
 	}
 
 	public getContent():HTMLElement{
@@ -204,13 +294,80 @@ abstract class BaseLayer{
 		return true;
 	}
 
+	public updateTopOffset(){
+		this.getLayerManager().updateTopOffset(this.content);
+	}
+
 	public onShown():void{}
 	public onHidden():void{}
+	public onWindowResize():void{}
+	public wantsDarkerScrim():boolean{
+		return false;
+	}
+	public wantsScrim():boolean{
+		return true;
+	}
 	public getCustomDismissAnimation():AnimationDescription{
 		return {keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: 200, easing: "ease"}};
 	}
 	public getCustomAppearAnimation():AnimationDescription{
 		return {keyframes: [{opacity: 0}, {opacity: 1}], options: {duration: 200, easing: "ease"}};
+	}
+	public getLayerManager():LayerManager{
+		return LayerManager.getInstance();
+	}
+}
+
+abstract class BaseMediaViewerLayer extends BaseLayer{
+	protected historyEntryAdded:boolean;
+	private popStateListener=this.onPopState.bind(this);
+	private addListenerTimeout:number;
+
+	public constructor(historyEntryAdded:boolean){
+		super();
+		this.historyEntryAdded=historyEntryAdded;
+	}
+
+	public getLayerManager(){
+		return LayerManager.getMediaInstance();
+	}
+
+	protected updateHistory(state:any, url:string){
+		if(this.historyEntryAdded){
+			window.history.replaceState(state, "", url);
+		}else{
+			window.history.pushState(state, "", url);
+			this.historyEntryAdded=true;
+		}
+	}
+
+	public onShown(){
+		super.onShown();
+		this.addListenerTimeout=setTimeout(()=>{
+			window.addEventListener("popstate", this.popStateListener, false);
+			this.addListenerTimeout=null;
+		}, 300);
+	}
+
+	public onHidden(){
+		super.onHidden();
+		if(this.addListenerTimeout){
+			clearTimeout(this.addListenerTimeout);
+			this.addListenerTimeout=null;
+		}
+		window.removeEventListener("popstate", this.popStateListener);
+	}
+
+	public dismiss(){
+		super.dismiss();
+		if(this.historyEntryAdded){
+			window.history.back();
+		}
+	}
+
+	private onPopState(ev:PopStateEvent){
+		this.historyEntryAdded=false;
+		this.dismiss();
 	}
 }
 
@@ -248,7 +405,7 @@ class Box extends BaseLayer{
 				this.titleBar=ce("div", {className: "boxTitleBar"}, [
 					ce("span", {className: "title ellipsize", innerText: this.title})
 				]),
-				this.contentWrap,
+				this.getRawContentWrap(),
 				this.buttonBar=ce("div", {className: "boxButtonBar"})
 			])
 		]);
@@ -262,6 +419,10 @@ class Box extends BaseLayer{
 		this.boxLayer=content;
 
 		return content;
+	}
+
+	protected getRawContentWrap():HTMLElement{
+		return this.contentWrap;
 	}
 
 	public setContent(content:HTMLElement):void{
@@ -450,8 +611,11 @@ class ScrollableBox extends BaseScrollableBox{
 	protected onCreateContentView():HTMLElement{
 		var cont=super.onCreateContentView();
 		cont.classList.add("scrollable");
+		return cont;
+	}
 
-		return this.wrapScrollableElement(cont);
+	protected getRawContentWrap():HTMLElement{
+		return this.wrapScrollableElement(this.contentWrap);
 	}
 }
 
@@ -519,19 +683,68 @@ class FormBox extends Box{
 	}
 }
 
-abstract class FileUploadBox extends Box{
+class SimpleLayer extends BaseLayer{
+	protected contentWrap:HTMLElement;
 
+	public constructor(innerHTML:string="", addClasses:string=""){
+		super();
+		this.contentWrap=ce("div", {className: ("simpleLayer "+addClasses).trim(), innerHTML: innerHTML});
+	}
+
+	public onCreateContentView():HTMLElement{
+		return this.contentWrap;
+	}
+}
+
+abstract class FileUploadLayer extends BaseLayer{
+	protected contentWrap:HTMLElement;
 	protected fileField:HTMLInputElement;
 	protected dragOverlay:HTMLElement;
 	protected acceptMultiple:boolean=false;
+	protected layerContent:HTMLElement;
+	protected titleEl:HTMLElement;
+	protected message:string;
 
 	public constructor(title:string, message:string=null){
-		super(title, [lang("cancel")], function(idx:number){
-			this.dismiss();
-		});
+		super();
+		this.contentWrap=ce("div", {className: "layerWithTitle simpleLayer"}, [
+			ce("div", {className: "layerTitle"}, [
+				this.titleEl=ce("div", {className: "title ellipsize", innerText: title}),
+				ce("a", {className: "close", href: "#", onclick: ()=>{this.dismiss(); return false;}, innerText: lang("close")})
+			])
+		]);
 		if(!message) message=lang(mobile ? "choose_file_mobile" : "drag_or_choose_file");
+		this.message=message;
+		this.resetContent();
+	}
+
+	public onCreateContentView():HTMLElement{
+		return this.contentWrap;
+	}
+
+	protected abstract handleFile(file:File):void;
+
+	protected handleFiles(files:FileList):void{
+		for(var i=0;i<files.length;i++){
+			var f=files[i];
+			if(f.type.indexOf("image/")==0){
+				this.handleFile(f);
+				if(!this.acceptMultiple)
+					return;
+			}
+		}
+	}
+
+	public setContent(content:HTMLElement){
+		if(this.layerContent)
+			this.layerContent.remove();
+		this.layerContent=content;
+		this.contentWrap.appendChild(content);
+	}
+
+	public resetContent(){
 		var content:HTMLDivElement=ce("div", {className: "fileUploadBoxContent", innerHTML:
-			`<div class="inner">${message}<br/>
+			`<div class="inner">${this.message}<br/>
 				<form>
 					<input type="file" id="fileUploadBoxInput" accept="image/*"/>
 					<label for="fileUploadBoxInput" class="button">${lang("choose_file")}</label>
@@ -556,117 +769,14 @@ abstract class FileUploadBox extends Box{
 			}.bind(this), false);
 		}
 
-		this.setContent(content);
+		this.contentWrap.appendChild(content);
 		this.fileField=content.qs("input[type=file]");
 
 		this.fileField.addEventListener("change", (ev:Event)=>{
 			this.handleFiles(this.fileField.files);
 			this.fileField.form.reset();
 		});
-	}
-
-	protected abstract handleFile(file:File):void;
-
-	protected handleFiles(files:FileList):void{
-		for(var i=0;i<files.length;i++){
-			var f=files[i];
-			if(f.type.indexOf("image/")==0){
-				this.handleFile(f);
-				if(!this.acceptMultiple)
-					return;
-			}
-		}
-	}
-
-	protected onCreateContentView():HTMLElement{
-		var cont=super.onCreateContentView();
-		cont.classList.add("wide");
-		return cont;
-	}
-}
-
-class ProfilePictureBox extends FileUploadBox{
-
-	private file:File=null;
-	private areaSelector:ImageAreaSelector=null;
-	private groupID:number=null;
-
-	public constructor(groupID:number=null){
-		super(lang("update_profile_picture"));
-		if(mobile)
-			this.noPrimaryButton=true;
-		this.groupID=groupID;
-	}
-
-	protected handleFile(file:File):void{
-		this.file=file;
-		var objURL=URL.createObjectURL(file);
-
-		var img=ce("img");
-		img.onload=()=>{
-			var ratio:number=img.naturalWidth/img.naturalHeight;
-			if(ratio>2.5){
-				new MessageBox(lang("error"), lang("picture_too_wide"), lang("ok")).show();
-				return;
-			}else if(ratio<0.25){
-				new MessageBox(lang("error"), lang("picture_too_narrow"), lang("ok")).show();
-				return;
-			}
-			var content=ce("div");
-			content.innerText=lang("profile_pic_select_square_version");
-			content.align="center";
-			var imgWrap=ce("div");
-			imgWrap.className="profilePictureBoxImgWrap";
-			imgWrap.appendChild(img);
-			content.appendChild(ce("br"));
-			content.appendChild(imgWrap);
-			this.setContent(content);
-			if(mobile)
-				this.noPrimaryButton=false;
-			this.setButtons([lang("save"), lang("cancel")], (idx:number)=>{
-				if(idx==1){
-					this.dismiss();
-					return;
-				}
-				var area=this.areaSelector.getSelectedArea();
-				var contW=imgWrap.clientWidth;
-				var contH=imgWrap.clientHeight;
-				var x1=area.x/contW;
-				var y1=area.y/contH;
-				var x2=(area.x+area.w)/contW;
-				var y2=(area.y+area.h)/contH;
-				this.areaSelector.setEnabled(false);
-
-				this.upload(x1, y1, x2, y2);
-			});
-
-			this.areaSelector=new ImageAreaSelector(imgWrap, true);
-			var w=imgWrap.clientWidth;
-			var h=imgWrap.clientHeight;
-			if(w>h){
-				this.areaSelector.setSelectedArea(Math.round(w/2-h/2), 0, h, h);
-			}else{
-				this.areaSelector.setSelectedArea(0, 0, w, w);
-			}
-		};
-		img.onerror=function(){
-			new MessageBox(lang("error"), lang("error_loading_picture"), lang("ok")).show();
-		};
-		img.src=objURL;
-	}
-
-	private upload(x1:number, y1:number, x2:number, y2:number):void{
-		var btn=this.getButton(0);
-		btn.setAttribute("disabled", "");
-		this.getButton(1).setAttribute("disabled", "");
-		btn.classList.add("loading");
-		setGlobalLoading(true);
-
-		ajaxUpload("/settings/updateProfilePicture?x1="+x1+"&y1="+y1+"&x2="+x2+"&y2="+y2+(this.groupID ? ("&group="+this.groupID) : ""), "pic", this.file, (resp:any)=>{
-			this.dismiss();
-			setGlobalLoading(false);
-			return false;
-		});
+		this.setContent(content);
 	}
 }
 
@@ -685,7 +795,11 @@ class MobileOptionsBox extends Box{
 					attrs.target=opt.target;
 					attrs.rel="noopener";
 				}
+			}else{
+				attrs.href="javascript:void(0)";
 			}
+			if(opt.id)
+				attrs.id=opt.id;
 			var link:HTMLAnchorElement;
 			list.appendChild(ce("li", {}, [
 				link=ce("a", attrs)
@@ -706,93 +820,6 @@ class MobileOptionsBox extends Box{
 			}, false);
 		});
 		this.setContent(content);
-	}
-}
-
-interface PhotoInfo{
-	webp:string;
-	jpeg:string;
-	width:number;
-	height:number;
-}
-
-class PhotoViewerLayer extends BaseLayer{
-
-	private photos:PhotoInfo[];
-	private index:number;
-	private contentWrap:HTMLDivElement;
-	private photoImage:HTMLImageElement;
-	private photoPicture:HTMLPictureElement;
-	private photoSourceWebp:HTMLSourceElement;
-
-	private arrowsKeyListener=(ev:KeyboardEvent)=>{
-		if(ev.keyCode==37){
-			this.showPreviousPhoto();
-		}else if(ev.keyCode==39){
-			this.showNextPhoto();
-		}
-	};
-
-	public constructor(photos:PhotoInfo[], index:number){
-		super();
-
-		this.photos=photos;
-		this.contentWrap=ce("div", {className: "photoViewer"}, [
-			ce("a", {className: "photoViewerNavButton buttonPrev", onclick: this.showPreviousPhoto.bind(this)}),
-			ce("div", {className: "photoWrap"}, [
-				this.photoPicture=ce("picture", {}, [
-					this.photoSourceWebp=ce("source", {type: "image/webp"}),
-					this.photoImage=ce("img")
-				])
-			]),
-			ce("a", {className: "photoViewerNavButton buttonNext", onclick: this.showNextPhoto.bind(this)})
-		]);
-		this.setCurrentPhotoIndex(index);
-		this.photoImage.addEventListener("load", (ev:Event)=>{
-			LayerManager.getInstance().updateTopOffset(this.getContent());
-		});
-	}
-
-	public setCurrentPhotoIndex(i:number){
-		this.index=i;
-		var ph=this.photos[this.index];
-		this.photoImage.width=ph.width;
-		this.photoImage.height=ph.height;
-		this.photoSourceWebp.srcset=ph.webp;
-		this.photoImage.src=ph.jpeg;
-	}
-
-	public showNextPhoto(){
-		this.setCurrentPhotoIndex((this.index+1)%this.photos.length);
-	}
-
-	public showPreviousPhoto(){
-		this.setCurrentPhotoIndex(this.index==0 ? this.photos.length-1 : this.index-1);
-	}
-
-	protected onCreateContentView():HTMLElement{
-		return this.contentWrap;
-	}
-
-	public onShown(){
-		document.body.addEventListener("keydown", this.arrowsKeyListener);
-	}
-
-	public onHidden(){
-		document.body.removeEventListener("keydown", this.arrowsKeyListener);
-	}
-}
-
-class SimpleLayer extends BaseLayer{
-	private contentWrap:HTMLElement;
-
-	public constructor(innerHTML:string, addClasses:string=""){
-		super();
-		this.contentWrap=ce("div", {className: ("simpleLayer "+addClasses).trim(), innerHTML: innerHTML});
-	}
-
-	public onCreateContentView():HTMLElement{
-		return this.contentWrap;
 	}
 }
 

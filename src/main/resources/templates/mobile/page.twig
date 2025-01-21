@@ -35,9 +35,9 @@
 <script>document.body.classList.add("hasJS");{%if jsRedirect is not null%} window.location="{{jsRedirect}}";{%endif%}</script>
 <div class="header">
 	<div class="menuButton">
-		<label for="mainMenuToggler"><span>{{L('menu')}}</span></label>
+		<label for="mainMenuToggler" tabindex="0" title="{{ L('main_menu') }}"></label>
 	</div>
-	<span class="title">{{toolbarTitle is empty ? title : toolbarTitle}}</span>
+	<span class="title" id="headerTitle">{{toolbarTitle is empty ? title : toolbarTitle}}</span>
 	{% block headerActionButtons %}{% endblock %}
 </div>
 <input type="checkbox" id="mainMenuToggler" style="display: none"/>
@@ -46,7 +46,7 @@
 		{% if currentUser is not null %}
 		<a id="mainMenuSearchButton" title="{{ L('search') }}"></a>
 		{% endif %}
-		<label for="mainMenuToggler"></label>
+		<label for="mainMenuToggler" title="{{ L('close') }}"></label>
 {%block leftMenu%}
 {% include "left_menu" %}
 {%endblock%}

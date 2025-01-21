@@ -1,0 +1,45 @@
+{% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) or (followees is not null and followees.list is not empty) or groups is not empty %}
+<div class="card profileSectionThumbs">
+{% if photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup) %}
+	<a href="{{ actor.typeAndIdForURL }}/albums">
+		<div class="titleW">
+			<div class="title">{{ L('photo_albums') }}</div>
+			<div class="count">{{ photoAlbumCount | numberformat }}</div>
+		</div>
+		<div class="thumb singlePhoto">
+		{% if albums is not empty and albums[0].coverID!=0 %}
+		{{ covers[albums[0].coverID].image | pictureForPhoto('s') }}
+		{% endif %}
+		</div>
+	</a>
+{% endif %}
+{% if followees is not null and followees.list is not empty %}
+	<a href="{{ actor.typeAndIdForURL }}/following">
+		<div class="titleW">
+			<div class="title">{{ L('following') }}</div>
+			<div class="count">{{ followees.total | numberformat }}</div>
+		</div>
+		<div class="thumb avatarGrid">
+			{% for followee in followees.list %}
+			    {{ followee | pictureForAvatar('a', 42) }}
+			{% endfor %}
+			{% for i in range(followees.list | length, 5, 1) %}<div class="placeholder"></div>{% endfor %}
+		</div>
+	</a>
+{% endif %}
+{% if groups is not empty %}
+	<a href="{{ actor.typeAndIdForURL }}/groups">
+		<div class="titleW">
+			<div class="title">{{ L('groups') }}</div>
+			<div class="count">{{ groups | length | numberformat }}</div>
+		</div>
+		<div class="thumb avatarGrid">
+			{% for group in groups | slice(0, min(groups | length, 6)) %}
+			    {{ group | pictureForAvatar('a', 42) }}
+			{% endfor %}
+			{% for i in range(groups | length, 5, 1) %}<div class="placeholder"></div>{% endfor %}
+		</div>
+	</a>
+{% endif %}
+</div>
+{% endif %}

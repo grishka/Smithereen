@@ -38,6 +38,7 @@ import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserRole;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.storage.DatabaseUtils;
@@ -86,6 +87,17 @@ public class UsersController{
 		}
 	}
 
+	public User getUserByUsernameOrThrow(String username){
+		try{
+			User user=UserStorage.getByUsername(username);
+			if(user==null)
+				throw new ObjectNotFoundException();
+			return user;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public List<User> getFriendsWithBirthdaysWithinTwoDays(User self, LocalDate date){
 		try{
 			ArrayList<Integer> today=new ArrayList<>(), tomorrow=new ArrayList<>();
@@ -127,32 +139,30 @@ public class UsersController{
 		try{
 			if(!Utils.isValidEmail(email))
 				throw new UserErrorException("err_invalid_email");
-			DatabaseUtils.runWithUniqueUsername(()->{
-				if(SessionStorage.getAccountByEmail(email)!=null){
-					throw new UserErrorException("err_reg_email_taken");
+			if(SessionStorage.getAccountByEmail(email)!=null){
+				throw new UserErrorException("err_reg_email_taken");
+			}
+			if(SessionStorage.isEmailInvited(email)){
+				throw new UserErrorException("err_email_already_invited");
+			}
+			UserPermissions permissions=SessionStorage.getUserPermissions(self);
+			if(!permissions.hasPermission(UserRole.Permission.MANAGE_INVITES)){
+				FloodControl.EMAIL_INVITE.incrementOrThrow(self);
+			}
+			int requestID=_requestID;
+			if(requestID==0){
+				SignupRequest sr=SessionStorage.getInviteRequestByEmail(email);
+				if(sr!=null){
+					requestID=sr.id;
 				}
-				if(SessionStorage.isEmailInvited(email)){
-					throw new UserErrorException("err_email_already_invited");
-				}
-				UserPermissions permissions=SessionStorage.getUserPermissions(self);
-				if(!permissions.hasPermission(UserRole.Permission.MANAGE_INVITES)){
-					FloodControl.EMAIL_INVITE.incrementOrThrow(self);
-				}
-				int requestID=_requestID;
-				if(requestID==0){
-					SignupRequest sr=SessionStorage.getInviteRequestByEmail(email);
-					if(sr!=null){
-						requestID=sr.id;
-					}
-				}
-				byte[] code=Utils.randomBytes(16);
-				String codeStr=Utils.byteArrayToHexString(code);
-				UserStorage.putInvite(self.id, code, 1, email, SignupInvitation.getExtra(!addFriend, firstName, lastName, requestID>0));
-				Mailer.getInstance().sendSignupInvitation(req, self, email, codeStr, firstName, requestID>0);
-				if(requestID>0){
-					deleteSignupInviteRequest(requestID);
-				}
-			});
+			}
+			byte[] code=Utils.randomBytes(16);
+			String codeStr=Utils.byteArrayToHexString(code);
+			UserStorage.putInvite(self.id, code, 1, email, SignupInvitation.getExtra(!addFriend, firstName, lastName, requestID>0));
+			Mailer.getInstance().sendSignupInvitation(req, self, email, codeStr, firstName, requestID>0);
+			if(requestID>0){
+				deleteSignupInviteRequest(requestID);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -225,12 +235,10 @@ public class UsersController{
 
 	public void requestSignupInvite(Request req, String firstName, String lastName, String email, String reason){
 		try{
-			DatabaseUtils.runWithUniqueUsername(()->{
-				if(SessionStorage.getAccountByEmail(email)!=null || SessionStorage.isThereInviteRequestWithEmail(email) || SessionStorage.isEmailInvited(email))
-					throw new UserErrorException("err_reg_email_taken");
-				FloodControl.OPEN_SIGNUP_OR_INVITE_REQUEST.incrementOrThrow(Utils.getRequestIP(req));
-				SessionStorage.putInviteRequest(email, firstName, lastName, reason);
-			});
+			if(SessionStorage.getAccountByEmail(email)!=null || SessionStorage.isThereInviteRequestWithEmail(email) || SessionStorage.isEmailInvited(email))
+				throw new UserErrorException("err_reg_email_taken");
+			FloodControl.OPEN_SIGNUP_OR_INVITE_REQUEST.incrementOrThrow(Utils.getRequestIP(req));
+			SessionStorage.putInviteRequest(email, firstName, lastName, reason);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -303,7 +311,7 @@ public class UsersController{
 
 	public void deleteForeignUser(ForeignUser user){
 		try{
-			UserStorage.deleteUser(user);
+			UserStorage.deleteForeignUser(user);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -438,9 +446,8 @@ public class UsersController{
 		}
 	}
 
-	public static void doPendingAccountDeletions(){
+	public static void doPendingAccountDeletions(ApplicationContext ctx){
 		try{
-			ApplicationContext ctx=new ApplicationContext(); // This is probably gonna bite me in the ass in the future
 			List<User> users=UserStorage.getTerminallyBannedUsers();
 			if(users.isEmpty()){
 				LOG.trace("No users to delete");
@@ -501,6 +508,9 @@ public class UsersController{
 			}
 			int partnerID=partner==null ? 0 : partner.id;
 			if(!Objects.equals(hometown, self.hometown) || self.relationship!=relation || self.relationshipPartnerID!=partnerID){
+				if(self.relationship!=relation || self.relationshipPartnerID!=partnerID){
+					maybeCreateRelationshipStatusNewsfeedEntry(self, relation, partner);
+				}
 				self.hometown=hometown;
 				self.relationship=relation;
 				self.relationshipPartnerID=partnerID;
@@ -585,5 +595,24 @@ public class UsersController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public void maybeCreateRelationshipStatusNewsfeedEntry(User self, User.RelationshipStatus newStatus, User newPartner){
+		int partnerID=newPartner==null || !newStatus.canHavePartner() ? 0 : newPartner.id;
+		if(self.relationship==newStatus && self.relationshipPartnerID==partnerID)
+			return;
+		if(newPartner!=null && newStatus.needsPartnerApproval()){
+			if(newPartner.relationshipPartnerID==self.id){
+				// If the partner already has this user set as *their* partner, create a newsfeed entry for them too
+				if(self.relationshipPartnerID!=partnerID){
+					long id=((long)newPartner.relationship.ordinal()) << 56 | (((System.currentTimeMillis()/1000L) & 0xFFFFFFL) << 32) | self.id;
+					context.getNewsfeedController().putFriendsFeedEntry(newPartner, id, NewsfeedEntry.Type.RELATIONSHIP_STATUS);
+				}
+			}else{
+				partnerID=0;
+			}
+		}
+		long id=((long)newStatus.ordinal()) << 56 | (((System.currentTimeMillis()/1000L) & 0xFFFFFFL) << 32) | partnerID;
+		context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.RELATIONSHIP_STATUS);
 	}
 }

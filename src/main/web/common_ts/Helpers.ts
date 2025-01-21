@@ -241,6 +241,7 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, res
 				var parsedResponse=responseType=="json" ? JSON.parse(xhr.response) : xhr.response;
 				onDone(parsedResponse);
 			}catch(e){
+				console.error(e);
 				onError(null);
 			}
 		}else{
@@ -267,6 +268,22 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, res
 	formData.push("_ajax=1");
 	xhr.send(formData.join("&"));
 	return xhr;
+}
+
+function ajaxPostAndApplyActions(uri:string, params:any, onDone:{():void}=null, onError:{():void}=null){
+	params.csrf=userConfig.csrf;
+	ajaxPost(uri, params, (resp:any)=>{
+		if(resp instanceof Array){
+			for(var i=0;i<resp.length;i++){
+				applyServerCommand(resp[i]);
+			}
+		}
+	}, ()=>{
+		if(onError)
+			onError();
+		else
+			new MessageBox(lang("error"), lang("network_error"), lang("close")).show();
+	});
 }
 
 function ajaxGet(uri:string, onDone:{(r:any):void}, onError:{(msg:string):void}, responseType:XMLHttpRequestResponseType="json"):XMLHttpRequest{
@@ -602,6 +619,16 @@ function applyServerCommand(cmd:any){
 			}
 		}
 		break;
+		case "setOuterHTML":
+		{
+			var id:string=cmd.id;
+			var content:string=cmd.c;
+			var el=document.getElementById(id);
+			if(el){
+				el.outerHTML=content;
+			}
+		}
+		break;
 		case "setAttr":
 		{
 			var id:string=cmd.id;
@@ -628,6 +655,7 @@ function applyServerCommand(cmd:any){
 			var cont=ce("div");
 			if(cmd.i){
 				cont.id=cmd.i;
+				box.id=cmd.i;
 			}
 			cont.innerHTML=cmd.c;
 			cont.customData={box: box};
@@ -730,6 +758,17 @@ function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveFo
 		replies.insertAdjacentElement("afterbegin", form);
 	}
 	form.customData.postFormObj.setupForReplyTo(id);
+	return false;
+}
+
+function showCommentReplyForm(id:string, formID:string, moveForm:boolean=true, containerPostID:string=null):boolean{
+	var form=ge(formID);
+	form.show();
+	if(moveForm){
+		var replies=ge("commentReplies"+(containerPostID || id));
+		replies.insertAdjacentElement("afterbegin", form);
+	}
+	form.customData.postFormObj.setupForReplyTo(id, "comment");
 	return false;
 }
 
@@ -875,25 +914,6 @@ function showOptions(el:HTMLElement){
 	return false;
 }
 
-function openPhotoViewer(el:HTMLElement){
-	var parent=el.parentNode.parentNode;
-	var photoList:PhotoInfo[]=[];
-	var index=0;
-	var j=0;
-	for(var i=0;i<parent.children.length;i++){
-		var link=parent.children[i].querySelector("a.photo");
-		if(!link) continue;
-		var size=link.getAttribute("data-size").split(" ");
-		photoList.push({webp: link.getAttribute("data-full-webp"), jpeg: link.getAttribute("data-full-jpeg"), width: parseInt(size[0]), height: parseInt(size[1])});
-		if(link==el){
-			index=j;
-		}
-		j++;
-	}
-	new PhotoViewerLayer(photoList, index).show();
-	return false;
-}
-
 function autoSizeTextArea(el:HTMLTextAreaElement){
 	var updateHeight=function(){
 		var st=window.getComputedStyle(el);
@@ -917,15 +937,23 @@ function addSendOnCtrlEnter(el:(HTMLTextAreaElement|HTMLInputElement)){
 	});
 }
 
-function loadOlderComments(id:number){
-	var btn=ge("loadPrevBtn"+id);
-	var loader=ge("prevLoader"+id);
+function loadOlderComments(id:(number|string), type:string="wall"){
+	var elId=type=="wall" ? id : "_"+type+"_"+id;
+	var btn=ge("loadPrevBtn"+elId);
+	var loader=ge("prevLoader"+elId);
 	btn.hide();
 	loader.show();
-	var firstID=parseInt(btn.dataset.firstId);
-	var heightBefore=document.body.offsetHeight;
-	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentPreview?firstID="+firstID, ()=>{
-		document.documentElement.scrollTop+=document.body.offsetHeight-heightBefore;
+	var scrollableEl=btn.closest(".layerContent") || document.scrollingElement;
+	var firstID=btn.dataset.firstId;
+	var heightBefore=scrollableEl.scrollHeight;
+	var url;
+	if(type=="wall"){
+		url=`/posts/${id}/ajaxCommentPreview?firstID=${firstID}`;
+	}else{
+		url=`/comments/ajaxCommentPreview?firstID=${firstID}&parentType=${type}&parentID=${id}`;
+	}
+	ajaxGetAndApplyActions(url, ()=>{
+		scrollableEl.scrollTop+=scrollableEl.scrollHeight-heightBefore;
 	}, ()=>{
 		btn.show();
 		loader.hide();
@@ -933,13 +961,22 @@ function loadOlderComments(id:number){
 	return false;
 }
 
-function loadCommentBranch(el:HTMLElement, id:number, topLevelRepostID:number){
+function loadCommentBranch(el:HTMLElement, id:(number|string), topLevelRepostID:number, type:string="wall", parentID:string=null){
 	var btn=ge("loadRepliesLink"+id);
 	var loader=ge("repliesLoader"+id);
 	var offset=parseInt(el.dataset.offset);
 	btn.hide();
 	loader.show();
-	ajaxGetAndApplyActions("/posts/"+id+"/ajaxCommentBranch?offset="+(offset || 0)+(topLevelRepostID ? `&topLevel=${topLevelRepostID}` : ""), null, ()=>{
+	var url;
+	if(type=="wall"){
+		url=`/posts/${id}/ajaxCommentBranch`;
+	}else{
+		url=`/comments/${id}/ajaxCommentBranch?parentType=${type}&parentID=${parentID}`;
+	}
+	url=addParamsToURL(url, {offset: (offset || 0).toString()});
+	if(topLevelRepostID)
+		url=addParamsToURL(url, {topLevel: topLevelRepostID.toString()});
+	ajaxGetAndApplyActions(url, null, ()=>{
 		btn.show();
 		loader.hide();
 	});
@@ -1193,7 +1230,13 @@ function showTooltip(el:HTMLElement, text:string){
 				ce("div", {className: "tooltipInner"}, [text])
 			])
 		]);
+		if(el.offsetWidth>50){
+			ttEl.classList.add("alignLeft");
+		}
 		el.insertAdjacentElement("afterbegin", ttEl);
+	}
+	if(el.dataset.tooltipFixed!=undefined){
+		ttEl.style.position="fixed";
 	}
 	ttEl.showAnimated();
 }
@@ -1432,13 +1475,17 @@ function showMentionHoverCard(link:HTMLElement, ev:MouseEvent){
 
 function showParentCommentHoverCard(link:HTMLElement, ev:MouseEvent){
 	var commentID=link.dataset.parentId;
-	showAjaxHoverCard(link, ev, "/posts/"+commentID+"/hoverCard");
+	if(link.dataset.parentType=="comment"){
+		showAjaxHoverCard(link, ev, "/comments/"+commentID+"/hoverCard");
+	}else{
+		showAjaxHoverCard(link, ev, "/posts/"+commentID+"/hoverCard");
+	}
 }
 
 function closeTopmostLayer(){
 	var topLayer=LayerManager.getInstance().getTopLayer();
 	if(topLayer)
-		LayerManager.getInstance().dismiss(topLayer);
+		topLayer.dismiss();
 }
 
 function saveRemoteInteractionDomain(){
@@ -1466,5 +1513,74 @@ function restoreRemoteInteractionDomain(){
 		if(!mobile)
 			input.focus();
 	}
+}
+
+function chooseFileAndUpload(url:string, fieldName:string, accept:string){
+	var fileField=ce("input", {type: "file", accept: accept});
+	fileField.addEventListener("change", ()=>{
+		var files=fileField.files;
+		if(files.length){
+			var file=files[0];
+		}
+		if(!file || file.type.split("/")[0]!="image")
+			return;
+		LayerManager.getInstance().showBoxLoader();
+		ajaxUpload(url, fieldName, file);
+	});
+	fileField.click();
+}
+
+function updateFeedFilters(){
+	var form=ge("feedFilters") as HTMLFormElement;
+	ge("feedFiltersLoader").show();
+	var pagination=ge("feedTopSummary").qs(".pagination");
+	if(pagination)
+		pagination.hide();
+	ajaxSubmitForm(form);
+}
+
+function showMobileFeedFilters(filters:{title:string, icon:string, value:string, selected:boolean}[], postUrl:string){
+	var boxCont=ce("div");
+	var checkboxes:HTMLInputElement[]=[];
+	for(var filter of filters){
+		var icon, checkbox;
+		var row=ce("label", {className: "radioButtonWrap feedFilterRow"}, [
+			checkbox=ce("input", {type: "checkbox", name: filter.value, checked: filter.selected}),
+			icon=ce("span", {className: "feedIcon feedIcon"+filter.icon}),
+			filter.title
+		]);
+		checkboxes.push(checkbox);
+		boxCont.appendChild(row);
+	}
+	var box=new ScrollableBox(lang("feed_filters"), [lang("save"), lang("cancel")], (btn)=>{
+		if(btn==0){
+			box.showButtonLoading(0, true);
+			var params:any={};
+			for(var cb of checkboxes){
+				if(cb.checked)
+					params[cb.name]="on";
+			}
+			ajaxPostAndApplyActions(postUrl, params);
+		}else{
+			box.dismiss();
+		}
+	});
+	box.setContent(boxCont);
+	box.show();
+}
+
+function initProfileTitleHideOnScroll(){
+	var headerTitle=ge("headerTitle");
+	var profileHeader=ge("profileHeaderNameW");
+	var observer=new IntersectionObserver((entries, observer)=>{
+		for(var entry of entries){
+			headerTitle.style.opacity=entry.isIntersecting ? "0" : "";
+			if(!headerTitle.style.transition){
+				// Doing it this way prevents the title flashing on page load
+				setTimeout(()=>headerTitle.style.transition="opacity 0.3s ease", 16);
+			}
+		}
+	}, {rootMargin: "-60px 0px 0px 0px"});
+	observer.observe(profileHeader);
 }
 

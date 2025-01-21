@@ -4,47 +4,7 @@
 {% block content %}
 <div class="singleColumn">
 	<h2>{{ L(key.descriptionLangKey) | stripHTML }}</h2>
-{% if setting.allowUsers is not empty %}
-	{%- set currentRule="certain_friends" %}
-{% elseif setting.baseRule=="NONE" %}
-	{%- set currentRule=key.onlyMe ? "only_me" : "no_one" %}
-{% else %}
-	{%- set currentRule=setting.baseRule | lower %}
-{% endif %}
-	<div id="options">
-	{% for value in ["everyone", "friends", "friends_of_friends", key.onlyMe ? "only_me" : "no_one", "certain_friends"] %}
-		<label class="radioButtonWrap">
-			<input type="radio" name="mainRule" value="{{ value }}" id="{{ value }}" {{ currentRule==value ? 'checked' : '' }}/>
-			{{ L('privacy_value_'+value) }}
-		</label>
-	{% endfor %}
-	</div>
-	<div id="allowedFriends" class="privacyFriendList" style="{% if currentRule!="certain_friends" %}display: none{% endif %}">
-		<h3>{{ L('privacy_allowed_title') }}</h3>
-		<div id="allowedFriendsItems">
-		{% for id in setting.allowUsers %}
-			<div class="compactUserRow" data-uid="{{ id }}" id="userRow{{ id }}">
-				{{ users[id] | pictureForAvatar('s', 32) }}
-				<div class="name ellipsize">{{ users[id] | name }}</div>
-				<a href="javascript:void(0)" title="{{ L('delete') }}" class="remove actionIcon"></a>
-			</div>
-		{% endfor %}
-		</div>
-		<a href="javascript:void(0)" class="selectFriends">{{ L('select_friends_button') }}</a>
-	</div>
-	<div id="deniedFriends" class="privacyFriendList" style="{% if ["only_me", "no_one", "certain_friends"] contains currentRule %}display: none{% endif %}">
-		<h3>{{ L('privacy_denied_title') }}</h3>
-		<div id="deniedFriendsItems">
-		{% for id in setting.exceptUsers %}
-			<div class="compactUserRow" data-uid="{{ id }}" id="userRow{{ id }}">
-				{{ users[id] | pictureForAvatar('s', 32) }}
-				<div class="name ellipsize">{{ users[id] | name }}</div>
-				<a href="javascript:void(0)" title="{{ L('delete') }}" class="remove actionIcon"></a>
-			</div>
-		{% endfor %}
-		</div>
-		<a href="javascript:void(0)" class="selectFriends">{{ L('select_friends_button') }}</a>
-	</div>
+	{% include "privacy_setting_selector" with {'onlyMe': key.isOnlyMe, 'onlyFriends': key.isFriendsOnly} %}
 	<form action="/settings/privacy" method="post">
 		<input type="hidden" name="{{ key }}" value="{{ json(setting) }}" id="settingValue"/>
 		<input type="hidden" name="csrf" value="{{ csrf }}"/>
@@ -52,6 +12,6 @@
 	</form>
 </div>
 {% script %}
-initMobilePrivacyForm();
+initMobilePrivacyForm(ge("settingValue"));
 {% endscript %}
 {% endblock %}

@@ -3,6 +3,7 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -340,10 +341,12 @@ public abstract class ActivityPubObject{
 		return sb.toString();
 	}
 
-	protected String optString(JsonObject obj, String key){
-		if(obj.has(key) && obj.get(key).isJsonPrimitive() && obj.getAsJsonPrimitive(key).isString())
-			return obj.get(key).getAsString();
-		return null;
+	protected static String optString(JsonObject obj, String key){
+		return switch(obj.get(key)){
+			case JsonPrimitive primitive -> primitive.getAsString();
+			case JsonObject jobj when jobj.get("@value") instanceof JsonPrimitive primitive -> primitive.getAsString();
+			case null, default -> null;
+		};
 	}
 
 	protected int optInt(JsonObject obj, String key){
@@ -370,7 +373,7 @@ public abstract class ActivityPubObject{
 		return null;
 	}
 
-	protected JsonArray optArrayCompact(JsonObject obj, String key){
+	public static JsonArray optArrayCompact(JsonObject obj, String key){
 		if(!obj.has(key))
 			return null;
 		JsonElement el=obj.get(key);
@@ -384,8 +387,16 @@ public abstract class ActivityPubObject{
 		attachment=parseSingleObjectOrArray(obj.get("attachment"), parserContext);
 		attributedTo=tryParseURL(optString(obj, "attributedTo"));
 		audience=tryParseURL(optString(obj, "audience"));
-		content=optString(obj, "content");
-		name=optString(obj, "name");
+		if(obj.get("contentMap") instanceof JsonObject contentMap && contentMap.size()>0){
+			content=optString(contentMap, contentMap.keySet().iterator().next());
+		}else{
+			content=optString(obj, "content");
+		}
+		if(obj.get("nameMap") instanceof JsonObject nameMap && nameMap.size()>0){
+			name=optString(nameMap, nameMap.keySet().iterator().next());
+		}else{
+			name=optString(obj, "name");
+		}
 		endTime=tryParseDate(optString(obj, "endTime"));
 		generator=tryParseLinkOrObject(obj.get("generator"), parserContext);
 		image=parseSingleObjectOrArray(obj.get("image"), parserContext);
@@ -572,11 +583,18 @@ public abstract class ActivityPubObject{
 			case "Image" -> new Image();
 			case "_LocalImage" -> parserContext.isLocal ? new LocalImage() : null;
 			case "Document" -> new Document();
-			case "Tombstone" -> new Tombstone();
+			case "Video" -> new Video();
+			case "Audio" -> new Audio();
+			case "Tombstone" -> switch(optString(obj, "formerType")){
+				case "Note", "Question" -> new NoteTombstone();
+				case null, default -> new Tombstone();
+			};
 			case "Mention" -> new Mention();
 			case "Relationship" -> new Relationship();
 			case "PropertyValue" -> new PropertyValue();
 			case "Event" -> new Event();
+			case "Photo" -> new ActivityPubPhoto();
+			case "TaggedPerson" -> new ActivityPubTaggedPerson();
 
 			// Collections
 			case "Collection" -> new ActivityPubCollection(false);
@@ -584,6 +602,7 @@ public abstract class ActivityPubObject{
 			case "CollectionPage" -> new CollectionPage(false);
 			case "OrderedCollectionPage" -> new CollectionPage(true);
 			case "CollectionQueryResult" -> new CollectionQueryResult();
+			case "PhotoAlbum" -> new ActivityPubPhotoAlbum();
 
 			// Activities
 			case "Accept" -> new Accept();

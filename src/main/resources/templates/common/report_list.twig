@@ -25,12 +25,12 @@
 			{% endif %}
 			{% if report.targetID>0 %}
 			{% set user=users[report.targetID] %}
-			<div class="flL smallMarginRight">{{ user | pictureForAvatar('s') }}</div>
+			<div class="flL smallMarginRight">{{ user | pictureForAvatar('a') }}</div>
 			<div class="ellipsize accent"><b>{{ user | name('complete') }}</b></div>
 			<div class="grayText ellipsize">@{{ user.fullUsername }}</div>
 			{% elseif report.targetID<0 %}
 			{% set group=groups[-report.targetID] %}
-			<div class="flL smallMarginRight">{{ group | pictureForAvatar('s') }}</div>
+			<div class="flL smallMarginRight">{{ group | pictureForAvatar('a') }}</div>
 			<div class="ellipsize accent"><b>{{ group.name }}</b></div>
 			<div class="grayText ellipsize">@{{ group.fullUsername }}</div>
 			{% endif %}

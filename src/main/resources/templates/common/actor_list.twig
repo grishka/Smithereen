@@ -1,18 +1,16 @@
 {% extends "page" %}
 {% block content %}
-<table width="100%" class="userList" cellspacing="0">
+<div class="userList">
 {% for actor in actors %}
-	<tr>
-		<td width="50">
-			<a href="{{ actor.actor.profileURL }}"{{ profileRel(actor.actor) }}>{{ actor.actor | pictureForAvatar('s') }}</a>
-		</td>
-		<td class="info" valign="middle">
-			<b><a href="{{ actor.actor.profileURL }}">{{ actor.actor.type=="Person" ? actor.actor | name('complete') : actor.actor.name }}</a></b>
-			{% if actor.description is not empty %}
-				<div class="subtitle">{{ actor.description }}</div>
-			{% endif %}
-		</td>
-	</tr>
+	<div>
+		<a href="{{ actor.actor.profileURL }}"{{ profileRel(actor.actor) }}>{{ actor.actor | pictureForAvatar('a') }}</a>
+	</div>
+	<div class="info">
+		<b><a href="{{ actor.actor.profileURL }}">{{ actor.actor.type=="Person" ? actor.actor | name('complete') : actor.actor.name }}</a></b>
+		{% if actor.description is not empty %}
+			<div class="subtitle">{{ actor.description }}</div>
+		{% endif %}
+	</div>
 {% endfor %}
-</table>
+</div>
 {% endblock %}

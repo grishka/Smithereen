@@ -73,5 +73,6 @@
   "embed_post_explanation": "Скопируйте этот код, чтобы встроить эту запись на свой сайт:",
   "embed_preview": "Предварительный просмотр",
   "comment_in_reply_to_user": "{gender, select, female {ответила} other {ответил}} <a id=\"parentComment\">{name, inflect, dative}</a>",
-  "comment_in_reply_to_user_short": "<a id=\"parentComment\">{name, inflect, dative}</a>"
+  "comment_in_reply_to_user_short": "<a id=\"parentComment\">{name, inflect, dative}</a>",
+  "post_action_updated_avatar": "{gender, select, male {обновил} female {обновила} other {обновил}} фотографию на странице:"
 }

@@ -3,6 +3,29 @@
 {%extends "page"%}
 {% set canEditGroup=userPermissions is not null and userPermissions.canEditGroup(group) %}
 {% set canManageGroup=userPermissions is not null and userPermissions.canManageGroup(group) %}
+{% block headerActionButtons %}
+	{% set options=[] %}
+
+	{% if currentUser is not null %}
+		{% set _=options.add({'label': L(isBookmarked ? 'remove_bookmark' : 'add_bookmark').toString(), 'type': 'link', 'ajax': 'box', 'href': "/groups/#{group.id}/#{isBookmarked ? 'removeBookmark' : 'addBookmark'}?csrf=#{csrf}"}) %}
+		{% if canEditGroup %}
+		<a href="/groups/{{ group.id }}/edit" title="{{ L(group.event ? 'edit_event' : 'edit_group') }}" class="actionButton iconSettings"></a>
+		{% elseif canManageGroup %}
+		<a href="/groups/{{ group.id }}/editMembers" title="{{ L(group.event ? 'manage_event' : 'manage_group') }}" class="actionButton iconSettings"></a>
+		{% endif %}
+		{% if group.accessType!='PRIVATE' or canManageGroup %}
+			{% set _=options.add({'label': L('invite_friends').toString(), 'type': 'link', 'href': "/my/friends?act=groupInvite&group="+group.id}) %}
+		{% endif %}
+		{% if userPermissions is not null and userPermissions.canReport(group) %}
+			{% set _=options.add({'label': L('report').toString(), 'type': 'link', 'ajax': 'box', 'href': "/system/reportForm?type=group&id="+group.id}) %}
+		{% endif %}
+	{% endif %}
+	{% block optionsButton %}
+	{% if options is not empty %}
+    <button title="{{ L('more_options') }}" class="actionButton iconMore" onclick="new MobileOptionsBox({{ json(options) }}).show()" id="profileMoreButton"></button>
+    {% endif %}
+    {% endblock %}
+{% endblock %}
 {%block content%}
 <div class="cardsBackdrop">
 {%if group.domain is not null%}
@@ -11,86 +34,125 @@
 	<a href="{{group.url}}" target="_blank">{{L('open_on_server_X', {'domain': group.domain})}}</a>
 </div>
 {%endif%}
+<input type="checkbox" id="profileInfoToggler" class="toggler"/>
+<div class="toggled">
 <div class="card singleColumn">
-	<table width="100%" cellpadding="0" cellspacing="0" border="0" class="profileHeader">
-		<tr>
-			<td class="profileNameW">
-				<h2 class="profileName">{{ group.name }}</h2>
-			</td>
-			<td width="100">
-				{{ group | pictureForAvatar('m') }}
-			</td>
-		</tr>
-	</table>
-</div>
-<div class="card singleColumn">
-	{% if currentUser is not null and (membershipStateText is not empty or membershipState=="NONE" or membershipState=="INVITED") %}
+	<div class="profileHeader" id="profileHeader">
+		<div class="profileNameW" id="profileHeaderNameW">
+			<div class="profileName">{{ group.name }}</div>
+		</div>
+		<div class="profileHeaderAva">
+			{% if canEditGroup %}
+			<a href="javascript:void(0)" onclick="new MobileOptionsBox([
+			{%- if avatarPvInfo is not null %}{label: '{{ L('avatar_open') }}', onclick: function(){doOpenPhotoViewer({{ json(avatarPvInfo) }});} },{% endif -%}
+			{label: '{{ L('update_profile_picture') }}', onclick: function(){chooseFileAndUpload('/settings/updateProfilePicture?group={{ group.id }}', 'file', 'image/*');} }
+			{%- if group.hasAvatar %},{label: '{{ L('remove_profile_picture') }}', type: 'confirm', title: 'remove_profile_picture', msg: 'confirm_remove_profile_picture_group', url: '/settings/removeProfilePicture?group={{ group.id }}'}{% endif -%}]).show(); return false;">{{ group | pictureForAvatar('b') }}</a>
+			{% elseif avatarPvInfo is not null %}
+			<a href="{{ avatarPhoto.url }}" data-pv="{{ json(avatarPvInfo) }}" onclick="return openPhotoViewer(this)">{{ group | pictureForAvatar('b') }}</a>
+			{% else %}
+			{{ group | pictureForAvatar('b') }}
+			{% endif %}
+		</div>
+	</div>
+	{% if currentUser is not null %}
+	{% if membershipStateText is not empty and not (group.event and (membershipState=='MEMBER' or membershipState=='TENTATIVE_MEMBER')) %}<div class="profileFriendshipStatusText">{{ membershipStateText }}</div>{% endif %}
 	<div class="profileBelowAva">
-		{{ membershipStateText }}
+		{% set membershipOptions=[] %}
+		{% if membershipState=="MEMBER" or membershipState=="TENTATIVE_MEMBER" %}
+		{% if group.event and (group.domain is empty or group.hasCapability("TENTATIVE_MEMBERSHIP")) %}
+		{% if membershipState=="MEMBER" %}
+			{% set _=membershipOptions.add({'label': L('join_event_tentative').toString(), 'type': 'link', 'ajax': 'box', 'href': "/groups/#{group.id}/join?tentative=1&csrf=#{csrf}"}) %}
+		{% else %}
+			{% set _=membershipOptions.add({'label': L('join_event_certain').toString(), 'type': 'link', 'ajax': 'box', 'href': "/groups/#{group.id}/join?csrf=#{csrf}"}) %}
+		{% endif %}
+		{% endif %}
+			{% if group.accessType!='OPEN' %}
+			{% set _=membershipOptions.add({'label': L(group.event ? 'leave_event' : 'leave_group').toString(), 'type': 'confirm', 'title': L(group.event ? 'leave_event' : 'leave_group').toString(), 'msg':  L(group.event ? 'confirm_leave_event' : 'confirm_leave_group', {'type': group.accessType}).toString() | replace({"\n": '<br/>'}), 'href': "/groups/#{group.id}/leave", 'url': "/groups/#{group.id}/leave"}) %}
+			{% else %}
+			{% set _=membershipOptions.add({'label': L(group.event ? 'leave_event' : 'leave_group').toString(), 'type': 'link', 'ajax': 'box', 'href': "/groups/#{group.id}/leave"}) %}
+			{% endif %}
+		{% endif %}
+
 		{% if group.event %}
 		{% if membershipState=="NONE" or membershipState=="INVITED" %}
-			<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button{{ membershipStateText is empty ? '' : ' withText' }}">{{ L('join_event_certain') }}</a>
+			<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button">{{ L('join_event_certain') }}</a>
 			{% if group.domain is empty or group.hasCapability("TENTATIVE_MEMBERSHIP") %}
-				<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}&tentative=1" class="button withText">{{ L('join_event_tentative') }}</a>
+				<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}&tentative=1" class="button">{{ L('join_event_tentative') }}</a>
 			{% endif %}
+		{% else %}
+			<a href="javascript:void(0)" class="button secondary" onclick="return showOptions(this)" data-options="{{ json(membershipOptions) }}"><span class="ellipsize">{{ L(membershipState=='TENTATIVE_MEMBER' ? 'event_you_are_tentative_member' : 'event_you_are_member') }}</span><span class="arrowIcon"></span></a>
 		{% endif %}
 		{% else %}
 		{% if membershipState=="NONE" or membershipState=="INVITED" %}
-			<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button{{ membershipStateText is empty ? '' : ' withText' }}">{{ L('join_group') }}</a>
+			<a href="/groups/{{ group.id }}/join?csrf={{ csrf }}" class="button">{{ L('join_group') }}</a>
+		{% else %}
+			<a href="javascript:void(0)" class="button secondary" onclick="return showOptions(this)" data-options="{{ json(membershipOptions) }}"><span class="ellipsize">{{ L(membershipState=='REQUESTED' ? 'group_join_request_sent' : 'group_you_are_member') }}</span><span class="arrowIcon"></span></a>
 		{% endif %}
 		{% endif %}
 	</div>
 	{% endif %}
-	<ul class="actionList">
-		{% if canEditGroup %}
-			{% if group.hasAvatar %}
-				<li><a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureBox({{ group.id }}).show(); return false;">{{L('update_profile_picture')}}</a></li>
-				<li><a href="/settings/confirmRemoveProfilePicture?group={{ group.id }}" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture?group={{ group.id }}');">{{L('remove_profile_picture')}}</a></li>
-			{% else %}
-				<li><a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureBox({{ group.id }}).show(); return false;">{{L('upload_avatar')}}</a></li>
-			{% endif %}
-			<li class="separator"></li>
-		{%endif%}
-		<li><a href="/groups/{{ group.id }}/members">{{ L('X_members', {'count': group.memberCount}) }}</a></li>
-		{% if group.tentativeMemberCount>0 %}
-		<li><a href="/groups/{{ group.id }}/tentativeMembers">{{ L('X_tentative_members', {'count': group.tentativeMemberCount}) }}</a></li>
+	<ul class="profileInfoRows">
+		{% if group.event %}
+		<li><div class="item">
+			<span class="icon iconTime"></span>
+			<span class="text ellipsize">{{ LD(group.eventStartTime) }}{% if group.eventEndTime is not null %} — {{ LD(group.eventEndTime) }}{% endif %}</span>
+		</div></li>
 		{% endif %}
-		<li><a href="/groups/{{ group.id }}/admins" data-ajax-box="1">{{ L(group.event ? 'event_X_organizers' : 'group_X_admins', {'count': admins.size}) }}</a></li>
-		<li class="separator"></li>
-		{% if currentUser is not null %}
-			{% if membershipState=="MEMBER" or membershipState=="TENTATIVE_MEMBER" %}
-			{% if group.event and (group.domain is empty or group.hasCapability("TENTATIVE_MEMBERSHIP")) %}
-			{% if membershipState=="MEMBER" %}
-			<li><a href="/groups/{{ group.id }}/join?csrf={{ csrf }}&tentative=1">{{ L('join_event_tentative') }}</a></li>
-			{% else %}
-			<li><a href="/groups/{{ group.id }}/join?csrf={{ csrf }}">{{ L('join_event_certain') }}</a></li>
+		{% if group.memberCount>0 %}
+		<li><a href="/groups/{{ group.id }}/members">
+			<span class="icon iconFriends"></span>
+			<span class="text ellipsize">{{ L('X_members_bold', {'count': group.memberCount}) }}</span>
+			<span class="accessory avatarPile">
+			{% if members is not empty %}
+			{% for user in members | slice(0, min(members | length, 3)) %}
+			    {{ user | pictureForAvatar('s', 28) }}
+			{% endfor %}
 			{% endif %}
-			{% endif %}
-			<li><a href="/groups/{{ group.id }}/leave?csrf={{ csrf }}"{% if group.accessType!='OPEN' %} data-confirm-action="/groups/{{ group.id }}/leave?csrf={{ csrf }}" data-confirm-title="{{ L(group.event ? 'leave_event' : 'leave_group') }}" data-confirm-message="{{ L(group.event ? 'confirm_leave_event' : 'confirm_leave_group', {'type': group.accessType}) | nl2br }}"{% endif %}>{{ L(group.event ? 'leave_event' : 'leave_group') }}</a></li>
-			{% if group.accessType!='PRIVATE' or canManageGroup %}
-			<li><a href="/my/friends?act=groupInvite&group={{ group.id }}">{{ L('invite_friends') }}</a></li>
-			{% endif %}
-			{% endif %}
-			<li><a href="/groups/{{ group.id }}/{{ isBookmarked ? "removeBookmark" : "addBookmark" }}?csrf={{ csrf }}" id="profileBookmarkButton" data-ajax data-ajax-show="bookmarkLoader"><span id="profileBookmarkButtonText">{{ L(isBookmarked ? 'remove_bookmark' : 'add_bookmark') }}</span> <span class="inlineLoader" id="bookmarkLoader" style="display: none"></span></a></li>
+			</span>
+		</a></li>
 		{% endif %}
-		{% if canEditGroup %}
-			<li><a href="/groups/{{ group.id }}/edit">{{ L(group.event ? 'edit_event' : 'edit_group') }}</a></li>
-		{% elseif canManageGroup %}
-			<li><a href="/groups/{{ group.id }}/editMembers">{{ L(group.event ? 'manage_event' : 'manage_group') }}</a></li>
+		{% if group.summary is not empty %}
+		<li><div class="item multiline"><span class="icon iconDescription"></span><span class="text">{{ group.summary | stripHTML(true) | nl2br }}</span></div></li>
 		{% endif %}
-		{% if userPermissions is not null and userPermissions.canReport(group) %}
-			<li><a href="/system/reportForm?type=group&id={{ group.id }}" data-ajax-box>{{ L('report') }}</a></li>
-		{% endif %}
+		<li><label class="item showMore hideWhenOn" for="profileInfoToggler" tabindex="0">
+			<span class="icon iconMore"></span>
+			<span class="text ellipsize">{{ L('profile_show_info') }}</span>
+		</label></li>
 	</ul>
 </div>
 
-<div class="card profileFields">
-{% for fld in profileFields %}
-	<div class="profileFieldName">{{ fld.name }}</div>
-	<div class="profileFieldValue">{{ fld.value | postprocessHTML }}</div>
-{% endfor %}
+<div class="showWhenOn">
+	<div class="card profileFields">
+	{% for fld in profileFields %}
+		<div class="profileFieldName">{{ fld.name }}</div>
+		<div class="profileFieldValue">{{ fld.value | postprocessHTML }}</div>
+	{% endfor %}
+	</div>
+	<div class="card profileFields">
+		<div class="sectionHeader"><h4>{{ L(group.event ? 'event_organizers' : 'group_admins') }}</h4></div>
+		<div class="userList noPadding" style="padding-bottom: 16px;">
+		{% for admin in admins %}
+			<div>
+				<a href="{{ admin.user.profileURL }}"{{ profileRel(admin.user) }}>{{ admin.user | pictureForAvatar('a') }}</a>
+			</div>
+			<div class="info">
+				<b><a href="{{ admin.user.profileURL }}">{{ admin.user | name('complete') }}</a></b>
+				{% if admin.title is not empty %}
+					<div class="subtitle">{{ admin.title }}</div>
+				{% endif %}
+			</div>
+		{% endfor %}
+		</div>
+	</div>
 </div>
+
+</div>
+
+{% include "profile_section_thumbs" with {'actor': group} %}
 
 {% include "wall_profile_block" with {'wallOwner': group, 'isGroup': true} %}
 </div>
+{% script %}
+initProfileTitleHideOnScroll();
+{% endscript %}
 {%endblock%}

@@ -1,0 +1,3 @@
+{% for comment in comments %}
+{% include "comment" with {'post': comment} %}
+{% endfor %}

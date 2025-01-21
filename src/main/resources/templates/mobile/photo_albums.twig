@@ -1,0 +1,29 @@
+{% extends "page" %}
+{% import "photo_album_title" %}
+{% block content %}
+{% if owner.ownerID==currentUser.id %}
+<a href="/my/albums/create" class="fab iconAdd" title="{{ L('create_photo_album') }}"></a>
+{% if userNotifications.newPhotoTagCount>0 %}
+<ul class="actionList marginAfter">
+<li><a href="/photos/newTags">{{ L('X_new_photo_tags', {'count': userNotifications.newPhotoTagCount}) }} &raquo;</a></li>
+</ul>
+{% endif %}
+{% elseif owner.ownerID<0 and userPermissions.canManageGroup(owner) %}
+<a href="/my/albums/create?owner={{ owner.ownerID }}" class="fab iconAdd" title="{{ L('create_photo_album') }}"></a>
+{% endif %}
+{% if albums is not empty %}
+<div class="photoAlbumsGrid">
+{% for album in albums %}
+	<a href="{{ album.url }}" class="{{ album.coverID==0 ? 'empty' : '' }}">
+		{% if covers[album.coverID] is not null %}{{ covers[album.coverID].image | pictureForPhoto('s') }}{% endif %}
+		<div class="infoW">
+			<div class="title ellipsize">{{ photoAlbumTitle(_context, album) }}</div>
+			<div class="count">{{ album.numPhotos | numberformat }}</div>
+		</div>
+	</a>
+{% endfor %}
+</div>
+{% else %}
+<div class="singleColumn"><div class="emptyState">{{ L('no_photo_albums') }}</div></div>
+{% endif %}
+{% endblock %}

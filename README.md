@@ -39,7 +39,7 @@ To enable S3 storage, set `upload.backend=s3` in your `config.properties`. Confi
 putting the bucket name into the hostname instead of in the path for API requests, like `<bucket>.<endpoint>`.
 - `upload.s3.protocol`: `https` by default, can be set to `http`.
 
-The following properties control the public URLs for clients to read the files from your S3 bucket. They're currently only used for imgproxy, but will be given out to clients directly when support for non-image (e.g. video) attachments arrives in a future Smithereen version:
+The following properties control the public URLs for clients to read the files from your S3 bucket. These are used for imgproxy and given out to clients directly when they click "Open original" in the image viewer, and will be used for non-image (e.g. video) attachments in a future Smithereen version:
 - `upload.s3.hostname`: defaults to `s3-<region>.amazonaws.com`. Needs to be set if not using AWS and `upload.s3.alias_host` is not set.
 - `upload.s3.alias_host`: can be used instead of `upload.s3.hostname` if you don't want your bucket name to be visible. Requires that you have a CDN or a reverse proxy in front of the storage provider.
   - If this is set, the bucket name is **not** included in the generated URLs. The URLs will have the form of `<protocol>://<alias_host>/<object>`.

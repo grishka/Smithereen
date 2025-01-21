@@ -135,7 +135,6 @@ public class TextProcessor{
 		doc.getElementsByTag("li").forEach(Element::unwrap);
 		doc.getElementsByClass("smithereenPollQuestion").forEach(Element::remove);
 		doc.getElementsByTag("span").stream().filter(el->el.classNames().isEmpty()).forEach(Element::unwrap);
-		doc.normalise();
 		return cleaner.clean(doc).body().html();
 	}
 
@@ -305,11 +304,13 @@ public class TextProcessor{
 		}
 
 		Document doc=Jsoup.parseBodyFragment(text);
+		doc.outputSettings().prettyPrint(false);
 		Element newBody;
 		if(format==FormattedTextFormat.HTML){
 			doc=new Cleaner(whitelist).clean(doc);
 			Element body=doc.body();
 			Document newDoc=new Document("");
+			newDoc.outputSettings().prettyPrint(false);
 			newBody=newDoc.body();
 			LinkedList<Element> stack=new LinkedList<>(), tmpStack=new LinkedList<>();
 			stack.add(newBody);

@@ -1,0 +1,48 @@
+{% import "photo_album_title" %}
+{% extends "page" %}
+{% block content %}
+{% include "photos_tabbar" with {'tab': 'albums'} %}
+<div class="mediaGridW">
+	<div class="summaryWrap">
+		<div class="summary">
+		{%- if currentUser is not null and owner.ownerID==currentUser.id %}
+			{{- L('summary_own_X_photo_albums', {'count': albums | length}) -}}
+		{%- elseif owner.ownerID>0 %}
+			{{- L('summary_user_X_photo_albums', {'count': albums | length, 'name': owner.firstAndGender}) }}
+		{%- elseif owner.isEvent %}
+			{{- L('summary_event_X_photo_albums', {'count': albums | length}) }}
+		{%- else %}
+			{{- L('summary_group_X_photo_albums', {'count': albums | length}) }}
+		{%- endif %}
+		</div>
+	</div>
+	<div class="{% if albums is not empty %} photoAlbumsGrid{% endif %}">
+	{% for album in albums %}
+		<a href="{{ album.url }}" class="photoAlbum">
+			{% if covers[album.coverID] is not null %}{{ covers[album.coverID].image | pictureForPhoto('m') }}{% endif %}
+			<div class="infoW">
+				<div class="spacer"></div>
+				<div class="info">
+					<div class="count"><span class="icon"></span>{{ album.numPhotos | numberformat }}</div>
+					<div class="title">{{ photoAlbumTitle(_context, album) }}</div>
+					<div class="description">{{ album.description }}</div>
+				</div>
+			</div>
+		</a>
+	{% else %}
+		<div class="emptyState">{{ L('no_photo_albums') }}</div>
+	{% endfor %}
+	</div>
+	{% if items is not empty %}
+	<div class="summaryWrap marginBefore">
+		<div class="summary">{{ L('photos_recent_summary') }}</div>
+	</div>
+	<div class="photoGrid">
+	{% for photo in items %}
+		<a href="{{ photo.url }}{% if not isAjax %}?nojs{% endif %}" class="photo" id="photo{{ photo.idString }}" onclick="return openPhotoViewer(this)" data-pv="{{ json(photoViewerData[photo.id]) }}">{{ photo.image | pictureForPhoto('m', false) }}</a>
+	{% endfor %}
+	{% include "pagination_endless" %}
+	</div>
+	{% endif %}
+</div>
+{% endblock %}

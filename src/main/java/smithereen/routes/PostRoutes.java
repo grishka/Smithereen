@@ -1,5 +1,7 @@
 package smithereen.routes;
 
+import com.google.gson.reflect.TypeToken;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -16,8 +18,8 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -26,6 +28,7 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -33,12 +36,14 @@ import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.PostSource;
-import smithereen.model.ReportableContentObject;
+import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
@@ -49,14 +54,14 @@ import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
-import smithereen.model.feed.GroupedNewsfeedEntry;
-import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.PostViewModel;
+import smithereen.storage.utils.Pair;
 import smithereen.templates.RenderedTemplateResponse;
-import smithereen.templates.Templates;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -110,10 +115,23 @@ public class PostRoutes{
 		int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
 		String contentWarning=req.queryParams("contentWarning");
 		List<String> attachments;
-		if(StringUtils.isNotEmpty(req.queryParams("attachments")))
+		Map<String, String> attachmentAltTexts;
+		if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
 			attachments=Arrays.stream(req.queryParams("attachments").split(",")).collect(Collectors.toList());
-		else
+			String altTextsJson=req.queryParams("attachAltTexts");
+			if(StringUtils.isNotEmpty(altTextsJson)){
+				try{
+					attachmentAltTexts=gson.fromJson(altTextsJson, new TypeToken<>(){});
+				}catch(Exception x){
+					attachmentAltTexts=Map.of();
+				}
+			}else{
+				attachmentAltTexts=Map.of();
+			}
+		}else{
 			attachments=Collections.emptyList();
+			attachmentAltTexts=Map.of();
+		}
 
 		int repostID=safeParseInt(req.queryParams("repost"));
 		Post repost=repostID>0 ? ctx.getWallController().getPostOrThrow(repostID) : null;
@@ -124,7 +142,7 @@ public class PostRoutes{
 				inReplyTo=ctx.getWallController().getPostOrThrow(inReplyTo.repostOf);
 		}
 
-		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost);
+		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost, attachmentAltTexts, null);
 
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();
@@ -136,17 +154,21 @@ public class PostRoutes{
 						.setInputValue("postFormText_"+formID, "").setContent("postFormAttachments_"+formID, "")
 						.showSnackbar(lang(req).get(repost.getReplyLevel()>0 ? "repost_comment_done" : "repost_post_done"));
 			}
-			HashMap<Integer, UserInteractions> interactions=new HashMap<>();
-			interactions.put(post.id, new UserInteractions());
 			PostViewModel pvm=new PostViewModel(post);
+			ArrayList<PostViewModel> needInteractions=new ArrayList<>();
+			needInteractions.add(pvm);
 			if(inReplyTo!=null)
 				pvm.parentAuthorID=inReplyTo.authorID;
 			ctx.getWallController().populateReposts(self.user, List.of(pvm), 2);
-			RenderedTemplateResponse model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post", req).with("post", pvm).with("postInteractions", interactions);
+			RenderedTemplateResponse model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post", req).with("post", pvm);
 			if(replyTo!=0){
+				PostViewModel topLevel=new PostViewModel(context(req).getWallController().getPostOrThrow(post.replyKey.getFirst()));
 				model.with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0));
-				model.with("topLevel", new PostViewModel(context(req).getWallController().getPostOrThrow(post.replyKey.getFirst())));
+				model.with("topLevel", topLevel);
+				needInteractions.add(topLevel);
 			}
+			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(needInteractions, self.user);
+			model.with("postInteractions", interactions);
 			Map<Integer, User> users=new HashMap<>();
 			users.put(self.user.id, self.user);
 			if(inReplyTo!=null && inReplyTo.authorID!=self.user.id){
@@ -205,6 +227,16 @@ public class PostRoutes{
 			model.with("poll", post.poll);
 		if(post.attachments!=null && !post.attachments.isEmpty()){
 			model.with("draftAttachments", post.attachments);
+			model.with("attachAltTexts", post.attachments.stream()
+					.map(att->att instanceof LocalImage li && li.photoID==0 && li.name!=null ? new Pair<>(li.fileRecord.id().getIDForClient(), li.name) : null)
+					.filter(Objects::nonNull)
+					.collect(Collectors.toMap(Pair::first, Pair::second))
+			);
+			Map<String, PhotoViewerInlineData> pvData=post.attachments.stream()
+					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(), new PhotoViewerInlineData(0, "rawFile/"+li.getLocalID(), li.getURLsForPhotoViewer())) : null)
+					.filter(Objects::nonNull)
+					.collect(Collectors.toMap(Pair::first, Pair::second, (a, b)->b));
+			model.with("attachPvData", pvData);
 		}
 		if(post.repostOf!=0)
 			model.with("allowEmpty", true);
@@ -254,25 +286,44 @@ public class PostRoutes{
 		}
 		String contentWarning=req.queryParams("contentWarning");
 		List<String> attachments;
-		if(StringUtils.isNotEmpty(req.queryParams("attachments")))
+		Map<String, String> attachmentAltTexts;
+		if(StringUtils.isNotEmpty(req.queryParams("attachments"))){
 			attachments=Arrays.stream(req.queryParams("attachments").split(",")).collect(Collectors.toList());
-		else
+			String altTextsJson=req.queryParams("attachAltTexts");
+			if(StringUtils.isNotEmpty(altTextsJson)){
+				try{
+					attachmentAltTexts=gson.fromJson(altTextsJson, new TypeToken<>(){});
+				}catch(Exception x){
+					attachmentAltTexts=Map.of();
+				}
+			}else{
+				attachmentAltTexts=Map.of();
+			}
+		}else{
 			attachments=Collections.emptyList();
+			attachmentAltTexts=Map.of();
+		}
 
-		Post post=ctx.getWallController().editPost(self.user, sessionInfo(req).permissions, id, text, enumValue(req.queryParams("format"), FormattedTextFormat.class), contentWarning, attachments, poll);
+		Post post=ctx.getWallController().editPost(self.user, sessionInfo(req).permissions, id, text, enumValue(req.queryParams("format"), FormattedTextFormat.class), contentWarning, attachments, poll, attachmentAltTexts);
 		if(isAjax(req)){
 			if(req.attribute("mobile")!=null)
 				return new WebDeltaResponse(resp).replaceLocation(post.getInternalURL().toString());
 
 			PostViewModel postVM=new PostViewModel(post);
 			ctx.getWallController().populateReposts(self.user, List.of(postVM), 2);
-			RenderedTemplateResponse model=new RenderedTemplateResponse(post.getReplyLevel()>0 ? "wall_reply" : "wall_post", req).with("post", postVM).with("postInteractions", ctx.getWallController().getUserInteractions(List.of(postVM), self.user));
+			RenderedTemplateResponse model=new RenderedTemplateResponse(post.getReplyLevel()>0 ? "wall_reply" : "wall_post", req).with("post", postVM);
 			model.with("users", Map.of(self.user.id, self.user));
+			ArrayList<PostViewModel> needInteractions=new ArrayList<>();
+			needInteractions.add(postVM);
 			if(post.getReplyLevel()>0){
 				try{
-					model.with("topLevel", new PostViewModel(ctx.getWallController().getPostOrThrow(post.replyKey.getFirst())));
+					PostViewModel topLevel=new PostViewModel(ctx.getWallController().getPostOrThrow(post.replyKey.getFirst()));
+					model.with("topLevel", topLevel);
+					needInteractions.add(topLevel);
 				}catch(ObjectNotFoundException ignore){}
 			}
+			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(needInteractions, self.user);
+			model.with("postInteractions", interactions);
 			return new WebDeltaResponse(resp).setContent("postInner"+post.id, model.renderBlock("postInner"))
 					.show("postInner"+post.id)
 					.show("postFloatingActions"+id)
@@ -281,64 +332,6 @@ public class PostRoutes{
 		}
 		resp.redirect(post.getInternalURL().toString());
 		return "";
-	}
-
-	private static void prepareFeed(ApplicationContext ctx, Request req, Account self, List<NewsfeedEntry> feed, RenderedTemplateResponse model){
-		Set<Integer> needPosts=new HashSet<>(), needUsers=new HashSet<>(), needGroups=new HashSet<>();
-		for(NewsfeedEntry e:feed){
-			needUsers.add(e.authorID);
-			if(e.type==NewsfeedEntry.Type.GROUPED){
-				GroupedNewsfeedEntry gne=(GroupedNewsfeedEntry) e;
-				if(gne.childEntriesType==NewsfeedEntry.Type.ADD_FRIEND){
-					for(NewsfeedEntry ce:gne.childEntries){
-						needUsers.add(ce.objectID);
-					}
-				}else if(gne.childEntriesType==NewsfeedEntry.Type.JOIN_GROUP || gne.childEntriesType==NewsfeedEntry.Type.JOIN_EVENT){
-					for(NewsfeedEntry ce:gne.childEntries){
-						needGroups.add(ce.objectID);
-					}
-				}
-			}else if(e.type==NewsfeedEntry.Type.POST || e.type==NewsfeedEntry.Type.RETOOT){
-				needPosts.add(e.objectID);
-			}else if(e.type==NewsfeedEntry.Type.ADD_FRIEND){
-				needUsers.add(e.objectID);
-			}else if(e.type==NewsfeedEntry.Type.JOIN_GROUP || e.type==NewsfeedEntry.Type.JOIN_EVENT || e.type==NewsfeedEntry.Type.CREATE_GROUP || e.type==NewsfeedEntry.Type.CREATE_EVENT){
-				needGroups.add(e.objectID);
-			}
-		}
-
-		List<PostViewModel> feedPosts=ctx.getWallController().getPosts(needPosts).values().stream().map(PostViewModel::new).toList();
-
-		ctx.getWallController().populateReposts(self.user, feedPosts, 2);
-		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
-			ctx.getWallController().populateCommentPreviews(self.user, feedPosts, self.prefs.commentViewType);
-		}
-
-		PostViewModel.collectActorIDs(feedPosts, needUsers, needGroups);
-		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
-		Map<Integer, Group> groups=ctx.getGroupsController().getGroupsByIdAsMap(needGroups);
-
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(feedPosts, self.user);
-		model.with("posts", feedPosts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity())))
-			.with("users", users).with("groups", groups).with("postInteractions", interactions);
-		model.with("maxReplyDepth", getMaxReplyDepth(self)).with("commentViewType", self.prefs.commentViewType);
-	}
-
-	public static Object feed(Request req, Response resp, Account self, ApplicationContext ctx){
-		int startFromID=parseIntOrDefault(req.queryParams("startFrom"), 0);
-		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(self, timeZoneForRequest(req), startFromID, offset, 25);
-		if(!feed.list.isEmpty() && startFromID==0)
-			startFromID=feed.list.get(0).id;
-		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel");
-		Templates.addJsLangForNewPostForm(req);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list)
-				.with("paginationUrlPrefix", "/feed?startFrom="+startFromID+"&offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationPerPage", 25).with("paginationFirstPageUrl", "/feed")
-				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
-
-		prepareFeed(ctx, req, self, feed.list, model);
-
-		return model;
 	}
 
 	public static Object standalonePost(Request req, Response resp){
@@ -445,7 +438,7 @@ public class PostRoutes{
 			meta.put("og:author", author.url.toString());
 			meta.put("profile:username", author.username+"@"+Config.domain);
 			if(StringUtils.isNotEmpty(post.post.text)){
-				String text=TextProcessor.truncateOnWordBoundary(post.post.text, 250);
+				String text=post.post.hasContentWarning() ? post.post.contentWarning : TextProcessor.truncateOnWordBoundary(post.post.text, 250);
 				meta.put("og:description", text);
 				moreMeta.put("description", text);
 			}
@@ -453,8 +446,8 @@ public class PostRoutes{
 			if(post.post.attachments!=null && !post.post.attachments.isEmpty()){
 				for(Attachment att : post.post.getProcessedAttachments()){
 					if(att instanceof PhotoAttachment pa){
-						SizedImage.Dimensions size=pa.image.getDimensionsForSize(SizedImage.Type.MEDIUM);
-						meta.put("og:image", pa.image.getUriForSizeAndFormat(SizedImage.Type.MEDIUM, SizedImage.Format.JPEG).toString());
+						SizedImage.Dimensions size=pa.image.getDimensionsForSize(SizedImage.Type.PHOTO_MEDIUM);
+						meta.put("og:image", pa.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_MEDIUM, SizedImage.Format.JPEG).toString());
 						meta.put("og:image:width", String.valueOf(size.width));
 						meta.put("og:image:height", String.valueOf(size.height));
 						meta.put("og:image:type", "image/jpeg");
@@ -467,9 +460,9 @@ public class PostRoutes{
 			if(!hasImage){
 				meta.put("twitter:card", "summary");
 				if(author.hasAvatar()){
-					URI img=author.getAvatar().getUriForSizeAndFormat(SizedImage.Type.SQUARE_XLARGE, SizedImage.Format.JPEG);
+					URI img=author.getAvatar().getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_XLARGE, SizedImage.Format.JPEG);
 					if(img!=null){
-						SizedImage.Dimensions size=author.getAvatar().getDimensionsForSize(SizedImage.Type.SQUARE_XLARGE);
+						SizedImage.Dimensions size=author.getAvatar().getDimensionsForSize(SizedImage.Type.AVA_SQUARE_XLARGE);
 						meta.put("og:image", img.toString());
 						meta.put("og:image:width", String.valueOf(size.width));
 						meta.put("og:image:height", String.valueOf(size.height));
@@ -481,6 +474,9 @@ public class PostRoutes{
 			model.with("moreMetaTags", moreMeta);
 		}
 		Utils.jsLangKey(req, "yes", "no", "cancel", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw");
+		if(Utils.isMobile(req)){
+			Utils.jsLangKey(req, "attach_menu_photo_upload", "attach_menu_photo_from_album");
+		}
 		model.with("title", post.post.getShortTitle(50)+" | "+author.getFullName());
 		if(req.attribute("mobile")!=null){
 			model.with("toolbarTitle", lang(req).get("wall_post_title"));
@@ -508,7 +504,7 @@ public class PostRoutes{
 
 	public static Object delete(Request req, Response resp, Account self, ApplicationContext ctx){
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		ctx.getWallController().deletePost(requireSession(req), post);
+		ctx.getWallController().deletePost(self.user, post);
 		if(isAjax(req)){
 			resp.type("application/json");
 			return new WebDeltaResponse().remove("post"+post.id);
@@ -518,88 +514,20 @@ public class PostRoutes{
 	}
 
 	public static Object like(Request req, Response resp){
-		if(requireAccount(req, null) && verifyCSRF(req, resp)){
-			return like(req, resp, sessionInfo(req).account, context(req));
-		}
 		ApplicationContext ctx=context(req);
-		Lang l=lang(req);
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		String url=post.getActivityPubURL().toString();
-		String title=l.get(post.getReplyLevel()>0 ? "remote_like_comment_title" : "remote_like_post_title");
-		return remoteInteraction(req, resp, url, title, null);
-	}
-
-	public static Object like(Request req, Response resp, Account self, ApplicationContext ctx){
-		req.attribute("noHistory", true);
-		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		ctx.getUserInteractionsController().setObjectLiked(post, true, self.user);
-		if(isAjax(req)){
-			UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self.user).get(post.getIDForInteractions());
-			return new WebDeltaResponse(resp)
-					.setContent("likeCounterPost"+post.id, String.valueOf(interactions.likeCount))
-					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/unlike?csrf="+requireSession(req).csrfToken);
-		}
-		String back=Utils.back(req);
-		resp.redirect(back);
-		return "";
+		return UserInteractionsRoutes.like(req, resp, post);
 	}
 
 	public static Object unlike(Request req, Response resp, Account self, ApplicationContext ctx){
-		req.attribute("noHistory", true);
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		String back=Utils.back(req);
-		ctx.getUserInteractionsController().setObjectLiked(post, false, self.user);
-		if(isAjax(req)){
-			UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self.user).get(post.getIDForInteractions());
-			WebDeltaResponse b=new WebDeltaResponse(resp)
-					.setContent("likeCounterPost"+post.id, String.valueOf(interactions.likeCount))
-					.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/like?csrf="+requireSession(req).csrfToken);
-			if(interactions.likeCount==0)
-				b.hide("likeCounterPost"+post.id);
-			return b;
-		}
-		resp.redirect(back);
-		return "";
-	}
-
-	private static class LikePopoverResponse{
-		public String content;
-		public String title;
-		public String altTitle;
-		public String fullURL;
-		public List<WebDeltaResponse.Command> actions;
-		public boolean show;
+		return UserInteractionsRoutes.setLiked(req, resp, self, ctx, post, false);
 	}
 
 	public static Object likePopover(Request req, Response resp){
-		ApplicationContext ctx=context(req);
 		req.attribute("noHistory", true);
 		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
-		SessionInfo info=sessionInfo(req);
-		User self=info!=null && info.account!=null ? info.account.user : null;
-		int selfID=self!=null ? self.id : 0;
-		context(req).getPrivacyController().enforceObjectPrivacy(self, post);
-		List<User> users=ctx.getUserInteractionsController().getLikesForObject(post, self, 0, 6).list;
-		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
-		UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self).get(post.getIDForInteractions());
-		WebDeltaResponse b=new WebDeltaResponse(resp)
-				.setContent("likeCounterPost"+post.id, String.valueOf(interactions.likeCount));
-		if(info!=null && info.account!=null){
-			b.setAttribute("likeButtonPost"+post.id, "href", post.getInternalURL()+"/"+(interactions.isLiked ? "un" : "")+"like?csrf="+info.csrfToken);
-		}
-		if(interactions.likeCount==0)
-			b.hide("likeCounterPost"+post.id);
-		else
-			b.show("likeCounterPost"+post.id);
-
-		LikePopoverResponse o=new LikePopoverResponse();
-		o.content=_content;
-		o.title=lang(req).get("liked_by_X_people", Map.of("count", interactions.likeCount));
-		o.altTitle=selfID==0 ? null : lang(req).get("liked_by_X_people", Map.of("count", interactions.likeCount+(interactions.isLiked ? -1 : 1)));
-		o.actions=b.commands();
-		o.show=interactions.likeCount>0;
-		o.fullURL="/posts/"+post.id+"/likes";
-		return gson.toJson(o);
+		return UserInteractionsRoutes.likePopover(req, resp, post);
 	}
 
 	public static Object sharePopover(Request req, Response resp){
@@ -619,7 +547,7 @@ public class PostRoutes{
 		else
 			b.show("shareCounterPost"+post.id);
 
-		LikePopoverResponse o=new LikePopoverResponse();
+		UserInteractionsRoutes.LikePopoverResponse o=new UserInteractionsRoutes.LikePopoverResponse();
 		o.content=_content;
 		o.title=lang(req).get("shared_by_X_people", Map.of("count", interactions.repostCount));
 		o.actions=b.commands();
@@ -630,49 +558,9 @@ public class PostRoutes{
 
 	public static Object likeList(Request req, Response resp){
 		ApplicationContext ctx=context(req);
-		SessionInfo info=Utils.sessionInfo(req);
-		@Nullable Account self=info!=null ? info.account : null;
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		Post post=ctx.getWallController().getPostOrThrow(postID);
-		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self!=null ? self.user : null);
-		int offset=offset(req);
-		PaginatedList<User> likes=ctx.getUserInteractionsController().getLikesForObject(post, null, offset, 100);
-		RenderedTemplateResponse model;
-		if(isMobile(req)){
-			model=new RenderedTemplateResponse("content_interactions_likes", req);
-		}else{
-			model=new RenderedTemplateResponse(isAjax(req) ? "content_interactions_box" : "content_wrap", req);
-		}
-		model.paginate(likes)
-				.with("emptyMessage", lang(req).get("likes_empty"))
-				.with("interactions", interactions)
-				.with("post", post)
-				.with("tab", "likes");
-		if(isMobile(req))
-			return model.pageTitle(lang(req).get("likes_title"));
-		if(isAjax(req)){
-			String paginationID=req.queryParams("pagination");
-			boolean fromTab=req.queryParams("fromTab")!=null;
-			if(fromTab){
-				return model.renderBlock("likes");
-			}else if(paginationID!=null){
-				WebDeltaResponse r=new WebDeltaResponse(resp)
-						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("likesInner"));
-				if(offset+likes.list.size()<likes.total){
-					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", "/posts/"+postID+"/likes?offset="+(offset+likes.perPage));
-				}else{
-					r.remove("ajaxPagination_"+paginationID);
-				}
-				return r;
-			}else{
-				return new WebDeltaResponse(resp)
-						.box(lang(req).get("likes_title"), model.renderToString(), "likesList", 620)
-						.runScript("initTabbedBox(ge(\"interactionsTabs"+post.id+"\"), ge(\"interactionsContent"+post.id+"\")); initDynamicControls(ge(\"likesList\"));");
-			}
-		}
-		model.with("contentTemplate", "content_interactions_box").with("title", lang(req).get("likes_title"));
-		return model;
+		return UserInteractionsRoutes.likeList(req, resp, post);
 	}
 
 	public static Object userWallAll(Request req, Response resp){
@@ -807,17 +695,16 @@ public class PostRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
 		model.with("comments", comments.list).with("baseReplyLevel", post.getReplyLevel());
 		preparePostList(ctx, comments.list, model, self);
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(comments.list, self!=null ? self.user : null);
-		model.with("postInteractions", interactions)
-					.with("preview", true)
-					.with("replyFormID", "wallPostForm_commentReplyPost"+postID)
-					.with("commentViewType", viewType);
 		PostViewModel topLevel;
 		if(requestedPost.isMastodonStyleRepost())
 			topLevel=new PostViewModel(requestedPost);
 		else
 			topLevel=new PostViewModel(post.replyKey.isEmpty() ? post : ctx.getWallController().getPostOrThrow(post.replyKey.getFirst()));
-		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(topLevel), comments.list).flatMap(List::stream).toList(), self!=null ? self.user : null);
+		model.with("postInteractions", interactions)
+					.with("preview", true)
+					.with("replyFormID", "wallPostForm_commentReplyPost"+postID)
+					.with("commentViewType", viewType);
 		model.with("topLevel", topLevel);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+postID, model.renderToString())
@@ -839,7 +726,7 @@ public class PostRoutes{
 		ApplicationContext ctx=context(req);
 		int offset=offset(req);
 
-		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0));
+		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
 		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 		CommentViewType viewType=info!=null && info.account!=null ? info.account.prefs.commentViewType : CommentViewType.THREADED;
 		PaginatedList<PostViewModel> comments=ctx.getWallController().getReplies(self!=null ? self.user : null, post.getReplyKeyForReplies(), offset, 100, 50, viewType);
@@ -850,8 +737,6 @@ public class PostRoutes{
 			allReplies.add(comment);
 			comment.getAllReplies(allReplies);
 		}
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(allReplies, self!=null ? self.user : null);
-		preparePostList(ctx, comments.list, model, self);
 		PostViewModel topLevel=null;
 		if(post.replyKey.isEmpty()){
 			topLevel=new PostViewModel(post);
@@ -867,7 +752,8 @@ public class PostRoutes{
 			if(topLevel==null)
 				topLevel=new PostViewModel(ctx.getWallController().getPostOrThrow(realTopLevelID));
 		}
-		topLevel.canComment=post.ownerID<0 || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_COMMENTING);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(topLevel), allReplies).flatMap(List::stream).toList(), self!=null ? self.user : null);
+		preparePostList(ctx, comments.list, model, self);
 		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+topLevel.post.id);
 		model.with("topLevel", topLevel);
 		model.with("commentViewType", viewType);
@@ -913,6 +799,14 @@ public class PostRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
 		model.paginate(new PaginatedList<>(users, option.numVotes, offset, 100), "/posts/"+postID+"/pollVoters/"+option.id+"?fromPagination&offset=", null);
 		model.with("emptyMessage", lang(req).get("poll_option_votes_empty")).with("summary", lang(req).get("X_people_voted_title", Map.of("count", option.numVotes)));
+		if(!isMobile(req)){
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(users);
+			model.with("avatarPhotos", userPhotos)
+					.with("avatarPvInfos", userPhotos.values()
+							.stream()
+							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
+					);
+		}
 		if(isAjax(req)){
 			if(req.queryParams("fromPagination")==null)
 				return new WebDeltaResponse(resp).box(option.text, model.renderToString(), "likesList", 610);
@@ -950,27 +844,13 @@ public class PostRoutes{
 		List<User> users=ctx.getWallController().getPollOptionVoters(option, 0, 6);
 		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
 
-		LikePopoverResponse r=new LikePopoverResponse();
+		UserInteractionsRoutes.LikePopoverResponse r=new UserInteractionsRoutes.LikePopoverResponse();
 		r.actions=Collections.emptyList();
 		r.title=lang(req).get("X_people_voted_title", Map.of("count", option.numVotes));
 		r.content=_content;
 		r.show=true;
 		r.fullURL="/posts/"+postID+"/pollVoters/"+optionID;
 		return gson.toJson(r);
-	}
-
-	public static Object commentsFeed(Request req, Response resp, Account self, ApplicationContext ctx){
-		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
-		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getCommentsFeed(self, offset, 25);
-		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel");
-		Templates.addJsLangForNewPostForm(req);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("feed", req).with("title", Utils.lang(req).get("feed")).with("feed", feed.list)
-				.with("paginationUrlPrefix", "/feed/comments?offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationFirstPageUrl", "/feed/comments").with("tab", "comments").with("paginationPerPage", 25)
-				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments);
-
-		prepareFeed(ctx, req, self, feed.list, model);
-
-		return model;
 	}
 
 	public static Object repostForm(Request req, Response resp){
@@ -982,7 +862,7 @@ public class PostRoutes{
 		if(!requireAccount(req, null)){
 			String url=post.getActivityPubURL().toString();
 			String title=l.get(post.getReplyLevel()>0 ? "share_comment_title" : "share_post_title");
-			return remoteInteraction(req, resp, url, title, post);
+			return UserInteractionsRoutes.remoteInteraction(req, resp, url, title, post, false);
 		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse("repost_form", req);
 		model.with("repostedPost", post)
@@ -1012,14 +892,14 @@ public class PostRoutes{
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list.stream().filter(p->!p.post.isMastodonStyleRepost()).toList(), self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
 		}
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(reposts.list, List.of(new PostViewModel(post))).flatMap(List::stream).toList(), self!=null ? self.user : null);
+		UserInteractions interactions=ctx.getWallController().getUserInteractions(Stream.of(reposts.list, List.of(new PostViewModel(post))).flatMap(List::stream).toList(), self!=null ? self.user : null).get(post.getIDForInteractions());
 		RenderedTemplateResponse model;
 		if(isMobile(req)){
 			model=new RenderedTemplateResponse("content_interactions_reposts", req);
 		}else{
 			for(PostViewModel p:reposts.list){
 				if(p.post.isMastodonStyleRepost()){
-					p.canComment=false;
+//					p.canComment=false;
 				}
 			}
 			model=new RenderedTemplateResponse(isAjax(req) ? "content_interactions_box" : "content_wrap", req);
@@ -1028,6 +908,8 @@ public class PostRoutes{
 				.with("interactions", interactions)
 				.with("post", post)
 				.with("tab", "reposts")
+				.with("url", "/posts/"+post.id)
+				.with("elementID", "Post"+post.id)
 				.with("maxRepostDepth", 0);
 		preparePostList(ctx, reposts.list, model, self);
 		if(isMobile(req))
@@ -1049,7 +931,7 @@ public class PostRoutes{
 			}else{
 				return new WebDeltaResponse(resp)
 						.box(lang(req).get("likes_title"), model.renderToString(), "likesList", 620)
-						.runScript("initTabbedBox(ge(\"interactionsTabs"+post.id+"\"), ge(\"interactionsContent"+post.id+"\")); initDynamicControls(ge(\"likesList\"));");
+						.runScript("initTabbedBox(ge(\"interactionsTabsPost"+post.id+"\"), ge(\"interactionsContentPost"+post.id+"\")); initDynamicControls(ge(\"likesList\"));");
 			}
 		}
 		model.with("contentTemplate", "content_interactions_box").with("title", lang(req).get("likes_title"));
@@ -1091,36 +973,6 @@ public class PostRoutes{
 			}catch(ObjectNotFoundException ignore){}
 		}
 		return model;
-	}
-
-	private static Object remoteInteraction(Request req, Response resp, String url, String title, Post postToEmbed){
-		RenderedTemplateResponse model;
-		if(isAjax(req)){
-			if(isMobile(req)){
-				model=new RenderedTemplateResponse("remote_interaction", req);
-			}else{
-				model=new RenderedTemplateResponse("layer_with_title", req).with("contentTemplate", "remote_interaction");
-			}
-		}else{
-			model=new RenderedTemplateResponse("content_wrap", req).with("contentTemplate", "remote_interaction");
-		}
-		model.with("contentURL", url).with("serverSignupMode", Config.signupMode);
-		model.pageTitle(title);
-		if(!isMobile(req) && postToEmbed!=null && postToEmbed.isLocal())
-			model.with("postToEmbed", postToEmbed);
-		if(isAjax(req)){
-			if(isMobile(req)){
-				return new WebDeltaResponse(resp)
-						.box(title, model.renderToString(), null, false)
-						.runScript("restoreRemoteInteractionDomain();");
-			}else{
-				return new WebDeltaResponse(resp)
-						.layer(model.renderToString(), null)
-						.runScript("restoreRemoteInteractionDomain();");
-			}
-		}else{
-			return model;
-		}
 	}
 
 	public static Object embedBox(Request req, Response resp){

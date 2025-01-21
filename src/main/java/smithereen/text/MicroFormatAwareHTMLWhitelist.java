@@ -30,7 +30,7 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 	}
 
 	@Override
-	protected boolean isSafeAttribute(String tagName, Element el, Attribute attr){
+	public boolean isSafeAttribute(String tagName, Element el, Attribute attr){
 		if(tagName.equals("a")){
 			if(attr.getKey().equals("rel"))
 				return attr.getValue().equals("tag");

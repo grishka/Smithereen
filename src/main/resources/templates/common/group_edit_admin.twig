@@ -3,9 +3,9 @@
 
 {{ form.start('groupEditAdmin') }}
 	{% if existingAdmin is null or existingAdmin.level!='OWNER' %}
-		{{ form.radioGroup('level', L('access_level'), [
-			{'value': 'ADMIN', 'label': L('access_level_admin'), 'explanation': L('group_access_admin_explain'), 'selected': existingAdmin is not null and existingAdmin.level=='ADMIN'},
-			{'value': 'MODERATOR', 'label': L('access_level_moderator'), 'explanation': L('group_access_moderator_explain'), 'selected': existingAdmin is null or existingAdmin.level=='MODERATOR'}
+		{{ form.radioGroup('level', L('group_access_level'), [
+			{'value': 'ADMIN', 'label': L('group_access_admin'), 'explanation': L('group_access_admin_explain'), 'selected': existingAdmin is not null and existingAdmin.level=='ADMIN'},
+			{'value': 'MODERATOR', 'label': L('group_access_moderator'), 'explanation': L('group_access_moderator_explain'), 'selected': existingAdmin is null or existingAdmin.level=='MODERATOR'}
 		]) }}
 	{% endif %}
 	{{ form.textInput('title', L('group_admin_title'), existingAdmin is null ? '' : existingAdmin.title, {'maxlength': 100, 'autocomplete': false, 'explanation': L('group_admin_title_explain')}) }}

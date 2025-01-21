@@ -7,7 +7,7 @@
 	<table width="100%" class="friendsRow noBorderSpacing">
 		<tr>
 			<td width="100" valign="top">
-				<a href="{{ req.from.profileURL }}">{{req.from | pictureForAvatar('m')}}</a>
+				<a href="{{ req.from.profileURL }}">{{req.from | pictureForAvatar('b')}}</a>
 			</td>
 			<td class="info">
 				<form action="/users/{{ req.from.id }}/respondToFriendRequest" method="post" data-ajax>

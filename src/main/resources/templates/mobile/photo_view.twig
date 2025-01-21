@@ -1,0 +1,67 @@
+{# @pebvariable name="photo" type="smithereen.model.photos.Photo" #}
+{% extends "page" %}
+{% import "photo_album_title" %}
+{% block content %}
+{% if unapprovedTag is not null %}
+<div style="padding: 16px">
+	<div style="margin-bottom: 8px">{{ L('user_tagged_you_in_photo', {'name': users[unapprovedTag.placerID] | name('full'), 'gender': users[unapprovedTag.placerID].gender}, {'user': {'href': profileURL(unapprovedTag.placerID)} }) }}</div>
+	<div>
+		<a href="{{ photo.url }}/approveTag?csrf={{ csrf }}" class="button" data-ajax>{{ L('photo_confirm_tag') }}</a>
+		<a href="{{ photo.url }}/deleteTag?id={{ unapprovedTag.id }}&csrf={{ csrf }}" class="button secondary" data-ajax>{{ L('photo_delete_tag') }}</a>
+	</div>
+</div>
+{% endif %}
+<div class="photoPageImgW" style="aspect-ratio: {{ photo.width }}/{{ photo.height }}">
+	{{ photo.image | pictureForPhoto('x') }}
+</div>
+{% if photo.description is not empty %}<div class="singleColumn photoPageDescription">{{ photo.description | postprocessHTML }}</div>{% endif %}
+<div class="postActions standaloneLikeBar">
+	{% set interactions=photoInteractions[photo.id] %}
+	<a href="{{ photo.url }}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPhoto{{ photo.idString }}" data-obj-type="photo" data-obj-id="{{ photo.idString }}" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %}>
+		<span class="wideOnly">{{ L('like') }}</span>
+		<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPhoto{{ photo.idString }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+		{{- interactions.likeCount -}}
+	</span>
+	</a>
+	<a href="{{ photo.url }}/likes" class="likeAvatars likeAvatars{{ photo.idString }}">
+		{% if currentUser is not null %}
+			<span class="currentUserLikeAva" style="{{ interactions.isLiked ? '' : 'display: none' }}">{{ currentUser | pictureForAvatar('a', 34) }}</span>
+		{% endif %}
+		{% for user in likedBy %}
+			{{ user | pictureForAvatar('a', 34) }}
+		{% endfor %}
+	</a>
+</div>
+<div class="singleColumn">
+	{% if tags is not empty %}<div class="marginAfter">
+		<div class="grayText">{{ L('photo_tags') }}</div>
+		{%- for tag in tags -%}
+		{%- if tag.userID!=0 and ((currentUser is not null and tag.userID==currentUser.id) or tag.approved or allowedActions contains "MANAGE_TAGS") %}<a href="{{ profileURL(tag.userID) }}">{{ users[tag.userID] | name('full') }}</a>{% else %}{{ tag.name }}{% endif -%}
+		{% if not loop.last %}, {% endif %}
+		{%- endfor -%}
+	</div>{% endif %}
+	{% if album is not null %}<div class="grayText marginAfter">{{ L('photo_album_label') }}:<br/><a href="{{ album.url }}">{{ photoAlbumTitle(_context, album) }}</a></div>{% endif %}
+	<div class="grayText">{{ L('photo_added_by') }}:<br/><a href="{{ author.profileURL }}">{{ author | name('full') }}</a></div>
+</div>
+<ul class="actionList">
+	{% if allowedActions contains "SET_AS_COVER" %}
+	<li><a href="{{ photo.url }}/setAsAlbumCover?csrf={{ csrf }}" data-ajax data-ajax-show="photoSetCoverLoader{{ photo.idString }}" data-ajax-hide="photoSetCoverText{{ photo.idString }}"><span id="photoSetCoverText{{ photo.idString }}">{{ L('set_photo_as_album_cover') }}</span> <span class="inlineLoader" id="photoSetCoverLoader{{ photo.idString }}" style="display: none"></span></a></li>
+	{% endif %}
+	{% if allowedActions contains "DELETE" %}
+	<li><a href="{{ photo.url }}/confirmDelete" data-confirm-message="{{ L('delete_photo_confirm') }}" data-confirm-title="{{ L('delete_photo') }}" data-confirm-action="{{ photo.url }}/delete">{{ L('delete') }}</a></li>
+	{% endif %}
+	{% if userPermissions is not null and userPermissions.canReport(photo) %}
+	<li><a href="/system/reportForm?type=photo&id={{ photo.idString }}" data-ajax-box>{{ L('report') }}</a></li>
+	{% endif %}
+	<li><a href="{{ originalImageURL }}" target="_blank">{{ L('photo_open_original') }}</a></li>
+</ul>
+<div id="comments_{{ photo.commentParentID.htmlElementID }}">
+	{% for reply in items %}
+		{% include "comment" with {'post': reply, 'replyFormID': "wallPostForm_comment_#{photo.commentParentID.htmlElementID}", 'parentObject': photo} %}
+	{% endfor %}
+</div>
+{% include "pagination" %}
+{% if currentUser is not null and canComment %}
+	{% include "comment_form" with {'id': "comment_#{photo.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=photo&parentID="+photo.idString} %}
+{% endif %}
+{% endblock %}

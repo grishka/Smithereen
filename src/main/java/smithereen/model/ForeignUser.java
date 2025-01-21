@@ -1,14 +1,16 @@
 package smithereen.model;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,23 +18,21 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.PropertyValue;
-import smithereen.controllers.ObjectLinkResolver;
 import smithereen.jsonld.JLD;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.storage.DatabaseUtils;
 import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
 
-	private URI wall, friends, groups;
+	private URI wall, friends, groups, photoAlbums, taggedPhotos;
 	public URI movedToURL;
 	public boolean isServiceActor;
 
@@ -66,6 +66,8 @@ public class ForeignUser extends User implements ForeignActor{
 		friends=tryParseURL(ep.friends);
 		groups=tryParseURL(ep.groups);
 		collectionQueryEndpoint=tryParseURL(ep.collectionQuery);
+		photoAlbums=tryParseURL(ep.photoAlbums);
+		taggedPhotos=tryParseURL(ep.taggedPhotos);
 	}
 
 	@Override
@@ -177,58 +179,7 @@ public class ForeignUser extends User implements ForeignActor{
 				JsonObject setting=optObject(privacy, jKey.substring(jKey.indexOf(':')+1));
 				if(setting==null)
 					continue;
-				JsonArray allowedTo=optArrayCompact(setting, "allowedTo");
-				if(allowedTo==null)
-					continue;
-				PrivacySetting ps=new PrivacySetting();
-				ps.baseRule=PrivacySetting.Rule.NONE;
-				ps.allowUsers=new HashSet<>();
-				ps.exceptUsers=new HashSet<>();
-				for(int i=0;i<allowedTo.size();i++){
-					String e=allowedTo.get(i).getAsString();
-					if(ActivityPub.AS_PUBLIC.toString().equals(e) || "as:Public".equals(e)){
-						ps.baseRule=PrivacySetting.Rule.EVERYONE;
-						continue;
-					}else if("sm:FriendsOfFriends".equals(e) || (JLD.SMITHEREEN+"sm").equals(e)){
-						ps.baseRule=PrivacySetting.Rule.FRIENDS_OF_FRIENDS;
-						continue;
-					}
-					URI uri;
-					try{
-						uri=new URI(e);
-					}catch(URISyntaxException x){
-						continue;
-					}
-					if(Objects.equals(uri, friends) && ps.baseRule!=PrivacySetting.Rule.FRIENDS_OF_FRIENDS){
-						ps.baseRule=PrivacySetting.Rule.FRIENDS;
-					}else if(Objects.equals(uri, followers)){
-						ps.baseRule=PrivacySetting.Rule.FOLLOWERS;
-					}else if(Objects.equals(uri, following)){
-						ps.baseRule=PrivacySetting.Rule.FOLLOWING;
-					}else if(Config.isLocal(uri)){
-						int id=ObjectLinkResolver.getUserIDFromLocalURL(uri);
-						if(id>0)
-							ps.allowUsers.add(id);
-					}
-				}
-				JsonArray except=optArrayCompact(setting, "except");
-				if(except!=null){
-					for(int i=0;i<except.size();i++){
-						String e=allowedTo.get(i).getAsString();
-						URI uri;
-						try{
-							uri=new URI(e);
-						}catch(URISyntaxException x){
-							continue;
-						}
-						if(Config.isLocal(uri)){
-							int id=ObjectLinkResolver.getUserIDFromLocalURL(uri);
-							if(id>0)
-								ps.exceptUsers.add(id);
-						}
-					}
-				}
-				privacySettings.put(key, ps);
+				privacySettings.put(key, PrivacySetting.parseFromActivityPub(this, setting));
 			}
 		}
 		if(obj.has("movedTo")){
@@ -363,6 +314,41 @@ public class ForeignUser extends User implements ForeignActor{
 			relationshipPartnerActivityPubID=tryParseURL(optString(obj, "relationshipPartner"));
 		}
 
+		photoAlbums=tryParseURL(optString(obj, "photoAlbums"));
+		ensureHostMatchesID(photoAlbums, "photoAlbums");
+		taggedPhotos=tryParseURL(optString(obj, "taggedPhotos"));
+		ensureHostMatchesID(taggedPhotos, "taggedPhotos");
+
+		if(obj.has("newsfeedUpdatesPrivacy")){
+			Set<String> typeIDs=switch(obj.get("newsfeedUpdatesPrivacy")){
+				case JsonPrimitive jp when jp.isString() -> Set.of(jp.getAsString());
+				case JsonArray arr -> {
+					HashSet<String> set=new HashSet<>();
+					for(JsonElement el:arr){
+						if(el instanceof JsonPrimitive jp && jp.isString()){
+							set.add(jp.getAsString());
+						}
+					}
+					yield set.isEmpty() ? null : set;
+				}
+				default -> null;
+			};
+			if(typeIDs!=null){
+				newsTypesToShow=typeIDs.stream()
+						.map(id->switch(id){
+							case "sm:Photos" -> FriendsNewsfeedTypeFilter.PHOTOS;
+							case "sm:Friends" -> FriendsNewsfeedTypeFilter.FRIENDS;
+							case "sm:Groups" -> FriendsNewsfeedTypeFilter.GROUPS;
+							case "sm:Events" -> FriendsNewsfeedTypeFilter.EVENTS;
+							case "sm:PhotoTags" -> FriendsNewsfeedTypeFilter.PHOTO_TAGS;
+							case "sm:PersonalInfo" -> FriendsNewsfeedTypeFilter.PERSONAL_INFO;
+							default -> null;
+						})
+						.filter(Objects::nonNull)
+						.collect(Collectors.toCollection(()->EnumSet.noneOf(FriendsNewsfeedTypeFilter.class)));
+			}
+		}
+
 		return this;
 	}
 
@@ -394,6 +380,16 @@ public class ForeignUser extends User implements ForeignActor{
 	@Override
 	public URI getGroupsURL(){
 		return groups;
+	}
+
+	@Override
+	public URI getPhotoAlbumsURL(){
+		return photoAlbums;
+	}
+
+	@Override
+	public URI getTaggedPhotosURL(){
+		return taggedPhotos;
 	}
 
 	@Override

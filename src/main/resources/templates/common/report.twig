@@ -13,7 +13,7 @@
 		{% endif %}
 		{% if report.targetID>0 %}
 		{% set user=users[report.targetID] %}
-		<div class="flL smallMarginRight"><a href="{{ profileURL(report.targetID) }}">{{ user | pictureForAvatar('s') }}</a></div>
+		<div class="flL smallMarginRight"><a href="{{ profileURL(report.targetID) }}">{{ user | pictureForAvatar('a') }}</a></div>
 		<div class="ellipsize"><b><a href="{{ profileURL(report.targetID) }}">{{ user | name('complete') }}</a></b></div>
 		<div class="grayText ellipsize">@{{ user.fullUsername }}</div>
 		{% if userPermissions.hasPermission('MANAGE_USERS') %}
@@ -21,7 +21,7 @@
 		{% endif %}
 		{% elseif report.targetID<0 %}
 		{% set group=groups[-report.targetID] %}
-		<div class="flL smallMarginRight"><a href="{{ profileURL(report.targetID) }}">{{ group | pictureForAvatar('s') }}</a></div>
+		<div class="flL smallMarginRight"><a href="{{ profileURL(report.targetID) }}">{{ group | pictureForAvatar('a') }}</a></div>
 		<div class="ellipsize"><b><a href="{{ profileURL(report.targetID) }}">{{ group.name }}</a></b></div>
 		<div class="grayText ellipsize">@{{ group.fullUsername }}</div>
 		{% endif %}
@@ -67,8 +67,18 @@
 			{%- elseif cont.type=='message' %}
 			{%- set langKey='admin_report_content_message' %}
 			{%- set exists=messages contains cont.id %}
+			{%- elseif cont.type=='photo' %}
+			{%- set langKey='admin_report_content_photo' %}
+			{%- set exists=photos contains cont.id %}
+			{%- elseif cont.type=='actualComment' %}
+			{%- set langKey='admin_report_content_comment' %}
+			{%- set exists=comments contains cont.id %}
 			{%- endif %}
+			{%- if cont.type=='photo' %}
+			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" onclick="return openPhotoViewer(this)" data-pv="{{ json(cont.pvData) }}" data-pv-url="/photos/ajaxViewerInfoForReport">{{ L(langKey, {'id': cont.id}) }}</a>
+			{%- else %}
 			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" data-ajax-box>{{ L(langKey, {'id': cont.id}) }}</a>
+			{% endif %}
 		</div>
 		{% endfor %}
 	</div>
@@ -77,7 +87,7 @@
 <div class="singleColumn">
 	{% for action in actions %}
 	<div class="listItemWithDivider itemWithAvatar">
-		<div><a href="{{ profileURL(action.action.userID) }}">{{ users[action.action.userID] | pictureForAvatar('s') }}</a></div>
+		<div><a href="{{ profileURL(action.action.userID) }}">{{ users[action.action.userID] | pictureForAvatar('a') }}</a></div>
 		<div>
 			<div class="smallVMargin" style="margin-top: 0;">{{ action.mainTextHtml | raw }}</div>
 			{% if action.extraTextHtml is not empty %}<div class="smallVMargin">{{ action.extraTextHtml | raw }}</div>{% endif %}

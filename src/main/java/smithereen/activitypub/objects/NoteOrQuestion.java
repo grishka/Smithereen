@@ -1,7 +1,9 @@
 package smithereen.activitypub.objects;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -23,6 +26,7 @@ import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.SerializerContext;
@@ -30,9 +34,15 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.jsonld.JLD;
+import smithereen.lang.Lang;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
 import smithereen.model.User;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentReplyParent;
+import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
@@ -46,6 +56,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public ActivityPubCollection target;
 	public URI likes;
 	public URI quoteRepostID;
+	public String action;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -73,7 +84,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		// fix for Lemmy (and possibly something else)
 		boolean hasBogusURL=url!=null && !url.getHost().equalsIgnoreCase(activityPubID.getHost()) && !url.getHost().equalsIgnoreCase("www."+activityPubID.getHost());
 
-		String text=content;
+		String text=content==null ? "" : content;
 		if(hasBogusURL)
 			text=text+"<p><a href=\""+url+"\">"+url+"</a></p>";
 		text=TextProcessor.sanitizeHTML(text);
@@ -134,15 +145,26 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			throw new BadRequestException("Wall-to-wall posts can't be private. Wall owner controls their visibility instead");
 		}
 
+		if("AvatarUpdate".equals(action)){
+			// Must have exactly one photo attached
+			if(post.attachments!=null && post.attachments.size()==1 && post.attachments.getFirst() instanceof Image img && img.photoApID!=null && post.ownerID==post.authorID){
+				try{
+					context.getObjectLinkResolver().resolveNative(img.photoApID, Photo.class, true, true, false, author, false);
+					post.text="";
+					post.action=Post.Action.AVATAR_UPDATE;
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
+
 		return post;
 	}
 
 	public static NoteOrQuestion fromNativePost(Post post, ApplicationContext context){
 		NoteOrQuestion noq;
 		if(post.isDeleted()){
-			noq=new NoteTombstone();
+			noq=new LocalPostNoteTombstone(post);
 		}else if(post.poll!=null){
-			Question q=new Question();
+			Question q=new LocalPostQuestion(post);
 			q.name=post.poll.question;
 			q.votersCount=post.poll.numVoters;
 			List<ActivityPubObject> opts=post.poll.options.stream().map(opt->{
@@ -174,7 +196,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 
 			noq=q;
 		}else{
-			noq=new Note();
+			noq=new LocalPostNote(post);
 		}
 
 		Set<URI> to=new HashSet<>(), cc=new HashSet<>();
@@ -272,10 +294,19 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			}catch(ObjectNotFoundException ignore){}
 		}
 
+		if(post.action!=null){
+			switch(post.action){
+				case AVATAR_UPDATE -> {
+					noq.action="AvatarUpdate";
+					noq.content+="<p class=\"smithereenAvatarUpdate\"><i>"+Lang.get(Locale.US).get("post_action_updated_avatar", Map.of("gender", author.gender))+"</i></p>";
+				}
+			}
+		}
+
 		noq.to=to.stream().map(LinkOrObject::new).toList();
 		noq.cc=cc.stream().map(LinkOrObject::new).toList();
 
-		noq.attachment=post.attachments;
+		noq.attachment=resolveLocalPhotoIDsInAttachments(context, post.attachments);
 		noq.likes=new UriBuilder(noq.activityPubID).appendPath("likes").build();
 
 		return noq;
@@ -292,7 +323,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		n.activityPubID=msg.getActivityPubID();
 		n.content=msg.text;
 		n.name=msg.subject;
-		n.attachment=msg.attachments;
+		n.attachment=resolveLocalPhotoIDsInAttachments(context, msg.attachments);
 		n.published=msg.createdAt;
 		n.updated=msg.updatedAt;
 		n.attributedTo=sender.activityPubID;
@@ -332,11 +363,13 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		msg.inReplyTo=inReplyTo;
 
 		msg.to=new HashSet<>();
-		for(LinkOrObject id:to){
-			try{
-				User user=context.getObjectLinkResolver().resolve(id.link, User.class, true, true, false);
-				msg.to.add(user.id);
-			}catch(ObjectNotFoundException ignore){}
+		if(to!=null){
+			for(LinkOrObject id:to){
+				try{
+					User user=context.getObjectLinkResolver().resolve(id.link, User.class, true, true, false);
+					msg.to.add(user.id);
+				}catch(ObjectNotFoundException ignore){}
+			}
 		}
 		if(cc!=null){
 			msg.cc=new HashSet<>();
@@ -350,7 +383,154 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			msg.cc=Set.of();
 		}
 
+		if(msg.to.isEmpty() && !msg.cc.isEmpty()){ // Some servers would omit `to` and put all recipients into `cc` instead.
+			msg.to.addAll(msg.cc);
+			msg.cc=Set.of();
+		}
+
 		return msg;
+	}
+
+	public static NoteOrQuestion fromNativeComment(Comment comment, ApplicationContext context){
+		NoteOrQuestion n=comment.isDeleted() ? new LocalCommentNoteTombstone(comment) : new LocalCommentNote(comment);
+
+		User author=context.getUsersController().getUserOrThrow(comment.authorID);
+		CommentableContentObject parent=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+		Actor parentOwner=parent.getOwnerID()>0 ? context.getUsersController().getUserOrThrow(parent.getOwnerID()) : context.getGroupsController().getGroupOrThrow(-parent.getOwnerID());
+
+		n.activityPubID=comment.getActivityPubID();
+
+		if(comment.getReplyLevel()>0){
+			Comment parentComment=context.getCommentsController().getCommentIgnoringPrivacy(comment.replyKey.getLast());
+			n.inReplyTo=parentComment.getActivityPubID();
+		}else{
+			n.inReplyTo=parent.getActivityPubID();
+		}
+
+		ActivityPubCollection replies=new ActivityPubCollection(false);
+		replies.activityPubID=new UriBuilder(comment.getActivityPubID()).appendPath("replies").build();
+		CollectionPage repliesPage=new CollectionPage(false);
+		repliesPage.next=new UriBuilder(replies.activityPubID).queryParam("page", "1").build();
+		repliesPage.partOf=replies.activityPubID;
+		repliesPage.items=Collections.emptyList();
+		replies.first=new LinkOrObject(repliesPage);
+		n.replies=new LinkOrObject(replies);
+
+		ActivityPubCollection target=new ActivityPubCollection(false);
+		target.attributedTo=parentOwner.activityPubID;
+		target.activityPubID=parent.getCommentCollectionID(context);
+		n.target=target;
+		n.url=comment.getActivityPubURL();
+
+		if(comment.isDeleted())
+			return n;
+
+		n.attributedTo=author.activityPubID;
+		n.content=comment.text;
+		n.published=comment.createdAt;
+		n.updated=comment.updatedAt;
+		if(comment.hasContentWarning()){
+			n.summary=comment.contentWarning;
+			n.sensitive=true;
+		}else{
+			n.sensitive=false;
+		}
+		n.tag=new ArrayList<>();
+		if(!comment.mentionedUserIDs.isEmpty()){
+			for(User u:context.getUsersController().getUsers(comment.mentionedUserIDs).values()){
+				Mention mention=new Mention();
+				mention.href=u.activityPubID;
+				n.tag.add(mention);
+			}
+		}
+		n.attachment=resolveLocalPhotoIDsInAttachments(context, comment.attachments);
+		n.likes=new UriBuilder(n.activityPubID).appendPath("likes").build();
+
+		return n;
+	}
+
+	public Comment asNativeComment(ApplicationContext context){
+		Comment comment=new Comment();
+
+		if(attributedTo==null)
+			throw new FederationException("attributedTo is required");
+		if(target==null)
+			throw new FederationException("target is required");
+		ensureHostMatchesID(attributedTo, "attributedTo");
+		comment.id=context.getCommentsController().getCommentIDByActivityPubID(activityPubID);
+
+		Actor owner=context.getObjectLinkResolver().resolve(target.attributedTo, Actor.class, true, true, false);
+		User author=context.getObjectLinkResolver().resolve(attributedTo, User.class, true, true, false);
+		comment.authorID=author.id;
+		comment.ownerID=owner.getOwnerID();
+		if(inReplyTo==null)
+			throw new FederationException("inReplyTo is required");
+		CommentReplyParent replyParent=context.getObjectLinkResolver().resolveNative(inReplyTo, CommentReplyParent.class, true, true, false, owner, true);
+		CommentableContentObject parentObj=switch(replyParent){
+			case CommentableContentObject _parentObj -> {
+				comment.replyKey=List.of();
+				comment.parentObjectID=_parentObj.getCommentParentID();
+				yield _parentObj;
+			}
+			case Comment parentComment -> {
+				comment.replyKey=parentComment.getReplyKeyForReplies();
+				comment.parentObjectID=parentComment.parentObjectID;
+				yield context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+			}
+		};
+		if(!Objects.equals(target.activityPubID, parentObj.getCommentCollectionID(context)))
+			throw new FederationException("target.id does not match the expected comment collection ID");
+
+		comment.setActivityPubID(activityPubID);
+		comment.activityPubURL=url==null ? activityPubID : url;
+		ensureHostMatchesID(comment.activityPubURL, "url");
+		if(replies!=null){
+			comment.activityPubReplies=replies.getObjectID();
+			ensureHostMatchesID(comment.activityPubReplies, "replies");
+		}
+
+		comment.text=TextProcessor.sanitizeHTML(content);
+		comment.createdAt=published!=null ? published : Instant.now();
+		comment.updatedAt=updated;
+		if(sensitive!=null && sensitive){
+			if(StringUtils.isNotEmpty(summary))
+				comment.contentWarning=summary;
+			else
+				comment.contentWarning=""; // Will be rendered as a translatable default string
+		}
+
+		if(attachment!=null && attachment.size()>10)
+			comment.attachments=attachment.subList(0, 10);
+		else
+			comment.attachments=attachment;
+
+		if(tag!=null){
+			comment.mentionedUserIDs=new HashSet<>();
+			int mentionCount=0;
+			for(ActivityPubObject obj:tag){
+				if(obj instanceof Mention mention){
+					try{
+						User mentionedUser=context.getObjectLinkResolver().resolve(mention.href, User.class, true, true, false);
+						comment.mentionedUserIDs.add(mentionedUser.id);
+						mentionCount++;
+						if(mentionCount==MAX_MENTIONS)
+							break;
+					}catch(Exception x){
+						LOG.debug("Failed to resolve mention for href={}", mention.href, x);
+					}
+				}
+			}
+		}
+
+		return comment;
+	}
+
+	public boolean isWallPostOrComment(ApplicationContext context){
+		if(target==null)
+			return true;
+
+		Actor owner=context.getObjectLinkResolver().resolveLocally(target.attributedTo, Actor.class);
+		return Objects.equals(owner.getWallURL(), target.activityPubID); // TODO change this when I make wall comments go into their own collection
 	}
 
 	@Override
@@ -361,15 +541,16 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		if(_content!=null && _content.isJsonArray()){
 			content=_content.getAsJsonArray().get(0).getAsString();
 		}else if(obj.has("contentMap")){
-			// Pleroma compatibility workaround
-			// TODO find out why "content" gets dropped during JSON-LD processing
+			// Handle the case when there's a `@language` in the `@context`
 			JsonElement _contentMap=obj.get("contentMap");
 			if(_contentMap.isJsonObject()){
 				JsonObject contentMap=_contentMap.getAsJsonObject();
 				if(contentMap.size()>0){
 					_content=contentMap.get(contentMap.keySet().iterator().next());
-					if(_content!=null && _content.isJsonArray()){
-						content=_content.getAsJsonArray().get(0).getAsString();
+					if(_content instanceof JsonArray ja){
+						content=ja.get(0).getAsString();
+					}else if(_content instanceof JsonPrimitive jp){
+						content=jp.getAsString();
 					}
 				}
 			}
@@ -386,6 +567,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			// Pleroma, Akkoma and possibly other "*oma"s
 			quoteRepostID=tryParseURL(optString(obj, "quoteUrl"));
 		}
+		action=optString(obj, "action");
 
 		return this;
 	}
@@ -411,6 +593,11 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			serializerContext.addAlias("quoteUrl", "as:quoteUrl");
 			obj.addProperty("quoteUrl", quoteRepostID.toString());
 		}
+		if(action!=null){
+			serializerContext.addSmIdType("action");
+			serializerContext.addSmAlias(action);
+			obj.addProperty("action", action);
+		}
 
 		return obj;
 	}
@@ -420,5 +607,25 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			return quoteRepostID;
 		// TODO also support object links when it becomes clear how they will be implemented in Mastodon
 		return null;
+	}
+
+	private static List<ActivityPubObject> resolveLocalPhotoIDsInAttachments(ApplicationContext ctx, List<ActivityPubObject> attachments){
+		if(attachments==null)
+			return null;
+
+		Set<Long> needPhotos=attachments.stream()
+				.map(a->a instanceof LocalImage li && li.photoID!=0 ? li : null)
+				.filter(Objects::nonNull)
+				.map(li->li.photoID)
+				.collect(Collectors.toSet());
+		if(needPhotos.isEmpty())
+			return attachments;
+		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+		for(ActivityPubObject a:attachments){
+			if(a instanceof LocalImage li && li.photoID!=0 && photos.get(li.photoID) instanceof Photo photo){
+				li.photoApID=photo.getActivityPubID();
+			}
+		}
+		return attachments;
 	}
 }

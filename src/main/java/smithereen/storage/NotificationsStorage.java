@@ -17,33 +17,23 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 
 public class NotificationsStorage{
-	private static LruCache<Integer, UserNotifications> userNotificationsCache=new LruCache<>(500);
+	private static final LruCache<Integer, UserNotifications> userNotificationsCache=new LruCache<>(500);
 
-	public static void putNotification(int owner, @NotNull Notification n) throws SQLException{
-		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement("INSERT INTO `notifications` (`owner_id`, `type`, `object_id`, `object_type`, `related_object_id`, `related_object_type`, `actor_id`) VALUES (?, ?, ?, ?, ?, ?, ?)");
-			stmt.setInt(1, owner);
-			stmt.setInt(2, n.type.ordinal());
-			if(n.objectID!=0){
-				stmt.setInt(3, n.objectID);
-				stmt.setInt(4, n.objectType.ordinal());
-			}else{
-				stmt.setNull(3, Types.INTEGER);
-				stmt.setNull(4, Types.INTEGER);
-			}
-			if(n.relatedObjectID!=0){
-				stmt.setInt(5, n.relatedObjectID);
-				stmt.setInt(6, n.relatedObjectType.ordinal());
-			}else{
-				stmt.setNull(5, Types.INTEGER);
-				stmt.setNull(6, Types.INTEGER);
-			}
-			stmt.setInt(7, n.actorID);
-			stmt.execute();
-			UserNotifications un=getNotificationsFromCache(owner);
-			if(un!=null)
-				un.incNewNotificationsCount(1);
-		}
+	public static void putNotification(int owner, Notification.Type type, Notification.ObjectType objectType, long objectID, Notification.ObjectType relatedObjectType, long relatedObjectID, int actorID) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("notifications")
+				.value("owner_id", owner)
+				.value("type", type)
+				.value("object_type", objectType)
+				.value("object_id", objectType==null ? null : objectID)
+				.value("related_object_type", relatedObjectType)
+				.value("related_object_id", relatedObjectType==null ? null : relatedObjectID)
+				.value("actor_id", actorID)
+				.executeNoResult();
+
+		UserNotifications un=getNotificationsFromCache(owner);
+		if(un!=null)
+			un.incNewNotificationsCount(1);
 	}
 
 	public static PaginatedList<Notification> getNotifications(int owner, int offset, int count) throws SQLException{
@@ -65,56 +55,52 @@ public class NotificationsStorage{
 		}
 	}
 
-	public static void deleteNotificationsForObject(@NotNull Notification.ObjectType type, int objID) throws SQLException{
+	public static void deleteNotificationsForObject(@NotNull Notification.ObjectType type, long objID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			conn.createStatement().execute("LOCK TABLES `notifications` WRITE");
 			PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT `owner_id` FROM `notifications` WHERE (`object_type`=? AND `object_id`=?) OR (`related_object_type`=? AND `related_object_id`=?)");
 			stmt.setInt(1, type.ordinal());
 			stmt.setInt(3, type.ordinal());
-			stmt.setInt(2, objID);
-			stmt.setInt(4, objID);
+			stmt.setLong(2, objID);
+			stmt.setLong(4, objID);
 			try(ResultSet res=stmt.executeQuery()){
-				synchronized(NotificationsStorage.class){
-					while(res.next()){
-						userNotificationsCache.remove(res.getInt(1));
-					}
+				while(res.next()){
+					userNotificationsCache.remove(res.getInt(1));
 				}
 			}
 			stmt=conn.prepareStatement("DELETE FROM `notifications` WHERE (`object_type`=? AND `object_id`=?) OR (`related_object_type`=? AND `related_object_id`=?)");
 			stmt.setInt(1, type.ordinal());
 			stmt.setInt(3, type.ordinal());
-			stmt.setInt(2, objID);
-			stmt.setInt(4, objID);
+			stmt.setLong(2, objID);
+			stmt.setLong(4, objID);
 			stmt.execute();
 
 			conn.createStatement().execute("UNLOCK TABLES");
 		}
 	}
 
-	public static void deleteNotification(@NotNull Notification.ObjectType objType, int objID, @NotNull Notification.Type type, int actorID) throws SQLException{
+	public static void deleteNotification(@NotNull Notification.ObjectType objType, long objID, @NotNull Notification.Type type, int actorID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt=conn.prepareStatement("SELECT `owner_id` FROM `notifications` WHERE `object_type`=? AND `object_id`=? AND `type`=? AND `actor_id`=?");
 			stmt.setInt(1, objType.ordinal());
-			stmt.setInt(2, objID);
+			stmt.setLong(2, objID);
 			stmt.setInt(3, type.ordinal());
 			stmt.setInt(4, actorID);
 			try(ResultSet res=stmt.executeQuery()){
 				if(!res.next())
 					return;
-				synchronized(NotificationsStorage.class){
-					userNotificationsCache.remove(res.getInt(1));
-				}
+				userNotificationsCache.remove(res.getInt(1));
 			}
 			stmt=conn.prepareStatement("DELETE FROM `notifications` WHERE `object_type`=? AND `object_id`=? AND `type`=? AND `actor_id`=?");
 			stmt.setInt(1, objType.ordinal());
-			stmt.setInt(2, objID);
+			stmt.setLong(2, objID);
 			stmt.setInt(3, type.ordinal());
 			stmt.setInt(4, actorID);
 			stmt.execute();
 		}
 	}
 
-	public static synchronized UserNotifications getNotificationsForUser(int userID, int lastSeenID) throws SQLException{
+	public static UserNotifications getNotificationsForUser(int userID, int lastSeenID) throws SQLException{
 		UserNotifications res=userNotificationsCache.get(userID);
 		if(res!=null)
 			return res;
@@ -143,12 +129,17 @@ public class NotificationsStorage{
 				}
 			}
 			res.incUnreadMailCount(MailStorage.getUnreadMessagesCount(userID));
+			res.incNewPhotoTagCount(new SQLQueryBuilder(conn)
+					.selectFrom("photo_tags")
+					.count()
+					.where("user_id=? AND approved=0", userID)
+					.executeAndGetInt());
 			userNotificationsCache.put(userID, res);
 			return res;
 		}
 	}
 
-	public static synchronized UserNotifications getNotificationsFromCache(int userID){
+	public static UserNotifications getNotificationsFromCache(int userID){
 		return userNotificationsCache.get(userID);
 	}
 }

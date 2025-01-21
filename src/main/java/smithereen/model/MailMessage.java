@@ -19,6 +19,8 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportedMailMessage;
 import smithereen.storage.DatabaseUtils;
 import smithereen.text.TextProcessor;
 import smithereen.util.JsonArrayBuilder;
@@ -26,7 +28,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
-public final class MailMessage implements AttachmentHostContentObject, ActivityPubRepresentable, ReportableContentObject{
+public sealed class MailMessage implements AttachmentHostContentObject, ActivityPubRepresentable, ReportableContentObject permits ReportedMailMessage{
 	public long id;
 	public int senderID;
 	public int ownerID;
@@ -101,6 +103,11 @@ public final class MailMessage implements AttachmentHostContentObject, ActivityP
 		return new NonCachedRemoteImage.MessagePhotoArgs(id, index);
 	}
 
+	@Override
+	public String getPhotoListID(){
+		return "messages/"+encodedID;
+	}
+
 	public int getFirstRecipientID(){
 		return to.iterator().next();
 	}
@@ -138,7 +145,7 @@ public final class MailMessage implements AttachmentHostContentObject, ActivityP
 	}
 
 	@Override
-	public void fillFromReport(JsonObject jo){
+	public void fillFromReport(int reportID, JsonObject jo){
 		id=jo.get("id").getAsLong();
 		senderID=jo.get("sender").getAsInt();
 		to=StreamSupport.stream(jo.getAsJsonArray("to").spliterator(), false).map(JsonElement::getAsInt).collect(Collectors.toSet());
@@ -153,6 +160,7 @@ public final class MailMessage implements AttachmentHostContentObject, ActivityP
 				attachments.add(ActivityPubObject.parse(jatt.getAsJsonObject(), ParserContext.LOCAL));
 			}
 		}
+		encodedID=String.valueOf(id);
 	}
 
 	public enum ParentObjectType{

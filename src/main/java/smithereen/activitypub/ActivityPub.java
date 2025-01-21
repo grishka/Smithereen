@@ -17,6 +17,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -47,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +91,7 @@ import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import smithereen.util.XmlParser;
+import spark.Request;
 import spark.utils.StringUtils;
 
 import static java.time.temporal.ChronoField.*;
@@ -109,6 +112,7 @@ public class ActivityPub{
 	static{
 		httpClient=ExtendedHttpClient.newBuilder()
 				.followRedirects(HttpClient.Redirect.NORMAL)
+				.connectTimeout(Duration.ofSeconds(15))
 				.build();
 
 		Map<Long, String> dow = new HashMap<>();
@@ -203,10 +207,22 @@ public class ActivityPub{
 			throw new RuntimeException(x);
 		}
 		if(resp.statusCode()/100!=2){
-			try(InputStream in=resp.body()){
-				while(in.skip(8192)>0L);
+			if(Config.DEBUG){
+				StringBuilder sb=new StringBuilder();
+				try(BufferedReader reader=new BufferedReader(new InputStreamReader(resp.body(), StandardCharsets.UTF_8))){
+					char[] buf=new char[1024];
+					int read;
+					while((read=reader.read(buf))>0){
+						sb.append(buf, 0, read);
+					}
+				}
+				LOG.warn("Failed response body: {}", sb);
+			}else{
+				try(InputStream in=resp.body()){
+					while(in.skip(8192)>0L);
+				}
 			}
-			throw new ObjectNotFoundException("Response is not successful: remote server returned "+resp.statusCode());
+			throw new ObjectNotFoundException("Response is not successful: remote server returned "+resp.statusCode()+" for GET "+uri);
 		}
 		HttpContentType contentType=HttpContentType.from(resp.headers());
 		try(InputStream in=resp.body()){
@@ -223,7 +239,7 @@ public class ActivityPub{
 							try{
 								return fetchRemoteObjectInternal(UriBuilder.parseAndEncode(url), signer, actorToken, ctx, false);
 							}catch(URISyntaxException x){
-								throw new ObjectNotFoundException("Failed to parse URL from <link rel=\"alternate\">", x);
+								throw new ObjectNotFoundException("Failed to parse URL from <link rel=\"alternate\"> on HTML page at "+uri, x);
 							}
 						}
 					}
@@ -231,7 +247,7 @@ public class ActivityPub{
 			}
 			// Allow "application/activity+json" or "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""
 			if(!contentType.matches("application/activity+json") && !contentType.matches(EXPECTED_CONTENT_TYPE)){
-				throw new ObjectNotFoundException("Invalid Content-Type: "+contentType);
+				throw new ObjectNotFoundException("Invalid Content-Type for "+uri+": "+contentType);
 			}
 
 			try{
@@ -252,6 +268,9 @@ public class ActivityPub{
 
 	private static HttpRequest.Builder signRequest(HttpRequest.Builder builder, URI url, Actor actor, byte[] body, String method){
 		String path=url.getPath();
+		String query=url.getRawQuery();
+		if(StringUtils.isNotEmpty(query))
+			path+="?"+query;
 		String host=url.getHost();
 		if(url.getPort()!=-1)
 			host+=":"+url.getPort();
@@ -293,13 +312,17 @@ public class ActivityPub{
 		return builder;
 	}
 
-	public static void postActivity(URI inboxUrl, Activity activity, Actor actor, ApplicationContext ctx, boolean isRetry) throws IOException{
+	public static void postActivity(URI inboxUrl, Activity activity, Actor actor, ApplicationContext ctx, boolean isRetry, EnumSet<Server.Feature> requiredServerFeatures) throws IOException{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
 			LOG.debug("Not sending {} activity to server {} because it's down", activity.getType(), server.host());
+			return;
+		}
+		if(requiredServerFeatures!=null && !requiredServerFeatures.isEmpty() && !server.features().containsAll(requiredServerFeatures)){
+			LOG.debug("Not sending {} activity to server {} because its feature set {} does not include required features {}", activity.getType(), server.host(), server.features(), requiredServerFeatures);
 			return;
 		}
 		if(server.restriction()!=null){
@@ -315,13 +338,17 @@ public class ActivityPub{
 		postActivityInternal(inboxUrl, body.toString(), actor, server, ctx, isRetry);
 	}
 
-	public static void postActivity(URI inboxUrl, String activityJson, Actor actor, ApplicationContext ctx) throws IOException{
+	public static void forwardActivity(URI inboxUrl, String activityJson, Actor actor, ApplicationContext ctx, EnumSet<Server.Feature> requiredServerFeatures) throws IOException{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
 			LOG.debug("Not forwarding activity to server {} because it's down", server.host());
+			return;
+		}
+		if(requiredServerFeatures!=null && !requiredServerFeatures.isEmpty() && !server.features().containsAll(requiredServerFeatures)){
+			LOG.debug("Not forwarding activity to server {} because its feature set {} does not include required features {}", server.host(), server.features(), requiredServerFeatures);
 			return;
 		}
 		if(server.restriction()!=null){
@@ -344,6 +371,7 @@ public class ActivityPub{
 						.header("Content-Type", CONTENT_TYPE)
 						.POST(HttpRequest.BodyPublishers.ofByteArray(body)),
 				inboxUrl, actor, body, "post")
+				.timeout(Duration.ofSeconds(30))
 				.build();
 		try{
 			HttpResponse<String> resp=httpClient.send(req, HttpResponse.BodyHandlers.ofString());
@@ -387,7 +415,7 @@ public class ActivityPub{
 		}else{
 			url=URI.create(uriTemplate.replace("{uri}", URLEncoder.encode(resource, StandardCharsets.UTF_8)));
 		}
-		HttpRequest req=HttpRequest.newBuilder(url).build();
+		HttpRequest req=HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(10)).build();
 		HttpResponse<Reader> resp;
 		try{
 			resp=httpClient.send(req, new ReaderBodyHandler());
@@ -445,6 +473,7 @@ public class ActivityPub{
 			if(redirect==null){
 				HttpRequest req=HttpRequest.newBuilder(new UriBuilder().scheme(Config.useHTTP ? "http" : "https").authority(domain).path(".well-known", "host-meta").build())
 						.header("Accept", "application/xrd+xml")
+						.timeout(Duration.ofSeconds(10))
 						.build();
 				HttpResponse<InputStream> resp;
 				try{
@@ -498,7 +527,7 @@ public class ActivityPub{
 		}
 	}
 
-	public static Actor verifyHttpSignature(spark.Request req, Actor userHint) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, SQLException{
+	public static Actor verifyHttpSignature(spark.Request req, Actor userHint) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException{
 		String sigHeader=req.headers("Signature");
 		if(sigHeader==null)
 			throw new BadRequestException("Request is missing Signature header");
@@ -554,12 +583,15 @@ public class ActivityPub{
 			String value;
 			if(header.equals("(request-target)")){
 				value=req.requestMethod().toLowerCase()+" "+req.pathInfo();
+				String query=req.queryString();
+				if(StringUtils.isNotEmpty(query))
+					value+=query;
 			}else{
 				value=req.headers(header);
 			}
 			sigParts.add(header+": "+value);
 		}
-		String sigStr=String.join("\n", sigParts);
+		String sigStr=java.lang.String.join("\n", sigParts);
 		Signature sig=Signature.getInstance("SHA256withRSA");
 		sig.initVerify(user.publicKey);
 		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
@@ -569,6 +601,17 @@ public class ActivityPub{
 			throw new BadRequestException("Signature failed to verify");
 		}
 		return user;
+	}
+
+	public static String getRequesterDomain(Request req){
+		if(req.headers("signature")==null) // Avoids needlessly polluting logs
+			return null;
+		try{
+			return verifyHttpSignature(req, null).domain;
+		}catch(Exception x){
+			LOG.trace("Failed to verify signature header: {}", req.headers("signature"), x);
+			return null;
+		}
 	}
 
 	private static String generateActorTokenStringToBeSigned(JsonObject obj){
@@ -672,7 +715,7 @@ public class ActivityPub{
 
 	public static JsonObject fetchActorToken(@NotNull ApplicationContext context, @NotNull Actor actor, @NotNull ForeignGroup group){
 		String url=Objects.requireNonNull(group.actorTokenEndpoint).toString();
-		HttpRequest.Builder builder=HttpRequest.newBuilder(URI.create(url));
+		HttpRequest.Builder builder=HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10));
 		signRequest(builder, group.actorTokenEndpoint, actor, null, "get");
 		try{
 			HttpResponse<Reader> resp=httpClient.send(builder.build(), new ReaderBodyHandler());
@@ -699,7 +742,7 @@ public class ActivityPub{
 			throw new IllegalArgumentException("Collection ID and actor ID hostnames don't match");
 		if(query.isEmpty())
 			throw new IllegalArgumentException("Query is empty");
-		HttpRequest.Builder builder=HttpRequest.newBuilder(actor.collectionQueryEndpoint);
+		HttpRequest.Builder builder=HttpRequest.newBuilder(actor.collectionQueryEndpoint).timeout(Duration.ofSeconds(10));
 		FormBodyPublisherBuilder body=new FormBodyPublisherBuilder().add("collection", collectionID.toString());
 		for(URI uri:query)
 			body.add("item", uri.toString());

@@ -32,20 +32,31 @@
 		{% if group.hasAvatar %}
 		{% if canEditGroup %}
 		<div class="selfAvaOverlay">
-			{{ group | pictureForAvatar('rl') }}
-			{% if canEditGroup %}
-			<ul class="selfAvaActions actionList">
-				<li><a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureBox({{ group.id }}).show(); return false;">{{L('update_profile_picture')}}</a></li>
-				<li><a href="/settings/confirmRemoveProfilePicture?group={{ group.id }}" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture?group={{ group.id }}');">{{L('remove_profile_picture')}}</a></li>
-			</ul>
+			{% if avatarPvInfo is not null %}
+			<a href="{{ avatarPhoto.url }}" data-pv="{{ json(avatarPvInfo) }}" onclick="return openPhotoViewer(this)">{{ group | pictureForAvatar('cr') }}</a>
+			{% else %}
+			{{ group | pictureForAvatar('cr') }}
 			{% endif %}
+			<div class="selfAvaActionsW">
+				<ul class="selfAvaActions actionList">
+					<li><a href="/groups/{{ group.id }}/edit" class="ellipsize" onclick="new ProfilePictureLayer({{ group.id }}).show(); return false;"><span class="icon"></span>{{L('update_profile_picture')}}</a></li>
+					{% if avatarPhoto is not null %}<li><a href="javascript:void(0)" onclick="new ProfilePictureLayer({{ group.id }}, '{{ avatarPhoto.idString }}', '{{ avatarPhoto.image.getUrlForSizeAndFormat('w', 'jpg') }}', {{ json(avatarPhoto.metadata.cropRects) }}).show(); return false;" class="ellipsize"><span class="icon thumb"></span>{{ L('avatar_edit_thumbnail') }}</a></li>{% endif %}
+				</ul>
+			</div>
+			<div class="deleteButtonW">
+				<a href="/settings/confirmRemoveProfilePicture?group={{ group.id }}" class="deleteButton" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture_group', '/settings/removeProfilePicture?group={{ group.id }}');" data-tooltip="{{ L('remove_profile_picture') }}" aria-label="{{ L('remove_profile_picture') }}"></a>
+			</div>
 		</div>
 		{% else %}
-		{{ group | pictureForAvatar('rl') }}
+		{% if avatarPvInfo is not null %}
+		<a href="{{ avatarPhoto.url }}" data-pv="{{ json(avatarPvInfo) }}" onclick="return openPhotoViewer(this)">{{ group | pictureForAvatar('cr') }}</a>
+		{% else %}
+		{{ group | pictureForAvatar('cr') }}
+		{% endif %}
 		{% endif %}
 		{% else %}
 		{% if canEditGroup %}
-		<a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureBox({{ group.id }}).show(); return false;">
+		<a href="/groups/{{ group.id }}/edit" onclick="new ProfilePictureLayer({{ group.id }}).show(); return false;">
 			<span class="ava avaPlaceholder inProfile group own"></span><div class="ownProfileAvaPlaceholderLabel">{{L('upload_avatar')}}</div>
 		</a>
 		{%else%}
@@ -114,6 +125,9 @@
 			{% include "profile_module_user_grid" with {'users': members, 'headerTitle': L('members'), 'headerHref': "/groups/#{group.id}/members", 'subheaderTitle': L('X_people', {'count': group.memberCount})} %}
 			{% if group.event and group.tentativeMemberCount>0 %}
 			{% include "profile_module_user_grid" with {'users': tentativeMembers, 'headerTitle': L('tentative_members'), 'headerHref': "/groups/#{group.id}/tentativeMembers", 'subheaderTitle': L('X_people', {'count': group.tentativeMemberCount})} %}
+			{% endif %}
+			{% if albums is not empty or canManageGroup %}
+				{% include "profile_module_photo_albums" with {'albums': albums, 'headerTitle': L('photo_albums'), 'headerHref': "/groups/#{group.id}/albums", 'subheaderTitle': L('X_photo_albums', {'count': photoAlbumCount}), 'ownerID': -group.id} %}
 			{% endif %}
 			{% include "profile_module_user_list" with {'users': admins, 'headerTitle': L(group.event ? 'event_organizers' : 'group_admins'), 'headerHref': "/groups/#{group.id}/admins", 'headerAjaxBox': true, 'subheaderTitle': L(group.event ? 'event_X_organizers' : 'group_X_admins', {'count': admins.size})} %}
 		</div>

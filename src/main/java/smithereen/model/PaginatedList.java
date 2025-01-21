@@ -29,4 +29,14 @@ public class PaginatedList<T>{
 	public static <R> PaginatedList<R> emptyList(int perPage){
 		return new PaginatedList<>(Collections.emptyList(), 0, 0, perPage);
 	}
+
+	@Override
+	public String toString(){
+		return "PaginatedList{"+
+				"list="+list+
+				", total="+total+
+				", offset="+offset+
+				", perPage="+perPage+
+				'}';
+	}
 }

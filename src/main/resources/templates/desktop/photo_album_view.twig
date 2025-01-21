@@ -1,0 +1,56 @@
+{% extends "page" %}
+{% block content %}
+{% include "photos_tabbar" with {'tab': 'album'} %}
+{% if userPermissions.canUploadToPhotoAlbum(album) and album.systemType is null %}
+<div id="photoAlbumUploadW">
+	<div class="photoGridUpload" id="photoAlbumUpload">
+		<div class="uploadText"><div class="icon"></div><span id="uploadText">{{ L('add_photos_to_album') }}</span></div>
+		<div class="uploadDropZone"><div class="inner" id="uploadDropText">{{ L('drop_files_here') }}</div></div>
+	</div>
+</div>
+<div id="uploadResult" style="display: none"><div class="loader" id="uploadResultEmptyLoader"></div></div>
+{% script %}
+new PhotoAlbumUploader("{{ album.url }}/upload");
+{% endscript %}
+{% endif %}
+<div id="uploadHide">
+<div class="mediaGridW">
+<div class="summaryWrap">
+	<div class="summary">
+	{%- if album.systemType=="TAGGED" %}
+	{{- currentUser is not null and currentUser.id==album.ownerID ? L('summary_X_photos_of_me', {'count': totalItems}) : L('summary_X_photos_of_user', {'count': totalItems, 'name': owner.firstAndGender}) }}
+	{%- else %}
+	{{- L('summary_album_X_photos', {'count': totalItems}) }}
+	{%- endif %}
+	</div>
+</div>
+{% if items is empty %}
+<div class="singleColumn"><div class="emptyState">{{ L('no_photos_in_album') }}</div></div>
+{% else %}
+<div class="photoGrid">
+{% block photosInner %}
+{% for photo in items %}
+    <a href="{{ photo.url }}{% if not isAjax %}?nojs{% endif %}" class="photo" id="photo{{ photo.idString }}" onclick="return openPhotoViewer(this)" data-pv="{{ json(photoViewerData[photo.id]) }}">{{ photo.image | pictureForPhoto('m', false) }}</a>
+{% endfor %}
+{% endblock %}
+{% include "pagination_endless" %}
+</div>
+{% endif %}
+</div>
+</div>
+{% script %}
+{
+	var links=document.querySelectorAll("a[onclick]");
+	for(var i=0;i<links.length;i++){
+		var l=links[i];
+		var index=l.href.indexOf("?nojs");
+		if(index!=-1){
+			l.href=l.href.substring(0, index);
+		}
+	}
+}
+{% endscript %}
+{% if photoDataToOpenViewer is not null %}
+{% include "photo_viewer_opener_script" %}
+{% endif %}
+{% endblock %}

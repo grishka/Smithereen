@@ -10,7 +10,7 @@ services:
    - mysql
   volumes:
    - ./config.properties:/usr/local/etc/config.properties
-   - smithereen-media:/uploads
+   - /var/www/smithereen/s:/uploads
   restart: always
  mysql:
   image: mysql:8
@@ -39,7 +39,7 @@ services:
    IMGPROXY_KEY: GENERATE YOUR OWN
    IMGPROXY_SALT: GENERATE YOUR OWN
   volumes:
-   - smithereen-media:/uploads
+   - /var/www/smithereen/s:/uploads
   restart: always
   networks:
    - external_network
@@ -50,5 +50,4 @@ networks:
     internal: true
 
 volumes:
-  smithereen-media:
   smithereen-mysql-data:

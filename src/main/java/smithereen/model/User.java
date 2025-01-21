@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +28,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.jsonld.JLD;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
@@ -53,6 +55,7 @@ public class User extends Actor{
 	public Set<URI> alsoKnownAs=new HashSet<>();
 	public UserBanStatus banStatus=UserBanStatus.NONE;
 	public UserBanInfo banInfo;
+	public EnumSet<FriendsNewsfeedTypeFilter> newsTypesToShow;
 
 	// additional profile fields
 	public boolean manuallyApprovesFollowers;
@@ -232,6 +235,10 @@ public class User extends Actor{
 					relationshipPartnerID=0;
 				relationshipPartnerActivityPubID=tryParseURL(optString(o, "partnerAP"));
 			}
+
+			if(o.has("feedTypes")){
+				newsTypesToShow=Utils.gson.fromJson(o.get("feedTypes"), new TypeToken<>(){});
+			}
 		}
 
 		String privacy=res.getString("privacy");
@@ -306,48 +313,12 @@ public class User extends Actor{
 			String apKey=key.getActivityPubKey();
 			String alias=apKey.substring(apKey.indexOf(':')+1);
 			serializerContext.addAlias(alias, apKey);
-
-			JsonArray allowed=new JsonArray();
-			JsonArray except=new JsonArray();
-
-			if(privacySettings.containsKey(key)){
-				PrivacySetting setting=privacySettings.get(key);
-				switch(setting.baseRule){
-					case EVERYONE -> allowed.add(ActivityPub.AS_PUBLIC.toString());
-					case FRIENDS -> allowed.add(getFriendsURL().toString());
-					case FRIENDS_OF_FRIENDS -> {
-						allowed.add(getFriendsURL().toString());
-						allowed.add("sm:FriendsOfFriends");
-					}
-				}
-				if(!setting.allowUsers.isEmpty() || !setting.exceptUsers.isEmpty()){
-					String domain=serializerContext.getRequesterDomain();
-					if(domain!=null){
-						HashSet<Integer> needUsers=new HashSet<>();
-						needUsers.addAll(setting.allowUsers);
-						needUsers.addAll(setting.exceptUsers);
-						Map<Integer, User> users=serializerContext.appContext.getUsersController().getUsers(needUsers);
-						for(int id:setting.allowUsers){
-							User user=users.get(id);
-							if(user!=null && user.domain.equalsIgnoreCase(domain))
-								allowed.add(user.activityPubID.toString());
-						}
-						for(int id:setting.exceptUsers){
-							User user=users.get(id);
-							if(user!=null && user.domain.equalsIgnoreCase(domain))
-								except.add(user.activityPubID.toString());
-						}
-					}
-				}
-			}else{
-				allowed.add(ActivityPub.AS_PUBLIC.toString());
+			if(!privacySettings.containsKey(key)){
+				privacy.add(alias, new JsonObjectBuilder().add("allowedTo", new JsonArrayBuilder().add(ActivityPub.AS_PUBLIC.toString())).build());
+				continue;
 			}
 
-			JsonObject setting=new JsonObject();
-			setting.add("allowedTo", allowed);
-			if(!except.isEmpty())
-				setting.add("except", except);
-			privacy.add(alias, setting);
+			privacy.add(alias, privacySettings.get(key).serializeForActivityPub(this, serializerContext));
 		}
 		obj.add("privacySettings", privacy);
 
@@ -499,6 +470,34 @@ public class User extends Actor{
 				obj.addProperty("relationshipPartner", relationshipPartnerActivityPubID.toString());
 		}
 
+		serializerContext.addSmIdType("photoAlbums");
+		obj.addProperty("photoAlbums", getPhotoAlbumsURL().toString());
+
+		serializerContext.addAlias("manuallyApprovesFollowers", "as:manuallyApprovesFollowers");
+		obj.addProperty("manuallyApprovesFollowers", false);
+
+		serializerContext.addSmIdType("taggedPhotos");
+		obj.addProperty("taggedPhotos", getTaggedPhotosURL().toString());
+
+		if(newsTypesToShow!=null){
+			serializerContext.addSmIdType("newsfeedUpdatesPrivacy");
+			JsonArrayBuilder jb=new JsonArrayBuilder();
+			for(FriendsNewsfeedTypeFilter type:newsTypesToShow){
+				if(type==FriendsNewsfeedTypeFilter.POSTS)
+					continue;
+				jb.add(switch(type){
+					case POSTS -> null;
+					case PHOTOS -> "sm:Photos";
+					case FRIENDS -> "sm:Friends";
+					case GROUPS -> "sm:Groups";
+					case EVENTS -> "sm:Events";
+					case PHOTO_TAGS -> "sm:PhotoTags";
+					case PERSONAL_INFO -> "sm:PersonalInfo";
+				});
+			}
+			obj.add("newsfeedUpdatesPrivacy", jb.build());
+		}
+
 		return obj;
 	}
 
@@ -596,6 +595,9 @@ public class User extends Actor{
 		if(StringUtils.isNotEmpty(hometown))
 			o.addProperty("hometown", hometown);
 
+		if(newsTypesToShow!=null)
+			o.add("feedTypes", Utils.gson.toJsonTree(newsTypesToShow));
+
 		return o.toString();
 	}
 
@@ -633,6 +635,15 @@ public class User extends Actor{
 	}
 
 	@Override
+	public URI getPhotoAlbumsURL(){
+		return Config.localURI("/users/"+id+"/albums");
+	}
+
+	public URI getTaggedPhotosURL(){
+		return Config.localURI("/users/"+id+"/tagged");
+	}
+
+	@Override
 	public String getTypeAndIdForURL(){
 		return "/users/"+id;
 	}
@@ -643,7 +654,7 @@ public class User extends Actor{
 	}
 
 	public PrivacySetting getPrivacySetting(UserPrivacySettingKey key){
-		return privacySettings.getOrDefault(key, PrivacySetting.DEFAULT);
+		return privacySettings.getOrDefault(key, key.getDefaultValue());
 	}
 
 	// for templates
@@ -824,8 +835,24 @@ public class User extends Actor{
 			return "profile_relationship_"+toString().toLowerCase();
 		}
 
+		public String getLangKeyForFeed(boolean withPartner){
+			return "relationship_"+switch(this){
+				case SINGLE -> "single";
+				case IN_RELATIONSHIP -> withPartner ? "in_relationship_with" : "in_relationship";
+				case ENGAGED -> withPartner ? "engaged_with" : "engaged";
+				case MARRIED -> withPartner ? "married_to" : "married";
+				case IN_LOVE -> withPartner ? "in_love_with" : "in_love";
+				case COMPLICATED -> withPartner ? "complicated_with" : "complicated";
+				case ACTIVELY_SEARCHING -> "searching";
+			};
+		}
+
 		public boolean canHavePartner(){
 			return this!=SINGLE && this!=ACTIVELY_SEARCHING;
+		}
+
+		public boolean needsPartnerApproval(){
+			return canHavePartner() && this!=IN_LOVE;
 		}
 	}
 }

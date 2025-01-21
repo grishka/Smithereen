@@ -5,7 +5,7 @@
 {% for admin in users %}
 	{% if loop.index<5 %}
 	<tr class="oneMemberRow">
-		<td valign="top"><a href="{{ admin.user.profileURL }}"{{ profileRel(admin.user) }}>{{ admin.user | pictureForAvatar('s', 40) }}</a></td>
+		<td valign="top"><a href="{{ admin.user.profileURL }}"{{ profileRel(admin.user) }}>{{ admin.user | pictureForAvatar('a', 40) }}</a></td>
 		<td class="nameAndInfo">
 			<div><a href="{{ admin.user.profileURL }}"{{ profile.rel(admin.user) }}>{{ admin.user | name }}</a></div>
 			{% if admin.title is not empty %}

@@ -1,0 +1,32 @@
+{# @pebvariable name="owner" type="smithereen.activitypub.objects.Actor" #}
+{% import "photo_album_title" %}
+<div class="tabbar">
+	<a href="{{ owner.ownerID>0 ? "/users/#{owner.localID}/albums" : "/groups/#{owner.localID}/albums" }}" class="{{ tab=='albums' ? 'selected' : '' }}">
+	{%- if currentUser is not null and owner.ownerID==currentUser.id %}
+		{{- L('my_photo_albums') -}}
+	{%- elseif owner.ownerID>0 %}
+		{{- L('user_photo_albums', {'name': owner.firstAndGender}) }}
+	{%- elseif owner.isEvent %}
+		{{- L('event_photo_albums') }}
+	{%- else %}
+		{{- L('group_photo_albums') }}
+	{%- endif %}
+	</a>
+	{%- if currentUser is not null and owner.ownerID==currentUser.id and (userNotifications.newPhotoTagCount>0 or tab=='tags') %}
+	<a href="/photos/newTags" class="{{ tab=='tags' ? 'selected' : '' }}">{{ L('new_photos_of_me') }}{% if userNotifications.newPhotoTagCount>0 %} (<b>{{ userNotifications.newPhotoTagCount | numberformat }}</b>){% endif %}</a>
+	{% endif %}
+	{% if album is not null %}<a href="{{ album.url }}" class="{{ tab=='album' ? 'selected' : '' }}">{{ photoAlbumTitle(_context, album) }}</a>{% endif %}
+	{% if tab=='edit' %}<a href="{{ album.url }}/edit" class="selected">{{ L('editing_photo_album') }}</a>{% endif %}
+	{% if tab=='photo' %}<a href="{{ photo.url }}?nojs" class="selected">{{ L('content_type_photo') }}</a>{% endif %}
+	{% if tab!='edit' %}
+	<div class="aux">
+	{% if album is not null %}
+	{% if userPermissions.canEditPhotoAlbum(album) %}<a href="{{ album.url }}/edit">{{ L('edit_photo_album') }}</a>{% endif %}
+	{% elseif owner.ownerID==currentUser.id %}
+	<a href="/my/albums/create" data-ajax-box>{{ L('create_photo_album') }}</a>
+	{% elseif owner.ownerID<0 and userPermissions.canManageGroup(owner) %}
+	<a href="/my/albums/create?owner={{ owner.ownerID }}" data-ajax-box>{{ L('create_photo_album') }}</a>
+	{% endif %}
+	</div>
+	{% endif %}
+</div>

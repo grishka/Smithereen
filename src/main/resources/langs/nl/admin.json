@@ -274,5 +274,6 @@
   "admin_ip_rule_created": "IP-regel aangemaakt",
   "summary_admin_X_signup_invites": "{count, plural, =0 {Geen uitnodigingen} one {# uitnodiging} other {# uitnodigingen}} totaal op je server",
   "admin_audit_log_deleted_invite": "<a id=\"adminUser\">{name}</a> heeft de uitnodiging van <a id=\"targetUser\">{targetName}</a> verwijderd",
-  "signup_invite_deleted": "Uitnodiging verwijderd"
+  "signup_invite_deleted": "Uitnodiging verwijderd",
+  "admin_report_content_photo": "Afbeelding #{id}"
 }

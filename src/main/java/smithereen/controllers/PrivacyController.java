@@ -11,8 +11,10 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -36,11 +38,17 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
+import spark.Request;
 import spark.utils.StringUtils;
 
 public class PrivacyController{
@@ -59,24 +67,34 @@ public class PrivacyController{
 				if(post.getReplyLevel()==0){
 					enforceUserPrivacy(self, context.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_OTHERS_POSTS);
 				}else{
-					Post top=context.getWallController().getPostOrThrow(post.replyKey.get(0));
+					Post top=context.getWallController().getPostOrThrow(post.replyKey.getFirst());
 					if(top.ownerID!=top.authorID){
 						enforceUserPrivacy(self, context.getUsersController().getUserOrThrow(top.ownerID), UserPrivacySettingKey.WALL_OTHERS_POSTS);
 					}
 				}
 			}
 			enforcePostPrivacy(self, post);
+		}else if(object instanceof Photo photo){
+			context.getPhotosController().getAlbum(photo.albumID, self); // This also checks privacy
+		}else if(object instanceof Comment comment){
+			CommentableContentObject parent=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+			enforceObjectPrivacy(self, parent);
 		}
 	}
 
-	public void enforceUserAccessToGroupContent(@Nullable User self, @NotNull Group group){
+	public boolean canUserAccessGroupContent(@Nullable User self, @NotNull Group group){
 		if(group.accessType!=Group.AccessType.OPEN){
 			if(self==null)
-				throw new UserActionNotAllowedException();
+				return false;
 			Group.MembershipState state=context.getGroupsController().getUserMembershipState(group, self);
-			if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER)
-				throw new UserActionNotAllowedException();
+			return state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER;
 		}
+		return true;
+	}
+
+	public void enforceUserAccessToGroupContent(@Nullable User self, @NotNull Group group){
+		if(!canUserAccessGroupContent(self, group))
+			throw new UserActionNotAllowedException();
 	}
 
 	public void enforceUserAccessToGroupProfile(@Nullable User self, @NotNull Group group){
@@ -91,7 +109,7 @@ public class PrivacyController{
 		}
 	}
 
-	public void updateUserPrivacySettings(@NotNull User self, @NotNull Map<UserPrivacySettingKey, PrivacySetting> settings){
+	public void updateUserPrivacySettings(@NotNull User self, @NotNull Map<UserPrivacySettingKey, PrivacySetting> settings, @Nullable EnumSet<FriendsNewsfeedTypeFilter> feedTypes){
 		try{
 			// Collect user IDs to check their friendship statuses
 			Set<Integer> friendIDs=new HashSet<>();
@@ -111,6 +129,14 @@ public class PrivacyController{
 			// TODO check if settings actually changed
 			UserStorage.setPrivacySettings(self, settings);
 			self.privacySettings=settings;
+			if(feedTypes!=null && feedTypes.equals(EnumSet.complementOf(EnumSet.of(FriendsNewsfeedTypeFilter.POSTS)))){
+				feedTypes=null;
+			}
+			if(!Objects.equals(self.newsTypesToShow, feedTypes)){
+				self.newsTypesToShow=feedTypes;
+				UserStorage.updateExtendedFields(self, self.serializeProfileFields());
+				context.getNewsfeedController().clearFriendsFeedCache();
+			}
 			context.getActivityPubWorker().sendUpdateUserActivity(self);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -182,6 +208,7 @@ public class PrivacyController{
 		if(serverDomain==null)
 			return false;
 		try{
+			// TODO cache these things
 			HashSet<Integer> friendsAtDomain=new HashSet<>(UserStorage.getFriendIDsWithDomain(owner.id, serverDomain));
 			friendsAtDomain.removeAll(setting.exceptUsers);
 			for(int id:setting.allowUsers){
@@ -203,23 +230,41 @@ public class PrivacyController{
 		return false;
 	}
 
+	public void enforceUserPrivacyForRemoteServer(Request req, User owner, PrivacySetting setting){
+		if(setting.isFullyPublic())
+			return;
+		if(setting.isFullyPrivate())
+			throw new UserActionNotAllowedException();
+
+		String domain=ActivityPub.getRequesterDomain(req);
+		if(!checkUserPrivacyForRemoteServer(domain, owner, setting))
+			throw new UserActionNotAllowedException();
+	}
+
 	public void enforceContentPrivacyForActivityPub(spark.Request req, OwnedContentObject obj){
 		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(obj);
 		if(oaa.owner() instanceof Group g){
 			enforceGroupContentAccess(req, g);
 		}else if(oaa.owner() instanceof User u){
-			if(obj instanceof Post post && post.ownerID!=post.authorID && post.getReplyLevel()==0){
-				if(!checkUserPrivacyForRemoteServer(getDomainFromRequest(req), u, u.privacySettings.getOrDefault(UserPrivacySettingKey.WALL_OTHERS_POSTS, PrivacySetting.DEFAULT)))
-					throw new UserActionNotAllowedException();
+			switch(obj){
+				case Post post when post.ownerID!=post.authorID && post.getReplyLevel()==0 -> {
+					if(!checkUserPrivacyForRemoteServer(ActivityPub.getRequesterDomain(req), u, u.privacySettings.getOrDefault(UserPrivacySettingKey.WALL_OTHERS_POSTS, PrivacySetting.DEFAULT)))
+						throw new UserActionNotAllowedException();
+				}
+				case PhotoAlbum pa -> {
+					if(pa.viewPrivacy.baseRule==PrivacySetting.Rule.EVERYONE && pa.viewPrivacy.exceptUsers.isEmpty())
+						return;
+					String domain=ActivityPub.getRequesterDomain(req);
+					if(!checkUserPrivacyForRemoteServer(domain, u, pa.viewPrivacy))
+						throw new UserContentUnavailableException();
+				}
+				case Photo photo -> enforceContentPrivacyForActivityPub(req, context.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID));
+				case Comment comment -> {
+					CommentableContentObject parent=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+					enforceContentPrivacyForActivityPub(req, parent);
+				}
+				default -> {}
 			}
-		}
-	}
-
-	private String getDomainFromRequest(spark.Request req){
-		try{
-			return ActivityPub.verifyHttpSignature(req, null).domain;
-		}catch(Exception x){
-			return null;
 		}
 	}
 

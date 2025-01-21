@@ -1,6 +1,6 @@
 {# @pebvariable name="targetUser" type="smithereen.model.User" #}
 <div class="sendFriendReqForm">
-	<div>{{ targetUser | pictureForAvatar('m') }}</div>
+	<div>{{ targetUser | pictureForAvatar('b') }}</div>
 	<div>
 		<p>{{ L("sending_friend_req_to_X", {'gender': targetUser.gender, 'name': targetUser | name}) }}</p>
 		<input type="checkbox" id="friendReqMsgToggler" class="toggler"/>

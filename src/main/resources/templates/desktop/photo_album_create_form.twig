@@ -1,0 +1,30 @@
+<div class="extraPaddingInBox">
+	<label class="largeAccented" for="titleField">{{ L('photo_album_title') }}</label>
+	<input type="text" name="title" id="titleField" style="width: 100%" required maxlength="150" value="{{ album.title }}"/>
+	<label class="largeAccented" for="descriptionField">{{ L('photo_album_description') }}</label>
+	<textarea name="description" id="descriptionField" style="width: 100%" class="large">{{ album.description }}</textarea>
+	<input type="hidden" name="owner" value="{{ owner.ownerID }}"/>
+	<div style="margin-top: 17px">
+	{% if owner.ownerID>0 %}
+		<div>
+			{{ L('photo_album_view_privacy') }}
+			{% include "privacy_setting_selector" with {'setting': album is null ? defaultPrivacy : album.viewPrivacy, 'key': 'viewPrivacy', 'isOnlyMe': true} %}
+		</div>
+		<div style="margin-top: 12px">
+			{{ L('photo_album_comment_privacy') }}
+			{% include "privacy_setting_selector" with {'setting': album is null ? defaultPrivacy : album.commentPrivacy, 'key': 'commentPrivacy', 'isOnlyMe': false} %}
+		</div>
+	{% else %}
+		<div class="radioButtonWrap">
+			<label>
+				<input type="checkbox" name="restrictUploads"{% if album.hasFlag("GROUP_RESTRICT_UPLOADS") %} checked{% endif %}/>{{ L('photo_album_restrict_uploads') }}
+			</label>
+		</div>
+		<div class="radioButtonWrap">
+			<label>
+				<input type="checkbox" name="disableCommenting"{% if album.hasFlag("GROUP_DISABLE_COMMENTING") %} checked{% endif %}/>{{ L('photo_album_disable_commenting') }}
+			</label>
+		</div>
+	{% endif %}
+	</div>
+</div>

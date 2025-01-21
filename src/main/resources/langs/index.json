@@ -12,7 +12,8 @@
     "email.json",
     "reporting.json",
     "mail.json",
-    "bookmarks.json"
+    "bookmarks.json",
+    "photos.json"
   ],
   "languages": [
     {
@@ -58,6 +59,16 @@
     {
       "locale": "be",
       "name": "Belarusian",
+      "fallback": "ru"
+    },
+    {
+      "locale": "bg",
+      "name": "Bulgarian",
+      "fallback": "en"
+    },
+    {
+      "locale": "uk",
+      "name": "Ukrainian",
       "fallback": "ru"
     }
   ]

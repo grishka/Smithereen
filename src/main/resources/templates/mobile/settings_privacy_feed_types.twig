@@ -1,0 +1,48 @@
+{% extends "page" %}
+{% block content %}
+<div class="singleColumn">
+	<h2>{{ L('privacy_feed_types') | stripHTML }}</h2>
+	<form action="/settings/privacy" method="post">
+		<label class="radioButtonWrap">
+			<input type="radio" name="allFeedTypes" id="feedTypesAll" value="1"{% if currentUser.newsTypesToShow is null %} checked{% endif %}/>
+			{{ L('privacy_feed_all_types') }}
+		</label>
+		<label class="radioButtonWrap">
+			<input type="radio" name="allFeedTypes" id="feedTypesSelect" value=""{% if currentUser.newsTypesToShow is not null %} checked{% endif %}/>
+			{{ L('privacy_feed_select_types') }}
+		</label>
+		<div style="margin-left: 16px;{% if currentUser.newsTypesToShow is null %} opacity: 0.5;{% endif %}" id="typesOptions">
+		{% for type in allFeedTypes %}
+		    <label class="radioButtonWrap">
+		    	<input type="checkbox" name="feedType_{{ type }}"{% if currentUser.newsTypesToShow is null or currentUser.newsTypesToShow contains type %} checked{% endif %}{% if currentUser.newsTypesToShow is null %} disabled{% endif %}/>
+		    	{{ L(type.langKey) }}
+		    </label>
+		{% endfor %}
+		</div>
+		<input type="hidden" name="csrf" value="{{ csrf }}"/>
+		<input type="hidden" name="needUpdateFeedTypes" value="1"/>
+		<input type="submit" value="{{ L('save') }}"/>
+	</form>
+</div>
+{% script %}
+var optionsW=ge("typesOptions");
+var checkboxes=optionsW.getElementsByTagName("input").unfuck();
+var selectTypesEl=ge("feedTypesSelect");
+var onChange=function(ev){
+	if(selectTypesEl.checked){
+		optionsW.style.opacity="";
+		for(var cb of checkboxes){
+			cb.disabled=false;
+		}
+	}else{
+		optionsW.style.opacity="0.5";
+		for(var cb of checkboxes){
+			cb.disabled=true;
+			cb.checked=true;
+		}
+	}
+};
+selectTypesEl.addEventListener("change", onChange);
+ge("feedTypesAll").addEventListener("change", onChange);
+{% endscript %}
+{% endblock %}

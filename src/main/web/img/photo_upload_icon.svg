@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="26px" height="22px" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <rect id="photo_upload_icon" x="0" y="0" width="26" height="22" style="fill:none;"/>
+    <clipPath id="_clip1">
+        <rect x="0" y="0" width="26" height="22"/>
+    </clipPath>
+    <g clip-path="url(#_clip1)">
+        <path d="M4.062,3C7.054,2.933 7.023,0.025 10,0C11.217,-0.004 12.88,-0 12.994,-0C13.108,-0 14.771,-0.004 15.988,0C18.965,0.025 18.934,2.933 21.926,3L23,3C24.656,3 26,4.344 26,6L26,19C26,20.656 24.656,22 23,22L3,22C1.344,22 0,20.656 0,19L0,6C0,4.344 1.344,3 3,3L4.062,3ZM13,6C16.311,6 19,8.689 19,12C19,15.311 16.311,18 13,18C9.689,18 7,15.311 7,12C7,8.689 9.689,6 13,6ZM13,8C15.208,8 17,9.792 17,12C17,14.208 15.208,16 13,16C10.792,16 9,14.208 9,12C9,9.792 10.792,8 13,8Z" style="fill:#b5b779;"/>
+    </g>
+</svg>

@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.UserRole;
 import smithereen.model.media.ImageMetadata;
@@ -35,10 +36,11 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.text.TextProcessor;
 import smithereen.util.JsonObjectBuilder;
+import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=47;
+	public static final int SCHEMA_VERSION=60;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -49,6 +51,9 @@ public class DatabaseSchemaUpdater{
 						CREATE FUNCTION `bin_prefix`(p VARBINARY(1024)) RETURNS varbinary(2048) DETERMINISTIC
 						RETURN CONCAT(REPLACE(REPLACE(REPLACE(p, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_'), '%');""");
 				createMediaRefCountTriggers(conn);
+				createApIdIndexTriggers(conn);
+				createApIdIndexTriggersForPhotos(conn);
+				createApIdIndexTriggersForComments(conn);
 				insertDefaultRoles(conn);
 			}
 		}else{
@@ -689,6 +694,186 @@ public class DatabaseSchemaUpdater{
 						  CONSTRAINT `bookmarks_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;""");
 			}
+			case 48 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE IF NOT EXISTS `ap_id_index` (
+						  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+						  `object_type` int unsigned NOT NULL,
+						  `object_id` bigint unsigned NOT NULL,
+						  PRIMARY KEY (`ap_id`),
+						  UNIQUE KEY `object_type` (`object_type`,`object_id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				SQLQueryBuilder.prepareStatement(conn,
+						"INSERT IGNORE INTO `ap_id_index` (ap_id, object_type, object_id) SELECT ap_id, ?, id FROM `users` WHERE `domain` IS NOT NULL",
+						ObjectLinkResolver.ObjectType.USER.id).execute();
+				SQLQueryBuilder.prepareStatement(conn,
+						"INSERT IGNORE INTO `ap_id_index` (ap_id, object_type, object_id) SELECT ap_id, ?, id FROM `groups` WHERE `domain` IS NOT NULL",
+						ObjectLinkResolver.ObjectType.GROUP.id).execute();
+				SQLQueryBuilder.prepareStatement(conn,
+						"INSERT IGNORE INTO `ap_id_index` (ap_id, object_type, object_id) SELECT ap_id, ?, id FROM `wall_posts` WHERE `ap_id` IS NOT NULL",
+						ObjectLinkResolver.ObjectType.POST.id).execute();
+				SQLQueryBuilder.prepareStatement(conn,
+						"INSERT IGNORE INTO `ap_id_index` (ap_id, object_type, object_id) SELECT ap_id, ?, id FROM `mail_messages` WHERE `ap_id` IS NOT NULL",
+						ObjectLinkResolver.ObjectType.MESSAGE.id).execute();
+			}
+			case 49 -> createApIdIndexTriggers(conn);
+			case 50 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `photo_albums` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `owner_user_id` int unsigned DEFAULT NULL,
+						  `owner_group_id` int unsigned DEFAULT NULL,
+						  `title` varchar(200) NOT NULL,
+						  `description` text NOT NULL,
+						  `privacy` json NOT NULL,
+						  `num_photos` int unsigned NOT NULL DEFAULT '0',
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `system_type` tinyint unsigned DEFAULT NULL,
+						  `cover_id` bigint unsigned DEFAULT NULL,
+						  `flags` bigint NOT NULL DEFAULT '0',
+						  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+						  `ap_url` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+						  `display_order` int unsigned NOT NULL DEFAULT '0',
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `ap_id` (`ap_id`),
+						  KEY `owner_user_id` (`owner_user_id`),
+						  KEY `owner_group_id` (`owner_group_id`),
+						  KEY `display_order` (`display_order`),
+						  CONSTRAINT `photo_albums_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `photo_albums_ibfk_2` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				conn.createStatement().execute("""
+						CREATE TABLE `photos` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `owner_id` int NOT NULL,
+						  `author_id` int unsigned NOT NULL,
+						  `album_id` bigint unsigned NOT NULL,
+						  `local_file_id` bigint unsigned DEFAULT NULL,
+						  `remote_src` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+						  `description` text NOT NULL,
+						  `description_source` text,
+						  `description_source_format` tinyint unsigned DEFAULT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `metadata` json DEFAULT NULL,
+						  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+						  `display_order` int unsigned NOT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `ap_id` (`ap_id`),
+						  KEY `owner_id` (`owner_id`),
+						  KEY `album_id` (`album_id`),
+						  KEY `display_order` (`display_order`),
+						  KEY `local_file_id` (`local_file_id`),
+						  KEY `author_id` (`author_id`),
+						  CONSTRAINT `photos_ibfk_1` FOREIGN KEY (`album_id`) REFERENCES `photo_albums` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `photos_ibfk_2` FOREIGN KEY (`local_file_id`) REFERENCES `media_files` (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 51 -> {
+				conn.createStatement().execute("ALTER TABLE newsfeed CHANGE object_id `object_id` bigint unsigned DEFAULT NULL");
+				conn.createStatement().execute("ALTER TABLE newsfeed_comments CHANGE object_id `object_id` bigint unsigned NOT NULL");
+				conn.createStatement().execute("ALTER TABLE notifications CHANGE object_id `object_id` bigint unsigned DEFAULT NULL, CHANGE related_object_id `related_object_id` bigint unsigned DEFAULT NULL");
+				conn.createStatement().execute("ALTER TABLE likes CHANGE object_id `object_id` bigint unsigned NOT NULL");
+			}
+			case 52 -> conn.createStatement().execute("ALTER TABLE servers ADD features bigint unsigned NOT NULL DEFAULT 0");
+			case 53 -> migratePasswordsToSaltedHashes(conn);
+			case 54 -> createApIdIndexTriggersForPhotos(conn);
+			case 55 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `comments` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `author_id` int unsigned DEFAULT NULL,
+						  `owner_user_id` int unsigned DEFAULT NULL,
+						  `owner_group_id` int unsigned DEFAULT NULL,
+						  `parent_object_type` int unsigned NOT NULL,
+						  `parent_object_id` bigint unsigned NOT NULL,
+						  `text` text,
+						  `attachments` json DEFAULT NULL,
+						  `ap_url` varchar(300) DEFAULT NULL,
+						  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `content_warning` text,
+						  `updated_at` timestamp NULL DEFAULT NULL,
+						  `reply_key` varbinary(2048) DEFAULT NULL,
+						  `mentions` varbinary(1024) DEFAULT NULL,
+						  `reply_count` int unsigned NOT NULL DEFAULT '0',
+						  `ap_replies` varchar(300) DEFAULT NULL,
+						  `federation_state` tinyint unsigned NOT NULL DEFAULT '0',
+						  `source` text,
+						  `source_format` tinyint unsigned DEFAULT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `ap_id` (`ap_id`),
+						  KEY `owner_user_id` (`owner_user_id`),
+						  KEY `author_id` (`author_id`),
+						  KEY `reply_key` (`reply_key`),
+						  KEY `owner_group_id` (`owner_group_id`),
+						  KEY `parent_object_type` (`parent_object_type`,`parent_object_id`),
+						  CONSTRAINT `comments_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `comments_ibfk_2` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				createApIdIndexTriggersForComments(conn);
+			}
+			case 56 -> conn.createStatement().execute("ALTER TABLE photo_albums ADD `ap_comments` varchar(300) CHARACTER SET ascii DEFAULT NULL");
+			case 57 -> conn.createStatement().execute("ALTER TABLE wall_posts ADD action tinyint unsigned DEFAULT NULL");
+			case 58 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `photo_tags` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `photo_id` bigint unsigned NOT NULL,
+						  `placer_id` int unsigned NOT NULL,
+						  `user_id` int unsigned DEFAULT NULL,
+						  `name` varchar(300) NOT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `approved` tinyint unsigned NOT NULL DEFAULT '0',
+						  `x1` float NOT NULL,
+						  `y1` float NOT NULL,
+						  `x2` float NOT NULL,
+						  `y2` float NOT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `photo_id` (`photo_id`,`user_id`),
+						  KEY `user_id` (`user_id`),
+						  KEY `approved` (`approved`),
+						  CONSTRAINT `photo_tags_ibfk_1` FOREIGN KEY (`photo_id`) REFERENCES `photos` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `photo_tags_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+						) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 59 -> conn.createStatement().execute("ALTER TABLE photo_tags ADD ap_id varchar(300) CHARACTER SET ascii DEFAULT NULL, ADD UNIQUE KEY ap_id (ap_id)");
+			case 60 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `newsfeed_groups` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `type` int unsigned NOT NULL,
+						  `object_id` bigint unsigned DEFAULT NULL,
+						  `group_id` int unsigned NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `type` (`type`,`group_id`,`object_id`),
+						  KEY `time` (`time`),
+						  KEY `group_id` (`group_id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+		}
+	}
+
+	private static void migratePasswordsToSaltedHashes(DatabaseConnection conn) throws SQLException{
+		LOG.info("Started migrating passwords to salted hashes");
+		conn.createStatement().execute("ALTER TABLE `accounts` ADD `salt` binary(32) DEFAULT NULL AFTER `password`");
+		try(ResultSet res=new SQLQueryBuilder(conn)
+				.selectFrom("accounts")
+				.columns("id", "password")
+				.execute()){
+			while(res.next()){
+				int accountID=res.getInt(1);
+				byte[] currentPassword=res.getBytes(2);
+				byte[] salt=Passwords.randomSalt();
+				byte[] newPassword=Passwords.saltedPassword(currentPassword, salt);
+				new SQLQueryBuilder()
+						.update("accounts")
+						.value("password", newPassword)
+						.value("salt", salt)
+						.where("id=?", accountID)
+						.executeUpdate();
+			}
 		}
 	}
 
@@ -719,6 +904,50 @@ public class DatabaseSchemaUpdater{
 				.value("permissions", Utils.serializeEnumSetToBytes(moderatorPermissions))
 				.executeNoResult();
 		Config.reloadRoles();
+	}
+
+	private static void createApIdIndexTriggers(DatabaseConnection conn) throws SQLException{
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_users_to_ap_ids AFTER INSERT ON `users` FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.USER.id).execute();
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_groups_to_ap_ids AFTER INSERT ON `groups` FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.GROUP.id).execute();
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_posts_to_ap_ids AFTER INSERT ON wall_posts FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.POST.id).execute();
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_messages_to_ap_ids AFTER INSERT ON mail_messages FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.MESSAGE.id).execute();
+
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_users_from_ap_ids AFTER DELETE ON `users` FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_groups_from_ap_ids AFTER DELETE ON `groups` FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_posts_from_ap_ids AFTER DELETE ON wall_posts FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
+
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_user_posts_from_ap_ids BEFORE DELETE ON `users` FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id IN (SELECT ap_id FROM wall_posts WHERE owner_user_id=OLD.id AND ap_id IS NOT NULL); END IF; END;");
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_group_posts_from_ap_ids BEFORE DELETE ON `groups` FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id IN (SELECT ap_id FROM wall_posts WHERE owner_group_id=OLD.id AND ap_id IS NOT NULL); END IF; END;");
+	}
+
+	private static void createApIdIndexTriggersForPhotos(DatabaseConnection conn) throws SQLException{
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_photo_albums_to_ap_ids AFTER INSERT ON photo_albums FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.PHOTO_ALBUM.id).execute();
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_photos_to_ap_ids AFTER INSERT ON photos FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.PHOTO.id).execute();
+
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_photo_albums_from_ap_ids BEFORE DELETE ON photo_albums FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF;" +
+				"DELETE FROM ap_id_index WHERE ap_id IN (SELECT ap_id FROM photos WHERE album_id=OLD.id AND ap_id IS NOT NULL);" +
+				"END;");
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_photos_from_ap_ids AFTER DELETE ON photos FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
+	}
+
+	private static void createApIdIndexTriggersForComments(DatabaseConnection conn) throws SQLException{
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_comments_to_ap_ids AFTER INSERT ON comments FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.COMMENT.id).execute();
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_comments_from_ap_ids AFTER DELETE ON comments FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
 	}
 
 	private static void createMediaRefCountTriggers(DatabaseConnection conn) throws SQLException{

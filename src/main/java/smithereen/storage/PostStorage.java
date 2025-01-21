@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -30,7 +31,6 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.FederationState;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -40,8 +40,10 @@ import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.PostSource;
+import smithereen.model.feed.CommentsNewsfeedObjectType;
 import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
+import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
@@ -57,7 +59,11 @@ import spark.utils.StringUtils;
 public class PostStorage{
 	private static final Logger LOG=LoggerFactory.getLogger(PostStorage.class);
 
-	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, FormattedTextFormat sourceFormat, List<Integer> replyKey, Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf) throws SQLException{
+	private static final NamedMutexCollection foreignPostUpdateLocks=new NamedMutexCollection();
+	private static final NamedMutexCollection pollVoteLocks=new NamedMutexCollection();
+
+	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, FormattedTextFormat sourceFormat, List<Integer> replyKey,
+									 Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf, Post.Action action) throws SQLException{
 		if(ownerUserID<=0 && ownerGroupID<=0)
 			throw new IllegalArgumentException("Need either ownerUserID or ownerGroupID");
 
@@ -76,6 +82,7 @@ public class PostStorage{
 					.value("source", textSource)
 					.value("source_format", sourceFormat)
 					.value("repost_of", repostOf!=0 ? repostOf : null)
+					.value("action", action)
 					.executeAndGetID();
 
 			if(replyKey!=null && !replyKey.isEmpty()){
@@ -85,18 +92,19 @@ public class PostStorage{
 						.whereIn("id", replyKey)
 						.executeNoResult();
 
-				SQLQueryBuilder.prepareStatement(conn, "INSERT INTO newsfeed_comments (user_id, object_type, object_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE object_id=object_id", userID, 0, replyKey.get(0)).execute();
-				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(replyKey.get(0)));
+				SQLQueryBuilder.prepareStatement(conn, "INSERT INTO newsfeed_comments (user_id, object_type, object_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE object_id=object_id", userID, 0, replyKey.getFirst()).execute();
+				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(replyKey.getFirst()));
 			}
 			return id;
 		}
 	}
 
-	public static void updateWallPost(int id, String text, String textSource, Set<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
+	public static void updateWallPost(int id, String text, String textSource, FormattedTextFormat sourceFormat, Set<User> mentionedUsers, String attachments, String contentWarning, int pollID) throws SQLException{
 		new SQLQueryBuilder()
 				.update("wall_posts")
 				.value("text", text)
 				.value("source", textSource)
+				.value("source_format", sourceFormat)
 				.value("mentions", mentionedUsers.isEmpty() ? null : Utils.serializeIntArray(mentionedUsers.stream().mapToInt(u->u.id).toArray()))
 				.value("attachments", attachments)
 				.value("content_warning", contentWarning)
@@ -143,10 +151,12 @@ public class PostStorage{
 		return pollID;
 	}
 
-	public static synchronized void putForeignWallPost(Post post) throws SQLException{
+	public static void putForeignWallPost(Post post) throws SQLException{
 		if(post.isReplyToUnknownPost){
 			throw new IllegalArgumentException("This post needs its parent thread to be fetched first");
 		}
+		String key=post.getActivityPubID().toString().toLowerCase();
+		foreignPostUpdateLocks.acquire(key);
 		Post existing=getPostByID(post.getActivityPubID());
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			DatabaseUtils.doWithTransaction(conn, ()->{
@@ -175,6 +185,7 @@ public class PostStorage{
 							.value("privacy", post.privacy)
 							.value("repost_of", post.repostOf!=0 ? post.repostOf : null)
 							.value("flags", Utils.serializeEnumSet(post.flags))
+							.value("action", post.action)
 							.createStatement(Statement.RETURN_GENERATED_KEYS);
 				}else{
 					if(post.poll!=null && Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts
@@ -257,46 +268,15 @@ public class PostStorage{
 								.valueExpr("reply_count", "reply_count+1")
 								.whereIn("id", post.replyKey)
 								.executeNoResult();
-						BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey.get(0)));
+						BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey.getFirst()));
 					}
 				}else{
 					stmt.execute();
 					post.id=existing.id;
 				}
 			});
-		}
-	}
-
-	public static List<NewsfeedEntry> getFeed(int userID, int startFromID, int offset, int count, int[] total) throws SQLException{
-		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt;
-			if(total!=null){
-				stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `newsfeed` WHERE (`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY)",
-						userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID);
-				try(ResultSet res=stmt.executeQuery()){
-					res.next();
-					total[0]=res.getInt(1);
-				}
-			}
-			stmt=conn.prepareStatement("SELECT `type`, `object_id`, `author_id`, `id`, `time` FROM `newsfeed` WHERE (`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=? ORDER BY `time` DESC LIMIT ?,"+count);
-			stmt.setInt(1, userID);
-			stmt.setInt(2, userID);
-			stmt.setInt(3, startFromID==0 ? Integer.MAX_VALUE : startFromID);
-			stmt.setInt(4, offset);
-			ArrayList<NewsfeedEntry> posts=new ArrayList<>();
-			try(ResultSet res=stmt.executeQuery()){
-				while(res.next()){
-					NewsfeedEntry.Type type=NewsfeedEntry.Type.values()[res.getInt(1)];
-					NewsfeedEntry entry=new NewsfeedEntry();
-					entry.type=type;
-					entry.id=res.getInt(4);
-					entry.time=res.getTimestamp(5).toInstant();
-					entry.authorID=res.getInt(3);
-					entry.objectID=res.getInt(2);
-					posts.add(entry);
-				}
-			}
-			return posts;
+		}finally{
+			foreignPostUpdateLocks.release(key);
 		}
 	}
 
@@ -320,7 +300,7 @@ public class PostStorage{
 				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`>? AND `reply_key` IS NULL"+condition+" ORDER BY created_at DESC LIMIT "+count);
 				stmt.setInt(2, minID);
 			}else if(maxID>0){
-				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`=<? AND `reply_key` IS NULL"+condition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
+				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `id`<=? AND `reply_key` IS NULL"+condition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
 				stmt.setInt(2, maxID);
 			}else{
 				stmt=conn.prepareStatement("SELECT * FROM `wall_posts` WHERE `"+ownerField+"`=? AND `reply_key` IS NULL"+condition+" ORDER BY created_at DESC LIMIT "+offset+","+count);
@@ -505,13 +485,17 @@ public class PostStorage{
 				stmt.execute();
 			}else{
 				// (comments don't exist in the feed anyway)
-				stmt=conn.prepareStatement("UPDATE wall_posts SET author_id=NULL, owner_user_id=NULL, owner_group_id=NULL, text=NULL, attachments=NULL, content_warning=NULL, updated_at=NULL, mentions=NULL WHERE id=?");
+				stmt=conn.prepareStatement("UPDATE wall_posts SET author_id=NULL, owner_user_id=NULL, owner_group_id=NULL, text=NULL, attachments=NULL, content_warning=NULL, updated_at=NULL, mentions=NULL, source=NULL WHERE id=?");
 				stmt.setInt(1, id);
 				stmt.execute();
 			}
 			stmt=conn.prepareStatement("DELETE FROM `newsfeed` WHERE (`type`=0 OR `type`=1) AND `object_id`=?");
 			stmt.setInt(1, id);
 			stmt.execute();
+			new SQLQueryBuilder(conn)
+					.deleteFrom("newsfeed_groups")
+					.where("type=? AND object_id=?", NewsfeedEntry.Type.POST, id)
+					.executeNoResult();
 
 			if(post.getReplyLevel()>0){
 				conn.createStatement().execute("UPDATE wall_posts SET reply_count=GREATEST(1, reply_count)-1 WHERE id IN ("+post.replyKey.stream().map(String::valueOf).collect(Collectors.joining(","))+")");
@@ -615,7 +599,7 @@ public class PostStorage{
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
 					.count()
-					.where("reply_key LIKE BINARY bin_prefix(?)", (Object) serializedPrefix)
+					.where("reply_key LIKE BINARY bin_prefix(?) AND author_id IS NOT NULL", (Object) serializedPrefix)
 					.executeAndGetInt();
 			if(total==0)
 				return PaginatedList.emptyList(limit);
@@ -623,7 +607,7 @@ public class PostStorage{
 			List<Post> list=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
 					.allColumns()
-					.where("reply_key LIKE BINARY bin_prefix(?)", (Object) serializedPrefix)
+					.where("reply_key LIKE BINARY bin_prefix(?) AND author_id IS NOT NULL", (Object) serializedPrefix)
 					.limit(limit, offset)
 					.orderBy("created_at ASC")
 					.executeAsStream(Post::fromResultSet)
@@ -874,8 +858,10 @@ public class PostStorage{
 		}
 	}
 
-	public static synchronized int[] voteInPoll(int userID, int pollID, int[] optionIDs) throws SQLException{
+	public static int[] voteInPoll(int userID, int pollID, int[] optionIDs) throws SQLException{
+		String key=userID+"|"+pollID;
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			pollVoteLocks.acquire(key);
 			int count=new SQLQueryBuilder(conn)
 					.selectFrom("poll_votes")
 					.count()
@@ -920,12 +906,16 @@ public class PostStorage{
 					.executeNoResult();
 
 			return voteIDs;
+		}finally{
+			pollVoteLocks.release(key);
 		}
 	}
 
 	// This is called once for each choice in a multiple-choice poll
-	public static synchronized int voteInPoll(int userID, int pollID, int optionID, URI voteID, boolean allowMultiple) throws SQLException{
+	public static int voteInPoll(int userID, int pollID, int optionID, URI voteID, boolean allowMultiple) throws SQLException{
+		String key=userID+"|"+pollID;
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			pollVoteLocks.acquire(key);
 			PreparedStatement stmt=new SQLQueryBuilder(conn)
 					.selectFrom("poll_votes")
 					.columns("option_id")
@@ -967,6 +957,8 @@ public class PostStorage{
 			}
 
 			return rVoteID;
+		}finally{
+			pollVoteLocks.release(key);
 		}
 	}
 
@@ -1033,12 +1025,15 @@ public class PostStorage{
 				.executeNoResult();
 	}
 
-	public static PaginatedList<NewsfeedEntry> getCommentsFeed(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<NewsfeedEntry> getCommentsFeed(int userID, int offset, int count, EnumSet<CommentsNewsfeedObjectType> filter) throws SQLException{
+		if(filter.isEmpty())
+			return PaginatedList.emptyList(count);
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("newsfeed_comments")
 					.count()
-					.where("user_id=?", userID)
+					.whereIn("object_type", filter)
+					.andWhere("user_id=?", userID)
 					.executeAndGetInt();
 
 			if(total==0)
@@ -1047,15 +1042,17 @@ public class PostStorage{
 			List<NewsfeedEntry> entries=new SQLQueryBuilder(conn)
 					.selectFrom("newsfeed_comments")
 					.columns("object_type", "object_id")
-					.where("user_id=?", userID)
+					.whereIn("object_type", filter)
+					.andWhere("user_id=?", userID)
 					.orderBy("last_comment_time DESC")
 					.limit(count, offset)
 					.executeAsStream(res->{
-						Like.ObjectType type=Like.ObjectType.values()[res.getInt(1)];
+						CommentsNewsfeedObjectType type=CommentsNewsfeedObjectType.values()[res.getInt(1)];
 						NewsfeedEntry entry=new NewsfeedEntry();
-						entry.objectID=res.getInt(2);
+						entry.objectID=res.getLong(2);
 						entry.type=switch(type){
 							case POST -> NewsfeedEntry.Type.POST;
+							case PHOTO -> NewsfeedEntry.Type.PHOTO;
 						};
 						return entry;
 					}).toList();
@@ -1243,13 +1240,13 @@ public class PostStorage{
 					if(ts==null){
 						new SQLQueryBuilder(conn)
 								.deleteFrom("newsfeed_comments")
-								.where("object_type=? AND object_id=?", 0, postID)
+								.where("object_type=? AND object_id=?", CommentsNewsfeedObjectType.POST, postID)
 								.executeNoResult();
 					}else{
 						new SQLQueryBuilder(conn)
 								.update("newsfeed_comments")
 								.value("last_comment_time", ts)
-								.where("object_type=? AND object_id=?", 0, postID)
+								.where("object_type=? AND object_id=?", CommentsNewsfeedObjectType.POST, postID)
 								.executeNoResult();
 					}
 				}

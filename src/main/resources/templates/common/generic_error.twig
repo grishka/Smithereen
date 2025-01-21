@@ -2,6 +2,13 @@
 {%block content%}
 <center class="notMuchContent">
 	<p>{{error}}</p>
+	{% if details is not empty %}
+	<input type="checkbox" class="toggler" id="errorDetailsExpander"/>
+	<p class="toggled">
+		<label for="errorDetailsExpander" class="link hideWhenOn">{{ L("show_technical_details") }} &raquo;</label>
+		<div class="showWhenOn">{{ details }}</div>
+	</p>
+	{% endif %}
 	<a href="{{back}}" class="button" id="button">{{L("go_back")}}</a>
 	<script>
 		if(window.opener){

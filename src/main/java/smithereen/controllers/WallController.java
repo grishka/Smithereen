@@ -43,8 +43,8 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.PostLikeObject;
 import smithereen.model.PostSource;
-import smithereen.model.SessionInfo;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPermissions;
@@ -53,7 +53,6 @@ import smithereen.model.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
-import smithereen.model.notifications.NotificationUtils;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -80,7 +79,7 @@ public class WallController{
 		this.context=context;
 	}
 
-	public void loadAndPreprocessRemotePostMentions(Post post, NoteOrQuestion apSource){
+	public void loadAndPreprocessRemotePostMentions(PostLikeObject post, NoteOrQuestion apSource){
 		if(apSource.tag!=null){
 			HashMap<Integer, User> mentionedUsers=new HashMap<>();
 			for(ActivityPubObject tag:apSource.tag){
@@ -102,18 +101,20 @@ public class WallController{
 
 	/**
 	 * Create a new wall post or comment.
-	 * @param author Post author.
-	 * @param wallOwner Wall owner (user or group). Ignored for comments.
-	 * @param inReplyTo Post this is in reply to, null for a top-level post.
-	 * @param textSource HTML post text, as entered by the user.
+	 *
+	 * @param author         Post author.
+	 * @param wallOwner      Wall owner (user or group). Ignored for comments.
+	 * @param inReplyTo      Post this is in reply to, null for a top-level post.
+	 * @param textSource     HTML post text, as entered by the user.
 	 * @param contentWarning Content warning (null for none).
-	 * @param attachmentIDs IDs (hashes) of previously uploaded photo attachments.
-	 * @param poll Poll to attach.
+	 * @param attachmentIDs  IDs (hashes) of previously uploaded photo attachments.
+	 * @param poll           Poll to attach.
+	 * @param action
 	 * @return The newly created post.
 	 */
 	public Post createWallPost(@NotNull User author, int authorAccountID, @NotNull Actor wallOwner, Post inReplyTo,
 							   @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
-							   @Nullable Poll poll, @Nullable Post repost){
+							   @Nullable Poll poll, @Nullable Post repost, @NotNull Map<String, String> attachAltTexts, Post.@Nullable Action action){
 		try{
 			if(wallOwner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
@@ -133,7 +134,7 @@ public class WallController{
 				poll=null;
 			}
 
-			if(textSource.isEmpty() && attachmentIDs.isEmpty() && poll==null && repost==null)
+			if(textSource.trim().isEmpty() && attachmentIDs.isEmpty() && poll==null && repost==null)
 				throw new BadRequestException("Empty post");
 
 			if(!wallOwner.hasWall() && inReplyTo==null)
@@ -150,7 +151,7 @@ public class WallController{
 
 			if(repost!=null){
 				// If we're reposting a repost, use the original post if it's an Announce or there's no comment
-				if(repost.isMastodonStyleRepost() || TextProcessor.stripHTML(repost.text, false).trim().isEmpty()){
+				if(repost.isMastodonStyleRepost() || (repost.repostOf!=0 && TextProcessor.stripHTML(repost.text, false).trim().isEmpty())){
 					repost=getPostOrThrow(repost.repostOf);
 				}
 				// Can't repost wall posts
@@ -171,7 +172,7 @@ public class WallController{
 			}
 
 			final HashSet<User> mentionedUsers=new HashSet<>();
-			String text=preparePostText(textSource, mentionedUsers, inReplyTo, sourceFormat);
+			String text=preparePostText(textSource, mentionedUsers, inReplyTo!=null && inReplyTo.getReplyLevel()>0 ? inReplyTo.authorID : 0, sourceFormat);
 			int userID=author.id;
 			int postID;
 			int pollID=0;
@@ -188,10 +189,10 @@ public class WallController{
 			String attachments=null;
 			if(!attachmentIDs.isEmpty()){
 				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
-				MediaStorageUtils.fillAttachmentObjects(attachObjects, attachmentIDs, attachmentCount, maxAttachments);
+				MediaStorageUtils.fillAttachmentObjects(context, author, attachObjects, attachmentIDs, attachAltTexts, attachmentCount, maxAttachments);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
-						attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
+						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
 					}else{
 						JsonArray ar=new JsonArray();
 						for(ActivityPubObject o:attachObjects){
@@ -245,9 +246,11 @@ public class WallController{
 			}else{
 				replyKey=null;
 			}
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0);
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0, action);
 			if(ownerUserID==userID && replyKey==null){
 				context.getNewsfeedController().putFriendsFeedEntry(author, postID, NewsfeedEntry.Type.POST);
+			}else if(wallOwner instanceof Group g && replyKey==null){
+				context.getNewsfeedController().putGroupsFeedEntry(g, postID, NewsfeedEntry.Type.POST);
 			}
 
 			Post post=PostStorage.getPostByID(postID, false);
@@ -264,12 +267,12 @@ public class WallController{
 
 			// Add{Note} is sent for any wall posts & comments on them, for local wall owners.
 			// Create{Note} is sent for anything else.
-			if((ownerGroupID!=0 || ownerUserID!=userID) && !isTopLevelPostOwn && !(wallOwner instanceof ForeignActor)){
+			if(post.ownerID!=post.authorID && (post.getReplyLevel()==0 || (post.getReplyLevel()>0 && !isTopLevelPostOwn)) && !(wallOwner instanceof ForeignActor)){
 				context.getActivityPubWorker().sendAddPostToWallActivity(post);
 			}else{
 				context.getActivityPubWorker().sendCreatePostActivity(post);
 			}
-			NotificationUtils.putNotificationsForPost(post, inReplyTo, repost);
+			context.getNotificationsController().createNotificationsForObject(post);
 
 			return post;
 		}catch(SQLException x){
@@ -277,7 +280,7 @@ public class WallController{
 		}
 	}
 
-	private String preparePostText(String textSource, final Set<User> mentionedUsers, @Nullable Post parent, @NotNull FormattedTextFormat format) throws SQLException{
+	public String preparePostText(String textSource, final Set<User> mentionedUsers, int parentAuthorID, @NotNull FormattedTextFormat format) throws SQLException{
 		String text=TextProcessor.preprocessPostText(textSource, new TextProcessor.MentionCallback(){
 			@Override
 			public User resolveMention(String username, String domain){
@@ -324,12 +327,13 @@ public class WallController{
 			}
 		}, format);
 
-		if(parent!=null){
+		if(parentAuthorID>0){
 			// comment replies start with mentions, but only if it's a reply to a comment, not a top-level post
-			User parentAuthor=context.getUsersController().getUserOrThrow(parent.authorID);
-			if(!parent.replyKey.isEmpty() && text.startsWith("<p>"+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+",")){
+			User parentAuthor=context.getUsersController().getUserOrThrow(parentAuthorID);
+			String nameForReply=TextProcessor.escapeHTML(parentAuthor.getNameForReply());
+			if(text.startsWith("<p>"+nameForReply+",")){
 				text="<p><a href=\""+TextProcessor.escapeHTML(parentAuthor.url.toString())+"\" class=\"mention\" data-user-id=\""+parentAuthor.id+"\">"
-						+TextProcessor.escapeHTML(parentAuthor.getNameForReply())+"</a>"+text.substring(parentAuthor.getNameForReply().length()+3);
+						+nameForReply+"</a>"+text.substring(nameForReply.length()+3);
 			}
 			mentionedUsers.add(parentAuthor);
 		}
@@ -345,10 +349,23 @@ public class WallController{
 	 */
 	@NotNull
 	public Post getPostOrThrow(int id){
+		return getPostOrThrow(id, false);
+	}
+
+	/**
+	 * Get a post by ID.
+	 *
+	 * @param id          Post ID
+	 * @param wantDeleted whether to return the post even if it was deleted
+	 * @return The post
+	 * @throws ObjectNotFoundException if the post does not exist or was deleted
+	 */
+	@NotNull
+	public Post getPostOrThrow(int id, boolean wantDeleted){
 		if(id<=0)
 			throw new ObjectNotFoundException("err_post_not_found");
 		try{
-			Post post=PostStorage.getPostByID(id, false);
+			Post post=PostStorage.getPostByID(id, wantDeleted);
 			if(post==null)
 				throw new ObjectNotFoundException("err_post_not_found");
 			return post;
@@ -378,7 +395,8 @@ public class WallController{
 	}
 
 	@NotNull
-	public Post editPost(@NotNull User self, @NotNull UserPermissions permissions, int id, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @Nullable Poll poll){
+	public Post editPost(@NotNull User self, @NotNull UserPermissions permissions, int id, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning,
+						 @NotNull List<String> attachmentIDs, @Nullable Poll poll, @NotNull Map<String, String> attachAltTexts){
 		try{
 			Post post=getPostOrThrow(id);
 			if(!permissions.canEditPost(post))
@@ -389,7 +407,7 @@ public class WallController{
 
 			HashSet<User> mentionedUsers=new HashSet<>();
 			Post parent=post.getReplyLevel()>0 ? getPostOrThrow(post.getReplyChainElement(post.getReplyLevel()-1)) : null;
-			String text=preparePostText(textSource, mentionedUsers, parent, sourceFormat);
+			String text=preparePostText(textSource, mentionedUsers, parent!=null && parent.getReplyLevel()>1 ? parent.authorID : 0, sourceFormat);
 
 			int pollID=0;
 			if(poll!=null && !Objects.equals(post.poll, poll)){
@@ -414,11 +432,12 @@ public class WallController{
 				if(post.attachments!=null){
 					for(ActivityPubObject att:post.attachments){
 						if(att instanceof LocalImage li){
-							String localID=li.fileRecord.id().getIDForClient();
+							String localID=li.getLocalID();
 							if(!newlyAddedAttachments.remove(localID)){
 								LOG.debug("Deleting attachment: {}", localID);
 								MediaStorage.deleteMediaFileReference(post.id, MediaFileReferenceType.WALL_ATTACHMENT, li.fileID);
 							}else{
+								li.name=attachAltTexts.get(li.getLocalID());
 								attachObjects.add(li);
 							}
 						}else{
@@ -428,7 +447,7 @@ public class WallController{
 				}
 
 				if(!newlyAddedAttachments.isEmpty()){
-					MediaStorageUtils.fillAttachmentObjects(attachObjects, newlyAddedAttachments, attachmentCount, maxAttachments);
+					MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments);
 					for(ActivityPubObject att:attachObjects){
 						if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
 							MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.ownerID);
@@ -437,7 +456,7 @@ public class WallController{
 				}
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
-						attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
+						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
 					}else{
 						JsonArray ar=new JsonArray();
 						for(ActivityPubObject o:attachObjects){
@@ -448,7 +467,7 @@ public class WallController{
 				}
 			}
 
-			PostStorage.updateWallPost(id, text, textSource, mentionedUsers, attachments, contentWarning, pollID);
+			PostStorage.updateWallPost(id, text, textSource, sourceFormat, mentionedUsers, attachments, contentWarning, pollID);
 			if(post.ownerID>0 && post.ownerID==post.authorID){
 				context.getNewsfeedController().clearFriendsFeedCache();
 			}
@@ -573,9 +592,17 @@ public class WallController{
 					.stream()
 					.collect(Collectors.toMap(Map.Entry::getKey, e->context.getPrivacyController().checkUserPrivacy(self, e.getValue(), UserPrivacySettingKey.WALL_COMMENTING)));
 
-			Map<Integer, PostViewModel> postsByID=posts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity(), (p1, p2)->p1));
+			List<PostViewModel> allPosts=posts.stream().flatMap(pvm->{
+				ArrayList<PostViewModel> replies=new ArrayList<>();
+				replies.add(pvm);
+				pvm.getAllReplies(replies);
+				return replies.stream();
+			}).toList();
+			Map<Integer, PostViewModel> postsByID=allPosts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity(), (p1, p2)->p1));
+			Map<Integer, UserInteractions> interactions=PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
 
-			for(PostViewModel post:posts){
+			for(PostViewModel post:allPosts){
+				UserInteractions ui=interactions.get(post.post.getIDForInteractions());
 				int ownerID;
 				if(post.post.isMastodonStyleRepost()){
 					if(post.repost!=null && post.repost.post()!=null){
@@ -588,21 +615,22 @@ public class WallController{
 				}
 				// Can't comment on posts or in threads that don't exist
 				if(post.post.isMastodonStyleRepost() && post.repost!=null && (post.repost.post()==null || (post.repost.post().post.getReplyLevel()>0 && post.repost.topLevel()==null)))
-					post.canComment=false;
+					ui.canComment=false;
 				else
-					post.canComment=canComment.getOrDefault(ownerID, true);
+					ui.canComment=canComment.getOrDefault(ownerID, true);
 
+				ui.canRepost=true;
 				if(post.post.privacy!=Post.Privacy.PUBLIC){
-					post.canRepost=false;
+					ui.canRepost=false;
 				}else if(post.post.ownerID!=post.post.authorID){
 					if(post.post.getReplyLevel()==0){
-						post.canRepost=false; // Wall-to-wall post
+						ui.canRepost=false; // Wall-to-wall post
 					}else if(postsByID.get(post.post.replyKey.getFirst()) instanceof PostViewModel p && p.post.ownerID!=p.post.authorID){
-						post.canRepost=false; // Comment on a wall-to-wall post
+						ui.canRepost=false; // Comment on a wall-to-wall post
 					}
 				}
 			}
-			return PostStorage.getPostInteractions(postIDs, self!=null ? self.id : 0);
+			return interactions;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -745,29 +773,35 @@ public class WallController{
 		}
 	}
 
-	public void deletePost(@NotNull SessionInfo info, Post post){
-		deletePostInternal(info, post, false);
+	public void deletePost(@NotNull User self, Post post){
+		deletePostInternal(self, post, false);
 	}
 
-	public void deletePostAsServerModerator(@NotNull SessionInfo info, Post post){
-		deletePostInternal(info, post, true);
+	public void deletePostAsServerModerator(@NotNull User self, Post post){
+		deletePostInternal(self, post, true);
 	}
 
-	private void deletePostInternal(@NotNull SessionInfo info, Post post, boolean ignorePermissions){
+	private void deletePostInternal(@NotNull User self, Post post, boolean ignorePermissions){
 		try{
+			OwnerAndAuthor oaa=getContentAuthorAndOwner(post);
 			if(!ignorePermissions){
-				context.getPrivacyController().enforceObjectPrivacy(info.account.user, post);
-				if(!info.permissions.canDeletePost(post)){
-					throw new UserActionNotAllowedException();
+				context.getPrivacyController().enforceObjectPrivacy(self, post);
+				if(post.ownerID!=self.id && post.authorID!=self.id){ // Can always delete own posts and others' posts on own wall
+					if(post.ownerID>0) // Can't delete posts not made of owned oneself
+						throw new UserActionNotAllowedException();
+					else // Must be at least a moderator to delete others' posts in groups
+						context.getGroupsController().enforceUserAdminLevel((Group)oaa.owner(), self, Group.AdminLevel.MODERATOR);
 				}
 			}
 			PostStorage.deletePost(post.id);
 			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, post.id);
 			context.getNewsfeedController().clearFriendsFeedCache();
-			User deleteActor=info.account.user;
-			OwnerAndAuthor oaa=getContentAuthorAndOwner(post);
+			if(post.ownerID<0 && post.getReplyLevel()==0){
+				context.getNewsfeedController().clearGroupsFeedCache();
+			}
+			User deleteActor=self;
 			// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
-			if(ignorePermissions && oaa.author().id!=info.account.user.id && !post.isGroupOwner() && post.ownerID!=info.account.user.id && !(oaa.author() instanceof ForeignUser)){
+			if(ignorePermissions && oaa.author().id!=self.id && !post.isGroupOwner() && post.ownerID!=self.id && !(oaa.author() instanceof ForeignUser)){
 				deleteActor=oaa.author();
 			}
 			context.getActivityPubWorker().sendDeletePostActivity(post, deleteActor);

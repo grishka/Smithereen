@@ -63,6 +63,8 @@ public class Config{
 	public static long mediaCacheFileSizeLimit;
 	public static boolean useHTTP;
 	public static String staticFilesPath;
+	public static String uploadUrlPath;
+	public static String mediaCacheUrlPath;
 	public static final boolean DEBUG=System.getProperty("smithereen.debug")!=null || System.getenv("SMITHEREEN_DEBUG")!=null;
 
 	public static String imgproxyLocalUploads;
@@ -122,6 +124,8 @@ public class Config{
 		mediaCachePath=new File(props.getProperty("media_cache.path"));
 		mediaCacheMaxSize=Utils.parseFileSize(props.getProperty("media_cache.max_size"));
 		mediaCacheFileSizeLimit=Utils.parseFileSize(props.getProperty("media_cache.file_size_limit"));
+		uploadUrlPath=props.getProperty("upload.url_path");
+		mediaCacheUrlPath=props.getProperty("media_cache.url_path");
 
 		useHTTP=Boolean.parseBoolean(props.getProperty("use_http_scheme.i_know_what_i_am_doing", "false"));
 		localURI=URI.create("http"+(useHTTP ? "" : "s")+"://"+domain+"/");

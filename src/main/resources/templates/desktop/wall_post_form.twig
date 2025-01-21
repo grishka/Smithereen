@@ -10,14 +10,14 @@
 		{% endif %}
 		</div>
 	{% else %}
-	<form action="{{ isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost" }}" id="wallPostFormForm_{{ id }}" method="post">
+	<form action="{{ action | default(isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost") }}" id="wallPostFormForm_{{ id }}" method="post">
 		{% if showReplyBar %}
 		<div class="commentReplying" id="commentReplying_{{ id }}" style="display: none">
 			{{- L('in_reply_to_X', {}, {'name': {'_': 'span', 'id': 'replyingName_'+id} }) -}}
 			<a class="cancelReply" id="cancelReply_{{ id }}" aria-label="{{ L('cancel_reply') }}" data-tooltip="{{ L('cancel_reply') }}"></a>
 		</div>
 		{% endif %}
-	{% if replyTo is not null %}
+	{% if replyTo is not null or isComment %}
 		{% set fieldPlaceholder=L('comment_placeholder') %}
 	{% elseif isGroup %}
 		{% set fieldPlaceholder=L(wallOwner.event ? 'write_on_event_wall' : 'write_on_group_wall') %}
@@ -31,9 +31,7 @@
 		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="3" maxlength="65000" placeholder="{{ fieldPlaceholder }}">{{prefilledPostText}}</textarea>
 		<div class="completionsContainer"></div>
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
-		{%if replyTo is not null%}
-		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}" value="{{replyTo.id}}"/>
-		{%endif%}
+		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}"{% if replyTo is not null %} value="{{replyTo.id}}"{% endif %}/>
 		{% if repostedPost is not null %}
 		<input type="hidden" name="repost" value="{{ repostedPost.id }}"/>
 		{% endif %}
@@ -42,10 +40,10 @@
 		<div id="postFormAttachments_{{id}}">
 			{%set attachIDs=""%}
 			{%for attachment in draftAttachments%}
-			<div class="attachment" id="attachment_{{attachment.localID}}" data-id="{{attachment.localID}}">
-				{{ attachment | pictureForPhoto('xs') }}
+			<div class="attachment" id="attachment_{{attachment.localID}}" data-id="{{attachment.localID}}"{% if attachPvData contains attachment.localID %} data-pv="{{ json(attachPvData[attachment.localID]) }}"{% endif %}>
+				{{ attachment | pictureForPhoto('s') }}
 				{% if isEditing %}
-				<a href="#" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
+				<a href="#" class="deleteBtn" aria-label="{{ L('remove_attachment') }}" data-tooltip="{{ L('remove_attachment') }}"></a>
 				{% else %}
 				<a href="/system/deleteDraftAttachment?id={{attachment.localID}}&csrf={{csrf}}" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
 				{% endif %}
@@ -65,11 +63,12 @@
 			{% if poll is not null %}{% include 'poll_form' with {'poll': poll} %}{% endif %}
 		</div>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
+		<input type="hidden" name="attachAltTexts" value="{{ json(attachAltTexts | default({})) }}"/>
 		<div class="bottomBar">
 			<div class="left">
 				{% if isEditing %}
 				<button id="postFormSubmit_{{ id }}">{{ L('save') }}</button>
-				<button class="tertiary jsRequired" type="button" onclick="cancelEditingPost({{ editingPostID }})">{{ L('cancel') }}</button>
+				<button class="tertiary jsRequired" type="button" onclick="cancelEditingPost('{{ editingPostID }}')">{{ L('cancel') }}</button>
 				{% else %}
 				<button id="postFormSubmit_{{ id }}">{{ submitButtonText | default(L('send')) }}</button>
 				{% endif %}
@@ -83,7 +82,7 @@
 					<div class="popupMenu withIcons" style="display: none;">
 						<ul class="attachMenu">
 							<li data-act="photo"><span class="iconPhoto"></span>{{ L('attach_menu_photo') }}</li>
-							{% if replyTo is empty %}
+							{% if replyTo is empty and not isComment %}
 							<li data-act="graffiti" data-args="{{ json({'jsHash': staticHashes['graffiti.js'], 'title': (isGroup ? L('graffiti_editor_title_group', {'name': wallOwner.name}) : L('graffiti_editor_title_user', {'name': wallOwner.firstLastAndGender})).toString()}) }}"><span class="iconGraffiti"></span>{{ L('attach_menu_graffiti') }}</li>
 							<li data-act="poll"><span class="iconPoll"></span>{{ L('attach_menu_poll') }}</li>
 							{% endif %}

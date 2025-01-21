@@ -198,3 +198,12 @@ window.addEventListener("beforeunload", (ev)=>{
 		}
 	}
 });
+
+window.addEventListener("popstate", (ev)=>{
+	if(ev.state && ev.state.layer){
+		if(ev.state.layer=="PhotoViewer"){
+			doOpenPhotoViewer(ev.state.pvInline, ev.state.pvListURL, true);
+		}
+	}
+}, false);
+

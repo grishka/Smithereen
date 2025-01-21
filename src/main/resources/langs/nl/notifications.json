@@ -14,5 +14,7 @@
   "no_notifications": "Je hebt nog geen meldingen",
   "notifications": "Meldingen",
   "notifications_empty": "Je meldingen verschijnen hier.",
-  "summary_notifications": "Laatste meldingen worden weergegeven"
+  "summary_notifications": "Laatste meldingen worden weergegeven",
+  "notification_liked_photo": "vindt je <a id=\"photo\">afbeelding</a> leuk",
+  "notification_commented_on_photo": "heeft gereageerd op je <a id=\"photo\">afbeelding</a>"
 }

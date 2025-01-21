@@ -9,6 +9,8 @@ public class Like extends Activity{
 	}
 
 	public enum ObjectType{
-		POST
+		POST,
+		PHOTO,
+		COMMENT
 	}
 }

@@ -1,0 +1,21 @@
+{% macro photoAlbumTitle(_context, album) %}
+{% if album.systemType=='SAVED' %}
+{{ L('saved_photos_album') }}
+{% elseif album.systemType=='AVATARS' %}
+{% if _context.currentUser is not null and _context.currentUser.id==album.ownerID %}
+{{ L('avatars_album_own') }}
+{% elseif album.ownerID<0 %}
+{{ L('avatars_album_group') }}
+{% else %}
+{{ L('avatars_album_user', {'name': _context.users[album.ownerID] | default(_context.owner) | name('firstAndGender')}) }}
+{% endif %}
+{% elseif album.systemType=="TAGGED" %}
+{% if _context.currentUser is not null and _context.currentUser.id==album.ownerID %}
+{{ L('photos_of_me') }}
+{% else %}
+{{ L('photos_of_user', {'name': _context.users[album.ownerID] | default(_context.owner) | name('firstAndGender')}) }}
+{% endif %}
+{% else %}
+{{ album.title }}
+{% endif %}
+{% endmacro %}

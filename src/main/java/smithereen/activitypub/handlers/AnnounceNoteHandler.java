@@ -1,15 +1,10 @@
 package smithereen.activitypub.handlers;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.concurrent.ExecutionException;
 
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
@@ -18,11 +13,8 @@ import smithereen.activitypub.objects.activities.Announce;
 import smithereen.model.ForeignUser;
 import smithereen.model.Post;
 import smithereen.model.User;
-import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.notifications.Notification;
-import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
-import smithereen.util.UriBuilder;
 
 public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announce, NoteOrQuestion>{
 
@@ -33,15 +25,27 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 			if(parent!=null){
 				Post nativePost=post.asNativePost(context.appContext);
 				context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
+				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
 				doHandle(nativePost, actor, activity, context);
 			}else{
-				context.appContext.getActivityPubWorker().fetchReplyThreadAndThen(post, thread->onReplyThreadDone(thread, actor, activity, context));
+				context.appContext.getActivityPubWorker().fetchWallReplyThreadAndThen(post, thread->onReplyThreadDone(thread, actor, activity, context));
 			}
 		}else{
 			Post nativePost=post.asNativePost(context.appContext);
+			if(post.getQuoteRepostID()!=null){
+				try{
+					List<Post> repostChain=context.appContext.getActivityPubWorker().fetchRepostChain(post).get();
+					if(!repostChain.isEmpty()){
+						nativePost.setRepostedPost(repostChain.getFirst());
+					}
+				}catch(InterruptedException x){
+					throw new RuntimeException(x);
+				}catch(ExecutionException x){
+					LOG.debug("Failed to fetch repost chain for {}", post.activityPubID, x);
+				}
+			}
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost);
+			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
 			doHandle(nativePost, actor, activity, context);
 			context.appContext.getActivityPubWorker().fetchAllReplies(nativePost);
 		}
@@ -82,13 +86,6 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 		context.appContext.getNewsfeedController().clearFriendsFeedCache();
 
 		User author=context.appContext.getUsersController().getUserOrThrow(post.authorID);
-		if(!(author instanceof ForeignUser)){
-			Notification n=new Notification();
-			n.type=Notification.Type.RETOOT;
-			n.actorID=actor.id;
-			n.objectID=post.id;
-			n.objectType=Notification.ObjectType.POST;
-			NotificationsStorage.putNotification(post.authorID, n);
-		}
+		context.appContext.getNotificationsController().createNotification(author, Notification.Type.RETOOT, post, null, actor);
 	}
 }

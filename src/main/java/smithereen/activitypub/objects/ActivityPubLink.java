@@ -13,7 +13,8 @@ public abstract class ActivityPubLink extends ActivityPubObject{
 	@Override
 	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
 		obj=super.asActivityPubObject(obj, serializerContext);
-		obj.addProperty("href", href.toString());
+		if(href!=null)
+			obj.addProperty("href", href.toString());
 		return obj;
 	}
 

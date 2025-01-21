@@ -203,7 +203,7 @@ public class SessionRoutes{
 				res=SessionStorage.registerNewAccount(null, password, email, first, last, gender);
 			}
 		}else{
-			res=SessionStorage.registerNewAccount(null, password, email, first, last, gender, invite);
+			res=SessionStorage.registerNewAccount(null, password, email, first, last, gender, invite, ctx);
 		}
 		if(res==SessionStorage.SignupResult.SUCCESS){
 			Account acc=Objects.requireNonNull(SessionStorage.getAccountForUsernameAndPassword(email, password));

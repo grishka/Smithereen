@@ -24,20 +24,28 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.Image;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.Account;
 import smithereen.model.ActorWithDescription;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
 import smithereen.model.GroupAdmin;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.exceptions.BadRequestException;
 import smithereen.lang.Lang;
@@ -45,6 +53,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
 import smithereen.text.Whitelist;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -173,7 +182,7 @@ public class GroupsRoutes{
 		}
 	}
 
-	public static Object groupProfile(Request req, Response resp, Group group){
+	public static RenderedTemplateResponse groupProfile(Request req, Response resp, Group group){
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
@@ -190,7 +199,7 @@ public class GroupsRoutes{
 			if(group.accessType==Group.AccessType.CLOSED){
 				canAccessContent=false;
 			}else if(group.accessType==Group.AccessType.PRIVATE){
-				return wrapError(req, resp, group.isEvent() ? "event_private_no_access" : "group_private_no_access");
+				throw new UserActionNotAllowedException(group.isEvent() ? "event_private_no_access" : "group_private_no_access");
 			}
 		}
 
@@ -228,6 +237,15 @@ public class GroupsRoutes{
 			PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
 			model.with("users", ctx.getUsersController().getUsers(needUsers));
 			model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
+
+			PaginatedList<PhotoAlbum> albums;
+			if(isMobile(req))
+				albums=ctx.getPhotosController().getMostRecentAlbums(group, self!=null ? self.user : null, 1, true);
+			else
+				albums=ctx.getPhotosController().getRandomAlbumsForProfile(group, self!=null ? self.user : null, 2);
+			model.with("albums", albums.list)
+					.with("photoAlbumCount", albums.total)
+					.with("covers", ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.list.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet())));
 		}
 
 		if(group instanceof ForeignGroup)
@@ -240,9 +258,9 @@ public class GroupsRoutes{
 			model.with("membershipState", membershipState);
 			model.with("groupAdminLevel", level);
 			if(level.isAtLeast(Group.AdminLevel.ADMIN)){
-				jsLangKey(req, "update_profile_picture", "save", "profile_pic_select_square_version", "drag_or_choose_file", "choose_file",
-						"drop_files_here", "picture_too_wide", "picture_too_narrow", "ok", "error", "error_loading_picture",
-						"remove_profile_picture", "confirm_remove_profile_picture", "choose_file_mobile");
+				jsLangKey(req, "update_avatar_title", "update_avatar_intro_group", "update_avatar_formats", "update_avatar_footer", "update_avatar_crop_title_group", "update_avatar_crop_explanation1_group",
+						"update_avatar_crop_explanation2", "update_avatar_thumb_title", "update_avatar_thumb_explanation1", "update_avatar_thumb_explanation2_group", "choose_file", "save_and_continue", "go_back",
+						"remove_profile_picture", "confirm_remove_profile_picture_group");
 			}
 			if(group.isEvent()){
 				if(membershipState==Group.MembershipState.MEMBER)
@@ -267,9 +285,9 @@ public class GroupsRoutes{
 				descr+="\n"+Jsoup.clean(group.summary, Whitelist.none());
 			meta.put("og:description", descr);
 			if(group.hasAvatar()){
-				URI img=group.getAvatar().getUriForSizeAndFormat(SizedImage.Type.LARGE, SizedImage.Format.JPEG);
+				URI img=group.getAvatar().getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_XLARGE, SizedImage.Format.JPEG);
 				if(img!=null){
-					SizedImage.Dimensions size=group.getAvatar().getDimensionsForSize(SizedImage.Type.LARGE);
+					SizedImage.Dimensions size=group.getAvatar().getDimensionsForSize(SizedImage.Type.AVA_SQUARE_XLARGE);
 					meta.put("og:image", img.toString());
 					meta.put("og:image:width", size.width+"");
 					meta.put("og:image:height", size.height+"");
@@ -296,6 +314,19 @@ public class GroupsRoutes{
 				profileFields.add(new PropertyValue(l.get("event_end_time"), l.formatDate(group.eventEndTime, timeZoneForRequest(req), false)));
 		}
 		model.with("profileFields", profileFields);
+
+		try{
+			Photo photo=switch(group.getAvatarImage()){
+				case LocalImage li when li.photoID!=0 -> ctx.getPhotosController().getPhotoIgnoringPrivacy(li.photoID);
+				case Image img when img.photoApID!=null -> ctx.getObjectLinkResolver().resolveLocally(img.photoApID, Photo.class);
+				case null, default -> null;
+			};
+			if(photo!=null){
+				model.with("avatarPvInfo", new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(photo.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), photo.image.getURLsForPhotoViewer()))
+						.with("avatarPhoto", photo);
+			}
+		}catch(ObjectNotFoundException ignore){}
+
 		return model;
 	}
 
@@ -386,14 +417,24 @@ public class GroupsRoutes{
 		Group group=getGroup(req);
 		if(tentative && !group.isEvent())
 			throw new BadRequestException();
+		ApplicationContext ctx=context(req);
 		SessionInfo info=sessionInfo(req);
-		context(req).getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
+		ctx.getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
-		model.paginate(context(req).getGroupsController().getMembers(group, offset(req), 100, tentative));
+		PaginatedList<User> members=context(req).getGroupsController().getMembers(group, offset(req), 100, tentative);
+		model.paginate(members);
 		model.with("summary", lang(req).get(tentative ? "summary_event_X_tentative_members" : (group.isEvent() ? "summary_event_X_members" : "summary_group_X_members"), Map.of("count", tentative ? group.tentativeMemberCount : group.memberCount)));
 		model.with("contentTemplate", "user_grid").with("title", group.name);
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
+		if(!isMobile(req)){
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(members.list);
+			model.with("avatarPhotos", userPhotos)
+					.with("avatarPvInfos", userPhotos.values()
+							.stream()
+							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
+					);
+		}
 		return model;
 	}
 
@@ -406,7 +447,7 @@ public class GroupsRoutes{
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
 		if(isAjax(req)){
-			return new WebDeltaResponse(resp).box(lang(req).get(group.isEvent() ? "event_organizers" : "group_admins"), model.renderContentBlock(), null, true);
+			return new WebDeltaResponse(resp).box(lang(req).get(group.isEvent() ? "event_organizers" : "group_admins"), model.renderContentBlock(), null, !isMobile(req));
 		}
 		return model;
 	}

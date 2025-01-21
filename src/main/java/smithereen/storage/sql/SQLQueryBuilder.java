@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import smithereen.storage.DatabaseUtils;
@@ -135,10 +136,20 @@ public class SQLQueryBuilder{
 	}
 
 	public SQLQueryBuilder whereIn(String column, Object... args){
+		whereIn(false, column, args);
+		return this;
+	}
+
+	public SQLQueryBuilder whereNotIn(String column, Object... args){
+		whereIn(true, column, args);
+		return this;
+	}
+
+	private void whereIn(boolean negate, String column, Object... args){
 		StringBuilder sb=new StringBuilder();
 		sb.append('`');
 		sb.append(column);
-		sb.append("` IN (");
+		sb.append(negate ? "` NOT IN (" : "` IN (");
 		for(int i=0;i<args.length;i++){
 			sb.append('?');
 			if(i<args.length-1)
@@ -147,7 +158,6 @@ public class SQLQueryBuilder{
 		sb.append(')');
 		condition=sb.toString();
 		conditionArgs=new ArrayList<>(List.of(args));
-		return this;
 	}
 
 	public SQLQueryBuilder andWhere(String where, Object... args){
@@ -162,6 +172,10 @@ public class SQLQueryBuilder{
 
 	public SQLQueryBuilder whereIn(String column, Collection<?> args){
 		return whereIn(column, args.toArray(new Object[0]));
+	}
+
+	public SQLQueryBuilder whereNotIn(String column, Collection<?> args){
+		return whereNotIn(column, args.toArray(new Object[0]));
 	}
 
 	public SQLQueryBuilder limit(int limit, int offset){
@@ -262,6 +276,15 @@ public class SQLQueryBuilder{
 		}
 	}
 
+	public long executeAndGetLong() throws SQLException{
+		try(PreparedStatement stmt=createStatementInternal(0)){
+			long r=DatabaseUtils.oneFieldToLong(stmt.executeQuery());
+			if(needCloseConnection)
+				conn.close();
+			return r;
+		}
+	}
+
 	public List<Integer> executeAndGetIntList() throws SQLException{
 		try(PreparedStatement stmt=createStatementInternal(0)){
 			List<Integer> r=DatabaseUtils.intResultSetToList(stmt.executeQuery());
@@ -274,6 +297,13 @@ public class SQLQueryBuilder{
 
 	public IntStream executeAndGetIntStream() throws SQLException{
 		return DatabaseUtils.intResultSetToStream(createStatementInternal(0).executeQuery(), ()->{
+			if(needCloseConnection)
+				conn.close();
+		});
+	}
+
+	public LongStream executeAndGetLongStream() throws SQLException{
+		return DatabaseUtils.longResultSetToStream(createStatementInternal(0).executeQuery(), ()->{
 			if(needCloseConnection)
 				conn.close();
 		});

@@ -8,8 +8,15 @@
 <div class="userGrid">
 	{% for user in items %}
 	<div class="userGridItem">
+		{% if avatarPhotos contains user.id %}
+		<div class="avaZoomableW">
+			<a href="{{ user.profileURL }}"{{ profileRel(user) }}>{{ user | pictureForAvatar('b') }}</a>
+			<a href="{{ avatarPhotos[user.id].url }}" class="avaZoom ellipsize" data-pv="{{ json(avatarPvInfos[user.id]) }}" onclick="return openPhotoViewer(this)"><span class="icon"></span><span>{{ L('view_user_profile_photos') }}</span></a>
+		</div>
+		{% else %}
+		<a href="{{ user.profileURL }}"{{ profileRel(user) }}>{{ user | pictureForAvatar('b') }}</a>
+		{% endif %}
 		<a href="{{ user.profileURL }}"{{ profileRel(user) }}>
-			{{ user | pictureForAvatar('m') }}
 			<div class="name ellipsize">{{ user | name }}</div>
 		</a>
 	</div>

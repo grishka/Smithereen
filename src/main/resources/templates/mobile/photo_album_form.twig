@@ -1,0 +1,15 @@
+{% import "forms" as form %}
+{{ form.start("createPhotoAlbum") }}
+	{{ form.textInput("title", L('photo_album_title'), album.title, {'required': true, 'maxlength': 150}) }}
+	{{ form.textArea("description", L('photo_album_description'), album.description) }}
+	{% if owner.ownerID>0 %}
+	<div class="marginAfter">
+	{% include "privacy_setting_row" with {'setting': album is null ? defaultPrivacy : album.viewPrivacy, 'key': 'viewPrivacy', 'isOnlyMe': true, 'label': L('photo_album_view_privacy')} %}
+	{% include "privacy_setting_row" with {'setting': album is null ? defaultPrivacy : album.commentPrivacy, 'key': 'commentPrivacy', 'isOnlyMe': false, 'label': L('photo_album_comment_privacy')} %}
+	</div>
+	{% else %}
+	{{ form.checkBox('restrictUploads', null, L('photo_album_restrict_uploads'), album.hasFlag('GROUP_RESTRICT_UPLOADS')) }}
+	{{ form.checkBox('disableCommenting', null, L('photo_album_disable_commenting'), album.hasFlag('GROUP_DISABLE_COMMENTING')) }}
+	{% endif %}
+	{{ form.footer(L(album is null ? 'create' : 'save')) }}
+{{ form.end() }}

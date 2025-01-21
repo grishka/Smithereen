@@ -1,5 +1,5 @@
 {# @pebvariable name="post" type="smithereen.model.Post" #}
 <div class="tabbar">
-	<a href="/posts/{{ post.id }}/likes" class="{{ tab=='likes' ? "selected" : "" }}">{{ L('liked_by_X_people_short', {'count': interactions[post.getIDForInteractions()].likeCount}) }}</a>
-	<a href="/posts/{{ post.id }}/reposts" class="{{ tab=='reposts' ? "selected" : "" }}">{{ L('shared_by_X_people_short', {'count': interactions[post.getIDForInteractions()].repostCount}) }}</a>
+	<a href="{{ url }}/likes" class="{{ tab=='likes' ? "selected" : "" }}">{{ L('liked_by_X_people_short', {'count': interactions.likeCount}) }}</a>
+	{% if interactions.repostCount>0 %}<a href="{{ url }}/reposts" class="{{ tab=='reposts' ? "selected" : "" }}">{{ L('shared_by_X_people_short', {'count': interactions.repostCount}) }}</a>{% endif %}
 </div>

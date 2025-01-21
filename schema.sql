@@ -14,6 +14,7 @@ CREATE TABLE `accounts` (
   `user_id` int unsigned NOT NULL,
   `email` varchar(200) NOT NULL DEFAULT '',
   `password` binary(32) DEFAULT NULL,
+  `salt` binary(32) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `invited_by` int unsigned DEFAULT NULL,
   `preferences` text,
@@ -34,6 +35,18 @@ CREATE TABLE `accounts` (
   CONSTRAINT `accounts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `accounts_ibfk_2` FOREIGN KEY (`role`) REFERENCES `user_roles` (`id`) ON DELETE SET NULL,
   CONSTRAINT `accounts_ibfk_3` FOREIGN KEY (`promoted_by`) REFERENCES `accounts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `ap_id_index`
+--
+
+CREATE TABLE `ap_id_index` (
+  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `object_type` int unsigned NOT NULL,
+  `object_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`ap_id`),
+  UNIQUE KEY `object_type` (`object_type`,`object_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -158,6 +171,42 @@ CREATE TABLE `bookmarks_user` (
   UNIQUE KEY `owner_id` (`owner_id`,`user_id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `bookmarks_user_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `comments`
+--
+
+CREATE TABLE `comments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `author_id` int unsigned DEFAULT NULL,
+  `owner_user_id` int unsigned DEFAULT NULL,
+  `owner_group_id` int unsigned DEFAULT NULL,
+  `parent_object_type` int unsigned NOT NULL,
+  `parent_object_id` bigint unsigned NOT NULL,
+  `text` text,
+  `attachments` json DEFAULT NULL,
+  `ap_url` varchar(300) DEFAULT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `content_warning` text,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `reply_key` varbinary(2048) DEFAULT NULL,
+  `mentions` varbinary(1024) DEFAULT NULL,
+  `reply_count` int unsigned NOT NULL DEFAULT '0',
+  `ap_replies` varchar(300) DEFAULT NULL,
+  `federation_state` tinyint unsigned NOT NULL DEFAULT '0',
+  `source` text,
+  `source_format` tinyint unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `owner_user_id` (`owner_user_id`),
+  KEY `author_id` (`author_id`),
+  KEY `reply_key` (`reply_key`),
+  KEY `owner_group_id` (`owner_group_id`),
+  KEY `parent_object_type` (`parent_object_type`,`parent_object_id`),
+  CONSTRAINT `comments_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `comments_ibfk_2` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -329,7 +378,7 @@ CREATE TABLE `groups` (
 CREATE TABLE `likes` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int unsigned NOT NULL,
-  `object_id` int unsigned NOT NULL,
+  `object_id` bigint unsigned NOT NULL,
   `object_type` int unsigned NOT NULL,
   `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   UNIQUE KEY `user_id` (`user_id`,`object_id`,`object_type`),
@@ -455,7 +504,7 @@ CREATE TABLE `newsfeed` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `type` int unsigned NOT NULL,
   `author_id` int NOT NULL,
-  `object_id` int DEFAULT NULL,
+  `object_id` bigint unsigned DEFAULT NULL,
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `type` (`type`,`object_id`,`author_id`),
@@ -470,12 +519,28 @@ CREATE TABLE `newsfeed` (
 CREATE TABLE `newsfeed_comments` (
   `user_id` int unsigned NOT NULL,
   `object_type` int unsigned NOT NULL,
-  `object_id` int unsigned NOT NULL,
+  `object_id` bigint unsigned NOT NULL,
   `last_comment_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`object_type`,`object_id`,`user_id`),
   KEY `user_id` (`user_id`),
   KEY `last_comment_time` (`last_comment_time`),
   CONSTRAINT `newsfeed_comments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `newsfeed_groups`
+--
+
+CREATE TABLE `newsfeed_groups` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `type` int unsigned NOT NULL,
+  `object_id` bigint unsigned DEFAULT NULL,
+  `group_id` int unsigned NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `type` (`type`,`group_id`,`object_id`),
+  KEY `time` (`time`),
+  KEY `group_id` (`group_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -486,15 +551,100 @@ CREATE TABLE `notifications` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `owner_id` int unsigned NOT NULL,
   `type` smallint unsigned NOT NULL,
-  `object_id` int unsigned DEFAULT NULL,
+  `object_id` bigint unsigned DEFAULT NULL,
   `object_type` smallint unsigned DEFAULT NULL,
-  `related_object_id` int unsigned DEFAULT NULL,
+  `related_object_id` bigint unsigned DEFAULT NULL,
   `related_object_type` smallint unsigned DEFAULT NULL,
   `actor_id` int DEFAULT NULL,
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `owner_id` (`owner_id`),
   KEY `time` (`time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `photo_albums`
+--
+
+CREATE TABLE `photo_albums` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `owner_user_id` int unsigned DEFAULT NULL,
+  `owner_group_id` int unsigned DEFAULT NULL,
+  `title` varchar(200) NOT NULL,
+  `description` text NOT NULL,
+  `privacy` json NOT NULL,
+  `num_photos` int unsigned NOT NULL DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `system_type` tinyint unsigned DEFAULT NULL,
+  `cover_id` bigint unsigned DEFAULT NULL,
+  `flags` bigint NOT NULL DEFAULT '0',
+  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ap_url` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `display_order` int unsigned NOT NULL DEFAULT '0',
+  `ap_comments` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `owner_user_id` (`owner_user_id`),
+  KEY `owner_group_id` (`owner_group_id`),
+  KEY `display_order` (`display_order`),
+  CONSTRAINT `photo_albums_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `photo_albums_ibfk_2` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `photo_tags`
+--
+
+CREATE TABLE `photo_tags` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `photo_id` bigint unsigned NOT NULL,
+  `placer_id` int unsigned NOT NULL,
+  `user_id` int unsigned DEFAULT NULL,
+  `name` varchar(300) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `approved` tinyint unsigned NOT NULL DEFAULT '0',
+  `x1` float NOT NULL,
+  `y1` float NOT NULL,
+  `x2` float NOT NULL,
+  `y2` float NOT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `photo_id` (`photo_id`,`user_id`),
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `user_id` (`user_id`),
+  KEY `approved` (`approved`),
+  CONSTRAINT `photo_tags_ibfk_1` FOREIGN KEY (`photo_id`) REFERENCES `photos` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `photo_tags_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `photos`
+--
+
+CREATE TABLE `photos` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `owner_id` int NOT NULL,
+  `author_id` int unsigned NOT NULL,
+  `album_id` bigint unsigned NOT NULL,
+  `local_file_id` bigint unsigned DEFAULT NULL,
+  `remote_src` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `description` text NOT NULL,
+  `description_source` text,
+  `description_source_format` tinyint unsigned DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `metadata` json DEFAULT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `display_order` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `owner_id` (`owner_id`),
+  KEY `album_id` (`album_id`),
+  KEY `display_order` (`display_order`),
+  KEY `local_file_id` (`local_file_id`),
+  KEY `author_id` (`author_id`),
+  CONSTRAINT `photos_ibfk_1` FOREIGN KEY (`album_id`) REFERENCES `photo_albums` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `photos_ibfk_2` FOREIGN KEY (`local_file_id`) REFERENCES `media_files` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -619,6 +769,7 @@ CREATE TABLE `servers` (
   `is_up` tinyint unsigned NOT NULL DEFAULT '1',
   `is_restricted` tinyint unsigned NOT NULL DEFAULT '0',
   `restriction` json DEFAULT NULL,
+  `features` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `host` (`host`),
   KEY `is_up` (`is_up`),
@@ -786,6 +937,7 @@ CREATE TABLE `wall_posts` (
   `source_format` tinyint unsigned DEFAULT NULL,
   `privacy` tinyint unsigned NOT NULL DEFAULT '0',
   `flags` bigint unsigned NOT NULL DEFAULT '0',
+  `action` tinyint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -800,4 +952,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2024-06-06 11:51:39
+-- Dump completed on 2025-01-17  6:58:44

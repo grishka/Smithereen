@@ -1,13 +1,39 @@
 package smithereen.model.feed;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Map;
+
+import smithereen.storage.DatabaseUtils;
 
 public class NewsfeedEntry{
 	public int id;
 	public Type type;
-	public int objectID;
+	public long objectID;
 	public int authorID;
 	public Instant time;
+	public Map<String, Object> extraData=Map.of();
+
+	public static NewsfeedEntry fromResultSet(ResultSet res) throws SQLException{
+		NewsfeedEntry e=new NewsfeedEntry();
+		e.id=res.getInt("id");
+		e.type=Type.values()[res.getInt("type")];
+		e.objectID=res.getLong("object_id");
+		e.authorID=res.getInt("author_id");
+		e.time=DatabaseUtils.getInstant(res, "time");
+		return e;
+	}
+
+	public static NewsfeedEntry fromGroupsResultSet(ResultSet res) throws SQLException{
+		NewsfeedEntry e=new NewsfeedEntry();
+		e.id=res.getInt("id");
+		e.type=Type.values()[res.getInt("type")];
+		e.objectID=res.getLong("object_id");
+		e.authorID=-res.getInt("group_id");
+		e.time=DatabaseUtils.getInstant(res, "time");
+		return e;
+	}
 
 	@Override
 	public String toString(){
@@ -25,7 +51,7 @@ public class NewsfeedEntry{
 	}
 
 	public boolean canBeGrouped(){
-		return type==Type.ADD_FRIEND || type==Type.JOIN_GROUP || type==Type.JOIN_EVENT;
+		return type==Type.ADD_FRIEND || type==Type.JOIN_GROUP || type==Type.JOIN_EVENT || type==Type.ADD_PHOTO || type==Type.PHOTO_TAG;
 	}
 
 	public enum Type{
@@ -55,5 +81,21 @@ public class NewsfeedEntry{
 		 * Multiple entries of the same type, within the same day, grouped together
 		 */
 		GROUPED,
+		/**
+		 * Someone added a photo to an album
+		 */
+		ADD_PHOTO,
+		/**
+		 * Photo for the comments newsfeed
+		 */
+		PHOTO,
+		/**
+		 * Someone was tagged in a photo
+		 */
+		PHOTO_TAG,
+		/**
+		 * Someone updated their relationship status
+		 */
+		RELATIONSHIP_STATUS,
 	}
 }

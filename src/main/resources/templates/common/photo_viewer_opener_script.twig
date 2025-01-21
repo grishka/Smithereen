@@ -1,0 +1,6 @@
+{# @pebvariable name="album" type="smithereen.model.photos.PhotoAlbum" #}
+{# @pebvariable name="photoDataToOpenViewer" type="smithereen.model.media.PhotoViewerInlineData" #}
+{% script %}
+window.history.replaceState(null, "", "{{ album.URL }}");
+doOpenPhotoViewer({{ json(photoDataToOpenViewer) | raw }});
+{% endscript %}

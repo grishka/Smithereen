@@ -49,7 +49,7 @@ public class ActivityPubCollectionRouteAdapter implements Route{
 			page.next=URI.create(baseURI+"?page="+(pageIndex+1));
 		}
 		if(pageIndex==1 && req.queryParams("page")==null){
-			ActivityPubCollection collection=new ActivityPubCollection(r.ordered);
+			ActivityPubCollection collection=r.collectionObj==null ? new ActivityPubCollection(r.ordered) : r.collectionObj;
 			collection.totalItems=total;
 			collection.first=new LinkOrObject(page);
 			collection.activityPubID=page.partOf;

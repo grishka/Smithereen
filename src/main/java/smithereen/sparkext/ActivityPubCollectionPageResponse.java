@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.model.PaginatedList;
@@ -12,6 +13,7 @@ public class ActivityPubCollectionPageResponse{
 	public int totalItems;
 	public List<LinkOrObject> items;
 	public boolean ordered;
+	public ActivityPubCollection collectionObj;
 
 	public static ActivityPubCollectionPageResponse forObjects(List<? extends ActivityPubObject> objects, int total){
 		ActivityPubCollectionPageResponse r=new ActivityPubCollectionPageResponse();
@@ -27,6 +29,13 @@ public class ActivityPubCollectionPageResponse{
 		return r;
 	}
 
+	public static ActivityPubCollectionPageResponse forLinksOrObjects(List<LinkOrObject> linksOrObjects, int total){
+		ActivityPubCollectionPageResponse r=new ActivityPubCollectionPageResponse();
+		r.items=linksOrObjects;
+		r.totalItems=total;
+		return r;
+	}
+
 	public static ActivityPubCollectionPageResponse forLinks(PaginatedList<URI> lt){
 		return forLinks(lt.list, lt.total);
 	}
@@ -37,6 +46,11 @@ public class ActivityPubCollectionPageResponse{
 
 	public ActivityPubCollectionPageResponse ordered(){
 		ordered=true;
+		return this;
+	}
+
+	public ActivityPubCollectionPageResponse withCustomObject(ActivityPubCollection collection){
+		collectionObj=collection;
 		return this;
 	}
 }

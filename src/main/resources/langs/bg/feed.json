@@ -1,0 +1,18 @@
+{
+  "feed_added_friend": "<a id=\"author\">{author}</a> стана приятел на <a id=\"target\">{target}</a>.",
+  "feed_added_friend_name": "{name}",
+  "feed_joined_group": "<a id=\"author\">{author}</a> се присъедrни към <a id=\"target\">{target}</a>.",
+  "feed_empty": "Актуализациите на страниците на приятелите Ви ще се появят тук.",
+  "feed_tab_news": "Новини",
+  "feed_tab_comments": "Коментари",
+  "summary_feed": "Показваме последните новини",
+  "feed_joined_event": "<a id=\"author\">{author}</a> присъства на <a id=\"target\">{target}</a>.",
+  "feed_created_group": "<a id=\"author\">{author}</a> създаде групата <a id=\"target\">{target}</a>.",
+  "feed_created_event": "<a id=\"author\">{author}</a> създаде събитието <a id=\"target\">{target}</a>.",
+  "feed_added_multiple_friends": "<a id=\"author\">{author}</a> добави {count, plural,one {# приятел}other {# приятели}}:",
+  "feed_joined_multiple_groups": "<a id=\"author\">{author}</a> се присъедини към {count, plural,one {# група}other {# групи}}:",
+  "feed_joined_multiple_events": "<a id=\"author\">{author}</a> присъства на {count, plural,one {# събитие}other {# събития}}:",
+  "feed_added_photo": "<a id=\"author\">{author}</a> добави снимка към албум<a id=\"target\">{target}</a>.",
+  "feed_added_multiple_photos": "<a id=\"author\">{author}</a> добави {count, plural,one {# снимка}other {# снимки}} в {albumCount, select,1 {албум}other {албуми}}{albums}.",
+  "feed_links_separator": ", "
+}

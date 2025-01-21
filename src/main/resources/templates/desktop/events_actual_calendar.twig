@@ -21,7 +21,7 @@
 				{%- if calendarEvents[day] is not empty -%}
 				<div class="calendarEventsPics count{{ min(4, calendarEvents[day] | length) }}">
 					{%- for actor in calendarEvents[day] | slice(0, min(calendarEvents[day] | length, 4)) -%}
-					<a href="{{ actor.profileURL }}">{{ actor | pictureForAvatar('s', -1, wrapperClasses="ava#{loop.index}") }}</a>
+					<a href="{{ actor.profileURL }}">{{ actor | pictureForAvatar('a', -1, wrapperClasses="ava#{loop.index}") }}</a>
 					{%- endfor -%}
 				</div>
 				{%- if (calendarEvents[day] | length)>4 -%}

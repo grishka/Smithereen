@@ -15,6 +15,6 @@ public class UpdatePersonHandler extends ActivityTypeHandler<ForeignUser, Update
 		if(!actor.activityPubID.equals(object.activityPubID))
 			throw new BadRequestException("Users can only update themselves");
 		object.copyLocalFields(actor);
-		UserStorage.putOrUpdateForeignUser(object);
+		context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(object, object);
 	}
 }

@@ -3,24 +3,75 @@
 {%block content%}
 {% include "feed_tabbar" with {'tab': tab | default('news')} %}
 {%include "wall_post_form" with {'id': "feed"}%}
-<div class="summaryWrap">
+<div class="summaryWrap" id="feedTopSummary">
+	{% block topSummary %}
 	<div class="summary">{{ L('summary_feed') }}</div>
+	<span class="loader flR" id="feedFiltersLoader" style="display: none"></span>
 	{% include "pagination" %}
+	{% endblock %}
 </div>
 <div class="singleColumn" id="postList">
+<input type="checkbox" class="toggler" id="feedFiltersToggler"/>
+<div class="feedFiltersOverlay toggled">
+	<label for="feedFiltersToggler" class="link hideWhenOn" tabindex="0">{{ L('feed_filters') }}</label>
+	<div class="feedFilters showWhenOn" onmouseleave="ge('feedFiltersToggler').checked=false">
+		<form id="feedFilters" action="/feed/setFilters?csrf={{ csrf }}" method="post">
+			<label>
+				<input type="checkbox" onchange="updateFeedFilters()" name="POSTS"{{ feedFilter contains "POSTS" ? ' checked' : '' }}/>
+				<span class="feedIcon feedIconStatus"></span>
+				<span class="ellipsize">{{ L('feed_type_posts') }}</span>
+			</label>
+			<label>
+				<input type="checkbox" onchange="updateFeedFilters()" name="PHOTOS"{{ feedFilter contains "PHOTOS" ? ' checked' : '' }}/>
+				<span class="feedIcon feedIconPhoto"></span>
+				<span class="ellipsize">{{ L('feed_type_photos') }}</span>
+			</label>
+			<label>
+				<input type="checkbox" onchange="updateFeedFilters()" name="FRIENDS"{{ feedFilter contains "FRIENDS" ? ' checked' : '' }}/>
+				<span class="feedIcon feedIconAdd"></span>
+				<span class="ellipsize">{{ L('feed_type_friends') }}</span>
+			</label>
+			<label>
+				<input type="checkbox" onchange="updateFeedFilters()" name="GROUPS"{{ feedFilter contains "GROUPS" ? ' checked' : '' }}/>
+				<span class="feedIcon feedIconGroup"></span>
+				<span class="ellipsize">{{ L('feed_type_groups') }}</span>
+			</label>
+			<label>
+				<input type="checkbox" onchange="updateFeedFilters()" name="EVENTS"{{ feedFilter contains "EVENTS" ? ' checked' : '' }}/>
+				<span class="feedIcon feedIconEvent"></span>
+				<span class="ellipsize">{{ L('feed_type_events') }}</span>
+			</label>
+			<label>
+				<input type="checkbox" onchange="updateFeedFilters()" name="PHOTO_TAGS"{{ feedFilter contains "PHOTO_TAGS" ? ' checked' : '' }}/>
+				<span class="feedIcon feedIconPhotoTag"></span>
+				<span class="ellipsize">{{ L('feed_type_tags') }}</span>
+			</label>
+			<label>
+				<input type="checkbox" onchange="updateFeedFilters()" name="PERSONAL_INFO"{{ feedFilter contains "PERSONAL_INFO" ? ' checked' : '' }}/>
+				<span class="feedIcon feedIconPersonal"></span>
+				<span class="ellipsize">{{ L('feed_type_personal') }}</span>
+			</label>
+			<noscript><input type="submit" value="{{ L('save') }}"/></noscript>
+		</form>
+	</div>
+</div>
+<div id="feedContent">
+{% block feedContent %}
 {% set _currentDate='' %}
 {%for entry in feed%}
 {% set _entryDate=getDate(entry.time) %}
 {% if _entryDate!=_currentDate %}
+<div class="feedDateHeader{% if _currentDate is empty %} first{% endif %}">{{ LD(_entryDate) }}</div>
 {% set _currentDate=_entryDate %}
-<div class="feedDateHeader">{{ LD(_currentDate) }}</div>
 {% endif %}
 {% include "feed_row" with {'entry': entry} %}
 {% else %}
 <div class="emptyState" id="wallEmptyState">{{ L('feed_empty') }}</div>
 {%endfor%}
 </div>
-<div class="bottomSummaryWrap">
-	{% include "pagination" %}
+{% endblock %}
+</div>
+<div class="bottomSummaryWrap" id="feedBottomSummary">
+	{% block bottomSummary %}{% include "pagination" %}{% endblock %}
 </div>
 {%endblock%}

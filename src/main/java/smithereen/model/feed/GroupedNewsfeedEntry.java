@@ -4,7 +4,12 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import smithereen.model.photos.PhotoAlbum;
 
 public class GroupedNewsfeedEntry extends NewsfeedEntry{
 	public List<NewsfeedEntry> childEntries=new ArrayList<>();
@@ -16,6 +21,9 @@ public class GroupedNewsfeedEntry extends NewsfeedEntry{
 		NewsfeedEntry first=entries.iterator().next();
 		childEntriesType=first.type;
 		authorID=first.authorID;
+		if(childEntriesType==Type.ADD_PHOTO || childEntriesType==Type.PHOTO_TAG){
+			extraData=new HashMap<>();
+		}
 		addChildEntries(entries);
 		type=Type.GROUPED;
 	}
@@ -32,6 +40,17 @@ public class GroupedNewsfeedEntry extends NewsfeedEntry{
 				time=e.time;
 		}
 		childEntries.addAll(entries);
+		if(childEntriesType==Type.ADD_PHOTO || childEntriesType==Type.PHOTO_TAG){
+			List<PhotoAlbum> albums=(List<PhotoAlbum>) extraData.computeIfAbsent("albums", s->new ArrayList<PhotoAlbum>());
+			Set<Long> albumsAlreadyPresent=albums.stream().map(a->a.id).collect(Collectors.toSet());
+			for(NewsfeedEntry e:entries){
+				PhotoAlbum a=(PhotoAlbum) e.extraData.get("album");
+				if(!albumsAlreadyPresent.contains(a.id)){
+					albums.add(a);
+					albumsAlreadyPresent.add(a.id);
+				}
+			}
+		}
 	}
 
 	public List<NewsfeedEntry> getMostRecentEntries(){

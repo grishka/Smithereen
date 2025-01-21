@@ -21,7 +21,7 @@ import smithereen.storage.sql.SQLQueryBuilder;
 public class MediaStorage{
 	private static final LruCache<Long, MediaFileRecord> recordCache=new LruCache<>(5000);
 
-	public static synchronized Map<Long, MediaFileRecord> getMediaFileRecords(Collection<Long> ids) throws SQLException{
+	public static Map<Long, MediaFileRecord> getMediaFileRecords(Collection<Long> ids) throws SQLException{
 		if(ids.isEmpty())
 			return Map.of();
 		HashMap<Long, MediaFileRecord> res=new HashMap<>();
@@ -47,7 +47,7 @@ public class MediaStorage{
 		return res;
 	}
 
-	public static synchronized MediaFileRecord getMediaFileRecord(long id) throws SQLException{
+	public static MediaFileRecord getMediaFileRecord(long id) throws SQLException{
 		MediaFileRecord r=recordCache.get(id);
 		if(r!=null)
 			return r;
@@ -75,9 +75,7 @@ public class MediaStorage{
 				new MediaFileID(id, randomID, ownerID, type),
 				fileSize, Instant.now(), metadata
 		);
-		synchronized(MediaStorage.class){
-			recordCache.put(id, mfr);
-		}
+		recordCache.put(id, mfr);
 		return mfr;
 	}
 
@@ -105,6 +103,16 @@ public class MediaStorage{
 				.executeNoResult();
 	}
 
+	public static void deleteMediaFileReferences(Collection<Long> objectIDs, MediaFileReferenceType type) throws SQLException{
+		if(objectIDs.isEmpty())
+			return;
+		new SQLQueryBuilder()
+				.deleteFrom("media_file_refs")
+				.whereIn("object_id", objectIDs)
+				.andWhere("object_type=?", type)
+				.executeNoResult();
+	}
+
 	public static List<MediaFileRecord> getUnreferencedMediaFileRecords() throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("media_files")
@@ -114,6 +122,8 @@ public class MediaStorage{
 	}
 
 	public static void deleteMediaFileRecords(Collection<Long> ids) throws SQLException{
+		if(ids.isEmpty())
+			return;
 		new SQLQueryBuilder()
 				.deleteFrom("media_files")
 				.whereIn("id", ids)

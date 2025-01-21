@@ -35,25 +35,27 @@
 <div class="wrap">
 	<div class="headerWrap">
 		<div class="headerBG"><div class="shadow"></div></div>
-<table width="100%" class="header" cellpadding="0" cellspacing="0" border="0">
-	<tr>
-		<td width="142" align="left" class="logo">
-			<a href="/"><img src="/res/desktop_logo_v1.svg" height="28" width="27" border="0" alt="Smithereen"/>{{serverName}}</a>
-		</td>
-		<td align="right" id="headerNav">
-			{% if currentUser is not null %}
+		<div class="header">
+			<div class="logo">
+				<a href="/"><img src="/res/desktop_logo_v1.svg" height="28" width="27" border="0" alt="Smithereen"/>{{serverName}}</a>
+			</div>
+			{% if headerBackHref is not empty %}
+			<a href="{{ headerBackHref }}" class="nav back ellipsize">{{ headerBackTitle }}</a>
+			{% elseif currentUser is not null %}
 			{% if currentUser.banStatus=='NONE' or currentUser.banStatus=='HIDDEN' %}
 			<div id="qsearchWrap">
 				<input type="text" id="qsearchField" placeholder="{{ L('search') }}" autocomplete="off" autocapitalize="off"/>
 				<div id="qsearchResults" style="display: none"></div>
 			</div>
 			{% endif %}
-			{% if userPermissions.canInviteNewUsers %}<a href="/settings/invites" class="nav">{{ L('invite_users') }}</a>{% endif %}
-			<a href="/account/logout?csrf={{ csrf }}" class="nav">{{ L("log_out") }}</a>
 			{% endif %}
-		</td>
-	</tr>
-</table>
+			<div id="headerNav">
+				{% if currentUser is not null %}
+				{% if userPermissions.canInviteNewUsers %}<a href="/settings/invites" class="nav">{{ L('invite_users') }}</a>{% endif %}
+				<a href="/account/logout?csrf={{ csrf }}" class="nav">{{ L("log_out") }}</a>
+				{% endif %}
+			</div>
+		</div>
 	</div>
 <table width="100%" class="contentWrap" cellpadding="0" cellspacing="0">
 	<tr>

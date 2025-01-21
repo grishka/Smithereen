@@ -1,3 +1,4 @@
+{# @pebvariable name="user" type="smithereen.model.User" #}
 {%extends "page"%}
 {% macro profileSection(_context, title, editURL, fields) %}
 	{% set isSelf=(_context.currentUser is not null and _context.currentUser.id==_context.user.id) %}
@@ -10,7 +11,7 @@
 	</div>
 	{% endif %}
 	{% for fld in fields %}
-	<div class="profileFieldName">{{ fld.name }}:</div>
+	<div class="profileFieldName">{{ fld.name }}</div>
 	<div class="profileFieldValue">{% if fld.html %}{{ fld.value | postprocessHTML(keepLinksRel=true) }}{% else %}{{ fld.value | nl2br }}{% endif %}</div>
 	{% else %}
 	<div class="emptyState">{{ L('profile_no_info') }}</div>
@@ -18,6 +19,28 @@
 	</div>
 	{% endif %}
 {% endmacro %}
+{% block headerActionButtons %}
+	{% set options=[] %}
+	{%if currentUser is not null and currentUser.id!=user.id%}
+		{% set _=options.add({'label': L(isBookmarked ? 'remove_bookmark' : 'add_bookmark').toString(), 'type': 'link', 'ajax': 'box', 'href': "/users/#{user.id}/#{isBookmarked ? 'removeBookmark' : 'addBookmark'}?csrf=#{csrf}"}) %}
+	{% if isBlocked %}
+		{% set _=options.add({'label': L('unblock_user_X', {'name': user.firstAndGender}).toString(), 'type': 'confirm', 'title': L('unblock').toString(), 'msg': L('confirm_unblock_user_X', {'name': user.firstLastAndGender}).toString(), 'url': "/users/#{user.id}/unblock"}) %}
+	{% else %}
+		{% set _=options.add({'label': L('block_user_X', {'name': user.firstAndGender}).toString(), 'type': 'confirm', 'title': L('block').toString(), 'msg': L('confirm_block_user_X', {'name': user.firstLastAndGender}).toString(), 'url': "/users/#{user.id}/block"}) %}
+	{% endif %}
+	{%endif%}
+	{% if userPermissions is not null and userPermissions.canReport(user) %}
+		{% set _=options.add({'label': L('report').toString(), 'type': 'link', 'ajax': 'box', 'href': "/system/reportForm?type=user&id="+user.id}) %}
+	{% endif %}
+	{% if userPermissions.hasPermission('MANAGE_USERS') %}
+		{% set _=options.add({'label': L('admin_manage_user').toString(), 'type': 'link', 'href': "/users/#{user.id}/meminfo"}) %}
+	{% endif %}
+	{% block optionsButton %}
+	{% if options is not empty %}
+    <button title="{{ L('more_options') }}" class="actionButton iconMore" onclick="new MobileOptionsBox({{ json(options) }}).show()" id="profileMoreButton"></button>
+    {% endif %}
+    {% endblock %}
+{% endblock %}
 {%block content%}
 <div class="cardsBackdrop">
 {% if movedTo is not null %}
@@ -31,81 +54,116 @@
 	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', {'domain': user.domain})}}</a>
 </div>
 {%endif%}
+<input type="checkbox" id="profileInfoToggler" class="toggler"/>
+<div class="toggled">
 <div class="card singleColumn">
-	<table width="100%" cellpadding="0" cellspacing="0" border="0" class="profileHeader">
-		<tr>
-			<td width="100">
-				{{ user | pictureForAvatar('m') }}
-			</td>
-			<td class="profileNameW">
-				<h2 class="profileName">{{ user | name('complete') }}</h2>
-			</td>
-		</tr>
-	</table>
-</div>
-<div class="card singleColumn">
+	<div class="profileHeader" id="profileHeader">
+		<div class="profileHeaderAva">
+			{% if currentUser is not null and currentUser.id==user.id %}
+			<a href="javascript:void(0)" onclick="new MobileOptionsBox([
+			{%- if avatarPvInfo is not null %}{label: '{{ L('avatar_open') }}', onclick: function(){doOpenPhotoViewer({{ json(avatarPvInfo) }});} },{% endif -%}
+			{label: '{{ L('update_profile_picture') }}', onclick: function(){chooseFileAndUpload('/settings/updateProfilePicture', 'file', 'image/*');} }
+			{%- if user.hasAvatar %},{label: '{{ L('remove_profile_picture') }}', type: 'confirm', title: 'remove_profile_picture', msg: 'confirm_remove_profile_picture', url: '/settings/removeProfilePicture'}{% endif -%}]).show(); return false;">{{ user | pictureForAvatar('b') }}</a>
+			{% elseif avatarPvInfo is not null %}
+			<a href="{{ avatarPhoto.url }}" data-pv="{{ json(avatarPvInfo) }}" onclick="return openPhotoViewer(this)">{{ user | pictureForAvatar('b') }}</a>
+			{% else %}
+			{{ user | pictureForAvatar('b') }}
+			{% endif %}
+		</div>
+		<div class="profileNameW" id="profileHeaderNameW">
+			<div class="profileName">{{ user | name('complete') }}</div>
+		</div>
+	</div>
 	{% if currentUser is not null and currentUser.id!=user.id and not isSelfBlocked and movedTo is null %}
+		{% if friendshipStatusText is not empty and (followRequested or (followedBy and not isFriend)) %}<div class="profileFriendshipStatusText">{{ friendshipStatusText }}</div>{% endif %}
 		<div class="profileBelowAva">
-		{{friendshipStatusText}}
+			{% if canMessage %}
+			<a href="/my/mail/compose?to={{ user.id }}" class="button">{{ L('profile_write_message_short') }}</a>
+			{% else %}
+			<a href="javascript:void(0)" class="button disabled">{{ L('profile_write_message_short') }}</a>
+			{% endif %}
 			{%if not(isFriend) and not(following) and not(friendRequestSent) and not(followRequested)%}
 			{%if user.supportsFriendRequests%}
 				{% if friendRequestRecvd %}
-					<a href="/users/{{ user.id }}/respondToFriendRequest?csrf={{csrf}}&accept" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("accept")}}</a>
+					<a href="/users/{{ user.id }}/respondToFriendRequest?csrf={{csrf}}&accept" class="button secondary" onclick="return showOptions(this)" data-options="{{ json([
+						{'label': L('accept').toString(), 'href': "/users/#{user.id}/respondToFriendRequest?accept", 'ajax': 'box'},
+						{'label': L('decline').toString(), 'href': "/users/#{user.id}/respondToFriendRequest?decline", 'ajax': 'box'}
+					]) }}"><span class="ellipsize">{{ L("profile_user_friend_request_received") }}</span><span class="arrowIcon"></span></a>
 				{% else %}
-					<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax-box="1">{{L("add_friend")}}</a>
+					<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button ellipsize" data-ajax-box>{{L("add_friend")}}</a>
 				{% endif %}
 			{%else%}
-				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button{%if friendshipStatusText%} withText{%endif%}" data-ajax="1">{{L("follow")}}</a>
+				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button ellipsize" data-ajax>{{L("follow")}}</a>
 			{%endif%}
+			{% else %}
+				<a href="/users/{{ user.id }}/confirmRemoveFriend" class="button secondary" onclick="return showOptions(this)" data-options="{{ json([
+					{'label': L(isFriend ? 'remove_friend' : 'unfollow').toString(), 'href': "/users/#{user.id}/confirmRemoveFriend", 'type': 'confirm', 'title':  L(isFriend ? 'remove_friend' : 'unfollow').toString(), 'msg': L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}).toString(), 'url': "/users/#{user.id}/doRemoveFriend"}
+				]) }}"><span class="ellipsize">
+					{% if isFriend %}
+					{{ L('profile_user_is_friend') }}
+					{% elseif friendRequestSent %}
+					{{ L('profile_user_friend_request_sent') }}
+					{% else %}
+					{{ L('profile_user_you_follow') }}
+					{% endif %}
+				</span><span class="arrowIcon"></span></a>
 			{%endif%}
-			{% if canMessage %}
-			<a href="/my/mail/compose?to={{ user.id }}" class="button withText">{{ L('profile_write_message') }}</a>
-			{% endif %}
 		</div>
 	{%endif%}
-	<ul class="actionList">
-		{%if currentUser is not null and currentUser.id==user.id%}
-			{%if currentUser.hasAvatar%}
-				<li><a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">{{L('update_profile_picture')}}</a></li>
-				<li><a href="/settings/confirmRemoveProfilePicture" onclick="return ajaxConfirm('remove_profile_picture', 'confirm_remove_profile_picture', '/settings/removeProfilePicture');">{{L('remove_profile_picture')}}</a></li>
-			{%else%}
-				<li><a href="/settings/profile/general" onclick="new ProfilePictureBox().show(); return false;">{{L('upload_avatar')}}</a></li>
-			{%endif%}
-			<li class="separator"></li>
-		{%endif%}
-		<li><a href="/users/{{ user.id }}/friends">{{ L('X_friends', {'count': friendCount}) }}</a></li>
-		<li class="separator"></li>
-		{%if currentUser is not null and currentUser.id!=user.id%}
-		{%if isFriend or following or friendRequestSent or followRequested%}
-			<li><a href="/users/{{ user.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'/users/{{ user.id }}/doRemoveFriend')" data-confirm="{{ L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
-		{%endif%}
-			<li><a href="/users/{{ user.id }}/{{ isBookmarked ? "removeBookmark" : "addBookmark" }}?csrf={{ csrf }}" id="profileBookmarkButton" data-ajax data-ajax-show="bookmarkLoader"><span id="profileBookmarkButtonText">{{ L(isBookmarked ? 'remove_bookmark' : 'add_bookmark') }}</span> <span class="inlineLoader" id="bookmarkLoader" style="display: none"></span></a></li>
-		{% if isBlocked %}
-			<li><a href="/users/{{ user.id }}/confirmUnblock" onclick="return ajaxConfirm('unblock', this.dataset.confirm, '/users/{{ user.id }}/unblock')" data-confirm="{{ L('confirm_unblock_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('unblock_user_X', {'name': user.firstAndGender}) }}</a></li>
-			{% else %}
-			<li><a href="/users/{{ user.id }}/confirmBlock" onclick="return ajaxConfirm('block', this.dataset.confirm, '/users/{{ user.id }}/block')" data-confirm="{{ L('confirm_block_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('block_user_X', {'name': user.firstAndGender}) }}</a></li>
+	<ul class="profileInfoRows">
+		{% if friendCount>0 %}
+		<li><a href="/users/{{ user.id }}/friends">
+			<span class="icon iconFriends"></span>
+			<span class="text ellipsize">{{ L('X_friends_bold', {'count': friendCount}) }}{%- if mutualFriendCount>0 %} · {{ L('X_mutual_friends_short_bold', {'count': mutualFriendCount}) }}{% endif %}</span>
+			<span class="accessory avatarPile">
+			{% if mutualFriends is not empty %}
+			{% for friend in mutualFriends | slice(0, min(mutualFriends | length, 3)) %}
+			    {{ friend | pictureForAvatar('s', 28) }}
+			{% endfor %}
+			{% endif %}
+			{% if mutualFriends | length<3 %}
+			{% for friend in friends | slice(0, min(friends | length, 3-(mutualFriends | default([]) | length))) %}
+			    {{ friend | pictureForAvatar('s', 28) }}
+			{% endfor %}
+			{% endif %}
+			</span>
+		</a></li>
 		{% endif %}
-		{%endif%}
-		<li><a href="/users/{{ user.id }}/followers">{{L('followers')}}</a></li>
-		<li><a href="/users/{{ user.id }}/following">{{L('following')}}</a></li>
-		{% if groups is not empty %}
-		<li><a href="/users/{{ user.id }}/groups">{{ L('X_groups', {'count': groups.size}) }}</a></li>
+		{% if followers.total>0 %}
+		<li><a href="/users/{{ user.id }}/followers">
+			<span class="icon iconFollowers"></span>
+			<span class="text ellipsize">{{ L('X_followers_bold', {'count': followers.total}) }}</span>
+		</a></li>
 		{% endif %}
-		{% if userPermissions is not null and userPermissions.canReport(user) %}
-			<li><a href="/system/reportForm?type=user&id={{ user.id }}" data-ajax-box>{{ L('report') }}</a></li>
+		{% if user.location is not empty %}
+		<li><div class="item">
+			<span class="icon iconHome"></span>
+			<span class="text ellipsize">{{ L('profile_city') }}: {{ user.location }}</span>
+		</div></li>
 		{% endif %}
-		{% if userPermissions.hasPermission('MANAGE_USERS') %}
-			<li class="separator"></li>
-			<li><a href="/users/{{ user.id }}/meminfo">{{ L('admin_manage_user') }}</a></li>
+		{% if isSelf or mainFields is not empty or contactsFields is not empty or personalFields is not empty or interestsFields is not empty %}
+		<li><label class="item showMore hideWhenOn" for="profileInfoToggler" tabindex="0">
+			<span class="icon iconMore"></span>
+			<span class="text ellipsize">{{ L('profile_show_info') }}</span>
+		</label></li>
 		{% endif %}
 	</ul>
 </div>
 
+<div class="showWhenOn">
 {{ profileSection(_context, null, null, mainFields) }}
 {{ profileSection(_context, L('profile_contacts_title'), "/settings/profile/contacts", contactsFields) }}
 {{ profileSection(_context, L('profile_personal_title'), "/settings/profile/personal", personalFields) }}
 {{ profileSection(_context, L('profile_interests_title'), "/settings/profile/interests", interestsFields) }}
+</div>
+
+</div>
+
+{% include "profile_section_thumbs" with {'actor': user} %}
 
 {% include "wall_profile_block" with {'wallOwner': user} %}
 </div>
+{% script %}
+initProfileTitleHideOnScroll();
+{% endscript %}
 {%endblock%}

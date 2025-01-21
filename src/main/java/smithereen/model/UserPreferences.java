@@ -3,8 +3,12 @@ package smithereen.model;
 import com.google.gson.annotations.SerializedName;
 
 import java.time.ZoneId;
+import java.util.EnumSet;
 import java.util.Locale;
 
+import smithereen.model.feed.CommentsNewsfeedObjectType;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
+import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.text.FormattedTextFormat;
 
 public class UserPreferences{
@@ -18,4 +22,10 @@ public class UserPreferences{
 	public FormattedTextFormat textFormat=FormattedTextFormat.MARKDOWN;
 	@SerializedName("cmv")
 	public CommentViewType commentViewType=CommentViewType.THREADED;
+	@SerializedName("ffeed")
+	public EnumSet<FriendsNewsfeedTypeFilter> friendFeedFilter;
+	@SerializedName("gfeed")
+	public EnumSet<GroupsNewsfeedTypeFilter> groupFeedFilter;
+	@SerializedName("cfeed")
+	public EnumSet<CommentsNewsfeedObjectType> commentsFeedFilter;
 }

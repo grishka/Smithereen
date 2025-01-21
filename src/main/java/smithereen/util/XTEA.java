@@ -1,6 +1,7 @@
 package smithereen.util;
 
 import smithereen.Config;
+import smithereen.Utils;
 import smithereen.model.ObfuscatedObjectIDType;
 
 public class XTEA{
@@ -42,5 +43,13 @@ public class XTEA{
 
 	public static long deobfuscateObjectID(long id, ObfuscatedObjectIDType type){
 		return decrypt(id, Config.objectIdObfuscationKeysByType[type.ordinal()]);
+	}
+
+	public static String encodeObjectID(long id, ObfuscatedObjectIDType type){
+		return Utils.encodeLong(obfuscateObjectID(id, type));
+	}
+
+	public static long decodeObjectID(String id, ObfuscatedObjectIDType type){
+		return deobfuscateObjectID(Utils.decodeLong(id), type);
 	}
 }

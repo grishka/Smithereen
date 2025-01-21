@@ -7,10 +7,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.sql.PreparedStatement;
@@ -20,15 +18,16 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
-import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.Account;
 import smithereen.model.AdminNotifications;
 import smithereen.model.EmailCode;
@@ -47,6 +46,7 @@ import smithereen.model.notifications.Notification;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.util.Passwords;
 import spark.Request;
 import spark.Session;
 
@@ -130,20 +130,24 @@ public class SessionStorage{
 
 	public static Account getAccountForUsernameAndPassword(@NotNull String usernameOrEmail, @NotNull String password) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			byte[] hashedPassword=hashPassword(password);
 			PreparedStatement stmt;
 			if(usernameOrEmail.contains("@")){
-				stmt=conn.prepareStatement("SELECT * FROM `accounts` WHERE `email`=? AND `password`=?");
+				stmt=conn.prepareStatement("SELECT * FROM `accounts` WHERE `email`=?");
 			}else{
-				stmt=conn.prepareStatement("SELECT * FROM `accounts` WHERE `user_id` IN (SELECT `id` FROM `users` WHERE `username`=?) AND `password`=?");
+				stmt=conn.prepareStatement("SELECT * FROM `accounts` WHERE `user_id` IN (SELECT `id` FROM `users` WHERE `username`=?)");
 			}
 			stmt.setString(1, usernameOrEmail);
-			stmt.setBytes(2, hashedPassword);
 			try(ResultSet res=stmt.executeQuery()){
-				if(res.next()){
-					return Account.fromResultSet(res);
+				if(!res.next()){
+					return null;
 				}
-				return null;
+				byte[] correctPassword=res.getBytes("password");
+				byte[] salt=res.getBytes("salt");
+				byte[] enteredPassword=Passwords.hashPasswordWithSalt(password, salt);
+				if(!Arrays.equals(enteredPassword, correctPassword)){
+					return null;
+				}
+				return Account.fromResultSet(res);
 			}
 		}
 	}
@@ -169,16 +173,7 @@ public class SessionStorage{
 				.executeNoResult();
 	}
 
-	private static byte[] hashPassword(String password){
-		try{
-			MessageDigest md=MessageDigest.getInstance("SHA-256");
-			return md.digest(password.getBytes(StandardCharsets.UTF_8));
-		}catch(NoSuchAlgorithmException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public static SignupResult registerNewAccount(@Nullable String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite) throws SQLException{
+	public static SignupResult registerNewAccount(@Nullable String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite, ApplicationContext ctx) throws SQLException{
 		SignupResult[] result={SignupResult.SUCCESS};
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			DatabaseUtils.doWithTransaction(conn, ()->{
@@ -227,15 +222,17 @@ public class SessionStorage{
 							.executeNoResult();
 				}
 
-				byte[] hashedPassword=hashPassword(password);
-				stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `invited_by`) VALUES (?, ?, ?, ?)");
+				byte[] salt=Passwords.randomSalt();
+				byte[] hashedPassword=Passwords.hashPasswordWithSalt(password, salt);
+				stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `salt`, `invited_by`) VALUES (?, ?, ?, ?, ?)");
 				stmt.setInt(1, userID);
 				stmt.setString(2, email);
 				stmt.setBytes(3, hashedPassword);
+				stmt.setBytes(4, salt);
 				if(inviterAccountID!=0)
-					stmt.setInt(4, inviterAccountID);
+					stmt.setInt(5, inviterAccountID);
 				else
-					stmt.setNull(4, Types.INTEGER);
+					stmt.setNull(5, Types.INTEGER);
 				stmt.execute();
 
 				int inviterUserID=0;
@@ -260,10 +257,7 @@ public class SessionStorage{
 				conn.createStatement().execute("COMMIT");
 
 				if(inviterUserID!=0){
-					Notification n=new Notification();
-					n.actorID=userID;
-					n.type=Notification.Type.INVITE_SIGNUP;
-					NotificationsStorage.putNotification(inviterUserID, n);
+					ctx.getNotificationsController().createNotification(UserStorage.getById(inviterUserID), Notification.Type.INVITE_SIGNUP, null, null, UserStorage.getById(userID));
 				}
 
 				new SQLQueryBuilder(conn)
@@ -314,12 +308,14 @@ public class SessionStorage{
 							.executeNoResult();
 				}
 
-				byte[] hashedPassword=hashPassword(password);
-				stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `invited_by`) VALUES (?, ?, ?, ?)");
+				byte[] salt=Passwords.randomSalt();
+				byte[] hashedPassword=Passwords.hashPasswordWithSalt(password, salt);
+				stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `salt`, `invited_by`) VALUES (?, ?, ?, ?, ?)");
 				stmt.setInt(1, userID);
 				stmt.setString(2, email);
 				stmt.setBytes(3, hashedPassword);
-				stmt.setNull(4, Types.INTEGER);
+				stmt.setBytes(4, salt);
+				stmt.setNull(5, Types.INTEGER);
 				stmt.execute();
 
 				conn.createStatement().execute("COMMIT");
@@ -342,11 +338,15 @@ public class SessionStorage{
 	}
 
 	public static boolean updatePassword(int accountID, String oldPassword, String newPassword) throws SQLException{
-		byte[] hashedOld=hashPassword(oldPassword);
-		byte[] hashedNew=hashPassword(newPassword);
+		byte[] oldSalt=getSaltFromDatabase(accountID);
+		if(oldSalt==null) return false;
+		byte[] hashedOld=Passwords.hashPasswordWithSalt(oldPassword, oldSalt);
+		byte[] newSalt=Passwords.randomSalt();
+		byte[] hashedNew=Passwords.hashPasswordWithSalt(newPassword, newSalt);
 		return new SQLQueryBuilder()
 				.update("accounts")
 				.value("password", hashedNew)
+				.value("salt", newSalt)
 				.where("id=? AND `password`=?", accountID, hashedOld)
 				.executeUpdate()==1;
 	}
@@ -462,16 +462,28 @@ public class SessionStorage{
 	}
 
 	public static boolean updatePassword(int accountID, String newPassword) throws SQLException{
-		byte[] hashedNew=hashPassword(newPassword);
+		byte[] salt=Passwords.randomSalt();
+		byte[] hashedNew=Passwords.hashPasswordWithSalt(newPassword, salt);
 		return new SQLQueryBuilder()
 				.update("accounts")
 				.value("password", hashedNew)
+				.value("salt", salt)
 				.where("id=?", accountID)
 				.executeUpdate()==1;
 	}
 
+	private static byte @Nullable [] getSaltFromDatabase(int accountID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("accounts")
+				.columns("salt")
+				.where("id=?", accountID)
+				.executeAndGetSingleObject(r->r.getBytes(1));
+	}
+
 	public static boolean checkPassword(int accountID, String password) throws SQLException{
-		byte[] hashed=hashPassword(password);
+		byte[] salt=getSaltFromDatabase(accountID);
+		if(salt==null) return false;
+		byte[] hashed=Passwords.hashPasswordWithSalt(password, salt);
 		return new SQLQueryBuilder()
 				.selectFrom("accounts")
 				.count()
@@ -516,15 +528,15 @@ public class SessionStorage{
 //		}
 //	}
 
-	public static synchronized void removeFromUserPermissionsCache(int userID){
+	public static void removeFromUserPermissionsCache(int userID){
 		permissionsCache.remove(userID);
 	}
 
-	public static synchronized void resetPermissionsCache(){
+	public static void resetPermissionsCache(){
 		permissionsCache.evictAll();
 	}
 
-	public static synchronized UserPermissions getUserPermissions(Account account) throws SQLException{
+	public static UserPermissions getUserPermissions(Account account) throws SQLException{
 		UserPermissions r=permissionsCache.get(account.user.id);
 		if(r!=null)
 			return r;

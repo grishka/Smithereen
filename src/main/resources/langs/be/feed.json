@@ -1,6 +1,4 @@
 {
-  "feed_retoot": "<a id=\"author\">{author}</a> {gender, select, female {падзялілася} other {падзяліўся}} записам:",
-  "feed_retoot_comment": "<a id=\"author\">{author}</a> {gender, select, female {падзялілася} other {падзяліўся}} каментаром:",
   "feed_added_friend": "<a id=\"author\">{author}</a> {gender, select, female {дадала} other {далаў}} да сяброў <a id=\"target\">{target}</a>.",
   "feed_added_friend_name": "{name, inflect, accusative}",
   "feed_joined_group": "<a id=\"author\">{author}</a> {gender, select, female {ўступіла} other {уступіў}} у суполку <a id=\"target\">{target}</a>.",

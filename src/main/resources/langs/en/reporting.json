@@ -16,5 +16,7 @@
   "report_forward_to_domain": "Anonymously forward to <b>{domain}</b>",
   "report_submitted": "Your report was submitted to the server staff.",
   "report_title_message": "Report a message",
-  "report_text_message": "What's wrong with this message?"
+  "report_text_message": "What's wrong with this message?",
+  "report_title_photo": "Report a photo",
+  "report_text_photo": "What's wrong with this photo?"
 }

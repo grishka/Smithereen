@@ -20,11 +20,13 @@
   "followers": "Подписчики",
   "unfollow": "Отписаться",
   "X_friends": "{count, plural, =0 {Нет друзей} one {# друг} few {# друга} other {# друзей}}",
+  "X_friends_bold": "{count, plural, one {<b>#</b> друг} few {<b>#</b> друга} other {<b>#</b> друзей}}",
   "external_X_follow_X": "<b>{selfName}</b>, вы собираетесь подписаться на <b>{name, inflect, accusative}</b> на сервере <b>{domain}</b>.",
   "external_X_send_friend_req_to_X": "<b>{selfName}</b>, вы собираетесь отправить заявку в друзья <b>{name, inflect, dative}</b> на сервере <b>{domain}</b>.",
   "mutual_friends": "Общие друзья",
   "X_mutual_friends": "{count, plural, one {# общий друг} few {# общих друга} other {# общих друзей}}",
   "X_mutual_friends_short": "{count, plural, one {# общий} few {# общих} other {# общих}}",
+  "X_mutual_friends_short_bold": "{count, plural, one {<b>#</b> общий} few {<b>#</b> общих} other {<b>#</b> общих}}",
   "confirm_unfollow_X": "Вы действительно хотите отписаться от <b>{name, inflect, genitive}</b>?",
   "user_friends": "Друзья {name, inflect, genitive}",
   "summary_own_X_friends": "У ваc {numFriends, plural, =0 {нет друзей} one {# друг} few {# друга} other {# друзей}}",
@@ -57,5 +59,6 @@
   "select_friends_button": "Выбрать друзей",
   "X_followers": "{count, plural, =0 {Нет подписчиков} one {# подписчик} few {# подписчика} other {# подписчиков}}",
   "X_following": "{count, plural, =0 {Нет подписок} one {# подписка} few {# подписки} other {# подписок}}",
-  "summary_X_friends_found": "{count, plural, =0 {Не найдено ни одного друга} one {Найден # друг} few {Найдено # друга} other {Найдено # друзей}}"
+  "summary_X_friends_found": "{count, plural, =0 {Не найдено ни одного друга} one {Найден # друг} few {Найдено # друга} other {Найдено # друзей}}",
+  "X_followers_bold": "{count, plural, one {<b>#</b> подписчик} few {<b>#</b> подписчика} other {<b>#</b> подписчиков}}"
 }

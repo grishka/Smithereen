@@ -10,15 +10,6 @@ class RussianInflectionRulesGenerated{
 	public static String inflectLastName(String input, User.Gender gender, Inflector.Case _case, boolean firstWord){
 		if(_case==Inflector.Case.NOMINATIVE) return input;
 		String inputLower=input.toLowerCase();
-		if(firstWord && (inputLower.equals("бонч") || inputLower.equals("абдул") || inputLower.equals("белиц") || inputLower.equals("гасан") || inputLower.equals("дюссар") || inputLower.equals("дюмон") || inputLower.equals("книппер") || inputLower.equals("корвин") || inputLower.equals("ван") || inputLower.equals("шолом") || inputLower.equals("тер") || inputLower.equals("призван") || inputLower.equals("мелик") || inputLower.equals("вар") || inputLower.equals("фон"))){
-			return input;
-		}
-		if(inputLower.equals("дюма") || inputLower.equals("тома") || inputLower.equals("дега") || inputLower.equals("люка") || inputLower.equals("ферма") || inputLower.equals("гамарра") || inputLower.equals("петипа") || inputLower.equals("шандра") || inputLower.equals("скаля") || inputLower.equals("каруана")){
-			return input;
-		}
-		if(inputLower.equals("гусь") || inputLower.equals("ремень") || inputLower.equals("камень") || inputLower.equals("онук") || inputLower.equals("богода") || inputLower.equals("нечипас") || inputLower.equals("долгопалец") || inputLower.equals("маненок") || inputLower.equals("рева") || inputLower.equals("кива") || inputLower.equals("щёлок")){
-			return input;
-		}
 		if(gender==User.Gender.MALE && (inputLower.equals("вий") || inputLower.equals("сой") || inputLower.equals("цой") || inputLower.equals("хой"))){
 			return input.substring(0, input.length()-1)+switch(_case){
 				case GENITIVE, ACCUSATIVE -> "я";
@@ -37,10 +28,16 @@ class RussianInflectionRulesGenerated{
 				default -> throw new IllegalArgumentException();
 			};
 		}
-		if(gender==User.Gender.FEMALE && (inputLower.endsWith("б") || inputLower.endsWith("в") || inputLower.endsWith("г") || inputLower.endsWith("д") || inputLower.endsWith("ж") || inputLower.endsWith("з") || inputLower.endsWith("й") || inputLower.endsWith("к") || inputLower.endsWith("л") || inputLower.endsWith("м") || inputLower.endsWith("н") || inputLower.endsWith("п") || inputLower.endsWith("р") || inputLower.endsWith("с") || inputLower.endsWith("т") || inputLower.endsWith("ф") || inputLower.endsWith("х") || inputLower.endsWith("ц") || inputLower.endsWith("ч") || inputLower.endsWith("ш") || inputLower.endsWith("щ") || inputLower.endsWith("ъ") || inputLower.endsWith("ь"))){
+		if(firstWord && (inputLower.equals("бонч") || inputLower.equals("абдул") || inputLower.equals("белиц") || inputLower.equals("гасан") || inputLower.equals("дюссар") || inputLower.equals("дюмон") || inputLower.equals("книппер") || inputLower.equals("корвин") || inputLower.equals("ван") || inputLower.equals("шолом") || inputLower.equals("тер") || inputLower.equals("призван") || inputLower.equals("мелик") || inputLower.equals("вар") || inputLower.equals("фон"))){
 			return input;
 		}
-		if(inputLower.endsWith("орота")){
+		if(inputLower.equals("дюма") || inputLower.equals("тома") || inputLower.equals("дега") || inputLower.equals("люка") || inputLower.equals("ферма") || inputLower.equals("гамарра") || inputLower.equals("петипа") || inputLower.equals("шандра") || inputLower.equals("скаля") || inputLower.equals("каруана")){
+			return input;
+		}
+		if(inputLower.equals("гусь") || inputLower.equals("ремень") || inputLower.equals("камень") || inputLower.equals("онук") || inputLower.equals("богода") || inputLower.equals("нечипас") || inputLower.equals("долгопалец") || inputLower.equals("маненок") || inputLower.equals("рева") || inputLower.equals("кива") || inputLower.equals("щёлок")){
+			return input;
+		}
+		if(gender==User.Gender.FEMALE && (inputLower.endsWith("б") || inputLower.endsWith("в") || inputLower.endsWith("г") || inputLower.endsWith("д") || inputLower.endsWith("ж") || inputLower.endsWith("з") || inputLower.endsWith("й") || inputLower.endsWith("к") || inputLower.endsWith("л") || inputLower.endsWith("м") || inputLower.endsWith("н") || inputLower.endsWith("п") || inputLower.endsWith("р") || inputLower.endsWith("с") || inputLower.endsWith("т") || inputLower.endsWith("ф") || inputLower.endsWith("х") || inputLower.endsWith("ц") || inputLower.endsWith("ч") || inputLower.endsWith("ш") || inputLower.endsWith("щ") || inputLower.endsWith("ъ") || inputLower.endsWith("ь"))){
 			return input;
 		}
 		if(gender==User.Gender.FEMALE && (inputLower.endsWith("ска") || inputLower.endsWith("цка"))){
@@ -89,15 +86,6 @@ class RussianInflectionRulesGenerated{
 				default -> throw new IllegalArgumentException();
 			};
 		}
-		if(inputLower.endsWith("ца")){
-			return input.substring(0, input.length()-1)+switch(_case){
-				case GENITIVE -> "ы";
-				case DATIVE, PREPOSITIONAL -> "е";
-				case ACCUSATIVE -> "у";
-				case INSTRUMENTAL -> "ей";
-				default -> throw new IllegalArgumentException();
-			};
-		}
 		if(gender==User.Gender.MALE && (inputLower.endsWith("рих"))){
 			return input+switch(_case){
 				case GENITIVE, ACCUSATIVE -> "а";
@@ -106,20 +94,6 @@ class RussianInflectionRulesGenerated{
 				case PREPOSITIONAL -> "е";
 				default -> throw new IllegalArgumentException();
 			};
-		}
-		if(inputLower.endsWith("ия")){
-			return input.substring(0, input.length()-1)+switch(_case){
-				case GENITIVE, PREPOSITIONAL, DATIVE -> "и";
-				case ACCUSATIVE -> "ю";
-				case INSTRUMENTAL -> "ей";
-				default -> throw new IllegalArgumentException();
-			};
-		}
-		if(inputLower.endsWith("иа") || inputLower.endsWith("аа") || inputLower.endsWith("оа") || inputLower.endsWith("уа") || inputLower.endsWith("ыа") || inputLower.endsWith("еа") || inputLower.endsWith("юа") || inputLower.endsWith("эа")){
-			return input;
-		}
-		if(inputLower.endsWith("о") || inputLower.endsWith("е") || inputLower.endsWith("э") || inputLower.endsWith("и") || inputLower.endsWith("ы") || inputLower.endsWith("у") || inputLower.endsWith("ю")){
-			return input;
 		}
 		if(gender==User.Gender.MALE && (inputLower.endsWith("их") || inputLower.endsWith("ых"))){
 			return input;
@@ -131,39 +105,12 @@ class RussianInflectionRulesGenerated{
 				default -> throw new IllegalArgumentException();
 			};
 		}
-		if(inputLower.endsWith("га") || inputLower.endsWith("ка") || inputLower.endsWith("ха") || inputLower.endsWith("ча") || inputLower.endsWith("ща") || inputLower.endsWith("жа") || inputLower.endsWith("ша")){
-			return input.substring(0, input.length()-1)+switch(_case){
-				case GENITIVE -> "и";
-				case DATIVE, PREPOSITIONAL -> "е";
-				case ACCUSATIVE -> "у";
-				case INSTRUMENTAL -> "ой";
-				default -> throw new IllegalArgumentException();
-			};
-		}
-		if(inputLower.endsWith("а")){
-			return input.substring(0, input.length()-1)+switch(_case){
-				case GENITIVE -> "ы";
-				case DATIVE, PREPOSITIONAL -> "е";
-				case ACCUSATIVE -> "у";
-				case INSTRUMENTAL -> "ой";
-				default -> throw new IllegalArgumentException();
-			};
-		}
 		if(gender==User.Gender.MALE && (inputLower.endsWith("ь"))){
 			return input.substring(0, input.length()-1)+switch(_case){
 				case GENITIVE, ACCUSATIVE -> "я";
 				case DATIVE -> "ю";
 				case INSTRUMENTAL -> "ем";
 				case PREPOSITIONAL -> "е";
-				default -> throw new IllegalArgumentException();
-			};
-		}
-		if(inputLower.endsWith("я")){
-			return input.substring(0, input.length()-1)+switch(_case){
-				case GENITIVE -> "и";
-				case DATIVE, PREPOSITIONAL -> "е";
-				case ACCUSATIVE -> "ю";
-				case INSTRUMENTAL -> "ей";
 				default -> throw new IllegalArgumentException();
 			};
 		}
@@ -347,6 +294,59 @@ class RussianInflectionRulesGenerated{
 				default -> throw new IllegalArgumentException();
 			};
 		}
+		if(inputLower.endsWith("орота")){
+			return input;
+		}
+		if(inputLower.endsWith("ца")){
+			return input.substring(0, input.length()-1)+switch(_case){
+				case GENITIVE -> "ы";
+				case DATIVE, PREPOSITIONAL -> "е";
+				case ACCUSATIVE -> "у";
+				case INSTRUMENTAL -> "ей";
+				default -> throw new IllegalArgumentException();
+			};
+		}
+		if(inputLower.endsWith("ия")){
+			return input.substring(0, input.length()-1)+switch(_case){
+				case GENITIVE, PREPOSITIONAL, DATIVE -> "и";
+				case ACCUSATIVE -> "ю";
+				case INSTRUMENTAL -> "ей";
+				default -> throw new IllegalArgumentException();
+			};
+		}
+		if(inputLower.endsWith("иа") || inputLower.endsWith("аа") || inputLower.endsWith("оа") || inputLower.endsWith("уа") || inputLower.endsWith("ыа") || inputLower.endsWith("еа") || inputLower.endsWith("юа") || inputLower.endsWith("эа")){
+			return input;
+		}
+		if(inputLower.endsWith("о") || inputLower.endsWith("е") || inputLower.endsWith("э") || inputLower.endsWith("и") || inputLower.endsWith("ы") || inputLower.endsWith("у") || inputLower.endsWith("ю")){
+			return input;
+		}
+		if(inputLower.endsWith("га") || inputLower.endsWith("ка") || inputLower.endsWith("ха") || inputLower.endsWith("ча") || inputLower.endsWith("ща") || inputLower.endsWith("жа") || inputLower.endsWith("ша")){
+			return input.substring(0, input.length()-1)+switch(_case){
+				case GENITIVE -> "и";
+				case DATIVE, PREPOSITIONAL -> "е";
+				case ACCUSATIVE -> "у";
+				case INSTRUMENTAL -> "ой";
+				default -> throw new IllegalArgumentException();
+			};
+		}
+		if(inputLower.endsWith("а")){
+			return input.substring(0, input.length()-1)+switch(_case){
+				case GENITIVE -> "ы";
+				case DATIVE, PREPOSITIONAL -> "е";
+				case ACCUSATIVE -> "у";
+				case INSTRUMENTAL -> "ой";
+				default -> throw new IllegalArgumentException();
+			};
+		}
+		if(inputLower.endsWith("я")){
+			return input.substring(0, input.length()-1)+switch(_case){
+				case GENITIVE -> "и";
+				case DATIVE, PREPOSITIONAL -> "е";
+				case ACCUSATIVE -> "ю";
+				case INSTRUMENTAL -> "ей";
+				default -> throw new IllegalArgumentException();
+			};
+		}
 		return input;
 	}
 
@@ -409,9 +409,6 @@ class RussianInflectionRulesGenerated{
 				default -> throw new IllegalArgumentException();
 			};
 		}
-		if(inputLower.endsWith("е") || inputLower.endsWith("ё") || inputLower.endsWith("и") || inputLower.endsWith("о") || inputLower.endsWith("у") || inputLower.endsWith("ы") || inputLower.endsWith("э") || inputLower.endsWith("ю")){
-			return input;
-		}
 		if(gender==User.Gender.MALE && (inputLower.endsWith("уа") || inputLower.endsWith("иа"))){
 			return input;
 		}
@@ -435,15 +432,6 @@ class RussianInflectionRulesGenerated{
 				default -> throw new IllegalArgumentException();
 			};
 		}
-		if(inputLower.endsWith("га") || inputLower.endsWith("ка") || inputLower.endsWith("ха") || inputLower.endsWith("ча") || inputLower.endsWith("ща") || inputLower.endsWith("жа")){
-			return input.substring(0, input.length()-1)+switch(_case){
-				case GENITIVE -> "и";
-				case DATIVE, PREPOSITIONAL -> "е";
-				case ACCUSATIVE -> "у";
-				case INSTRUMENTAL -> "ой";
-				default -> throw new IllegalArgumentException();
-			};
-		}
 		if(gender==User.Gender.FEMALE && (inputLower.endsWith("ша"))){
 			return input.substring(0, input.length()-1)+switch(_case){
 				case GENITIVE -> "и";
@@ -459,15 +447,6 @@ class RussianInflectionRulesGenerated{
 				case DATIVE, PREPOSITIONAL -> "е";
 				case ACCUSATIVE -> "у";
 				case INSTRUMENTAL -> "ей";
-				default -> throw new IllegalArgumentException();
-			};
-		}
-		if(inputLower.endsWith("а")){
-			return input.substring(0, input.length()-1)+switch(_case){
-				case GENITIVE -> "ы";
-				case DATIVE, PREPOSITIONAL -> "е";
-				case ACCUSATIVE -> "у";
-				case INSTRUMENTAL -> "ой";
 				default -> throw new IllegalArgumentException();
 			};
 		}
@@ -501,15 +480,6 @@ class RussianInflectionRulesGenerated{
 		if(gender==User.Gender.FEMALE && (inputLower.endsWith("ия"))){
 			return input.substring(0, input.length()-1)+switch(_case){
 				case GENITIVE, PREPOSITIONAL, DATIVE -> "и";
-				case ACCUSATIVE -> "ю";
-				case INSTRUMENTAL -> "ей";
-				default -> throw new IllegalArgumentException();
-			};
-		}
-		if(inputLower.endsWith("я")){
-			return input.substring(0, input.length()-1)+switch(_case){
-				case GENITIVE -> "и";
-				case DATIVE, PREPOSITIONAL -> "е";
 				case ACCUSATIVE -> "ю";
 				case INSTRUMENTAL -> "ей";
 				default -> throw new IllegalArgumentException();
@@ -566,6 +536,36 @@ class RussianInflectionRulesGenerated{
 				case DATIVE -> "у";
 				case INSTRUMENTAL -> "ом";
 				case PREPOSITIONAL -> "е";
+				default -> throw new IllegalArgumentException();
+			};
+		}
+		if(inputLower.endsWith("е") || inputLower.endsWith("ё") || inputLower.endsWith("и") || inputLower.endsWith("о") || inputLower.endsWith("у") || inputLower.endsWith("ы") || inputLower.endsWith("э") || inputLower.endsWith("ю")){
+			return input;
+		}
+		if(inputLower.endsWith("га") || inputLower.endsWith("ка") || inputLower.endsWith("ха") || inputLower.endsWith("ча") || inputLower.endsWith("ща") || inputLower.endsWith("жа")){
+			return input.substring(0, input.length()-1)+switch(_case){
+				case GENITIVE -> "и";
+				case DATIVE, PREPOSITIONAL -> "е";
+				case ACCUSATIVE -> "у";
+				case INSTRUMENTAL -> "ой";
+				default -> throw new IllegalArgumentException();
+			};
+		}
+		if(inputLower.endsWith("а")){
+			return input.substring(0, input.length()-1)+switch(_case){
+				case GENITIVE -> "ы";
+				case DATIVE, PREPOSITIONAL -> "е";
+				case ACCUSATIVE -> "у";
+				case INSTRUMENTAL -> "ой";
+				default -> throw new IllegalArgumentException();
+			};
+		}
+		if(inputLower.endsWith("я")){
+			return input.substring(0, input.length()-1)+switch(_case){
+				case GENITIVE -> "и";
+				case DATIVE, PREPOSITIONAL -> "е";
+				case ACCUSATIVE -> "ю";
+				case INSTRUMENTAL -> "ей";
 				default -> throw new IllegalArgumentException();
 			};
 		}

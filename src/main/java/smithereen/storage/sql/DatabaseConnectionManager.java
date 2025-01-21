@@ -19,49 +19,60 @@ public class DatabaseConnectionManager{
 	private static final boolean DEBUG_CONNECTION_LEAKS=System.getProperty("smithereen.debugDatabaseConnections")!=null;
 	private static final Semaphore semaphore=new Semaphore(Config.dbMaxConnections);
 
-	public static synchronized DatabaseConnection getConnection() throws SQLException{
+	public static DatabaseConnection getConnection() throws SQLException{
 		DatabaseConnection conn;
 		conn=currentThreadConnection.get();
 		if(conn!=null){
 			conn.useDepth++;
 			return conn;
 		}
-		if(pool.isEmpty()){
+		synchronized(pool){
+			conn=pool.isEmpty() ? null : pool.removeLast();
+		}
+		if(conn==null){
 			if(DEBUG_CONNECTION_LEAKS)
 				conn=new DebugDatabaseConnection(newConnection());
 			else
 				conn=new DatabaseConnection(newConnection());
 		}else{
-			conn=pool.removeLast();
 			try{
 				validateConnection(conn.actualConnection);
 				conn.lastUsed=System.nanoTime();
 			}catch(SQLException x){
 				LOG.debug("Failed to validate database connection, reopening");
 				closeConnection(conn);
-				conn=new DatabaseConnection(newConnection());
+				if(DEBUG_CONNECTION_LEAKS)
+					conn=new DebugDatabaseConnection(newConnection());
+				else
+					conn=new DatabaseConnection(newConnection());
 			}
 		}
 
 		conn.useDepth++;
 		conn.ownerThread=Thread.currentThread();
 		currentThreadConnection.set(conn);
-		connectionsInUse.add(conn);
+		synchronized(connectionsInUse){
+			connectionsInUse.add(conn);
+		}
 		if(DEBUG_CONNECTION_LEAKS && conn instanceof DebugDatabaseConnection ddc)
 			ddc.throwableForStack=new Exception().fillInStackTrace();
 		return conn;
 	}
 
-	static synchronized void reuseConnection(DatabaseConnection conn){
+	static void reuseConnection(DatabaseConnection conn){
 		if(conn.ownerThread!=Thread.currentThread())
 			throw new IllegalStateException("Connections are not meant to be shared across threads");
 		conn.useDepth--;
 		if(conn.useDepth==0){
 			conn.ownerThread=null;
 			currentThreadConnection.remove();
-			pool.add(conn);
-			connectionsInUse.remove(conn);
-			LOG.trace("Reusing database connection. Pool size is {}", pool.size());
+			synchronized(connectionsInUse){
+				connectionsInUse.remove(conn);
+			}
+			synchronized(pool){
+				pool.add(conn);
+				LOG.trace("Reusing database connection. Pool size is {}", pool.size());
+			}
 		}
 	}
 
@@ -90,26 +101,30 @@ public class DatabaseConnectionManager{
 		conn.createStatement().execute("/* ping */");
 	}
 
-	public static synchronized void closeUnusedConnections(){
+	public static void closeUnusedConnections(){
 		LOG.trace("Closing unused connections");
-		int size=pool.size();
-		boolean removedAny=pool.removeIf(conn->{
-			if(System.nanoTime()-conn.lastUsed>5*60_000_000_000L){
-				if(conn.useDepth!=0)
-					throw new IllegalStateException("Connection use depth is "+conn.useDepth+", expected 0");
-				closeConnection(conn);
-				return true;
+		synchronized(pool){
+			int size=pool.size();
+			boolean removedAny=pool.removeIf(conn->{
+				if(System.nanoTime()-conn.lastUsed>5*60_000_000_000L){
+					if(conn.useDepth!=0)
+						throw new IllegalStateException("Connection use depth is "+conn.useDepth+", expected 0");
+					closeConnection(conn);
+					return true;
+				}
+				return false;
+			});
+			if(removedAny){
+				LOG.debug("Closed {} connections, pool size is {}", size-pool.size(), pool.size());
 			}
-			return false;
-		});
-		if(removedAny){
-			LOG.debug("Closed {} connections, pool size is {}", size-pool.size(), pool.size());
 		}
-		for(DatabaseConnection conn:connectionsInUse){
-			if(System.nanoTime()-conn.lastUsed>60_000_000_000L){
-				LOG.warn("Database connection {} was not closed! Owner: {}", conn, conn.ownerThread);
-				if(conn instanceof DebugDatabaseConnection ddc)
-					LOG.warn("Last opened at:", ddc.throwableForStack);
+		synchronized(connectionsInUse){
+			for(DatabaseConnection conn: connectionsInUse){
+				if(System.nanoTime()-conn.lastUsed>60_000_000_000L){
+					LOG.warn("Database connection {} was not closed! Owner: {}", conn, conn.ownerThread);
+					if(conn instanceof DebugDatabaseConnection ddc)
+						LOG.warn("Last opened at:", ddc.throwableForStack);
+				}
 			}
 		}
 	}

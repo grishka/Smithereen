@@ -133,6 +133,7 @@ $likeIconColor: rgb(219, 216, 173);
 	box-sizing: border-box;
 	overflow-wrap: break-word;
 	min-width: 0;
+	min-height: 0;
 }
 
 
@@ -228,7 +229,7 @@ table{
 	}
 }
 
-a, a:link, /*a:visited,*/ .link{
+a, /*a:link, a:visited,*/ .link{
 	color: $normalLink;
 	text-decoration: none;
 	cursor: pointer;
@@ -251,6 +252,10 @@ a, a:link, /*a:visited,*/ .link{
 
 .avaHasImage{
 	position: relative;
+	&.sizeR img{
+		min-width: 200px;
+		height: auto;
+	}
 }
 
 .avaHasImage::after{
@@ -289,7 +294,7 @@ a, a:link, /*a:visited,*/ .link{
 	}
 }
 
-#layerScrim, #layerContainer{
+.layerScrim, .layerContainer{
 	position: fixed;
 	left: 0;
 	top: 0;
@@ -297,12 +302,15 @@ a, a:link, /*a:visited,*/ .link{
 	right: 0;
 }
 
-#layerScrim{
+.layerScrim{
 	background-color: rgba(0, 0, 0, .2);
 	z-index: 100;
+	&.darker{
+		background-color: rgba(0, 0, 0, .7);
+	}
 }
 
-#layerContainer{
+.layerContainer{
 	width: 100%;
 	height: 100%;
 	z-index: 110;
@@ -357,9 +365,6 @@ textarea{
 
 .post{
 	border-spacing: 0;
-	.authorName{
-		font-weight: bold;
-	}
 	p{
 		margin-top: 8px;
 		margin-bottom: 8px;
@@ -371,12 +376,6 @@ textarea{
 
 	p:last-child{
 		margin-bottom: 0;
-	}
-
-	.postContentWrap{
-		video{
-			max-width: 100%;
-		}
 	}
 	blockquote{
 		margin: -2px 0;
@@ -550,23 +549,12 @@ input[type=checkbox]{
 		display: none;
 	}
 	form{
-		padding-top: 8px;
-	}
-	>.inner{
-		padding: 16px 0;
+		padding: 10px 0;
 		text-align: center;
 	}
-}
-
-.profilePictureBoxImgWrap{
-	margin-top: 8px;
-	display: inline-block;
-	position: relative;
-	>img{
-		max-width: 100%;
-		max-height: 800px;
-		vertical-align: top;
-		user-select: none;
+	>.inner{
+		padding: 0 20px 20px;
+		line-height: 130%;
 	}
 }
 
@@ -577,7 +565,6 @@ input[type=checkbox]{
 	right: 0;
 	bottom: 0;
 	.selected{
-		border: solid 1px rgba(50,50,50,.7);
 		position: absolute;
 		cursor: move;
 		.markerCont{
@@ -589,9 +576,10 @@ input[type=checkbox]{
 			width: $imgAreaSelectorMarkerSize;
 			height: $imgAreaSelectorMarkerSize;
 			border-radius: $imgAreaSelectorMarkerBorderRadius;
-			background: #FFF;
-			border: solid 1px rgba(0,0,0,0.15);
+			background: #DCDCDC;
+			opacity: 0.3;
 			position: absolute;
+			transition: opacity 0.2s ease;
 			&.tl{
 				top: calc(-$imgAreaSelectorMarkerSize/2);
 				left: calc(-$imgAreaSelectorMarkerSize/2);
@@ -611,6 +599,25 @@ input[type=checkbox]{
 				bottom: calc(-$imgAreaSelectorMarkerSize/2);
 				right: calc(-$imgAreaSelectorMarkerSize/2);
 				cursor: nwse-resize;
+			}
+			&.top, &.bottom, &.left, &.right{
+				pointer-events: none;
+			}
+			&.top{
+				top: calc(-$imgAreaSelectorMarkerSize/2);
+				left: calc(50% - $imgAreaSelectorMarkerSize/2);
+			}
+			&.bottom{
+				bottom: calc(-$imgAreaSelectorMarkerSize/2);
+				left: calc(50% - $imgAreaSelectorMarkerSize/2);
+			}
+			&.left{
+				left: calc(-$imgAreaSelectorMarkerSize/2);
+				top: calc(50% - $imgAreaSelectorMarkerSize/2);
+			}
+			&.right{
+				right: calc(-$imgAreaSelectorMarkerSize/2);
+				top: calc(50% - $imgAreaSelectorMarkerSize/2);
 			}
 		}
 		.edge{
@@ -647,7 +654,10 @@ input[type=checkbox]{
 	}
 	.scrim{
 		position: absolute;
-		background: rgba(50,50,50,.5);
+		background: rgba(0,0,0,.75);
+	}
+	&.moving .marker{
+		opacity: 0.6;
 	}
 }
 
@@ -716,9 +726,9 @@ ul.actualList{
 	background-size: 32px 8px;
 	min-width: 32px;
 	min-height: 8px;
-	&.white{
-		background: svg-load('img/loading_anim.svg', fill: $textOnAccent) no-repeat center;
-	}
+}
+.loader.white, .inlineLoader.white{
+	background: svg-load('img/loading_anim.svg', fill: $textOnAccent) no-repeat center;
 }
 
 .inlineLoader{
@@ -740,6 +750,15 @@ ul.actualList{
 	}
 	&.feedIconEvent{
 		background: svg-load('img/events_s.svg');
+	}
+	&.feedIconPhoto{
+		background: svg-load('img/photos_s.svg');
+	}
+	&.feedIconPhotoTag{
+		background: svg-load('img/tags_s.svg');
+	}
+	&.feedIconPersonal{
+		background: svg-load('img/pages_s.svg');
 	}
 }
 
@@ -789,6 +808,12 @@ ul.actualList{
 .toggler:checked+.toggled{
 	.hideWhenOff, .showWhenOn{
 		display: block;
+		&.showAsGrid{
+			display: grid;
+		}
+		&.showAsFlex{
+			display: flex;
+		}
 	}
 	.hideWhenOn, .showWhenOff{
 		display: none;

@@ -47,11 +47,10 @@
   "profile_pic_select_square_version": "Select a square version of your picture to be shown alongside your posts and comments.",
   "drag_or_choose_file": "Choose a file or drag it to this window",
   "choose_file": "Choose a file",
-  "picture_too_wide": "Your picture is too wide.",
-  "picture_too_narrow": "Your picture is too narrow.",
   "error_loading_picture": "Error loading picture.",
-  "remove_profile_picture": "Remove profile picture",
-  "confirm_remove_profile_picture": "Are you sure you want to remove your profile picture?",
+  "remove_profile_picture": "Delete profile picture",
+  "confirm_remove_profile_picture": "Are you sure you want to delete your profile picture?",
+  "confirm_remove_profile_picture_group": "Are you sure you want to delete the profile picture from your group?",
   "choose_file_mobile": "Choose a file from your device",
   "middle_name_or_nickname": "Middle name or nickname",
   "maiden_name": "Maiden name",
@@ -179,5 +178,12 @@
   "settings_current_session": "current session",
   "settings_end_all_sessions": "Terminate all sessions",
   "settings_confirm_end_all_sessions": "Are you sure you want to terminate all sessions except the current one?",
-  "settings_sessions_ended": "Other sessions were terminated."
+  "settings_sessions_ended": "Other sessions were terminated.",
+  "privacy_photo_tagging": "Who can <b>tag me in photos</b>",
+  "privacy_photo_tag_list": "Who sees <b>photos I'm tagged in</b>",
+  "privacy_value_friends_except": "All friends, except...",
+  "privacy_feed_types": "Which of my updates appear <b>in the friends' news feeds</b>",
+  "privacy_feed_all_types": "All updates",
+  "privacy_feed_select_types": "Certain updates",
+  "privacy_feed_no_types": "No updates"
 }

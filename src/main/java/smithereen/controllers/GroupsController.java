@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.IntStream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -245,8 +246,9 @@ public class GroupsController{
 			if(group.isEvent()){
 				BackgroundTaskRunner.getInstance().submit(()->{
 					try{
+						IntStream memberIDs=GroupStorage.getAllMembersAsStream(group.id);
 						synchronized(eventRemindersCache){
-							GroupStorage.getAllMembersAsStream(group.id).boxed().forEach(eventRemindersCache::remove);
+							memberIDs.boxed().forEach(eventRemindersCache::remove);
 						}
 					}catch(SQLException x){
 						LOG.warn("error getting group members", x);
@@ -351,9 +353,7 @@ public class GroupsController{
 				context.getActivityPubWorker().sendRemoveFromGroupsCollectionActivity(user, group);
 			context.getNewsfeedController().deleteFriendsFeedEntry(user, group.id, group.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
 			if(group.isEvent()){
-				synchronized(eventRemindersCache){
-					eventRemindersCache.remove(user.id);
-				}
+				eventRemindersCache.remove(user.id);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -376,10 +376,8 @@ public class GroupsController{
 			reminder.createdAt=Instant.now();
 			if(events.isEmpty()){
 				reminder.groupIDs=Collections.emptyList();
-				synchronized(eventRemindersCache){
-					eventRemindersCache.put(user.id, reminder);
-					return reminder;
-				}
+				eventRemindersCache.put(user.id, reminder);
+				return reminder;
 			}
 
 			ZonedDateTime now=ZonedDateTime.now(timeZone);
@@ -404,10 +402,8 @@ public class GroupsController{
 				reminder.groupIDs=Collections.emptyList();
 			}
 
-			synchronized(eventRemindersCache){
-				eventRemindersCache.put(user.id, reminder);
-				return reminder;
-			}
+			eventRemindersCache.put(user.id, reminder);
+			return reminder;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

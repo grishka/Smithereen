@@ -8,7 +8,7 @@
 {% include "admin_users_info_tabbar" with {'tab': 'info'} %}
 <div class="singleColumn">
 	<div class="itemWithMediumAvatar">
-		<div>{{ user | pictureForAvatar('m') }}</div>
+		<div>{{ user | pictureForAvatar('b') }}</div>
 		<div>
 			<h2><a href="{{ user.profileURL }}" target="_blank" rel="noopener">{{ user | name('complete') }}</a></h2>
 			<div class="marginBefore marginAfter">

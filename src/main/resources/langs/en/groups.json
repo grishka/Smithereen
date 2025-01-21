@@ -10,6 +10,7 @@
   "err_group_username_taken": "This address is taken.",
   "err_group_reserved_username": "This address is reserved for the system. You can't use it.",
   "X_members": "{count, plural, =0 {No members} one {# member} other {# members}}",
+  "X_members_bold": "{count, plural, one {<b>#</b> member} other {<b>#</b> members}}",
   "members": "Members",
   "leave_group": "Leave group",
   "join_group": "Join group",
@@ -131,10 +132,17 @@
   "summary_event_X_invites": "{count, plural, =0 {No one is} one {# person is} other {# people are}} invited to join this event",
   "cancel_invitation": "Cancel invitation",
   "invitation_canceled": "Invitation canceled",
-  "confirm_leave_group": "This is a <b>{type, select, CLOSED {closed} PRIVATE {private} other {}}</b> group. If you leave it, it may be difficult to rejoin.\n\nAre you sure you want to leave this group?",
+  "confirm_leave_group": "This is a <b>{type, select, closed {closed} private {private} other {}}</b> group. If you leave it, it may be difficult to rejoin.\n\nAre you sure you want to leave this group?",
   "confirm_leave_event": "This is a <b>private</b> event. If you leave it, it may be difficult to rejoin.\n\nAre you sure you want to leave this event?",
   "groups_search_placeholder": "Search groups",
   "events_search_placeholder": "Search events",
   "summary_found_X_groups": "{count, plural, =0 {No groups} one {# group} other {# groups}} found",
-  "summary_found_X_events": "{count, plural, =0 {No events} one {# event} other {# events}} found"
+  "summary_found_X_events": "{count, plural, =0 {No events} one {# event} other {# events}} found",
+  "group_access_level": "Access level",
+  "group_access_admin": "Admin",
+  "group_access_moderator": "Moderator",
+  "group_you_are_member": "You've joined",
+  "group_join_request_sent": "Request sent",
+  "event_you_are_member": "You will attend",
+  "event_you_are_tentative_member": "You aren't sure"
 }

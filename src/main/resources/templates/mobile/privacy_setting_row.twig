@@ -1,0 +1,4 @@
+<input type="hidden" name="{{ key }}" id="{{ key }}_value" value="{{ json(setting) }}"/>
+<a href="javascript:void(0)" class="privacySettingRow" onclick="showMobilePrivacyBox('{{ key }}', JSON.parse(ge('{{ key }}_value').value), {{ isOnlyMe }}); return false;">
+	{% include "privacy_setting_inner" %}
+</a>

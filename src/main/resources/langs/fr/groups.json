@@ -131,10 +131,12 @@
   "summary_event_X_invites": "{count, plural, =0 {Personne n'est invité} one {# personne est invité} other {# personnes sont invités}} à participer à cet événement",
   "cancel_invitation": "Annuler l'invitation",
   "invitation_canceled": "Invitation annulée",
-  "confirm_leave_group": "C'est un groupe <b>{type, select, CLOSED {fermé} PRIVATE {privé} other {}}</b>. Si vous le quittez, il peut être difficile de rejoindre.\n\nÊtes-vous sûr de vouloir quitter ce groupe ?",
   "confirm_leave_event": "Il s'agit d'un événement <b>privé</b> . Si vous le quittez, il peut être difficile de le rejoindre.\n\nÊtes-vous sûr de vouloir quitter cet événement ?",
   "groups_search_placeholder": "Rechercher des groupes",
   "events_search_placeholder": "Rechercher des événements",
   "summary_found_X_groups": "{count, plural, =0 {Aucun groupe trouvé} one {# groupe trouvé} other {# groupes trouvés}}",
-  "summary_found_X_events": "{count, plural, =0 {Aucun événement trouvé} one {# événement trouvé} other {# événements trouvés}}"
+  "summary_found_X_events": "{count, plural, =0 {Aucun événement trouvé} one {# événement trouvé} other {# événements trouvés}}",
+  "group_access_level": "Niveau d'accès",
+  "group_access_admin": "Administrateur",
+  "group_access_moderator": "Modérateur"
 }

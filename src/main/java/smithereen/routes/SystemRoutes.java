@@ -6,8 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -23,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -35,9 +34,6 @@ import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
-import jakarta.servlet.MultipartConfigElement;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Part;
 import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
@@ -45,17 +41,19 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FederationException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.RemoteObjectFetchException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
-import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.AttachmentHostContentObject;
@@ -65,41 +63,40 @@ import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
-import smithereen.model.ReportableContentObject;
-import smithereen.model.SearchResult;
+import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.GraffitiAttachment;
-import smithereen.model.media.ImageMetadata;
-import smithereen.model.media.MediaFileMetadata;
-import smithereen.model.media.MediaFileRecord;
-import smithereen.model.media.MediaFileType;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentReplyParent;
+import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.photos.Photo;
+import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.util.QuickSearchResults;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
-import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PostStorage;
-import smithereen.storage.SearchStorage;
 import smithereen.storage.UserStorage;
-import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.TextProcessor;
-import smithereen.util.BlurHash;
 import smithereen.util.CaptchaGenerator;
 import smithereen.util.CharacterRange;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -131,6 +128,7 @@ public class SystemRoutes{
 
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
 		requireQueryParams(req, "type", "format", "size");
+		ApplicationContext ctx=context(req);
 		MediaCache cache=MediaCache.getInstance();
 		String type=req.queryParams("type");
 		String mime;
@@ -161,92 +159,105 @@ public class SystemRoutes{
 
 		boolean isPostPhoto="post_photo".equals(type);
 
-		if("user_ava".equals(type)){
-			itemType=MediaCache.ItemType.AVATAR;
-			mime="image/jpeg";
-			int userID=Utils.parseIntOrDefault(req.queryParams("user_id"), 0);
-			user=UserStorage.getById(userID);
-			if(user==null || Config.isLocal(user.activityPubID)){
-				LOG.warn("downloading user_ava: user {} not found or is local", userID);
-				return "";
-			}
-			Image im=user.getBestAvatarImage();
-			if(im!=null && im.url!=null){
-				cropRegion=user.getAvatarCropRegion();
-				uri=im.url;
-				if(StringUtils.isNotEmpty(im.mediaType))
-					mime=im.mediaType;
-				else
-					mime="image/jpeg";
-			}
-		}else if("group_ava".equals(type)){
-			itemType=MediaCache.ItemType.AVATAR;
-			mime="image/jpeg";
-			int groupID=Utils.parseIntOrDefault(req.queryParams("group_id"), 0);
-			group=GroupStorage.getById(groupID);
-			if(group==null || Config.isLocal(group.activityPubID)){
-				LOG.warn("downloading group_ava: group {} not found or is local", groupID);
-				return "";
-			}
-			Image im=group.getBestAvatarImage();
-			if(im!=null && im.url!=null){
-				cropRegion=group.getAvatarCropRegion();
-				uri=im.url;
-				if(StringUtils.isNotEmpty(im.mediaType))
-					mime=im.mediaType;
-				else
-					mime="image/jpeg";
-			}
-		}else if("post_photo".equals(type) || "message_photo".equals(type)){
-			itemType=MediaCache.ItemType.PHOTO;
-			ApplicationContext ctx=context(req);
-			SessionInfo sess=sessionInfo(req);
-			Object contentObj=switch(type){
-				case "post_photo" -> {
-					int postID=parseIntOrDefault(req.queryParams("post_id"), 0);
-					yield ctx.getWallController().getPostOrThrow(postID);
-				}
-				case "message_photo" -> {
-					requireQueryParams(req, "msg_id");
-					if(sess==null || sess.account==null)
-						yield null;
-					long msgID=decodeLong(req.queryParams("msg_id"));
-					yield context(req).getMailController().getMessage(sess.account.user, msgID, false);
-				}
-				default -> throw new IllegalStateException("Unexpected value: "+type);
-			};
-
-			if(contentObj instanceof OwnedContentObject oco){
-				ctx.getPrivacyController().enforceObjectPrivacy(sess==null || sess.account==null ? null : sess.account.user, oco);
-			}
-
-			int index=safeParseInt(req.queryParams("index"));
-			ActivityPubObject att=verifyObjectAndGetAttachment(index, type, contentObj);
-			if(att==null)
-				return "";
-
-			if(att.mediaType==null){
-				if(att instanceof Image){
-					mime="image/jpeg";
-				}else{
-					LOG.warn("downloading post_photo: media type is null and attachment type {} isn't Image", att.getClass().getName());
+		switch(type){
+			case "user_ava" -> {
+				itemType=MediaCache.ItemType.AVATAR;
+				mime="image/jpeg";
+				int userID=parseIntOrDefault(req.queryParams("user_id"), 0);
+				user=UserStorage.getById(userID);
+				if(user==null || Config.isLocal(user.activityPubID)){
+					LOG.warn("downloading user_ava: user {} not found or is local", userID);
 					return "";
 				}
-			}else if(!att.mediaType.startsWith("image/")){
-				LOG.warn("downloading post_photo: attachment media type {} is invalid", att.mediaType);
+				Image im=user.getBestAvatarImage();
+				if(im!=null && im.url!=null){
+					cropRegion=user.getAvatarCropRegion();
+					uri=im.url;
+					if(StringUtils.isNotEmpty(im.mediaType))
+						mime=im.mediaType;
+					else
+						mime="image/jpeg";
+				}
+			}
+			case "group_ava" -> {
+				itemType=MediaCache.ItemType.AVATAR;
+				mime="image/jpeg";
+				int groupID=parseIntOrDefault(req.queryParams("group_id"), 0);
+				group=GroupStorage.getById(groupID);
+				if(group==null || Config.isLocal(group.activityPubID)){
+					LOG.warn("downloading group_ava: group {} not found or is local", groupID);
+					return "";
+				}
+				Image im=group.getBestAvatarImage();
+				if(im!=null && im.url!=null){
+					cropRegion=group.getAvatarCropRegion();
+					uri=im.url;
+					if(StringUtils.isNotEmpty(im.mediaType))
+						mime=im.mediaType;
+					else
+						mime="image/jpeg";
+				}
+			}
+			case "post_photo", "message_photo" -> {
+				itemType=MediaCache.ItemType.PHOTO;
+				SessionInfo sess=sessionInfo(req);
+				Object contentObj=switch(type){
+					case "post_photo" -> {
+						int postID=parseIntOrDefault(req.queryParams("post_id"), 0);
+						yield ctx.getWallController().getPostOrThrow(postID);
+					}
+					case "message_photo" -> {
+						requireQueryParams(req, "msg_id");
+						if(sess==null || sess.account==null)
+							yield null;
+						long msgID=decodeLong(req.queryParams("msg_id"));
+						yield context(req).getMailController().getMessage(sess.account.user, msgID, false);
+					}
+					default -> throw new IllegalStateException("Unexpected value: "+type);
+				};
+
+				if(contentObj instanceof OwnedContentObject oco){
+					ctx.getPrivacyController().enforceObjectPrivacy(sess==null || sess.account==null ? null : sess.account.user, oco);
+				}
+
+				int index=safeParseInt(req.queryParams("index"));
+				ActivityPubObject att=verifyObjectAndGetAttachment(index, type, contentObj);
+				if(att==null)
+					return "";
+
+				if(att.mediaType==null){
+					if(att instanceof Image){
+						mime="image/jpeg";
+					}else{
+						LOG.warn("downloading post_photo: media type is null and attachment type {} isn't Image", att.getClass().getName());
+						return "";
+					}
+				}else if(!att.mediaType.startsWith("image/")){
+					LOG.warn("downloading post_photo: attachment media type {} is invalid", att.mediaType);
+					return "";
+				}else{
+					mime=att.mediaType;
+				}
+				if(format==SizedImage.Format.PNG && (!(att instanceof Image img) || !img.isGraffiti)){
+					LOG.warn("downloading post_photo: requested png but the attachment is not a graffiti");
+					throw new BadRequestException();
+				}
+				isGraffiti=att instanceof Image img && img.isGraffiti;
+				uri=att.url;
+			}
+			case "album_photo" -> {
+				long id=XTEA.deobfuscateObjectID(decodeLong(req.queryParams("photo_id")), ObfuscatedObjectIDType.PHOTO);
+				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
+				SessionInfo sess=sessionInfo(req);
+				ctx.getPrivacyController().enforceObjectPrivacy(sess!=null && sess.account!=null ? sess.account.user : null, photo);
+				uri=photo.remoteSrc;
+				mime="image/webp";
+				itemType=MediaCache.ItemType.PHOTO;
+			}
+			case null, default -> {
+				LOG.warn("unknown external file type {}", type);
 				return "";
-			}else{
-				mime=att.mediaType;
 			}
-			if(format==SizedImage.Format.PNG && (!(att instanceof Image img) || !img.isGraffiti)){
-				LOG.warn("downloading post_photo: requested png but the attachment is not a graffiti");
-				throw new BadRequestException();
-			}
-			isGraffiti=att instanceof Image img && img.isGraffiti;
-			uri=att.url;
-		}else{
-			LOG.warn("unknown external file type {}", type);
-			return "";
 		}
 
 		if(uri!=null){
@@ -258,7 +269,7 @@ public class SystemRoutes{
 				if(mime.startsWith("image/")){
 					if(existing!=null){
 						LOG.debug("downloadExternalMedia: found existing {}", uri);
-						resp.redirect(new CachedRemoteImage((MediaCache.PhotoItem) existing, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
+						resp.redirect(new CachedRemoteImage((MediaCache.PhotoItem) existing, cropRegion, uri).getUriForSizeAndFormat(sizeType, format).toString());
 						return "";
 					}
 					try{
@@ -289,7 +300,7 @@ public class SystemRoutes{
 							resp.redirect(uri.toString());
 						}else{
 							LOG.debug("downloadExternalMedia: download finished {}", uri);
-							resp.redirect(new CachedRemoteImage(item, cropRegion).getUriForSizeAndFormat(sizeType, format).toString());
+							resp.redirect(new CachedRemoteImage(item, cropRegion, uri).getUriForSizeAndFormat(sizeType, format).toString());
 						}
 						return "";
 					}catch(IOException x){
@@ -314,79 +325,21 @@ public class SystemRoutes{
 	}
 
 	private static Object uploadPhotoAttachment(Request req, Response resp, Account self, boolean isGraffiti){
-		Lang l=lang(req);
-		try{
-			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
-			Part part=req.raw().getPart("file");
-			if(part.getSize()>10*1024*1024){
-				resp.status(413); // Payload Too Large
-				return l.get("err_file_upload_too_large", Map.of("maxSize", l.formatFileSize(10*1024*1024)));
-			}
-
-			String mime=part.getContentType();
-			if(!mime.startsWith("image/")){
-				resp.status(415); // Unsupported Media Type
-				return l.get("err_file_upload_image_format");
-			}
-
-			File temp=File.createTempFile("SmithereenUpload", null);
-			VipsImage img;
-			try{
-				try(FileOutputStream out=new FileOutputStream(temp)){
-					copyBytes(part.getInputStream(), out);
-				}
-				img=new VipsImage(temp.getAbsolutePath());
-			}catch(IOException x){
-				LOG.warn("VipsImage error", x);
-				resp.status(400);
-				return l.get("err_file_upload_image_format");
-			}
-			if(img.hasAlpha()){
-				VipsImage flat=img.flatten(255, 255, 255);
-				img.release();
-				img=flat;
-			}
-
-			if(isGraffiti && (img.getWidth()!=GraffitiAttachment.WIDTH || img.getHeight()!=GraffitiAttachment.HEIGHT)){
-				LOG.warn("Unexpected graffiti size {}x{}", img.getWidth(), img.getHeight());
-				throw new BadRequestException();
-			}
-
-			LocalImage photo=new LocalImage();
-			int width, height;
-			MediaFileRecord fileRecord;
-			try{
-				File resizedFile=File.createTempFile("SmithereenUploadResized", ".webp");
-				int[] outSize={0,0};
-				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, resizedFile, outSize);
-				MediaFileMetadata meta=new ImageMetadata(width=outSize[0], height=outSize[1], BlurHash.encode(img, 4, 4), null);
-				fileRecord=MediaStorage.createMediaFileRecord(isGraffiti ? MediaFileType.IMAGE_GRAFFITI : MediaFileType.IMAGE_PHOTO, resizedFile.length(), self.user.id, meta);
-				photo.fileID=fileRecord.id().id();
-				photo.fillIn(fileRecord);
-				MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id());
-
-				temp.delete();
-			}finally{
-				img.release();
-			}
-
-			if(isAjax(req)){
-				resp.type("application/json");
-				return new JsonObjectBuilder()
-						.add("id", fileRecord.id().getIDForClient())
-						.add("width", width)
-						.add("height", height)
-						.add("thumbs", new JsonObjectBuilder()
-								.add("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.JPEG).toString())
-								.add("webp", photo.getUriForSizeAndFormat(SizedImage.Type.SMALL, SizedImage.Format.WEBP).toString())
-						).build();
-			}
-			resp.redirect(Utils.back(req));
-		}catch(IOException|ServletException|SQLException x){
-			LOG.error("File upload failed", x);
-			resp.status(500);
-			return l.get("err_file_upload");
+		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, self, isGraffiti);
+		if(isAjax(req)){
+			resp.type("application/json");
+			PhotoViewerInlineData pvData=new PhotoViewerInlineData(0, "rawFile/"+photo.getLocalID(), photo.getURLsForPhotoViewer());
+			return new JsonObjectBuilder()
+					.add("id", photo.fileRecord.id().getIDForClient())
+					.add("width", photo.width)
+					.add("height", photo.height)
+					.add("thumbs", new JsonObjectBuilder()
+							.add("jpeg", photo.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.JPEG).toString())
+							.add("webp", photo.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.WEBP).toString())
+					)
+					.add("pv", gson.toJsonTree(pvData)).build();
 		}
+		resp.redirect(back(req));
 		return "";
 	}
 
@@ -413,135 +366,41 @@ public class SystemRoutes{
 		return new RenderedTemplateResponse("quick_search_results", req).with("users", res.users()).with("groups", res.groups()).with("externalObjects", res.externalObjects()).with("avaSize", req.attribute("mobile")!=null ? 48 : 30);
 	}
 
-	public static Object loadRemoteObject(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
-		String _uri=req.queryParams("uri");
-		if(StringUtils.isEmpty(_uri))
-			throw new BadRequestException();
-		Object obj=null;
-		URI uri=null;
+	public static Object loadRemoteObject(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "uri");
+		String uri=req.queryParams("uri");
+		resp.type("application/json");
 		Lang l=lang(req);
-		Matcher matcher=TextProcessor.USERNAME_DOMAIN_PATTERN.matcher(_uri);
-		if(matcher.find() && matcher.start()==0 && matcher.end()==_uri.length()){
-			String username=matcher.group(1);
-			String domain=matcher.group(2);
-			try{
-				uri=ActivityPub.resolveUsername(username, domain);
-			}catch(IOException x){
-				LOG.debug("Error getting remote user", x);
-				String error=l.get("remote_object_network_error");
-				return new JsonObjectBuilder().add("error", error).build();
-			}
-		}
-		if(uri==null){
-			try{
-				uri=new URI(_uri);
-			}catch(URISyntaxException x){
-				throw new BadRequestException(x);
-			}
-		}
 		try{
-			obj=ctx.getObjectLinkResolver().resolveLocally(uri, Object.class);
-			return switch(obj){
-				case User u -> new JsonObjectBuilder().add("success", u.getProfileURL()).build();
-				case Group g -> new JsonObjectBuilder().add("success", g.getProfileURL()).build();
-				case Post p ->{
-					try{
-						ctx.getActivityPubWorker().fetchAllReplies(p).get(30, TimeUnit.SECONDS);
-					}catch(Throwable x){
-						LOG.trace("Error fetching replies", x);
-					}
-					yield new JsonObjectBuilder().add("success", "/posts/"+p.id).build();
+			return new JsonObjectBuilder().add("success", switch(ctx.getSearchController().loadRemoteObject(self.user, uri)){
+				case Post post when post.getReplyLevel()>0 -> Config.localURI("/posts/"+post.replyKey.getFirst()+"#comment"+post.id).toString();
+				case Post post -> post.getInternalURL().toString();
+				case Actor actor -> actor.getProfileURL();
+				case PhotoAlbum album -> album.getURL();
+				case Photo photo -> photo.getURL();
+				case Comment comment -> ctx.getCommentsController().getCommentParent(self.user, comment).getURL();
+				default -> throw new RemoteObjectFetchException(RemoteObjectFetchException.ErrorType.UNSUPPORTED_OBJECT_TYPE, null);
+			}).build();
+		}catch(RemoteObjectFetchException x){
+			JsonObjectBuilder jb=new JsonObjectBuilder().add("error", switch(x.error){
+				case UNSUPPORTED_OBJECT_TYPE -> l.get("unsupported_remote_object_type");
+				case TIMEOUT -> {
+					if(x.uri!=null)
+						yield l.get("remote_object_timeout", Map.of("server", x.uri.getHost()));
+					else
+						yield l.get("remote_object_loading_error");
 				}
-				default -> new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
-			};
-		}catch(ObjectNotFoundException ignore){}
-		try{
-			obj=ctx.getObjectLinkResolver().resolve(uri, ActivityPubObject.class, true, false, false, (JsonObject) null, false);
-		}catch(UnsupportedRemoteObjectTypeException x){
-			LOG.debug("Unsupported remote object", x);
-			return new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
-		}catch(ObjectNotFoundException x){
-			LOG.debug("Remote object not found", x);
-			String error=switch(x.getCause()){
-				case HttpTimeoutException ignored -> l.get("remote_object_timeout", Map.of("server", uri.getHost()));
-				case IOException ignored -> l.get("remote_object_network_error");
-				case null, default -> l.get("remote_object_not_found");
-			};
-			return new JsonObjectBuilder().add("error", error).build();
-		}catch(Exception x){
-			LOG.debug("Other remote fetch exception", x);
-			String errMessage=l.get("remote_object_loading_error");
-			String exMessage=x.getMessage();
-			if(StringUtils.isNotEmpty(exMessage)){
-				errMessage+="<br><br>"+TextProcessor.escapeHTML(exMessage);
+				case NETWORK_ERROR -> l.get("remote_object_network_error");
+				case NOT_FOUND -> l.get("remote_object_not_found");
+				case OTHER_ERROR -> l.get("remote_object_loading_error");
+			});
+			if(x.getCause()!=null){
+				jb.add("details", TextProcessor.escapeHTML(x.getCause().getMessage()));
+			}else if(StringUtils.isNotEmpty(x.getMessage())){
+				jb.add("details", TextProcessor.escapeHTML(x.getMessage()));
 			}
-			return new JsonObjectBuilder().add("error", errMessage).build();
+			return jb.build();
 		}
-		return switch(obj){
-			case ForeignUser user -> {
-				if(user.isServiceActor)
-					yield new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
-				UserStorage.putOrUpdateForeignUser(user);
-				yield new JsonObjectBuilder().add("success", user.getProfileURL()).build();
-			}
-			case ForeignGroup group -> {
-				group.storeDependencies(ctx);
-				GroupStorage.putOrUpdateForeignGroup(group);
-				yield new JsonObjectBuilder().add("success", group.getProfileURL()).build();
-			}
-			case NoteOrQuestion post -> {
-				if(post.inReplyTo==null){
-					URI repostID=post.getQuoteRepostID();
-					Post nativePost=post.asNativePost(ctx);
-					if(repostID!=null){
-						try{
-							List<Post> repostChain=ctx.getActivityPubWorker().fetchRepostChain(post).get();
-							if(!repostChain.isEmpty())
-								nativePost.setRepostedPost(repostChain.getFirst());
-						}catch(InterruptedException x){
-							throw new RuntimeException(x);
-						}catch(ExecutionException x){
-							LOG.trace("Failed to fetch repost chain for {}", post.activityPubID, x);
-						}
-					}
-					ctx.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-					PostStorage.putForeignWallPost(nativePost);
-					try{
-						ctx.getActivityPubWorker().fetchAllReplies(nativePost).get(30, TimeUnit.SECONDS);
-					}catch(Throwable x){
-						LOG.trace("Error fetching replies", x);
-					}
-					yield new JsonObjectBuilder().add("success", Config.localURI("/posts/"+nativePost.id).toString()).build();
-				}else{
-					Future<List<Post>> future=ctx.getActivityPubWorker().fetchReplyThread(post);
-					try{
-						List<Post> posts=future.get(30, TimeUnit.SECONDS);
-						ctx.getActivityPubWorker().fetchAllReplies(posts.getFirst()).get(30, TimeUnit.SECONDS);
-						Post nativePost=post.asNativePost(ctx);
-						yield new JsonObjectBuilder().add("success", Config.localURI("/posts/"+posts.getFirst().id+"#comment"+nativePost.id).toString()).build();
-					}catch(InterruptedException x){
-						throw new RuntimeException(x);
-					}catch(ExecutionException e){
-						LOG.trace("Error fetching remote object", e);
-						Throwable x=e.getCause();
-						String error=switch(x){
-							case UnsupportedRemoteObjectTypeException ignored -> l.get("unsupported_remote_object_type");
-							case ObjectNotFoundException onfe -> switch(onfe.getCause()){
-								case IOException ignored -> l.get("remote_object_network_error");
-								case null, default -> l.get("remote_object_not_found");
-							};
-							case IOException ignored -> l.get("remote_object_network_error");
-							default -> x.getLocalizedMessage();
-						};
-						yield new JsonObjectBuilder().add("error", error).build();
-					}catch(TimeoutException e){
-						LOG.trace("Remote object fetch timed out", e);
-						yield new JsonObjectBuilder().add("error", l.get("remote_object_loading_error")).build();
-					}
-				}
-			}
-			default -> new JsonObjectBuilder().add("error", l.get("unsupported_remote_object_type")).build();
-		};
 	}
 
 	public static Object votePoll(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
@@ -681,6 +540,32 @@ public class SystemRoutes{
 				textareaPlaceholder=l.get("report_placeholder_content");
 				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
 			}
+			case "photo" -> {
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.PHOTO);
+				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
+				ctx.getPrivacyController().enforceObjectPrivacy(self.user, photo);
+				User user=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				actorForAvatar=user;
+				title=user.getCompleteName();
+				subtitle=photo.description;
+				boxTitle=l.get("report_title_photo");
+				titleText=l.get("report_text_photo");
+				textareaPlaceholder=l.get("report_placeholder_content");
+				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
+			}
+			case "comment" -> {
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.COMMENT);
+				Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(id);
+				ctx.getPrivacyController().enforceObjectPrivacy(self.user, comment);
+				User user=ctx.getUsersController().getUserOrThrow(comment.authorID);
+				actorForAvatar=user;
+				title=user.getCompleteName();
+				subtitle=TextProcessor.truncateOnWordBoundary(comment.text, 200);
+				boxTitle=l.get("report_title_comment");
+				textareaPlaceholder=l.get("report_placeholder_content");
+				titleText=l.get("report_text_comment");
+				otherServerDomain=Config.isLocal(comment.getActivityPubID()) ? null : comment.getActivityPubID().getHost();
+			}
 			default -> throw new BadRequestException();
 		}
 		model.with("actorForAvatar", actorForAvatar)
@@ -724,6 +609,20 @@ public class SystemRoutes{
 				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 				target=ctx.getUsersController().getUserOrThrow(msg.senderID);
 				content=List.of(msg);
+			}
+			case "photo" -> {
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.PHOTO);
+				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
+				ctx.getPrivacyController().enforceObjectPrivacy(self.user, photo);
+				target=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				content=List.of(photo);
+			}
+			case "comment" -> {
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.COMMENT);
+				Comment commentObj=ctx.getCommentsController().getCommentIgnoringPrivacy(id);
+				ctx.getPrivacyController().enforceObjectPrivacy(self.user, commentObj);
+				content=List.of(commentObj);
+				target=ctx.getUsersController().getUserOrThrow(commentObj.authorID);
 			}
 			default -> throw new BadRequestException("invalid type");
 		}

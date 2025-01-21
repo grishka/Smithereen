@@ -3,6 +3,7 @@
   <component name="JavaProjectCodeInsightSettings">
     <excluded-names>
       <name>com.google.protobuf</name>
+      <name>org.eclipse.jetty</name>
     </excluded-names>
   </component>
 </project>

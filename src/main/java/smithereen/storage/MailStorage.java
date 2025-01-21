@@ -4,7 +4,9 @@ import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +18,7 @@ import java.util.stream.Collectors;
 import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.MailMessage;
 import smithereen.model.MessagesPrivacyGrant;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -24,6 +27,7 @@ import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.utils.Pair;
 import smithereen.util.XTEA;
 
 public class MailStorage{
@@ -149,18 +153,73 @@ public class MailStorage{
 				.executeNoResult();
 	}
 
-	public static void actuallyDeleteMessage(long messageID) throws SQLException{
-		new SQLQueryBuilder()
-				.deleteFrom("mail_messages")
-				.where("id=?", XTEA.deobfuscateObjectID(messageID, ObfuscatedObjectIDType.MAIL_MESSAGE))
-				.executeNoResult();
+	public static void actuallyDeleteMessages(Collection<Long> ids, URI activityPubID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			Set<Long> realIDs=ids.stream().map(id->XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet());
+			new SQLQueryBuilder(conn)
+					.deleteFrom("mail_messages")
+					.whereIn("id", realIDs)
+					.executeNoResult();
+			if(activityPubID!=null){
+				long otherID=new SQLQueryBuilder(conn)
+						.selectFrom("mail_messages")
+						.columns("id")
+						.where("ap_id=?", activityPubID.toString())
+						.limit(1, 0)
+						.executeAndGetLong();
+				if(otherID!=-1){
+					new SQLQueryBuilder(conn)
+							.update("ap_id_index")
+							.value("object_id", otherID)
+							.where("ap_id=?", activityPubID.toString())
+							.executeNoResult();
+				}else{
+					new SQLQueryBuilder(conn)
+							.deleteFrom("ap_id_index")
+							.where("ap_id=?", activityPubID)
+							.executeNoResult();
+				}
+			}
+		}
 	}
 
-	public static void actuallyDeleteMessages(Collection<Long> ids) throws SQLException{
-		new SQLQueryBuilder()
-				.deleteFrom("mail_messages")
-				.whereIn("id", ids.stream().map(id->XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet()))
-				.executeNoResult();
+	public static void actuallyDeleteMessages(Collection<MailMessage> msgs) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			new SQLQueryBuilder(conn)
+					.deleteFrom("mail_messages")
+					.whereIn("id", msgs.stream().map(m->XTEA.deobfuscateObjectID(m.id, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet()))
+					.executeNoResult();
+			Set<String> apIDs=msgs.stream().map(m->m.activityPubID).filter(Objects::nonNull).map(URI::toString).collect(Collectors.toSet());
+			if(apIDs.isEmpty())
+				return;
+			HashMap<String, Long> newIDs=new HashMap<>();
+			for(MailMessage msg:msgs){
+				if(msg.activityPubID!=null)
+					newIDs.put(msg.activityPubID.toString(), null);
+			}
+			new SQLQueryBuilder(conn)
+					.selectFrom("mail_messages")
+					.columns("id", "ap_id")
+					.whereIn("ap_id", apIDs)
+					.executeAsStream(r->new Pair<>(r.getLong(1), r.getString(2)))
+					.forEach(p->newIDs.put(p.second(), p.first()));
+			Set<String> toDelete=newIDs.entrySet().stream().filter(e->e.getValue()==null).map(Map.Entry::getKey).collect(Collectors.toSet());
+			if(!toDelete.isEmpty()){
+				new SQLQueryBuilder(conn)
+						.deleteFrom("ap_id_index")
+						.whereIn("ap_id", toDelete)
+						.executeNoResult();
+			}
+			for(Map.Entry<String, Long> e:newIDs.entrySet()){
+				if(e.getValue()==null)
+					continue;
+				new SQLQueryBuilder(conn)
+						.update("ap_id_index")
+						.where("ap_id=?", e.getKey())
+						.value("id=?", e.getValue())
+						.executeNoResult();
+			}
+		}
 	}
 
 	public static MailMessage getMessage(int ownerID, long messageID, boolean wantDeleted) throws SQLException{
@@ -171,6 +230,8 @@ public class MailStorage{
 				.selectFrom("mail_messages")
 				.where(where, XTEA.deobfuscateObjectID(messageID, ObfuscatedObjectIDType.MAIL_MESSAGE), ownerID)
 				.executeAndGetSingleObject(MailMessage::fromResultSet);
+		if(msg==null)
+			return null;
 		postprocessMessages(Set.of(msg));
 		return msg;
 	}

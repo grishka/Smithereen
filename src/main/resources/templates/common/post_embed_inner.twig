@@ -9,7 +9,7 @@
 {% if realPost.text is not empty %}<div class="postContent">{{ realPost.text | postprocessHTML(true) | truncateText }}</div>{% endif %}
 {% if realPost.attachments is not empty %}
 	{% set afterAttachments=true %}
-	{{ renderAttachments(realPost.processedAttachments, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID], "/posts/#{realPost.id}") }}
+	{{ renderAttachments(realPost, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID], "/posts/#{realPost.id}") }}
 {% endif %}
 {% if realPost.poll is not null %}
 {% set poll=realPost.poll %}
@@ -47,7 +47,7 @@
 <div class="repost">
 	<div class="repostHeader">
 		{% set authorID=post.repost.post.post.authorID %}
-		<a href="{{ profileURL(authorID) }}" class="avaW" target="_blank">{{ users[authorID] | pictureForAvatar('s', 30) }}</a>
+		<a href="{{ profileURL(authorID) }}" class="avaW" target="_blank">{{ users[authorID] | pictureForAvatar('a', 30) }}</a>
 		<div class="postInfo">
 			<div class="nameW"><span class="repostIcon"></span><a href="{{ profileURL(authorID) }}" class="postName" target="_blank">{{ users[authorID] | name }}</a></div>
 			<div class="ellipsize grayText">

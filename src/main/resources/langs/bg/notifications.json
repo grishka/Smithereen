@@ -1,0 +1,20 @@
+{
+  "notification_replied_to_post": "коментира твоята публикация",
+  "notification_replied_to_comment": "отговори на Вашия коментар",
+  "notification_mentioned_in_post": "Ви спомена в публикация",
+  "notification_mentioned_in_comment": "Ви спомена в коментар",
+  "notification_liked_post": "хареса Вашата публикация",
+  "notification_liked_comment": "хареса Вашият коментар",
+  "notification_reposted_post": "сподели Вашата публикация",
+  "notification_reposted_comment": "сподели Вашият коментар",
+  "notification_posted_on_wall": "написа публикация на Вашата стена",
+  "notification_invite_signup": "се регистрира по Ваша покана",
+  "notification_follow": "Ви последва",
+  "notification_friend_req_accept": "прие Вашата покана за приятелство",
+  "no_notifications": "Нямате все още никакви известия",
+  "notifications": "Известия",
+  "notifications_empty": "Вашите известия ще се появят тук.",
+  "summary_notifications": "Пакзаваме най-скорошните известия",
+  "notification_liked_photo": "хареса Вашата <a id=\"photo\">снимка</a>",
+  "notification_commented_on_photo": "коментира Вашата<a id=\"photo\">снимка</a>"
+}

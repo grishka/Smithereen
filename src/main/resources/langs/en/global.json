@@ -45,6 +45,8 @@
   "back_to_event": "Back to event",
   "edit": "Edit",
   "attach_menu_photo": "Photo",
+  "attach_menu_photo_upload": "Photo from your device",
+  "attach_menu_photo_from_album": "Photo from album",
   "attach_menu_cw": "Content Warning",
   "network_error": "Network error. Please check your connection and try again.",
   "domain": "Domain",
@@ -192,5 +194,12 @@
   "comments_show_X_more_comments": "Show {count, plural, one {# more comment} other {# more comments}}",
   "cancel_reply": "Cancel reply",
   "menu_bookmarks": "My Bookmarks",
-  "X_communities": "{count, plural, one {One community} other {# communities}}"
+  "X_communities": "{count, plural, one {One community} other {# communities}}",
+  "show_technical_details": "Technical details",
+  "menu_photos": "My Photos",
+  "release_files_to_upload": "Release to start upload",
+  "object_X_of_Y": "{current} of {total}",
+  "remote_like_photo_title": "Like photo",
+  "main_menu": "Main menu",
+  "save_and_continue": "Save and continue"
 }

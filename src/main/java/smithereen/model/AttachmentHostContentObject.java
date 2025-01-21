@@ -7,9 +7,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Audio;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.activitypub.objects.Video;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.AudioAttachment;
 import smithereen.model.attachments.GraffitiAttachment;
@@ -18,11 +20,13 @@ import smithereen.model.attachments.VideoAttachment;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
+import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
-public interface AttachmentHostContentObject{
+public sealed interface AttachmentHostContentObject permits MailMessage, PostLikeObject{
 	List<ActivityPubObject> getAttachments();
 	NonCachedRemoteImage.Args getPhotoArgs(int index);
+	String getPhotoListID();
 
 	default List<Attachment> getProcessedAttachments(){
 		ArrayList<Attachment> result=new ArrayList<>();
@@ -31,9 +35,14 @@ public interface AttachmentHostContentObject{
 			String mediaType=o.mediaType==null ? "" : o.mediaType;
 			if(o instanceof Image || mediaType.startsWith("image/")){
 				PhotoAttachment att=o instanceof Image img && img.isGraffiti ? new GraffitiAttachment() : new PhotoAttachment();
+				if(StringUtils.isNotEmpty(o.name))
+					att.description=o.name;
 				if(o instanceof LocalImage li){
 					att.image=li;
+					att.photoID=li.photoID;
 				}else{
+					if(o.url==null)
+						continue;
 					// TODO make this less ugly
 					MediaCache.PhotoItem item;
 					try{
@@ -41,8 +50,9 @@ public interface AttachmentHostContentObject{
 					}catch(SQLException x){
 						throw new InternalServerErrorException(x);
 					}
+					RemoteImage image;
 					if(item!=null){
-						att.image=new CachedRemoteImage(item);
+						image=new CachedRemoteImage(item, o.url);
 					}else{
 						SizedImage.Dimensions size=SizedImage.Dimensions.UNKNOWN;
 						if(o instanceof Document im){
@@ -50,19 +60,27 @@ public interface AttachmentHostContentObject{
 								size=new SizedImage.Dimensions(im.width, im.height);
 							}
 						}
-						att.image=new NonCachedRemoteImage(getPhotoArgs(i), size);
+						image=new NonCachedRemoteImage(getPhotoArgs(i), size, o.url);
 					}
+					if(o instanceof Image img && img.photoApID!=null){
+						image.photoActivityPubID=img.photoApID;
+					}
+					att.image=image;
 				}
 				if(o instanceof Document doc){
 					if(StringUtils.isNotEmpty(doc.blurHash))
 						att.blurHash=doc.blurHash;
 				}
 				result.add(att);
-			}else if(mediaType.startsWith("video/")){
+			}else if(o instanceof Video || mediaType.startsWith("video/")){
+				if(o.url==null)
+					continue;
 				VideoAttachment att=new VideoAttachment();
 				att.url=o.url;
 				result.add(att);
-			}else if(mediaType.startsWith("audio/")){
+			}else if(o instanceof Audio || mediaType.startsWith("audio/")){
+				if(o.url==null)
+					continue;
 				AudioAttachment att=new AudioAttachment();
 				att.url=o.url;
 				result.add(att);
@@ -76,7 +94,7 @@ public interface AttachmentHostContentObject{
 		List<ActivityPubObject> attachObjects=getAttachments();
 		if(attachObjects!=null && !attachObjects.isEmpty()){
 			if(attachObjects.size()==1){
-				return MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
+				return MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
 			}else{
 				JsonArray ar=new JsonArray();
 				for(ActivityPubObject o:attachObjects){

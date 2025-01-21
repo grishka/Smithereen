@@ -1,0 +1,15 @@
+{
+  "bookmarks_title": "Отметки",
+  "add_bookmark": "Добави отметка",
+  "remove_bookmark": "Премахни отметка",
+  "bookmarks_people": "Хора",
+  "bookmarks_communities": "Общности",
+  "bookmarks_posts": "Публикации",
+  "bookmarks_people_empty": "Хората, които добавите в \"отметки\",ще се появят тук.",
+  "bookmarks_communities_empty": "Групите и събитията, които добавите в \"отметки\", ще се появят тук.",
+  "bookmarks_posts_empty": "Публикациите, които сте харесали ще се появят тук.",
+  "bookmarks_X_liked_posts": "Вие харесахте {count, plural,one {# публикация}other {# публикации}}",
+  "bookmarks_photos": "Снимки",
+  "bookmarks_photos_empty": "Снимките, които харесате, ще се появят тук.",
+  "bookmarks_X_liked_photos": "Вие харесахте {count, plural,one {# снимка}other {# снимки}}"
+}
