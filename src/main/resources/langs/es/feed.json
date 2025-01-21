@@ -1,6 +1,4 @@
 {
-  "feed_retoot": "<a id=\"author\">{author}</a> compartió una publicación:",
-  "feed_retoot_comment": "<a id=\"author\">{author}</a> compartió un comentario:",
   "feed_added_friend": "<a id=\"author\">{author}</a> añadió <a id=\"target\">{target}</a> como amigo.",
   "feed_added_friend_name": "{name}",
   "feed_joined_group": "<a id=\"author\">{author}</a> se unió al grupo <a id=\"target\">{target}</a>.",
