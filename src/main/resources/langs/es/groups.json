@@ -131,7 +131,6 @@
   "summary_event_X_invites": "{count, plural, =0 {Ninguna persona está} one {# persona está} other {# personas están}} invitada/s a unirse a este evento",
   "cancel_invitation": "Cancelar invitación",
   "invitation_canceled": "Invitación cancelada",
-  "confirm_leave_group": "Esto es un grupo <b>{type, select, CLOSED {cerrado} PRIVATE {privado} other {}}</b>. Si te sales, podría ser difícil volver a entrar.\n\n¿Estás seguro de que quieres salirte de este grupo?",
   "confirm_leave_event": "Esto es un evento <b>privado</b>. Si te sales, podría ser difícil volver a entrar.\n\n¿Estás seguro de que quieres salirte de este evento?",
   "groups_search_placeholder": "Buscar grupos",
   "events_search_placeholder": "Buscar eventos",

@@ -16,7 +16,6 @@
   "view_friends_of": "Паглядзець сяброў",
   "you_are_about_to_follow": "Вы збіраецеся падпісацца на:",
   "you_are_about_to_send_friend_req": "Вы збіраецеся адправіць заяўку ў сябры гэтаму карыстальніку:",
-  "following": "Падпіскі",
   "followers": "Падпісчыкі",
   "unfollow": "Адпісацца",
   "X_friends": "{count, plural, =0 {Няма сяброў} one {# сябар} few {# сябра} other {# сяброў}}",
