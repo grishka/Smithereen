@@ -126,7 +126,6 @@
   "summary_event_X_invites": "На сустрэчу {count, plural, =0 {ніхто не запрошаны} one {запрошаны # чалавек} few {запрошана # человекі} other {запрошана # чалавек}}",
   "cancel_invitation": "Адмяніць запрашэнне",
   "invitation_canceled": "Запрашэнне адменена",
-  "confirm_leave_group": "Гэта <b>{type, select, CLOSED {закрытая} PRIVATE {прыватная} other {}}</b> суполка. Калі вы выйдзеце з яе, патрапіць зваротна, магчыма, будзе няпроста.",
   "confirm_leave_event": "Гэта <b>прыватная</b> сустрэча. Калі вы выйдзеце з яе, патрапіць зваротна, магчыма, будзе няпроста.",
   "groups_search_placeholder": "Пошук суполак",
   "events_search_placeholder": "Пошук сустрэч",
