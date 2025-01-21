@@ -232,7 +232,7 @@ class LayerManager{
 
 	public showSnackbar(text:string){
 		var snackbar=ce("div", {className: "snackbarWrap"}, [
-			ce("div", {className: "snackbar"}, [text])
+			ce("div", {className: "snackbar", innerHTML: text})
 		]);
 		document.body.appendChild(snackbar);
 		this.updateTopOffset(snackbar);
@@ -798,6 +798,8 @@ class MobileOptionsBox extends Box{
 			}else{
 				attrs.href="javascript:void(0)";
 			}
+			if(opt.id)
+				attrs.id=opt.id;
 			var link:HTMLAnchorElement;
 			list.appendChild(ce("li", {}, [
 				link=ce("a", attrs)

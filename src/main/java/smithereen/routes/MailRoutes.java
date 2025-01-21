@@ -159,7 +159,7 @@ public class MailRoutes{
 			String from=req.queryParams("from");
 			User toUser=toUsers.iterator().next();
 			if("ajaxBox".equals(from)){
-				return new WebDeltaResponse(resp).showSnackbar(TextProcessor.stripHTML(lang(req).get("mail_message_sent", Map.of("name", toUser.getFirstLastAndGender())), false));
+				return new WebDeltaResponse(resp).showSnackbar(lang(req).get("mail_message_sent", Map.of("name", toUser.getFirstLastAndGender())));
 			}
 			return new WebDeltaResponse(resp).replaceLocation("/my/mail?fromCompose");
 		}

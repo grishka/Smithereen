@@ -49,14 +49,13 @@ span.wideOnly{
 	text-align: left;
 	line-height: 56px;
 	z-index: 1;
-	text-overflow: ellipsis;
-	overflow-x: hidden;
 	white-space: nowrap;
 	@include medium-shadow;
+	display: flex;
 	.menuButton{
 		width: 56px;
-		float: left;
 		height: 56px;
+		flex: none;
 		img{
 			vertical-align: top;
 			margin-top: 8px;
@@ -76,15 +75,17 @@ span.wideOnly{
 	}
 	.title{
 		margin: 0 16px;
+		text-overflow: ellipsis;
+		overflow-x: hidden;
+		flex-grow: 1;
 	}
 	.actionButton{
 		width: 56px;
 		height: 56px;
-		float: right;
-		display: block;
 		background-color: transparent;
 		background-position: center;
 		background-repeat: no-repeat;
+		flex: none;
 		&.iconCW{
 			background-image: svg-load('img/material/visibility_off_24px.svg', fill: $iconColor);
 		}
@@ -93,6 +94,12 @@ span.wideOnly{
 		}
 		&.iconFilterList{
 			background-image: svg-load('img/material/filter_list_24dp_FILL0_wght400_GRAD0_opsz24.svg', fill: $iconColor);
+		}
+		&.iconSettings{
+			background-image: svg-load('img/material/settings_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $iconColor);
+		}
+		&.iconMore{
+			background-image: svg-load('img/material/ic_more_vert.svg', fill: $iconColor);
 		}
 	}
 }
@@ -574,10 +581,6 @@ select{
 	padding: 0;
 }
 
-.profileNameW{
-	padding: 8px;
-}
-
 .boxLayer{
 	width: 100%;
 	margin: 16px;
@@ -764,13 +767,35 @@ select{
 
 .profileBelowAva{
 	text-align: center;
-	padding: 16px;
-	.withText{
-		margin-top: 16px;
-	}
+	padding: 0 8px 16px;
+	display: flex;
 	.button{
+		border-radius: 3px;
+		font-weight: $mediumWeight;
+		flex-grow: 1;
 		width: 100%;
+		height: 32px;
+		line-height: 32px;
+		font-size: 14px;
+		@include popup-shadow;
+		&:not(:last-child){
+			margin-right: 8px;
+		}
+		.arrowIcon{
+			display: inline-block;
+			background: svg-load('img/select_arrow.svg', fill: $normalLink) no-repeat center;
+			width: 10px;
+			height: 32px;
+			vertical-align: top;
+			margin-left: 3px;
+		}
 	}
+}
+
+.profileFriendshipStatusText{
+	color: $grayText;
+	text-align: center;
+	margin-bottom: 8px;
 }
 
 .profileFields{
@@ -845,14 +870,16 @@ select{
 
 .userList{
 	padding: 0 16px;
+	display: grid;
+	grid-template-columns: 50px 1fr;
+	grid-gap: 8px 16px;
 	&.noPadding{
 		padding: 0;
 	}
-	td{
-		padding-bottom: 8px;
-	}
 	.info{
-		padding-left: 16px;
+		display: flex;
+		justify-content: center;
+		flex-direction: column;
 		.subtitle{
 			margin-top: 5px;
 			color: $grayText;
@@ -1525,6 +1552,9 @@ input.searchField{
 		color: #FFF;
 		backdrop-filter: saturate(180%) blur(3px);
 		pointer-events: all;
+		a{
+			color: $iconColor;
+		}
 	}
 }
 
@@ -1989,6 +2019,7 @@ input.searchField{
 	display: grid;
 	grid-auto-columns: 146px;
 	grid-template-rows: 138px;
+	grid-auto-flow: column;
 	scrollbar-width: none;
 	&::-webkit-scrollbar{
 		display: none;
@@ -2024,6 +2055,46 @@ input.searchField{
 		height: 100%;
 		object-fit: cover;
 		object-position: top center;
+	}
+	.avatarGrid{
+		background: none;
+		display: grid;
+		grid-template-columns: 1fr 1fr 1fr;
+		grid-template-rows: 1fr 1fr;
+		grid-gap: 2px;
+		.placeholder{
+			background: #eed;
+		}
+		>*{
+			border-radius: 0;
+			&:first-child{
+				border-top-left-radius: 3px;
+			}
+			&:nth-child(3){
+				border-top-right-radius: 3px;
+			}
+			&:nth-child(4){
+				border-bottom-left-radius: 3px;
+			}
+			&:last-child{
+				border-bottom-right-radius: 3px;
+			}
+		}
+		.avaImage, .avaHasImage:after{
+			border-radius: 0;
+		}
+		.avaHasImage:first-child:after{
+			border-top-left-radius: 3px;
+		}
+		.avaHasImage:nth-child(3):after{
+			border-top-right-radius: 3px;
+		}
+		.avaHasImage:nth-child(4):after{
+			border-bottom-left-radius: 3px;
+		}
+		.avaHasImage:last-child:after{
+			border-bottom-right-radius: 3px;
+		}
 	}
 }
 
@@ -2322,6 +2393,109 @@ input.searchField{
 	}
 	input, .feedIcon{
 		flex: none;
+	}
+}
+
+.profileInfoRows{
+	list-style-type: none;
+	margin: 0 -8px;
+	padding: 0;
+	a, .item{
+		padding: 0 16px;
+		height: 40px;
+		display: flex;
+		align-items: center;
+		color: #6f6f6f;
+		&.multiline{
+			min-height: 40px;
+			height: unset;
+			align-items: flex-start;
+			padding: 8px 16px;
+			.text{
+				margin: 3px 0;
+				line-height: 18px;
+				max-height: 54px;
+				overflow-y: hidden;
+				text-overflow: ellipsis;
+				display: -webkit-box;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: 3;
+			}
+		}
+	}
+	.showMore{
+		color: $normalLink;
+		font-weight: $mediumWeight;
+	}
+	.icon{
+		width: 24px;
+		height: 24px;
+		flex: none;
+		margin-right: 16px;
+	}
+	.text{
+		flex-grow: 1;
+	}
+	.iconFriends{
+		background: svg-load('img/material/group_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: #afafaf);
+	}
+	.iconFollowers{
+		background: svg-load('img/material/rss_feed_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: #afafaf);
+	}
+	.iconHome{
+		background: svg-load('img/material/home_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: #afafaf);
+	}
+	.iconDescription{
+		background: svg-load('img/material/article_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: #afafaf);
+	}
+	.iconTime{
+		background: svg-load('img/material/schedule_24dp_FILL0_wght400_GRAD0_opsz24.svg', fill: #afafaf);
+	}
+	.iconMore{
+		background: svg-load('img/material/more_horiz_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $normalLink);
+	}
+	.accessory{
+		flex: none;
+		margin-left: 16px;
+	}
+	.avatarPile{
+		display: flex;
+		.ava:not(:last-child){
+			margin-right: -10px;
+		}
+		.ava:nth-child(2){
+			transform: rotate(3deg);
+		}
+		.ava:nth-child(3){
+			transform: rotate(6deg);
+		}
+		.ava{
+			box-shadow: 0 0 0 2px #fff;
+			position: relative;
+			border-radius: 2px;
+		}
+	}
+}
+
+.profileHeader{
+	display: flex;
+	margin: 8px 8px 16px;
+	align-items: center;
+	.profileHeaderAva{
+		width: 100px;
+		flex: none;
+	}
+	.profileHeaderAva:first-child{
+		margin-right: 16px;
+	}
+	.profileHeaderAva:last-child{
+		margin-left: 16px;
+	}
+	.profileNameW{
+		flex-grow: 1;
+	}
+	.profileName{
+		font-size: 20px;
 	}
 }
 

@@ -619,6 +619,16 @@ function applyServerCommand(cmd:any){
 			}
 		}
 		break;
+		case "setOuterHTML":
+		{
+			var id:string=cmd.id;
+			var content:string=cmd.c;
+			var el=document.getElementById(id);
+			if(el){
+				el.outerHTML=content;
+			}
+		}
+		break;
 		case "setAttr":
 		{
 			var id:string=cmd.id;
@@ -1557,5 +1567,20 @@ function showMobileFeedFilters(filters:{title:string, icon:string, value:string,
 	});
 	box.setContent(boxCont);
 	box.show();
+}
+
+function initProfileTitleHideOnScroll(){
+	var headerTitle=ge("headerTitle");
+	var profileHeader=ge("profileHeaderNameW");
+	var observer=new IntersectionObserver((entries, observer)=>{
+		for(var entry of entries){
+			headerTitle.style.opacity=entry.isIntersecting ? "0" : "";
+			if(!headerTitle.style.transition){
+				// Doing it this way prevents the title flashing on page load
+				setTimeout(()=>headerTitle.style.transition="opacity 0.3s ease", 16);
+			}
+		}
+	}, {rootMargin: "-60px 0px 0px 0px"});
+	observer.observe(profileHeader);
 }
 

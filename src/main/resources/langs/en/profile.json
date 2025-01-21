@@ -100,5 +100,10 @@
   "profile_edit_relationship_partner": "Partner",
   "profile_edit_relationship_spouse": "Spouse",
   "profile_edit_relationship_in_love_partner": "With whom",
-  "profile_edit_relationship_confirmation_needed": "The person you select will need to confirm that you're in a relationship by choosing you in their profile."
+  "profile_edit_relationship_confirmation_needed": "The person you select will need to confirm that you're in a relationship by choosing you in their profile.",
+  "profile_show_info": "Show full information",
+  "profile_user_is_friend": "Your friend",
+  "profile_user_you_follow": "Following",
+  "profile_user_friend_request_sent": "Request sent",
+  "profile_user_friend_request_received": "Respond to request"
 }

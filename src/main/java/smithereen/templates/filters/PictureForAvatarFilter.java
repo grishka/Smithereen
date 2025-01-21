@@ -32,10 +32,10 @@ public class PictureForAvatarFilter implements Filter{
 		String typeStr=(String) args.get("type");
 		SizedImage.Type type=SizedImage.Type.fromSuffix(
 					switch(typeStr){
-						case "s" -> "sqs";
-						case "m" -> "sqm";
-						case "l" -> "sql";
-						case "xl" -> "sqxl";
+						case "s" -> "a";
+						case "m" -> "b";
+						case "l" -> "c";
+						case "xl" -> "d";
 						default -> typeStr;
 					}
 				);

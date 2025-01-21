@@ -29,6 +29,7 @@ import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.Account;
 import smithereen.model.ActorWithDescription;
 import smithereen.model.CommentViewType;
@@ -181,7 +182,7 @@ public class GroupsRoutes{
 		}
 	}
 
-	public static Object groupProfile(Request req, Response resp, Group group){
+	public static RenderedTemplateResponse groupProfile(Request req, Response resp, Group group){
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
@@ -198,7 +199,7 @@ public class GroupsRoutes{
 			if(group.accessType==Group.AccessType.CLOSED){
 				canAccessContent=false;
 			}else if(group.accessType==Group.AccessType.PRIVATE){
-				return wrapError(req, resp, group.isEvent() ? "event_private_no_access" : "group_private_no_access");
+				throw new UserActionNotAllowedException(group.isEvent() ? "event_private_no_access" : "group_private_no_access");
 			}
 		}
 
@@ -236,6 +237,15 @@ public class GroupsRoutes{
 			PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
 			model.with("users", ctx.getUsersController().getUsers(needUsers));
 			model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
+
+			PaginatedList<PhotoAlbum> albums;
+			if(isMobile(req))
+				albums=ctx.getPhotosController().getMostRecentAlbums(group, self!=null ? self.user : null, 1, true);
+			else
+				albums=ctx.getPhotosController().getRandomAlbumsForProfile(group, self!=null ? self.user : null, 2);
+			model.with("albums", albums.list)
+					.with("photoAlbumCount", albums.total)
+					.with("covers", ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.list.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet())));
 		}
 
 		if(group instanceof ForeignGroup)
@@ -304,15 +314,6 @@ public class GroupsRoutes{
 				profileFields.add(new PropertyValue(l.get("event_end_time"), l.formatDate(group.eventEndTime, timeZoneForRequest(req), false)));
 		}
 		model.with("profileFields", profileFields);
-
-		PaginatedList<PhotoAlbum> albums;
-		if(isMobile(req))
-			albums=ctx.getPhotosController().getMostRecentAlbums(group, self!=null ? self.user : null, 1, true);
-		else
-			albums=ctx.getPhotosController().getRandomAlbumsForProfile(group, self!=null ? self.user : null, 2);
-		model.with("albums", albums.list)
-				.with("photoAlbumCount", albums.total)
-				.with("covers", ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.list.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet())));
 
 		try{
 			Photo photo=switch(group.getAvatarImage()){

@@ -100,5 +100,10 @@
   "profile_edit_relationship_partner": "Партнёр",
   "profile_edit_relationship_spouse": "С кем",
   "profile_edit_relationship_in_love_partner": "В кого",
-  "profile_edit_relationship_confirmation_needed": "Пользователь, которого вы выберете, должен будет подтвердить факт ваших отношений, выбрав вас у себя на странице."
+  "profile_edit_relationship_confirmation_needed": "Пользователь, которого вы выберете, должен будет подтвердить факт ваших отношений, выбрав вас у себя на странице.",
+  "profile_show_info": "Показать информацию",
+  "profile_user_is_friend": "У вас в друзьях",
+  "profile_user_you_follow": "Вы подписаны",
+  "profile_user_friend_request_sent": "Заявка отправлена",
+  "profile_user_friend_request_received": "Ответить на заявку"
 }

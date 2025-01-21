@@ -28,6 +28,11 @@ public class WebDeltaResponse{
 		return this;
 	}
 
+	public WebDeltaResponse setOuterHTML(@NotNull String containerID, @NotNull String html){
+		commands.add(new SetOuterHTMLCommand(containerID, html));
+		return this;
+	}
+
 	public WebDeltaResponse remove(@NotNull String... ids){
 		commands.add(new RemoveElementsCommand(ids));
 		return this;
@@ -184,6 +189,19 @@ public class WebDeltaResponse{
 
 		public SetContentCommand(String containerID, String content){
 			super("setContent");
+			this.containerID=containerID;
+			this.content=content;
+		}
+	}
+
+	private static class SetOuterHTMLCommand extends Command{
+		@SerializedName("id")
+		public String containerID;
+		@SerializedName("c")
+		public String content;
+
+		public SetOuterHTMLCommand(String containerID, String content){
+			super("setOuterHTML");
 			this.containerID=containerID;
 			this.content=content;
 		}

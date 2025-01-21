@@ -10,6 +10,7 @@
   "err_group_username_taken": "Этот адрес занят.",
   "err_group_reserved_username": "Этот адрес зарезервирован для нужд системы. Его нельзя использовать.",
   "X_members": "{count, plural, one {# участник} few {# участника} other {# участников}}",
+  "X_members_bold": "{count, plural, one {<b>#</b> участник} few {<b>#</b> участника} other {<b>#</b> участников}}",
   "members": "Участники",
   "leave_group": "Выйти из группы",
   "join_group": "Вступить в группу",
@@ -131,7 +132,7 @@
   "summary_event_X_invites": "На встречу {count, plural, =0 {никто не приглашён} one {приглашён # человек} few {приглашено # человека} other {приглашено # человек}}",
   "cancel_invitation": "Отменить приглашение",
   "invitation_canceled": "Приглашение отменено",
-  "confirm_leave_group": "Это <b>{type, select, CLOSED {закрытая} PRIVATE {частная} other {}}</b> группа. Если вы выйдете из неё, попасть обратно, возможно, будет непросто.\n\nВы действительно хотите покинуть эту группу?",
+  "confirm_leave_group": "Это <b>{type, select, closed {закрытая} private {частная} other {}}</b> группа. Если вы выйдете из неё, попасть обратно, возможно, будет непросто.\n\nВы действительно хотите покинуть эту группу?",
   "confirm_leave_event": "Это <b>частная</b> встреча. Если вы выйдете из неё, попасть обратно, возможно, будет непросто.\n\nВы действительно хотите покинуть эту встречу?",
   "groups_search_placeholder": "Поиск групп",
   "events_search_placeholder": "Поиск встреч",
@@ -139,5 +140,9 @@
   "summary_found_X_events": "{count, plural, =0 {Не найдено ни одной встречи} one {Найдена # встреча} few {Найдено # встречи} other {Найдено # встреч}}",
   "group_access_level": "Уровень доступа",
   "group_access_admin": "Администратор",
-  "group_access_moderator": "Модератор"
+  "group_access_moderator": "Модератор",
+  "group_you_are_member": "Вы вступили",
+  "group_join_request_sent": "Заявка отправлена",
+  "event_you_are_member": "Вы пойдёте",
+  "event_you_are_tentative_member": "Вы не уверены"
 }

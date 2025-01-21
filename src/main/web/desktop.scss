@@ -1929,12 +1929,14 @@ select, .comboBoxW input{
 }
 
 .userList{
-	padding: 15px 20px 0 20px;
-	td{
-		padding-bottom: 15px;
-	}
+	display: grid;
+	grid-template-columns: 50px 1fr;
+	padding: 15px 20px;
+	grid-gap: 15px;
 	.info{
-		padding-left: 15px;
+		display: flex;
+		justify-content: center;
+		flex-direction: column;
 		.subtitle{
 			margin-top: 5px;
 			color: $grayText;

@@ -18,6 +18,7 @@ import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.text.TextProcessor;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -51,6 +52,14 @@ public class BookmarksRoutes{
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		ctx.getBookmarksController().addUserBookmark(info.account.user, user);
 		if(isAjax(req)){
+			if(isMobile(req)){
+				RenderedTemplateResponse profile=ProfileRoutes.userProfile(req, resp, user);
+				return new WebDeltaResponse(resp)
+						.setOuterHTML("profileMoreButton", profile.renderBlock("optionsButton"))
+						.showSnackbar(TextProcessor.substituteLinks(lang(req).get("user_bookmark_added", Map.of("name", user.firstName, "gender", user.gender)), Map.of(
+								"bookmarks", Map.of("href", "/my/bookmarks")
+						)));
+			}
 			return new WebDeltaResponse(resp)
 					.setContent("profileBookmarkButtonText", lang(req).get("remove_bookmark"))
 					.setAttribute("profileBookmarkButton", "href", "/users/"+user.id+"/removeBookmark?csrf="+info.csrfToken);
@@ -63,6 +72,14 @@ public class BookmarksRoutes{
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		ctx.getBookmarksController().removeUserBookmark(info.account.user, user);
 		if(isAjax(req)){
+			if(isMobile(req)){
+				RenderedTemplateResponse profile=ProfileRoutes.userProfile(req, resp, user);
+				return new WebDeltaResponse(resp)
+						.setOuterHTML("profileMoreButton", profile.renderBlock("optionsButton"))
+						.showSnackbar(TextProcessor.substituteLinks(lang(req).get("user_bookmark_removed", Map.of("name", user.firstName, "gender", user.gender)), Map.of(
+								"bookmarks", Map.of("href", "/my/bookmarks")
+						)));
+			}
 			return new WebDeltaResponse(resp)
 					.setContent("profileBookmarkButtonText", lang(req).get("add_bookmark"))
 					.setAttribute("profileBookmarkButton", "href", "/users/"+user.id+"/addBookmark?csrf="+info.csrfToken);
@@ -97,6 +114,14 @@ public class BookmarksRoutes{
 		Group group=ctx.getGroupsController().getGroupOrThrow(safeParseInt(req.params(":id")));
 		ctx.getBookmarksController().addGroupBookmark(info.account.user, group);
 		if(isAjax(req)){
+			if(isMobile(req)){
+				RenderedTemplateResponse profile=GroupsRoutes.groupProfile(req, resp, group);
+				return new WebDeltaResponse(resp)
+						.setOuterHTML("profileMoreButton", profile.renderBlock("optionsButton"))
+						.showSnackbar(TextProcessor.substituteLinks(lang(req).get(group.isEvent() ? "event_bookmark_added" : "group_bookmark_added"), Map.of(
+								"bookmarks", Map.of("href", "/my/bookmarks")
+						)));
+			}
 			return new WebDeltaResponse(resp)
 					.setContent("profileBookmarkButtonText", lang(req).get("remove_bookmark"))
 					.setAttribute("profileBookmarkButton", "href", "/groups/"+group.id+"/removeBookmark?csrf="+info.csrfToken);
@@ -109,6 +134,14 @@ public class BookmarksRoutes{
 		Group group=ctx.getGroupsController().getGroupOrThrow(safeParseInt(req.params(":id")));
 		ctx.getBookmarksController().removeGroupBookmark(info.account.user, group);
 		if(isAjax(req)){
+			if(isMobile(req)){
+				RenderedTemplateResponse profile=GroupsRoutes.groupProfile(req, resp, group);
+				return new WebDeltaResponse(resp)
+						.setOuterHTML("profileMoreButton", profile.renderBlock("optionsButton"))
+						.showSnackbar(TextProcessor.substituteLinks(lang(req).get(group.isEvent() ? "event_bookmark_removed" : "group_bookmark_removed"), Map.of(
+								"bookmarks", Map.of("href", "/my/bookmarks")
+						)));
+			}
 			return new WebDeltaResponse(resp)
 					.setContent("profileBookmarkButtonText", lang(req).get("add_bookmark"))
 					.setAttribute("profileBookmarkButton", "href", "/groups/"+group.id+"/addBookmark?csrf="+info.csrfToken);
