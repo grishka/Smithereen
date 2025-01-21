@@ -16,7 +16,6 @@
   "view_friends_of": "Ver amigos",
   "you_are_about_to_follow": "Vas a seguir a:",
   "you_are_about_to_send_friend_req": "Vas a enviar una solicitud de amistad a:",
-  "following": "Siguiendo",
   "followers": "Seguidores",
   "unfollow": "Deja de seguir",
   "X_friends": "{count, plural, one {# amigo} other {# amigos}}",
