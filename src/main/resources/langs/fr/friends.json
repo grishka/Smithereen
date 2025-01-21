@@ -16,6 +16,7 @@
   "view_friends_of": "Afficher les amis",
   "you_are_about_to_follow": "Vous êtes sur le point de suivre :",
   "you_are_about_to_send_friend_req": "Vous êtes sur le point d'envoyer une demande d'ami à :",
+  "following": "Suit",
   "followers": "Abonnés",
   "unfollow": "Se désabonner",
   "X_friends": "{count, plural, =0 {Aucun ami} one {# ami} other {# amis}}",

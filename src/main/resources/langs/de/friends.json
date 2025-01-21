@@ -16,6 +16,7 @@
   "view_friends_of": "Freunde anzeigen",
   "you_are_about_to_follow": "Du bist im Begriff folgendem Benutzer zu folgen:",
   "you_are_about_to_send_friend_req": "Du bist im Begriff eine Freundschaftsanfrage an folgenden Benutzer zu schicken:",
+  "following": "Du folgst",
   "followers": "Dir folgen",
   "unfollow": "Nicht mehr folgen",
   "X_friends": "{count, plural, =0 {Keine Freunde} one {# Freund} other {# Freunde}}",

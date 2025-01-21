@@ -16,6 +16,7 @@
   "view_friends_of": "Vrienden weergeven",
   "you_are_about_to_follow": "Je staat op het punt om te volgen:",
   "you_are_about_to_send_friend_req": "Je staat op het punt om een vriendschapsverzoek te sturen naar:",
+  "following": "Volgt",
   "followers": "Volgers",
   "unfollow": "Stop met volgen",
   "X_friends": "{count, plural, =0 {Geen vrienden} one {# vriend} other {# vrienden}}",

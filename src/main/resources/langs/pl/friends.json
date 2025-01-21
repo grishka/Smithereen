@@ -16,6 +16,7 @@
   "view_friends_of": "Zobacz znajomych",
   "you_are_about_to_follow": "Chcesz zaobserwować:",
   "you_are_about_to_send_friend_req": "Chcesz wysłać prośbę o obserwację do:",
+  "following": "Obserwowani",
   "followers": "Obserwujący",
   "unfollow": "Przestań obserwować",
   "X_friends": "{count, plural, one {# znajomy} few {# znajomi} other {# znajomych}}",
