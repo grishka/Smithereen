@@ -13,7 +13,7 @@
   "bookmarks_photos_empty": "Photos you've liked will appear here.",
   "bookmarks_X_liked_photos": "You've liked {count, plural, one {# photo} other {# photos}}",
   "user_bookmark_added": "{name} was added to your <a id=\"bookmarks\">bookmarks</a>.",
-  "user_bookmark_removed": "{name} was removed from your {удалён}} из ваших <a id=\"bookmarks\">bookmarks</a>.",
+  "user_bookmark_removed": "{name} was removed from your <a id=\"bookmarks\">bookmarks</a>.",
   "group_bookmark_added": "Group was added to your <a id=\"bookmarks\">bookmarks</a>.",
   "group_bookmark_removed": "Group was removed form your <a id=\"bookmarks\">bookmarks</a>.",
   "event_bookmark_added": "Event was added to your <a id=\"bookmarks\">bookmarks</a>.",
