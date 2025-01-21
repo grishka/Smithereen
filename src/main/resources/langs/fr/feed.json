@@ -1,6 +1,4 @@
 {
-  "feed_retoot": "<a id=\"author\">{author}</a> a partagé un message :",
-  "feed_retoot_comment": "<a id=\"author\">{author}</a> a partagé un commentaire:",
   "feed_added_friend": "<a id=\"author\">{author}</a> a ajouté <a id=\"target\">{target}</a> en tant qu'ami.",
   "feed_added_friend_name": "{name}",
   "feed_joined_group": "<a id=\"author\">{author}</a> a rejoint le groupe <a id=\"target\">{target}</a>.",
