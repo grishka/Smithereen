@@ -16,7 +16,6 @@
   "view_friends_of": "Виж приятелите на",
   "you_are_about_to_follow": "Вие ще последвате:",
   "you_are_about_to_send_friend_req": "Вие ще изпратите покана за приятелство на:",
-  "following": "Следва",
   "followers": "Последователи",
   "unfollow": "Прекратете следенето",
   "X_friends": "{count, plural,=0 {Няма приятели}one {# приятел}other {# приятели}}",
