@@ -26,7 +26,10 @@ public class PropertyValue extends ActivityPubObject{
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
-		value=TextProcessor.sanitizeHTML(obj.get("value").getAsString());
+		if(obj.has("value"))
+			value=TextProcessor.sanitizeHTML(obj.get("value").getAsString());
+		else
+			value="";
 		return this;
 	}
 
