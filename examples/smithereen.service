@@ -4,7 +4,7 @@ After=network.target mysqld.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/java -Djna.library.path=/opt/smithereen -jar /opt/smithereen/smithereen.jar /etc/smithereen/config.properties
+ExecStart=/usr/bin/java -Djna.library.path=/opt/smithereen --module-path /opt/smithereen/smithereen.jar:/opt/smithereen/lib -m smithereen.server/smithereen.SmithereenApplication /etc/smithereen/config.properties
 Restart=always
 User=www-data
 Group=www-data

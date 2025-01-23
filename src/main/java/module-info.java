@@ -13,8 +13,8 @@ open module smithereen.server{
 	requires org.commonmark.ext.ins;
 	requires org.jetbrains.annotations;
 	requires org.jsoup;
-	requires slf4j.api;
-	requires spark.core;
+	requires org.slf4j;
+	requires spark;
 	requires unbescape;
 	requires unidecode;
 }
