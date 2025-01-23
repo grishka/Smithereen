@@ -26,33 +26,33 @@
 					<archive>
 						<manifest>
 							<mainClass>smithereen.SmithereenApplication</mainClass>
+							<addClasspath>true</addClasspath>
+							<classpathPrefix>lib</classpathPrefix>
 						</manifest>
 					</archive>
 					<finalName>smithereen</finalName>
 				</configuration>
 			</plugin>
+
 			<plugin>
-				<artifactId>maven-assembly-plugin</artifactId>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
 				<executions>
 					<execution>
-						<phase>package</phase>
+						<id>copy-dependencies</id>
+						<phase>prepare-package</phase>
 						<goals>
-							<goal>single</goal>
+							<goal>copy-dependencies</goal>
 						</goals>
+						<configuration>
+							<outputDirectory>${project.build.directory}/lib</outputDirectory>
+							<includeScope>runtime</includeScope>
+						</configuration>
 					</execution>
 				</executions>
-				<configuration>
-					<descriptorRefs>
-						<descriptorRef>jar-with-dependencies</descriptorRef>
-					</descriptorRefs>
-					<archive>
-						<manifest>
-							<mainClass>smithereen.SmithereenApplication</mainClass>
-						</manifest>
-					</archive>
-					<finalName>smithereen</finalName>
-				</configuration>
 			</plugin>
+
+
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.0.0-M4</version>
@@ -77,7 +77,7 @@
 				<version>1.6.0</version>
 				<executions>
 					<execution>
-						<id>upload-jar-with-dependencies</id>
+						<id>upload-jar</id>
 						<phase>deploy</phase>
 						<goals>
 							<goal>exec</goal>
@@ -85,8 +85,23 @@
 						<configuration>
 							<executable>scp</executable>
 							<arguments>
-								<argument>${basedir}/target/smithereen-jar-with-dependencies.jar</argument>
+								<argument>${basedir}/target/smithereen.jar</argument>
 								<argument>root@${deployHost}:/opt/smithereen/smithereen_new.jar</argument>
+							</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>upload-libs</id>
+						<phase>deploy</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>scp</executable>
+							<arguments>
+								<argument>-r</argument>
+								<argument>${basedir}/target/lib</argument>
+								<argument>root@${deployHost}:/opt/smithereen/lib_new</argument>
 							</arguments>
 						</configuration>
 					</execution>
@@ -100,7 +115,7 @@
 							<executable>ssh</executable>
 							<arguments>
 								<argument>root@${deployHost}</argument>
-								<argument>service smithereen stop; mv /opt/smithereen/smithereen_new.jar /opt/smithereen/smithereen.jar; service smithereen start</argument>
+								<argument>service smithereen stop; mv /opt/smithereen/smithereen_new.jar /opt/smithereen/smithereen.jar; rm -rf /opt/smithereen/lib; mv /opt/smithereen/lib_new /opt/smithereen/lib; service smithereen start</argument>
 							</arguments>
 						</configuration>
 					</execution>
@@ -190,7 +205,7 @@
 		<dependency>
 			<groupId>me.grishka.sparkjava</groupId>
 			<artifactId>spark-core</artifactId>
-			<version>2.9.4+patch.2</version>
+			<version>2.9.4+patch.3</version>
 		</dependency>
 		<dependency>
 			<groupId>io.pebbletemplates</groupId>
@@ -222,7 +237,7 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
-			<version>1.7.36</version>
+			<version>2.0.16</version>
 		</dependency>
 		<dependency>
 			<groupId>javax.mail</groupId>

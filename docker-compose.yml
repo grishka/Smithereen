@@ -1,6 +1,6 @@
 services:
  web:
-  build: .
+  image: grishkaa/smithereen:latest
   ports:
    - '4567:4567'
   networks:

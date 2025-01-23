@@ -546,6 +546,8 @@ public class TextProcessor{
 
 	private static String normalizeUsernameOrLink(String value, String... allowedDomains){
 		if(Utils.isURL(value) && value.contains("/")){
+			if(!value.contains("://"))
+				value="https://"+value;
 			URI uri=URI.create(value);
 			for(String domain:allowedDomains){
 				if(domain.equalsIgnoreCase(uri.getHost())){
