@@ -10,8 +10,8 @@ jobs:
     build_and_push:
         strategy:
             matrix:
-                arch: [x64, arm64]
-        runs-on: [linux, "${{ matrix.arch }}"]
+                platform: [ubuntu-latest, ubuntu-24.04-arm]
+        runs-on: ${{ matrix.platform }}
         steps:
             - name: Test
               run: uname -a
