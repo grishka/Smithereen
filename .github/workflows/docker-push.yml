@@ -1,0 +1,19 @@
+name: Build and publish Docker images
+
+on:
+    workflow_dispatch:
+
+env:
+    DOCKERHUB_REPO: grishkaa/smithereen
+
+jobs:
+    build_and_push:
+        strategy:
+            matrix:
+                arch:
+                    - x64
+                    - arm64
+        runs-on: [linux, ${{ matrix.arch }}]
+        steps:
+            - name: Test
+              run: uname -a
