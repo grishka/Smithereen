@@ -9,7 +9,7 @@ on:
     workflow_dispatch:
 
 env:
-    DOCKER_TAG: ${{ startsWith(github.ref, "refs/tags") && "latest" || "dev" }}
+    DOCKER_TAG: ${{ startsWith(github.ref, 'refs/tags') && 'latest' || 'dev' }}
 
 jobs:
     build_and_push:
