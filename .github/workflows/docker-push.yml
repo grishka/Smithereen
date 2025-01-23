@@ -11,7 +11,7 @@ jobs:
         strategy:
             matrix:
                 arch: [x64, arm64]
-        runs-on: [linux, ${{ matrix.arch }}]
+        runs-on: [linux, "${{ matrix.arch }}"]
         steps:
             - name: Test
               run: uname -a
