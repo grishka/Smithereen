@@ -10,8 +10,14 @@ jobs:
     build_and_push:
         strategy:
             matrix:
-                platform: [ubuntu-latest, ubuntu-24.04-arm]
-        runs-on: ${{ matrix.platform }}
+                platform:
+                    - name: ubuntu-latest
+                      arch: amd64
+                    - name: ubuntu-24.04-arm
+                      arch: arm64
+        runs-on: ${{ matrix.platform.name }}
         steps:
             - name: Test
-              run: uname -a
+              run: |
+                uname -a
+                echo "${{ matrix.platform.arch }}"
