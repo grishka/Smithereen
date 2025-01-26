@@ -101,6 +101,10 @@ public class UserInteractionsController{
 					OwnedContentObject related=null;
 					if(object instanceof Comment comment){
 						related=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+					}else if(object instanceof Post post && post.getReplyLevel()>0){
+						try{
+							related=context.getWallController().getPostOrThrow(post.replyKey.getFirst());
+						}catch(ObjectNotFoundException ignore){}
 					}
 					context.getNotificationsController().createNotification(oaa.author(), Notification.Type.LIKE, object, related, self);
 				}

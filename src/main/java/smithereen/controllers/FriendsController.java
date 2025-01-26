@@ -18,6 +18,7 @@ import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.notifications.Notification;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
 
@@ -137,12 +138,15 @@ public class FriendsController{
 						UserStorage.putFriendRequest(self.id, user.id, message, !(user instanceof ForeignUser));
 						if(user instanceof ForeignUser fu){
 							ctx.getActivityPubWorker().sendFriendRequestActivity(self, fu, message);
+						}else{
+							ctx.getNotificationsController().sendRealtimeNotifications(user, "friendReq"+self.id+"_"+Utils.randomAlphanumericString(5), RealtimeNotification.Type.FRIEND_REQUEST, null, null, self);
 						}
 					}else{
 						UserStorage.followUser(self.id, user.id, !(user instanceof ForeignUser), false);
 						if(user instanceof ForeignUser fu){
 							ctx.getActivityPubWorker().sendFollowUserActivity(self, fu);
 						}else{
+							ctx.getNotificationsController().createNotification(user, Notification.Type.FOLLOW, null, null, self);
 							ctx.getActivityPubWorker().sendAddToFriendsCollectionActivity(self, user);
 						}
 					}
@@ -169,6 +173,8 @@ public class FriendsController{
 					if(user instanceof ForeignUser fu){
 						ctx.getActivityPubWorker().sendFollowUserActivity(self, fu);
 					}else{
+						ctx.getNotificationsController().createNotification(user, Notification.Type.FOLLOW, null, null, self);
+						ctx.getNewsfeedController().putFriendsFeedEntry(self, user.id, NewsfeedEntry.Type.ADD_FRIEND);
 						ctx.getActivityPubWorker().sendAddToFriendsCollectionActivity(self, user);
 					}
 				}

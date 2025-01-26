@@ -19,8 +19,8 @@ import smithereen.storage.sql.SQLQueryBuilder;
 public class NotificationsStorage{
 	private static final LruCache<Integer, UserNotifications> userNotificationsCache=new LruCache<>(500);
 
-	public static void putNotification(int owner, Notification.Type type, Notification.ObjectType objectType, long objectID, Notification.ObjectType relatedObjectType, long relatedObjectID, int actorID) throws SQLException{
-		new SQLQueryBuilder()
+	public static int putNotification(int owner, Notification.Type type, Notification.ObjectType objectType, long objectID, Notification.ObjectType relatedObjectType, long relatedObjectID, int actorID) throws SQLException{
+		int id=new SQLQueryBuilder()
 				.insertInto("notifications")
 				.value("owner_id", owner)
 				.value("type", type)
@@ -29,11 +29,13 @@ public class NotificationsStorage{
 				.value("related_object_type", relatedObjectType)
 				.value("related_object_id", relatedObjectType==null ? null : relatedObjectID)
 				.value("actor_id", actorID)
-				.executeNoResult();
+				.executeAndGetID();
 
 		UserNotifications un=getNotificationsFromCache(owner);
 		if(un!=null)
 			un.incNewNotificationsCount(1);
+
+		return id;
 	}
 
 	public static PaginatedList<Notification> getNotifications(int owner, int offset, int count) throws SQLException{

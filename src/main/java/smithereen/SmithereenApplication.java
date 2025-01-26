@@ -55,6 +55,7 @@ import smithereen.routes.GroupsRoutes;
 import smithereen.routes.MailRoutes;
 import smithereen.routes.NewsfeedRoutes;
 import smithereen.routes.NotificationsRoutes;
+import smithereen.routes.NotifierWebSocket;
 import smithereen.routes.PhotosRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
@@ -152,6 +153,9 @@ public class SmithereenApplication{
 		else
 			staticFileLocation("/public");
 		staticFiles.expireTime(7*24*60*60);
+
+		webSocket("/system/ws/notifier", NotifierWebSocket.class);
+
 		before((request, response) -> {
 			request.attribute("context", context);
 
@@ -217,6 +221,15 @@ public class SmithereenApplication{
 			if(StringUtils.isNotEmpty(ua) && isMobileUserAgent(ua)){
 				request.attribute("mobile", Boolean.TRUE);
 			}
+		});
+		before("/system/ws/*", (req, resp)->{
+			// Websockets don't have access to the real request object, so let's put the session info somewhere where it can be accessed
+			SessionInfo info=sessionInfo(req);
+			if(info==null){
+				throw new UserActionNotAllowedException();
+			}
+			req.attribute("sessionInfo", info);
+			req.attribute("lang", lang(req));
 		});
 		before(SmithereenApplication::enforceAccountLimitationsIfAny);
 

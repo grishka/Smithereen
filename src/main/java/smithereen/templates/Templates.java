@@ -42,6 +42,8 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.lang.Lang;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.JsonObjectBuilder;
+import smithereen.util.UriBuilder;
 import spark.Request;
 
 public class Templates{
@@ -99,6 +101,12 @@ public class Templates{
 				model.with("userPermissions", info.permissions);
 				jsConfig.addProperty("csrf", info.csrfToken);
 				jsConfig.addProperty("uid", info.account.user.id);
+				jsConfig.add("notifier", new JsonObjectBuilder()
+						.add("ws", UriBuilder.local().scheme("wss").path("system", "ws", "notifier").build().toString())
+						.add("enabled", true) // TODO
+						.add("sound", true) // TODO
+						.build()
+				);
 				try{
 					UserNotifications notifications=NotificationsStorage.getNotificationsForUser(account.user.id, account.prefs.lastSeenNotificationID);
 					model.with("userNotifications", notifications);

@@ -104,7 +104,7 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 
 	public String getShortTitle(int maxLen){
 		if(StringUtils.isNotEmpty(contentWarning)){
-			return contentWarning;
+			return TextProcessor.truncateOnWordBoundary(contentWarning, maxLen);
 		}
 		if(StringUtils.isNotEmpty(text)){
 			return TextProcessor.truncateOnWordBoundary(text, maxLen);

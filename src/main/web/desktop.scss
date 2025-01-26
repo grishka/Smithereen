@@ -4436,3 +4436,88 @@ label.largeAccented{
 	}
 }
 
+#notifier{
+	position: fixed;
+	left: 0;
+	bottom: 0;
+	width: 340px;
+	z-index: 300;
+}
+
+.popupNotification{
+	margin: 10px;
+	background: rgba(0,0,0,.75);
+	border-radius: 5px;
+	backdrop-filter: saturate(180%) blur(3px);
+	box-shadow: 0 2px 15px #000;
+	padding: 10px;
+	text-shadow: 0px 1px 0px #262626;
+	color: #FFF;
+	position: relative;
+	.underlayLink{
+		position: absolute;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+	}
+	.titleBar{
+		padding-bottom: 11px;
+		display: flex;
+		.title{
+			font-size: 12px;
+			font-weight: bold;
+			flex-grow: 1;
+		}
+		.closeBtn{
+			background: #000 svg-load('img/notifier_close.svg', fill: rgba(255,255,255,0.6)) no-repeat center;
+			border-radius: 3px;
+			box-shadow: 0 0 2px #111;
+			width: 17px;
+			height: 17px;
+			position: relative;
+			opacity: 0;
+			transition: opacity 0.2s ease;
+			&:hover{
+				opacity: 1;
+			}
+		}
+	}
+	.notificationContent{
+		display: flex;
+		.text{
+			padding: 0 10px;
+			flex-grow: 1;
+			a{
+				font-weight: bold;
+				position: relative;
+			}
+		}
+		.ava, .image{
+			border-radius: 3px;
+			box-shadow: 0 1px 2px #111;
+			width: 50px;
+			max-height: 50px;
+			flex: none;
+		}
+		.ava{
+			height: 50px;
+		}
+		.avaHasImage:after{
+			content: none;
+		}
+		.avaPlaceholder{
+			border: none;
+		}
+		picture{
+			flex: none;
+		}
+	}
+	a{
+		color: $iconColor;
+	}
+	&:hover .closeBtn{
+		opacity: 0.6;
+	}
+}
+

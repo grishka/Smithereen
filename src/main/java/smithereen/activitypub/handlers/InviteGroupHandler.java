@@ -15,6 +15,7 @@ import smithereen.model.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NotificationsStorage;
 
@@ -27,9 +28,9 @@ public class InviteGroupHandler extends ActivityTypeHandler<ForeignUser, Invite,
 			if(inviterState!=Group.MembershipState.MEMBER && inviterState!=Group.MembershipState.TENTATIVE_MEMBER)
 				throw new BadRequestException("Inviter must be a member of this group");
 		}
-		if(invite.to==null || invite.to.size()!=1 || invite.to.get(0).link==null)
+		if(invite.to==null || invite.to.size()!=1 || invite.to.getFirst().link==null)
 			throw new BadRequestException("Invite.to must have exactly 1 element and it must be a user ID");
-		User user=context.appContext.getObjectLinkResolver().resolve(invite.to.get(0).link, User.class, true, true, false);
+		User user=context.appContext.getObjectLinkResolver().resolve(invite.to.getFirst().link, User.class, true, true, false);
 		Utils.ensureUserNotBlocked(actor, user);
 		context.appContext.getPrivacyController().enforceUserPrivacy(actor, user, UserPrivacySettingKey.GROUP_INVITE);
 		if(object.id==0)
@@ -53,6 +54,7 @@ public class InviteGroupHandler extends ActivityTypeHandler<ForeignUser, Invite,
 				else
 					notifications.incNewGroupInvitationsCount(1);
 			}
+			context.appContext.getNotificationsController().sendRealtimeNotifications(user, "groupInvite"+object.id+"_"+actor.id, object.isEvent() ? RealtimeNotification.Type.EVENT_INVITE : RealtimeNotification.Type.GROUP_INVITE, object, null, actor);
 		}
 	}
 }

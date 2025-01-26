@@ -44,6 +44,7 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NotificationsStorage;
@@ -464,6 +465,7 @@ public class GroupsController{
 					else
 						notifications.incNewGroupInvitationsCount(1);
 				}
+				context.getNotificationsController().sendRealtimeNotifications(who, "groupInvite"+group.id+"_"+self.id, group.isEvent() ? RealtimeNotification.Type.EVENT_INVITE : RealtimeNotification.Type.GROUP_INVITE, group, null, self);
 			}
 			if(group instanceof ForeignGroup || who instanceof ForeignUser){
 				context.getActivityPubWorker().sendGroupInvite(inviteID, self, group, who);
@@ -559,6 +561,8 @@ public class GroupsController{
 				join.actor=new LinkOrObject(user.activityPubID);
 				join.to=List.of(new LinkOrObject(group.activityPubID));
 				context.getActivityPubWorker().sendAcceptFollowActivity(fu, group, join);
+			}else{
+				context.getNotificationsController().sendRealtimeNotifications(user, "groupJoinAccept"+group.id, RealtimeNotification.Type.GROUP_REQUEST_ACCEPTED, null, null, group);
 			}
 			if(!(group instanceof ForeignGroup)){
 				context.getActivityPubWorker().sendAddUserToGroupActivity(user, group, false);

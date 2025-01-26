@@ -1,4 +1,5 @@
 ///<reference path="./PostForm.ts"/>
+///<reference path="./Notifier.ts"/>
 
 declare var userConfig:any;
 declare var langKeys:{[key:string]:string|string[]};
@@ -206,4 +207,8 @@ window.addEventListener("popstate", (ev)=>{
 		}
 	}
 }, false);
+
+if(!mobile && userConfig.notifier && userConfig.notifier.enabled){
+	Notifier.start();
+}
 
