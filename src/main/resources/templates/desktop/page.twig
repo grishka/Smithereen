@@ -32,7 +32,7 @@
 </head>
 <body class="{{ wideOnDesktop ? "widePage" : "narrowPage" }}">
 <script>document.body.classList.add("hasJS");{%if jsRedirect is not null%} window.location="{{jsRedirect}}";{%endif%}</script>
-<div class="wrap">
+<div class="wrap" id="wrap">
 	<div class="headerWrap">
 		<div class="headerBG"><div class="shadow"></div></div>
 		<div class="header">

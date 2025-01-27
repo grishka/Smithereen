@@ -197,6 +197,7 @@ class LayerManager{
 			document.body.style.top = `-${window.scrollY}px`;
 			document.body.style.position="fixed";
 			document.body.style.paddingRight=scrollbarW+"px";
+			ge("wrap").classList.add("scrollLocked");
 		}
 	}
 
@@ -206,6 +207,7 @@ class LayerManager{
 			document.body.style.position="";
 			document.body.style.top="";
 			document.body.style.paddingRight="";
+			ge("wrap").classList.remove("scrollLocked");
 			window.scrollTo(0, parseInt(scrollY || '0') * -1);
 		}
 	}

@@ -33,6 +33,7 @@
 </head>
 <body>
 <script>document.body.classList.add("hasJS");{%if jsRedirect is not null%} window.location="{{jsRedirect}}";{%endif%}</script>
+<div id="wrap">
 <div class="header">
 	<div class="menuButton">
 		<label for="mainMenuToggler" tabindex="0" title="{{ L('main_menu') }}"></label>
@@ -54,6 +55,7 @@
 </div>
 <div class="pageContent">
 {%block content%}{%endblock%}
+</div>
 </div>
 <script src="/res/common.js?{{ staticHashes['common.js'] }}"></script>
 {% block extraScripts %}{% endblock %}
