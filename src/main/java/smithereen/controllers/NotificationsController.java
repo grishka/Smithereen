@@ -38,6 +38,7 @@ import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
+import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.notifications.Notification;
 import smithereen.model.notifications.RealtimeNotification;
 import smithereen.model.photos.Photo;
@@ -395,6 +396,7 @@ public class NotificationsController{
 					ava=null;
 				}
 
+				Map<String, String> extraAttrs=null;
 				RealtimeNotification.ImageURLs extraImage;
 				if(relatedObject==null || relatedObject instanceof PostLikeObject){
 					if(object instanceof PostLikeObject post && post.attachments!=null && !post.attachments.isEmpty()){
@@ -414,6 +416,14 @@ public class NotificationsController{
 								groupAva.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, SizedImage.Format.JPEG).toString(),
 								groupAva.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, SizedImage.Format.WEBP).toString()
 						);
+					}else if(object instanceof Photo photo){
+						String jpeg=photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.JPEG).toString();
+						String webp=photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.WEBP).toString();
+						extraImage=new RealtimeNotification.ImageURLs(jpeg, webp, jpeg, webp);
+						extraAttrs=Map.of(
+								"onclick", "return openPhotoViewer(this)",
+								"data-pv", Utils.gson.toJson(new PhotoViewerInlineData(0, "single/"+photo.getIdString(), photo.image.getURLsForPhotoViewer()))
+						);
 					}else{
 						extraImage=null;
 					}
@@ -421,11 +431,15 @@ public class NotificationsController{
 					String jpeg=photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.JPEG).toString();
 					String webp=photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.WEBP).toString();
 					extraImage=new RealtimeNotification.ImageURLs(jpeg, webp, jpeg, webp);
+					extraAttrs=Map.of(
+							"onclick", "return openPhotoViewer(this)",
+							"data-pv", Utils.gson.toJson(new PhotoViewerInlineData(0, "single/"+photo.getIdString(), photo.image.getURLsForPhotoViewer()))
+					);
 				}else{
 					extraImage=null;
 				}
 
-				RealtimeNotification rn=new RealtimeNotification(id, type, objType, objID, actor.getLocalID(), title, content, url, ava, extraImage);
+				RealtimeNotification rn=new RealtimeNotification(id, type, objType, objID, actor.getLocalID(), title, content, url, ava, extraImage, extraAttrs);
 				conn.send(rn);
 			});
 		}

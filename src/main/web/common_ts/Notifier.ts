@@ -9,6 +9,7 @@ interface RealtimeNotification{
 	url:string;
 	avatar:RealtimeNotificationImage;
 	image:RealtimeNotificationImage;
+	linkExtraAttrs:{[key:string]:string};
 }
 
 interface RealtimeNotificationImage{
@@ -244,9 +245,9 @@ class Notifier{
 			}else{
 				ava=ce("span", {className: "ava avaPlaceholder sizeA"});
 			}
-			var cont, closeBtn;
+			var cont, closeBtn:HTMLElement, underlayLink;
 			let el=ce("div", {className: "popupNotification", id: "notifierNotification_"+n.id}, [
-				ce("a", {href: n.url, className: "underlayLink"}),
+				underlayLink=ce("a", {href: n.url, className: "underlayLink"}),
 				ce("div", {className: "titleBar"}, [
 					ce("div", {className: "title ellipsize", innerHTML: n.title}),
 					closeBtn=ce("a", {className: "closeBtn", ariaLabel: lang("close")})
@@ -264,6 +265,13 @@ class Notifier{
 					ce("img", {src: n.image.jpeg1x, className: "image"})
 				]));
 			}
+
+			if(n.linkExtraAttrs){
+				for(var attr in n.linkExtraAttrs){
+					underlayLink.setAttribute(attr, n.linkExtraAttrs[attr]);
+				}
+			}
+			
 			closeBtn.addEventListener("click", (ev)=>Notifier.dismissNotification(el, true));
 			el.addEventListener("mouseenter", (ev)=>{
 				Notifier.notificationUnderMouse=el;
@@ -273,6 +281,12 @@ class Notifier{
 				if(Notifier.notificationUnderMouse==el)
 					Notifier.notificationUnderMouse=null;
 				Notifier.unfreeze();
+			});
+			el.addEventListener("click", (ev)=>{
+				var target=ev.target as HTMLElement;
+				if(target.tagName=="A" && target!=closeBtn){
+					Notifier.dismissNotification(el, true);
+				}
 			});
 			wrap.appendChild(el);
 			if(!Notifier.isIdle){

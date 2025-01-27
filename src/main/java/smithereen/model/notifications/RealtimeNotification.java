@@ -1,6 +1,8 @@
 package smithereen.model.notifications;
 
-public record RealtimeNotification(String id, Type type, ObjectType objectType, String objectID, Integer actorID, String title, String content, String url, ImageURLs avatar, ImageURLs image){
+import java.util.Map;
+
+public record RealtimeNotification(String id, Type type, ObjectType objectType, String objectID, Integer actorID, String title, String content, String url, ImageURLs avatar, ImageURLs image, Map<String, String> linkExtraAttrs){
 	public record ImageURLs(String jpeg1x, String webp1x, String jpeg2x, String webp2x){}
 	public enum Type{
 		REPLY,
