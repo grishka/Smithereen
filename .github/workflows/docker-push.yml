@@ -33,6 +33,7 @@ jobs:
               with:
                   push: true
                   tags: "${{ vars.DOCKERHUB_REPO }}:${{ env.DOCKER_TAG }}-${{ matrix.platform.arch }}"
+                  context: .
 
     merge:
         runs-on: ubuntu-latest
