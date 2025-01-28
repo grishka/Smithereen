@@ -193,6 +193,7 @@ public class MailController{
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(self.id);
 				if(un!=null)
 					un.incUnreadMailCount(-1);
+				context.getNotificationsController().sendRealtimeCountersUpdates(self);
 			}else{
 				ids.add(message.id);
 			}
@@ -215,6 +216,7 @@ public class MailController{
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(self.id);
 				if(un!=null)
 					un.incUnreadMailCount(-1);
+				context.getNotificationsController().sendRealtimeCountersUpdates(self);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -231,10 +233,12 @@ public class MailController{
 			if(message.attachments!=null && !message.attachments.isEmpty()){
 				MediaStorage.deleteMediaFileReferences(XTEA.deobfuscateObjectID(message.id, ObfuscatedObjectIDType.MAIL_MESSAGE), MediaFileReferenceType.MAIL_ATTACHMENT);
 			}
+			HashSet<Integer> affectedUsers=new HashSet<>();
 			if(message.ownerID!=self.id){
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(message.ownerID);
 				if(un!=null)
 					un.incUnreadMailCount(-1);
+				affectedUsers.add(message.ownerID);
 			}
 			if(deleteRelated && !message.relatedMessageIDs.isEmpty()){
 				for(MailMessage msg:MailStorage.getMessages(message.relatedMessageIDs)){
@@ -246,12 +250,18 @@ public class MailController{
 						UserNotifications un=NotificationsStorage.getNotificationsFromCache(msg.ownerID);
 						if(un!=null)
 							un.incUnreadMailCount(-1);
+						affectedUsers.add(msg.ownerID);
 					}
 				}
 			}
 			MailStorage.actuallyDeleteMessages(idsToDelete, message.activityPubID);
 			if(!(self instanceof ForeignUser) && deleteRelated && message.senderID==self.id){
 				context.getActivityPubWorker().sendDeleteMessageActivity(self, message);
+			}
+			Map<Integer, User> users=context.getUsersController().getUsers(affectedUsers);
+			for(User user:users.values()){
+				if(!(user instanceof ForeignUser))
+					context.getNotificationsController().sendRealtimeCountersUpdates(user);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -265,6 +275,7 @@ public class MailController{
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(self.id);
 				if(un!=null)
 					un.incUnreadMailCount(1);
+				context.getNotificationsController().sendRealtimeCountersUpdates(self);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

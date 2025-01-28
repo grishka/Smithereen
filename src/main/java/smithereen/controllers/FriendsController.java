@@ -200,6 +200,7 @@ public class FriendsController{
 				ctx.getNewsfeedController().putFriendsFeedEntry(user, self.id, NewsfeedEntry.Type.ADD_FRIEND);
 			}
 			ctx.getNewsfeedController().putFriendsFeedEntry(self, user.id, NewsfeedEntry.Type.ADD_FRIEND);
+			ctx.getNotificationsController().sendRealtimeCountersUpdates(self);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -211,6 +212,7 @@ public class FriendsController{
 			if(user instanceof ForeignUser fu){
 				ctx.getActivityPubWorker().sendRejectFriendRequestActivity(self, fu);
 			}
+			ctx.getNotificationsController().sendRealtimeCountersUpdates(self);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

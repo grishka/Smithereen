@@ -309,6 +309,7 @@ public class GroupsController{
 
 				GroupStorage.joinGroup(group, user.id, tentative, forceAccepted || (!(group instanceof ForeignGroup) && autoAccepted));
 			}
+			context.getNotificationsController().sendRealtimeCountersUpdates(user);
 
 			if(!forceAccepted){
 				if(group instanceof ForeignGroup fg){
@@ -492,6 +493,7 @@ public class GroupsController{
 			if(localID>0 && group instanceof ForeignGroup fg && apID!=null){
 				context.getActivityPubWorker().sendRejectGroupInvite(self, fg, localID, apID);
 			}
+			context.getNotificationsController().sendRealtimeCountersUpdates(self);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -593,6 +595,8 @@ public class GroupsController{
 					apID=Config.localURI("/activitypub/objects/groupInvites/"+id);
 				}
 				context.getActivityPubWorker().sendUndoGroupInvite(fu, group, id, apID);
+			}else{
+				context.getNotificationsController().sendRealtimeCountersUpdates(user);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

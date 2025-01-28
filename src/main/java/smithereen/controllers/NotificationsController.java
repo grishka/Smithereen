@@ -33,6 +33,7 @@ import smithereen.model.PostLikeObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.UserNotifications;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.comments.Comment;
@@ -45,6 +46,7 @@ import smithereen.model.photos.Photo;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.text.TextProcessor;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
@@ -76,6 +78,7 @@ public class NotificationsController{
 				SessionStorage.updatePreferences(self.id, self.prefs);
 			}
 			NotificationsStorage.getNotificationsForUser(self.user.id, self.prefs.lastSeenNotificationID).setNotificationsViewed();
+			sendRealtimeCountersUpdates(self.user);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -441,6 +444,7 @@ public class NotificationsController{
 
 				RealtimeNotification rn=new RealtimeNotification(id, type, objType, objID, actor.getLocalID(), title, content, url, ava, extraImage, extraAttrs);
 				conn.send(rn);
+				conn.sendRaw(makeCountersWebsocketMessage(conn.session.account));
 			});
 		}
 	}
@@ -469,12 +473,57 @@ public class NotificationsController{
 		};
 	}
 
+	private String makeCountersWebsocketMessage(Account self){
+		try{
+			UserNotifications un=NotificationsStorage.getNotificationsForUser(self.user.id, self.prefs.lastSeenNotificationID);
+			return new JsonObjectBuilder()
+					.add("type", "counters")
+					.add("counters", new JsonObjectBuilder()
+							.add("friends", un.getNewFriendRequestCount())
+							.add("photos", un.getNewPhotoTagCount())
+							.add("mail", un.getUnreadMailCount())
+							.add("groups", un.getNewGroupInvitationsCount())
+							.add("events", un.getNewEventInvitationsCount())
+							.add("notifications", un.getNewNotificationsCount()))
+					.build()
+					.toString();
+		}catch(SQLException x){
+			LOG.error("Failed to get user notification counters", x);
+			return "";
+		}
+	}
+
+	public void sendRealtimeCountersUpdates(User user){
+		List<WebSocketConnection> connections=null;
+		synchronized(wsMapsLock){
+			List<WebSocketConnection> actualConnections=wsConnectionsByUserID.get(user.id);
+			if(actualConnections!=null)
+				connections=new ArrayList<>(actualConnections);
+		}
+
+		if(connections==null)
+			return;
+
+		for(WebSocketConnection conn:connections){
+			Thread.ofVirtual().start(()->conn.sendRaw(makeCountersWebsocketMessage(conn.session.account)));
+		}
+	}
+
 	record WebSocketConnection(SessionInfo session, Session conn, Lang lang){
 		public void send(RealtimeNotification notification){
 			try{
 				conn.getRemote().sendString(Utils.gson.toJson(Map.of("type", "notification", "notification", notification)));
 			}catch(IOException x){
 				LOG.debug("Failed to send notification to websocket", x);
+				conn.close();
+			}
+		}
+
+		public void sendRaw(String msg){
+			try{
+				conn.getRemote().sendString(msg);
+			}catch(IOException x){
+				LOG.debug("Failed to send websocket message");
 				conn.close();
 			}
 		}

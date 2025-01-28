@@ -874,18 +874,21 @@ public class PhotosController{
 				List<PhotoTag> tagsToDelete=existingTags.stream().filter(t->!newTagIDs.contains(t.apID())).toList();
 				if(!tagsToDelete.isEmpty()){
 					PhotoStorage.deletePhotoTags(photo.id, tagsToDelete.stream().map(PhotoTag::id).collect(Collectors.toSet()));
-					for(PhotoTag tag: tagsToDelete){
+					for(PhotoTag tag:tagsToDelete){
 						if(tag.userID()!=0){
 							if(!tag.approved()){
 								UserNotifications un=NotificationsStorage.getNotificationsFromCache(tag.userID());
 								if(un!=null)
 									un.incNewPhotoTagCount(-1);
+								try{
+									User user=context.getUsersController().getUserOrThrow(tag.userID());
+									context.getNotificationsController().sendRealtimeCountersUpdates(user);
+								}catch(ObjectNotFoundException ignore){}
 							}else{
 								try{
 									User user=context.getUsersController().getUserOrThrow(tag.userID());
 									context.getNewsfeedController().deleteFriendsFeedEntry(user, photo.id, NewsfeedEntry.Type.PHOTO_TAG);
-								}catch(ObjectNotFoundException ignore){
-								}
+								}catch(ObjectNotFoundException ignore){}
 							}
 						}
 					}
@@ -931,6 +934,7 @@ public class PhotosController{
 						UserNotifications un=NotificationsStorage.getNotificationsFromCache(user.id);
 						if(un!=null)
 							un.incNewPhotoTagCount(1);
+						context.getNotificationsController().sendRealtimeCountersUpdates(user);
 					}
 				}
 				List<ActivityPubTaggedPerson> tagsToMaybeUpdate=apTags.stream()
@@ -1309,6 +1313,7 @@ public class PhotosController{
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(user.id);
 				if(un!=null)
 					un.incNewPhotoTagCount(1);
+				context.getNotificationsController().sendRealtimeCountersUpdates(user);
 			}
 			context.getActivityPubWorker().sendUpdateAlbumPhoto(context.getWallController().getContentAuthorAndOwner(photo).author(), photo, getAlbumIgnoringPrivacy(photo.albumID));
 			if(user!=null && user.id==self.id){
@@ -1348,6 +1353,10 @@ public class PhotosController{
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(tag.userID());
 				if(un!=null)
 					un.incNewPhotoTagCount(-1);
+				try{
+					User user=context.getUsersController().getUserOrThrow(tag.userID());
+					context.getNotificationsController().sendRealtimeCountersUpdates(user);
+				}catch(ObjectNotFoundException ignore){}
 			}
 			User placer=context.getUsersController().getUserOrThrow(tag.placerID());
 			if(tag.approved()){
@@ -1431,6 +1440,7 @@ public class PhotosController{
 			UserNotifications un=NotificationsStorage.getNotificationsFromCache(self.id);
 			if(un!=null)
 				un.incNewPhotoTagCount(-1);
+			context.getNotificationsController().sendRealtimeCountersUpdates(self);
 			User placer=context.getUsersController().getUserOrThrow(tag.placerID());
 			if(photo.apID!=null)
 				context.getActivityPubWorker().sendApprovePhotoTag(self, photo, getAlbumIgnoringPrivacy(photo.albumID), tag, placer, context.getWallController().getContentAuthorAndOwner(photo).owner());

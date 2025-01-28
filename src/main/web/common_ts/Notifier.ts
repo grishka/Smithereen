@@ -154,6 +154,10 @@ class Notifier{
 				}
 				break;
 			}
+			case "counters": {
+				Notifier.handleCounters(m.counters);
+				break;
+			}
 		}
 	}
 
@@ -206,6 +210,8 @@ class Notifier{
 		// console.log("socket msg", m);
 		if(m.type=="notification"){
 			Notifier.handleNotification(m.notification as RealtimeNotification);
+		}else if(m.type=="counters"){
+			Notifier.handleCounters(m.counters);
 		}
 	}
 
@@ -394,6 +400,23 @@ class Notifier{
 		for(var el of Notifier.notificationsEl.children.unfuck()){
 			let _el=el;
 			el.customData.fadeTimeout=setTimeout(()=>Notifier.startFadingNotification(_el), 5000);
+		}
+	}
+
+	private static handleCounters(counters:{[key:string]:number}){
+		for(var key in counters){
+			var counter=ge("menuCounter_"+key);
+			if(!counter)
+				continue;
+			if(counters[key]){
+				ge("menuCounterValue_"+key).innerText=formatNumber(counters[key]);
+				counter.show();
+			}else{
+				counter.hide();
+			}
+		}
+		if(Notifier.isMainTab){
+			Notifier.bc.postMessage({type: "counters", counters: counters});
 		}
 	}
 }
