@@ -57,6 +57,7 @@ import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.notifications.RealtimeNotificationSettingType;
 import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.ImageRect;
 import smithereen.storage.GroupStorage;
@@ -573,7 +574,7 @@ public class SettingsRoutes{
 				for(FriendsNewsfeedTypeFilter type:FriendsNewsfeedTypeFilter.values()){
 					if(type==FriendsNewsfeedTypeFilter.POSTS)
 						continue;
-					if(req.queryParams("feedType_"+type)!=null)
+					if(req.queryParams("feedTypes_"+type)!=null)
 						feedTypes.add(type);
 				}
 			}
@@ -811,6 +812,41 @@ public class SettingsRoutes{
 		}
 		req.session().attribute("settings.profileEditContactsMessage", message);
 		resp.redirect("/settings/profile/contacts");
+		return "";
+	}
+
+	public static Object notificationsSettings(Request req, Response resp, Account self, ApplicationContext ctx){
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_notifications", req)
+				.pageTitle(lang(req).get("notifications"))
+				.with("notifierTypes", self.prefs.notifierTypes)
+				.with("notifierEnableSound", self.prefs.notifierEnableSound)
+				.with("notifierShowMessageText", self.prefs.notifierShowMessageText)
+				.with("allNotifierTypes", RealtimeNotificationSettingType.values())
+				.addMessage(req, "settings.notifierMessage", "notificationsMessage");
+		return model;
+	}
+
+	public static Object updateNotifierSettings(Request req, Response resp, Account self, ApplicationContext ctx){
+		EnumSet<RealtimeNotificationSettingType> notifierTypes;
+		if(StringUtils.isNotEmpty(req.queryParams("allNotifierTypes"))){
+			notifierTypes=null;
+		}else{
+			notifierTypes=EnumSet.noneOf(RealtimeNotificationSettingType.class);
+			for(RealtimeNotificationSettingType type:RealtimeNotificationSettingType.values()){
+				if(req.queryParams("notifierTypes_"+type)!=null)
+					notifierTypes.add(type);
+			}
+		}
+		self.prefs.notifierTypes=notifierTypes;
+		self.prefs.notifierEnableSound="on".equals(req.queryParams("notifierEnableSound"));
+		self.prefs.notifierShowMessageText="on".equals(req.queryParams("notifierShowMessageText"));
+		ctx.getUsersController().updateUserPreferences(self);
+		req.session().attribute("settings.notifierMessage", lang(req).get("settings_saved"));
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.refresh();
+		}
+		resp.redirect(back(req));
 		return "";
 	}
 }

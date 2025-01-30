@@ -615,4 +615,12 @@ public class UsersController{
 		long id=((long)newStatus.ordinal()) << 56 | (((System.currentTimeMillis()/1000L) & 0xFFFFFFL) << 32) | partnerID;
 		context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.RELATIONSHIP_STATUS);
 	}
+
+	public void updateUserPreferences(Account self){
+		try{
+			SessionStorage.updatePreferences(self.id, self.prefs);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

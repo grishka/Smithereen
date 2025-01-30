@@ -316,6 +316,8 @@ public class SmithereenApplication{
 			postWithCSRF("/updateProfileInterests", SettingsRoutes::updateProfileInterests);
 			postWithCSRF("/updateProfilePersonal", SettingsRoutes::updateProfilePersonal);
 			postWithCSRF("/updateProfileContacts", SettingsRoutes::updateProfileContacts);
+			getLoggedIn("/notifications", SettingsRoutes::notificationsSettings);
+			postWithCSRF("/updateNotifier", SettingsRoutes::updateNotifierSettings);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);

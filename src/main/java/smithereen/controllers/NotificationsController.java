@@ -231,7 +231,6 @@ public class NotificationsController{
 	}
 
 	public void sendRealtimeNotifications(User user, String id, RealtimeNotification.Type type, Object object, OwnedContentObject relatedObject, Actor actor){
-
 		List<WebSocketConnection> connections=null;
 		synchronized(wsMapsLock){
 			List<WebSocketConnection> actualConnections=wsConnectionsByUserID.get(user.id);
@@ -240,6 +239,10 @@ public class NotificationsController{
 		}
 
 		if(connections==null)
+			return;
+
+		Account account=connections.getFirst().session.account;
+		if(account.prefs.notifierTypes!=null && !account.prefs.notifierTypes.contains(type.getSettingType()))
 			return;
 
 		RealtimeNotification.ObjectType objType=object instanceof OwnedContentObject owned ? getRealtimeNotificationObjectTypeForObject(owned) : null;
@@ -346,10 +349,12 @@ public class NotificationsController{
 					}
 					case FRIEND_REQUEST_ACCEPTED -> makeActorLink(actor)+" "+l.get("notification_friend_req_accept", Map.of("gender", ((User)actor).gender));
 					case MAIL_MESSAGE -> {
-						MailMessage msg=(MailMessage) object;
-						String preview=msg.getTextPreview();
-						if(StringUtils.isNotEmpty(preview))
-							yield makeActorLink(actor)+" "+preview;
+						if(conn.session.account.prefs.notifierShowMessageText){
+							MailMessage msg=(MailMessage) object;
+							String preview=msg.getTextPreview();
+							if(StringUtils.isNotEmpty(preview))
+								yield makeActorLink(actor)+" "+preview;
+						}
 						User u=(User)actor;
 						String text=l.get("notification_content_mail_message", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
 						yield TextProcessor.substituteLinks(text, Map.of("actor", Map.of("href", actor.getProfileURL())));

@@ -185,5 +185,21 @@
   "privacy_feed_types": "Какие обновления видят <b>в новостях мои друзья</b>",
   "privacy_feed_all_types": "Все обновления",
   "privacy_feed_select_types": "Обновления разделов",
-  "privacy_feed_no_types": "Никаких обновлений"
+  "privacy_feed_no_types": "Никаких обновлений",
+  "settings_web_notifications": "Мгновенные уведомления на сайте",
+  "settings_notifications_types": "Типы событий",
+  "settings_notification_types_all": "Оповещать обо всех событиях",
+  "settings_notification_types_none": "Не оповещать",
+  "settings_notification_types_some": "Оповещать о некоторых событиях",
+  "settings_instant_notifications_sound": "Включить звук",
+  "settings_instant_notifications_msg_text": "Показывать текст сообщений",
+  "settings_notifications_mail": "Личные сообщения",
+  "settings_notifications_friend_requests": "Заявки в друзья",
+  "settings_notifications_likes": "Отметки \"Мне нравится\"",
+  "settings_notifications_reposts": "Поделились вашей записью",
+  "settings_notifications_replies": "Ответы в комментариях",
+  "settings_notifications_wall": "Записи на стене",
+  "settings_notifications_mentions": "Упоминания",
+  "settings_notifications_photo_tags": "Отметки на фотографиях",
+  "settings_notifications_group_invites": "Приглашения в сообщества"
 }

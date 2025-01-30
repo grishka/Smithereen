@@ -1,0 +1,57 @@
+{% extends "page" %}
+{% import "forms" as form %}
+{% block content %}
+    {% include "settings_tabbar" with {'tab': 'notifications'} %}
+<div class="singleColumn gray narrowForms">
+{% if not mobile %}
+	<form action="/settings/updateNotifier?csrf={{ csrf }}" method="post" data-ajax>
+	{{ form.start("notifications", notificationsMessage) }}
+		<h2>{{ L('settings_web_notifications') }}</h2>
+		{{ form.customControlStart('notifierTypes') }}
+		{{ L('settings_notifications_types') }}:
+		{{ form.customControlAfterLabel() }}
+		<div class="text">
+			<div class="popupMenuW" id="notifierTypesMenuW">
+				<a href="javascript:void(0)" onclick="showNotifierTypesMenu()" class="opener">{{ L(notifierTypes is null ? 'settings_notification_types_all' : (notifierTypes is empty ? 'settings_notification_types_none' : 'settings_notification_types_some')) }}</a><span id="notifierTypes">
+					{%- if notifierTypes is not empty %}:
+					{% for type in notifierTypes -%}
+					    <span class="friendListLabel l{{ type.ordinal%8 }}">{{ L(type.langKey) }}</span>{% if not loop.last %}, {% endif %}
+					{%- endfor %}
+					{%- endif -%}
+				</span>
+			</div>
+			<div class="radioButtonWrap">
+				<label><input type="checkbox" name="notifierEnableSound" id="notifierEnableSound" {{ notifierEnableSound ? 'checked' : '' }}/>{{ L('settings_instant_notifications_sound') }}</label>
+			</div>
+			<div class="radioButtonWrap">
+				<label><input type="checkbox" name="notifierShowMessageText" id="notifierShowMessageText" {{ notifierShowMessageText ? 'checked' : '' }}/>{{ L('settings_instant_notifications_msg_text') }}</label>
+			</div>
+		</div>
+		<input type="checkbox" name="allNotifierTypes" id="allNotifierTypes" style="display: none"{% if notifierTypes is null %} checked{% endif %}/>
+		{{ form.customControlEnd() }}
+		{{ form.footer(L('save')) }}
+	{{ form.end() }}
+	</form>
+{% endif %}
+</div>
+{% script %}
+var notifierTypesMenu=new MultipleChoicePopupMenu(ge("notifierTypesMenuW"), {
+	baseID: "notifierTypes",
+	allTitle: "{{ L('settings_notification_types_all') | forceEscape }}",
+	selectTitle: "{{ L('settings_notification_types_some') | forceEscape }}",
+	noneTitle: "{{ L('settings_notification_types_none') | forceEscape }}",
+	showNone: true,
+	options: [
+		{% for type in allNotifierTypes %}
+		    {id: "{{ type }}", title: "{{ L(type.langKey) | forceEscape }}"},
+		{% endfor %}
+	],
+	selectedOptions: {{ json(notifierTypes | default([])) }},
+	allCheckboxID: "allNotifierTypes"
+});
+
+function showNotifierTypesMenu(){
+	notifierTypesMenu.show();
+}
+{% endscript %}
+{% endblock %}

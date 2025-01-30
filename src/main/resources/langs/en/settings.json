@@ -185,5 +185,21 @@
   "privacy_feed_types": "Which of my updates appear <b>in the friends' news feeds</b>",
   "privacy_feed_all_types": "All updates",
   "privacy_feed_select_types": "Certain updates",
-  "privacy_feed_no_types": "No updates"
+  "privacy_feed_no_types": "No updates",
+  "settings_web_notifications": "Instant notification on the website",
+  "settings_notifications_types": "Event types",
+  "settings_notification_types_all": "Notify about everything",
+  "settings_notification_types_none": "Do not notify",
+  "settings_notification_types_some": "Notify about certain events",
+  "settings_instant_notifications_sound": "Enable sound",
+  "settings_instant_notifications_msg_text": "Show message text",
+  "settings_notifications_mail": "Private messages",
+  "settings_notifications_friend_requests": "Friend requests",
+  "settings_notifications_likes": "Likes",
+  "settings_notifications_reposts": "Reposts",
+  "settings_notifications_replies": "Comment replies",
+  "settings_notifications_wall": "Wall posts",
+  "settings_notifications_mentions": "Mentions",
+  "settings_notifications_photo_tags": "Photo tags",
+  "settings_notifications_group_invites": "Community invitations"
 }

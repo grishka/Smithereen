@@ -103,8 +103,8 @@ public class Templates{
 				jsConfig.addProperty("uid", info.account.user.id);
 				jsConfig.add("notifier", new JsonObjectBuilder()
 						.add("ws", UriBuilder.local().scheme("wss").path("system", "ws", "notifier").build().toString())
-						.add("enabled", true) // TODO
-						.add("sound", true) // TODO
+						.add("enabled", account.prefs.notifierTypes==null || !account.prefs.notifierTypes.isEmpty())
+						.add("sound", account.prefs.notifierEnableSound)
 						.build()
 				);
 				try{

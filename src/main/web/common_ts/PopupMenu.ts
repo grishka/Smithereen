@@ -157,3 +157,157 @@ class PopupMenu{
 		this.addItems([item]);
 	}
 }
+
+interface MultipleChoicePopupMenuOptions{
+	baseID:string;
+	allTitle:string;
+	selectTitle:string;
+	noneTitle:string;
+	showNone:boolean;
+	options:PopupMenuItemSpec[];
+	selectedOptions:string[];
+	allCheckboxID:string;
+}
+
+class MultipleChoicePopupMenu extends PopupMenu{
+	private checkboxes:HTMLInputElement[];
+	private allCB:HTMLInputElement;
+	private allItem:HTMLElement;
+	private noneItem:HTMLElement;
+	private selectItem:HTMLElement;
+
+	public constructor(el:HTMLElement, opts:MultipleChoicePopupMenuOptions){
+		var checkboxes:HTMLInputElement[]=[];
+		var opener=el.qs(".opener");
+		var menuList;
+		var menuEl=ce("div", {"className": "popupMenu compact"}, [
+			menuList=ce("ul", {"className": "privacyMenu"})
+		]);
+		menuEl.hide();
+		opener.insertAdjacentElement("afterend", menuEl);
+
+		var allItem:HTMLElement, noneItem:HTMLElement, selectItem:HTMLElement;
+		menuList.appendChild(allItem=ce("li", {innerHTML: opts.allTitle}));
+		allItem.dataset.act="all";
+		if(opts.showNone){
+			menuList.appendChild(noneItem=ce("li", {innerHTML: opts.noneTitle}));
+			noneItem.dataset.act="none";
+		}
+		var sublist;
+		menuList.appendChild(selectItem=ce("li", {className: "hasSubmenu"}, [
+			ce("div", {className: "itemContent"}, [
+				ce("span", {innerHTML: opts.selectTitle}),
+				ce("div", {className: "ddIcon iconSubmenu"})
+			]),
+			sublist=ce("ul", {className: "submenu"})
+		]));
+		selectItem.dataset.act="select";
+
+		var allCB=ge(opts.allCheckboxID) as HTMLInputElement;
+		var i=0;
+		for(var option of opts.options){
+			var checkbox;
+			var si=ce("li", {}, [
+				ce("label", {}, [
+					checkbox=ce("input", {type: "checkbox", name: opts.baseID+"_"+option.id, id: opts.baseID+"_"+option.id, checked: allCB.checked || opts.selectedOptions.indexOf(option.id)!=-1}),
+					ce("span", {innerHTML: option.title})
+				])
+			]);
+			checkbox.customData={
+				option: {id: option.id, index: i, title: option.title}
+			};
+			checkboxes.push(checkbox);
+			sublist.appendChild(si);
+			i++;
+		}
+
+		super(el, (id)=>{
+			if(id=="all"){
+				allCB.checked=true;
+				for(var cb of this.checkboxes){
+					cb.checked=true;
+				}
+				ge(opts.baseID).innerHTML="";
+				opener.innerHTML=opts.allTitle;
+				return false;
+			}else if(id=="none"){
+				allCB.checked=false;
+				for(var cb of this.checkboxes){
+					cb.checked=false;
+				}
+				ge(opts.baseID).innerHTML="";
+				opener.innerHTML=opts.noneTitle;
+				return false;
+			}
+			return true;
+		}, false, true);
+
+		this.checkboxes=checkboxes;
+		this.allCB=allCB;
+		this.allItem=allItem;
+		this.noneItem=noneItem;
+		this.selectItem=selectItem;
+
+		sublist.addEventListener("change", (ev)=>{
+			var allChecked=true;
+			var allUnchecked=true;
+			for(var cb of checkboxes){
+				if(!cb.checked){
+					allChecked=false;
+				}else{
+					allUnchecked=false;
+				}
+			}
+			var descrEl=ge(opts.baseID);
+			if(allChecked){
+				descrEl.innerHTML="";
+				opener.innerHTML=opts.allTitle;
+				allCB.checked=true;
+				return;
+			}
+			allCB.checked=false;
+			if(allUnchecked){
+				descrEl.innerHTML="";
+				opener.innerHTML=opts.noneTitle;
+				return;
+			}
+			opener.innerHTML=opts.selectTitle;
+			descrEl.innerHTML=": ";
+			var first=true;
+			for(var cb of checkboxes){
+				if(cb.checked){
+					if(first){
+						first=false;
+					}else{
+						descrEl.appendChild(document.createTextNode(", "));
+					}
+					var opt=cb.customData.option;
+					descrEl.appendChild(ce("span", {className: "friendListLabel l"+(opt.index%8), innerHTML: opt.title}));
+				}
+			}
+		});
+	}
+
+	public show(){
+		var anyChecked=false;
+		for(var cb of this.checkboxes){
+			if(cb.checked){
+				anyChecked=true;
+				break;
+			}
+		}
+		this.allItem.classList.remove("selected");
+		if(this.noneItem)
+			this.noneItem.classList.remove("selected");
+		this.selectItem.classList.remove("selected");
+		if(this.allCB.checked){
+			this.allItem.classList.add("selected");
+		}else if(anyChecked || !this.noneItem){
+			this.selectItem.classList.add("selected");
+		}else{
+			this.noneItem.classList.add("selected");
+		}
+		super.show();
+	}
+}
+

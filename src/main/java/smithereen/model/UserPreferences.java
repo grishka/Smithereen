@@ -9,6 +9,7 @@ import java.util.Locale;
 import smithereen.model.feed.CommentsNewsfeedObjectType;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupsNewsfeedTypeFilter;
+import smithereen.model.notifications.RealtimeNotificationSettingType;
 import smithereen.text.FormattedTextFormat;
 
 public class UserPreferences{
@@ -28,4 +29,10 @@ public class UserPreferences{
 	public EnumSet<GroupsNewsfeedTypeFilter> groupFeedFilter;
 	@SerializedName("cfeed")
 	public EnumSet<CommentsNewsfeedObjectType> commentsFeedFilter;
+	@SerializedName("ntft")
+	public EnumSet<RealtimeNotificationSettingType> notifierTypes;
+	@SerializedName("ntfs")
+	public boolean notifierEnableSound=true;
+	@SerializedName("ntfmt")
+	public boolean notifierShowMessageText=true;
 }
