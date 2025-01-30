@@ -35,6 +35,7 @@
   "notification_title_group_invite": "New group invitation",
   "notification_title_event_invite": "New event invitation",
   "notification_title_group_request_accepted": "Group request accepted",
+  "notification_title_photo_tag": "New photo tag",
 
   "notification_content_like_post": "<a id=\"actor\">{name}</a> likes your post \"{text}\"",
   "notification_content_like_post_comment": "<a id=\"actor\">{name}</a> likes your comment \"{text}\" on post \"{parentText}\"",
@@ -50,5 +51,6 @@
   "notification_content_mail_message": "<a id=\"actor\">{name}</a> sent you a message",
   "notification_content_group_invite": "<a id=\"actor\">{name}</a> invites you to join <a id=\"group\">{groupName}</a>",
   "notification_content_event_invite": "<a id=\"actor\">{name}</a> invites you to attend <a id=\"event\">{eventName}</a>",
-  "notification_content_group_accepted": "<a id=\"actor\">{name}</a> management accepted your request to join"
+  "notification_content_group_accepted": "<a id=\"actor\">{name}</a> management accepted your request to join",
+  "notification_content_photo_tag": "<a id=\"actor\">{name}</a> tagged you in a photo"
 }

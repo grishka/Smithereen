@@ -17,7 +17,8 @@ public record RealtimeNotification(String id, Type type, ObjectType objectType, 
 		MAIL_MESSAGE,
 		GROUP_INVITE,
 		EVENT_INVITE,
-		GROUP_REQUEST_ACCEPTED;
+		GROUP_REQUEST_ACCEPTED,
+		PHOTO_TAG;
 
 		public RealtimeNotificationSettingType getSettingType(){
 			return switch(this){
@@ -29,6 +30,7 @@ public record RealtimeNotification(String id, Type type, ObjectType objectType, 
 				case INVITE_SIGNUP, FRIEND_REQUEST_ACCEPTED, FRIEND_REQUEST, FOLLOW -> RealtimeNotificationSettingType.FRIEND_REQUESTS;
 				case MAIL_MESSAGE -> RealtimeNotificationSettingType.MAIL;
 				case GROUP_INVITE, GROUP_REQUEST_ACCEPTED, EVENT_INVITE -> RealtimeNotificationSettingType.GROUP_INVITES;
+				case PHOTO_TAG -> RealtimeNotificationSettingType.PHOTO_TAGS;
 			};
 		}
 	}

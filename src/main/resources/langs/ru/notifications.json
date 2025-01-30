@@ -35,6 +35,7 @@
   "notification_title_group_invite": "Новое приглашение в группу",
   "notification_title_event_invite": "Новое приглашение на встречу",
   "notification_title_group_request_accepted": "Заявка в группу принята",
+  "notification_title_photo_tag": "Новая отметка на фото",
 
   "notification_content_like_post": "<a id=\"actor\">{name, inflect, dative}</a> понравилась ваша запись \"{text}\"",
   "notification_content_like_post_comment": "<a id=\"actor\">{name, inflect, dative}</a> понравился ваш комментарий \"{text}\" к записи \"{parentText}\"",
@@ -50,5 +51,6 @@
   "notification_content_mail_message": "<a id=\"actor\">{name}</a> {gender, select, female {отправила} other {отправил}} вам сообщение",
   "notification_content_group_invite": "<a id=\"actor\">{name}</a> приглашает вас вступить в <a id=\"group\">{groupName}</a>",
   "notification_content_event_invite": "<a id=\"actor\">{name}</a> приглашает вас принять участие в <a id=\"event\">{eventName}</a>",
-  "notification_content_group_accepted": "Руководство <a id=\"actor\">{name}</a> приняло вас в группу"
+  "notification_content_group_accepted": "Руководство <a id=\"actor\">{name}</a> приняло вас в группу",
+  "notification_content_photo_tag": "<a id=\"actor\">{name}</a> {gender, select, female {отметила} other {отметил}} вас на фотографии"
 }

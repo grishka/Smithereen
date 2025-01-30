@@ -55,6 +55,7 @@ import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
+import smithereen.model.notifications.RealtimeNotification;
 import smithereen.model.photos.AbsoluteImageRect;
 import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.ImageRect;
@@ -934,7 +935,7 @@ public class PhotosController{
 						UserNotifications un=NotificationsStorage.getNotificationsFromCache(user.id);
 						if(un!=null)
 							un.incNewPhotoTagCount(1);
-						context.getNotificationsController().sendRealtimeCountersUpdates(user);
+						context.getNotificationsController().sendRealtimeNotifications(user, "photoTag"+tagID, RealtimeNotification.Type.PHOTO_TAG, photo, null, placer);
 					}
 				}
 				List<ActivityPubTaggedPerson> tagsToMaybeUpdate=apTags.stream()
@@ -1313,7 +1314,7 @@ public class PhotosController{
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(user.id);
 				if(un!=null)
 					un.incNewPhotoTagCount(1);
-				context.getNotificationsController().sendRealtimeCountersUpdates(user);
+				context.getNotificationsController().sendRealtimeNotifications(user, "photoTag"+id, RealtimeNotification.Type.PHOTO_TAG, photo, null, self);
 			}
 			context.getActivityPubWorker().sendUpdateAlbumPhoto(context.getWallController().getContentAuthorAndOwner(photo).author(), photo, getAlbumIgnoringPrivacy(photo.albumID));
 			if(user!=null && user.id==self.id){

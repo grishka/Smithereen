@@ -269,6 +269,7 @@ public class NotificationsController{
 					case GROUP_INVITE -> "notification_title_group_invite";
 					case EVENT_INVITE -> "notification_title_event_invite";
 					case GROUP_REQUEST_ACCEPTED -> "notification_title_group_request_accepted";
+					case PHOTO_TAG -> "notification_title_photo_tag";
 				});
 				String content=switch(type){
 					case REPLY -> {
@@ -373,6 +374,11 @@ public class NotificationsController{
 					}
 					case GROUP_REQUEST_ACCEPTED -> {
 						String text=l.get("notification_content_group_accepted", Map.of("name", actor.getName()));
+						yield TextProcessor.substituteLinks(text, Map.of("actor", Map.of("href", actor.getProfileURL())));
+					}
+					case PHOTO_TAG -> {
+						User u=(User)actor;
+						String text=l.get("notification_content_photo_tag", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
 						yield TextProcessor.substituteLinks(text, Map.of("actor", Map.of("href", actor.getProfileURL())));
 					}
 				};
