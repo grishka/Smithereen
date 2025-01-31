@@ -8,6 +8,7 @@ import com.google.gson.JsonPrimitive;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.TextNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -269,6 +270,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 				cc.add(context.getUsersController().getUserOrThrow(repost.authorID).activityPubID);
 
 				Document doc=Jsoup.parseBodyFragment(noq.content);
+				doc.outputSettings().prettyPrint(false).indentAmount(0);
 				Element root=doc.body();
 				Element parentP;
 				if(root.childrenSize()==0){
@@ -282,13 +284,12 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 								.addClass("quote-inline")
 								.appendChildren(List.of(
 										doc.createElement("br"),
-										doc.createElement("br")
+										doc.createElement("br"),
+										new TextNode("RE: "),
+										doc.createElement("a")
+												.attr("href", repost.getActivityPubURL().toString())
+												.text(repost.getActivityPubURL().toString())
 								))
-								.appendText("RE: ")
-								.appendChild(doc.createElement("a")
-										.attr("href", repost.getActivityPubURL().toString())
-										.text(repost.getActivityPubURL().toString())
-								)
 				);
 				noq.content=root.html();
 			}catch(ObjectNotFoundException ignore){}

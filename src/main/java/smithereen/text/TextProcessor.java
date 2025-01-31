@@ -482,6 +482,7 @@ public class TextProcessor{
 
 	public static String postprocessPostHTMLForActivityPub(String text){
 		Document doc=Jsoup.parseBodyFragment(text);
+		doc.outputSettings().prettyPrint(false).indentAmount(0);
 
 		for(Element el:doc.getElementsByTag("a")){
 			el.removeAttr("data-user-id");
