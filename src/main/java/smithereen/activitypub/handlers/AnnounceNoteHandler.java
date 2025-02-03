@@ -10,6 +10,7 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Announce;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.ForeignUser;
 import smithereen.model.Post;
 import smithereen.model.User;
@@ -86,6 +87,12 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 		context.appContext.getNewsfeedController().clearFriendsFeedCache();
 
 		User author=context.appContext.getUsersController().getUserOrThrow(post.authorID);
-		context.appContext.getNotificationsController().createNotification(author, Notification.Type.RETOOT, post, null, actor);
+		Post topLevel=null;
+		if(post.getReplyLevel()>0){
+			try{
+				topLevel=context.appContext.getWallController().getPostOrThrow(post.replyKey.getFirst());
+			}catch(ObjectNotFoundException ignore){}
+		}
+		context.appContext.getNotificationsController().createNotification(author, Notification.Type.RETOOT, post, topLevel, actor);
 	}
 }

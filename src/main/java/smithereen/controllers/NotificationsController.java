@@ -383,7 +383,7 @@ public class NotificationsController{
 					}
 				};
 				String url=switch(object){
-					case Post post -> post.getReplyLevel()>0 ? ((Post)relatedObject).getInternalURL().toString()+"#comment"+post.id : post.getInternalURL().toString();
+					case Post post -> post.getReplyLevel()>0 && relatedObject!=null ? ((Post)relatedObject).getInternalURL().toString()+"#comment"+post.id : post.getInternalURL().toString();
 					case Photo photo -> photo.getURL();
 					case Comment comment -> ((CommentableContentObject)relatedObject).getURL()+"#comment"+comment.getIDString();
 					case MailMessage msg -> "/my/mail/messages/"+msg.encodedID;
