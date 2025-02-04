@@ -404,17 +404,7 @@ class Notifier{
 	}
 
 	private static handleCounters(counters:{[key:string]:number}){
-		for(var key in counters){
-			var counter=ge("menuCounter_"+key);
-			if(!counter)
-				continue;
-			if(counters[key]){
-				ge("menuCounterValue_"+key).innerText=formatNumber(counters[key]);
-				counter.show();
-			}else{
-				counter.hide();
-			}
-		}
+		setMenuCounters(counters);
 		if(Notifier.isMainTab){
 			Notifier.bc.postMessage({type: "counters", counters: counters});
 		}

@@ -1,5 +1,7 @@
 package smithereen.controllers;
 
+import com.google.gson.JsonObject;
+
 import org.eclipse.jetty.websocket.api.Session;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -383,9 +385,9 @@ public class NotificationsController{
 					}
 				};
 				String url=switch(object){
-					case Post post -> post.getReplyLevel()>0 && relatedObject!=null ? ((Post)relatedObject).getInternalURL().toString()+"#comment"+post.id : post.getInternalURL().toString();
+					case Post post -> post.getReplyLevel()>0 && relatedObject instanceof Post parentPost ? parentPost.getInternalURL().toString()+"#comment"+post.id : post.getInternalURL().toString();
 					case Photo photo -> photo.getURL();
-					case Comment comment -> ((CommentableContentObject)relatedObject).getURL()+"#comment"+comment.getIDString();
+					case Comment comment when relatedObject instanceof CommentableContentObject parent -> parent.getURL()+"#comment"+comment.getIDString();
 					case MailMessage msg -> "/my/mail/messages/"+msg.encodedID;
 					case null, default -> actor.getProfileURL();
 				};
@@ -484,24 +486,28 @@ public class NotificationsController{
 		};
 	}
 
-	private String makeCountersWebsocketMessage(Account self){
+	public JsonObject getUserCounters(Account self){
 		try{
 			UserNotifications un=NotificationsStorage.getNotificationsForUser(self.user.id, self.prefs.lastSeenNotificationID);
 			return new JsonObjectBuilder()
-					.add("type", "counters")
-					.add("counters", new JsonObjectBuilder()
-							.add("friends", un.getNewFriendRequestCount())
-							.add("photos", un.getNewPhotoTagCount())
-							.add("mail", un.getUnreadMailCount())
-							.add("groups", un.getNewGroupInvitationsCount())
-							.add("events", un.getNewEventInvitationsCount())
-							.add("notifications", un.getNewNotificationsCount()))
-					.build()
-					.toString();
+					.add("friends", un.getNewFriendRequestCount())
+					.add("photos", un.getNewPhotoTagCount())
+					.add("mail", un.getUnreadMailCount())
+					.add("groups", un.getNewGroupInvitationsCount())
+					.add("events", un.getNewEventInvitationsCount())
+					.add("notifications", un.getNewNotificationsCount())
+					.build();
 		}catch(SQLException x){
-			LOG.error("Failed to get user notification counters", x);
-			return "";
+			throw new InternalServerErrorException(x);
 		}
+	}
+
+	private String makeCountersWebsocketMessage(Account self){
+		return new JsonObjectBuilder()
+				.add("type", "counters")
+				.add("counters", getUserCounters(self))
+				.build()
+				.toString();
 	}
 
 	public void sendRealtimeCountersUpdates(User user){

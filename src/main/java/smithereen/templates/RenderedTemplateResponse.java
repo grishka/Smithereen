@@ -172,4 +172,8 @@ public class RenderedTemplateResponse{
 		}catch(IOException ignore){}
 		return writer.toString();
 	}
+
+	public Object get(String key){
+		return model.get(key);
+	}
 }

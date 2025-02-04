@@ -266,6 +266,12 @@ class LayerManager{
 		}
 		return false;
 	}
+
+	public dismissEverything(){
+		for(var i=this.stack.length-1;i>=0;i--){
+			this.dismiss(this.stack[i]);
+		}
+	}
 }
 
 abstract class BaseLayer{
@@ -363,6 +369,7 @@ abstract class BaseMediaViewerLayer extends BaseLayer{
 	public dismiss(){
 		super.dismiss();
 		if(this.historyEntryAdded){
+			ignoreNextPopState=true;
 			window.history.back();
 		}
 	}

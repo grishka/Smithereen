@@ -478,6 +478,10 @@ public class Utils{
 		return req.queryParams("_ajax")!=null;
 	}
 
+	public static boolean isAjaxLayout(Request req){
+		return req.queryParams("_al")!=null;
+	}
+
 	public static boolean isMobile(Request req){
 		return req.attribute("mobile")!=null;
 	}

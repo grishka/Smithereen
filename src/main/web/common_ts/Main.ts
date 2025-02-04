@@ -8,6 +8,8 @@ declare var mobile:boolean;
 // Use Cmd instead of Ctrl on Apple devices.
 var isApple:boolean=navigator.platform.indexOf("Mac")==0 || navigator.platform=="iPhone" || navigator.platform=="iPad" || navigator.platform=="iPod touch";
 
+var ignoreNextPopState:boolean=false;
+
 // window.onerror=function(message, source, lineno, colno, error){
 // 	alert("JS error:\n\n"+message);
 // };
@@ -201,10 +203,20 @@ window.addEventListener("beforeunload", (ev)=>{
 });
 
 window.addEventListener("popstate", (ev)=>{
-	if(ev.state && ev.state.layer){
-		if(ev.state.layer=="PhotoViewer"){
-			doOpenPhotoViewer(ev.state.pvInline, ev.state.pvListURL, true);
+	if(ignoreNextPopState){
+		ignoreNextPopState=false;
+		return;
+	}
+	if(ev.state){
+		if(ev.state.layer){
+			if(ev.state.layer=="PhotoViewer"){
+				doOpenPhotoViewer(ev.state.pvInline, ev.state.pvListURL, true);
+			}
+		}else if(ev.state.type=="al"){
+			ajaxNavigate(window.location.href, false);
 		}
+	}else{
+		ajaxNavigate(window.location.href, false);
 	}
 }, false);
 

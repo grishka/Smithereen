@@ -1,5 +1,6 @@
 var submittingForm:HTMLFormElement=null;
 var numberFormatter=window.Intl && Intl.NumberFormat ? new Intl.NumberFormat(userConfig.locale) : null;
+var currentAlXHR:XMLHttpRequest;
 
 function ge<E extends HTMLElement>(id:string):E{
 	return document.getElementById(id) as E;
@@ -567,6 +568,12 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	}
 	if(link.dataset.confirmAction){
 		ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage, link.dataset.confirmAction);
+		return true;
+	}
+
+	var href=link.href;
+	if(!mobile && href && !link.target && !/^javascript:/.test(href) && !link.onclick && new URL(href, location.href).origin==location.origin && !link.dataset.noAl){
+		ajaxNavigate(href, true);
 		return true;
 	}
 	return false;
@@ -1582,5 +1589,59 @@ function initProfileTitleHideOnScroll(){
 		}
 	}, {rootMargin: "-60px 0px 0px 0px"});
 	observer.observe(profileHeader);
+}
+
+function ajaxNavigate(url:string, addToHistory:boolean){
+	if(currentAlXHR)
+		currentAlXHR.abort();
+
+	var xhr=new XMLHttpRequest();
+	xhr.open("GET", addParamsToURL(url, {_al: ""}));
+	setGlobalLoading(true);
+	xhr.onload=(ev)=>{
+		LayerManager.getInstance().dismissEverything();
+		LayerManager.getMediaInstance().dismissEverything();
+		currentAlXHR=null;
+		setGlobalLoading(false);
+		ge("pageContent").innerHTML=xhr.response.h;
+		document.title=xhr.response.t;
+		if(xhr.response.c){
+			setMenuCounters(xhr.response.c);
+		}
+		eval(xhr.response.s);
+		initDynamicControls();
+		if(addToHistory){
+			window.history.pushState({type: "al"}, "", xhr.response.url || url);
+			document.documentElement.scrollTop=0;
+		}
+	};
+	xhr.onerror=(ev)=>{
+		currentAlXHR=null;
+		setGlobalLoading(false);
+		window.location.href=url;
+	};
+	xhr.responseType="json";
+	currentAlXHR=xhr;
+	xhr.send();
+}
+
+function addLang(newKeys:{[key:string]:any}){
+	for(var key in newKeys){
+		langKeys[key]=newKeys[key];
+	}
+}
+
+function setMenuCounters(counters:{[key:string]:number}){
+	for(var key in counters){
+		var counter=ge("menuCounter_"+key);
+		if(!counter)
+			continue;
+		if(counters[key]){
+			ge("menuCounterValue_"+key).innerText=formatNumber(counters[key]);
+			counter.show();
+		}else{
+			counter.hide();
+		}
+	}
 }
 

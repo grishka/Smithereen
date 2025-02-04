@@ -76,7 +76,8 @@
 {%endblock%}
 		</td>
 		<td valign="top">
-			<div class="pageContent">
+			<div class="pageContent" id="pageContent">
+{% block outerContent %}
 				{% if navBarItems is not empty %}
 					<div class="navbar">
 					{%- for item in navBarItems -%}
@@ -99,6 +100,7 @@
 					</div>
 				{% endif %}
 {%block content%}{%endblock%}
+{% endblock %}
 			</div>
 		</td>
 	</tr>
@@ -113,7 +115,7 @@
 {% block extraScripts %}{% endblock %}
 {% if _bottomScripts is not empty %}
 <script>
-{{ _bottomScripts | raw }}
+{% block bottomScripts %}{{ _bottomScripts | raw }}{% endblock %}
 </script>
 {% endif %}
 </body>

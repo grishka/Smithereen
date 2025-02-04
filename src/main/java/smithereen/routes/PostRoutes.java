@@ -338,6 +338,32 @@ public class PostRoutes{
 		ApplicationContext ctx=context(req);
 		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
 		PostViewModel post=new PostViewModel(ctx.getWallController().getPostOrThrow(postID));
+
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone", req);
+		SessionInfo info=Utils.sessionInfo(req);
+		Account self=null;
+		if(info!=null && info.account!=null){
+			self=info.account;
+		}
+
+		if(post.post.repostOf!=0){
+			if(post.post.isMastodonStyleRepost()){
+				if(isAjaxLayout(req)){
+					post=new PostViewModel(ctx.getWallController().getPostOrThrow(post.post.repostOf));
+					req.attribute("alFinalURL", post.post.getInternalURL().toString());
+				}else{
+					resp.redirect("/posts/"+post.post.repostOf);
+					return "";
+				}
+			}else{
+				ctx.getWallController().populateReposts(self!=null ? self.user : null, List.of(post), 10);
+			}
+		}
+		if(post.post.getReplyLevel()>0 && isAjaxLayout(req)){
+			post=new PostViewModel(ctx.getWallController().getPostOrThrow(post.post.replyKey.getFirst()));
+			req.attribute("alFinalURL", post.post.getInternalURL().toString());
+		}
+
 		List<Integer> replyKey=post.post.getReplyKeyForReplies();
 		Actor owner;
 		if(post.post.ownerID<0)
@@ -345,23 +371,8 @@ public class PostRoutes{
 		else
 			owner=ctx.getUsersController().getUserOrThrow(post.post.ownerID);
 
-		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_post_standalone", req);
-		SessionInfo info=Utils.sessionInfo(req);
-		Account self=null;
-		if(info!=null && info.account!=null){
-			model.with("draftAttachments", info.postDraftAttachments);
-			if(owner instanceof Group group && post.post.getReplyLevel()==0){
-				model.with("groupAdminLevel", ctx.getGroupsController().getMemberAdminLevel(group, info.account.user));
-			}
-			self=info.account;
-		}
-
-		if(post.post.repostOf!=0){
-			if(post.post.isMastodonStyleRepost()){
-				resp.redirect("/posts/"+post.post.repostOf);
-				return "";
-			}
-			ctx.getWallController().populateReposts(self!=null ? self.user : null, List.of(post), 10);
+		if(self!=null && owner instanceof Group group && post.post.getReplyLevel()==0){
+			model.with("groupAdminLevel", ctx.getGroupsController().getMemberAdminLevel(group, self.user));
 		}
 
 		User author=ctx.getUsersController().getUserOrThrow(post.post.authorID);

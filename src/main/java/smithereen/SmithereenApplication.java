@@ -1,5 +1,7 @@
 package smithereen;
 
+import com.google.gson.JsonObject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +22,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.HttpSessionEvent;
@@ -76,6 +79,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.MaintenanceScheduler;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.TopLevelDomainList;
@@ -841,7 +845,7 @@ public class SmithereenApplication{
 				long t=(long)l;
 				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
 			}
-			if(req.attribute("isTemplate")!=null && req.attribute("noPreload")==null && !isAjax(req)){
+			if(req.attribute("isTemplate")!=null && req.attribute("noPreload")==null && !isAjax(req) && !isAjaxLayout(req)){
 				String cssName=req.attribute("mobile")!=null ? "mobile.css" : "desktop.css";
 				resp.header("Link", "</res/"+cssName+"?"+Templates.getStaticFileVersion(cssName)+">; rel=preload; as=style, </res/common.js?"+Templates.getStaticFileVersion("common.js")+">; rel=preload; as=script");
 				resp.header("Vary", "User-Agent, Accept-Language");
@@ -891,7 +895,32 @@ public class SmithereenApplication{
 
 		responseTypeSerializer(RenderedTemplateResponse.class, (out, obj, req, resp) -> {
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
-			obj.renderToWriter(writer);
+			if(req.queryParams("_al")!=null && !isMobile(req)){
+				// TODO figure out how to stream these
+				String js=obj.renderBlock("bottomScripts");
+				Set<String> k=req.attribute("jsLang");
+				if(k!=null){
+					Lang l=lang(req);
+					js="addLang({"+k.stream().map(key->"\""+key+"\":"+l.getAsJS(key)).collect(Collectors.joining(","))+"});\n"+js;
+				}
+
+				JsonObjectBuilder alResp=new JsonObjectBuilder()
+						.add("h", obj.renderBlock("outerContent"))
+						.add("s", js)
+						.add("t", (String) obj.get("title"));
+				String redirURL=req.attribute("alFinalURL");
+				if(StringUtils.isNotEmpty(redirURL)){
+					alResp.add("url", redirURL);
+				}
+				SessionInfo info=sessionInfo(req);
+				if(info!=null && info.account!=null){
+					alResp.add("c", context(req).getNotificationsController().getUserCounters(info.account));
+				}
+				resp.header("Content-Type", "application/json");
+				gson.toJson(alResp.build(), writer);
+			}else{
+				obj.renderToWriter(writer);
+			}
 			writer.flush();
 		});
 
