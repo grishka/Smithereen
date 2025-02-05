@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+	<head>
+		<title>{{ errorCode }} | {{ serverName }}</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<style>
+html, body, #content{
+	height: 100%;
+}
+
+body{
+	margin: 0;
+	font-family: Tahoma, Roboto, -apple-system, HelveticaNeue, sans-serif;
+	font-size: 17px;
+	color: #000;
+	background: #FFF;
+}
+
+#content{
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+img{
+	width: 70vw;
+	max-width: 300px;
+}
+
+#text{
+	margin-top: 20px;
+	text-align: center;
+}
+		</style>
+	</head>
+	<body>
+		<div id="content">
+			<img src="/res/error{{ errorCode }}.svg" alt="{{ errorCode }}" width="300" height="180"/>
+			<div id="text">{{ L(errorLangKey) }}</div>
+		</div>
+	</body>
+</html>

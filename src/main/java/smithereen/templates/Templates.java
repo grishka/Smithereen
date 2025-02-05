@@ -181,6 +181,10 @@ public class Templates{
 		return engine.getTemplate(name);
 	}
 
+	public static PebbleTemplate getTemplate(String name){
+		return desktopEngine.getTemplate(name);
+	}
+
 	public static int asInt(Object o){
 		if(o instanceof Integer)
 			return (Integer)o;

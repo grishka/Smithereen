@@ -19,11 +19,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import io.pebbletemplates.pebble.template.PebbleTemplate;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.HttpSessionEvent;
 import jakarta.servlet.http.HttpSessionListener;
@@ -35,6 +39,7 @@ import smithereen.controllers.UsersController;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.InaccessibleProfileException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserContentUnavailableException;
@@ -87,6 +92,7 @@ import spark.Filter;
 import spark.Request;
 import spark.Response;
 import spark.Session;
+import spark.embeddedserver.jetty.HttpRequestWrapper;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.*;
@@ -98,6 +104,8 @@ public class SmithereenApplication{
 	private static final ApplicationContext context;
 	private static HashMap<String, Integer> accountIdsBySession=new HashMap<>();
 	private static HashMap<Integer, Set<HttpSession>> sessionsByAccount=new HashMap<>();
+	private static HashMap<String, String> notFoundPages=new HashMap<>();
+	private static HashMap<String, String> serverErrorPages=new HashMap<>();
 
 	static{
 		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
@@ -148,6 +156,7 @@ public class SmithereenApplication{
 		}
 
 		ActivityPubRoutes.registerActivityHandlers();
+		prerenderErrorPages();
 
 		ipAddress(Config.serverIP);
 		port(Config.serverPort);
@@ -866,6 +875,8 @@ public class SmithereenApplication{
 				}catch(Throwable ignore){}
 			}
 		});
+		notFound((req, resp)->notFoundPages.get(lang(req).getLocale().toLanguageTag()));
+		internalServerError((req, resp)->serverErrorPages.get(lang(req).getLocale().toLanguageTag()));
 
 		awaitInitialization();
 		setupCustomSerializer();
@@ -1077,5 +1088,35 @@ public class SmithereenApplication{
 	public static synchronized void addAccountSession(int accountID, Request req){
 		accountIdsBySession.put(req.session().id(), accountID);
 		sessionsByAccount.computeIfAbsent(accountID, HashSet::new).add(req.session().raw());
+	}
+
+	private static void prerenderErrorPages(){
+		LOG.debug("Pre-rendering error pages");
+		try{
+			PebbleTemplate template=Templates.getTemplate("error_page");
+			for(Lang lang:Lang.list){
+				Locale locale=lang.getLocale();
+
+				StringWriter writer=new StringWriter();
+				template.evaluate(writer, Map.of(
+						"serverName", Config.serverDisplayName,
+						"errorCode", 404,
+						"errorLangKey", "page_not_found",
+						"locale", locale
+				), locale);
+				notFoundPages.put(locale.toLanguageTag(), writer.toString());
+
+				writer=new StringWriter();
+				template.evaluate(writer, Map.of(
+						"serverName", Config.serverDisplayName,
+						"errorCode", 500,
+						"errorLangKey", "internal_server_error",
+						"locale", locale
+				), locale);
+				serverErrorPages.put(locale.toLanguageTag(), writer.toString());
+			}
+		}catch(IOException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 }
