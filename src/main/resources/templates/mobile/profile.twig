@@ -96,9 +96,12 @@
 				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button ellipsize" data-ajax>{{L("follow")}}</a>
 			{%endif%}
 			{% else %}
-				<a href="/users/{{ user.id }}/confirmRemoveFriend" class="button secondary" onclick="return showOptions(this)" data-options="{{ json([
-					{'label': L(isFriend ? 'remove_friend' : 'unfollow').toString(), 'href': "/users/#{user.id}/confirmRemoveFriend", 'type': 'confirm', 'title':  L(isFriend ? 'remove_friend' : 'unfollow').toString(), 'msg': L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}).toString(), 'url': "/users/#{user.id}/doRemoveFriend"}
-				]) }}"><span class="ellipsize">
+				{% block friendButton %}
+				{% set buttonOptions=[{'label': L(isFriend ? 'remove_friend' : 'unfollow').toString(), 'href': "/users/#{user.id}/confirmRemoveFriend", 'type': 'confirm', 'title':  L(isFriend ? 'remove_friend' : 'unfollow').toString(), 'msg': L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}).toString(), 'url': "/users/#{user.id}/doRemoveFriend"}] %}
+				{% if canMute %}
+				{% set _=buttonOptions.add({'label' : L(isMuted ? 'profile_unmute' : 'profile_mute', {'name': user.firstAndGender}).toString(), 'href': "/users/#{user.id}/#{isMuted ? 'unmute' : 'mute'}?csrf=#{csrf}", 'type': 'link', 'ajax': 'box'}) %}
+				{% endif %}
+				<a href="/users/{{ user.id }}/confirmRemoveFriend" class="button secondary" id="profileFriendButton" onclick="return showOptions(this)" data-options="{{ json(buttonOptions) }}"><span class="ellipsize">
 					{% if isFriend %}
 					{{ L('profile_user_is_friend') }}
 					{% elseif friendRequestSent %}
@@ -107,6 +110,7 @@
 					{{ L('profile_user_you_follow') }}
 					{% endif %}
 				</span><span class="arrowIcon"></span></a>
+				{% endblock %}
 			{%endif%}
 		</div>
 	{%endif%}

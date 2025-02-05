@@ -1319,4 +1319,20 @@ public class UserStorage{
 				.whereIn("ban_status", UserBanStatus.SELF_DEACTIVATED, UserBanStatus.SUSPENDED)
 				.executeAndGetIntList());
 	}
+
+	public static boolean isUserMuted(int self, int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("followings")
+				.columns("muted")
+				.where("follower_id=? AND followee_id=?", self, id)
+				.executeAndGetInt()==1;
+	}
+
+	public static void setUserMuted(int self, int id, boolean muted) throws SQLException{
+		new SQLQueryBuilder()
+				.update("followings")
+				.value("muted", muted)
+				.where("follower_id=? AND followee_id=?", self, id)
+				.executeNoResult();
+	}
 }

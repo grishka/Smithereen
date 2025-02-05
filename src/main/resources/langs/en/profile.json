@@ -105,5 +105,9 @@
   "profile_user_is_friend": "Your friend",
   "profile_user_you_follow": "Following",
   "profile_user_friend_request_sent": "Request sent",
-  "profile_user_friend_request_received": "Respond to request"
+  "profile_user_friend_request_received": "Respond to request",
+  "profile_mute": "Hide {name}'s news",
+  "profile_unmute": "Show {name}'s news",
+  "profile_user_muted": "{name}'s news will no longer be shown in your feed",
+  "profile_user_unmuted": "{name}'s news will be shown in your feed"
 }

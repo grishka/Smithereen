@@ -268,6 +268,23 @@ public class FriendsController{
 		}
 	}
 
+	public boolean isUserMuted(User self, User user){
+		try{
+			return UserStorage.isUserMuted(self.id, user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setUserMuted(User self, User user, boolean muted){
+		try{
+			UserStorage.setUserMuted(self.id, user.id, muted);
+			ctx.getNewsfeedController().clearFriendsFeedCache(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public enum SortOrder{
 		ID_ASCENDING,
 		RANDOM

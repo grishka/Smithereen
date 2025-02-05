@@ -103,6 +103,9 @@
 			<li><a href="/users/{{ user.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.dataset.confirm,'/users/{{ user.id }}/doRemoveFriend')" data-confirm="{{ L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
 		{%endif%}
 			<li><a href="/users/{{ user.id }}/{{ isBookmarked ? "removeBookmark" : "addBookmark" }}?csrf={{ csrf }}" id="profileBookmarkButton" data-ajax data-ajax-show="bookmarkLoader"><span id="profileBookmarkButtonText">{{ L(isBookmarked ? 'remove_bookmark' : 'add_bookmark') }}</span> <span class="inlineLoader" id="bookmarkLoader" style="display: none"></span></a></li>
+			{% if canMute %}
+			<li><a href="/users/{{ user.id }}/{{ isMuted ? 'unmute' : 'mute' }}?csrf={{ csrf }}" data-ajax data-ajax-show="muteLoader"><span id="profileMuteButtonText">{{ L(isMuted ? 'profile_unmute' : 'profile_mute', {'name': user.firstAndGender}) }}</span> <span class="inlineLoader" id="muteLoader" style="display: none"></span></a></li>
+			{% endif %}
 			{% if isBlocked %}
 			<li><a href="/users/{{ user.id }}/confirmUnblock" onclick="return ajaxConfirm('unblock', this.dataset.confirm, '/users/{{ user.id }}/unblock')" data-confirm="{{ L('confirm_unblock_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('unblock_user_X', {'name': user.firstAndGender}) }}</a></li>
 			{% else %}

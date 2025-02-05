@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=60;
+	public static final int SCHEMA_VERSION=61;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -852,6 +852,8 @@ public class DatabaseSchemaUpdater{
 						  KEY `group_id` (`group_id`)
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
+			case 61 -> conn.createStatement().execute("ALTER TABLE followings ADD `muted` tinyint(1) NOT NULL DEFAULT '0', ADD `hints_rank` int unsigned NOT NULL DEFAULT '0'," +
+					" ADD `lists` bit(64) NOT NULL DEFAULT b'0', ADD KEY `muted` (`muted`), ADD KEY `hints_rank` (`hints_rank`)");
 		}
 	}
 

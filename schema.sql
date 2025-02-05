@@ -257,10 +257,15 @@ CREATE TABLE `followings` (
   `followee_id` int unsigned NOT NULL,
   `mutual` tinyint(1) NOT NULL DEFAULT '0',
   `accepted` tinyint(1) NOT NULL DEFAULT '1',
+  `muted` tinyint(1) NOT NULL DEFAULT '0',
+  `hints_rank` int unsigned NOT NULL DEFAULT '0',
+  `lists` bit(64) NOT NULL DEFAULT b'0',
   KEY `follower_id` (`follower_id`),
   KEY `followee_id` (`followee_id`),
   KEY `mutual` (`mutual`),
   KEY `accepted` (`accepted`),
+  KEY `muted` (`muted`),
+  KEY `hints_rank` (`hints_rank`),
   CONSTRAINT `followings_ibfk_1` FOREIGN KEY (`follower_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `followings_ibfk_2` FOREIGN KEY (`followee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -952,4 +957,4 @@ CREATE TABLE `wall_posts` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-01-17  6:58:44
+-- Dump completed on 2025-02-05 22:12:41

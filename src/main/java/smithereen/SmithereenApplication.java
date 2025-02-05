@@ -536,6 +536,9 @@ public class SmithereenApplication{
 			get("/allPhotos", PhotosRoutes::allUserPhotos);
 			getActivityPubCollection("/tagged", 100, ActivityPubRoutes::userTaggedPhotos);
 			get("/tagged", PhotosRoutes::userTaggedPhotos);
+
+			getWithCSRF("/mute", ProfileRoutes::muteUser);
+			getWithCSRF("/unmute", ProfileRoutes::unmuteUser);
 		});
 
 		path("/groups/:id", ()->{

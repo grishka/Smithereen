@@ -267,6 +267,10 @@ public class ProfileRoutes{
 				model.with("isBlocked", ctx.getUsersController().isUserBlocked(self.user, user));
 				model.with("isSelfBlocked", ctx.getUsersController().isUserBlocked(user, self.user));
 				model.with("isBookmarked", ctx.getBookmarksController().isUserBookmarked(self.user, user));
+				if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.FOLLOWING){
+					model.with("isMuted", ctx.getFriendsController().isUserMuted(self.user, user))
+							.with("canMute", true);
+				}
 				jsLangKey(req, "block", "unblock", "unfollow", "remove_friend");
 			}
 		}else{
@@ -430,5 +434,32 @@ public class ProfileRoutes{
 			}
 		}
 		return model;
+	}
+
+	public static Object muteUser(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		return setUserMuted(req, resp, info, ctx, true);
+	}
+
+	public static Object unmuteUser(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		return setUserMuted(req, resp, info, ctx, false);
+	}
+
+	private static Object setUserMuted(Request req, Response resp, SessionInfo info, ApplicationContext ctx, boolean muted){
+		User user=getUserOrThrow(req);
+		ctx.getFriendsController().setUserMuted(info.account.user, user, muted);
+		if(isAjax(req)){
+			if(isMobile(req)){
+				RenderedTemplateResponse profile=ProfileRoutes.userProfile(req, resp, user);
+				return new WebDeltaResponse(resp)
+						.setOuterHTML("profileFriendButton", profile.renderBlock("friendButton"))
+						.showSnackbar(lang(req).get(muted ? "profile_user_muted" : "profile_user_unmuted", Map.of("name", user.getFirstAndGender())));
+			}else{
+				return new WebDeltaResponse(resp)
+						.setContent("profileMuteButtonText", lang(req).get(muted ? "profile_unmute" : "profile_mute", Map.of("name", user.getFirstAndGender())))
+						.setAttribute("profileMuteButton", "href", "/users/"+user.id+"/"+(muted ? "unmute" : "mute")+"?csrf="+info.csrfToken);
+			}
+		}
+		resp.redirect(back(req));
+		return "";
 	}
 }

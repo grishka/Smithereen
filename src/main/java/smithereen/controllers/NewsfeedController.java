@@ -248,6 +248,10 @@ public class NewsfeedController{
 		friendsNewsFeedCache.evictAll();
 	}
 
+	public void clearFriendsFeedCache(int userID){
+		friendsNewsFeedCache.evictAll(); // TODO
+	}
+
 	// endregion
 	// region Groups feed
 
