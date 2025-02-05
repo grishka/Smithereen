@@ -713,11 +713,6 @@ public class SmithereenApplication{
 			});
 		});
 
-		get("/robots.txt", (req, resp)->{
-			resp.type("text/plain");
-			return "";
-		});
-
 		path("/my", ()->{
 			getLoggedIn("/incomingFriendRequests", FriendsRoutes::incomingFriendRequests);
 			getLoggedIn("/friends", FriendsRoutes::ownFriends);
