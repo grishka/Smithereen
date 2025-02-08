@@ -361,7 +361,7 @@ public class SystemRoutes{
 
 	public static Object quickSearch(Request req, Response resp, Account self, ApplicationContext ctx){
 		requireQueryParams(req, "q");
-		String query=req.queryParams("q");
+		String query=req.queryParams("q").trim();
 		QuickSearchResults res=ctx.getSearchController().quickSearch(query, self.user);
 		return new RenderedTemplateResponse("quick_search_results", req).with("users", res.users()).with("groups", res.groups()).with("externalObjects", res.externalObjects()).with("avaSize", req.attribute("mobile")!=null ? 48 : 30);
 	}
