@@ -1,6 +1,6 @@
+{% import "forms" as form %}
 {% extends "page" %}
 {% block content %}
-{% import "forms" as form %}
 {% include "admin_tabbar" with {'tab': 'other'} %}
 <div class="singleColumn gray narrowForms">
 	<form action="/settings/admin/updateEmailSettings" method="post" data-ajax>

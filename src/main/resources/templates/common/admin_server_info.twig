@@ -1,6 +1,6 @@
+{% import "forms" as form %}
 {%extends "page"%}
 {%block content%}
-{%import "forms" as form%}
 {%include "admin_tabbar" with {'tab': 'general'}%}
 <div class="singleColumn gray">
 	<form action="/settings/admin/updateServerInfo" method="post" data-ajax>
