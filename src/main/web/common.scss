@@ -999,3 +999,26 @@ small{
 	pointer-events: none;
 }
 
+.wordFilterWord{
+	display: flex;
+	align-items: center;
+	&:not(:last-child){
+		margin-bottom: 5px;
+	}
+	input{
+		flex-grow: 1;
+	}
+	.deleteButton{
+		flex: none;
+		width: 21px;
+		height: 21px;
+		margin-left: 5px;
+		background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
+		opacity: .7;
+		transition: opacity .2s ease;
+		&:hover{
+			opacity: 1;
+		}
+	}
+}
+

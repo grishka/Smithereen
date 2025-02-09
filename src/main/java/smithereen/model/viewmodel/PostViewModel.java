@@ -8,9 +8,11 @@ import java.util.stream.Collectors;
 
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
+import smithereen.model.filtering.WordFilter;
 
 public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
 	public Repost repost;
+	public WordFilter matchedFilter;
 
 	public PostViewModel(Post post){
 		this.post=post;

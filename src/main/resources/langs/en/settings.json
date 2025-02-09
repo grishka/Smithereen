@@ -201,5 +201,21 @@
   "settings_notifications_wall": "Wall posts",
   "settings_notifications_mentions": "Mentions",
   "settings_notifications_photo_tags": "Photo tags",
-  "settings_notifications_group_invites": "Community invitations"
+  "settings_notifications_group_invites": "Community invitations",
+  "settings_summary_X_filters": "You have {count, plural, =0 {no filters} one {# filter} other {# filters}}",
+  "settings_no_filters": "Filters allow you to hide posts containing certain words.\n\nYour filters will appear here.",
+  "settings_create_filter": "Create filter",
+  "settings_filter_name": "Filter name",
+  "settings_filter_expiration": "Expire after",
+  "settings_filter_no_expiration": "Never",
+  "settings_filter_contexts": "Apply in",
+  "settings_filter_friends_feed": "Friends news",
+  "settings_filter_groups_feed": "Groups news",
+  "settings_filter_words": "Words or phrases",
+  "settings_filter_add_word": "Add a word of phrase",
+  "settings_filter_enter_word": "Enter at least one word",
+  "settings_filter_select_contexts": "Select at least one context",
+  "settings_filter_X_words": "{count, plural, one {# word} other {# words}}",
+  "settings_filter_expires": "Expires",
+  "settings_confirm_delete_filter": "Are you sure you want to delete this filter?"
 }

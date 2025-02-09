@@ -92,6 +92,7 @@
   "in_reply_to_name": "{name}",
   "X_days": "{count, plural, one {# day} other {# days}}",
   "X_hours": "{count, plural, one {# hour} other {# hours}}",
+  "X_minutes": "{count, plural, one {# minute} other {# minutes}}",
   "remove_attachment": "Remove attachment",
   "max_attachment_count_exceeded": "You can add no more than {count, plural, one {# attachment} other {# attachments}}.",
   "reminder": "Reminder",

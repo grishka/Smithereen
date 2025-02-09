@@ -331,6 +331,17 @@ public class SmithereenApplication{
 			postWithCSRF("/updateProfileContacts", SettingsRoutes::updateProfileContacts);
 			getLoggedIn("/notifications", SettingsRoutes::notificationsSettings);
 			postWithCSRF("/updateNotifier", SettingsRoutes::updateNotifierSettings);
+			path("/filters", ()->{
+				getLoggedIn("", SettingsRoutes::filters);
+				getLoggedIn("/create", SettingsRoutes::createFilterForm);
+				postWithCSRF("/create", SettingsRoutes::createFilter);
+				path("/:id", ()->{
+					getLoggedIn("/edit", SettingsRoutes::editFilterForm);
+					postWithCSRF("/edit", SettingsRoutes::editFilter);
+					getLoggedIn("/confirmDelete", SettingsRoutes::confirmDeleteFilter);
+					postWithCSRF("/delete", SettingsRoutes::deleteFilter);
+				});
+			});
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);

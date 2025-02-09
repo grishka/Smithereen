@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=61;
+	public static final int SCHEMA_VERSION=62;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -854,6 +854,22 @@ public class DatabaseSchemaUpdater{
 			}
 			case 61 -> conn.createStatement().execute("ALTER TABLE followings ADD `muted` tinyint(1) NOT NULL DEFAULT '0', ADD `hints_rank` int unsigned NOT NULL DEFAULT '0'," +
 					" ADD `lists` bit(64) NOT NULL DEFAULT b'0', ADD KEY `muted` (`muted`), ADD KEY `hints_rank` (`hints_rank`)");
+			case 62 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `word_filters` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `owner_id` int unsigned NOT NULL,
+						  `name` varchar(300) COLLATE utf8mb4_general_ci NOT NULL,
+						  `words` json NOT NULL,
+						  `contexts` bit(32) NOT NULL,
+						  `expires_at` timestamp NULL DEFAULT NULL,
+						  `action` tinyint unsigned NOT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `owner_id` (`owner_id`),
+						  KEY `expires_at` (`expires_at`),
+						  CONSTRAINT `word_filters_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
 		}
 	}
 

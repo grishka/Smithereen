@@ -4521,3 +4521,19 @@ label.largeAccented{
 	}
 }
 
+.feedRow>.filtered{
+	display: none;
+}
+
+.postFilteredToggler{
+	display: none;
+	&:checked{
+		&+.filteredPostNotice{
+			display: none;
+		}
+		&+.filteredPostNotice+.post, &+.filteredPostNotice+.post+.commentsPreviewWrap{
+			display: block;
+		}
+	}
+}
+

@@ -9,18 +9,21 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.Account;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
@@ -31,12 +34,16 @@ import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.filtering.FilterContext;
+import smithereen.model.filtering.WordFilter;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
+import spark.utils.StringUtils;
 
 public class NewsfeedController{
 	private static final Logger LOG=LoggerFactory.getLogger(NewsfeedController.class);
@@ -44,6 +51,7 @@ public class NewsfeedController{
 	private final ApplicationContext context;
 	private final LruCache<FriendsFeedCacheKey, CachedFeed> friendsNewsFeedCache=new LruCache<>(100);
 	private final LruCache<GroupsFeedCacheKey, CachedFeed> groupsNewsFeedCache=new LruCache<>(100);
+	private final LruCache<Integer, List<WordFilter>> userWordFilters=new LruCache<>(100);
 
 	public NewsfeedController(ApplicationContext context){
 		this.context=context;
@@ -435,6 +443,101 @@ public class NewsfeedController{
 			SessionStorage.updatePreferences(self.id, self.prefs);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region Word filters
+
+	public List<WordFilter> getWordFilters(User self, boolean includeExpired){
+		if(!includeExpired){
+			List<WordFilter> filters=userWordFilters.get(self.id);
+			if(filters!=null)
+				return filters;
+		}
+		try{
+			List<WordFilter> filters=NewsfeedStorage.getUserWordFilters(self.id, includeExpired);
+			if(!includeExpired)
+				userWordFilters.put(self.id, filters);
+			return filters;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public WordFilter getWordFilter(User self, int id){
+		try{
+			WordFilter filter=NewsfeedStorage.getWordFilter(self.id, id);
+			if(filter==null)
+				throw new ObjectNotFoundException();
+			return filter;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int createWordFilter(User self, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt){
+		if(words.isEmpty() || contexts.isEmpty())
+			throw new IllegalArgumentException();
+		try{
+			int id=NewsfeedStorage.createWordFilter(self.id, name, words, contexts, expiresAt);
+			userWordFilters.remove(self.id);
+			return id;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateWordFilter(User self, WordFilter filter, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt){
+		if(words.isEmpty() || contexts.isEmpty())
+			throw new IllegalArgumentException();
+		try{
+			NewsfeedStorage.updateWordFilter(self.id, filter.id, name, words, contexts, expiresAt);
+			userWordFilters.remove(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteWordFilter(User self, WordFilter filter){
+		try{
+			NewsfeedStorage.deleteWordFilter(self.id, filter.id);
+			userWordFilters.remove(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void applyFiltersToPosts(User self, FilterContext context, Collection<PostViewModel> posts){
+		List<WordFilter> filters=getWordFilters(self, false);
+		if(filters.isEmpty())
+			return;
+
+		List<WordFilter> filteredFilters=filters.stream().filter(f->f.contexts.contains(context)).toList();
+		if(filteredFilters.isEmpty())
+			return;
+
+		postLoop:
+		for(PostViewModel post:posts){
+			if(StringUtils.isNotEmpty(post.post.text)){
+				for(WordFilter filter:filteredFilters){
+					if(filter.regex.matcher(post.post.text).find()){
+						post.matchedFilter=filter;
+						continue postLoop;
+					}
+				}
+			}
+			if(post.repost!=null){
+				PostViewModel repost=post.repost.post();
+				if(StringUtils.isNotEmpty(repost.post.text)){
+					for(WordFilter filter:filteredFilters){
+						if(filter.regex.matcher(repost.post.text).find()){
+							post.matchedFilter=filter;
+							continue postLoop;
+						}
+					}
+				}
+			}
 		}
 	}
 

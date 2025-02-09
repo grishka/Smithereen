@@ -4,7 +4,13 @@
 {% if postInteractions is not null %}
 {% set interactions=postInteractions[realPost.getIDForInteractions()] %}
 {% endif %}
-<div class="post" id="post{{ realPost.id }}">
+{% if post.matchedFilter is not null %}
+<input type="checkbox" id="postFilteredToggler{{ realPost.id }}" class="postFilteredToggler"/>
+<div class="filteredPostNotice">
+	{{ L('feed_post_filtered', {'filterName': post.matchedFilter.name}, {'show': {'_': 'label', 'for': "postFilteredToggler#{realPost.id}", 'class': 'link', 'tabindex': 0} }) }}
+</div>
+{% endif %}
+<div class="post{{ post.matchedFilter is null ? '' : ' filtered' }}" id="post{{ realPost.id }}">
 	<div class="postHeader">
 		<div class="avaW">
 			<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a', 40) }}</a>

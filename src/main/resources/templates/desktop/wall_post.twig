@@ -4,7 +4,13 @@
 {% if postInteractions is not null %}
 {% set interactions=postInteractions[realPost.getIDForInteractions()] %}
 {% endif %}
-<div class="post{{ standalone ? ' standalone' : '' }}" id="post{{ realPost.id }}">
+{% if post.matchedFilter is not null %}
+<input type="checkbox" id="postFilteredToggler{{ realPost.id }}" class="postFilteredToggler"/>
+<div class="filteredPostNotice">
+	{{ L('feed_post_filtered', {'filterName': post.matchedFilter.name}, {'show': {'_': 'label', 'for': "postFilteredToggler#{realPost.id}", 'class': 'link', 'tabindex': 0} }) }}
+</div>
+{% endif %}
+<div class="post{{ standalone ? ' standalone' : '' }}{{ post.matchedFilter is null ? '' : ' filtered' }}" id="post{{ realPost.id }}">
 	<div class="postAvaWrap">
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a') }}</a>
 	</div>
@@ -70,7 +76,7 @@
 	</div>
 </div>
 {% if not standalone and interactions is not null %}
-<div class="commentsPreviewWrap">
+<div class="commentsPreviewWrap{{ post.matchedFilter is null ? '' : ' filtered' }}">
 {% if realPost.mastodonStyleRepost %}{% set replyCount=post.repost.post.post.replyCount %}{% else %}{% set replyCount=realPost.replyCount %}{% endif %}
 	{% if (commentViewType=='FLAT' ? replyCount : post.totalTopLevelComments)>post.repliesObjects.size %}
 		<a href="{{ realPost.internalURL }}" onclick="return loadOlderComments({{ realPost.id }})" class="loadPrev" id="loadPrevBtn{{ realPost.id }}" data-first-id="{{ post.repliesObjects[0].post.id }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': replyCount-post.loadedRepliesCount}) : L('show_previous_comments') }}</a>

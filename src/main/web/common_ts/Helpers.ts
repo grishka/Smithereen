@@ -1599,10 +1599,14 @@ function ajaxNavigate(url:string, addToHistory:boolean){
 	xhr.open("GET", addParamsToURL(url, {_al: ""}));
 	setGlobalLoading(true);
 	xhr.onload=(ev)=>{
-		LayerManager.getInstance().dismissEverything();
-		LayerManager.getMediaInstance().dismissEverything();
 		currentAlXHR=null;
 		setGlobalLoading(false);
+		if(!xhr.response){
+			window.location.href=url;
+			return;
+		}
+		LayerManager.getInstance().dismissEverything();
+		LayerManager.getMediaInstance().dismissEverything();
 		ge("pageContent").innerHTML=xhr.response.h;
 		document.title=xhr.response.t;
 		if(xhr.response.c){

@@ -955,6 +955,24 @@ CREATE TABLE `wall_posts` (
   CONSTRAINT `wall_posts_ibfk_4` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+--
+-- Table structure for table `word_filters`
+--
+
+CREATE TABLE `word_filters` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `owner_id` int unsigned NOT NULL,
+  `name` varchar(300) NOT NULL,
+  `words` json NOT NULL,
+  `contexts` bit(32) NOT NULL,
+  `expires_at` timestamp NULL DEFAULT NULL,
+  `action` tinyint unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `owner_id` (`owner_id`),
+  KEY `expires_at` (`expires_at`),
+  CONSTRAINT `word_filters_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-02-05 22:12:41
+-- Dump completed on 2025-02-07 13:56:42

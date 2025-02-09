@@ -668,6 +668,12 @@ public class Utils{
 		BitSet.valueOf(serialized).stream().mapToObj(i->consts[i]).forEach(set::add);
 	}
 
+	public static <E extends Enum<E>> EnumSet<E> deserializeEnumSet(Class<E> cls, long serialized){
+		EnumSet<E> set=EnumSet.noneOf(cls);
+		deserializeEnumSet(set, cls, serialized);
+		return set;
+	}
+
 	/**
 	 * Convert a string to an enum value
 	 * @param val

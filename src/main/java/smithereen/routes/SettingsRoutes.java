@@ -9,10 +9,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -22,6 +24,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletException;
@@ -53,6 +56,8 @@ import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
+import smithereen.model.filtering.FilterContext;
+import smithereen.model.filtering.WordFilter;
 import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
@@ -846,6 +851,90 @@ public class SettingsRoutes{
 			return new WebDeltaResponse(resp)
 					.refresh();
 		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object filters(Request req, Response resp, Account self, ApplicationContext ctx){
+		return new RenderedTemplateResponse("settings_filters", req)
+				.with("filters", ctx.getNewsfeedController().getWordFilters(self.user, true))
+				.pageTitle(lang(req).get("feed_filters"));
+	}
+
+	public static Object createFilterForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		return new RenderedTemplateResponse("settings_filter_create", req)
+				.pageTitle(lang(req).get("feed_filters"));
+	}
+
+	public static Object createFilter(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "name", "word", "expire");
+		String name=req.queryParams("name");
+		List<String> words=Arrays.stream(req.queryParamsValues("word"))
+				.map(String::trim)
+				.filter(StringUtils::isNotEmpty)
+				.toList();
+		if(words.isEmpty())
+			throw new BadRequestException();
+		int expire=safeParseInt(req.queryParams("expire"));
+		EnumSet<FilterContext> contexts=Arrays.stream(FilterContext.values())
+				.filter(c->"on".equals(req.queryParams("contexts_"+c)))
+				.collect(Collectors.toCollection(()->EnumSet.noneOf(FilterContext.class)));
+		if(contexts.isEmpty())
+			throw new BadRequestException();
+
+		ctx.getNewsfeedController().createWordFilter(self.user, name, words, contexts, expire!=0 ? Instant.now().plusSeconds(expire) : null);
+
+		return ajaxAwareRedirect(req, resp, "/settings/filters");
+	}
+
+	public static Object editFilterForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		WordFilter filter=ctx.getNewsfeedController().getWordFilter(self.user, safeParseInt(req.params(":id")));
+		return new RenderedTemplateResponse("settings_filter_create", req)
+				.with("filter", filter)
+				.with("contexts", filter.contexts.stream().map(Object::toString).collect(Collectors.toSet()))
+				.pageTitle(lang(req).get("feed_filters"));
+	}
+
+	public static Object editFilter(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "name", "word", "expire");
+
+		String name=req.queryParams("name");
+		List<String> words=Arrays.stream(req.queryParamsValues("word"))
+				.map(String::trim)
+				.filter(StringUtils::isNotEmpty)
+				.toList();
+		if(words.isEmpty())
+			throw new BadRequestException();
+		EnumSet<FilterContext> contexts=Arrays.stream(FilterContext.values())
+				.filter(c->"on".equals(req.queryParams("contexts_"+c)))
+				.collect(Collectors.toCollection(()->EnumSet.noneOf(FilterContext.class)));
+		if(contexts.isEmpty())
+			throw new BadRequestException();
+
+		WordFilter filter=ctx.getNewsfeedController().getWordFilter(self.user, safeParseInt(req.params(":id")));
+		String expireInput=req.queryParams("expire");
+		Instant expire;
+		if(expireInput.equals("unchanged")){
+			expire=filter.expiresAt;
+		}else{
+			int expireInt=safeParseInt(req.queryParams("expire"));
+			expire=expireInt!=0 ? Instant.now().plusSeconds(expireInt) : null;
+		}
+
+		ctx.getNewsfeedController().updateWordFilter(self.user, filter, name, words, contexts, expire);
+		return ajaxAwareRedirect(req, resp, "/settings/filters");
+	}
+
+	public static Object confirmDeleteFilter(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("delete"), l.get("settings_confirm_delete_filter"), "/settings/filters/"+req.params(":id")+"/delete?csrf="+info.csrfToken);
+	}
+
+	public static Object deleteFilter(Request req, Response resp, Account self, ApplicationContext ctx){
+		WordFilter filter=ctx.getNewsfeedController().getWordFilter(self.user, safeParseInt(req.params(":id")));
+		ctx.getNewsfeedController().deleteWordFilter(self.user, filter);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).remove("filter"+filter.id);
 		resp.redirect(back(req));
 		return "";
 	}

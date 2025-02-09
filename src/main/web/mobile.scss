@@ -2499,3 +2499,23 @@ input.searchField{
 	}
 }
 
+.filteredPostNotice{
+	padding: 16px;
+}
+
+.feedRow>.filtered{
+	display: none;
+}
+
+.postFilteredToggler{
+	display: none;
+	&:checked{
+		&+.filteredPostNotice{
+			display: none;
+		}
+		&+.filteredPostNotice+.post{
+			display: block;
+		}
+	}
+}
+

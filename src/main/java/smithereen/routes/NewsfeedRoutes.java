@@ -25,6 +25,7 @@ import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.filtering.FilterContext;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
@@ -36,7 +37,7 @@ import spark.Response;
 import static smithereen.Utils.*;
 
 public class NewsfeedRoutes{
-	private static void prepareFeed(ApplicationContext ctx, Request req, Account self, List<NewsfeedEntry> feed, RenderedTemplateResponse model, boolean needNonPostInteractions){
+	private static void prepareFeed(ApplicationContext ctx, Request req, Account self, List<NewsfeedEntry> feed, RenderedTemplateResponse model, boolean needNonPostInteractions, FilterContext filterContext){
 		Set<Integer> needPosts=new HashSet<>(), needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		for(NewsfeedEntry e:feed){
 			if(e.authorID>0)
@@ -78,6 +79,10 @@ public class NewsfeedRoutes{
 		ctx.getWallController().populateReposts(self.user, feedPosts, 2);
 		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
 			ctx.getWallController().populateCommentPreviews(self.user, feedPosts, self.prefs.commentViewType);
+		}
+
+		if(filterContext!=null){
+			ctx.getNewsfeedController().applyFiltersToPosts(self.user, filterContext, feedPosts);
 		}
 
 		PostViewModel.collectActorIDs(feedPosts, needUsers, needGroups);
@@ -145,7 +150,7 @@ public class NewsfeedRoutes{
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments)
 				.with("feedFilter", filter.stream().map(Object::toString).collect(Collectors.toSet()));
 
-		prepareFeed(ctx, req, self, feed.list, model, false);
+		prepareFeed(ctx, req, self, feed.list, model, false, FilterContext.FRIENDS_FEED);
 
 		return model;
 	}
@@ -184,7 +189,7 @@ public class NewsfeedRoutes{
 				.with("paginationPerPage", 25)
 				.with("feedFilter", filter.stream().map(Object::toString).collect(Collectors.toSet()));
 
-		prepareFeed(ctx, req, self, feed.list, model, true);
+		prepareFeed(ctx, req, self, feed.list, model, true, null);
 
 		return model;
 	}
@@ -225,7 +230,7 @@ public class NewsfeedRoutes{
 				.with("photosList", "groupsFeed")
 				.with("groupedPhotosList", "groupsFeedGrouped");
 
-		prepareFeed(ctx, req, self, feed.list, model, false);
+		prepareFeed(ctx, req, self, feed.list, model, false, FilterContext.GROUPS_FEED);
 
 		return model;
 	}
