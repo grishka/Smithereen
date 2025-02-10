@@ -1607,6 +1607,10 @@ function ajaxNavigate(url:string, addToHistory:boolean){
 		}
 		LayerManager.getInstance().dismissEverything();
 		LayerManager.getMediaInstance().dismissEverything();
+		if(addToHistory){
+			window.history.pushState({type: "al"}, "", xhr.response.url || url);
+			document.documentElement.scrollTop=0;
+		}
 		ge("pageContent").innerHTML=xhr.response.h;
 		document.title=xhr.response.t;
 		if(xhr.response.c){
@@ -1614,10 +1618,6 @@ function ajaxNavigate(url:string, addToHistory:boolean){
 		}
 		eval(xhr.response.s);
 		initDynamicControls();
-		if(addToHistory){
-			window.history.pushState({type: "al"}, "", xhr.response.url || url);
-			document.documentElement.scrollTop=0;
-		}
 	};
 	xhr.onerror=(ev)=>{
 		currentAlXHR=null;

@@ -360,8 +360,9 @@ public class PostRoutes{
 			}
 		}
 		if(post.post.getReplyLevel()>0 && isAjaxLayout(req)){
+			int commentID=post.post.id;
 			post=new PostViewModel(ctx.getWallController().getPostOrThrow(post.post.replyKey.getFirst()));
-			req.attribute("alFinalURL", post.post.getInternalURL().toString());
+			req.attribute("alFinalURL", post.post.getInternalURL().toString()+"#comment"+commentID);
 		}
 
 		List<Integer> replyKey=post.post.getReplyKeyForReplies();
