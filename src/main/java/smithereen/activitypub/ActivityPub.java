@@ -256,7 +256,7 @@ public class ActivityPub{
 				ActivityPubObject obj=ActivityPubObject.parse(converted);
 				if(obj==null)
 					throw new UnsupportedRemoteObjectTypeException("Unsupported object type "+converted.get("type"));
-				if(obj.activityPubID!=null && !obj.activityPubID.getHost().equalsIgnoreCase(uri.getHost()))
+				if(obj.activityPubID!=null && !Utils.uriHostMatches(obj.activityPubID, uri))
 					throw new BadRequestException("Domain in object ID ("+obj.activityPubID+") doesn't match domain in its URI ("+uri+")");
 				return obj;
 			}catch(JLDException|JsonParseException x){
