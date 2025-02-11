@@ -7,6 +7,8 @@
 		<span class="auxText"> | <a href="/settings/filters/create">{{ L('settings_create_filter') }}</a></span>
 	</div>
 </div>
+{% else %}
+<a href="/settings/filters/create" class="fab iconAdd" title="{{ L('settings_create_filter') }}"></a>
 {% endif %}
 <div class="singleColumn">
 {% for filter in filters %}
