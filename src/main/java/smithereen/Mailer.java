@@ -257,7 +257,9 @@ public class Mailer{
 		@Override
 		public void run(){
 			try{
+				LOG.trace("Sending email to {}, subject {}", msg.getAllRecipients(), msg.getSubject());
 				Transport.send(msg);
+				LOG.trace("Sent email to {}", (Object) msg.getAllRecipients());
 			}catch(MessagingException x){
 				LOG.error("Exception while sending an email", x);
 			}
