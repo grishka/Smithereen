@@ -1,6 +1,7 @@
 {
   "email_password_reset_subject": "Restablecer contraseña de {serverName}",
-  "email_password_reset_html_before": "<b>{name}</b>, haga clic en el siguiente botón para restablecer la contraseña de su cuenta en <b>{serverName}</b>. Este enlace es válido durante 24 horas.",
+  "email_password_reset_header": "Restablecimiento de contraseña",
+  "email_password_reset_html_before": "<b>{name}</b>, haga clic en el siguiente botón para restablecer la contraseña de su cuenta en <a href=\"https://{domain}\"><b>{serverName}</b></a>. Este enlace es válido durante 24 horas.",
   "email_password_reset_plain_before": "{name}, vaya a la siguiente dirección para restablecer la contraseña de su cuenta en {serverName}. Este enlace es válido durante 24 horas.",
   "email_password_reset_after": "Si no solicitó un restablecimiento de contraseña, ignore este correo. Su cuenta está segura.",
   "email_test_subject": "Correo de prueba",

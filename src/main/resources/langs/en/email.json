@@ -1,6 +1,7 @@
 {
   "email_password_reset_subject": "{domain} password reset",
-  "email_password_reset_html_before": "<b>{name}</b>, click the button below to reset the password for your account at <b>{serverName}</b>. This link is valid for 24 hours.",
+  "email_password_reset_header": "Password reset",
+  "email_password_reset_html_before": "<b>{name}</b>, click the button below to reset the password for your account at <a href=\"https://{domain}\"><b>{serverName}</b></a>. This link is valid for 24 hours.",
   "email_password_reset_plain_before": "{name}, follow the link below to reset the password for your account at {serverName}. This link is valid for 24 hours.",
   "email_password_reset_after": "If you haven't requested a password request, ignore this email. Your account is safe.",
   "email_test_subject": "Test email",

@@ -22,9 +22,22 @@
 			background-position: 0 -8px;
 		}
 		.button_blue a:active {
-			background: linear-gradient(to top, #607D00 /* $buttonGradientBottom */, #8F9F44 /* $buttonBorderTop */) repeat-x top;
-			border: 1px solid #648900; /* $buttonBorder */
-			position: relative;
+			background:  #607D00; /* $buttonGradientBottom */
+			box-shadow: none;
+		}
+		.button_blue a {
+			border: 1px solid #446B00; /* headerBorderTop */
+			border-radius: 2px;
+			box-shadow: 0 1px 0 #889F3D /*$buttonBorderTop*/ inset, 0 0 0 1px #648900 /*$buttonBorder*/ inset;
+			background: linear-gradient(to top, #607D00 /* $buttonGradientBottom */, #8F9F44 /* $buttonBorderTop */) repeat-x 0 -16px;
+			background-size: 1px 42px;
+			height: 25px;
+			line-height: 23px;
+			padding: 0 14px;
+			color: #FFFFFF;
+			text-shadow: 0 1px 0 #446B00; /* headerBorderTop */
+			text-decoration: none;
+			display: inline-block;
 		}
 	</style>
 </head>

@@ -1,6 +1,7 @@
 {
   "email_password_reset_subject": "Паролата на {domain} е нулирана",
-  "email_password_reset_html_before": "<b>{name}</b>, натиснете бутона отдолу за да нулирате паролата за Вашия акаунта на <b>{serverName}</b>. Този линк е валиден 24 часа.",
+  "email_password_reset_header": "Нулиране на парола",
+  "email_password_reset_html_before": "<b>{name}</b>, натиснете бутона отдолу за да нулирате паролата за Вашия акаунта на <a href=\"https://{domain}\"><b>{serverName}</b></a>. Този линк е валиден 24 часа.",
   "email_password_reset_plain_before": "{name}, натиснете бутона отдолу за да нулирате паролата за Вашия акаунта на {serverName}. Този линк е валиден 24 часа.",
   "email_password_reset_after": "Ако не сте подавали заявка за смяна на паролата, игнорирайте този имейл. Вашият акаунт е в безопасност.",
   "email_test_subject": "Тестов имейл",

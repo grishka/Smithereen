@@ -1,6 +1,7 @@
 {
   "email_password_reset_subject": "{domain} wachtwoord reset",
-  "email_password_reset_html_before": "<b>{name}</b>, klik op de onderstaande knop om het wachtwoord voor uw account opnieuw in te stellen op <b>{serverName}</b>. Deze link is 24 uur geldig.",
+  "email_password_reset_header": "Wachtwoord reset",
+  "email_password_reset_html_before": "<b>{name}</b>, klik op de onderstaande knop om het wachtwoord voor uw account opnieuw in te stellen op <a href=\"https://{domain}\"><b>{serverName}</b></a>. Deze link is 24 uur geldig.",
   "email_password_reset_plain_before": "{name}, volg de onderstaande link om het wachtwoord voor uw account opnieuw in te stellen op {serverName}. Deze link is 24 uur geldig.",
   "email_password_reset_after": "Als u geen wachtwoordverzoek heeft aangevraagd, kunt u deze e-mail negeren. Je account is veilig.",
   "email_test_subject": "Test-e-mail",

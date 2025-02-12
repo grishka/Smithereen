@@ -1,6 +1,7 @@
 {
   "email_password_reset_subject": "{domain} Passwort zurücksetzen",
-  "email_password_reset_html_before": "<b>{name}</b> - klicke auf den folgenden Knopf um das Passwort für Dein Benutzerkonto auf <b>{serverName}</b> zurückzusetzen. Die Verknüpfung ist 24 Stunden lang gültig.",
+  "email_password_reset_header": "Passwort zurücksetzen",
+  "email_password_reset_html_before": "<b>{name}</b> - klicke auf den folgenden Knopf um das Passwort für Dein Benutzerkonto auf <a href=\"https://{domain}\"><b>{serverName}</b></a> zurückzusetzen. Die Verknüpfung ist 24 Stunden lang gültig.",
   "email_password_reset_plain_before": "{name} - rufe die folgende Adresse auf, um das Passwort für Dein Benutzerkonto auf {serverName} zurückzusetzen. Die Verknüpfung ist 24 Stunden lang gültig.",
   "email_password_reset_after": "Falls Du das Zurücksetzen des Passwortes nicht angefordert hast, kannst Du diese E-Mail ignorieren. Dein Benutzerkonto ist sicher.",
   "email_test_subject": "Test E-Mail",
