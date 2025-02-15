@@ -151,10 +151,14 @@ public abstract class Actor extends ActivityPubObject{
 		JsonObject pubkey=new JsonObject();
 		pubkey.addProperty("id", userURL+"#main-key");
 		pubkey.addProperty("owner", userURL);
-		String pkey="-----BEGIN PUBLIC KEY-----\n";
-		pkey+=Base64.getEncoder().encodeToString(publicKey.getEncoded());
-		pkey+="\n-----END PUBLIC KEY-----\n";
-		pubkey.addProperty("publicKeyPem", pkey);
+		StringBuilder pkey=new StringBuilder("-----BEGIN PUBLIC KEY-----\n");
+		String encodedKey=Base64.getEncoder().encodeToString(publicKey.getEncoded());
+		for(int i=0;i<encodedKey.length();i+=64){
+			pkey.append(encodedKey, i, Math.min(encodedKey.length(), i+64));
+			pkey.append('\n');
+		}
+		pkey.append("-----END PUBLIC KEY-----\n");
+		pubkey.addProperty("publicKeyPem", pkey.toString());
 		obj.add("publicKey", pubkey);
 
 		URI wallUrl=getWallURL();
