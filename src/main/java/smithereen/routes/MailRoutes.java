@@ -75,7 +75,7 @@ public class MailRoutes{
 		boolean isOutgoing=msg.senderID==self.user.id;
 		User peer=users.get(isOutgoing ? msg.to.iterator().next() : msg.senderID);
 		model.with("peer", peer);
-		model.pageTitle(lang(req).get(isOutgoing ? "mail_message_title_outgoing" : "mail_message_title_incoming", Map.of("name", peer.getFirstLastAndGender())));
+		model.pageTitle(lang(req).get(isOutgoing ? "mail_message_title_outgoing" : "mail_message_title_incoming", Map.of("name", peer==null ? "DELETED" : peer.getFirstLastAndGender())));
 		if(StringUtils.isNotEmpty(msg.subject)){
 			String subject=msg.subject;
 			if(!subject.toLowerCase().startsWith("re:"))
