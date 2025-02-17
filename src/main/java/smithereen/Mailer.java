@@ -114,10 +114,12 @@ public class Mailer{
 
 		Lang l=getEmailLang(req, self);
 		String link=UriBuilder.local().path("account", "activate").queryParam("key", info.emailConfirmationKey).build().toString();
-		String plaintext=l.get("email_confirmation_body_plain", Map.of("name", self.user.firstName, "serverName", Config.domain))+"\n\n"+link;
-		send(self.email, l.get("email_confirmation_subject", Map.of("domain", Config.domain)), plaintext, "activate_account", Map.of(
+		String plaintext=l.get("email_confirmation_header")+"\n\n"+l.get("email_confirmation_body_plain", Map.of("name", self.user.firstName, "serverName", Config.serverDisplayName))+"\n\n"+link;
+		send(self.email, l.get("email_confirmation_subject", Map.of("serverName", Config.serverDisplayName)), plaintext, "activate_account", Map.of(
 				"name", self.user.firstName,
 				"gender", self.user.gender,
+				"serverName", Config.serverDisplayName,
+				"domain", Config.domain,
 				"confirmationLink", link
 		), l.getLocale());
 	}
