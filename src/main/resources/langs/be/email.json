@@ -19,7 +19,7 @@
   "email_invite_header": "Запрашэнне",
   "email_invite_approved_header": "Запыт ухвалены",
   "email_invite_body_start": "<b>{name}</b>, <a href=\"{inviterLink}\">{inviterName}</a> запрашае вас зарэгістравацца ў дэцэнтралізаванай сацыяльнай сетцы па адрасе <a href=\"https://{domain}\"><b>{serverName}</b></a>.",
-  "email_invite_body_start_approved" : "<b>{name}</b>, ваш запыт на рэгістрацыю на <a href=\"https://{domain}\"><b>{serverName}</b></a> быў ухвалены адміністрацыяй сервера.",
+  "email_invite_body_start_approved": "<b>{name}</b>, ваш запыт на рэгістрацыю на <a href=\"https://{domain}\"><b>{serverName}</b></a> быў ухвалены адміністрацыяй сервера.",
   "email_invite_body_end_html": "Націсніце на кнопку ніжэй, каб зарэгістравацца.",
   "email_invite_body_end_plain": "Перайдзіце па спасылцы ніжэй, каб пачаць рэгістрацыю.",
   "email_invite_subject": "Запрашэнне зарэгістравацца на {serverName}",
