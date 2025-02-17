@@ -727,13 +727,7 @@ public class Utils{
 	}
 
 	public static InetAddress getRequestIP(Request req){
-		String forwardedFor=req.headers("X-Forwarded-For");
-		String ip;
-		if(StringUtils.isNotEmpty(forwardedFor)){
-			ip=forwardedFor.split(",")[0].trim();
-		}else{
-			ip=req.ip();
-		}
+		String ip=req.ip();
 		try{
 			return InetAddress.getByName(ip);
 		}catch(UnknownHostException e){
