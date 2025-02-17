@@ -31,6 +31,6 @@
   "email_account_suspended_body": "<b>{name}</b>, je account op {serverName} is opgeschort wegens het overtreden van de serverregels en zal worden verwijderd <b>{deletionDate}</b>. Je kunt nog steeds je gegevens exporteren, een omleiding instellen en je volgers naar een andere server verplaatsen.",
   "email_confirmation_code": "<b>{name}</b>, gebruik deze code om {action} te bevestigen:",
   "email_confirmation_code_info": "Deel deze code met niemand. Als u er niet om heeft gevraagd, wijzig dan <b>onmiddellijk</b> uw wachtwoord en beëindig eventuele verdachte sessies.",
-  "email_confirmation_code_subject": "{domain}: actiebevestiging",
+  "email_confirmation_code_subject" : "{serverName}: actiebevestiging",
   "email_confirm_action_unfreeze": "het deblokkeren van uw account"
 }

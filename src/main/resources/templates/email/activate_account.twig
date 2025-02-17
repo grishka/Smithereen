@@ -2,7 +2,7 @@
 {% block content %}
 	<h1>{{ L('email_confirmation_header') }}</h1>
 	{{ L('email_confirmation_body_html', {'name': name, 'serverName': serverName, 'domain': domain}) }}
-	<div class="button_blue" style="padding: 20px 0; text-align: center">
+	<div class="button_blue centered_main_block">
 		<a href="{{ confirmationLink }}">{{ L('email_confirmation_body_button') }}</a>
 	</div>
 {% endblock %}

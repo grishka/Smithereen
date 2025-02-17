@@ -31,6 +31,6 @@
   "email_account_suspended_body": "<b>{name}</b>, ваша старонка на {serverName} была заблакавана адміністрацыяй за парушэнне правілаў сервера і будзе выдалена <b>{deletionDate}</b>. Вы ўсё яшчэ можаце выгрузіць свае дадзеныя, наладзіць перанакіраванне і перанесці падпісчыкаў на іншы сервер.",
   "email_confirmation_code": "<b>{name}</b>, выкарыстоўвайце гэты код для пацверджання {action}:",
   "email_confirmation_code_info": "Нікому не паведамляйце гэты код. Калі вы яго не запытвалі, <b>тэрмінова</b> зменіце пароль і завершыце любыя падазроныя сеансы.",
-  "email_confirmation_code_subject": "{domain}: пацвярджэнне дзеяння",
+  "email_confirmation_code_subject" : "{serverName}: пацвярджэнне дзеяння",
   "email_confirm_action_unfreeze": "размарозкі вашай старонкі"
 }

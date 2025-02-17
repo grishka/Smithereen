@@ -31,6 +31,6 @@
   "email_account_suspended_body": "<b>{name}</b>, Dein Konto auf {serverName} wurde wegen der Verletzung von Serverregeln gesperrt und wird gelöscht am <b>{deletionDate}</b>. Du kannst immer noch Deine Daten sichern, eine Umleitung setzen und Deine Dir folgenden Benutzer auf einen anderen Server umziehen.",
   "email_confirmation_code": "<b>{name}</b>, benutze diesen Code um {action} zu bestätigen:",
   "email_confirmation_code_info": "Teile diesen Code mit Niemandem.. Wenn Du ihn nicht beantragt hast, ändere <b>sofort</b> Dein Passwort und beende jegliche verdächtige Sitzungen.",
-  "email_confirmation_code_subject": "{domain}: Bestätige Aktion",
+  "email_confirmation_code_subject" : "{serverName}: Bestätige Aktion",
   "email_confirm_action_unfreeze": "Entsperre Dein Konto"
 }

@@ -216,8 +216,9 @@ public class Mailer{
 	public void sendActionConfirmationCode(Request req, Account self, String action, String code){
 		LOG.trace("Sending code {} for action {}", code, action);
 		Lang l=getEmailLang(req, self);
-		String plaintext=TextProcessor.stripHTML(l.get("email_confirmation_code", Map.of("name", self.user.firstName, "action", action)), true)+"\n\n"+code+"\n\n"+TextProcessor.stripHTML(l.get("email_confirmation_code_info"), true);
-		String subject=l.get("email_confirmation_code_subject", Map.of("domain", Config.domain));
+		String plaintext=l.get("email_confirmation_code_header")+"\n\n";
+		plaintext+=TextProcessor.stripHTML(l.get("email_confirmation_code", Map.of("name", self.user.firstName, "action", action)), true)+"\n\n"+code+"\n\n"+TextProcessor.stripHTML(l.get("email_confirmation_code_info"), true);
+		String subject=l.get("email_confirmation_code_subject", Map.of("serverName", Config.serverDisplayName));
 		send(self.email, subject, plaintext, "confirmation_code", Map.of("name", self.user.firstName, "action", action, "code", code), l.getLocale());
 	}
 
