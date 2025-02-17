@@ -144,5 +144,6 @@
   "group_you_are_member": "Вы вступили",
   "group_join_request_sent": "Заявка отправлена",
   "event_you_are_member": "Вы пойдёте",
-  "event_you_are_tentative_member": "Вы не уверены"
+  "event_you_are_tentative_member": "Вы не уверены",
+  "group_invite_unsupported": "Вы не можете приглашать этого пользователя в группы и на встречи, так как его сервер не поддерживает эту возможность."
 }

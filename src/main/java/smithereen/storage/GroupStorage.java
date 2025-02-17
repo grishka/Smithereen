@@ -51,6 +51,7 @@ import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.IntPair;
+import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
 import smithereen.util.NamedMutexCollection;
 import spark.utils.StringUtils;
@@ -947,12 +948,12 @@ public class GroupStorage{
 		return ids.stream().map(i->new GroupInvitation(groups.get(i.first()), users.get(i.second()))).collect(Collectors.toList());
 	}
 
-	public static URI getInvitationApID(int userID, int groupID) throws SQLException{
+	public static Pair<Integer, URI> getInvitationInviterAndApID(int userID, int groupID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("group_invites")
-				.columns("ap_id")
+				.columns("inviter_id", "ap_id")
 				.where("invitee_id=? AND group_id=?", userID, groupID)
-				.executeAndGetSingleObject(r->r.getString(1)==null ? null : URI.create(r.getString(1)));
+				.executeAndGetSingleObject(r->new Pair<>(r.getInt(1), r.getString(2)==null ? null : URI.create(r.getString(2))));
 	}
 
 	public static int deleteInvitation(int userID, int groupID, boolean isEvent) throws SQLException{

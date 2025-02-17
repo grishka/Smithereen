@@ -48,6 +48,7 @@ import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NotificationsStorage;
+import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
@@ -433,6 +434,8 @@ public class GroupsController{
 
 	public void inviteUserToGroup(@NotNull User self, @NotNull User who, @NotNull Group group){
 		try{
+			if(who instanceof ForeignUser && who.getGroupsURL()==null)
+				throw new UserErrorException("group_invite_unsupported");
 			// This also takes care of checking whether anyone has blocked anyone
 			// Two users can't be friends if one blocked the other
 			if(context.getFriendsController().getFriendshipStatus(self, who)!=FriendshipStatus.FRIENDS)
@@ -488,10 +491,10 @@ public class GroupsController{
 
 	public void declineInvitation(@NotNull User self, @NotNull Group group){
 		try{
-			URI apID=GroupStorage.getInvitationApID(self.id, group.id);
+			Pair<Integer, URI> apID=GroupStorage.getInvitationInviterAndApID(self.id, group.id);
 			int localID=GroupStorage.deleteInvitation(self.id, group.id, group.isEvent());
-			if(localID>0 && group instanceof ForeignGroup fg && apID!=null){
-				context.getActivityPubWorker().sendRejectGroupInvite(self, fg, localID, apID);
+			if(localID>0 && group instanceof ForeignGroup fg && apID.second()!=null){
+				context.getActivityPubWorker().sendRejectGroupInvite(self, fg, localID, context.getUsersController().getUserOrThrow(apID.first()), apID.second());
 			}
 			context.getNotificationsController().sendRealtimeCountersUpdates(self);
 		}catch(SQLException x){
@@ -586,15 +589,16 @@ public class GroupsController{
 	public void cancelInvitation(@NotNull User self, @NotNull Group group, @NotNull User user){
 		enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
 		try{
-			URI apID=GroupStorage.getInvitationApID(user.id, group.id);
+			Pair<Integer, URI> inviterAndID=GroupStorage.getInvitationInviterAndApID(user.id, group.id);
 			int id=GroupStorage.deleteInvitation(user.id, group.id, group.isEvent());
 			if(id<0)
 				throw new BadRequestException("This user was not invited to this group");
 			if(user instanceof ForeignUser fu){
+				URI apID=inviterAndID.second();
 				if(apID==null){
 					apID=Config.localURI("/activitypub/objects/groupInvites/"+id);
 				}
-				context.getActivityPubWorker().sendUndoGroupInvite(fu, group, id, apID);
+				context.getActivityPubWorker().sendUndoGroupInvite(fu, group, id, context.getUsersController().getUserOrThrow(inviterAndID.first()), apID);
 			}else{
 				context.getNotificationsController().sendRealtimeCountersUpdates(user);
 			}

@@ -564,12 +564,12 @@ public class ActivityPubWorker{
 		}
 	}
 
-	public void sendRejectGroupInvite(User self, ForeignGroup group, int invitationLocalID, URI invitationID){
-		Invite invite=new Invite();
+	public void sendRejectGroupInvite(User self, ForeignGroup group, int invitationLocalID, User inviter, URI invitationID){
+		Invite invite=new Invite()
+				.withActorAndObjectLinks(inviter, group);
 		invite.activityPubID=invitationID;
 		invite.to=List.of(new LinkOrObject(self.activityPubID));
 		invite.cc=List.of(new LinkOrObject(group.activityPubID));
-		invite.object=new LinkOrObject(group.activityPubID);
 
 		Reject reject=new Reject()
 				.withActorLinkAndObject(self, invite)
@@ -588,12 +588,12 @@ public class ActivityPubWorker{
 		submitActivity(reject, group, user.inbox);
 	}
 
-	public void sendUndoGroupInvite(ForeignUser user, Group group, int invitationLocalID, URI invitationID){
-		Invite invite=new Invite();
+	public void sendUndoGroupInvite(ForeignUser user, Group group, int invitationLocalID, User inviter, URI invitationID){
+		Invite invite=new Invite()
+				.withActorAndObjectLinks(inviter, group);
 		invite.activityPubID=invitationID;
 		invite.to=List.of(new LinkOrObject(user.activityPubID));
 		invite.cc=List.of(new LinkOrObject(group.activityPubID));
-		invite.object=new LinkOrObject(group.activityPubID);
 
 		Undo undo=new Undo()
 				.withActorLinkAndObject(group, invite)

@@ -144,5 +144,6 @@
   "group_you_are_member": "You've joined",
   "group_join_request_sent": "Request sent",
   "event_you_are_member": "You will attend",
-  "event_you_are_tentative_member": "You aren't sure"
+  "event_you_are_tentative_member": "You aren't sure",
+  "group_invite_unsupported": "You can not invite this user to groups or events because their server does not support this."
 }
