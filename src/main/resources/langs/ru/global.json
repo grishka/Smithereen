@@ -88,7 +88,6 @@
   "in_reply_to_name": "{name, inflect, dative}",
   "X_days": "{count, plural, one {# день} few {# дня} other {# дней}}",
   "X_hours": "{count, plural, one {# час} few {# часа} other {# часов}}",
-  "X_minutes": "{count, plural, one {# минута} few {# минуты} other {# минут}}",
   "remove_attachment": "Не прикреплять",
   "max_attachment_count_exceeded": "Вы можете добавить не более {count, plural, one {# вложения} few {# вложений} other {# вложений}}.",
   "reminder": "Напоминание",
