@@ -22,9 +22,22 @@
 			background-position: 0 -8px;
 		}
 		.button_blue a:active {
-			background: linear-gradient(to top, #607D00 /* $buttonGradientBottom */, #8F9F44 /* $buttonBorderTop */) repeat-x top;
-			border: 1px solid #648900; /* $buttonBorder */
-			position: relative;
+			background:  #607D00; /* $buttonGradientBottom */
+			box-shadow: none;
+		}
+		.button_blue a {
+			border: 1px solid #446B00; /* headerBorderTop */
+			border-radius: 2px;
+			box-shadow: 0 1px 0 #889F3D /*$buttonBorderTop*/ inset, 0 0 0 1px #648900 /*$buttonBorder*/ inset;
+			background: linear-gradient(to top, #607D00 /* $buttonGradientBottom */, #8F9F44 /* $buttonBorderTop */) repeat-x 0 -16px;
+			background-size: 1px 42px;
+			height: 25px;
+			line-height: 23px;
+			padding: 0 14px;
+			color: #FFFFFF;
+			text-shadow: 0 1px 0 #446B00; /* headerBorderTop */
+			text-decoration: none;
+			display: inline-block;
 		}
 	</style>
 </head>
@@ -37,7 +50,7 @@
 				<tr>
 					<td style="background: linear-gradient(to top, #698600 /* $headerGradientBottom */, #4C6E00 /* $headerGradientTop */), repeat-x top;">
 						<a href="https://{{ domain }}" style="color:#FFFFFF;font-size:14px;font-weight:bold;height:43px;line-height:43px;max-height:43px;text-decoration:none">
-							<img src="https://{{ domain }}/res/desktop_logo_v1.svg" alt="Smithereen" height="28" width="27" border="0" style="vertical-align:middle;margin:0 8px 0 8px"/>
+							<img src="https://{{ domain }}/res/email_logo.png" alt="Smithereen" height="28" width="27" border="0" style="vertical-align:middle;margin:0 8px 0 8px"/>
 							{{ serverName }}
 						</a>
 					</td>

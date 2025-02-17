@@ -1,6 +1,7 @@
 {
   "email_password_reset_subject": "Скід пароля на {domain}",
-  "email_password_reset_html_before": "<b>{name}</b>, націсніце на кнопку ніжэй, каб скінуць пароль ад сваей старонкі на <b>{serverName}</b>. Спасылка дзейнічае 24 гадзіны.",
+  "email_password_reset_header": "Скід пароля",
+  "email_password_reset_html_before": "<b>{name}</b>, націсніце на кнопку ніжэй, каб скінуць пароль ад сваей старонкі на <a href=\"https://{domain}\"><b>{serverName}</b></a>. Спасылка дзейнічае 24 гадзіны.",
   "email_password_reset_plain_before": "{name}, перайдзіце па адрасе ніжэй, каб скінуць пароль ад сваей старонкі на {serverName}. Спасылка дзейнічае 24 гадзіны.",
   "email_password_reset_after": "Калі вы не запытвалі скід пароля, праігнаруйце гэты ліст. Ваша старонка ў бяспецы.",
   "email_test_subject": "Пыщ-пыщ, тэст!",

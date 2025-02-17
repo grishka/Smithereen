@@ -1,8 +1,5 @@
 package smithereen;
 
-import io.pebbletemplates.pebble.PebbleEngine;
-import io.pebbletemplates.pebble.template.PebbleTemplate;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,14 +24,16 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
-import smithereen.model.Account;
-import smithereen.text.TextProcessor;
-import smithereen.util.UriBuilder;
+import io.pebbletemplates.pebble.PebbleEngine;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 import smithereen.lang.Lang;
+import smithereen.model.Account;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.templates.Templates;
+import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.UriBuilder;
 import spark.Request;
 import spark.utils.StringUtils;
 
@@ -78,10 +77,18 @@ public class Mailer{
 		}
 	}
 
+	private static Lang getEmailLang(Request req, Account account){
+		if(account!=null && account.prefs!=null && account.prefs.locale!=null){
+			return Lang.get(account.prefs.locale);
+		}else{
+			return Utils.lang(req);
+		}
+	}
+
 	public void sendPasswordReset(Request req, Account account, String code){
-		Lang l=Utils.lang(req);
+		Lang l=getEmailLang(req, account);
 		String link=UriBuilder.local().appendPath("account").appendPath("actuallyResetPassword").queryParam("code", code).build().toString();
-		String plaintext=l.get("email_password_reset_plain_before", Map.of("name", account.user.firstName, "serverName", Config.domain))+"\n\n"+link+"\n\n"+l.get("email_password_reset_after");
+		String plaintext=l.get("email_password_reset_header")+"\n\n"+l.get("email_password_reset_plain_before", Map.of("name", account.user.firstName, "serverName", Config.serverDisplayName, "domain", Config.domain))+"\n\n"+link+"\n\n"+l.get("email_password_reset_after");
 		send(account.email, l.get("email_password_reset_subject", Map.of("domain", Config.domain)), plaintext, "reset_password", Map.of(
 				"domain", Config.domain,
 				"serverName", Config.serverDisplayName,
@@ -92,7 +99,7 @@ public class Mailer{
 	}
 
 	public void sendTest(Request req, String to, Account self){
-		Lang l=Utils.lang(req);
+		Lang l=getEmailLang(req, self);
 		send(to, l.get("email_test_subject"), l.get("email_test"), "test", Map.of("gender", self.user.gender), l.getLocale());
 	}
 
@@ -105,7 +112,7 @@ public class Mailer{
 		if(info.emailConfirmationKey==null)
 			throw new IllegalArgumentException("No email confirmation key");
 
-		Lang l=Utils.lang(req);
+		Lang l=getEmailLang(req, self);
 		String link=UriBuilder.local().path("account", "activate").queryParam("key", info.emailConfirmationKey).build().toString();
 		String plaintext=l.get("email_confirmation_body_plain", Map.of("name", self.user.firstName, "serverName", Config.domain))+"\n\n"+link;
 		send(self.email, l.get("email_confirmation_subject", Map.of("domain", Config.domain)), plaintext, "activate_account", Map.of(
@@ -124,7 +131,7 @@ public class Mailer{
 		if(info.emailConfirmationKey==null)
 			throw new IllegalArgumentException("No email confirmation key");
 
-		Lang l=Utils.lang(req);
+		Lang l=getEmailLang(req, self);
 		String link=UriBuilder.local().path("account", "activate").queryParam("key", info.emailConfirmationKey).build().toString();
 		String plaintext=l.get("email_change_new_body_plain", Map.of("name", self.user.firstName, "serverName", Config.domain, "newAddress", self.getUnconfirmedEmail(), "oldAddress", self.email))+"\n\n"+link;
 		send(self.getUnconfirmedEmail(), l.get("email_change_new_subject", Map.of("domain", Config.domain)), plaintext, "update_email_new", Map.of(
@@ -145,7 +152,7 @@ public class Mailer{
 		if(info.emailConfirmationKey==null)
 			throw new IllegalArgumentException("No email confirmation key");
 
-		Lang l=Utils.lang(req);
+		Lang l=getEmailLang(req, self);
 		String plaintext=l.get("email_change_old_body", Map.of("name", self.user.firstName, "serverName", Config.domain));
 		send(self.email, l.get("email_change_old_subject", Map.of("domain", Config.domain)), plaintext, "update_email_old", Map.of(
 				"name", self.user.firstName,
@@ -155,7 +162,7 @@ public class Mailer{
 	}
 
 	public void sendSignupInvitation(Request req, Account self, String email, String code, String firstName, boolean isRequest){
-		Lang l=Utils.lang(req);
+		Lang l=getEmailLang(req, self);
 		String link=UriBuilder.local().path("account", "register").queryParam("invite", code).build().toString();
 		String plaintext=TextProcessor.stripHTML(l.get(isRequest ? "email_invite_body_start_approved" : "email_invite_body_start", Map.of(
 				"name", firstName,
@@ -203,7 +210,7 @@ public class Mailer{
 
 	public void sendActionConfirmationCode(Request req, Account self, String action, String code){
 		LOG.trace("Sending code {} for action {}", code, action);
-		Lang l=Utils.lang(req);
+		Lang l=getEmailLang(req, self);
 		String plaintext=TextProcessor.stripHTML(l.get("email_confirmation_code", Map.of("name", self.user.firstName, "action", action)), true)+"\n\n"+code+"\n\n"+TextProcessor.stripHTML(l.get("email_confirmation_code_info"), true);
 		String subject=l.get("email_confirmation_code_subject", Map.of("domain", Config.domain));
 		send(self.email, subject, plaintext, "confirmation_code", Map.of("name", self.user.firstName, "action", action, "code", code), l.getLocale());

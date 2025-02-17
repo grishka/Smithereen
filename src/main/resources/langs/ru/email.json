@@ -1,6 +1,7 @@
 {
   "email_password_reset_subject": "Сброс пароля на {domain}",
-  "email_password_reset_html_before": "<b>{name}</b>, нажмите на кнопку ниже, чтобы сбросить пароль от своего аккаунта на <b>{serverName}</b>. Ссылка действует 24 часа.",
+  "email_password_reset_header": "Сброс пароля",
+  "email_password_reset_html_before": "<b>{name}</b>, нажмите на кнопку ниже, чтобы сбросить пароль от своего аккаунта на <a href=\"https://{domain}\"><b>{serverName}</b></a>. Ссылка действует 24 часа.",
   "email_password_reset_plain_before": "{name}, перейдите по адресу ниже, чтобы сбросить пароль от своего аккаунта на {serverName}. Ссылка действует 24 часа.",
   "email_password_reset_after": "Если вы не запрашивали сброс пароля, проигнорируйте это письмо. Ваш аккаунт в безопасности.",
   "email_test_subject": "Тестовое письмо",
