@@ -537,6 +537,8 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 }
 
 function ajaxFollowLink(link:HTMLAnchorElement):boolean{
+	if(event && (event instanceof MouseEvent || event instanceof KeyboardEvent) && (event.altKey || event.ctrlKey || event.shiftKey || event.metaKey))
+		return false;
 	if(link.dataset.ajax!=undefined){
 		var elToHide:HTMLElement;
 		var elToShow:HTMLElement;

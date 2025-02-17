@@ -63,6 +63,8 @@ class PostLayer extends BaseMediaViewerLayer{
 }
 
 function openPostLayer(id:string, commentID:string=null, fromPopState:boolean=false):boolean{
+	if(event && (event instanceof MouseEvent || event instanceof KeyboardEvent) && (event.altKey || event.ctrlKey || event.shiftKey || event.metaKey))
+		return true;
 	LayerManager.getInstance().showBoxLoader();
 	ajaxGet("/posts/"+id+"?ajaxLayer", (r)=>{
 		if(r[0]=='['){
