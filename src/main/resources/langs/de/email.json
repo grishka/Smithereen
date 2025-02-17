@@ -19,7 +19,7 @@
   "email_invite_header": "Einladung",
   "email_invite_approved_header": "Beitrittsanfrage genehmigt",
   "email_invite_body_start": "<b>{name}</b>, <a href=\"{inviterLink}\">{inviterName}</a> hat Dich eingeladen, um dem dezentralen Sozialen Medien Server\n<a href=\"https://{domain}\"><b>{serverName}</b></a> beizutreten.",
-  "email_invite_body_start_approved": "<b>{name}</b>, Deine Beitrittsanfrage zu <a href=\"https://{domain}\"><b>{serverName}</b></a> wurde von den Serververwaltern genehmigt.",
+  "email_invite_body_start_approved" : "<b>{name}</b>, Deine Beitrittsanfrage zu <a href=\"https://{domain}\"><b>{serverName}</b></a> wurde von den Serververwaltern genehmigt.",
   "email_invite_body_end_html": "Klicke auf den Knopf hierunter, um Dich zu registrieren.",
   "email_invite_body_end_plain": "Folge der Verknüpfung hierunter, um mit der Registration zu beginnen.",
   "email_invite_subject": "Einladung um {serverName} beizutreten",

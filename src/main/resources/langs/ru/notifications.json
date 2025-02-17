@@ -17,6 +17,7 @@
   "summary_notifications": "Показаны последние уведомления",
   "notification_liked_photo": "{gender, select, female {оценила} other {оценил}} вашу <a id=\"photo\">фотографию</a>",
   "notification_commented_on_photo": "{gender, select, female {прокомментировала} other {прокомментировал}} вашу <a id=\"photo\">фотографию</a>",
+
   "notification_title_reply": "Новый ответ",
   "notification_title_comment": "Новый комментарий",
   "notification_title_like_post": "Ваша запись понравилась",
@@ -35,6 +36,7 @@
   "notification_title_event_invite": "Новое приглашение на встречу",
   "notification_title_group_request_accepted": "Заявка в группу принята",
   "notification_title_photo_tag": "Новая отметка на фото",
+
   "notification_content_like_post": "<a id=\"actor\">{name, inflect, dative}</a> понравилась ваша запись \"{text}\"",
   "notification_content_like_post_comment": "<a id=\"actor\">{name, inflect, dative}</a> понравился ваш комментарий \"{text}\" к записи \"{parentText}\"",
   "notification_content_like_photo": "<a id=\"actor\">{name, inflect, dative}</a> понравилась ваша фотография",

@@ -19,7 +19,7 @@
   "email_invite_header": "Uitnodiging",
   "email_invite_approved_header": "Verzoek goedgekeurd",
   "email_invite_body_start": "<b>{name}</b>, <a href=\"{inviterLink}\">{inviterName}</a> heeft je uitgenodigd om lid te worden van een gedecentraliseerde sociale-mediaserver <a href=\"https://{domain}\"><b>{serverName}</b></a>.",
-  "email_invite_body_start_approved": "<b>{name}</b>, je verzoek om lid te worden van <a href=\"https://{domain}\"><b>{serverName}</b></a> is goedgekeurd door het serverpersoneel.",
+  "email_invite_body_start_approved" : "<b>{name}</b>, je verzoek om lid te worden van <a href=\"https://{domain}\"><b>{serverName}</b></a> is goedgekeurd door het serverpersoneel.",
   "email_invite_body_end_html": "Klik op onderstaande knop om u aan te melden.",
   "email_invite_body_end_plain": "Volg de onderstaande link om de registratie te starten.",
   "email_invite_subject": "Uitnodiging om lid te worden van {serverName}",
