@@ -19,7 +19,7 @@
   "email_invite_header": "Покана",
   "email_invite_approved_header": "Заявката е одобрена",
   "email_invite_body_start": "<b>{name}</b>, <a href=\"{inviterLink}\">{inviterName}</a> Ви покани да се присъедините към сървъра на децентрализирана социална мрежа <a href=\"https://{domain}\"><b>{serverName}</b></a>.",
-  "email_invite_body_start_approved" : "<b>{name}</b>, Вашата заявка за присъединяване към <a href=\"https://{domain}\"><b>{serverName}</b></a> бе одобрена от администрацията на сървъра.",
+  "email_invite_body_start_approved": "<b>{name}</b>, Вашата заявка за присъединяване към <a href=\"https://{domain}\"><b>{serverName}</b></a> бе одобрена от администрацията на сървъра.",
   "email_invite_body_end_html": "Натиснете бутона отдолу за да се регистрирате.",
   "email_invite_body_end_plain": "Последвайте линка отдолу за да започнете регистрациата.",
   "email_invite_subject": "Покана за присъединяване към {serverName}",
