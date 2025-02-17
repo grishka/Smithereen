@@ -415,14 +415,27 @@ public class NotificationsController{
 				Map<String, String> extraAttrs=null;
 				RealtimeNotification.ImageURLs extraImage;
 				if(relatedObject==null || relatedObject instanceof PostLikeObject){
-					if(object instanceof PostLikeObject post && post.attachments!=null && !post.attachments.isEmpty()){
-						Attachment att=post.getProcessedAttachments().getFirst();
-						if(att instanceof PhotoAttachment pa){
-							String jpeg=pa.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.JPEG).toString();
-							String webp=pa.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.WEBP).toString();
-							extraImage=new RealtimeNotification.ImageURLs(jpeg, webp, jpeg, webp);
+					if(object instanceof PostLikeObject post){
+						if(post.attachments!=null && !post.attachments.isEmpty()){
+							Attachment att=post.getProcessedAttachments().getFirst();
+							if(att instanceof PhotoAttachment pa){
+								String jpeg=pa.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.JPEG).toString();
+								String webp=pa.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_SMALL, SizedImage.Format.WEBP).toString();
+								extraImage=new RealtimeNotification.ImageURLs(jpeg, webp, jpeg, webp);
+							}else{
+								extraImage=null;
+							}
 						}else{
 							extraImage=null;
+						}
+						if(post.getReplyLevel()>0 && relatedObject instanceof Post parentPost){
+							extraAttrs=Map.of(
+									"onclick", "return openPostLayer('"+parentPost.id+"', '"+post.getObjectID()+"')"
+							);
+						}else{
+							extraAttrs=Map.of(
+									"onclick", "return openPostLayer('"+post.getObjectID()+"')"
+							);
 						}
 					}else if(object instanceof Group group){
 						SizedImage groupAva=group.getAvatar();

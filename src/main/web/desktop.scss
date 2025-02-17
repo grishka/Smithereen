@@ -37,7 +37,7 @@ $mediumPadding: 10px;
 	}
 }
 
-body, p, textarea, input, select, button{
+body, textarea, input, select, button{
 	font-family: Tahoma, Helvetica, Arial, Roboto, sans-serif;
 	font-size: 11px;
 }
@@ -1657,6 +1657,7 @@ select, .comboBoxW input{
 .popover{
 	position: fixed;
 	font-size: 11px;
+	line-height: 11px;
 	z-index: 5;
 	.popoverHeader{
 		background: $simpleButton;
@@ -4534,6 +4535,184 @@ label.largeAccented{
 		&+.filteredPostNotice+.post, &+.filteredPostNotice+.post+.commentsPreviewWrap{
 			display: block;
 		}
+	}
+}
+
+.postLayer{
+	margin: 10px 0 50px;
+	width: 653px;
+	flex: none;
+}
+
+.postLayerHeader{
+	background-color: #EEE;
+	padding: 12px 23px 12px;
+	border-radius: 2px 2px 0 0;
+	.postAuthorAva{
+		margin-right: 15px;
+	}
+	.postAuthor{
+		padding: 6px 0 5px;
+		a{
+			font-size: 15.4px;
+			font-weight: bold;
+			line-height: 18px;
+			color: $text;
+		}
+	}
+	.time{
+		color: #777;
+		font-size: 12px;
+	}
+	.closeBtn{
+		margin: 5px -3px 0 0;
+	}
+}
+
+.postLayerPost{
+	padding: 10px 23px 10px;
+	display: block;
+	border: none;
+	margin: 0;
+	.postContent{
+		padding: 6px 0 3px;
+	}
+	.postContent{
+		font-family: Georgia, "Times New Roman", Times, serif;
+		font-size: 16px;
+		line-height: 150%;
+		.popover{
+			font-family: Tahoma, Helvetica, Arial, Roboto, sans-serif;
+			font-size: 11px;
+		}
+	}
+	p:first-child{
+		margin-top: 0;
+	}
+	p:last-child{
+		margin-bottom: 0;
+	}
+	.postAttachments .aspectBoxW{
+		max-width: 100%;
+	}
+	.postAttachments .aspectBox{
+		max-height: min(1000px, 100vh);
+		margin: auto;
+	}
+}
+
+.postLayer .wallPostForm.editing{
+	padding: 10px 23px 10px;
+}
+
+.postLayerCommentForm{
+	position: sticky;
+	bottom: 0;
+	border-bottom: none;
+	padding: 15px 23px;
+	border-radius: 0 0 2px 2px;
+	background-color: $menuItemsSeparator;
+	transition: border-top-color 0.3s ease, box-shadow 0.3s ease;
+	textarea{
+		line-height: 14px;
+		padding: 6px;
+	}
+	&.floating{
+		border-top: solid 1px #d2d4cd;
+		border-radius: 0;
+		box-shadow: 0 -2px 0 rgba(0,0,0,0.08);
+	}
+}
+
+.hasJS .postLayerCommentForm.collapsed textarea{
+	height: 26px;
+}
+
+.postLayerActions{
+	padding: 10px 23px;
+	display: flex;
+	flex-wrap: wrap;
+	.like{
+		margin-right: 10px;
+		.counter{
+			font-weight: bold;
+			margin-left: 3px;
+		}
+		.icon{
+			display: inline-block;
+			width: 10px;
+			height: 9px;
+			background: svg-load(img/like.svg, fill: #fff) no-repeat;
+			position: relative;
+			top: 8px;
+			margin-left: 3px;
+			opacity: 0.4;
+			transition: opacity 0.3s ease;
+		}
+		&.liked .icon{
+			opacity: 1;
+		}
+	}
+	.tertiary{
+		padding: 0 10px;
+	}
+}
+
+.postLayerCommentsHeader{
+	background: $mainHeaderSeparator;
+	padding: 0 23px;
+	height: 40px;
+	display: flex;
+	color: $normalLink;
+	font-weight: bold;
+	align-items: center;
+	margin-top: 6px;
+	.total, .loadMore{
+		flex-grow: 1;
+	}
+	.loadMore{
+		text-align: center;
+	}
+}
+
+.postLayerComments{
+	padding: 5px 23px;
+	>.post.comment>.postAvaWrap{
+		width: 50px;
+		.ava{
+			margin-bottom: 4px;
+			width: 50px;
+			height: 50px;
+			img{
+				width: 50px;
+				height: 50px;
+			}
+		}
+	}
+	>.post.comment>.postContentWrap{
+		padding-left: 10px;
+		padding-top: 14px;
+	}
+	>.comment>div{
+		padding-top: 12px;
+	}
+	>.comment{
+		padding-bottom: 7px;
+	}
+	>.post.comment>.postContentWrap .postContent{
+		padding-top: 5px;
+	}
+	>.comment>.postInfo{
+		padding-top: 6px;
+	}
+	.loadRepliesLink{
+		margin-left: 35px;
+	}
+	>.comment:first-child>div{
+		border-top: none;
+	}
+	.comment.twoLevelIndented{
+		margin-left: 60px;
 	}
 }
 

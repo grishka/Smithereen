@@ -1,7 +1,7 @@
 {# @pebvariable name="interactions" type="smithereen.model.UserInteractions" #}
 <div class="secondaryTabBar" id="interactionsTabs{{ elementID }}" style="padding: 10px 20px">
-	<a href="{{ url }}/likes" class="{{ tab=='likes' ? "selected" : "" }}">{{ L('liked_by_X_people_short', {'count': interactions.likeCount}) }}</a>
-	{% if interactions.repostCount>0 %}<a href="{{ url }}/reposts" class="{{ tab=='reposts' ? "selected" : "" }}">{{ L('shared_by_X_people_short', {'count': interactions.repostCount}) }}</a>{% endif %}
+	<a href="{{ url }}/likes" class="{{ tab=='likes' ? "selected" : "" }}" data-no-al="1">{{ L('liked_by_X_people_short', {'count': interactions.likeCount}) }}</a>
+	{% if interactions.repostCount>0 %}<a href="{{ url }}/reposts" class="{{ tab=='reposts' ? "selected" : "" }}" data-no-al="1">{{ L('shared_by_X_people_short', {'count': interactions.repostCount}) }}</a>{% endif %}
 	<span class="loader" style="display: none"></span>
 </div>
 <div class="tabbedContent" id="interactionsContent{{ elementID }}">

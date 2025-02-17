@@ -544,7 +544,7 @@ public class PostStorage{
 		}
 	}
 
-	public static ThreadedReplies getRepliesThreaded(List<Integer> prefix, int topLevelOffset, int topLevelLimit, int secondaryLimit, boolean twoLevel) throws SQLException{
+	public static ThreadedReplies getRepliesThreaded(List<Integer> prefix, int topLevelOffset, int topLevelLimit, int secondaryLimit, boolean twoLevel, boolean reversed) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 
 			byte[] serializedPrefix=Utils.serializeIntList(prefix);
@@ -563,7 +563,7 @@ public class PostStorage{
 					.allColumns()
 					.where("reply_key=?", (Object) serializedPrefix)
 					.limit(topLevelLimit, topLevelOffset)
-					.orderBy("created_at ASC")
+					.orderBy("created_at "+(reversed ? "DESC" : "ASC"))
 					.executeAsStream(Post::fromResultSet)
 					.collect(Collectors.toList());
 			postprocessPosts(posts);
@@ -592,7 +592,7 @@ public class PostStorage{
 		}
 	}
 
-	public static PaginatedList<Post> getRepliesFlat(List<Integer> prefix, int offset, int limit) throws SQLException{
+	public static PaginatedList<Post> getRepliesFlat(List<Integer> prefix, int offset, int limit, boolean reversed) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			byte[] serializedPrefix=Utils.serializeIntList(prefix);
 
@@ -609,7 +609,7 @@ public class PostStorage{
 					.allColumns()
 					.where("reply_key LIKE BINARY bin_prefix(?) AND author_id IS NOT NULL", (Object) serializedPrefix)
 					.limit(limit, offset)
-					.orderBy("created_at ASC")
+					.orderBy("created_at "+(reversed ? "DESC" : "ASC"))
 					.executeAsStream(Post::fromResultSet)
 					.toList();
 			postprocessPosts(list);

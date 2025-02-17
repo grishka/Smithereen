@@ -1,0 +1,81 @@
+{# @pebvariable name="post" type="smithereen.model.viewmodel.PostViewModel" #}
+{% set realPost=post.post %}
+{% set randomID=randomString() %}
+{% set interactions=postInteractions[realPost.getIDForInteractions()] %}
+<div class="postLayerHeader">
+	<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }} class="flL postAuthorAva">{{ users[realPost.authorID] | pictureForAvatar('a') }}</a>
+	<a class="closeBtn flR">{{ L('close') }}</a>
+	<div>
+		<div class="postAuthor ellipsize"><a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }} id="postAuthor{{ post.post.id }}_{{ randomID }}">{{ users[realPost.authorID] | name }}</a></div>
+		<div class="time">{{ LD(realPost.createdAt, true) }}</div>
+	</div>
+	<div class="clear"></div>
+</div>
+{% if privacyOverridden %}
+<div class="settingsMessage">
+	<b>{{ L('private_post_warning_title') }}</b><br/>
+	{{ L('private_group_post_warning', {'groupType': groups[post.post.ownerID].accessType}) }}
+</div>
+{% endif %}
+<div class="postLayerPost post" id="postInner{{ post.post.id }}_{{ randomID }}" data-rid="{{ randomID }}">
+{% include "wall_post_inner" with {'post': post, 'repostDepth': 0, 'repostParent': post, 'standalone': true, 'randomID': randomID} %}
+</div>
+<div class="postLayerActions" id="postFloatingActions{{ post.post.id }}_{{ randomID }}">
+	<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
+		<a href="{{ realPost.internalURL }}/{% if interactions.isLiked %}un{% endif %}like?csrf={{ csrf }}&amp;rid={{ randomID }}" class="button like{% if interactions.isLiked %} liked{% endif %} popoverButton" id="likeButtonPost{{ realPost.id }}_{{ randomID }}" data-obj-type="post" data-obj-id="{{ realPost.id }}_{{ randomID }}" data-popover-url="{{ realPost.internalURL }}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} rel="nofollow">
+			{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{ realPost.id }}_{{ randomID }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+			{{- interactions.likeCount -}}
+		</span></a>
+		<span class="popoverPlace likePopoverWrap"></span>
+	</span>
+	{% if interactions.canRepost %}
+	<span class="shareWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
+		<a href="{{ realPost.internalURL }}/share" class="action share popoverButton button tertiary" id="shareButtonPost{{ realPost.id }}_{{ randomID }}" data-ajax-box data-popover-url="{{ realPost.internalURL }}/sharePopover" rel="nofollow">{{ L('share_content') }}</a>
+		<span class="popoverPlace likePopoverWrap"></span>
+	</span>
+	{% endif %}
+	{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}
+	<a href="{{ realPost.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{ realPost.internalURL }}/delete?rid={{ randomID }}&fromLayer')" class="button tertiary">{{ L('delete') }}</a>
+	{% endif %}
+	{% if userPermissions is not null and userPermissions.canEditPost(realPost) %}
+	<a href="{{ realPost.internalURL }}/edit?rid={{ randomID }}&fromLayer" data-ajax class="button tertiary">{{ L('edit') }}</a>
+	{% endif %}
+	{% if userPermissions is not null and userPermissions.canReport(realPost) %}
+	<a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box class="button tertiary">{{ L('report') }}</a>
+	{% endif %}
+	{% if realPost.ownerID!=realPost.authorID and tab!="wall2wall" and realPost.ownerID>0 %} |
+	<a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}" class="button tertiary">{{ L('wall_to_wall') }}</a>
+	{% endif %}
+	{% if not realPost.local %}
+	<a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener" class="button tertiary">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+	{% endif %}
+</div>
+<div class="postLayerCommentsHeader" id="postCommentsSummary{{ post.post.id }}_{{ randomID }}" style="{% if items is empty %}display: none{% endif %}">
+	<div class="total" id="postCommentsTotal{{ post.post.id }}_{{ randomID }}" style="{% if items | length<totalItems %}display: none{% endif %}">{{ L('X_comments', {'count': post.post.replyCount}) }}</div>
+	{% if items | length<totalItems %}
+	<div class="loadMore" id="loadPrevWrap{{ post.post.id }}_{{ randomID }}">
+		<a href="/posts/{{ post.post.id }}/layerPrevComments?offset={{ items | length }}&rid={{ randomID }}" id="loadPrevBtn{{ post.post.id }}_{{ randomID }}" data-ajax data-ajax-hide="loadPrevBtn{{ post.post.id }}_{{ randomID }}" data-ajax-show="loadPrevLoader{{ post.post.id }}_{{ randomID }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': totalItems-(items | length)}) : L('show_previous_comments') }}</a>
+		<span class="loader inlineLoader" style="display: none" id="loadPrevLoader{{ post.post.id }}_{{ randomID }}"></span>
+	</div>
+	{% endif %}
+</div>
+{#<div class="summaryWrap noPadTop">#}
+{#	<div class="summary">#}
+{#		#}
+{#		<span class="auxText">{% if needExpandCWsButton %}| <a href="javascript:void(0)" onclick="expandAllCommentCWs()">{{ L('expand_all_cws') }}</a>{% endif %}</span>#}
+{#	</div>#}
+{#	{% include "pagination" %}#}
+{#</div>#}
+<div>
+<div id="postReplies{{post.post.id}}_{{ randomID }}" class="postLayerComments">
+	{%- for reply in items %}
+	{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.post.id}_#{randomID}", 'first': false, 'topLevel': post, 'randomID': randomID} %}
+	{% endfor -%}
+</div>
+{% set interactions=postInteractions[post.post.id] %}
+{% if currentUser is not null and interactions.canComment %}
+{% include "wall_post_form" with {'id': "commentReplyPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'hidden': true, 'randomID': randomID} %}
+{% include "wall_post_form" with {'id': "commentPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'addClasses': "collapsed postLayerCommentForm", 'randomID': randomID} %}
+{% endif %}
+<div class="scrollDetector"></div>
+</div>

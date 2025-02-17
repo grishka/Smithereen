@@ -572,7 +572,11 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	}
 
 	var href=link.href;
-	if(!mobile && href && !link.target && !/^javascript:/.test(href) && !link.onclick && new URL(href, location.href).origin==location.origin && !link.dataset.noAl){
+	var currentHref=location.href;
+	if(currentHref.lastIndexOf('#')!=0){
+		currentHref=currentHref.substring(0, currentHref.lastIndexOf('#'));
+	}
+	if(!mobile && href && !link.target && !/^javascript:/.test(href) && !(href.length>currentHref.length && href.substring(0, currentHref.length)==currentHref && href[currentHref.length]=='#') && !link.onclick && new URL(href, location.href).origin==location.origin && !link.dataset.noAl){
 		ajaxNavigate(href, true);
 		return true;
 	}
@@ -757,14 +761,15 @@ function applyServerCommand(cmd:any){
 	}
 }
 
-function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveForm:boolean=true, containerPostID:number=0):boolean{
+function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveForm:boolean=true, containerPostID:number=0, randomID:string=null):boolean{
 	var form=ge(formID);
 	form.show();
 	if(moveForm){
-		var replies=ge("postReplies"+(containerPostID || id));
+		var suffix=randomID ? "_"+randomID : "";
+		var replies=ge("postReplies"+(containerPostID || id)+suffix);
 		replies.insertAdjacentElement("afterbegin", form);
 	}
-	form.customData.postFormObj.setupForReplyTo(id);
+	form.customData.postFormObj.setupForReplyTo(id, "post", randomID);
 	return false;
 }
 
@@ -779,9 +784,10 @@ function showCommentReplyForm(id:string, formID:string, moveForm:boolean=true, c
 	return false;
 }
 
-function showPostCommentForm(id:number):boolean{
-	var form=ge("wallPostForm_commentPost"+id);
-	var link=ge("postCommentLinkWrap"+id);
+function showPostCommentForm(id:string, randomID:string=null):boolean{
+	var suffix=randomID ? "_"+randomID : "";
+	var form=ge("wallPostForm_commentPost"+id+suffix);
+	var link=ge("postCommentLinkWrap"+id+suffix);
 	link.hide();
 	form.show();
 	form.customData.postFormObj.focus();
@@ -944,8 +950,11 @@ function addSendOnCtrlEnter(el:(HTMLTextAreaElement|HTMLInputElement)){
 	});
 }
 
-function loadOlderComments(id:(number|string), type:string="wall"){
+function loadOlderComments(id:(number|string), type:string="wall", randomID:string=null){
 	var elId=type=="wall" ? id : "_"+type+"_"+id;
+	if(randomID){
+		elId+="_"+randomID;
+	}
 	var btn=ge("loadPrevBtn"+elId);
 	var loader=ge("prevLoader"+elId);
 	btn.hide();
@@ -959,6 +968,9 @@ function loadOlderComments(id:(number|string), type:string="wall"){
 	}else{
 		url=`/comments/ajaxCommentPreview?firstID=${firstID}&parentType=${type}&parentID=${id}`;
 	}
+	if(randomID){
+		url+="&rid="+randomID;
+	}
 	ajaxGetAndApplyActions(url, ()=>{
 		scrollableEl.scrollTop+=scrollableEl.scrollHeight-heightBefore;
 	}, ()=>{
@@ -968,9 +980,10 @@ function loadOlderComments(id:(number|string), type:string="wall"){
 	return false;
 }
 
-function loadCommentBranch(el:HTMLElement, id:(number|string), topLevelRepostID:number, type:string="wall", parentID:string=null){
-	var btn=ge("loadRepliesLink"+id);
-	var loader=ge("repliesLoader"+id);
+function loadCommentBranch(el:HTMLElement, id:(number|string), topLevelRepostID:number, type:string="wall", parentID:string=null, randomID:string=null){
+	var elIdSuffix=randomID ? `_${randomID}` : "";
+	var btn=ge("loadRepliesLink"+id+elIdSuffix);
+	var loader=ge("repliesLoader"+id+elIdSuffix);
 	var offset=parseInt(el.dataset.offset);
 	btn.hide();
 	loader.show();
@@ -980,6 +993,8 @@ function loadCommentBranch(el:HTMLElement, id:(number|string), topLevelRepostID:
 	}else{
 		url=`/comments/${id}/ajaxCommentBranch?parentType=${type}&parentID=${parentID}`;
 	}
+	if(randomID)
+		url=addParamsToURL(url, {rid: randomID});
 	url=addParamsToURL(url, {offset: (offset || 0).toString()});
 	if(topLevelRepostID)
 		url=addParamsToURL(url, {topLevel: topLevelRepostID.toString()});
@@ -1010,19 +1025,21 @@ function onPollInputChange(el:HTMLInputElement){
 	}
 }
 
-function doneEditingPost(id:number){
-	var fid="wallPostForm_edit"+id;
+function doneEditingPost(id:string, randomID:string=null){
+	var suffix=randomID ? "_"+randomID : "";
+	var fid="wallPostForm_edit"+id+suffix;
 	ge(fid).remove();
-	ge("postEditingLabel"+id).remove();
+	ge("postEditingLabel"+id+suffix).remove();
 }
 
-function cancelEditingPost(id:number){
-	doneEditingPost(id);
-	ge("postInner"+id).show();
-	var actions=ge("postFloatingActions"+id);
+function cancelEditingPost(id:string, randomID:string=null){
+	doneEditingPost(id, randomID);
+	var suffix=randomID ? "_"+randomID : "";
+	ge("postInner"+id+suffix).show();
+	var actions=ge("postFloatingActions"+id+suffix);
 	if(actions)
 		actions.show();
-	var inReply=ge("inReplyTo"+id);
+	var inReply=ge("inReplyTo"+id+suffix);
 	if(inReply)
 		inReply.show();
 }

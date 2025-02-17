@@ -668,6 +668,7 @@ public class SmithereenApplication{
 			options("/embedURL", SmithereenApplication::allowCorsPreflight);
 			get("/embed", PostRoutes::postEmbed);
 			get("/hoverCard", PostRoutes::commentHoverCard);
+			get("/layerPrevComments", PostRoutes::ajaxLayerPrevComments);
 		});
 
 		path("/albums/:id", ()->{
@@ -1110,7 +1111,7 @@ public class SmithereenApplication{
 
 				StringWriter writer=new StringWriter();
 				template.evaluate(writer, Map.of(
-						"serverName", Config.serverDisplayName,
+						"serverName", Config.serverDisplayName==null ? Config.domain : Config.serverDisplayName,
 						"errorCode", 404,
 						"errorLangKey", "page_not_found",
 						"locale", locale
@@ -1119,7 +1120,7 @@ public class SmithereenApplication{
 
 				writer=new StringWriter();
 				template.evaluate(writer, Map.of(
-						"serverName", Config.serverDisplayName,
+						"serverName", Config.serverDisplayName==null ? Config.domain : Config.serverDisplayName,
 						"errorCode", 500,
 						"errorLangKey", "internal_server_error",
 						"locale", locale

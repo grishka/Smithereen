@@ -432,10 +432,10 @@ class PostForm{
 		}
 	}
 
-	public setupForReplyTo(id:(number|string), type:string="post"):void{
+	public setupForReplyTo(id:(number|string), type:string="post", randomID:string=null):void{
 		this.replyToField.value=id+"";
-		console.log(type, id);
-		var postEl=ge(type+id);
+		var suffix=randomID ? "_"+randomID : "";
+		var postEl=ge(type+id+suffix);
 		var name:string=postEl.dataset.replyName;
 		if(name){
 			if(this.input.value.length==0 || (this.input.value==this.currentReplyName)){

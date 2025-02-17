@@ -211,6 +211,8 @@ window.addEventListener("popstate", (ev)=>{
 		if(ev.state.layer){
 			if(ev.state.layer=="PhotoViewer"){
 				doOpenPhotoViewer(ev.state.pvInline, ev.state.pvListURL, true);
+			}else if(ev.state.layer=="Post"){
+				openPostLayer(ev.state.id, ev.state.commentID, true);
 			}
 		}else if(ev.state.type=="al"){
 			ajaxNavigate(window.location.href, false);

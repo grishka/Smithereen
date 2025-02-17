@@ -1,40 +1,41 @@
 {# @pebvariable name="post" type="smithereen.model.viewmodel.PostViewModel" #}
 {# @pebvariable name="realPost" type="smithereen.model.Post" #}
 {% set realPost=post.post %}
+{% if randomID is empty %}{% set randomID=randomString() %}{% endif %}
 {% if postInteractions is not null %}
 {% set interactions=postInteractions[realPost.getIDForInteractions()] %}
 {% endif %}
 {% if post.matchedFilter is not null %}
-<input type="checkbox" id="postFilteredToggler{{ realPost.id }}" class="postFilteredToggler"/>
+<input type="checkbox" id="postFilteredToggler{{ realPost.id }}_{{ randomID }}" class="postFilteredToggler"/>
 <div class="filteredPostNotice">
-	{{ L('feed_post_filtered', {'filterName': post.matchedFilter.name}, {'show': {'_': 'label', 'for': "postFilteredToggler#{realPost.id}", 'class': 'link', 'tabindex': 0} }) }}
+	{{ L('feed_post_filtered', {'filterName': post.matchedFilter.name}, {'show': {'_': 'label', 'for': "postFilteredToggler#{realPost.id}_#{randomID}", 'class': 'link', 'tabindex': 0} }) }}
 </div>
 {% endif %}
-<div class="post{{ standalone ? ' standalone' : '' }}{{ post.matchedFilter is null ? '' : ' filtered' }}" id="post{{ realPost.id }}">
+<div class="post{{ standalone ? ' standalone' : '' }}{{ post.matchedFilter is null ? '' : ' filtered' }}" id="post{{ realPost.id }}_{{ randomID }}">
 	<div class="postAvaWrap">
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a') }}</a>
 	</div>
 	<div class="postContentWrap">
-		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.id }}">
+		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.id }}_{{ randomID }}">
 			{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}
-			<a href="{{ realPost.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{ realPost.internalURL }}/delete')" class="flR postIconAction actionDelete" data-tooltip="{{ L('delete') }}" aria-label="{{ L('delete') }}"></a>
+			<a href="{{ realPost.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{ realPost.internalURL }}/delete?rid={{ randomID }}')" class="flR postIconAction actionDelete" data-tooltip="{{ L('delete') }}" aria-label="{{ L('delete') }}"></a>
 			{% endif %}
 			{% if userPermissions is not null and userPermissions.canEditPost(realPost) %}
-			<a href="{{ realPost.internalURL }}/edit" data-ajax class="flR postIconAction actionEdit" data-tooltip="{{ L('edit') }}" aria-label="{{ L('edit') }}"></a>
+			<a href="{{ realPost.internalURL }}/edit?rid={{ randomID }}" data-ajax class="flR postIconAction actionEdit" data-tooltip="{{ L('edit') }}" aria-label="{{ L('edit') }}"></a>
 			{% endif %}
 			{% if userPermissions is not null and userPermissions.canReport(realPost) %}
 			<a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box class="flR postIconAction actionReport" data-tooltip="{{ L('report') }}" aria-label="{{ L('report') }}"></a>
 			{% endif %}
 		</div>
-		<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
+		<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}_{{ randomID }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
 		{%- if realPost.privacy!='PUBLIC' -%}
 		<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID].firstAndGender}) }}"></span>
 		{%- endif %}
 		{%- if showOwner and realPost.ownerID!=realPost.authorID %}<span class="postOwnerArrowIcon"></span><a href="{{ profileURL(realPost.ownerID) }}" class="authorName">{{ (realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) | name }}</a>{% endif %}
 		{%- if realPost.action=='AVATAR_UPDATE' %} <span class="grayText">{{ L('post_action_updated_avatar', {'gender': users[realPost.authorID].gender}) }}</span>{% endif %}
-		<div id="postInner{{ realPost.id }}">
+		<div id="postInner{{ realPost.id }}_{{ randomID }}">
 			{% block postInner %}
-			{% include "wall_post_inner" with {'post': post, 'repostDepth': 0, 'repostParent': post} %}
+			{% include "wall_post_inner" with {'post': post, 'repostDepth': 0, 'repostParent': post, 'randomID': randomID} %}
 			{% set realPost=post.post %}{# because included template overwrote it #}
 			{% if realPost.federationState=='REJECTED' %}
 			<div class="red">{{ L('wall_post_rejected') }}</div>
@@ -44,7 +45,7 @@
 				<span class="postActions contentActions">
 					{% if interactions.canRepost %}
 					<span class="shareWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
-						<a href="{{ realPost.internalURL }}/share" class="action share popoverButton" id="shareButtonPost{{ realPost.id }}" data-ajax-box data-popover-url="{{ realPost.internalURL }}/sharePopover" rel="nofollow" title="{{ L('share_content') }}">
+						<a href="{{ realPost.internalURL }}/share" class="action share popoverButton" id="shareButtonPost{{ realPost.id }}_{{ randomID }}" data-ajax-box data-popover-url="{{ realPost.internalURL }}/sharePopover" rel="nofollow" title="{{ L('share_content') }}">
 							<span class="icon">&nbsp;</span><span class="counter" style="{{ interactions.repostCount==0 ? 'display: none' : '' }}">
 							{{- interactions.repostCount -}}
 						</span></a>
@@ -52,15 +53,15 @@
 					</span>
 					{% endif %}
 					<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
-						<a href="{{ realPost.internalURL }}/{% if interactions.isLiked %}un{% endif %}like?csrf={{ csrf }}" class="action like{% if interactions.isLiked %} liked{% endif %} popoverButton" id="likeButtonPost{{ realPost.id }}" data-obj-type="post" data-obj-id="{{ realPost.id }}" data-popover-url="{{ realPost.internalURL }}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} rel="nofollow">
-							{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{ realPost.id }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+						<a href="{{ realPost.internalURL }}/{% if interactions.isLiked %}un{% endif %}like?csrf={{ csrf }}&amp;rid={{ randomID }}" class="action like{% if interactions.isLiked %} liked{% endif %} popoverButton" id="likeButtonPost{{ realPost.id }}_{{ randomID }}" data-obj-type="post" data-obj-id="{{ realPost.id }}_{{ randomID }}" data-popover-url="{{ realPost.internalURL }}/likePopover?rid={{ randomID }}" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} rel="nofollow">
+							{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{ realPost.id }}_{{ randomID }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
 							{{- interactions.likeCount -}}
 						</span></a>
 						<span class="popoverPlace likePopoverWrap"></span>
 					</span>
 				</span>
 				{%- endif -%}
-				<a href="{{ realPost.internalURL }}" class="postLink">{{ LD(realPost.createdAt) }}</a>
+				<a href="{{ realPost.internalURL }}" onclick="return openPostLayer('{{ realPost.id }}')" class="postLink">{{ LD(realPost.createdAt) }}</a>
 				{% if realPost.ownerID!=realPost.authorID and tab!="wall2wall" and realPost.ownerID>0 %} |
 					<a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}">{{ L('wall_to_wall') }}</a>
 				{% endif %}
@@ -68,7 +69,7 @@
 					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
 				{% endif %}
 				{% if not standalone and currentUser is not null and interactions.canComment %}
-					<span id="postCommentLinkWrap{{ realPost.id }}" style="{{ post.repliesObjects is empty ? '' : 'display: none;' }}">| <a href="{{ realPost.internalURL }}" onclick="return showPostCommentForm({{ realPost.id }})">{{ L('add_comment') }}</a></span>
+					<span id="postCommentLinkWrap{{ realPost.id }}_{{ randomID }}" style="{{ post.repliesObjects is empty ? '' : 'display: none;' }}">| <a href="{{ realPost.internalURL }}" onclick="return showPostCommentForm({{ realPost.id }}, '{{ randomID }}')">{{ L('add_comment') }}</a></span>
 				{% endif %}
 			</div>
 			{% endblock %}
@@ -79,20 +80,20 @@
 <div class="commentsPreviewWrap{{ post.matchedFilter is null ? '' : ' filtered' }}">
 {% if realPost.mastodonStyleRepost %}{% set replyCount=post.repost.post.post.replyCount %}{% else %}{% set replyCount=realPost.replyCount %}{% endif %}
 	{% if (commentViewType=='FLAT' ? replyCount : post.totalTopLevelComments)>post.repliesObjects.size %}
-		<a href="{{ realPost.internalURL }}" onclick="return loadOlderComments({{ realPost.id }})" class="loadPrev" id="loadPrevBtn{{ realPost.id }}" data-first-id="{{ post.repliesObjects[0].post.id }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': replyCount-post.loadedRepliesCount}) : L('show_previous_comments') }}</a>
-		<div class="prevLoader loader" id="prevLoader{{ realPost.id }}" style="display: none;"></div>
+		<a href="{{ realPost.internalURL }}" onclick="return loadOlderComments({{ realPost.id }}, 'wall', '{{ randomID }}')" class="loadPrev" id="loadPrevBtn{{ realPost.id }}_{{ randomID }}" data-first-id="{{ post.repliesObjects[0].post.id }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': replyCount-post.loadedRepliesCount}) : L('show_previous_comments') }}</a>
+		<div class="prevLoader loader" id="prevLoader{{ realPost.id }}_{{ randomID }}" style="display: none;"></div>
 	{% endif %}
-	<div class="commentsPreview" id="postReplies{{ realPost.id }}" style="{{ post.repliesObjects is empty ? 'display: none;' : '' }}">
+	<div class="commentsPreview" id="postReplies{{ realPost.id }}_{{ randomID }}" style="{{ post.repliesObjects is empty ? 'display: none;' : '' }}">
 	{%- for reply in post.repliesObjects %}
-		{% include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': commentViewType=='FLAT' ? "wallPostForm_commentPost#{realPost.id}" : "wallPostForm_commentReplyPost#{realPost.id}", 'topLevel': post, 'baseReplyLevel': realPost.isMastodonStyleRepost ? post.repost.post.post.replyLevel : 0} %}
+		{% include "wall_reply" with {'post': reply, 'preview': true, 'replyFormID': commentViewType=='FLAT' ? "wallPostForm_commentPost#{realPost.id}_#{randomID}" : "wallPostForm_commentReplyPost#{realPost.id}_#{randomID}", 'topLevel': post, 'baseReplyLevel': realPost.isMastodonStyleRepost ? post.repost.post.post.replyLevel : 0, 'randomID': randomID} %}
 		{% set realPost=post.post %}{# the included template overwrites this variable #}
 	{% endfor -%}
 	</div>
 	{%set interactions=postInteractions[realPost.getIDForInteractions()]%}
 {% if currentUser is not null and interactions.canComment %}
 	{% if post.repost is not null and post.repost.post is not null %}{% set origAuthor=users[post.repost.post.post.authorID] %}{% endif %}
-	{% include "wall_post_form" with {'id': "commentPost#{realPost.id}", 'replyTo': realPost, 'replyToModel': post, 'hidden': interactions.commentCount==0, 'originalPostAuthor': origAuthor, 'showReplyBar': commentViewType=='FLAT'} %}
-	{% if commentViewType!='FLAT' %}{% include "wall_post_form" with {'id': "commentReplyPost#{realPost.id}", 'replyTo': realPost, 'hidden': true, 'originalPostAuthor': origAuthor} %}{% endif %}
+	{% include "wall_post_form" with {'id': "commentPost#{realPost.id}_#{randomID}", 'replyTo': realPost, 'replyToModel': post, 'hidden': interactions.commentCount==0, 'originalPostAuthor': origAuthor, 'showReplyBar': commentViewType=='FLAT', 'randomID': randomID} %}
+	{% if commentViewType!='FLAT' %}{% include "wall_post_form" with {'id': "commentReplyPost#{realPost.id}_#{randomID}", 'replyTo': realPost, 'hidden': true, 'originalPostAuthor': origAuthor, 'randomID': randomID} %}{% endif %}
 {% endif %}
 </div>
 {% endif %}

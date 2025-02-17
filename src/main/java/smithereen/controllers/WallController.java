@@ -680,7 +680,7 @@ public class WallController{
 		}
 	}
 
-	public PaginatedList<PostViewModel> getReplies(@Nullable User self, List<Integer> key, int primaryOffset, int primaryCount, int secondaryCount, CommentViewType type){
+	public PaginatedList<PostViewModel> getReplies(@Nullable User self, List<Integer> key, int primaryOffset, int primaryCount, int secondaryCount, CommentViewType type, boolean reversed){
 		try{
 			LOG.trace("Getting post replies: priOffset={}, priCount={}, secCount={}, key={}, type={}", primaryOffset, primaryCount, secondaryCount, key, type);
 			Post threadParent=PostStorage.getPostByID(key.getLast(), true);
@@ -689,12 +689,12 @@ public class WallController{
 
 			// For two-level and flat, if we're getting replies to a comment, always treat them as a flat list
 			if((type==CommentViewType.TWO_LEVEL && threadParent.getReplyLevel()>0) || type==CommentViewType.FLAT){
-				PaginatedList<PostViewModel> posts=PostViewModel.wrap(PostStorage.getRepliesFlat(key, primaryOffset, primaryCount));
+				PaginatedList<PostViewModel> posts=PostViewModel.wrap(PostStorage.getRepliesFlat(key, primaryOffset, primaryCount, reversed));
 				context.getPrivacyController().filterPostViewModels(self, posts.list);
 				fillInParentAuthors(posts.list, threadParent);
 				return posts;
 			}
-			PostStorage.ThreadedReplies tr=PostStorage.getRepliesThreaded(key, primaryOffset, primaryCount, secondaryCount, type==CommentViewType.TWO_LEVEL);
+			PostStorage.ThreadedReplies tr=PostStorage.getRepliesThreaded(key, primaryOffset, primaryCount, secondaryCount, type==CommentViewType.TWO_LEVEL, reversed);
 
 			List<PostViewModel> posts=tr.posts().stream().filter(p->context.getPrivacyController().checkPostPrivacy(self, p)).map(PostViewModel::new).toList();
 			List<PostViewModel> replies=tr.replies().stream().filter(p->context.getPrivacyController().checkPostPrivacy(self, p)).map(PostViewModel::new).toList();

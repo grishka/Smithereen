@@ -31,6 +31,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 
 import static smithereen.Utils.*;
 
@@ -52,6 +53,12 @@ public class UserInteractionsRoutes{
 				case Photo photo -> photo.getURL();
 				case Comment comment -> comment.getInternalURL().toString();
 			};
+
+			String rid=req.queryParams("rid");
+			if(StringUtils.isNotEmpty(rid)){
+				elementID+="_"+rid;
+			}
+
 			String urlPath=liked ? "unlike" : "like";
 			WebDeltaResponse b=new WebDeltaResponse(resp)
 					.setContent("likeCounter"+elementID, String.valueOf(interactions.likeCount))
@@ -87,6 +94,11 @@ public class UserInteractionsRoutes{
 			case Photo photo -> photo.getURL();
 			case Comment comment -> comment.getInternalURL().toString();
 		};
+
+		String rid=req.queryParams("rid");
+		if(StringUtils.isNotEmpty(rid)){
+			elementID+="_"+rid;
+		}
 
 		WebDeltaResponse b=new WebDeltaResponse(resp)
 				.setContent("likeCounter"+elementID, String.valueOf(interactions.likeCount));

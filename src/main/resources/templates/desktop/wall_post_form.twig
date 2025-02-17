@@ -64,11 +64,12 @@
 		</div>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
 		<input type="hidden" name="attachAltTexts" value="{{ json(attachAltTexts | default({})) }}"/>
+		{% if randomID is not empty %}<input type="hidden" name="rid" value="{{ randomID }}"/>{% endif %}
 		<div class="bottomBar">
 			<div class="left">
 				{% if isEditing %}
 				<button id="postFormSubmit_{{ id }}">{{ L('save') }}</button>
-				<button class="tertiary jsRequired" type="button" onclick="cancelEditingPost('{{ editingPostID }}')">{{ L('cancel') }}</button>
+				<button class="tertiary jsRequired" type="button" onclick="cancelEditingPost('{{ editingPostID }}', '{{ randomID }}')">{{ L('cancel') }}</button>
 				{% else %}
 				<button id="postFormSubmit_{{ id }}">{{ submitButtonText | default(L('send')) }}</button>
 				{% endif %}

@@ -260,7 +260,7 @@ class LayerManager{
 	public dismissByID(id:string){
 		for(var layer of this.stack){
 			if(layer.id==id){
-				this.dismiss(layer);
+				layer.dismiss();
 				return true;
 			}
 		}
