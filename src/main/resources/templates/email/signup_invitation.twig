@@ -3,7 +3,7 @@
 	<h1>{{ L(isRequest ? 'email_invite_approved_header' : 'email_invite_header') }}</h1>
 	{{ L(isRequest ? 'email_invite_body_start_approved' : 'email_invite_body_start', {'name': name, 'inviterName': inviterName, 'inviterLink': inviterLink, 'serverName': serverName, 'domain': domain}) }}<br/>
 	{{ L('email_invite_body_end_html') }}
-	<div class="button_blue" style="padding: 20px 0; text-align: center">
+	<div class="button_blue centered_main_block">
 		<a href="{{ inviteLink }}">{{ L('begin_registration') }}</a>
 	</div>
 {% endblock %}
