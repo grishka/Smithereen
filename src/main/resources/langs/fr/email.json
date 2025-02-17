@@ -31,6 +31,6 @@
   "email_account_suspended_body": "<b>{name}</b>, votre compte sur {serverName} a été suspendu pour violation des règles du serveur et sera supprimé à <b>{deletionDate}</b>. Vous pouvez toujours exporter vos données, configurer une redirection et déplacer vos abonnés vers un autre serveur.",
   "email_confirmation_code": "<b>{name}</b>, utilisez ce code pour confirmer {action}:",
   "email_confirmation_code_info": "Ne partagez ce code avec personne. Si vous ne l'avez pas demandé, modifiez votre mot de passe <b>immédiatement</b> et mettez fin à toute session suspecte.",
-  "email_confirmation_code_subject": "{domain}: confirmation de l'action",
+  "email_confirmation_code_subject" : "{serverName}: confirmation de l'action",
   "email_confirm_action_unfreeze": "Déblocage de votre compte"
 }

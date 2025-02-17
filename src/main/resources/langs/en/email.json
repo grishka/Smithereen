@@ -32,6 +32,7 @@
   "email_account_suspended_body": "<b>{name}</b>, your account on {serverName} has been suspended for breaking the server rules and will be deleted <b>{deletionDate}</b>. You can still export your data, set up a redirect, and move your followers to another server.",
   "email_confirmation_code": "<b>{name}</b>, use this code to confirm {action}:",
   "email_confirmation_code_info": "Don't share this code with anyone. If you haven't requested it, change your password <b>immediately</b> and terminate any suspicious sessions.",
-  "email_confirmation_code_subject": "{domain}: action confirmation",
+  "email_confirmation_code_header" : "Action confirmation",
+  "email_confirmation_code_subject" : "{serverName}: action confirmation",
   "email_confirm_action_unfreeze": "unfreezing your account"
 }

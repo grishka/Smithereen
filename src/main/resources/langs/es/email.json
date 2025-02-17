@@ -31,6 +31,6 @@
   "email_account_suspended_body": "<b>{name}</b>, tu cuenta en {serverName} ha sido suspendida por romper las reglas del servidor y será eliminada <b>{deletionDate}</b>. Aún puedes exportar tus datos, configurar una redirección y mover tus seguidores a otro servidor.",
   "email_confirmation_code": "<b>{name}</b>, usa este código para confirmar {action}:",
   "email_confirmation_code_info": "No compartas este código con alguien. Si no lo has pedido, cambia tu contraseña <b>inmediatamente</b> y termina cualquier sesión sospechosa.",
-  "email_confirmation_code_subject": "{domain}: confirmación de la acción",
+  "email_confirmation_code_subject" : "{serverName}: confirmación de la acción",
   "email_confirm_action_unfreeze": "descongelando tu cuenta"
 }

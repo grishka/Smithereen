@@ -32,6 +32,7 @@
   "email_account_suspended_body": "<b>{name}</b>, ваша страница на {serverName} была заблокирована администрацией за нарушение правил сервера и будет удалена <b>{deletionDate}</b>. Вы всё ещё можете выгрузить свои данные, настроить перенаправление и перенести подписчиков на другой сервер.",
   "email_confirmation_code": "<b>{name}</b>, используйте этот код для подтверждения {action}:",
   "email_confirmation_code_info": "Никому не сообщайте этот код. Если вы его не запрашивали, <b>срочно</b> смените пароль и завершите любые подозрительные сеансы.",
-  "email_confirmation_code_subject": "{domain}: подтверждение действия",
+  "email_confirmation_code_header" : "Подтверждение действия",
+  "email_confirmation_code_subject" : "{serverName}: подтверждение действия",
   "email_confirm_action_unfreeze": "разморозки вашей страницы"
 }
