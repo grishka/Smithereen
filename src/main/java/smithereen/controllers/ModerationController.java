@@ -226,6 +226,9 @@ public class ModerationController{
 
 	public PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, boolean onlyRestricted, String query){
 		try{
+			if(StringUtils.isNotEmpty(query)){
+				query=Utils.convertIdnToAsciiIfNeeded(query);
+			}
 			return FederationStorage.getAllServers(offset, count, availability, onlyRestricted, query);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
