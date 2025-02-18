@@ -49,12 +49,13 @@
 				{{ renderAttachments(message, null) }}
 			{% endif %}
 			</div>
-			{% if message.senderID!=currentUser.id %}
+			{% if message.senderID!=currentUser.id and canReply %}
 			<form action="/my/mail/send?inReplyTo={{ message.encodedID }}" method="post" id="wallPostFormForm_mailMessage">
 				{% if replySubject is not empty %}<input type="text" name="subject" value="{{ replySubject }}" placeholder="{{ L('mail_subject') }}" style="width: 100%" class="subject"/>{% endif %}
 				{% include "mail_message_form" with {"sendButtonLabel": "add_reply"} %}
 			</form>
 			{% endif %}
+			{% if not canReply %}<div class="settingsMessage">{{ L('mail_privacy_forbidden') }}</div>{% endif %}
 		</div>
 	</div>
 </div>
