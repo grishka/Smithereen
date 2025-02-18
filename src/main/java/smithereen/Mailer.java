@@ -190,31 +190,39 @@ public class Mailer{
 
 	public void sendAccountBanNotification(Account self, UserBanStatus banStatus, UserBanInfo banInfo){
 		Lang l=Lang.get(self.prefs.locale);
-		String text=switch(banStatus){
+		String header=switch(banStatus){
+			case FROZEN -> l.get("email_account_frozen_header");
+			case SUSPENDED -> l.get("email_account_suspended_header");
+			default -> throw new IllegalArgumentException("Unexpected value: "+banStatus);
+		};
+		String htmlText=switch(banStatus){
 			case FROZEN -> l.get("email_account_frozen_body", Map.of(
 					"name", self.user.firstName,
 					"serverName", Config.serverDisplayName,
+					"domain", Config.domain,
 					"date", l.formatDate(Objects.requireNonNull(banInfo.expiresAt()), self.prefs.timeZone, false)
 			));
 			case SUSPENDED -> l.get("email_account_suspended_body", Map.of(
 					"name", self.user.firstName,
 					"serverName", Config.serverDisplayName,
+					"domain", Config.domain,
 					"deletionDate", l.formatDate(Objects.requireNonNull(banInfo.bannedAt()).plus(30, ChronoUnit.DAYS), self.prefs.timeZone, false)
 			));
 			default -> throw new IllegalArgumentException("Unexpected value: " + banStatus);
 		};
 		String subject=switch(banStatus){
-			case FROZEN -> l.get("email_account_frozen_subject", Map.of("domain", Config.domain));
-			case SUSPENDED -> l.get("email_account_suspended_subject", Map.of("domain", Config.domain));
+			case FROZEN -> l.get("email_account_frozen_subject", Map.of("serverName", Config.serverDisplayName));
+			case SUSPENDED -> l.get("email_account_suspended_subject", Map.of("serverName", Config.serverDisplayName));
 			default -> throw new IllegalArgumentException("Unexpected value: " + banStatus);
 		};
-		String htmlText=text;
-		text=TextProcessor.stripHTML(text, true);
+		String plainText=header+"\n\n"+TextProcessor.stripHTML(htmlText, true);
+		htmlText="<h1>"+header+"</h1>\n\n"+htmlText;
 		if(StringUtils.isNotEmpty(banInfo.message())){
-			htmlText+="<br/><br/>"+l.get("message_from_staff")+": "+TextProcessor.stripHTML(banInfo.message(), true);
-			text+="\n\n"+l.get("message_from_staff")+": "+banInfo.message();
+			String messageFromStaff=l.get("message_from_staff", Map.of("message", banInfo.message()));
+			htmlText+="<br/><br/>"+messageFromStaff;
+			plainText+="\n\n"+TextProcessor.stripHTML(messageFromStaff, true);
 		}
-		send(self.email, subject, text, "generic", Map.of("text", htmlText), self.prefs.locale);
+		send(self.email, subject, plainText, "generic", Map.of("text", htmlText), self.prefs.locale);
 	}
 
 	public void sendActionConfirmationCode(Request req, Account self, String action, String code){
