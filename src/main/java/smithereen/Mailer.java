@@ -135,10 +135,12 @@ public class Mailer{
 
 		Lang l=getEmailLang(req, self);
 		String link=UriBuilder.local().path("account", "activate").queryParam("key", info.emailConfirmationKey).build().toString();
-		String plaintext=l.get("email_change_new_body_plain", Map.of("name", self.user.firstName, "serverName", Config.domain, "newAddress", self.getUnconfirmedEmail(), "oldAddress", self.email))+"\n\n"+link;
-		send(self.getUnconfirmedEmail(), l.get("email_change_new_subject", Map.of("domain", Config.domain)), plaintext, "update_email_new", Map.of(
+		String plaintext=l.get("email_change_header")+"\n\n"+l.get("email_change_new_body_plain", Map.of("name", self.user.firstName, "serverName", Config.serverDisplayName, "newAddress", self.getUnconfirmedEmail(), "oldAddress", self.email))+"\n\n"+link;
+		send(self.getUnconfirmedEmail(), l.get("email_change_new_subject", Map.of("serverName", Config.serverDisplayName)), plaintext, "update_email_new", Map.of(
 				"name", self.user.firstName,
 				"gender", self.user.gender,
+				"serverName", Config.serverDisplayName,
+				"domain", Config.domain,
 				"confirmationLink", link,
 				"oldAddress", self.email,
 				"newAddress", self.getUnconfirmedEmail()
@@ -155,11 +157,13 @@ public class Mailer{
 			throw new IllegalArgumentException("No email confirmation key");
 
 		Lang l=getEmailLang(req, self);
-		String plaintext=l.get("email_change_old_body", Map.of("name", self.user.firstName, "serverName", Config.domain));
-		send(self.email, l.get("email_change_old_subject", Map.of("domain", Config.domain)), plaintext, "update_email_old", Map.of(
+		String plaintext=l.get("email_change_header")+"\n\n"+TextProcessor.stripHTML(l.get("email_change_old_body", Map.of("name", self.user.firstName, "serverName", Config.serverDisplayName)), true);
+		send(self.email, l.get("email_change_old_subject", Map.of("serverName", Config.serverDisplayName)), plaintext, "update_email_old", Map.of(
 				"name", self.user.firstName,
 				"gender", self.user.gender,
-				"address", self.getUnconfirmedEmail()
+				"address", self.getUnconfirmedEmail(),
+				"domain", Config.domain,
+				"serverName", Config.serverDisplayName
 		), l.getLocale());
 	}
 
