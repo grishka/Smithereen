@@ -1,8 +1,9 @@
 {% extends "page" %}
 {% block content %}
-	{{ L('email_change_new_body_html', {'name': name, 'serverName': domain, 'oldAddress': oldAddress, 'newAddress': newAddress}) }}
-	<center style="padding: 20px 0;">
-		<a href="{{ confirmationLink }}" style="text-decoration: none; background-color: #4E6C1A; padding: 10px 15px; font-weight: bold; color: #FFFFFF; border-radius: 5px; display: inline-block;">{{ L('email_change_new_body_button') }}</a>
-	</center>
+	<h1>{{ L('email_change_header') }}</h1>
+	{{ L('email_change_new_body_html', {'name': name, 'serverName': serverName, 'domain': domain, 'oldAddress': oldAddress, 'newAddress': newAddress}) }}
+	<div class="button_blue centered_main_block">
+		<a href="{{ confirmationLink }}">{{ L('email_change_new_body_button') }}</a>
+	</div>
 {% endblock %}
 
