@@ -200,7 +200,7 @@ public class Mailer{
 					"name", self.user.firstName,
 					"serverName", Config.serverDisplayName,
 					"domain", Config.domain,
-					"date", l.formatDate(Objects.requireNonNull(banInfo.expiresAt()), self.prefs.timeZone, false)
+					"date", banInfo.expiresAt()==null ? l.get("email_account_frozen_until_first_login") : l.formatDate(banInfo.expiresAt(), self.prefs.timeZone, false)
 			));
 			case SUSPENDED -> l.get("email_account_suspended_body", Map.of(
 					"name", self.user.firstName,

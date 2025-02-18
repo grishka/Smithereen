@@ -1,7 +1,5 @@
 package smithereen;
 
-import com.google.gson.JsonObject;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +25,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import io.pebbletemplates.pebble.template.PebbleTemplate;
-import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.HttpSessionEvent;
 import jakarta.servlet.http.HttpSessionListener;
@@ -92,7 +89,6 @@ import spark.Filter;
 import spark.Request;
 import spark.Response;
 import spark.Session;
-import spark.embeddedserver.jetty.HttpRequestWrapper;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.*;
@@ -1078,7 +1074,7 @@ public class SmithereenApplication{
 			model.with("status", status).with("banInfo", acc.user.banInfo).with("contactEmail", Config.serverAdminEmail);
 			switch(status){
 				case FROZEN -> {
-					if(acc.user.banInfo.expiresAt().isAfter(Instant.now())){
+					if(acc.user.banInfo.expiresAt()!=null && acc.user.banInfo.expiresAt().isAfter(Instant.now())){
 						model.with("unfreezeTime", acc.user.banInfo.expiresAt());
 					}
 				}

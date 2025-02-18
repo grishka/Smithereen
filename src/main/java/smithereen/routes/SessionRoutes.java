@@ -1,7 +1,5 @@
 package smithereen.routes;
 
-import io.pebbletemplates.pebble.extension.escaper.SafeString;
-
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Base64;
@@ -10,11 +8,16 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+import io.pebbletemplates.pebble.extension.escaper.SafeString;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
-import smithereen.Utils;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.EmailCode;
 import smithereen.model.EmailDomainBlockRule;
@@ -23,12 +26,6 @@ import smithereen.model.SignupInvitation;
 import smithereen.model.User;
 import smithereen.model.UserBanStatus;
 import smithereen.model.WebDeltaResponse;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.exceptions.UserErrorException;
-import smithereen.lang.Lang;
-import smithereen.storage.DatabaseUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
@@ -46,8 +43,8 @@ public class SessionRoutes{
 		SessionInfo info=new SessionInfo();
 		info.account=acc;
 		req.session(true).attribute("info", info);
-		String psid=SessionStorage.putNewSession(req.session(), Objects.requireNonNull(req.userAgent(), ""), Utils.getRequestIP(req));
-		info.csrfToken=Utils.csrfTokenFromSessionID(Base64.getDecoder().decode(psid));
+		String psid=SessionStorage.putNewSession(req.session(), Objects.requireNonNull(req.userAgent(), ""), getRequestIP(req));
+		info.csrfToken=csrfTokenFromSessionID(Base64.getDecoder().decode(psid));
 		if(acc.prefs.locale==null){
 			Locale requestLocale=req.raw().getLocale();
 			if(requestLocale!=null){
@@ -78,16 +75,16 @@ public class SessionRoutes{
 					resp.redirect("/feed");
 				return "";
 			}
-			model.with("message", Utils.lang(req).get("login_incorrect"));
+			model.with("message", lang(req).get("login_incorrect"));
 		}else if(StringUtils.isNotEmpty(req.queryParams("to"))){
-			model.with("message", Utils.lang(req).get("login_needed"));
+			model.with("message", lang(req).get("login_needed"));
 		}
 		model.with("additionalParams", "?"+req.queryString()).with("title", lang(req).get("login_title")+" | "+Config.serverDisplayName).with("username", req.queryParams("username"));
 		return model;
 	}
 
 	private static boolean redirectIfLoggedIn(Request req, Response resp){
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		if(info!=null && info.account!=null){
 			resp.redirect("/feed");
 			return true;
@@ -96,7 +93,7 @@ public class SessionRoutes{
 	}
 
 	public static Object logout(Request req, Response resp) throws SQLException{
-		if(Utils.requireAccount(req, resp) && Utils.verifyCSRF(req, resp)){
+		if(requireAccount(req, resp) && verifyCSRF(req, resp)){
 			SessionStorage.deleteSession(req.cookie("psid"));
 			resp.removeCookie("psid");
 			SessionInfo info=req.session().attribute("info");
@@ -111,7 +108,7 @@ public class SessionRoutes{
 	private static RenderedTemplateResponse regError(Request req, String errKey){
 		Config.SignupMode signupMode=context(req).getModerationController().getEffectiveSignupMode(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("register", req)
-				.with("message", Utils.lang(req).get(errKey))
+				.with("message", lang(req).get(errKey))
 				.with("password", req.queryParams("password"))
 				.with("password2", req.queryParams("password2"))
 				.with("email", req.queryParams("email"))
@@ -169,7 +166,7 @@ public class SessionRoutes{
 			return regError(req, "err_password_short");
 		if(StringUtils.isEmpty(password2) || !password.equals(password2))
 			return regError(req, "err_passwords_dont_match");
-		if(StringUtils.isEmpty(email) || !Utils.isValidEmail(email))
+		if(StringUtils.isEmpty(email) || !isValidEmail(email))
 			return regError(req, "err_invalid_email");
 		if(StringUtils.isEmpty(first) || first.length()<2)
 			return regError(req, "err_name_too_short");
@@ -471,13 +468,13 @@ public class SessionRoutes{
 	}
 
 	public static Object unfreezeBox(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
-		if(info.account.user.banStatus!=UserBanStatus.FROZEN || info.account.user.banInfo.expiresAt().isAfter(Instant.now()))
+		if(info.account.user.banStatus!=UserBanStatus.FROZEN || (info.account.user.banInfo.expiresAt()!=null && info.account.user.banInfo.expiresAt().isAfter(Instant.now())))
 			throw new UserActionNotAllowedException();
 		return sendEmailConfirmationCode(req, resp, EmailCodeActionType.ACCOUNT_UNFREEZE, "/account/unfreeze");
 	}
 
 	public static Object unfreeze(Request req, Response resp, Account self, ApplicationContext ctx){
-		if(self.user.banStatus!=UserBanStatus.FROZEN || self.user.banInfo.expiresAt().isAfter(Instant.now()))
+		if(self.user.banStatus!=UserBanStatus.FROZEN || (self.user.banInfo.expiresAt()!=null && self.user.banInfo.expiresAt().isAfter(Instant.now())))
 			throw new UserActionNotAllowedException();
 		checkEmailConfirmationCode(req, EmailCodeActionType.ACCOUNT_UNFREEZE);
 		if(self.user.banInfo.requirePasswordChange()){
@@ -495,7 +492,7 @@ public class SessionRoutes{
 	}
 
 	public static Object unfreezeChangePassword(Request req, Response resp, Account self, ApplicationContext ctx){
-		if(self.user.banStatus!=UserBanStatus.FROZEN || self.user.banInfo.expiresAt().isAfter(Instant.now()) || !self.user.banInfo.requirePasswordChange())
+		if(self.user.banStatus!=UserBanStatus.FROZEN || (self.user.banInfo.expiresAt()!=null && self.user.banInfo.expiresAt().isAfter(Instant.now())) || !self.user.banInfo.requirePasswordChange())
 			throw new UserActionNotAllowedException();
 		if(req.session().attribute("emailConfirmationForUnfreezingDone")==null)
 			throw new UserActionNotAllowedException();
@@ -505,7 +502,7 @@ public class SessionRoutes{
 		String new2=req.queryParams("new2");
 		String message;
 		if(!new1.equals(new2)){
-			message=Utils.lang(req).get("err_passwords_dont_match");
+			message=lang(req).get("err_passwords_dont_match");
 		}else{
 			try{
 				ctx.getUsersController().changePassword(self, current, new1);

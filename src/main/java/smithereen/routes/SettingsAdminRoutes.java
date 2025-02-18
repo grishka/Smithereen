@@ -24,7 +24,11 @@ import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
 import smithereen.activitypub.objects.Actor;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ActorStaffNote;
 import smithereen.model.AuditLogEntry;
@@ -39,9 +43,6 @@ import smithereen.model.MailMessage;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
-import smithereen.model.comments.Comment;
-import smithereen.model.photos.Photo;
-import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.Server;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
@@ -54,10 +55,9 @@ import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.model.ViolationReportAction;
 import smithereen.model.WebDeltaResponse;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.lang.Lang;
+import smithereen.model.comments.Comment;
+import smithereen.model.photos.Photo;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.AuditLogEntryViewModel;
 import smithereen.model.viewmodel.UserContentMetrics;
@@ -1253,7 +1253,10 @@ public class SettingsAdminRoutes{
 				message=req.queryParams("message");
 			}
 			if(status==UserBanStatus.FROZEN){
-				expiresAt=Instant.now().plus(safeParseInt(req.queryParams("duration")), ChronoUnit.HOURS);
+				int duration=safeParseInt(req.queryParams("duration"));
+				if(duration!=0){
+					expiresAt=Instant.now().plus(duration, ChronoUnit.HOURS);
+				}
 				forcePasswordChange="on".equals(req.queryParams("forcePasswordChange"));
 			}
 			info=new UserBanInfo(Instant.now(), expiresAt, message, forcePasswordChange, self.user.id, report==null ? 0 : report.id);
