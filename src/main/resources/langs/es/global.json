@@ -130,7 +130,7 @@
   "X_users": "{count, plural, =0 {0 usuarios} one {# usuario} other {# usuarios}}",
   "change": "Cambiar",
   "ip_address": "Dirección IP",
-  "message_from_staff": "Mensaje del personal",
+  "message_from_staff" : "Mensaje del personal: {message}",
   "account_frozen": "La cuenta está bloqueada temporalmente",
   "account_suspended": "La cuenta está bloqueada",
   "account_deactivated": "La cuenta está desactivada",
