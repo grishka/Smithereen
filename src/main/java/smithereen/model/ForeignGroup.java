@@ -165,20 +165,6 @@ public class ForeignGroup extends Group implements ForeignActor{
 		return photoAlbums;
 	}
 
-	public void resolveDependencies(ApplicationContext context, boolean allowFetching, boolean allowStorage){ // TODO remove this abomination
-		for(GroupAdmin adm:adminsForActivityPub){
-			adm.user=context.getObjectLinkResolver().resolve(adm.activityPubUserID, User.class, allowFetching, allowStorage, false);
-		}
-	}
-
-	public void storeDependencies(ApplicationContext context){
-		for(GroupAdmin adm:adminsForActivityPub){
-			if(adm.user instanceof ForeignUser && adm.user.id==0){
-				context.getObjectLinkResolver().storeOrUpdateRemoteObject(adm.user, adm.user);
-			}
-		}
-	}
-
 	@Override
 	public boolean needUpdate(){
 		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.toEpochMilli()>24L*60*60*1000;

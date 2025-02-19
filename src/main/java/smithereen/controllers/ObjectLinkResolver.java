@@ -39,6 +39,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.GroupAdmin;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.Post;
@@ -178,9 +179,6 @@ public class ObjectLinkResolver{
 			if(allowFetching){
 				try{
 					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context);
-					if(obj instanceof ForeignGroup fg){
-						fg.resolveDependencies(context, allowFetching, allowStorage);
-					}
 					if(obj instanceof ForeignUser fu){
 						if(allowStorage && fu.movedToURL!=null){
 							handleNewlyFetchedMovedUser(fu);
@@ -355,7 +353,15 @@ public class ObjectLinkResolver{
 					}
 				}
 				case ForeignGroup fg -> {
-					fg.storeDependencies(context);
+					for(GroupAdmin adm:fg.adminsForActivityPub){
+						try{
+							adm.user=resolve(adm.activityPubUserID, User.class, true, false, false);
+						}catch(ObjectNotFoundException ignore){}
+					}
+					fg.adminsForActivityPub.removeIf(adm->adm.user==null);
+					for(GroupAdmin adm:fg.adminsForActivityPub){
+						storeOrUpdateRemoteObject(adm.user, adm.user);
+					}
 					GroupStorage.putOrUpdateForeignGroup(fg);
 					maybeUpdateServerFeaturesFromActor(fg);
 				}

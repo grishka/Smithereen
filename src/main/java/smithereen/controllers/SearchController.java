@@ -232,7 +232,6 @@ public class SearchController{
 				yield user;
 			}
 			case ForeignGroup group -> {
-				group.storeDependencies(context);
 				context.getObjectLinkResolver().storeOrUpdateRemoteObject(group, group);
 				yield group;
 			}
