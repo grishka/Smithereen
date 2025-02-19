@@ -628,7 +628,7 @@ public class SettingsAdminRoutes{
 							if(targetUser instanceof ForeignUser)
 								yield l.get("admin_user_state_suspended_foreign");
 							else
-								yield l.get("admin_user_state_suspended", Map.of("deletionTime", l.formatDate(a.time().plus(30, ChronoUnit.DAYS), timeZoneForRequest(req), false)));
+								yield l.get("admin_user_state_suspended", Map.of("deletionTime", l.formatDate(a.time().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS), timeZoneForRequest(req), false)));
 						}
 						case HIDDEN -> l.get("admin_user_state_hidden");
 						case SELF_DEACTIVATED -> null;
@@ -791,6 +791,7 @@ public class SettingsAdminRoutes{
 			else
 				model.with("disabledPermissions", EnumSet.noneOf(UserRole.Permission.class));
 		}
+		model.with("numDaysUntilDeletion", UserBanInfo.ACCOUNT_DELETION_DAYS);
 		if(info.permissions.hasPermission(UserRole.Permission.VISIBLE_IN_STAFF))
 			model.with("settings", List.of(UserRole.Permission.VISIBLE_IN_STAFF));
 		return model;
@@ -840,6 +841,7 @@ public class SettingsAdminRoutes{
 		model.pageTitle(lang(req).get("admin_create_role_title"));
 		model.with("permissions", Arrays.stream(UserRole.Permission.values()).filter(p->p!=UserRole.Permission.VISIBLE_IN_STAFF && (myRole.permissions().contains(UserRole.Permission.SUPERUSER) || myRole.permissions().contains(p))).toList());
 		model.with("disabledPermissions", EnumSet.noneOf(UserRole.Permission.class));
+		model.with("numDaysUntilDeletion", UserBanInfo.ACCOUNT_DELETION_DAYS);
 		if(info.permissions.hasPermission(UserRole.Permission.VISIBLE_IN_STAFF))
 			model.with("settings", List.of(UserRole.Permission.VISIBLE_IN_STAFF));
 		return model;
@@ -1039,7 +1041,7 @@ public class SettingsAdminRoutes{
 							if(targetUser instanceof ForeignUser)
 								yield l.get("admin_user_state_suspended_foreign");
 							else
-								yield l.get("admin_user_state_suspended", Map.of("deletionTime", l.formatDate(le.time().plus(30, ChronoUnit.DAYS), timeZoneForRequest(req), false)));
+								yield l.get("admin_user_state_suspended", Map.of("deletionTime", l.formatDate(le.time().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS), timeZoneForRequest(req), false)));
 						}
 						case HIDDEN -> l.get("admin_user_state_hidden");
 						case SELF_DEACTIVATED -> null;
@@ -1108,7 +1110,7 @@ public class SettingsAdminRoutes{
 			model.with("sessions", ctx.getUsersController().getAccountSessions(account));
 			if(user.banInfo!=null){
 				if(user.domain==null && (user.banStatus==UserBanStatus.SUSPENDED || user.banStatus==UserBanStatus.SELF_DEACTIVATED)){
-					model.with("accountDeletionTime", user.banInfo.bannedAt().plus(30, ChronoUnit.DAYS));
+					model.with("accountDeletionTime", user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
 				}
 				try{
 					model.with("banModerator", ctx.getUsersController().getUserOrThrow(user.banInfo.moderatorID()));
@@ -1195,7 +1197,7 @@ public class SettingsAdminRoutes{
 					case "message" -> user.banInfo!=null ? user.banInfo.message() : null;
 					case "forcePasswordChange" -> user.banInfo!=null && user.banInfo.requirePasswordChange();
 					default -> throw new IllegalStateException("Unexpected value: " + s);
-				}, null, Map.of("user", user, "hideNone", report!=null, "deleteReportContent", deleteReportContent));
+				}, null, Map.of("user", user, "hideNone", report!=null, "deleteReportContent", deleteReportContent, "numDaysUntilDeletion", UserBanInfo.ACCOUNT_DELETION_DAYS));
 		if(user.domain==null && form instanceof WebDeltaResponse wdr){
 			wdr.runScript("""
 					function userBanForm_updateFieldVisibility(){

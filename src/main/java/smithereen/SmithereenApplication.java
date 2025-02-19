@@ -48,6 +48,7 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.User;
+import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
@@ -1078,7 +1079,7 @@ public class SmithereenApplication{
 						model.with("unfreezeTime", acc.user.banInfo.expiresAt());
 					}
 				}
-				case SUSPENDED, SELF_DEACTIVATED -> model.with("deletionTime", acc.user.banInfo.bannedAt().plus(30, ChronoUnit.DAYS));
+				case SUSPENDED, SELF_DEACTIVATED -> model.with("deletionTime", acc.user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
 			}
 			halt(model.renderToString());
 		}

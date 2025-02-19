@@ -453,7 +453,7 @@ public class UsersController{
 				LOG.trace("No users to delete");
 				return;
 			}
-			Instant deleteBannedBefore=Instant.now().minus(30, ChronoUnit.DAYS);
+			Instant deleteBannedBefore=Instant.now().minus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS);
 			for(User user:users){
 				if(user.banStatus!=UserBanStatus.SUSPENDED && user.banStatus!=UserBanStatus.SELF_DEACTIVATED){
 					LOG.warn("Ineligible user {} in pending account deletions - bug likely (banStatus {}, banInfo {})", user.id, user.banStatus, user.banInfo);

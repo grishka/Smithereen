@@ -206,7 +206,7 @@ public class Mailer{
 					"name", self.user.firstName,
 					"serverName", Config.serverDisplayName,
 					"domain", Config.domain,
-					"deletionDate", l.formatDate(Objects.requireNonNull(banInfo.bannedAt()).plus(30, ChronoUnit.DAYS), self.prefs.timeZone, false)
+					"deletionDate", l.formatDate(Objects.requireNonNull(banInfo.bannedAt()).plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS), self.prefs.timeZone, false)
 			));
 			default -> throw new IllegalArgumentException("Unexpected value: " + banStatus);
 		};
