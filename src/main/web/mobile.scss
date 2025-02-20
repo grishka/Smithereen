@@ -851,7 +851,7 @@ select{
 		min-height: 0;
 	}
 	video{
-		max-width: min(100vw, 510px);
+		max-width: min(100%, 510px);
 		max-height: 510px;
 		margin: auto;
 	}
@@ -2517,5 +2517,16 @@ input.searchField{
 			display: block;
 		}
 	}
+}
+
+.loadMoreComments{
+	margin-top: 4px;
+	background: $blockBackground;
+	height: 42px;
+	padding: 0 16px;
+	text-align: center;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 

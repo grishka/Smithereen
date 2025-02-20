@@ -421,10 +421,11 @@ public class PostRoutes{
 
 		User author=ctx.getUsersController().getUserOrThrow(post.post.authorID);
 
+		boolean reverseComments=isLayer || isMobile(req);
 		int offset=offset(req);
 		CommentViewType viewType=info!=null && info.account!=null ? info.account.prefs.commentViewType : CommentViewType.THREADED;
-		PaginatedList<PostViewModel> replies=ctx.getWallController().getReplies(self!=null ? self.user : null, replyKey, offset, 100, 50, viewType, isLayer);
-		if(isLayer){
+		PaginatedList<PostViewModel> replies=ctx.getWallController().getReplies(self!=null ? self.user : null, replyKey, offset, 100, 50, viewType, reverseComments);
+		if(reverseComments){
 			replies.list=replies.list.reversed();
 			replies.offset=replies.total-replies.list.size();
 		}
@@ -1116,7 +1117,7 @@ public class PostRoutes{
 	}
 
 	public static Object ajaxLayerPrevComments(Request req, Response resp){
-		if(isMobile(req) || !isAjax(req))
+		if(!isAjax(req))
 			throw new BadRequestException();
 
 		ApplicationContext ctx=context(req);
@@ -1151,20 +1152,27 @@ public class PostRoutes{
 				.with("replyFormID", "wallPostForm_commentReplyPost"+postID+ridSuffix)
 				.with("commentViewType", viewType);
 		model.with("topLevel", post);
+		boolean mobile=isMobile(req);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
-				.runScript("window._layerScrollHeight=ge(\"postReplies"+postID+ridSuffix+"\").closest(\".layerContent\").scrollHeight;")
+				.runScript(mobile ? "window._layerScrollHeight=document.scrollingElement.scrollHeight;" : "window._layerScrollHeight=ge(\"postReplies"+postID+ridSuffix+"\").closest(\".layerContent\").scrollHeight;")
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+postID+ridSuffix, model.renderToString())
 				.hide("prevLoader"+postID+ridSuffix);
 		if(comments.total>comments.list.size()+offset){
-			rb.show("loadPrevBtn"+postID).setAttribute("loadPrevBtn"+postID+ridSuffix, "href", "/posts/"+postID+"/layerPrevComments?offset="+(offset+comments.list.size())+"&rid="+rid);
+			rb.show("loadPrevBtn"+postID).setAttribute("loadPrevBtn"+postID+ridSuffix, "href", "/posts/"+postID+"/layerPrevComments?offset="+(offset+comments.list.size())+(StringUtils.isNotEmpty(rid) ? "&rid="+rid : ""));
 			if(viewType==CommentViewType.FLAT){
 				rb.setContent("loadPrevBtn"+postID+ridSuffix, lang(req).get("comments_show_X_more_comments", Map.of("count", comments.total-comments.list.size()-offset)));
 			}
 		}else{
-			rb.remove("prevLoader"+postID+ridSuffix, "loadPrevBtn"+postID+ridSuffix)
-					.show("postCommentsTotal"+postID+ridSuffix);
+			if(mobile)
+				rb.remove("loadPrevWrap"+postID);
+			else
+				rb.remove("prevLoader"+postID+ridSuffix, "loadPrevBtn"+postID+ridSuffix)
+						.show("postCommentsTotal"+postID+ridSuffix);
 		}
-		rb.runScript("var layerCont=ge(\"postReplies"+postID+ridSuffix+"\").closest(\".layerContent\"); layerCont.scrollTop+=layerCont.scrollHeight-window._layerScrollHeight; delete window._layerScrollHeight;");
+		if(mobile)
+			rb.runScript("var layerCont=document.scrollingElement; layerCont.scrollTop+=layerCont.scrollHeight-window._layerScrollHeight; delete window._layerScrollHeight;");
+		else
+			rb.runScript("var layerCont=ge(\"postReplies"+postID+ridSuffix+"\").closest(\".layerContent\"); layerCont.scrollTop+=layerCont.scrollHeight-window._layerScrollHeight; delete window._layerScrollHeight;");
 		return rb;
 	}
 }
