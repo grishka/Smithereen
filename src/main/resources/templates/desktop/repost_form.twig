@@ -1,8 +1,8 @@
 {# @pebvariable name="repostedPost" type="smithereen.model.Post" #}
 {% if repostedPost.local %}
 <div class="secondaryTabBar" id="repostTabBar{{ repostedPost.id }}">
-	<a href="#" class="selected">{{ L('share_content') }}</a>
-	<a href="#">{{ L('embed_post') }}</a>
+	<a href="#" data-no-al="1" class="selected">{{ L('share_content') }}</a>
+	<a href="#" data-no-al="1">{{ L('embed_post') }}</a>
 </div>
 <div class="tabbedContent" id="repostTabContent{{ repostedPost.id }}">
 {% endif %}
