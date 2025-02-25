@@ -43,7 +43,7 @@
 	{% if userPermissions is not null and userPermissions.canReport(realPost) %}
 	<a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box class="button tertiary">{{ L('report') }}</a>
 	{% endif %}
-	{% if realPost.ownerID!=realPost.authorID and tab!="wall2wall" and realPost.ownerID>0 %} |
+	{% if realPost.ownerID!=realPost.authorID and tab!="wall2wall" and realPost.ownerID>0 %}
 	<a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}" class="button tertiary">{{ L('wall_to_wall') }}</a>
 	{% endif %}
 	{% if not realPost.local %}
