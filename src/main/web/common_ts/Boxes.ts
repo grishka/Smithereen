@@ -22,8 +22,11 @@ class LayerManager{
 	private stack:BaseLayer[]=[];
 	private escapeKeyListener=(ev:KeyboardEvent)=>{
 		if(ev.keyCode==27 && !this.hiddenTemporarily){
-			this.lastEscKeyEvent=ev;
-			this.maybeDismissTopLayer();
+			var focusedEl=document.activeElement;
+			if(!focusedEl || (focusedEl.tagName!="INPUT" && focusedEl.tagName!="TEXTAREA")){
+				this.lastEscKeyEvent=ev;
+				this.maybeDismissTopLayer();
+			}
 		}
 	};
 	private boxLoader:HTMLDivElement;
