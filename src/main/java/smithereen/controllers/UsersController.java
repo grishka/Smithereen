@@ -11,9 +11,16 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.TimeUnit;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -37,6 +44,7 @@ import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
+import smithereen.model.UserPresence;
 import smithereen.model.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.viewmodel.UserContentMetrics;
@@ -48,15 +56,23 @@ import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
 import smithereen.util.FloodControl;
+import smithereen.util.MaintenanceScheduler;
+import smithereen.util.NamedMutexCollection;
 import spark.Request;
 import spark.utils.StringUtils;
 
 public class UsersController{
+	private static final int ONLINE_TIMEOUT_MINUTES=5;
 	private static final Logger LOG=LoggerFactory.getLogger(UsersController.class);
 	private final ApplicationContext context;
+	private final ConcurrentSkipListSet<CachedUserPresence> onlineLocalUsers=new ConcurrentSkipListSet<>(Comparator.comparing(p->p.presence.lastUpdated()));
+	private final ConcurrentHashMap<Integer, CachedUserPresence> onlineLocalUsersByID=new ConcurrentHashMap<>();
+	private final NamedMutexCollection onlineMutexes=new NamedMutexCollection();
+	private Map<Integer, UserPresence> pendingUserPresenceUpdates=Collections.synchronizedMap(new HashMap<>());
 
 	public UsersController(ApplicationContext context){
 		this.context=context;
+		MaintenanceScheduler.runPeriodically(this::doPendingPresenceUpdates, 1, TimeUnit.MINUTES);
 	}
 
 	public User getUserOrThrow(int id){
@@ -623,4 +639,124 @@ public class UsersController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public void setOnline(User user, UserPresence.PresenceType type, long sessionID){
+		user.ensureLocal();
+		UserPresence presence=new UserPresence(true, Instant.now(), type);
+		LOG.trace("Setting user {} presence to online, type {}", user.id, type);
+		String mutexName=String.valueOf(user.id);
+
+		onlineMutexes.acquire(mutexName);
+		CachedUserPresence prevPresence=onlineLocalUsersByID.get(user.id);
+		if(prevPresence!=null){
+			onlineLocalUsers.remove(prevPresence);
+		}
+		CachedUserPresence newPresence=new CachedUserPresence(user.id, sessionID, presence);
+		onlineLocalUsersByID.put(user.id, newPresence);
+		onlineLocalUsers.add(newPresence);
+		pendingUserPresenceUpdates.put(user.id, presence);
+		onlineMutexes.release(mutexName);
+	}
+
+	public void setOffline(User user, long sessionID){
+		user.ensureLocal();
+		setOfflineInternal(user.id, sessionID);
+	}
+
+	private void setOfflineInternal(int userID, long sessionID){
+		String mutexName=String.valueOf(userID);
+
+		onlineMutexes.acquire(mutexName);
+		CachedUserPresence prevPresence=onlineLocalUsersByID.get(userID);
+		if(prevPresence!=null && prevPresence.sessionID==sessionID){
+			onlineLocalUsers.remove(prevPresence);
+			onlineLocalUsersByID.remove(userID);
+			pendingUserPresenceUpdates.put(userID, new UserPresence(false, prevPresence.presence.lastUpdated(), prevPresence.presence.type()));
+		}
+		onlineMutexes.release(mutexName);
+	}
+
+	public void doPendingPresenceUpdates(){
+		try{
+			Instant onlineThreshold=Instant.now().minus(ONLINE_TIMEOUT_MINUTES, ChronoUnit.MINUTES);
+			for(CachedUserPresence p:onlineLocalUsers.reversed()){
+				if(p.presence.lastUpdated().isBefore(onlineThreshold)){
+					LOG.trace("Setting user {} presence to offline by timeout", p.userID);
+					setOfflineInternal(p.userID, p.sessionID);
+				}else{
+					break;
+				}
+			}
+
+			if(!pendingUserPresenceUpdates.isEmpty()){
+				Map<Integer, UserPresence> updates=pendingUserPresenceUpdates;
+				pendingUserPresenceUpdates=Collections.synchronizedMap(new HashMap<>());
+				UserStorage.updateUserPresences(updates);
+			}
+		}catch(SQLException x){
+			LOG.error("Failed to do pending user presence updates", x);
+		}
+	}
+
+	public void loadPresenceFromDatabase(){
+		try{
+			Set<Integer> onlineUsers=UserStorage.getOnlineLocalUserIDs();
+			if(!onlineUsers.isEmpty()){
+				Map<Integer, UserPresence> presences=UserStorage.getUserPresences(onlineUsers);
+				presences.forEach((id, presence)->{
+					CachedUserPresence p=new CachedUserPresence(id, 0, presence);
+					onlineLocalUsers.add(p);
+					onlineLocalUsersByID.put(id, p);
+				});
+				doPendingPresenceUpdates();
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, UserPresence> getUserPresences(Collection<Integer> userIDs){
+		if(userIDs.isEmpty())
+			return Map.of();
+		Set<Integer> remainingIDs=new HashSet<>(userIDs);
+		HashMap<Integer, UserPresence> result=new HashMap<>();
+		for(int id:remainingIDs){
+			CachedUserPresence presence=onlineLocalUsersByID.get(id);
+			if(presence!=null)
+				result.put(id, presence.presence);
+		}
+		remainingIDs.removeAll(result.keySet());
+		if(!remainingIDs.isEmpty()){
+			for(int id:remainingIDs){
+				UserPresence presence=pendingUserPresenceUpdates.get(id);
+				if(presence!=null)
+					result.put(id, presence);
+			}
+		}
+		remainingIDs.removeAll(result.keySet());
+		if(!remainingIDs.isEmpty()){
+			try{
+				result.putAll(UserStorage.getUserPresences(remainingIDs));
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+		return result;
+	}
+
+	public UserPresence getUserPresence(User user){
+		return getUserPresences(Set.of(user.id)).get(user.id);
+	}
+
+	public Map<Integer, UserPresence> getUserPresencesOnlineOnly(Collection<Integer> userIDs){
+		HashMap<Integer, UserPresence> result=new HashMap<>();
+		for(int id:userIDs){
+			CachedUserPresence presence=onlineLocalUsersByID.get(id);
+			if(presence!=null)
+				result.put(id, presence.presence);
+		}
+		return result;
+	}
+
+	private record CachedUserPresence(int userID, long sessionID, UserPresence presence){}
 }

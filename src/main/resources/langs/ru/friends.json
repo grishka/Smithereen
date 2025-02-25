@@ -60,5 +60,10 @@
   "X_followers": "{count, plural, =0 {Нет подписчиков} one {# подписчик} few {# подписчика} other {# подписчиков}}",
   "X_following": "{count, plural, =0 {Нет подписок} one {# подписка} few {# подписки} other {# подписок}}",
   "summary_X_friends_found": "{count, plural, =0 {Не найдено ни одного друга} one {Найден # друг} few {Найдено # друга} other {Найдено # друзей}}",
-  "X_followers_bold": "{count, plural, one {<b>#</b> подписчик} few {<b>#</b> подписчика} other {<b>#</b> подписчиков}}"
+  "X_followers_bold": "{count, plural, one {<b>#</b> подписчик} few {<b>#</b> подписчика} other {<b>#</b> подписчиков}}",
+  "friends_online": "Друзья онлайн",
+  "no_friends_online_own": "Никто из ваших друзей сейчас не в сети",
+  "no_friends_online": "Никто из друзей {name, inflect, genitive} сейчас не в сети",
+  "summary_own_X_friends_online": "{count, plural, =0 {Нет друзей} one {# ваш друг} few {# ваших друга} other {# ваших друзей}} в сети",
+  "summary_user_X_friends_online": "{count, plural, =0 {0 друзей} one {# друг} few {# друга} other {# друзей}} {name, inflect, genitive} в сети"
 }

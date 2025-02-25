@@ -2497,6 +2497,20 @@ input.searchField{
 	.profileName{
 		font-size: 20px;
 	}
+	.profilePresence{
+		margin-top: 8px;
+		color: $grayText;
+		.mobileOnlineIcon{
+			display: inline-block;
+			width: 10px;
+			height: 14px;
+			vertical-align: text-top;
+			background: svg-load('img/online_mobile_mobile.svg', fill: $grayText);
+			margin-left: 2px;
+			position: relative;
+			top: 2px;
+		}
+	}
 }
 
 .filteredPostNotice{

@@ -18,6 +18,19 @@
 	{% endfor %}
 	{% endif %}
 {% endmacro %}
+{% block navBarExtra %}
+{% if presence is not null %}
+<span class="flR auxText">
+{%- if presence.online %}
+{{- L('user_online') }}
+{%- else %}
+{{- L('user_last_seen', {'gender': user.gender, 'date': LD(presence.lastUpdated)}) }}
+{%- endif %}
+{% if presence.mobile %}<span class="mobileOnlineIcon"></span>{% endif %}
+</span>
+<div class="clear"></div>
+{% endif %}
+{% endblock %}
 {%block content%}
 {% if movedTo is not null %}
 <div class="marginsAreMessy"></div>
@@ -130,6 +143,9 @@
 		{% endif %}
 		{% if friends is not empty %}
 			{% include "profile_module_user_grid" with {'users': friends, 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': friendCount})} %}
+		{% endif %}
+		{% if onlineFriends is not empty %}
+			{% include "profile_module_user_grid" with {'users': onlineFriends, 'headerTitle': L('friends_online'), 'headerHref': "/users/#{user.id}/friends/online", 'subheaderTitle': L('X_friends', {'count': onlineFriendCount})} %}
 		{% endif %}
 		{% if albums is not empty %}
 			{% include "profile_module_photo_albums" with {'albums': albums, 'headerTitle': L('photo_albums'), 'headerHref': "/users/#{user.id}/albums", 'subheaderTitle': L('X_photo_albums', {'count': photoAlbumCount}), 'ownerID': user.id} %}

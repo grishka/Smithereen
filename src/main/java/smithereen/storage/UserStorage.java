@@ -46,12 +46,14 @@ import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserNotifications;
+import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
 import smithereen.util.NamedMutexCollection;
 import spark.utils.StringUtils;
@@ -310,19 +312,25 @@ public class UserStorage{
 		}
 	}
 
-	public static PaginatedList<User> getFriendListForUser(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<User> getFriendListForUser(int userID, int offset, int count, boolean onlineOnly) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			int total=new SQLQueryBuilder(conn)
+			SQLQueryBuilder b=new SQLQueryBuilder(conn)
 					.selectFrom("followings")
-					.count()
-					.where("followee_id=? AND mutual=1", userID)
-					.executeAndGetInt();
+					.count();
+			if(onlineOnly){
+				b.join("RIGHT JOIN users ON followings.followee_id=users.id").where("users.is_online=1");
+			}
+			int total=b.andWhere("follower_id=? AND mutual=1", userID).executeAndGetInt();
 			if(total==0)
 				return PaginatedList.emptyList(count);
-			List<Integer> ids=new SQLQueryBuilder(conn)
+			b=new SQLQueryBuilder(conn)
 					.selectFrom("followings")
-					.columns("followee_id")
-					.where("follower_id=? AND mutual=1", userID)
+					.columns("followee_id");
+			if(onlineOnly){
+				b.join("RIGHT JOIN users ON followings.followee_id=users.id").where("users.is_online=1");
+			}
+
+			List<Integer> ids=b.andWhere("follower_id=? AND mutual=1", userID)
 					.orderBy("followee_id ASC")
 					.limit(count, offset)
 					.executeAndGetIntList();
@@ -371,18 +379,29 @@ public class UserStorage{
 				.executeAndGetInt();
 	}
 
-	public static PaginatedList<User> getRandomFriendsForProfile(int userID, int count) throws SQLException{
+	public static PaginatedList<User> getRandomFriendsForProfile(int userID, int count, boolean onlineOnly) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			int total=new SQLQueryBuilder(conn)
+			SQLQueryBuilder b=new SQLQueryBuilder(conn)
 					.selectFrom("followings")
-					.count()
-					.where("follower_id=? AND mutual=1", userID)
-					.executeAndGetInt();
-			PreparedStatement stmt=conn.prepareStatement("SELECT followee_id FROM `followings` WHERE `follower_id`=? AND `mutual`=1 ORDER BY RAND() LIMIT 6");
-			stmt.setInt(1, userID);
-			try(ResultSet res=stmt.executeQuery()){
-				return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, 0, count);
+					.count();
+			if(onlineOnly){
+				b.join("RIGHT JOIN users ON followings.followee_id=users.id").where("users.is_online=1");
 			}
+			int total=b.andWhere("follower_id=? AND mutual=1", userID).executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			b=new SQLQueryBuilder(conn)
+					.selectFrom("followings")
+					.columns("followee_id");
+			if(onlineOnly){
+				b.join("RIGHT JOIN users ON followings.followee_id=users.id").where("users.is_online=1");
+			}
+			List<Integer> ids=b.andWhere("follower_id=? AND mutual=1", userID)
+					.orderBy("RAND()")
+					.limit(count, 0)
+					.executeAndGetIntList();
+			return new PaginatedList<>(getByIdAsList(ids), total, 0, count);
 		}
 	}
 
@@ -1334,5 +1353,37 @@ public class UserStorage{
 				.value("muted", muted)
 				.where("follower_id=? AND followee_id=?", self, id)
 				.executeNoResult();
+	}
+
+	public static Map<Integer, UserPresence> getUserPresences(Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("users")
+				.columns("id", "presence")
+				.whereIn("id", ids)
+				.andWhere("presence IS NOT NULL")
+				.executeAsStream(r->new Pair<>(r.getInt("id"), Utils.gson.fromJson(r.getString("presence"), UserPresence.class)))
+				.collect(Collectors.toMap(Pair::first, Pair::second));
+	}
+
+	public static void updateUserPresences(Map<Integer, UserPresence> presences) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			for(int id:presences.keySet()){
+				new SQLQueryBuilder(conn)
+						.update("users")
+						.value("presence", Utils.gson.toJson(presences.get(id)))
+						.where("id=?", id)
+						.executeNoResult();
+			}
+		}
+	}
+
+	public static Set<Integer> getOnlineLocalUserIDs() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("users")
+				.columns("id")
+				.where("is_online=1")
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
 	}
 }

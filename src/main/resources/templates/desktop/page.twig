@@ -97,6 +97,7 @@
 						{%- endif -%}
 						{%- if not loop.last %} &raquo; {% endif -%}
 					{%- endfor -%}
+					{% block navBarExtra %}{% endblock %}
 					</div>
 				{% endif %}
 {%block content%}{%endblock%}

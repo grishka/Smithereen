@@ -94,9 +94,11 @@ public class SessionRoutes{
 
 	public static Object logout(Request req, Response resp) throws SQLException{
 		if(requireAccount(req, resp) && verifyCSRF(req, resp)){
-			SessionStorage.deleteSession(req.cookie("psid"));
+			SessionInfo info=sessionInfo(req);
+			String psid=req.cookie("psid");
+			context(req).getUsersController().setOffline(info.account.user, psid.hashCode());
+			SessionStorage.deleteSession(psid);
 			resp.removeCookie("psid");
-			SessionInfo info=req.session().attribute("info");
 			info.account=null;
 			info.csrfToken=null;
 			resp.redirect("/");

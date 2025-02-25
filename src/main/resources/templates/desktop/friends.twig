@@ -33,6 +33,12 @@
 		{% else %}
 			{{ L("summary_user_X_follows", {'name': owner.firstAndGender, 'count': totalItems}) }}
 		{% endif %}
+	{% elseif tab=='online' %}
+		{% if isSelf %}
+			{{ L("summary_own_X_friends_online", {'count': totalItems}) }}
+		{% else %}
+			{{ L("summary_user_X_friends_online", {'name': owner.firstAndGender, 'count': totalItems}) }}
+		{% endif %}
 	{% else %}
 		{% if query is not empty %}
 			{{ L("summary_X_friends_found", {'count': totalItems}) }}
@@ -54,6 +60,12 @@
 	{{ L('no_followers') }}
 	{% elseif tab=='following' %}
 	{{ L('no_follows') }}
+	{% elseif tab=='online' %}
+	{% if currentUser is not null and currentUser.id==owner.id %}
+	{{ L('no_friends_online_own') }}
+	{% else %}
+	{{ L('no_friends_online', {'name': owner.firstAndGender}) }}
+	{% endif %}
 	{% else %}
 	{{ query is empty ? L('no_friends') : L('nothing_found') }}
 	{% endif %}

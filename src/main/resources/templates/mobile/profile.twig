@@ -72,6 +72,16 @@
 		</div>
 		<div class="profileNameW" id="profileHeaderNameW">
 			<div class="profileName">{{ user | name('complete') }}</div>
+			{% if presence is not null %}
+			<div class="profilePresence">
+			{%- if presence.online %}
+			{{- L('user_online') }}
+			{%- else %}
+			{{- L('user_last_seen', {'gender': user.gender, 'date': LD(presence.lastUpdated)}) }}
+			{%- endif %}
+			{% if presence.mobile %}<span class="mobileOnlineIcon"></span>{% endif %}
+			</div>
+			{% endif %}
 		</div>
 	</div>
 	{% if currentUser is not null and currentUser.id!=user.id and not isSelfBlocked and movedTo is null %}

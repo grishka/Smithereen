@@ -4716,3 +4716,25 @@ label.largeAccented{
 	}
 }
 
+.mobileOnlineIcon{
+	display: inline-block;
+	width: 11px;
+	height: 13px;
+	vertical-align: text-top;
+	background: svg-load('img/online_mobile.svg', fill: #aaa);
+	margin-left: 2px;
+}
+
+.navbar .mobileOnlineIcon{
+	background: svg-load('img/online_mobile.svg', fill: $auxiliaryBlockHeader);
+}
+
+.onlineText{
+	color: #aaa;
+}
+
+.postAvaWrap .onlineText{
+	text-align: center;
+	margin-top: 7px;
+}
+

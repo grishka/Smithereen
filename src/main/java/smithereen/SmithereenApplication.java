@@ -50,6 +50,7 @@ import smithereen.model.SessionInfo;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
+import smithereen.model.UserPresence;
 import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.routes.ActivityPubRoutes;
@@ -511,6 +512,7 @@ public class SmithereenApplication{
 			get("/groups", GroupsRoutes::userGroups);
 			path("/friends", ()->{
 				get("", FriendsRoutes::friends);
+				get("/online", FriendsRoutes::friendsOnline);
 				getLoggedIn("/mutual", FriendsRoutes::mutualFriends);
 			});
 			path("/wall", ()->{
@@ -872,8 +874,13 @@ public class SmithereenApplication{
 				try{
 					if(req.session().attribute("info")==null)
 						req.session().attribute("info", new SessionInfo());
+
+					SessionInfo info=req.session().attribute("info");
+					if(info.account!=null){
+						context(req).getUsersController().setOnline(info.account.user, isMobile(req) ? UserPresence.PresenceType.MOBILE_WEB : UserPresence.PresenceType.WEB, req.cookie("psid").hashCode());
+					}
+
 					if(req.requestMethod().equalsIgnoreCase("get") && req.attribute("noHistory")==null){
-						SessionInfo info=req.session().attribute("info");
 						String path=req.pathInfo();
 						String query=req.raw().getQueryString();
 						if(StringUtils.isNotEmpty(query)){
@@ -978,6 +985,7 @@ public class SmithereenApplication{
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(MediaStorageUtils::deleteAbandonedFiles, 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(()->UsersController.doPendingAccountDeletions(context), 1, TimeUnit.DAYS);
+		context.getUsersController().loadPresenceFromDatabase();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
 			LOG.info("Stopping Spark");

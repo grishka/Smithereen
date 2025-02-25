@@ -28,6 +28,12 @@
 	{{ L('no_followers') }}
 	{% elseif tab=='following' %}
 	{{ L('no_follows') }}
+	{% elseif tab=='online' %}
+	{% if currentUser is not null and currentUser.id==owner.id %}
+	{{ L('no_friends_online_own') }}
+	{% else %}
+	{{ L('no_friends_online', {'name': owner.firstAndGender}) }}
+	{% endif %}
 	{% else %}
 	{{ L('no_friends') }}
 	{% endif %}

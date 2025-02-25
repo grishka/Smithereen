@@ -909,6 +909,11 @@ CREATE TABLE `users` (
   `privacy` json DEFAULT NULL,
   `ban_status` tinyint unsigned NOT NULL DEFAULT '0',
   `ban_info` json DEFAULT NULL,
+  `presence` json DEFAULT NULL,
+  `is_online` tinyint(1) GENERATED ALWAYS AS (ifnull(cast(json_extract(`presence`,_utf8mb4'$.isOnline') as unsigned),0)) VIRTUAL NOT NULL,
+  `num_followers` bigint NOT NULL DEFAULT '0',
+  `num_following` bigint NOT NULL DEFAULT '0',
+  `num_friends` bigint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
   UNIQUE KEY `ap_id` (`ap_id`),
@@ -975,4 +980,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-02-07 13:56:42
+-- Dump completed on 2025-02-24 10:47:59

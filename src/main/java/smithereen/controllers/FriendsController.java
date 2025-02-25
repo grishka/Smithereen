@@ -54,14 +54,11 @@ public class FriendsController{
 	}
 
 	public PaginatedList<User> getFriends(User user, int offset, int count, SortOrder order){
-		try{
-			return switch(order){
-				case ID_ASCENDING -> UserStorage.getFriendListForUser(user.id, offset, count);
-				case RANDOM -> UserStorage.getRandomFriendsForProfile(user.id, count);
-			};
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
+		return getFriends(user, offset, count, order, false);
+	}
+
+	public PaginatedList<User> getOnlineFriends(User user, int offset, int count, SortOrder order){
+		return getFriends(user, offset, count, order, true);
 	}
 
 	public PaginatedList<User> getMutualFriends(User user, User otherUser, int offset, int count, SortOrder order){
@@ -69,6 +66,17 @@ public class FriendsController{
 			if(user.id==otherUser.id)
 				throw new IllegalArgumentException("must be different users");
 			return UserStorage.getMutualFriendListForUser(user.id, otherUser.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	private PaginatedList<User> getFriends(User user, int offset, int count, SortOrder order, boolean onlineOnly){
+		try{
+			return switch(order){
+				case ID_ASCENDING -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly);
+				case RANDOM -> UserStorage.getRandomFriendsForProfile(user.id, count, onlineOnly);
+			};
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

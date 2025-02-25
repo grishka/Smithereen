@@ -109,5 +109,7 @@
   "profile_mute": "Hide {name}'s news",
   "profile_unmute": "Show {name}'s news",
   "profile_user_muted": "{name}'s news will no longer be shown in your feed",
-  "profile_user_unmuted": "{name}'s news will be shown in your feed"
+  "profile_user_unmuted": "{name}'s news will be shown in your feed",
+  "user_online": "Online",
+  "user_last_seen": "Last seen {date}"
 }

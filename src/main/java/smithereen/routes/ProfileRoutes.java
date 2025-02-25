@@ -13,17 +13,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static smithereen.Utils.*;
-
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.Utils;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
@@ -40,8 +39,6 @@ import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
@@ -50,6 +47,8 @@ import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
+
+import static smithereen.Utils.*;
 
 public class ProfileRoutes{
 	public static Object profile(Request req, Response resp){
@@ -108,6 +107,11 @@ public class ProfileRoutes{
 
 		PaginatedList<User> friends=ctx.getFriendsController().getFriends(user, 0, 6, FriendsController.SortOrder.RANDOM);
 		model.with("friendCount", friends.total).with("friends", friends.list);
+
+		if(!isMobile(req)){
+			PaginatedList<User> onlineFriends=ctx.getFriendsController().getOnlineFriends(user, 0, 6, FriendsController.SortOrder.RANDOM);
+			model.with("onlineFriendCount", onlineFriends.total).with("onlineFriends", onlineFriends.list);
+		}
 
 		if(self!=null && user.id!=self.user.id){
 			PaginatedList<User> mutualFriends=ctx.getFriendsController().getMutualFriends(user, self.user, 0, 3, FriendsController.SortOrder.RANDOM);
@@ -354,6 +358,8 @@ public class ProfileRoutes{
 					model.with("taggedPhotoCount", taggedPhotos.numPhotos);
 			}catch(UserActionNotAllowedException ignore){}
 		}
+
+		model.with("presence", ctx.getUsersController().getUserPresence(user));
 
 		return model;
 	}

@@ -60,5 +60,10 @@
   "X_followers": "{count, plural, =0 {No followers} one {# follower} other {# followers}}",
   "X_following": "{count, plural, =0 {Not following anyone} one {# following} other {# following}}",
   "summary_X_friends_found": "{count, plural, =0 {No friends} one {# friend} other {# friends}} found",
-  "X_followers_bold": "{count, plural, one {<b>#</b> follower} other {<b>#</b> followers}}"
+  "X_followers_bold": "{count, plural, one {<b>#</b> follower} other {<b>#</b> followers}}",
+  "friends_online": "Friends online",
+  "no_friends_online_own": "None of your friends are online right now",
+  "no_friends_online": "None of {name}'s friends are online right now",
+  "summary_own_X_friends_online": "{count, plural, =0 {None of your friends are} one {# your friend is} other {# of your friends are}} online",
+  "summary_user_X_friends_online": "{count, plural, =0 {None of {name}'s friends are} one {# {name}'s friend is} other {# of {name}'s friends are}} online"
 }

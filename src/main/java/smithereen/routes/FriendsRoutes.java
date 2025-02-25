@@ -100,7 +100,7 @@ public class FriendsRoutes{
 		}
 	}
 
-	private static Object friends(Request req, Response resp, User user, Account self, ApplicationContext ctx){
+	private static Object friends(Request req, Response resp, User user, Account self, ApplicationContext ctx, boolean onlineOnly){
 		ctx.getPrivacyController().enforceUserProfileAccess(self!=null ? self.user : null, user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friends", req);
 		model.with("owner", user);
@@ -108,7 +108,10 @@ public class FriendsRoutes{
 		PaginatedList<User> friends;
 		String query=req.queryParams("q");
 		if(StringUtils.isEmpty(query)){
-			friends=ctx.getFriendsController().getFriends(user, offset(req), 100, FriendsController.SortOrder.ID_ASCENDING);
+			if(onlineOnly)
+				friends=ctx.getFriendsController().getOnlineFriends(user, offset(req), 100, FriendsController.SortOrder.ID_ASCENDING);
+			else
+				friends=ctx.getFriendsController().getFriends(user, offset(req), 100, FriendsController.SortOrder.ID_ASCENDING);
 		}else{
 			friends=ctx.getSearchController().searchFriends(query, user, offset(req), 100);
 		}
@@ -117,7 +120,7 @@ public class FriendsRoutes{
 			int mutualCount=ctx.getFriendsController().getMutualFriends(self.user, user, 0, 0, FriendsController.SortOrder.ID_ASCENDING).total;
 			model.with("mutualCount", mutualCount);
 		}
-		model.with("tab", "friends");
+		model.with("tab", onlineOnly ? "online" : "friends");
 		model.with("urlPath", req.raw().getPathInfo())
 				.with("query", query);
 		@Nullable
@@ -157,11 +160,22 @@ public class FriendsRoutes{
 		User user=context(req).getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		SessionInfo info=Utils.sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
-		return friends(req, resp, user, self, context(req));
+		return friends(req, resp, user, self, context(req), false);
 	}
 
 	public static Object ownFriends(Request req, Response resp, Account self, ApplicationContext ctx){
-		return friends(req, resp, self.user, self, ctx);
+		return friends(req, resp, self.user, self, ctx, false);
+	}
+
+	public static Object friendsOnline(Request req, Response resp){
+		User user=context(req).getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		SessionInfo info=Utils.sessionInfo(req);
+		@Nullable Account self=info!=null ? info.account : null;
+		return friends(req, resp, user, self, context(req), true);
+	}
+
+	public static Object ownFriendsOnline(Request req, Response resp, Account self, ApplicationContext ctx){
+		return friends(req, resp, self.user, self, ctx, true);
 	}
 
 	public static Object mutualFriends(Request req, Response resp, Account self, ApplicationContext ctx){

@@ -14,6 +14,7 @@
 <div class="post{{ standalone ? ' standalone' : '' }}{{ post.matchedFilter is null ? '' : ' filtered' }}" id="post{{ realPost.id }}_{{ randomID }}">
 	<div class="postAvaWrap">
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a') }}</a>
+		{% if onlines contains realPost.authorID and onlines[realPost.authorID].isOnline %}<div class="onlineText">{{ L('user_online') }}{% if onlines[realPost.authorID].mobile %}<span class="mobileOnlineIcon"></span>{% endif %}</div>{% endif %}
 	</div>
 	<div class="postContentWrap">
 		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.id }}_{{ randomID }}">
