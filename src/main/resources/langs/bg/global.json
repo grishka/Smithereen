@@ -130,7 +130,7 @@
   "X_users": "{count, plural, =0 {Няма потребители} one {# потребител} other {# потребители}}",
   "change": "Промени",
   "ip_address": "IP адрес",
-  "message_from_staff" : "Съобщение от администратора на сървъра: {message}",
+  "message_from_staff": "Съобщение от администратора на сървъра: {message}",
   "account_frozen": "Акаунта е временно блокиран",
   "account_suspended": "Акаунта е блокиран",
   "account_deactivated": "Акаунта е деактивиран",
