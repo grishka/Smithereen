@@ -40,6 +40,5 @@
   "feed_relationship_in_love_with": "<a id=\"author\">{author}</a> {gender, select, female {влюбилась} other {влюбился}} в <a id=\"target\">{target, inflect, accusative}</a>.",
   "feed_relationship_complicated": "<a id=\"author\">{author}</a> {gender, select, female {запуталась} other {запутался}} в своих отношениях.",
   "feed_relationship_complicated_with": "<a id=\"author\">{author}</a> {gender, select, female {запуталась} other {запутался}} в своих отношениях с <a id=\"target\">{target, inflect, instrumental}</a>.",
-  "feed_relationship_searching": "<a id=\"author\">{author}</a> в активном поиске.",
-  "feed_post_filtered": "Запись соответствует фильтру \"{filterName}\". <a id=\"show\">Всё равно показать</a>."
+  "feed_relationship_searching": "<a id=\"author\">{author}</a> в активном поиске."
 }

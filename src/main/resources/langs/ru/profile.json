@@ -110,6 +110,6 @@
   "profile_unmute": "Показывать новости {name, inflect, genitive}",
   "profile_user_muted": "Новости {name, inflect, genitive} больше не будут показываться в вашей ленте",
   "profile_user_unmuted": "Новости {name, inflect, genitive} будут показываться в вашей ленте",
-  "user_online": "Онлайн",
-  "user_last_seen": "{gender, select, female {Заходила} other {Заходил}} {date}"
+  "user_online": "Online",
+  "user_last_seen": "{gender, select, female {заходила} other {заходил}} {date}"
 }

@@ -133,7 +133,7 @@
   "X_users": "{count, plural, =0 {Нет пользователей} one {# пользователь} few {# пользователя} other {# пользователей}}",
   "change": "Изменить",
   "ip_address": "IP-адрес",
-  "message_from_staff" : "Сообщение от администрации: {message}",
+  "message_from_staff": "Сообщение от администрации: {message}",
   "account_frozen": "Страница временно заблокирована",
   "account_suspended": "Страница заблокирована",
   "account_deactivated": "Страница деактивирована",
