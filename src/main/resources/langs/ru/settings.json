@@ -201,21 +201,5 @@
   "settings_notifications_wall": "Записи на стене",
   "settings_notifications_mentions": "Упоминания",
   "settings_notifications_photo_tags": "Отметки на фотографиях",
-  "settings_notifications_group_invites": "Приглашения в сообщества",
-  "settings_summary_X_filters": "У вас {count, plural, =0 {нет фильтров} one {# фильтр} few {# фильтра} other {# фильтров}}",
-  "settings_no_filters": "Фильтры позволяют вам скрывать записи, содержащие определённые слова.\n\nВаши фильтры появятся здесь.",
-  "settings_create_filter": "Создать фильтр",
-  "settings_filter_name": "Название фильтра",
-  "settings_filter_expiration": "Срок действия",
-  "settings_filter_no_expiration": "Бессрочно",
-  "settings_filter_contexts": "Применять к",
-  "settings_filter_friends_feed": "Новостям друзей",
-  "settings_filter_groups_feed": "Новостям групп",
-  "settings_filter_words": "Слова или фразы",
-  "settings_filter_add_word": "Добавить слово или фразу",
-  "settings_filter_enter_word": "Введите хотя бы одно слово",
-  "settings_filter_select_contexts": "Выберите хотя бы один контекст",
-  "settings_filter_X_words": "{count, plural, one {# слово} few {# слова} other {# слов}}",
-  "settings_filter_expires": "Действует до",
-  "settings_confirm_delete_filter": "Вы уверены, что хотите удалить этот фильтр?"
+  "settings_notifications_group_invites": "Приглашения в сообщества"
 }
