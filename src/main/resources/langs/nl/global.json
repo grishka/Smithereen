@@ -130,7 +130,7 @@
   "X_users": "{count, plural, =0 {Geen gebruikers} one {# gebruiker} other {# gebruikers}}",
   "change": "Wijzigen",
   "ip_address": "IP-adres",
-  "message_from_staff" : "Bericht van medewerkers: {message}",
+  "message_from_staff": "Bericht van medewerkers: {message}",
   "account_frozen": "Het account is tijdelijk geblokkeerd",
   "account_suspended": "Het account is geblokkeerd",
   "account_deactivated": "Account is gedeactiveerd",
