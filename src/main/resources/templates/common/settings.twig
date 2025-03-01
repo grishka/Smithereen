@@ -15,6 +15,7 @@
 			{'value': 'TWO_LEVEL', 'label': L('settings_comments_two_level'), 'selected': commentView=='TWO_LEVEL'},
 			{'value': 'FLAT', 'label': L('settings_comments_flat'), 'selected': commentView=='FLAT'}
 		]) }}
+		{{ form.checkBox('countLikesInUnread', L('settings_feedback'), L('settings_notifications_count_likes'), countLikesInUnread) }}
 		{{ form.footer(L('save')) }}
 	{{ form.end() }}
 </form>

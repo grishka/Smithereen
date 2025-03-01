@@ -79,7 +79,10 @@ public class NotificationsController{
 				self.prefs.lastSeenNotificationID=lastSeenID;
 				SessionStorage.updatePreferences(self.id, self.prefs);
 			}
-			NotificationsStorage.getNotificationsForUser(self.user.id, self.prefs.lastSeenNotificationID).setNotificationsViewed();
+			UserNotifications un=NotificationsStorage.getNotificationsFromCache(self.user.id);
+			if(un!=null){
+				un.setNotificationsViewed();
+			}
 			sendRealtimeCountersUpdates(self.user);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -173,8 +176,9 @@ public class NotificationsController{
 		if(context.getPrivacyController().isUserBlocked(actor, owner))
 			return;
 		try{
+			Account acc=SessionStorage.getAccountByUserID(owner.id);
 			int id=NotificationsStorage.putNotification(owner.id, type, getObjectTypeForObject(object), object==null ? 0 : object.getObjectID(),
-					getObjectTypeForObject(relatedObject), relatedObject==null ? 0 : relatedObject.getObjectID(), actor.id);
+					getObjectTypeForObject(relatedObject), relatedObject==null ? 0 : relatedObject.getObjectID(), actor.id, acc.prefs.countLikesInUnread || (type!=Notification.Type.LIKE && type!=Notification.Type.REPOST && type!=Notification.Type.RETOOT));
 
 			sendRealtimeNotifications(owner, String.valueOf(id), switch(type){
 				case REPLY -> RealtimeNotification.Type.REPLY;
@@ -499,26 +503,30 @@ public class NotificationsController{
 		};
 	}
 
-	public JsonObject getUserCounters(Account self){
+	public UserNotifications getUserCounters(Account self){
 		try{
-			UserNotifications un=NotificationsStorage.getNotificationsForUser(self.user.id, self.prefs.lastSeenNotificationID);
-			return new JsonObjectBuilder()
-					.add("friends", un.getNewFriendRequestCount())
-					.add("photos", un.getNewPhotoTagCount())
-					.add("mail", un.getUnreadMailCount())
-					.add("groups", un.getNewGroupInvitationsCount())
-					.add("events", un.getNewEventInvitationsCount())
-					.add("notifications", un.getNewNotificationsCount())
-					.build();
+			return NotificationsStorage.getNotificationsForUser(self.user.id, self.prefs.lastSeenNotificationID, self.prefs.countLikesInUnread);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
+	public JsonObject getUserCountersJson(Account self){
+		UserNotifications un=getUserCounters(self);
+		return new JsonObjectBuilder()
+				.add("friends", un.getNewFriendRequestCount())
+				.add("photos", un.getNewPhotoTagCount())
+				.add("mail", un.getUnreadMailCount())
+				.add("groups", un.getNewGroupInvitationsCount())
+				.add("events", un.getNewEventInvitationsCount())
+				.add("notifications", un.getNewNotificationsCount())
+				.build();
+	}
+
 	private String makeCountersWebsocketMessage(Account self){
 		return new JsonObjectBuilder()
 				.add("type", "counters")
-				.add("counters", getUserCounters(self))
+				.add("counters", getUserCountersJson(self))
 				.build()
 				.toString();
 	}
@@ -537,6 +545,11 @@ public class NotificationsController{
 		for(WebSocketConnection conn:connections){
 			Thread.ofVirtual().start(()->conn.sendRaw(makeCountersWebsocketMessage(conn.session.account)));
 		}
+	}
+
+	public void recountCounters(User user){
+		NotificationsStorage.removeCountersFromCache(user.id);
+		sendRealtimeCountersUpdates(user);
 	}
 
 	record WebSocketConnection(SessionInfo session, Session conn, Lang lang){

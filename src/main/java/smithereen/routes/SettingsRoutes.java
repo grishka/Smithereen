@@ -100,7 +100,8 @@ public class SettingsRoutes{
 		model.with("activationInfo", self.activationInfo);
 		model.with("currentEmailMasked", self.getCurrentEmailMasked());
 		model.with("textFormat", self.prefs.textFormat)
-				.with("commentView", self.prefs.commentViewType);
+				.with("commentView", self.prefs.commentViewType)
+				.with("countLikesInUnread", self.prefs.countLikesInUnread);
 		model.with("title", l.get("settings"));
 		OtherSession session=ctx.getUsersController().getAccountMostRecentSession(self);
 		if(session!=null){
@@ -662,11 +663,19 @@ public class SettingsRoutes{
 		requireQueryParams(req, "textFormat", "commentView");
 		self.prefs.textFormat=enumValue(req.queryParams("textFormat"), FormattedTextFormat.class);
 		self.prefs.commentViewType=enumValue(req.queryParams("commentView"), CommentViewType.class);
+		boolean newCountLikes="on".equals(req.queryParams("countLikesInUnread"));
+		boolean needResetCounters=newCountLikes!=self.prefs.countLikesInUnread;
+		self.prefs.countLikesInUnread=newCountLikes;
 		try{
 			SessionStorage.updatePreferences(self.id, self.prefs);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+
+		if(needResetCounters){
+			ctx.getNotificationsController().recountCounters(self.user);
+		}
+
 		String msg=lang(req).get("settings_saved");
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).show("formMessage_appearanceBehavior").setContent("formMessage_appearanceBehavior", msg);

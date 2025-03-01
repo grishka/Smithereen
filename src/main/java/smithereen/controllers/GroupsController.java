@@ -481,7 +481,7 @@ public class GroupsController{
 
 	public PaginatedList<GroupInvitation> getUserInvitations(@NotNull Account account, boolean isEvent, int offset, int count){
 		try{
-			UserNotifications ntf=NotificationsStorage.getNotificationsForUser(account.user.id, account.prefs.lastSeenNotificationID);
+			UserNotifications ntf=context.getNotificationsController().getUserCounters(account);
 			int total=isEvent ? ntf.getNewEventInvitationsCount() : ntf.getNewGroupInvitationsCount();
 			return new PaginatedList<>(GroupStorage.getUserInvitations(account.user.id, isEvent, offset, count), total, offset, count);
 		}catch(SQLException x){

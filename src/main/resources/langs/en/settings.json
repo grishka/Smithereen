@@ -217,5 +217,7 @@
   "settings_filter_select_contexts": "Select at least one context",
   "settings_filter_X_words": "{count, plural, one {# word} other {# words}}",
   "settings_filter_expires": "Expires",
-  "settings_confirm_delete_filter": "Are you sure you want to delete this filter?"
+  "settings_confirm_delete_filter": "Are you sure you want to delete this filter?",
+  "settings_feedback": "Feedback",
+  "settings_notifications_count_likes": "Count likes and reposts towards new notifications"
 }

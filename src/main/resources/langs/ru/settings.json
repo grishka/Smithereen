@@ -217,5 +217,7 @@
   "settings_filter_select_contexts": "Выберите хотя бы один контекст",
   "settings_filter_X_words": "{count, plural, one {# слово} few {# слова} other {# слов}}",
   "settings_filter_expires": "Действует до",
-  "settings_confirm_delete_filter": "Вы уверены, что хотите удалить этот фильтр?"
+  "settings_confirm_delete_filter": "Вы уверены, что хотите удалить этот фильтр?",
+  "settings_feedback": "Ответы",
+  "settings_notifications_count_likes": "Учитывать \"Мне нравится\" и репосты в количестве новых уведомлений"
 }

@@ -22,7 +22,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -30,6 +29,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.model.Account;
@@ -40,7 +40,6 @@ import smithereen.model.SessionInfo;
 import smithereen.model.UserNotifications;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.lang.Lang;
-import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
@@ -88,6 +87,7 @@ public class Templates{
 	public static void addGlobalParamsToTemplate(Request req, RenderedTemplateResponse model){
 		JsonObject jsConfig=new JsonObject();
 		ZoneId tz=Utils.timeZoneForRequest(req);
+		ApplicationContext ctx=Utils.context(req);
 		if(req.session(false)!=null){
 			SessionInfo info=req.session().attribute("info");
 			if(info==null){
@@ -107,23 +107,22 @@ public class Templates{
 						.add("sound", account.prefs.notifierEnableSound)
 						.build()
 				);
+				UserNotifications notifications=ctx.getNotificationsController().getUserCounters(account);
+				model.with("userNotifications", notifications);
+				LocalDate today=LocalDate.now(tz);
 				try{
-					UserNotifications notifications=NotificationsStorage.getNotificationsForUser(account.user.id, account.prefs.lastSeenNotificationID);
-					model.with("userNotifications", notifications);
-
-					LocalDate today=LocalDate.now(tz);
 					BirthdayReminder reminder=UserStorage.getBirthdayReminderForUser(account.user.id, today);
 					if(!reminder.userIDs.isEmpty()){
 						model.with("birthdayUsers", UserStorage.getByIdAsList(reminder.userIDs));
 						model.with("birthdaysAreToday", reminder.day.equals(today));
 					}
-					EventReminder eventReminder=Utils.context(req).getGroupsController().getUserEventReminder(account.user, tz);
-					if(!eventReminder.groupIDs.isEmpty()){
-						model.with("eventReminderEvents", Utils.context(req).getGroupsController().getGroupsByIdAsList(eventReminder.groupIDs));
-						model.with("eventsAreToday", eventReminder.day.equals(today));
-					}
 				}catch(SQLException x){
 					throw new InternalServerErrorException(x);
+				}
+				EventReminder eventReminder=ctx.getGroupsController().getUserEventReminder(account.user, tz);
+				if(!eventReminder.groupIDs.isEmpty()){
+					model.with("eventReminderEvents", Utils.context(req).getGroupsController().getGroupsByIdAsList(eventReminder.groupIDs));
+					model.with("eventsAreToday", eventReminder.day.equals(today));
 				}
 
 				if(info.permissions.role!=null){ // TODO check if this role actually grants permissions that have counters in left menu

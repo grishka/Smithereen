@@ -939,7 +939,7 @@ public class SmithereenApplication{
 				}
 				SessionInfo info=sessionInfo(req);
 				if(info!=null && info.account!=null){
-					alResp.add("c", context(req).getNotificationsController().getUserCounters(info.account));
+					alResp.add("c", context(req).getNotificationsController().getUserCountersJson(info.account));
 				}
 				resp.header("Content-Type", "application/json");
 				gson.toJson(alResp.build(), writer);

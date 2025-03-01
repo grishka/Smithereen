@@ -35,4 +35,5 @@ public class UserPreferences{
 	public boolean notifierEnableSound=true;
 	@SerializedName("ntfmt")
 	public boolean notifierShowMessageText=true;
+	public boolean countLikesInUnread;
 }

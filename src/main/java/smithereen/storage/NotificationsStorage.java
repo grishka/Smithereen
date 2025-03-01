@@ -19,7 +19,7 @@ import smithereen.storage.sql.SQLQueryBuilder;
 public class NotificationsStorage{
 	private static final LruCache<Integer, UserNotifications> userNotificationsCache=new LruCache<>(500);
 
-	public static int putNotification(int owner, Notification.Type type, Notification.ObjectType objectType, long objectID, Notification.ObjectType relatedObjectType, long relatedObjectID, int actorID) throws SQLException{
+	public static int putNotification(int owner, Notification.Type type, Notification.ObjectType objectType, long objectID, Notification.ObjectType relatedObjectType, long relatedObjectID, int actorID, boolean incrementCounter) throws SQLException{
 		int id=new SQLQueryBuilder()
 				.insertInto("notifications")
 				.value("owner_id", owner)
@@ -31,9 +31,11 @@ public class NotificationsStorage{
 				.value("actor_id", actorID)
 				.executeAndGetID();
 
-		UserNotifications un=getNotificationsFromCache(owner);
-		if(un!=null)
-			un.incNewNotificationsCount(1);
+		if(incrementCounter){
+			UserNotifications un=getNotificationsFromCache(owner);
+			if(un!=null)
+				un.incNewNotificationsCount(1);
+		}
 
 		return id;
 	}
@@ -102,34 +104,34 @@ public class NotificationsStorage{
 		}
 	}
 
-	public static UserNotifications getNotificationsForUser(int userID, int lastSeenID) throws SQLException{
+	public static UserNotifications getNotificationsForUser(int userID, int lastSeenID, boolean includeLikesAndReposts) throws SQLException{
 		UserNotifications res=userNotificationsCache.get(userID);
 		if(res!=null)
 			return res;
 		res=new UserNotifications();
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement("SELECT COUNT(*) FROM `friend_requests` WHERE `to_user_id`=?");
-			stmt.setInt(1, userID);
-			try(ResultSet r=stmt.executeQuery()){
-				r.next();
-				res.incNewFriendRequestCount(r.getInt(1));
-			}
-			stmt=conn.prepareStatement("SELECT COUNT(*) FROM `notifications` WHERE `owner_id`=? AND `id`>?");
-			stmt.setInt(1, userID);
-			stmt.setInt(2, lastSeenID);
-			try(ResultSet r=stmt.executeQuery()){
-				r.next();
-				res.incNewNotificationsCount(r.getInt(1));
-			}
-			stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*), is_event FROM group_invites WHERE invitee_id=? GROUP BY is_event", userID);
-			try(ResultSet r=stmt.executeQuery()){
-				while(r.next()){
-					if(r.getBoolean(2)) // event
-						res.incNewEventInvitationsCount(r.getInt(1));
-					else
-						res.incNewGroupInvitationsCount(r.getInt(1));
-				}
-			}
+			res.incNewFriendRequestCount(new SQLQueryBuilder(conn)
+					.selectFrom("friend_requests")
+					.count()
+					.where("to_user_id=?", userID)
+					.executeAndGetInt());
+			SQLQueryBuilder b=new SQLQueryBuilder(conn)
+					.selectFrom("notifications")
+					.count()
+					.where("owner_id=? AND id>?", userID, lastSeenID);
+			if(!includeLikesAndReposts)
+				b.andWhere("type NOT IN (?, ?, ?)", Notification.Type.LIKE, Notification.Type.REPOST, Notification.Type.RETOOT);
+			res.incNewNotificationsCount(b.executeAndGetInt());
+			res.incNewGroupInvitationsCount(new SQLQueryBuilder(conn)
+					.selectFrom("group_invites")
+					.count()
+					.where("invitee_id=? AND is_event=0", userID)
+					.executeAndGetInt());
+			res.incNewEventInvitationsCount(new SQLQueryBuilder(conn)
+					.selectFrom("group_invites")
+					.count()
+					.where("invitee_id=? AND is_event=1", userID)
+					.executeAndGetInt());
 			res.incUnreadMailCount(MailStorage.getUnreadMessagesCount(userID));
 			res.incNewPhotoTagCount(new SQLQueryBuilder(conn)
 					.selectFrom("photo_tags")
@@ -143,5 +145,9 @@ public class NotificationsStorage{
 
 	public static UserNotifications getNotificationsFromCache(int userID){
 		return userNotificationsCache.get(userID);
+	}
+
+	public static void removeCountersFromCache(int userID){
+		userNotificationsCache.remove(userID);
 	}
 }
