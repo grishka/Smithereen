@@ -13,7 +13,8 @@
     "reporting.json",
     "mail.json",
     "bookmarks.json",
-    "photos.json"
+    "photos.json",
+    "audio.json"
   ],
   "languages": [
     {

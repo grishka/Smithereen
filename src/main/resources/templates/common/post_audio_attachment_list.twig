@@ -1,0 +1,6 @@
+{# @pebvariable name="audios" type="java.util.List<smithereen.model.viewmodel.AudioAttachmentViewModel>" #}
+<div class="audioAttachmentList">
+		{% for audio in audios %}
+        {% include "audio_attachment" with { 'audio': audio } %}
+    {% endfor %}
+</div>

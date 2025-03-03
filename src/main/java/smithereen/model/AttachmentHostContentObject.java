@@ -105,4 +105,13 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 		}
 		return null;
 	}
+
+	@SuppressWarnings("unused") // Used from a template
+	default boolean hasAudioAttachments(){
+		for(ActivityPubObject o:getAttachments()){
+			if(o instanceof Audio)
+				return true;
+		}
+		return false;
+	}
 }

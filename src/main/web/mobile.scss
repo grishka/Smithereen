@@ -6,7 +6,7 @@ $smallPadding: 8px;
 $mediumPadding: 16px;
 
 @import "common.scss";
-
+@import "audioplayer_mobile.scss";
 
 body, html{
 	width: 100%;
@@ -1664,7 +1664,7 @@ input.searchField{
 		}
 	}
 	#msgActions{
-		margin-top: 12px;
+		padding-top: 12px;
 	}
 }
 
@@ -2703,4 +2703,3 @@ input.searchField{
 		}
 	}
 }
-

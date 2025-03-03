@@ -10,6 +10,7 @@ $mediumPadding: 10px;
 
 @import "desktop_basics.scss";
 @import "common.scss";
+@import "audioplayer_desktop.scss";
 
 @svg-load popoverArrowTopWithHeader url(img/popover_arrow_top.svg) {
 	polygon[fill=red]{
@@ -3284,7 +3285,10 @@ h2, h3, h4{
 			color: $auxiliaryGrey;
 		}
 	}
-	.mailMessageForm, .subject{
+	.mailMessageForm{
+		padding-top: 10px;
+	}
+	.subject {
 		margin-top: 10px;
 	}
 	.postAttachments{
@@ -4821,4 +4825,3 @@ label.largeAccented{
 		}
 	}
 }
-

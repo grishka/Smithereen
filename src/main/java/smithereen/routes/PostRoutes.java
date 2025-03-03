@@ -23,8 +23,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static smithereen.Utils.*;
-
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
@@ -67,6 +65,8 @@ import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
+
+import static smithereen.Utils.*;
 
 public class PostRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(PostRoutes.class);
@@ -445,6 +445,7 @@ public class PostRoutes{
 		}
 		model.paginate(replies);
 		model.with("post", post);
+		model.with("isPostInLayer", isLayer);
 		model.with("isGroup", post.post.ownerID<0);
 		model.with("maxRepostDepth", 10).with("maxReplyDepth", getMaxReplyDepth(self));
 		model.with("commentViewType", viewType);

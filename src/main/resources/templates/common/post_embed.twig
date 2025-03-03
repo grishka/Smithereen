@@ -12,6 +12,11 @@
 <style>
 {{ inlineTextResource("embed.css") }}
 </style>
+{% if realPost.hasAudioAttachments() %}
+<style>
+{{ inlineTextResource("audioplayer_desktop.css") }}
+</style>
+{% endif %}
 </head>
 <body>
 <div id="content">
