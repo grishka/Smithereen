@@ -123,7 +123,7 @@ class AudioPlayer{
 		if(this.mgr){
 			if(this.isDraggingProgressLine && this.time!==undefined){
 				try{
-					if(this.mgr.paused()){
+					if(!this.mgr.paused()){
 						this.mgr.playAudio(this.time);
 						this.time=null;
 					}
@@ -250,6 +250,9 @@ class AudioPlayer{
 					const durationDiv=row.querySelector("*.duration");
 					if(durationDiv){
 						durationDiv.innerHTML=formattedDuration;
+					}
+					if(ge("player"+id)){
+						ge("audio_progress_line"+id).style.width="0";
 					}
 				}
 				break;
