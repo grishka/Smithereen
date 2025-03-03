@@ -311,7 +311,6 @@ class AudioPlayer{
 		const id=this.curAudioID;
 		let formatted=this.formatTime(this.timeFormatLeft ? totalTime-curTime : curTime);
 		if(this.timeFormatLeft) formatted="-"+formatted;
-		console.log('current time: ', formatted, ' (curr ', curTime, ', total ', totalTime);
 		const row=ge("audio"+id);
 		if(row){
 			const durationDiv=row.querySelector("*.duration");

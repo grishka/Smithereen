@@ -100,10 +100,10 @@ class AudioManager{
 
 	private onLoadProgress(){
 		if(!this.music || this.music.error) return;
-		const totalTime=Math.floor(this.music!.duration*1000)/1000;
+		const totalTime=Math.floor(this.music.duration*1000)/1000;
 		let bufferedTime:number;
 		try{
-			bufferedTime=Math.floor(this.music!.buffered.end(0)*1000)/1000 || 0;
+			bufferedTime=Math.floor(this.music.buffered.end(0)*1000)/1000 || 0;
 		}catch(e){}
 		if(totalTime && Math.abs(totalTime-bufferedTime)<0.1){
 			this.audioPlayer.onLoadProgress(totalTime, totalTime);
@@ -121,6 +121,7 @@ class AudioManager{
 	private onCanPlay(){
 		if(this.autoStart){
 			try{
+				//noinspection JSIgnoredPromiseFromCall
 				this.music!.play();
 			}catch(e){}
 			if(!this.playProgressID){

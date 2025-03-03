@@ -195,10 +195,9 @@ public class RenderAttachmentsFunction implements Function{
 
 	private void renderAudioAttachment(AudioAttachment audio, List<String> lines, EvaluationContext evaluationContext, int attachmentIndex, long objectID){
 		Lang l=Lang.get(evaluationContext.getLocale());
-		Duration duration=null;// TODO: Try to parse it from the activity object or from  ID3 tags
-		// TODO: Localize these strings
-		String artist="Unknown Artist"; // TODO: Try to parse it from the activity object or from  ID3 tags
-		String title="Unknown Title";// TODO: Try to parse it from the activity object or from  ID3 tags
+		Duration duration=null; // TODO: Try to parse it from the activity object or from ID3 tags
+		String artist=l.get("audio_unknown_artist"); // TODO: Try to parse it from the activity object or from ID3 tags
+		String title=l.get("audio_unknown_title"); // TODO: Try to parse it from the activity object or from ID3 tags
 		Map<String, Object> params=new HashMap<>();
 		params.put("audioID", objectID+"_"+attachmentIndex);
 		params.put("duration", l.formatDuration(duration));
