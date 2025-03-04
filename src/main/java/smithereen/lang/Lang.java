@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -310,6 +311,27 @@ public class Lang{
 
 	public PluralCategory getPluralCategory(int quantity){
 		return pluralRules.getCategoryForQuantity(quantity);
+	}
+
+	public String formatDuration(Duration duration){
+		if(duration==null) return "-:--";
+		String res="";
+		if(duration.isNegative()){
+			res+="-";
+			duration=duration.negated();
+		}
+		long t=duration.getSeconds();
+		long seconds=t%60;
+		t/=60;
+		long minutes=t%60;
+		t/=60;
+		long hours=t;
+		if(hours>0){
+			res+=String.format(locale, "%d:%02d:%02d", hours, minutes, seconds);
+		}else{
+			res+=String.format(locale, "%d:%02d", minutes, seconds);
+		}
+		return res;
 	}
 
 	private record IndexLanguage(String locale, String name, String fallback){}

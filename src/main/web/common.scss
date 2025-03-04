@@ -22,6 +22,7 @@ $normalLink: rgb(72, 92, 0);
 $boldHeaders: rgb(78, 112, 0);
 $auxiliaryGrey: rgb(119, 119, 119);
 $auxiliaryBlockHeader: rgb(171, 175, 114);
+$audioDurationOnHover: rgb(148, 150, 91);
 
 $darkGrey: #444444;
 $sectionHeaderBorder: #CCCCCC;
@@ -37,6 +38,9 @@ $blockBorderBottom: rgb(228, 223, 193);
 $blockBackground: rgb(234, 232, 203);
 $blockUnderboxBackground: rgb(241, 241, 241);
 $bgGrey: rgb(247, 247, 247);
+$audioAreaOnHover: rgb(243, 241, 226);
+$playline: rgb(220, 225, 188);
+
 /* button */
 $buttonGradientBottom: rgb(96, 125, 0);
 $buttonBorder: rgb(100, 137, 0);
@@ -61,6 +65,7 @@ $headerBorderBottomLight: rgb(118, 155, 27);
 /* icons */
 $iconColor: rgb(156, 168, 80);
 $likeIconColor: rgb(219, 216, 173);
+$audioControlsColor: rgb(113, 129, 0);
 
 
 /*$normalLink: $headerGradientBottom;*/
@@ -128,6 +133,12 @@ $likeIconColor: rgb(219, 216, 173);
 	}
 }
 
+@svg-load audioPlay url('img/audio_play.svg') {
+	fill: $audioControlsColor;
+}
+@svg-load audioPause url('img/audio_pause.svg') {
+	fill: $audioControlsColor;
+}
 
 *{
 	box-sizing: border-box;
@@ -1022,3 +1033,198 @@ small{
 	}
 }
 
+div.audio td {
+	border: 0;
+	vertical-align: top;
+	padding: 0;
+}
+
+.audio {
+	position: relative;
+
+	.area {
+		cursor: pointer;
+		margin-bottom: 10px;
+		line-height: normal;
+
+		&:hover {
+			background-color: $audioAreaOnHover;
+		}
+
+		&:hover .duration {
+			color: $audioDurationOnHover;
+		}
+	}
+
+	table {
+		border-spacing: 0;
+	}
+
+	.info {
+		width: 100%;
+		position: relative;
+	}
+
+	.play_btn_wrap {
+		padding: 6px;
+	}
+
+	.play {
+		cursor: pointer;
+		width: 16px;
+		height: 16px;
+		background: svg-inline(audioPlay) no-repeat 0 0;
+
+		&.playing {
+			background: svg-inline(audioPause) no-repeat 0 0;
+		}
+	}
+
+	.title_wrap {
+		padding: 7px 0 6px;
+		width: 260px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+
+		b {
+			padding: 0;
+			display: inline-block;
+			color: $normalLink; /* This is not a link but otherwise it's black which doesn't look nice */
+			vertical-align: top;
+			max-width: 180px;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+	}
+
+	.duration {
+		color: $auxiliaryGrey;
+		font-size: 0.9em;
+		padding: 8px 7px 7px 0;
+		max-width: 40px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.player {
+		height: 10px;
+		padding: 0 6px;
+		display: none;
+	}
+
+	.playline {
+		padding-top: 5px;
+
+		div {
+			border-top: 1px dashed $playline;
+			height: 9px;
+		}
+	}
+
+	&.current {
+		.area {
+			margin-bottom: 0;
+		}
+
+		.player {
+			display: block;
+		}
+	}
+}
+
+.audio_white_line {
+	width: 100%;
+	height: 15px;
+	position: relative;
+	display: block;
+	top: -5px;
+	cursor: pointer;
+	user-select: none;
+}
+
+.audio_back_line {
+	width: 100%;
+	height: 4px;
+	margin: 0;
+	position: relative;
+	display: block;
+	top: -15px;
+	background-color: rgb(225, 222, 199);
+	cursor: pointer;
+	user-select: none;
+	border-radius: 2px;
+}
+
+.audio_load_line {
+	width: 0;
+	height: 4px;
+	margin: 0;
+	position: relative;
+	display: block;
+	top: -19px;
+	background-color: rgb(203, 199, 150);
+	cursor: pointer;
+	user-select: none;
+	border-radius: 2px;
+}
+
+.audio_progress_line {
+	width: 0;
+	height: 4px;
+	margin: -12px 0 0 0;
+	position: relative;
+	display: block;
+	top: -11px;
+	background-color: rgb(112, 125, 0);
+	cursor: pointer;
+	user-select: none;
+	border-radius: 2px;
+}
+
+.audio_slider {
+	position: absolute;
+	width: 8px;
+	height: 8px;
+	right: -4px;
+	top: -2px;
+	border: 0;
+	margin: 0;
+	padding: 0;
+	display: none;
+	background-color: rgb(115, 129, 0);
+	user-select: none;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.audio_volume_white_line {
+	width: 45px;
+	height: 15px;
+	position: relative;
+	top: -5px;
+	display: block;
+	cursor: pointer;
+	user-select: none;
+}
+
+.audio_volume {
+	margin-left: 11px;
+
+	.audio_load_line {
+		width: 100%;
+		top: -15px;
+	}
+
+	.audio_progress_line {
+		top: -7px;
+		width: 50%;
+	}
+}
+
+.audio_volume:hover .audio_slider,
+.audio_volume.dragging .audio_slider,
+.audio_progress.dragging .audio_slider {
+	display: block;
+}

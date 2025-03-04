@@ -1,0 +1,48 @@
+<div id="audio{{ audioID }}" class="audio" data-artist="{{ artist }}" data-title="{{ title }}" {% if durationSeconds is not null %}data-duration="{{ durationSeconds }}"{% endif %}{% if url is not null %} data-url="{{ url }}" {% endif %}>
+	<div class="area" onclick="AudioPlayer.play('{{ audioID }}')">
+		<table>
+			<tr>
+				<td>
+					<div class="play_btn_wrap">
+						<div class="play" id="play{{ audioID }}"></div>
+					</div>
+				</td>
+				<td class="info">
+					<div class="title_wrap flL">
+						<b>{{ artist }}</b>
+						&ndash;
+						<span class="title" id="title{{ audioID }}">{{ title }}</span>
+					</div>
+					<div class="duration flR" onmousedown="AudioPlayer.switchTimeLeftFormat('{{ audioID }}', event)" onclick="event.stopPropagation();">{{ duration }}</div>
+				</td>
+			</tr>
+		</table>
+		<div id="player{{ audioID }}" class="player" onclick="event.stopPropagation();" ondragstart="return false;" onselectstart="return false;" {# ondragstart and onselectstart are necessary to prevent text selection in Safari #}>
+			<table>
+				<tbody>
+				<tr>
+					<td style="width: 100%;">
+						<div id="audio_progress{{ audioID }}" class="audio_progress" onmousedown="this.classList.add('dragging'); AudioPlayer.progressClick(event);" onmouseup="this.classList.remove('dragging')">
+							<div id="audio_white_line{{ audioID }}" class="audio_white_line" onmousedown="AudioPlayer.progressClick(event);"></div>
+							<div id="audio_back_line{{ audioID }}" class="audio_back_line" onmousedown="AudioPlayer.progressClick(event);"></div>
+							<div id="audio_load_line{{ audioID }}" class="audio_load_line" onmousedown="AudioPlayer.progressClick(event);"></div>
+							<div id="audio_progress_line{{ audioID }}" class="audio_progress_line" onmousedown="AudioPlayer.progressClick(event);">
+								<div id="audio_progress_slider{{ audioID }}" class="audio_slider"></div>
+							</div>
+						</div>
+					</td>
+					<td>
+						<div id="audio_volume{{ audioID }}" class="audio_volume" onmousedown="this.classList.add('dragging'); AudioPlayer.volumeClick(event);" onmouseup="this.classList.remove('dragging')">
+							<div id="audio_volume_white_line{{ audioID }}" class="audio_volume_white_line" onmousedown="AudioPlayer.volumeClick(event);"></div>
+							<div id="audio_volume_back_line{{ audioID }}" class="audio_load_line" onmousedown="AudioPlayer.volumeClick(event);"></div>
+							<div id="audio_volume_line{{ audioID }}" class="audio_progress_line" onmousedown="AudioPlayer.volumeClick(event);">
+								<div id="audio_volume_slider{{ audioID }}" class="audio_slider" onmousedown="AudioPlayer.volumeClick(event);"></div>
+							</div>
+						</div>
+					</td>
+				</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
