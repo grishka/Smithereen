@@ -157,8 +157,14 @@ class AudioPlayer{
 			if(this.mgr.paused()){
 				// TODO: If a video is playing, actually pause the video.
 				if(this.pausedByVideo) this.pausedByVideo=null;
-				this.mgr.playAudio(this.time);
-				if(this.time!=undefined) this.time=null;
+				if(this.time!=undefined){
+					try{
+						this.mgr.playAudio(this.time);
+						this.time=null;
+					}catch(e){}
+				}else{
+					this.mgr.playAudio(this.time);
+				}
 				this.setGraphics(AudioPlayerAction.PLAY);
 				this.playback();
 			}else{

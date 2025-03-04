@@ -31,9 +31,9 @@ class AudioManager{
 		}catch(e){}
 	}
 
-	public playAudio(time?:number){
+	public playAudio(time?:number|null|undefined){
 		if(!this.music) return;
-		if(time!==undefined){
+		if(time!=undefined){
 			try{
 				this.music.currentTime=time;
 			}catch(e){}

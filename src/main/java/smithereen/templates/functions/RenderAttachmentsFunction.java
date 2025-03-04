@@ -128,6 +128,8 @@ public class RenderAttachmentsFunction implements Function{
 				lines.add("<video src=\""+HtmlEscape.escapeHtml4Xml(va.url.toString())+"\" controls playsinline></video>");
 		}
 		int audioIndex=0; // TODO: It would be better use absolute IDs for audio objects.
+		//  If we implement storing information about audios in the database,
+		//  we can use the entry's primary key for that.
 		for(Attachment att: attachments){
 			if(att instanceof AudioAttachment aa){
 				long hostID;
@@ -135,8 +137,7 @@ public class RenderAttachmentsFunction implements Function{
 					case PostLikeObject p -> hostID=p.getObjectID();
 					case MailMessage m -> hostID=m.id;
 				}
-				renderAudioAttachment(aa, lines, evaluationContext, audioIndex, hostID);
-				++audioIndex;
+				renderAudioAttachment(aa, lines, evaluationContext, audioIndex++, hostID);
 			}
 		}
 
