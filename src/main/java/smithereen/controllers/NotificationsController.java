@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,7 +43,9 @@ import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.model.notifications.GroupedNotification;
 import smithereen.model.notifications.Notification;
+import smithereen.model.notifications.NotificationWrapper;
 import smithereen.model.notifications.RealtimeNotification;
 import smithereen.model.photos.Photo;
 import smithereen.storage.NotificationsStorage;
@@ -65,9 +68,34 @@ public class NotificationsController{
 		this.context=context;
 	}
 
-	public PaginatedList<Notification> getNotifications(User user, int offset, int count){
+	public PaginatedList<NotificationWrapper> getNotifications(Account self, int offset, int count, int maxID){
 		try{
-			return NotificationsStorage.getNotifications(user.id, offset, count);
+			PaginatedList<Notification> page;
+			List<NotificationWrapper> notifications=new ArrayList<>();
+			int lastSeenID=self.prefs.lastSeenNotificationID;
+			HashMap<NotificationGroupingKey, GroupedNotification> groupedNotifications=new HashMap<>();
+			int actualOffset=offset;
+			int totalNotifications=0;
+			do{
+				page=NotificationsStorage.getNotifications(self.user.id, actualOffset, 50, maxID);
+				for(Notification n:page.list){
+					if(n.type.canBeGrouped()){
+						NotificationGroupingKey key=new NotificationGroupingKey(n.type, n.objectType, n.objectID, LocalDate.ofInstant(n.time, self.prefs.timeZone), n.id<=lastSeenID);
+						GroupedNotification group=groupedNotifications.get(key);
+						if(group==null){
+							group=new GroupedNotification();
+							groupedNotifications.put(key, group);
+							notifications.add(group);
+						}
+						group.notifications.add(n);
+					}else{
+						notifications.add(n);
+					}
+				}
+				actualOffset+=page.list.size();
+				totalNotifications+=page.list.size();
+			}while(notifications.size()<count && page.offset+page.perPage<page.total);
+			return new PaginatedList<>(notifications, notifications.isEmpty() ? offset : (offset+totalNotifications+1), offset, totalNotifications);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -571,4 +599,6 @@ public class NotificationsController{
 			}
 		}
 	}
+
+	private record NotificationGroupingKey(Notification.Type type, Notification.ObjectType objectType, long objectID, LocalDate day, boolean seen){}
 }

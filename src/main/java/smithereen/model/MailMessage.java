@@ -95,7 +95,7 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 
 	@Override
 	public List<ActivityPubObject> getAttachments(){
-		return attachments;
+		return attachments==null ? List.of() : attachments;
 	}
 
 	@Override

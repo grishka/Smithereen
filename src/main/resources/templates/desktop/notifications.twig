@@ -1,120 +1,163 @@
-{# @pebvariable name="items" type="smithereen.model.notifications.Notification[]" #}
-{# @pebvariable name="posts" type="Map<Integer, smithereen.model.Post>" #}
+{# @pebvariable name="items" type="smithereen.model.notifications.NotificationWrapper[]" #}
+{# @pebvariable name="posts" type="Map<Integer, smithereen.model.viewmodel.PostViewModel>" #}
 {# @pebvariable name="photos" type="Map<Long, smithereen.model.photos.Photo>" #}
 {# @pebvariable name="comments" type="Map<Long, smithereen.model.comments.Comment>" #}
 {%extends "page"%}
 {%block content%}
-{%if notifications.empty%}
-	<div class="emptyState">{{L('no_notifications')}}</div>
-{%else%}
 <div class="summaryWrap">
 	<div class="summary">{{ L('summary_notifications') }}</div>
-	{% include "pagination" %}
 </div>
-<div class="singleColumn">
-{%for notification in items%}
-{%set actor=users[notification.actorID]%}
-{%if notification.objectID!=0%}
-	{% if notification.objectType=='POST' %}
-		{%set object=posts[notification.objectID]%}
-		{%set isComment=object is not null ? object.replyLevel>0 : false%}
-		{% if object is not null %}{% set objectOwner=object.ownerID>0 ? users[object.ownerID] : groups[-object.ownerID] %}{% endif %}
-	{% elseif notification.objectType=='PHOTO' %}
-		{% set object=photos[notification.objectID] %}
-	{% elseif notification.objectType=='COMMENT' %}
-		{% set object=comments[notification.objectID] %}
+<div class="singleColumnLargerPadding">
+{% block notificationsInner %}
+{% set isPastSeen=false %}
+{% for notification in items %}
+{% set latest=notification.latestNotification %}
+{% if latest.objectID!=0 %}
+	{% if latest.objectType=='POST' %}
+		{% set object=posts[latest.objectID] %}
+		{% set isComment=object is not null ? object.post.replyLevel>0 : false %}
+		{% if object is not null %}{% set objectOwner=object.post.ownerID>0 ? users[object.post.ownerID] : groups[-object.post.ownerID] %}{% endif %}
+	{% elseif latest.objectType=='PHOTO' %}
+		{% set object=photos[latest.objectID] %}
+	{% elseif latest.objectType=='COMMENT' %}
+		{% set object=comments[latest.objectID] %}
 		{% set isComment=true %}
 	{% endif %}
-{%else%}
-{%set object=null%}
-{%endif%}
-{% if notification.relatedObjectType=='POST' %}
-{% set relatedObject=posts[notification.relatedObjectID] %}
-{% set relatedIsComment=relatedObject is not null ? relatedObject.replyLevel>0 : false %}
-{% elseif notification.relatedObjectType=='PHOTO' %}
-{% set relatedObject=photos[notification.relatedObjectID] %}
 {% else %}
-{% set relatedObject=null %}
+{% set object=null %}
 {% endif %}
-{%if actor is not null%}
-{%set actorName=actor | name%}
-{%set actorURL=actor.profileURL%}
-{%set actorGender=actor.gender%}
-{%else%}
-{%set actorName='DELETED'%}
-{%set actorURL="/users/"+notification.actorID%}
-{%set actorGender=null%}
-{%endif%}
-{%set link=null%}
-<table width="100%" cellpadding="0" cellspacing="0" class="post notification notification{{notification.type | replace({'_': ' '}) | lower | title | replace({' ': ''})}}" id="notification{{notification.id}}">
-	<tr>
-		<td width="50" valign="top">
-			<div class="avaWrap">
-				<a href="{{actorURL}}">{{actor | pictureForAvatar('a')}}</a>
-				<span class="notificationIcon"></span>
+{% if latest.relatedObjectType=='POST' %}
+	{% set relatedObject=posts[latest.relatedObjectID] %}
+	{% set relatedIsComment=relatedObject is not null ? relatedObject.post.replyLevel>0 : false %}
+{% elseif latest.relatedObjectType=='PHOTO' %}
+	{% set relatedObject=photos[latest.relatedObjectID] %}
+{% else %}
+	{% set relatedObject=null %}
+{% endif %}
+{% if not isPastSeen and latest.id<=lastSeenID %}
+{% set isPastSeen=true %}
+{% if not loop.first %}<div class="notificationsSeen">{{ L('notifications_seen') }}<span class="icon"></span></div>{% endif %}
+{% endif %}
+{% if latest.type=='REPLY' or latest.type=='MENTION' or latest.type=='POST_OWN_WALL' %}{# Show as posts #}
+<div class="notificationsRow notification{{ latest.type | replace({'_': ' '}) | lower | title | replace({' ': ''}) }}">
+{% include "notification_extra_image" with {'notification': latest} %}
+{% set realPost=object.post %}
+{% set randomID=randomString() %}
+{% if postInteractions is not null %}
+{% set interactions=postInteractions[realPost.getIDForInteractions()] %}
+{% endif %}
+	<div class="post">
+		<div class="postAvaWrap">
+			<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a') }}</a>
+		</div>
+		<div class="postContentWrap">
+			<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}_{{ randomID }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
+			{%- if realPost.privacy is not null and realPost.privacy!='PUBLIC' -%}
+			<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID].firstAndGender}) }}"></span>
+			{%- endif %}
+			<div id="postInner{{ realPost.id }}_{{ randomID }}">
+				{% include "wall_post_inner" with {'post': object, 'repostDepth': 0, 'repostParent': object, 'randomID': randomID} %}
+				{% set realPost=object.post %}{# because included template overwrote it #}
+				<div class="postInfo">
+					{%- if interactions is not null -%}
+					<span class="postActions contentActions">
+						<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
+							<a href="{{ realPost.internalURL }}/{% if interactions.isLiked %}un{% endif %}like?csrf={{ csrf }}&amp;rid={{ randomID }}" class="action like{% if interactions.isLiked %} liked{% endif %} popoverButton" id="likeButtonPost{{ realPost.id }}_{{ randomID }}" data-obj-type="post" data-obj-id="{{ realPost.id }}_{{ randomID }}" data-popover-url="{{ realPost.internalURL }}/likePopover?rid={{ randomID }}" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} rel="nofollow">
+								{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{ realPost.id }}_{{ randomID }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+								{{- interactions.likeCount -}}
+							</span></a>
+							<span class="popoverPlace likePopoverWrap"></span>
+						</span>
+					</span>
+					{%- endif -%}
+					<a href="{{ realPost.internalURL }}" onclick="return openPostLayer('{{ realPost.replyLevel==0 ? realPost.id : realPost.replyKey[0] }}', {{ realPost.replyLevel==0 ? 'null' : "'#{realPost.id}'" }})" class="postLink">{{ LD(realPost.createdAt) }}</a>
+					{% if latest.type=='MENTION' %}
+						{{ L(isComment ? 'notification_mentioned_in_comment' : 'notification_mentioned_in_post', {'gender': actorGender}) }}
+					{% elseif latest.type=='POST_OWN_WALL' %}
+						{{ L('notification_posted_on_wall', {'gender': actorGender}) }}
+					{% elseif latest.type=='REPLY' %}
+						{% if notification.objectType=='COMMENT' and object.replyLevel>0 and comments[object.replyKey.last].authorID==currentUser.id %}
+							{% set parentComment=comments[object.replyKey.last] %}
+							{{ L('notification_replied_to_comment', {'gender': actorGender}) }} <a href="{{ parentComment.internalURL }}">{{ parentComment.shorterTitle | default(LD(parentComment.createdAt)) }}</a>
+						{% elseif notification.relatedObjectType=='PHOTO' %}
+							{{ L('notification_commented_on_photo', {'gender': actorGender}, {'photo': {'href': relatedObject.url, 'onclick': "return openPhotoViewer(this)", 'data-pv': json(relatedObject.singlePhotoViewerData)} }) }}
+						{% else %}
+							{{ L(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', {'gender': actorGender}) }} <a href="{{ relatedObject.post.internalURL }}" onclick="return openPostLayer('{{ relatedIsComment ? relatedObject.post.replyKey[0] : relatedObject.post.id }}', {{ relatedIsComment ? ("'"+relatedObject.post.id+"'") : "null"}})">{{ relatedObject.post.shorterTitle | default(LD(relatedObject.post.createdAt)) }}</a>
+						{% endif %}
+					{% endif %}
+				</div>
 			</div>
-		</td>
-		<td valign="top" class="postContentWrap">
-			<a href="{{actorURL}}" class="authorName">{{actorName}}</a>
-			{%if notification.type=="REPLY"%}
-			{% if notification.objectType=='COMMENT' and object.replyLevel>0 and comments[object.replyKey.last].authorID==currentUser.id %}
-				{% set parentComment=comments[object.replyKey.last] %}
-				{{ L('notification_replied_to_comment', {'gender': actorGender}) }} <a href="{{ parentComment.internalURL }}">{{ parentComment.shortTitle | default(LD(parentComment.createdAt)) }}</a>
-			{% elseif notification.relatedObjectType=='PHOTO' %}
-				{{ L('notification_commented_on_photo', {'gender': actorGender}, {'photo': {'href': relatedObject.url, 'onclick': "return openPhotoViewer(this)", 'data-pv': json(relatedObject.singlePhotoViewerData)} }) }}
-			{% else %}
-				{{ L(relatedIsComment ? 'notification_replied_to_comment' : 'notification_replied_to_post', {'gender': actorGender}) }} <a href="{{relatedObject.internalURL}}">{{ relatedObject.shortTitle | default(LD(relatedObject.createdAt)) }}</a>
-			{% endif %}
-			<div class="postContent">
-				{{ object.text | postprocessHTML }}
-			</div>
-			{%if object.attachment is not null%}{{renderAttachments(object, objectOwner)}}<br/>{%endif%}
-			{%set link=object.internalURL%}
-			{%elseif notification.type=="MENTION"%}
-			{{L(isComment ? 'notification_mentioned_in_comment' : 'notification_mentioned_in_post', {'gender': actorGender})}}
-			<div class="postContent">
-				{{ object.text | postprocessHTML }}
-			</div>
-			{%if object.attachment is not null%}{{renderAttachments(object, objectOwner)}}<br/>{%endif%}
-			{%set link=object.internalURL%}
-			{%elseif notification.type=="LIKE"%}
-				{% if notification.objectType=="POST" %}
-					{{L(isComment ? 'notification_liked_comment' : 'notification_liked_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle | default(LD(object.createdAt))}}</a>
-				{% elseif notification.objectType=="PHOTO" %}
-					{{ L('notification_liked_photo', {'gender': actorGender}, {'photo': {'href': object.url, 'onclick': "return openPhotoViewer(this)", 'data-pv': json(object.singlePhotoViewerData)} }) }}
-				{% elseif notification.objectType=="COMMENT" %}
-					{{L('notification_liked_comment', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle | default(LD(object.createdAt))}}</a>
+		</div>
+	</div>
+</div>
+{% else %}{# Show as user avatars #}
+{% set isMultiple=notification.notifications | length>1 %}
+{% if not isMultiple %}
+{% set actorGender=users[latest.actorID].gender %}
+{% endif %}
+<div class="notificationsRow notificationWithAvatars notification{{ latest.type | replace({'_': ' '}) | lower | title | replace({' ': ''}) }}">
+	<div class="iconW"><div class="icon"></div></div>
+	<div class="notificationContent">
+		{% include "notification_extra_image" with {'notification': latest} %}
+		<div class="names">
+		{% if notification.notifications | length==1 %}
+		<a href="{{ profileURL(latest.actorID) }}">{{ users[latest.actorID] | name }}</a>
+		{% elseif notification.notifications | length==2 %}
+		{{ L('notification_two_people', {'name1': users[notification.notifications[0].actorID] | name, 'name2': users[notification.notifications[1].actorID] | name}, {'user1': {'href': profileURL(notification.notifications[0].actorID)}, 'user2': {'href': profileURL(notification.notifications[1].actorID)} }) }}
+		{% elseif notification.notifications | length==3 %}
+		{{ L('notification_three_people', {'name1': users[notification.notifications[0].actorID] | name, 'name2': users[notification.notifications[1].actorID] | name, 'name3': users[notification.notifications[2].actorID] | name}, {'user1': {'href': profileURL(notification.notifications[0].actorID)}, 'user2': {'href': profileURL(notification.notifications[1].actorID)}, 'user3': {'href': profileURL(notification.notifications[2].actorID)}  }) }}
+		{% else %}
+		{{ L('notification_many_people', {'name1': users[notification.notifications[0].actorID] | name, 'name2': users[notification.notifications[1].actorID] | name, 'count': (notification.notifications | length)-2}, {'user1': {'href': profileURL(notification.notifications[0].actorID)}, 'user2': {'href': profileURL(notification.notifications[1].actorID)} }) }}
+		{% endif %}
+		</div>
+		<div class="avatars">
+		{% for sub in (notification.notifications | length>10 ? (notification.notifications | slice(0, 10)) : notification.notifications) %}
+		<span class="hoverCardContainer"><a href="{{ profileURL(sub.actorID) }}" data-user-id="{{ sub.actorID }}" class="hoverCardTrigger mention">{{ users[sub.actorID] | pictureForAvatar('s', 30) }}</a></span>
+		{% endfor %}
+		</div>
+		<div class="timeAndInfo grayText">
+		{{ LD(latest.time) }}
+		{% if latest.type=='LIKE' %}
+			{% if latest.objectType=="POST" %}
+				{% if isMultiple %}
+				{{ L(isComment ? 'notification_liked_comment_multiple' : 'notification_liked_post_multiple') }}
+				{% else %}
+				{{ L(isComment ? 'notification_liked_comment' : 'notification_liked_post', {'gender': actorGender}) }}
+				{% endif %} <a href="{{ object.post.internalURL }}" onclick="return openPostLayer('{{ isComment ? posts[latest.objectID].post.replyKey[0] : latest.objectID }}'{% if isComment %}, '{{ latest.objectID }}'{% endif %})">{{ object.post.shorterTitle | default(LD(object.post.createdAt)) }}</a>
+			{% elseif latest.objectType=="PHOTO" %}
+				{% if isMultiple %}
+				{{ L('notification_liked_photo_multiple', {}, {'photo': {'href': object.url, 'onclick': "return openPhotoViewer(this)", 'data-pv': json(object.singlePhotoViewerData)} }) }}
+				{% else %}
+				{{ L('notification_liked_photo', {'gender': actorGender}, {'photo': {'href': object.url, 'onclick': "return openPhotoViewer(this)", 'data-pv': json(object.singlePhotoViewerData)} }) }}
 				{% endif %}
-			{% elseif notification.type=="RETOOT" or notification.type=="REPOST" %}
-			{{L(isComment ? 'notification_reposted_comment' : 'notification_reposted_post', {'gender': actorGender})}} <a href="{{object.internalURL}}">{{object.shortTitle | default(LD(object.createdAt))}}</a>
-			{%elseif notification.type=="POST_OWN_WALL"%}
-			{{L('notification_posted_on_wall', {'gender': actorGender})}}
-			<div class="postContent">
-				{{ object.text | postprocessHTML }}
-			</div>
-			{%if object.attachment is not null%}{{renderAttachments(object, objectOwner)}}<br/>{%endif%}
-			{%set link=object.internalURL%}
-			{%elseif notification.type=="INVITE_SIGNUP"%}
-			{{L('notification_invite_signup', {'gender': actorGender})}}
-			{%elseif notification.type=="FOLLOW"%}
-			{{L('notification_follow', {'gender': actorGender})}}
-			{%elseif notification.type=="FRIEND_REQ_ACCEPT"%}
-			{{L('notification_friend_req_accept', {'gender': actorGender})}}
-			{%else%}
-			<div class="postContent">
-				{{notification}}
-			</div>
-			{%endif%}
-			<div class="postInfo">{%if link is not null%}<a href="{{link}}" class="postLink">{%endif%}{{LD(notification.time)}}{%if link is not null%}</a>{%endif%}</div>
-		</td>
-	</tr>
-</table>
+			{% elseif latest.objectType=="COMMENT" %}
+				{% if isMultiple %}
+				{{ L('notification_liked_comment_multiple') }}
+				{% else %}
+				{{ L('notification_liked_comment', {'gender': actorGender}) }}
+				{% endif %} <a href="{{ object.post.internalURL }}">{{ object.post.shorterTitle | default(LD(object.post.createdAt)) }}</a>
+			{% endif %}
+		{% elseif latest.type=='REPOST' or latest.type=='RETOOT' %}
+			{% if isMultiple %}
+			{{ L(isComment ? 'notification_reposted_comment_multiple' : 'notification_reposted_post_multiple') }}
+			{% else %}
+			{{ L(isComment ? 'notification_reposted_comment' : 'notification_reposted_post', {'gender': actorGender}) }}
+			{% endif %} <a href="{{ object.post.internalURL }}"{% if latest.objectType=='POST' %} onclick="return openPostLayer('{{ isComment ? posts[latest.objectID].post.replyKey[0] : latest.objectID }}'{% if isComment %}, '{{ latest.objectID }}'{% endif %})"{% endif %}>{{ object.post.shorterTitle | default(LD(object.post.createdAt)) }}</a>
+		{% elseif latest.type=="INVITE_SIGNUP" %}
+		{{ isMultiple ? L('notification_invite_signup_multiple') : L('notification_invite_signup', {'gender': actorGender}) }}
+		{% elseif latest.type=="FOLLOW" %}
+		{{ isMultiple ? L('notification_follow_multiple') : L('notification_follow', {'gender': actorGender}) }}
+		{% elseif latest.type=="FRIEND_REQ_ACCEPT" %}
+		{{ isMultiple ? L('notification_friend_req_accept_multuple') : L('notification_friend_req_accept', {'gender': actorGender}) }}
+		{% endif %}
+		</div>
+	</div>
+</div>
+{% endif %}
 {% else %}
 <div class="emptyState">{{ L('notifications_empty') }}</div>
 {%endfor%}
+{% endblock %}
+{% include "pagination_endless" %}
 </div>
-<div class="bottomSummaryWrap">
-	{% include "pagination" %}
-</div>
-{%endif%}
 {%endblock%}

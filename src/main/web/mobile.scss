@@ -2544,3 +2544,106 @@ input.searchField{
 	align-items: center;
 }
 
+.notificationsWrap{
+	padding-top: 8px;
+}
+
+.notificationsRow{
+	padding: 0 8px 8px;
+	margin-bottom: 8px;
+	border-bottom: solid 1px $wallPostSeparator;
+	.postAva{
+		float: left;
+	}
+	.post{
+		margin-left: 48px;
+		padding: 0;
+		.postContentWrap{
+			padding: 0;
+		}
+		.postContent{
+			padding: 6px 0;
+		}
+		.postAttachments{
+			margin: 0 0 6px;
+		}
+	}
+	.postInfo, .postLink{
+		color: $grayText;
+	}
+	.notificationExtraImage{
+		display: block;
+		float: right;
+		margin-left: 16px;
+		max-height: 50px;
+		overflow: hidden;
+		img{
+			display: block;
+			max-width: 50px;
+			object-fit: contain;
+			object-position: top right;
+		}
+	}
+}
+
+.notificationWithAvatars{
+	padding-bottom: 12px;
+	display: flex;
+	.iconW{
+		width: 42px;
+		margin-right: 6px;
+		padding-top: 4px;
+		flex: none;
+		.icon{
+			width: 15px;
+			height: 16px;
+			float: right;
+			background: svg-load('img/feedback_iconset.svg', fill: $auxiliaryBlockHeader);
+		}
+	}
+	&.notificationLike .iconW .icon{
+		background-position: 0 -16px;
+	}
+	&.notificationRepost .iconW .icon, &.notificationRetoot .iconW .icon{
+		background-position: 0 -32px;
+	}
+	&.notificationInviteSignup .iconW .icon{
+		background-position: 0 -48px;
+	}
+	.notificationContent{
+		flex-grow: 1;
+	}
+	.names{
+		padding-top: 2px;
+		a{
+			font-weight: bold;
+		}
+	}
+	.avatars{
+		margin: 9px 0 7px;
+		display: flex;
+		>*{
+			flex: none;
+			margin-right: 6px;
+		}
+	}
+}
+
+.notificationsSeen{
+	background: $blockUnderboxBackground;
+	text-align: center;
+	padding: 6px;
+	color: $auxiliaryGrey;
+	margin: -9px 0 8px;
+	.icon{
+		display: inline-block;
+		vertical-align: middle;
+		height: 20px;
+		width: 20px;
+		margin: -6px 0 -6px 3px;
+		position: relative;
+		top: -1px;
+		background: svg-load('img/material/arrow_downward_20dp_FILL0_wght400_GRAD0_opsz20.svg', fill: #bfbfbf) center no-repeat;
+	}
+}
+

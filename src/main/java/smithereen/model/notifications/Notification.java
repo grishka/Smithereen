@@ -6,7 +6,7 @@ import java.time.Instant;
 
 import smithereen.storage.DatabaseUtils;
 
-public class Notification{
+public final class Notification implements NotificationWrapper{
 	public int id;
 	public Type type;
 	public ObjectType objectType;
@@ -46,6 +46,11 @@ public class Notification{
 				'}';
 	}
 
+	@Override
+	public Notification getLatestNotification(){
+		return this;
+	}
+
 	public enum Type{
 		/**
 		 * %username% replied to you
@@ -82,7 +87,11 @@ public class Notification{
 		/**
 		 * %username% reposted (quoted) your %object%
 		 */
-		REPOST,
+		REPOST;
+
+		public boolean canBeGrouped(){
+			return this==LIKE || this==RETOOT || this==INVITE_SIGNUP || this==FOLLOW || this==FRIEND_REQ_ACCEPT || this==REPOST;
+		}
 	}
 
 	public enum ObjectType{

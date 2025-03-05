@@ -216,6 +216,8 @@ public class ActivityPubWorker{
 					if(oaa.owner() instanceof User user){
 						getInboxesWithPrivacy(inboxes, user, album.viewPrivacy);
 						for(User mentionedUser:mentionedUsers){
+							if(!(mentionedUser instanceof ForeignUser))
+								continue;
 							URI inbox=actorInbox(mentionedUser);
 							if(inboxes.contains(inbox))
 								continue;

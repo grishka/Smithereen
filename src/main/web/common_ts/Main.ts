@@ -175,6 +175,11 @@ document.addEventListener("mouseover", (ev)=>{
 		var tooltip=target.dataset.tooltip;
 		showTooltip(target, tooltip);
 	}else if(!mobile){
+		if(target.tagName!='A'){
+			target=target.closest("a");
+			if(!target)
+				return;
+		}
 		if(target.classList.contains("hoverCardTrigger")){
 			if(target.classList.contains("mention")){
 				showMentionHoverCard(target, ev);

@@ -9,7 +9,7 @@
   "notification_reposted_comment": "shared your comment",
   "notification_posted_on_wall": "posted on your wall",
   "notification_invite_signup": "signed up by your invitation",
-  "notification_follow": "followed you",
+  "notification_follow": "started following you",
   "notification_friend_req_accept": "accepted your friend request",
   "no_notifications": "You don't have any notifications yet",
   "notifications": "Notifications",
@@ -52,5 +52,18 @@
   "notification_content_group_invite": "<a id=\"actor\">{name}</a> invites you to join <a id=\"group\">{groupName}</a>",
   "notification_content_event_invite": "<a id=\"actor\">{name}</a> invites you to attend <a id=\"event\">{eventName}</a>",
   "notification_content_group_accepted": "<a id=\"actor\">{name}</a> management accepted your request to join",
-  "notification_content_photo_tag": "<a id=\"actor\">{name}</a> tagged you in a photo"
+  "notification_content_photo_tag": "<a id=\"actor\">{name}</a> tagged you in a photo",
+
+  "notification_two_people": "<a id=\"user1\">{name1}</a> and <a id=\"user2\">{name2}</a>",
+  "notification_three_people": "<a id=\"user1\">{name1}</a>, <a id=\"user2\">{name2}</a> and <a id=\"user3\">{name3}</a>",
+  "notification_many_people": "<a id=\"user1\">{name1}</a>, <a id=\"user2\">{name2}</a> and {count, plural, one {<b>#</b> more person} other {<b>#</b> more people}}",
+  "notification_liked_post_multiple": "liked your post",
+  "notification_liked_comment_multiple": "liked your comment",
+  "notification_reposted_post_multiple": "shared your post",
+  "notification_reposted_comment_multiple": "shared your comment",
+  "notification_invite_signup_multiple": "signed up by your invitations",
+  "notification_follow_multiple": "started following you",
+  "notification_friend_req_accept_multiple": "accepted your friend requests",
+  "notification_liked_photo_multiple": "liked your <a id=\"photo\">photo</a>",
+  "notifications_seen": "Seen notifications"
 }

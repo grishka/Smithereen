@@ -867,7 +867,7 @@ public class WallController{
 		}
 	}
 
-	public void populateReposts(User self, List<PostViewModel> posts, int maxDepth){
+	public void populateReposts(User self, Collection<PostViewModel> posts, int maxDepth){
 		HashMap<Integer, PostViewModel> knownPosts=posts.stream().collect(Collectors.toMap(p->p.post.id, Function.identity(), (a, b)->b, HashMap::new));
 		HashSet<Integer> needPosts=new HashSet<>();
 		HashSet<PostViewModel> reposts=new HashSet<>(), nextReposts=new HashSet<>();

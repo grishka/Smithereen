@@ -40,18 +40,20 @@ public class NotificationsStorage{
 		return id;
 	}
 
-	public static PaginatedList<Notification> getNotifications(int owner, int offset, int count) throws SQLException{
+	public static PaginatedList<Notification> getNotifications(int owner, int offset, int count, int maxID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("notifications")
 					.count()
 					.where("owner_id=?", owner)
 					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
 			List<Notification> notifications=new SQLQueryBuilder(conn)
 					.selectFrom("notifications")
 					.allColumns()
-					.where("owner_id=?", owner)
-					.orderBy("`time` DESC")
+					.where("owner_id=? AND id<?", owner, maxID)
+					.orderBy("`id` DESC")
 					.limit(count, offset)
 					.executeAsStream(Notification::fromResultSet)
 					.toList();

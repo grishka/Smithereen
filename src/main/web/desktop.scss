@@ -4739,3 +4739,93 @@ label.largeAccented{
 	margin: 7px -10px 0;
 }
 
+.singleColumnLargerPadding{
+	padding: 15px;
+}
+
+.notificationsRow{
+	margin-bottom: 10px;
+	padding-bottom: 10px;
+	border-bottom: solid 1px $wallPostSeparator;
+	.post{
+		padding-bottom: 0;
+		margin-bottom: 0;
+		border-bottom: none;
+		.postInfo, .postLink{
+			font-size: 11px;
+		}
+	}
+	.notificationExtraImage{
+		display: block;
+		float: right;
+		margin-left: 15px;
+		max-height: 50px;
+		overflow: hidden;
+		img{
+			display: block;
+			max-width: 50px;
+			object-fit: contain;
+			object-position: top right;
+		}
+	}
+}
+
+.notificationWithAvatars{
+	padding-bottom: 12px;
+	display: flex;
+	.iconW{
+		width: 53px;
+		margin-right: 7px;
+		padding-top: 2px;
+		flex: none;
+		.icon{
+			width: 15px;
+			height: 16px;
+			float: right;
+			background: svg-load('img/feedback_iconset.svg', fill: $auxiliaryBlockHeader);
+		}
+	}
+	&.notificationLike .iconW .icon{
+		background-position: 0 -16px;
+	}
+	&.notificationRepost .iconW .icon, &.notificationRetoot .iconW .icon{
+		background-position: 0 -32px;
+	}
+	&.notificationInviteSignup .iconW .icon{
+		background-position: 0 -48px;
+	}
+	.notificationContent{
+		flex-grow: 1;
+	}
+	.names{
+		padding-top: 2px;
+		a{
+			font-weight: bold;
+		}
+	}
+	.avatars{
+		margin: 9px 0 7px;
+		display: flex;
+		>*{
+			flex: none;
+			margin-right: 6px;
+		}
+	}
+}
+
+.notificationsSeen{
+	background: $blockUnderboxBackground;
+	text-align: center;
+	line-height: 30px;
+	margin: -11px -15px 10px;
+	color: $auxiliaryGrey;
+	.icon{
+		display: inline-block;
+		vertical-align: top;
+		height: 30px;
+		width: 7px;
+		margin-left: 3px;
+		background: svg-load('img/feedback_old_arrow.svg', fill: #bfbfbf) center no-repeat;
+	}
+}
+

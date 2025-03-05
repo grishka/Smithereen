@@ -2,32 +2,59 @@ package smithereen.routes;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.model.Account;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.User;
+import smithereen.model.WebDeltaResponse;
 import smithereen.model.comments.Comment;
+import smithereen.model.notifications.GroupedNotification;
 import smithereen.model.notifications.Notification;
+import smithereen.model.notifications.NotificationWrapper;
 import smithereen.model.photos.Photo;
+import smithereen.model.viewmodel.CommentViewModel;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 
 import static smithereen.Utils.*;
 
 public class NotificationsRoutes{
 	public static Object notifications(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("notifications", req);
-		PaginatedList<Notification> notifications=ctx.getNotificationsController().getNotifications(self.user, offset(req), 50);
-		model.pageTitle(lang(req).get("notifications")).paginate(notifications);
+		int maxID=parseIntOrDefault(req.queryParams("maxID"), Integer.MAX_VALUE);
+		PaginatedList<NotificationWrapper> notifications=ctx.getNotificationsController().getNotifications(self, offset(req), 50, maxID);
+		model.pageTitle(lang(req).get("notifications"));
+		if(notifications.list.isEmpty()){
+			model.paginate(notifications);
+		}else{
+			if(maxID==Integer.MAX_VALUE){
+				maxID=notifications.list.getFirst().getLatestNotification().id;
+			}
+			model.paginate(notifications, "/my/notifications?maxID="+maxID+"&offset=", "/my/notifications");
+		}
 		HashSet<Integer> needUsers=new HashSet<>(), needPosts=new HashSet<>();
 		HashSet<Long> needPhotos=new HashSet<>(), needComments=new HashSet<>();
 
-		for(Notification n:notifications.list){
-			needUsers.add(n.actorID);
+		for(NotificationWrapper nw:notifications.list){
+			switch(nw){
+				case Notification n -> needUsers.add(n.actorID);
+				case GroupedNotification gn -> {
+					for(Notification n:gn.notifications){
+						needUsers.add(n.actorID);
+					}
+				}
+			}
+
+			Notification n=nw.getLatestNotification();
 			switch(n.objectType){
 				case null -> {}
 				case POST -> needPosts.add((int) n.objectID);
@@ -42,33 +69,60 @@ public class NotificationsRoutes{
 			}
 		}
 
-		Map<Long, Comment> comments=ctx.getCommentsController().getCommentsIgnoringPrivacy(needComments);
+		Map<Long, Comment> rawComments=ctx.getCommentsController().getCommentsIgnoringPrivacy(needComments);
 		HashSet<Long> needExtraComments=new HashSet<>();
-		for(Comment c:comments.values()){
+		for(Comment c:rawComments.values()){
 			switch(c.parentObjectID.type()){
 				case PHOTO -> needPhotos.add(c.parentObjectID.id());
 			}
-			if(c.getReplyLevel()>0 && !comments.containsKey(c.replyKey.getLast()))
+			if(c.getReplyLevel()>0 && !rawComments.containsKey(c.replyKey.getLast()))
 				needExtraComments.add(c.replyKey.getLast());
 		}
 
 		if(!needExtraComments.isEmpty()){
-			comments=new HashMap<>(comments);
-			comments.putAll(ctx.getCommentsController().getCommentsIgnoringPrivacy(needExtraComments));
+			rawComments=new HashMap<>(rawComments);
+			rawComments.putAll(ctx.getCommentsController().getCommentsIgnoringPrivacy(needExtraComments));
 		}
 
+		Map<Integer, PostViewModel> posts=ctx.getWallController().getPosts(needPosts)
+				.values()
+				.stream()
+				.map(PostViewModel::new)
+				.collect(Collectors.toMap(p->p.post.id, Function.identity()));
+		Map<Long, CommentViewModel> comments=rawComments.values()
+				.stream()
+				.map(CommentViewModel::new)
+				.collect(Collectors.toMap(c->c.post.id, Function.identity()));
+
+		ctx.getWallController().populateReposts(self.user, posts.values(), 2);
+		PostViewModel.collectActorIDs(posts.values(), needUsers, null);
+
 		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
-		Map<Integer, Post> posts=ctx.getWallController().getPosts(needPosts);
 		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
 
 		model.with("users", users)
 				.with("posts", posts)
 				.with("photos", photos)
-				.with("comments", comments);
+				.with("comments", comments)
+				.with("lastSeenID", self.prefs.lastSeenNotificationID);
 
 		if(!notifications.list.isEmpty()){
-			int last=notifications.list.getFirst().id;
+			int last=notifications.list.getFirst().getLatestNotification().id;
 			ctx.getNotificationsController().setNotificationsSeen(self, last);
+		}
+
+		if(isAjax(req)){
+			String paginationID=req.queryParams("pagination");
+			if(StringUtils.isNotEmpty(paginationID)){
+				WebDeltaResponse r=new WebDeltaResponse(resp)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, notifications.list.isEmpty() ? "" : model.renderBlock("notificationsInner"));
+				if(notifications.list.isEmpty()){
+					r.remove("ajaxPagination_"+paginationID);
+				}else{
+					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", req.pathInfo()+"?offset="+(notifications.offset+notifications.perPage)+"&maxID="+maxID);
+				}
+				return r;
+			}
 		}
 
 		return model;
