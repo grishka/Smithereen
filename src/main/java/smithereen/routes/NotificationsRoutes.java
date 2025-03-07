@@ -7,10 +7,11 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static smithereen.Utils.*;
+
 import smithereen.ApplicationContext;
 import smithereen.model.Account;
 import smithereen.model.PaginatedList;
-import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.comments.Comment;
@@ -24,8 +25,6 @@ import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
-
-import static smithereen.Utils.*;
 
 public class NotificationsRoutes{
 	public static Object notifications(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -105,6 +104,33 @@ public class NotificationsRoutes{
 				.with("photos", photos)
 				.with("comments", comments)
 				.with("lastSeenID", self.prefs.lastSeenNotificationID);
+
+		if(!isMobile(req)){
+			model.with("postInteractions", ctx.getWallController().getUserInteractions(posts.values().stream().toList(), self.user));
+			model.with("commentInteractions", ctx.getUserInteractionsController().getUserInteractions(comments.values().stream().map(cvm->cvm.post).toList(), self.user));
+			model.with("photoInteractions", ctx.getUserInteractionsController().getUserInteractions(photos.values().stream().toList(), self.user));
+
+			HashSet<List<Integer>> needOwnReplies=new HashSet<>();
+			HashSet<List<Long>> needOwnCommentReplies=new HashSet<>();
+			for(NotificationWrapper nw:notifications.list){
+				Notification n=nw.getLatestNotification();
+				if(n.type==Notification.Type.REPLY || n.type==Notification.Type.MENTION || n.type==Notification.Type.POST_OWN_WALL){
+					if(n.objectType==Notification.ObjectType.POST){
+						PostViewModel post=posts.get((int)n.objectID);
+						if(post!=null){
+							needOwnReplies.add(post.getReplyKeyForInteractions());
+						}
+					}else if(n.objectType==Notification.ObjectType.COMMENT){
+						CommentViewModel comment=comments.get(n.objectID);
+						if(comment!=null){
+							needOwnCommentReplies.add(comment.post.getReplyKeyForReplies());
+						}
+					}
+				}
+			}
+			model.with("ownWallReplies", ctx.getWallController().getUserReplies(self.user, needOwnReplies));
+			model.with("ownCommentReplies", ctx.getCommentsController().getUserReplies(self.user, needOwnCommentReplies));
+		}
 
 		if(!notifications.list.isEmpty()){
 			int last=notifications.list.getFirst().getLatestNotification().id;

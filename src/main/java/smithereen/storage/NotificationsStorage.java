@@ -5,7 +5,6 @@ import org.jetbrains.annotations.NotNull;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.List;
 
 import smithereen.LruCache;
@@ -52,7 +51,7 @@ public class NotificationsStorage{
 			List<Notification> notifications=new SQLQueryBuilder(conn)
 					.selectFrom("notifications")
 					.allColumns()
-					.where("owner_id=? AND id<?", owner, maxID)
+					.where("owner_id=? AND id<=?", owner, maxID)
 					.orderBy("`id` DESC")
 					.limit(count, offset)
 					.executeAsStream(Notification::fromResultSet)

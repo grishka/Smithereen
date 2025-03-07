@@ -1637,8 +1637,10 @@ select, .comboBoxW input{
 	}
 }
 
-.comment .postActions .action:hover{
-	background: none;
+.comment, .notificationsRow .post{
+	.postActions .action:hover{
+		background: none;
+	}
 }
 
 .popoverPlace{
@@ -4754,6 +4756,9 @@ label.largeAccented{
 		.postInfo, .postLink{
 			font-size: 11px;
 		}
+		&.mainPost{
+			cursor: pointer;
+		}
 	}
 	.notificationExtraImage{
 		display: block;
@@ -4799,6 +4804,7 @@ label.largeAccented{
 	}
 	.names{
 		padding-top: 2px;
+		line-height: 13px;
 		a{
 			font-weight: bold;
 		}
@@ -4826,6 +4832,52 @@ label.largeAccented{
 		width: 7px;
 		margin-left: 3px;
 		background: svg-load('img/feedback_old_arrow.svg', fill: #bfbfbf) center no-repeat;
+	}
+}
+
+.notificationOwnReply{
+	border: solid 1px #e2debe;
+	background: #f3f1e3;
+	margin-top: 10px;
+	padding: 10px;
+	position: relative;
+	.tipW{
+		height: 7px;
+		overflow: hidden;
+		position: absolute;
+		top: -7px;
+		left: -1px;
+	}
+	.tip{
+		width: 15px;
+		height: 15px;
+		border: solid 1px #e2debe;
+		background: #f3f1e3;
+		transform-origin: 0 0;
+		transform: rotate(45deg);
+		margin-left: 25px;
+	}
+	.post .postAvaWrap{
+		width: 39px;
+	}
+	.post .postInfo .postLink{
+		font-size: 10px;
+	}
+	&.wallPostForm{
+		display: flex;
+		border: solid 1px #dad7b7;
+		background: #eae7d2;
+		.tip{
+			border: solid 1px #dad7b7;
+			background: #eae7d2;
+		}
+		.ownAvaW{
+			width: 39px;
+			margin-right: 10px;
+		}
+		&.collapsed{
+			display: none;
+		}
 	}
 }
 

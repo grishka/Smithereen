@@ -25,6 +25,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static smithereen.Utils.ensureUserNotBlocked;
+
 import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -33,6 +35,10 @@ import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.NoteOrQuestion;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
@@ -54,10 +60,6 @@ import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.viewmodel.PostViewModel;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
@@ -67,8 +69,6 @@ import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
-
-import static smithereen.Utils.*;
 
 public class WallController{
 	private static final Logger LOG=LoggerFactory.getLogger(WallController.class);
@@ -917,6 +917,17 @@ public class WallController{
 	public PaginatedList<Post> getPostReposts(Post post, int offset, int count){
 		try{
 			return PostStorage.getPostReposts(post.getIDForInteractions(), offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, PostViewModel> getUserReplies(User self, Collection<List<Integer>> replyKeys){
+		if(replyKeys.isEmpty())
+			return Map.of();
+		try{
+			List<Post> posts=PostStorage.getUserReplies(self.id, replyKeys);
+			return posts.stream().collect(Collectors.toMap(p->p.replyKey.getLast(), PostViewModel::new, (p1, p2)->p1.post.id>p2.post.id ? p1 : p2));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

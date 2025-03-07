@@ -769,7 +769,7 @@ function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveFo
 	if(moveForm){
 		var suffix=randomID ? "_"+randomID : "";
 		var replies=ge("postReplies"+(containerPostID || id)+suffix);
-		replies.insertAdjacentElement("afterbegin", form);
+		replies.insertAdjacentElement(containerPostID ? "beforeend" : "afterbegin", form);
 	}
 	form.customData.postFormObj.setupForReplyTo(id, "post", randomID);
 	return false;
@@ -780,7 +780,7 @@ function showCommentReplyForm(id:string, formID:string, moveForm:boolean=true, c
 	form.show();
 	if(moveForm){
 		var replies=ge("commentReplies"+(containerPostID || id));
-		replies.insertAdjacentElement("afterbegin", form);
+		replies.insertAdjacentElement(containerPostID ? "beforeend" : "afterbegin", form);
 	}
 	form.customData.postFormObj.setupForReplyTo(id, "comment");
 	return false;
@@ -1666,5 +1666,19 @@ function setMenuCounters(counters:{[key:string]:number}){
 			counter.hide();
 		}
 	}
+}
+
+function activateNotificationsPostForm(id:string, postID:string, type:string, randomID:string){
+	if((event.target as HTMLElement).tagName=='A')
+		return true;
+	var formEl=ge("wallPostForm_"+id);
+	if(!formEl)
+		return true;
+	formEl.classList.remove("collapsed");
+	var text=ge("postFormText_"+id) as HTMLTextAreaElement;
+	text.focus();
+	var form:PostForm=formEl.customData.postFormObj;
+	form.setupForReplyTo(postID, type, randomID);
+	return false;
 }
 

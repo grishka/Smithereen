@@ -471,4 +471,15 @@ public class CommentsController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public Map<Long, CommentViewModel> getUserReplies(User self, Collection<List<Long>> replyKeys){
+		if(replyKeys.isEmpty())
+			return Map.of();
+		try{
+			List<Comment> comments=CommentStorage.getUserReplies(self.id, replyKeys);
+			return comments.stream().collect(Collectors.toMap(p->p.replyKey.getLast(), CommentViewModel::new, (p1, p2)->p1.post.id>p2.post.id ? p1 : p2));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

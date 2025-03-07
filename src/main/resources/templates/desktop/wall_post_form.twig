@@ -1,6 +1,7 @@
 {# @pebvariable name="wallOwner" type="smithereen.activitypub.objects.Actor" #}
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
 <div class="wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing' : '' }}{{ allowEmpty ? ' data-allow-empty' : '' }}>
+	{% block wallPostForm %}
 	{% if not wallOwner.hasWall and replyTo is null %}
 		<div class="wallPostFormError">
 		{% if isGroup %}
@@ -65,6 +66,7 @@
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
 		<input type="hidden" name="attachAltTexts" value="{{ json(attachAltTexts | default({})) }}"/>
 		{% if randomID is not empty %}<input type="hidden" name="rid" value="{{ randomID }}"/>{% endif %}
+		{% if from is not empty %}<input type="hidden" name="from" value="{{ from }}"/>{% endif %}
 		<div class="bottomBar">
 			<div class="left">
 				{% if isEditing %}
@@ -101,4 +103,5 @@
 	</form>
 	<div id="dropOverlay_{{id}}" class="dropOverlay">{{L('drop_files_here')}}</div>
 	{% endif %}
+	{% endblock %}
 </div>

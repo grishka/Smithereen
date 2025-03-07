@@ -31,6 +31,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.FederationState;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -40,20 +41,19 @@ import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.PostSource;
-import smithereen.model.feed.CommentsNewsfeedObjectType;
-import smithereen.storage.utils.Pair;
-import smithereen.text.FormattedTextFormat;
-import smithereen.util.NamedMutexCollection;
-import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
+import smithereen.model.feed.CommentsNewsfeedObjectType;
 import smithereen.model.feed.NewsfeedEntry;
-import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.utils.Pair;
+import smithereen.text.FormattedTextFormat;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.NamedMutexCollection;
+import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
 public class PostStorage{
@@ -1210,6 +1210,18 @@ public class PostStorage{
 				.whereIn("id", ids)
 				.executeAsStream(res->new Pair<Integer, Integer>(res.getInt("id"), res.getInt("author_id")))
 				.collect(Collectors.toMap(Pair::first, Pair::second));
+	}
+
+	public static List<Post> getUserReplies(int userID, Collection<List<Integer>> replyKeys) throws SQLException{
+		List<Post> posts=new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.allColumns()
+				.whereIn("reply_key", replyKeys.stream().map(Utils::serializeIntList).toList())
+				.andWhere("author_id=?", userID)
+				.executeAsStream(Post::fromResultSet)
+				.toList();
+		postprocessPosts(posts);
+		return posts;
 	}
 
 	private record DeleteCommentBookmarksRunnable(int postID) implements Runnable{

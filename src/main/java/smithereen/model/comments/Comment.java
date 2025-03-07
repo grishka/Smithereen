@@ -154,4 +154,8 @@ public sealed class Comment extends PostLikeObject implements ActivityPubReprese
 		if(jo.has("cw"))
 			contentWarning=jo.get("cw").getAsString();
 	}
+
+	public List<String> getReplyKeyAsStrings(){
+		return replyKey.stream().map(id->XTEA.encodeObjectID(id, ObfuscatedObjectIDType.COMMENT)).toList();
+	}
 }

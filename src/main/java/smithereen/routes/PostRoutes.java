@@ -23,6 +23,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static smithereen.Utils.*;
+
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
@@ -42,8 +44,6 @@ import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.PostSource;
-import smithereen.model.media.PhotoViewerInlineData;
-import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
@@ -54,7 +54,9 @@ import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.utils.Pair;
 import smithereen.templates.RenderedTemplateResponse;
@@ -65,8 +67,6 @@ import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
-
-import static smithereen.Utils.*;
 
 public class PostRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(PostRoutes.class);
@@ -152,6 +152,8 @@ public class PostRoutes{
 			if(StringUtils.isNotEmpty(rid))
 				ridSuffix="_"+rid;
 
+			boolean fromNotifications="notifications".equals(req.queryParams("from"));
+
 			String formID=req.queryParams("formID");
 			if(repost!=null){
 				return new WebDeltaResponse(resp)
@@ -165,7 +167,12 @@ public class PostRoutes{
 			if(inReplyTo!=null)
 				pvm.parentAuthorID=inReplyTo.authorID;
 			ctx.getWallController().populateReposts(self.user, List.of(pvm), 2);
-			RenderedTemplateResponse model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post", req).with("post", pvm);
+			RenderedTemplateResponse model;
+			if(fromNotifications){
+				model=new RenderedTemplateResponse("wall_reply_notifications", req).with("post", pvm);
+			}else{
+				model=new RenderedTemplateResponse(replyTo!=0 ? "wall_reply" : "wall_post", req).with("post", pvm);
+			}
 			if(replyTo!=0){
 				PostViewModel topLevel=new PostViewModel(context(req).getWallController().getPostOrThrow(post.replyKey.getFirst()));
 				model.with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0)+ridSuffix);
@@ -187,17 +194,24 @@ public class PostRoutes{
 			model.with("posts", Map.of(post.id, post));
 			model.with("commentViewType", self.prefs.commentViewType).with("maxReplyDepth", getMaxReplyDepth(self));
 			String postHTML=model.renderToString();
-			if(req.attribute("mobile")!=null && replyTo==0){
-				postHTML="<div class=\"card\">"+postHTML+"</div>";
-			}else if(replyTo==0){
-				// TODO correctly handle day headers in feed
-				String cl="feed".equals(formID) ? "feedRow" : "wallRow";
-				postHTML="<div class=\""+cl+"\">"+postHTML+"</div>";
+			if(!fromNotifications){
+				if(req.attribute("mobile")!=null && replyTo==0){
+					postHTML="<div class=\"card\">"+postHTML+"</div>";
+				}else if(replyTo==0){
+					// TODO correctly handle day headers in feed
+					String cl="feed".equals(formID) ? "feedRow" : "wallRow";
+					postHTML="<div class=\""+cl+"\">"+postHTML+"</div>";
+				}
 			}
 			WebDeltaResponse rb;
-			if(replyTo==0)
+			if(fromNotifications){
+				rb=new WebDeltaResponse(resp)
+						.remove("notificationsOwnReply"+ridSuffix)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "wallPostForm_"+formID, postHTML)
+						.addClass("wallPostForm_"+formID, "collapsed");
+			}else if(replyTo==0){
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
-			else{
+			}else{
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+switch(self.prefs.commentViewType){
 					case THREADED -> replyTo;
 					case TWO_LEVEL -> post.replyKey.get(Math.min(post.getReplyLevel()-1, 1));
@@ -583,6 +597,8 @@ public class PostRoutes{
 			}
 			if(req.queryParams("fromLayer")!=null){
 				return wdr.runScript("LayerManager.getMediaInstance().dismissByID(\"postLayer"+post.id+ridSuffix+"\");");
+			}else if(req.queryParams("elid")!=null){
+				return wdr.remove(req.queryParams("elid"));
 			}
 			return wdr.remove("post"+post.id+ridSuffix, "postReplies"+post.id+ridSuffix);
 		}

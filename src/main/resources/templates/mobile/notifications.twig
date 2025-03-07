@@ -55,14 +55,18 @@
 				{% set realPost=object.post %}{# because included template overwrote it #}
 			</div>
 			<div class="postInfo">
+				{% if notification.relatedObjectType=='PHOTO' %}
+				<a href="{{ relatedObject.url }}" onclick="return openPhotoViewer(this)" data-pv="{{ json(relatedObject.singlePhotoViewerData) }}" class="postLink">{{LD(realPost.createdAt)}}</a>
+				{% else %}
 				<a href="{{realPost.internalURL}}" class="postLink">{{LD(realPost.createdAt)}}</a>
+				{% endif %}
 				{% if latest.type=='MENTION' %}
 					{{ L(isComment ? 'notification_mentioned_in_comment' : 'notification_mentioned_in_post', {'gender': actorGender}) }}
 				{% elseif latest.type=='POST_OWN_WALL' %}
 					{{ L('notification_posted_on_wall', {'gender': actorGender}) }}
 				{% elseif latest.type=='REPLY' %}
-					{% if notification.objectType=='COMMENT' and object.replyLevel>0 and comments[object.replyKey.last].authorID==currentUser.id %}
-						{% set parentComment=comments[object.replyKey.last] %}
+					{% if notification.objectType=='COMMENT' and object.post.replyLevel>0 and comments[object.post.replyKey.last].post.authorID==currentUser.id %}
+						{% set parentComment=comments[object.post.replyKey.last].post %}
 						{{ L('notification_replied_to_comment', {'gender': actorGender}) }} <a href="{{ parentComment.internalURL }}">{{ parentComment.shorterTitle | default(LD(parentComment.createdAt)) }}</a>
 					{% elseif notification.relatedObjectType=='PHOTO' %}
 						{{ L('notification_commented_on_photo', {'gender': actorGender}, {'photo': {'href': relatedObject.url, 'onclick': "return openPhotoViewer(this)", 'data-pv': json(relatedObject.singlePhotoViewerData)} }) }}
