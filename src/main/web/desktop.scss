@@ -4625,6 +4625,11 @@ label.largeAccented{
 		border-radius: 0;
 		box-shadow: 0 -2px 0 rgba(0,0,0,0.08);
 	}
+	&.commentsRestricted{
+		position: static;
+		color: #7e8d31;
+		font-weight: bold;
+	}
 }
 
 .hasJS .postLayerCommentForm.collapsed textarea{

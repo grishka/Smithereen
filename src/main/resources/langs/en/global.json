@@ -204,5 +204,6 @@
   "main_menu": "Main menu",
   "save_and_continue": "Save and continue",
   "page_not_found": "Page not found",
-  "server_error": "Internal server error"
+  "server_error": "Internal server error",
+  "commenting_restricted": "Author has restricted who can comment on this"
 }

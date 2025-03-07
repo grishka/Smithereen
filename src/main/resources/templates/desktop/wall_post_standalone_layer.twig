@@ -73,9 +73,13 @@
 	{% endfor -%}
 </div>
 {% set interactions=postInteractions[post.post.id] %}
-{% if currentUser is not null and interactions.canComment %}
+{% if currentUser is not null %}
+{% if interactions.canComment %}
 {% include "wall_post_form" with {'id': "commentReplyPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'hidden': true, 'randomID': randomID} %}
 {% include "wall_post_form" with {'id': "commentPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'addClasses': "collapsed postLayerCommentForm", 'randomID': randomID} %}
+{% else %}
+<div class="postLayerCommentForm commentsRestricted">{{ L('commenting_restricted') }}</div>
+{% endif %}
 {% endif %}
 <div class="scrollDetector"></div>
 </div>
