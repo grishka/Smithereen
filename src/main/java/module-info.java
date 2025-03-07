@@ -18,4 +18,5 @@ open module smithereen.server{
 	requires org.eclipse.jetty.websocket.jetty.api;
 	requires org.eclipse.jetty.websocket.jetty.server;
 	requires org.eclipse.jetty.websocket.core.server;
+	requires mysql.connector.j;
 }

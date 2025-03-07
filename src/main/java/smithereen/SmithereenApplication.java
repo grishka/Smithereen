@@ -33,6 +33,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.controllers.MailController;
 import smithereen.controllers.UsersController;
+import smithereen.debug.DebugLog;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.InaccessibleProfileException;
@@ -167,12 +168,17 @@ public class SmithereenApplication{
 
 		webSocket("/system/ws/notifier", NotifierWebSocket.class);
 
+		if(Config.DEBUG){
+			before((req, resp)->{
+				DebugLog.get().start();
+			});
+		}
+
 		before((request, response) -> {
 			request.attribute("context", context);
 
 			if(request.pathInfo().startsWith("/api/"))
 				return;
-			request.attribute("start_time", System.currentTimeMillis());
 			Session session=request.session(false);
 			if(session==null || session.attribute("info")==null){
 				String psid=request.cookie("psid");
@@ -858,11 +864,6 @@ public class SmithereenApplication{
 		});
 
 		after((req, resp)->{
-			Long l=req.attribute("start_time");
-			if(l!=null){
-				long t=(long)l;
-				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
-			}
 			if(req.attribute("isTemplate")!=null && req.attribute("noPreload")==null && !isAjax(req) && !isAjaxLayout(req)){
 				String cssName=req.attribute("mobile")!=null ? "mobile.css" : "desktop.css";
 				resp.header("Link", "</res/"+cssName+"?"+Templates.getStaticFileVersion(cssName)+">; rel=preload; as=style, </res/common.js?"+Templates.getStaticFileVersion("common.js")+">; rel=preload; as=script");
@@ -891,6 +892,14 @@ public class SmithereenApplication{
 				}catch(Throwable ignore){}
 			}
 		});
+
+		if(Config.DEBUG){
+			afterAfter((req, resp)->{
+				DebugLog dl=DebugLog.get();
+				LOG.info("{}: total {}ms, route match {}ms, DB {} queries {}ms", req.pathInfo(), dl.getDuration()/1000_000.0, (dl.routeMatchTime-dl.startTime)/1000_000.0, dl.numDatabaseQueries, dl.totalDatabaseQueryDuration/1000_000.0);
+			});
+		}
+
 		notFound((req, resp)->notFoundPages.get(lang(req).getLocale().toLanguageTag()));
 		internalServerError((req, resp)->serverErrorPages.get(lang(req).getLocale().toLanguageTag()));
 

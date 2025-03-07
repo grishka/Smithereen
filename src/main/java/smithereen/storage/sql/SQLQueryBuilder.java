@@ -24,7 +24,6 @@ import smithereen.storage.ResultSetDeserializerFunction;
 import spark.utils.StringUtils;
 
 public class SQLQueryBuilder{
-	private static final Logger LOG=LoggerFactory.getLogger(SQLQueryBuilder.class);
 	private final DatabaseConnection conn;
 	private final boolean needCloseConnection;
 
@@ -486,9 +485,6 @@ public class SQLQueryBuilder{
 				stmt.setObject(argIndex++, convertValue(arg));
 			}
 		}
-
-		LOG.debug("{}", stmt);
-
 		return stmt;
 	}
 
@@ -506,7 +502,6 @@ public class SQLQueryBuilder{
 				stmt.setObject(i, arg);
 			i++;
 		}
-		LOG.debug("{}", stmt);
 		return stmt;
 	}
 
