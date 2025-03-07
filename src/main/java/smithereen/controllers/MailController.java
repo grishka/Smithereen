@@ -155,6 +155,7 @@ public class MailController{
 					MailMessage msg=MailStorage.getMessage(user.id, XTEA.obfuscateObjectID(allMessageIDs.get(user.id), ObfuscatedObjectIDType.MAIL_MESSAGE), false);
 					context.getNotificationsController().sendRealtimeNotifications(user, "msg"+msg.encodedID, RealtimeNotification.Type.MAIL_MESSAGE, msg, null, self);
 				}
+				context.getFriendsController().incrementHintsRank(self, user, 5);
 			}
 			if(hasForeignRecipients){
 				MailMessage msg=MailStorage.getMessage(self.id, id, false);

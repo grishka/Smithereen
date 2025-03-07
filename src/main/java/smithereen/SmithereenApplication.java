@@ -896,7 +896,7 @@ public class SmithereenApplication{
 		if(Config.DEBUG){
 			afterAfter((req, resp)->{
 				DebugLog dl=DebugLog.get();
-				LOG.info("{}: total {}ms, route match {}ms, DB {} queries {}ms", req.pathInfo(), dl.getDuration()/1000_000.0, (dl.routeMatchTime-dl.startTime)/1000_000.0, dl.numDatabaseQueries, dl.totalDatabaseQueryDuration/1000_000.0);
+				LOG.info("{}: total {}ms, route match {}ms, {} DB queries {}ms", req.pathInfo(), dl.getDuration()/1000_000.0, (dl.routeMatchTime-dl.startTime)/1000_000.0, dl.numDatabaseQueries, dl.totalDatabaseQueryDuration/1000_000.0);
 			});
 		}
 
@@ -997,6 +997,7 @@ public class SmithereenApplication{
 		context.getUsersController().loadPresenceFromDatabase();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
+			context.getFriendsController().doPendingHintsUpdates();
 			LOG.info("Stopping Spark");
 			awaitStop();
 			LOG.info("Stopped Spark");

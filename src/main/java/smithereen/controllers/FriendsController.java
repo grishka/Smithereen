@@ -1,11 +1,19 @@
 package smithereen.controllers;
 
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import javax.swing.SortOrder;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
@@ -21,12 +29,18 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
+import smithereen.storage.utils.IntPair;
+import smithereen.util.MaintenanceScheduler;
 
 public class FriendsController{
+	private static final Logger LOG=LoggerFactory.getLogger(FriendsController.class);
+
 	private final ApplicationContext ctx;
+	private ArrayList<PendingHintsRankIncrement> pendingHintsRankIncrements=new ArrayList<>();
 
 	public FriendsController(ApplicationContext ctx){
 		this.ctx=ctx;
+		MaintenanceScheduler.runPeriodically(this::doPendingHintsUpdates, 10, TimeUnit.MINUTES);
 	}
 
 	public PaginatedList<FriendRequest> getIncomingFriendRequests(User self, int offset, int count){
@@ -65,7 +79,7 @@ public class FriendsController{
 		try{
 			if(user.id==otherUser.id)
 				throw new IllegalArgumentException("must be different users");
-			return UserStorage.getMutualFriendListForUser(user.id, otherUser.id, offset, count);
+			return UserStorage.getMutualFriendListForUser(user.id, otherUser.id, offset, count, order==SortOrder.HINTS);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -74,8 +88,9 @@ public class FriendsController{
 	private PaginatedList<User> getFriends(User user, int offset, int count, SortOrder order, boolean onlineOnly){
 		try{
 			return switch(order){
-				case ID_ASCENDING -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly);
+				case ID_ASCENDING -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly, false);
 				case RANDOM -> UserStorage.getRandomFriendsForProfile(user.id, count, onlineOnly);
+				case HINTS -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly, true);
 			};
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -293,9 +308,41 @@ public class FriendsController{
 		}
 	}
 
+	public void incrementHintsRank(User self, User friend, int amount){
+		if(self.id==friend.id)
+			return;
+		pendingHintsRankIncrements.add(new PendingHintsRankIncrement(self.id, friend.id, amount));
+	}
+
+	public void doPendingHintsUpdates(){
+		if(pendingHintsRankIncrements.isEmpty())
+			return;
+		ArrayList<PendingHintsRankIncrement> increments=pendingHintsRankIncrements;
+		pendingHintsRankIncrements=new ArrayList<>();
+		try{
+			HashMap<IntPair, Integer> totals=new HashMap<>();
+			for(PendingHintsRankIncrement i:increments){
+				IntPair key=new IntPair(i.followerID, i.followeeID);
+				totals.put(key, totals.getOrDefault(key, 0)+i.amount);
+			}
+			HashSet<Integer> usersToNormalize=new HashSet<>();
+			for(Map.Entry<IntPair, Integer> i:totals.entrySet()){
+				IntPair key=i.getKey();
+				if(UserStorage.incrementFriendHintsRank(key.first(), key.second(), i.getValue()))
+					usersToNormalize.add(key.first());
+			}
+			if(!usersToNormalize.isEmpty())
+				UserStorage.normalizeFriendHintsRanksIfNeeded(usersToNormalize);
+		}catch(SQLException x){
+			LOG.error("Failed to update hint tanks", x);
+		}
+	}
+
 	public enum SortOrder{
 		ID_ASCENDING,
-		RANDOM
-		// TODO hints
+		RANDOM,
+		HINTS
 	}
+
+	private record PendingHintsRankIncrement(int followerID, int followeeID, int amount){}
 }

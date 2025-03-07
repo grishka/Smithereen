@@ -112,6 +112,7 @@ public class UserInteractionsController{
 					context.getActivityPubWorker().sendLikeActivity(object, self, id);
 				if(syncedObject!=null)
 					LikeStorage.setObjectLiked(self.id, syncedObject.getObjectID(), syncedObject.getLikeObjectType(), true, null);
+				context.getFriendsController().incrementHintsRank(self, oaa.author(), 2);
 			}else{
 				int id=LikeStorage.setObjectLiked(self.id, object.getObjectID(), object.getLikeObjectType(), false, apID);
 				if(id==0)

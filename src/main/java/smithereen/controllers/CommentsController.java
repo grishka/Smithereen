@@ -139,6 +139,14 @@ public class CommentsController{
 
 			context.getNotificationsController().createNotificationsForObject(comment);
 
+			if(inReplyTo!=null){
+				User parentAuthor=context.getUsersController().getUserOrThrow(inReplyTo.authorID);
+				context.getFriendsController().incrementHintsRank(self, parentAuthor, 5);
+			}
+			if(oaa.owner() instanceof User u && (inReplyTo==null || inReplyTo.authorID!=u.id)){
+				context.getFriendsController().incrementHintsRank(self, u, 3);
+			}
+
 			if(oaa.owner() instanceof ForeignActor){
 				context.getActivityPubWorker().sendCreateComment(self, comment, parent);
 			}else{

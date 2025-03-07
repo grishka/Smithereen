@@ -166,9 +166,11 @@ public class WallController{
 				// Reposted post must be public
 				context.getPrivacyController().enforcePostPrivacy(null, repost);
 				// Author must not be blocked by reposted post author or OP
-				ensureUserNotBlocked(author, context.getUsersController().getUserOrThrow(repost.authorID));
+				User repostAuthor=context.getUsersController().getUserOrThrow(repost.authorID);
+				ensureUserNotBlocked(author, repostAuthor);
 				if(repost.authorID!=repost.ownerID)
 					ensureUserNotBlocked(author, context.getUsersController().getUserOrThrow(repost.ownerID));
+				context.getFriendsController().incrementHintsRank(author, repostAuthor, 5);
 			}
 
 			final HashSet<User> mentionedUsers=new HashSet<>();
@@ -234,15 +236,21 @@ public class WallController{
 				if(topLevel.isGroupOwner()){
 					ownerGroupID=-topLevel.ownerID;
 					ownerUserID=0;
-					ensureUserNotBlocked(author, (Group)topLevelOwner);
+					ensureUserNotBlocked(author, topLevelOwner);
 					isTopLevelPostOwn=false;
 				}else{
 					ownerGroupID=0;
 					ownerUserID=topLevel.ownerID;
-					ensureUserNotBlocked(author, (User)topLevelOwner);
+					ensureUserNotBlocked(author, topLevelOwner);
 					isTopLevelPostOwn=ownerUserID==topLevel.authorID;
 					context.getPrivacyController().enforceUserPrivacy(author, (User)topLevelOwner, UserPrivacySettingKey.WALL_COMMENTING);
 				}
+				if(inReplyTo!=topLevel){
+					User parentAuthor=context.getUsersController().getUserOrThrow(inReplyTo.authorID);
+					context.getFriendsController().incrementHintsRank(author, parentAuthor, 5);
+				}
+				if(topLevelAuthor.id!=inReplyTo.authorID)
+					context.getFriendsController().incrementHintsRank(author, topLevelAuthor, 3);
 			}else{
 				replyKey=null;
 			}

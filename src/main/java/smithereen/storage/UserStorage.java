@@ -312,7 +312,7 @@ public class UserStorage{
 		}
 	}
 
-	public static PaginatedList<User> getFriendListForUser(int userID, int offset, int count, boolean onlineOnly) throws SQLException{
+	public static PaginatedList<User> getFriendListForUser(int userID, int offset, int count, boolean onlineOnly, boolean useHints) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			SQLQueryBuilder b=new SQLQueryBuilder(conn)
 					.selectFrom("followings")
@@ -331,7 +331,7 @@ public class UserStorage{
 			}
 
 			List<Integer> ids=b.andWhere("follower_id=? AND mutual=1", userID)
-					.orderBy("followee_id ASC")
+					.orderBy(useHints ? "hints_rank DESC, followee_id ASC" : "followee_id ASC")
 					.limit(count, offset)
 					.executeAndGetIntList();
 			return new PaginatedList<>(getByIdAsList(ids), total, offset, count);
@@ -424,19 +424,17 @@ public class UserStorage{
 		}
 	}
 
-	public static List<Integer> getMutualFriendIDsForUser(int userID, int otherUserID, int offset, int count) throws SQLException{
+	public static List<Integer> getMutualFriendIDsForUser(int userID, int otherUserID, int offset, int count, boolean useHints) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement("SELECT friends1.followee_id FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1 LIMIT ? OFFSET ?");
-			stmt.setInt(1, userID);
-			stmt.setInt(2, otherUserID);
-			stmt.setInt(3, count);
-			stmt.setInt(4, offset);
+			String orderBy=useHints ? "friends1.hints_rank DESC, friends1.followee_id ASC" : "friends1.followee_id ASC";
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT friends1.followee_id FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id " +
+					"WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1 ORDER BY "+orderBy+" LIMIT ? OFFSET ?", userID, otherUserID, offset, count);
 			return DatabaseUtils.intResultSetToList(stmt.executeQuery());
 		}
 	}
 
-	public static PaginatedList<User> getMutualFriendListForUser(int userID, int otherUserID, int offset, int count) throws SQLException{
-		return new PaginatedList<>(getByIdAsList(getMutualFriendIDsForUser(userID, otherUserID, offset, count)), getMutualFriendsCount(userID, otherUserID), offset, count);
+	public static PaginatedList<User> getMutualFriendListForUser(int userID, int otherUserID, int offset, int count, boolean useHints) throws SQLException{
+		return new PaginatedList<>(getByIdAsList(getMutualFriendIDsForUser(userID, otherUserID, offset, count, useHints)), getMutualFriendsCount(userID, otherUserID), offset, count);
 	}
 
 	public static PaginatedList<User> getNonMutualFollowers(int userID, boolean followers, boolean accepted, int offset, int count) throws SQLException{
@@ -483,7 +481,7 @@ public class UserStorage{
 						try{
 							req.mutualFriendsCount=getMutualFriendsCount(userID, req.from.id);
 							if(req.mutualFriendsCount>0){
-								mutualFriendIDs.put(req.from.id, getMutualFriendIDsForUser(userID, req.from.id, 0, 4));
+								mutualFriendIDs.put(req.from.id, getMutualFriendIDsForUser(userID, req.from.id, 0, 4, true));
 							}
 						}catch(SQLException x){
 							LOG.warn("Exception while getting mutual friends for {} and {}", userID, req.from.id, x);
@@ -518,14 +516,25 @@ public class UserStorage{
 					result[0]=false;
 					return;
 				}
-				stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`, `followee_id`, `mutual`, `accepted`) VALUES(?, ?, 1, ?)");
-				stmt.setInt(1, userID);
-				stmt.setInt(2, targetUserID);
-				stmt.setBoolean(3, followAccepted);
-				stmt.execute();
-				stmt=conn.prepareStatement("UPDATE `followings` SET `mutual`=1 WHERE `follower_id`=? AND `followee_id`=?");
-				stmt.setInt(1, targetUserID);
-				stmt.setInt(2, userID);
+				int hintsRank=new SQLQueryBuilder(conn)
+						.selectFrom("followings")
+						.selectExpr("MAX(hints_rank)+20")
+						.where("follower_id=?", userID)
+						.executeAndGetInt();
+				new SQLQueryBuilder(conn)
+						.insertInto("followings")
+						.value("follower_id", userID)
+						.value("followee_id", targetUserID)
+						.value("mutual", true)
+						.value("accepted", followAccepted)
+						.value("hints_rank", hintsRank)
+						.executeNoResult();
+				hintsRank=new SQLQueryBuilder(conn)
+						.selectFrom("followings")
+						.selectExpr("MAX(hints_rank)+20")
+						.where("follower_id=?", targetUserID)
+						.executeAndGetInt();
+				stmt=SQLQueryBuilder.prepareStatement(conn, "UPDATE `followings` SET `mutual`=1, hints_rank=? WHERE `follower_id`=? AND `followee_id`=?", hintsRank, targetUserID, userID);
 				if(stmt.executeUpdate()!=1){
 					conn.createStatement().execute("ROLLBACK");
 					result[0]=false;
@@ -1385,5 +1394,31 @@ public class UserStorage{
 				.executeAndGetIntStream()
 				.boxed()
 				.collect(Collectors.toSet());
+	}
+
+	public static boolean incrementFriendHintsRank(int followerID, int followeeID, int amount) throws SQLException{
+		return new SQLQueryBuilder()
+				.update("followings")
+				.valueExpr("hints_rank", "hints_rank+?", amount*1000)
+				.where("follower_id=? AND followee_id=? AND mutual=1", followerID, followeeID)
+				.executeUpdate()>0;
+	}
+
+	public static void normalizeFriendHintsRanksIfNeeded(Set<Integer> userIDs) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			List<Integer> filteredIDs=new SQLQueryBuilder(conn)
+					.selectFrom("followings")
+					.columns("follower_id")
+					.whereIn("follower_id", userIDs)
+					.groupBy("follower_id HAVING MAX(hints_rank)>500000")
+					.executeAndGetIntList();
+			for(int id:filteredIDs){
+				new SQLQueryBuilder(conn)
+						.update("followings")
+						.where("follower_id=? AND mutual=1", id)
+						.valueExpr("hints_rank", "FLOOR(hints_rank/2)")
+						.executeNoResult();
+			}
+		}
 	}
 }

@@ -107,17 +107,18 @@ public class FriendsRoutes{
 		model.pageTitle(lang(req).get("friends"));
 		PaginatedList<User> friends;
 		String query=req.queryParams("q");
+		FriendsController.SortOrder order=self!=null && user.id==self.user.id ? FriendsController.SortOrder.HINTS : FriendsController.SortOrder.ID_ASCENDING;
 		if(StringUtils.isEmpty(query)){
 			if(onlineOnly)
-				friends=ctx.getFriendsController().getOnlineFriends(user, offset(req), 100, FriendsController.SortOrder.ID_ASCENDING);
+				friends=ctx.getFriendsController().getOnlineFriends(user, offset(req), 100, order);
 			else
-				friends=ctx.getFriendsController().getFriends(user, offset(req), 100, FriendsController.SortOrder.ID_ASCENDING);
+				friends=ctx.getFriendsController().getFriends(user, offset(req), 100, order);
 		}else{
 			friends=ctx.getSearchController().searchFriends(query, user, offset(req), 100);
 		}
 		model.paginate(friends);
 		if(self!=null && user.id!=self.user.id){
-			int mutualCount=ctx.getFriendsController().getMutualFriends(self.user, user, 0, 0, FriendsController.SortOrder.ID_ASCENDING).total;
+			int mutualCount=ctx.getFriendsController().getMutualFriends(self.user, user, 0, 0, FriendsController.SortOrder.HINTS).total;
 			model.with("mutualCount", mutualCount);
 		}
 		model.with("tab", onlineOnly ? "online" : "friends");

@@ -250,6 +250,7 @@ public class ProfileRoutes{
 			}else{
 				FriendshipStatus status=ctx.getFriendsController().getFriendshipStatus(self.user, user);
 				if(status==FriendshipStatus.FRIENDS){
+					ctx.getFriendsController().incrementHintsRank(self.user, user, 1);
 					model.with("isFriend", true);
 					model.with("friendshipStatusText", lang(req).get("X_is_your_friend", Map.of("name", user.firstName)));
 				}else if(status==FriendshipStatus.REQUEST_SENT){
