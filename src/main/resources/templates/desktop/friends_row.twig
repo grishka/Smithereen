@@ -17,7 +17,7 @@
 				<div><a href="{{ friend.profileURL }}"{{ profileRel(friend) }}>{{ friend | name('complete') }}</a></div>
 				{% if friend.domain is not empty %}
 					<div class="grayText">{{ L('server') }}:</div>
-					<div>{{ friend.domain }}</div>
+					<div><a href="{{ friend.url }}" target="_blank">{{ friend.domain }}</a></div>
 				{% endif %}
 			</div>
 		</td>
@@ -28,14 +28,14 @@
 				<li><a href="{{ action.href }}{{ friend.id }}"{{ action.ajax ? ' data-ajax' : '' }}>{{ action.title }}</a></li>
 				{% endfor %}
 				{% else %}
+				{% if currentUser is not null and friend.id!=currentUser.id %}
+				<li><a href="/my/mail/compose?to={{ friend.id }}" onclick="showMailFormBox(this); return false;">{{ L('profile_write_message') }}</a></li>
+				{% endif %}
 				<li><a href="/users/{{ friend.id }}/friends">{{L('view_friends_of')}}</a></li>
 				{% if(currentUser is not null and currentUser.id==owner.id and not followers) %}
 					<li>
 						<a href="/users/{{ friend.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'/users/{{ friend.id }}/doRemoveFriend?from=list')" data-confirm="{{ L((following ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), {'name': friend.firstLastAndGender}) | forceEscape }}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
 					</li>
-				{% endif %}
-				{% if friend.domain is not null %}
-					<li><a href="{{ friend.url }}" target="_blank">{{ L('open_on_server_X', {'domain': friend.domain}) }}</a></li>
 				{% endif %}
 				{% endif %}
 			</ul>

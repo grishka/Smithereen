@@ -142,7 +142,7 @@ public class FriendsRoutes{
 		}
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
-		jsLangKey(req, "remove_friend", "yes", "no");
+		jsLangKey(req, "remove_friend", "yes", "no", "send", "mail_tab_compose");
 		if(!isMobile(req)){
 			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(friends.list);
 			model.with("avatarPhotos", userPhotos)
