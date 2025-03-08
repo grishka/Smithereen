@@ -582,6 +582,10 @@ public class PhotosController{
 			else
 				album.numPhotos++;
 			albumCache.put(album.id, album);
+
+			if(owner instanceof Group g)
+				context.getGroupsController().incrementHintsRank(self, g, 3);
+
 			return id;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

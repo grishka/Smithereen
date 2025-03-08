@@ -523,7 +523,11 @@ public class GroupStorage{
 			int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 			if(total==0)
 				return new PaginatedList<>(Collections.emptyList(), 0, 0, count);
-			query+=" ORDER BY group_id ASC LIMIT ? OFFSET ?";
+			if(includePrivate)
+				query+=" ORDER BY hints_rank DESC";
+			else
+				query+=" ORDER BY group_id ASC";
+			query+=" LIMIT ? OFFSET ?";
 			stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "group_id"), userID, count, offset);
 			try(ResultSet res=stmt.executeQuery()){
 				return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
@@ -1156,6 +1160,32 @@ public class GroupStorage{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_memberships` JOIN `users` ON `user_id`=`users`.id WHERE group_id=? AND accepted=1 AND `users`.domain=''", groupID);
 			return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		}
+	}
+
+	public static boolean incrementGroupHintsRank(int userID, int groupID, int amount) throws SQLException{
+		return new SQLQueryBuilder()
+				.update("group_memberships")
+				.valueExpr("hints_rank", "hints_rank+?", amount*1000)
+				.where("user_id=? AND group_id=?", userID, groupID)
+				.executeUpdate()>0;
+	}
+
+	public static void normalizeGroupHintsRanksIfNeeded(Set<Integer> userIDs) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			List<Integer> filteredIDs=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.columns("user_id")
+					.whereIn("user_id", userIDs)
+					.groupBy("user_id HAVING MAX(hints_rank)>500000")
+					.executeAndGetIntList();
+			for(int id:filteredIDs){
+				new SQLQueryBuilder(conn)
+						.update("group_memberships")
+						.where("user_id=? AND mutual=1", id)
+						.valueExpr("hints_rank", "FLOOR(hints_rank/2)")
+						.executeNoResult();
+			}
 		}
 	}
 }

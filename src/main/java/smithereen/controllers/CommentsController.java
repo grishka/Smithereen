@@ -145,6 +145,8 @@ public class CommentsController{
 			}
 			if(oaa.owner() instanceof User u && (inReplyTo==null || inReplyTo.authorID!=u.id)){
 				context.getFriendsController().incrementHintsRank(self, u, 3);
+			}else if(oaa.owner() instanceof Group g){
+				context.getGroupsController().incrementHintsRank(self, g, 3);
 			}
 
 			if(oaa.owner() instanceof ForeignActor){

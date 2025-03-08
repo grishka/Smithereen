@@ -998,6 +998,7 @@ public class SmithereenApplication{
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
 			context.getFriendsController().doPendingHintsUpdates();
+			context.getGroupsController().doPendingHintsUpdates();
 			LOG.info("Stopping Spark");
 			awaitStop();
 			LOG.info("Stopped Spark");

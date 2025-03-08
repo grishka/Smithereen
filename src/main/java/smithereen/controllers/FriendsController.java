@@ -334,7 +334,7 @@ public class FriendsController{
 			if(!usersToNormalize.isEmpty())
 				UserStorage.normalizeFriendHintsRanksIfNeeded(usersToNormalize);
 		}catch(SQLException x){
-			LOG.error("Failed to update hint tanks", x);
+			LOG.error("Failed to update hint ranks", x);
 		}
 	}
 

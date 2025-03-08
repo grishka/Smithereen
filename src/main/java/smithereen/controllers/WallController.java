@@ -247,10 +247,10 @@ public class WallController{
 				}
 				if(inReplyTo!=topLevel){
 					User parentAuthor=context.getUsersController().getUserOrThrow(inReplyTo.authorID);
-					context.getFriendsController().incrementHintsRank(author, parentAuthor, 5);
+					context.getFriendsController().incrementHintsRank(author, parentAuthor, 3);
 				}
 				if(topLevelAuthor.id!=inReplyTo.authorID)
-					context.getFriendsController().incrementHintsRank(author, topLevelAuthor, 3);
+					context.getFriendsController().incrementHintsRank(author, topLevelAuthor, 5);
 			}else{
 				replyKey=null;
 			}
@@ -260,6 +260,11 @@ public class WallController{
 			}else if(wallOwner instanceof Group g && replyKey==null){
 				context.getNewsfeedController().putGroupsFeedEntry(g, postID, NewsfeedEntry.Type.POST);
 			}
+
+			if(wallOwner instanceof User u && u.id!=author.id && (inReplyTo==null || inReplyTo.authorID!=u.id))
+				context.getFriendsController().incrementHintsRank(author, u, 3);
+			else if(wallOwner instanceof Group g)
+				context.getGroupsController().incrementHintsRank(author, g, 5);
 
 			Post post=PostStorage.getPostByID(postID, false);
 			if(post==null)

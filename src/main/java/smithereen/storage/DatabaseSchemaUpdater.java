@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=63;
+	public static final int SCHEMA_VERSION=64;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -874,6 +874,7 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("ALTER TABLE users ADD `presence` json DEFAULT NULL, ADD `is_online` BOOL AS (IFNULL(CAST(presence->'$.isOnline' AS UNSIGNED), 0)) NOT NULL, " +
 						"ADD KEY `is_online` (`is_online`), ADD `num_followers` bigint NOT NULL DEFAULT '0', ADD `num_following` bigint NOT NULL DEFAULT '0', ADD `num_friends` bigint NOT NULL DEFAULT '0'");
 			}
+			case 64 -> conn.createStatement().execute("ALTER TABLE group_memberships ADD `hints_rank` int unsigned NOT NULL DEFAULT '0', ADD KEY `hints_rank` (`hints_rank`)");
 		}
 	}
 

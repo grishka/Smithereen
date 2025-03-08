@@ -113,6 +113,10 @@ public class UserInteractionsController{
 				if(syncedObject!=null)
 					LikeStorage.setObjectLiked(self.id, syncedObject.getObjectID(), syncedObject.getLikeObjectType(), true, null);
 				context.getFriendsController().incrementHintsRank(self, oaa.author(), 2);
+				if(oaa.owner() instanceof User u && u.id!=oaa.author().id)
+					context.getFriendsController().incrementHintsRank(self, u, 1);
+				else if(oaa.owner() instanceof Group g)
+					context.getGroupsController().incrementHintsRank(self, g, 2);
 			}else{
 				int id=LikeStorage.setObjectLiked(self.id, object.getObjectID(), object.getLikeObjectType(), false, apID);
 				if(id==0)

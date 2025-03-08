@@ -15,9 +15,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import smithereen.ApplicationContext;
@@ -26,6 +29,11 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.activities.Join;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.EventReminder;
 import smithereen.model.ForeignGroup;
@@ -39,32 +47,30 @@ import smithereen.model.User;
 import smithereen.model.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.feed.NewsfeedEntry;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.exceptions.UserErrorException;
 import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NotificationsStorage;
+import smithereen.storage.utils.IntPair;
 import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.MaintenanceScheduler;
 import spark.utils.StringUtils;
-
-import static smithereen.Utils.wrapError;
 
 public class GroupsController{
 	private static final Logger LOG=LoggerFactory.getLogger(GroupsController.class);
 
 	private final ApplicationContext context;
 	private final LruCache<Integer, EventReminder> eventRemindersCache=new LruCache<>(500);
+	private ArrayList<PendingHintsRankIncrement> pendingHintsRankIncrements=new ArrayList<>();
+
 
 	private final Object groupMembershipLock=new Object();
 
 	public GroupsController(ApplicationContext context){
 		this.context=context;
+		MaintenanceScheduler.runPeriodically(this::doPendingHintsUpdates, 10, TimeUnit.MINUTES);
 	}
 
 	public Group createGroup(@NotNull User admin, @NotNull String name, @Nullable String description){
@@ -706,9 +712,41 @@ public class GroupsController{
 		}
 	}
 
+	public void incrementHintsRank(User self, Group group, int amount){
+		if(group.isEvent())
+			return;
+		pendingHintsRankIncrements.add(new PendingHintsRankIncrement(self.id, group.id, amount));
+	}
+
+	public void doPendingHintsUpdates(){
+		if(pendingHintsRankIncrements.isEmpty())
+			return;
+		ArrayList<PendingHintsRankIncrement> increments=pendingHintsRankIncrements;
+		pendingHintsRankIncrements=new ArrayList<>();
+		try{
+			HashMap<IntPair, Integer> totals=new HashMap<>();
+			for(PendingHintsRankIncrement i:increments){
+				IntPair key=new IntPair(i.userID, i.groupID);
+				totals.put(key, totals.getOrDefault(key, 0)+i.amount);
+			}
+			HashSet<Integer> usersToNormalize=new HashSet<>();
+			for(Map.Entry<IntPair, Integer> i:totals.entrySet()){
+				IntPair key=i.getKey();
+				if(GroupStorage.incrementGroupHintsRank(key.first(), key.second(), i.getValue()))
+					usersToNormalize.add(key.first());
+			}
+			if(!usersToNormalize.isEmpty())
+				GroupStorage.normalizeGroupHintsRanksIfNeeded(usersToNormalize);
+		}catch(SQLException x){
+			LOG.error("Failed to update hint ranks", x);
+		}
+	}
+
 	public enum EventsType{
 		FUTURE,
 		PAST,
 		ALL
 	}
+
+	private record PendingHintsRankIncrement(int userID, int groupID, int amount){}
 }

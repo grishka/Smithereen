@@ -271,6 +271,7 @@ public class GroupsRoutes{
 			if(membershipState==Group.MembershipState.REQUESTED)
 				model.with("membershipStateText", l.get("requested_to_join"));
 			model.with("isBookmarked", ctx.getBookmarksController().isGroupBookmarked(self.user, group));
+			ctx.getGroupsController().incrementHintsRank(self.user, group, 1);
 		}else{
 			HashMap<String, String> meta=new LinkedHashMap<>();
 			meta.put("og:type", "profile");
