@@ -336,8 +336,10 @@ CREATE TABLE `group_memberships` (
   `tentative` tinyint(1) NOT NULL DEFAULT '0',
   `accepted` tinyint(1) NOT NULL DEFAULT '1',
   `time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `hints_rank` int unsigned NOT NULL DEFAULT '0',
   UNIQUE KEY `user_id` (`user_id`,`group_id`),
   KEY `group_id` (`group_id`),
+  KEY `hints_rank` (`hints_rank`),
   CONSTRAINT `group_memberships_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `group_memberships_ibfk_2` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -980,4 +982,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-02-24 10:47:59
+-- Dump completed on 2025-03-08 15:05:00
