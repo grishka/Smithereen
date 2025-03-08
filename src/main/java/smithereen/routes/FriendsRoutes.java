@@ -114,7 +114,7 @@ public class FriendsRoutes{
 			else
 				friends=ctx.getFriendsController().getFriends(user, offset(req), 100, order);
 		}else{
-			friends=ctx.getSearchController().searchFriends(query, user, offset(req), 100);
+			friends=ctx.getSearchController().searchFriends(query, user, offset(req), 100, order);
 		}
 		model.paginate(friends);
 		if(self!=null && user.id!=self.user.id){

@@ -144,9 +144,9 @@ public class SearchController{
 		}
 	}
 
-	public PaginatedList<User> searchFriends(String query, User self, int offset, int count){
+	public PaginatedList<User> searchFriends(String query, User user, int offset, int count, FriendsController.SortOrder order){
 		try{
-			PaginatedList<Integer> ids=SearchStorage.searchFriends(query, self.id, offset, count);
+			PaginatedList<Integer> ids=SearchStorage.searchFriends(query, user.id, offset, count, order==FriendsController.SortOrder.HINTS);
 			return new PaginatedList<>(ids, UserStorage.getByIdAsList(ids.list));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
