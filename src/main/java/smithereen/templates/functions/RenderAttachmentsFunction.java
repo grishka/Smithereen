@@ -198,7 +198,7 @@ public class RenderAttachmentsFunction implements Function{
 				}
 				Duration duration=null; // TODO: Try to parse it from the activity object or from ID3 tags
 				String artist=l.get("audio_unknown_artist"); // TODO: Try to parse it from the activity object or from ID3 tags
-				String title=l.get("audio_unknown_title"); // TODO: Try to parse it from the activity object or from ID3 tags
+				String title=StringUtils.isNotBlank(att.description) ? att.description : l.get("audio_unknown_title"); // TODO: Try to parse it from the activity object or from ID3 tags
 				AudioAttachmentViewModel viewModel=new AudioAttachmentViewModel(
 						hostID+"_"+audioIndex++,
 						l.formatDuration(duration),
