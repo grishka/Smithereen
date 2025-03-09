@@ -15,6 +15,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.ForeignUser;
 import smithereen.model.User;
+import smithereen.model.friends.FollowRelationship;
 import smithereen.storage.UserStorage;
 import smithereen.util.BackgroundTaskRunner;
 
@@ -72,13 +73,16 @@ public class PersonMovePersonHandler extends ActivityTypeHandler<ForeignUser, Mo
 
 	private void performMove(ApplicationContext ctx, ForeignUser oldUser, ForeignUser newUser){
 		try{
-			List<Integer> localFollowers=UserStorage.getUserLocalFollowers(oldUser.id);
+			List<FollowRelationship> localFollowers=UserStorage.getUserLocalFollowers(oldUser.id);
 			LOG.debug("Started moving {} followers for {} -> {}", localFollowers.size(), oldUser.activityPubID, newUser.activityPubID);
-			for(int id:localFollowers){
+			for(FollowRelationship fr:localFollowers){
 				try{
-					User user=ctx.getUsersController().getUserOrThrow(id);
-					ctx.getFriendsController().removeFriend(user, oldUser);
-					ctx.getFriendsController().followUser(user, newUser);
+					User follower=ctx.getUsersController().getUserOrThrow(fr.followerID());
+					ctx.getFriendsController().removeFriend(follower, oldUser);
+					ctx.getFriendsController().followUser(follower, newUser);
+					if(fr.muted())
+						ctx.getFriendsController().setUserMuted(newUser, follower, true);
+					// TODO carry lists over as well
 				}catch(UserErrorException|ObjectNotFoundException ignore){}
 			}
 			LOG.debug("Done moving followers for {} -> {}", oldUser.activityPubID, newUser.activityPubID);

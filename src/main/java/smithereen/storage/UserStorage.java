@@ -49,6 +49,7 @@ import smithereen.model.UserNotifications;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
+import smithereen.model.friends.FollowRelationship;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
@@ -907,10 +908,10 @@ public class UserStorage{
 		}
 	}
 
-	public static List<Integer> getUserLocalFollowers(int userID) throws SQLException{
+	public static List<FollowRelationship> getUserLocalFollowers(int userID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT follower_id FROM followings INNER JOIN `users` on `users`.id=follower_id WHERE followee_id=? AND accepted=1 AND `users`.ap_id IS NULL", userID);
-			return DatabaseUtils.intResultSetToList(stmt.executeQuery());
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT followings.* FROM followings INNER JOIN `users` on `users`.id=follower_id WHERE followee_id=? AND accepted=1 AND `users`.ap_id IS NULL", userID);
+			return DatabaseUtils.resultSetToObjectStream(stmt.executeQuery(), FollowRelationship::fromResultSet, null).toList();
 		}
 	}
 
