@@ -1036,7 +1036,10 @@ public class SettingsAdminRoutes{
 					User targetUser=users.get(le.ownerID());
 					String statusStr=switch(UserBanStatus.valueOf((String)le.extra().get("status"))){
 						case NONE -> l.get("admin_user_state_no_restrictions");
-						case FROZEN -> l.get("admin_user_state_frozen", Map.of("expirationTime", l.formatDate(Instant.ofEpochMilli(((Number)le.extra().get("expiresAt")).longValue()), timeZoneForRequest(req), false)));
+						case FROZEN -> {
+							Object expiresAt=le.extra().get("expiresAt");
+							yield l.get("admin_user_state_frozen", Map.of("expirationTime", expiresAt==null ? l.get("email_account_frozen_until_first_login") : l.formatDate(Instant.ofEpochMilli(((Number)expiresAt).longValue()), timeZoneForRequest(req), false)));
+						}
 						case SUSPENDED -> {
 							if(targetUser instanceof ForeignUser)
 								yield l.get("admin_user_state_suspended_foreign");

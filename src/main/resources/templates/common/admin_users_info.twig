@@ -113,7 +113,7 @@
 		{% if user.banStatus=='NONE' %}
 		{{ L('admin_user_state_no_restrictions') }}
 		{% elseif user.banStatus=='FROZEN' %}
-		{{ L('admin_user_state_frozen', {'expirationTime': LD(user.banInfo.expiresAt)}) }}
+		{{ L('admin_user_state_frozen', {'expirationTime': user.banInfo.expiresAt is null ? L('email_account_frozen_until_first_login') : LD(user.banInfo.expiresAt)}) }}
 		{% elseif user.banStatus=='SUSPENDED' %}
 		{% if user.domain is empty %}
 		{{ L('admin_user_state_suspended', {'deletionTime': LD(accountDeletionTime)}) }}
