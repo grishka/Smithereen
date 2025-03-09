@@ -290,7 +290,7 @@ function ajaxPostAndApplyActions(uri:string, params:any, onDone:{():void}=null, 
 function ajaxGet(uri:string, onDone:{(r:any):void}, onError:{(msg:string):void}, responseType:XMLHttpRequestResponseType="json"):XMLHttpRequest{
 	if(!onError){
 		onError=(msg)=>{
-			new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 		};
 	}
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
@@ -455,7 +455,7 @@ function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}, 
 		}, function(msg:string){
 			setGlobalLoading(false);
 			box.dismiss();
-			new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 		});
 	});
 	box.show();
@@ -530,7 +530,7 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 		if(submitter)
 			submitter.classList.remove("loading");
 		setGlobalLoading(false);
-		new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
+		new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 		if(onDone) onDone(false);
 	});
 	return false;
@@ -604,7 +604,7 @@ function ajaxGetAndApplyActions(url:string, onDone:{():void}=null, onError:{():v
 		if(onDone) onDone();
 	}, function(msg:string){
 		setGlobalLoading(false);
-		new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
+		new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 		if(onError) onError();
 	});
 }
@@ -863,7 +863,7 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 			}
 		}, function(){
 			btn.removeAttribute("in_progress");
-			new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+			new MessageBox(lang("error"), lang("network_error"), lang("close")).show();
 			if(liked){
 				counter.innerText=(count+1).toString();
 				btn.classList.add("liked");
