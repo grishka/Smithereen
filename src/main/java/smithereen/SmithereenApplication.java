@@ -900,8 +900,16 @@ public class SmithereenApplication{
 			});
 		}
 
-		notFound((req, resp)->notFoundPages.get(lang(req).getLocale().toLanguageTag()));
-		internalServerError((req, resp)->serverErrorPages.get(lang(req).getLocale().toLanguageTag()));
+		notFound((req, resp)->{
+			if(isAjax(req))
+				return lang(req).get("page_not_found");
+			return notFoundPages.get(lang(req).getLocale().toLanguageTag());
+		});
+		internalServerError((req, resp)->{
+			if(isAjax(req))
+				return lang(req).get("server_error");
+			return serverErrorPages.get(lang(req).getLocale().toLanguageTag());
+		});
 
 		awaitInitialization();
 		setupCustomSerializer();
