@@ -205,5 +205,13 @@
   "save_and_continue": "Save and continue",
   "page_not_found": "Page not found",
   "server_error": "Internal server error",
-  "commenting_restricted": "Author has restricted who can comment on this"
+  "commenting_restricted": "Author has restricted who can comment on this",
+  "privacy_policy": "Privacy policy",
+  "footer_privacy_policy": "Privacy",
+  "footer_language": "Language: {langName}",
+  "footer_mobile_version": "Mobile version",
+  "footer_desktop_version": "Desktop version",
+  "footer_source_code": "Source code",
+  "footer_about_server": "About server",
+  "choose_language_title": "Choose language"
 }

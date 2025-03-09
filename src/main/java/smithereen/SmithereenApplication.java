@@ -474,6 +474,8 @@ public class SmithereenApplication{
 			post("/redirectForRemoteInteraction", SystemRoutes::redirectForRemoteInteraction);
 			getLoggedIn("/mentionCompletions", SystemRoutes::mentionCompletions);
 			getLoggedIn("/simpleUserCompletions", SystemRoutes::simpleUserCompletions);
+			get("/privacyPolicy", SystemRoutes::privacyPolicy);
+			get("/languageChooser", SystemRoutes::languageChooser);
 
 			if(Config.DEBUG){
 				path("/debug", ()->{

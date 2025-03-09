@@ -201,5 +201,13 @@
   "save_and_continue": "Сохранить и продолжить",
   "page_not_found": "Страница не найдена",
   "server_error": "Внутренняя ошибка сервера",
-  "commenting_restricted": "Автор ограничил возможность комментирования"
+  "commenting_restricted": "Автор ограничил возможность комментирования",
+  "privacy_policy": "Политика конфиденциальности",
+  "footer_privacy_policy": "Конфиденциальность",
+  "footer_language": "Язык: {langName}",
+  "footer_mobile_version": "Мобильная версия",
+  "footer_desktop_version": "Версия для компьютера",
+  "footer_source_code": "Исходный код",
+  "footer_about_server": "О сервере",
+  "choose_language_title": "Выбор языка"
 }

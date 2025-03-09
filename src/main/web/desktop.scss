@@ -798,6 +798,10 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	margin: 15px -10px;
 }
 
+.singleColumnLargerPadding hr{
+	margin: 15px -15px;
+}
+
 .singleColumn .form+hr, .singleColumn.gray .form+hr{
 	margin-top: 10px;
 }
@@ -4885,6 +4889,24 @@ label.largeAccented{
 		}
 		&.collapsed{
 			display: none;
+		}
+	}
+}
+
+.pageFooter{
+	text-align: center;
+	padding: 9px 0 10px;
+}
+
+.footerNav{
+	margin-bottom: 10px;
+	a{
+		text-transform: lowercase;
+		padding: 2px 5px;
+		display: inline-block;
+		&:hover{
+			text-decoration: none;
+			background: $blockBackground;
 		}
 	}
 }

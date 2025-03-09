@@ -2648,3 +2648,30 @@ input.searchField{
 	}
 }
 
+.pageFooter{
+	padding: 16px 8px;
+	font-size: 12px;
+	color: $grayText;
+	a{
+		color: $grayText;
+		font-weight: $mediumWeight;
+	}
+}
+
+.footerNav{
+	display: flex;
+	flex-wrap: wrap;
+	margin-bottom: 12px;
+	line-height: 150%;
+	a:not(:last-child)::after{
+		display: inline-block;
+		content: "·";
+		padding: 0 4px;
+	}
+}
+
+.languageChooserList{
+	line-height: 200%;
+	margin: 0 24px;
+}
+

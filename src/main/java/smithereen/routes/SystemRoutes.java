@@ -2,11 +2,18 @@ package smithereen.routes;
 
 import com.google.gson.JsonObject;
 
+import org.commonmark.node.Node;
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.AttributeProvider;
+import org.commonmark.renderer.html.HtmlRenderer;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -34,6 +41,8 @@ import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
+import io.pebbletemplates.pebble.PebbleEngine;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
@@ -106,6 +115,32 @@ import static smithereen.Utils.*;
 public class SystemRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(SystemRoutes.class);
 	private static final NamedMutexCollection downloadMutex=new NamedMutexCollection();
+	private static final String privacyPolicyHTML;
+
+	static{
+		try(InputStreamReader reader=new InputStreamReader(SystemRoutes.class.getResourceAsStream("/privacy-policy.md"))){
+			Parser mdParser=new Parser.Builder().build();
+			HtmlRenderer mdRenderer=new HtmlRenderer.Builder().build();
+			String html=mdRenderer.render(mdParser.parseReader(reader));
+			PebbleTemplate template=new PebbleEngine.Builder()
+					.defaultEscapingStrategy("html")
+					.build()
+					.getLiteralTemplate(html);
+			StringWriter writer=new StringWriter();
+			template.evaluate(writer, Map.of("domain", Config.domain));
+			org.jsoup.nodes.Document doc=org.jsoup.parser.Parser.parseBodyFragment(writer.toString(), "");
+			doc.select("ul").forEach(el->el.addClass("actualList"));
+			doc.select("li").forEach(el->{
+				Element span=doc.createElement("span");
+				el.childNodes().forEach(span::appendChild);
+				el.appendChild(span);
+			});
+			doc.select("h1").forEach(el->el.tagName("h3"));
+			privacyPolicyHTML=doc.body().html();
+		}catch(IOException x){
+			throw new RuntimeException(x);
+		}
+	}
 
 	private static ActivityPubObject verifyObjectAndGetAttachment(int index, String type, Object obj){
 		ActivityPubRepresentable apr=(ActivityPubRepresentable) obj;
@@ -841,5 +876,23 @@ public class SystemRoutes{
 			arr.add(new JsonObjectBuilder().add("id", u.id).add("title", name));
 		}
 		return arr.build();
+	}
+
+	public static Object privacyPolicy(Request req, Response resp){
+		Lang l=lang(req);
+		return new RenderedTemplateResponse("privacy_policy", req)
+				.with("privacyPolicy", privacyPolicyHTML)
+				.pageTitle(l.get("privacy_policy"))
+				.addNavBarItem(l.get("footer_about_server"), "/system/about")
+				.addNavBarItem(l.get("privacy_policy"));
+	}
+
+	public static Object languageChooser(Request req, Response resp){
+		if(!isAjax(req))
+			throw new BadRequestException();
+		RenderedTemplateResponse model=new RenderedTemplateResponse("language_chooser_box", req)
+				.with("currentLang", lang(req))
+				.with("languages", Lang.list);
+		return new WebDeltaResponse(resp).box(lang(req).get("choose_language_title"), model.renderToString(), null, true, "<span class=\"inlineLoader\" style=\"display: none\" id=\"langChooserLoader\"></span>");
 	}
 }

@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.BuildInfo;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.model.Account;
@@ -167,6 +168,8 @@ public class Templates{
 				.with("staticHashes", staticHashes)
 				.with("serverName", Config.getServerDisplayName())
 				.with("serverDomain", Config.domain)
+				.with("serverVersion", BuildInfo.VERSION)
+				.with("langName", lang.name)
 				.with("isMobile", req.attribute("mobile")!=null)
 				.with("isAjax", Utils.isAjax(req));
 	}

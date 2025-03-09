@@ -980,3 +980,24 @@ small{
 	}
 }
 
+.textByItself{
+	line-height: 150%;
+	p:first-child{
+		margin-top: 0;
+	}
+	p:last-child{
+		margin-bottom: 0;
+	}
+}
+
+h2+.textByItself{
+	margin-top: 1em;
+}
+
+.languageChooserList{
+	margin: 20px;
+	a, b{
+		display: inline-block;
+	}
+}
+

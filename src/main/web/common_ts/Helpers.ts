@@ -1682,3 +1682,10 @@ function activateNotificationsPostForm(id:string, postID:string, type:string, ra
 	return false;
 }
 
+function setLanguage(locale:string){
+	var loader=ge("langChooserLoader");
+	if(loader)
+		loader.show();
+	ajaxPost("/settings/setLanguage", {csrf: userConfig.csrf, lang: locale}, ()=>location.reload(), ()=>location.reload());
+}
+
