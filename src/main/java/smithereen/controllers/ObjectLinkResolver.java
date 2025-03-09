@@ -179,11 +179,6 @@ public class ObjectLinkResolver{
 			if(allowFetching){
 				try{
 					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context);
-					if(obj instanceof ForeignUser fu){
-						if(allowStorage && fu.movedToURL!=null){
-							handleNewlyFetchedMovedUser(fu);
-						}
-					}
 					if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
 						User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
 						if(author.banStatus==UserBanStatus.SUSPENDED)
@@ -336,6 +331,16 @@ public class ObjectLinkResolver{
 						User existing=null;
 						if(fu.id!=0){
 							existing=UserStorage.getById(fu.id);
+						}
+						if(fu.movedToURL!=null){
+							User movedTo=null;
+							if(fu.movedTo!=0){
+								try{
+									movedTo=context.getUsersController().getUserOrThrow(fu.movedTo);
+								}catch(ObjectNotFoundException ignore){}
+							}
+							if(movedTo==null || !Objects.equals(movedTo.activityPubID, fu.movedToURL))
+								handleNewlyFetchedMovedUser(fu);
 						}
 						UserStorage.putOrUpdateForeignUser(fu);
 						maybeUpdateServerFeaturesFromActor(fu);

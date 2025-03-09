@@ -185,8 +185,8 @@ public class ForeignUser extends User implements ForeignActor{
 		if(obj.has("movedTo")){
 			movedToURL=tryParseURL(obj.get("movedTo").getAsString());
 		}
-		if(obj.has("alsoKnownAs")){
-			List<LinkOrObject> aka=tryParseArrayOfLinksOrObjects(obj.get("alsoKnownAs"), parserContext);
+		if(obj.has("alsoKnownAs") || obj.has("as:alsoKnownAs")){
+			List<LinkOrObject> aka=tryParseArrayOfLinksOrObjects(obj.has("alsoKnownAs") ? obj.get("alsoKnownAs") : obj.get("as:alsoKnownAs"), parserContext);
 			if(aka!=null){
 				alsoKnownAs=aka.stream()
 						.filter(l->l.link!=null)
