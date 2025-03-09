@@ -1094,7 +1094,8 @@ public class SmithereenApplication{
 			if(status==UserBanStatus.NONE || status==UserBanStatus.HIDDEN)
 				return;
 			Lang l=lang(req);
-			RenderedTemplateResponse model=new RenderedTemplateResponse("account_banned", req);
+			RenderedTemplateResponse model=new RenderedTemplateResponse("account_banned", req)
+					.with("noLeftMenu", true);
 			model.pageTitle(l.get(switch(status){
 				case FROZEN -> "account_frozen";
 				case SUSPENDED -> "account_suspended";

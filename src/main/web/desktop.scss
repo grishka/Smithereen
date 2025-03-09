@@ -570,6 +570,14 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	margin-left: auto;
 	margin-right: auto;
 	display: flex;
+	&.noLeftMenu{
+		.leftMenu{
+			display: none;
+		}
+		.pageContent{
+			margin-left: 17px;
+		}
+	}
 }
 
 .pageContentW{
