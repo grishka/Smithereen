@@ -287,6 +287,7 @@ small{
 	padding: 5px 8px 0 5px;
 	box-sizing: border-box;
 	width: $leftMenuWidth;
+	flex: none;
 	input{
 		width: 100%;
 		box-sizing: border-box;
@@ -568,14 +569,16 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 .contentWrap{
 	margin-left: auto;
 	margin-right: auto;
+	display: flex;
+}
+
+.pageContentW{
+	flex-grow: 1;
 }
 
 .pageContent{
 	box-shadow: 0 0 0 1px $wallPostSeparator, 0 0 0 2px #f3f3f3;
 	margin-right: 17px;
-}
-
-.wrap{
 }
 
 .wallPostForm{
