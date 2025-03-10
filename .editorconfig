@@ -330,3 +330,17 @@ ij_html_space_after_tag_name = false
 ij_html_space_around_equality_in_attribute = false
 ij_html_space_inside_empty_tag = false
 ij_html_text_wrap = normal
+
+[*.scss]
+ij_scss_align_closing_brace_with_properties = false
+ij_scss_blank_lines_around_nested_selector = 0
+ij_scss_blank_lines_between_blocks = 1
+ij_scss_block_comment_add_space = false
+ij_scss_brace_placement = 0
+ij_scss_enforce_quotes_on_format = true
+ij_scss_keep_blank_lines_in_code = 0
+ij_scss_keep_indents_on_empty_lines = false
+ij_scss_keep_single_line_blocks = false
+ij_scss_space_after_colon = true
+ij_scss_space_before_opening_brace = false
+ij_scss_use_double_quotes = false
