@@ -34,8 +34,10 @@ class LayerManager{
 	private hideAnimCanceled:boolean=false;
 	private hiddenTemporarily:boolean=false;
 	private lastEscKeyEvent:KeyboardEvent;
+	private baseZIndex:number;
 
 	private constructor(baseZIndex:number, isDefaultInstance:boolean){
+		this.baseZIndex=baseZIndex;
 		this.scrim=ce("div", {className: "layerScrim"});
 		this.scrim.style.zIndex=baseZIndex.toString();
 		this.scrim.hide();
@@ -217,6 +219,7 @@ class LayerManager{
 
 	public showBoxLoader(){
 		this.updateTopOffset(this.boxLoader);
+		this.boxLoader.style.zIndex=(this.stack.length ? (this.baseZIndex+2) : this.baseZIndex).toString();
 		this.boxLoader.showAnimated();
 	}
 
