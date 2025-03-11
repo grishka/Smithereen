@@ -72,11 +72,6 @@ class LayerManager{
 			if(layer.wantsScrim())
 				this.scrim.showAnimated();
 			this.layerContainer.show();
-			layerContent.addEventListener("click", (ev:MouseEvent)=>{
-				if(ev.target==layerContent){
-					this.maybeDismissTopLayer();
-				}
-			});
 			layerContent.showAnimated(layer.getCustomAppearAnimation());
 			document.body.addEventListener("keydown", this.escapeKeyListener);
 			this.lockPageScroll();
@@ -85,6 +80,11 @@ class LayerManager{
 			prevLayer.getContent().hide();
 			prevLayer.onHidden();
 		}
+		layerContent.addEventListener("click", (ev:MouseEvent)=>{
+			if(ev.target==layerContent){
+				this.maybeDismissTopLayer();
+			}
+		});
 		if(layer.wantsDarkerScrim()){
 			this.scrim.classList.add("darker")
 		}else{
