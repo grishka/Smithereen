@@ -36,7 +36,11 @@
 <div class="marginsAreMessy"></div>
 <div class="settingsMessage">
 	{{ L('profile_moved', {'name': user | name('first')}) }}<br/>
+	{% if movedTo.domain is empty %}
+	<a href="{{ movedTo.profileURL }}"><b>{{ movedTo | name }}</b></a>
+	{% else %}
 	<a href="{{ movedTo.profileURL }}">{{ L('profile_moved_link', {'domain': movedTo.domain, 'name': movedTo | name}) }}</a>
+	{% endif %}
 </div>
 {% elseif user.domain %}
 <div class="marginsAreMessy"></div>
