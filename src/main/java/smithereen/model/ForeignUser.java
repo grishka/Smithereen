@@ -191,7 +191,7 @@ public class ForeignUser extends User implements ForeignActor{
 				alsoKnownAs=aka.stream()
 						.filter(l->l.link!=null)
 						.map(l->l.link)
-						.collect(Collectors.toSet());
+						.toList();
 			}
 		}
 

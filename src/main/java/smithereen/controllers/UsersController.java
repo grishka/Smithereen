@@ -3,6 +3,8 @@ package smithereen.controllers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -12,6 +14,7 @@ import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +30,7 @@ import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
 import smithereen.Utils;
+import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -47,6 +51,7 @@ import smithereen.model.UserPermissions;
 import smithereen.model.UserPresence;
 import smithereen.model.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.friends.FollowRelationship;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.storage.DatabaseUtils;
@@ -55,6 +60,7 @@ import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
+import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
 import smithereen.util.NamedMutexCollection;
@@ -69,6 +75,7 @@ public class UsersController{
 	private final ConcurrentHashMap<Integer, CachedUserPresence> onlineLocalUsersByID=new ConcurrentHashMap<>();
 	private final NamedMutexCollection onlineMutexes=new NamedMutexCollection();
 	private Map<Integer, UserPresence> pendingUserPresenceUpdates=Collections.synchronizedMap(new HashMap<>());
+	private final HashSet<Integer> movingUsers=new HashSet<>();
 
 	public UsersController(ApplicationContext context){
 		this.context=context;
@@ -756,6 +763,124 @@ public class UsersController{
 				result.put(id, presence.presence);
 		}
 		return result;
+	}
+
+	public URI addAlsoKnownAs(User self, String link){
+		User target;
+		try{
+			if(Utils.isUsernameAndDomain(link)){
+				ObjectLinkResolver.UsernameResolutionResult res=context.getObjectLinkResolver().resolveUsername(link, true, EnumSet.of(ObjectLinkResolver.UsernameOwnerType.USER));
+				target=context.getUsersController().getUserOrThrow(res.localID());
+			}else if(Utils.isURL(link)){
+				ActivityPubObject obj=context.getObjectLinkResolver().resolve(URI.create(link), ActivityPubObject.class, true, false, false);
+				if(!(obj instanceof User user)){
+					throw new UserErrorException("settings_transfer_link_unsupported");
+				}
+				target=user;
+			}else{
+				throw new UserErrorException("settings_transfer_link_not_found");
+			}
+		}catch(ObjectNotFoundException x){
+			throw new UserErrorException("settings_transfer_link_not_found");
+		}
+		if(!(target instanceof ForeignUser)){
+			throw new UserErrorException("settings_transfer_link_this_server", Map.of("domain", Config.domain));
+		}
+		URI id=target.activityPubID;
+		if(self.alsoKnownAs.contains(id))
+			return id;
+		self.alsoKnownAs.add(id);
+		try{
+			UserStorage.updateExtendedFields(self, self.serializeProfileFields());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		context.getActivityPubWorker().sendUpdateUserActivity(self);
+		return id;
+	}
+
+	public void deleteAlsoKnownAs(User self, String link){
+		List<String> links=self.alsoKnownAs.stream().map(Object::toString).toList();
+		int index=links.indexOf(link);
+		if(index==-1)
+			return;
+		self.alsoKnownAs.remove(index);
+		try{
+			UserStorage.updateExtendedFields(self, self.serializeProfileFields());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		context.getActivityPubWorker().sendUpdateUserActivity(self);
+	}
+
+	public void transferUserFollowers(User oldUser, User newUser){
+		synchronized(movingUsers){
+			if(movingUsers.contains(oldUser.id)){
+				LOG.debug("Not moving {} to {} because its previous Move activity is already being processed", oldUser.activityPubID, newUser.activityPubID);
+				return;
+			}
+			movingUsers.add(oldUser.id);
+		}
+
+		boolean success=false;
+		try{
+			oldUser.movedTo=newUser.id;
+			oldUser.movedAt=Instant.now();
+			newUser.movedFrom=oldUser.id;
+			if(oldUser instanceof ForeignUser)
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(oldUser, oldUser);
+			else
+				UserStorage.updateExtendedFields(oldUser, oldUser.serializeProfileFields());
+
+			if(newUser instanceof ForeignUser)
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(newUser, newUser);
+			else
+				UserStorage.updateExtendedFields(newUser, newUser.serializeProfileFields());
+
+			success=true;
+			BackgroundTaskRunner.getInstance().submit(()->performMove(oldUser, newUser));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}finally{
+			if(!success){
+				synchronized(movingUsers){
+					movingUsers.remove(oldUser.id);
+				}
+			}
+		}
+	}
+
+	private void performMove(User oldUser, User newUser){
+		try{
+			List<FollowRelationship> localFollowers=UserStorage.getUserLocalFollowers(oldUser.id);
+			LOG.debug("Started moving {} followers for {} -> {}", localFollowers.size(), oldUser.activityPubID, newUser.activityPubID);
+			for(FollowRelationship fr:localFollowers){
+				try{
+					User follower=context.getUsersController().getUserOrThrow(fr.followerID());
+					context.getFriendsController().removeFriend(follower, oldUser);
+					context.getFriendsController().followUser(follower, newUser);
+					if(fr.muted())
+						context.getFriendsController().setUserMuted(newUser, follower, true);
+					// TODO carry lists over as well
+				}catch(UserErrorException|ObjectNotFoundException ignore){}
+			}
+			LOG.debug("Done moving followers for {} -> {}", oldUser.activityPubID, newUser.activityPubID);
+
+			List<User> blockingUsers=UserStorage.getBlockingUsers(oldUser.id);
+			LOG.debug("Started moving {} blocks for {} -> {}", blockingUsers.size(), oldUser.activityPubID, newUser.activityPubID);
+			for(User user:blockingUsers){
+				if(newUser instanceof ForeignUser && user instanceof ForeignUser)
+					continue;
+				context.getFriendsController().blockUser(user, newUser);
+			}
+			LOG.debug("Done moving blocks for {} -> {}", oldUser.activityPubID, newUser.activityPubID);
+		}catch(Exception x){
+			LOG.error("Failed to move {} to {}", oldUser.activityPubID, newUser.activityPubID, x);
+		}finally{
+			synchronized(movingUsers){
+				movingUsers.remove(oldUser.id);
+			}
+		}
 	}
 
 	private record CachedUserPresence(int userID, long sessionID, UserPresence presence){}

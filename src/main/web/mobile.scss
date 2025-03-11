@@ -2675,3 +2675,47 @@ input.searchField{
 	margin: 0 24px;
 }
 
+.bottomSummaryWrap{
+	border-top: solid 1px $wallPostSeparator;
+	padding: 16px;
+}
+
+.simpleLayerContent{
+	padding: 16px;
+}
+
+.pvTagDelete{
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	margin-left: 2px;
+	vertical-align: middle;
+	background: svg-load('img/tag_remove.svg') center no-repeat;
+}
+
+.oneLineForm{
+	>*{
+		width: 100%;
+	}
+	input[type=text]{
+		margin-bottom: 8px;
+	}
+}
+
+@media (min-width: 500px){
+	.oneLineForm{
+		display: flex;
+		>*{
+			width: auto;
+		}
+		input[type=text]{
+			flex-grow: 1;
+			margin-right: 8px;
+			margin-botom: 0;
+		}
+		input[type=submit], input[type=button]{
+			flex: none;
+		}
+	}
+}
+

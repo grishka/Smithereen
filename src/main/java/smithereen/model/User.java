@@ -52,7 +52,7 @@ public class User extends Actor{
 	public int movedTo;
 	public int movedFrom;
 	public Instant movedAt;
-	public Set<URI> alsoKnownAs=new HashSet<>();
+	public List<URI> alsoKnownAs=new ArrayList<>();
 	public UserBanStatus banStatus=UserBanStatus.NONE;
 	public UserBanInfo banInfo;
 	public EnumSet<FriendsNewsfeedTypeFilter> newsTypesToShow;
@@ -496,6 +496,12 @@ public class User extends Actor{
 				});
 			}
 			obj.add("newsfeedUpdatesPrivacy", jb.build());
+		}
+
+		if(!alsoKnownAs.isEmpty()){
+			JsonArray aka=new JsonArray();
+			alsoKnownAs.stream().map(Object::toString).forEach(aka::add);
+			obj.add("alsoKnownAs", aka);
 		}
 
 		return obj;

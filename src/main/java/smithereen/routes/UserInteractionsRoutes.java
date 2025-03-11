@@ -211,16 +211,7 @@ public class UserInteractionsRoutes{
 	}
 
 	static Object remoteInteraction(Request req, Response resp, String url, String title, Post postToEmbed, boolean hideWorksWith){
-		RenderedTemplateResponse model;
-		if(isAjax(req)){
-			if(isMobile(req)){
-				model=new RenderedTemplateResponse("remote_interaction", req);
-			}else{
-				model=new RenderedTemplateResponse("layer_with_title", req).with("contentTemplate", "remote_interaction");
-			}
-		}else{
-			model=new RenderedTemplateResponse("content_wrap", req).with("contentTemplate", "remote_interaction");
-		}
+		RenderedTemplateResponse model=RenderedTemplateResponse.ofAjaxLayer("remote_interaction", req);
 		model.with("contentURL", url).with("serverSignupMode", Config.signupMode).with("hideWorksWith", hideWorksWith);
 		model.pageTitle(title);
 		if(!isMobile(req) && postToEmbed!=null && postToEmbed.isLocal())

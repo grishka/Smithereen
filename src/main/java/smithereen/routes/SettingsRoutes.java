@@ -7,7 +7,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -33,9 +36,11 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.Utils;
+import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.FriendsController;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -45,6 +50,7 @@ import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
+import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.OtherSession;
 import smithereen.model.PrivacySetting;
@@ -944,6 +950,82 @@ public class SettingsRoutes{
 		ctx.getNewsfeedController().deleteWordFilter(self.user, filter);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).remove("filter"+filter.id);
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object moveAccountOptions(Request req, Response resp, Account self, ApplicationContext ctx){
+		RenderedTemplateResponse model=RenderedTemplateResponse.ofAjaxLayer("settings_move_account_options", req);
+		Lang l=lang(req);
+		String title=l.get("settings_transfer_followers_title");
+		model.pageTitle(title)
+				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(title);
+		if(isAjax(req)){
+			if(isMobile(req)){
+				return new WebDeltaResponse(resp)
+						.box(title, model.renderToString(), null, false);
+			}else{
+				return new WebDeltaResponse(resp)
+						.layer(model.renderToString(), null);
+			}
+		}else{
+			return model;
+		}
+	}
+
+	public static Object moveAccountLinks(Request req, Response resp, Account self, ApplicationContext ctx){
+		RenderedTemplateResponse model=RenderedTemplateResponse.ofAjaxLayer("settings_move_account_links", req);
+		Lang l=lang(req);
+		String title=l.get("settings_transfer_links_title");
+		model.pageTitle(title)
+				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(l.get("settings_transfer_followers_title"), "/settings/moveAccountOptions")
+				.addNavBarItem(title);
+		if(isAjax(req)){
+			if(isMobile(req)){
+				return new WebDeltaResponse(resp)
+						.box(title, model.renderToString(), null, false);
+			}else{
+				return new WebDeltaResponse(resp)
+						.layer(model.renderToString(), null);
+			}
+		}else{
+			return model;
+		}
+	}
+
+	public static Object addAlsoKnownAs(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "link");
+		String link=req.queryParams("link").trim();
+		URI id=ctx.getUsersController().addAlsoKnownAs(self.user, link);
+		if(isAjax(req)){
+			RenderedTemplateResponse model=new RenderedTemplateResponse("settings_move_account_links", req);
+			return new WebDeltaResponse(resp)
+					.setContent("akaLinks", model.renderBlock("links"))
+					.setInputValue("akaLinkInput", "")
+					.setContent("akaLinksMessage", lang(req).get("settings_transfer_link_added", Map.of("domain", id.getHost())))
+					.show("akaLinksMessage");
+		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object confirmDeleteAlsoKnownAs(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("settings_transfer_delete_link_title"), l.get("settings_transfer_delete_link"),
+				"/settings/deleteAlsoKnownAs?link="+URLEncoder.encode(req.queryParams("link"), StandardCharsets.UTF_8));
+	}
+
+	public static Object deleteAlsoKnownAs(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "link");
+		String link=req.queryParams("link").trim();
+		ctx.getUsersController().deleteAlsoKnownAs(self.user, link);
+		if(isAjax(req)){
+			RenderedTemplateResponse model=new RenderedTemplateResponse("settings_move_account_links", req);
+			return new WebDeltaResponse(resp)
+					.setContent("akaLinks", model.renderBlock("links"));
+		}
 		resp.redirect(back(req));
 		return "";
 	}

@@ -2375,7 +2375,7 @@ textarea{
 	padding: 0 10px;
 }
 
-.boxContent .emptyState, .mediaGridW .emptyState{
+.boxContent .emptyState, .mediaGridW .emptyState, .layerWithTitle .emptyState{
 	height: auto;
 	padding: 50px 0;
 	border: none;
@@ -3671,6 +3671,10 @@ a.clickableListItem{
 	@include layer-shadow;
 }
 
+.simpleLayerContent{
+	padding: 0 20px 20px;
+}
+
 .layerWithTitle{
 	width: 642px;
 	.layerTitle{
@@ -4916,6 +4920,18 @@ label.largeAccented{
 			text-decoration: none;
 			background: $blockBackground;
 		}
+	}
+}
+
+.oneLineForm{
+	display: flex;
+	input[type=text]{
+		flex-grow: 1;
+		height: 25px;
+		margin-right: 15px;
+	}
+	input[type=submit], input[type=button]{
+		flex: none;
 	}
 }
 

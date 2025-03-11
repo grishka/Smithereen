@@ -43,6 +43,20 @@ public class RenderedTemplateResponse{
 		req.attribute("isTemplate", Boolean.TRUE);
 	}
 
+	public static RenderedTemplateResponse ofAjaxLayer(String templateName, Request req){
+		RenderedTemplateResponse model;
+		if(Utils.isAjax(req)){
+			if(Utils.isMobile(req)){
+				model=new RenderedTemplateResponse(templateName, req);
+			}else{
+				model=new RenderedTemplateResponse("layer_with_title", req).with("contentTemplate", templateName);
+			}
+		}else{
+			model=new RenderedTemplateResponse("content_wrap", req).with("contentTemplate", templateName);
+		}
+		return model;
+	}
+
 	public RenderedTemplateResponse with(String key, Object value){
 		model.put(key, value);
 		return this;

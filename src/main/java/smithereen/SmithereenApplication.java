@@ -346,6 +346,11 @@ public class SmithereenApplication{
 					postWithCSRF("/delete", SettingsRoutes::deleteFilter);
 				});
 			});
+			getLoggedIn("/moveAccountOptions", SettingsRoutes::moveAccountOptions);
+			getLoggedIn("/alsoKnownAsLinks", SettingsRoutes::moveAccountLinks);
+			postWithCSRF("/addAlsoKnownAs", SettingsRoutes::addAlsoKnownAs);
+			getLoggedIn("/confirmDeleteAkaLink", SettingsRoutes::confirmDeleteAlsoKnownAs);
+			postWithCSRF("/deleteAkaLink", SettingsRoutes::deleteAlsoKnownAs);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);
@@ -846,7 +851,7 @@ public class SmithereenApplication{
 			resp.body(wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
 		});
 		exception(UserErrorException.class, (x, req, resp)->{
-			resp.body(wrapErrorString(req, resp, x.getMessage()));
+			resp.body(wrapErrorString(req, resp, x.getMessage(), x.langArgs));
 		});
 		exception(InaccessibleProfileException.class, (x, req, resp)->{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("hidden_profile", req);

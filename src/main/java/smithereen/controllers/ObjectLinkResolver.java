@@ -56,6 +56,7 @@ import smithereen.storage.MailStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.text.TextProcessor;
 import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
@@ -166,7 +167,7 @@ public class ObjectLinkResolver{
 		}else{
 			link=_link;
 		}
-		if(!forceRefetch){
+		if(!forceRefetch || Config.isLocal(link)){
 			if(allowFetching){
 				try{
 					return resolveLocally(link, expectedType);
@@ -461,8 +462,21 @@ public class ObjectLinkResolver{
 		if(allowedTypes.isEmpty())
 			throw new IllegalArgumentException("allowedTypes can't be empty");
 
-		if(allowFetching)
-			throw new UnsupportedOperationException(); // TODO
+		String name, domain;
+		if(username.contains("@")){
+			Matcher matcher=TextProcessor.USERNAME_DOMAIN_PATTERN.matcher(username);
+			if(!matcher.find())
+				throw new ObjectNotFoundException();
+			name=matcher.group(1);
+			domain=matcher.group(2);
+			if(domain.equalsIgnoreCase(Config.domain))
+				domain=null;
+		}else{
+			name=username;
+			domain=null;
+		}
+
+		username=name+(domain==null ? "" : ("@"+domain));
 
 		if(allowedTypes.contains(UsernameOwnerType.USER)){
 			int user=context.getUsersController().tryGetUserIdByUsername(username);
@@ -474,6 +488,25 @@ public class ObjectLinkResolver{
 			int group=context.getGroupsController().tryGetGroupIdForUsername(username);
 			if(group>0)
 				return new UsernameResolutionResult(UsernameOwnerType.GROUP, group);
+		}
+
+		if(allowFetching && domain!=null){
+			URI id;
+			try{
+				id=ActivityPub.resolveUsername(name, domain);
+			}catch(IOException x){
+				throw new ObjectNotFoundException("Can't resolve username: "+username, x);
+			}
+			Actor actor=resolve(id, Actor.class, true, false, false);
+			if(actor instanceof Group g && allowedTypes.contains(UsernameOwnerType.GROUP)){
+				storeOrUpdateRemoteObject(g, g);
+				return new UsernameResolutionResult(UsernameOwnerType.GROUP, g.id);
+			}else if(actor instanceof User u && allowedTypes.contains(UsernameOwnerType.USER)){
+				storeOrUpdateRemoteObject(u, u);
+				return new UsernameResolutionResult(UsernameOwnerType.GROUP, u.id);
+			}else{
+				throw new ObjectNotFoundException();
+			}
 		}
 
 		throw new ObjectNotFoundException();
