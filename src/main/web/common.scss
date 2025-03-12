@@ -409,7 +409,9 @@ textarea{
 }
 
 .postAttachments{
-	padding-top: 8px;
+	.aspectBoxW{
+		margin: 9px 0 4px;
+	}
 }
 
 .wallPostForm{
