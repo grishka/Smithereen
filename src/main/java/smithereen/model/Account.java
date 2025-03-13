@@ -94,7 +94,7 @@ public class Account{
 	public boolean isActive(){
 		return (activationInfo==null || activationInfo.emailState!=ActivationInfo.EmailConfirmationState.NOT_CONFIRMED)
 				&& (user.banStatus==null || user.banStatus==UserBanStatus.NONE || user.banStatus==UserBanStatus.HIDDEN)
-				&& (user.movedTo==0);
+				&& (user.movedTo<=0);
 	}
 
 	public static class BanInfo{

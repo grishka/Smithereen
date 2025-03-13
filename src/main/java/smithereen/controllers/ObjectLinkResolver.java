@@ -335,7 +335,7 @@ public class ObjectLinkResolver{
 						}
 						if(fu.movedToURL!=null){
 							User movedTo=null;
-							if(fu.movedTo!=0){
+							if(fu.movedTo>0){
 								try{
 									movedTo=context.getUsersController().getUserOrThrow(fu.movedTo);
 								}catch(ObjectNotFoundException ignore){}

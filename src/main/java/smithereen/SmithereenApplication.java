@@ -1137,7 +1137,7 @@ public class SmithereenApplication{
 				return;
 			}
 			// Account moved
-			if(acc.user.movedTo!=0){
+			if(acc.user.movedTo>0){
 				if(isAllowedForMovedAccounts(req))
 					return;
 				Lang l=lang(req);
