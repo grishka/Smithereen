@@ -91,6 +91,12 @@ public class Account{
 		return email.substring(email.indexOf('@')+1);
 	}
 
+	public boolean isActive(){
+		return (activationInfo==null || activationInfo.emailState!=ActivationInfo.EmailConfirmationState.NOT_CONFIRMED)
+				&& (user.banStatus==null || user.banStatus==UserBanStatus.NONE || user.banStatus==UserBanStatus.HIDDEN)
+				&& (user.movedTo==0);
+	}
+
 	public static class BanInfo{
 		public int adminUserId;
 		public String reason;

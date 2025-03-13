@@ -1,0 +1,20 @@
+{# @pebvariable name="movedTo" type="smithereen.model.ForeignUser" #}
+{% extends "page" %}
+{% block leftMenu %}
+{% if isMobile %}
+<ul class="actionList">
+	<li><a href="/account/logout?csrf={{ csrf }}">{{ L('log_out') }}</a></li>
+</ul>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="notMuchContent textByItself">
+	<h2 class="marginAfter">{{ L('account_deactivated_redirect_title') }}</h2>
+	<p>{{ L('account_deactivated_redirect', {'newProfileName': movedTo | name('complete'), 'serverDomain': movedTo.domain}, {'newProfile': {'href': movedTo.url, 'target': '_blank'} }) }}</p>
+	<ul class="actualList">
+		<li><span><a href="/settings/confirmRemoveMoveRedirect" data-confirm-title="{{ L('settings_transfer_remove_redirect_title') }}" data-confirm-message="{{ L('settings_transfer_remove_redirect') }}" data-confirm-action="/settings/removeMoveRedirect">{{ L('account_deactivated_redirect_reactivate') }}</a></span></li>
+		<li><span><a href="/settings/deactivateAccountForm" data-ajax-box>{{ L('account_deactivated_redirect_delete') }}</a></span></li>
+	</ul>
+</div>
+{% endblock %}
+

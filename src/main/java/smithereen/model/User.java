@@ -52,6 +52,7 @@ public class User extends Actor{
 	public int movedTo;
 	public int movedFrom;
 	public Instant movedAt;
+	public URI movedToApID;
 	public List<URI> alsoKnownAs=new ArrayList<>();
 	public UserBanStatus banStatus=UserBanStatus.NONE;
 	public UserBanInfo banInfo;
@@ -190,6 +191,7 @@ public class User extends Actor{
 				}
 			}
 			movedTo=optInt(o, "movedTo");
+			movedToApID=tryParseURL(optString(o, "movedToAP"));
 			movedFrom=optInt(o, "movedFrom");
 			if(o.has("movedAt")){
 				long moved=o.get("movedAt").getAsLong();
@@ -504,6 +506,11 @@ public class User extends Actor{
 			obj.add("alsoKnownAs", aka);
 		}
 
+		if(movedToApID!=null){
+			obj.addProperty("movedTo", movedToApID.toString());
+			serializerContext.addType("movedTo", "as:movedTo", "@id");
+		}
+
 		return obj;
 	}
 
@@ -546,6 +553,8 @@ public class User extends Actor{
 		}
 		if(movedTo>0)
 			o.addProperty("movedTo", movedTo);
+		if(movedToApID!=null)
+			o.addProperty("movedToAP", movedToApID.toString());
 		if(movedFrom>0)
 			o.addProperty("movedFrom", movedFrom);
 		if(movedAt!=null)
@@ -674,6 +683,7 @@ public class User extends Actor{
 
 	public void copyLocalFields(User previous){
 		movedTo=previous.movedTo;
+		movedToApID=previous.movedToApID;
 		movedFrom=previous.movedFrom;
 		movedAt=previous.movedAt;
 		banStatus=previous.banStatus;

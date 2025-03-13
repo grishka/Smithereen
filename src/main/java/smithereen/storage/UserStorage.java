@@ -49,6 +49,7 @@ import smithereen.model.UserNotifications;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
+import smithereen.model.admin.UserActionLogAction;
 import smithereen.model.friends.FollowRelationship;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
@@ -1421,5 +1422,15 @@ public class UserStorage{
 						.executeNoResult();
 			}
 		}
+	}
+
+	public static Instant getUserLastFollowersTransferTime(int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("user_action_log")
+				.columns("time")
+				.where("user_id=? AND action=?", userID, UserActionLogAction.TRANSFER_FOLLOWERS)
+				.orderBy("id DESC")
+				.limit(1, 0)
+				.executeAndGetSingleObject(r->DatabaseUtils.getInstant(r, "time"));
 	}
 }

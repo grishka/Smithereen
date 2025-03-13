@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=64;
+	public static final int SCHEMA_VERSION=65;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -875,6 +875,20 @@ public class DatabaseSchemaUpdater{
 						"ADD KEY `is_online` (`is_online`), ADD `num_followers` bigint NOT NULL DEFAULT '0', ADD `num_following` bigint NOT NULL DEFAULT '0', ADD `num_friends` bigint NOT NULL DEFAULT '0'");
 			}
 			case 64 -> conn.createStatement().execute("ALTER TABLE group_memberships ADD `hints_rank` int unsigned NOT NULL DEFAULT '0', ADD KEY `hints_rank` (`hints_rank`)");
+			case 65 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `user_action_log` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `action` int unsigned NOT NULL,
+						  `user_id` int unsigned NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `info` json NOT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `user_id` (`user_id`),
+						  KEY `action` (`action`),
+						  CONSTRAINT `user_action_log_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
 		}
 	}
 

@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -41,6 +42,7 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.controllers.UsersController;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -1028,5 +1030,61 @@ public class SettingsRoutes{
 		}
 		resp.redirect(back(req));
 		return "";
+	}
+
+	public static Object transferFollowersForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		Instant lastTransfer=ctx.getUsersController().getUserLastFollowersTransferTime(self.user);
+		if(lastTransfer!=null && lastTransfer.isAfter(Instant.now().minus(UsersController.FOLLOWERS_TRANSFER_COOLDOWN_DAYS, ChronoUnit.DAYS))){
+			Lang l=Lang.get(self.prefs.locale);
+			throw new UserErrorException("settings_transfer_out_too_often", Map.of("lastTransferDate", l.formatDate(lastTransfer, self.prefs.timeZone, false),
+					"days", UsersController.FOLLOWERS_TRANSFER_COOLDOWN_DAYS,
+					"nextTransferDate", l.formatDate(lastTransfer.plus(UsersController.FOLLOWERS_TRANSFER_COOLDOWN_DAYS, ChronoUnit.DAYS), self.prefs.timeZone, false)));
+		}
+		Lang l=lang(req);
+		String title=l.get("settings_transfer_out_title");
+		RenderedTemplateResponse model=RenderedTemplateResponse.ofAjaxLayer("settings_move_account_transfer", req)
+				.pageTitle(title)
+				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(l.get("settings_transfer_followers_title"), "/settings/moveAccountOptions")
+				.addNavBarItem(title);
+		if(isAjax(req)){
+			if(isMobile(req)){
+				return new WebDeltaResponse(resp)
+						.box(title, model.renderToString(), null, false);
+			}else{
+				return new WebDeltaResponse(resp)
+						.layer(model.renderToString(), null);
+			}
+		}else{
+			return model;
+		}
+	}
+
+	public static Object transferFollowers(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "link", "password");
+		String link=req.queryParams("link").trim();
+		String password=req.queryParams("password");
+		if(isAjax(req)){
+			try{
+				ctx.getUsersController().transferLocalUserFollowers(self, link, password);
+			}catch(UserErrorException x){
+				return new WebDeltaResponse(resp)
+						.show("transferFollowersMessage")
+						.setContent("transferFollowersMessage", lang(req).get(x.getMessage(), x.langArgs==null ? Map.of() : x.langArgs));
+			}
+		}else{
+			ctx.getUsersController().transferLocalUserFollowers(self, link, password);
+		}
+		return ajaxAwareRedirect(req, resp, "/feed");
+	}
+
+	public static Object confirmRemoveMoveRedirect(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("settings_transfer_remove_redirect_title"), l.get("settings_transfer_remove_redirect"), "/settings/removeMoveRedirect");
+	}
+
+	public static Object removeMoveRedirect(Request req, Response resp, Account self, ApplicationContext ctx){
+		ctx.getUsersController().clearMovedTo(self);
+		return ajaxAwareRedirect(req, resp, "/feed");
 	}
 }

@@ -50,6 +50,7 @@ import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Join;
 import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
+import smithereen.activitypub.objects.activities.Move;
 import smithereen.activitypub.objects.activities.Offer;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
@@ -707,6 +708,13 @@ public class ActivityPubWorker{
 		submitActivityForFollowers(del, self);
 	}
 
+	public void sendUserMoveSelf(User self, User destination){
+		Move move=new Move()
+				.withActorAndObjectLinks(self, destination)
+				.withActorFragmentID("move"+destination.id+"_"+System.currentTimeMillis());
+		submitActivityForFollowers(move, self, Set.of(actorInbox(destination)));
+	}
+
 	// region Photo albums
 
 	private void sendActivityForPhotoAlbum(Actor actor, PhotoAlbum album, Activity activity){
@@ -1059,6 +1067,17 @@ public class ActivityPubWorker{
 	public void submitActivityForFollowers(Activity activity, User actor){
 		try{
 			submitActivity(activity, actor, UserStorage.getFollowerInboxes(actor.id));
+		}catch(SQLException x){
+			LOG.error("Error getting follower inboxes for sending {} on behalf of user {}", activity.getType(), actor.id, x);
+		}
+	}
+
+	public void submitActivityForFollowers(Activity activity, User actor, Set<URI> extraInboxes){
+		try{
+			HashSet<URI> inboxes=new HashSet<>();
+			inboxes.addAll(UserStorage.getFollowerInboxes(actor.id));
+			inboxes.addAll(extraInboxes);
+			submitActivity(activity, actor, inboxes);
 		}catch(SQLException x){
 			LOG.error("Error getting follower inboxes for sending {} on behalf of user {}", activity.getType(), actor.id, x);
 		}

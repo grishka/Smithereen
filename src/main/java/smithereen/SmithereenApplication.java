@@ -351,6 +351,10 @@ public class SmithereenApplication{
 			postWithCSRF("/addAlsoKnownAs", SettingsRoutes::addAlsoKnownAs);
 			getLoggedIn("/confirmDeleteAkaLink", SettingsRoutes::confirmDeleteAlsoKnownAs);
 			postWithCSRF("/deleteAkaLink", SettingsRoutes::deleteAlsoKnownAs);
+			getLoggedIn("/transferFollowersForm", SettingsRoutes::transferFollowersForm);
+			postWithCSRF("/transferFollowers", SettingsRoutes::transferFollowers);
+			getLoggedIn("/confirmRemoveMoveRedirect", SettingsRoutes::confirmRemoveMoveRedirect);
+			postWithCSRF("/removeMoveRedirect", SettingsRoutes::removeMoveRedirect);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);
@@ -1078,7 +1082,21 @@ public class SmithereenApplication{
 				"/account/unfreeze",
 				"/account/unfreezeChangePassword",
 				"/account/reactivateBox",
-				"/account/reactivate"
+				"/account/reactivate",
+				"/system/languageChooser",
+				"/settings/setLanguage",
+				"/system/privacyPolicy",
+				"/system/about"
+		).contains(path);
+	}
+
+	private static boolean isAllowedForMovedAccounts(Request req){
+		String path=req.pathInfo();
+		return Set.of(
+				"/settings/deactivateAccountForm",
+				"/settings/deactivateAccount",
+				"/settings/confirmRemoveMoveRedirect",
+				"/settings/removeMoveRedirect"
 		).contains(path);
 	}
 
@@ -1096,27 +1114,40 @@ public class SmithereenApplication{
 			}
 			// Account ban or self-deactivation
 			UserBanStatus status=info.account.user.banStatus;
-			if(status==UserBanStatus.NONE || status==UserBanStatus.HIDDEN)
-				return;
-			Lang l=lang(req);
-			RenderedTemplateResponse model=new RenderedTemplateResponse("account_banned", req)
-					.with("noLeftMenu", true);
-			model.pageTitle(l.get(switch(status){
-				case FROZEN -> "account_frozen";
-				case SUSPENDED -> "account_suspended";
-				case SELF_DEACTIVATED -> "account_deactivated";
-				default -> throw new IllegalStateException("Unexpected value: " + status);
-			}));
-			model.with("status", status).with("banInfo", acc.user.banInfo).with("contactEmail", Config.serverAdminEmail);
-			switch(status){
-				case FROZEN -> {
-					if(acc.user.banInfo.expiresAt()!=null && acc.user.banInfo.expiresAt().isAfter(Instant.now())){
-						model.with("unfreezeTime", acc.user.banInfo.expiresAt());
+			if(status!=UserBanStatus.NONE && status!=UserBanStatus.HIDDEN){
+				Lang l=lang(req);
+				RenderedTemplateResponse model=new RenderedTemplateResponse("account_banned", req)
+						.with("noLeftMenu", true);
+				model.pageTitle(l.get(switch(status){
+					case FROZEN -> "account_frozen";
+					case SUSPENDED -> "account_suspended";
+					case SELF_DEACTIVATED -> "account_deactivated";
+					default -> throw new IllegalStateException("Unexpected value: "+status);
+				}));
+				model.with("status", status).with("banInfo", acc.user.banInfo).with("contactEmail", Config.serverAdminEmail);
+				switch(status){
+					case FROZEN -> {
+						if(acc.user.banInfo.expiresAt()!=null && acc.user.banInfo.expiresAt().isAfter(Instant.now())){
+							model.with("unfreezeTime", acc.user.banInfo.expiresAt());
+						}
 					}
+					case SUSPENDED, SELF_DEACTIVATED -> model.with("deletionTime", acc.user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
 				}
-				case SUSPENDED, SELF_DEACTIVATED -> model.with("deletionTime", acc.user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
+				halt(model.renderToString());
+				return;
 			}
-			halt(model.renderToString());
+			// Account moved
+			if(acc.user.movedTo!=0){
+				if(isAllowedForMovedAccounts(req))
+					return;
+				Lang l=lang(req);
+				RenderedTemplateResponse model=new RenderedTemplateResponse("account_moved", req)
+						.with("noLeftMenu", true)
+						.with("pageTitle", l.get("account_deactivated_redirect_title"))
+						.with("movedTo", context(req).getUsersController().getUserOrThrow(acc.user.movedTo));
+				halt(model.renderToString());
+				return;
+			}
 		}
 	}
 

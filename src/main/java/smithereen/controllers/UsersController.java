@@ -36,6 +36,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.ForeignUser;
@@ -50,6 +51,7 @@ import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPresence;
 import smithereen.model.UserRole;
+import smithereen.model.admin.UserActionLogAction;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.friends.FollowRelationship;
 import smithereen.model.viewmodel.UserContentMetrics;
@@ -69,6 +71,7 @@ import spark.utils.StringUtils;
 
 public class UsersController{
 	private static final int ONLINE_TIMEOUT_MINUTES=5;
+	public static final int FOLLOWERS_TRANSFER_COOLDOWN_DAYS=30;
 	private static final Logger LOG=LoggerFactory.getLogger(UsersController.class);
 	private final ApplicationContext context;
 	private final ConcurrentSkipListSet<CachedUserPresence> onlineLocalUsers=new ConcurrentSkipListSet<>(Comparator.comparing(p->p.presence.lastUpdated()));
@@ -825,6 +828,7 @@ public class UsersController{
 		boolean success=false;
 		try{
 			oldUser.movedTo=newUser.id;
+			oldUser.movedToApID=newUser.activityPubID;
 			oldUser.movedAt=Instant.now();
 			newUser.movedFrom=oldUser.id;
 			if(oldUser instanceof ForeignUser)
@@ -850,8 +854,71 @@ public class UsersController{
 		}
 	}
 
+	public Instant getUserLastFollowersTransferTime(User self){
+		try{
+			return UserStorage.getUserLastFollowersTransferTime(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void transferLocalUserFollowers(Account self, String link, String password){
+		Instant lastTransfer=getUserLastFollowersTransferTime(self.user);
+		if(lastTransfer!=null && lastTransfer.isAfter(Instant.now().minus(FOLLOWERS_TRANSFER_COOLDOWN_DAYS, ChronoUnit.DAYS))){
+			Lang l=Lang.get(self.prefs.locale);
+			throw new UserErrorException("settings_transfer_out_too_often", Map.of("lastTransferDate", l.formatDate(lastTransfer, self.prefs.timeZone, false),
+					"days", FOLLOWERS_TRANSFER_COOLDOWN_DAYS,
+					"nextTransferDate", l.formatDate(lastTransfer.plus(FOLLOWERS_TRANSFER_COOLDOWN_DAYS, ChronoUnit.DAYS), self.prefs.timeZone, false)));
+		}
+		if(!checkPassword(self, password))
+			throw new UserErrorException("err_old_password_incorrect");
+
+		User target;
+		try{
+			if(Utils.isUsernameAndDomain(link)){
+				ObjectLinkResolver.UsernameResolutionResult res=context.getObjectLinkResolver().resolveUsername(link, true, EnumSet.of(ObjectLinkResolver.UsernameOwnerType.USER));
+				target=context.getUsersController().getUserOrThrow(res.localID());
+				if(target instanceof ForeignUser && target.lastUpdated.isBefore(Instant.now().minus(10, ChronoUnit.SECONDS)))
+					target=context.getObjectLinkResolver().resolve(target.activityPubID, User.class, true, true, true);
+			}else if(Utils.isURL(link)){
+				ActivityPubObject obj=context.getObjectLinkResolver().resolve(URI.create(link), ActivityPubObject.class, true, true, true);
+				if(!(obj instanceof User user)){
+					throw new UserErrorException("settings_transfer_link_unsupported");
+				}
+				target=user;
+			}else{
+				throw new UserErrorException("settings_transfer_out_link_not_found");
+			}
+		}catch(ObjectNotFoundException x){
+			throw new UserErrorException("settings_transfer_out_link_not_found");
+		}
+		if(!(target instanceof ForeignUser)){
+			throw new UserErrorException("settings_transfer_link_this_server", Map.of("domain", Config.domain));
+		}
+		if(!target.alsoKnownAs.contains(self.user.activityPubID))
+			throw new UserErrorException("settings_transfer_out_no_link", Map.of("thisAccountUsername", self.user.username+"@"+Config.domain, "newAccountServer", target.activityPubID.getHost()));
+
+		transferUserFollowers(self.user, target);
+		context.getActivityPubWorker().sendUserMoveSelf(self.user, target);
+		SmithereenApplication.invalidateAllSessionsForAccount(self.id);
+	}
+
+	public void clearMovedTo(Account self){
+		try{
+			self.user.movedTo=0;
+			self.user.movedToApID=null;
+			self.user.movedAt=null;
+			UserStorage.updateExtendedFields(self.user, self.user.serializeProfileFields());
+			context.getActivityPubWorker().sendUpdateUserActivity(self.user);
+			SmithereenApplication.invalidateAllSessionsForAccount(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	private void performMove(User oldUser, User newUser){
 		try{
+			ModerationStorage.addUserActionLogEntry(oldUser.id, UserActionLogAction.TRANSFER_FOLLOWERS, Map.of("to", newUser.id, "toApID", newUser.activityPubID.toString()));
 			List<FollowRelationship> localFollowers=UserStorage.getUserLocalFollowers(oldUser.id);
 			LOG.debug("Started moving {} followers for {} -> {}", localFollowers.size(), oldUser.activityPubID, newUser.activityPubID);
 			for(FollowRelationship fr:localFollowers){

@@ -846,6 +846,22 @@ CREATE TABLE `stats_daily` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `user_action_log`
+--
+
+CREATE TABLE `user_action_log` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `action` int unsigned NOT NULL,
+  `user_id` int unsigned NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `info` json NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `action` (`action`),
+  CONSTRAINT `user_action_log_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `user_agents`
 --
 
@@ -982,4 +998,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-03-08 15:05:00
+-- Dump completed on 2025-03-13 16:20:31

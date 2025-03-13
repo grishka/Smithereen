@@ -26,6 +26,7 @@ import smithereen.model.SignupInvitation;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.model.ViolationReportAction;
+import smithereen.model.admin.UserActionLogAction;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
@@ -479,6 +480,15 @@ public class ModerationStorage{
 		new SQLQueryBuilder()
 				.deleteFrom("signup_invitations")
 				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static void addUserActionLogEntry(int userID, UserActionLogAction action, Map<String, Object> info) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("user_action_log")
+				.value("action", action)
+				.value("user_id", userID)
+				.value("info", Utils.gson.toJson(info))
 				.executeNoResult();
 	}
 }

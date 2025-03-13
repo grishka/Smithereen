@@ -213,5 +213,9 @@
   "footer_desktop_version": "Desktop version",
   "footer_source_code": "Source code",
   "footer_about_server": "About server",
-  "choose_language_title": "Choose language"
+  "choose_language_title": "Choose language",
+  "account_deactivated_redirect_title": "Your profile is inactive",
+  "account_deactivated_redirect": "You have set up a redirection to <a id=\"newProfile\"><b>{newProfileName}</b></a> on server <b>{serverDomain}</b>, transferred your followers there and deactivated this profile. Right now, your profile displays a notice that you're no longer using it, and a link to your new one. You can:",
+  "account_deactivated_redirect_reactivate": "Remove the redirection and restore the profile",
+  "account_deactivated_redirect_delete": "Delete this profile"
 }
