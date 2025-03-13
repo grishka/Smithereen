@@ -379,7 +379,7 @@ public class NotificationsController{
 					case FOLLOW -> makeActorLink(actor)+" "+l.get("notification_follow", Map.of("gender", ((User)actor).gender));
 					case FRIEND_REQUEST -> {
 						User u=(User)actor;
-						String text=l.get("notification_friend_request", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
+						String text=l.get("notification_content_friend_request", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
 						yield TextProcessor.substituteLinks(text, Map.of("actor", Map.of("href", actor.getProfileURL())));
 					}
 					case FRIEND_REQUEST_ACCEPTED -> makeActorLink(actor)+" "+l.get("notification_friend_req_accept", Map.of("gender", ((User)actor).gender));
