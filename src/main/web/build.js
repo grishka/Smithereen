@@ -5,7 +5,7 @@ const UglifyJS=require("uglify-js");
 const crypto=require("crypto");
 const postcss=require("postcss");
 
-var cssFiles=["desktop.scss", "mobile.scss"];
+var cssFiles=["desktop.scss", "mobile.scss", "embed.scss"];
 
 if(process.argv.length<3)
 	throw Error("Specify the java project directory as an argument");
