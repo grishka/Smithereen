@@ -1,0 +1,182 @@
+$textOnAccent: #FFFFFF;
+$bg: #FFFFFF;
+$gray: #F7F7F7;
+$darkerGray: #DDDDDD;
+$textOnGray: #707070;
+$grayText: #909090;
+$text: #000;
+
+$alertBackground: #F9F6E7;
+$alertBorder: #D4BC4C;
+
+/*
+ * Made from VK's blue palette by converting it to LCH, applying these formulas:
+ * H=(H+208)%360
+ * C=C*3;
+ * and converting back to RGB
+ * */
+
+/* text */
+$normalLink: rgb(72, 92, 0);
+$boldHeaders: rgb(78, 112, 0);
+$auxiliaryGrey: rgb(119, 119, 119);
+$auxiliaryBlockHeader: rgb(171, 175, 114);
+
+$darkGrey: #444444;
+$sectionHeaderBorder: #CCCCCC;
+/* separators */
+$wallPostSeparator: rgb(227, 225, 204);
+$menuItemsSeparator: rgb(235, 234, 225);
+$mainHeaderSeparator: rgb(236, 235, 226);
+$wallCommentSeparator: rgb(238, 238, 238);
+/* blocks */
+$textAreaBorder: rgb(203, 204, 153);
+$blockBorderTop: rgb(223, 218, 188);
+$blockBorderBottom: rgb(228, 223, 193);
+$blockBackground: rgb(234, 232, 203);
+$blockUnderboxBackground: rgb(241, 241, 241);
+$bgGrey: rgb(247, 247, 247);
+/* button */
+$buttonGradientBottom: rgb(96, 125, 0);
+$buttonBorder: rgb(100, 137, 0);
+$buttonBorderTop: rgb(136, 159, 61);
+$buttonGradientTop: rgb(143, 159, 68);
+
+$buttonGrayBorder: #b3b3b3;
+$buttonGrayGradientTop: #fafafa;
+$buttonGrayGradientBottom: #d4d4d4;
+$buttonGrayBorderInner: #e7e7e7;
+$buttonGrayActive: #dcdcdc;
+
+/* tabs */
+$tabBackground: rgb(104, 132, 1);
+$simpleButton: rgb(92, 120, 0);
+/* header */
+$headerBorderTop: rgb(68, 107, 0);
+$headerGradientTop: rgb(76, 110, 0);
+$headerBorderBottomDark: rgb(75, 115, 0);
+$headerGradientBottom: rgb(105, 134, 0);
+$headerBorderBottomLight: rgb(118, 155, 27);
+/* icons */
+$iconColor: rgb(156, 168, 80);
+$likeIconColor: rgb(219, 216, 173);
+
+
+/*$normalLink: $headerGradientBottom;*/
+
+*{
+	box-sizing: border-box;
+	overflow-wrap: break-word;
+	min-width: 0;
+	min-height: 0;
+}
+
+.ellipsize{
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+a, /*a:link, a:visited,*/ .link{
+	color: $normalLink;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.avaImage{
+	border-radius: 2px;
+	vertical-align: top;
+}
+
+.avaHasImage{
+	position: relative;
+}
+
+.avaHasImage::after{
+	content: "";
+	display: inline-block;
+	border: solid 1px rgba(0,0,0,0.05);
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	box-sizing: border-box;
+	border-radius: 2px;
+}
+
+.avaPlaceholder{
+	vertical-align: top;
+	margin: 0;
+	background-color: #fff;
+	background-image: svg-load("img/ava_question.svg", fill: #809528);
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+	border: solid 1px #ece5d1;
+	box-sizing: border-box;
+	border-radius: 2px;
+}
+
+.grayText, a.grayText{
+	color: $auxiliaryGrey;
+}
+
+.expandableText>.full{
+	display: none;
+}
+
+.textExpander:checked+.expandableText{
+	>.full{
+		display: block;
+	}
+	>.truncated, >label{
+		display: none;
+	}
+}
+
+.textExpander{
+	display: none;
+}
+
+.expandableText>label{
+	cursor: pointer;
+	color: $normalLink;
+}
+
+.poll{
+	.pollResultRow{
+		margin: 10px 0;
+		.pollResultBarW{
+			display: flex;
+			margin-top: 2px;
+		}
+		.pollResultPercent{
+			font-weight: bold;
+			text-align: right;
+		}
+		.pollResultBarBG{
+			background-color: $bgGrey;
+			position: relative;
+			flex-grow: 1;
+		}
+		.pollResultNumVotes{
+			position: absolute;
+			text-align: center;
+			color: $auxiliaryBlockHeader;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+		}
+		.pollResultBarFG{
+			background-color: $blockBackground;
+			position: absolute;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			transform-origin: 0;
+		}
+	}
+}

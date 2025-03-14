@@ -1,5 +1,9 @@
 package smithereen.templates;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import io.pebbletemplates.pebble.extension.AbstractExtension;
 import io.pebbletemplates.pebble.extension.Filter;
 import io.pebbletemplates.pebble.extension.Function;
@@ -16,6 +20,7 @@ import smithereen.templates.functions.AddQueryParamsFunction;
 import smithereen.templates.functions.ArraysEqualFunction;
 import smithereen.templates.functions.DescribeAttachmentsFunction;
 import smithereen.templates.functions.FormatTimeFunction;
+import smithereen.templates.functions.InlineTextResourceFunction;
 import smithereen.templates.functions.InstantToDateFunction;
 import smithereen.templates.functions.InstantToTimeFunction;
 import smithereen.templates.functions.JsonFunction;
@@ -26,10 +31,6 @@ import smithereen.templates.functions.ProfileUrlFunction;
 import smithereen.templates.functions.RandomStringFunction;
 import smithereen.templates.functions.RenderAttachmentsFunction;
 import smithereen.templates.functions.RenderPhotoGridFunction;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class SmithereenExtension extends AbstractExtension{
 	@Override
@@ -49,6 +50,7 @@ public class SmithereenExtension extends AbstractExtension{
 		f.put("profileRel", new ProfileRelFunction());
 		f.put("arraysEqual", new ArraysEqualFunction());
 		f.put("renderPhotoGrid", new RenderPhotoGridFunction());
+		f.put("inlineTextResource", new InlineTextResourceFunction());
 		return f;
 	}
 
