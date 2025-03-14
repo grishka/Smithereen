@@ -3,12 +3,10 @@
 {# @pebvariable name="totalItems" type="int" #}
 {# @pebvariable name="paginationUrlPrefix" type="String" #}
 {# @pebvariable name="paginationFirstPageUrl" type="String" #}
-{% set curPage=paginationOffset/paginationPerPage %}
-{% set totalPages=(totalItems+paginationPerPage-1)/paginationPerPage %}
-{% if totalPages>1 and totalPages-curPage>1 %}
+{% if totalItems>paginationOffset+paginationPerPage %}
 {% set paginationID=randomString() %}
 <div class="ajaxEndlessPagination" id="ajaxPagination_{{ paginationID }}" data-id="{{ paginationID }}">
 	<span class="loader" style="display: none"></span>
-	<a href="{{ paginationUrlPrefix }}{{ paginationPerPage*(curPage+1) }}" id="ajaxPaginationLink_{{ paginationID }}">{{ paginationLinkText | default(L('load_more')) }}</a>
+	<a href="{{ paginationUrlPrefix }}{{ paginationOffset+paginationPerPage }}" id="ajaxPaginationLink_{{ paginationID }}">{{ paginationLinkText | default(L('load_more')) }}</a>
 </div>
 {% endif %}

@@ -35,7 +35,8 @@
 {% set isPastSeen=true %}
 {% if not loop.first %}<div class="notificationsSeen">{{ L('notifications_seen') }}<span class="icon"></span></div>{% endif %}
 {% endif %}
-{% if latest.type=='REPLY' or latest.type=='MENTION' or latest.type=='POST_OWN_WALL' %}{# Show as posts #}
+{% set isPost=(latest.type=='REPLY' or latest.type=='MENTION' or latest.type=='POST_OWN_WALL') %}
+{% if isPost and object is not null %}{# Show as posts #}
 <div class="notificationsRow notification{{ latest.type | replace({'_': ' '}) | lower | title | replace({' ': ''}) }}">
 {% include "notification_extra_image" with {'notification': latest} %}
 {% set realPost=object.post %}
@@ -78,7 +79,7 @@
 		</div>
 	</div>
 </div>
-{% else %}{# Show as user avatars #}
+{% elseif not isPost %}{# Show as user avatars #}
 {% set isMultiple=notification.notifications | length>1 %}
 {% if not isMultiple %}
 {% set actorGender=users[latest.actorID].gender %}

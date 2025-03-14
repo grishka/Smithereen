@@ -148,7 +148,7 @@ public class RenderedTemplateResponse{
 		try{
 			template=getAndPrepareTemplate(req);
 			template.evaluate(writer, model, locale);
-		}catch(PebbleException x){
+		}catch(Throwable x){
 			writer.write("<pre>");
 			x.printStackTrace(new PrintWriter(writer));
 			writer.write("</pre>");
