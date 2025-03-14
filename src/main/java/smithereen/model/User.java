@@ -504,6 +504,7 @@ public class User extends Actor{
 			JsonArray aka=new JsonArray();
 			alsoKnownAs.stream().map(Object::toString).forEach(aka::add);
 			obj.add("alsoKnownAs", aka);
+			serializerContext.addType("alsoKnownAs", "as:alsoKnownAs", "@id");
 		}
 
 		if(movedToApID!=null){
