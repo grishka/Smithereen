@@ -710,8 +710,9 @@ public class ActivityPubWorker{
 
 	public void sendUserMoveSelf(User self, User destination){
 		Move move=new Move()
-				.withActorAndObjectLinks(self, destination)
-				.withActorFragmentID("move"+destination.id+"_"+System.currentTimeMillis());
+				.withActorAndObjectLinks(self, self)
+				.withActorFragmentID("move"+destination.id+"_"+System.currentTimeMillis())
+				.withTarget(destination.activityPubID);
 		submitActivityForFollowers(move, self, Set.of(actorInbox(destination)));
 	}
 
