@@ -2676,6 +2676,17 @@ input.searchField{
 	}
 }
 
+.twoColumnForm{
+	input{
+		width: 100%;
+		margin-top: 8px;
+	}
+	label{
+		display: block;
+		margin: 12px 0;
+	}
+}
+
 @media (min-width: 500px){
 	.oneLineForm{
 		display: flex;
