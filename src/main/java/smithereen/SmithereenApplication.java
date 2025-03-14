@@ -1140,9 +1140,12 @@ public class SmithereenApplication{
 			if(acc.user.movedTo>0){
 				if(isAllowedForMovedAccounts(req))
 					return;
+				boolean isSuperuser=acc.roleID>0 && Config.userRoles.get(acc.roleID).permissions().contains(UserRole.Permission.SUPERUSER);
+				if(isSuperuser && !req.pathInfo().equals("/"+acc.user.username))
+					return;
 				Lang l=lang(req);
 				RenderedTemplateResponse model=new RenderedTemplateResponse("account_moved", req)
-						.with("noLeftMenu", true)
+						.with("noLeftMenu", !isSuperuser)
 						.with("pageTitle", l.get("account_deactivated_redirect_title"))
 						.with("movedTo", context(req).getUsersController().getUserOrThrow(acc.user.movedTo));
 				halt(model.renderToString());
