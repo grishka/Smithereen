@@ -775,6 +775,8 @@ public class UsersController{
 				ObjectLinkResolver.UsernameResolutionResult res=context.getObjectLinkResolver().resolveUsername(link, true, EnumSet.of(ObjectLinkResolver.UsernameOwnerType.USER));
 				target=context.getUsersController().getUserOrThrow(res.localID());
 			}else if(Utils.isURL(link)){
+				if(!link.startsWith("https://") && !link.startsWith("http://"))
+					link="https://"+link;
 				ActivityPubObject obj=context.getObjectLinkResolver().resolve(URI.create(link), ActivityPubObject.class, true, false, false);
 				if(!(obj instanceof User user)){
 					throw new UserErrorException("settings_transfer_link_unsupported");
@@ -881,6 +883,8 @@ public class UsersController{
 				if(target instanceof ForeignUser && target.lastUpdated.isBefore(Instant.now().minus(10, ChronoUnit.SECONDS)))
 					target=context.getObjectLinkResolver().resolve(target.activityPubID, User.class, true, true, true);
 			}else if(Utils.isURL(link)){
+				if(!link.startsWith("https://") && !link.startsWith("http://"))
+					link="https://"+link;
 				ActivityPubObject obj=context.getObjectLinkResolver().resolve(URI.create(link), ActivityPubObject.class, true, true, true);
 				if(!(obj instanceof User user)){
 					throw new UserErrorException("settings_transfer_link_unsupported");
