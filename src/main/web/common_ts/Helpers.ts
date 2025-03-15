@@ -1159,6 +1159,7 @@ function initAjaxSearch(fieldID:string){
 		}
 		var params=new URLSearchParams(qstr);
 		params.set("q", q);
+		params.delete("_al");
 		var extraFields=input.dataset.extraFields;
 		if(extraFields){
 			for(var fid of extraFields.split(',')){
