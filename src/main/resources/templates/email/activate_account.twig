@@ -2,8 +2,8 @@
 {% block content %}
 	<h1>{{ L('email_confirmation_header') }}</h1>
 	{{ L('email_confirmation_body_html', {'name': name, 'serverName': serverName, 'domain': domain}) }}
-	<div class="button_blue centered_main_block">
-		<a href="{{ confirmationLink }}">{{ L('email_confirmation_body_button') }}</a>
+	<div class="centeredMainBlock">
+		<a class="button" href="{{ confirmationLink }}">{{ L('email_confirmation_body_button') }}</a>
 	</div>
 {% endblock %}
 

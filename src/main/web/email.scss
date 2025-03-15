@@ -1,0 +1,89 @@
+/* Styles for emails sent by the server */
+
+@import 'desktop_basics.scss';
+
+body{
+	font-size: 12px;
+	padding: 0;
+}
+
+h1{
+	margin: 2px 0 15px;
+	padding: 0 0 4px;
+	border-bottom: 1px solid $mainHeaderSeparator;
+	color: $boldHeaders;
+	font-size: 100%;
+}
+
+#emailOuterTable{
+	background-color: $emailBackground;
+	width: 100%;
+	border-spacing: 0;
+	& > tbody > tr > td{
+		padding: 0;
+		&#emailOuterTableContentColumn{
+			width: 90%;
+			padding: 15px 0;
+		}
+	}
+	.emailOuterTableSide{
+		width: 5%;
+	}
+}
+
+#emailInnerTable{
+	border-spacing: 0;
+	width: 100%;
+	border-radius: 5px;
+	overflow: hidden;
+	& > tbody > tr > td{
+		padding: 0;
+	}
+	.headerBG{
+		background: linear-gradient(to bottom, $headerGradientTop, $headerGradientBottom);
+	}
+}
+
+#emailInnerTableContentRow{
+	background-color: $bg;
+	border: 1px solid $blockBorderBottom;
+}
+
+#logo{
+	color: $textOnAccent;
+	font-size: 14px;
+	font-weight: bold;
+	height: 43px;
+	line-height: 43px;
+	max-height: 43px;
+	text-decoration: none;
+	text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
+	img{
+		border: none;
+		vertical-align: middle;
+		margin: 0 8px 0 8px;
+	}
+}
+
+#emailContent{
+	padding: 18px 18px 13px 18px;
+	color: black;
+	border: 1px solid $wallPostSeparator;
+	border-top: 0;
+	border-bottom-left-radius: 5px;
+	border-bottom-right-radius: 5px;
+}
+
+.centeredMainBlock{
+	padding: 20px 0;
+	text-align: center;
+}
+
+#confirmationCode{
+	background: $gray;
+	border: solid 1px $sectionHeaderBorder;
+	border-radius: 4px;
+	font-size: 20px;
+	padding: 10px;
+	display: inline-block;
+}
