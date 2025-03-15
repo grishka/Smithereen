@@ -425,9 +425,12 @@ public class UsersController{
 		try{
 			if(newPassword.length()<4){
 				throw new UserErrorException("err_password_short");
-			}else if(!SessionStorage.updatePassword(self.id, oldPassword, newPassword)){
+			}
+			FloodControl.PASSWORD_CHECK.incrementOrThrow(self);
+			if(!SessionStorage.updatePassword(self.id, oldPassword, newPassword)){
 				throw new UserErrorException("err_old_password_incorrect");
 			}
+			FloodControl.PASSWORD_CHECK.reset(self);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -435,7 +438,11 @@ public class UsersController{
 
 	public boolean checkPassword(Account self, String password){
 		try{
-			return SessionStorage.checkPassword(self.id, password);
+			FloodControl.PASSWORD_CHECK.incrementOrThrow(self);
+			boolean valid=SessionStorage.checkPassword(self.id, password);
+			if(valid)
+				FloodControl.PASSWORD_CHECK.reset(self);
+			return valid;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

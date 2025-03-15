@@ -530,7 +530,14 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 		if(submitter)
 			submitter.classList.remove("loading");
 		setGlobalLoading(false);
-		new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
+		if(msg && msg[0]=='['){
+			var resp=JSON.parse(msg) as Array<any>;
+			for(var i=0;i<resp.length;i++){
+				applyServerCommand(resp[i]);
+			}
+		}else{
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
+		}
 		if(onDone) onDone(false);
 	});
 	return false;
