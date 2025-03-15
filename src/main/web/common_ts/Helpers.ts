@@ -1689,3 +1689,26 @@ function setLanguage(locale:string){
 	ajaxPost("/settings/setLanguage", {csrf: userConfig.csrf, lang: locale}, ()=>location.reload(), ()=>location.reload());
 }
 
+function showHeaderBack(href:string, title:string){
+	var back=ge("headerBack") as HTMLAnchorElement;
+	var search=ge("qsearchWrap");
+	back.href=href;
+	back.innerText=title;
+
+	if(back.style.display=="none"){
+		if(search)
+			search.hideAnimated();
+		back.showAnimated();
+	}
+}
+
+function hideHeaderBack(){
+	var back=ge("headerBack");
+	var search=ge("qsearchWrap");
+	if(back.style.display=="none")
+		return;
+	back.hideAnimated();
+	if(search)
+		search.showAnimated();
+}
+

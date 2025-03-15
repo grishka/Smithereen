@@ -18,6 +18,7 @@ import org.jsoup.parser.Parser;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.select.NodeVisitor;
 import org.unbescape.html.HtmlEscape;
+import org.unbescape.javascript.JavaScriptEscape;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -159,6 +160,10 @@ public class TextProcessor{
 
 	public static String escapeHTML(String s){
 		return HtmlEscape.escapeHtml4Xml(s);
+	}
+
+	public static String escapeJS(String s){
+		return JavaScriptEscape.escapeJavaScript(s);
 	}
 
 	public static String stripHTML(String s, boolean keepLineBreaks){

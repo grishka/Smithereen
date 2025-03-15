@@ -82,6 +82,7 @@ import smithereen.storage.UserStorage;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
+import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
 import smithereen.util.JsonObjectBuilder;
@@ -955,6 +956,11 @@ public class SmithereenApplication{
 				if(k!=null){
 					Lang l=lang(req);
 					js="addLang({"+k.stream().map(key->"\""+key+"\":"+l.getAsJS(key)).collect(Collectors.joining(","))+"});\n"+js;
+				}
+				if(obj.get("headerBackHref") instanceof String headerBackHref && !headerBackHref.isEmpty()){
+					js+="\nshowHeaderBack(\""+TextProcessor.escapeJS(headerBackHref)+"\", \""+TextProcessor.escapeJS((String) obj.get("headerBackTitle"))+"\");";
+				}else{
+					js+="\nhideHeaderBack();";
 				}
 
 				JsonObjectBuilder alResp=new JsonObjectBuilder()

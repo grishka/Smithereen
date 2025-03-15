@@ -39,16 +39,15 @@
 			<div class="logo">
 				<a href="/"><img src="/res/desktop_logo_v1.svg" height="28" width="27" border="0" alt="Smithereen"/>{{serverName}}</a>
 			</div>
-			{% if headerBackHref is not empty %}
-			<a href="{{ headerBackHref }}" class="nav back ellipsize">{{ headerBackTitle }}</a>
-			{% elseif currentUser is not null %}
-			{% if currentUser.banStatus=='NONE' or currentUser.banStatus=='HIDDEN' %}
-			<div id="qsearchWrap">
-				<input type="text" id="qsearchField" placeholder="{{ L('search') }}" autocomplete="off" autocapitalize="off"/>
-				<div id="qsearchResults" style="display: none"></div>
+			<div id="headerLeftNavWrap">
+				<a href="{{ headerBackHref }}" id="headerBack" class="nav back ellipsize" style="{% if headerBackHref is empty %}display: none{% endif %}">{{ headerBackTitle }}</a>
+				{% if currentUser is not null and not noLeftMenu %}
+				<div id="qsearchWrap" style="{% if headerBackHref is not empty %}display: none{% endif %}">
+					<input type="text" id="qsearchField" placeholder="{{ L('search') }}" autocomplete="off" autocapitalize="off"/>
+					<div id="qsearchResults" style="display: none"></div>
+				</div>
+				{% endif %}
 			</div>
-			{% endif %}
-			{% endif %}
 			<div id="headerNav">
 				{% if currentUser is not null %}
 				{% if userPermissions.canInviteNewUsers %}<a href="/settings/invites" class="nav">{{ L('invite_users') }}</a>{% endif %}
