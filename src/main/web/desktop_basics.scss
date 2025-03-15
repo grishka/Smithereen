@@ -16,6 +16,34 @@ a:hover, a:visited:hover, .link:hover{
 	text-decoration: underline;
 }
 
+input[type=submit], input[type=button], button, .button, .button:link, .button:visited{
+	background: linear-gradient(to top, $buttonGradientBottom, $buttonGradientTop) repeat-x 0 -16px;
+	background-size: 1px 42px;
+	text-shadow: 0 1px 0 $headerBorderTop;
+	border: solid 1px $headerBorderTop;
+	border-radius: 2px;
+	color: $textOnAccent;
+	box-shadow: 0 1px 0 $buttonBorderTop inset, 0 0 0 1px $buttonBorder inset;
+	cursor: pointer;
+	padding: 0 14px;
+	height: 25px;
+	line-height: 23px;
+	display: inline-block;
+	box-sizing: border-box;
+	&:hover, &:visited:hover{
+		text-decoration: none;
+		background-position: 0 -8px;
+		&.loading{
+			background-position: center, 0 -8px;
+		}
+	}
+	&:active{
+		text-decoration: none;
+		background: $buttonGradientBottom;
+		box-shadow: none;
+	}
+}
+
 .header{
 	display: flex;
 	.logo{
