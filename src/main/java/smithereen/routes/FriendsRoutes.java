@@ -151,9 +151,13 @@ public class FriendsRoutes{
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
 		}
-		if(isAjax(req))
+		if(isAjax(req)){
+			String baseURL=getRequestPathAndQuery(req);
 			return new WebDeltaResponse(resp)
-					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"));
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"))
+					.setAttribute("friendsSearch", "data-base-url", baseURL)
+					.setURL(baseURL);
+		}
 		return model;
 	}
 
