@@ -274,6 +274,12 @@
 			<artifactId>commonmark-ext-ins</artifactId>
 			<version>0.22.0</version>
 		</dependency>
+		<dependency>
+			<groupId>com.palantir.javapoet</groupId>
+			<artifactId>javapoet</artifactId>
+			<version>0.6.0</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 
