@@ -3,7 +3,7 @@ FROM maven:3.9.5-eclipse-temurin-21 AS builder
 WORKDIR /usr/src/app
 COPY . .
 ARG MAVEN_OPTS
-RUN mvn package -DskipTests=true
+RUN mvn package -Dmaven.test.skip=true
 RUN java LibVipsDownloader.java
 
 FROM eclipse-temurin:21-jdk
