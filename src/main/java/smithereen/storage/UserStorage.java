@@ -1339,7 +1339,8 @@ public class UserStorage{
 				.where("id=?", user.id)
 				.executeNoResult();
 		removeFromCache(user);
-		accountCache.remove(userAccount.id);
+		if(userAccount!=null)
+			accountCache.remove(userAccount.id);
 	}
 
 	public static List<User> getTerminallyBannedUsers() throws SQLException{
