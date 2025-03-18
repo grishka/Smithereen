@@ -16,6 +16,7 @@ import smithereen.templates.filters.PictureForPhotoFilter;
 import smithereen.templates.filters.PostprocessHTMLFilter;
 import smithereen.templates.filters.StripHTMLFilter;
 import smithereen.templates.filters.TruncateTextFilter;
+import smithereen.templates.functions.AddExtraScriptFunction;
 import smithereen.templates.functions.AddQueryParamsFunction;
 import smithereen.templates.functions.ArraysEqualFunction;
 import smithereen.templates.functions.DescribeAttachmentsFunction;
@@ -51,6 +52,7 @@ public class SmithereenExtension extends AbstractExtension{
 		f.put("arraysEqual", new ArraysEqualFunction());
 		f.put("renderPhotoGrid", new RenderPhotoGridFunction());
 		f.put("inlineTextResource", new InlineTextResourceFunction());
+		f.put("addScriptFile", new AddExtraScriptFunction());
 		return f;
 	}
 

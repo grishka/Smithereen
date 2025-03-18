@@ -1,6 +1,7 @@
 var submittingForm:HTMLFormElement=null;
 var numberFormatter=window.Intl && Intl.NumberFormat ? new Intl.NumberFormat(userConfig.locale) : null;
 var currentAlXHR:XMLHttpRequest;
+var loadedExtraScripts:any={};
 
 function ge<E extends HTMLElement>(id:string):E{
 	return document.getElementById(id) as E;
@@ -1627,24 +1628,59 @@ function ajaxNavigate(url:string, addToHistory:boolean){
 	setGlobalLoading(true);
 	xhr.onload=(ev)=>{
 		currentAlXHR=null;
-		setGlobalLoading(false);
 		if(!xhr.response){
+			setGlobalLoading(false);
 			window.location.href=url;
 			return;
 		}
-		LayerManager.getInstance().dismissEverything();
-		LayerManager.getMediaInstance().dismissEverything();
-		if(addToHistory){
-			window.history.pushState({type: "al"}, "", xhr.response.url || url);
-			document.documentElement.scrollTop=0;
+		var done=()=>{
+			setGlobalLoading(false);
+			LayerManager.getInstance().dismissEverything();
+			LayerManager.getMediaInstance().dismissEverything();
+			if(addToHistory){
+				window.history.pushState({type: "al"}, "", xhr.response.url || url);
+				document.documentElement.scrollTop=0;
+			}
+			ge("pageContent").innerHTML=xhr.response.h;
+			document.title=xhr.response.t;
+			if(xhr.response.c){
+				setMenuCounters(xhr.response.c);
+			}
+			eval(xhr.response.s);
+			initDynamicControls();
+		};
+		var extraScripts=xhr.response.sc;
+		if(extraScripts){
+			var needLoad=[];
+			for(var name in extraScripts){
+				if(!loadedExtraScripts[name]){
+					needLoad.push({name: name, hash: extraScripts[name]});
+				}else if(loadedExtraScripts[name]!=extraScripts[name]){ // Hashes differ. Force a full page reload.
+					setGlobalLoading(false);
+					window.location.href=url;
+					return;
+				}
+			}
+			if(needLoad.length){
+				var scriptsRemain=needLoad.length;
+				for(var script of needLoad){
+					var scriptEl=ce("script", {src: `/res/${script.name}?${script.hash}`, onload: ()=>{
+						loadedExtraScripts[script.name]=script.hash;
+						scriptsRemain--;
+						if(scriptsRemain==0)
+							done();
+					}, onerror: ()=>{
+						setGlobalLoading(false);
+						window.location.href=url;
+					}});
+					document.body.appendChild(scriptEl);
+				}
+			}else{
+				done();
+			}
+		}else{
+			done();
 		}
-		ge("pageContent").innerHTML=xhr.response.h;
-		document.title=xhr.response.t;
-		if(xhr.response.c){
-			setMenuCounters(xhr.response.c);
-		}
-		eval(xhr.response.s);
-		initDynamicControls();
 	};
 	xhr.onerror=(ev)=>{
 		currentAlXHR=null;

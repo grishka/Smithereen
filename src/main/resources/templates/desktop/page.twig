@@ -111,9 +111,18 @@
 	</div>
 </a>
 <script src="/res/common.js?{{ staticHashes['common.js'] }}"></script>
-{% block extraScripts %}{% endblock %}
+{% if _extraScriptFiles is not empty %}
+{% for script in _extraScriptFiles %}
+<script src="/res/{{ script.key }}?{{ script.value }}"></script>
+{% endfor %}
+{% endif %}
 {% if _bottomScripts is not empty %}
 <script>
+{% if _extraScriptFiles is not empty %}
+{% for script in _extraScriptFiles %}
+loadedExtraScripts["{{ script.key }}"]="{{ script.value }}";
+{% endfor %}
+{% endif %}
 {% block bottomScripts %}{{ _bottomScripts | raw }}{% endblock %}
 </script>
 {% endif %}

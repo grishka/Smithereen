@@ -85,6 +85,7 @@ import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
+import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.MaintenanceScheduler;
 import smithereen.util.PublicSuffixList;
@@ -974,6 +975,14 @@ public class SmithereenApplication{
 				SessionInfo info=sessionInfo(req);
 				if(info!=null && info.account!=null){
 					alResp.add("c", context(req).getNotificationsController().getUserCountersJson(info.account));
+				}
+				Set<String> extraScriptFiles=req.attribute("extraScriptFiles");
+				if(extraScriptFiles!=null){
+					JsonObjectBuilder scripts=new JsonObjectBuilder();
+					for(String name:extraScriptFiles){
+						scripts.add(name, Templates.staticHashes.get(name));
+					}
+					alResp.add("sc", scripts);
 				}
 				resp.header("Content-Type", "application/json");
 				gson.toJson(alResp.build(), writer);

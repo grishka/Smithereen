@@ -50,7 +50,7 @@ public class Templates{
 	private static final PebbleEngine desktopEngine=makeEngineInstance("desktop", "common");
 	private static final PebbleEngine mobileEngine=makeEngineInstance("mobile", "common");
 	private static final PebbleEngine popupEngine=makeEngineInstance("popup");
-	private static final Map<String, String> staticHashes=new HashMap<>();
+	public static final Map<String, String> staticHashes=new HashMap<>();
 
 	private static final Logger LOG=LoggerFactory.getLogger(Templates.class);
 
@@ -171,7 +171,8 @@ public class Templates{
 				.with("serverVersion", BuildInfo.VERSION)
 				.with("langName", lang.name)
 				.with("isMobile", req.attribute("mobile")!=null)
-				.with("isAjax", Utils.isAjax(req));
+				.with("isAjax", Utils.isAjax(req))
+				.with("_request", req);
 	}
 
 	public static PebbleTemplate getTemplate(Request req, String name){
