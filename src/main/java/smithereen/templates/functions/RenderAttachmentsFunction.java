@@ -10,6 +10,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -213,9 +214,12 @@ public class RenderAttachmentsFunction implements Function{
 		if(viewModels.isEmpty()) return;
 		PebbleTemplate template=Templates.getTemplate("post_audio_attachment_list");
 		StringWriter writer=new StringWriter();
-		boolean isLayer=Boolean.TRUE.equals(evaluationContext.getVariable("isPostInLayer"));
+		var context=new HashMap<String, Object>();
+		context.put("audios", viewModels);
+		context.put("randomID", evaluationContext.getVariable("randomID"));
+		context.put("isPostInLayer", evaluationContext.getVariable("isPostInLayer"));
 		try{
-			template.evaluate(writer, Map.of("audios", viewModels, "randomID", evaluationContext.getVariable("randomID"), "isPostInLayer", isLayer), evaluationContext.getLocale());
+			template.evaluate(writer, context, evaluationContext.getLocale());
 		}catch(IOException e){
 			log.error("Failure while evaluating template", e);
 		}
