@@ -1765,7 +1765,7 @@ function getXY(obj:HTMLElement, forFixedElement?:boolean):[number, number]{
 		do{
 			left+=obj.offsetLeft;
 			top+=obj.offsetTop;
-			const pos=obj.style.position;
+			const pos=obj.style.position || getComputedStyle(obj).position;
 			if(pos=='fixed' || pos=='absolute' || pos=='relative'){
 				left-=obj.scrollLeft;
 				top-=obj.scrollTop;
