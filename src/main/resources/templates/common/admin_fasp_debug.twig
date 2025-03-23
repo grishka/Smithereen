@@ -1,0 +1,28 @@
+{# @pebvariable name="items" type="smithereen.model.fasp.FASPDebugCallback[]" #}
+{% extends "page" %}
+{% block content %}
+<div class="singleColumn">
+	<form action="/settings/admin/fasp/{{ provider.id }}/capabilities/callback/send?csrf={{ csrf }}" method="post" data-ajax><input type="submit" value="{{ L('admin_fasp_debug_send') }}"/></form>
+	<h3 class="marginBefore">{{ L('admin_fasp_debug_log') }}</h3>
+	<table class="dataTable wideTable marginBefore">
+		<tr class="tableHeader">
+			<th>{{ L('ip_address') }}</th>
+			<th>{{ L('admin_fasp_debug_timestamp') }}</th>
+			<th width="50%">{{ L('admin_fasp_debug_request_body') }}</th>
+		</tr>
+		{% for callback in items %}
+		<tr>
+			<td>{{ callback.ip.hostAddress }}</td>
+			<td>{{ LD(callback.receivedAt, format='fullyAbsoluteWithSeconds') }}</td>
+			<td>{{ callback.body }}</td>
+		</tr>
+		{% else %}
+		<tr>
+			<td colspan="3"><div class="emptyState">{{ L('admin_fasp_debug_log_empty') }}</div></td>
+		</tr>
+		{% endfor %}
+	</table>
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}
+

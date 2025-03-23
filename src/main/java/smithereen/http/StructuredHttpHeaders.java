@@ -555,7 +555,25 @@ public class StructuredHttpHeaders{
 
 	// endregion
 
-	public record Item(BareItem item, Map<String, BareItem> parameters) implements ItemOrInnerList{}
+	public record Item(BareItem item, Map<String, BareItem> parameters) implements ItemOrInnerList{
+		public static Item of(Object value){
+			return new Item(BareItem.of(value), Map.of());
+		}
+
+		static Item ofDisplayString(String value){
+			return new Item(new BareItem.DisplayStringItem(value), Map.of());
+		}
+
+		static Item ofToken(String value){
+			return new Item(new BareItem.TokenItem(value), Map.of());
+		}
+
+		public Item withParam(String key, Object value){
+			Map<String, BareItem> params=parameters.isEmpty() ? new LinkedHashMap<>() : parameters;
+			params.put(key, BareItem.of(value));
+			return parameters.isEmpty() ? new Item(item, params) : this;
+		}
+	}
 
 	public sealed interface ItemOrInnerList{}
 
@@ -570,6 +588,18 @@ public class StructuredHttpHeaders{
 
 		public InnerList(@NotNull Collection<? extends Item> c){
 			super(c);
+		}
+
+		public InnerList(@NotNull Collection<? extends Item> c, Map<String, BareItem> parameters){
+			super(c);
+			this.parameters=parameters;
+		}
+
+		public InnerList withParam(String key, Object value){
+			if(parameters==null || parameters.isEmpty())
+				parameters=new LinkedHashMap<>();
+			parameters.put(key, BareItem.of(value));
+			return this;
 		}
 	}
 
@@ -616,6 +646,21 @@ public class StructuredHttpHeaders{
 
 		static BareItem ofDate(Instant value){
 			return new DateItem(value);
+		}
+
+		static BareItem of(Object value){
+			return switch(value){
+				case BareItem bi -> bi;
+				case Integer i -> ofInteger(i);
+				case Long l -> ofInteger(l);
+				case Float f -> ofDecimal(f);
+				case Double d -> ofDecimal(d);
+				case String s -> ofString(s);
+				case byte[] ba -> ofByteSequence(ba);
+				case Boolean b -> ofBoolean(b);
+				case Instant i -> ofDate(i);
+				default -> throw new IllegalArgumentException("Unexpected object type "+value.getClass());
+			};
 		}
 	}
 

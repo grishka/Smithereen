@@ -39,6 +39,7 @@ import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.InaccessibleProfileException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UnauthorizedRequestException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.UserErrorException;
@@ -54,8 +55,10 @@ import smithereen.model.UserBanStatus;
 import smithereen.model.UserPresence;
 import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.fasp.FASPCapability;
 import smithereen.routes.ActivityPubRoutes;
-import smithereen.routes.ApiRoutes;
+import smithereen.routes.FaspApiRoutes;
+import smithereen.routes.MastodonApiRoutes;
 import smithereen.routes.BookmarksRoutes;
 import smithereen.routes.CommentsRoutes;
 import smithereen.routes.FriendsRoutes;
@@ -68,6 +71,7 @@ import smithereen.routes.PhotosRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
+import smithereen.routes.SettingsAdminFaspRoutes;
 import smithereen.routes.SettingsAdminRoutes;
 import smithereen.routes.SettingsRoutes;
 import smithereen.routes.SystemRoutes;
@@ -434,6 +438,23 @@ public class SmithereenApplication{
 					path("/:id", ()->{
 						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::confirmDeleteInvite);
 						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::deleteInvite);
+					});
+				});
+				path("/fasp", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::activeFasps);
+					getRequiringPermission("/requests", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::faspRequests);
+					path("/:id", ()->{
+						getRequiringPermission("/confirm", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::confirmFaspRegistration);
+						postRequiringPermissionWithCSRF("/confirm", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::doConfirmFaspRegistration);
+						getRequiringPermissionWithCSRF("/reject", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::rejectFaspRegistration);
+						getRequiringPermission("/capabilities", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::faspCapabilities);
+						postRequiringPermissionWithCSRF("/setCapabilities", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::setFaspCapabilities);
+						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::confirmDeleteFasp);
+						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::deleteFasp);
+						path("/capabilities", ()->{
+							getRequiringPermission("/callback", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::faspDebugCallbackLog);
+							postRequiringPermissionWithCSRF("/callback/send", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::faspDebugCallback);
+						});
 					});
 				});
 			});
@@ -806,12 +827,16 @@ public class SmithereenApplication{
 			postWithCSRF("/albums/create", PhotosRoutes::createAlbum);
 		});
 
-		path("/api/v1", ()->{
-			getApi("/instance", ApiRoutes::instance);
-			getApi("/instance/peers", ApiRoutes::instancePeers);
+		path("/api", ()->{
+			path("/v1", ()->{ // Mastodon API compatibility for crawlers
+				getApi("/instance", MastodonApiRoutes::instance);
+				getApi("/instance/peers", MastodonApiRoutes::instancePeers);
 
-			before("/*", (req, resp)->{
-				resp.type("application/json");
+				before("/*", (req, resp)->resp.type("application/json"));
+			});
+			path("/fasp", ()->{
+				post("/registration", FaspApiRoutes::registration);
+				postFaspAPI("/debug/v0/callback/responses", FASPCapability.DEBUG, FaspApiRoutes::debugCallback);
 			});
 		});
 
@@ -857,12 +882,18 @@ public class SmithereenApplication{
 			resp.body(wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
 		});
 		exception(UserErrorException.class, (x, req, resp)->{
-			resp.body(wrapErrorString(req, resp, x.getMessage(), x.langArgs));
+			resp.body(wrapErrorString(req, resp, x.getMessage(), x.langArgs, x.includeCauseMessage && x.getCause()!=null ? x.getCause().getMessage() : null));
 		});
 		exception(InaccessibleProfileException.class, (x, req, resp)->{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("hidden_profile", req);
 			model.with("user", x.user);
 			resp.body(model.renderToString());
+		});
+		exception(UnauthorizedRequestException.class, (x, req, resp)->{
+			if(Config.DEBUG)
+				LOG.warn("401: {}", req.pathInfo(), x);
+			resp.status(401);
+			resp.body(x.getMessage()==null ? "Unauthorized" : x.getMessage());
 		});
 		exception(Exception.class, (exception, req, res) -> {
 			String path=req.raw().getPathInfo();

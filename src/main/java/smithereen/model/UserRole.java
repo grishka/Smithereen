@@ -40,7 +40,8 @@ public record UserRole(int id, String name, EnumSet<Permission> permissions){
 		MANAGE_ANNOUNCEMENTS,
 		DELETE_USERS_IMMEDIATE,
 		MANAGE_GROUPS,
-		VISIBLE_IN_STAFF;
+		VISIBLE_IN_STAFF,
+		MANAGE_FASPS;
 
 		public String getLangKey(){
 			return switch(this){
@@ -59,6 +60,7 @@ public record UserRole(int id, String name, EnumSet<Permission> permissions){
 				case DELETE_USERS_IMMEDIATE -> "admin_permission_delete_users";
 				case MANAGE_GROUPS -> "admin_permission_manage_groups";
 				case VISIBLE_IN_STAFF -> "admin_visible_in_staff";
+				case MANAGE_FASPS -> "admin_permission_manage_fasps";
 			};
 		}
 
@@ -79,6 +81,7 @@ public record UserRole(int id, String name, EnumSet<Permission> permissions){
 				case DELETE_USERS_IMMEDIATE -> "admin_permission_descr_delete_users";
 				case MANAGE_GROUPS -> "admin_permission_descr_manage_groups";
 				case VISIBLE_IN_STAFF -> "admin_visible_in_staff_descr";
+				case MANAGE_FASPS -> "admin_permission_manage_fasps_descr";
 			};
 		}
 

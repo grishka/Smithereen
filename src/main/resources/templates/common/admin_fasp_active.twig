@@ -1,0 +1,54 @@
+{# @pebvariable name="fasps" type="smithereen.model.fasp.FASPProvider[]" #}
+{% extends "page" %}
+{% block content %}
+{% include "admin_tabbar" with {'tab': 'fasp'} %}
+{% include "admin_fasp_tabbar" with {'secondaryTab': 'active'} %}
+<div class="gray borderBottom singleColumn textByItself">
+<p>{{ L('admin_fasp_explanation') }}</p>
+<p><a href="https://fediscovery.org" target="_blank">{{ L('admin_fasp_learn_more', {'site': "fediscovery.org"}) }} &raquo;</a></p>
+</div>
+{% if resultMessage is not empty %}<div class="settingsMessage">{{ resultMessage | raw }}</div>{% endif %}
+{% if not isMobile %}
+<div class="summaryWrap"><div class="summary">{{ L('admin_fasp_X_services_summary', {'count': fasps | length}) }}</div></div>
+{% endif %}
+<div class="singleColumn">
+{% for fasp in fasps %}
+<div class="clickableListItem adminInfoGrid">
+	<div class="spanAll">
+		<span class="accent"><b>{{ fasp.name }}</b></span>
+		<span class="grayText">[ {{ fasp.baseUrl.host }} ]</span>
+	</div>
+	<div class="spanAll">
+	{% if fasp.signInUrl is not null %}
+		<a href="{{ fasp.signInUrl }}" target="_blank">{{ L('admin_fasp_remote_settings_link') }}</a> |
+	{% endif %}
+		<a href="/settings/admin/fasp/{{ fasp.id }}/confirmDelete" data-confirm-title="{{ L('admin_fasp_delete_title') }}" data-confirm-message="{{ L('admin_fasp_confirm_delete', {'host': fasp.baseUrl.host}) }}" data-confirm-action="/settings/admin/fasp/{{ fasp.id }}/delete">{{ L('delete') }}</a>
+	</div>
+	<div class="spanAll">
+		<span class="grayText">{{ L('admin_fasp_capabilities') }}:</span>
+		{% for capability in fasp.capabilities %}
+		<span class="friendListLabel l{{ loop.index%8 }}">{{ L(capability.key.langKey) }}</span>
+		{% else %}
+		<i>{{ L('admin_fasp_capabilities_unknown') }}</i>
+		{% endfor %}
+		{% if fasp.unknownCapabilities is not empty %}<i><nobr>+ {{ L('admin_fasp_X_unsupported_capabilities_short', {'count': fasp.unknownCapabilities | length}) }}</nobr></i>{% endif %}
+		(<a href="/settings/admin/fasp/{{ fasp.id }}/capabilities" data-ajax-box>{{ L('admin_fasp_change_capabilities') }}</a>)
+	</div>
+	{% set capabilitiesWithSettings=[] %}
+	{% for capability in fasp.enabledCapabilities.keySet() %}
+	{% if capability.hasSettingsUI %}{% set _=capabilitiesWithSettings.add(capability) %}{% endif %}
+	{% endfor %}
+	{% if capabilitiesWithSettings is not empty %}
+	<div class="spanAll">
+		<span class="grayText">{{ L('settings') }}:</span>
+		{% for capability in capabilitiesWithSettings %}
+		<a href="/settings/admin/fasp/{{ fasp.id }}/capabilities/{{ capability.id }}">{{ L(capability.langKey) }}</a>{% if not loop.last %}, {% endif %}
+		{% endfor %}
+	</div>
+	{% endif %}
+</div>
+{% else %}
+<div class="emptyState">{{ L('admin_fasp_empty') }}</div>
+{% endfor %}
+</div>
+{% endblock %}

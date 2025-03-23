@@ -9,6 +9,9 @@
 	{% if userPermissions.hasPermission('VIEW_SERVER_AUDIT_LOG') %}
 	<a href="/settings/admin/auditLog" class="{% if tab=='auditLog' %}selected{% endif %}">{{ L('admin_audit_log') }}</a>
 	{% endif %}
+	{% if userPermissions.hasPermission('MANAGE_FASPS') %}
+	<a href="/settings/admin/fasp" class="{% if tab=='fasp' %}selected{% endif %}">{{ L('admin_fasps') }}{% if unconfirmedFaspRequests>0 %} (<b>{{ unconfirmedFaspRequests | numberformat }}</b>){% endif %}</a>
+	{% endif %}
 	{% if userPermissions.hasPermission('MANAGE_SERVER_SETTINGS') %}
 	<a href="/settings/admin/other" class="{% if tab=='other' %}selected{% endif %}">{{L('admin_other')}}</a>
 	{% endif %}

@@ -1056,7 +1056,7 @@ input[type=date], input[type=time]{
 	outline: none;
 }
 
-input[type=submit], input[type=button], button, .button, .button:link, .button:visited{
+input[type=submit], input[type=button], button, .button{
 	&.loading{
 		color: transparent;
 		text-shadow: none;
@@ -1089,6 +1089,7 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 		color: $normalLink;
 		box-shadow: none;
 		border: none;
+		line-height: 25px;
 		&:hover:not(.loading){
 			background: $blockBackground;
 		}
@@ -2255,7 +2256,7 @@ textarea{
 	padding: 0 10px;
 }
 
-.boxContent .emptyState, .mediaGridW .emptyState, .layerWithTitle .emptyState{
+.boxContent .emptyState, .mediaGridW .emptyState, .layerWithTitle .emptyState, .dataTable .emptyState{
 	height: auto;
 	padding: 50px 0;
 	border: none;
@@ -3414,17 +3415,18 @@ h2, h3, h4{
 	}
 }
 
-a.clickableListItem{
+.clickableListItem{
 	border-bottom: solid 1px $wallPostSeparator;
 	padding: 10px;
 	color: $text;
-	&:hover{
-		text-decoration: none;
-		background-color: color($blockBackground a(30%));
-	}
 	&:last-child{
 		border-bottom: none;
 	}
+}
+
+a.clickableListItem:hover{
+	text-decoration: none;
+	background-color: color($blockBackground a(30%));
 }
 
 .aBunchOfButtons{
