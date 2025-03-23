@@ -3,6 +3,7 @@ package smithereen;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.controllers.BookmarksController;
 import smithereen.controllers.CommentsController;
+import smithereen.controllers.FASPController;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.MailController;
@@ -36,6 +37,7 @@ public class ApplicationContext{
 	private final BookmarksController bookmarksController;
 	private final PhotosController photosController;
 	private final CommentsController commentsController;
+	private final FASPController faspController;
 
 	public ApplicationContext(){
 		wallController=new WallController(this);
@@ -55,6 +57,7 @@ public class ApplicationContext{
 		bookmarksController=new BookmarksController(this);
 		photosController=new PhotosController(this);
 		commentsController=new CommentsController(this);
+		faspController=new FASPController(this);
 	}
 
 	public WallController getWallController(){
@@ -123,5 +126,9 @@ public class ApplicationContext{
 
 	public CommentsController getCommentsController(){
 		return commentsController;
+	}
+
+	public FASPController getFaspController(){
+		return faspController;
 	}
 }

@@ -245,11 +245,11 @@ public class Lang{
 		return get("date_time_format", Map.of("date", new SafeString(day), "time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())));
 	}
 
-	public String formatDateFullyAbsolute(Instant date, ZoneId timeZone){
+	public String formatDateFullyAbsolute(Instant date, ZoneId timeZone, boolean includeSeconds){
 		ZonedDateTime dt=date.atZone(timeZone);
 		return get("date_time_format", Map.of(
 				"date", get("date_format_other_year", Map.of("day", dt.getDayOfMonth(), "month", get("month_short", Map.of("month", dt.getMonthValue())), "year", dt.getYear())),
-				"time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())
+				"time", includeSeconds ? String.format(locale, "%d:%02d:%02d", dt.getHour(), dt.getMinute(), dt.getSecond()) : String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())
 		));
 	}
 

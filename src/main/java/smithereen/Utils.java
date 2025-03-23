@@ -194,12 +194,14 @@ public class Utils{
 	}
 
 	public static String wrapErrorString(Request req, Response resp, String errorKey){
-		return wrapErrorString(req, resp, errorKey, null);
+		return wrapErrorString(req, resp, errorKey, null, null);
 	}
 
-	public static String wrapErrorString(Request req, Response resp, String errorKey, Map<String, Object> formatArgs){
+	public static String wrapErrorString(Request req, Response resp, String errorKey, Map<String, Object> formatArgs, String msgExtra){
 		Lang l=lang(req);
 		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		if(msgExtra!=null)
+			msg+="<br/><br/>"+TextProcessor.escapeHTML(msgExtra);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("close")).json();
 		}else if(isActivityPub(req)){

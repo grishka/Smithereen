@@ -1,0 +1,14 @@
+{% for capability in provider.capabilities %}
+<div class="radioButtonWrap">
+	<input type="checkbox" name="cap_{{ capability.key }}" id="cap_{{ capability.key }}" class="flL"{% if selectAll or provider.enabledCapabilities contains capability.key %} checked{% endif %}/>
+	<label for="cap_{{ capability.key }}">
+		{{ L(capability.key.langKey) }}
+		<div class="grayText">{{ L(capability.key.langKey+"_descr") }}</div>
+    </label>
+</div>
+{% endfor %}
+{% if provider.unknownCapabilities is not empty %}
+<p style="margin-bottom: 0">
+	{{ L('admin_fasp_X_unsupported_capabilities', {'count': provider.unknownCapabilities | length}) }}: {% for id in provider.unknownCapabilities %}{{ id }}{% if not loop.last %}, {% endif %}{% endfor %}
+</p>
+{% endif %}

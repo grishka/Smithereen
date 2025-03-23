@@ -88,7 +88,8 @@ public class SettingsAdminRoutes{
 				.with("serverAdminEmail", Config.serverAdminEmail)
 				.with("signupMode", Config.signupMode)
 				.with("signupConfirmEmail", Config.signupConfirmEmail)
-				.with("signupEnableCaptcha", Config.signupFormUseCaptcha);
+				.with("signupEnableCaptcha", Config.signupFormUseCaptcha)
+				.with("unconfirmedFaspRequests", ctx.getFaspController().getUnconfirmedProviderCount());
 		String msg=req.session().attribute("admin.serverInfoMessage");
 		if(StringUtils.isNotEmpty(msg)){
 			req.session().removeAttribute("admin.serverInfoMessage");
@@ -257,6 +258,7 @@ public class SettingsAdminRoutes{
 				.with("smtpUser", Config.smtpUsername)
 				.with("smtpPassword", Config.smtpPassword)
 				.with("smtpUseTLS", Config.smtpUseTLS);
+		model.with("unconfirmedFaspRequests", ctx.getFaspController().getUnconfirmedProviderCount());
 		String msg=req.session().attribute("admin.emailTestMessage");
 		if(StringUtils.isNotEmpty(msg)){
 			req.session().removeAttribute("admin.emailTestMessage");
@@ -764,7 +766,8 @@ public class SettingsAdminRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_roles", req)
 				.pageTitle(lang(req).get("admin_roles"))
 				.with("toolbarTitle", lang(req).get("menu_admin"))
-				.with("roles", roles);
+				.with("roles", roles)
+				.with("unconfirmedFaspRequests", ctx.getFaspController().getUnconfirmedProviderCount());
 		String msg=req.session().attribute("adminRolesMessage");
 		if(StringUtils.isNotEmpty(msg)){
 			req.session().removeAttribute("adminRolesMessage");
@@ -1089,6 +1092,7 @@ public class SettingsAdminRoutes{
 		}).toList();
 		model.pageTitle(lang(req).get("admin_audit_log")).with("toolbarTitle", lang(req).get("menu_admin")).with("users", users).with("groups", groups);
 		model.paginate(new PaginatedList<>(log, viewModels));
+		model.with("unconfirmedFaspRequests", ctx.getFaspController().getUnconfirmedProviderCount());
 		return model;
 	}
 

@@ -1,0 +1,35 @@
+{# @pebvariable name="fasps" type="smithereen.model.fasp.FASPProvider[]" #}
+{% extends "page" %}
+{% block content %}
+{% include "admin_tabbar" with {'tab': 'fasp'} %}
+{% include "admin_fasp_tabbar" with {'secondaryTab': 'requests'} %}
+{% if not isMobile %}
+<div class="summaryWrap"><div class="summary">{{ L('admin_fasp_X_requests_summary', {'count': fasps | length}) }}</div></div>
+{% endif %}
+<div>
+{% for fasp in fasps %}
+<div class="clickableListItem adminInfoGrid">
+	<div class="spanAll">
+		<span class="accent"><b>{{ fasp.name }}</b></span>
+		<span class="grayText">[ {{ fasp.baseUrl.host }} ]</span>
+	</div>
+	<div class="spanAll"><span class="grayText">{{ L('admin_fasp_request_time') }}:</span> {{ LD(fasp.createdAt) }}</div>
+	<div class="spanAll">
+		<span class="grayText">{{ L('admin_fasp_capabilities') }}:</span>
+		{% for capability in fasp.capabilities %}
+		<span class="friendListLabel l{{ loop.index%8 }}">{{ L(capability.key.langKey) }}</span>
+		{% else %}
+		<i>{{ L('admin_fasp_capabilities_unknown') }}</i>
+		{% endfor %}
+		{% if fasp.unknownCapabilities is not empty %}<i><nobr>+ {{ L('admin_fasp_X_unsupported_capabilities_short', {'count': fasp.unknownCapabilities | length}) }}</nobr></i>{% endif %}
+	</div>
+	<div class="spanAll" id="faspRequestButton{{ fasp.id }}">
+		<a href="/settings/admin/fasp/{{ fasp.id }}/confirm" class="button" data-ajax-box>{{ L('admin_fasp_connect') }}</a>
+		<a href="/settings/admin/fasp/{{ fasp.id }}/reject?csrf={{ csrf }}" class="button tertiary" data-ajax>{{ L('admin_fasp_reject') }}</a>
+	</div>
+</div>
+{% else %}
+<div class="singleColumn"><div class="emptyState">{{ L('admin_fasp_requests_empty') }}</div></div>
+{% endfor %}
+</div>
+{% endblock %}

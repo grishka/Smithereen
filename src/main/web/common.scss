@@ -271,20 +271,24 @@ textarea{
 	blockquote:last-child{
 		margin-bottom: 0;
 	}
-	code{
-		background: $wallCommentSeparator;
-		padding: 2px 4px;
-		border-radius: 2px;
+}
+
+code{
+	background: $wallCommentSeparator;
+	padding: 2px 4px;
+	border-radius: 2px;
+	&.standaloneCodeBlock{
+		padding: $mediumPadding;
 	}
-	pre{
-		tab-size: 4;
-		background: $wallCommentSeparator;
-		border-radius: 2px;
-	}
-	pre>code{
-		background: none;
-		display: block;
-	}
+}
+pre{
+	tab-size: 4;
+	background: $wallCommentSeparator;
+	border-radius: 2px;
+}
+pre>code{
+	background: none;
+	display: block;
 }
 
 .postContent{

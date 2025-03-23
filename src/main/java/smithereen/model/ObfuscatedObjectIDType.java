@@ -5,5 +5,6 @@ public enum ObfuscatedObjectIDType{
 	MEDIA_FILE,
 	PHOTO_ALBUM,
 	PHOTO,
-	COMMENT
+	COMMENT,
+	FASP_PROVIDER
 }

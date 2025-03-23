@@ -31,7 +31,10 @@ public class LangDateFunction implements Function{
 						return lang.formatTimeOrDay(instant, timeZone);
 					}
 					case "fullyAbsolute" -> {
-						return lang.formatDateFullyAbsolute(instant, timeZone);
+						return lang.formatDateFullyAbsolute(instant, timeZone, false);
+					}
+					case "fullyAbsoluteWithSeconds" -> {
+						return lang.formatDateFullyAbsolute(instant, timeZone, true);
 					}
 				}
 			}

@@ -4,6 +4,7 @@ import java.util.Map;
 
 public class UserErrorException extends RuntimeException{
 	public Map<String, Object> langArgs;
+	public boolean includeCauseMessage;
 
 	public UserErrorException(){
 	}
@@ -23,5 +24,10 @@ public class UserErrorException extends RuntimeException{
 
 	public UserErrorException(Throwable cause){
 		super(cause);
+	}
+
+	public UserErrorException withCauseMessage(){
+		includeCauseMessage=true;
+		return this;
 	}
 }
