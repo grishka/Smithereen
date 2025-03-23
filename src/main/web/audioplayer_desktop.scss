@@ -1,0 +1,98 @@
+@import "audioplayer_common.scss";
+
+.audioAttachmentList{
+	padding: 6px 0 0 4px;
+	margin-left: -4px;
+	width: auto !important;
+}
+
+.audio{
+	.area{
+		&:hover{
+			background-color: $audioAreaOnHover;
+		}
+		&:hover .duration{
+			color: $audioDurationOnHover;
+		}
+	}
+	.playBtnWrap{
+		padding: 6px;
+		#content &{
+			/* For embedded posts */
+			padding-left: 16px;
+		}
+	}
+	.play{
+		cursor: pointer;
+		width: 16px;
+		height: 16px;
+		background: svg-inline(audioPlay) no-repeat 0 0;
+		&.playing{
+			background: svg-inline(audioPause) no-repeat 0 0;
+		}
+		@media (hover: none) {
+			#content &{
+				/* To make up for a larger font size in embedded posts on mobile devices */
+				width: 19px;
+				height: 19px;
+				background-size: 19px 19px;
+			}
+		}
+	}
+	.titleWrap{
+		float: left;
+		padding: 7px 0 6px;
+		white-space: nowrap;
+		width: var(--audio-title-width, 260px);
+		b{
+			display: inline-block;
+			max-width: calc(var(--audio-title-width, 260px) * 0.7);
+		}
+		.postLayer .post &{
+			--audio-title-width: 530px;
+		}
+		.postLayer .post.comment &{
+			--audio-title-width: 470px;
+		}
+		.post &{
+			--audio-title-width: 470px;
+		}
+		.post.comment &{
+			--audio-title-width: 430px;
+		}
+		.columnLayout:not(.expanded) .post &{
+			--audio-title-width: 260px;
+		}
+		.columnLayout:not(.expanded) .post.comment &{
+			--audio-title-width: 220px;
+		}
+		.mailMessageView &{
+			--audio-title-width: 350px;
+		}
+	}
+	.duration{
+		font-size: 0.9em;
+		padding: 8px 7px 7px 0;
+		max-width: 50px;
+	}
+	.player{
+		padding: 0 6px;
+		#content &{
+			/* For embedded posts */
+			padding-left: 16px;
+		}
+	}
+}
+
+.audioSlider{
+	width: 8px;
+	height: 8px;
+	top: -2px;
+	right: -4px;
+}
+
+.audioVolume:hover .audioSlider,
+.audioVolume.dragging .audioSlider,
+.audioProgress.dragging .audioSlider{
+	display: block;
+}

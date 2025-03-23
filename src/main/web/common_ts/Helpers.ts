@@ -1756,3 +1756,27 @@ function hideHeaderBack(){
 		search.showAnimated();
 }
 
+function getXY(obj:HTMLElement, forFixedElement?:boolean):[number, number]{
+	if(!obj) return [0, 0];
+	let left=0, top=0;
+	const body=document.body;
+	const htmlNode=document.documentElement;
+	if(obj.offsetParent){
+		do{
+			left+=obj.offsetLeft;
+			top+=obj.offsetTop;
+			const pos=obj.style.position || getComputedStyle(obj).position;
+			if(pos=='fixed' || pos=='absolute' || pos=='relative'){
+				left-=obj.scrollLeft;
+				top-=obj.scrollTop;
+				if(pos=='fixed' && !forFixedElement){
+					left+=(obj.offsetParent || {}).scrollLeft || body.scrollLeft || htmlNode.scrollLeft;
+					top+=(obj.offsetParent || {}).scrollTop || body.scrollTop || htmlNode.scrollTop;
+				}
+			}
+			obj=obj.offsetParent as HTMLElement;
+		}while(obj);
+	}
+	return [left, top];
+}
+

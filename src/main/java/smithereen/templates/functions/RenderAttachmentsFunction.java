@@ -1,25 +1,33 @@
 package smithereen.templates.functions;
 
-import io.pebbletemplates.pebble.extension.Function;
-import io.pebbletemplates.pebble.extension.escaper.SafeString;
-import io.pebbletemplates.pebble.template.EvaluationContext;
-import io.pebbletemplates.pebble.template.PebbleTemplate;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.unbescape.html.HtmlEscape;
 
+import java.io.IOException;
+import java.io.StringWriter;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import io.pebbletemplates.pebble.extension.Function;
+import io.pebbletemplates.pebble.extension.escaper.SafeString;
+import io.pebbletemplates.pebble.template.EvaluationContext;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.lang.Lang;
 import smithereen.model.AttachmentHostContentObject;
 import smithereen.model.Group;
+import smithereen.model.MailMessage;
+import smithereen.model.PostLikeObject;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.attachments.Attachment;
@@ -28,14 +36,17 @@ import smithereen.model.attachments.GraffitiAttachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.attachments.SizedAttachment;
 import smithereen.model.attachments.VideoAttachment;
-import smithereen.lang.Lang;
 import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.model.viewmodel.AudioAttachmentViewModel;
 import smithereen.templates.MediaLayoutHelper;
+import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
 import smithereen.util.BlurHash;
 import spark.utils.StringUtils;
 
 public class RenderAttachmentsFunction implements Function{
+
+	private static final Logger log=LoggerFactory.getLogger(RenderAttachmentsFunction.class);
 
 	@Override
 	public Object execute(Map<String, Object> args, PebbleTemplate self, EvaluationContext evaluationContext, int lineNumber){
@@ -114,14 +125,10 @@ public class RenderAttachmentsFunction implements Function{
 
 		// Now do non-sized attachments
 		for(Attachment att:attachments){
-			if(att instanceof SizedAttachment)
-				continue;
-			if(att instanceof VideoAttachment va){
+			if(att instanceof VideoAttachment va)
 				lines.add("<video src=\""+HtmlEscape.escapeHtml4Xml(va.url.toString())+"\" controls playsinline></video>");
-			}else if(att instanceof AudioAttachment aa){
-				lines.add("<audio src=\""+HtmlEscape.escapeHtml4Xml(aa.url.toString())+"\" preload=\"none\" controls></audio>");
-			}
 		}
+		renderAudioAttachments(attachments, obj, lines, evaluationContext);
 
 		if(!lines.isEmpty()){
 			lines.add("</div>");
@@ -176,4 +183,46 @@ public class RenderAttachmentsFunction implements Function{
 		}
 	}
 
+	private void renderAudioAttachments(List<Attachment> attachments, AttachmentHostContentObject obj, List<String> lines, EvaluationContext evaluationContext){
+		Lang l=Lang.get(evaluationContext.getLocale());
+
+		int audioIndex=0; // TODO: It would be better use absolute IDs for audio objects.
+		//  If we implement storing information about audios in the database,
+		//  we can use the entry's primary key for that.
+		List<AudioAttachmentViewModel> viewModels=new ArrayList<>();
+		for(Attachment att: attachments){
+			if(att instanceof AudioAttachment audio){
+				long hostID;
+				switch(obj){
+					case PostLikeObject p -> hostID=p.getObjectID();
+					case MailMessage m -> hostID=m.id;
+				}
+				Duration duration=null; // TODO: Try to parse it from the activity object or from ID3 tags
+				String artist=l.get("audio_unknown_artist"); // TODO: Try to parse it from the activity object or from ID3 tags
+				String title=StringUtils.isNotBlank(att.description) ? att.description : l.get("audio_unknown_title"); // TODO: Try to parse it from the activity object or from ID3 tags
+				AudioAttachmentViewModel viewModel=new AudioAttachmentViewModel(
+						hostID+"_"+audioIndex++,
+						l.formatDuration(duration),
+						duration==null ? -1 : duration.getSeconds(),
+						artist,
+						title,
+						audio.url
+				);
+				viewModels.add(viewModel);
+			}
+		}
+		if(viewModels.isEmpty()) return;
+		PebbleTemplate template=Templates.getTemplate("post_audio_attachment_list");
+		StringWriter writer=new StringWriter();
+		var context=new HashMap<String, Object>();
+		context.put("audios", viewModels);
+		context.put("randomID", evaluationContext.getVariable("randomID"));
+		context.put("isPostInLayer", evaluationContext.getVariable("isPostInLayer"));
+		try{
+			template.evaluate(writer, context, evaluationContext.getLocale());
+		}catch(IOException e){
+			log.error("Failure while evaluating template", e);
+		}
+		lines.add(writer.toString());
+	}
 }

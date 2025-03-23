@@ -59,6 +59,12 @@ class PostLayer extends BaseMediaViewerLayer{
 				commentEl.scrollIntoView();
 			}
 		}
+		AudioPlayer.getInstance().registerPlayerContainer(this.randomID, true);
+	}
+
+	onHidden(){
+		AudioPlayer.getInstance().deregisterPlayerContainer(this.randomID);
+		super.onHidden();
 	}
 }
 

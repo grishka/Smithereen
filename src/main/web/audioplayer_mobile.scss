@@ -1,0 +1,56 @@
+@import "audioplayer_common.scss";
+
+.audioAttachmentList{
+	padding: 6px 0 0 6px;
+}
+
+.audio{
+	.playBtnWrap{
+		padding: 7px;
+		.mailMessageView &{
+			padding-left: 8px;
+		}
+	}
+	.play{
+		width: 22px;
+		height: 22px;
+		background: svg-inline(audioPlay) no-repeat 0 0;
+		background-size: 22px 22px;
+		&.playing{
+			background: svg-inline(audioPause) no-repeat 0 0;
+			background-size: 22px 22px;
+		}
+	}
+	.titleWrap{
+		overflow: visible;
+		padding: 9px 7px 7px 6px;
+	}
+	.duration{
+		padding: 10px 7px 7px 0;
+	}
+	.player{
+		padding: 0 7px;
+		.mailMessageView &{
+			padding-left: 8px;
+		}
+		table{
+			width: 100%;
+		}
+	}
+	&.current{
+		.area{
+			background-color: $audioAreaOnHover;
+			.duration{
+				color: $audioDurationOnHover;
+			}
+		}
+	}
+}
+
+.audioSlider{
+	width: 10px;
+	height: 10px;
+	top: -3px;
+	right: -5px;
+	display: block;
+}

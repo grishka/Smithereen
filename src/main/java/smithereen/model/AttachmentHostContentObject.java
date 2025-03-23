@@ -12,15 +12,14 @@ import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Video;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.AudioAttachment;
 import smithereen.model.attachments.GraffitiAttachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.attachments.VideoAttachment;
-import smithereen.exceptions.InternalServerErrorException;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
-import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public sealed interface AttachmentHostContentObject permits MailMessage, PostLikeObject{
@@ -82,6 +81,7 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 				if(o.url==null)
 					continue;
 				AudioAttachment att=new AudioAttachment();
+				att.description=o.name;
 				att.url=o.url;
 				result.add(att);
 			}
@@ -104,5 +104,14 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 			}
 		}
 		return null;
+	}
+
+	@SuppressWarnings("unused") // Used from a template
+	default boolean hasAudioAttachments(){
+		for(ActivityPubObject o:getAttachments()){
+			if(o instanceof Audio)
+				return true;
+		}
+		return false;
 	}
 }

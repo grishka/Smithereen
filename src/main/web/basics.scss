@@ -1,76 +1,18 @@
-$textOnAccent: #FFFFFF;
-$bg: #FFFFFF;
-$gray: #F7F7F7;
-$darkerGray: #DDDDDD;
-$textOnGray: #707070;
-$grayText: #909090;
-$text: #000;
-
-$emailBackground: #F5F5F5;
-
-$alertBackground: #F9F6E7;
-$alertBorder: #D4BC4C;
-
-/*
- * Made from VK's blue palette by converting it to LCH, applying these formulas:
- * H=(H+208)%360
- * C=C*3;
- * and converting back to RGB
- * */
-
-/* text */
-$normalLink: rgb(72, 92, 0);
-$boldHeaders: rgb(78, 112, 0);
-$auxiliaryGrey: rgb(119, 119, 119);
-$auxiliaryBlockHeader: rgb(171, 175, 114);
-
-$darkGrey: #444444;
-$sectionHeaderBorder: #CCCCCC;
-/* separators */
-$wallPostSeparator: rgb(227, 225, 204);
-$menuItemsSeparator: rgb(235, 234, 225);
-$mainHeaderSeparator: rgb(236, 235, 226);
-$wallCommentSeparator: rgb(238, 238, 238);
-/* blocks */
-$textAreaBorder: rgb(203, 204, 153);
-$blockBorderTop: rgb(223, 218, 188);
-$blockBorderBottom: rgb(228, 223, 193);
-$blockBackground: rgb(234, 232, 203);
-$blockUnderboxBackground: rgb(241, 241, 241);
-$bgGrey: rgb(247, 247, 247);
-/* button */
-$buttonGradientBottom: rgb(96, 125, 0);
-$buttonBorder: rgb(100, 137, 0);
-$buttonBorderTop: rgb(136, 159, 61);
-$buttonGradientTop: rgb(143, 159, 68);
-
-$buttonGrayBorder: #b3b3b3;
-$buttonGrayGradientTop: #fafafa;
-$buttonGrayGradientBottom: #d4d4d4;
-$buttonGrayBorderInner: #e7e7e7;
-$buttonGrayActive: #dcdcdc;
-
-/* tabs */
-$tabBackground: rgb(104, 132, 1);
-$simpleButton: rgb(92, 120, 0);
-/* header */
-$headerBorderTop: rgb(68, 107, 0);
-$headerGradientTop: rgb(76, 110, 0);
-$headerBorderBottomDark: rgb(75, 115, 0);
-$headerGradientBottom: rgb(105, 134, 0);
-$headerBorderBottomLight: rgb(118, 155, 27);
-/* icons */
-$iconColor: rgb(156, 168, 80);
-$likeIconColor: rgb(219, 216, 173);
-
-
-/*$normalLink: $headerGradientBottom;*/
+@import "palette.scss";
 
 *{
 	box-sizing: border-box;
 	overflow-wrap: break-word;
 	min-width: 0;
 	min-height: 0;
+}
+
+.flR{
+	float: right;
+}
+
+.flL{
+	float: left;
 }
 
 .ellipsize{
