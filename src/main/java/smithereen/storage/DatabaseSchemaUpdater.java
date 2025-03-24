@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=66;
+	public static final int SCHEMA_VERSION=67;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -921,6 +921,11 @@ public class DatabaseSchemaUpdater{
 						  KEY `provider_id` (`provider_id`),
 						  CONSTRAINT `fasp_debug_callbacks_ibfk_1` FOREIGN KEY (`provider_id`) REFERENCES `fasp_providers` (`id`) ON DELETE CASCADE
 						) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 67 -> {
+				conn.createStatement().execute("UPDATE `users` SET num_followers=(SELECT COUNT(*) FROM followings WHERE followee_id=id)");
+				conn.createStatement().execute("UPDATE `users` SET num_following=(SELECT COUNT(*) FROM followings WHERE follower_id=id)");
+				conn.createStatement().execute("UPDATE `users` SET num_friends=(SELECT COUNT(*) FROM followings WHERE follower_id=id AND mutual=1)");
 			}
 		}
 	}

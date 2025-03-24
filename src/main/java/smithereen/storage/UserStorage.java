@@ -306,6 +306,11 @@ public class UserStorage{
 							.value("followee_id", targetUserID)
 							.value("accepted", followAccepted)
 							.executeNoResult();
+					new SQLQueryBuilder(conn)
+							.update("users")
+							.valueExpr("num_followers", "num_followers+1")
+							.where("id", targetUserID)
+							.executeNoResult();
 				}
 				UserNotifications res=NotificationsStorage.getNotificationsFromCache(targetUserID);
 				if(res!=null)
@@ -542,6 +547,18 @@ public class UserStorage{
 					result[0]=false;
 					return;
 				}
+				new SQLQueryBuilder(conn)
+						.update("users")
+						.valueExpr("num_followers", "num_followers+1")
+						.valueExpr("num_friends", "num_friends+1")
+						.where("id=?", targetUserID)
+						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("users")
+						.valueExpr("num_following", "num_following+1")
+						.valueExpr("num_friends", "num_friends+1")
+						.where("id=?", userID)
+						.executeNoResult();
 				UserNotifications n=NotificationsStorage.getNotificationsFromCache(userID);
 				if(n!=null)
 					n.incNewFriendRequestCount(-1);
@@ -564,14 +581,31 @@ public class UserStorage{
 	public static void unfriendUser(int userID, int targetUserID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			DatabaseUtils.doWithTransaction(conn, ()->{
-				PreparedStatement stmt=conn.prepareStatement("DELETE FROM `followings` WHERE `follower_id`=? AND `followee_id`=?");
-				stmt.setInt(1, userID);
-				stmt.setInt(2, targetUserID);
-				stmt.execute();
-				stmt=conn.prepareStatement("UPDATE `followings` SET `mutual`=0 WHERE `follower_id`=? AND `followee_id`=?");
-				stmt.setInt(1, targetUserID);
-				stmt.setInt(2, userID);
-				stmt.execute();
+				int numRows=new SQLQueryBuilder(conn)
+						.deleteFrom("followings")
+						.where("follower_id=? AND followee_id=?", userID, targetUserID)
+						.executeUpdate();
+				if(numRows==0)
+					return;
+				int mutual=new SQLQueryBuilder(conn)
+						.update("followings")
+						.where("follower_id=? AND followee_id=?", targetUserID, userID)
+						.value("mutual", 0)
+						.executeUpdate();
+				SQLQueryBuilder b1=new SQLQueryBuilder(conn)
+						.update("users")
+						.where("id=?", userID)
+						.valueExpr("num_following", "num_following-1");
+				SQLQueryBuilder b2=new SQLQueryBuilder(conn)
+						.update("users")
+						.where("id=?", targetUserID)
+						.valueExpr("num_followers", "num_followers-1");
+				if(mutual>0){
+					b1.valueExpr("num_friends", "num_friends-1");
+					b2.valueExpr("num_friends", "num_friends-1");
+				}
+				b1.executeNoResult();
+				b2.executeNoResult();
 				removeBirthdayReminderFromCache(List.of(userID, targetUserID));
 			});
 		}
@@ -602,20 +636,35 @@ public class UserStorage{
 					}
 				}
 
-				stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`,`followee_id`,`mutual`,`accepted`) VALUES (?,?,?,?)");
-				stmt.setInt(1, userID);
-				stmt.setInt(2, targetUserID);
-				stmt.setBoolean(3, mutual);
-				stmt.setBoolean(4, accepted);
-				stmt.execute();
+				new SQLQueryBuilder(conn)
+						.insertInto("followings")
+						.value("follower_id", userID)
+						.value("followee_id", targetUserID)
+						.value("mutual", mutual)
+						.value("accepted", accepted)
+						.executeNoResult();
+
+				SQLQueryBuilder b1=new SQLQueryBuilder(conn)
+						.update("users")
+						.where("id=?", userID)
+						.valueExpr("num_following", "num_following+1");
+				SQLQueryBuilder b2=new SQLQueryBuilder(conn)
+						.update("users")
+						.where("id=?", targetUserID)
+						.valueExpr("num_followers", "num_followers+1");
 
 				if(mutual){
-					stmt=conn.prepareStatement("UPDATE `followings` SET `mutual`=1 WHERE `follower_id`=? AND `followee_id`=?");
-					stmt.setInt(1, targetUserID);
-					stmt.setInt(2, userID);
-					stmt.execute();
+					new SQLQueryBuilder(conn)
+							.update("followings")
+							.value("mutual", true)
+							.where("follower_id=? AND followee_id=?", targetUserID, userID)
+							.executeNoResult();
 					removeBirthdayReminderFromCache(List.of(userID, targetUserID));
+					b1.valueExpr("num_friends", "num_friends+1");
+					b2.valueExpr("num_friends", "num_friends+1");
 				}
+				b1.executeNoResult();
+				b2.executeNoResult();
 
 				conn.createStatement().execute("COMMIT");
 			}catch(SQLException x){
@@ -1031,13 +1080,11 @@ public class UserStorage{
 					.value("user_id", targetID)
 					.executeNoResult();
 			new SQLQueryBuilder(conn)
-					.deleteFrom("followings")
-					.where("(follower_id=? AND followee_id=?) OR (follower_id=? AND followee_id=?)", selfID, targetID, targetID, selfID)
-					.executeNoResult();
-			new SQLQueryBuilder(conn)
 					.deleteFrom("friend_requests")
 					.where("(from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?)", selfID, targetID, targetID, selfID)
 					.executeNoResult();
+			unfriendUser(selfID, targetID);
+			unfriendUser(targetID, selfID);
 		}
 	}
 

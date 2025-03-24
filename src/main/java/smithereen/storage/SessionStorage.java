@@ -245,12 +245,8 @@ public class SessionStorage{
 					}
 
 					if(!inv.noAddFriend){
-						stmt=conn.prepareStatement("INSERT INTO `followings` (`follower_id`, `followee_id`, `mutual`) VALUES (?, ?, 1), (?, ?, 1)");
-						stmt.setInt(1, inviterUserID);
-						stmt.setInt(2, userID);
-						stmt.setInt(3, userID);
-						stmt.setInt(4, inviterUserID);
-						stmt.execute();
+						UserStorage.followUser(inviterUserID, userID, true, false);
+						UserStorage.followUser(userID, inviterUserID, true, false);
 					}
 				}
 
