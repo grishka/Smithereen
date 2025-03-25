@@ -63,10 +63,11 @@ import spark.utils.StringUtils;
 public class UserStorage{
 	private static final Logger LOG=LoggerFactory.getLogger(UserStorage.class);
 
-	private static LruCache<Integer, User> cache=new LruCache<>(500);
-	private static LruCache<String, User> cacheByUsername=new LruCache<>(500);
-	private static LruCache<URI, ForeignUser> cacheByActivityPubID=new LruCache<>(500);
-	private static LruCache<Integer, Account> accountCache=new LruCache<>(500);
+	private static final LruCache<Integer, User> cache=new LruCache<>(500);
+	private static final LruCache<String, Integer> cacheByUsername=new LruCache<>(500);
+	private static final LruCache<URI, Integer> cacheByActivityPubID=new LruCache<>(500);
+
+	private static final LruCache<Integer, Account> accountCache=new LruCache<>(500);
 	private static final LruCache<Integer, BirthdayReminder> birthdayReminderCache=new LruCache<>(500);
 	private static final NamedMutexCollection foreignUserUpdateLocks=new NamedMutexCollection();
 
@@ -84,8 +85,7 @@ public class UserStorage{
 				if(mfr!=null)
 					li.fillIn(mfr);
 			}
-			cache.put(id, user);
-			cacheByUsername.put(user.getFullUsername(), user);
+			putIntoCache(user);
 		}
 		return user;
 	}
@@ -154,9 +154,9 @@ public class UserStorage{
 
 	public static User getByUsername(@NotNull String username) throws SQLException{
 		username=username.toLowerCase();
-		User user=cacheByUsername.get(username);
-		if(user!=null)
-			return user;
+		Integer id=cacheByUsername.get(username);
+		if(id!=null)
+			return getById(id);
 		String realUsername;
 		String domain="";
 		if(username.contains("@")){
@@ -166,7 +166,7 @@ public class UserStorage{
 		}else{
 			realUsername=username;
 		}
-		user=new SQLQueryBuilder()
+		User user=new SQLQueryBuilder()
 				.selectFrom("users")
 				.allColumns()
 				.where("username=? AND domain=?", realUsername, domain)
@@ -309,8 +309,9 @@ public class UserStorage{
 					new SQLQueryBuilder(conn)
 							.update("users")
 							.valueExpr("num_followers", "num_followers+1")
-							.where("id", targetUserID)
+							.where("id=?", targetUserID)
 							.executeNoResult();
+					cache.remove(targetUserID);
 				}
 				UserNotifications res=NotificationsStorage.getNotificationsFromCache(targetUserID);
 				if(res!=null)
@@ -559,6 +560,8 @@ public class UserStorage{
 						.valueExpr("num_friends", "num_friends+1")
 						.where("id=?", userID)
 						.executeNoResult();
+				cache.remove(targetUserID);
+				cache.remove(userID);
 				UserNotifications n=NotificationsStorage.getNotificationsFromCache(userID);
 				if(n!=null)
 					n.incNewFriendRequestCount(-1);
@@ -606,6 +609,8 @@ public class UserStorage{
 				}
 				b1.executeNoResult();
 				b2.executeNoResult();
+				cache.remove(targetUserID);
+				cache.remove(userID);
 				removeBirthdayReminderFromCache(List.of(userID, targetUserID));
 			});
 		}
@@ -665,6 +670,8 @@ public class UserStorage{
 				}
 				b1.executeNoResult();
 				b2.executeNoResult();
+				cache.remove(targetUserID);
+				cache.remove(userID);
 
 				conn.createStatement().execute("COMMIT");
 			}catch(SQLException x){
@@ -874,17 +881,17 @@ public class UserStorage{
 	}
 
 	public static ForeignUser getForeignUserByActivityPubID(URI apID) throws SQLException{
-		ForeignUser user=cacheByActivityPubID.get(apID);
-		if(user!=null)
-			return user;
-		user=new SQLQueryBuilder()
+		Integer id=cacheByActivityPubID.get(apID);
+		if(id!=null)
+			return getById(id) instanceof ForeignUser fu ? fu : null;
+		ForeignUser user=new SQLQueryBuilder()
 				.selectFrom("users")
 				.where("ap_id=?", apID)
 				.executeAndGetSingleObject(ForeignUser::fromResultSet);
 		if(user!=null){
-			cacheByActivityPubID.put(apID, user);
+			cacheByActivityPubID.put(apID, user.id);
 			cache.put(user.id, user);
-			cacheByUsername.put(user.getFullUsername().toLowerCase(), user);
+			cacheByUsername.put(user.getFullUsername().toLowerCase(), user.id);
 		}
 		return user;
 	}
@@ -971,22 +978,6 @@ public class UserStorage{
 				.value("accepted", accepted)
 				.where("follower_id=? AND followee_id=?", followerID, followeeID)
 				.executeNoResult();
-	}
-
-	public static List<Account> getAllAccounts(int offset, int count) throws SQLException{
-		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement("SELECT a1.*, a2.user_id AS inviter_user_id FROM accounts AS a1 LEFT JOIN accounts AS a2 ON a1.invited_by=a2.id LIMIT ?,?");
-			stmt.setInt(1, offset);
-			stmt.setInt(2, count);
-			ArrayList<Account> accounts=new ArrayList<>();
-			try(ResultSet res=stmt.executeQuery()){
-				while(res.next()){
-					Account acc=Account.fromResultSet(res);
-					accounts.add(acc);
-				}
-			}
-			return accounts;
-		}
 	}
 
 	public static Account getAccount(int id) throws SQLException{
@@ -1145,9 +1136,9 @@ public class UserStorage{
 
 	private static void putIntoCache(User user){
 		cache.put(user.id, user);
-		cacheByUsername.put(user.getFullUsername().toLowerCase(), user);
+		cacheByUsername.put(user.getFullUsername().toLowerCase(), user.id);
 		if(user instanceof ForeignUser)
-			cacheByActivityPubID.put(user.activityPubID, (ForeignUser) user);
+			cacheByActivityPubID.put(user.activityPubID, user.id);
 	}
 
 	private static void removeFromCache(User user){
@@ -1155,15 +1146,6 @@ public class UserStorage{
 		cacheByUsername.remove(user.getFullUsername().toLowerCase());
 		if(user instanceof ForeignUser)
 			cacheByActivityPubID.remove(user.activityPubID);
-	}
-
-	public static void putAccountBanInfo(int accountID, Account.BanInfo banInfo) throws SQLException{
-		new SQLQueryBuilder()
-				.update("accounts")
-				.value("ban_info", banInfo!=null ? Utils.gson.toJson(banInfo) : null)
-				.where("id=?", accountID)
-				.executeNoResult();
-		accountCache.remove(accountID);
 	}
 
 	static String getQSearchStringForUser(User user){

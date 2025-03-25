@@ -1,4 +1,5 @@
-{% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) or (followees is not null and followees.list is not empty) or groups is not empty %}
+{# @pebvariable name="actor" type="smithereen.activitypub.objects.Actor" #}
+{% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) or actor.followingCount>0 or groups is not empty %}
 <div class="card profileSectionThumbs">
 {% if photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup) %}
 	<a href="{{ actor.typeAndIdForURL }}/albums">
@@ -13,11 +14,11 @@
 		</div>
 	</a>
 {% endif %}
-{% if followees is not null and followees.list is not empty %}
+{% if actor.followingCount>0 %}
 	<a href="{{ actor.typeAndIdForURL }}/following">
 		<div class="titleW">
 			<div class="title">{{ L('following') }}</div>
-			<div class="count">{{ followees.total | numberformat }}</div>
+			<div class="count">{{ actor.followingCount | numberformat }}</div>
 		</div>
 		<div class="thumb avatarGrid">
 			{% for followee in followees.list %}

@@ -111,11 +111,11 @@
 		{% if taggedPhotoCount>0 %}
 			<li><a href="/users/{{ user.id }}/tagged"><span class="profileCounterWithIcon">{{ taggedPhotoCount | numberformat }}<span class="icon iconPhotos"></span></span>{{ currentUser is not null and currentUser.id==user.id ? L('photos_of_me') : L('photos_of_user', {'name': user.firstAndGender}) }}</a></li>
 		{% endif %}
-		{% if followers.total>0 %}
-			<li><a href="/users/{{ user.id }}/followers"><span class="profileCounterWithIcon">{{ followers.total | numberformat }}<span class="icon iconFollowers"></span></span>{{L('followers')}}</a></li>
+		{% if user.followersCount>0 %}
+			<li><a href="/users/{{ user.id }}/followers"><span class="profileCounterWithIcon">{{ user.followersCount | numberformat }}<span class="icon iconFollowers"></span></span>{{L('followers')}}</a></li>
 		{% endif %}
 		{%if currentUser is not null and currentUser.id!=user.id%}
-		{% if followers.total>0 or taggedPhotoCount>0 %}<li class="separator"></li>{% endif %}
+		{% if user.followersCount>0 or taggedPhotoCount>0 %}<li class="separator"></li>{% endif %}
 		{%if isFriend or following or friendRequestSent or followRequested%}
 			<li><a href="/users/{{ user.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.dataset.confirm,'/users/{{ user.id }}/doRemoveFriend')" data-confirm="{{ L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
 		{%endif%}
@@ -145,8 +145,8 @@
 		{% if mutualFriends is not empty %}
 			{% include "profile_module_user_grid" with {'users': mutualFriends, 'headerTitle': L('mutual_friends'), 'headerHref': "/users/#{user.id}/friends/mutual", 'subheaderTitle': L('X_mutual_friends', {'count': mutualFriendCount})} %}
 		{% endif %}
-		{% if friends is not empty %}
-			{% include "profile_module_user_grid" with {'users': friends, 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': friendCount})} %}
+		{% if user.friendsCount>0 %}
+			{% include "profile_module_user_grid" with {'users': friends, 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': user.friendsCount})} %}
 		{% endif %}
 		{% if onlineFriends is not empty %}
 			{% include "profile_module_user_grid" with {'users': onlineFriends, 'headerTitle': L('friends_online'), 'headerHref': "/users/#{user.id}/friends/online", 'subheaderTitle': L('X_friends', {'count': onlineFriendCount})} %}
@@ -154,14 +154,14 @@
 		{% if albums is not empty %}
 			{% include "profile_module_photo_albums" with {'albums': albums, 'headerTitle': L('photo_albums'), 'headerHref': "/users/#{user.id}/albums", 'subheaderTitle': L('X_photo_albums', {'count': photoAlbumCount}), 'ownerID': user.id} %}
 		{% endif %}
-		{% if followees.list is not empty %}
+		{% if user.followingCount>0 %}
 			{% set followingWithTitles=[] %}
 			{% for followee in followees.list %}
 			    {% if loop.index<5 %}
 			    	{% set _=followingWithTitles.add({'user': followee}) %}
 			    {% endif %}
 			{% endfor %}
-			{% include "profile_module_user_list" with {'users': followingWithTitles, 'headerTitle': L('following'), 'subheaderTitle': L('X_people', {'count': followees.total}), 'headerHref': "/users/#{user.id}/following"} %}
+			{% include "profile_module_user_list" with {'users': followingWithTitles, 'headerTitle': L('following'), 'subheaderTitle': L('X_people', {'count': user.followingCount}), 'headerHref': "/users/#{user.id}/following"} %}
 		{% endif %}
 		{% if groups is not empty %}
 			{% include "profile_module_groups" with {'groups': groups, 'headerTitle': L('groups'), 'headerHref': "/users/#{user.id}/groups", 'subheaderTitle': L('X_groups', {'count': groups.size})} %}

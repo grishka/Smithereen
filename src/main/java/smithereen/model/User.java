@@ -14,10 +14,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -57,6 +55,9 @@ public class User extends Actor{
 	public UserBanStatus banStatus=UserBanStatus.NONE;
 	public UserBanInfo banInfo;
 	public EnumSet<FriendsNewsfeedTypeFilter> newsTypesToShow;
+	private long numFriends;
+	private long numFollowers; // Followers and following include friends (mutual follows)
+	private long numFollowing;
 
 	// additional profile fields
 	public boolean manuallyApprovesFollowers;
@@ -254,6 +255,10 @@ public class User extends Actor{
 				banInfo=Utils.gson.fromJson(_banInfo, UserBanInfo.class);
 			}
 		}
+
+		numFollowers=res.getLong("num_followers");
+		numFollowing=res.getLong("num_following");
+		numFriends=res.getLong("num_friends");
 	}
 
 	@Override
@@ -688,6 +693,18 @@ public class User extends Actor{
 		movedFrom=previous.movedFrom;
 		movedAt=previous.movedAt;
 		banStatus=previous.banStatus;
+	}
+
+	public long getFriendsCount(){
+		return numFriends;
+	}
+
+	public long getFollowersCount(){
+		return numFollowers-numFriends;
+	}
+
+	public long getFollowingCount(){
+		return numFollowing-numFriends;
 	}
 
 	public enum Gender{

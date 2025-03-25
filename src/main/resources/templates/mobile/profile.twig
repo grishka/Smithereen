@@ -129,10 +129,10 @@
 		</div>
 	{%endif%}
 	<ul class="profileInfoRows">
-		{% if friendCount>0 %}
+		{% if user.friendsCount>0 %}
 		<li><a href="/users/{{ user.id }}/friends">
 			<span class="icon iconFriends"></span>
-			<span class="text ellipsize">{{ L('X_friends_bold', {'count': friendCount}) }}{%- if mutualFriendCount>0 %} · {{ L('X_mutual_friends_short_bold', {'count': mutualFriendCount}) }}{% endif %}</span>
+			<span class="text ellipsize">{{ L('X_friends_bold', {'count': user.friendsCount}) }}{%- if mutualFriendCount>0 %} · {{ L('X_mutual_friends_short_bold', {'count': mutualFriendCount}) }}{% endif %}</span>
 			<span class="accessory avatarPile">
 			{% if mutualFriends is not empty %}
 			{% for friend in mutualFriends | slice(0, min(mutualFriends | length, 3)) %}
@@ -147,10 +147,10 @@
 			</span>
 		</a></li>
 		{% endif %}
-		{% if followers.total>0 %}
+		{% if user.followersCount>0 %}
 		<li><a href="/users/{{ user.id }}/followers">
 			<span class="icon iconFollowers"></span>
-			<span class="text ellipsize">{{ L('X_followers_bold', {'count': followers.total}) }}</span>
+			<span class="text ellipsize">{{ L('X_followers_bold', {'count': user.followersCount}) }}</span>
 		</a></li>
 		{% endif %}
 		{% if user.location is not empty %}
