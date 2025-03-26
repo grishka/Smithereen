@@ -36,7 +36,7 @@ public class FetchAndStoreOneUserFolloweeTask extends NoResultCallable{
 					context.getObjectLinkResolver().ensureObjectIsInCollection(targetUser, targetUser.getFriendsURL(), user.activityPubID);
 				if(targetUser.id==0)
 					context.getObjectLinkResolver().storeOrUpdateRemoteObject(targetUser, targetUser);
-				context.getFriendsController().storeFriendship(user, targetUser);
+				context.getFriendsController().storeFriendship(user, targetUser, false);
 			}else if(target instanceof ForeignGroup targetGroup){
 				if(targetGroup.isEvent())
 					return;

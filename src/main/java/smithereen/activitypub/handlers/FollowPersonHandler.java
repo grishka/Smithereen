@@ -12,7 +12,6 @@ import smithereen.model.User;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.notifications.Notification;
 import smithereen.exceptions.BadRequestException;
-import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
 
 public class FollowPersonHandler extends ActivityTypeHandler<ForeignUser, Follow, User>{
@@ -27,7 +26,7 @@ public class FollowPersonHandler extends ActivityTypeHandler<ForeignUser, Follow
 			context.appContext.getActivityPubWorker().sendAcceptFollowActivity(actor, user, activity);
 			return;
 		}
-		UserStorage.followUser(actor.id, user.id, true, false);
+		UserStorage.followUser(actor.id, user.id, true, false, true);
 		UserStorage.deleteFriendRequest(actor.id, user.id);
 
 		context.appContext.getActivityPubWorker().sendAcceptFollowActivity(actor, user, activity);

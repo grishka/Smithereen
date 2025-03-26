@@ -245,8 +245,8 @@ public class SessionStorage{
 					}
 
 					if(!inv.noAddFriend){
-						UserStorage.followUser(inviterUserID, userID, true, false);
-						UserStorage.followUser(userID, inviterUserID, true, false);
+						UserStorage.followUser(inviterUserID, userID, true, false, true);
+						UserStorage.followUser(userID, inviterUserID, true, false, true);
 					}
 				}
 

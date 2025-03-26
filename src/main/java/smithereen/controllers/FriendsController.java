@@ -13,8 +13,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import javax.swing.SortOrder;
-
 import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.model.ForeignUser;
@@ -27,7 +25,6 @@ import smithereen.model.notifications.Notification;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.notifications.RealtimeNotification;
-import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
 import smithereen.storage.utils.IntPair;
 import smithereen.util.MaintenanceScheduler;
@@ -137,12 +134,12 @@ public class FriendsController{
 		}
 	}
 
-	public void storeFriendship(@NotNull User user1, @NotNull User user2){
+	public void storeFriendship(@NotNull User user1, @NotNull User user2, boolean updateNumbers){
 		try{
 			if(UserStorage.getFriendshipStatus(user1.id, user2.id)==FriendshipStatus.FRIENDS)
 				return;
-			UserStorage.followUser(user1.id, user2.id, true, true);
-			UserStorage.followUser(user2.id, user1.id, true, true);
+			UserStorage.followUser(user1.id, user2.id, true, true, updateNumbers);
+			UserStorage.followUser(user2.id, user1.id, true, true, updateNumbers);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -165,7 +162,7 @@ public class FriendsController{
 							ctx.getNotificationsController().sendRealtimeNotifications(user, "friendReq"+self.id+"_"+Utils.randomAlphanumericString(5), RealtimeNotification.Type.FRIEND_REQUEST, null, null, self);
 						}
 					}else{
-						UserStorage.followUser(self.id, user.id, !(user instanceof ForeignUser), false);
+						UserStorage.followUser(self.id, user.id, !(user instanceof ForeignUser), false, true);
 						if(user instanceof ForeignUser fu){
 							ctx.getActivityPubWorker().sendFollowUserActivity(self, fu);
 						}else{
@@ -192,7 +189,7 @@ public class FriendsController{
 			FriendshipStatus status=getFriendshipStatus(self, user);
 			switch(status){
 				case NONE, FOLLOWED_BY, REQUEST_RECVD -> {
-					UserStorage.followUser(self.id, user.id, !(user instanceof ForeignUser), false);
+					UserStorage.followUser(self.id, user.id, !(user instanceof ForeignUser), false, true);
 					if(user instanceof ForeignUser fu){
 						ctx.getActivityPubWorker().sendFollowUserActivity(self, fu);
 					}else{

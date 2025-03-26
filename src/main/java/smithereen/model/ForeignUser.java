@@ -411,4 +411,24 @@ public class ForeignUser extends User implements ForeignActor{
 			ep.groups=groups.toString();
 		return ep;
 	}
+
+	public void setFollowersCount(long count){
+		numFollowers=count;
+	}
+
+	public void setFollowingCount(long count){
+		numFollowing=count;
+	}
+
+	public void setFriendsCount(long count){
+		numFriends=count;
+	}
+
+	public long getRawFollowersCount(){
+		return numFollowers;
+	}
+
+	public long getRawFollowingCount(){
+		return numFollowing;
+	}
 }

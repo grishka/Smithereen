@@ -57,7 +57,7 @@ public class FetchUserFriendsAndGroupsViaFollowsTask extends NoResultCallable{
 		apw.submitTask(new FetchCollectionIntoSetTask(context, followers.totalItems>following.totalItems ? following : followers, first, ActivityPubWorker.MAX_FRIENDS)).get();
 		Set<URI> mutualFollows=new HashSet<>();
 		apw.submitTask(new FilterCollectionAgainstSetTask(context, followers.totalItems>following.totalItems ? followers : following, first, mutualFollows)).get();
-		List<Callable<?>> tasks=new ArrayList<>();
+		List<Callable<Void>> tasks=new ArrayList<>();
 		for(URI uri: mutualFollows){
 			if(!Config.isLocal(uri)){
 				tasks.add(new FetchAndStoreOneUserFolloweeTask(context, user, uri, Actor.class));

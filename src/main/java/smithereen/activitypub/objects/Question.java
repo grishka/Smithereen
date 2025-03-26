@@ -41,7 +41,7 @@ public non-sealed class Question extends NoteOrQuestion{
 				ensureHostMatchesID(opt.activityPubID, "option.id");
 			opt.text=ao.name;
 			if(n.replies!=null && n.replies.object instanceof ActivityPubCollection r){
-				opt.numVotes=r.totalItems;
+				opt.numVotes=(int) r.totalItems;
 			}
 			return opt;
 		}).filter(Objects::nonNull).toList();

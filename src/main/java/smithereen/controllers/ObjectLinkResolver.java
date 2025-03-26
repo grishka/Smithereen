@@ -11,11 +11,14 @@ import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +36,7 @@ import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.ServiceActor;
+import smithereen.activitypub.tasks.FetchCollectionTotalTask;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -343,6 +347,33 @@ public class ObjectLinkResolver{
 							if(movedTo==null || !Objects.equals(movedTo.activityPubID, fu.movedToURL))
 								handleNewlyFetchedMovedUser(fu);
 						}
+						if(fu.following!=null && fu.followers!=null){
+							ArrayList<FetchCollectionTotalTask> collections=new ArrayList<>();
+							collections.add(new FetchCollectionTotalTask(context, fu.following));
+							collections.add(new FetchCollectionTotalTask(context, fu.followers));
+							if(fu.getFriendsURL() instanceof URI friends){
+								collections.add(new FetchCollectionTotalTask(context, friends));
+							}
+							List<Future<Long>> totals=context.getActivityPubWorker().invokeAll(collections);
+							long followingCount=-1, followersCount=-1, friendsCount=-1;
+							try{
+								followingCount=totals.get(0).get();
+							}catch(ExecutionException ignored){}
+							try{
+								followersCount=totals.get(1).get();
+							}catch(ExecutionException ignored){}
+							if(collections.size()>2){
+								try{
+									friendsCount=totals.get(2).get();
+								}catch(ExecutionException ignored){}
+							}
+							if(followingCount!=-1)
+								fu.setFollowingCount(followingCount);
+							if(followersCount!=-1)
+								fu.setFollowersCount(followersCount);
+							if(friendsCount!=-1)
+								fu.setFriendsCount(friendsCount);
+						}
 						UserStorage.putOrUpdateForeignUser(fu);
 						maybeUpdateServerFeaturesFromActor(fu);
 						User partner=null;
@@ -377,7 +408,7 @@ public class ObjectLinkResolver{
 				case Comment c -> context.getCommentsController().putOrUpdateForeignComment(c);
 				case null, default -> {}
 			}
-		}catch(SQLException x){
+		}catch(SQLException|InterruptedException x){
 			throw new InternalServerErrorException(x);
 		}
 	}

@@ -355,6 +355,12 @@ public abstract class ActivityPubObject{
 		return -1;
 	}
 
+	protected long optLong(JsonObject obj, String key){
+		if(obj.has(key) && obj.get(key).isJsonPrimitive() && obj.getAsJsonPrimitive(key).isNumber())
+			return obj.get(key).getAsLong();
+		return -1;
+	}
+
 	protected boolean optBoolean(JsonObject obj, String key){
 		if(obj.has(key) && obj.get(key).isJsonPrimitive() && obj.getAsJsonPrimitive(key).isBoolean())
 			return obj.get(key).getAsBoolean();

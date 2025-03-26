@@ -33,7 +33,7 @@ public class FetchGroupMembersTask extends ForwardPaginatingCollectionTask{
 	@Override
 	protected void onCollectionLoaded(){
 		try{
-			GroupStorage.setMemberCount(group, totalItems, tentative);
+			GroupStorage.setMemberCount(group, (int)totalItems, tentative);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

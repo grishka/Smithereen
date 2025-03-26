@@ -1037,17 +1037,11 @@ public class ActivityPubWorker{
 		return fetchingPhotoAlbums.computeIfAbsent(album.activityPubID, uri->executor.submit(new FetchPhotoAlbumPhotosTask(context, album, nativeAlbum, this, fetchingPhotoAlbums)));
 	}
 
-	public <T extends Callable<?>> void invokeAll(Collection<T> tasks){
-		ArrayList<Future<?>> futures=new ArrayList<>();
-		for(Callable<?> task:tasks){
-			futures.add(executor.submit(task));
-		}
-		for(Future<?> future:futures){
-			try{
-				future.get();
-			}catch(Exception x){
-				LOG.warn("Task execution failed", x);
-			}
+	public <R, T extends Callable<R>> List<Future<R>> invokeAll(Collection<T> tasks){
+		try{
+			return executor.invokeAll(tasks);
+		}catch(InterruptedException x){
+			throw new RuntimeException(x);
 		}
 	}
 

@@ -34,7 +34,6 @@ import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.Account;
 import smithereen.model.BirthdayReminder;
 import smithereen.model.ForeignUser;
@@ -436,7 +435,7 @@ public class UserStorage{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String orderBy=useHints ? "friends1.hints_rank DESC, friends1.followee_id ASC" : "friends1.followee_id ASC";
 			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT friends1.followee_id FROM followings AS friends1 INNER JOIN followings AS friends2 ON friends1.followee_id=friends2.followee_id " +
-					"WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1 ORDER BY "+orderBy+" LIMIT ? OFFSET ?", userID, otherUserID, offset, count);
+					"WHERE friends1.follower_id=? AND friends2.follower_id=? AND friends1.mutual=1 AND friends2.mutual=1 ORDER BY "+orderBy+" LIMIT ? OFFSET ?", userID, otherUserID, count, offset);
 			return DatabaseUtils.intResultSetToList(stmt.executeQuery());
 		}
 	}
@@ -616,7 +615,7 @@ public class UserStorage{
 		}
 	}
 
-	public static void followUser(int userID, int targetUserID, boolean accepted, boolean ignoreAlreadyFollowing) throws SQLException{
+	public static void followUser(int userID, int targetUserID, boolean accepted, boolean ignoreAlreadyFollowing, boolean updateNumbers) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			conn.createStatement().execute("START TRANSACTION");
 			try{
@@ -649,15 +648,6 @@ public class UserStorage{
 						.value("accepted", accepted)
 						.executeNoResult();
 
-				SQLQueryBuilder b1=new SQLQueryBuilder(conn)
-						.update("users")
-						.where("id=?", userID)
-						.valueExpr("num_following", "num_following+1");
-				SQLQueryBuilder b2=new SQLQueryBuilder(conn)
-						.update("users")
-						.where("id=?", targetUserID)
-						.valueExpr("num_followers", "num_followers+1");
-
 				if(mutual){
 					new SQLQueryBuilder(conn)
 							.update("followings")
@@ -665,11 +655,24 @@ public class UserStorage{
 							.where("follower_id=? AND followee_id=?", targetUserID, userID)
 							.executeNoResult();
 					removeBirthdayReminderFromCache(List.of(userID, targetUserID));
-					b1.valueExpr("num_friends", "num_friends+1");
-					b2.valueExpr("num_friends", "num_friends+1");
 				}
-				b1.executeNoResult();
-				b2.executeNoResult();
+
+				if(updateNumbers){
+					SQLQueryBuilder b1=new SQLQueryBuilder(conn)
+							.update("users")
+							.where("id=?", userID)
+							.valueExpr("num_following", "num_following+1");
+					SQLQueryBuilder b2=new SQLQueryBuilder(conn)
+							.update("users")
+							.where("id=?", targetUserID)
+							.valueExpr("num_followers", "num_followers+1");
+					if(mutual){
+						b1.valueExpr("num_friends", "num_friends+1");
+						b2.valueExpr("num_friends", "num_friends+1");
+					}
+					b1.executeNoResult();
+					b2.executeNoResult();
+				}
 				cache.remove(targetUserID);
 				cache.remove(userID);
 
@@ -792,8 +795,9 @@ public class UserStorage{
 					.columns("id")
 					.where("ap_id=?", Objects.toString(user.activityPubID))
 					.executeAndGetInt();
+			boolean isNew=existingUserID==-1;
 			SQLQueryBuilder bldr=new SQLQueryBuilder(conn);
-			if(existingUserID!=-1){
+			if(!isNew){
 				bldr.update("users").where("id=?", existingUserID);
 			}else{
 				bldr.insertInto("users");
@@ -812,7 +816,7 @@ public class UserStorage{
 					.value("ap_id", user.activityPubID.toString())
 					.value("about", user.summary)
 					.value("gender", user.gender)
-					.value("avatar", user.icon!=null ? user.icon.get(0).asActivityPubObject(new JsonObject(), new SerializerContext(null, (String)null)).toString() : null)
+					.value("avatar", user.icon!=null ? user.icon.getFirst().asActivityPubObject(new JsonObject(), new SerializerContext(null, (String)null)).toString() : null)
 					.value("profile_fields", user.serializeProfileFields())
 					.value("flags", user.flags)
 					.value("middle_name", user.middleName)
@@ -820,11 +824,28 @@ public class UserStorage{
 					.value("endpoints", user.serializeEndpoints())
 					.value("privacy", user.privacySettings!=null ? Utils.gson.toJson(user.privacySettings) : null);
 
-			boolean isNew=existingUserID==-1;
 			if(isNew){
+				bldr.value("num_followers", user.getRawFollowersCount())
+						.value("num_following", user.getRawFollowingCount())
+						.value("num_friends", user.getFriendsCount());
 				existingUserID=bldr.executeAndGetID();
 			}else{
+				bldr.valueExpr("num_followers", "GREATEST(?, (SELECT COUNT(*) FROM followings WHERE followee_id=?))", user.getRawFollowersCount(), existingUserID)
+						.valueExpr("num_following", "GREATEST(?, (SELECT COUNT(*) FROM followings WHERE follower_id=?))", user.getRawFollowingCount(), existingUserID)
+						.valueExpr("num_friends", "GREATEST(?, (SELECT COUNT(*) FROM followings WHERE followee_id=? AND mutual=1))", user.getFriendsCount(), existingUserID);
 				bldr.executeNoResult();
+
+				ResultSet res=new SQLQueryBuilder(conn)
+						.selectFrom("users")
+						.columns("num_followers", "num_following", "num_friends")
+						.where("id=?", existingUserID)
+						.execute();
+				try(res){
+					res.next();
+					user.setFollowersCount(res.getLong("num_followers"));
+					user.setFollowingCount(res.getLong("num_following"));
+					user.setFriendsCount(res.getLong("num_friends"));
+				}
 			}
 			user.id=existingUserID;
 			user.lastUpdated=Instant.now();

@@ -55,9 +55,9 @@ public class User extends Actor{
 	public UserBanStatus banStatus=UserBanStatus.NONE;
 	public UserBanInfo banInfo;
 	public EnumSet<FriendsNewsfeedTypeFilter> newsTypesToShow;
-	private long numFriends;
-	private long numFollowers; // Followers and following include friends (mutual follows)
-	private long numFollowing;
+	protected long numFriends;
+	protected long numFollowers; // Followers and following include friends (mutual follows)
+	protected long numFollowing;
 
 	// additional profile fields
 	public boolean manuallyApprovesFollowers;

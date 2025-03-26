@@ -38,7 +38,7 @@ public class FetchActorContentCollectionsTask extends NoResultCallable{
 
 	@Override
 	protected void compute(){
-		List<Callable<?>> tasks=new ArrayList<>();
+		List<Callable<Void>> tasks=new ArrayList<>();
 		if(actor.hasWall()){
 			tasks.add(new FetchActorWallTask(apw, context, fetchingAllReplies, actor));
 		}
