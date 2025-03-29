@@ -30,6 +30,7 @@ import smithereen.lang.Lang;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
@@ -153,6 +154,17 @@ public class FriendsRoutes{
 		}
 		if(isAjax(req)){
 			String baseURL=getRequestPathAndQuery(req);
+			String paginationID=req.queryParams("pagination");
+			if(StringUtils.isNotEmpty(paginationID)){
+				WebDeltaResponse r=new WebDeltaResponse(resp)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("friendsInner"));
+				if(friends.offset+friends.perPage>=friends.total){
+					r.remove("ajaxPagination_"+paginationID);
+				}else{
+					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", new UriBuilder(baseURL).replaceQueryParam("offset", friends.offset+friends.perPage+"").build().toString());
+				}
+				return r;
+			}
 			return new WebDeltaResponse(resp)
 					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"))
 					.setAttribute("friendsSearch", "data-base-url", baseURL)
@@ -206,6 +218,20 @@ public class FriendsRoutes{
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
 		}
+		if(isAjax(req)){
+			String baseURL=getRequestPathAndQuery(req);
+			String paginationID=req.queryParams("pagination");
+			if(StringUtils.isNotEmpty(paginationID)){
+				WebDeltaResponse r=new WebDeltaResponse(resp)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("friendsInner"));
+				if(friends.offset+friends.perPage>=friends.total){
+					r.remove("ajaxPagination_"+paginationID);
+				}else{
+					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", new UriBuilder(baseURL).replaceQueryParam("offset", friends.offset+friends.perPage+"").build().toString());
+				}
+				return r;
+			}
+		}
 		return model;
 	}
 
@@ -243,6 +269,20 @@ public class FriendsRoutes{
 							.stream()
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
+		}
+		if(isAjax(req)){
+			String baseURL=getRequestPathAndQuery(req);
+			String paginationID=req.queryParams("pagination");
+			if(StringUtils.isNotEmpty(paginationID)){
+				WebDeltaResponse r=new WebDeltaResponse(resp)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("friendsInner"));
+				if(followers.offset+followers.perPage>=followers.total){
+					r.remove("ajaxPagination_"+paginationID);
+				}else{
+					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", new UriBuilder(baseURL).replaceQueryParam("offset", followers.offset+followers.perPage+"").build().toString());
+				}
+				return r;
+			}
 		}
 		return model;
 	}
@@ -283,6 +323,20 @@ public class FriendsRoutes{
 							.stream()
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
+		}
+		if(isAjax(req)){
+			String baseURL=getRequestPathAndQuery(req);
+			String paginationID=req.queryParams("pagination");
+			if(StringUtils.isNotEmpty(paginationID)){
+				WebDeltaResponse r=new WebDeltaResponse(resp)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("friendsInner"));
+				if(follows.offset+follows.perPage>=follows.total){
+					r.remove("ajaxPagination_"+paginationID);
+				}else{
+					r.setAttribute("ajaxPaginationLink_"+paginationID, "href", new UriBuilder(baseURL).replaceQueryParam("offset", follows.offset+follows.perPage+"").build().toString());
+				}
+				return r;
+			}
 		}
 		return model;
 	}

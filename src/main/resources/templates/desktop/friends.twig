@@ -49,9 +49,9 @@
 		{% endif %}
 	{% endif %}
 	</div>
-	{% include "pagination" %}
 </div>
 <div class="singleColumn">
+{% block friendsInner %}
 {% for friend in items %}
 	{% include "friends_row" with {'friend': friend} %}
 {% else %}
@@ -71,8 +71,10 @@
 	{% endif %}
 </div>
 {% endfor %}
+{% endblock %}
+{% include "pagination_endless" %}
 </div>
-<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{#<div class="bottomSummaryWrap">{% include "pagination_endless" %}</div>#}
 {% endblock %}
 </div>
 {%endblock%}

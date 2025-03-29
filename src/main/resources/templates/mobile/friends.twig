@@ -2,6 +2,7 @@
 {%block content%}
 {% include 'friends_tabbar' %}
 <div class="singleColumn">
+{% block friendsInner %}
 {% for friend in items %}
 <table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
 	<tr valign="top">
@@ -39,6 +40,7 @@
 	{% endif %}
 </div>
 {% endfor %}
+{% endblock %}
+{% include "pagination_endless" %}
 </div>
-{% include "pagination" %}
 {%endblock%}
