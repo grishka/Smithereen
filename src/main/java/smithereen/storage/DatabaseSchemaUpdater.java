@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=67;
+	public static final int SCHEMA_VERSION=68;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -927,6 +927,7 @@ public class DatabaseSchemaUpdater{
 				conn.createStatement().execute("UPDATE `users` SET num_following=(SELECT COUNT(*) FROM followings WHERE follower_id=id)");
 				conn.createStatement().execute("UPDATE `users` SET num_friends=(SELECT COUNT(*) FROM followings WHERE follower_id=id AND mutual=1)");
 			}
+			case 68 -> conn.createStatement().execute("ALTER TABLE `users` ADD KEY num_followers (num_followers)");
 		}
 	}
 

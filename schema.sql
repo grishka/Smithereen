@@ -974,7 +974,8 @@ CREATE TABLE `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
   UNIQUE KEY `ap_id` (`ap_id`),
-  KEY `ban_status` (`ban_status`)
+  KEY `ban_status` (`ban_status`),
+  KEY `num_followers` (`num_followers`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -1037,4 +1038,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-03-23 17:29:40
+-- Dump completed on 2025-03-29 21:24:23

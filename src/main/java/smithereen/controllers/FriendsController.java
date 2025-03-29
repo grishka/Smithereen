@@ -50,7 +50,7 @@ public class FriendsController{
 
 	public PaginatedList<User> getFollowers(User user, int offset, int count){
 		try{
-			return UserStorage.getNonMutualFollowers(user.id, true, true, offset, count);
+			return UserStorage.getNonMutualFollowers(user.id, true, true, offset, count, false);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -58,7 +58,7 @@ public class FriendsController{
 
 	public PaginatedList<User> getFollows(User user, int offset, int count){
 		try{
-			return UserStorage.getNonMutualFollowers(user.id, false, true, offset, count);
+			return UserStorage.getNonMutualFollowers(user.id, false, true, offset, count, true);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

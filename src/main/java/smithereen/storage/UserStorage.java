@@ -444,7 +444,7 @@ public class UserStorage{
 		return new PaginatedList<>(getByIdAsList(getMutualFriendIDsForUser(userID, otherUserID, offset, count, useHints)), getMutualFriendsCount(userID, otherUserID), offset, count);
 	}
 
-	public static PaginatedList<User> getNonMutualFollowers(int userID, boolean followers, boolean accepted, int offset, int count) throws SQLException{
+	public static PaginatedList<User> getNonMutualFollowers(int userID, boolean followers, boolean accepted, int offset, int count, boolean orderByFollowers) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String fld1=followers ? "follower_id" : "followee_id";
 			String fld2=followers ? "followee_id" : "follower_id";
@@ -455,12 +455,17 @@ public class UserStorage{
 					.executeAndGetInt();
 			if(total==0)
 				return PaginatedList.emptyList(count);
-			List<Integer> ids=new SQLQueryBuilder(conn)
+			SQLQueryBuilder b=new SQLQueryBuilder(conn)
 					.selectFrom("followings")
 					.columns(fld1)
-					.where(fld2+"=? AND accepted=? AND mutual=0", userID, accepted)
-					.orderBy(fld1+" ASC")
-					.limit(count, offset)
+					.where(fld2+"=? AND accepted=? AND mutual=0", userID, accepted);
+			if(orderByFollowers){
+				b.join("RIGHT JOIN `users` ON "+fld1+"=`users`.id")
+						.orderBy("num_followers DESC");
+			}else{
+				b.orderBy(fld1+" ASC");
+			}
+			List<Integer> ids=b.limit(count, offset)
 					.executeAndGetIntList();
 			return new PaginatedList<>(getByIdAsList(ids), total, offset, count);
 		}
