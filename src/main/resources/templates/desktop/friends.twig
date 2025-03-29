@@ -23,15 +23,15 @@
 		{{ L('you_and_X_mutual', {'name': owner.firstAndGender, 'numFriends': totalItems}) }}
 	{% elseif tab=='followers' %}
 		{% if isSelf %}
-			{{ L("summary_own_X_followers", {'count': totalItems}) }}
+			{{ L("summary_own_X_followers", {'count': owner.followersCount}) }}
 		{% else %}
-			{{ L("summary_user_X_followers", {'name': owner.firstAndGender, 'count': totalItems}) }}
+			{{ L("summary_user_X_followers", {'name': owner.firstAndGender, 'count': owner.followersCount}) }}
 		{% endif %}
 	{% elseif tab=='following' %}
 		{% if isSelf %}
-			{{ L("summary_own_X_follows", {'count': totalItems}) }}
+			{{ L("summary_own_X_follows", {'count': owner.followingCount}) }}
 		{% else %}
-			{{ L("summary_user_X_follows", {'name': owner.firstAndGender, 'count': totalItems}) }}
+			{{ L("summary_user_X_follows", {'name': owner.firstAndGender, 'count': owner.followingCount}) }}
 		{% endif %}
 	{% elseif tab=='online' %}
 		{% if isSelf %}
@@ -43,9 +43,9 @@
 		{% if query is not empty %}
 			{{ L("summary_X_friends_found", {'count': totalItems}) }}
 		{% elseif isSelf %}
-			{{ L("summary_own_X_friends", {'numFriends': totalItems}) }}
+			{{ L("summary_own_X_friends", {'numFriends': owner.friendsCount}) }}
 		{% else %}
-			{{ L("summary_user_X_friends", {'name': owner.firstAndGender, 'numFriends': totalItems}) }}
+			{{ L("summary_user_X_friends", {'name': owner.firstAndGender, 'numFriends': owner.friendsCount}) }}
 		{% endif %}
 	{% endif %}
 	</div>
@@ -74,7 +74,21 @@
 {% endblock %}
 {% include "pagination_endless" %}
 </div>
-{#<div class="bottomSummaryWrap">{% include "pagination_endless" %}</div>#}
+{% if owner.domain is not empty and tab!='online' and query is empty %}
+{% if tab=='friends' %}
+{% set realTotal=owner.friendsCount %}
+{% set key='remote_friends_incomplete' %}
+{% elseif tab=='followers' %}
+{% set realTotal=owner.followersCount %}
+{% set key='remote_followers_incomplete' %}
+{% elseif tab=='following' %}
+{% set realTotal=owner.followingCount %}
+{% set key='remote_following_incomplete' %}
+{% endif %}
+{% if totalItems<realTotal %}
+<div class="bottomSummaryWrap"><div class="bottomSummary">{{ L(key, {'name': owner.firstAndGender, 'gender': owner.gender, 'server': owner.domain}, {'link': {'href': owner.url, 'target': '_blank', 'rel': 'nofollow'} }) }}</div></div>
+{% endif %}
+{% endif %}
 {% endblock %}
 </div>
 {%endblock%}

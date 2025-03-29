@@ -1143,6 +1143,11 @@ select, .comboBoxW input{
 	border-bottom: solid 1px $wallPostSeparator;
 	margin-bottom: 10px;
 	border-spacing: 0;
+	&:last-child{
+		margin-bottom: 0;
+		padding-bottom: 0;
+		border-bottom: none;
+	}
 	.info{
 		padding: 1px 0 0 10px;
 		.infoInner{
@@ -4827,4 +4832,9 @@ label.largeAccented{
 			margin-top: 10px;
 		}
 	}
+}
+
+.profileCenteredTextModule{
+	text-align: center;
+	padding: 25px 10px;
 }

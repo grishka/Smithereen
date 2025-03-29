@@ -42,5 +42,20 @@
 {% endfor %}
 {% endblock %}
 {% include "pagination_endless" %}
+{% if owner.domain is not empty and tab!='online' and query is empty %}
+{% if tab=='friends' %}
+{% set realTotal=owner.friendsCount %}
+{% set key='remote_friends_incomplete' %}
+{% elseif tab=='followers' %}
+{% set realTotal=owner.followersCount %}
+{% set key='remote_followers_incomplete' %}
+{% elseif tab=='following' %}
+{% set realTotal=owner.followingCount %}
+{% set key='remote_following_incomplete' %}
+{% endif %}
+{% if totalItems<realTotal %}
+<div class="bottomSummaryWrap"><div class="bottomSummary">{{ L(key, {'name': owner.firstAndGender, 'gender': owner.gender, 'server': owner.domain}, {'link': {'href': owner.url, 'target': '_blank', 'rel': 'nofollow'} }) }}</div></div>
+{% endif %}
+{% endif %}
 </div>
 {%endblock%}

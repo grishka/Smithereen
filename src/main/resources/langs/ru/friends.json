@@ -65,5 +65,8 @@
   "no_friends_online_own": "Никто из ваших друзей сейчас не в сети",
   "no_friends_online": "Никто из друзей {name, inflect, genitive} сейчас не в сети",
   "summary_own_X_friends_online": "{count, plural, =0 {Нет друзей} one {# ваш друг} few {# ваших друга} other {# ваших друзей}} в сети",
-  "summary_user_X_friends_online": "{count, plural, =0 {0 друзей} one {# друг} few {# друга} other {# друзей}} {name, inflect, genitive} в сети"
+  "summary_user_X_friends_online": "{count, plural, =0 {0 друзей} one {# друг} few {# друга} other {# друзей}} {name, inflect, genitive} в сети",
+  "remote_friends_incomplete": "Смотрите полный список друзей {name, inflect, genitive} <a id=\"link\">на <b>{server}</b></a>",
+  "remote_followers_incomplete": "Смотрите полный список подписчиков {name, inflect, genitive} <a id=\"link\">на <b>{server}</b></a>",
+  "remote_following_incomplete": "Смотрите полный список людей, на обновления которых {gender, select, female {подписана} other {подписан}} {name}, <a id=\"link\">на <b>{server}</b></a>"
 }
