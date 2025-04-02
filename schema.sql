@@ -299,12 +299,14 @@ CREATE TABLE `followings` (
   `muted` tinyint(1) NOT NULL DEFAULT '0',
   `hints_rank` int unsigned NOT NULL DEFAULT '0',
   `lists` bit(64) NOT NULL DEFAULT b'0',
+  `added_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY `follower_id` (`follower_id`),
   KEY `followee_id` (`followee_id`),
   KEY `mutual` (`mutual`),
   KEY `accepted` (`accepted`),
   KEY `muted` (`muted`),
   KEY `hints_rank` (`hints_rank`),
+  KEY `added_at` (`added_at`),
   CONSTRAINT `followings_ibfk_1` FOREIGN KEY (`follower_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `followings_ibfk_2` FOREIGN KEY (`followee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -1038,4 +1040,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-03-29 21:24:23
+-- Dump completed on 2025-03-31 23:19:46

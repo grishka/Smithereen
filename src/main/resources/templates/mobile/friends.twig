@@ -1,4 +1,27 @@
 {%extends "page"%}
+{% block headerTitle %}
+{% if tab=='friends' %}
+<input type="checkbox" id="headerDropdownToggler"/>
+<span class="title withDropdown">
+	<label class="dropdown" tabindex="0" for="headerDropdownToggler"><span id="headerTitle">
+		{% if section=='recent' %}
+		{{ L('new_friends') }}
+		{% else %}
+		{{ L('friends') }}
+		{% endif %}
+	</span><span class="icon"></span></label>
+	<div class="titleDropdownW">
+		<label class="closer" for="headerDropdownToggler"></label>
+		<ul class="titleDropdown">
+			<li style="--i: 0"><a href="/users/{{ owner.id }}/friends" class="filterItem{{ tab=='friends' and section is empty ? ' selected' : '' }}">{{ L('all_friends') }}</a></li>
+			{% if currentUser is not null and currentUser.id==owner.id %}<li style="--i: 1"><a href="/users/{{ owner.id }}/friends?section=recent" class="filterItem{{ tab=='friends' and section=='recent' ? ' selected' : '' }}">{{ L('new_friends') }}</a></li>{% endif %}
+		</ul>
+	</div>
+</span>
+{% else %}
+{{ parent() }}
+{% endif %}
+{% endblock %}
 {%block content%}
 {% include 'friends_tabbar' %}
 <div class="singleColumn">

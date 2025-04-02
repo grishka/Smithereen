@@ -42,6 +42,8 @@
 	{% else %}
 		{% if query is not empty %}
 			{{ L("summary_X_friends_found", {'count': totalItems}) }}
+		{% elseif section=='recent' %}
+			{{ L('new_friends_summary') }}
 		{% elseif isSelf %}
 			{{ L("summary_own_X_friends", {'numFriends': owner.friendsCount}) }}
 		{% else %}
@@ -50,29 +52,35 @@
 	{% endif %}
 	</div>
 </div>
-<div class="singleColumn">
-{% block friendsInner %}
-{% for friend in items %}
-	{% include "friends_row" with {'friend': friend} %}
-{% else %}
-<div class="emptyState">
-	{% if tab=='followers' %}
-	{{ L('no_followers') }}
-	{% elseif tab=='following' %}
-	{{ L('no_follows') }}
-	{% elseif tab=='online' %}
-	{% if currentUser is not null and currentUser.id==owner.id %}
-	{{ L('no_friends_online_own') }}
+<div class="withRightColumnFilters">
+	<div class="leftColumn">
+	{% block friendsInner %}
+	{% for friend in items %}
+		{% include "friends_row" with {'friend': friend} %}
 	{% else %}
-	{{ L('no_friends_online', {'name': owner.firstAndGender}) }}
-	{% endif %}
-	{% else %}
-	{{ query is empty ? L('no_friends') : L('nothing_found') }}
-	{% endif %}
-</div>
-{% endfor %}
-{% endblock %}
-{% include "pagination_endless" %}
+	<div class="emptyState">
+		{% if tab=='followers' %}
+		{{ L('no_followers') }}
+		{% elseif tab=='following' %}
+		{{ L('no_follows') }}
+		{% elseif tab=='online' %}
+		{% if currentUser is not null and currentUser.id==owner.id %}
+		{{ L('no_friends_online_own') }}
+		{% else %}
+		{{ L('no_friends_online', {'name': owner.firstAndGender}) }}
+		{% endif %}
+		{% else %}
+		{{ query is empty ? L('no_friends') : L('nothing_found') }}
+		{% endif %}
+	</div>
+	{% endfor %}
+	{% endblock %}
+	{% include "pagination_endless" %}
+	</div>
+	<div class="filters">
+		<a href="/users/{{ owner.id }}/friends" class="filterItem{{ tab=='friends' and section is empty ? ' selected' : '' }}">{{ L('all_friends') }}</a>
+		{% if isSelf %}<a href="/users/{{ owner.id }}/friends?section=recent" class="filterItem{{ tab=='friends' and section=='recent' ? ' selected' : '' }}">{{ L('new_friends') }}</a>{% endif %}
+	</div>
 </div>
 {% if owner.domain is not empty and tab!='online' and query is empty %}
 {% if tab=='friends' %}

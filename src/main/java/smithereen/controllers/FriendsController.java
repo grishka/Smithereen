@@ -68,10 +68,6 @@ public class FriendsController{
 		return getFriends(user, offset, count, order, false);
 	}
 
-	public PaginatedList<User> getOnlineFriends(User user, int offset, int count, SortOrder order){
-		return getFriends(user, offset, count, order, true);
-	}
-
 	public PaginatedList<User> getMutualFriends(User user, User otherUser, int offset, int count, SortOrder order){
 		try{
 			if(user.id==otherUser.id)
@@ -82,12 +78,11 @@ public class FriendsController{
 		}
 	}
 
-	private PaginatedList<User> getFriends(User user, int offset, int count, SortOrder order, boolean onlineOnly){
+	public PaginatedList<User> getFriends(User user, int offset, int count, SortOrder order, boolean onlineOnly){
 		try{
 			return switch(order){
-				case ID_ASCENDING -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly, false);
+				case ID_ASCENDING, HINTS, RECENTLY_ADDED -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly, order);
 				case RANDOM -> UserStorage.getRandomFriendsForProfile(user.id, count, onlineOnly);
-				case HINTS -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly, true);
 			};
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -338,7 +333,8 @@ public class FriendsController{
 	public enum SortOrder{
 		ID_ASCENDING,
 		RANDOM,
-		HINTS
+		HINTS,
+		RECENTLY_ADDED
 	}
 
 	private record PendingHintsRankIncrement(int followerID, int followeeID, int amount){}

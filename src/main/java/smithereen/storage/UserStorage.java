@@ -34,6 +34,7 @@ import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
 import smithereen.model.BirthdayReminder;
 import smithereen.model.ForeignUser;
@@ -319,7 +320,7 @@ public class UserStorage{
 		}
 	}
 
-	public static PaginatedList<User> getFriendListForUser(int userID, int offset, int count, boolean onlineOnly, boolean useHints) throws SQLException{
+	public static PaginatedList<User> getFriendListForUser(int userID, int offset, int count, boolean onlineOnly, FriendsController.SortOrder order) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			SQLQueryBuilder b=new SQLQueryBuilder(conn)
 					.selectFrom("followings")
@@ -338,7 +339,11 @@ public class UserStorage{
 			}
 
 			List<Integer> ids=b.andWhere("follower_id=? AND mutual=1", userID)
-					.orderBy(useHints ? "hints_rank DESC, followee_id ASC" : "followee_id ASC")
+					.orderBy(switch(order){
+						case HINTS -> "hints_rank DESC, followee_id ASC";
+						case RECENTLY_ADDED -> "added_at DESC, followee_id DESC";
+						default -> "followee_id ASC";
+					})
 					.limit(count, offset)
 					.executeAndGetIntList();
 			return new PaginatedList<>(getByIdAsList(ids), total, offset, count);
@@ -546,7 +551,7 @@ public class UserStorage{
 						.selectExpr("MAX(hints_rank)+20")
 						.where("follower_id=?", targetUserID)
 						.executeAndGetInt();
-				stmt=SQLQueryBuilder.prepareStatement(conn, "UPDATE `followings` SET `mutual`=1, hints_rank=? WHERE `follower_id`=? AND `followee_id`=?", hintsRank, targetUserID, userID);
+				stmt=SQLQueryBuilder.prepareStatement(conn, "UPDATE `followings` SET `mutual`=1, added_at=CURRENT_TIMESTAMP(), hints_rank=? WHERE `follower_id`=? AND `followee_id`=?", hintsRank, targetUserID, userID);
 				if(stmt.executeUpdate()!=1){
 					conn.createStatement().execute("ROLLBACK");
 					result[0]=false;
@@ -657,6 +662,7 @@ public class UserStorage{
 					new SQLQueryBuilder(conn)
 							.update("followings")
 							.value("mutual", true)
+							.valueExpr("added_at", "CURRENT_TIMESTAMP()")
 							.where("follower_id=? AND followee_id=?", targetUserID, userID)
 							.executeNoResult();
 					removeBirthdayReminderFromCache(List.of(userID, targetUserID));

@@ -68,5 +68,8 @@
   "summary_user_X_friends_online": "{count, plural, =0 {None of {name}'s friends are} one {# {name}'s friend is} other {# of {name}'s friends are}} online",
   "remote_friends_incomplete": "See the complete list of {name}'s friends <a id=\"link\">on <b>{server}</b></a>",
   "remote_followers_incomplete": "See the complete list of {name}'s followers <a id=\"link\">on <b>{server}</b></a>",
-  "remote_following_incomplete": "See the complete list of people {name} follows <a id=\"link\">on <b>{server}</b></a>"
+  "remote_following_incomplete": "See the complete list of people {name} follows <a id=\"link\">on <b>{server}</b></a>",
+  "all_friends": "All friends",
+  "new_friends": "New friends",
+  "new_friends_summary": "Recently added friends"
 }

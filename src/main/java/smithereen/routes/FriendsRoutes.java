@@ -108,12 +108,15 @@ public class FriendsRoutes{
 		model.pageTitle(lang(req).get("friends"));
 		PaginatedList<User> friends;
 		String query=req.queryParams("q");
-		FriendsController.SortOrder order=self!=null && user.id==self.user.id ? FriendsController.SortOrder.HINTS : FriendsController.SortOrder.ID_ASCENDING;
+		String section=req.queryParams("section");
+		FriendsController.SortOrder order;
+		if(!onlineOnly && "recent".equals(section) && self!=null && user.id==self.user.id){
+			order=FriendsController.SortOrder.RECENTLY_ADDED;
+		}else{
+			order=self!=null && user.id==self.user.id ? FriendsController.SortOrder.HINTS : FriendsController.SortOrder.ID_ASCENDING;
+		}
 		if(StringUtils.isEmpty(query)){
-			if(onlineOnly)
-				friends=ctx.getFriendsController().getOnlineFriends(user, offset(req), 100, order);
-			else
-				friends=ctx.getFriendsController().getFriends(user, offset(req), 100, order);
+			friends=ctx.getFriendsController().getFriends(user, offset(req), 100, order, onlineOnly);
 		}else{
 			friends=ctx.getSearchController().searchFriends(query, user, offset(req), 100, order);
 		}
@@ -124,7 +127,8 @@ public class FriendsRoutes{
 		}
 		model.with("tab", onlineOnly ? "online" : "friends");
 		model.with("urlPath", req.raw().getPathInfo())
-				.with("query", query);
+				.with("query", query)
+				.with("section", section);
 		@Nullable
 		String act=req.queryParams("act");
 		if("groupInvite".equals(act)){

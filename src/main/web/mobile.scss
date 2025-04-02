@@ -45,12 +45,7 @@ span.wideOnly{
 	width: 100%;
 	position: fixed;
 	top: 0;
-	font-size: 20px;
-	font-weight: 500;
-	text-align: left;
-	line-height: 56px;
 	z-index: 1;
-	white-space: nowrap;
 	@include medium-shadow;
 	display: flex;
 	.menuButton{
@@ -76,9 +71,27 @@ span.wideOnly{
 	}
 	.title{
 		margin: 0 16px;
+		flex-grow: 1;
+		a{
+			color: $text;
+		}
+		.dropdown{
+			display: flex;
+			.icon{
+				width: 24px;
+				flex: none;
+				background: svg-load('img/material/arrow_drop_down_24dp_FILL0_wght400_GRAD0_opsz24.svg', fill: $iconColor) no-repeat right center;
+			}
+		}
+	}
+	#headerTitle{
 		text-overflow: ellipsis;
 		overflow-x: hidden;
-		flex-grow: 1;
+		white-space: nowrap;
+		font-size: 20px;
+		font-weight: 500;
+		text-align: left;
+		line-height: 56px;
 	}
 	.actionButton{
 		width: 56px;
@@ -2704,3 +2717,79 @@ input.searchField{
 		}
 	}
 }
+
+#headerDropdownToggler{
+	display: none;
+	&:checked+.title.withDropdown .titleDropdownW{
+		visibility: visible;
+		.titleDropdown{
+			opacity: 1;
+			height: auto;
+			transition: opacity 0.2s ease-out, height 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+			li{
+				transform: translateY(0);
+				opacity: 1;
+				transition: transform 0.2s ease, opacity 0.2s ease;
+				transition-delay: calc(0.015s * var(--i));
+			}
+		}
+	}
+}
+
+.titleDropdownW{
+	visibility: hidden;
+	transition: visibility 0.2s;
+	.closer{
+		position: fixed;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+	}
+	.titleDropdown{
+		position: fixed;
+		left: 64px;
+		top: 0;
+		margin: 16px 0;
+		padding: 0;
+		background: $bg;
+		border-radius: 4px;
+		list-style-type: none;
+		overflow-y: auto;
+		max-height: calc(100% - 32px);
+		max-width: calc(100% - 80px);
+		interpolate-size: allow-keywords;
+		opacity: 0;
+		height: 0;
+		transition: opacity 0.2s ease-out, height 0.2s step-end;
+		box-shadow:
+			0 0 0 1px rgba(0,0,0,0.08),
+			0 0.2px 0.2px rgba(0, 0, 0, 0.02),
+			0 0.4px 0.4px rgba(0, 0, 0, 0.028),
+			0 0.8px 0.8px rgba(0, 0, 0, 0.035),
+			0 1.3px 1.3px rgba(0, 0, 0, 0.042),
+			0 2.5px 2.5px rgba(0, 0, 0, 0.05),
+			0 6px 6px rgba(0, 0, 0, 0.07);
+		scrollbar-width: none;
+		&::-webkit-scrollbar{
+			display: none;
+		}
+		li{
+			transform: translateY(-16px);
+			opacity: 0;
+			transition: transform 0.2s step-end, opacity 0.2s step-end;
+			a{
+				height: 48px;
+				line-height: 48px;
+				padding: 0 16px;
+				text-overflow: ellipsis;
+				overflow-x: hidden;
+				white-space: nowrap;
+				&.selected{
+					color: $normalLink;
+				}
+			}
+		}
+	}
+}
+
