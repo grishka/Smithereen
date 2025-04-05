@@ -12,7 +12,7 @@
 		{{ form.customControlAfterLabel() }}
 		<div class="text">
 			<div class="popupMenuW" id="notifierTypesMenuW">
-				<a href="javascript:void(0)" onclick="showNotifierTypesMenu()" class="opener">{{ L(notifierTypes is null ? 'settings_notification_types_all' : (notifierTypes is empty ? 'settings_notification_types_none' : 'settings_notification_types_some')) }}</a><span id="notifierTypes">
+				<a href="javascript:void(0)" onclick="cur.showNotifierTypesMenu()" class="opener">{{ L(notifierTypes is null ? 'settings_notification_types_all' : (notifierTypes is empty ? 'settings_notification_types_none' : 'settings_notification_types_some')) }}</a><span id="notifierTypes">
 					{%- if notifierTypes is not empty %}:
 					{% for type in notifierTypes -%}
 					    <span class="friendListLabel l{{ type.ordinal%8 }}">{{ L(type.langKey) }}</span>{% if not loop.last %}, {% endif %}
@@ -35,7 +35,7 @@
 {% endif %}
 </div>
 {% script %}
-var notifierTypesMenu=new MultipleChoicePopupMenu(ge("notifierTypesMenuW"), {
+cur.notifierTypesMenu=new MultipleChoicePopupMenu(ge("notifierTypesMenuW"), {
 	baseID: "notifierTypes",
 	allTitle: "{{ L('settings_notification_types_all') | forceEscape }}",
 	selectTitle: "{{ L('settings_notification_types_some') | forceEscape }}",
@@ -50,8 +50,8 @@ var notifierTypesMenu=new MultipleChoicePopupMenu(ge("notifierTypesMenuW"), {
 	allCheckboxID: "allNotifierTypes"
 });
 
-function showNotifierTypesMenu(){
-	notifierTypesMenu.show();
+cur.showNotifierTypesMenu=function(){
+	cur.notifierTypesMenu.show();
 }
 {% endscript %}
 {% endblock %}

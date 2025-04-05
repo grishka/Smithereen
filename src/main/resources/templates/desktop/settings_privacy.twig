@@ -15,7 +15,7 @@
 			<div class="settingLabel">{{ L('privacy_feed_types') }}</div>
 			<div class="settingValue">
 				<div class="popupMenuW" id="feedTypesMenuW">
-					<a href="javascript:void(0)" onclick="showFeedTypesMenu()" class="opener">{{ L(currentUser.newsTypesToShow is null ? 'privacy_feed_all_types' : (currentUser.newsTypesToShow is empty ? 'privacy_feed_no_types' : 'privacy_feed_select_types')) }}</a><span id="feedTypes">
+					<a href="javascript:void(0)" onclick="cur.showFeedTypesMenu()" class="opener">{{ L(currentUser.newsTypesToShow is null ? 'privacy_feed_all_types' : (currentUser.newsTypesToShow is empty ? 'privacy_feed_no_types' : 'privacy_feed_select_types')) }}</a><span id="feedTypes">
 					{%- if currentUser.newsTypesToShow is not empty %}:
 					{% for type in currentUser.newsTypesToShow -%}
 					    <span class="friendListLabel l{{ type.ordinal%8 }}">{{ L(type.langKey) }}</span>{% if not loop.last %}, {% endif %}
@@ -31,7 +31,7 @@
 	</div>
 </form>
 {% script %}
-var feedTypesMenu=new MultipleChoicePopupMenu(ge("feedTypesMenuW"), {
+cur.feedTypesMenu=new MultipleChoicePopupMenu(ge("feedTypesMenuW"), {
 	baseID: "feedTypes",
 	allTitle: "{{ L('privacy_feed_all_types') | forceEscape }}",
 	selectTitle: "{{ L('privacy_feed_select_types') | forceEscape }}",
@@ -46,7 +46,7 @@ var feedTypesMenu=new MultipleChoicePopupMenu(ge("feedTypesMenuW"), {
 	allCheckboxID: "allFeedTypes"
 });
 
-function showFeedTypesMenu(){
+cur.showFeedTypesMenu=function(){
 	feedTypesMenu.show();
 }
 {% endscript %}

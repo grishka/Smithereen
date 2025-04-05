@@ -1637,6 +1637,7 @@ function ajaxNavigate(url:string, addToHistory:boolean){
 			setGlobalLoading(false);
 			LayerManager.getInstance().dismissEverything();
 			LayerManager.getMediaInstance().dismissEverything();
+			cur={};
 			if(addToHistory){
 				window.history.pushState({type: "al"}, "", xhr.response.url || url);
 				document.documentElement.scrollTop=0;
