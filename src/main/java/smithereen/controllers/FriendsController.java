@@ -378,7 +378,7 @@ public class FriendsController{
 		try{
 			Map<Integer, BitSet> lists=UserStorage.getFriendListsForUsers(owner.id, friendIDs);
 			if(self==null || self.id!=owner.id){
-				BitSet publicMask=BitSet.valueOf(new long[]{0xe000000000000000L});
+				BitSet publicMask=BitSet.valueOf(new long[]{0xff00000000000000L});
 				for(BitSet userLists:lists.values())
 					userLists.and(publicMask);
 			}
