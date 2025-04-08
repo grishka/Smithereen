@@ -70,13 +70,13 @@ class LayerManager{
 		}
 		var layerContent:HTMLElement=layer.getContent();
 		this.layerContainer.appendChild(layerContent);
+		this.lockPageScroll();
 		if(this.stack.length==0){
 			if(layer.wantsScrim())
 				this.scrim.showAnimated();
 			this.layerContainer.show();
 			layerContent.showAnimated(layer.getCustomAppearAnimation());
 			document.body.addEventListener("keydown", this.escapeKeyListener);
-			this.lockPageScroll();
 		}else{
 			var prevLayer:BaseLayer=this.stack[this.stack.length-1];
 			prevLayer.getContent().hide();
@@ -142,7 +142,6 @@ class LayerManager{
 					}else{
 						this.layerContainer.removeChild(layerContent);
 						this.layerContainer.hide();
-						this.unlockPageScroll();
 					}
 					this.scrim.classList.remove("darker");
 					this.animatingHide=false;
@@ -151,7 +150,6 @@ class LayerManager{
 				this.layerContainer.removeChild(layerContent);
 				this.layerContainer.hide();
 
-				this.unlockPageScroll();
 			}
 			this.scrim.hideAnimated({keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: duration, easing: "ease"}});
 			if(this==LayerManager.mediaInstance && LayerManager.instance && LayerManager.instance.stack.length){
@@ -161,6 +159,7 @@ class LayerManager{
 		}else{
 			this.layerContainer.removeChild(layerContent);
 		}
+		this.unlockPageScroll();
 		if(layer.hideContainerAfterDismiss){
 			this.hideTemporarily();
 		}
