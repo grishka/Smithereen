@@ -7,20 +7,32 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import javax.swing.SortOrder;
 
 import smithereen.ApplicationContext;
+import smithereen.LruCache;
 import smithereen.Utils;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendRequest;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.friends.FriendList;
+import smithereen.model.friends.PublicFriendList;
 import smithereen.model.notifications.Notification;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserErrorException;
@@ -28,12 +40,15 @@ import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.UserStorage;
 import smithereen.storage.utils.IntPair;
 import smithereen.util.MaintenanceScheduler;
+import smithereen.util.NamedMutexCollection;
 
 public class FriendsController{
 	private static final Logger LOG=LoggerFactory.getLogger(FriendsController.class);
 
 	private final ApplicationContext ctx;
 	private ArrayList<PendingHintsRankIncrement> pendingHintsRankIncrements=new ArrayList<>();
+	private final NamedMutexCollection friendListsUpdateMutex=new NamedMutexCollection();
+	private final LruCache<Integer, List<FriendList>> friendListsCache=new LruCache<>(1000);
 
 	public FriendsController(ApplicationContext ctx){
 		this.ctx=ctx;
@@ -65,7 +80,7 @@ public class FriendsController{
 	}
 
 	public PaginatedList<User> getFriends(User user, int offset, int count, SortOrder order){
-		return getFriends(user, offset, count, order, false);
+		return getFriends(user, offset, count, order, false, 0);
 	}
 
 	public PaginatedList<User> getMutualFriends(User user, User otherUser, int offset, int count, SortOrder order){
@@ -78,10 +93,10 @@ public class FriendsController{
 		}
 	}
 
-	public PaginatedList<User> getFriends(User user, int offset, int count, SortOrder order, boolean onlineOnly){
+	public PaginatedList<User> getFriends(User user, int offset, int count, SortOrder order, boolean onlineOnly, int listID){
 		try{
 			return switch(order){
-				case ID_ASCENDING, HINTS, RECENTLY_ADDED -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly, order);
+				case ID_ASCENDING, HINTS, RECENTLY_ADDED -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly, order, listID);
 				case RANDOM -> UserStorage.getRandomFriendsForProfile(user.id, count, onlineOnly);
 			};
 		}catch(SQLException x){
@@ -327,6 +342,137 @@ public class FriendsController{
 				UserStorage.normalizeFriendHintsRanksIfNeeded(usersToNormalize);
 		}catch(SQLException x){
 			LOG.error("Failed to update hint ranks", x);
+		}
+	}
+
+	public List<FriendList> getFriendLists(User owner){
+		List<FriendList> lists=friendListsCache.get(owner.id);
+		if(lists!=null)
+			return lists;
+		try{
+			lists=UserStorage.getFriendLists(owner.id);
+			friendListsCache.put(owner.id, lists);
+			return lists;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int createFriendList(User owner, String name, Collection<Integer> memberIDs){
+		String mutexName=String.valueOf(owner.id);
+		friendListsUpdateMutex.acquire(mutexName);
+		try{
+			int id=UserStorage.createFriendList(owner.id, name, memberIDs);
+			friendListsCache.remove(owner.id);
+			return id;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}finally{
+			friendListsUpdateMutex.release(mutexName);
+		}
+	}
+
+	public Map<Integer, BitSet> getFriendListsForUsers(User self, User owner, Collection<Integer> friendIDs){
+		if(friendIDs.isEmpty())
+			return Map.of();
+		try{
+			Map<Integer, BitSet> lists=UserStorage.getFriendListsForUsers(owner.id, friendIDs);
+			if(self==null || self.id!=owner.id){
+				BitSet publicMask=BitSet.valueOf(new long[]{0xe000000000000000L});
+				for(BitSet userLists:lists.values())
+					userLists.and(publicMask);
+			}
+			return lists;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setUserFriendLists(User self, User friend, BitSet lists){
+		try{
+			if(!lists.isEmpty()){
+				Set<Integer> validListIDs=getFriendLists(self).stream().map(FriendList::id).collect(Collectors.toSet());
+				lists.stream().forEach(id->{
+					id+=1;
+					if(!validListIDs.contains(id) && (id<FriendList.FIRST_PUBLIC_LIST_ID || id>=FriendList.FIRST_PUBLIC_LIST_ID+PublicFriendList.values().length)){
+						lists.clear(id-1);
+					}
+				});
+			}
+			UserStorage.setFriendListsForUser(self.id, friend.id, lists);
+
+			// TODO federate everything affected by privacy settings that include changed lists
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteFriendList(User owner, int id){
+		if(id<1 || id>=FriendList.FIRST_PUBLIC_LIST_ID)
+			throw new UserActionNotAllowedException();
+		String mutexName=String.valueOf(owner.id);
+		friendListsUpdateMutex.acquire(mutexName);
+		try{
+			UserStorage.deleteFriendList(owner.id, id);
+			friendListsCache.remove(owner.id);
+
+			// TODO federate everything affected by privacy settings that include changed lists
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}finally{
+			friendListsUpdateMutex.release(mutexName);
+		}
+	}
+
+	public Set<Integer> getFriendListMemberIDs(User owner, int id){
+		if(id<1 || id>64)
+			throw new ObjectNotFoundException();
+		try{
+			return UserStorage.getFriendListMemberIDs(owner.id, id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateFriendList(User owner, int id, String name, Set<Integer> memberIDs){
+		FriendList existing=null;
+		if(id<FriendList.FIRST_PUBLIC_LIST_ID){
+			for(FriendList fl:getFriendLists(owner)){
+				if(fl.id()==id){
+					existing=fl;
+					break;
+				}
+			}
+			if(existing==null)
+				throw new ObjectNotFoundException();
+		}
+
+		boolean anythingChanged=false;
+		try{
+			if(existing!=null && !Objects.equals(existing.name(), name)){
+				anythingChanged=true;
+				UserStorage.renameFriendList(owner.id, id, name);
+			}
+
+			Set<Integer> existingMemberIDs=getFriendListMemberIDs(owner, id);
+			if(!existingMemberIDs.equals(memberIDs)){
+				anythingChanged=true;
+				Set<Integer> toAdd=memberIDs.stream().filter(mid->!existingMemberIDs.contains(mid)).collect(Collectors.toSet());
+				Set<Integer> toRemove=existingMemberIDs.stream().filter(mid->!memberIDs.contains(mid)).collect(Collectors.toSet());
+
+				if(!toAdd.isEmpty())
+					UserStorage.addToFriendList(owner.id, id, toAdd);
+				if(!toRemove.isEmpty())
+					UserStorage.removeFromFriendList(owner.id, id, toRemove);
+
+				// TODO federate everything affected by privacy settings that include changed lists
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+
+		if(anythingChanged){
+			friendListsCache.remove(owner.id);
 		}
 	}
 

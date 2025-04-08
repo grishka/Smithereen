@@ -109,7 +109,7 @@ public class ProfileRoutes{
 		model.with("friendCount", friends.total).with("friends", friends.list);
 
 		if(!isMobile(req)){
-			PaginatedList<User> onlineFriends=ctx.getFriendsController().getFriends(user, 0, 6, FriendsController.SortOrder.RANDOM, true);
+			PaginatedList<User> onlineFriends=ctx.getFriendsController().getFriends(user, 0, 6, FriendsController.SortOrder.RANDOM, true, 0);
 			model.with("onlineFriendCount", onlineFriends.total).with("onlineFriends", onlineFriends.list);
 		}
 

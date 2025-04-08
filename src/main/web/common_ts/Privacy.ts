@@ -1,4 +1,3 @@
-var friendListForPrivacy:any[];
 
 interface PrivacySetting{
 	r:string;
@@ -7,7 +6,7 @@ interface PrivacySetting{
 }
 
 function getFriendForPrivacy(id:number){
-	for(var user of friendListForPrivacy){
+	for(var user of cur.friendListForPrivacy){
 		if(user[0]==id)
 			return user;
 	}
@@ -86,7 +85,11 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 	var menu=el.customData.menu || (el.customData.menu=new PopupMenu(el.parentElement, (id)=>{
 		if(id=="certain_friends"){
 			loadFriendsForBoxes(()=>{
-				new PrivacyFriendChoiceBox(lang("select_friends_title"), setValue.bind(this), previousValue).show();
+				var box=new FriendListChoiceBox(lang("select_friends_title"), ids=>{
+					setValue({r: "n", au: ids, xu: []});
+					box.dismiss();
+				}, previousValue.au);
+				box.show();
 			});
 		}else if(id=="everyone_except" || id=="friends_except"){
 			loadFriendsForBoxes(()=>{
@@ -148,10 +151,10 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 }
 
 function loadFriendsForBoxes(onDone:{():void}){
-	if(!friendListForPrivacy){
+	if(!cur.friendListForPrivacy){
 		LayerManager.getInstance().showBoxLoader();
 		ajaxGet("/my/friends/ajaxFriendsForPrivacyBoxes", (r)=>{
-			friendListForPrivacy=r;
+			cur.friendListForPrivacy=r;
 			onDone();
 		}, null);
 	}else{
@@ -225,7 +228,7 @@ class ExtendedPrivacyBox extends Box{
 			]);
 		}
 
-		for(var friend of friendListForPrivacy){
+		for(var friend of cur.friendListForPrivacy){
 			this.friends.push({
 				normalizedName: friend[1],
 				token: {
@@ -291,25 +294,29 @@ class ExtendedPrivacyBox extends Box{
 	}
 }
 
-class PrivacyFriendChoiceBox extends BaseScrollableBox{
+class FriendListChoiceBox extends BaseScrollableBox{
 	private allFriendsList:HTMLElement;
 	private selectedFriendsList:HTMLElement;
 	private searchInput:HTMLInputElement;
 	private idNameMap:{[key:string]:string}={};
 	private selectedEmpty:HTMLElement;
 	private selectedIDs:number[]=[];
+	private searchFieldWrap:HTMLElement;
+	private extraField:HTMLInputElement;
 
-	public constructor(title:string, callback:{(v:PrivacySetting):void}, currentValue:PrivacySetting){
+	public constructor(title:string, callback:{(ids:number[]):void}, currentValue:number[]){
 		super(title, [lang("save"), lang("cancel")], (idx)=>{
 			if(idx==0){
-				callback({r: "n", au: this.selectedIDs, xu: []});
+				if(!this.extraField || this.extraField.reportValidity())
+					callback(this.selectedIDs);
+			}else{
+				this.dismiss();
 			}
-			this.dismiss();
 		});
 
 		var root=ce("div", {}, [
 			ce("div", {className: "gray borderBottom"}, [
-				ce("div", {className: "searchFieldWrap singleColumn"}, [
+				this.searchFieldWrap=ce("div", {className: "searchFieldWrap singleColumn"}, [
 					this.searchInput=ce("input", {type: "text", className: "searchField", autocomplete: "off", placeholder: lang("friends_search_placeholder")})
 				])
 			]),
@@ -329,9 +336,9 @@ class PrivacyFriendChoiceBox extends BaseScrollableBox{
 		this.setContent(root);
 		this.searchInput.addEventListener("input", this.onSearchInputChanged.bind(this));
 
-		for(var friend of friendListForPrivacy){
+		for(var friend of cur.friendListForPrivacy){
 			var row=this.makeRow(friend);
-			if(currentValue.au.indexOf(friend[0])!=-1){
+			if(currentValue.indexOf(friend[0])!=-1){
 				row.hide();
 				var selRow=this.makeRow(friend);
 				selRow.id+="sel";
@@ -342,6 +349,18 @@ class PrivacyFriendChoiceBox extends BaseScrollableBox{
 			this.allFriendsList.appendChild(row);
 			this.idNameMap[friend[0].toString()]=friend[1].toString();
 		}
+	}
+
+	public setExtraField(placeholder:string, value:string, required:boolean){
+		if(this.extraField)
+			throw new Error("Already set");
+		this.extraField=ce("input", {type: "text", className: "extraField", placeholder: placeholder, value: value, required: required});
+		this.searchFieldWrap.classList.add("hasExtraField");
+		this.searchFieldWrap.appendChild(this.extraField);
+	}
+
+	public setExtraContent(html:string){
+		this.searchFieldWrap.parentElement.insertAdjacentHTML("afterend", html);
 	}
 
 	protected onCreateContentView():HTMLElement{
@@ -412,28 +431,26 @@ class PrivacyFriendChoiceBox extends BaseScrollableBox{
 	}
 }
 
-class MobilePrivacyFriendChoiceBox extends BaseScrollableBox{
+class MobileFriendListChoiceBox extends BaseScrollableBox{
 	private allFriendsList:HTMLElement;
 	private searchInput:HTMLInputElement;
 	private idNameMap:{[key:string]:string}={};
 	private selectedIDs:number[]=[];
+	private searchFieldWrap:HTMLElement;
+	private extraField:HTMLInputElement;
 
-	public constructor(title:string, isAllowedFriends:boolean, callback:{(v:PrivacySetting):void}, currentValue:PrivacySetting){
+	public constructor(title:string, callback:{(selectedIDs:number[]):void}, currentValue:number[]){
 		super(title, [lang("save"), lang("cancel")], (idx)=>{
 			if(idx==0){
-				if(isAllowedFriends){
-					callback({r: "n", au: this.selectedIDs, xu: []});
-				}else{
-					var v=currentValue;
-					v.xu=this.selectedIDs;
-					callback(v);
-				}
+				if(!this.extraField || this.extraField.reportValidity())
+					callback(this.selectedIDs);
+			}else{
+				this.dismiss();
 			}
-			this.dismiss();
 		});
 
 		var root=ce("div", {className: "selectFriendsListBox"}, [
-			ce("div", {className: "searchFieldWrap singleColumn"}, [
+			this.searchFieldWrap=ce("div", {className: "searchFieldWrap singleColumn"}, [
 				this.searchInput=ce("input", {type: "text", className: "searchField", autocomplete: "off", placeholder: lang("friends_search_placeholder")})
 			]),
 			this.wrapScrollableElement(this.allFriendsList=ce("div", {className: "selectFriendsList"}, []))
@@ -441,10 +458,9 @@ class MobilePrivacyFriendChoiceBox extends BaseScrollableBox{
 		this.setContent(root);
 		this.searchInput.addEventListener("input", this.onSearchInputChanged.bind(this));
 
-		var ids:number[]=isAllowedFriends ? currentValue.au : currentValue.xu;
-		for(var friend of friendListForPrivacy){
+		for(var friend of cur.friendListForPrivacy){
 			var row=this.makeRow(friend);
-			if(ids.indexOf(friend[0])!=-1){
+			if(currentValue.indexOf(friend[0])!=-1){
 				this.selectedIDs.push(parseInt(friend[0]));
 				var cbox=row.qs("input") as HTMLInputElement;
 				cbox.checked=true;
@@ -452,6 +468,18 @@ class MobilePrivacyFriendChoiceBox extends BaseScrollableBox{
 			this.allFriendsList.appendChild(row);
 			this.idNameMap[friend[0].toString()]=friend[1].toString();
 		}
+	}
+
+	public setExtraField(placeholder:string, value:string, required:boolean){
+		if(this.extraField)
+			throw new Error("Already set");
+		this.extraField=ce("input", {type: "text", className: "extraField marginAfter", placeholder: placeholder, value: value, required: required});
+		this.searchFieldWrap.classList.add("hasExtraField");
+		this.searchFieldWrap.insertAdjacentElement("afterbegin", this.extraField);
+	}
+
+	public setExtraContent(html:string){
+		this.searchFieldWrap.parentElement.insertAdjacentHTML("beforebegin", html);
 	}
 
 	private makeRow(friend:any[]):HTMLElement{
@@ -526,11 +554,11 @@ function initMobilePrivacyForm(valueField:HTMLInputElement, updateField:boolean=
 			valueField.value=JSON.stringify(value);
 		if(onChange)
 			onChange(value);
-		if(!friendListForPrivacy)
+		if(!cur.friendListForPrivacy)
 			return;
 		allowedList.innerHTML="";
 		deniedList.innerHTML="";
-		for(var friend of friendListForPrivacy){
+		for(var friend of cur.friendListForPrivacy){
 			if(value.au.indexOf(friend[0])!=-1){
 				allowedList.appendChild(makeUserRow(friend));
 			}
@@ -544,7 +572,7 @@ function initMobilePrivacyForm(valueField:HTMLInputElement, updateField:boolean=
 		currentValue.au.remove(id);
 		currentValue.xu.remove(id);
 		setValue(currentValue);
-		if(!friendListForPrivacy){
+		if(!cur.friendListForPrivacy){
 			var el=ge("userRow"+id);
 			if(el)
 				el.remove();
@@ -591,10 +619,19 @@ function initMobilePrivacyForm(valueField:HTMLInputElement, updateField:boolean=
 		btn.addEventListener("click", ((id:number, ev:Event)=>removeUser(id)).bind(this, id));
 	}
 	document.body.qs("#allowedFriends .selectFriends").addEventListener("click", (ev)=>loadFriendsForBoxes(()=>{
-		new MobilePrivacyFriendChoiceBox(lang("select_friends_title"), true, setValue, currentValue).show();
+		var box:MobileFriendListChoiceBox=new MobileFriendListChoiceBox(lang("select_friends_title"), ids=>{
+			setValue({r: "n", au: ids, xu: []});
+			box.dismiss();
+		}, currentValue.au);
+		box.show();
 	}));
 	document.body.qs("#deniedFriends .selectFriends").addEventListener("click", (ev)=>loadFriendsForBoxes(()=>{
-		new MobilePrivacyFriendChoiceBox(lang("select_friends_title"), false, setValue, currentValue).show();
+		var box:MobileFriendListChoiceBox=new MobileFriendListChoiceBox(lang("select_friends_title"), ids=>{
+			currentValue.xu=ids;
+			setValue(currentValue);
+			box.dismiss();
+		}, currentValue.xu);
+		box.show();
 	}));
 }
 
@@ -653,5 +690,26 @@ function showMobilePrivacyBox(key:string, value:PrivacySetting, onlyMe:boolean){
 	}, (msg)=>{
 		new MessageBox(lang("error"), msg, lang("close")).show();
 	}, "text");
+}
+
+function chooseMultipleFriends(title:string, currentSelection:(number|string)[], options:any, onSelected:{(ids:number[], box:Box):void}){
+	loadFriendsForBoxes(()=>{
+		var box:(FriendListChoiceBox|MobileFriendListChoiceBox);
+		var selectionAsNumbers:number[]=[];
+		for(var id of currentSelection)
+			selectionAsNumbers.push(Number(id));
+		if(mobile){
+			box=new MobileFriendListChoiceBox(title, ids=>onSelected(ids, box), selectionAsNumbers);
+		}else{
+			box=new FriendListChoiceBox(title, ids=>onSelected(ids, box), selectionAsNumbers);
+		}
+		if(options.extraField){
+			box.setExtraField(options.extraField.placeholder, options.extraField.value, options.extraField.required);
+		}
+		if(options.extraContent){
+			box.setExtraContent(options.extraContent);
+		}
+		box.show();
+	});
 }
 

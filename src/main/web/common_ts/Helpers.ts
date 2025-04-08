@@ -272,7 +272,7 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, res
 	return xhr;
 }
 
-function ajaxPostAndApplyActions(uri:string, params:any, onDone:{():void}=null, onError:{():void}=null){
+function ajaxPostAndApplyActions(uri:string, params:any, onDone:{():void}=null, onError:{():void}=null, showDefaultErrorBox:boolean=false){
 	params.csrf=userConfig.csrf;
 	ajaxPost(uri, params, (resp:any)=>{
 		if(resp instanceof Array){
@@ -280,10 +280,12 @@ function ajaxPostAndApplyActions(uri:string, params:any, onDone:{():void}=null, 
 				applyServerCommand(resp[i]);
 			}
 		}
+		if(onDone)
+			onDone();
 	}, ()=>{
 		if(onError)
 			onError();
-		else
+		if(!onError || showDefaultErrorBox)
 			new MessageBox(lang("error"), lang("network_error"), lang("close")).show();
 	});
 }
@@ -1781,3 +1783,46 @@ function getXY(obj:HTMLElement, forFixedElement?:boolean):[number, number]{
 	return [left, top];
 }
 
+function showFriendListsMenu(userID:string){
+	var el=ge("friendListsButton"+userID);
+	var menu;
+	if(!el.customData)
+		el.customData={};
+	if(!el.customData.menu){
+		menu=new FriendListsPopupMenu(el, userID);
+		el.customData.menu=menu;
+	}else{
+		menu=el.customData.menu as FriendListsPopupMenu;
+	}
+	menu.setSelectedLists(el.dataset.lists.split(','));
+	menu.show();
+}
+
+function showCreateFriendListBox(){
+	LayerManager.getInstance().showBoxLoader();
+	chooseMultipleFriends(lang("select_friends_title"), [], {extraField: {placeholder: lang("friends_list_name"), required: true, value: ""}}, (ids, box)=>{
+		box.getButton(0).classList.add("loading");
+		var name:HTMLInputElement=box.getContent().qs("input.extraField");
+		ajaxPostAndApplyActions("/my/friends/createList", {name: name.value, members: ids.join(",")}, ()=>box.dismiss());
+	});
+	if(mobile){
+		(ge("headerDropdownToggler") as HTMLInputElement).checked=false;
+	}
+}
+
+function showEditFriendListBox(id:string, name:string){
+	LayerManager.getInstance().showBoxLoader();
+	ajaxGet("/my/friends/ajaxListUserIDs?id="+id, (resp)=>{
+		var isPublic=parseInt(id)>=57;
+		var opts=isPublic ? {extraContent: `<div class="singleColumn borderBottom"><div class="marginAfter"><b>${lang('friends_public_list')}</b></div>${lang('friends_public_list_explanation')}</div>`} : {extraField: {placeholder: lang("friends_list_name"), required: true, value: name}};
+		chooseMultipleFriends(lang("select_friends_title"), resp as number[], opts, (ids, box)=>{
+			box.getButton(0).classList.add("loading");
+			var reqParams:any={members: ids.join(","), id: id};
+			if(!isPublic){
+				var name:HTMLInputElement=box.getContent().qs("input.extraField");
+				reqParams.name=name.value;
+			}
+			ajaxPostAndApplyActions("/my/friends/updateList", reqParams, ()=>box.dismiss(), ()=>box.getButton(0).classList.remove("loading"), true);
+		});
+	}, null);
+}

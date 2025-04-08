@@ -1181,6 +1181,9 @@ select, .comboBoxW input{
 			margin-right: 4px;
 		}
 	}
+	.lists{
+		padding-top: 8px;
+	}
 }
 
 .form{
@@ -2037,7 +2040,7 @@ select, .comboBoxW input{
 			.submenu li{
 				margin: 0;
 			}
-			>ul{
+			&:not(.checkboxes)>ul{
 				>li:not(.hasSubmenu):hover:not(.forceUnselected), >li.hasSubmenu:hover:not(.forceUnselected) .itemContent,
 					>li:not(.hasSubmenu).selected, >li.hasSubmenu.selected .itemContent{
 					background-color: $buttonBorder;
@@ -2047,7 +2050,12 @@ select, .comboBoxW input{
 					color: $textOnAccent;
 				}
 			}
-			&.hasDdIcons{
+			&.checkboxes{
+				ul, li{
+					margin: 0;
+				}
+			}
+			&.hasDdIcons:not(.checkboxes)>ul{
 				li:not(.hasSubmenu), li.hasSubmenu .itemContent{
 					padding-right: 21px;
 				}
@@ -2099,6 +2107,20 @@ select, .comboBoxW input{
 			&:checked, &:hover:checked{
 				background-image: svg-load('img/check.svg', fill: $buttonBorder)
 			}
+		}
+	}
+}
+
+.actionList>.popupMenuW{
+	display: block;
+	.popupMenu{
+		left: 0;
+		min-width: 100%;
+		&.popupDown{
+			top: 0;
+		}
+		&.popupUp{
+			bottom: 0;
 		}
 	}
 }
@@ -2871,6 +2893,17 @@ label.pretendLink{
 		background: svg-load('img/search_icon.svg', fill: color($iconColor alpha(65%))) no-repeat 6px 50%, $bg;
 		padding-left: 21px;
 		height: 25px;
+	}
+	&.hasExtraField{
+		display: flex;
+		>input{
+			flex-basis: 50%;
+		}
+	}
+	.extraField{
+		width: 100%;
+		margin-left: 14px;
+		padding: 3px 6px;
 	}
 }
 

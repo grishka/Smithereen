@@ -4,6 +4,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.URLEncoder;
 import java.util.Arrays;
+import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -13,6 +15,10 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.controllers.FriendsController;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserErrorException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendRequest;
@@ -24,9 +30,8 @@ import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.WebDeltaResponse;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.lang.Lang;
+import smithereen.model.friends.FriendList;
+import smithereen.model.friends.PublicFriendList;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.templates.RenderedTemplateResponse;
@@ -110,13 +115,21 @@ public class FriendsRoutes{
 		String query=req.queryParams("q");
 		String section=req.queryParams("section");
 		FriendsController.SortOrder order;
+		int listID=0;
 		if(!onlineOnly && "recent".equals(section) && self!=null && user.id==self.user.id){
 			order=FriendsController.SortOrder.RECENTLY_ADDED;
 		}else{
+			if("list".equals(section) && !onlineOnly){
+				listID=safeParseInt(req.queryParams("list"));
+				if((self==null || self.user.id!=user.id) && listID<FriendList.FIRST_PUBLIC_LIST_ID)
+					listID=0;
+			}else{
+				section=null; // In case an unknown value is passed, so that "all friends" still gets highlighted
+			}
 			order=self!=null && user.id==self.user.id ? FriendsController.SortOrder.HINTS : FriendsController.SortOrder.ID_ASCENDING;
 		}
 		if(StringUtils.isEmpty(query)){
-			friends=ctx.getFriendsController().getFriends(user, offset(req), 100, order, onlineOnly);
+			friends=ctx.getFriendsController().getFriends(user, offset(req), 100, order, onlineOnly, listID);
 		}else{
 			friends=ctx.getSearchController().searchFriends(query, user, offset(req), 100, order);
 		}
@@ -129,6 +142,34 @@ public class FriendsRoutes{
 		model.with("urlPath", req.raw().getPathInfo())
 				.with("query", query)
 				.with("section", section);
+
+		Lang l=lang(req);
+
+		HashMap<Integer, FriendList> allLists=new HashMap<>();
+		if(self!=null && self.user.id==user.id){
+			List<FriendList> lists=ctx.getFriendsController().getFriendLists(user);
+			model.with("lists", lists);
+			for(FriendList fl:lists)
+				allLists.put(fl.id(), fl);
+
+			jsLangKey(req, "select_friends_title", "friends_search_placeholder", "friend_list_your_friends", "friends_in_list", "select_friends_empty_selection", "friends_list_name", "friends_public_list", "friends_public_list_explanation");
+		}
+		List<FriendList> publicLists=Arrays.stream(PublicFriendList.values())
+				.map(lt->new FriendList(FriendList.FIRST_PUBLIC_LIST_ID+lt.ordinal(), l.get(lt.getLangKey())))
+				.toList();
+		model.with("publicLists", publicLists);
+		for(FriendList fl:publicLists)
+			allLists.put(fl.id(), fl);
+		model.with("allLists", allLists)
+				.with("listID", listID);
+
+		if(!isMobile(req)){
+			Map<Integer, BitSet> userLists=ctx.getFriendsController().getFriendListsForUsers(self==null ? null : self.user, user, friends.list.stream().map(u->u.id).collect(Collectors.toSet()));
+			HashMap<Integer, int[]> actualUserLists=new HashMap<>();
+			userLists.forEach((id, lists)->actualUserLists.put(id, lists.stream().map(i->i+1).toArray()));
+			model.with("userLists", actualUserLists);
+		}
+
 		@Nullable
 		String act=req.queryParams("act");
 		if("groupInvite".equals(act)){
@@ -431,5 +472,98 @@ public class FriendsRoutes{
 				.toList();
 		resp.type("application/json");
 		return gson.toJson(res);
+	}
+
+	public static Object setUserFriendLists(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "lists");
+		User friend=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		BitSet lists=new BitSet(64);
+		Arrays.stream(req.queryParams("lists").split(","))
+				.map(Utils::safeParseInt)
+				.filter(i->i>0 && i<=64)
+				.forEach(id->lists.set(id-1));
+		ctx.getFriendsController().setUserFriendLists(self.user, friend, lists);
+		return "";
+	}
+
+	public static Object createFriendList(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "name");
+		Set<Integer> ids=ctx.getFriendsController().getFriendLists(self.user).stream().map(FriendList::id).collect(Collectors.toSet());
+		boolean foundID=false;
+		for(int i=1;i<FriendList.FIRST_PUBLIC_LIST_ID;i++){
+			if(!ids.contains(i)){
+				foundID=true;
+				break;
+			}
+		}
+		if(!foundID)
+			throw new UserErrorException("friend_lists_limit_reached");
+
+		String membersStr=req.queryParams("members");
+		Set<Integer> members;
+		if(StringUtils.isNotEmpty(membersStr)){
+			members=Arrays.stream(membersStr.split(","))
+					.map(Utils::safeParseInt)
+					.filter(id->id>0)
+					.collect(Collectors.toSet());
+		}else{
+			members=Set.of();
+		}
+
+		int id=ctx.getFriendsController().createFriendList(self.user, req.queryParams("name"), members);
+		return ajaxAwareRedirect(req, resp, "/my/friends?section=list&list="+id);
+	}
+
+	public static Object confirmDeleteFriendList(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "id");
+		int id=safeParseInt(req.queryParams("id"));
+		if(id<=0)
+			throw new ObjectNotFoundException();
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("friends_delete_list_title"), l.get("friends_delete_list_confirm"), "/my/friends/deleteList?id="+id);
+	}
+
+	public static Object deleteFriendList(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "id");
+		int id=safeParseInt(req.queryParams("id"));
+		ctx.getFriendsController().deleteFriendList(self.user, id);
+		return ajaxAwareRedirect(req, resp, "/my/friends");
+	}
+
+	public static Object ajaxFriendListMemberIDs(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "id");
+		int id=safeParseInt(req.queryParams("id"));
+		resp.header("content-type", "application/json");
+		return gson.toJson(ctx.getFriendsController().getFriendListMemberIDs(self.user, id));
+	}
+
+	public static Object updateFriendList(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "id");
+		int id=safeParseInt(req.queryParams("id"));
+		if(id<=0)
+			throw new ObjectNotFoundException();
+
+		String name;
+		if(id<FriendList.FIRST_PUBLIC_LIST_ID){
+			requireQueryParams(req, "name");
+			name=req.queryParams("name");
+		}else{
+			name=null;
+		}
+
+		String membersStr=req.queryParams("members");
+		Set<Integer> members;
+		if(StringUtils.isNotEmpty(membersStr)){
+			members=Arrays.stream(membersStr.split(","))
+					.map(Utils::safeParseInt)
+					.filter(mid->mid>0)
+					.collect(Collectors.toSet());
+		}else{
+			members=Set.of();
+		}
+
+		ctx.getFriendsController().updateFriendList(self.user, id, name, members);
+
+		return ajaxAwareRedirect(req, resp, "/my/friends?section=list&list="+id);
 	}
 }

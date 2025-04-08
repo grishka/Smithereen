@@ -219,6 +219,8 @@ class LayerManager{
 
 	public showBoxLoader(){
 		this.updateTopOffset(this.boxLoader);
+		if(this.boxLoader.style.display!="none")
+			return;
 		this.boxLoader.style.zIndex=(this.stack.length ? (this.baseZIndex+2) : this.baseZIndex).toString();
 		this.boxLoader.showAnimated();
 	}

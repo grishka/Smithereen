@@ -1,4 +1,5 @@
 {# @pebvariable name="friend" type="smithereen.model.User" #}
+{# @pebvariable name="userLists" type="Map<Integer, int[]>" #}
 <table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
 	<tr valign="top">
 		<td width="100">
@@ -19,6 +20,14 @@
 					<div class="grayText">{{ L('server') }}:</div>
 					<div><a href="{{ friend.url }}" target="_blank">{{ friend.domain }}</a></div>
 				{% endif %}
+				{% if userLists is not null and userLists contains friend.id and userLists[friend.id] is not empty %}
+				<div></div>
+				<div id="frowLists{{ friend.id }}" class="lists">
+				{% for listID in userLists[friend.id] %}
+				    <span class="friendListLabel l{{ (listID-1)%8 }}">{{ allLists[listID].name | default("List #{listID}") }}</span>
+				{% endfor %}
+				</div>
+				{% endif %}
 			</div>
 		</td>
 		<td width="130" id="frowActions{{ friend.id }}">
@@ -36,6 +45,7 @@
 					<li>
 						<a href="/users/{{ friend.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'/users/{{ friend.id }}/doRemoveFriend?from=list')" data-confirm="{{ L((following ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), {'name': friend.firstLastAndGender}) | forceEscape }}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
 					</li>
+					<li class="popupMenuW" id="friendListsButton{{ friend.id }}" data-lists="{% for listID in userLists[friend.id] %}{{ listID }}{% if not loop.last %},{% endif %}{% endfor %}"><a href="javascript:void(0)" onclick="showFriendListsMenu('{{ friend.id }}')" class="opener">{{ L('friend_set_lists') }}</a></li>
 				{% endif %}
 				{% endif %}
 			</ul>

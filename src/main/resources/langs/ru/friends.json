@@ -71,5 +71,21 @@
   "remote_following_incomplete": "Смотрите полный список людей, на обновления которых {gender, select, female {подписана} other {подписан}} {name}, <a id=\"link\">на <b>{server}</b></a>",
   "all_friends": "Все друзья",
   "new_friends": "Новые друзья",
-  "new_friends_summary": "Недавно добавленные друзья"
+  "new_friends_summary": "Недавно добавленные друзья",
+  "friend_set_lists": "Настроить списки",
+  "friend_list_best_friends": "Лучшие друзья",
+  "friend_list_relatives": "Родственники",
+  "friend_list_colleagues": "Коллеги",
+  "friend_list_university_friends": "Друзья по вузу",
+  "friend_list_school_friends": "Друзья по школе",
+  "friends_create_list": "Создать список",
+  "friends_edit_list": "Редактировать список",
+  "friends_delete_list": "Удалить список",
+  "friends_list_name": "Название списка",
+  "friends_public_list": "Публичные списки друзей",
+  "friends_public_list_explanation": "Данный список друзей смогут видеть другие пользователи.",
+  "X_friends_in_list_summary": "В списке {count, plural, =0 {нет друзей} one {# друг} few {# друга} other {# друзей}}",
+  "friend_lists_limit_reached": "Вы достигли максимально допустимого количества списков друзей. Удалите существующий список, чтобы создать новый.",
+  "friends_delete_list_title": "Удаление списка друзей",
+  "friends_delete_list_confirm": "Вы уверены, что хотите удалить этот список друзей?"
 }

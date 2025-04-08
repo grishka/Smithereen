@@ -598,6 +598,8 @@ public class SmithereenApplication{
 
 			getWithCSRF("/mute", ProfileRoutes::muteUser);
 			getWithCSRF("/unmute", ProfileRoutes::unmuteUser);
+
+			postWithCSRF("/setFriendLists", FriendsRoutes::setUserFriendLists);
 		});
 
 		path("/groups/:id", ()->{
@@ -775,7 +777,14 @@ public class SmithereenApplication{
 
 		path("/my", ()->{
 			getLoggedIn("/incomingFriendRequests", FriendsRoutes::incomingFriendRequests);
-			getLoggedIn("/friends", FriendsRoutes::ownFriends);
+			path("/friends", ()->{
+				getLoggedIn("", FriendsRoutes::ownFriends);
+				postWithCSRF("/createList", FriendsRoutes::createFriendList);
+				getLoggedIn("/confirmDeleteList", FriendsRoutes::confirmDeleteFriendList);
+				postWithCSRF("/deleteList", FriendsRoutes::deleteFriendList);
+				getLoggedIn("/ajaxListUserIDs", FriendsRoutes::ajaxFriendListMemberIDs);
+				postWithCSRF("/updateList", FriendsRoutes::updateFriendList);
+			});
 			get("/followers", FriendsRoutes::followers);
 			get("/following", FriendsRoutes::following);
 			getLoggedIn("/notifications", NotificationsRoutes::notifications);

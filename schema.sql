@@ -312,6 +312,20 @@ CREATE TABLE `followings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `friend_lists`
+--
+
+CREATE TABLE `friend_lists` (
+  `id` tinyint unsigned NOT NULL,
+  `owner_id` int unsigned NOT NULL,
+  `name` varchar(128) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`,`owner_id`),
+  KEY `owner_id` (`owner_id`),
+  CONSTRAINT `friend_lists_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `friend_requests`
 --
 
@@ -1040,4 +1054,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-03-31 23:19:46
+-- Dump completed on 2025-04-03 19:48:06

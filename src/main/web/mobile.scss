@@ -1609,6 +1609,9 @@ input.searchField{
 		flex: 1;
 		max-height: calc(100vh - 180px - 32px - 100px);
 	}
+	.extraField{
+		width: 100%;
+	}
 }
 .selectFriendsList{
 	overflow-y: auto;
@@ -2778,6 +2781,10 @@ input.searchField{
 			transform: translateY(-16px);
 			opacity: 0;
 			transition: transform 0.2s step-end, opacity 0.2s step-end;
+			&.separator{
+				margin: 8px 0;
+				border-bottom: solid 1px $wallPostSeparator;
+			}
 			a{
 				height: 48px;
 				line-height: 48px;

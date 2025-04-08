@@ -71,5 +71,21 @@
   "remote_following_incomplete": "See the complete list of people {name} follows <a id=\"link\">on <b>{server}</b></a>",
   "all_friends": "All friends",
   "new_friends": "New friends",
-  "new_friends_summary": "Recently added friends"
+  "new_friends_summary": "Recently added friends",
+  "friend_set_lists": "Edit lists",
+  "friend_list_best_friends": "Best friends",
+  "friend_list_relatives": "Family",
+  "friend_list_colleagues": "Colleagues",
+  "friend_list_university_friends": "University friends",
+  "friend_list_school_friends": "School friends",
+  "friends_create_list": "Create a list",
+  "friends_edit_list": "Edit list",
+  "friends_delete_list": "Delete list",
+  "friends_list_name": "List name",
+  "friends_public_list": "Public friend lists",
+  "friends_public_list_explanation": "Other users will be able to see this friend list.",
+  "X_friends_in_list_summary": "{count, plural, =0 {No friends} one {# friend} other {# friends}} in list",
+  "friend_lists_limit_reached": "You have reached the maximum allowed number of friend lists. Delete an existing list to create a new one.",
+  "friends_delete_list_title": "Delete friend list",
+  "friends_delete_list_confirm": "Are you sure you want to delete this list?"
 }

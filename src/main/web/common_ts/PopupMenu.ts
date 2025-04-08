@@ -5,7 +5,7 @@ interface PopupMenuItemSpec{
 
 class PopupMenu{
 
-	private root:HTMLElement;
+	protected root:HTMLElement;
 	private menu:HTMLElement;
 	private actualMenu:HTMLElement;
 	private title:HTMLElement;
@@ -308,6 +308,69 @@ class MultipleChoicePopupMenu extends PopupMenu{
 			this.noneItem.classList.add("selected");
 		}
 		super.show();
+	}
+}
+
+class FriendListsPopupMenu extends PopupMenu{
+	private checkboxes:HTMLInputElement[];
+	private userID:string;
+	private listsCont:HTMLElement;
+	private saveTimeout:number;
+
+	public constructor(el:HTMLElement, userID:string){
+		var opener=el.qs(".opener");
+		var menuList;
+		var menuEl=ce("div", {"className": "popupMenu compact checkboxes"}, [
+			menuList=ce("ul", {"className": ""})
+		]);
+		menuEl.hide();
+		opener.insertAdjacentElement("afterend", menuEl);
+
+		super(el, id=>true, false, true);
+		this.userID=userID;
+		this.listsCont=ge("frowLists"+userID);
+		this.checkboxes=[];
+
+		for(var id in cur.friendLists){
+			var cbox;
+			var item=ce("li", {}, [
+				ce("label", {}, [
+					cbox=ce("input", {type: "checkbox", id: `friendList${id}_${userID}`}),
+					ce("span", {innerText: cur.friendLists[id]})
+				])
+			]);
+			menuList.appendChild(item);
+			cbox.customData={listID: id};
+			this.checkboxes.push(cbox);
+		}
+		menuList.addEventListener("change", ev=>{
+			var selectedLists:string[]=[];
+			if(this.listsCont)
+				this.listsCont.innerHTML="";
+			for(var cbox of this.checkboxes){
+				if(cbox.checked){
+					var id=cbox.customData.listID;
+					selectedLists.push(id);
+					this.listsCont.appendChild(ce("span", {className: "friendListLabel l"+((id-1)%8), innerText: cur.friendLists[id]}));
+					this.listsCont.append(" ");
+				}
+			}
+			this.root.dataset.lists=selectedLists.join(',');
+			if(this.saveTimeout)
+				clearTimeout(this.saveTimeout);
+			this.saveTimeout=setTimeout(()=>this.saveLists(selectedLists), 1000);
+		});
+	}
+
+	public setSelectedLists(ids:string[]){
+		for(var cbox of this.checkboxes){
+			cbox.checked=ids.indexOf(cbox.customData.listID)!=-1;
+		}
+	}
+
+	private saveLists(ids:string[]){
+		this.saveTimeout=null;
+		ajaxPost("/users/"+this.userID+"/setFriendLists", {lists: ids.join(','), csrf: userConfig.csrf}, ()=>{}, ()=>{});
 	}
 }
 
