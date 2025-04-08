@@ -121,8 +121,10 @@ public class FriendsRoutes{
 		}else{
 			if("list".equals(section) && !onlineOnly){
 				listID=safeParseInt(req.queryParams("list"));
-				if((self==null || self.user.id!=user.id) && listID<FriendList.FIRST_PUBLIC_LIST_ID)
+				if((self==null || self.user.id!=user.id) && listID<FriendList.FIRST_PUBLIC_LIST_ID){
 					listID=0;
+					section=null;
+				}
 			}else{
 				section=null; // In case an unknown value is passed, so that "all friends" still gets highlighted
 			}
