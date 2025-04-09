@@ -873,14 +873,20 @@ public class SettingsRoutes{
 	}
 
 	public static Object filters(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
 		return new RenderedTemplateResponse("settings_filters", req)
 				.with("filters", ctx.getNewsfeedController().getWordFilters(self.user, true))
-				.pageTitle(lang(req).get("feed_filters"));
+				.pageTitle(l.get("feed_filters"))
+				.mobileToolbarTitle(l.get("settings"));
 	}
 
 	public static Object createFilterForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
 		return new RenderedTemplateResponse("settings_filter_create", req)
-				.pageTitle(lang(req).get("feed_filters"));
+				.pageTitle(l.get("feed_filters"))
+				.addNavBarItem(l.get("settings"), "/settings")
+				.addNavBarItem(l.get("feed_filters"), "/settings/filters")
+				.addNavBarItem(l.get("settings_create_filter"));
 	}
 
 	public static Object createFilter(Request req, Response resp, Account self, ApplicationContext ctx){

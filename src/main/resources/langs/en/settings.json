@@ -212,7 +212,7 @@
   "settings_filter_friends_feed": "Friends news",
   "settings_filter_groups_feed": "Groups news",
   "settings_filter_words": "Words or phrases",
-  "settings_filter_add_word": "Add a word of phrase",
+  "settings_filter_add_word": "Add a word or phrase",
   "settings_filter_enter_word": "Enter at least one word",
   "settings_filter_select_contexts": "Select at least one context",
   "settings_filter_X_words": "{count, plural, one {# word} other {# words}}",
