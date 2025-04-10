@@ -291,6 +291,8 @@ public class PhotosController{
 
 	public long createAlbum(User self, String title, String description, PrivacySetting viewPrivacy, PrivacySetting commentPrivacy){
 		try{
+			if(!viewPrivacy.allowLists.isEmpty() || !viewPrivacy.exceptLists.isEmpty() || !commentPrivacy.allowLists.isEmpty() || !commentPrivacy.exceptLists.isEmpty())
+				context.getPrivacyController().populatePrivacySettingsFriendListUsers(self, List.of(viewPrivacy, commentPrivacy));
 			long id;
 			synchronized(albumCreationLock){
 				if(PhotoStorage.getOwnerAlbumCount(Objects.requireNonNull(self).id)>=MAX_ALBUMS_PER_OWNER)
@@ -432,6 +434,8 @@ public class PhotosController{
 		if(album.systemType!=null)
 			throw new UserActionNotAllowedException();
 		enforceAlbumManagementPermission(self, album);
+		if(!viewPrivacy.allowLists.isEmpty() || !viewPrivacy.exceptLists.isEmpty() || !commentPrivacy.allowLists.isEmpty() || !commentPrivacy.exceptLists.isEmpty())
+			context.getPrivacyController().populatePrivacySettingsFriendListUsers(self, List.of(viewPrivacy, commentPrivacy));
 		if(Objects.equals(album.title, title) && Objects.equals(album.description, description)
 				&& Objects.equals(album.viewPrivacy, viewPrivacy) && Objects.equals(album.commentPrivacy, commentPrivacy))
 			return;

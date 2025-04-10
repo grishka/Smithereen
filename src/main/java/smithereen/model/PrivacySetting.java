@@ -34,6 +34,14 @@ public class PrivacySetting{
 	public Set<Integer> allowUsers=Set.of();
 	@SerializedName("xu")
 	public Set<Integer> exceptUsers=Set.of();
+	@SerializedName("al")
+	public Set<Integer> allowLists=Set.of();
+	@SerializedName("xl")
+	public Set<Integer> exceptLists=Set.of();
+	@SerializedName("alu")
+	public Set<Integer> allowListUsers=Set.of();
+	@SerializedName("xlu")
+	public Set<Integer> exceptListUsers=Set.of();
 
 	@Override
 	public String toString(){
@@ -41,6 +49,10 @@ public class PrivacySetting{
 				"baseRule="+baseRule+
 				", allowUsers="+allowUsers+
 				", exceptUsers="+exceptUsers+
+				", allowLists="+allowLists+
+				", exceptLists="+exceptLists+
+				", allowListUsers="+allowListUsers+
+				", exceptListUsers="+exceptListUsers+
 				'}';
 	}
 
@@ -48,7 +60,8 @@ public class PrivacySetting{
 	public boolean equals(Object o){
 		if(this==o) return true;
 		if(!(o instanceof PrivacySetting that)) return false;
-		return baseRule==that.baseRule && Objects.equals(allowUsers, that.allowUsers) && Objects.equals(exceptUsers, that.exceptUsers);
+		return baseRule==that.baseRule && Objects.equals(allowUsers, that.allowUsers) && Objects.equals(exceptUsers, that.exceptUsers)
+				&& Objects.equals(allowLists, that.allowLists) && Objects.equals(exceptLists, that.exceptLists);
 	}
 
 	@Override
@@ -76,19 +89,23 @@ public class PrivacySetting{
 				allowed.add("sm:FriendsOfFriends");
 			}
 		}
-		if(!allowUsers.isEmpty() || !exceptUsers.isEmpty()){
+		if(!allowUsers.isEmpty() || !exceptUsers.isEmpty() || !allowListUsers.isEmpty() || !exceptListUsers.isEmpty()){
 			String domain=serializerContext.getRequesterDomain();
 			if(domain!=null){
+				HashSet<Integer> allAllowedUsers=new HashSet<>(allowUsers);
+				allAllowedUsers.addAll(allowListUsers);
+				HashSet<Integer> allDeniedUsers=new HashSet<>(exceptUsers);
+				allDeniedUsers.addAll(exceptListUsers);
 				HashSet<Integer> needUsers=new HashSet<>();
-				needUsers.addAll(allowUsers);
-				needUsers.addAll(exceptUsers);
+				needUsers.addAll(allAllowedUsers);
+				needUsers.addAll(allDeniedUsers);
 				Map<Integer, User> users=serializerContext.appContext.getUsersController().getUsers(needUsers);
-				for(int id:allowUsers){
+				for(int id:allAllowedUsers){
 					User user=users.get(id);
 					if(user!=null && user.domain.equalsIgnoreCase(domain))
 						allowed.add(user.activityPubID.toString());
 				}
-				for(int id:exceptUsers){
+				for(int id:allDeniedUsers){
 					User user=users.get(id);
 					if(user!=null && user.domain.equalsIgnoreCase(domain))
 						except.add(user.activityPubID.toString());
