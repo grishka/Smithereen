@@ -70,6 +70,7 @@ class LayerManager{
 		}
 		var layerContent:HTMLElement=layer.getContent();
 		this.layerContainer.appendChild(layerContent);
+		layer.onBeforeShow();
 		this.lockPageScroll();
 		if(this.stack.length==0){
 			if(layer.wantsScrim())
@@ -313,6 +314,7 @@ abstract class BaseLayer{
 		this.getLayerManager().updateTopOffset(this.content);
 	}
 
+	public onBeforeShow():void{}
 	public onShown():void{}
 	public onHidden():void{}
 	public onWindowResize():void{}
@@ -345,6 +347,11 @@ abstract class BaseMediaViewerLayer extends BaseLayer{
 
 	public getLayerManager(){
 		return LayerManager.getMediaInstance();
+	}
+
+	public onBeforeShow(){
+		if(!this.historyEntryAdded) // Needed for scroll restoration to work correctly
+			this.updateHistory({}, location.href);
 	}
 
 	protected updateHistory(state:any, url:string){
