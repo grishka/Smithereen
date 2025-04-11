@@ -3,6 +3,8 @@ interface PrivacySetting{
 	r:string;
 	au:number[];
 	xu:number[];
+	al:number[];
+	xl:number[];
 }
 
 function getFriendForPrivacy(id:number){
@@ -24,6 +26,7 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 	var menuList=menuEl.querySelector("ul");
 	if(!menuList.children.length){
 		var opts:string[];
+		var checkboxes:HTMLInputElement[]=[];
 		if(onlyFriends){
 			opts=["friends", onlyMe ? "only_me" : "no_one", "friends_except", "certain_friends"];
 		}else{
@@ -37,6 +40,37 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 				li.appendChild(ce("div", {className: "ddIcon iconPlus"}));
 			}
 		}
+		var listsSublist;
+		var listsItem=ce("li", {className: "hasSubmenu"}, [
+			ce("div", {className: "itemContent"}, [
+				ce("span", {innerHTML: lang("privacy_value_certain_friend_lists")}),
+				ce("div", {className: "ddIcon iconSubmenu"})
+			]),
+			listsSublist=ce("ul", {className: "submenu"})
+		]);
+		listsItem.dataset.act="certain_friend_lists";
+		for(var lid in cur.friendLists){
+			var cbox;
+			var item=ce("li", {}, [
+				ce("label", {}, [
+					cbox=ce("input", {type: "checkbox", id: `friendList${lid}_${key}`}),
+					ce("span", {innerText: cur.friendLists[lid]})
+				])
+			]);
+			listsSublist.appendChild(item);
+			cbox.customData={listID: parseInt(lid)};
+			checkboxes.push(cbox);
+		}
+		menuList.appendChild(listsItem);
+		listsSublist.addEventListener("change", ev=>{
+			var value:PrivacySetting={r: "n", au: [], xu: [], al: [], xl: []};
+			for(var cbox of checkboxes){
+				if(cbox.checked){
+					value.al.push(cbox.customData.listID);
+				}
+			}
+			setValue(value);
+		});
 	}
 	var valueFld=ge(key+"_value") as HTMLInputElement;
 	var extendedValue=ge("privacyExtended_"+key);
@@ -53,7 +87,7 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 				el.innerText=lang("privacy_value_friends_of_friends");
 				break;
 			case 'n':
-				if(!v.au || v.au.length==0){
+				if(!v.au || (v.au.length==0 && v.al.length==0)){
 					el.innerText=lang(onlyMe ? "privacy_value_only_me" : "privacy_value_no_one");
 				}else{
 					el.innerText=lang("privacy_value_certain_friends");
@@ -61,18 +95,24 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 				break;
 		}
 		var extHtml:string="";
-		if(v.au.length){
+		if(v.au.length || v.al.length){
 			extHtml+=lang("privacy_settings_value_certain_friends_before");
 			var links:string[]=[];
+			for(var id of v.al){
+				links.push(`<span class="friendListLabel l${(id-1)%8}">${cur.friendLists[id].escapeHTML()}</span>`);
+			}
 			for(var id of v.au){
 				var user=getFriendForPrivacy(id);
 				links.push(`<a href="${user[2]}">${user[1].escapeHTML()}</a>`);
 			}
 			extHtml+=links.join(lang("privacy_settings_value_name_separator"));
 		}
-		if(v.xu.length){
+		if(v.xu.length || v.xl.length){
 			extHtml+=lang("privacy_settings_value_except");
 			var links:string[]=[];
+			for(var id of v.xl){
+				links.push(`<span class="friendListLabel l${(id-1)%8}">${cur.friendLists[id].escapeHTML()}</span>`);
+			}
 			for(var id of v.xu){
 				var user=getFriendForPrivacy(id);
 				links.push(`<a href="${user[2]}">${user[3].escapeHTML()}</a>`);
@@ -83,10 +123,12 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 	};
 	var previousValue=JSON.parse(valueFld.value);
 	var menu=el.customData.menu || (el.customData.menu=new PopupMenu(el.parentElement, (id)=>{
-		if(id=="certain_friends"){
+		if(!id || id=="certain_friend_lists"){
+			return true;
+		}else if(id=="certain_friends"){
 			loadFriendsForBoxes(()=>{
 				var box=new FriendListChoiceBox(lang("select_friends_title"), ids=>{
-					setValue({r: "n", au: ids, xu: []});
+					setValue({r: "n", au: ids, xu: [], al: [], xl: []});
 					box.dismiss();
 				}, previousValue.au);
 				box.show();
@@ -112,7 +154,7 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 					rule="n";
 					break;
 			}
-			setValue({r: rule, au: [], xu: []});
+			setValue({r: rule, au: [], xu: [], al: [], xl: []});
 		}
 		return false;
 	}, false, true));
@@ -121,7 +163,7 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 		curSel.classList.remove("selected");
 	}
 	var selectedItem:string;
-	if(previousValue.xu.length){
+	if(previousValue.xu.length || previousValue.xl.length){
 		selectedItem=onlyFriends ? "friends_except" : "everyone_except";
 	}else{
 		switch(previousValue.r){
@@ -137,6 +179,8 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 			case "n":
 				if(previousValue.au.length){
 					selectedItem="certain_friends";
+				}else if(previousValue.al.length){
+					selectedItem="certain_friend_lists";
 				}else{
 					selectedItem=onlyMe ? "only_me" : "no_one";
 				}
@@ -146,6 +190,9 @@ function showPrivacyMenu(el:HTMLAnchorElement, key:string, onlyMe:boolean, onlyF
 	var selectedEl=menuList.qs("li[data-act="+selectedItem+"]");
 	if(selectedEl){
 		selectedEl.classList.add("selected");
+	}
+	for(var cbox of menuList.querySelectorAll(".hasSubmenu input")){
+		cbox.checked=previousValue.al.indexOf(cbox.customData.listID)!=-1;
 	}
 	menu.show();
 }
@@ -177,15 +224,23 @@ class ExtendedPrivacyBox extends Box{
 			if(idx==0){
 				var allow:number[]=[];
 				var deny:number[]=[];
+				var allowLists:number[]=[];
+				var denyLists:number[]=[];
 				if(this.rule=="n"){
 					for(var id of this.allowField.getTokenIDs()){
-						allow.push(parseInt(id));
+						if(id.startsWith("list"))
+							allowLists.push(parseInt(id.substr(4)));
+						else
+							allow.push(parseInt(id));
 					}
 				}
 				for(var id of this.denyField.getTokenIDs()){
-					deny.push(parseInt(id));
+					if(id.startsWith("list"))
+						denyLists.push(parseInt(id.substr(4)));
+					else
+						deny.push(parseInt(id));
 				}
-				callback({r: this.rule, au: allow, xu: deny});
+				callback({r: this.rule, au: allow, xu: deny, al: allowLists, xl: denyLists});
 			}
 			this.dismiss();
 		});
@@ -241,6 +296,12 @@ class ExtendedPrivacyBox extends Box{
 		this.allowField=new TokenInput(this.allowFriendsField, lang("privacy_enter_friend_name"), this.onProvideCompletions.bind(this));
 		this.denyField=new TokenInput(this.denyFriendsField, lang("privacy_enter_friend_name"), this.onProvideCompletions.bind(this));
 
+		for(var id of currentValue.al){
+			this.allowField.addToken("list"+id, cur.friendLists[id], false);
+		}
+		for(var id of currentValue.xl){
+			this.denyField.addToken("list"+id, cur.friendLists[id], false);
+		}
 		for(var id of currentValue.au){
 			var user=getFriendForPrivacy(id);
 			this.allowField.addToken(user[0], user[1], false);
@@ -278,8 +339,8 @@ class ExtendedPrivacyBox extends Box{
 	private onProvideCompletions(q:string):TokenInputToken[]{
 		if(q.trim()==""){
 			var res:TokenInputToken[]=[];
-			for(var f of this.friends){
-				res.push(f.token);
+			for(var lid in cur.friendLists){
+				res.push({id: "list"+lid, title: cur.friendLists[lid]});
 			}
 			return res;
 		}

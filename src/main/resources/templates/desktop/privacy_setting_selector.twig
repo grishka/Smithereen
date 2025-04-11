@@ -7,15 +7,21 @@
 	{% elseif setting.baseRule=='FRIENDS_OF_FRIENDS' %}
 		{% set mainRuleKey='privacy_value_friends_of_friends' %}
 	{% elseif setting.baseRule=='NONE' %}
-		{% if setting.allowUsers is not empty %}
+		{% if setting.allowUsers is not empty or setting.allowLists is not empty %}
 			{% set mainRuleKey='privacy_value_certain_friends' %}
 		{% else %}
 			{% set mainRuleKey=isOnlyMe ? 'privacy_value_only_me' : 'privacy_value_no_one' %}
 		{% endif %}
 	{% endif %}
 	<a href="javascript:void(0)" onclick="showPrivacyMenu(this, '{{ key }}', {{ isOnlyMe }}, {{ isFriendsOnly | default(false) }})" class="opener">{{ L(mainRuleKey) }}</a><span id="privacyExtended_{{ key }}">
-		{%- if setting.allowUsers is not empty -%}
+		{%- if setting.allowUsers is not empty or setting.allowLists is not empty -%}
 		{{- L("privacy_settings_value_certain_friends_before") -}}
+		{%- for id in setting.allowLists -%}
+			<span class="friendListLabel l{{ (id-1)%8 }}">{{ allLists[id].name }}</span>
+			{%- if not loop.last or setting.allowUsers is not empty -%}
+			{{- L("privacy_settings_value_name_separator") -}}
+			{%- endif -%}
+		{%- endfor -%}
 		{%- for id in setting.allowUsers -%}
 			<a href="{{ profileURL(id) }}">{{ users[id] | name }}</a>
 			{%- if not loop.last -%}
@@ -23,8 +29,14 @@
 			{%- endif -%}
 		{%- endfor -%}
 		{%- endif -%}
-		{%- if setting.exceptUsers is not empty -%}
+		{%- if setting.exceptUsers is not empty or setting.exceptLists is not empty -%}
 		{{- L("privacy_settings_value_except") -}}
+		{%- for id in setting.exceptLists -%}
+			<span class="friendListLabel l{{ (id-1)%8 }}">{{ allLists[id].name }}</span>
+			{%- if not loop.last or setting.exceptUsers is not empty -%}
+			{{- L("privacy_settings_value_name_separator") -}}
+			{%- endif -%}
+		{%- endfor -%}
 		{%- for id in setting.exceptUsers -%}
 			<a href="{{ profileURL(id) }}">{{ L("privacy_settings_value_except_name", {'name': users[id] | name('fullAndGender')}) }}</a>
 			{%- if not loop.last -%}

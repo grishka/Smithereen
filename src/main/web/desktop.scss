@@ -3026,6 +3026,13 @@ label.pretendLink{
 	}
 	.settingValue{
 		position: relative;
+		.friendListLabel{
+			/*display: inline-block;*/
+			height: 15px;
+			line-height: 15px;
+			margin: -5px 0;
+			padding: 1px 4px;
+		}
 	}
 }
 

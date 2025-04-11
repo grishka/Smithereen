@@ -1620,7 +1620,7 @@ public class UserStorage{
 		return new SQLQueryBuilder()
 				.selectFrom("followings")
 				.columns("followee_id", "lists")
-				.where("follower_id=? AND mutual=1 AND approved=1", userID)
+				.where("follower_id=? AND mutual=1 AND accepted=1", userID)
 				.executeAsStream(res->new Pair<>(res.getInt(1), BitSet.valueOf(new long[]{res.getLong(2)})))
 				.collect(Collectors.toMap(Pair::first, Pair::second));
 	}

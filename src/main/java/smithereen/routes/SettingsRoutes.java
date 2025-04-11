@@ -28,7 +28,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletException;
@@ -66,6 +68,8 @@ import smithereen.model.WebDeltaResponse;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.filtering.FilterContext;
 import smithereen.model.filtering.WordFilter;
+import smithereen.model.friends.FriendList;
+import smithereen.model.friends.PublicFriendList;
 import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
@@ -566,6 +570,16 @@ public class SettingsRoutes{
 		}
 		model.with("users", ctx.getUsersController().getUsers(needUsers));
 		model.with("allFeedTypes", EnumSet.complementOf(EnumSet.of(FriendsNewsfeedTypeFilter.POSTS)));
+
+		Lang l=lang(req);
+
+		List<FriendList> lists=ctx.getFriendsController().getFriendLists(self.user);
+		model.with("lists", lists);
+		List<FriendList> publicLists=Arrays.stream(PublicFriendList.values())
+				.map(lt->new FriendList(FriendList.FIRST_PUBLIC_LIST_ID+lt.ordinal(), l.get(lt.getLangKey())))
+				.toList();
+		model.with("publicLists", publicLists)
+				.with("allLists", Stream.of(lists, publicLists).flatMap(List::stream).collect(Collectors.toMap(FriendList::id, Function.identity())));
 
 		Templates.addJsLangForPrivacySettings(req);
 		return model;

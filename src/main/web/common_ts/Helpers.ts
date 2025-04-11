@@ -23,6 +23,7 @@ function ce<K extends keyof HTMLElementTagNameMap>(tag:K, attrs:Partial<HTMLElem
 
 interface String{
 	escapeHTML():string;
+	startsWith(substr:string):boolean;
 }
 
 String.prototype.escapeHTML=function(){
@@ -30,6 +31,10 @@ String.prototype.escapeHTML=function(){
 	el.innerText=this;
 	return el.innerHTML;
 }
+
+String.prototype.startsWith=function(substr:string){
+	return this.length>=substr.length && this.substr(0, substr.length)==substr;
+};
 
 interface Array<T>{
 	remove(item:T):void;
